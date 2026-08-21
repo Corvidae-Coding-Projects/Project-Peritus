@@ -1,6 +1,6 @@
 {
   "next_display_id": 4,
-  "next_comment_id": 14,
+  "next_comment_id": 15,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -125,7 +125,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-21T21:10:43.329647070Z",
-      "updated_at": "2026-08-21T22:27:21.855109642Z",
+      "updated_at": "2026-08-21T23:33:19.582345817Z",
       "labels": [
         "formal-verification"
       ],
@@ -183,14 +183,23 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAQHIOYsyZaFHqJFsiOAOrW8h6ahn7LA8VHZq1D2PONT856+3dwbZqa/ZF3zC3LfiAGcmEOWNffB/rzUE1vLJCCg=="
+        },
+        "edcdcd05-0bb0-4ef8-9cda-b08e135b4eb3": {
+          "display_id": 14,
+          "author": "6ME5",
+          "content": "[progress] Finalized local A1 governance remediation: exact ruleset-owned workflow, isolated clean Gate A jobs, base-owned xtask evaluation, dependency build-script/proc-macro allowlist, actionlint policy, exact ruleset payload template, activation/rotation runbook, and legacy/symlinked toolchain regressions. just gate-a passes on the combined tree: 190 xtask tests, 3 CLI tests, foundation tests, strict Clippy/rustdoc, xtask all, ordinary-api, cargo-deny, toolchain probe, workspace Verus verify/build, and peritus-types no-cheating verify/build. External ruleset activation and Git mutations remain outstanding.",
+          "created_at": "2026-08-21T23:33:19.579941900Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWt9PmBigutzFGfiYWXz2iRHiB5UkYMZZ0hEjO9JvJaDH/p3oFX0utxs0t+Bhqxvzrk5bFFftDqqOHKjZJdpyBA=="
         }
       }
     }
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-21T22:27:21.855109642Z",
+    "timestamp": "2026-08-21T23:33:19.582345817Z",
     "agent_id": "6ME5",
-    "agent_seq": 26
+    "agent_seq": 27
   }
 }
