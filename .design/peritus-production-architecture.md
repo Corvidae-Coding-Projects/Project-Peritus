@@ -1099,25 +1099,26 @@ The slices below are designed for isolated worktrees and explicit crate ownershi
 ### Dependency graph
 
 ```text
-A0 repository/toolchain
- ├─ A1 formal foundations ─┬─ B0 kernel/state ─┬─ D0 agent loop ─┐
- │                         ├─ B1 policy/budget ┤                 │
- │                         ├─ B2 spec/gates ───┤                 │
- │                         └─ B3 protocols ────┼─ C0 persistence│
+A0 Workspace/toolchain
+ ├─ A1 formal foundation ──┬─ B0 lifecycle kernel ─┬─ D0 agent loop ─┐
+ │                         ├─ B1 policy/leases ─┤                 │
+ │                         ├─ B2 acceptance spec ─┤                 │
+ │                         └─ B3 domain protocol ─┼─ C0 journal     │
  ├─ A2 test/conformance ───────────────────────┼─ C1 workspace  │
  └─ A3 app protocol ───────────────────────────┼─ C2 execution  │
-                                               ├─ C3 providers  │
-                                               ├─ C4 tools      │
-                                               ├─ C5 context    │
-                                               └─ C6 trace      │
+                                               ├─ C3 security    │
+                                               ├─ C4 tools       │
+                                               ├─ C5 providers   │
+                                               ├─ C6 context     │
+                                               └─ C7 trace       │
                                                                 ▼
-                           E0 gates + E1 review + E2 scheduler → E3 orchestrator
+                           D1 gates + D2 review + D3 scheduler → E0 orchestrator
                                                                 │
-                          F0 debugger + F1 eval + F2 harness ────┤
+                          E2 debugger + E3 evaluation + E1 harness ────┤
                                                                 ▼
-                                                          F3 evolution
+                                                          F0 evolution
                                                                 │
-                             G0 daemon → G1 CLI / G2 TUI / G3 plugins
+                             G0 daemon → G1 CLI / G2 TUI / G3 extensions
                                                                 │
                                   H0 security + H1 resilience + H2 platform
                                   + H3 performance + H4 release qualification
