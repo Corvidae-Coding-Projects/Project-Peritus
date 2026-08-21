@@ -67,13 +67,16 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-21T18:14:05.075526048Z",
-      "updated_at": "2026-08-21T18:14:05.075526048Z"
+      "updated_at": "2026-08-21T18:14:10.255945261Z",
+      "labels": [
+        "foundation"
+      ]
     }
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-21T18:14:05.075526048Z",
+    "timestamp": "2026-08-21T18:14:10.255945261Z",
     "agent_id": "6ME5",
-    "agent_seq": 7
+    "agent_seq": 8
   }
 }
