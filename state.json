@@ -1,13 +1,27 @@
 {
-  "next_display_id": 1,
+  "next_display_id": 2,
   "next_comment_id": 1,
-  "display_id_map": {},
+  "display_id_map": {
+    "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1
+  },
   "locks": {},
-  "issues": {},
+  "issues": {
+    "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": {
+      "uuid": "0e2f54b8-fe27-4bbd-a983-9644f1da6f71",
+      "display_id": 1,
+      "title": "Document production architecture for Verus-first coding harness",
+      "description": "Create and publish the full production design covering crate boundaries, formal invariants, persistence, security, orchestration, observability, evolution, verification, and parallel implementation slices.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "6ME5",
+      "created_at": "2026-08-21T17:54:24.136110741Z",
+      "updated_at": "2026-08-21T17:54:24.136110741Z"
+    }
+  },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "1970-01-01T00:00:00Z",
-    "agent_id": "hub-v3-genesis",
-    "agent_seq": 0
+    "timestamp": "2026-08-21T17:54:24.136110741Z",
+    "agent_id": "6ME5",
+    "agent_seq": 1
   }
 }
