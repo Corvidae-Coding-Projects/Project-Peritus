@@ -1,6 +1,6 @@
 {
   "next_display_id": 4,
-  "next_comment_id": 16,
+  "next_comment_id": 17,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -125,7 +125,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-21T21:10:43.329647070Z",
-      "updated_at": "2026-08-21T23:33:24.247172750Z",
+      "updated_at": "2026-08-21T23:36:58.103384383Z",
       "labels": [
         "formal-verification"
       ],
@@ -175,6 +175,18 @@
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAs6gXpc0cR7efMW941x/GgWDxpmejMEFFmFLPq2jDEBaXGuiIhzzgfbTiMpIWhMCPPUZjrtQ1TigYAmBLBzFIAg=="
         },
+        "6d4af9e9-0f81-484c-92ee-61e7dcccae17": {
+          "display_id": 16,
+          "author": "6ME5",
+          "content": "Attempted: find reference-repos ...; inspect design slice catalog; git show bb3ad7d; read-only ancestry check",
+          "created_at": "2026-08-21T23:36:58.100788062Z",
+          "kind": "intervention",
+          "trigger_type": "tool_blocked",
+          "intervention_context": "Completion audit for reference clones, canonical slice labels, A0 commit contents, and A0-before-A1 ordering; the hook treated the read-only ancestry command as forbidden because its name contains merge.",
+          "driver_key_fingerprint": "SHA256:6GbEO9gckWEeR3l6YB3LUaTe1Oc9qqn0WLtMVuu7a8A",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAhPHFQmpfx1hLPClpigrE9FQQAixaSiZnecnjWwfluJnZw1NPKgHt7ToAbfT9gGy4AIurJUrqbGbvFLdd/HiQBg=="
+        },
         "8be91dc0-eb9e-4839-a25d-7d0d0a68ecbb": {
           "display_id": 15,
           "author": "6ME5",
@@ -207,8 +219,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-21T23:33:24.247172750Z",
+    "timestamp": "2026-08-21T23:36:58.103384383Z",
     "agent_id": "6ME5",
-    "agent_seq": 28
+    "agent_seq": 29
   }
 }
