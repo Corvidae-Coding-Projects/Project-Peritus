@@ -1,6 +1,6 @@
 {
   "next_display_id": 4,
-  "next_comment_id": 10,
+  "next_comment_id": 11,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -121,11 +121,20 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-21T21:10:43.329647070Z",
-      "updated_at": "2026-08-21T21:37:01.477671995Z",
+      "updated_at": "2026-08-21T21:53:48.381745301Z",
       "labels": [
         "formal-verification"
       ],
       "comments": {
+        "23de60a1-72c0-4468-81e2-4717b04801fd": {
+          "display_id": 10,
+          "author": "6ME5",
+          "content": "A1 implementation complete and under independent final review. Added 27 nominal IDs, checked counters/resources/capability/digest primitives with 188 crate proofs; zero-baseline TCB and strict trust/exclusion/obligation reconciliation; repository-owned ordinary-api-check audited 22 formal files and 116 executable entry points. Canonical full release build passes peritus-tcb 4/0 and peritus-types 188/0 with root --no-cheating. Pinned Verus experimental check-api-safety was replaced only after confirming it fails in imported vstd Option::unwrap; the compensating checker conservatively mirrors and strengthens the repo-owned boundary cases. No A1 commit yet.",
+          "created_at": "2026-08-21T21:53:48.379076374Z",
+          "kind": "progress",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABACnbkEAYaMm2T+b7kMhBQ8zWhM7pLvv9NXQ5tLuN6xw1pubwZM8msrm6IefRGmjoD3bAD9gVvYVK+VHXSjT5cBA=="
+        },
         "2bd245f1-d775-49f8-a3cc-06e51a1d7710": {
           "display_id": 8,
           "author": "6ME5",
@@ -149,8 +158,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-21T21:37:01.477671995Z",
+    "timestamp": "2026-08-21T21:53:48.381745301Z",
     "agent_id": "6ME5",
-    "agent_seq": 21
+    "agent_seq": 22
   }
 }
