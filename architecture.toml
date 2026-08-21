@@ -1,0 +1,106 @@
+schema = 2
+soft_source_lines = 400
+hard_source_lines = 700
+root_module_lines = 80
+required_license = "MIT"
+ignored_directories = [
+    ".git",
+    ".crosslink",
+    ".worktrees",
+    "reference-repos",
+    "target",
+    "target-verus",
+]
+forbidden_module_names = ["common", "helpers", "manager", "misc", "utils"]
+trusted_source_roots = []
+source_exceptions = []
+forbidden_dependencies = []
+controlled_source_roots = []
+
+[[layers]]
+name = "foundation"
+path = "crates/foundation"
+may_depend_on = ["foundation"]
+may_dev_depend_on = ["foundation", "testing"]
+
+[[layers]]
+name = "state"
+path = "crates/state"
+may_depend_on = ["foundation", "state"]
+may_dev_depend_on = ["foundation", "state", "testing"]
+
+[[layers]]
+name = "runtime"
+path = "crates/runtime"
+may_depend_on = ["foundation", "state", "runtime"]
+may_dev_depend_on = ["foundation", "state", "runtime", "testing"]
+
+[[layers]]
+name = "tools"
+path = "crates/tools"
+may_depend_on = ["foundation", "state", "runtime", "tools"]
+may_dev_depend_on = ["foundation", "state", "runtime", "tools", "testing"]
+
+[[layers]]
+name = "model"
+path = "crates/model"
+may_depend_on = ["foundation", "model"]
+may_dev_depend_on = ["foundation", "model", "testing"]
+
+[[layers]]
+name = "orchestration"
+path = "crates/orchestration"
+may_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration"]
+may_dev_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration", "testing"]
+
+[[layers]]
+name = "observe"
+path = "crates/observe"
+may_depend_on = ["foundation", "state", "observe"]
+may_dev_depend_on = ["foundation", "state", "observe", "testing"]
+
+[[layers]]
+name = "testing"
+path = "crates/app/testing"
+required_verification_class = "C"
+may_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration", "observe", "app", "testing"]
+may_dev_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration", "observe", "app", "testing"]
+
+[[layers]]
+name = "app"
+path = "crates/app"
+may_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration", "observe", "app"]
+may_dev_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration", "observe", "app", "testing"]
+
+[[layers]]
+name = "engineering"
+path = "xtask"
+may_depend_on = ["engineering"]
+may_dev_depend_on = ["engineering", "testing"]
+
+[[verification_classes]]
+name = "V"
+may_depend_on = ["V"]
+may_dev_depend_on = ["V", "H", "C"]
+
+[[verification_classes]]
+name = "H"
+may_depend_on = ["V", "H"]
+may_dev_depend_on = ["V", "H", "C"]
+
+[[verification_classes]]
+name = "T"
+may_depend_on = ["V", "H", "T"]
+may_dev_depend_on = ["V", "H", "T", "C"]
+
+[[verification_classes]]
+name = "C"
+may_depend_on = ["V", "H", "C"]
+may_dev_depend_on = ["V", "H", "C"]
+
+[[packages]]
+name = "xtask"
+path = "xtask"
+owner = "A0"
+layer = "engineering"
+verification_class = "C"

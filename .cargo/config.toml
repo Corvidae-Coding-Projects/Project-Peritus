@@ -1,0 +1,9 @@
+[alias]
+xtask = "run --locked --package xtask --"
+
+[build]
+incremental = false
+
+[net]
+git-fetch-with-cli = true
+retry = 2

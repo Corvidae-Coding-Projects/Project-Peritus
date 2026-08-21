@@ -32,3 +32,7 @@
 
 # Local upstream repositories used for project research.
 /reference-repos/
+
+# Rust and Verus build output.
+/target/
+/target-verus/

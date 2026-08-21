@@ -1,0 +1,68 @@
+[workspace]
+members = ["xtask"]
+default-members = ["xtask"]
+resolver = "3"
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.97.1"
+license = "MIT"
+repository = "https://github.com/Corvidae-Coding-Projects/Project-Peritus"
+
+[workspace.dependencies]
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.149"
+toml = "=1.1.4"
+vstd = { git = "https://github.com/verus-lang/verus.git", rev = "92f466f247f45128c630d1c843fd6e27d2115587" }
+yaml-rust2 = { version = "=0.12.0", default-features = false }
+
+[workspace.metadata.peritus]
+architecture-policy = "architecture.toml"
+rust-toolchain = "1.97.1"
+verus-version = "0.2026.08.09.92f466f"
+vstd-revision = "92f466f247f45128c630d1c843fd6e27d2115587"
+
+[workspace.lints.rust]
+future_incompatible = { level = "deny", priority = -1 }
+missing_docs = "deny"
+nonstandard_style = { level = "deny", priority = -1 }
+rust_2018_idioms = { level = "deny", priority = -1 }
+rust_2024_compatibility = { level = "deny", priority = -1 }
+unexpected_cfgs = { level = "deny", check-cfg = [
+    "cfg(verus_keep_ghost)",
+    "cfg(verus_keep_ghost_body)",
+    "cfg(verus_only)",
+    "cfg(verus_verify_core)",
+] }
+unsafe_code = "forbid"
+unused_lifetimes = "deny"
+unused_qualifications = "deny"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+multiple_crate_versions = "allow"
+
+[workspace.lints.rustdoc]
+bare_urls = "deny"
+broken_intra_doc_links = "deny"
+private_intra_doc_links = "deny"
+
+[profile.dev]
+incremental = false
+overflow-checks = true
+
+[profile.test]
+incremental = false
+overflow-checks = true
+
+[profile.release]
+codegen-units = 1
+incremental = false
+lto = "thin"
+overflow-checks = true
+panic = "abort"
+strip = "symbols"
