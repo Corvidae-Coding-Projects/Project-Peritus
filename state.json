@@ -1,6 +1,6 @@
 {
   "next_display_id": 6,
-  "next_comment_id": 65,
+  "next_comment_id": 66,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -642,7 +642,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-22T16:02:46.854617936Z",
-      "updated_at": "2026-08-22T16:03:52.699687599Z",
+      "updated_at": "2026-08-22T16:17:43.730853932Z",
       "labels": [
         "feature"
       ],
@@ -674,6 +674,15 @@
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIUr7vFmwssTzsw0fajNqmUwpMYFgidCEbbLQwuUAQVuDFxmyE54ZsQj++WsFg99kvxgpkDC9ZKMXaaJsQinxDg=="
         },
+        "c87bac67-7cf6-4f75-baff-0a044245c6aa": {
+          "display_id": 65,
+          "author": "6ME5",
+          "content": "B1 design audits complete (three independent Sol xhigh read-only passes). Scope remains four crates: peritus-policy V, peritus-budget V, peritus-leases H verified core/CAS port, peritus-approval H verified core/auth-render seams. Required ordering: freeze cross-crate contracts, land protected-base PCR authorization for exact formal/shared inputs, then implement. Key contracts: exact resource+capability permission pairs; deny cannot be overridden by approval; approve-similar creates a new bounded policy revision and requires reauthorization; monotonic budget consumption with reservation high-water accounting; epoch-bound monotonic authority time; generation-fenced exclusive leases with C0-owned durable CAS implementation. No external blocker.",
+          "created_at": "2026-08-22T16:17:43.726020016Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABACZiaswt3FG/7ASOcGjy2Wz+q3/fut50PAqxIi037AUfPXF20ckeBxMw0mPPQc2YqVfJK1ucpqF7MHX9qDL0JBA=="
+        },
         "e6cc16ef-6027-43e9-8e0a-d642022148e3": {
           "display_id": 64,
           "author": "6ME5",
@@ -688,8 +697,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-22T16:03:52.699687599Z",
+    "timestamp": "2026-08-22T16:17:43.730853932Z",
     "agent_id": "6ME5",
-    "agent_seq": 91
+    "agent_seq": 92
   }
 }
