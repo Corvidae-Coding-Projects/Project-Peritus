@@ -1,6 +1,6 @@
 {
   "next_display_id": 6,
-  "next_comment_id": 85,
+  "next_comment_id": 86,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -642,7 +642,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-22T16:02:46.854617936Z",
-      "updated_at": "2026-08-22T18:58:02.769251950Z",
+      "updated_at": "2026-08-22T19:43:14.105891893Z",
       "labels": [
         "feature"
       ],
@@ -664,6 +664,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+9jcKiESlvD0QIUyavKDUY4M4vH6KMhvWNHqo/6JzgbRTgLXP/Hfa9mRfo/Vtt+rl2YLOzlx9QkNjspmB+i9AQ=="
+        },
+        "1f8fd02c-de88-471c-8c92-8d276b47f4d5": {
+          "display_id": 85,
+          "author": "6ME5",
+          "content": "Lease refrozen review-ready after linear authority-time adaptation: strict no-cheating 258/0; release proof/build includes policy 405/0 + lease 258/0; 20/20 tests; strict Clippy, rustdoc, fmt, ordinary release build green. All consuming reducers use move-only accepted/rejected outcomes; rejection owns exact unchanged aggregate/floor, no Box/allocation, borrow-only time exposure, zero lease ordinary-API findings. Lane stopped pending independent final review.",
+          "created_at": "2026-08-22T19:43:14.101587793Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAkjgZRlOdKWbJ9goexYTSzn4Sr42gXdzrhgvzkbDM/auU8n1b5N4Qo8Vkdzl7PalGyuP25Hb8Mzy/V8ZVaSbeCA=="
         },
         "2a1e707b-083c-4f49-8e66-16140cb1cdab": {
           "display_id": 81,
@@ -868,8 +877,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-22T18:58:02.769251950Z",
+    "timestamp": "2026-08-22T19:43:14.105891893Z",
     "agent_id": "6ME5",
-    "agent_seq": 111
+    "agent_seq": 112
   }
 }
