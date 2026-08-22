@@ -127,3 +127,24 @@ evidence = [
   { kind = "ordinary-test", owning_crate = "peritus-types", command = "cargo test --package peritus-types --all-targets --all-features --locked" },
   { kind = "verus-verify", owning_crate = "peritus-types", command = "cargo verus verify --package peritus-types --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
 ]
+
+[[changes]]
+id = "PCR-0004"
+status = "approved"
+change_kinds = ["executable", "specification", "precondition", "postcondition", "proof"]
+rationale = "Registers the two class-C A2 testing crates and their existing pinned dependency edges in the workspace, dependency lock, and architecture registry after independent review."
+impact = "Shared workspace discovery changes conservatively affect both formal packages, but add no V, H, or T production dependency, change no formal source, proof, trust entry, exclusion, or obligation, and claim no invariant discharge."
+owner = "ACTOR-0001"
+reviewer = "ACTOR-0002"
+review_date = "2026-08-22"
+source_changes = [
+  { source_file = "Cargo.lock", previous = { sha256 = "a452c4c9bef51a34868feb2e4fbaee2acec0e8afbbd419c681eb40a90e69b0af", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }] }, current = { sha256 = "4e963b9d5162667f327a792ef73522a58263d1105e028074a41269cbd78ba30b", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "Cargo.toml", previous = { sha256 = "2b6c276970c17f61c548cee2f7cfc916311bdf84a2055a6ff1d1d4614ea0c4f6", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }] }, current = { sha256 = "48d30493873294ecf176c9668a9d8c896e29fb7f61f027e7d8743d3662f0f00f", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "architecture.toml", previous = { sha256 = "89e1daa34cc8919c6d655df9b366f298a3b14f1f98a3e12882a31d0dd8149808", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }] }, current = { sha256 = "90d0f5b6fd112c7968370760047c2ca4678363fffc248b835075882cc5169e57", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }] } },
+]
+evidence = [
+  { kind = "ordinary-test", owning_crate = "peritus-tcb", command = "cargo test --package peritus-tcb --all-targets --all-features --locked" },
+  { kind = "verus-verify", owning_crate = "peritus-tcb", command = "cargo verus verify --package peritus-tcb --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --rlimit 20" },
+  { kind = "ordinary-test", owning_crate = "peritus-types", command = "cargo test --package peritus-types --all-targets --all-features --locked" },
+  { kind = "verus-verify", owning_crate = "peritus-types", command = "cargo verus verify --package peritus-types --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+]
