@@ -1,6 +1,6 @@
 {
   "next_display_id": 6,
-  "next_comment_id": 72,
+  "next_comment_id": 73,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -642,7 +642,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-22T16:02:46.854617936Z",
-      "updated_at": "2026-08-22T17:15:05.442980144Z",
+      "updated_at": "2026-08-22T17:38:09.384549178Z",
       "labels": [
         "feature"
       ],
@@ -691,6 +691,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA6VA4XQ7RsRtv/y4CfPG+llTcSBOD8BfMrEpglQYw3ilEM8DV6qXWJxap2HXb+F6un0tfpUy5jPnIQRWGEKXXBg=="
+        },
+        "67a6f333-54d4-4840-81f3-7020d245be51": {
+          "display_id": 72,
+          "author": "6ME5",
+          "content": "Shared B1 verification contract advanced: RevisionTuple now exposes closed spec views and constructor/getter postconditions for all seven components; peritus-types ordinary tests, strict Clippy/docs, and no-cheating Verus pass (210 verified). Live source-layout, ordinary-API, and architecture gates pass across 237 sources. Budget lane reached 17 tests/206 Verus but QA found two authority gaps before acceptance: retries can currently be mislabeled as initial attempts to bypass RetryCount, and the formal ledger relation does not yet specify tree/reservation conservation strongly enough for INV-012. Budget owner is remediating; proof-impact mismatch remains intentionally deferred until final identities and independent review.",
+          "created_at": "2026-08-22T17:38:09.381764974Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAnSE6gPNPE63frI2DRbkIBkuPkbSBtX/K5dYLRvNAwF6P6BNgIqviD21mp67jrKkHvcFQc2/5bkC4PLgldt2MBg=="
         },
         "89b910f9-1f36-49aa-87da-d94b77d91b9d": {
           "display_id": 63,
@@ -751,8 +760,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-22T17:15:05.442980144Z",
+    "timestamp": "2026-08-22T17:38:09.384549178Z",
     "agent_id": "6ME5",
-    "agent_seq": 98
+    "agent_seq": 99
   }
 }
