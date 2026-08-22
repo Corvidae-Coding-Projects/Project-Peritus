@@ -10,6 +10,7 @@ mod deny_policy;
 mod evidence_command;
 mod github_ruleset_policy;
 mod just_policy;
+mod line_endings_policy;
 mod policy_file;
 #[cfg(test)]
 mod reproducibility_ci_control_tests;
@@ -80,6 +81,7 @@ pub(crate) fn check(root: &Path, tools: &ToolchainPolicy) -> Result<usize, Xtask
     actionlint_policy::validate(root, &mut diagnostics);
     deny_policy::validate(root, &mut diagnostics)?;
     github_ruleset_policy::validate(root, &mut diagnostics);
+    line_endings_policy::validate(root, &mut diagnostics);
     reproducibility_workspace::validate(root, &mut diagnostics)?;
     let cargo = metadata::cargo_metadata(root)?;
     let architecture = metadata::architecture_policy(root)?;

@@ -36,7 +36,7 @@ jobs:
           fetch-depth: 0
       - name: Verify reviewed Cargo configuration digest
         shell: bash
-        run: printf 'a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79  .cargo/config.toml\n' | sha256sum --check --strict
+        run: printf 'a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79  .cargo/config.toml\n' | sha256sum -c
 
   rust:
     name: Rust (${{ matrix.os }})

@@ -34,7 +34,7 @@ jobs:
           persist-credentials: false
       - name: Verify candidate Cargo configuration before Cargo
         shell: bash
-        run: printf 'a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79  candidate/.cargo/config.toml\n' | sha256sum --check --strict
+        run: printf 'a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79  candidate/.cargo/config.toml\n' | sha256sum -c
 
   policy:
     name: Candidate policy
@@ -52,7 +52,7 @@ jobs:
           persist-credentials: false
       - name: Verify candidate Cargo configuration before Cargo
         shell: bash
-        run: printf 'a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79  candidate/.cargo/config.toml\n' | sha256sum --check --strict
+        run: printf 'a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79  candidate/.cargo/config.toml\n' | sha256sum -c
       - name: Install pinned Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
         with:
@@ -113,7 +113,7 @@ jobs:
           persist-credentials: false
       - name: Verify candidate Cargo configuration before Cargo
         shell: bash
-        run: printf 'a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79  candidate/.cargo/config.toml\n' | sha256sum --check --strict
+        run: printf 'a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79  candidate/.cargo/config.toml\n' | sha256sum -c
       - name: Install pinned Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
         with:
@@ -162,7 +162,7 @@ jobs:
           persist-credentials: false
       - name: Verify candidate Cargo configuration before Cargo
         shell: bash
-        run: printf 'a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79  candidate/.cargo/config.toml\n' | sha256sum --check --strict
+        run: printf 'a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79  candidate/.cargo/config.toml\n' | sha256sum -c
       - name: Install pinned Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
         with:
@@ -190,7 +190,7 @@ jobs:
           persist-credentials: false
       - name: Verify candidate Cargo configuration before Cargo
         shell: bash
-        run: printf 'a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79  candidate/.cargo/config.toml\n' | sha256sum --check --strict
+        run: printf 'a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79  candidate/.cargo/config.toml\n' | sha256sum -c
       - name: Install pinned Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
         with:

@@ -67,6 +67,7 @@ fn pre_cargo_bootstrap_and_needs_graph_are_exact() {
             "a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79",
             "0000000000000000000000000000000000000000000000000000000000000000",
         ),
+        canonical_ci().replace("sha256sum -c", "sha256sum --check --strict"),
         canonical_ci().replace(
             "      - name: Verify reviewed Cargo configuration digest",
             "      - name: Unreviewed bootstrap step\n        run: printf ignored\n      - name: Verify reviewed Cargo configuration digest",

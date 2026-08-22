@@ -239,7 +239,7 @@ impl ParsedScript {
             && self.commands.len() == 2
             && self.commands[0].pipes_to_next()
             && self.commands[0].is_exact_command(&["printf", line])
-            && self.commands[1].is_exact_command(&["sha256sum", "--check", "--strict"])
+            && self.commands[1].is_exact_command(&["sha256sum", "-c"])
     }
 }
 

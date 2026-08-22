@@ -174,7 +174,7 @@ pub(super) fn config_step(step: &Yaml, line: &str) -> bool {
                 && commands.len() == 2
                 && commands[0].pipes_to_next()
                 && commands[0].is_exact_command(&["printf", line])
-                && commands[1].is_exact_command(&["sha256sum", "--check", "--strict"])
+                && commands[1].is_exact_command(&["sha256sum", "-c"])
         })
 }
 

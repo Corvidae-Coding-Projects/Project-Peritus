@@ -62,7 +62,16 @@ fn mixed_case_cargo_config_aliases_are_rejected_on_every_host() {
         let fixture = Fixture::new();
         fixture.write(".cargo/config.toml", CONFIG);
         fixture.write(alternate, "[alias]\nverus = \"!true\"\n");
-        assert_message(&fixture.load(), "nested or legacy Cargo configuration");
+        let canonical_was_overwritten =
+            fs::read_to_string(fixture.path().join(".cargo/config.toml"))
+                .expect("canonical config must remain readable")
+                != CONFIG;
+        let expected = if canonical_was_overwritten {
+            "Cargo configuration is not the complete exact reviewed A0 configuration"
+        } else {
+            "nested or legacy Cargo configuration"
+        };
+        assert_message(&fixture.load(), expected);
     }
 }
 

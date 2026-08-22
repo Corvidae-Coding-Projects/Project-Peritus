@@ -81,6 +81,10 @@ fn required_workflow_rejects_bootstrap_and_gate_weakening() {
             "lacks the exact pre-Cargo candidate bootstrap",
         ),
         (
+            canonical_governance().replace("sha256sum -c", "sha256sum --check --strict"),
+            "lacks the exact pre-Cargo candidate bootstrap",
+        ),
+        (
             canonical_governance().replace("  rust:\n", "  rust:\n    if: false\n"),
             "does not retain every hardcoded job and final status",
         ),
