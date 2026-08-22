@@ -1,6 +1,6 @@
 {
   "next_display_id": 6,
-  "next_comment_id": 84,
+  "next_comment_id": 85,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -642,7 +642,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-22T16:02:46.854617936Z",
-      "updated_at": "2026-08-22T18:57:58.258708424Z",
+      "updated_at": "2026-08-22T18:58:02.769251950Z",
       "labels": [
         "feature"
       ],
@@ -727,6 +727,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAXBrvsSMkIA/TtK/11lkgFXzL2i2coqU8mj94ItOAQW6td3knkRuiY3LSt1Exjn60OCbZzPl7f9++FVF5pzBZAg=="
+        },
+        "5beff44b-de7f-41c3-a373-a603bfee6f4f": {
+          "display_id": 84,
+          "author": "6ME5",
+          "content": "[action] B1 policy exact evaluator/tests active; lease linear-state adaptation active; budget reopened for exact reducer refinement after independent audit",
+          "created_at": "2026-08-22T18:58:02.766755335Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABACPMY6rZ8GqAlfKafpSjz0qwvFOxI0rgDDBXZYzkw9hzFcgGLJDv7+nxNsX88wfkrsQkVKSrfi74i0kakCQ1qDA=="
         },
         "5d103044-3cbf-461e-b847-b23b84adc3e6": {
           "display_id": 69,
@@ -859,8 +868,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-22T18:57:58.258708424Z",
+    "timestamp": "2026-08-22T18:58:02.769251950Z",
     "agent_id": "6ME5",
-    "agent_seq": 110
+    "agent_seq": 111
   }
 }
