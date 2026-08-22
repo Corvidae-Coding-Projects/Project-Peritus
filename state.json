@@ -1,6 +1,6 @@
 {
   "next_display_id": 4,
-  "next_comment_id": 35,
+  "next_comment_id": 36,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -125,7 +125,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-21T21:10:43.329647070Z",
-      "updated_at": "2026-08-22T13:32:13.514283427Z",
+      "updated_at": "2026-08-22T13:32:37.826414152Z",
       "labels": [
         "formal-verification"
       ],
@@ -349,6 +349,15 @@
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWt9PmBigutzFGfiYWXz2iRHiB5UkYMZZ0hEjO9JvJaDH/p3oFX0utxs0t+Bhqxvzrk5bFFftDqqOHKjZJdpyBA=="
         },
+        "eec33eb0-52cc-4573-b4c8-c2d5cc3eb109": {
+          "display_id": 35,
+          "author": "6ME5",
+          "content": "Committed signed portability repair as 6ca5f56d2ab12e93f155d684b33f4a86c2f877b8 (fix: make Gate A runner-portable), parent 915fe4defa76feb0e6aa4b1bd905b87ce4274f33. Git verifies a good SSH signature with the configured GitHub noreply principal. Exact 10-file fix passes PERITUS_PROOF_IMPACT_BASE=915fe4d just gate-a, actionlint, focused regressions, diff checks, LF attribute inspection, and independent review. Not pushed; remote rerun and Team ruleset bootstrap remain.",
+          "created_at": "2026-08-22T13:32:37.823672019Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALUTJjDVxi2hIkJRWLhkqaiiZzUL4B/ElnUX4mxv/SenrEAO8suko3y8EuX4RWc/6voEUW3tfq9BFEm268CyDBA=="
+        },
         "f97ecba6-0dc9-4d82-b3a7-ef1ad291eae5": {
           "display_id": 28,
           "author": "6ME5",
@@ -381,8 +390,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-22T13:32:13.514283427Z",
+    "timestamp": "2026-08-22T13:32:37.826414152Z",
     "agent_id": "6ME5",
-    "agent_seq": 49
+    "agent_seq": 50
   }
 }
