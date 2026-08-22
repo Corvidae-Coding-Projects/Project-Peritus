@@ -1,6 +1,6 @@
 {
   "next_display_id": 6,
-  "next_comment_id": 75,
+  "next_comment_id": 76,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -642,7 +642,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-22T16:02:46.854617936Z",
-      "updated_at": "2026-08-22T17:52:52.050613607Z",
+      "updated_at": "2026-08-22T17:52:55.899900141Z",
       "labels": [
         "feature"
       ],
@@ -746,6 +746,15 @@
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+DYfqMfPGOscRc0CfQ9UNtBGcpaZ9OcBPsVFl8D6/CxaOkYgQwezk9D+wZYvtcNrthlMxCAXF14tccGrHlN3DA=="
         },
+        "a4412668-cc6d-45ff-bf45-7e4c5bd2e9f9": {
+          "display_id": 75,
+          "author": "6ME5",
+          "content": "[action] B1 semantic QA assigned retry/model, lease-refinement, move-only integration, and source-layout remediations; preparing final obligation/exclusion governance against stable symbols",
+          "created_at": "2026-08-22T17:52:55.897191521Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA/V7Lu8Uomyy3YlfjSfzfc45PhGgx1xU3VRJFTny7HqeVnNkwMiWax3jXDhPRyPndSma+wZt2TDb1dWXwvaT5Cw=="
+        },
         "c87bac67-7cf6-4f75-baff-0a044245c6aa": {
           "display_id": 65,
           "author": "6ME5",
@@ -778,8 +787,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-22T17:52:52.050613607Z",
+    "timestamp": "2026-08-22T17:52:55.899900141Z",
     "agent_id": "6ME5",
-    "agent_seq": 101
+    "agent_seq": 102
   }
 }
