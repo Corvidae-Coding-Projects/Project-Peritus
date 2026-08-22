@@ -1,6 +1,6 @@
 {
   "next_display_id": 4,
-  "next_comment_id": 19,
+  "next_comment_id": 20,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -125,7 +125,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-21T21:10:43.329647070Z",
-      "updated_at": "2026-08-21T23:44:01.205514553Z",
+      "updated_at": "2026-08-22T00:15:54.610670487Z",
       "labels": [
         "formal-verification"
       ],
@@ -231,14 +231,23 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWt9PmBigutzFGfiYWXz2iRHiB5UkYMZZ0hEjO9JvJaDH/p3oFX0utxs0t+Bhqxvzrk5bFFftDqqOHKjZJdpyBA=="
+        },
+        "fcb67c51-83b9-484d-b5a6-51b759104a35": {
+          "display_id": 19,
+          "author": "6ME5",
+          "content": "Final local A1 evidence: exact-tree just gate-a passes after independent-review remediation. Coverage includes formatting, locked workspace build/tests, 208 xtask tests, 17 foundation tests, 3 CLI tests, doc tests, strict Clippy, rustdoc warnings, xtask all over 114 sources, ordinary API checks, cargo-deny, pinned toolchain validation, Verus verification/build, and peritus-types --no-cheating. Actor provenance is content-addressed and validates the embedded Crosslink SSH key/fingerprint plus gpt-5.6-sol/xhigh read-only reviewer identity. Awaiting the independent reviewer's final exact-tree/PCR verdict; no further edits planned.",
+          "created_at": "2026-08-22T00:15:54.608127242Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAhB11LdZoSz9eRedCNUwrBhmWHDKa2NIRVoE6vxOEsUSLXRqz6m4rVM6ONZzwy3cwLC3aTPNAgM0S6FVc6AInBg=="
         }
       }
     }
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-21T23:44:01.205514553Z",
+    "timestamp": "2026-08-22T00:15:54.610670487Z",
     "agent_id": "6ME5",
-    "agent_seq": 31
+    "agent_seq": 32
   }
 }
