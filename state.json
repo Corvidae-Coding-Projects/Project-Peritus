@@ -1,6 +1,6 @@
 {
   "next_display_id": 6,
-  "next_comment_id": 74,
+  "next_comment_id": 75,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -642,7 +642,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-22T16:02:46.854617936Z",
-      "updated_at": "2026-08-22T17:38:13.718081225Z",
+      "updated_at": "2026-08-22T17:52:52.050613607Z",
       "labels": [
         "feature"
       ],
@@ -664,6 +664,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAP0NI/BmoRYEkrq2+qBUl4694cFqtWww8YYpdkQa5zE+IsqX+FX66Navcw1kBoZeVJWsUSlRkhSpUhfJqkmhPCg=="
+        },
+        "3928cd9d-0464-4d53-a096-1225e6012683": {
+          "display_id": 74,
+          "author": "6ME5",
+          "content": "B1 QA remediation remains active in three Sol xhigh lanes. Budget now derives retry charges from immutable action history, blocks overlapping retries, and strictly binds duplicate observation evidence; root found one stale reference-model expectation plus remaining formal refinement requirements (complete ledger well-formedness, identity stability, ancestor propagation, non-tautological lemmas). Leases now models exact fencing causes/correlation, reconciliation disposition, retirement, and policy/lease expiry intersection; remaining work is exact duration/deadline equations, explicit generated state-machine refinement, boundary-lemma cleanup, test adaptation to move-only policy APIs, and source splits. Policy Verus is green at 337/0; complete explicit role matrix, concrete evaluator/amendment refinement, strict lint/tests, then approval remain. Ordinary API gate passes 681 entry points; source layout currently blocks on two budget and two lease files. No external blocker; B2 remains next only after complete B1 integration and protected merge.",
+          "created_at": "2026-08-22T17:52:52.048052343Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAT/pgzrEmbptsiVNuq94Ng0lmuijQ9isa1yb3cpn46D6XTaXJR8dhPDXurtHjEfpPF0s3hyz8oa8dyiL0jupnDQ=="
         },
         "3ceb2ade-051b-4a54-9b0e-951b99cb8dd5": {
           "display_id": 66,
@@ -769,8 +778,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-22T17:38:13.718081225Z",
+    "timestamp": "2026-08-22T17:52:52.050613607Z",
     "agent_id": "6ME5",
-    "agent_seq": 100
+    "agent_seq": 101
   }
 }
