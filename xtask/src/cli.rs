@@ -54,8 +54,9 @@ pub fn run_from_env() -> Result<(), XtaskError> {
 }
 
 fn discover_workspace_root(start: &Path) -> Result<PathBuf, XtaskError> {
-    let mut candidate = fs::canonicalize(start)
+    let canonical = fs::canonicalize(start)
         .map_err(|error| XtaskError::io("canonicalize workspace search path", start, error))?;
+    let mut candidate = child_process_path(canonical);
     loop {
         if candidate.join("Cargo.toml").is_file() && candidate.join("architecture.toml").is_file() {
             return Ok(candidate);
@@ -67,6 +68,38 @@ fn discover_workspace_root(start: &Path) -> Result<PathBuf, XtaskError> {
             )));
         }
     }
+}
+
+#[cfg(not(windows))]
+const fn child_process_path(path: PathBuf) -> PathBuf {
+    path
+}
+
+#[cfg(windows)]
+fn child_process_path(path: PathBuf) -> PathBuf {
+    use std::path::{Component, Prefix};
+
+    let mut components = path.components();
+    let Some(Component::Prefix(prefix)) = components.next() else {
+        return path;
+    };
+    let mut ordinary = match prefix.kind() {
+        Prefix::VerbatimDisk(drive) => PathBuf::from(format!("{}:\\", char::from(drive))),
+        Prefix::VerbatimUNC(server, share) => {
+            let mut value = OsString::from(r"\\");
+            value.push(server);
+            value.push(r"\");
+            value.push(share);
+            PathBuf::from(value)
+        }
+        _ => return path,
+    };
+    for component in components {
+        if !matches!(component, Component::RootDir) {
+            ordinary.push(component.as_os_str());
+        }
+    }
+    ordinary
 }
 
 pub(crate) fn execute(
@@ -208,7 +241,26 @@ mod tests {
             .expect("xtask manifest directory must be canonicalizable");
         let workspace = discover_workspace_root(&crate_root)
             .expect("xtask must be nested under the Peritus workspace root");
-        assert_eq!(workspace.join("xtask"), crate_root);
+        assert_eq!(
+            workspace.join("xtask").canonicalize().expect("discovered xtask must canonicalize"),
+            crate_root
+        );
         assert!(workspace.join("architecture.toml").is_file());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn discovered_workspace_root_is_safe_to_pass_back_to_child_processes() {
+        use std::path::{Component, Prefix};
+
+        let crate_root = fs::canonicalize(env!("CARGO_MANIFEST_DIR"))
+            .expect("xtask manifest directory must be canonicalizable");
+        let workspace = discover_workspace_root(&crate_root)
+            .expect("xtask must be nested under the Peritus workspace root");
+        assert!(!matches!(
+            workspace.components().next(),
+            Some(Component::Prefix(prefix))
+                if matches!(prefix.kind(), Prefix::VerbatimDisk(_) | Prefix::VerbatimUNC(_, _))
+        ));
     }
 }
