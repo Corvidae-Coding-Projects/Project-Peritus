@@ -1,5 +1,7 @@
 [workspace]
 members = [
+    "crates/app/testing/peritus-conformance",
+    "crates/app/testing/peritus-test-support",
     "crates/foundation/peritus-tcb",
     "crates/foundation/peritus-types",
     "xtask",
