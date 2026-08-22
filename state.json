@@ -1,6 +1,6 @@
 {
   "next_display_id": 4,
-  "next_comment_id": 39,
+  "next_comment_id": 40,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -125,7 +125,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-21T21:10:43.329647070Z",
-      "updated_at": "2026-08-22T13:43:58.715763016Z",
+      "updated_at": "2026-08-22T13:44:58.270165970Z",
       "labels": [
         "formal-verification"
       ],
@@ -385,6 +385,15 @@
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALUTJjDVxi2hIkJRWLhkqaiiZzUL4B/ElnUX4mxv/SenrEAO8suko3y8EuX4RWc/6voEUW3tfq9BFEm268CyDBA=="
         },
+        "f35dfad7-2090-4467-9581-c36e63cd60a8": {
+          "display_id": 39,
+          "author": "6ME5",
+          "content": "Committed signed cross-platform Gate A hardening as 96e6914f723c8d6411b080058fb31eaeebe1d6e2 (fix: harden cross-platform Gate A), parent 6ca5f56d2ab12e93f155d684b33f4a86c2f877b8. Exact 12-file repair replaces the Apple-incompatible cross-platform digest pipeline with an exact signed-Git-authority comparison, canonicalizes the Windows workspace test path, and cfg-gates the Unix-only symlink fixture helper. Verification: full PERITUS_PROOF_IMPACT_BASE=6ca5f56 just gate-a; Rustfmt; focused tests; strict Clippy; actionlint; git diff check; secret-pattern scan; exact live authority comparison; independent GPT-5.6 Sol xhigh review with no findings. Git reports a good SSH signature. Not pushed; user push, successful remote workflows, and immediate Team ruleset activation remain.",
+          "created_at": "2026-08-22T13:44:58.267639700Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAi0LYc0tDKJDrYvp46k3XnT3dYUopYUj82F0EYvWtnOHZuV4gYaE4yv11txnjUzl6OVBwKtefNX+OKK0FGTn/Aw=="
+        },
         "f97ecba6-0dc9-4d82-b3a7-ef1ad291eae5": {
           "display_id": 28,
           "author": "6ME5",
@@ -417,8 +426,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-22T13:43:58.715763016Z",
+    "timestamp": "2026-08-22T13:44:58.270165970Z",
     "agent_id": "6ME5",
-    "agent_seq": 53
+    "agent_seq": 54
   }
 }
