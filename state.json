@@ -1,6 +1,6 @@
 {
   "next_display_id": 5,
-  "next_comment_id": 48,
+  "next_comment_id": 49,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -451,7 +451,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-22T14:07:09.389544477Z",
-      "updated_at": "2026-08-22T14:50:39.084972984Z",
+      "updated_at": "2026-08-22T15:10:37.715146911Z",
       "labels": [
         "feature"
       ],
@@ -473,6 +473,18 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAXg2gqoZLcsO3szMjv9x/OOx7t57ImaIcA5VBXJbuBFcKxI/PqxXsCviIcF/lVg7ji990aVuuCqJ8h8CmrKWjDg=="
+        },
+        "1fe2acda-cf86-41af-9e8e-1aa5ea14d729": {
+          "display_id": 48,
+          "author": "6ME5",
+          "content": "Attempted: git branch -m proof/a2-proof-impact-authorization-unsigned && git switch -c proof/a2-proof-impact-authorization 96e6914f723c8d6411b080058fb31eaeebe1d6e2 && git status --short --branch && git branch --list 'proof/a2-proof-impact-authorization*' --verbose",
+          "created_at": "2026-08-22T15:10:37.712434146Z",
+          "kind": "intervention",
+          "trigger_type": "tool_blocked",
+          "intervention_context": "Commit verification found PR1 commit b34a4a6 unsigned; attempted to preserve it on a backup branch and recreate the proof branch from protected main with the exact ACTOR-0002-approved bytes signed by the user's existing ED25519 key. Provider hook forbids branch mutations; no retry or workaround attempted.",
+          "driver_key_fingerprint": "SHA256:6GbEO9gckWEeR3l6YB3LUaTe1Oc9qqn0WLtMVuu7a8A",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAUQM1RUP08pVyR+oSaFC+92bzWfuH2n5mbrzCMMSuIYxH1pw+sDDANuZwoIRY2UCdeRjyvW/R0u2VUAPagCk9Aw=="
         },
         "40da9fd2-6c9f-42c7-9fbf-28142e55dbe1": {
           "display_id": 45,
@@ -515,8 +527,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-22T14:50:39.084972984Z",
+    "timestamp": "2026-08-22T15:10:37.715146911Z",
     "agent_id": "6ME5",
-    "agent_seq": 67
+    "agent_seq": 68
   }
 }
