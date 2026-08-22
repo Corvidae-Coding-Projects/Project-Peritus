@@ -1,6 +1,6 @@
 {
   "next_display_id": 5,
-  "next_comment_id": 43,
+  "next_comment_id": 44,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -451,11 +451,20 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-22T14:07:09.389544477Z",
-      "updated_at": "2026-08-22T14:07:33.477518899Z",
+      "updated_at": "2026-08-22T14:07:37.947439163Z",
       "labels": [
         "feature"
       ],
       "comments": {
+        "1477bac0-1494-43a8-ae75-019b3a6a3b46": {
+          "display_id": 43,
+          "author": "6ME5",
+          "content": "[action] A2 started from protected main commit 96e6914 on feature/a2-test-conformance; issue #4 active; preflight complete.",
+          "created_at": "2026-08-22T14:07:37.944891158Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+Bd1unJKo2DVyJMjaAPQyey75SQcqZPlZf4nfEN9pBehbczSTak6j2NMgZ78EQ06i9X9rawxyKu6BZ4B/Kj3BQ=="
+        },
         "8fea96ec-4bc5-4eb3-ad19-0c4fae1c2b48": {
           "display_id": 42,
           "author": "6ME5",
@@ -470,8 +479,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-22T14:07:33.477518899Z",
+    "timestamp": "2026-08-22T14:07:37.947439163Z",
     "agent_id": "6ME5",
-    "agent_seq": 62
+    "agent_seq": 63
   }
 }
