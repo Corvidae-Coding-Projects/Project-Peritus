@@ -1,6 +1,6 @@
 {
   "next_display_id": 6,
-  "next_comment_id": 67,
+  "next_comment_id": 68,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -642,7 +642,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-22T16:02:46.854617936Z",
-      "updated_at": "2026-08-22T16:17:48.283793374Z",
+      "updated_at": "2026-08-22T16:50:48.235046701Z",
       "labels": [
         "feature"
       ],
@@ -683,6 +683,15 @@
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIUr7vFmwssTzsw0fajNqmUwpMYFgidCEbbLQwuUAQVuDFxmyE54ZsQj++WsFg99kvxgpkDC9ZKMXaaJsQinxDg=="
         },
+        "938477d7-b0aa-44f7-a276-c834cdd93453": {
+          "display_id": 67,
+          "author": "6ME5",
+          "content": "Frozen .design/b1-authority-foundation.md after three independent Sol xhigh reviews and correction rounds; all final verdicts ready. Contracts now separate B1 logical transition proofs from C0 durability and target-owned C1/C2/C4 permit gateways, specify V-only B0 policy activation planning with two C0 commits, freeze monotonic epoch time, exact policy layer semantics, high-water hierarchical budgets, fenced lease recovery, credential-bound approval signatures, mandatory narrow crypto exclusions, proof DAG, downstream refinement IDs, and conflict-free crate lanes.",
+          "created_at": "2026-08-22T16:50:48.232348654Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA0i5Iz9BtqsglkuoKC5qMA5LoxMtIcLBWYDIc7WixOO8xcnloWzFPA5+tioQfCvXT3HvfrmczuyeySe93dxOSCQ=="
+        },
         "c87bac67-7cf6-4f75-baff-0a044245c6aa": {
           "display_id": 65,
           "author": "6ME5",
@@ -706,8 +715,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-22T16:17:48.283793374Z",
+    "timestamp": "2026-08-22T16:50:48.235046701Z",
     "agent_id": "6ME5",
-    "agent_seq": 93
+    "agent_seq": 94
   }
 }
