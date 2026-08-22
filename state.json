@@ -1,6 +1,6 @@
 {
   "next_display_id": 6,
-  "next_comment_id": 76,
+  "next_comment_id": 77,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -642,7 +642,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-22T16:02:46.854617936Z",
-      "updated_at": "2026-08-22T17:52:55.899900141Z",
+      "updated_at": "2026-08-22T18:11:58.721770454Z",
       "labels": [
         "feature"
       ],
@@ -755,6 +755,15 @@
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA/V7Lu8Uomyy3YlfjSfzfc45PhGgx1xU3VRJFTny7HqeVnNkwMiWax3jXDhPRyPndSma+wZt2TDb1dWXwvaT5Cw=="
         },
+        "c7e289cf-be42-473f-aeed-92b6b26a4402": {
+          "display_id": 76,
+          "author": "6ME5",
+          "content": "Pinned Verus macro audit found ordinary state_machine! synthesizes verifier::external_body proof helpers (verus_state_machines_macros to_token_stream.rs 776/793), so it cannot satisfy B1-V-004 plus mandatory --no-cheating. Integration took the stricter zero-trust path: B1 design now requires explicit closed Verus reachability state/step relations; both ordinary and tokenized macros are fail-closed; lease/workspace macro dependency removed; adversarial API-checker coverage added; Cargo lock regenerated; xtask library 219/219 green. Guarantees remain full, with no trust/exclusion added.",
+          "created_at": "2026-08-22T18:11:58.718631664Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAEcaM/kXQ+LybOBPDRpqvHKhCjcJ7IvtwnB2ixcKTKYKfnQqCWQ8vbm9fGTKhSkuvxf8D1Ojt9mWjVdng+6HBAw=="
+        },
         "c87bac67-7cf6-4f75-baff-0a044245c6aa": {
           "display_id": 65,
           "author": "6ME5",
@@ -787,8 +796,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-22T17:52:55.899900141Z",
+    "timestamp": "2026-08-22T18:11:58.721770454Z",
     "agent_id": "6ME5",
-    "agent_seq": 102
+    "agent_seq": 103
   }
 }
