@@ -1,6 +1,6 @@
 {
   "next_display_id": 6,
-  "next_comment_id": 86,
+  "next_comment_id": 87,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -642,7 +642,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-22T16:02:46.854617936Z",
-      "updated_at": "2026-08-22T19:43:14.105891893Z",
+      "updated_at": "2026-08-22T20:04:46.609298566Z",
       "labels": [
         "feature"
       ],
@@ -764,6 +764,15 @@
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAnSE6gPNPE63frI2DRbkIBkuPkbSBtX/K5dYLRvNAwF6P6BNgIqviD21mp67jrKkHvcFQc2/5bkC4PLgldt2MBg=="
         },
+        "71c201c0-b817-45b6-b43f-b6f01dc2b03e": {
+          "display_id": 86,
+          "author": "6ME5",
+          "content": "B1 shared approval contract hardened before implementation: exclusion-symbol validation now resolves exact inline-module/impl/trait declaration paths, distinguishes same-named associated digest methods, and rejects comment/string/local-function decoys; xtask library 222/222 and strict all-target Clippy are green. Design now freezes bounded digest/registry/render inputs, separate human principal and signed approval roles, amendment base/successor/tier/digest binding, non-authoritative registry snapshots, and named C0/B0/E0 current-registry composition. Budget closed reachability reached strict 302/0 and entered cleanup/evidence.",
+          "created_at": "2026-08-22T20:04:46.606146728Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAAjK5Rme+FlhowcL82Wfut+aK/iQB4G14NqOsYrT6y5s9vEJPdCucHoPYkiJDmD4wgWj4XFOSDISqP6lQB3CaDQ=="
+        },
         "89b910f9-1f36-49aa-87da-d94b77d91b9d": {
           "display_id": 63,
           "author": "6ME5",
@@ -877,8 +886,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-22T19:43:14.105891893Z",
+    "timestamp": "2026-08-22T20:04:46.609298566Z",
     "agent_id": "6ME5",
-    "agent_seq": 112
+    "agent_seq": 113
   }
 }
