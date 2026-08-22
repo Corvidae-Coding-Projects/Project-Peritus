@@ -14,8 +14,6 @@ const RUST_ACTION: &str = "dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d
 const RUST_REFERENCE: &str = "${{ env.RUST_VERSION }}";
 const PROOF_IMPACT_BASE_REFERENCE: &str =
     "${{ github.event.pull_request.base.sha || github.event.before || inputs.proof_impact_base }}";
-const CONFIG_CHECK_LINE: &str =
-    "a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79  .cargo/config.toml\\n";
 
 pub(super) fn validate(
     workflow: &Hash,
@@ -46,7 +44,7 @@ pub(super) fn validate(
         }),
         path,
         "canonical CI does not retain the exact pre-Cargo configuration bootstrap",
-        "restore the unconditional checkout and fixed .cargo/config.toml digest check before every Cargo-bearing job",
+        "restore the unconditional checkout and authority-pinned .cargo/config.toml/.gitattributes comparison before every Cargo-bearing job",
         diagnostics,
     );
     require(
@@ -110,23 +108,22 @@ pub(super) fn validate(
 fn bootstrap_job_is_exact(job: &Yaml) -> bool {
     let Some(job) = job.as_hash() else { return false };
     exact_keys(job, &["name", "runs-on", "timeout-minutes", "steps"])
-        && string(job, "name") == Some("Verify Cargo configuration before Cargo")
+        && string(job, "name") == Some("Verify pre-Cargo policy")
         && string(job, "runs-on") == Some("ubuntu-24.04")
         && integer(job, "timeout-minutes") == Some(5)
         && mapping_value(job, "steps").and_then(Yaml::as_vec).is_some_and(|steps| {
-            steps.len() == 2 && checkout_step(&steps[0]) && config_digest_step(&steps[1])
+            steps.len() == 2 && checkout_step(&steps[0]) && pre_cargo_policy_step(&steps[1])
         })
 }
 
-fn config_digest_step(step: &Yaml) -> bool {
+fn pre_cargo_policy_step(step: &Yaml) -> bool {
     let Some(step) = step.as_hash() else { return false };
     exact_keys(step, &["name", "shell", "run"])
-        && string(step, "name") == Some("Verify reviewed Cargo configuration digest")
+        && string(step, "name") == Some("Verify reviewed pre-Cargo policy")
         && string(step, "shell") == Some("bash")
-        && string(step, "run").map(parse_script).is_some_and(|script| {
-            script.is_reviewed_config_preflight()
-                && script.commands()[0].is_exact_command(&["printf", CONFIG_CHECK_LINE])
-        })
+        && string(step, "run")
+            .map(parse_script)
+            .is_some_and(|script| script.is_reviewed_root_config_preflight())
 }
 
 fn rust_job_is_exact(job: &Yaml) -> bool {

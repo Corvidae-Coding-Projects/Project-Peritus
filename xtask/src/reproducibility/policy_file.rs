@@ -151,6 +151,7 @@ mod tests {
             Self { root }
         }
 
+        #[cfg(unix)]
         fn create_parent(&self) {
             fs::create_dir_all(
                 self.root.join(RELATIVE).parent().expect("policy path must have a parent"),

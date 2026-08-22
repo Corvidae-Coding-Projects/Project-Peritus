@@ -5,8 +5,7 @@ use super::verus_commands::{
 use super::workflow_actionlint;
 use super::workflow_commands::{ParsedScript, parse_script};
 use super::workflow_governance::{
-    CANDIDATE_CONFIG_LINE, candidate_checkout, config_step, exact_keys, integer, mapping_value,
-    rust_step, string,
+    candidate_checkout, config_step, exact_keys, integer, mapping_value, rust_step, string,
 };
 use crate::model::ToolchainPolicy;
 use yaml_rust2::Yaml;
@@ -60,7 +59,7 @@ fn rust_gate_is_exact(job: &Yaml) -> bool {
         && mapping_value(job, "steps").and_then(Yaml::as_vec).is_some_and(|steps| {
             steps.len() == 9
                 && candidate_checkout(&steps[0])
-                && config_step(&steps[1], CANDIDATE_CONFIG_LINE)
+                && config_step(&steps[1])
                 && rust_step(&steps[2], Some("clippy,rustfmt"))
                 && conditional_cargo(
                     &steps[3],
@@ -119,7 +118,7 @@ fn supply_gate_is_exact(job: &Yaml) -> bool {
         && mapping_value(job, "steps").and_then(Yaml::as_vec).is_some_and(|steps| {
             steps.len() == 5
                 && candidate_checkout(&steps[0])
-                && config_step(&steps[1], CANDIDATE_CONFIG_LINE)
+                && config_step(&steps[1])
                 && rust_step(&steps[2], None)
                 && cargo_at_candidate(
                     &steps[3],
@@ -135,7 +134,7 @@ fn verus_gate_is_exact(job: &Yaml, tools: &ToolchainPolicy) -> bool {
         && mapping_value(job, "steps").and_then(Yaml::as_vec).is_some_and(|steps| {
             steps.len() == 10
                 && candidate_checkout(&steps[0])
-                && config_step(&steps[1], CANDIDATE_CONFIG_LINE)
+                && config_step(&steps[1])
                 && rust_step(&steps[2], None)
                 && archive_step(&steps[3])
                 && candidate_xtask(&steps[4], &tools.rust, "toolchain-check")

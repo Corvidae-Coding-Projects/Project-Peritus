@@ -64,13 +64,13 @@ fn pre_cargo_bootstrap_and_needs_graph_are_exact() {
     for altered in [
         canonical_ci().replace("  bootstrap:\n", "  bootstrap:\n    if: false\n"),
         canonical_ci().replace(
-            "a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79",
-            "0000000000000000000000000000000000000000000000000000000000000000",
+            "6ca5f56d2ab12e93f155d684b33f4a86c2f877b8",
+            "0000000000000000000000000000000000000000",
         ),
-        canonical_ci().replace("sha256sum -c", "sha256sum --check --strict"),
+        canonical_ci().replace("--no-textconv", "--textconv"),
         canonical_ci().replace(
-            "      - name: Verify reviewed Cargo configuration digest",
-            "      - name: Unreviewed bootstrap step\n        run: printf ignored\n      - name: Verify reviewed Cargo configuration digest",
+            "      - name: Verify reviewed pre-Cargo policy",
+            "      - name: Unreviewed bootstrap step\n        run: printf ignored\n      - name: Verify reviewed pre-Cargo policy",
         ),
         canonical_ci().replace(
             "  rust:\n    name: Rust (${{ matrix.os }})\n    needs: bootstrap",

@@ -46,8 +46,9 @@ mutable inputs that a Cargo lockfile cannot freeze, so A0 rejects them.
 The root `.cargo/config.toml` is the only repository Cargo configuration. Its complete schema is
 checked, including the locked `cargo xtask` alias; legacy and nested Cargo configurations are
 rejected so member-directory invocation cannot silently replace a gate. A non-Cargo bootstrap job
-checks the reviewed configuration digest before any Cargo job runs, and gate recipes invoke the
-xtask package through Cargo's built-in `run` command rather than trusting the alias. A legacy
+uses Git to compare both the Cargo configuration and `.gitattributes` against signed authority
+commit `6ca5f56d2ab12e93f155d684b33f4a86c2f877b8` before any Cargo job runs, and gate recipes invoke
+the xtask package through Cargo's built-in `run` command rather than trusting the alias. A legacy
 `rust-toolchain` selector, a symbolic `rust-toolchain.toml`, and any repository Cargo configuration
 outside the exact regular root file are rejected. The Just recipe graph and canonical CI jobs are
 validated as execution structures, including triggers, runners, step order, shell/failure
@@ -57,9 +58,8 @@ The checked `.github/workflows/formal-governance.yml` emits the stable `Gate A` 
 the GitHub Team repository ruleset. Candidate-code-executing Rust operations remain isolated into
 clean matrix jobs. A final always-running aggregation job fails unless policy, workflow lint, every
 Rust matrix entry, supply-chain policy, and Verus/no-cheating verification and builds all succeed.
-Every checkout is explicit and credential-free, every Cargo-bearing job verifies the reviewed
-Cargo-configuration digest first, and workflow lint uses a separately digest-checked actionlint
-archive.
+Every checkout is explicit and credential-free, every Cargo-bearing job verifies the signed
+pre-Cargo authority first, and workflow lint uses a separately digest-checked actionlint archive.
 
 The repository locks both the complete workflow and the exact repository-ruleset payload template,
 but cannot attest to live GitHub state. Gate A therefore also requires the activation and API

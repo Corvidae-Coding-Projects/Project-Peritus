@@ -75,13 +75,13 @@ fn required_workflow_rejects_bootstrap_and_gate_weakening() {
     for (altered, expected) in [
         (
             canonical_governance().replace(
-                "a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79",
-                "0000000000000000000000000000000000000000000000000000000000000000",
+                "6ca5f56d2ab12e93f155d684b33f4a86c2f877b8",
+                "0000000000000000000000000000000000000000",
             ),
             "lacks the exact pre-Cargo candidate bootstrap",
         ),
         (
-            canonical_governance().replace("sha256sum -c", "sha256sum --check --strict"),
+            canonical_governance().replace("--no-textconv", "--textconv"),
             "lacks the exact pre-Cargo candidate bootstrap",
         ),
         (

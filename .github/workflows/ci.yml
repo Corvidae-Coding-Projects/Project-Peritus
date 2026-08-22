@@ -26,7 +26,7 @@ env:
 
 jobs:
   bootstrap:
-    name: Verify Cargo configuration before Cargo
+    name: Verify pre-Cargo policy
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -34,9 +34,9 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - name: Verify reviewed Cargo configuration digest
+      - name: Verify reviewed pre-Cargo policy
         shell: bash
-        run: printf 'a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79  .cargo/config.toml\n' | sha256sum -c
+        run: git diff --no-ext-diff --no-textconv --exit-code 6ca5f56d2ab12e93f155d684b33f4a86c2f877b8 -- .cargo/config.toml .gitattributes
 
   rust:
     name: Rust (${{ matrix.os }})

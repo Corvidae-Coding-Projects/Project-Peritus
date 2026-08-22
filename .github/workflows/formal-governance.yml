@@ -32,9 +32,9 @@ jobs:
           path: candidate
           fetch-depth: 0
           persist-credentials: false
-      - name: Verify candidate Cargo configuration before Cargo
+      - name: Verify candidate pre-Cargo policy
         shell: bash
-        run: printf 'a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79  candidate/.cargo/config.toml\n' | sha256sum -c
+        run: git -C candidate diff --no-ext-diff --no-textconv --exit-code 6ca5f56d2ab12e93f155d684b33f4a86c2f877b8 -- .cargo/config.toml .gitattributes
 
   policy:
     name: Candidate policy
@@ -50,9 +50,9 @@ jobs:
           path: candidate
           fetch-depth: 0
           persist-credentials: false
-      - name: Verify candidate Cargo configuration before Cargo
+      - name: Verify candidate pre-Cargo policy
         shell: bash
-        run: printf 'a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79  candidate/.cargo/config.toml\n' | sha256sum -c
+        run: git -C candidate diff --no-ext-diff --no-textconv --exit-code 6ca5f56d2ab12e93f155d684b33f4a86c2f877b8 -- .cargo/config.toml .gitattributes
       - name: Install pinned Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
         with:
@@ -111,9 +111,9 @@ jobs:
           path: candidate
           fetch-depth: 0
           persist-credentials: false
-      - name: Verify candidate Cargo configuration before Cargo
+      - name: Verify candidate pre-Cargo policy
         shell: bash
-        run: printf 'a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79  candidate/.cargo/config.toml\n' | sha256sum -c
+        run: git -C candidate diff --no-ext-diff --no-textconv --exit-code 6ca5f56d2ab12e93f155d684b33f4a86c2f877b8 -- .cargo/config.toml .gitattributes
       - name: Install pinned Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
         with:
@@ -160,9 +160,9 @@ jobs:
           path: candidate
           fetch-depth: 0
           persist-credentials: false
-      - name: Verify candidate Cargo configuration before Cargo
+      - name: Verify candidate pre-Cargo policy
         shell: bash
-        run: printf 'a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79  candidate/.cargo/config.toml\n' | sha256sum -c
+        run: git -C candidate diff --no-ext-diff --no-textconv --exit-code 6ca5f56d2ab12e93f155d684b33f4a86c2f877b8 -- .cargo/config.toml .gitattributes
       - name: Install pinned Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
         with:
@@ -188,9 +188,9 @@ jobs:
           path: candidate
           fetch-depth: 0
           persist-credentials: false
-      - name: Verify candidate Cargo configuration before Cargo
+      - name: Verify candidate pre-Cargo policy
         shell: bash
-        run: printf 'a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79  candidate/.cargo/config.toml\n' | sha256sum -c
+        run: git -C candidate diff --no-ext-diff --no-textconv --exit-code 6ca5f56d2ab12e93f155d684b33f4a86c2f877b8 -- .cargo/config.toml .gitattributes
       - name: Install pinned Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
         with:

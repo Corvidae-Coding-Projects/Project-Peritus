@@ -147,10 +147,11 @@ fn validate_with_mode(
 ) {
     let parsed = parse_script(script);
     let actionlint_install = workflow_actionlint::is_reviewed_install(&parsed);
+    let config_preflight = parsed.is_reviewed_config_preflight();
     if !parsed.is_failure_propagating()
         && !parsed.is_reviewed_archive_install()
         && !actionlint_install
-        && !parsed.is_reviewed_config_preflight()
+        && !config_preflight
     {
         diagnostics.push(Diagnostic::at(
             path,
@@ -170,6 +171,7 @@ fn validate_with_mode(
         if let Some(executable) = command.executable_word()
             && !AUDITED_EXECUTABLES.contains(&executable)
             && !(actionlint_install && executable == "tar")
+            && !(config_preflight && executable == "git")
         {
             diagnostics.push(Diagnostic::at(
                 path,

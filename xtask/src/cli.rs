@@ -188,7 +188,7 @@ mod tests {
     use super::{Command, discover_workspace_root, parse};
     use crate::error::ErrorCode;
     use std::ffi::OsString;
-    use std::path::Path;
+    use std::fs;
 
     #[test]
     fn empty_arguments_show_help() {
@@ -204,8 +204,9 @@ mod tests {
 
     #[test]
     fn workspace_root_is_discovered_from_the_xtask_directory() {
-        let crate_root = Path::new(env!("CARGO_MANIFEST_DIR"));
-        let workspace = discover_workspace_root(crate_root)
+        let crate_root = fs::canonicalize(env!("CARGO_MANIFEST_DIR"))
+            .expect("xtask manifest directory must be canonicalizable");
+        let workspace = discover_workspace_root(&crate_root)
             .expect("xtask must be nested under the Peritus workspace root");
         assert_eq!(workspace.join("xtask"), crate_root);
         assert!(workspace.join("architecture.toml").is_file());

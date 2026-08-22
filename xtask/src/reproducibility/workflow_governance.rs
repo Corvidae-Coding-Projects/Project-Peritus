@@ -15,7 +15,6 @@ const RUST_REFERENCE: &str = "${{ env.RUST_VERSION }}";
 const CANDIDATE_REPOSITORY: &str = "${{ github.repository }}";
 const CANDIDATE_REFERENCE: &str = "${{ github.sha }}";
 const PROOF_IMPACT_BASE: &str = "${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}";
-pub(super) const CANDIDATE_CONFIG_LINE: &str = "a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79  candidate/.cargo/config.toml\\n";
 
 pub(super) fn validate(
     workflow: &Hash,
@@ -43,7 +42,7 @@ pub(super) fn validate(
         jobs.and_then(|jobs| mapping_value(jobs, "bootstrap")).is_some_and(bootstrap_is_exact),
         path,
         "required Gate A workflow lacks the exact pre-Cargo candidate bootstrap",
-        "restore the candidate checkout and reviewed Cargo-config digest check",
+        "restore the candidate checkout and authority-pinned Cargo-config/line-ending policy comparison",
         diagnostics,
     );
     require(
@@ -123,9 +122,7 @@ fn bootstrap_is_exact(job: &Yaml) -> bool {
         && string(job, "runs-on") == Some("ubuntu-24.04")
         && integer(job, "timeout-minutes") == Some(5)
         && mapping_value(job, "steps").and_then(Yaml::as_vec).is_some_and(|steps| {
-            steps.len() == 2
-                && candidate_checkout(&steps[0])
-                && config_step(&steps[1], CANDIDATE_CONFIG_LINE)
+            steps.len() == 2 && candidate_checkout(&steps[0]) && config_step(&steps[1])
         })
 }
 
@@ -135,7 +132,7 @@ fn policy_is_exact(job: &Yaml, tools: &ToolchainPolicy) -> bool {
         && mapping_value(job, "steps").and_then(Yaml::as_vec).is_some_and(|steps| {
             steps.len() == 4
                 && candidate_checkout(&steps[0])
-                && config_step(&steps[1], CANDIDATE_CONFIG_LINE)
+                && config_step(&steps[1])
                 && rust_step(&steps[2], None)
                 && candidate_policy_step(&steps[3], &tools.rust)
         })
@@ -163,19 +160,14 @@ pub(super) fn candidate_checkout(step: &Yaml) -> bool {
         && mapping_value(inputs, "persist-credentials").and_then(Yaml::as_bool) == Some(false)
 }
 
-pub(super) fn config_step(step: &Yaml, line: &str) -> bool {
+pub(super) fn config_step(step: &Yaml) -> bool {
     let Some(step) = step.as_hash() else { return false };
     exact_keys(step, &["name", "shell", "run"])
-        && string(step, "name") == Some("Verify candidate Cargo configuration before Cargo")
+        && string(step, "name") == Some("Verify candidate pre-Cargo policy")
         && string(step, "shell") == Some("bash")
-        && string(step, "run").map(parse_script).is_some_and(|script| {
-            let commands = script.commands();
-            script.has_no_shell_issues()
-                && commands.len() == 2
-                && commands[0].pipes_to_next()
-                && commands[0].is_exact_command(&["printf", line])
-                && commands[1].is_exact_command(&["sha256sum", "-c"])
-        })
+        && string(step, "run")
+            .map(parse_script)
+            .is_some_and(|script| script.is_reviewed_candidate_config_preflight())
 }
 
 pub(super) fn rust_step(step: &Yaml, components: Option<&str>) -> bool {

@@ -5,9 +5,7 @@ use super::workflow_command_syntax::{
     is_assignment, is_control_word, is_non_resolving, is_opaque, option_takes_value,
 };
 
-const CONFIG_CHECK_LINE: &str =
-    "a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79  .cargo/config.toml\\n";
-const CANDIDATE_CONFIG_CHECK_LINE: &str = "a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79  candidate/.cargo/config.toml\\n";
+const PRE_CARGO_AUTHORITY: &str = "6ca5f56d2ab12e93f155d684b33f4a86c2f877b8";
 
 #[derive(Clone, Copy)]
 pub(super) struct CommandPolicy {
@@ -229,17 +227,41 @@ impl ParsedScript {
     }
 
     pub(super) fn is_reviewed_config_preflight(&self) -> bool {
-        [CONFIG_CHECK_LINE, CANDIDATE_CONFIG_CHECK_LINE]
-            .iter()
-            .any(|line| self.is_reviewed_config_preflight_with_line(line))
+        self.is_reviewed_root_config_preflight() || self.is_reviewed_candidate_config_preflight()
     }
 
-    fn is_reviewed_config_preflight_with_line(&self, line: &str) -> bool {
+    pub(super) fn is_reviewed_root_config_preflight(&self) -> bool {
         self.issues.is_empty()
-            && self.commands.len() == 2
-            && self.commands[0].pipes_to_next()
-            && self.commands[0].is_exact_command(&["printf", line])
-            && self.commands[1].is_exact_command(&["sha256sum", "-c"])
+            && self.commands.len() == 1
+            && self.commands[0].is_exact_command(&[
+                "git",
+                "diff",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--exit-code",
+                PRE_CARGO_AUTHORITY,
+                "--",
+                ".cargo/config.toml",
+                ".gitattributes",
+            ])
+    }
+
+    pub(super) fn is_reviewed_candidate_config_preflight(&self) -> bool {
+        self.issues.is_empty()
+            && self.commands.len() == 1
+            && self.commands[0].is_exact_command(&[
+                "git",
+                "-C",
+                "candidate",
+                "diff",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--exit-code",
+                PRE_CARGO_AUTHORITY,
+                "--",
+                ".cargo/config.toml",
+                ".gitattributes",
+            ])
     }
 }
 
