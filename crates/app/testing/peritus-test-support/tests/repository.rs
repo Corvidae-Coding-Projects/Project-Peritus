@@ -1,8 +1,8 @@
 //! Hardened caller-rooted Git repository behavior and cleanup tests.
 
-use peritus_test_support::{
-    FixturePath, FixtureSymlinkKind, TempRepositoryErrorKind, TemporaryRepositoryBuilder,
-};
+#[cfg(unix)]
+use peritus_test_support::FixtureSymlinkKind;
+use peritus_test_support::{FixturePath, TempRepositoryErrorKind, TemporaryRepositoryBuilder};
 use std::path::PathBuf;
 
 fn repository_root(label: &str) -> PathBuf {

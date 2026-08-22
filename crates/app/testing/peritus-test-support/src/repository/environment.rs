@@ -156,6 +156,8 @@ mod tests {
 
     #[test]
     fn command_selects_no_hostile_parent_git_environment() {
+        let repository_root = Path::new("/owned/repository");
+        let expected_git_directory = repository_root.join(".git").into_os_string();
         let hostile = [
             ("PATH", "/controlled/bin"),
             ("GIT_DIR", "/attacker/repository"),
@@ -178,7 +180,7 @@ mod tests {
         let command = isolated_git_command(
             &GitCommandContext {
                 git_program: OsStr::new("inspect-only-git"),
-                repository_root: Path::new("/owned/repository"),
+                repository_root,
                 hooks_root: Path::new("/owned/disabled-hooks"),
                 global_config: Path::new("/owned/isolated-gitconfig"),
                 process_temp: Path::new("/owned/process-temp"),
@@ -191,10 +193,7 @@ mod tests {
             .get_envs()
             .filter_map(|(key, value)| value.map(|value| (key.to_owned(), value.to_owned())))
             .collect();
-        assert_eq!(
-            explicit.get(OsStr::new("GIT_DIR")),
-            Some(&OsString::from("/owned/repository/.git"))
-        );
+        assert_eq!(explicit.get(OsStr::new("GIT_DIR")), Some(&expected_git_directory));
         assert_eq!(
             explicit.get(OsStr::new("GIT_WORK_TREE")),
             Some(&OsString::from("/owned/repository"))
