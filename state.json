@@ -1,6 +1,6 @@
 {
   "next_display_id": 6,
-  "next_comment_id": 63,
+  "next_comment_id": 64,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -642,7 +642,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-22T16:02:46.854617936Z",
-      "updated_at": "2026-08-22T16:03:34.319896275Z",
+      "updated_at": "2026-08-22T16:03:48.478970175Z",
       "labels": [
         "feature"
       ],
@@ -664,14 +664,23 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9jgtSa5HMJpsyJMOHcolvDeVzyg9xCfI/hjyqjLs/3ZFhP6TmIo3U1MaET9R37VT5O2GSy82fiWYpIkkE2IDDQ=="
+        },
+        "89b910f9-1f36-49aa-87da-d94b77d91b9d": {
+          "display_id": 63,
+          "author": "6ME5",
+          "content": "Deliver the complete B1 authority slice on feature/b1-authority-foundation: freeze and implement peritus-policy, peritus-budget, peritus-leases, and peritus-approval; prove INV-006 through INV-009 and INV-012 plus policy-monotonicity interactions; expose ordinary-Rust checked wrappers for every verified decision; keep durable effects behind observation/CAS ports; use A2 deterministic fixtures for model, replay, failure, and adversarial tests; integrate architecture/proof inventories and exact shared-input authorization; pass independent GPT-5.6 Sol xhigh review, full Gate A, protected PR merge, and exact-main post-merge verification. No kickoff/Claude and no partial release posture.",
+          "created_at": "2026-08-22T16:03:48.476457806Z",
+          "kind": "plan",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIUr7vFmwssTzsw0fajNqmUwpMYFgidCEbbLQwuUAQVuDFxmyE54ZsQj++WsFg99kvxgpkDC9ZKMXaaJsQinxDg=="
         }
       }
     }
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-22T16:03:34.319896275Z",
+    "timestamp": "2026-08-22T16:03:48.478970175Z",
     "agent_id": "6ME5",
-    "agent_seq": 89
+    "agent_seq": 90
   }
 }
