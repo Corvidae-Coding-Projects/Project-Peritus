@@ -20,11 +20,12 @@
       "display_id": 1,
       "title": "Document production architecture for Verus-first coding harness",
       "description": "Create and publish the full production design covering crate boundaries, formal invariants, persistence, security, orchestration, observability, evolution, verification, and parallel implementation slices.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-21T17:54:24.136110741Z",
-      "updated_at": "2026-08-21T17:55:16.947376459Z",
+      "updated_at": "2026-08-22T16:03:15.241397536Z",
+      "closed_at": "2026-08-22T16:03:15.241396234Z",
       "labels": [
         "documentation"
       ],
@@ -649,8 +650,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-22T16:02:51.049004987Z",
+    "timestamp": "2026-08-22T16:03:15.241397536Z",
     "agent_id": "6ME5",
-    "agent_seq": 84
+    "agent_seq": 85
   }
 }
