@@ -1,6 +1,6 @@
 {
   "next_display_id": 5,
-  "next_comment_id": 51,
+  "next_comment_id": 52,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -451,11 +451,20 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-22T14:07:09.389544477Z",
-      "updated_at": "2026-08-22T15:11:09.028558858Z",
+      "updated_at": "2026-08-22T15:11:25.776236803Z",
       "labels": [
         "feature"
       ],
       "comments": {
+        "0cf613d1-4c38-4b4f-83d2-56ca887b8565": {
+          "display_id": 51,
+          "author": "6ME5",
+          "content": "Correction: PR1 proof-authorization commit b34a4a60c595c603a1a8a53c3dd5ace72a5aee1a has subject chore(verification): authorize A2 shared inputs and contains only the exact ACTOR-0002-approved PCR-0004 append. Full Gate A passed. Post-commit verification found the unpushed commit unsigned because repository signing defaults are absent; provider policy requires the human to amend-sign it with the existing ED25519 key and push the proof branch. PR2 remains gated on PR1 merge.",
+          "created_at": "2026-08-22T15:11:25.773855187Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA6oZqXkxeP671VuepMs+LoMbicto5SeUyFLcHnMEoQFo8k8i7LRbLSvunkJjETp+MTDUdbc3bxkob7VHpYA0YAg=="
+        },
         "1477bac0-1494-43a8-ae75-019b3a6a3b46": {
           "display_id": 43,
           "author": "6ME5",
@@ -545,8 +554,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-22T15:11:09.028558858Z",
+    "timestamp": "2026-08-22T15:11:25.776236803Z",
     "agent_id": "6ME5",
-    "agent_seq": 70
+    "agent_seq": 71
   }
 }
