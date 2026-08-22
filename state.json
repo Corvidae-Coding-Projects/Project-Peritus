@@ -10,10 +10,6 @@
     "1": {
       "agent_id": "6ME5",
       "claimed_at": "2026-08-21T17:54:35.323403547Z"
-    },
-    "3": {
-      "agent_id": "6ME5",
-      "claimed_at": "2026-08-22T12:53:19.068609335Z"
     }
   },
   "issues": {
@@ -445,8 +441,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-22T13:55:25.509056245Z",
+    "timestamp": "2026-08-22T13:55:29.998269526Z",
     "agent_id": "6ME5",
-    "agent_seq": 57
+    "agent_seq": 58
   }
 }
