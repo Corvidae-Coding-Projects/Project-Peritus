@@ -1,3 +1,7 @@
+use super::verus_commands::{
+    VERUS_STRICT_BUILD_ARGS, VERUS_STRICT_VERIFY_ARGS, VERUS_WORKSPACE_BUILD_ARGS,
+    VERUS_WORKSPACE_VERIFY_ARGS,
+};
 use super::workflow_command_policy;
 use super::workflow_commands::{CommandPolicy, parse_script};
 use crate::error::{Diagnostic, XtaskError};
@@ -65,7 +69,7 @@ fn validate_recipe_contract(recipes: &BTreeMap<String, Recipe>, diagnostics: &mu
     require_dependencies(
         recipes,
         "gate-a",
-        &["check", "deny", "toolchain", "verus-verify", "verus-build"],
+        &["check", "ordinary-api", "deny", "toolchain", "verus-verify", "verus-build"],
         diagnostics,
     );
     require_exact(
@@ -104,6 +108,10 @@ fn validate_recipe_contract(recipes: &BTreeMap<String, Recipe>, diagnostics: &mu
             "reproducibility",
             &["run", "--locked", "--package", "xtask", "--", "reproducibility-check"][..],
         ),
+        (
+            "ordinary-api",
+            &["run", "--locked", "--package", "xtask", "--", "ordinary-api-check"][..],
+        ),
         ("trust", &["run", "--locked", "--package", "xtask", "--", "verify-trust"][..]),
         ("licenses", &["deny", "--locked", "check", "bans", "licenses", "sources"][..]),
     ] {
@@ -119,27 +127,27 @@ fn validate_recipe_contract(recipes: &BTreeMap<String, Recipe>, diagnostics: &mu
         &["run", "--locked", "--package", "xtask", "--", "toolchain-check"],
         diagnostics,
     );
-    require_exact(
+    require_exact_sequence(
         recipes,
         "verus-verify",
-        &["verus", "verify", "--workspace", "--locked", "--check-toolchain"],
+        &[VERUS_WORKSPACE_VERIFY_ARGS, VERUS_STRICT_VERIFY_ARGS],
         diagnostics,
     );
-    for name in ["deny", "toolchain", "verus-verify", "verus-build"] {
+    for name in ["deny", "ordinary-api", "toolchain", "verus-verify", "verus-build"] {
         require_dependencies(recipes, name, &[], diagnostics);
     }
     require_no_commands(recipes, "default", diagnostics);
-    require_exact(
+    require_exact_sequence(
         recipes,
         "verus-build",
-        &["verus", "build", "--workspace", "--release", "--locked", "--check-toolchain"],
+        &[VERUS_WORKSPACE_BUILD_ARGS, VERUS_STRICT_BUILD_ARGS],
         diagnostics,
     );
     if recipes.get("gate-a").is_some_and(|recipe| !recipe.commands.is_empty()) {
         diagnostics.push(Diagnostic::at(
             "justfile",
             "recipe `gate-a` contains commands outside its reviewed dependency closure",
-            "make gate-a depend exactly on check, deny, toolchain, verus-verify, and verus-build",
+            "make gate-a depend exactly on check, ordinary-api, deny, toolchain, verus-verify, and verus-build",
         ));
     }
 }
@@ -245,6 +253,7 @@ fn require_inventory(recipes: &BTreeMap<String, Recipe>, diagnostics: &mut Vec<D
         "fmt",
         "gate-a",
         "licenses",
+        "ordinary-api",
         "reproducibility",
         "source-layout",
         "test",
@@ -256,7 +265,7 @@ fn require_inventory(recipes: &BTreeMap<String, Recipe>, diagnostics: &mut Vec<D
     if recipes.keys().map(String::as_str).ne(expected) {
         diagnostics.push(Diagnostic::at(
             "justfile",
-            "Just recipe inventory differs from the exact reviewed A0 interface",
+            "Just recipe inventory differs from the exact reviewed foundation interface",
             "restore every canonical recipe and remove unreviewed recipes or directives",
         ));
     }
@@ -341,6 +350,30 @@ fn require_exact(
                 "restore `cargo {}` as the recipe's sole failure-propagating command",
                 expected.join(" ")
             ),
+        ));
+    }
+}
+
+fn require_exact_sequence(
+    recipes: &BTreeMap<String, Recipe>,
+    name: &str,
+    expected: &[&[&str]],
+    diagnostics: &mut Vec<Diagnostic>,
+) {
+    let valid = recipes.get(name).is_some_and(|recipe| {
+        !recipe.ignored_failure
+            && recipe.commands.len() == expected.len()
+            && recipe
+                .commands
+                .iter()
+                .zip(expected)
+                .all(|(command, expected)| parse_script(command).exact_cargo_command(expected))
+    });
+    if !valid {
+        diagnostics.push(Diagnostic::at(
+            "justfile",
+            format!("recipe `{name}` does not contain its exact TCB-aware command sequence"),
+            "restore the full-workspace command followed by the exact V/H no-cheating command",
         ));
     }
 }

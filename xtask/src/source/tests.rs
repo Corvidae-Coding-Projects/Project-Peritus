@@ -132,6 +132,29 @@ fn crate_root_allows_attributes_imports_declarations_and_reexports() {
 }
 
 #[test]
+fn crate_root_allows_only_composition_inside_the_verus_wrapper() {
+    let composition = r"
+        use vstd::prelude::*;
+        verus! {
+            mod state;
+            pub use state::{Command, Error};
+        }
+    ";
+    assert!(inspect("sample/src/lib.rs", composition).is_empty());
+
+    for prohibited in [
+        "verus! { pub struct Hidden; }",
+        "verus! { verus! { mod nested; } }",
+        "other! { mod hidden; }",
+    ] {
+        assert!(
+            !inspect("sample/src/lib.rs", prohibited).is_empty(),
+            "crate-root macro unexpectedly allowed: {prohibited}"
+        );
+    }
+}
+
+#[test]
 fn minimal_binary_root_is_allowed_but_qualified_main_is_not() {
     let source = "use std::process::ExitCode;\nfn main() -> ExitCode { app::run() }\n";
     assert!(inspect("sample/src/main.rs", source).is_empty());

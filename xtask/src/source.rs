@@ -7,7 +7,7 @@ use std::path::{Component, Path, PathBuf};
 mod crate_root;
 mod layout_discovery;
 mod reference;
-mod reference_lexer;
+pub(crate) mod reference_lexer;
 mod target_root;
 mod trust_discovery;
 

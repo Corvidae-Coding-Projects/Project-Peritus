@@ -19,6 +19,7 @@ pub(crate) fn check(
     let mut diagnostics = validate_policy(policy);
     let cargo = metadata::cargo_metadata(root)?;
     diagnostics.extend(validate_packages(root, policy, &cargo)?);
+    diagnostics.extend(validate_verus_opt_ins(root, policy, &cargo));
     let source_count = source::check(root, policy, &cargo)?;
 
     if diagnostics.is_empty() {
@@ -26,6 +27,46 @@ pub(crate) fn check(
     } else {
         Err(XtaskError::violations(ErrorCode::Architecture, "architecture-check", diagnostics))
     }
+}
+
+pub(crate) fn validate_verus_opt_ins(
+    root: &Path,
+    policy: &ArchitecturePolicy,
+    cargo: &CargoMetadata,
+) -> Vec<Diagnostic> {
+    let workspace_ids: BTreeSet<_> = cargo.workspace_members.iter().map(String::as_str).collect();
+    let policy_by_name: BTreeMap<_, _> =
+        policy.packages.iter().map(|package| (package.name.as_str(), package)).collect();
+    let mut diagnostics = Vec::new();
+
+    for package in
+        cargo.packages.iter().filter(|package| workspace_ids.contains(package.id.as_str()))
+    {
+        let Some(expected) = policy_by_name.get(package.name.as_str()) else {
+            diagnostics.push(Diagnostic::at(
+                relative(root, &package.manifest_path),
+                format!(
+                    "workspace package `{}` has no verification class, so Verus opt-in cannot be established",
+                    package.name
+                ),
+                "register the package in architecture.toml before it enters the workspace",
+            ));
+            continue;
+        };
+        if matches!(expected.verification_class.as_str(), "V" | "H" | "T")
+            && package.metadata.verus.as_ref().is_none_or(|metadata| !metadata.is_plain_verified())
+        {
+            diagnostics.push(Diagnostic::at(
+                relative(root, &package.manifest_path),
+                format!(
+                    "verification class `{}` package `{}` is opted out of Cargo-Verus",
+                    expected.verification_class, package.name
+                ),
+                "set exactly [package.metadata.verus] verify = true; bootstrap/no-vstd flags change the trusted verification mode",
+            ));
+        }
+    }
+    diagnostics
 }
 
 fn validate_packages(
@@ -172,3 +213,7 @@ fn relative(root: &Path, path: &Path) -> PathBuf {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+#[path = "architecture/verus_metadata_tests.rs"]
+mod verus_metadata_tests;

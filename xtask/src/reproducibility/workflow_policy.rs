@@ -1,6 +1,7 @@
 use super::workflow_ci;
 use super::workflow_commands::CommandPolicy;
 use super::workflow_files::{DocumentKind, action_files, workflow_files};
+use super::workflow_governance;
 use super::workflow_local::{LocalUseKind, validate_local_reference};
 use super::workflow_pins::{validate_pin_occurrences, validate_required_ci_pins};
 use super::workflow_run;
@@ -30,6 +31,13 @@ pub(super) fn validate(
             WORKFLOW_DIRECTORY,
             "the canonical ci.yml or ci.yaml workflow is missing",
             "restore the foundation CI workflow so toolchain pins and required gates remain enforced",
+        ));
+    }
+    if !files.iter().any(|(path, _)| relative(root, path) == Path::new(workflow_governance::PATH)) {
+        diagnostics.push(Diagnostic::at(
+            WORKFLOW_DIRECTORY,
+            "the required Gate A status workflow is missing",
+            "restore the canonical workflow that emits the repository ruleset's required Gate A check",
         ));
     }
     files.extend(action_files(root)?);
@@ -88,6 +96,9 @@ pub(super) fn validate_document(
     if relative == Path::new(CI_WORKFLOW) || relative == Path::new(CI_WORKFLOW_ALTERNATE) {
         validate_required_ci_pins(mapping, relative, tools, diagnostics);
         workflow_ci::validate(mapping, relative, tools, command_policy, diagnostics);
+    } else if relative == Path::new(workflow_governance::PATH) {
+        validate_required_ci_pins(mapping, relative, tools, diagnostics);
+        workflow_governance::validate(mapping, contents, relative, tools, diagnostics);
     }
     match kind {
         DocumentKind::Workflow => {

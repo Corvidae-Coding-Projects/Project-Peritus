@@ -1,0 +1,6 @@
+# Schema contract: verification/README.md#verification-exclusion-manifest
+# An entry represents exactly one H/T symbol excluded from Verus coverage.
+schema = "peritus.verification.exclusions"
+schema_version = 1
+baseline = "A1"
+entries = []

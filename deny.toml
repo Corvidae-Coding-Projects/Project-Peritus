@@ -36,7 +36,9 @@ workspace-default-features = "allow"
 external-default-features = "allow"
 allow = []
 deny = []
-skip = []
+skip = [
+    { crate = "syn@2.0.119", reason = "Pinned vstd procedural macros require syn 2 while pinned Serde derive requires syn 3; both are locked, build-time-only parser dependencies." },
+]
 skip-tree = []
 
 [bans.std-replacements]

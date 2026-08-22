@@ -1,0 +1,68 @@
+pub(super) const VERUS_WORKSPACE_VERIFY_ARGS: &[&str] = &[
+    "verus",
+    "verify",
+    "--workspace",
+    "--all-features",
+    "--locked",
+    "--check-toolchain",
+    "--fwd-verus-args-to",
+    "roots",
+    "--",
+    "--rlimit",
+    "20",
+];
+
+pub(super) const VERUS_STRICT_VERIFY_ARGS: &[&str] = &[
+    "verus",
+    "verify",
+    "--package",
+    "peritus-types",
+    "--all-features",
+    "--locked",
+    "--check-toolchain",
+    "--fwd-verus-args-to",
+    "roots",
+    "--",
+    "--no-cheating",
+    "--rlimit",
+    "20",
+];
+
+pub(super) const VERUS_WORKSPACE_BUILD_ARGS: &[&str] = &[
+    "verus",
+    "build",
+    "--workspace",
+    "--all-features",
+    "--release",
+    "--locked",
+    "--check-toolchain",
+    "--fwd-verus-args-to",
+    "roots",
+    "--",
+    "--rlimit",
+    "20",
+];
+
+pub(super) const VERUS_STRICT_BUILD_ARGS: &[&str] = &[
+    "verus",
+    "build",
+    "--package",
+    "peritus-types",
+    "--all-features",
+    "--release",
+    "--locked",
+    "--check-toolchain",
+    "--fwd-verus-args-to",
+    "roots",
+    "--",
+    "--no-cheating",
+    "--rlimit",
+    "20",
+];
+
+pub(super) const CANONICAL_VERUS_ARGS: [&[&str]; 4] = [
+    VERUS_WORKSPACE_VERIFY_ARGS,
+    VERUS_STRICT_VERIFY_ARGS,
+    VERUS_WORKSPACE_BUILD_ARGS,
+    VERUS_STRICT_BUILD_ARGS,
+];

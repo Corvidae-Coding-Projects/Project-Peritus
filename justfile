@@ -30,6 +30,9 @@ reproducibility:
 trust:
     cargo run --locked --package xtask -- verify-trust
 
+ordinary-api:
+    cargo run --locked --package xtask -- ordinary-api-check
+
 toolchain:
     cargo run --locked --package xtask -- toolchain-check
 
@@ -40,12 +43,14 @@ deny:
     cargo deny --locked check
 
 verus-verify:
-    cargo verus verify --workspace --locked --check-toolchain
+    cargo verus verify --workspace --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --rlimit 20
+    cargo verus verify --package peritus-types --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
 
 verus-build:
-    cargo verus build --workspace --release --locked --check-toolchain
+    cargo verus build --workspace --all-features --release --locked --check-toolchain --fwd-verus-args-to roots -- --rlimit 20
+    cargo verus build --package peritus-types --all-features --release --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
 
 check: fmt build test doc-test clippy docs
     cargo run --locked --package xtask -- all
 
-gate-a: check deny toolchain verus-verify verus-build
+gate-a: check ordinary-api deny toolchain verus-verify verus-build

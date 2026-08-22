@@ -1,0 +1,40 @@
+{
+  "schema": "peritus.verification.actor-provenance",
+  "schema_version": 1,
+  "baseline": "A1",
+  "entries": [
+    {
+      "actor_id": "ACTOR-0001",
+      "kind": "crosslink-agent",
+      "principal": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+      "repository": "Corvidae-Coding-Projects/Project-Peritus",
+      "issue": 3,
+      "issue_created_at": "2026-08-21T21:10:43.329647070Z",
+      "session": 2,
+      "task": "/root",
+      "mode": "implementation",
+      "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEKuTLQN4A79bLYizdWIYCfXTIaDgY2YWxHnZ7j5FftS crosslink-agent:6ME5@dollspace-laptop",
+      "allowed_signer": "6ME5@crosslink ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEKuTLQN4A79bLYizdWIYCfXTIaDgY2YWxHnZ7j5FftS crosslink-agent:6ME5@dollspace-laptop",
+      "record_locators": [
+        "embedded:allowed-signer",
+        "embedded:public-key"
+      ]
+    },
+    {
+      "actor_id": "ACTOR-0002",
+      "kind": "codex-subagent",
+      "principal": "Corvidae-Coding-Projects/Project-Peritus/session/2/task/root/a1_final_gate_review",
+      "repository": "Corvidae-Coding-Projects/Project-Peritus",
+      "issue": 3,
+      "issue_created_at": "2026-08-21T21:10:43.329647070Z",
+      "session": 2,
+      "task": "/root/a1_final_gate_review",
+      "mode": "read-only-review",
+      "model": "gpt-5.6-sol",
+      "reasoning_effort": "xhigh",
+      "record_locators": [
+        "codex-collaboration:Corvidae-Coding-Projects/Project-Peritus/session/2/task/root/a1_final_gate_review"
+      ]
+    }
+  ]
+}

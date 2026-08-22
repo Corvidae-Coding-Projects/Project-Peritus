@@ -1,5 +1,6 @@
 use super::workflow_command_policy;
 use super::workflow_commands::CommandPolicy;
+use super::{workflow_governance, workflow_governance_jobs};
 use crate::error::Diagnostic;
 use std::path::Path;
 use yaml_rust2::Yaml;
@@ -45,6 +46,12 @@ pub(super) fn validate_step(
         ));
         return;
     };
+    if path == Path::new(workflow_governance::PATH)
+        && location == "jobs.gate-a.steps[0]"
+        && workflow_governance_jobs::gate_status_script_is_exact(script)
+    {
+        return;
+    }
     workflow_command_policy::validate(
         script,
         path,

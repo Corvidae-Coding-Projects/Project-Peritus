@@ -226,8 +226,13 @@ finish_without_proof();
 ";
 
     let occurrences = scan(source);
-    assert!(occurrences.iter().any(|item| item.construct == Construct::Assume));
-    assert!(occurrences.iter().any(|item| item.construct == Construct::Admit));
+    assert_eq!(
+        occurrences
+            .iter()
+            .filter(|item| item.construct == Construct::ProhibitedTrustedImport)
+            .count(),
+        2
+    );
 }
 
 #[test]
@@ -306,6 +311,9 @@ fn ignored_provider_reference_and_build_directories_are_not_scanned() {
     let scanned = check(fixture.path(), &policy).expect("ignored directories must not be scanned");
     assert_eq!(scanned, 0);
 }
+
+#[path = "trust/dependency_escape_tests.rs"]
+mod dependency_escape_tests;
 
 #[test]
 fn ordinary_non_rust_files_are_not_trust_scanned() {

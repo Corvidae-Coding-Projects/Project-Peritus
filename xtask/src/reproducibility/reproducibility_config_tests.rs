@@ -1,3 +1,4 @@
+use super::validate_rust_toolchain;
 use super::workflow_command_policy::{config_is_exact, load};
 use super::workflow_commands::parse_script;
 use crate::error::Diagnostic;
@@ -15,6 +16,12 @@ incremental = false
 [net]
 git-fetch-with-cli = true
 retry = 2
+"#;
+
+const RUST_TOOLCHAIN: &str = r#"[toolchain]
+channel = "1.97.1"
+profile = "minimal"
+components = ["clippy", "rustfmt"]
 "#;
 
 #[test]
@@ -88,6 +95,57 @@ fn symlinked_root_config_is_rejected() {
         .expect("config symlink must be creatable");
     let diagnostics = fixture.load();
     assert_message(&diagnostics, "reached through a symlink");
+}
+
+#[test]
+fn missing_root_config_retains_the_reproducibility_diagnostic() {
+    let fixture = Fixture::new();
+    let diagnostics = fixture.load();
+    assert_message(&diagnostics, "missing, non-regular, or reached through a symlink");
+}
+
+#[test]
+fn legacy_rust_toolchain_selector_is_rejected() {
+    let fixture = Fixture::new();
+    fixture.write("rust-toolchain.toml", RUST_TOOLCHAIN);
+    fixture.write("rust-toolchain", "1.97.1\n");
+    let mut diagnostics = Vec::new();
+
+    validate_rust_toolchain(fixture.path(), &mut diagnostics)
+        .expect("reviewed TOML toolchain must be readable");
+
+    assert_message(&diagnostics, "legacy rust-toolchain file");
+}
+
+#[cfg(unix)]
+#[test]
+fn symlinked_rust_toolchain_selector_is_rejected() {
+    use std::os::unix::fs::symlink;
+
+    let fixture = Fixture::new();
+    fixture.write("reviewed-rust-toolchain.toml", RUST_TOOLCHAIN);
+    symlink(
+        fixture.path().join("reviewed-rust-toolchain.toml"),
+        fixture.path().join("rust-toolchain.toml"),
+    )
+    .expect("toolchain symlink must be creatable");
+    let mut diagnostics = Vec::new();
+
+    validate_rust_toolchain(fixture.path(), &mut diagnostics)
+        .expect("toolchain symlink target must be readable");
+
+    assert_message(&diagnostics, "missing, non-regular, or symbolic");
+}
+
+#[test]
+fn missing_rust_toolchain_retains_the_reproducibility_diagnostic() {
+    let fixture = Fixture::new();
+    let mut diagnostics = Vec::new();
+
+    validate_rust_toolchain(fixture.path(), &mut diagnostics)
+        .expect("missing toolchain must be reported without an I/O escape");
+
+    assert_message(&diagnostics, "missing, non-regular, or symbolic");
 }
 
 fn assert_message(diagnostics: &[Diagnostic], expected: &str) {

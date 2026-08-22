@@ -11,6 +11,7 @@ fn help_describes_the_stable_policy_commands() {
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).expect("help must be UTF-8");
     assert!(stdout.contains("architecture-check"));
+    assert!(stdout.contains("ordinary-api-check"));
     assert!(stdout.contains("toolchain-check"));
     assert!(stdout.contains("verify-trust"));
 }

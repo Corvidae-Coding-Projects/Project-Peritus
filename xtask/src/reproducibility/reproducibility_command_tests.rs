@@ -32,7 +32,10 @@ fn complete_recipe_command_forms_accept_locked_inputs_before_the_boundary() {
     for command in [
         "cargo --locked check --workspace",
         "cargo metadata --format-version 1 --locked",
-        "cargo verus verify --workspace --locked --check-toolchain",
+        "cargo verus verify --workspace --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --rlimit 20",
+        "cargo verus verify --package peritus-types --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+        "cargo verus build --workspace --all-features --release --locked --check-toolchain --fwd-verus-args-to roots -- --rlimit 20",
+        "cargo verus build --package peritus-types --all-features --release --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
         "cargo fmt --all -- --check",
         "cargo xtask reproducibility-check",
     ] {
@@ -106,6 +109,10 @@ fn every_partial_or_forwarded_verus_form_is_rejected() {
         "cargo verus verify --workspace --locked --check-toolchain -- --no-verify",
         "cargo verus verify --locked --workspace --check-toolchain",
         "cargo verus build --workspace --locked --check-toolchain --release --no-solver-version-check",
+        "cargo verus verify --workspace --all-features --locked --check-toolchain --fwd-verus-args-to all -- --no-cheating -V check-api-safety --rlimit 20",
+        "cargo verus verify --workspace --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+        "cargo verus verify --workspace --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating -V check-api-safety --rlimit 20",
+        "cargo verus verify --workspace --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 0",
     ] {
         assert_message(&validate(command), "non-canonical cargo-verus invocation");
     }

@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 use std::path::PathBuf;
 
 #[derive(Debug, Deserialize)]
@@ -124,8 +124,15 @@ pub(crate) struct CargoPackage {
     pub(crate) readme: Option<PathBuf>,
     pub(crate) dependencies: Vec<CargoDependency>,
     pub(crate) targets: Vec<CargoTarget>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_package_metadata")]
     pub(crate) metadata: CargoPackageMetadata,
+}
+
+fn deserialize_package_metadata<'de, D>(deserializer: D) -> Result<CargoPackageMetadata, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Option::<CargoPackageMetadata>::deserialize(deserializer).map(Option::unwrap_or_default)
 }
 
 #[derive(Debug, Deserialize)]
@@ -157,6 +164,7 @@ pub(crate) enum CargoDependencyKind {
 #[derive(Debug, Default, Deserialize)]
 pub(crate) struct CargoPackageMetadata {
     pub(crate) peritus: Option<PeritusPackageMetadata>,
+    pub(crate) verus: Option<VerusPackageMetadata>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -165,4 +173,27 @@ pub(crate) struct PeritusPackageMetadata {
     pub(crate) layer: String,
     #[serde(rename = "verification-class")]
     pub(crate) verification_class: String,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+pub(crate) struct VerusPackageMetadata {
+    #[serde(default)]
+    pub(crate) verify: bool,
+    pub(crate) no_vstd: Option<bool>,
+    pub(crate) is_vstd: Option<bool>,
+    pub(crate) is_core: Option<bool>,
+    pub(crate) is_builtin: Option<bool>,
+    pub(crate) is_builtin_macros: Option<bool>,
+}
+
+impl VerusPackageMetadata {
+    pub(crate) const fn is_plain_verified(&self) -> bool {
+        self.verify
+            && self.no_vstd.is_none()
+            && self.is_vstd.is_none()
+            && self.is_core.is_none()
+            && self.is_builtin.is_none()
+            && self.is_builtin_macros.is_none()
+    }
 }

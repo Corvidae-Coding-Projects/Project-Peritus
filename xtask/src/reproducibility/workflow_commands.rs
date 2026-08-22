@@ -7,6 +7,7 @@ use super::workflow_command_syntax::{
 
 const CONFIG_CHECK_LINE: &str =
     "a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79  .cargo/config.toml\\n";
+const CANDIDATE_CONFIG_CHECK_LINE: &str = "a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79  candidate/.cargo/config.toml\\n";
 
 #[derive(Clone, Copy)]
 pub(super) struct CommandPolicy {
@@ -228,10 +229,16 @@ impl ParsedScript {
     }
 
     pub(super) fn is_reviewed_config_preflight(&self) -> bool {
+        [CONFIG_CHECK_LINE, CANDIDATE_CONFIG_CHECK_LINE]
+            .iter()
+            .any(|line| self.is_reviewed_config_preflight_with_line(line))
+    }
+
+    fn is_reviewed_config_preflight_with_line(&self, line: &str) -> bool {
         self.issues.is_empty()
             && self.commands.len() == 2
             && self.commands[0].pipes_to_next()
-            && self.commands[0].is_exact_command(&["printf", CONFIG_CHECK_LINE])
+            && self.commands[0].is_exact_command(&["printf", line])
             && self.commands[1].is_exact_command(&["sha256sum", "--check", "--strict"])
     }
 }

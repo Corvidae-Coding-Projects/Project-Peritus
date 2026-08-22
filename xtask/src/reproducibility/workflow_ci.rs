@@ -1,3 +1,7 @@
+use super::verus_commands::{
+    VERUS_STRICT_BUILD_ARGS, VERUS_STRICT_VERIFY_ARGS, VERUS_WORKSPACE_BUILD_ARGS,
+    VERUS_WORKSPACE_VERIFY_ARGS,
+};
 use super::workflow_commands::{ParsedScript, parse_script};
 use crate::error::Diagnostic;
 use crate::model::ToolchainPolicy;
@@ -8,6 +12,8 @@ use yaml_rust2::yaml::Hash;
 const CHECKOUT: &str = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1";
 const RUST_ACTION: &str = "dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772";
 const RUST_REFERENCE: &str = "${{ env.RUST_VERSION }}";
+const PROOF_IMPACT_BASE_REFERENCE: &str =
+    "${{ github.event.pull_request.base.sha || github.event.before || inputs.proof_impact_base }}";
 const CONFIG_CHECK_LINE: &str =
     "a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79  .cargo/config.toml\\n";
 
@@ -30,7 +36,7 @@ pub(super) fn validate(
         root_env_is_exact(workflow, tools),
         path,
         "canonical CI environment is not the exact reviewed toolchain-pin set",
-        "define only RUST_VERSION, VERUS_VERSION, and VERUS_LINUX_SHA256 from toolchains.toml",
+        "define only the three toolchain pins and immutable PERITUS_PROOF_IMPACT_BASE event binding",
         diagnostics,
     );
     require(
@@ -76,12 +82,24 @@ pub(super) fn validate(
                 "restore cargo run --locked --package xtask -- toolchain-check",
             ),
             (
+                "canonical CI does not run the direct ordinary-Rust formal API contract check",
+                "restore cargo run --locked --package xtask -- ordinary-api-check before Verus verification",
+            ),
+            (
                 "canonical CI does not run the full locked Verus workspace verification",
-                "run exactly cargo verus verify --workspace --locked --check-toolchain",
+                "run the exact all-feature TCB-aware cargo-verus workspace verification with pinned solver limits",
+            ),
+            (
+                "canonical CI does not enforce no-cheating for every V/H verification root",
+                "run the exact peritus-types no-cheating verification after workspace verification",
             ),
             (
                 "canonical CI does not run the locked verified release build",
-                "run exactly cargo verus build --workspace --release --locked --check-toolchain",
+                "run the exact all-feature TCB-aware cargo-verus release build with pinned solver limits",
+            ),
+            (
+                "canonical CI does not enforce no-cheating for every V/H release build root",
+                "run the exact peritus-types no-cheating release build after the workspace build",
             ),
         ] {
             diagnostics.push(Diagnostic::at(path, message, help));
@@ -173,7 +191,7 @@ fn verus_job_is_exact(job: &Yaml, tools: &ToolchainPolicy) -> bool {
     let Some(job) = job.as_hash() else { return false };
     common_job(job, "Locked Verus workspace", "ubuntu-24.04")
         && mapping_value(job, "steps").and_then(Yaml::as_vec).is_some_and(|steps| {
-            steps.len() == 6
+            steps.len() == 9
                 && checkout_step(&steps[0])
                 && rust_step(&steps[1], None)
                 && archive_step(&steps[2], tools)
@@ -183,19 +201,12 @@ fn verus_job_is_exact(job: &Yaml, tools: &ToolchainPolicy) -> bool {
                 )
                 && cargo_step(
                     &steps[4],
-                    &["verus", "verify", "--workspace", "--locked", "--check-toolchain"],
+                    &["run", "--locked", "--package", "xtask", "--", "ordinary-api-check"],
                 )
-                && cargo_step(
-                    &steps[5],
-                    &[
-                        "verus",
-                        "build",
-                        "--workspace",
-                        "--release",
-                        "--locked",
-                        "--check-toolchain",
-                    ],
-                )
+                && cargo_step(&steps[5], VERUS_WORKSPACE_VERIFY_ARGS)
+                && cargo_step(&steps[6], VERUS_STRICT_VERIFY_ARGS)
+                && cargo_step(&steps[7], VERUS_WORKSPACE_BUILD_ARGS)
+                && cargo_step(&steps[8], VERUS_STRICT_BUILD_ARGS)
         })
 }
 
@@ -222,10 +233,13 @@ fn rust_matrix(strategy: Option<&Yaml>) -> bool {
 
 fn root_env_is_exact(workflow: &Hash, tools: &ToolchainPolicy) -> bool {
     let Some(env) = mapping_value(workflow, "env").and_then(Yaml::as_hash) else { return false };
-    exact_keys(env, &["RUST_VERSION", "VERUS_VERSION", "VERUS_LINUX_SHA256"])
-        && string(env, "RUST_VERSION") == Some(&tools.rust)
+    exact_keys(
+        env,
+        &["RUST_VERSION", "VERUS_VERSION", "VERUS_LINUX_SHA256", "PERITUS_PROOF_IMPACT_BASE"],
+    ) && string(env, "RUST_VERSION") == Some(&tools.rust)
         && string(env, "VERUS_VERSION") == Some(&tools.verus)
         && string(env, "VERUS_LINUX_SHA256") == Some(&tools.archives.linux_x86_64.sha256)
+        && string(env, "PERITUS_PROOF_IMPACT_BASE") == Some(PROOF_IMPACT_BASE_REFERENCE)
 }
 
 fn root_controls_are_exact(workflow: &Hash) -> bool {
@@ -249,7 +263,7 @@ fn root_controls_are_exact(workflow: &Hash) -> bool {
             .and_then(Yaml::as_vec)
             .is_some_and(|branches| branches.len() == 1 && branches[0].as_str() == Some("main"))
         && mapping_value(triggers, "pull_request") == Some(&Yaml::Null)
-        && mapping_value(triggers, "workflow_dispatch") == Some(&Yaml::Null)
+        && workflow_dispatch_is_exact(mapping_value(triggers, "workflow_dispatch"))
         && exact_keys(permissions, &["contents"])
         && string(permissions, "contents") == Some("read")
         && exact_keys(concurrency, &["group", "cancel-in-progress"])
@@ -258,10 +272,29 @@ fn root_controls_are_exact(workflow: &Hash) -> bool {
         && mapping_value(concurrency, "cancel-in-progress").and_then(Yaml::as_bool) == Some(true)
 }
 
+fn workflow_dispatch_is_exact(dispatch: Option<&Yaml>) -> bool {
+    let Some(dispatch) = dispatch.and_then(Yaml::as_hash) else { return false };
+    let Some(inputs) = mapping_value(dispatch, "inputs").and_then(Yaml::as_hash) else {
+        return false;
+    };
+    let Some(base) = mapping_value(inputs, "proof_impact_base").and_then(Yaml::as_hash) else {
+        return false;
+    };
+    exact_keys(dispatch, &["inputs"])
+        && exact_keys(inputs, &["proof_impact_base"])
+        && exact_keys(base, &["description", "required", "type"])
+        && string(base, "description") == Some("Immutable base commit for proof-impact comparison")
+        && mapping_value(base, "required").and_then(Yaml::as_bool) == Some(true)
+        && string(base, "type") == Some("string")
+}
+
 fn checkout_step(step: &Yaml) -> bool {
-    step.as_hash().is_some_and(|step| {
-        exact_keys(step, &["name", "uses"]) && string(step, "uses") == Some(CHECKOUT)
-    })
+    let Some(step) = step.as_hash() else { return false };
+    let Some(inputs) = mapping_value(step, "with").and_then(Yaml::as_hash) else { return false };
+    exact_keys(step, &["name", "uses", "with"])
+        && string(step, "uses") == Some(CHECKOUT)
+        && exact_keys(inputs, &["fetch-depth"])
+        && integer(inputs, "fetch-depth") == Some(0)
 }
 
 fn rust_step(step: &Yaml, components: Option<&str>) -> bool {

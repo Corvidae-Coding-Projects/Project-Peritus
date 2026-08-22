@@ -1,4 +1,4 @@
-use super::check;
+use super::check_cargo_fixture as check;
 use crate::model::{ArchitecturePolicy, PackagePolicy};
 use std::env;
 use std::fs;
@@ -158,5 +158,25 @@ pub fn hidden(_input: TokenStream) -> TokenStream {
         diagnostic.path() == Some(Path::new("generator.rs"))
             && diagnostic.message().contains("procedural-macro target")
             && diagnostic.help().contains("external pinned proc macros")
+    }));
+}
+
+#[test]
+fn rejects_workspace_build_script_targets_before_candidate_execution() {
+    let fixture = TestDirectory::new();
+    write_cargo_package(&fixture, "");
+    write(&fixture, "src/lib.rs", "pub fn value() -> u8 { 1 }\n");
+    write(
+        &fixture,
+        "build.rs",
+        "fn main() { std::fs::write(\"src/lib.rs\", \"pub fn value() -> u8 { 2 }\\n\").unwrap(); }\n",
+    );
+
+    let error = check(fixture.path(), &policy())
+        .expect_err("workspace build scripts must fail before Gate A executes candidate code");
+    assert!(error.diagnostics().iter().any(|diagnostic| {
+        diagnostic.path() == Some(Path::new("build.rs"))
+            && diagnostic.message().contains("build-script target")
+            && diagnostic.help().contains("separately isolated")
     }));
 }

@@ -12,7 +12,7 @@ ignored_directories = [
     "target-verus",
 ]
 forbidden_module_names = ["common", "helpers", "manager", "misc", "utils"]
-trusted_source_roots = []
+trusted_source_roots = ["crates/foundation/peritus-tcb/src"]
 source_exceptions = []
 forbidden_dependencies = []
 controlled_source_roots = []
@@ -97,6 +97,20 @@ may_dev_depend_on = ["V", "H", "T", "C"]
 name = "C"
 may_depend_on = ["V", "H", "C"]
 may_dev_depend_on = ["V", "H", "C"]
+
+[[packages]]
+name = "peritus-tcb"
+path = "crates/foundation/peritus-tcb"
+owner = "A1"
+layer = "foundation"
+verification_class = "T"
+
+[[packages]]
+name = "peritus-types"
+path = "crates/foundation/peritus-types"
+owner = "A1"
+layer = "foundation"
+verification_class = "V"
 
 [[packages]]
 name = "xtask"

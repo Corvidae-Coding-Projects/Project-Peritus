@@ -1,3 +1,4 @@
+use crate::api_contract;
 use crate::architecture;
 use crate::error::XtaskError;
 use crate::metadata;
@@ -18,6 +19,7 @@ Usage: cargo xtask <command>
 Commands:
   all                    Run all repository-only policy checks
   architecture-check     Validate packages, layers, ownership, and source layout
+  ordinary-api-check     Validate formal APIs callable from ordinary safe Rust
   source-layout-check    Validate module names, crate roots, and source budgets
   reproducibility-check  Validate toolchain pins, lock policy, and immutable CI inputs
   toolchain-check        Probe installed Rust, Verus, vstd metadata, and bundled Z3
@@ -29,6 +31,7 @@ Commands:
 enum Command {
     All,
     Architecture,
+    OrdinaryApi,
     SourceLayout,
     Reproducibility,
     Toolchain,
@@ -81,6 +84,7 @@ pub(crate) fn execute(
         Command::All => {
             let policy = metadata::architecture_policy(root)?;
             let (packages, files) = architecture::check(root, &policy)?;
+            let api = api_contract::check(root, &policy)?;
             let trust_files = trust::check(root, &policy)?;
             let tools = metadata::toolchain_policy(root)?;
             let actions = reproducibility::check(root, &tools)?;
@@ -88,7 +92,9 @@ pub(crate) fn execute(
                 output,
                 &format!(
                     "all checks passed: {packages} package(s), {files} source file(s), \
-                     {trust_files} trust-scanned file(s), {actions} pinned action(s)\n"
+                     {} formal-boundary file(s), {} ordinary-safe executable entry point(s), \
+                     {trust_files} trust-scanned file(s), {actions} pinned action(s)\n",
+                    api.files, api.executable_entry_points
                 ),
             )?;
         }
@@ -99,6 +105,17 @@ pub(crate) fn execute(
                 output,
                 &format!(
                     "architecture-check passed: {packages} package(s), {files} source file(s)\n"
+                ),
+            )?;
+        }
+        Command::OrdinaryApi => {
+            let policy = metadata::architecture_policy(root)?;
+            let report = api_contract::check(root, &policy)?;
+            write_output(
+                output,
+                &format!(
+                    "ordinary-api-check passed: {} formal-boundary file(s), {} ordinary-safe executable entry point(s)\n",
+                    report.files, report.executable_entry_points
                 ),
             )?;
         }
@@ -148,6 +165,7 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
     match first.as_deref().and_then(|value| value.to_str()) {
         Some("all") => Ok(Command::All),
         Some("architecture-check") => Ok(Command::Architecture),
+        Some("ordinary-api-check") => Ok(Command::OrdinaryApi),
         Some("source-layout-check") => Ok(Command::SourceLayout),
         Some("reproducibility-check") => Ok(Command::Reproducibility),
         Some("toolchain-check") => Ok(Command::Toolchain),

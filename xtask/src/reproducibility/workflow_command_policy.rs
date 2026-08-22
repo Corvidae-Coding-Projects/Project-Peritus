@@ -1,3 +1,6 @@
+use super::policy_file;
+use super::verus_commands::CANONICAL_VERUS_ARGS;
+use super::workflow_actionlint;
 use super::workflow_commands::{CommandPolicy, parse_script};
 use crate::error::{Diagnostic, XtaskError};
 use std::fs;
@@ -14,25 +17,27 @@ incremental = false
 git-fetch-with-cli = true
 retry = 2
 "#;
-const AUDITED_EXECUTABLES: [&str; 7] =
-    ["cargo", "curl", "mkdir", "printf", "set", "sha256sum", "unzip"];
+const AUDITED_EXECUTABLES: [&str; 8] =
+    ["actionlint", "cargo", "curl", "mkdir", "printf", "set", "sha256sum", "unzip"];
 
 pub(super) fn load(
     root: &Path,
     diagnostics: &mut Vec<Diagnostic>,
 ) -> Result<CommandPolicy, XtaskError> {
-    let path = root.join(".cargo/config.toml");
-    let regular = path.symlink_metadata().is_ok_and(|metadata| metadata.file_type().is_file())
-        && !has_symlink_component(root, Path::new(".cargo/config.toml"));
-    if !regular {
-        diagnostics.push(Diagnostic::at(
-            ".cargo/config.toml",
-            "root Cargo configuration is missing, non-regular, or reached through a symlink",
-            "restore .cargo/config.toml as a checked-in regular file with no symlink components",
-        ));
-    }
-    let contents =
-        fs::read_to_string(&path).map_err(|error| XtaskError::io("read", &path, error))?;
+    let relative = Path::new(".cargo/config.toml");
+    let contents = policy_file::read_regular(
+        root,
+        relative,
+        "root Cargo configuration is missing, non-regular, or reached through a symlink",
+        "root Cargo configuration",
+        "restore .cargo/config.toml as a checked-in regular file with no symlink components",
+        diagnostics,
+    );
+    reject_nested_configs(root, diagnostics)?;
+    let Some(contents) = contents else {
+        return Ok(CommandPolicy::new(false));
+    };
+    let path = root.join(relative);
     let config: toml::Value =
         toml::from_str(&contents).map_err(|error| XtaskError::parse_policy(&path, error))?;
     let valid = config_is_exact(&config);
@@ -43,7 +48,6 @@ pub(super) fn load(
             "retain only the locked xtask alias, incremental=false, and reviewed network settings; aliases, wrappers, sources, tools, and env overrides are forbidden",
         ));
     }
-    reject_nested_configs(root, diagnostics)?;
     Ok(CommandPolicy::new(valid))
 }
 
@@ -113,14 +117,6 @@ fn reject_nested_configs(root: &Path, diagnostics: &mut Vec<Diagnostic>) -> Resu
     Ok(())
 }
 
-fn has_symlink_component(root: &Path, relative: &Path) -> bool {
-    let mut current = root.to_path_buf();
-    relative.components().any(|component| {
-        current.push(component);
-        current.symlink_metadata().is_ok_and(|metadata| metadata.file_type().is_symlink())
-    })
-}
-
 pub(super) fn validate(
     script: &str,
     path: &Path,
@@ -150,8 +146,10 @@ fn validate_with_mode(
     diagnostics: &mut Vec<Diagnostic>,
 ) {
     let parsed = parse_script(script);
+    let actionlint_install = workflow_actionlint::is_reviewed_install(&parsed);
     if !parsed.is_failure_propagating()
         && !parsed.is_reviewed_archive_install()
+        && !actionlint_install
         && !parsed.is_reviewed_config_preflight()
     {
         diagnostics.push(Diagnostic::at(
@@ -171,6 +169,7 @@ fn validate_with_mode(
         }
         if let Some(executable) = command.executable_word()
             && !AUDITED_EXECUTABLES.contains(&executable)
+            && !(actionlint_install && executable == "tar")
         {
             diagnostics.push(Diagnostic::at(
                 path,
@@ -199,21 +198,7 @@ fn validate_with_mode(
             ));
         }
         if command.is_verus()
-            && !command.is_exact_cargo(&[
-                "verus",
-                "verify",
-                "--workspace",
-                "--locked",
-                "--check-toolchain",
-            ])
-            && !command.is_exact_cargo(&[
-                "verus",
-                "build",
-                "--workspace",
-                "--release",
-                "--locked",
-                "--check-toolchain",
-            ])
+            && !CANONICAL_VERUS_ARGS.iter().any(|expected| command.is_exact_cargo(expected))
         {
             if command.has_argument("--no-solver-version-check") {
                 diagnostics.push(Diagnostic::at(
@@ -225,7 +210,7 @@ fn validate_with_mode(
             diagnostics.push(Diagnostic::at(
                 path,
                 format!("`{location}` uses a non-canonical cargo-verus invocation"),
-                "use the exact full-workspace verify or release-build command without filters, exclusions, forwarded arguments, or bypass flags",
+                "use an exact full-workspace TCB-aware command or its paired V/H no-cheating command with pinned solver-resource flags",
             ));
         }
     }

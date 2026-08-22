@@ -19,9 +19,20 @@ pub(crate) fn read_toml<T: DeserializeOwned>(path: &Path) -> Result<T, XtaskErro
 }
 
 pub(crate) fn cargo_metadata(root: &Path) -> Result<CargoMetadata, XtaskError> {
+    cargo_metadata_with_args(root, &["--no-deps"])
+}
+
+pub(crate) fn cargo_metadata_with_dependencies(root: &Path) -> Result<CargoMetadata, XtaskError> {
+    cargo_metadata_with_args(root, &["--all-features"])
+}
+
+fn cargo_metadata_with_args(root: &Path, additional: &[&str]) -> Result<CargoMetadata, XtaskError> {
     let manifest = root.join("Cargo.toml");
-    let output = Command::new("cargo")
-        .args(["metadata", "--format-version", "1", "--locked", "--no-deps", "--manifest-path"])
+    let mut command = Command::new("cargo");
+    command.args(["metadata", "--format-version", "1", "--locked"]);
+    command.args(additional);
+    let output = command
+        .arg("--manifest-path")
         .arg(&manifest)
         .current_dir(root)
         .output()

@@ -17,6 +17,8 @@ pub enum ErrorCode {
     Architecture,
     /// Rust source violates layout policy.
     SourceLayout,
+    /// A formal crate exposes a contract that ordinary safe Rust cannot uphold.
+    ApiContract,
     /// A trusted Verus construct occurs outside an allowed boundary.
     Trust,
     /// A reproducibility pin or locked-input rule is violated.
@@ -34,6 +36,7 @@ impl ErrorCode {
             Self::Metadata => "PERITUS-XTASK-METADATA-001",
             Self::Architecture => "PERITUS-XTASK-ARCH-001",
             Self::SourceLayout => "PERITUS-XTASK-SOURCE-001",
+            Self::ApiContract => "PERITUS-XTASK-API-001",
             Self::Trust => "PERITUS-XTASK-TRUST-001",
             Self::Reproducibility => "PERITUS-XTASK-REPRO-001",
         }

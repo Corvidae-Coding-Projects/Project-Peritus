@@ -24,34 +24,69 @@ pub(super) fn inspect_crate_root(
     }
     let allows_main = root_kind == RootKind::Binary;
     let tokens = tokenize(contents);
+    inspect_composition(relative, &tokens, allows_main, true, diagnostics);
+}
+
+fn inspect_composition(
+    relative: &Path,
+    tokens: &[Token],
+    allows_main: bool,
+    allows_verus_wrapper: bool,
+    diagnostics: &mut Vec<Diagnostic>,
+) {
     let mut index = 0;
     while index < tokens.len() {
-        index = skip_attributes(&tokens, index);
+        index = skip_attributes(tokens, index);
         if index == tokens.len() {
             break;
         }
         let item_line = tokens[index].line;
-        let mut cursor = skip_visibility(&tokens, index);
+        let mut cursor = skip_visibility(tokens, index);
+        if allows_verus_wrapper
+            && cursor == index
+            && token_is(tokens, cursor, "verus")
+            && token_is(tokens, cursor + 1, "!")
+            && token_is(tokens, cursor + 2, "{")
+        {
+            let end = skip_group(tokens, cursor + 2, "{", "}");
+            if end <= cursor + 3 || !token_is(tokens, end - 1, "}") {
+                diagnostics.push(Diagnostic::at(
+                    relative,
+                    format!("line {item_line} has an unterminated Verus composition wrapper"),
+                    "close the exact `verus! { ... }` wrapper around composition-only items",
+                ));
+                return;
+            }
+            inspect_composition(
+                relative,
+                &tokens[cursor + 3..end - 1],
+                allows_main,
+                false,
+                diagnostics,
+            );
+            index = end;
+            continue;
+        }
         let mut qualified_function = false;
         loop {
-            let qualifier = token_is(&tokens, cursor, "async")
-                || token_is(&tokens, cursor, "const")
-                || token_is(&tokens, cursor, "unsafe")
-                || token_is(&tokens, cursor, "default")
-                || (token_is(&tokens, cursor, "extern") && !token_is(&tokens, cursor + 1, "crate"));
+            let qualifier = token_is(tokens, cursor, "async")
+                || token_is(tokens, cursor, "const")
+                || token_is(tokens, cursor, "unsafe")
+                || token_is(tokens, cursor, "default")
+                || (token_is(tokens, cursor, "extern") && !token_is(tokens, cursor + 1, "crate"));
             if !qualifier {
                 break;
             }
             qualified_function = true;
             cursor += 1;
         }
-        let allowed = token_is(&tokens, cursor, "use")
-            || (token_is(&tokens, cursor, "extern") && token_is(&tokens, cursor + 1, "crate"))
-            || (token_is(&tokens, cursor, "mod") && module_is_declaration(&tokens, cursor))
+        let allowed = token_is(tokens, cursor, "use")
+            || (token_is(tokens, cursor, "extern") && token_is(tokens, cursor + 1, "crate"))
+            || (token_is(tokens, cursor, "mod") && module_is_declaration(tokens, cursor))
             || (allows_main
                 && !qualified_function
-                && token_is(&tokens, cursor, "fn")
-                && token_is(&tokens, cursor + 1, "main"));
+                && token_is(tokens, cursor, "fn")
+                && token_is(tokens, cursor + 1, "main"));
         if !allowed {
             diagnostics.push(Diagnostic::at(
                 relative,
@@ -59,13 +94,13 @@ pub(super) fn inspect_crate_root(
                 "move the item to a responsibility-named module and re-export only intentional API",
             ));
         }
-        let ends_at_semicolon = token_is(&tokens, cursor, "use")
-            || token_is(&tokens, cursor, "extern")
-            || (token_is(&tokens, cursor, "mod") && allowed);
+        let ends_at_semicolon = token_is(tokens, cursor, "use")
+            || token_is(tokens, cursor, "extern")
+            || (token_is(tokens, cursor, "mod") && allowed);
         index = if ends_at_semicolon {
-            skip_to_semicolon(&tokens, cursor)
+            skip_to_semicolon(tokens, cursor)
         } else {
-            skip_item(&tokens, cursor)
+            skip_item(tokens, cursor)
         }
         .max(index + 1);
     }

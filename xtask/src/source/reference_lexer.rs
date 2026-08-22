@@ -1,17 +1,17 @@
 #[derive(Debug, Eq, PartialEq)]
-pub(super) enum TokenKind {
+pub(crate) enum TokenKind {
     Identifier(String, bool),
     Punctuation(char),
     StringLiteral(Option<String>),
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub(super) struct Token {
-    pub(super) kind: TokenKind,
-    pub(super) line: usize,
+pub(crate) struct Token {
+    pub(crate) kind: TokenKind,
+    pub(crate) line: usize,
 }
 
-pub(super) fn tokenize(source: &str) -> Vec<Token> {
+pub(crate) fn tokenize(source: &str) -> Vec<Token> {
     let bytes = source.as_bytes();
     let mut tokens = Vec::new();
     let mut index = 0;

@@ -1,0 +1,129 @@
+# Schema contract: verification/README.md#proof-impact-and-change-review-manifest
+# A1 is the one-time reviewed genesis. Raw-byte identity includes exact affected packages/classes.
+schema = "peritus.verification.proof-impact"
+schema_version = 1
+baseline = "A1"
+hash_algorithm = "sha256-raw-bytes-v1"
+
+sources = [
+  { source_file = ".cargo/config.toml", sha256 = "a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }], change_id = "PCR-0003" },
+  { source_file = "Cargo.lock", sha256 = "a452c4c9bef51a34868feb2e4fbaee2acec0e8afbbd419c681eb40a90e69b0af", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }], change_id = "PCR-0003" },
+  { source_file = "Cargo.toml", sha256 = "2b6c276970c17f61c548cee2f7cfc916311bdf84a2055a6ff1d1d4614ea0c4f6", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }], change_id = "PCR-0003" },
+  { source_file = "architecture.toml", sha256 = "89e1daa34cc8919c6d655df9b366f298a3b14f1f98a3e12882a31d0dd8149808", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }], change_id = "PCR-0003" },
+  { source_file = "crates/foundation/peritus-tcb/Cargo.toml", sha256 = "468c21b3cc82cfbcf388e02ad0d62c2b67d9b2eda5f8d65e77a78e36360301c2", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }], change_id = "PCR-0002" },
+  { source_file = "crates/foundation/peritus-tcb/src/lib.rs", sha256 = "4b9a1ff63aa13cb5b061cf2c0b8a538aea5eb73c8f3feb802820f3936644a8d6", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }], change_id = "PCR-0002" },
+  { source_file = "crates/foundation/peritus-tcb/src/manifests.rs", sha256 = "fc8c7b76df21135605d54c17aec7e813bec8886753112ea85cd9b1cb182e1d8b", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }], change_id = "PCR-0002" },
+  { source_file = "crates/foundation/peritus-tcb/tests/manifest_paths.rs", sha256 = "b6be001802daef2233e5da4ee64a42dcf71cbc738af98b67b6a6f6bdc9c7f774", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }], change_id = "PCR-0002" },
+  { source_file = "crates/foundation/peritus-types/Cargo.toml", sha256 = "cffb153a1083cbccadc505750df3d8f84b8773db39068b142211912b57485721", affected_packages = [{ package = "peritus-types", verification_class = "V" }], change_id = "PCR-0001" },
+  { source_file = "crates/foundation/peritus-types/src/capability.rs", sha256 = "cf30502361ed8b0a20d1f7ce31d6b2ba86b5be80bd4e709faf25c07cebee6db4", affected_packages = [{ package = "peritus-types", verification_class = "V" }], change_id = "PCR-0001" },
+  { source_file = "crates/foundation/peritus-types/src/digest.rs", sha256 = "6bf759758ed2e31cd9f431a2f20cccfd2c3115e506b4ed1b48fc354b02d4fd87", affected_packages = [{ package = "peritus-types", verification_class = "V" }], change_id = "PCR-0001" },
+  { source_file = "crates/foundation/peritus-types/src/errors.rs", sha256 = "572112777cfb9a16317fbe37bce3eb5a9b427001601e7e111e0eb0a111d8e498", affected_packages = [{ package = "peritus-types", verification_class = "V" }], change_id = "PCR-0001" },
+  { source_file = "crates/foundation/peritus-types/src/ids/base.rs", sha256 = "ef62bf85a306362df6cd5d9962fca2207863f055606c2b389662357570d74892", affected_packages = [{ package = "peritus-types", verification_class = "V" }], change_id = "PCR-0001" },
+  { source_file = "crates/foundation/peritus-types/src/ids/evolution.rs", sha256 = "b5638967bddd998308566f3a8a21d04e0232b2172f562a1ac6e94a793011f7fb", affected_packages = [{ package = "peritus-types", verification_class = "V" }], change_id = "PCR-0001" },
+  { source_file = "crates/foundation/peritus-types/src/ids/execution.rs", sha256 = "eedec80cc91226fa9bd244d14f1c418144c67f4602e2f17046ea107c3b4f4a90", affected_packages = [{ package = "peritus-types", verification_class = "V" }], change_id = "PCR-0001" },
+  { source_file = "crates/foundation/peritus-types/src/ids/lifecycle.rs", sha256 = "14f610f70c556add42159ebfe859786a5bb6690e93f5fcbf63eaffe12f352ce4", affected_packages = [{ package = "peritus-types", verification_class = "V" }], change_id = "PCR-0001" },
+  { source_file = "crates/foundation/peritus-types/src/ids/mod.rs", sha256 = "39afc414cb7ee3912215c1905addb73adcc17421b3c9e02f46f358f54abeab40", affected_packages = [{ package = "peritus-types", verification_class = "V" }], change_id = "PCR-0001" },
+  { source_file = "crates/foundation/peritus-types/src/ids/records.rs", sha256 = "811ea4ad601b5ffdcb78eb044e10bed522474eb9cb8187df4f1d099ff3bfdf30", affected_packages = [{ package = "peritus-types", verification_class = "V" }], change_id = "PCR-0001" },
+  { source_file = "crates/foundation/peritus-types/src/ids/review.rs", sha256 = "6347ef9632d39ca9a27ec076386c584b22366cbecd0cc63919d822b062e0937e", affected_packages = [{ package = "peritus-types", verification_class = "V" }], change_id = "PCR-0001" },
+  { source_file = "crates/foundation/peritus-types/src/lib.rs", sha256 = "37442eeb0f05db2a02819d188a0c06d444b255aba3f54131157fd0a8b86c576a", affected_packages = [{ package = "peritus-types", verification_class = "V" }], change_id = "PCR-0001" },
+  { source_file = "crates/foundation/peritus-types/src/numbers.rs", sha256 = "154b5704c6803c6e90ae71867dc2c9f1652da63a7e796d50ec17ceacb5e96cf9", affected_packages = [{ package = "peritus-types", verification_class = "V" }], change_id = "PCR-0001" },
+  { source_file = "crates/foundation/peritus-types/src/resource.rs", sha256 = "57fd0fc903546b747f072b295524cc2b0c0dfd0dc02b48493d3fdf0218f3d3ef", affected_packages = [{ package = "peritus-types", verification_class = "V" }], change_id = "PCR-0001" },
+  { source_file = "crates/foundation/peritus-types/tests/capability.rs", sha256 = "a5a1351a6af3249cc2f5e8b0d8886e9c31e02d3d03e72d6174a259335dfcf808", affected_packages = [{ package = "peritus-types", verification_class = "V" }], change_id = "PCR-0001" },
+  { source_file = "crates/foundation/peritus-types/tests/digest.rs", sha256 = "9874ec31fe317bdfdebc8fca71b7969863fb635dba932e068282e09af7b417a8", affected_packages = [{ package = "peritus-types", verification_class = "V" }], change_id = "PCR-0001" },
+  { source_file = "crates/foundation/peritus-types/tests/errors.rs", sha256 = "deea583114c076284f0ec0c958cc5b2573e13657e0c7229220de94242caebf3e", affected_packages = [{ package = "peritus-types", verification_class = "V" }], change_id = "PCR-0001" },
+  { source_file = "crates/foundation/peritus-types/tests/ids.rs", sha256 = "09899e302c701dbb39bf2dd07e7a6dabd4aa74c422351828e29cba62e7ad49ac", affected_packages = [{ package = "peritus-types", verification_class = "V" }], change_id = "PCR-0001" },
+  { source_file = "crates/foundation/peritus-types/tests/numbers.rs", sha256 = "4f01ab06e20304672de57fa7e2db08bb24fa04f053e2d3aae05fa657355e1d31", affected_packages = [{ package = "peritus-types", verification_class = "V" }], change_id = "PCR-0001" },
+  { source_file = "crates/foundation/peritus-types/tests/resource.rs", sha256 = "579caba2d4f201b285c1605fd91902d62a7a7ab935a3d7b4e7bcbadb0b77a973", affected_packages = [{ package = "peritus-types", verification_class = "V" }], change_id = "PCR-0001" },
+  { source_file = "rust-toolchain.toml", sha256 = "8e390d6a0838315f972690f46ef8bae8b7ecc9ee6c1ed70140ef852869c2482e", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }], change_id = "PCR-0003" },
+  { source_file = "toolchains.toml", sha256 = "517c4afb810d5973d2ec4ee835ff2c7de3387d5f85f0490b4e86c683a2a76587", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }], change_id = "PCR-0003" },
+  { source_file = "verification/actor-provenance.json", sha256 = "166b4b70e53b1cb41580889d9cd9277e1cd131b436a995d76cbfb5a16312a76e", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }], change_id = "PCR-0003" },
+  { source_file = "verification/actors.toml", sha256 = "e58492a697d7d2c7598a261ea95150ab3295334eaf3c55668794c39978d41966", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }], change_id = "PCR-0003" },
+  { source_file = "verification/exclusions.toml", sha256 = "d5131194dfc2732002592fb1f15c7ce7d895f371e602df9f0e882dd908da1528", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }], change_id = "PCR-0003" },
+  { source_file = "verification/obligations.toml", sha256 = "ced375c0f0ebd006335186825b0f0805a6b6d0846731e166cb49447f9a18bbb9", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }], change_id = "PCR-0003" },
+  { source_file = "verification/trust.toml", sha256 = "ad06d8af4fc5dc5f83e305453a1efc7bbe621a6be799edb1e999920461c2e958", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }], change_id = "PCR-0003" },
+]
+
+[[changes]]
+id = "PCR-0001"
+status = "approved"
+change_kinds = ["executable", "specification", "precondition", "postcondition", "proof"]
+rationale = "Establishes exact A1 identities for every peritus-types compilation source after independent review of the verified primitive domain types."
+impact = "Records the conservative review surface for executable behavior, specifications, contracts, and proof code; it does not claim that INV-001 through INV-022 is discharged."
+owner = "ACTOR-0001"
+reviewer = "ACTOR-0002"
+review_date = "2026-08-21"
+source_changes = [
+  { source_file = "crates/foundation/peritus-types/Cargo.toml", current = { sha256 = "cffb153a1083cbccadc505750df3d8f84b8773db39068b142211912b57485721", affected_packages = [{ package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "crates/foundation/peritus-types/src/capability.rs", current = { sha256 = "cf30502361ed8b0a20d1f7ce31d6b2ba86b5be80bd4e709faf25c07cebee6db4", affected_packages = [{ package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "crates/foundation/peritus-types/src/digest.rs", current = { sha256 = "6bf759758ed2e31cd9f431a2f20cccfd2c3115e506b4ed1b48fc354b02d4fd87", affected_packages = [{ package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "crates/foundation/peritus-types/src/errors.rs", current = { sha256 = "572112777cfb9a16317fbe37bce3eb5a9b427001601e7e111e0eb0a111d8e498", affected_packages = [{ package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "crates/foundation/peritus-types/src/ids/base.rs", current = { sha256 = "ef62bf85a306362df6cd5d9962fca2207863f055606c2b389662357570d74892", affected_packages = [{ package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "crates/foundation/peritus-types/src/ids/evolution.rs", current = { sha256 = "b5638967bddd998308566f3a8a21d04e0232b2172f562a1ac6e94a793011f7fb", affected_packages = [{ package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "crates/foundation/peritus-types/src/ids/execution.rs", current = { sha256 = "eedec80cc91226fa9bd244d14f1c418144c67f4602e2f17046ea107c3b4f4a90", affected_packages = [{ package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "crates/foundation/peritus-types/src/ids/lifecycle.rs", current = { sha256 = "14f610f70c556add42159ebfe859786a5bb6690e93f5fcbf63eaffe12f352ce4", affected_packages = [{ package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "crates/foundation/peritus-types/src/ids/mod.rs", current = { sha256 = "39afc414cb7ee3912215c1905addb73adcc17421b3c9e02f46f358f54abeab40", affected_packages = [{ package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "crates/foundation/peritus-types/src/ids/records.rs", current = { sha256 = "811ea4ad601b5ffdcb78eb044e10bed522474eb9cb8187df4f1d099ff3bfdf30", affected_packages = [{ package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "crates/foundation/peritus-types/src/ids/review.rs", current = { sha256 = "6347ef9632d39ca9a27ec076386c584b22366cbecd0cc63919d822b062e0937e", affected_packages = [{ package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "crates/foundation/peritus-types/src/lib.rs", current = { sha256 = "37442eeb0f05db2a02819d188a0c06d444b255aba3f54131157fd0a8b86c576a", affected_packages = [{ package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "crates/foundation/peritus-types/src/numbers.rs", current = { sha256 = "154b5704c6803c6e90ae71867dc2c9f1652da63a7e796d50ec17ceacb5e96cf9", affected_packages = [{ package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "crates/foundation/peritus-types/src/resource.rs", current = { sha256 = "57fd0fc903546b747f072b295524cc2b0c0dfd0dc02b48493d3fdf0218f3d3ef", affected_packages = [{ package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "crates/foundation/peritus-types/tests/capability.rs", current = { sha256 = "a5a1351a6af3249cc2f5e8b0d8886e9c31e02d3d03e72d6174a259335dfcf808", affected_packages = [{ package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "crates/foundation/peritus-types/tests/digest.rs", current = { sha256 = "9874ec31fe317bdfdebc8fca71b7969863fb635dba932e068282e09af7b417a8", affected_packages = [{ package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "crates/foundation/peritus-types/tests/errors.rs", current = { sha256 = "deea583114c076284f0ec0c958cc5b2573e13657e0c7229220de94242caebf3e", affected_packages = [{ package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "crates/foundation/peritus-types/tests/ids.rs", current = { sha256 = "09899e302c701dbb39bf2dd07e7a6dabd4aa74c422351828e29cba62e7ad49ac", affected_packages = [{ package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "crates/foundation/peritus-types/tests/numbers.rs", current = { sha256 = "4f01ab06e20304672de57fa7e2db08bb24fa04f053e2d3aae05fa657355e1d31", affected_packages = [{ package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "crates/foundation/peritus-types/tests/resource.rs", current = { sha256 = "579caba2d4f201b285c1605fd91902d62a7a7ab935a3d7b4e7bcbadb0b77a973", affected_packages = [{ package = "peritus-types", verification_class = "V" }] } },
+]
+evidence = [
+  { kind = "ordinary-test", owning_crate = "peritus-types", command = "cargo test --package peritus-types --all-targets --all-features --locked" },
+  { kind = "verus-verify", owning_crate = "peritus-types", command = "cargo verus verify --package peritus-types --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+]
+
+[[changes]]
+id = "PCR-0002"
+status = "approved"
+change_kinds = ["executable", "specification", "precondition", "postcondition", "proof"]
+rationale = "Establishes exact A1 identities for every peritus-tcb compilation source and its manifest-path policy API after independent review."
+impact = "Records the conservative review surface of the empty trusted-boundary anchor; the crate contains zero trusted constructs and grants no authority."
+owner = "ACTOR-0001"
+reviewer = "ACTOR-0002"
+review_date = "2026-08-21"
+source_changes = [
+  { source_file = "crates/foundation/peritus-tcb/Cargo.toml", current = { sha256 = "468c21b3cc82cfbcf388e02ad0d62c2b67d9b2eda5f8d65e77a78e36360301c2", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }] } },
+  { source_file = "crates/foundation/peritus-tcb/src/lib.rs", current = { sha256 = "4b9a1ff63aa13cb5b061cf2c0b8a538aea5eb73c8f3feb802820f3936644a8d6", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }] } },
+  { source_file = "crates/foundation/peritus-tcb/src/manifests.rs", current = { sha256 = "fc8c7b76df21135605d54c17aec7e813bec8886753112ea85cd9b1cb182e1d8b", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }] } },
+  { source_file = "crates/foundation/peritus-tcb/tests/manifest_paths.rs", current = { sha256 = "b6be001802daef2233e5da4ee64a42dcf71cbc738af98b67b6a6f6bdc9c7f774", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }] } },
+]
+evidence = [
+  { kind = "ordinary-test", owning_crate = "peritus-tcb", command = "cargo test --package peritus-tcb --all-targets --all-features --locked" },
+  { kind = "verus-verify", owning_crate = "peritus-tcb", command = "cargo verus verify --package peritus-tcb --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --rlimit 20" },
+]
+
+[[changes]]
+id = "PCR-0003"
+status = "approved"
+change_kinds = ["executable", "specification", "precondition", "postcondition", "proof"]
+rationale = "Establishes exact A1 identities for shared dependency, toolchain, architecture, content-addressed actor provenance, and verification-governance inputs after independent review."
+impact = "Changes to these inputs can affect both formal packages' executable semantics, verification mode, actor identity or independence, trust accounting, exclusions, or obligations; this conservative record makes no invariant-discharge claim."
+owner = "ACTOR-0001"
+reviewer = "ACTOR-0002"
+review_date = "2026-08-21"
+source_changes = [
+  { source_file = ".cargo/config.toml", current = { sha256 = "a3add930639abf20b0b9ddf63453504be5394906ef61a8a38c276d5d9c762f79", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "Cargo.lock", current = { sha256 = "a452c4c9bef51a34868feb2e4fbaee2acec0e8afbbd419c681eb40a90e69b0af", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "Cargo.toml", current = { sha256 = "2b6c276970c17f61c548cee2f7cfc916311bdf84a2055a6ff1d1d4614ea0c4f6", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "architecture.toml", current = { sha256 = "89e1daa34cc8919c6d655df9b366f298a3b14f1f98a3e12882a31d0dd8149808", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "rust-toolchain.toml", current = { sha256 = "8e390d6a0838315f972690f46ef8bae8b7ecc9ee6c1ed70140ef852869c2482e", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "toolchains.toml", current = { sha256 = "517c4afb810d5973d2ec4ee835ff2c7de3387d5f85f0490b4e86c683a2a76587", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "verification/actor-provenance.json", current = { sha256 = "166b4b70e53b1cb41580889d9cd9277e1cd131b436a995d76cbfb5a16312a76e", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "verification/actors.toml", current = { sha256 = "e58492a697d7d2c7598a261ea95150ab3295334eaf3c55668794c39978d41966", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "verification/exclusions.toml", current = { sha256 = "d5131194dfc2732002592fb1f15c7ce7d895f371e602df9f0e882dd908da1528", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "verification/obligations.toml", current = { sha256 = "ced375c0f0ebd006335186825b0f0805a6b6d0846731e166cb49447f9a18bbb9", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }] } },
+  { source_file = "verification/trust.toml", current = { sha256 = "ad06d8af4fc5dc5f83e305453a1efc7bbe621a6be799edb1e999920461c2e958", affected_packages = [{ package = "peritus-tcb", verification_class = "T" }, { package = "peritus-types", verification_class = "V" }] } },
+]
+evidence = [
+  { kind = "ordinary-test", owning_crate = "peritus-tcb", command = "cargo test --package peritus-tcb --all-targets --all-features --locked" },
+  { kind = "verus-verify", owning_crate = "peritus-tcb", command = "cargo verus verify --package peritus-tcb --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --rlimit 20" },
+  { kind = "ordinary-test", owning_crate = "peritus-types", command = "cargo test --package peritus-types --all-targets --all-features --locked" },
+  { kind = "verus-verify", owning_crate = "peritus-types", command = "cargo verus verify --package peritus-types --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+]

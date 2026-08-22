@@ -1,0 +1,6 @@
+# Schema contract: verification/README.md#trusted-construct-manifest
+# An entry represents exactly one source occurrence; broad allowlists are invalid.
+schema = "peritus.verification.trust"
+schema_version = 1
+baseline = "A1"
+entries = []

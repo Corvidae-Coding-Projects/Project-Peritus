@@ -4,6 +4,7 @@
     reason = "crate-scoped visibility documents xtask's internal module contract"
 )]
 
+pub(crate) mod api_contract;
 pub(crate) mod architecture;
 pub(crate) mod cli;
 pub(crate) mod error;

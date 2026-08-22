@@ -27,6 +27,8 @@ reproducibility:
     cargo run --locked --package xtask -- reproducibility-check
 trust:
     cargo run --locked --package xtask -- verify-trust
+ordinary-api:
+    cargo run --locked --package xtask -- ordinary-api-check
 licenses:
     cargo deny --locked check bans licenses sources
 deny:
@@ -34,10 +36,12 @@ deny:
 toolchain:
     cargo run --locked --package xtask -- toolchain-check
 verus-verify:
-    cargo verus verify --workspace --locked --check-toolchain
+    cargo verus verify --workspace --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --rlimit 20
+    cargo verus verify --package peritus-types --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
 verus-build:
-    cargo verus build --workspace --release --locked --check-toolchain
-gate-a: check deny toolchain verus-verify verus-build
+    cargo verus build --workspace --all-features --release --locked --check-toolchain --fwd-verus-args-to roots -- --rlimit 20
+    cargo verus build --package peritus-types --all-features --release --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+gate-a: check ordinary-api deny toolchain verus-verify verus-build
 ";
 
 #[test]
@@ -57,7 +61,7 @@ fn gutted_gate_with_opaque_shell_is_rejected() {
 fn ignored_failure_sigil_and_partial_deny_are_rejected() {
     let altered = CANONICAL
         .replace("cargo deny --locked check", "-cargo deny --locked check licenses")
-        .replace("gate-a: check deny", "gate-a: check");
+        .replace("gate-a: check ordinary-api deny", "gate-a: check");
     let diagnostics = validate(&altered);
     assert_message(&diagnostics, "failure-ignoring sigil");
     assert_message(&diagnostics, "exact canonical Cargo operation");
@@ -141,8 +145,8 @@ fn gate_and_check_dependencies_reject_reordering_and_duplicates() {
             "check: build fmt test doc-test clippy docs",
         ),
         CANONICAL.replace(
-            "gate-a: check deny toolchain verus-verify verus-build",
-            "gate-a: check deny deny toolchain verus-verify verus-build",
+            "gate-a: check ordinary-api deny toolchain verus-verify verus-build",
+            "gate-a: check ordinary-api deny deny toolchain verus-verify verus-build",
         ),
     ] {
         assert_ne!(altered, CANONICAL, "fixture mutation must apply");

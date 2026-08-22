@@ -14,7 +14,7 @@ license = "MIT"
 repository = "https://github.com/Corvidae-Coding-Projects/Project-Peritus"
 
 [workspace.dependencies]
-vstd = { git = "https://github.com/verus-lang/verus.git", rev = "92f466f247f45128c630d1c843fd6e27d2115587" }
+vstd = { version = "=0.0.0-2026-08-09-0044", git = "https://github.com/verus-lang/verus.git", rev = "92f466f247f45128c630d1c843fd6e27d2115587" }
 
 [workspace.metadata.peritus]
 architecture-policy = "architecture.toml"

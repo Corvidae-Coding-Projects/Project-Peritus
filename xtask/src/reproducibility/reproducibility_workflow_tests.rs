@@ -62,6 +62,7 @@ jobs:
     assert_message(&diagnostics, "does not install RUST_VERSION");
     assert_message(&diagnostics, "does not download and verify the exact pinned Verus archive");
     assert_message(&diagnostics, "does not run the direct locked xtask toolchain check");
+    assert_message(&diagnostics, "does not run the direct ordinary-Rust formal API contract check");
     assert_message(&diagnostics, "does not run the full locked Verus workspace verification");
     assert_message(&diagnostics, "does not run the locked verified release build");
 }
@@ -118,8 +119,8 @@ fn required_steps_must_be_ordered_unconditional_and_failure_propagating() {
             "      - name: Verify the full applicable workspace\n        background: true\n        id: verify\n        run:",
         ),
         canonical_ci().replace(
-            "cargo verus verify --workspace --locked --check-toolchain",
-            "cargo verus verify --workspace --locked --check-toolchain &",
+            "cargo verus verify --workspace --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --rlimit 20",
+            "cargo verus verify --workspace --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --rlimit 20 &",
         ),
     ] {
         assert_ne!(altered, canonical_ci(), "adversarial fixture mutation must change CI");

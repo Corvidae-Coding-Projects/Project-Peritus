@@ -5,7 +5,12 @@ use serde::Deserialize;
 use std::fs;
 use std::path::Path;
 
+mod actionlint_policy;
+mod deny_policy;
+mod evidence_command;
+mod github_ruleset_policy;
 mod just_policy;
+mod policy_file;
 #[cfg(test)]
 mod reproducibility_ci_control_tests;
 #[cfg(test)]
@@ -18,6 +23,8 @@ mod reproducibility_dependency_tests;
 #[cfg(test)]
 mod reproducibility_executable_tests;
 #[cfg(test)]
+mod reproducibility_governance_tests;
+#[cfg(test)]
 mod reproducibility_just_tests;
 #[cfg(test)]
 mod reproducibility_manifest_tests;
@@ -29,15 +36,22 @@ mod reproducibility_workflow_tests;
 mod reproducibility_workspace;
 #[cfg(test)]
 mod reproducibility_workspace_tests;
+mod verification_commands;
+mod verus_commands;
+mod workflow_actionlint;
 mod workflow_ci;
 mod workflow_command_policy;
 mod workflow_command_syntax;
 mod workflow_commands;
 mod workflow_files;
+mod workflow_governance;
+mod workflow_governance_jobs;
 mod workflow_local;
 mod workflow_pins;
 mod workflow_policy;
 mod workflow_run;
+
+pub(crate) use evidence_command::is_exact_package_gate as is_exact_evidence_command;
 
 const EXPECTED_RUST: &str = "1.97.1";
 const EXPECTED_VERUS: &str = "0.2026.08.09.92f466f";
@@ -63,8 +77,15 @@ pub(crate) fn check(root: &Path, tools: &ToolchainPolicy) -> Result<usize, Xtask
     let mut diagnostics = Vec::new();
     validate_toolchain_policy(tools, &mut diagnostics);
     validate_rust_toolchain(root, &mut diagnostics)?;
+    actionlint_policy::validate(root, &mut diagnostics);
+    deny_policy::validate(root, &mut diagnostics)?;
+    github_ruleset_policy::validate(root, &mut diagnostics);
     reproducibility_workspace::validate(root, &mut diagnostics)?;
     let cargo = metadata::cargo_metadata(root)?;
+    let architecture = metadata::architecture_policy(root)?;
+    verification_commands::validate(&architecture, &mut diagnostics);
+    let architecture = metadata::architecture_policy(root)?;
+    diagnostics.extend(crate::architecture::validate_verus_opt_ins(root, &architecture, &cargo));
     reproducibility_manifests::validate(root, &cargo, &mut diagnostics)?;
     reproducibility_dependencies::validate(root, &cargo, &mut diagnostics);
     validate_lockfile(root, &mut diagnostics)?;
@@ -130,8 +151,27 @@ fn validate_rust_toolchain(
     root: &Path,
     diagnostics: &mut Vec<Diagnostic>,
 ) -> Result<(), XtaskError> {
-    let path = root.join("rust-toolchain.toml");
-    let manifest: RustToolchain = metadata::read_toml(&path)?;
+    if root.join("rust-toolchain").symlink_metadata().is_ok() {
+        diagnostics.push(Diagnostic::at(
+            "rust-toolchain",
+            "legacy rust-toolchain file can shadow the reviewed rust-toolchain.toml selection",
+            "remove rust-toolchain; retain only the exact regular rust-toolchain.toml pin and explicit CI RUSTUP_TOOLCHAIN",
+        ));
+    }
+    let relative = Path::new("rust-toolchain.toml");
+    let Some(contents) = policy_file::read_regular(
+        root,
+        relative,
+        "Rust toolchain policy is missing, non-regular, or symbolic",
+        "Rust toolchain policy",
+        "restore the reviewed regular rust-toolchain.toml file",
+        diagnostics,
+    ) else {
+        return Ok(());
+    };
+    let path = root.join(relative);
+    let manifest: RustToolchain =
+        toml::from_str(&contents).map_err(|error| XtaskError::parse_policy(&path, error))?;
     if manifest.toolchain.channel != EXPECTED_RUST
         || manifest.toolchain.profile != "minimal"
         || !manifest.toolchain.components.iter().any(|component| component == "clippy")

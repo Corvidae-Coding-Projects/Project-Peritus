@@ -47,12 +47,25 @@ The root `.cargo/config.toml` is the only repository Cargo configuration. Its co
 checked, including the locked `cargo xtask` alias; legacy and nested Cargo configurations are
 rejected so member-directory invocation cannot silently replace a gate. A non-Cargo bootstrap job
 checks the reviewed configuration digest before any Cargo job runs, and gate recipes invoke the
-xtask package through Cargo's built-in `run` command rather than trusting the alias. The Just recipe
-graph and canonical CI jobs are validated as execution structures, including triggers, runners,
-step order, shell/failure semantics, and the full advisory/license/source gate—not merely searched
-for command text. Authority to approve a simultaneous workflow-and-digest change remains an
-external repository ruleset/review responsibility; an in-repository checker cannot grant itself
-that authority.
+xtask package through Cargo's built-in `run` command rather than trusting the alias. A legacy
+`rust-toolchain` selector, a symbolic `rust-toolchain.toml`, and any repository Cargo configuration
+outside the exact regular root file are rejected. The Just recipe graph and canonical CI jobs are
+validated as execution structures, including triggers, runners, step order, shell/failure
+semantics, and the full advisory/license/source gate—not merely searched for command text.
+
+The checked `.github/workflows/formal-governance.yml` emits the stable `Gate A` status required by
+the GitHub Team repository ruleset. Candidate-code-executing Rust operations remain isolated into
+clean matrix jobs. A final always-running aggregation job fails unless policy, workflow lint, every
+Rust matrix entry, supply-chain policy, and Verus/no-cheating verification and builds all succeed.
+Every checkout is explicit and credential-free, every Cargo-bearing job verifies the reviewed
+Cargo-configuration digest first, and workflow lint uses a separately digest-checked actionlint
+archive.
+
+The repository locks both the complete workflow and the exact repository-ruleset payload template,
+but cannot attest to live GitHub state. Gate A therefore also requires the activation and API
+evidence in [GitHub governance](github-governance.md). GitHub Team cannot pin a required workflow to
+an immutable reviewed revision, so the current status-check system remains candidate-controlled;
+the stronger Enterprise authority is an explicit future upgrade rather than a current claim.
 
 ## Compilation-input trust discovery
 
@@ -61,6 +74,25 @@ A0 seeds trust scanning from every workspace Cargo target, follows direct litera
 without controlled ownership, or symbolic-link inputs. The Rust token `include` is reserved for
 direct literal `include!` declarations. Repository `macro_rules!` definitions and workspace
 procedural-macro targets are rejected because lexical trust discovery cannot soundly enumerate
-macro-synthesized compilation inputs. External procedural macros remain controlled by exact pinned
-dependencies and full verification; A1 adds the semantic TCB manifest and trust-occurrence
-reconciliation rather than claiming expansion-complete lexical analysis.
+macro-synthesized compilation inputs. External executable preprocessing is separately
+fail-closed. Full locked Cargo metadata is searched for every dependency build-script and
+procedural-macro target; only these exact package identities are admitted:
+
+- build scripts: `libc@0.2.189`, `proc-macro2@1.0.107`, `quote@1.0.47`, `serde@1.0.229`,
+  `serde_core@1.0.229`, `serde_json@1.0.149`, `zmij@1.0.23`, and the pinned Verus revision's
+  `verus_prettyplease@0.0.0-2026-08-09-0044`, `verus_syn@0.0.0-2026-08-02-0125`, and
+  `vstd@0.0.0-2026-08-09-0044`;
+- procedural macros: `serde_derive@1.0.229` and the pinned Verus revision's
+  `verus_builtin_macros@0.0.0-2026-08-09-0044` and
+  `verus_state_machines_macros@0.0.0-2026-08-02-0125`.
+
+The executable identity includes registry or immutable Git source, package name, and exact
+version—not just the readable labels above. Adding or changing one requires source review,
+lockfile and allowlist updates, proof-impact review where formal semantics change, and a clean
+Gate A run. A1 then adds semantic TCB manifests and trust-occurrence reconciliation rather than
+claiming expansion-complete lexical analysis.
+
+A1 formal packages additionally reject `env!`, `include_str!`, and `include_bytes!`. Those macros
+can inject environment or arbitrary data into executable and specification semantics without
+creating a Rust compilation-source edge. Prohibiting them keeps every admitted formal input inside
+the exact source, package-manifest, workspace, toolchain, lockfile, and governance fingerprints.

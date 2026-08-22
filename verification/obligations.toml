@@ -1,0 +1,6 @@
+# Schema contract: verification/README.md#proof-obligation-manifest
+# Absence means untracked, never discharged. A1 makes no INV-001..INV-022 discharge claim.
+schema = "peritus.verification.obligations"
+schema_version = 1
+baseline = "A1"
+entries = []
