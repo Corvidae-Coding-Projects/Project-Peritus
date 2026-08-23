@@ -1,6 +1,6 @@
 {
   "next_display_id": 10,
-  "next_comment_id": 157,
+  "next_comment_id": 158,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "2b288a30-b5b1-4452-81bd-20950bebd2d3": 9,
@@ -75,7 +75,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-23T09:26:36.193516281Z",
-      "updated_at": "2026-08-23T11:42:40.188656515Z",
+      "updated_at": "2026-08-23T11:42:44.604505118Z",
       "labels": [
         "feature"
       ],
@@ -133,6 +133,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA1nqs0tetoqCrUSfW/DDgqClhjAYPRc3GR21Z5DthL0nsjmVbu/qkvZ8lcq+X17rrOUX/Hl3BAxgWd1HFYkIUBQ=="
+        },
+        "e703b8fe-0268-4aa2-8dcc-8734a5e6c8f6": {
+          "display_id": 157,
+          "author": "6ME5",
+          "content": "[action] Completed C0 functional integration and full product-test pass; closing ordinary-API policy before Gate A and delivery.",
+          "created_at": "2026-08-23T11:42:44.601784058Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAar16GPXNVONVCmA1pvPiPyAmieXtAyrLG1AwxhnzWpRcR36V5sQqekz74R+tSnwswhm7vpr3Z6WoN5/Pbgf5CQ=="
         },
         "f5a945b1-d0ee-4f3e-829f-d814bf49c403": {
           "display_id": 150,
@@ -1587,8 +1596,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-23T11:42:40.188656515Z",
+    "timestamp": "2026-08-23T11:42:44.604505118Z",
     "agent_id": "6ME5",
-    "agent_seq": 207
+    "agent_seq": 208
   }
 }
