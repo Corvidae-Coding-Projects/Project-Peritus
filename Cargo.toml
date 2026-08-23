@@ -4,6 +4,8 @@ members = [
     "crates/app/testing/peritus-test-support",
     "crates/foundation/peritus-budget",
     "crates/foundation/peritus-policy",
+    "crates/foundation/peritus-quality-policy",
+    "crates/foundation/peritus-spec",
     "crates/foundation/peritus-tcb",
     "crates/foundation/peritus-types",
     "crates/state/peritus-approval",

@@ -131,7 +131,7 @@ mod tests {
     }
 
     #[test]
-    fn canonical_policy_reserves_every_b1_downstream_contract() {
+    fn canonical_policy_reserves_every_declared_downstream_contract() {
         let policy: ArchitecturePolicy = toml::from_str(include_str!("../../../architecture.toml"))
             .expect("canonical architecture policy must parse");
         let actual: Vec<_> =
@@ -153,6 +153,11 @@ mod tests {
                 "REF-C4-B1-AUTHORITY-GATE",
                 "REF-E0-B1-POLICY-ACTIVATION",
                 "REF-B2-B1-CONTRACT-REVISION",
+                "REF-B0-B2-CURRENT-EVIDENCE",
+                "REF-B3-B2-CONTRACT-BYTES",
+                "REF-C0-B2-EVIDENCE-PROVENANCE",
+                "REF-D1-B2-GATE-OBSERVATION",
+                "REF-D2-B2-REVIEW-OBSERVATION",
                 "REF-B0-B1-REVISION-FRESHNESS",
                 "REF-B0-B1-BUDGET-CEILING",
                 "REF-C0-B1-CLOCK-EPOCH",
