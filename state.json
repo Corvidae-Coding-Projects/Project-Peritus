@@ -1,6 +1,6 @@
 {
   "next_display_id": 6,
-  "next_comment_id": 115,
+  "next_comment_id": 116,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -642,7 +642,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-22T16:02:46.854617936Z",
-      "updated_at": "2026-08-23T02:37:45.144649846Z",
+      "updated_at": "2026-08-23T02:45:28.103370837Z",
       "labels": [
         "feature"
       ],
@@ -1132,14 +1132,23 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABASdapoUuuis2p9yliqJLK/WTiycs+D799tPEogNYuGMTWf/8A3sBSri76bG2RZji6HpON9e+X4mNm0n2DnkaWCw=="
+        },
+        "ff6c71ee-acec-412c-a7a8-2ae43d782a78": {
+          "display_id": 115,
+          "author": "6ME5",
+          "content": "Committed a01dbf4 (fix(xtask): normalize review inventory paths) after public PR #3 exposed a Windows-only failure. Root cause: native backslash paths were compared directly with slash-delimited manifest paths. The validator now encodes normal path components in repository-manifest form and retains fail-closed handling for invalid/non-UTF-8 paths. Verification: both focused regressions, 242 xtask tests, 3 CLI tests, strict Clippy, rustfmt, cargo xtask all, and git diff checks passed. Commit is SSH-signed.",
+          "created_at": "2026-08-23T02:45:28.100824163Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjsNgAIoKT51gx7YW11QyolFTFoSW6iuyK/Gl07JjZGxoBjFpW2fNtpGTf/s91mJFffVdzuSd/X8IUkwp5/gGCQ=="
         }
       }
     }
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-23T02:37:45.144649846Z",
+    "timestamp": "2026-08-23T02:45:28.103370837Z",
     "agent_id": "6ME5",
-    "agent_seq": 145
+    "agent_seq": 146
   }
 }
