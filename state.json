@@ -1,6 +1,6 @@
 {
   "next_display_id": 6,
-  "next_comment_id": 104,
+  "next_comment_id": 105,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -642,11 +642,20 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-22T16:02:46.854617936Z",
-      "updated_at": "2026-08-23T01:46:54.350866013Z",
+      "updated_at": "2026-08-23T02:11:59.141097213Z",
       "labels": [
         "feature"
       ],
       "comments": {
+        "03bd34a6-1f1c-44f4-bf24-f52a5b4814a7": {
+          "display_id": 104,
+          "author": "6ME5",
+          "content": "[verification] B1 executable integration gates are green on the post-checkpoint diff: cargo xtask all (9 packages, 527 sources, 375 formal-boundary files, 910 ordinary-safe entry points, 527 trust-scanned files, 17 pinned actions); full ordinary fmt/build/workspace tests/doctests/Clippy -D warnings/rustdoc -D warnings; strict Verus verify and release build with policy 501/0, budget 442/0, leases 418/0, approval 323/0. Explicit cargo xtask verify-trust remains separately red with 379 proof-impact inventory/review items because hosted protected-runner authorization was explicitly deferred; local aggregate does not claim that authorization.",
+          "created_at": "2026-08-23T02:11:59.138463154Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAa0HSIn7Ca/hMTJV/sLOU7R+Llmy1dJ3HbI2JuMg256xVRAHjPd3Nc+MFnHfAjX3Db8meqiQj1V/zKx0AZwFBCw=="
+        },
         "12f0395f-a2e1-4335-bebc-698c696572e3": {
           "display_id": 89,
           "author": "6ME5",
@@ -1039,8 +1048,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-23T01:46:54.350866013Z",
+    "timestamp": "2026-08-23T02:11:59.141097213Z",
     "agent_id": "6ME5",
-    "agent_seq": 134
+    "agent_seq": 135
   }
 }
