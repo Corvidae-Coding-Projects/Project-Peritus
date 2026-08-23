@@ -1,6 +1,6 @@
 {
   "next_display_id": 12,
-  "next_comment_id": 176,
+  "next_comment_id": 177,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "2b288a30-b5b1-4452-81bd-20950bebd2d3": 9,
@@ -1453,11 +1453,20 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-08-23T21:27:54.649913615Z",
-      "updated_at": "2026-08-23T21:50:20.688013780Z",
+      "updated_at": "2026-08-23T21:50:25.040075180Z",
       "labels": [
         "feature"
       ],
       "comments": {
+        "065a371d-e652-4571-a782-3ec081bc906c": {
+          "display_id": 176,
+          "author": "6ME5",
+          "content": "C2 design is frozen in .design/c2-process-sandbox-backplane.md. Parallel lanes own peritus-process, peritus-sandbox, and A2 process/sandbox conformance; shared Cargo/architecture/CI/Justfile/xtask registration and the C2 operator guide are underway.",
+          "created_at": "2026-08-23T21:50:25.037002466Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAlCVRSZFrnt0GN79x+/d4SIN8nQahXOU4VImMyw2Vmk/1j/KLyDk9H+Hi9++SlhcRBR+Z/xXJGg28w167d2DRCw=="
+        },
         "08ea8241-588f-44dc-a572-ab88b3ad8aa5": {
           "display_id": 175,
           "author": "6ME5",
@@ -1792,8 +1801,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-23T21:50:20.688013780Z",
+    "timestamp": "2026-08-23T21:50:25.040075180Z",
     "agent_id": "6ME5",
-    "agent_seq": 236
+    "agent_seq": 237
   }
 }
