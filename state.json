@@ -1,6 +1,6 @@
 {
   "next_display_id": 9,
-  "next_comment_id": 145,
+  "next_comment_id": 146,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -1424,7 +1424,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-23T07:57:26.582505889Z",
-      "updated_at": "2026-08-23T08:31:27.636460942Z",
+      "updated_at": "2026-08-23T08:31:32.128384623Z",
       "labels": [
         "feature"
       ],
@@ -1437,6 +1437,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAeoSZeZQlY0rb6YD2AGypCiNwpq9c6cwITF36Omn08z/6XvA4C0f+sfdDZ9XOjxZnztLtu6jWmkQc0fwZ1WQMDA=="
+        },
+        "81f50a27-92d9-4ec9-acd0-1bfd0bd03134": {
+          "display_id": 145,
+          "author": "6ME5",
+          "content": "Protocol core now covers all B0 lifecycle variants, full B1 budget commands/snapshots/receipts/errors, checked policy definitions, complete action and amendment digest bindings, and complete B2 acceptance contracts. Focused protocol tests are green.",
+          "created_at": "2026-08-23T08:31:32.124827499Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAtnytsjFZia5ieWkHDn3mgy5LLeD0yEWKUt0t8iJD7j4tk8BRDZldKlLxp0CZ6JpL+ltK7V1544cZ3onBRRsCDg=="
         },
         "a2b74d1d-6222-4e3e-87e3-651a8b756bb7": {
           "display_id": 142,
@@ -1461,8 +1470,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-23T08:31:27.636460942Z",
+    "timestamp": "2026-08-23T08:31:32.128384623Z",
     "agent_id": "6ME5",
-    "agent_seq": 190
+    "agent_seq": 191
   }
 }
