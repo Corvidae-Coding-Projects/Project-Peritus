@@ -1,8 +1,9 @@
 {
-  "next_display_id": 9,
+  "next_display_id": 10,
   "next_comment_id": 150,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
+    "2b288a30-b5b1-4452-81bd-20950bebd2d3": 9,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
     "5542a0ec-9091-4c82-b341-df0b119bc0b1": 3,
     "941c4cb4-2cc2-46e7-b156-262ce7712d9f": 4,
@@ -59,6 +60,17 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA0i6WkXNwDIJADSIg7tyklrdxZKOPc9BWrFyupQ4+cqi9Jf5SD+lK6xoINwqKR1k7sV1n1ORDAVHToVQw9wsxCw=="
         }
       }
+    },
+    "2b288a30-b5b1-4452-81bd-20950bebd2d3": {
+      "uuid": "2b288a30-b5b1-4452-81bd-20950bebd2d3",
+      "display_id": 9,
+      "title": "Implement C0 journal, projections, artifacts, migrations, and evidence",
+      "description": "Complete the production C0 persistence slice: transactional SQLite journal and durable authority receipts; content-addressed artifact storage; deterministic projections and replay; forward-only migrations and recovery; revision-bound evidence; all five C0 refinements; A2 conformance, architecture, CI, documentation, and realistic crash/restart evidence.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "6ME5",
+      "created_at": "2026-08-23T09:26:36.193516281Z",
+      "updated_at": "2026-08-23T09:26:36.193516281Z"
     },
     "3b238879-13c9-48ae-9b8e-1009717114b8": {
       "uuid": "3b238879-13c9-48ae-9b8e-1009717114b8",
@@ -1502,8 +1514,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-23T09:14:21.452424842Z",
+    "timestamp": "2026-08-23T09:26:36.193516281Z",
     "agent_id": "6ME5",
-    "agent_seq": 197
+    "agent_seq": 198
   }
 }
