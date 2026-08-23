@@ -1,0 +1,34 @@
+[package]
+name = "peritus-protocol"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+description = "Stable canonical domain protocol for Peritus"
+
+[dependencies]
+peritus-budget = { version = "=0.0.0", path = "../peritus-budget" }
+peritus-codec = { version = "=0.0.0", path = "../peritus-codec" }
+peritus-kernel = { version = "=0.0.0", path = "../peritus-kernel" }
+peritus-policy = { version = "=0.0.0", path = "../peritus-policy" }
+peritus-quality-policy = { version = "=0.0.0", path = "../peritus-quality-policy" }
+peritus-spec = { version = "=0.0.0", path = "../peritus-spec" }
+peritus-types = { version = "=0.0.0", path = "../peritus-types" }
+vstd.workspace = true
+
+[dev-dependencies]
+peritus-test-support = { version = "=0.0.0", path = "../../app/testing/peritus-test-support" }
+
+[package.metadata.peritus]
+owner = "B3"
+layer = "foundation"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true
+
+[lints]
+workspace = true

@@ -1,0 +1,45 @@
+//! Stable message-family registry.
+
+/// One immutable canonical frame family.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct MessageFamily {
+    /// Nonzero frame-header family tag.
+    pub tag: u16,
+    /// Stable kebab-case family name.
+    pub name: &'static str,
+    /// Current nonzero schema version.
+    pub schema_version: u16,
+    /// Whether decoded values remain inert records rather than reconstructible requests.
+    pub inert_only: bool,
+}
+
+/// Complete B3 version-one family registry, strictly ordered by tag.
+pub const FAMILIES: &[MessageFamily] = &[
+    MessageFamily { tag: 1, name: "kernel-command", schema_version: 1, inert_only: false },
+    MessageFamily { tag: 2, name: "command-envelope", schema_version: 1, inert_only: false },
+    MessageFamily { tag: 3, name: "kernel-event", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 4, name: "kernel-error", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 5, name: "lifecycle-phase", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 10, name: "budget-command", schema_version: 1, inert_only: false },
+    MessageFamily { tag: 11, name: "budget-amounts", schema_version: 1, inert_only: false },
+    MessageFamily { tag: 12, name: "budget-snapshot", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 13, name: "reservation-snapshot", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 14, name: "budget-receipt", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 15, name: "budget-error", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 20, name: "action-intent", schema_version: 1, inert_only: false },
+    MessageFamily { tag: 21, name: "policy-definition", schema_version: 1, inert_only: false },
+    MessageFamily {
+        tag: 22,
+        name: "policy-amendment-content",
+        schema_version: 1,
+        inert_only: true,
+    },
+    MessageFamily { tag: 23, name: "policy-amendment", schema_version: 1, inert_only: false },
+    MessageFamily {
+        tag: 30,
+        name: "acceptance-contract-content",
+        schema_version: 1,
+        inert_only: true,
+    },
+    MessageFamily { tag: 31, name: "acceptance-contract", schema_version: 1, inert_only: false },
+];

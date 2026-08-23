@@ -140,7 +140,6 @@ mod tests {
             actual,
             [
                 "REF-C0-B1-COMMIT-ONCE",
-                "REF-B3-B1-DIGEST-BYTES",
                 "REF-C1-B1-RESOURCE-IDENTITY",
                 "REF-C1-B1-RECONCILE-SAFETY",
                 "REF-C2-B1-HOLDER-QUIESCENCE",
@@ -154,7 +153,6 @@ mod tests {
                 "REF-E0-B1-POLICY-ACTIVATION",
                 "REF-B2-B1-CONTRACT-REVISION",
                 "REF-B0-B2-CURRENT-EVIDENCE",
-                "REF-B3-B2-CONTRACT-BYTES",
                 "REF-C0-B2-EVIDENCE-PROVENANCE",
                 "REF-D1-B2-GATE-OBSERVATION",
                 "REF-D2-B2-REVIEW-OBSERVATION",
@@ -162,7 +160,6 @@ mod tests {
                 "REF-B0-B1-BUDGET-CEILING",
                 "REF-C0-B1-CLOCK-EPOCH",
                 "REF-G0-B1-STARTUP-FENCING",
-                "REF-B3-B0-LIFECYCLE-BYTES",
                 "REF-C0-B0-DURABLE-TRANSITION",
                 "REF-E0-B0-CURRENT-LIFECYCLE",
             ]

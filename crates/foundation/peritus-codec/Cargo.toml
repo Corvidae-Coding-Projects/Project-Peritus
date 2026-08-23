@@ -1,0 +1,28 @@
+[package]
+name = "peritus-codec"
+description = "Canonical versioned framing and bounded binary decoding for Peritus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["codec", "protocol", "canonical", "formal-verification"]
+categories = ["encoding", "data-structures"]
+
+[dependencies]
+peritus-types = { version = "=0.0.0", path = "../peritus-types" }
+sha2.workspace = true
+vstd.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.peritus]
+owner = "B3"
+layer = "foundation"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true

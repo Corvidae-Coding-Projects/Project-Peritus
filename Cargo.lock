@@ -212,6 +212,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "peritus-codec"
+version = "0.0.0"
+dependencies = [
+ "peritus-types",
+ "sha2",
+ "vstd",
+]
+
+[[package]]
 name = "peritus-conformance"
 version = "0.0.0"
 
@@ -242,6 +251,21 @@ dependencies = [
 name = "peritus-policy"
 version = "0.0.0"
 dependencies = [
+ "peritus-test-support",
+ "peritus-types",
+ "vstd",
+]
+
+[[package]]
+name = "peritus-protocol"
+version = "0.0.0"
+dependencies = [
+ "peritus-budget",
+ "peritus-codec",
+ "peritus-kernel",
+ "peritus-policy",
+ "peritus-quality-policy",
+ "peritus-spec",
  "peritus-test-support",
  "peritus-types",
  "vstd",
