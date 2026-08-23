@@ -1,6 +1,6 @@
 {
   "next_display_id": 10,
-  "next_comment_id": 153,
+  "next_comment_id": 154,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "2b288a30-b5b1-4452-81bd-20950bebd2d3": 9,
@@ -75,7 +75,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-23T09:26:36.193516281Z",
-      "updated_at": "2026-08-23T10:07:11.649522271Z",
+      "updated_at": "2026-08-23T10:07:15.791229986Z",
       "labels": [
         "feature"
       ],
@@ -88,6 +88,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAfH6jpkaxbGEiXEXm8lPjLoCCVbwSWPagu+prHGNkDTQ+CAgeo/WDU3b0c9cDQrQXcq1bfj1CDzP9UQYvNd+pDQ=="
+        },
+        "821a0ba0-94e0-40e4-b3a3-fd13d092c597": {
+          "display_id": 153,
+          "author": "6ME5",
+          "content": "Initial C0 storage pair is complete and frozen: journal (8 tests, 9 Verus bodies) and artifact store (15 tests, 3 Verus bodies) now share one SQLite database/schema so artifact-reference checks/inserts are atomic with journal append. Starting peritus-projection and peritus-migrations against those interfaces.",
+          "created_at": "2026-08-23T10:07:15.788000346Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAla8mOm0CEWhFS/iCfLIlACv708mSWqjl27R20RocJRdcDt0a1N/WGwTQChvgxY/eUMZqTiceNQscbkFT7h9iBA=="
         },
         "ca8a05b2-135b-47ad-9cce-5c9139b1b111": {
           "display_id": 152,
@@ -1551,8 +1560,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-23T10:07:11.649522271Z",
+    "timestamp": "2026-08-23T10:07:15.791229986Z",
     "agent_id": "6ME5",
-    "agent_seq": 203
+    "agent_seq": 204
   }
 }
