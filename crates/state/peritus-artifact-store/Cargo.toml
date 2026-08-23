@@ -1,0 +1,34 @@
+[package]
+name = "peritus-artifact-store"
+description = "Streaming content-addressed artifact storage for Peritus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["artifacts", "content-addressed", "storage", "formal-verification"]
+categories = ["filesystem", "data-structures"]
+
+[dependencies]
+fs4.workspace = true
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+rusqlite.workspace = true
+sha2.workspace = true
+vstd.workspace = true
+
+[dev-dependencies]
+peritus-test-support = { version = "=0.0.0", path = "../../app/testing/peritus-test-support" }
+tempfile.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.peritus]
+owner = "C0"
+layer = "state"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true

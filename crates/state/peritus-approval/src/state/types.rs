@@ -1,7 +1,7 @@
 //! Private representation and public unprivileged lifecycle projections.
 
 use peritus_policy::AuthorityInstant;
-use peritus_types::{CommandId, Generation, RevisionNumber};
+use peritus_types::{CommandId, Generation, RevisionNumber, Sha256Digest};
 use vstd::prelude::*;
 
 verus! {
@@ -12,6 +12,7 @@ pub(super) struct Resolution {
     pub(super) command_id: CommandId,
     pub(super) choice: crate::ApprovalChoice,
     pub(super) registry_revision: RevisionNumber,
+    pub(super) registry_digest: Sha256Digest,
     pub(super) credential_generation: Generation,
     pub(super) valid_until: AuthorityInstant,
 }
@@ -35,6 +36,7 @@ pub struct ApprovalResolutionFacts {
     command_id: CommandId,
     choice: crate::ApprovalChoice,
     registry_revision: RevisionNumber,
+    registry_digest: Sha256Digest,
     credential_generation: Generation,
     valid_until: AuthorityInstant,
 }
@@ -55,6 +57,10 @@ impl ApprovalResolutionFacts {
     /// Returns the supplied registry revision used for authentication.
     #[must_use]
     pub const fn registry_revision(&self) -> RevisionNumber { self.registry_revision }
+
+    /// Returns the digest of the exact registry snapshot used for authentication.
+    #[must_use]
+    pub const fn registry_digest(&self) -> Sha256Digest { self.registry_digest }
 
     /// Returns the authenticated credential generation.
     #[must_use]
@@ -90,6 +96,7 @@ impl ApprovalAggregate {
                 command_id: value.command_id,
                 choice: value.choice,
                 registry_revision: value.registry_revision,
+                registry_digest: value.registry_digest,
                 credential_generation: value.credential_generation,
                 valid_until: value.valid_until,
             }),
@@ -141,6 +148,7 @@ impl ApprovalAggregate {
                 command_id: value.command_id,
                 choice: value.choice,
                 registry_revision: value.registry_revision,
+                registry_digest: value.registry_digest,
                 credential_generation: value.credential_generation,
                 valid_until: value.valid_until,
             }),

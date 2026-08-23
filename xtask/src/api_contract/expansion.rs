@@ -3,10 +3,21 @@
 use super::violation::{Violation, ViolationKind};
 use crate::source::reference_lexer::{Token, TokenKind};
 
-const SIMPLE_ATTRIBUTES: &[&str] =
-    &["allow", "auto", "cfg", "doc", "must_use", "no_std", "path", "test", "trigger", "verus_spec"];
+const SIMPLE_ATTRIBUTES: &[&str] = &[
+    "allow",
+    "auto",
+    "cfg",
+    "doc",
+    "must_use",
+    "no_std",
+    "non_exhaustive",
+    "path",
+    "test",
+    "trigger",
+    "verus_spec",
+];
 const BUILTIN_DERIVES: &[&str] =
-    &["Clone", "Copy", "Debug", "Eq", "Hash", "Ord", "PartialEq", "PartialOrd"];
+    &["Clone", "Copy", "Debug", "Default", "Eq", "Hash", "Ord", "PartialEq", "PartialOrd"];
 const MODELED_MACROS: &[&str] = &[
     "assert",
     "assert_eq",
@@ -15,14 +26,20 @@ const MODELED_MACROS: &[&str] = &[
     "include",
     "matches",
     "panic",
+    "params",
     "proof",
     "vec",
     "verus",
+    "write",
 ];
 const FORBIDDEN_EXPANSION_NAMES: &[&str] = &["state_machine", "tokenized_state_machine"];
 
 pub(super) fn violations(tokens: &[Token]) -> Vec<Violation> {
     let local_modules = local_module_names(tokens);
+    let params_imported = tokens
+        .iter()
+        .enumerate()
+        .any(|(index, token)| identifier_is(token, "use") && audited_params_import(tokens, index));
     let mut violations = Vec::new();
     let mut cursor = 0;
     while cursor < tokens.len() {
@@ -48,7 +65,7 @@ pub(super) fn violations(tokens: &[Token]) -> Vec<Violation> {
                 continue;
             }
         }
-        inspect_macro(tokens, cursor, &mut violations);
+        inspect_macro(tokens, cursor, params_imported, &mut violations);
         cursor += 1;
     }
     violations
@@ -94,8 +111,13 @@ fn builtin_derive_list(tokens: &[Token]) -> bool {
         && values.len() % 2 == 1
 }
 
-fn inspect_macro(tokens: &[Token], cursor: usize, violations: &mut Vec<Violation>) {
-    let Some(name) = identifier(&tokens[cursor]) else { return };
+fn inspect_macro(
+    tokens: &[Token],
+    cursor: usize,
+    params_imported: bool,
+    violations: &mut Vec<Violation>,
+) {
+    let TokenKind::Identifier(name, raw) = &tokens[cursor].kind else { return };
     if !tokens.get(cursor + 1).is_some_and(|token| punctuation_is(token, '!'))
         || !tokens
             .get(cursor + 2)
@@ -103,10 +125,17 @@ fn inspect_macro(tokens: &[Token], cursor: usize, violations: &mut Vec<Violation
     {
         return;
     }
+    if !raw && rust_keyword(name) {
+        return;
+    }
     let qualified = cursor >= 2
         && punctuation_is(&tokens[cursor - 2], ':')
         && punctuation_is(&tokens[cursor - 1], ':');
-    if qualified || !MODELED_MACROS.contains(&name) {
+    if *raw
+        || qualified
+        || !MODELED_MACROS.contains(&name.as_str())
+        || name == "params" && !params_imported
+    {
         violations.push(Violation {
             line: tokens[cursor].line,
             function: if qualified { format!("qualified::{name}!") } else { format!("{name}!") },
@@ -114,6 +143,64 @@ fn inspect_macro(tokens: &[Token], cursor: usize, violations: &mut Vec<Violation
             kind: ViolationKind::UnsupportedMacro,
         });
     }
+}
+
+fn rust_keyword(name: &str) -> bool {
+    matches!(
+        name,
+        "Self"
+            | "abstract"
+            | "as"
+            | "async"
+            | "await"
+            | "become"
+            | "box"
+            | "break"
+            | "const"
+            | "continue"
+            | "crate"
+            | "do"
+            | "dyn"
+            | "else"
+            | "enum"
+            | "extern"
+            | "false"
+            | "final"
+            | "fn"
+            | "for"
+            | "gen"
+            | "if"
+            | "impl"
+            | "in"
+            | "let"
+            | "loop"
+            | "macro"
+            | "match"
+            | "mod"
+            | "move"
+            | "mut"
+            | "override"
+            | "priv"
+            | "pub"
+            | "ref"
+            | "return"
+            | "self"
+            | "static"
+            | "struct"
+            | "super"
+            | "trait"
+            | "true"
+            | "try"
+            | "type"
+            | "typeof"
+            | "unsafe"
+            | "unsized"
+            | "use"
+            | "virtual"
+            | "where"
+            | "while"
+            | "yield"
+    )
 }
 
 fn inspect_use(
@@ -135,8 +222,15 @@ fn inspect_use(
     let expansion_alias = declaration.windows(2).any(|pair| {
         identifier_is(&pair[0], "as") && identifier(&pair[1]).is_some_and(is_expansion_name)
     });
-    let imports_expansion_name = declaration.iter().filter_map(identifier).any(is_expansion_name);
-    if expansion_alias || !trusted_namespace && (glob || imports_expansion_name) {
+    let expansion_names = imported_expansion_names(declaration);
+    let imports_only_audited_params =
+        expansion_names == ["params"] && audited_params_declaration(declaration);
+    let imports_modeled_macro = expansion_names
+        .iter()
+        .any(|name| MODELED_MACROS.contains(name) || FORBIDDEN_EXPANSION_NAMES.contains(name));
+    let unaudited_expansion_import = !imports_only_audited_params
+        && (imports_modeled_macro || !trusted_namespace && !expansion_names.is_empty());
+    if expansion_alias || unaudited_expansion_import || !trusted_namespace && glob {
         violations.push(Violation {
             line: tokens[start].line,
             function: "external expansion import".to_owned(),
@@ -144,6 +238,70 @@ fn inspect_use(
             kind: ViolationKind::UnsupportedMacro,
         });
     }
+}
+
+fn imported_expansion_names(tokens: &[Token]) -> Vec<&str> {
+    tokens
+        .iter()
+        .enumerate()
+        .filter_map(|(index, token)| {
+            let name = identifier(token)?;
+            let is_path_segment =
+                tokens.get(index + 1).is_some_and(|token| punctuation_is(token, ':'))
+                    && tokens.get(index + 2).is_some_and(|token| punctuation_is(token, ':'));
+            (!is_path_segment && is_expansion_name(name)).then_some(name)
+        })
+        .collect()
+}
+
+fn audited_params_import(tokens: &[Token], start: usize) -> bool {
+    let end = tokens[start..]
+        .iter()
+        .position(|token| punctuation_is(token, ';'))
+        .map_or(tokens.len(), |offset| start + offset);
+    audited_params_declaration(&tokens[start + 1..end])
+}
+
+fn audited_params_declaration(tokens: &[Token]) -> bool {
+    if tokens.len() < 4
+        || !identifier_is(&tokens[0], "rusqlite")
+        || !punctuation_is(&tokens[1], ':')
+        || !punctuation_is(&tokens[2], ':')
+        || tokens.iter().any(|token| identifier_is(token, "as"))
+        || tokens.iter().any(|token| punctuation_is(token, '*'))
+    {
+        return false;
+    }
+
+    let imports = &tokens[3..];
+    if imports.len() == 1 {
+        return identifier_is(&imports[0], "params");
+    }
+    if !punctuation_is(&imports[0], '{')
+        || matching_group(imports, 0, '{', '}') != Some(imports.len())
+    {
+        return false;
+    }
+
+    let mut depth = 0_usize;
+    let mut segment_start = 1;
+    for index in 1..imports.len() - 1 {
+        match punctuation(&imports[index]) {
+            Some('{' | '(' | '[') => depth += 1,
+            Some('}' | ')' | ']') => depth = depth.saturating_sub(1),
+            Some(',') if depth == 0 => {
+                if imports[segment_start..index].len() == 1
+                    && identifier_is(&imports[segment_start], "params")
+                {
+                    return true;
+                }
+                segment_start = index + 1;
+            }
+            _ => {}
+        }
+    }
+    imports[segment_start..imports.len() - 1].len() == 1
+        && identifier_is(&imports[segment_start], "params")
 }
 
 fn is_expansion_name(name: &str) -> bool {

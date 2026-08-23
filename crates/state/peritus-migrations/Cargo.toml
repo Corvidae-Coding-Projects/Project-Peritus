@@ -1,0 +1,34 @@
+[package]
+name = "peritus-migrations"
+description = "Forward-only durable schema migrations and recovery for Peritus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["migration", "sqlite", "recovery", "formal-verification"]
+categories = ["database", "development-tools"]
+
+[dependencies]
+fs4.workspace = true
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+rusqlite.workspace = true
+sha2.workspace = true
+vstd.workspace = true
+
+[dev-dependencies]
+peritus-journal = { version = "=0.0.0", path = "../peritus-journal" }
+tempfile.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.peritus]
+owner = "C0"
+layer = "state"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true

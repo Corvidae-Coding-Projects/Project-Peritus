@@ -30,6 +30,7 @@ pub use authentication::{
 pub use decision::{ApprovalChoice, ApprovalDecision, SignedApprovalDecision};
 pub use digest::{ActionDigest, ApprovalDecisionDigest, ApprovalRequestDigest};
 pub use digest::{MAX_APPROVAL_DECISION_PREIMAGE_BYTES, MAX_APPROVAL_KEY_ID_PREIMAGE_BYTES};
+pub use digest::MAX_CREDENTIAL_REGISTRY_PREIMAGE_BYTES;
 pub use failure::{
     ApprovalError, ApprovalPhase, ApprovalTransitionFailure, ApprovalUseFailure,
     CanonicalCollection, CredentialDimension, RecoveryClass, ScopeDimension,

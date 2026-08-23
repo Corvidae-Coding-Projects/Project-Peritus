@@ -193,6 +193,25 @@ let external_trait_extension = false;
 }
 
 #[test]
+fn ordinary_admit_method_declarations_and_calls_are_not_trust_markers() {
+    let source = r"
+impl EvidenceStore {
+    pub fn admit(&mut self, draft: EvidenceDraft) -> Result<(), EvidenceError> { self.catalog.admit(draft) }
+}
+let record = store.admit(draft)?;
+let admit = false;
+";
+    assert!(scan(source).is_empty());
+}
+
+#[test]
+fn qualified_verus_admit_call_remains_a_trust_marker() {
+    let occurrences = scan("vstd::pervasive::admit();");
+    assert_eq!(occurrences.len(), 1);
+    assert_eq!(occurrences[0].construct, Construct::Admit);
+}
+
+#[test]
 fn ignores_comments_and_non_security_literal_contents() {
     let source = r####"
 // assume(false); admit(); #[verifier::external]

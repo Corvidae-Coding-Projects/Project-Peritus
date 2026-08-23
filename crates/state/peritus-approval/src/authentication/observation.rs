@@ -1,7 +1,9 @@
 //! Opaque authenticated facts returned only by strict decision verification.
 
 use peritus_policy::{ActorRole, AuthorityInstant, ValidityWindow};
-use peritus_types::{ActorId, ApprovalRequestId, CommandId, Generation, RevisionNumber};
+use peritus_types::{
+    ActorId, ApprovalRequestId, CommandId, Generation, RevisionNumber, Sha256Digest,
+};
 use vstd::prelude::*;
 
 verus! {
@@ -63,6 +65,7 @@ pub struct AuthenticatedApprovalObservation {
     pub(crate) key_id: super::ApprovalKeyId,
     pub(crate) credential_generation: Generation,
     pub(crate) registry_revision: RevisionNumber,
+    pub(crate) registry_digest: Sha256Digest,
     pub(crate) credential_validity: ValidityWindow,
     pub(crate) decision_expires_at: AuthorityInstant,
     pub(crate) observed_at: AuthorityInstant,
@@ -123,6 +126,10 @@ impl AuthenticatedApprovalObservation {
     /// Returns the exact non-authoritative supplied snapshot revision.
     #[must_use]
     pub const fn registry_revision(&self) -> RevisionNumber { self.registry_revision }
+
+    /// Returns the digest of the exact supplied registry snapshot used for authentication.
+    #[must_use]
+    pub const fn registry_digest(&self) -> Sha256Digest { self.registry_digest }
 
     /// Returns the authenticated credential validity interval.
     #[must_use]

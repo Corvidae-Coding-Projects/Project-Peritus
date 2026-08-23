@@ -197,6 +197,7 @@ pub fn verify_signed_decision(
             crate::CredentialDimension::RegistryRevision,
         ));
     }
+    let registry_digest = registry.digest()?;
     let credential =
         registry.credential(decision.key_id()).ok_or(crate::ApprovalError::CredentialMissing)?;
     if credential.status() != CredentialStatus::Enabled {
@@ -340,6 +341,7 @@ pub fn verify_signed_decision(
         key_id: decision.key_id(),
         credential_generation: decision.credential_generation(),
         registry_revision: decision.registry_revision(),
+        registry_digest,
         credential_validity: credential.validity(),
         decision_expires_at: decision.expires_at(),
         observed_at,

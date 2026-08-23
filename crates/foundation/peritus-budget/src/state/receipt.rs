@@ -179,6 +179,25 @@ impl BudgetTransition {
     /// Returns the stable logical receipt.
     #[must_use]
     pub const fn receipt(&self) -> BudgetReceipt { self.receipt }
+    /// Returns a checked snapshot of one successor account.
+    ///
+    /// # Errors
+    ///
+    /// Returns the budget reducer's typed corruption or unknown-account error.
+    pub fn account_snapshot(&self, budget_id: BudgetId) -> Result<crate::BudgetSnapshot, crate::BudgetError> {
+        crate::transition::snapshot_account(&self.ledger, budget_id)
+    }
+    /// Returns a checked snapshot of one successor reservation.
+    ///
+    /// # Errors
+    ///
+    /// Returns the budget reducer's typed corruption or unknown-reservation error.
+    pub fn reservation_snapshot(
+        &self,
+        reservation_id: BudgetReservationId,
+    ) -> Result<crate::ReservationSnapshot, crate::BudgetError> {
+        crate::transition::snapshot_reservation(&self.ledger, reservation_id)
+    }
     /// Consumes the transition and returns its exact next ledger.
     #[must_use]
     pub fn into_ledger(self) -> BudgetLedger { self.ledger }

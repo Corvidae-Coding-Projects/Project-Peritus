@@ -9,10 +9,12 @@ use sha2::{Digest, Sha256};
 use vstd::prelude::*;
 
 mod canonical;
+mod registry;
 #[cfg(test)]
 mod tests;
 pub use canonical::CanonicalEncoder;
 use canonical::{be_u32, be_u64};
+pub use registry::{credential_registry_bytes, credential_registry_digest};
 
 verus! {
 
@@ -20,6 +22,8 @@ verus! {
 pub const MAX_APPROVAL_DECISION_PREIMAGE_BYTES: usize = 4_096;
 /// Maximum canonical approval-key identifier preimage size.
 pub const MAX_APPROVAL_KEY_ID_PREIMAGE_BYTES: usize = 256;
+/// Maximum canonical credential-registry snapshot preimage size.
+pub const MAX_CREDENTIAL_REGISTRY_PREIMAGE_BYTES: usize = 4 * 1024 * 1024;
 
 /// Exact externally computed SHA-256 digest of canonical action bytes.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

@@ -502,3 +502,89 @@ evidence = [
   { kind = "refinement-test", source_file = "crates/foundation/peritus-kernel/tests/transition_matrix.rs", symbol = "peritus_kernel::tests::transition_matrix::missing_parents_and_illegal_child_edges_fail_without_events", command = "cargo test --package peritus-kernel --all-targets --all-features --locked" },
   { kind = "property-test", source_file = "crates/foundation/peritus-kernel/tests/adversarial.rs", symbol = "peritus_kernel::tests::adversarial::revision_forks_and_replayed_identities_preserve_the_aggregate", command = "cargo test --package peritus-kernel --all-targets --all-features --locked" },
 ]
+
+[[entries]]
+id = "OBL-0118"
+kind = "refinement"
+statement = "C0 atomically commits the exact B0 event and exact CAS successor state once, exposes the successor only through an opaque post-commit receipt, and reconstructs the same aggregate by checked replay after restart."
+owning_crate = "peritus-journal"
+source_file = "crates/state/peritus-journal/src/verified.rs"
+symbol = "peritus_journal::verified::committed_state_successor"
+status = "in-progress"
+dependencies = ["OBL-0114", "OBL-0115", "OBL-0117"]
+live_issue = "#9"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/state/peritus-journal/src/verified.rs", symbol = "peritus_journal::verified::committed_state_successor", command = "cargo verus verify --package peritus-journal --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/state/peritus-journal/tests/kernel_replay.rs", symbol = "peritus_journal::tests::kernel_replay::genesis_and_transition_recover_exactly_after_journal_restart", command = "cargo test --package peritus-journal --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0119"
+kind = "refinement"
+statement = "C0 commits capability, budget, reservation, lease, and approval successors exactly once under durable CAS, and CancelHeld additionally requires the matching committed begin lineage plus a current non-activation observation."
+owning_crate = "peritus-journal"
+source_file = "crates/state/peritus-journal/src/verified.rs"
+symbol = "peritus_journal::verified::committed_state_successor"
+status = "in-progress"
+dependencies = ["OBL-0103", "OBL-0105", "OBL-0106", "OBL-0107", "OBL-0110"]
+live_issue = "#9"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/state/peritus-journal/src/verified.rs", symbol = "peritus_journal::verified::committed_state_successor", command = "cargo verus verify --package peritus-journal --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/state/peritus-journal/tests/b1_adapters.rs", symbol = "peritus_journal::tests::b1_adapters::capability_use_is_exposed_only_with_its_exact_durable_successor", command = "cargo test --package peritus-journal --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/state/peritus-journal/tests/b1_adapters.rs", symbol = "peritus_journal::tests::b1_adapters::held_budget_cancellation_requires_and_consumes_a_current_durable_non_activation_observation", command = "cargo test --package peritus-journal --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/state/peritus-journal/tests/b1_adapters.rs", symbol = "peritus_journal::tests::b1_adapters::lease_mint_and_acquisition_follow_the_verified_version_cas", command = "cargo test --package peritus-journal --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/state/peritus-journal/tests/approval_registry.rs", symbol = "peritus_journal::tests::approval_registry::signed_approval_rejects_same_revision_wrong_digest_and_commits_exact_snapshot", command = "cargo test --package peritus-journal --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0120"
+kind = "refinement"
+statement = "The durable credential registry advances an exact successor revision and a strictly increasing global generation, binds the canonical bytes of the checked B1 snapshot, and rejects approval outcomes authenticated against any other snapshot digest."
+owning_crate = "peritus-journal"
+source_file = "crates/state/peritus-journal/src/verified.rs"
+symbol = "peritus_journal::verified::registry_advance"
+status = "in-progress"
+dependencies = ["OBL-0107"]
+live_issue = "#9"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/state/peritus-journal/src/verified.rs", symbol = "peritus_journal::verified::registry_advance", command = "cargo verus verify --package peritus-journal --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/state/peritus-journal/tests/authority_adapters.rs", symbol = "peritus_journal::tests::authority_adapters::registry_rejects_non_increasing_currentness", command = "cargo test --package peritus-journal --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/state/peritus-journal/tests/approval_registry.rs", symbol = "peritus_journal::tests::approval_registry::signed_approval_rejects_same_revision_wrong_digest_and_commits_exact_snapshot", command = "cargo test --package peritus-journal --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0121"
+kind = "refinement"
+statement = "Authority-clock allocation is one durable compare-and-swap whose successful observation is the exact positive successor epoch; stale expectations and overflow cannot allocate or reuse an epoch."
+owning_crate = "peritus-journal"
+source_file = "crates/state/peritus-journal/src/verified.rs"
+symbol = "peritus_journal::verified::authority_epoch_successor"
+status = "in-progress"
+dependencies = ["OBL-0103"]
+live_issue = "#9"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/state/peritus-journal/src/verified.rs", symbol = "peritus_journal::verified::authority_epoch_successor", command = "cargo verus verify --package peritus-journal --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/state/peritus-journal/tests/authority_adapters.rs", symbol = "peritus_journal::tests::authority_adapters::authority_clock_rejects_stale_allocation_and_survives_restart", command = "cargo test --package peritus-journal --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0122"
+kind = "refinement"
+statement = "C0 admits evidence only from a matching digest-verified committed journal record and finalized artifacts, preserves canonical causal ancestry, and marks evidence stale when any exact RevisionTuple component drifts or a later invalidation is recorded."
+owning_crate = "peritus-evidence"
+source_file = "crates/state/peritus-evidence/src/verified.rs"
+symbol = "peritus_evidence::verified::revisions_equal"
+status = "in-progress"
+dependencies = ["OBL-0111", "OBL-0113"]
+live_issue = "#9"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/state/peritus-evidence/src/verified.rs", symbol = "peritus_evidence::verified::revision_fields_match", command = "cargo verus verify --package peritus-evidence --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/state/peritus-evidence/tests/admission.rs", symbol = "peritus_evidence::tests::admission::valid_admission_is_atomic_idempotent_and_survives_restart", command = "cargo test --package peritus-evidence --all-targets --all-features --locked" },
+  { kind = "property-test", source_file = "crates/state/peritus-evidence/tests/freshness.rs", symbol = "peritus_evidence::tests::freshness::every_revision_tuple_component_drifts_independently", command = "cargo test --package peritus-evidence --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/state/peritus-evidence/tests/freshness.rs", symbol = "peritus_evidence::tests::freshness::explicit_later_invalidation_is_durable_and_dominates_revision_freshness", command = "cargo test --package peritus-evidence --all-targets --all-features --locked" },
+]

@@ -2,7 +2,9 @@
 
 use core::cmp::Ordering;
 use peritus_policy::{ActorRole, AuthorityTier, ValidityWindow};
-use peritus_types::{ActorId, EnvironmentId, Generation, RevisionNumber, WorkspaceId};
+use peritus_types::{
+    ActorId, EnvironmentId, Generation, RevisionNumber, Sha256Digest, WorkspaceId,
+};
 use vstd::prelude::*;
 
 mod projection;
@@ -219,5 +221,28 @@ impl ApproverCredential {
             generation,
             status,
         )
+    }
+}
+
+impl CredentialRegistrySnapshot {
+    /// Returns the canonical, domain-separated bytes binding every snapshot field.
+    ///
+    /// These are the payload bytes persisted by C0 for exact registry-currentness checks. They do
+    /// not claim that this supplied snapshot is durably current.
+    ///
+    /// # Errors
+    ///
+    /// Returns `PreimageTooLarge` rather than producing a truncated representation.
+    pub fn canonical_bytes(&self) -> Result<Vec<u8>, crate::ApprovalError> {
+        crate::digest::credential_registry_bytes(self)
+    }
+
+    /// Computes the digest of the complete canonical snapshot representation.
+    ///
+    /// # Errors
+    ///
+    /// Returns `PreimageTooLarge` rather than hashing a truncated representation.
+    pub fn digest(&self) -> Result<Sha256Digest, crate::ApprovalError> {
+        crate::digest::credential_registry_digest(self)
     }
 }

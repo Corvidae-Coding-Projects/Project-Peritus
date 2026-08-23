@@ -191,6 +191,7 @@ impl ApprovalAggregate {
             command_id: observation.command_id,
             choice: observation.choice,
             registry_revision: observation.registry_revision,
+            registry_digest: observation.registry_digest,
             credential_generation: observation.credential_generation,
             valid_until,
         };

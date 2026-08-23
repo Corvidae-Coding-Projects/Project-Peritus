@@ -122,3 +122,7 @@ mod integration_tests;
 #[cfg(test)]
 #[path = "api_contract/signature_tests.rs"]
 mod signature_tests;
+
+#[cfg(test)]
+#[path = "api_contract/policy_tests.rs"]
+mod policy_tests;

@@ -17,6 +17,11 @@ source_exceptions = []
 forbidden_dependencies = []
 controlled_source_roots = [
     { path = "crates/foundation/peritus-protocol/src/schema", owner = "B3", kind = "schema", rationale = "B3 owns the handwritten family registry, deterministic renderers, fixture constructors, and code-generation implementation." },
+    { path = "crates/state/peritus-artifact-store/src/catalog/schema.rs", owner = "C0", kind = "schema", rationale = "C0 owns the artifact catalog schema used by the shared durable SQLite database." },
+    { path = "crates/state/peritus-evidence/src/sqlite/schema.rs", owner = "C0", kind = "schema", rationale = "C0 owns the durable evidence catalog schema and its provenance constraints." },
+    { path = "crates/state/peritus-journal/src/sqlite/schema.rs", owner = "C0", kind = "schema", rationale = "C0 owns the authoritative journal schema and transactional state tables." },
+    { path = "crates/state/peritus-migrations/fixtures", owner = "C0", kind = "generated", rationale = "C0 owns immutable old-schema fixtures exercised by forward migration and restoration tests." },
+    { path = "crates/state/peritus-projection/src/sqlite/schema.rs", owner = "C0", kind = "schema", rationale = "C0 owns versioned projection generations and atomic activation metadata." },
     { path = "protocol/generated", owner = "B3", kind = "generated-schema", rationale = "B3 deterministically generates the reviewed protocol schema and TypeScript client declarations." },
     { path = "protocol/fixtures/v1", owner = "B3", kind = "generated", rationale = "B3 deterministically generates the immutable version-one binary compatibility corpus and digest inventory." },
 ]
@@ -110,11 +115,25 @@ layer = "state"
 verification_class = "H"
 
 [[packages]]
+name = "peritus-artifact-store"
+path = "crates/state/peritus-artifact-store"
+owner = "C0"
+layer = "state"
+verification_class = "H"
+
+[[packages]]
 name = "peritus-budget"
 path = "crates/foundation/peritus-budget"
 owner = "B1"
 layer = "foundation"
 verification_class = "V"
+
+[[packages]]
+name = "peritus-evidence"
+path = "crates/state/peritus-evidence"
+owner = "C0"
+layer = "state"
+verification_class = "H"
 
 [[packages]]
 name = "peritus-codec"
@@ -138,9 +157,23 @@ layer = "foundation"
 verification_class = "V"
 
 [[packages]]
+name = "peritus-journal"
+path = "crates/state/peritus-journal"
+owner = "C0"
+layer = "state"
+verification_class = "H"
+
+[[packages]]
 name = "peritus-leases"
 path = "crates/state/peritus-leases"
 owner = "B1"
+layer = "state"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-migrations"
+path = "crates/state/peritus-migrations"
+owner = "C0"
 layer = "state"
 verification_class = "H"
 
@@ -156,6 +189,13 @@ name = "peritus-protocol"
 path = "crates/foundation/peritus-protocol"
 owner = "B3"
 layer = "foundation"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-projection"
+path = "crates/state/peritus-projection"
+owner = "C0"
+layer = "state"
 verification_class = "H"
 
 [[packages]]
@@ -201,12 +241,6 @@ layer = "engineering"
 verification_class = "C"
 
 [[refinement_reservations]]
-id = "REF-C0-B1-COMMIT-ONCE"
-introduced_by = "B1"
-future_owner = "C0"
-statement = "Transactional append/CAS and opaque commit receipts preserve capability, budget begin/reservation/usage/finalization, lease, and approval transitions under crash/replay without lost/double consumption or unsafe release. In particular, C0 cannot commit CancelHeld from a raw ReservationReference, B1 receipt, or B1 transition; it requires the matching committed begin lineage plus its own non-forgeable authoritative target/journal observation proving non-activation."
-
-[[refinement_reservations]]
 id = "REF-C1-B1-RESOURCE-IDENTITY"
 introduced_by = "B1"
 future_owner = "C1"
@@ -229,12 +263,6 @@ id = "REF-C4-B1-OPERATION-CLASS"
 introduced_by = "B1"
 future_owner = "C4"
 statement = "Each concrete tool consumes B1 OperationDescriptor values and its implementation matches the authenticated operation class."
-
-[[refinement_reservations]]
-id = "REF-C0-B1-CREDENTIAL-REGISTRY-CURRENT"
-introduced_by = "B1"
-future_owner = "C0"
-statement = "The durable credential registry advances a nonreused revision/generation on issue, disable, revoke, and same-key reissue; it returns an opaque non-forgeable observation identifying the exact checked snapshot bytes and revision. A raw or stale B1 snapshot is not a currentness claim."
 
 [[refinement_reservations]]
 id = "REF-B0-B1-CURRENT-STATE-WITNESS"
@@ -285,12 +313,6 @@ future_owner = "B0"
 statement = "The lifecycle kernel evaluates acceptance only from its exact current contract, RevisionTuple, and V-owned current-evidence projection; raw B2 observation values or an AcceptanceDecision are logical facts and do not independently authorize a lifecycle transition."
 
 [[refinement_reservations]]
-id = "REF-C0-B2-EVIDENCE-PROVENANCE"
-introduced_by = "B2"
-future_owner = "C0"
-statement = "Durable evidence projections admit B2 observations only from matching digest-verified committed records and preserve exact RevisionTuple freshness under replay and invalidation."
-
-[[refinement_reservations]]
 id = "REF-D1-B2-GATE-OBSERVATION"
 introduced_by = "B2"
 future_owner = "D1"
@@ -315,22 +337,10 @@ future_owner = "B0"
 statement = "Kernel integration proves root limit is within the B2 effective policy ceiling and child limit is within parent availability."
 
 [[refinement_reservations]]
-id = "REF-C0-B1-CLOCK-EPOCH"
-introduced_by = "B1"
-future_owner = "C0"
-statement = "Durable compare-and-swap allocation never reuses or decreases the authority-clock epoch and returns bounded observations."
-
-[[refinement_reservations]]
 id = "REF-G0-B1-STARTUP-FENCING"
 introduced_by = "B1"
 future_owner = "G0"
 statement = "Restart advances the durable epoch, fences/reconciles every active lease, invalidates prior capability/approval time state, and blocks mutation intake until complete."
-
-[[refinement_reservations]]
-id = "REF-C0-B0-DURABLE-TRANSITION"
-introduced_by = "B0"
-future_owner = "C0"
-statement = "C0 atomically compares the durable revision and causal head, appends exactly B0's accepted event, and installs exactly B0's next aggregate once; a logical B0 transition is not itself a durable commit receipt."
 
 [[refinement_reservations]]
 id = "REF-E0-B0-CURRENT-LIFECYCLE"

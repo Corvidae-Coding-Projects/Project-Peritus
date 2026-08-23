@@ -59,14 +59,18 @@ controlled_source_roots = []
         .expect("verification command policy fixture must parse")
     }
 
-    #[test]
-    fn canonical_strict_root_inventory_matches_architecture() {
-        let policy = policy(
-            r#"
+    const CANONICAL_POLICY_PACKAGES: &str = r#"
 [[packages]]
 name = "peritus-approval"
 path = "crates/state/peritus-approval"
 owner = "B1"
+layer = "state"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-artifact-store"
+path = "crates/state/peritus-artifact-store"
+owner = "C0"
 layer = "state"
 verification_class = "H"
 
@@ -85,6 +89,20 @@ layer = "foundation"
 verification_class = "H"
 
 [[packages]]
+name = "peritus-evidence"
+path = "crates/state/peritus-evidence"
+owner = "C0"
+layer = "state"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-journal"
+path = "crates/state/peritus-journal"
+owner = "C0"
+layer = "state"
+verification_class = "H"
+
+[[packages]]
 name = "peritus-kernel"
 path = "crates/foundation/peritus-kernel"
 owner = "B0"
@@ -99,11 +117,25 @@ layer = "state"
 verification_class = "H"
 
 [[packages]]
+name = "peritus-migrations"
+path = "crates/state/peritus-migrations"
+owner = "C0"
+layer = "state"
+verification_class = "H"
+
+[[packages]]
 name = "peritus-policy"
 path = "crates/foundation/peritus-policy"
 owner = "B1"
 layer = "foundation"
 verification_class = "V"
+
+[[packages]]
+name = "peritus-projection"
+path = "crates/state/peritus-projection"
+owner = "C0"
+layer = "state"
+verification_class = "H"
 
 [[packages]]
 name = "peritus-protocol"
@@ -139,8 +171,11 @@ path = "crates/foundation/peritus-tcb"
 owner = "A1"
 layer = "foundation"
 verification_class = "T"
-"#,
-        );
+"#;
+
+    #[test]
+    fn canonical_strict_root_inventory_matches_architecture() {
+        let policy = policy(CANONICAL_POLICY_PACKAGES);
         assert!(diagnostics(&policy).is_empty());
     }
 
