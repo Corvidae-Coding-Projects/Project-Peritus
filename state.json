@@ -1,6 +1,6 @@
 {
   "next_display_id": 6,
-  "next_comment_id": 103,
+  "next_comment_id": 104,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -642,7 +642,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-22T16:02:46.854617936Z",
-      "updated_at": "2026-08-23T01:37:32.216218402Z",
+      "updated_at": "2026-08-23T01:46:54.350866013Z",
       "labels": [
         "feature"
       ],
@@ -691,6 +691,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAkjgZRlOdKWbJ9goexYTSzn4Sr42gXdzrhgvzkbDM/auU8n1b5N4Qo8Vkdzl7PalGyuP25Hb8Mzy/V8ZVaSbeCA=="
+        },
+        "25dcc4ac-e95d-45e1-9729-3215a3915118": {
+          "display_id": 103,
+          "author": "6ME5",
+          "content": "Signed code checkpoint b35f336 (feat(authority): scaffold B1 authority foundation). Added all four B1 crates and shared workspace/tooling integration: 415 files, 73,846 insertions. Verification: cargo fmt check; git diff check; source-layout-check (526 files); cargo check workspace/all-targets/all-features; combined policy/budget/leases/approval test suites. Deferred polish: ordinary-api-check findings, strict proof reruns, manifests, and final independent review.",
+          "created_at": "2026-08-23T01:46:54.348199795Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAfC5flXvodYN6oaORRs30QswU2C386FuIT8hHMhhB3hSV/UX1My0vHESjv/RyaCIz3sfh4qahX8QBqgBnyCW6Aw=="
         },
         "2a1e707b-083c-4f49-8e66-16140cb1cdab": {
           "display_id": 81,
@@ -1030,8 +1039,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-23T01:37:32.216218402Z",
+    "timestamp": "2026-08-23T01:46:54.350866013Z",
     "agent_id": "6ME5",
-    "agent_seq": 133
+    "agent_seq": 134
   }
 }
