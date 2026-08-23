@@ -1321,11 +1321,12 @@
       "display_id": 7,
       "title": "Implement B0 lifecycle kernel",
       "description": "Create peritus-kernel with session, run, attempt, turn, action, review, waiver, and acceptance state machines; command authorization; authoritative event reduction; legal-transition, causality, and no-implicit-success Verus proofs; B1/B2 integration; and reference-model, adversarial, and transition-matrix tests.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-23T05:11:32.833578183Z",
-      "updated_at": "2026-08-23T06:54:12.924835416Z",
+      "updated_at": "2026-08-23T06:54:17.271700904Z",
+      "closed_at": "2026-08-23T06:54:17.271699363Z",
       "labels": [
         "feature"
       ],
@@ -1407,8 +1408,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-23T06:54:12.924835416Z",
+    "timestamp": "2026-08-23T06:54:17.271700904Z",
     "agent_id": "6ME5",
-    "agent_seq": 181
+    "agent_seq": 182
   }
 }
