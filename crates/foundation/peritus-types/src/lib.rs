@@ -13,8 +13,11 @@ mod digest;
 mod errors;
 mod ids;
 mod numbers;
+mod revision;
 mod resource;
 
+#[cfg(verus_only)]
+pub use capability::canonical_byte_order_from;
 pub use capability::CapabilityName;
 pub use digest::Sha256Digest;
 pub use errors::{
@@ -22,6 +25,7 @@ pub use errors::{
 };
 pub use ids::*;
 pub use numbers::{EventSequence, Generation, RevisionNumber};
+pub use revision::RevisionTuple;
 pub use resource::{ResourceKind, ResourceQuantity};
 
 } // verus!

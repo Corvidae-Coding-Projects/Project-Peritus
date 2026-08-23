@@ -78,19 +78,45 @@ macro-synthesized compilation inputs. External executable preprocessing is separ
 fail-closed. Full locked Cargo metadata is searched for every dependency build-script and
 procedural-macro target; only these exact package identities are admitted:
 
-- build scripts: `libc@0.2.189`, `proc-macro2@1.0.107`, `quote@1.0.47`, `serde@1.0.229`,
-  `serde_core@1.0.229`, `serde_json@1.0.149`, `zmij@1.0.23`, and the pinned Verus revision's
-  `verus_prettyplease@0.0.0-2026-08-09-0044`, `verus_syn@0.0.0-2026-08-02-0125`, and
-  `vstd@0.0.0-2026-08-09-0044`;
-- procedural macros: `serde_derive@1.0.229` and the pinned Verus revision's
-  `verus_builtin_macros@0.0.0-2026-08-09-0044` and
+- build scripts: `curve25519-dalek@5.0.0`, `libc@0.2.189`, `proc-macro2@1.0.107`,
+  `quote@1.0.47`, `serde@1.0.229`, `serde_core@1.0.229`, `serde_json@1.0.149`, `zmij@1.0.23`,
+  and the pinned Verus revision's `verus_prettyplease@0.0.0-2026-08-09-0044`,
+  `verus_syn@0.0.0-2026-08-02-0125`, and `vstd@0.0.0-2026-08-09-0044`;
+- procedural macros: `curve25519-dalek-derive@0.1.1`, `serde_derive@1.0.229`, and the pinned
+  Verus revision's `verus_builtin_macros@0.0.0-2026-08-09-0044` and
   `verus_state_machines_macros@0.0.0-2026-08-02-0125`.
 
-The executable identity includes registry or immutable Git source, package name, and exact
-version—not just the readable labels above. Adding or changing one requires source review,
-lockfile and allowlist updates, proof-impact review where formal semantics change, and a clean
-Gate A run. A1 then adds semantic TCB manifests and trust-occurrence reconciliation rather than
-claiming expansion-complete lexical analysis.
+For B1, the reviewed `curve25519-dalek` build script reads exactly
+`CARGO_CFG_TARGET_FEATURE`, `CARGO_CFG_TARGET_ARCH`, `CARGO_CFG_CURVE25519_DALEK_BITS`,
+`CARGO_CFG_CURVE25519_DALEK_BACKEND`, and `CARGO_CFG_TARGET_POINTER_WIDTH`. Those values select the
+field width, serial/SIMD/AVX-512 backend, and emitted Cargo configuration. Its build dependency
+`rustc_version@0.4.1` reads `RUSTC` and optional nonempty `RUSTC_WRAPPER`, executes the selected
+compiler as `<rustc> -vV` (through the wrapper when set), and parses the result using
+`semver@1.0.28`; the compiler version and channel can also change the emitted configuration. This
+is build-time execution and environment/process input, not a pure target-configuration lookup.
+
+The complete active build-program dependency closure is `curve25519-dalek build.rs ->
+rustc_version -> semver`. The complete active derive executable closure is
+`curve25519-dalek-derive -> proc-macro2, quote, syn -> unicode-ident`; `proc-macro2` and `quote`
+also own separately allowlisted build-script targets. `rustc_version`, `semver`, `syn`, and
+`unicode-ident` contribute executable library code to those build or procedural-macro processes
+but do not themselves own an active build-script or procedural-macro target. This distinction is
+why Cargo metadata target kinds drive the executable-package allowlist while `Cargo.lock` pins the
+entire transitive library closure.
+
+The reviewed derive crate has one compile-time `include_str!("../README.md")` used only to form its
+own crate documentation. Macro invocation parses caller-provided attribute/item token streams and
+emits target-feature wrappers and specializations; that invocation performs no additional file,
+network, process, or environment access. The exact registry package IDs and archive checksums for
+the executable packages and their closure remain pinned by `Cargo.lock`; a version, registry,
+Git/path source, checksum, target-kind, or closure change requires a new proof-impact review.
+
+The executable identity is Cargo's complete package ID: registry or immutable Git source, package
+name, and exact version—not just the readable labels above. A same-name/same-version package from
+another registry, Git revision, or path is a different identity and fails closed. Adding or
+changing one requires source review, lockfile and allowlist updates, proof-impact review where
+formal semantics change, and a clean Gate A run. A1 then adds semantic TCB manifests and
+trust-occurrence reconciliation rather than claiming expansion-complete lexical analysis.
 
 A1 formal packages additionally reject `env!`, `include_str!`, and `include_bytes!`. Those macros
 can inject environment or arbitrary data into executable and specification semantics without

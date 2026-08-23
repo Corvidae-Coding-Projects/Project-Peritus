@@ -12,6 +12,8 @@ mod expansion;
 mod scanner;
 #[path = "api_contract/signature.rs"]
 mod signature;
+#[path = "api_contract/verifier_only.rs"]
+mod verifier_only;
 #[path = "api_contract/violation.rs"]
 mod violation;
 
@@ -58,6 +60,12 @@ fn check_with_roots(
         .filter(|package| matches!(package.verification_class.as_str(), "V" | "H" | "T"))
         .map(|package| package.path.as_path())
         .collect();
+    let b1_production_roots: Vec<_> = policy
+        .packages
+        .iter()
+        .filter(|package| package.owner == "B1")
+        .map(|package| package.path.join("src"))
+        .collect();
     let discovery = source::discover_compilation_sources(root, policy, target_roots)?;
     let mut diagnostics = discovery.diagnostics;
     let mut scanned = 0;
@@ -89,6 +97,11 @@ fn check_with_roots(
                 .into_iter()
                 .map(|violation| Diagnostic::at(relative, violation.message(), violation.help())),
         );
+        if b1_production_roots.iter().any(|source| relative.starts_with(source)) {
+            diagnostics.extend(verifier_only::violations(&contents).into_iter().map(|violation| {
+                Diagnostic::at(relative, violation.message(), verifier_only::Violation::help())
+            }));
+        }
     }
 
     if diagnostics.is_empty() {

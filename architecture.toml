@@ -99,11 +99,39 @@ may_depend_on = ["V", "H", "C"]
 may_dev_depend_on = ["V", "H", "C"]
 
 [[packages]]
+name = "peritus-approval"
+path = "crates/state/peritus-approval"
+owner = "B1"
+layer = "state"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-budget"
+path = "crates/foundation/peritus-budget"
+owner = "B1"
+layer = "foundation"
+verification_class = "V"
+
+[[packages]]
 name = "peritus-conformance"
 path = "crates/app/testing/peritus-conformance"
 owner = "A2"
 layer = "testing"
 verification_class = "C"
+
+[[packages]]
+name = "peritus-leases"
+path = "crates/state/peritus-leases"
+owner = "B1"
+layer = "state"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-policy"
+path = "crates/foundation/peritus-policy"
+owner = "B1"
+layer = "foundation"
+verification_class = "V"
 
 [[packages]]
 name = "peritus-tcb"

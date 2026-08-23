@@ -3,7 +3,8 @@ use crate::model::CargoMetadata;
 use std::collections::BTreeSet;
 use std::path::Path;
 
-const REVIEWED_BUILD_SCRIPT_PACKAGES: [&str; 10] = [
+const REVIEWED_BUILD_SCRIPT_PACKAGES: [&str; 11] = [
+    "registry+https://github.com/rust-lang/crates.io-index#curve25519-dalek@5.0.0",
     "registry+https://github.com/rust-lang/crates.io-index#libc@0.2.189",
     "registry+https://github.com/rust-lang/crates.io-index#proc-macro2@1.0.107",
     "registry+https://github.com/rust-lang/crates.io-index#quote@1.0.47",
@@ -16,7 +17,8 @@ const REVIEWED_BUILD_SCRIPT_PACKAGES: [&str; 10] = [
     "registry+https://github.com/rust-lang/crates.io-index#zmij@1.0.23",
 ];
 
-const REVIEWED_PROC_MACRO_PACKAGES: [&str; 3] = [
+const REVIEWED_PROC_MACRO_PACKAGES: [&str; 4] = [
+    "registry+https://github.com/rust-lang/crates.io-index#curve25519-dalek-derive@0.1.1",
     "registry+https://github.com/rust-lang/crates.io-index#serde_derive@1.0.229",
     "git+https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#verus_builtin_macros@0.0.0-2026-08-09-0044",
     "git+https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#verus_state_machines_macros@0.0.0-2026-08-02-0125",
@@ -114,6 +116,16 @@ mod tests {
         let cargo = CargoMetadata {
             packages: vec![
                 package(
+                    "registry+https://github.com/rust-lang/crates.io-index#curve25519-dalek@5.0.0",
+                    "curve25519-dalek",
+                    "custom-build",
+                ),
+                package(
+                    "registry+https://github.com/rust-lang/crates.io-index#curve25519-dalek-derive@0.1.1",
+                    "curve25519-dalek-derive",
+                    "proc-macro",
+                ),
+                package(
                     "registry+https://github.com/rust-lang/crates.io-index#serde@1.0.229",
                     "serde",
                     "custom-build",
@@ -131,5 +143,67 @@ mod tests {
         validate(Path::new("/workspace"), &cargo, &mut diagnostics);
 
         assert!(diagnostics.is_empty(), "unexpected diagnostics: {diagnostics:?}");
+    }
+
+    #[test]
+    fn rejects_version_and_source_near_misses_for_cryptographic_execution_dependencies() {
+        let cargo = CargoMetadata {
+            packages: vec![
+                package(
+                    "registry+https://github.com/rust-lang/crates.io-index#curve25519-dalek@5.0.1",
+                    "curve25519-dalek",
+                    "custom-build",
+                ),
+                package(
+                    "registry+https://github.com/rust-lang/crates.io-index#curve25519-dalek-derive@0.1.2",
+                    "curve25519-dalek-derive",
+                    "proc-macro",
+                ),
+                package(
+                    "registry+https://registry.example.invalid/index#curve25519-dalek@5.0.0",
+                    "curve25519-dalek",
+                    "custom-build",
+                ),
+                package(
+                    "git+https://example.invalid/curve25519-dalek?rev=0123456789012345678901234567890123456789#curve25519-dalek@5.0.0",
+                    "curve25519-dalek",
+                    "custom-build",
+                ),
+                package(
+                    "path+file:///tmp/curve25519-dalek#curve25519-dalek@5.0.0",
+                    "curve25519-dalek",
+                    "custom-build",
+                ),
+                package(
+                    "registry+https://registry.example.invalid/index#curve25519-dalek-derive@0.1.1",
+                    "curve25519-dalek-derive",
+                    "proc-macro",
+                ),
+                package(
+                    "git+https://example.invalid/curve25519-dalek?rev=0123456789012345678901234567890123456789#curve25519-dalek-derive@0.1.1",
+                    "curve25519-dalek-derive",
+                    "proc-macro",
+                ),
+                package(
+                    "path+file:///tmp/curve25519-dalek-derive#curve25519-dalek-derive@0.1.1",
+                    "curve25519-dalek-derive",
+                    "proc-macro",
+                ),
+            ],
+            workspace_members: Vec::new(),
+        };
+        let mut diagnostics = Vec::new();
+
+        validate(Path::new("/workspace"), &cargo, &mut diagnostics);
+
+        assert_eq!(diagnostics.len(), 8);
+        assert_eq!(
+            diagnostics.iter().filter(|item| item.message().contains("build script")).count(),
+            4
+        );
+        assert_eq!(
+            diagnostics.iter().filter(|item| item.message().contains("procedural macro")).count(),
+            4
+        );
     }
 }

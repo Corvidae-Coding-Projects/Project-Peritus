@@ -8,6 +8,14 @@ pub(super) fn read_toml<T: DeserializeOwned>(
     relative: &Path,
     diagnostics: &mut Vec<Diagnostic>,
 ) -> Option<T> {
+    read_toml_with_bytes(root, relative, diagnostics).map(|(document, _)| document)
+}
+
+pub(super) fn read_toml_with_bytes<T: DeserializeOwned>(
+    root: &Path,
+    relative: &Path,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Option<(T, Vec<u8>)> {
     let bytes = read_regular(root, relative, diagnostics)?;
     let text = match std::str::from_utf8(&bytes) {
         Ok(text) => text,
@@ -17,7 +25,7 @@ pub(super) fn read_toml<T: DeserializeOwned>(
         }
     };
     match toml::from_str(text) {
-        Ok(document) => Some(document),
+        Ok(document) => Some((document, bytes)),
         Err(error) => {
             parse_error(relative, "TOML", &error.to_string(), diagnostics);
             None
@@ -40,7 +48,18 @@ pub(super) fn read_json<T: DeserializeOwned>(
     }
 }
 
+pub(super) fn read_bytes(
+    root: &Path,
+    relative: &Path,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Option<Vec<u8>> {
+    read_regular(root, relative, diagnostics)
+}
+
 pub(super) fn is_regular_without_symlink(root: &Path, relative: &Path) -> bool {
+    if !repository_relative(relative) {
+        return false;
+    }
     let mut current = PathBuf::from(root);
     for component in relative.components() {
         current.push(component);
@@ -50,6 +69,11 @@ pub(super) fn is_regular_without_symlink(root: &Path, relative: &Path) -> bool {
         }
     }
     current.symlink_metadata().is_ok_and(|metadata| metadata.file_type().is_file())
+}
+
+pub(super) fn repository_relative(path: &Path) -> bool {
+    !path.as_os_str().is_empty()
+        && path.components().all(|component| matches!(component, std::path::Component::Normal(_)))
 }
 
 fn read_regular(
@@ -98,7 +122,7 @@ fn parse_error(path: &Path, format: &str, detail: &str, diagnostics: &mut Vec<Di
 
 #[cfg(test)]
 mod tests {
-    use super::{read_regular_with, read_toml};
+    use super::{read_regular_with, read_toml, repository_relative};
     use serde::Deserialize;
     use std::env;
     use std::fs;
@@ -205,5 +229,15 @@ mod tests {
         .expect("regular policy must parse");
         assert_eq!(document.value, 7);
         assert!(diagnostics.is_empty());
+    }
+
+    #[test]
+    fn repository_paths_reject_absolute_parent_and_current_components() {
+        assert!(repository_relative(Path::new("verification/policy.toml")));
+        for path in
+            ["", "/verification/policy.toml", "../policy.toml", "a/../policy.toml", "./policy.toml"]
+        {
+            assert!(!repository_relative(Path::new(path)), "accepted `{path}`");
+        }
     }
 }

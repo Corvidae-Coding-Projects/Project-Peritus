@@ -1,6 +1,7 @@
 //! Nominal identifier types grouped by domain responsibility.
 
 mod base;
+mod budget;
 mod evolution;
 mod execution;
 mod lifecycle;
@@ -9,6 +10,7 @@ mod review;
 
 #[cfg(verus_only)]
 pub use base::valid_identifier_bytes;
+pub use budget::{BudgetId, BudgetReservationId};
 pub use evolution::{EvaluationCampaignId, EvolutionCampaignId};
 pub use execution::{
     ActionId, ActorId, CommandId, EnvironmentId, PolicyId, ProviderProfileId, ResourceId,

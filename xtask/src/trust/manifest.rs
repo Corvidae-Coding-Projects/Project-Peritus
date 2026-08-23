@@ -79,8 +79,9 @@ pub(super) fn validate(
 }
 
 fn validate_inventory(root: &Path, diagnostics: &mut Vec<Diagnostic>) {
-    let expected = [ACTORS_PATH, TRUST_PATH, EXCLUSIONS_PATH, OBLIGATIONS_PATH, PROOF_IMPACT_PATH];
-    for relative in expected {
+    let required = [ACTORS_PATH, TRUST_PATH, EXCLUSIONS_PATH, OBLIGATIONS_PATH, PROOF_IMPACT_PATH];
+    let registered = required;
+    for relative in required {
         if !manifest_file::is_regular_without_symlink(root, Path::new(relative)) {
             diagnostics.push(Diagnostic::at(
                 relative,
@@ -125,15 +126,17 @@ fn validate_inventory(root: &Path, diagnostics: &mut Vec<Diagnostic>) {
                 continue;
             }
         };
-        if file_type.is_symlink() || file_type.is_dir() {
+        let relative = path.strip_prefix(root).unwrap_or(&path);
+        let registered_review_directory = relative == Path::new("verification/reviews");
+        if file_type.is_symlink() || file_type.is_dir() && !registered_review_directory {
             diagnostics.push(Diagnostic::at(
-                path.strip_prefix(root).unwrap_or(&path),
+                relative,
                 "verification inventory contains a symlink or nested directory",
-                "keep the A1 manifest directory flat and fully scanned",
+                "keep the manifest directory flat except for the recursively reconciled verification/reviews tree",
             ));
         }
         let is_toml = path.extension().and_then(|extension| extension.to_str()) == Some("toml");
-        if is_toml && !expected.iter().any(|expected| path == root.join(expected)) {
+        if is_toml && !registered.iter().any(|expected| path == root.join(expected)) {
             diagnostics.push(Diagnostic::at(
                 path.strip_prefix(root).unwrap_or(&path),
                 "unregistered verification TOML can evade the canonical schemas",

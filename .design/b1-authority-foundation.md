@@ -89,12 +89,17 @@ The eventual user-visible behavior derived from B1 is:
 - B1-F-013: Lease authority is the intersection of a current exact capability and the current
   lease. Acquiring a lease alone never grants mutation authority.
 - B1-F-014: Approval decisions bind the approver, request ID and digest, action digest, policy,
-  revision tuple, choice, and validity interval.
+  revision tuple, credential identity/generation/registry revision, choice, and validity interval.
+  An amendment choice additionally binds its base policy, successor policy, replacement tier, and
+  amendment digest as separate signed fields.
 - B1-F-015: An identical repeated approval response is idempotent; a conflicting response is
   rejected. One-time approval can be consumed at most once.
 - B1-F-016: B1 exposes checked planning, transition, and observation contracts. It does not claim
   an effect or persistence succeeded. Adapter observations remain unprivileged evidence; a later
   durable-store composition must establish commit before it constructs an effect permit.
+- B1-F-017: A checked credential-registry snapshot is not evidence that the snapshot is the current
+  durable registry. B1 binds authentication and transition outputs to the exact snapshot revision;
+  production composition must also establish the named durable current-registry refinement.
 
 ### Verification requirements
 
@@ -102,9 +107,9 @@ The eventual user-visible behavior derived from B1 is:
   code with a matching specification and proof.
 - B1-V-002: Public ordinary-Rust entry points have no unchecked caller-visible `requires` clauses.
   They validate preconditions and return typed failures.
-- B1-V-003: `state_machine!` may model transition reachability after the ordinary-API checker is
-  narrowed to the exact pinned macro import. `tokenized_state_machine!` is prohibited because the
-  pinned implementation introduces a trusted generated implementation.
+- B1-V-003: Transition reachability uses explicit closed Verus state and step relations. Both
+  `state_machine!` and `tokenized_state_machine!` are prohibited in B1 because the pinned macro
+  synthesizes `external_body` proof helpers and therefore cannot satisfy `--no-cheating`.
 - B1-V-004: No B1 class-V source contains `assume`, `admit`, axioms, `external_body`, external
   specifications, unsafe code, or proof exclusions.
 - B1-V-005: Deterministic H-core exclusions are symbol-specific, independently reviewed, and
@@ -153,8 +158,9 @@ The eventual user-visible behavior derived from B1 is:
    races, expiry equality, epoch mismatch, holder loss, generation/version exhaustion, corrupt CAS
    observations, indeterminate commits, and old-claim rejection after every fence.
 10. Approval tests cover every legal and illegal state edge, field-by-field digest tampering,
-    credential and signer mismatch, expiry before and after decision, response replay, one-time
-    consumption, conflicting decisions, amendment bounds, and safe rendering.
+    credential, asserted-role, signer, snapshot revision, and generation mismatch, expiry before
+    and after decision, response replay, one-time consumption, conflicting decisions, amendment
+    identity/bounds, bounded-input rejection, and safe rendering.
 11. Generated command traces are compared with independent reference models after every accepted
     and rejected transition. Failure seeds are persisted in test diagnostics.
 12. `verification/obligations.toml` contains reviewed statements, owners, dependency edges, exact
@@ -172,20 +178,41 @@ The eventual user-visible behavior derived from B1 is:
     pass locally and in the protected pull-request matrix.
 17. After merge, the exact protected-main commit passes the Gate A and Foundation workflows on
     Linux, macOS, and Windows where applicable.
-18. Capability, budget-begin/reservation, lease, and approval logical transition outputs alone
+18. Capability, budget-begin/reservation, lease, authentication-observation, and approval logical
+    transition outputs alone
     cannot satisfy any B1 effect API. B1 tests their private construction, exact binding, failed-
     transition nonproduction, and reusable forged/malformed/stale commit-claim fixtures. The named
     C0/E0/C1/C2/C4 refinements own compiled integrated permit/dispatch tests when those crates exist.
 19. Approval validity fails at exact equality for the request, credential, signed decision,
     escalation challenge, and their intersected result. B1 proves approve-similar emits only one
-    candidate-bound logical approval and no action grant. The named E0 refinement owns activation,
-    durable-commit, and subsequent-reauthorization integration evidence. A correctly authenticated
-    response still cannot satisfy an explicit or compiled denial.
+    logical approval bound to the previewed candidate's base policy, successor policy, replacement
+    tier, and amendment digest, and no action grant. The complete replacement-to-digest binding is
+    conditional on `REF-B3-B1-DIGEST-BYTES`; the named E0 refinement owns activation, durable-
+    commit, and subsequent-reauthorization integration evidence. A correctly authenticated response
+    still cannot satisfy an explicit or compiled denial.
 20. Approval cryptography passes pinned SHA-256 known-answer and RFC 8032 Ed25519 suites plus an
     alternate-implementation differential suite. Rendering rejects or safely represents control
     bytes and invalid UTF-8 sources, respects exact truncation bounds, passes seeded secret canaries,
-    and never exceeds its configured output bound. Delayed decisions signed before revocation fail
-    after same-key reissue because signed key ID, credential generation, and registry revision are exact.
+    and never exceeds its configured output bound. When evaluated against a later authenticated
+    registry snapshot, delayed decisions signed before revocation fail after same-key reissue because
+    signed key ID, credential generation, and registry revision are exact. Production currentness is
+    owned by `REF-C0-B1-CREDENTIAL-REGISTRY-CURRENT` and the exact B0/E0 witness composition.
+21. Every post-genesis PCR has one detached, append-only verdict artifact whose raw-byte digest is
+    referenced by the PCR. The artifact binds the registered reviewer actor and canonical principal,
+    PCR ID, protected authorization base commit, reviewed implementation commit and tree, complete
+    source-transition-set digest, gate-evidence digest, finding-set digest, decision, and review
+    timestamp. The checker resolves object kinds, proves the implementation commit descends from the
+    authorization base, proves the declared tree is that exact commit's tree, and matches every PCR
+    current snapshot or removal against the tree. It requires a non-empty retained review report and
+    a recursively reconciled, one-to-one, raw-byte-addressed inventory containing every gate output
+    and finding detail/evidence artifact. The checker rejects missing, mutable, aliased, mismatched,
+    same-change, unretained, duplicated, unreadable, or uninventoried verdict evidence.
+    Because the A1 reviewer principal is no longer available, a dedicated human-repository-admin
+    recovery commit must register the B1 reviewer and install this verdict contract before B1 proof
+    authorization. Recovery contains no B1 implementation or B1 PCR, is signed and merged by the
+    human administrator as an explicit ruleset bypass, records the exact reason and before/after
+    identities, is permanently tombstoned after one use, and cannot be approved by the reviewer it
+    registers. The registered B1 reviewer may review the later B1 PCR, never its own registration.
 
 ## Current architecture
 
@@ -280,11 +307,24 @@ same checked reducer and stores the returned floor in its aggregate. A lower tic
 an epoch change without an explicit restart/reconciliation transition, or comparison across epochs
 fails closed. A stateless `ValidityWindow::contains` result is never sufficient to issue authority.
 
+The aggregate time floor is move-only. A reducer that consumes a value containing an
+`AuthorityTimeState` returns either an accepted successor that owns the advanced floor or a typed
+rejection that owns the unchanged input value and its error. Public APIs may borrow the current
+floor for inspection, but cannot copy it, reconstruct an equivalent accepted floor from its
+components, or discard it on a recoverable failure. This value-in/value-out shape makes stale-floor
+reuse unrepresentable without relying on caller discipline.
+
 Existing capabilities and approvals become unusable after an epoch change, and active leases enter
 reconciliation. Wall time is diagnostic only. A2’s `FakeClock` supplies deterministic observations
 in tests. C0 later owns durable epoch compare-and-swap allocation and observations; G0 must advance
 the epoch on restart and complete fail-closed reconciliation before accepting authority-bearing
 work.
+
+`AUTHORITY-TIME-MONOTONIC` is a theorem over one accepted aggregate lineage; B1 does not claim that
+an arbitrary newly initialized pure value is the production-current lineage. The current-lineage
+and non-reused-epoch facts remain explicit obligations of `REF-B0-B1-CURRENT-STATE-WITNESS` and
+`REF-C0-B1-CLOCK-EPOCH`. A freshly constructed or reset logical B1 value therefore cannot satisfy a
+downstream effect gate without those exact witnesses and its durable transition receipt.
 
 ### `peritus-policy`
 
@@ -378,7 +418,11 @@ not imply raw effect permission.
 An ordinary policy amendment previews one exact `PolicyRevisionCandidate` successor of one
 immutable base `PolicyId`. The candidate contains a complete checked successor policy but is not an
 active-policy fact. Approval returns a separate opaque `ApprovedPolicyAmendment` whose public
-accessors expose only exact matching fields/digests. B0 may expose a V-only current-kernel witness,
+accessors expose only exact matching fields/digests. Its signed choice carries the base policy,
+successor policy, replacement tier, and amendment digest independently; all four must match the
+previewed candidate. The amendment digest's binding to the complete canonical replacement bytes is
+the explicit `REF-B3-B1-DIGEST-BYTES` obligation, not an authority inferred from a caller-supplied
+digest. B0 may expose a V-only current-kernel witness,
 but it never imports or consumes the H-owned approved amendment. E0's H integration gate matches
 candidate, approved amendment, kernel witness, and the first C0 receipt proving the approval
 transition committed. E0 then supplies only the V-owned candidate facts and current kernel state to
@@ -443,6 +487,15 @@ A lower correction is rejected and cannot restore availability. Final settlement
 unused remainder. Cancellation releases a full reservation only while held and before activation.
 Once active, an indeterminate outcome conservatively consumes the entire remaining ceiling.
 
+`ReservationReference` and its evidence digest are bounded correlation claims, not proof of the
+external negative fact that execution never activated. `CancelHeld` therefore produces only a
+non-authorizing logical plan. C0 MUST NOT commit that plan from a raw reference, B1 receipt, or B1
+transition alone: `REF-C0-B1-COMMIT-ONCE` must match the committed begin lineage and a
+non-forgeable authoritative target/journal observation proving non-activation. Conflict,
+indeterminacy, an active observation, or a stale/mismatched claim cannot release capacity and must
+be resolved under the same reservation identity or charged conservatively. A B1-only wrapper over
+caller-provided bytes would not establish provenance and is deliberately not treated as a witness.
+
 An observation above its ceiling consumes the still-held ceiling, records an overrun-fault receipt,
 faults the account lineage, and authorizes no new work. Raw unrepresentable usage remains external
 evidence rather than being wrapped, saturated, or forced into `ResourceQuantity`.
@@ -502,21 +555,33 @@ The result is an opaque logical `LeaseUseTransition` bound to one action, scope,
 and the earlier of both expiries—not an effect permit. Expired capability does not prevent voluntary
 release, but no stale capability or lease can contribute to an authorized dispatch.
 
+Except for initial mint, every lease reducer consumes its move-only `LeaseAggregate`. An accepted
+result owns the exact successor aggregate. A typed rejection owns the unchanged aggregate plus its
+`LeaseError`, so retry or recovery can continue without cloning its authority-time floor. The
+aggregate exposes that floor only by shared borrow. Any CAS request derived from an accepted lease
+transition consumes that transition; it cannot duplicate the successor authority state into two
+independently usable values.
+
 B1 owns the durable-CAS request and observation contract, but C0 owns its journal-backed production
 implementation and the opaque `CommittedEventBatch` receipt. Requests include exact key, expected
 absence or version, `CommandId`, planned next snapshot, and typed transition record. Observations
 distinguish claimed-applied, conflict, definitely not applied, indeterminate, and protocol-invalid.
-B1 can prove only that a claimed-applied echo exactly matches its planned successor; that validated
-observation remains unprivileged and does not prove persistence. C0 must revalidate against its
-authoritative transaction/idempotency record and return its own receipt. B0 supplies only a
-verified current-kernel witness. E0 alone matches that witness, receipt, and logical lease
-transition before constructing a private `CommittedLeaseHandle` after acquisition or
-non-authoritative `MutationAuthorizationBundleClaim` for mutation. C1 independently validates the
-claim and alone constructs its private mutation permit. The handle is an ergonomic holder claim,
-not independent effect authority; every mutation still requires a fresh gateway-authorized permit.
-Conflicts require re-observe, reauthorize, and replan; indeterminate commits are resolved under the
-same command ID. A raw or merely echo-matching adapter response never constructs a lease handle or
-mutation permit.
+B1 deliberately defines claimed-applied as an identity-only adapter claim about the exact
+caller-owned request: it echoes the workspace and `CommandId`, while the caller retains the
+move-only request and its complete planned successor. This avoids requiring an adapter to clone or
+reconstruct move-only authority state. The validated identity claim remains unprivileged and does
+not prove persistence. B1 exposes an exact full-field comparison boundary for checked authoritative
+snapshots, records, preconditions, and identities. C0 must use that full comparison—not identity
+alone—against its authoritative transaction/idempotency bytes, reject command-ID conflict or reuse,
+and return its own opaque receipt. B0 supplies only a verified current-kernel witness. E0 alone
+matches that witness, receipt, and logical lease transition before constructing a private
+`CommittedLeaseHandle` after acquisition or non-authoritative
+`MutationAuthorizationBundleClaim` for mutation. C1 independently validates the claim and alone
+constructs its private mutation permit. The handle is an ergonomic holder claim, not independent
+effect authority; every mutation still requires a fresh gateway-authorized permit. Conflicts
+require re-observe, reauthorize, and replan; indeterminate commits are resolved under the same
+command ID. A raw or identity-matching adapter claim never constructs a lease handle or mutation
+permit.
 
 ### `peritus-approval`
 
@@ -542,15 +607,45 @@ src/proofs/refinement.rs
 `ActionDigest`, `ApprovalRequestDigest`, and `ApprovalDecisionDigest` are distinct private-field
 wrappers over `Sha256Digest`; they are not interchangeable in APIs. An approval request contains
 `ApprovalRequestId`, `ActionId`, exact action digest, requester and role, escalation challenge,
-structured risk inputs/digest, one `RevisionTuple`, validity window, and request digest. The sole
-policy identity is `RevisionTuple::policy_id()`. Digest input covers every authority-relevant
-field. Collections use the verified `CapabilityName` order and reject duplicates.
+structured risk classes and one structured-risk-details digest, canonical producing-attempt and
+review-participant sets, one `RevisionTuple`, validity window, and request digest. The sole policy
+identity is `RevisionTuple::policy_id()`. Digest input covers every authority-relevant field.
+Collections use the verified canonical orders and reject duplicates. The participant sets are
+logical claimed facts until B0's current-state witness matches them to the active lifecycle state;
+they never establish their own provenance.
+
+Approval construction freezes these public bounds and rejects an over-limit input rather than
+hashing or rendering a truncated authority value:
+
+| Constant | Exact limit |
+|---|---:|
+| `MAX_APPROVAL_PERMISSIONS` | 256 |
+| `MAX_CREDENTIAL_REGISTRY_ENTRIES` | 4,096 |
+| `MAX_CREDENTIAL_APPROVAL_ROLES` | 11 |
+| `MAX_RISK_CLASSES` | 10 |
+| `MAX_INDEPENDENCE_REQUIREMENTS` | 4 |
+| `MAX_PRODUCING_PARTICIPANTS` | 256 |
+| `MAX_REVIEW_PARTICIPANTS` | 256 |
+| `MAX_APPROVAL_REQUEST_PREIMAGE_BYTES` | 65,536 |
+| `MAX_APPROVAL_DECISION_PREIMAGE_BYTES` | 4,096 |
+| `MAX_APPROVAL_KEY_ID_PREIMAGE_BYTES` | 256 |
+
+The role, risk, and independence limits equal the current closed-enum cardinalities; future enum
+growth requires an explicit bound review rather than accidental rejection. A credential-registry
+snapshot may be empty and otherwise contains at most 4,096 entries strictly ordered by
+`ApprovalKeyId`, with no duplicate key IDs and binary lookup. Request permissions are canonical,
+nonempty, and limited to 256. Both participant sets are canonical, duplicate-free, may be empty,
+and are limited to 256 each. Risk classes are canonical, nonempty, and limited to the ten current variants;
+independence requirements are canonical, may be empty, and are limited to the four current
+variants. There are no generic digest, string, reason, payload, or metadata vectors.
 
 The three choices are deny, approve once, and authorize an exact policy amendment. The signed
-decision payload binds a unique `CommandId`, responder, request ID/digest, choice, choice expiry,
-amendment digest when present, exact `ApprovalKeyId`, credential-revocation `Generation`, and
-credential-registry `RevisionNumber`. Delayed responses therefore cannot be rebound to a reissued
-credential, even when the same public key is reused. The crate pins
+decision payload binds a unique `CommandId`, responder, asserted approver role, request ID/digest,
+choice, choice expiry, exact `ApprovalKeyId`, credential-revocation `Generation`, and credential-
+registry `RevisionNumber`. An amendment choice additionally carries its base `PolicyId`, fresh
+successor `PolicyId`, exact `PolicyTier`, and amendment digest as separate signed fields. Delayed
+responses therefore cannot be rebound to a reissued credential, even when the same public key is
+reused. The crate pins
 `ed25519-dalek = { version = "=3.0.0", default-features = false }` and uses
 `VerifyingKey::verify_strict`; batch, randomness, PEM/PKCS8, Serde, and legacy-compatibility
 features are absent. Version 3.0.0 still compiles and exports signing APIs unconditionally, so B1
@@ -559,25 +654,41 @@ does not misrepresent it as a verifier-only dependency: an exact source-policy c
 and the public crate API exposes only its own verifier wrapper. A public key is exactly 32 bytes, a
 signature is exactly 64 bytes, and `ApprovalKeyId` is a domain-separated SHA-256 digest of the
 algorithm tag and public-key bytes. Noncanonical or malformed encodings are rejected before
-verification. B3 later owns external DTO/wire conversion; it cannot deserialize directly into a
-verified decision.
+verification. The canonical encoders use fixed magic/version and distinct domains, fixed-width
+big-endian integers and lengths, explicit option tags, stable enum tags, and canonical count-
+prefixed collections. Streaming encoders reject if the exact canonical preimage exceeds the frozen
+request, decision, or key-ID byte limit; they never truncate before hashing. B3 later owns external
+DTO/wire conversion; it cannot deserialize directly into a verified decision.
 
-An `ApproverCredential` binds key ID and public key to exact `ActorId`, required human-authority
-role, environment and workspace scope, maximum `AuthorityTier`, allowed approver-role constraints,
-validity window, and credential-revocation `Generation`. Verification consults a current immutable
+An `ApproverCredential` binds key ID and public key to exact `ActorId`, principal role,
+environment and workspace scope, maximum `AuthorityTier`, canonical allowed approval roles,
+validity window, and credential-revocation `Generation`. Verification consults a checked immutable
 `CredentialRegistrySnapshot` with an exact `RevisionNumber`; signed key ID, generation, and registry
-revision must all equal it. Missing, disabled, stale-generation, not-yet-valid, expired, wrong-scope,
-or under-tier credentials fail. Credentials never carry raw action permission and cannot override
-an explicit policy denial.
+revision must all equal that supplied snapshot. The snapshot and resulting authentication
+observation are intentionally non-authoritative about durable currentness. Missing, disabled,
+stale-generation, not-yet-valid, expired, wrong-scope, role-mismatched, or under-tier credentials
+fail. Credentials never carry raw action permission and cannot override an explicit policy denial.
+The credential's principal role must be exactly `ActorRole::HumanAuthority`. The signed decision's
+separate asserted approval role must be present in both the challenge's exact conjoined approver-
+role set and the credential's nonempty canonical allowed-role set; merely having a nonempty set
+intersection is insufficient. The credential actor must equal the signed responder. An asserted
+approval role is only a decision-authority label: it neither changes the human principal role nor
+grants action permission.
 
 Cryptographic verification and hashing are explicit H/TCB refinement seams. The pure state
 transition consumes only a checked authentication observation whose credential, actor, payload,
-scope, policy tuple, revocation generation, and validity are revalidated. Unless their executable
+scope, policy tuple, snapshot revision, revocation generation, and validity are revalidated. It
+does not promote the observation or snapshot into a current-registry witness. Unless their executable
 bodies are replaced through a separately reviewed design/PCR by Verus-verified implementations,
 `ApprovalKeyId::compute` (`EXCL-0001`), `ApprovalRequestDigest::compute` (`EXCL-0002`),
 `ApprovalDecisionDigest::compute` (`EXCL-0003`), and `verify_signed_decision` (`EXCL-0004`) receive
 mandatory exact symbol-level exclusions. SHA-256 uses published NIST known-answer vectors; Ed25519 uses RFC 8032 vectors; both
 receive alternate-implementation differential, malformed-input, and mutation/refinement evidence.
+The alternate test verifier is exact dev dependency
+`ed25519-compact = { version = "=2.3.1", default-features = false }`; it is used for RFC 8032 valid
+vectors and ordinary message/key/signature mutations only. Its edge-case acceptance policy is not
+treated as equivalent to the frozen local strict policy, so torsion and noncanonical cases are
+asserted directly against B1's strict prechecks and dalek verification.
 The cryptographic library's algorithm correctness is an external TCB assumption documented in the
 exclusion threat analysis, not a Verus `assume` or trusted body, so `trust.toml` remains empty.
 
@@ -590,25 +701,32 @@ belongs to `REF-C0-B1-COMMIT-ONCE`.
 Approve-once intersects request, credential, signed response, challenge, and policy validity and
 fails at equality with the earliest expiry. It produces one logical `ApprovedActionTransition`, not
 an effect permit. B0 may validate V-owned request facts against current kernel state without
-importing approval types; E0 matches the H approval transition, B0 witness, and C0 receipt into a
-bundle claim. The target effect subsystem, not E0, independently validates that bundle and alone
-constructs its private effect permit. Approve-similar produces only `ApprovedPolicyAmendment` bound
-to one previewed successor. E0's two-commit integration gate is the sole future path that can submit
+importing approval types; E0 matches the H approval transition and its exact registry revision, a B0
+current-state witness, C0's non-forgeable current-registry observation, and the approval commit
+receipt into a bundle claim. The target effect subsystem, not E0, independently validates that
+bundle and alone constructs its private effect permit. Approve-similar produces only
+`ApprovedPolicyAmendment` bound to one previewed successor's explicit base/successor/tier/digest
+identity. E0's two-commit integration gate is the sole future path that can submit
 B0's V-only logical activation plan and install its exact replayed successor state; E0 cannot select
 or invent an active policy field. New policy evaluation follows that replay.
 
 Approver independence rejects self-approval and configured conflicting participation. UI-safe
 rendering is structured and bounded: stable IDs, digests, enums, permission summaries, revisions,
-validity, and redacted metadata. It never emits raw action payload, secret values, terminal control
-bytes, unbounded reason text, or arbitrary debug representations.
+validity, and redacted metadata. `MAX_RENDERED_APPROVAL_BYTES` is 16,384,
+`MAX_RENDERED_PERMISSIONS` is 64, `MAX_RENDERED_FIELD_BYTES` is 256, and
+`RENDER_TRUNCATION_SUFFIX_BYTES` reserves 96 bytes. Rendering truncates only at whole field or
+permission boundaries, always reports total/omitted counts and `truncated=true` when capped, and
+emits only ASCII bytes `0x20..=0x7e`. It never emits newlines, terminal controls, raw action payload,
+secret values, raw reason/payload/metadata fields, unbounded text, or arbitrary debug
+representations.
 
 ### Formal model and proof ownership
 
-Ordinary `state_machine!` models transition reachability. Executable reducers use deterministic
-sorted vectors and checked arithmetic and prove refinement to mathematical sets/maps/trees. Rust
-move semantics enforce non-clone logical transition grants; formal state proves that only one
-matching logical transition is reachable. C0/E0 refinements, not B1, lift that claim to durable
-commit and effect-permit uniqueness.
+Explicit closed Verus state and total step relations model transition reachability without generated
+trusted bodies. Executable reducers use deterministic sorted vectors and checked arithmetic and
+prove refinement to mathematical sets/maps/trees. Rust move semantics enforce non-clone logical
+transition grants; formal state proves that only one matching logical transition is reachable.
+C0/E0 refinements, not B1, lift that claim to durable commit and effect-permit uniqueness.
 
 | Obligation | Owner | Required statement |
 |---|---|---|
@@ -651,14 +769,15 @@ Separate stable downstream open refinements prevent B1 from overclaiming integra
 
 | ID | Future owner | Required refinement |
 |---|---|---|
-| `REF-C0-B1-COMMIT-ONCE` | C0 | Transactional append/CAS and opaque commit receipts preserve capability, budget begin/reservation/usage/finalization, lease, and approval transitions under crash/replay without lost/double consumption or unsafe release. |
-| `REF-B3-B1-DIGEST-BYTES` | B3 | Canonical action/event bytes match every digest consumed by B1. |
+| `REF-C0-B1-COMMIT-ONCE` | C0 | Transactional append/CAS and opaque commit receipts preserve capability, budget begin/reservation/usage/finalization, lease, and approval transitions under crash/replay without lost/double consumption or unsafe release. In particular, C0 cannot commit `CancelHeld` from a raw `ReservationReference`, B1 receipt, or B1 transition; it requires the matching committed begin lineage plus its own non-forgeable authoritative target/journal observation proving non-activation. |
+| `REF-B3-B1-DIGEST-BYTES` | B3 | Canonical action/event/amendment bytes match every digest consumed by B1. Amendment bytes include the base policy, successor policy, replacement tier, and complete canonical replacement policy layer; equal approved amendment digests therefore denote equal candidate replacements. |
 | `REF-C1-B1-RESOURCE-IDENTITY` | C1 | Resolved filesystem/workspace targets match exact authorized `ResourceId` values. |
 | `REF-C1-B1-RECONCILE-SAFETY` | C1 | Exactly correlated post-fence workspace inspection establishes safe-to-acquire or a typed dirty/indeterminate result without guessing. |
 | `REF-C2-B1-HOLDER-QUIESCENCE` | C2 | Process/task ownership evidence proves the exact prior lease holder is quiescent before normal release or safe reconciliation. |
 | `REF-C4-B1-OPERATION-CLASS` | C4 | Each concrete tool consumes B1 `OperationDescriptor` values and its implementation matches the authenticated operation class. |
-| `REF-B0-B1-CURRENT-STATE-WITNESS` | B0 | V-only kernel logic binds current lifecycle/policy/revision/action facts and produces the logical `PolicyActivationTransition`/next-state plan from V-owned candidate facts without importing H approval or C0 types. |
-| `REF-E0-B1-COMMIT-BEFORE-EFFECT` | E0 | E0 assembles matching capability use, durable budget charge/reservation, lease use when mutating, approval when required, B0 current-state witness, and exact C0 receipts before invoking a target authorization gateway; it does not construct that target's permit. |
+| `REF-C0-B1-CREDENTIAL-REGISTRY-CURRENT` | C0 | The durable credential registry advances a nonreused revision/generation on issue, disable, revoke, and same-key reissue; it returns an opaque non-forgeable observation identifying the exact checked snapshot bytes and revision. A raw or stale B1 snapshot is not a currentness claim. |
+| `REF-B0-B1-CURRENT-STATE-WITNESS` | B0 | V-only kernel logic binds current lifecycle/policy/revision/action facts, exact producing-attempt and review-participant sets, and the exact current credential-registry revision, and produces the logical `PolicyActivationTransition`/next-state plan from V-owned candidate facts without importing H approval or C0 types. |
+| `REF-E0-B1-COMMIT-BEFORE-EFFECT` | E0 | E0 assembles matching capability use, durable budget charge/reservation, lease use when mutating, approval plus its exact credential-registry revision when required, B0 current-state witness, and exact C0 commit/current-registry receipts before invoking a target authorization gateway; it does not construct that target's permit. |
 | `REF-C1-B1-AUTHORITY-GATE` | C1 | The workspace crate owns `WorkspaceAuthorizationRequest`; its gateway validates E0-supplied B1/B0/C0 inputs and alone constructs its private mutation permit, with no public raw bypass. |
 | `REF-C2-B1-AUTHORITY-GATE` | C2 | The process crate owns `ExecutionAuthorizationRequest`; its gateway validates E0-supplied B1/B0/C0 inputs and alone constructs its private execution permit, with no public raw bypass. |
 | `REF-C4-B1-AUTHORITY-GATE` | C4 | The tool router owns `ToolAuthorizationRequest`; it validates E0-supplied B1/B0/C0 inputs and alone constructs its private invocation permit, with no built-in-tool bypass. |
@@ -724,8 +843,11 @@ are used on the wire; enum ordinals and floating-point cost values are prohibite
 
 - Policy denial and approval-required are domain outcomes, not adapter failures.
 - Any policy/revision/time mismatch invalidates the pending authority and requires a new decision.
-- A failed pure transition returns no next state. An accepted transition returns a next-state plan
-  that grants no effect authority until exact durable commit is observed.
+- A failed pure transition returns no accepted successor. When the input contains move-only
+  authority state, a typed rejection returns the unchanged input value and error so recovery does
+  not require cloning, reconstruction, or loss of the monotonic floor. An accepted transition
+  returns one next-state plan that grants no effect authority until exact durable commit is
+  observed.
 - A budget effect that may have executed is never retried by releasing its reservation. It is
   resolved from cumulative evidence or conservatively charged to the ceiling.
 - Lease conflict reobserves and replans. Lease commit indeterminacy resolves the same `CommandId`;
@@ -734,7 +856,7 @@ are used on the wire; enum ordinals and floating-point cost values are prohibite
   unknown resource state quarantines rather than guessing.
 - Duplicate identical approval responses are idempotent. Conflicting responses, stale requests,
   and already-consumed permits are terminal for that request.
-- Arithmetic exhaustion, version exhaustion, corrupt replay state, invalid adapter echoes, and
+- Arithmetic exhaustion, version exhaustion, corrupt replay state, invalid adapter observations, and
   impossible state combinations fail closed and surface stable diagnostics.
 
 ## Security analysis
@@ -771,7 +893,9 @@ a pure Verus theorem.
 4. Exercise exact zero, one, boundary, one-over, and `u64::MAX` arithmetic paths.
 5. Test every scope field by holding all other fields equal and changing exactly one.
 6. Add adversarial port scripts for before-commit, after-commit/before-ack, conflict,
-   indeterminate, malformed echo, stale substitution, and corrupt reconstruction.
+   indeterminate, malformed identity claims, stale authoritative-plan substitution, command-ID
+   reuse/conflict, and corrupt reconstruction. Include a cross-crate adapter that claims an accepted
+   authorize-use request without cloning or reconstructing its move-only transition.
 7. Add concurrency-model tests for competing lease acquisition/renew/expiry/reconcile and approval
    consume. Exactly one logical transition may win; a raw lease CAS claim remains unprivileged.
 8. Add mutation-sensitive tests for deny guards, scope pairing, role separation, budget high-water,
@@ -794,20 +918,27 @@ a pure Verus theorem.
 Rollout means internal integration, not an MVP or public release.
 
 1. Freeze and independently approve this design.
-2. Implement the exact shared A1 additions and narrow `state_machine!` checker support with
+2. Implement the exact shared A1 additions and fail-closed state-machine-macro rejection with
    adversarial checker tests.
 3. Implement policy and budget in parallel against the frozen A1 contract.
 4. Implement leases and approval in parallel against the frozen policy APIs.
 5. Integrate root manifests, architecture registry, formal inventories, docs, and A2 exhaustive
    fixtures; run focused and full verification.
 6. Obtain an independent code/proof/security review and resolve findings at their causes.
-7. Compute exact final formal/shared input fingerprints. Create a proof-authorization branch from
-   current protected `main` containing only the append-only PCR record, review it independently,
-   and merge its PR.
-8. Rebase/merge protected `main` into the B1 implementation branch, update the current source
+7. From exact protected `main`, prepare the one-time human-admin recovery commit described in
+   criterion 21. It contains only reviewer registration/provenance, the append-only detached-verdict
+   contract and validator, its adversarial tests and documentation, and the signed recovery record;
+   it contains no B1 implementation bytes or B1 PCR authorization. The human repository
+   administrator reviews, signs, and merges it through an explicit protected-branch recovery.
+8. Rebase the still-unmerged B1 work onto the recovered protected base, freeze and sign the exact
+   implementation commit/tree, compute every final formal/shared input fingerprint, and have the
+   newly registered independent reviewer issue the detached verdict bound to those exact identities.
+   Create a proof-authorization branch from recovered protected `main` containing only the
+   append-only B1 PCR plus its detached verdict artifact, and merge that authorization PR.
+9. Rebase/merge protected `main` into the B1 implementation branch, update the current source
    inventory to point at the preauthorized fingerprints without changing them, rerun Gate A, and
    merge the implementation through its protected PR.
-9. Verify the exact resulting `main` commit and record all CI evidence before closing B1.
+10. Verify the exact resulting `main` commit and record all CI evidence before closing B1.
 
 Rollback before public release is a normal protected revert of the complete B1 integration commit
 plus a proof-impact record for the reverted exact identities. Proof history remains append-only;
@@ -869,11 +1000,12 @@ Decreasing consumption or delaying ancestor accounting until child close can rem
 provider correction, crash, or retry. High-water cumulative settlement with immediate ancestor
 propagation is preferred.
 
-### Alternative: `tokenized_state_machine!`
+### Alternative: state-machine macros
 
-Linear ghost ownership is attractive, but the pinned macro documents a trusted generated
-implementation. B1 uses ordinary `state_machine!`, executable reducers, move-only Rust values, and
-explicit refinement proofs instead.
+Linear ghost ownership is attractive, but the pinned tokenized macro documents a trusted generated
+implementation and the ordinary macro also synthesizes `external_body` proof helpers. Either choice
+would violate B1's mandatory `--no-cheating` verification. B1 therefore uses explicit closed Verus
+state/step relations, executable reducers, move-only Rust values, and direct refinement proofs.
 
 ### Final verdict
 

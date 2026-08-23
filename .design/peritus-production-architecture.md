@@ -307,7 +307,7 @@ The workspace is grouped physically by subsystem. Package names remain globally 
 | `peritus-projection` | V/H | Pure event folding, projection schemas, rebuild/check logic, and query-model adapters |
 | `peritus-artifact-store` | H/T | Streaming content-addressed blobs, atomic finalize, digest verification, encryption metadata, quotas, and garbage-collection plans |
 | `peritus-migrations` | H | Ordered schema migrations, preflight, copy-on-risk backup, compatibility fixture runner, and recovery metadata |
-| `peritus-leases` | V/H | Verified lease state and expiry decisions plus durable compare-and-swap persistence adapter |
+| `peritus-leases` | H | Verified lease state, expiry/fencing decisions, and checked compare-and-swap port; C0 owns the durable journal-backed implementation |
 | `peritus-evidence` | V/H | Revision tuples, evidence manifests, freshness validation, causal links, and portable evidence-bundle assembly |
 
 #### Workspace, patching, execution, and security
@@ -324,7 +324,7 @@ The workspace is grouped physically by subsystem. Package names remain globally 
 | `peritus-sandbox-windows` | T | Restricted token/AppContainer strategy, job objects, ACL policy, path normalization, and Windows probes |
 | `peritus-network` | V/H/T | Verified allow/deny matching and request planning plus managed proxy/DNS/TLS observation boundary |
 | `peritus-secrets` | H/T | Secret references, OS keychain integration, environment injection, redaction fingerprints, zeroization, and leak detection |
-| `peritus-approval` | V/H | Approval request model, risk classification inputs, actor-bound decisions, expiry, replay protection, and UI-safe rendering |
+| `peritus-approval` | H | Verified approval state/replay core plus checked cryptographic authentication and UI-safe rendering seams |
 
 #### Tools and extension system
 
@@ -425,7 +425,12 @@ An adapter may report “file written” or “process exited”; it cannot repo
 
 #### Verified state machines
 
-`peritus-kernel`, `peritus-policy`, `peritus-leases`, `peritus-review`, and `peritus-evolution` use Verus `state_machine!` or `tokenized_state_machine!` where the ownership model benefits from linear ghost state. Executable transition functions mirror the specification relations. Each transition has:
+`peritus-kernel`, `peritus-policy`, `peritus-leases`, `peritus-review`, and `peritus-evolution`
+model reachability with explicit closed Verus state and total step relations. At the pinned Verus
+revision, both `state_machine!` and `tokenized_state_machine!` are prohibited because their
+generated proof helpers introduce trusted bodies that cannot pass the mandatory `--no-cheating`
+gate. Executable transition functions refine the explicit specification relations. Each transition
+has:
 
 - explicit preconditions and postconditions;
 - an inductiveness proof for every global invariant;
@@ -1100,18 +1105,20 @@ The slices below are designed for isolated worktrees and explicit crate ownershi
 
 ```text
 A0 Workspace/toolchain
- ├─ A1 formal foundation ──┬─ B0 lifecycle kernel ─┬─ D0 agent loop ─┐
- │                         ├─ B1 policy/leases ─┤                 │
- │                         ├─ B2 acceptance spec ─┤                 │
- │                         └─ B3 domain protocol ─┼─ C0 journal     │
- ├─ A2 test/conformance ───────────────────────┼─ C1 workspace  │
- └─ A3 app protocol ───────────────────────────┼─ C2 execution  │
-                                               ├─ C3 security    │
-                                               ├─ C4 tools       │
-                                               ├─ C5 providers   │
-                                               ├─ C6 context     │
-                                               └─ C7 trace       │
-                                                                ▼
+ ├─ A1 formal foundation ──┬─ B1 policy/budget/lease/approval ─┐
+ │                         └─ B2 acceptance spec ──────────────┼─ B0 lifecycle kernel
+ │                                                            └─ B3 domain protocol
+ ├─ A2 test/conformance ─────────────────────────────────────────┬─ C0 journal
+ └─ A3 app protocol ─────────────────────────────────────────────┤
+                                                                ├─ C1 workspace (after C0)
+                                                                ├─ C2 execution (after C0)
+                                                                ├─ C3 security
+                                                                ├─ C4 tools (after C0-C2)
+                                                                ├─ C5 providers
+                                                                ├─ C6 context
+                                                                ├─ C7 trace
+                                                                └─ D0 agent loop
+                                                                         ▼
                            D1 gates + D2 review + D3 scheduler → E0 orchestrator
                                                                 │
                           E2 debugger + E3 evaluation + E1 harness ────┤
@@ -1132,15 +1139,15 @@ A0 Workspace/toolchain
 | **A1 Formal foundation** | `peritus-types`, `peritus-tcb`, verification manifests | A0 | Validated opaque types, trust rules, first proofs, runtime wrappers, and trust-cheat CI. |
 | **A2 Test/conformance foundation** | `peritus-test-support`, `peritus-conformance`, fixture conventions | A0/A1 | Deterministic clock/ID/fault/provider/tool fixtures and runnable empty conformance suites. |
 | **A3 Application protocol foundation** | `peritus-app-protocol`, schema generation | A0/A1 | Version negotiation, request/event envelopes, cursor/idempotency types, compatibility fixtures. |
-| **B0 Lifecycle kernel** | `peritus-kernel` | A1 | Session/run/attempt/turn/action state machines and proofs for legal transitions, causality, and no implicit success. |
-| **B1 Policy, leases, and budgets** | `peritus-policy`, `peritus-budget`, verified part of `peritus-leases` | A1 | Capability/authority/lease/resource models with `INV-006`–`INV-009`, `INV-012`, and policy property tests. |
+| **B0 Lifecycle kernel** | `peritus-kernel` | A1, B1, B2 | Session/run/attempt/turn/action state machines and proofs for legal transitions, causality, and no implicit success against frozen policy, budget, and acceptance contracts. |
+| **B1 Policy, leases, budgets, and approvals** | `peritus-policy`, `peritus-budget`, `peritus-leases`, `peritus-approval` | A1 | Capability/authority/lease/resource/approval models with pure-state `INV-006`–`INV-009`, `INV-012`, `INV-022`, and explicit durability/effect refinements. |
 | **B2 Acceptance specification** | `peritus-spec`, verified quality-policy definitions | A1 | Contract/gate/review schema, validation, revision/freshness model, and adversarial contract tests. |
 | **B3 Domain protocol and codec** | `peritus-protocol`, `peritus-codec` | A1, B0–B2 contracts | Versioned commands/events/errors, bounded decoding, schema/codegen, compatibility corpus. |
 | **C0 Journal/projections/artifacts** | `peritus-journal`, `peritus-projection`, `peritus-artifact-store`, `peritus-migrations`, `peritus-evidence` | A2, B3 | Transactional event store, replay/rebuild, blob finalization, migrations, failpoint crash evidence. |
-| **C1 Git/workspace/patch** | `peritus-git`, `peritus-patch`, `peritus-workspace` | B1–B3, A2 | Worktree lifecycle, lease enforcement, hardened paths, atomic patches, snapshots/rollback, malicious-path suite. |
-| **C2 Process/sandbox backplane** | `peritus-process`, `peritus-sandbox` | B1/B3, A2 | Owned process/PTY lifecycle and abstract sandbox plan with fake backend and cancellation/resource tests. |
+| **C1 Git/workspace/patch** | `peritus-git`, `peritus-patch`, `peritus-workspace` | B0–B3, C0, A2 | Worktree lifecycle, target-owned authorization gateway, lease enforcement, hardened paths, atomic patches, snapshots/rollback, malicious-path suite. |
+| **C2 Process/sandbox backplane** | `peritus-process`, `peritus-sandbox` | B0/B1/B3, C0, A2 | Owned process/PTY lifecycle, target-owned authorization gateway, and abstract sandbox plan with fake backend and cancellation/resource tests. |
 | **C3 Platform security backends** | Linux/macOS/Windows sandbox crates, `peritus-network`, `peritus-secrets` | C2, B1 | Native enforcement, probes, common conformance, secret canaries, and fail-closed unsupported behavior. Work divides further by OS without shared-path edits. |
-| **C4 Tool system** | tool protocol/router and built-in tool crates | B1/B3, C1/C2 | Verified exposure/routing, common envelopes, fs/shell/Git/quality tools, schema and authorization tests. |
+| **C4 Tool system** | tool protocol/router and built-in tool crates | B0/B1/B3, C0–C2 | Verified exposure/routing, target-owned authorization gateway/private permits, common envelopes, fs/shell/Git/quality tools, schema and authorization tests. |
 | **C5 Model providers** | model protocol, provider core and provider adapters | B3, A2 | Capability negotiation, normalized streaming, retries/idempotency, fake server and provider conformance. Provider adapters are independent sub-slices. |
 | **C6 Context and memory** | `peritus-context`, `peritus-memory`, `peritus-role` | A1, B1/B2/B3 | Provenance graph, selection/compaction plans, memory lifecycle/retrieval, poisoning tests, role capability definitions. |
 | **C7 Trace and telemetry** | `peritus-trace`, `peritus-telemetry` | B3, C0 | Causal normalized traces, redaction/raw vault references, OTel projection, backpressure and secret-leak tests. |
@@ -1200,7 +1207,7 @@ This registry is canonical for parallel planning. A slice may split internally o
 | G3 | `peritus-mcp`, `peritus-plugin-sdk`, `peritus-plugin-host` |
 | H3 | `peritus-benchmarks` |
 
-Slices in the same dependency wave may run in parallel. C3 splits by platform; C5 splits by provider; G1/G2 split by client. B0/B1/B2 proceed in parallel only after A1 agrees on shared primitive types. D0/D1/D2/D3 proceed in parallel against frozen B/C contracts. H0–H3 begin test design early but issue their qualification verdicts only against the integrated release candidate.
+Slices in the same dependency wave may run in parallel. C3 splits by platform; C5 splits by provider; G1/G2 split by client. B1 and B2 proceed in parallel after A1 freezes shared primitives; B0 may develop independent models concurrently but freezes and registers its production interfaces only against completed B1/B2 contracts. D0/D1/D2/D3 proceed in parallel against frozen B/C contracts. H0–H3 begin test design early but issue their qualification verdicts only against the integrated release candidate.
 
 ### Merge gates between waves
 

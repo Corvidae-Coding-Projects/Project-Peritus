@@ -9,6 +9,7 @@
 )]
 
 use crate::CapabilityNameError;
+use std::cmp::Ordering;
 use vstd::prelude::*;
 #[cfg(verus_only)]
 use vstd::utf8::encode_utf8;
@@ -43,6 +44,52 @@ spec fn valid_from(bytes: Seq<u8>, index: nat, at_segment_start: bool) -> bool
 /// Returns whether bytes match the complete capability-name grammar and length bound.
 pub closed spec fn valid_capability_bytes(bytes: Seq<u8>) -> bool {
     bytes.len() <= CapabilityName::MAX_LENGTH && valid_from(bytes, 0, true)
+}
+
+/// Returns the canonical lexicographic order of two byte sequences from an exact shared index.
+pub open spec fn canonical_byte_order_from(
+    left: Seq<u8>,
+    right: Seq<u8>,
+    index: nat,
+) -> Ordering
+    decreases left.len() - index,
+{
+    if index >= left.len() {
+        if index >= right.len() { Ordering::Equal } else { Ordering::Less }
+    } else if index >= right.len() {
+        Ordering::Greater
+    } else if left[index as int] < right[index as int] {
+        Ordering::Less
+    } else if left[index as int] > right[index as int] {
+        Ordering::Greater
+    } else {
+        canonical_byte_order_from(left, right, index + 1)
+    }
+}
+
+fn canonical_byte_order_from_exec(
+    left: &[u8],
+    right: &[u8],
+    index: usize,
+) -> (result: Ordering)
+    requires
+        index <= left.len(),
+        index <= right.len(),
+    ensures
+        result == canonical_byte_order_from(left@, right@, index as nat),
+    decreases left.len() - index,
+{
+    if index == left.len() {
+        if index == right.len() { Ordering::Equal } else { Ordering::Less }
+    } else if index == right.len() {
+        Ordering::Greater
+    } else if left[index] < right[index] {
+        Ordering::Less
+    } else if left[index] > right[index] {
+        Ordering::Greater
+    } else {
+        canonical_byte_order_from_exec(left, right, index + 1)
+    }
 }
 
 const fn is_ascii_lowercase(byte: u8) -> (result: bool)
@@ -125,6 +172,7 @@ impl Clone for CapabilityName {
     fn clone(&self) -> (result: Self)
         ensures
             result.spec_value() == self.spec_value(),
+            result.spec_bytes() == self.spec_bytes(),
     {
         proof {
             use_type_invariant(&*self);
@@ -167,6 +215,11 @@ impl CapabilityName {
         self.value@
     }
 
+    /// Returns the canonical ASCII byte sequence used by policy ordering proofs.
+    pub closed spec fn spec_bytes(&self) -> Seq<u8> {
+        encode_utf8(self.spec_value())
+    }
+
     /// Returns whether the stored value satisfies the complete grammar.
     pub closed spec fn is_valid(&self) -> bool {
         valid_capability_bytes(encode_utf8(self.spec_value()))
@@ -179,6 +232,21 @@ impl CapabilityName {
             value@ == self.spec_value(),
     {
         self.value.as_str()
+    }
+
+    /// Compares two names by their exact validated ASCII bytes.
+    ///
+    /// This order is canonical and carries no hierarchical authority semantics.
+    #[must_use]
+    pub fn canonical_cmp(&self, other: &Self) -> (result: Ordering)
+        ensures
+            result == canonical_byte_order_from(self.spec_bytes(), other.spec_bytes(), 0),
+    {
+        canonical_byte_order_from_exec(
+            self.value.as_str().as_bytes(),
+            other.value.as_str().as_bytes(),
+            0,
+        )
     }
 
     /// Consumes the name and returns its validated string.

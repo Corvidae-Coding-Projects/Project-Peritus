@@ -1,6 +1,7 @@
 use super::manifest::{TrustedOccurrence, validate};
 use super::manifest_impact::sha256_hex;
 use super::manifest_support::version_is_pinned;
+use super::manifest_symbol::validate_symbol;
 use crate::model::{
     ArchitecturePolicy, CargoMetadata, CargoPackage, CargoPackageMetadata, CargoTarget,
     PackagePolicy, PeritusPackageMetadata,

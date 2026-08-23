@@ -29,6 +29,7 @@ pub(super) fn validate(
     validate_envelope(document, diagnostics);
     let expected = expected_sources(context, compilation_sources);
     let changes = validate_changes(context, actors, document, diagnostics);
+    verdict::validate_directory(context.root, document, diagnostics);
     validate_source_inventory(context, document, &expected, &changes, diagnostics)?;
     if enforce_review_base {
         review_base::validate(context.root, document, diagnostics)?;
@@ -112,6 +113,7 @@ fn validate_change(
         validate_transition(&change.id, source, diagnostics);
     }
     evidence::validate(change, diagnostics);
+    verdict::validate_change(context.root, actors, change, diagnostics);
 }
 
 fn validate_review_date(
@@ -377,3 +379,5 @@ mod evidence;
 mod inventory;
 #[path = "manifest_impact/review_base.rs"]
 mod review_base;
+#[path = "manifest_impact/verdict.rs"]
+mod verdict;

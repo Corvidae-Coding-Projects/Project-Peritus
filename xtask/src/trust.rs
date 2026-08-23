@@ -34,6 +34,8 @@ mod manifest_impact;
 mod manifest_model;
 #[path = "trust/manifest_support.rs"]
 mod manifest_support;
+#[path = "trust/manifest_symbol.rs"]
+mod manifest_symbol;
 #[path = "trust/manifest_trust.rs"]
 mod manifest_trust;
 

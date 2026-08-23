@@ -48,7 +48,10 @@ impl PositiveNumber {
     const fn checked_next(self) -> (result: Result<Self, OneBasedNumberError>)
         ensures
             match result {
-                Ok(next) => next.spec_value() == self.spec_value() + 1,
+                Ok(next) => {
+                    next.spec_value() == self.spec_value() + 1
+                        && self.spec_value() < u64::MAX as int
+                }
                 Err(OneBasedNumberError::Overflow) => self.spec_value() == u64::MAX,
                 Err(OneBasedNumberError::Zero) => false,
             },
@@ -97,7 +100,7 @@ impl RevisionNumber {
     ///
     /// Returns [`OneBasedNumberError::Overflow`] when the current value is [`u64::MAX`].
     pub const fn checked_next(self) -> (result: Result<Self, OneBasedNumberError>)
-        ensures match result { Ok(next) => next.spec_value() == self.spec_value() + 1, Err(OneBasedNumberError::Overflow) => self.spec_value() == u64::MAX, Err(OneBasedNumberError::Zero) => false }
+        ensures match result { Ok(next) => next.spec_value() == self.spec_value() + 1 && self.spec_value() < u64::MAX as int, Err(OneBasedNumberError::Overflow) => self.spec_value() == u64::MAX, Err(OneBasedNumberError::Zero) => false }
     { match self.0.checked_next() { Ok(number) => Ok(Self(number)), Err(error) => Err(error) } }
 }
 
@@ -137,7 +140,7 @@ impl EventSequence {
     ///
     /// Returns [`OneBasedNumberError::Overflow`] when the current value is [`u64::MAX`].
     pub const fn checked_next(self) -> (result: Result<Self, OneBasedNumberError>)
-        ensures match result { Ok(next) => next.spec_value() == self.spec_value() + 1, Err(OneBasedNumberError::Overflow) => self.spec_value() == u64::MAX, Err(OneBasedNumberError::Zero) => false }
+        ensures match result { Ok(next) => next.spec_value() == self.spec_value() + 1 && self.spec_value() < u64::MAX as int, Err(OneBasedNumberError::Overflow) => self.spec_value() == u64::MAX, Err(OneBasedNumberError::Zero) => false }
     { match self.0.checked_next() { Ok(number) => Ok(Self(number)), Err(error) => Err(error) } }
 }
 
@@ -177,7 +180,7 @@ impl Generation {
     ///
     /// Returns [`OneBasedNumberError::Overflow`] when the current value is [`u64::MAX`].
     pub const fn checked_next(self) -> (result: Result<Self, OneBasedNumberError>)
-        ensures match result { Ok(next) => next.spec_value() == self.spec_value() + 1, Err(OneBasedNumberError::Overflow) => self.spec_value() == u64::MAX, Err(OneBasedNumberError::Zero) => false }
+        ensures match result { Ok(next) => next.spec_value() == self.spec_value() + 1 && self.spec_value() < u64::MAX as int, Err(OneBasedNumberError::Overflow) => self.spec_value() == u64::MAX, Err(OneBasedNumberError::Zero) => false }
     { match self.0.checked_next() { Ok(number) => Ok(Self(number)), Err(error) => Err(error) } }
 }
 

@@ -8,10 +8,12 @@ already exists.
 
 `peritus-types` is verification class V. It owns only time-independent primitive values:
 
-- 27 nominal 16-byte identifier types whose all-zero representation is rejected;
+- 29 nominal 16-byte identifier types whose all-zero representation is rejected;
 - one-based revision, event-sequence, and generation numbers with checked advancement;
 - an exact 32-byte SHA-256 digest representation, without hashing or authenticity claims;
-- capability names matching `[a-z][a-z0-9-]*(.[a-z][a-z0-9-]*)*` within 128 bytes; and
+- capability names matching `[a-z][a-z0-9-]*(.[a-z][a-z0-9-]*)*` within 128 bytes, with a
+  verified canonical ASCII-byte order;
+- an exact revision tuple binding acceptance, harness, workspace, policy, and provider identity; and
 - resource dimensions and nonnegative quantities with checked addition and subtraction.
 
 Fields are private. Ordinary Rust callers use total constructors returning typed errors; they do
@@ -66,9 +68,9 @@ The workspace proof commands and ordinary-Rust boundary audit are exact and poli
 ```text
 cargo run --locked --package xtask -- ordinary-api-check
 cargo verus verify --workspace --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --rlimit 20
-cargo verus verify --package peritus-types --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+cargo verus verify --package peritus-approval --package peritus-budget --package peritus-leases --package peritus-policy --package peritus-types --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
 cargo verus build --workspace --all-features --release --locked --check-toolchain --fwd-verus-args-to roots -- --rlimit 20
-cargo verus build --package peritus-types --all-features --release --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+cargo verus build --package peritus-approval --package peritus-budget --package peritus-leases --package peritus-policy --package peritus-types --all-features --release --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
 ```
 
 The workspace commands cover every opted-in V, H, and T package with the bundled solver-version
