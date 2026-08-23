@@ -49,6 +49,11 @@ provenance locators, issue syntax, independent identities, real calendar dates, 
 pinned upstream versions, exact locked evidence commands, status-dependent fields,
 cross-references, and acyclic obligation dependencies.
 
+`cargo xtask all` runs the locally executable trust scan and validates the actor, trust,
+exclusion, and obligation manifests, but deliberately does not claim protected-base proof-impact
+authorization. That two-step repository review remains available through the explicit
+`cargo xtask verify-trust` command while hosted protected-runner enforcement is deferred.
+
 Trusted constructs are reconciled one-to-one by owning crate, source file, line, symbol, and
 scanner kind. An occurrence outside `peritus-tcb/src`, an occurrence without a record, a stale
 record, or an ambiguous record fails the gate. Issue liveness is additionally checked by the

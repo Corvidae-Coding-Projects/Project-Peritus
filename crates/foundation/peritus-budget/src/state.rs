@@ -1,5 +1,10 @@
 //! Privately represented ledger state, checked snapshots, and transition receipts.
 
+#![allow(
+    clippy::match_like_matches_macro,
+    reason = "The explicit phase match is shared with Verus, where macro expansion is outside the audited API subset"
+)]
+
 mod receipt;
 mod queries;
 

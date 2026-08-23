@@ -23,7 +23,11 @@ const fn earliest(
     }
 }
 
-pub(super) fn observation_expiry(
+#[allow(
+    clippy::question_mark,
+    reason = "const Result propagation requires explicit matches on stable Rust and pinned Verus"
+)]
+pub(super) const fn observation_expiry(
     request: &crate::ApprovalRequest,
     observation: &crate::AuthenticatedApprovalObservation,
 ) -> (result: Result<AuthorityInstant, crate::ApprovalError>)

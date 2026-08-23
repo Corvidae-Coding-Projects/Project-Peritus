@@ -15,6 +15,10 @@ use support::{Fixture, digest, reference};
 const TRACE_SEED: u64 = 0xb1c0_12a1_0bad_0001;
 
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "The persisted trace intentionally keeps branch precedence in one auditable sequence"
+)]
 fn branch_ordered_rejections_preserve_the_exact_full_ledger() {
     let mut fixture = Fixture::new();
     let limit = amount(10, 20, 30, 4, 2);
@@ -27,7 +31,7 @@ fn branch_ordered_rejections_preserve_the_exact_full_ledger() {
         &ledger,
         &model,
         &mut runner,
-        BudgetCommand::Seal(unknown_budget),
+        &BudgetCommand::Seal(unknown_budget),
         BudgetErrorKind::UnknownBudget,
     );
 
@@ -36,7 +40,7 @@ fn branch_ordered_rejections_preserve_the_exact_full_ledger() {
         &ledger,
         &model,
         &mut runner,
-        BudgetCommand::Activate(Activation::new(
+        &BudgetCommand::Activate(Activation::new(
             unknown_reservation,
             fixture.action_id,
             fixture.action_digest,
@@ -58,7 +62,7 @@ fn branch_ordered_rejections_preserve_the_exact_full_ledger() {
         &ledger,
         &model,
         &mut runner,
-        BudgetCommand::Begin(overflow),
+        &BudgetCommand::Begin(overflow),
         BudgetErrorKind::Arithmetic,
     );
 
@@ -67,7 +71,7 @@ fn branch_ordered_rejections_preserve_the_exact_full_ledger() {
         &ledger,
         &model,
         &mut runner,
-        BudgetCommand::Begin(empty),
+        &BudgetCommand::Begin(empty),
         BudgetErrorKind::EmptyRequest,
     );
 
@@ -76,7 +80,7 @@ fn branch_ordered_rejections_preserve_the_exact_full_ledger() {
         &ledger,
         &model,
         &mut runner,
-        BudgetCommand::Begin(invalid_attempt),
+        &BudgetCommand::Begin(invalid_attempt),
         BudgetErrorKind::InvalidAttemptAccounting,
     );
 
@@ -85,7 +89,7 @@ fn branch_ordered_rejections_preserve_the_exact_full_ledger() {
         &ledger,
         &model,
         &mut runner,
-        BudgetCommand::Begin(insufficient),
+        &BudgetCommand::Begin(insufficient),
         BudgetErrorKind::InsufficientBudget,
     );
 
@@ -93,7 +97,7 @@ fn branch_ordered_rejections_preserve_the_exact_full_ledger() {
     let held = fresh_request(&mut fixture, root_id, 22, execution(1));
     let begin = BudgetCommand::Begin(held);
     let expected = model.begin(held);
-    ledger = accept(ledger, &model, &mut runner, begin, expected);
+    ledger = accept(&ledger, &model, &mut runner, &begin, expected);
 
     let unresolved_retry = BudgetRequest::new(
         fixture.reservation_id(),
@@ -108,18 +112,18 @@ fn branch_ordered_rejections_preserve_the_exact_full_ledger() {
         &ledger,
         &model,
         &mut runner,
-        BudgetCommand::Begin(unresolved_retry),
+        &BudgetCommand::Begin(unresolved_retry),
         BudgetErrorKind::PriorAttemptUnresolved,
     );
 
     let seal = BudgetCommand::Seal(fixture.root_id);
     let expected = model.seal(fixture.root_id);
-    ledger = accept(ledger, &model, &mut runner, seal, expected);
+    ledger = accept(&ledger, &model, &mut runner, &seal, expected);
     reject(
         &ledger,
         &model,
         &mut runner,
-        BudgetCommand::Close(fixture.root_id),
+        &BudgetCommand::Close(fixture.root_id),
         BudgetErrorKind::OutstandingWork,
     );
 
@@ -128,28 +132,28 @@ fn branch_ordered_rejections_preserve_the_exact_full_ledger() {
         &ledger,
         &model,
         &mut runner,
-        BudgetCommand::Begin(blocked),
+        &BudgetCommand::Begin(blocked),
         BudgetErrorKind::AccountNotOpen,
     );
 
     let cancel = BudgetCommand::CancelHeld(reference(held, 24));
     let expected = model.cancel(held, digest(24));
-    ledger = accept(ledger, &model, &mut runner, cancel, expected);
+    ledger = accept(&ledger, &model, &mut runner, &cancel, expected);
     let close = BudgetCommand::Close(fixture.root_id);
     let expected = model.close(fixture.root_id);
-    let ledger = accept(ledger, &model, &mut runner, close, expected);
+    let ledger = accept(&ledger, &model, &mut runner, &close, expected);
     model.assert_matches(&ledger, &runner.next());
 }
 
 fn accept(
-    ledger: BudgetLedger,
+    ledger: &BudgetLedger,
     model: &ReferenceModel,
     runner: &mut Runner,
-    command: BudgetCommand,
+    command: &BudgetCommand,
     expected: ReceiptModel,
 ) -> BudgetLedger {
     let point = runner.next();
-    let transition = ledger.transition(command).unwrap_or_else(|error| {
+    let transition = ledger.transition(*command).unwrap_or_else(|error| {
         panic!(
             "seed {:#x} case {} step {} expected acceptance: {error:?}",
             point.seed, point.case, point.step
@@ -165,12 +169,12 @@ fn reject(
     ledger: &BudgetLedger,
     model: &ReferenceModel,
     runner: &mut Runner,
-    command: BudgetCommand,
+    command: &BudgetCommand,
     kind: BudgetErrorKind,
 ) {
     let point = runner.next();
     let expected = model.rejected(command, kind);
-    let error = ledger.transition(command).expect_err("generated rejection");
+    let error = ledger.transition(*command).expect_err("generated rejection");
     expected.assert_exact(error, &point);
     model.assert_matches(ledger, &point);
 }
@@ -193,8 +197,8 @@ fn replay_receipts_are_exact_and_nonconsuming() {
     );
     let command = BudgetCommand::Begin(request);
     let expected = model.begin(request);
-    let ledger = accept(ledger, &model, &mut runner, command, expected);
-    let expected = model.replay(command, BudgetReceiptKind::Idempotent);
-    let ledger = accept(ledger, &model, &mut runner, command, expected);
+    let ledger = accept(&ledger, &model, &mut runner, &command, expected);
+    let expected = model.replay(&command, BudgetReceiptKind::Idempotent);
+    let ledger = accept(&ledger, &model, &mut runner, &command, expected);
     model.assert_matches(&ledger, &runner.next());
 }

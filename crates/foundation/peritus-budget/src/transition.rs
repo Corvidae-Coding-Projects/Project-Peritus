@@ -1,5 +1,23 @@
 //! Total value-in/value-out command reducer.
 
+#![allow(
+    dead_code,
+    unused_imports,
+    unused_variables,
+    clippy::large_types_passed_by_value,
+    clippy::manual_let_else,
+    clippy::match_like_matches_macro,
+    clippy::missing_const_for_fn,
+    clippy::only_used_in_recursion,
+    clippy::option_if_let_else,
+    clippy::semicolon_if_nothing_returned,
+    clippy::single_match,
+    clippy::single_match_else,
+    clippy::too_many_lines,
+    clippy::unnecessary_cast,
+    reason = "Verus reducer contracts and ghost blocks require syntax ordinary Clippy measures after proof erasure"
+)]
+
 use crate::{BudgetCommand, BudgetError, BudgetLedger, BudgetSnapshot, ReservationSnapshot};
 use peritus_types::{BudgetId, BudgetReservationId};
 use vstd::prelude::*;

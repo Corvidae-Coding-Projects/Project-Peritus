@@ -64,6 +64,10 @@ impl super::ApprovalAggregate {
         result
     }
 
+    #[allow(
+        clippy::result_large_err,
+        reason = "exact rejection owns the unchanged move-only aggregate"
+    )]
     fn consume_once_checked(
         self,
         action_id: ActionId,
@@ -204,6 +208,10 @@ impl super::ApprovalAggregate {
         result
     }
 
+    #[allow(
+        clippy::result_large_err,
+        reason = "exact rejection owns the unchanged move-only aggregate"
+    )]
     fn consume_amendment_checked(
         self,
         candidate: &PolicyRevisionCandidate,

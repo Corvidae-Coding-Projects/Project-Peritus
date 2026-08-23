@@ -147,7 +147,7 @@ pub(super) open spec fn credential_observation_error(
                     Some(crate::ApprovalError::CredentialMismatch(
                         crate::CredentialDimension::Validity,
                     ))
-                } else if first_violation(
+                } else if super::independence::first_violation(
                     request,
                     observation.responder,
                     request.spec_requirement().spec_independence(),
@@ -263,22 +263,14 @@ pub(super) fn checked_observation(
             crate::CredentialDimension::RegistryRevision,
         ));
     }
-    let credential = match registry.credential(observation.key_id) {
-        Some(credential) => {
-            proof {
-                assert(registry.spec_credential(observation.key_id) == Some(*credential));
-            }
-            credential
-        }
-        None => {
-            proof { assert(registry.spec_credential(observation.key_id).is_none()); }
-            return Err(crate::ApprovalError::CredentialMissing);
-        }
+    let Some(credential) = registry.credential(observation.key_id) else {
+        proof { assert(registry.spec_credential(observation.key_id).is_none()); }
+        return Err(crate::ApprovalError::CredentialMissing);
     };
-    if let Err(error) = checked_credential(request, observation, credential) {
-        return Err(error);
+    proof {
+        assert(registry.spec_credential(observation.key_id) == Some(*credential));
     }
-    Ok(())
+    checked_credential(request, observation, credential)
 }
 
 } // verus!

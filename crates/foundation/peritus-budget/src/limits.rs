@@ -21,6 +21,10 @@ pub enum BudgetDimension {
 }
 
 /// A compact set of budget dimensions.
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "The five closed budget dimensions intentionally map one-to-one to stable set bits"
+)]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct BudgetDimensionSet {
     model_tokens: bool,
@@ -85,18 +89,9 @@ impl BudgetDimensionSet {
         }
     }
 
-    pub(crate) const fn insert(self, dimension: BudgetDimension) -> Self {
-        match dimension {
-            BudgetDimension::ModelTokens => Self { model_tokens: true, ..self },
-            BudgetDimension::ProviderCostMicrounits => Self { provider_cost: true, ..self },
-            BudgetDimension::ActiveEffectMilliseconds => Self { active_effect: true, ..self },
-            BudgetDimension::Attempts => Self { attempts: true, ..self },
-            BudgetDimension::Retries => Self { retries: true, ..self },
-        }
-    }
-
     #[allow(
         clippy::redundant_pub_crate,
+        clippy::fn_params_excessive_bools,
         reason = "Verus requires crate visibility for this cross-module exact bitset constructor"
     )]
     pub(crate) const fn from_members(

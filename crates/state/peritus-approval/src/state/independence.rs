@@ -54,7 +54,7 @@ pub(super) fn requirement_is_conflicted_checked(
     ensures result == requirement_is_conflicted(request, responder, requirement),
 {
     proof { reveal_with_fuel(requirement_is_conflicted, 1); }
-    let conflicted = match requirement {
+    match requirement {
         IndependenceRequirement::NotRequester => {
             let responder_bytes = *responder.as_bytes();
             let requester_bytes = *request.requester.as_bytes();
@@ -92,8 +92,7 @@ pub(super) fn requirement_is_conflicted_checked(
         IndependenceRequirement::NoReviewParticipation => {
             request.review_participants.contains(responder)
         }
-    };
-    conflicted
+    }
 }
 
 pub(super) fn has_violation(

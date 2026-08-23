@@ -4,11 +4,21 @@ use super::violation::{Violation, ViolationKind};
 use crate::source::reference_lexer::{Token, TokenKind};
 
 const SIMPLE_ATTRIBUTES: &[&str] =
-    &["allow", "auto", "cfg", "doc", "must_use", "no_std", "test", "trigger", "verus_spec"];
+    &["allow", "auto", "cfg", "doc", "must_use", "no_std", "path", "test", "trigger", "verus_spec"];
 const BUILTIN_DERIVES: &[&str] =
     &["Clone", "Copy", "Debug", "Eq", "Hash", "Ord", "PartialEq", "PartialOrd"];
-const MODELED_MACROS: &[&str] =
-    &["assert", "assert_eq", "assert_ne", "include", "matches", "panic", "proof", "vec", "verus"];
+const MODELED_MACROS: &[&str] = &[
+    "assert",
+    "assert_eq",
+    "assert_ne",
+    "format",
+    "include",
+    "matches",
+    "panic",
+    "proof",
+    "vec",
+    "verus",
+];
 const FORBIDDEN_EXPANSION_NAMES: &[&str] = &["state_machine", "tokenized_state_machine"];
 
 pub(super) fn violations(tokens: &[Token]) -> Vec<Violation> {

@@ -11,7 +11,11 @@ use vstd::prelude::*;
 
 verus! {
 
-pub fn finalize_required_approval(
+#[allow(
+    clippy::redundant_pub_crate,
+    reason = "verified sibling helper must remain inaccessible outside the crate"
+)]
+pub(super) fn finalize_required_approval(
     policy: &PolicyDefinition,
     requested: CapabilityScope,
     validity: ValidityWindow,

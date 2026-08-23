@@ -117,10 +117,10 @@ pub struct AmendmentView {
     pub(super) registry_revision: RevisionNumber,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum AcceptedView {
     Transition(TransitionView),
-    Use(UseView),
+    Use(Box<UseView>),
     Amendment(AmendmentView),
 }
 
@@ -202,7 +202,7 @@ pub fn initial_view(request: &ApprovalRequest) -> AggregateView {
     }
 }
 
-pub fn observation_view(observation: &AuthenticatedApprovalObservation) -> ObservationView {
+pub const fn observation_view(observation: &AuthenticatedApprovalObservation) -> ObservationView {
     ObservationView {
         request_id: observation.request_id(),
         request_digest: observation.request_digest(),

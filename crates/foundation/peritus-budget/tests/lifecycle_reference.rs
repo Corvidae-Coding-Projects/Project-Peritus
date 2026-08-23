@@ -8,9 +8,8 @@ use peritus_budget::{
     BudgetLimits, BudgetReceiptKind, BudgetRequest, ChildBudgetRequest, ReservationPhase,
     UsageFinality,
 };
-use reference_support::driver::Generator;
 use reference_support::{
-    ReceiptModel, ReferenceModel, Runner, amount, attempt, execution, fresh_request,
+    Generator, ReceiptModel, ReferenceModel, Runner, amount, attempt, execution, fresh_request,
 };
 use support::{Fixture, activate, digest, observe, reference};
 
@@ -290,13 +289,13 @@ impl CaseContext {
     }
 
     fn accept_replay(&mut self, command: &BudgetCommand, kind: BudgetReceiptKind) {
-        let expected = self.model.replay(*command, kind);
+        let expected = self.model.replay(command, kind);
         self.accept(command, expected);
     }
 
     fn reject(&mut self, command: &BudgetCommand, kind: BudgetErrorKind) {
         let point = self.runner.next();
-        let expected = self.model.rejected(*command, kind);
+        let expected = self.model.rejected(command, kind);
         let error = self.ledger.transition(*command).expect_err("generated rejection");
         expected.assert_exact(error, &point);
         self.model.assert_matches(&self.ledger, &point);

@@ -217,7 +217,11 @@ pub open spec fn finalization_result_is_exact(
         }
 }
 
-pub fn finalize_decision(
+#[allow(
+    clippy::redundant_pub_crate,
+    reason = "verified sibling helper must remain inaccessible outside the crate"
+)]
+pub(super) fn finalize_decision(
     policy: &PolicyDefinition,
     requested: CapabilityScope,
     validity: ValidityWindow,

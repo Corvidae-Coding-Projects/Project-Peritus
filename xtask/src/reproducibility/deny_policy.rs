@@ -21,7 +21,7 @@ ignore = []
 
 [licenses]
 confidence-threshold = 0.93
-allow = ["Apache-2.0", "MIT", "Unicode-3.0", "Zlib"]
+allow = ["Apache-2.0", "BSD-3-Clause", "MIT", "Unicode-3.0", "Zlib"]
 exceptions = []
 
 [licenses.private]

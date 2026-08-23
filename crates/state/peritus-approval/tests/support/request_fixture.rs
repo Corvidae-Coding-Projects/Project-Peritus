@@ -213,24 +213,6 @@ pub fn request_with_permission_and_participants(
     .expect("approval request")
 }
 
-pub fn request_with_validity_ends(
-    scope_end: u64,
-    requirement_end: u64,
-    request_end: u64,
-) -> ApprovalRequest {
-    request_from_parts(
-        1,
-        Vec::new(),
-        Vec::new(),
-        Vec::new(),
-        Sha256Digest::new([15; 32]),
-        scope_end,
-        requirement_end,
-        request_end,
-    )
-    .expect("approval request with isolated validity bounds")
-}
-
 #[allow(clippy::too_many_arguments)]
 fn request_from_parts(
     permission_count: usize,

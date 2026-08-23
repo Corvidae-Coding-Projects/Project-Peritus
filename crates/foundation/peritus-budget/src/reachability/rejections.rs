@@ -1,5 +1,10 @@
 //! Branch-ordered typed rejection relation for total reducer outcomes.
 
+#![allow(
+    clippy::redundant_pub_crate,
+    reason = "Verus rejection symbols require crate visibility across the private model tree"
+)]
+
 #[cfg(verus_only)]
 use crate::{
     BudgetAccountPhase, BudgetCommand, BudgetError, BudgetErrorKind, BudgetLedger,

@@ -16,7 +16,7 @@ pub struct ErrorModel {
 }
 
 impl ErrorModel {
-    fn budget(kind: BudgetErrorKind, budget_id: BudgetId) -> Self {
+    const fn budget(kind: BudgetErrorKind, budget_id: BudgetId) -> Self {
         Self {
             kind,
             budget_id: Some(budget_id),
@@ -26,7 +26,7 @@ impl ErrorModel {
         }
     }
 
-    fn reservation(kind: BudgetErrorKind, reservation_id: BudgetReservationId) -> Self {
+    const fn reservation(kind: BudgetErrorKind, reservation_id: BudgetReservationId) -> Self {
         Self {
             kind,
             budget_id: None,
@@ -58,7 +58,7 @@ impl ErrorModel {
 }
 
 impl ReferenceModel {
-    pub fn rejected(&self, command: BudgetCommand, kind: BudgetErrorKind) -> ErrorModel {
+    pub fn rejected(&self, command: &BudgetCommand, kind: BudgetErrorKind) -> ErrorModel {
         match kind {
             BudgetErrorKind::UnknownBudget
             | BudgetErrorKind::DuplicateBudgetConflict
@@ -87,7 +87,7 @@ impl ReferenceModel {
                 ErrorModel::reservation(kind, command_reservation_id(command))
             }
             BudgetErrorKind::InsufficientBudget => {
-                let BudgetCommand::Begin(request) = command else {
+                let BudgetCommand::Begin(request) = *command else {
                     panic!("generated insufficient-budget command must be Begin")
                 };
                 let available = self.account(request.budget_id()).available();
@@ -104,7 +104,7 @@ impl ReferenceModel {
                 }
             }
             BudgetErrorKind::Arithmetic => {
-                let BudgetCommand::Begin(request) = command else {
+                let BudgetCommand::Begin(request) = *command else {
                     panic!("generated arithmetic command must be Begin")
                 };
                 ErrorModel {
@@ -118,7 +118,9 @@ impl ReferenceModel {
                     )),
                 }
             }
-            _ => panic!("generated trace needs explicit exact error context for {kind:?}"),
+            BudgetErrorKind::CorruptState => {
+                panic!("generated trace needs explicit exact error context for {kind:?}")
+            }
         }
     }
 }
@@ -148,8 +150,8 @@ fn first_overflow(left: BudgetAmounts, right: BudgetAmounts) -> BudgetDimension 
         .expect("generated arithmetic rejection must overflow")
 }
 
-const fn command_budget_id(command: BudgetCommand) -> BudgetId {
-    match command {
+const fn command_budget_id(command: &BudgetCommand) -> BudgetId {
+    match *command {
         BudgetCommand::AllocateChild(request) => request.child_id(),
         BudgetCommand::Begin(request) => request.budget_id(),
         BudgetCommand::Seal(budget_id) | BudgetCommand::Close(budget_id) => budget_id,
@@ -157,8 +159,8 @@ const fn command_budget_id(command: BudgetCommand) -> BudgetId {
     }
 }
 
-const fn command_reservation_id(command: BudgetCommand) -> BudgetReservationId {
-    match command {
+const fn command_reservation_id(command: &BudgetCommand) -> BudgetReservationId {
+    match *command {
         BudgetCommand::Begin(request) => request.reservation_id(),
         BudgetCommand::Activate(activation) => activation.reservation_id(),
         BudgetCommand::ObserveUsage(observation) => observation.reservation_id(),

@@ -293,24 +293,25 @@ impl ApprovalAggregate {
         result
     }
 
+    #[allow(
+        clippy::result_large_err,
+        reason = "exact rejection owns the unchanged move-only aggregate"
+    )]
     fn cancel_checked(
         self,
     ) -> (result: Result<ApprovalTransitionOutcome, crate::ApprovalTransitionFailure>)
         ensures lifecycle_specification::cancel_result_relation(&self, &result),
     {
-        match self.state {
-            ApprovalState::Pending => {},
-            _ => {
-                let actual = self.phase();
-                return Err(transition_failure(
-                    crate::ApprovalError::IllegalPhase {
-                        expected: crate::ApprovalPhase::Pending,
-                        actual,
-                    },
-                    self,
-                    None,
-                ));
-            }
+        if !matches!(self.state, ApprovalState::Pending) {
+            let actual = self.phase();
+            return Err(transition_failure(
+                crate::ApprovalError::IllegalPhase {
+                    expected: crate::ApprovalPhase::Pending,
+                    actual,
+                },
+                self,
+                None,
+            ));
         }
         proof { assert(self.state == ApprovalState::Pending); }
         let aggregate = Self { request: self.request, state: ApprovalState::Cancelled };

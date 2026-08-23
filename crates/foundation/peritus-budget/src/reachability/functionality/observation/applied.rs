@@ -30,8 +30,10 @@ pub(super) proof fn applied_candidates_equal(
 )
     requires
         crate::model::ledger_well_formed(left_before),
+        crate::model::ledger_well_formed(right_before),
         left_before.accounts@ == right_before.accounts@,
         left_before.reservations@ == right_before.reservations@,
+        crate::identity_model::budget_ids_equal(left_budget, right_budget),
         crate::reachability::guards::reservation_at(
             left_before, observation.spec_reservation_id(), left_index,
         ),
@@ -118,6 +120,7 @@ pub(super) proof fn applied_candidates_equal(
     super::super::finalization::amounts_equal_through(
         left_exact_released, left_receipt.spec_released(), right_exact_released,
     );
+    super::super::accounting::well_formed_has_unique_account_ids(left_before);
     super::super::release::reservation_accounting_functional(
         left_before, right_before, left_after, right_after,
         left_budget, right_budget,

@@ -31,14 +31,14 @@ fn mode_identifiers_outside_the_modifier_sequence_cannot_hide_preconditions() {
         ",
     );
 
-    assert_eq!(result.executable_entry_points, 6);
+    assert_eq!(result.executable_entry_points, 4);
     assert_eq!(
         result
             .violations
             .iter()
             .filter(|violation| violation.kind == ViolationKind::ExposedRequires)
             .count(),
-        6
+        4
     );
 }
 

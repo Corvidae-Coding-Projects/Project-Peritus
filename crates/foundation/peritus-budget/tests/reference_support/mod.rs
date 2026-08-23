@@ -1,17 +1,26 @@
 //! Independent five-dimensional reference ledger for persisted generated traces.
 
+#![allow(
+    dead_code,
+    reason = "Each integration-test crate intentionally exercises a different subset of the shared independent oracle"
+)]
+
 use peritus_budget::{
     BudgetAccountPhase, BudgetAmounts, BudgetRequest, ReservationPhase, UsageFinality,
 };
 use peritus_types::{BudgetId, RevisionTuple, Sha256Digest};
 
 mod assertions;
-pub(crate) mod driver;
+mod driver;
 mod errors;
 mod receipts;
 mod units;
 
-pub use driver::{Runner, amount, attempt, execution, fresh_request};
+#[allow(
+    unused_imports,
+    reason = "Each integration-test crate imports a different subset of the shared trace driver"
+)]
+pub use driver::{Generator, Runner, amount, attempt, execution, fresh_request};
 pub use receipts::ReceiptModel;
 use units::Units;
 

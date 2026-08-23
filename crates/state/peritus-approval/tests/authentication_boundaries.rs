@@ -138,7 +138,7 @@ fn delayed_decision_from_the_same_reissued_key_fails_on_generation() {
         0x46,
         support::instant(75),
     );
-    let fixture = support::SignedFixture { registry, signed, ..base };
+    let fixture = support::SignedFixture { signed, registry, ..base };
     assert_auth_error(&fixture, ApprovalError::CredentialMismatch(CredentialDimension::Generation));
 }
 

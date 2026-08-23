@@ -267,7 +267,7 @@ pub(in crate::transition) fn apply_interim_validated(
             None,
             None,
         ));
-        super::refinement::interim_observation_refines(
+        super::super::refinement::interim_observation_refines(
             &before,
             ledger,
             &released_state,

@@ -1,5 +1,11 @@
 //! Executable conservation helpers and their mathematical counterparts.
 
+#![allow(
+    clippy::missing_const_for_fn,
+    clippy::too_many_lines,
+    reason = "The executable conservation fold carries a line-by-line Verus postcondition proof"
+)]
+
 use crate::{BudgetAmounts, BudgetError, BudgetErrorKind};
 #[cfg(verus_only)]
 use crate::BudgetDimension;

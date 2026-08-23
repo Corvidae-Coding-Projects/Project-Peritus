@@ -11,7 +11,7 @@ use peritus_types::{
     WorkspaceId,
 };
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 enum Field {
     RequestId,
     ActionId,
@@ -50,34 +50,36 @@ fn identifier<const BYTE: u8>() -> [u8; 16] {
     [BYTE; 16]
 }
 
-fn request(field: Option<Field>) -> crate::ApprovalRequest {
-    let selected = |candidate| {
-        field.is_some_and(|value| {
-            core::mem::discriminant(&value) == core::mem::discriminant(&candidate)
-        })
-    };
+fn selected(field: Option<Field>, candidate: Field) -> bool {
+    field == Some(candidate)
+}
+
+fn revision(field: Option<Field>) -> RevisionTuple {
     let workspace = WorkspaceId::new(identifier::<4>()).expect("workspace");
-    let revision = RevisionTuple::new(
+    RevisionTuple::new(
         AcceptanceSpecId::new(identifier::<5>()).expect("acceptance"),
         HarnessId::new(identifier::<6>()).expect("harness"),
         workspace,
         Generation::first(),
         RevisionNumber::first(),
-        PolicyId::new(if selected(Field::Revision) {
+        PolicyId::new(if selected(field, Field::Revision) {
             identifier::<24>()
         } else {
             identifier::<8>()
         })
         .expect("policy"),
         ProviderProfileId::new(identifier::<9>()).expect("provider"),
-    );
+    )
+}
+
+fn scope(field: Option<Field>) -> CapabilityScope {
     let capability = peritus_types::CapabilityName::new(
-        if selected(Field::Permissions) { "workspace.mutate" } else { "workspace.inspect" }
+        if selected(field, Field::Permissions) { "workspace.mutate" } else { "workspace.inspect" }
             .to_owned(),
     )
     .expect("capability");
     let permissions = PermissionSet::new(vec![Permission::new(
-        ResourceId::new(if selected(Field::Permissions) {
+        ResourceId::new(if selected(field, Field::Permissions) {
             identifier::<25>()
         } else {
             identifier::<12>()
@@ -86,108 +88,124 @@ fn request(field: Option<Field>) -> crate::ApprovalRequest {
         capability,
     )])
     .expect("permissions");
-    let scope = CapabilityScope::new(
-        ActorId::new(if selected(Field::ScopeActor) {
+    CapabilityScope::new(
+        ActorId::new(if selected(field, Field::ScopeActor) {
             identifier::<26>()
         } else {
             identifier::<1>()
         })
         .expect("scope actor"),
-        if selected(Field::ScopeRole) { ActorRole::Fixer } else { ActorRole::Writer },
-        EnvironmentId::new(if selected(Field::Environment) {
+        if selected(field, Field::ScopeRole) { ActorRole::Fixer } else { ActorRole::Writer },
+        EnvironmentId::new(if selected(field, Field::Environment) {
             identifier::<27>()
         } else {
             identifier::<3>()
         })
         .expect("environment"),
         permissions,
-        revision,
-        if selected(Field::ScopeValidity) { window(5, 94) } else { window(5, 95) },
-        if selected(Field::UseLimit) {
+        revision(field),
+        if selected(field, Field::ScopeValidity) { window(5, 94) } else { window(5, 95) },
+        if selected(field, Field::UseLimit) {
             UseLimit::limited(2).expect("limit")
         } else {
             UseLimit::limited(1).expect("limit")
         },
-    );
-    let requirement = ApprovalRequirement::new(
-        if selected(Field::MinimumTier) {
+    )
+}
+
+fn requirement(field: Option<Field>) -> ApprovalRequirement {
+    ApprovalRequirement::new(
+        if selected(field, Field::MinimumTier) {
             AuthorityTier::Organization
         } else {
             AuthorityTier::User
         },
-        vec![if selected(Field::ApproverRoles) {
+        vec![if selected(field, Field::ApproverRoles) {
             ActorRole::Reviewer
         } else {
             ActorRole::HumanAuthority
         }],
-        IndependenceSet::new(if selected(Field::Independence) {
+        IndependenceSet::new(if selected(field, Field::Independence) {
             vec![IndependenceRequirement::NotRequester]
         } else {
             Vec::new()
         })
         .expect("independence"),
-        if selected(Field::RequirementValidity) { window(10, 89) } else { window(10, 90) },
+        if selected(field, Field::RequirementValidity) { window(10, 89) } else { window(10, 90) },
     )
-    .expect("requirement");
-    let producing = crate::ParticipantSet::producing(if selected(Field::ProducingParticipants) {
-        vec![ActorId::new(identifier::<28>()).expect("producer")]
-    } else {
-        Vec::new()
-    })
-    .expect("producing participants");
-    let review = crate::ParticipantSet::review(if selected(Field::ReviewParticipants) {
+    .expect("requirement")
+}
+
+fn participants(field: Option<Field>) -> (crate::ParticipantSet, crate::ParticipantSet) {
+    let producing =
+        crate::ParticipantSet::producing(if selected(field, Field::ProducingParticipants) {
+            vec![ActorId::new(identifier::<28>()).expect("producer")]
+        } else {
+            Vec::new()
+        })
+        .expect("producing participants");
+    let review = crate::ParticipantSet::review(if selected(field, Field::ReviewParticipants) {
         vec![ActorId::new(identifier::<29>()).expect("reviewer")]
     } else {
         Vec::new()
     })
     .expect("review participants");
+    (producing, review)
+}
+
+fn request(field: Option<Field>) -> crate::ApprovalRequest {
+    let (producing_participants, review_participants) = participants(field);
     let mut request = crate::ApprovalRequest {
-        request_id: ApprovalRequestId::new(if selected(Field::RequestId) {
+        request_id: ApprovalRequestId::new(if selected(field, Field::RequestId) {
             identifier::<30>()
         } else {
             identifier::<10>()
         })
         .expect("request"),
-        action_id: ActionId::new(if selected(Field::ActionId) {
+        action_id: ActionId::new(if selected(field, Field::ActionId) {
             identifier::<31>()
         } else {
             identifier::<11>()
         })
         .expect("action"),
         action_digest: crate::ActionDigest::from_sha256(Sha256Digest::new(
-            if selected(Field::ActionDigest) { [32; 32] } else { [14; 32] },
+            if selected(field, Field::ActionDigest) { [32; 32] } else { [14; 32] },
         )),
-        requester: ActorId::new(if selected(Field::Requester) {
+        requester: ActorId::new(if selected(field, Field::Requester) {
             identifier::<33>()
         } else {
             identifier::<1>()
         })
         .expect("requester"),
-        requester_role: if selected(Field::RequesterRole) {
+        requester_role: if selected(field, Field::RequesterRole) {
             ActorRole::Fixer
         } else {
             ActorRole::Writer
         },
-        scope,
-        requirement,
-        evaluated_at: instant(if selected(Field::EvaluatedAt) { 21 } else { 20 }),
+        scope: scope(field),
+        requirement: requirement(field),
+        evaluated_at: instant(if selected(field, Field::EvaluatedAt) { 21 } else { 20 }),
         challenge_epoch: Generation::first(),
-        challenge_tick_millis: if selected(Field::ChallengeFloor) { 21 } else { 20 },
+        challenge_tick_millis: if selected(field, Field::ChallengeFloor) { 21 } else { 20 },
         authority_time: AuthorityTimeState::new(instant(20)),
-        risks: RiskSet::new(vec![if selected(Field::Risks) {
+        risks: RiskSet::new(vec![if selected(field, Field::Risks) {
             RiskClass::ScopedWrite
         } else {
             RiskClass::Read
         }])
         .expect("risks"),
-        risk_details_digest: Sha256Digest::new(if selected(Field::RiskDetailsDigest) {
+        risk_details_digest: Sha256Digest::new(if selected(field, Field::RiskDetailsDigest) {
             [34; 32]
         } else {
             [15; 32]
         }),
-        producing_participants: producing,
-        review_participants: review,
-        validity: if selected(Field::RequestValidity) { window(10, 89) } else { window(10, 90) },
+        producing_participants,
+        review_participants,
+        validity: if selected(field, Field::RequestValidity) {
+            window(10, 89)
+        } else {
+            window(10, 90)
+        },
         digest: crate::ApprovalRequestDigest::from_sha256(Sha256Digest::new([0; 32])),
     };
     request.digest = crate::ApprovalRequestDigest::compute(&request).expect("bounded digest");

@@ -259,7 +259,7 @@ impl ApprovedPolicyAmendment {
 
     /// Returns whether this authorization exactly matches a previewed candidate.
     #[must_use]
-    pub fn matches_candidate(&self, candidate: &PolicyRevisionCandidate) -> bool {
+    pub const fn matches_candidate(&self, candidate: &PolicyRevisionCandidate) -> bool {
         self.identity.matches_candidate(candidate)
     }
 }

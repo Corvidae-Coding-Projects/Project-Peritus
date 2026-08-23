@@ -89,120 +89,141 @@ fn apply_actual(
     prepared: Prepared,
     registry: &CredentialRegistrySnapshot,
 ) -> (ApprovalAggregate, StepView) {
-    match prepared.command {
+    let Prepared { command, observation, input } = prepared;
+    match command {
         Command::ResolveApprove | Command::ResolveDeny | Command::ResolveAmend => {
-            match aggregate.resolve(prepared.observation.expect("resolve observation"), registry) {
-                Ok(outcome) => {
-                    let (aggregate, transition) = outcome.into_parts();
-                    let view = StepView {
-                        after: aggregate_view(&aggregate),
-                        result: Ok(AcceptedView::Transition(transition_view(&transition))),
-                    };
-                    (aggregate, view)
-                }
-                Err(failure) => {
-                    let (error, aggregate, observation) = failure.into_parts();
-                    let view = StepView {
-                        after: aggregate_view(&aggregate),
-                        result: Err(RejectedView {
-                            error,
-                            observation: observation.as_ref().map(observation_view),
-                        }),
-                    };
-                    (aggregate, view)
-                }
-            }
+            apply_resolve(aggregate, observation.expect("resolve observation"), registry)
         }
-        Command::Consume | Command::ConsumeWrongDigest => {
-            let action_id = aggregate.request().action_id();
-            let digest = prepared.input.action_digest;
-            match aggregate.consume_once(action_id, digest, prepared.input.observed_at) {
-                Ok(outcome) => {
-                    let (aggregate, transition, consumed) = outcome.into_parts();
-                    let view = StepView {
-                        after: aggregate_view(&aggregate),
-                        result: Ok(AcceptedView::Use(use_view(&transition, &consumed))),
-                    };
-                    (aggregate, view)
-                }
-                Err(failure) => {
-                    let (error, aggregate) = failure.into_parts();
-                    let view = StepView {
-                        after: aggregate_view(&aggregate),
-                        result: Err(RejectedView { error, observation: None }),
-                    };
-                    (aggregate, view)
-                }
-            }
-        }
-        Command::Amend | Command::AmendWrongCandidate => {
-            let (candidate, _) = if matches!(prepared.command, Command::Amend) {
-                support::amendment_candidate()
-            } else {
-                support::amendment_candidate_with(0x42, 0x43)
+        Command::Consume | Command::ConsumeWrongDigest => apply_consume(aggregate, &input),
+        Command::Amend | Command::AmendWrongCandidate => apply_amendment(aggregate, command),
+        Command::Expire | Command::ExpireEarly => apply_expire(aggregate, command),
+        Command::Cancel => apply_cancel(aggregate),
+    }
+}
+
+fn apply_resolve(
+    aggregate: ApprovalAggregate,
+    observation: AuthenticatedApprovalObservation,
+    registry: &CredentialRegistrySnapshot,
+) -> (ApprovalAggregate, StepView) {
+    match aggregate.resolve(observation, registry) {
+        Ok(outcome) => {
+            let (aggregate, transition) = outcome.into_parts();
+            let view = StepView {
+                after: aggregate_view(&aggregate),
+                result: Ok(AcceptedView::Transition(transition_view(&transition))),
             };
-            match aggregate.consume_amendment(&candidate, support::instant(40)) {
-                Ok(outcome) => {
-                    let (aggregate, approval) = outcome.into_parts();
-                    let view = StepView {
-                        after: aggregate_view(&aggregate),
-                        result: Ok(AcceptedView::Amendment(amendment_view(&approval))),
-                    };
-                    (aggregate, view)
-                }
-                Err(failure) => {
-                    let (error, aggregate, _) = failure.into_parts();
-                    let view = StepView {
-                        after: aggregate_view(&aggregate),
-                        result: Err(RejectedView { error, observation: None }),
-                    };
-                    (aggregate, view)
-                }
-            }
+            (aggregate, view)
         }
-        Command::Expire | Command::ExpireEarly => {
-            let observed_at = if matches!(prepared.command, Command::Expire) {
-                support::instant(90)
-            } else {
-                support::instant(40)
+        Err(failure) => {
+            let (error, aggregate, observation) = failure.into_parts();
+            let view = StepView {
+                after: aggregate_view(&aggregate),
+                result: Err(RejectedView {
+                    error,
+                    observation: observation.as_ref().map(observation_view),
+                }),
             };
-            match aggregate.expire(observed_at) {
-                Ok(outcome) => {
-                    let (aggregate, transition) = outcome.into_parts();
-                    let view = StepView {
-                        after: aggregate_view(&aggregate),
-                        result: Ok(AcceptedView::Transition(transition_view(&transition))),
-                    };
-                    (aggregate, view)
-                }
-                Err(failure) => {
-                    let (error, aggregate, _) = failure.into_parts();
-                    let view = StepView {
-                        after: aggregate_view(&aggregate),
-                        result: Err(RejectedView { error, observation: None }),
-                    };
-                    (aggregate, view)
-                }
-            }
+            (aggregate, view)
         }
-        Command::Cancel => match aggregate.cancel() {
-            Ok(outcome) => {
-                let (aggregate, transition) = outcome.into_parts();
-                let view = StepView {
-                    after: aggregate_view(&aggregate),
-                    result: Ok(AcceptedView::Transition(transition_view(&transition))),
-                };
-                (aggregate, view)
-            }
-            Err(failure) => {
-                let (error, aggregate, _) = failure.into_parts();
-                let view = StepView {
-                    after: aggregate_view(&aggregate),
-                    result: Err(RejectedView { error, observation: None }),
-                };
-                (aggregate, view)
-            }
-        },
+    }
+}
+
+fn apply_consume(aggregate: ApprovalAggregate, input: &InputView) -> (ApprovalAggregate, StepView) {
+    let action_id = aggregate.request().action_id();
+    match aggregate.consume_once(action_id, input.action_digest, input.observed_at) {
+        Ok(outcome) => {
+            let (aggregate, transition, consumed) = outcome.into_parts();
+            let view = StepView {
+                after: aggregate_view(&aggregate),
+                result: Ok(AcceptedView::Use(Box::new(use_view(&transition, &consumed)))),
+            };
+            (aggregate, view)
+        }
+        Err(failure) => {
+            let (error, aggregate) = failure.into_parts();
+            let view = StepView {
+                after: aggregate_view(&aggregate),
+                result: Err(RejectedView { error, observation: None }),
+            };
+            (aggregate, view)
+        }
+    }
+}
+
+fn apply_amendment(
+    aggregate: ApprovalAggregate,
+    command: Command,
+) -> (ApprovalAggregate, StepView) {
+    let (candidate, _) = if matches!(command, Command::Amend) {
+        support::amendment_candidate()
+    } else {
+        support::amendment_candidate_with(0x42, 0x43)
+    };
+    match aggregate.consume_amendment(&candidate, support::instant(40)) {
+        Ok(outcome) => {
+            let (aggregate, approval) = outcome.into_parts();
+            let view = StepView {
+                after: aggregate_view(&aggregate),
+                result: Ok(AcceptedView::Amendment(amendment_view(&approval))),
+            };
+            (aggregate, view)
+        }
+        Err(failure) => {
+            let (error, aggregate, _) = failure.into_parts();
+            let view = StepView {
+                after: aggregate_view(&aggregate),
+                result: Err(RejectedView { error, observation: None }),
+            };
+            (aggregate, view)
+        }
+    }
+}
+
+fn apply_expire(aggregate: ApprovalAggregate, command: Command) -> (ApprovalAggregate, StepView) {
+    let observed_at = if matches!(command, Command::Expire) {
+        support::instant(90)
+    } else {
+        support::instant(40)
+    };
+    match aggregate.expire(observed_at) {
+        Ok(outcome) => {
+            let (aggregate, transition) = outcome.into_parts();
+            let view = StepView {
+                after: aggregate_view(&aggregate),
+                result: Ok(AcceptedView::Transition(transition_view(&transition))),
+            };
+            (aggregate, view)
+        }
+        Err(failure) => {
+            let (error, aggregate, _) = failure.into_parts();
+            let view = StepView {
+                after: aggregate_view(&aggregate),
+                result: Err(RejectedView { error, observation: None }),
+            };
+            (aggregate, view)
+        }
+    }
+}
+
+fn apply_cancel(aggregate: ApprovalAggregate) -> (ApprovalAggregate, StepView) {
+    match aggregate.cancel() {
+        Ok(outcome) => {
+            let (aggregate, transition) = outcome.into_parts();
+            let view = StepView {
+                after: aggregate_view(&aggregate),
+                result: Ok(AcceptedView::Transition(transition_view(&transition))),
+            };
+            (aggregate, view)
+        }
+        Err(failure) => {
+            let (error, aggregate, _) = failure.into_parts();
+            let view = StepView {
+                after: aggregate_view(&aggregate),
+                result: Err(RejectedView { error, observation: None }),
+            };
+            (aggregate, view)
+        }
     }
 }
 
@@ -319,7 +340,7 @@ fn generated_traces_match_independent_model_after_every_step() {
 
         for (step, input) in prepared.into_iter().enumerate() {
             let command = input.command;
-            let expected = oracle_step(&oracle, input.input);
+            let expected = oracle_step(&oracle, &input.input);
             let before = oracle.phase;
             let (next_aggregate, actual) = apply_actual(aggregate, input, &fixture.registry);
             if expected.result.is_ok() {

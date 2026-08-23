@@ -22,12 +22,15 @@ const fn phase_for_choice(choice: ApprovalChoice) -> ApprovalPhase {
 fn rejected(
     before: &AggregateView,
     error: ApprovalError,
-    observation: Option<ObservationView>,
+    observation: Option<&ObservationView>,
 ) -> StepView {
-    StepView { after: before.clone(), result: Err(RejectedView { error, observation }) }
+    StepView {
+        after: before.clone(),
+        result: Err(RejectedView { error, observation: observation.copied() }),
+    }
 }
 
-fn resolve_step(before: &AggregateView, observation: ObservationView) -> StepView {
+fn resolve_step(before: &AggregateView, observation: &ObservationView) -> StepView {
     if before.phase != ApprovalPhase::Pending {
         return match before.resolution {
             Some(resolution) if resolution.decision_digest == observation.decision_digest => {
@@ -83,10 +86,10 @@ fn resolve_step(before: &AggregateView, observation: ObservationView) -> StepVie
     }
 }
 
-pub fn oracle_step(before: &AggregateView, input: InputView) -> StepView {
+pub fn oracle_step(before: &AggregateView, input: &InputView) -> StepView {
     match input.command {
         Command::ResolveApprove | Command::ResolveDeny | Command::ResolveAmend => {
-            resolve_step(before, input.observation.expect("resolve observation"))
+            resolve_step(before, input.observation.as_ref().expect("resolve observation"))
         }
         Command::Consume | Command::ConsumeWrongDigest => consume_step(before, input),
         Command::Amend | Command::AmendWrongCandidate => amendment_step(before, input),
@@ -95,7 +98,7 @@ pub fn oracle_step(before: &AggregateView, input: InputView) -> StepView {
     }
 }
 
-fn consume_step(before: &AggregateView, input: InputView) -> StepView {
+fn consume_step(before: &AggregateView, input: &InputView) -> StepView {
     let Some(resolution) = before.resolution else {
         return rejected(
             before,
@@ -138,7 +141,7 @@ fn consume_step(before: &AggregateView, input: InputView) -> StepView {
     after.request.authority_tick = input.observed_at.tick_millis();
     StepView {
         after,
-        result: Ok(AcceptedView::Use(UseView {
+        result: Ok(AcceptedView::Use(Box::new(UseView {
             request_id: before.request.request_id,
             request_digest: before.request.digest,
             action_id: input.action_id,
@@ -151,11 +154,11 @@ fn consume_step(before: &AggregateView, input: InputView) -> StepView {
             consumed_request_id: before.request.request_id,
             consumed_decision_digest: resolution.decision_digest,
             consumed_action_id: input.action_id,
-        })),
+        }))),
     }
 }
 
-fn amendment_step(before: &AggregateView, input: InputView) -> StepView {
+fn amendment_step(before: &AggregateView, input: &InputView) -> StepView {
     let Some(resolution) = before.resolution else {
         return rejected(
             before,

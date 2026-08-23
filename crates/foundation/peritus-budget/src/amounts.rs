@@ -326,6 +326,7 @@ impl BudgetAmounts {
     }
 }
 
+#[allow(unused_variables, reason = "Verus scalar witness")]
 const fn add(
     left: ResourceQuantity,
     right: ResourceQuantity,
@@ -358,6 +359,7 @@ const fn add(
     }
 }
 
+#[allow(unused_variables, reason = "Verus scalar witness")]
 const fn sub(
     left: ResourceQuantity,
     right: ResourceQuantity,

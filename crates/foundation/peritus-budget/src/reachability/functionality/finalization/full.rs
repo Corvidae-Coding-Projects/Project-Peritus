@@ -13,7 +13,7 @@ verus! {
     clippy::too_many_arguments,
     reason = "The proof compares two explicit candidate tuples and the closed command binding"
 )]
-pub(super) proof fn full_finalization_candidates_equal(
+pub(in crate::reachability::functionality) proof fn full_finalization_candidates_equal(
     left_before: &BudgetLedger,
     right_before: &BudgetLedger,
     command: BudgetCommand,

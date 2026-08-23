@@ -373,3 +373,8 @@ they do not make an unauthenticated network-liveness claim. Independent protecte
 review confirms issue liveness. The canonical workspace Gate A commands execute the test and
 class-correct verification superset represented by proof-impact evidence against the reviewed
 revision.
+
+The local aggregate `cargo xtask all` scans the complete trust boundary and validates actor, trust,
+exclusion, and obligation records without pretending that a local working tree is a protected
+review base. Full proof-impact history, transition, and detached-verdict enforcement remains the
+explicit `cargo xtask verify-trust` command while hosted protected-runner enforcement is deferred.

@@ -230,7 +230,11 @@ proof fn some_required_risk_makes_union_nonempty(
     }
 }
 
-pub fn append_required_risk(
+#[allow(
+    clippy::redundant_pub_crate,
+    reason = "verified sibling helper must remain inaccessible outside the crate"
+)]
+pub(super) fn append_required_risk(
     permissions: &[Permission],
     descriptors: &[OperationDescriptor],
     risk: RiskClass,

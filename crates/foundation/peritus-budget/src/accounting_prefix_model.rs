@@ -1,5 +1,13 @@
 //! Prefix bounds for executable reconstruction of derived accounting totals.
 
+#![allow(
+    unused_variables,
+    clippy::redundant_pub_crate,
+    clippy::semicolon_if_nothing_returned,
+    clippy::unnecessary_cast,
+    reason = "Verus prefix witnesses, proof blocks, and integer coercions erase from ordinary Rust"
+)]
+
 use crate::{BudgetDimension, BudgetLedger};
 use vstd::prelude::*;
 

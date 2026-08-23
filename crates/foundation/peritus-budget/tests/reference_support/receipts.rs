@@ -152,8 +152,8 @@ impl ReceiptModel {
 }
 
 impl ReferenceModel {
-    pub fn replay(&self, command: BudgetCommand, kind: BudgetReceiptKind) -> ReceiptModel {
-        let mut expected = match command {
+    pub fn replay(&self, command: &BudgetCommand, kind: BudgetReceiptKind) -> ReceiptModel {
+        let mut expected = match *command {
             BudgetCommand::AllocateChild(request) => ReceiptModel::empty(
                 BudgetOperation::AllocateChild,
                 kind,

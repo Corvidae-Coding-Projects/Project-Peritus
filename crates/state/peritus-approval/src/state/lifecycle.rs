@@ -85,6 +85,12 @@ impl super::ApprovalAggregate {
         result
     }
 
+    #[allow(
+        clippy::manual_map,
+        clippy::option_if_let_else,
+        clippy::result_large_err,
+        reason = "explicit option projection preserves proof visibility and exact rejection owns the move-only aggregate"
+    )]
     fn expire_checked(
         self,
         observed_at: AuthorityInstant,

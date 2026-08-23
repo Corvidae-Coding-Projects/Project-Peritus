@@ -1,5 +1,13 @@
 //! Exact specification folds for derived child and reservation accounting.
 
+#![allow(
+    unused_variables,
+    clippy::only_used_in_recursion,
+    clippy::redundant_pub_crate,
+    clippy::semicolon_if_nothing_returned,
+    reason = "Recursive accounting witnesses are consumed by Verus specifications and erase from ordinary Rust"
+)]
+
 mod aggregation;
 
 pub(crate) use self::aggregation::child_unused_le_parent;

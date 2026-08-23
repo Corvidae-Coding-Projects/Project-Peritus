@@ -17,7 +17,7 @@ const HELP: &str = "Peritus workspace policy tool
 Usage: cargo xtask <command>
 
 Commands:
-  all                    Run all repository-only policy checks
+  all                    Run all locally executable repository policy checks
   architecture-check     Validate packages, layers, ownership, and source layout
   ordinary-api-check     Validate formal APIs callable from ordinary safe Rust
   source-layout-check    Validate module names, crate roots, and source budgets
@@ -118,7 +118,7 @@ pub(crate) fn execute(
             let policy = metadata::architecture_policy(root)?;
             let (packages, files) = architecture::check(root, &policy)?;
             let api = api_contract::check(root, &policy)?;
-            let trust_files = trust::check(root, &policy)?;
+            let trust_files = trust::check_local(root, &policy)?;
             let tools = metadata::toolchain_policy(root)?;
             let actions = reproducibility::check(root, &tools)?;
             write_output(

@@ -29,7 +29,7 @@ pub open spec fn concrete_identifier_matches(
 }
 
 /// Compares all sixteen bytes of two nominal identifier representations.
-pub const fn identifier_values_equal_from(
+const fn identifier_values_equal_from(
     left: [u8; 16],
     right: [u8; 16],
     index: usize,

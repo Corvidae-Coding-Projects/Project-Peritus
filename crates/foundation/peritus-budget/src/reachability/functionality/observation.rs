@@ -8,6 +8,7 @@ use crate::{
 use vstd::prelude::*;
 
 mod applied;
+mod overrun;
 mod overrun_witness;
 
 #[cfg(verus_only)]
@@ -236,122 +237,19 @@ pub(super) proof fn observation_candidates_equal(
             );
         }
         BudgetReceiptKind::OverrunFaulted => {
-            reveal(super::super::commands::observation_overrun_effect);
-            assert(exists |index: int| #![auto]
-                super::super::commands::observation_overrun_effect(
-                    left_before, observation, left_after, left_receipt,
-                    left_budget, index,
-                ));
-            assert(exists |index: int| #![auto]
-                super::super::commands::observation_overrun_effect(
-                    right_before, observation, right_after, right_receipt,
-                    right_budget, index,
-                ));
-            let left_effect_index = choose |index: int| #![auto]
-                super::super::commands::observation_overrun_effect(
-                    left_before, observation, left_after, left_receipt,
-                    left_budget, index,
-                );
-            let right_effect_index = choose |index: int| #![auto]
-                super::super::commands::observation_overrun_effect(
-                    right_before, observation, right_after, right_receipt,
-                    right_budget, index,
-                );
-            crate::invariant::matching_reservations_are_unique(
-                left_before, left_index, left_effect_index,
+            overrun::overrun_candidates_equal(
+                left_before,
+                right_before,
+                observation,
+                left_after,
+                left_receipt,
+                right_after,
+                right_receipt,
+                left_index,
+                right_index,
+                left_budget,
+                right_budget,
             );
-            crate::invariant::matching_reservations_are_unique(
-                left_before, left_index, right_effect_index,
-            );
-            assert(left_effect_index == left_index);
-            assert(right_effect_index == left_index);
-            match left_before.reservations[left_index].phase {
-                ReservationPhase::SettledFinal | ReservationPhase::OverrunFaulted => {}
-                ReservationPhase::Active => {
-                    super::finalization::differences_are_unique(
-                        left_receipt.spec_charged(), right_receipt.spec_charged(),
-                        left_before.reservations[left_index].request.spec_reserve(),
-                        left_before.reservations[left_index].observed,
-                    );
-                    reveal(overrun_release_witness);
-                    reveal(overrun_charged_witness);
-                    overrun_effect_has_release(
-                        left_before, observation, left_after, left_receipt,
-                        left_budget, left_effect_index,
-                    );
-                    let left_released = choose |released: BudgetLedger| #![auto]
-                        overrun_release_witness(
-                            left_before, left_after, left_budget,
-                            left_receipt, released,
-                        );
-                    overrun_release_has_charged(
-                        left_before, left_after, left_budget, left_receipt,
-                        &left_released,
-                    );
-                    let left_charged_state = choose |state: BudgetLedger| #![auto]
-                        overrun_charged_witness(
-                            left_before, left_after, left_budget,
-                            left_receipt, &left_released, state,
-                        );
-                    let left_exact = choose |exact: crate::BudgetAmounts| #![auto]
-                        exact.spec_equal(left_receipt.spec_charged())
-                            && super::super::account_updates::overrun_accounting(
-                                left_before, left_after, &left_released,
-                                &left_charged_state, left_budget, exact,
-                            );
-                    overrun_effect_has_release(
-                        right_before, observation, right_after, right_receipt,
-                        right_budget, right_effect_index,
-                    );
-                    let right_released = choose |released: BudgetLedger| #![auto]
-                        overrun_release_witness(
-                            right_before, right_after, right_budget,
-                            right_receipt, released,
-                        );
-                    overrun_release_has_charged(
-                        right_before, right_after, right_budget, right_receipt,
-                        &right_released,
-                    );
-                    let right_charged_state = choose |state: BudgetLedger| #![auto]
-                        overrun_charged_witness(
-                            right_before, right_after, right_budget,
-                            right_receipt, &right_released, state,
-                        );
-                    let right_exact = choose |exact: crate::BudgetAmounts| #![auto]
-                        exact.spec_equal(right_receipt.spec_charged())
-                            && super::super::account_updates::overrun_accounting(
-                                right_before, right_after, &right_released,
-                                &right_charged_state, right_budget, exact,
-                            );
-                    super::finalization::amounts_equal_through(
-                        left_exact, left_receipt.spec_charged(), right_exact,
-                    );
-                    super::fault::overrun_functional(
-                        left_before, right_before, left_after, right_after,
-                        &left_released, &right_released,
-                        &left_charged_state, &right_charged_state,
-                        left_budget, right_budget, left_exact, right_exact,
-                    );
-                    assert(super::super::reservations::observation_effect(
-                        left_before, right_after, observation.spec_reservation_id(),
-                        left_before.reservations[left_index].request.spec_reserve(),
-                        observation.spec_evidence_digest(),
-                        ReservationPhase::OverrunFaulted,
-                        Some(observation.spec_cumulative()),
-                        Some(observation.spec_finality()),
-                    ));
-                    super::reservation_updates::observation_effects_equal(
-                        left_before, left_after, right_after,
-                        observation.spec_reservation_id(),
-                        left_before.reservations[left_index].request.spec_reserve(),
-                        observation.spec_evidence_digest(),
-                        ReservationPhase::OverrunFaulted,
-                        Some(observation.spec_cumulative()),
-                        Some(observation.spec_finality()),
-                    );
-                }
-                _ => assert(false),
-            }
         }
     }
     assert(super::super::commands::ledger_views_equal(left_after, right_after));

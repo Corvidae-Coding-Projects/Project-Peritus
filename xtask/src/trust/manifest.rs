@@ -37,6 +37,45 @@ pub(super) fn validate(
     enforce_review_base: bool,
     diagnostics: &mut Vec<Diagnostic>,
 ) -> Result<(), XtaskError> {
+    validate_with_proof_impact(
+        root,
+        policy,
+        cargo,
+        compilation_sources,
+        occurrences,
+        Some(enforce_review_base),
+        diagnostics,
+    )
+}
+
+pub(super) fn validate_local(
+    root: &Path,
+    policy: &ArchitecturePolicy,
+    cargo: &CargoMetadata,
+    compilation_sources: &[PathBuf],
+    occurrences: &[TrustedOccurrence],
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Result<(), XtaskError> {
+    validate_with_proof_impact(
+        root,
+        policy,
+        cargo,
+        compilation_sources,
+        occurrences,
+        None,
+        diagnostics,
+    )
+}
+
+fn validate_with_proof_impact(
+    root: &Path,
+    policy: &ArchitecturePolicy,
+    cargo: &CargoMetadata,
+    compilation_sources: &[PathBuf],
+    occurrences: &[TrustedOccurrence],
+    enforce_review_base: Option<bool>,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Result<(), XtaskError> {
     if policy.trusted_source_roots != [PathBuf::from(TCB_SOURCE_ROOT)] {
         diagnostics.push(Diagnostic::at(
             "architecture.toml",
@@ -55,8 +94,8 @@ pub(super) fn validate(
         manifest_file::read_toml(root, Path::new(OBLIGATIONS_PATH), diagnostics);
     let proof_impact: Option<ProofImpactDocument> =
         manifest_file::read_toml(root, Path::new(PROOF_IMPACT_PATH), diagnostics);
-    let (Some(actors), Some(trust), Some(exclusions), Some(obligations), Some(proof_impact)) =
-        (actors, trust, exclusions, obligations, proof_impact)
+    let (Some(actors), Some(trust), Some(exclusions), Some(obligations)) =
+        (actors, trust, exclusions, obligations)
     else {
         return Ok(());
     };
@@ -67,14 +106,16 @@ pub(super) fn validate(
     manifest_trust::validate(&context, &actors, &trust, occurrences, diagnostics);
     let indexed_exclusions = validate_exclusions(&context, &actors, &exclusions, diagnostics);
     validate_obligations(&context, &actors, &obligations, &indexed_exclusions, diagnostics);
-    manifest_impact::validate(
-        &context,
-        &actors,
-        &proof_impact,
-        compilation_sources,
-        enforce_review_base,
-        diagnostics,
-    )?;
+    if let (Some(enforce_review_base), Some(proof_impact)) = (enforce_review_base, proof_impact) {
+        manifest_impact::validate(
+            &context,
+            &actors,
+            &proof_impact,
+            compilation_sources,
+            enforce_review_base,
+            diagnostics,
+        )?;
+    }
     Ok(())
 }
 

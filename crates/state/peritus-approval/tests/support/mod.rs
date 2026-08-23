@@ -18,10 +18,13 @@ mod amendment;
 mod request_fixture;
 mod signing;
 
+#[allow(
+    unused_imports,
+    reason = "shared integration support exposes one fixture surface to independently compiled suites"
+)]
 pub use request_fixture::{
     challenge_with_operation_risks, request, request_result, request_result_with_risk_digest,
     request_with_participants, request_with_permission_and_participants, request_with_risk_digest,
-    request_with_validity_ends,
 };
 
 pub const SIGNING_SEED: [u8; 32] = [7; 32];
