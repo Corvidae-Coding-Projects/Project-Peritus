@@ -1,6 +1,6 @@
 {
   "next_display_id": 6,
-  "next_comment_id": 108,
+  "next_comment_id": 109,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -642,7 +642,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-22T16:02:46.854617936Z",
-      "updated_at": "2026-08-23T02:16:53.025505077Z",
+      "updated_at": "2026-08-23T02:25:00.749059516Z",
       "labels": [
         "feature"
       ],
@@ -709,6 +709,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAfC5flXvodYN6oaORRs30QswU2C386FuIT8hHMhhB3hSV/UX1My0vHESjv/RyaCIz3sfh4qahX8QBqgBnyCW6Aw=="
+        },
+        "29cf3c68-6bf5-4457-9b37-fd649644376a": {
+          "display_id": 108,
+          "author": "6ME5",
+          "content": "[result] Signed governance commit 52c8df8 (docs(verification): register B1 proof obligations). Registered all six B1-owned architecture invariants (INV-006, INV-007, INV-008, INV-009, INV-012, INV-022) and eleven supporting obligations with exact source symbols, class-correct locked Verus evidence commands, live owner/issue references, and the reviewed acyclic dependency structure. Records remain honestly in-progress pending deferred protected review; no discharge is claimed. Verification: 235 xtask tests, 3 CLI tests, cargo xtask all, and git diff --check passed.",
+          "created_at": "2026-08-23T02:25:00.746537958Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA63RLGhNgHA/+ys3Viv0KLQiEvBcXkfhJq708wIxn48J2lXc9rz0nMoIp+fIDGpx+iprlTFCnZsU6jczRpUZpAg=="
         },
         "2a1e707b-083c-4f49-8e66-16140cb1cdab": {
           "display_id": 81,
@@ -1075,8 +1084,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-23T02:16:53.025505077Z",
+    "timestamp": "2026-08-23T02:25:00.749059516Z",
     "agent_id": "6ME5",
-    "agent_seq": 138
+    "agent_seq": 139
   }
 }
