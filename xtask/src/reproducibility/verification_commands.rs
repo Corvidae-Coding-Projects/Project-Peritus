@@ -78,6 +78,13 @@ layer = "foundation"
 verification_class = "V"
 
 [[packages]]
+name = "peritus-codec"
+path = "crates/foundation/peritus-codec"
+owner = "B3"
+layer = "foundation"
+verification_class = "H"
+
+[[packages]]
 name = "peritus-kernel"
 path = "crates/foundation/peritus-kernel"
 owner = "B0"
@@ -97,6 +104,13 @@ path = "crates/foundation/peritus-policy"
 owner = "B1"
 layer = "foundation"
 verification_class = "V"
+
+[[packages]]
+name = "peritus-protocol"
+path = "crates/foundation/peritus-protocol"
+owner = "B3"
+layer = "foundation"
+verification_class = "H"
 
 [[packages]]
 name = "peritus-quality-policy"

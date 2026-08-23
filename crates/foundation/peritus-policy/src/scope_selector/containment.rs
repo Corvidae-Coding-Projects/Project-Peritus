@@ -218,7 +218,7 @@ fn permissions_outside(
     ensures outside == permission_mismatch(selector, boundary),
 {
     reveal(permission_mismatch);
-    let Some(values) = selector.permissions.exact_values() else { return false; };
+    let Some(values) = selector.permissions.exact_values_internal() else { return false; };
     assert(selector.permissions.spec_exact_values_internal() == Some(values.spec_values()));
     let values = values.as_slice();
     let mut index = 0;

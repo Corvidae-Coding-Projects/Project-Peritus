@@ -56,7 +56,16 @@ impl PermissionSelector {
     #[must_use]
     pub const fn is_any_within_parent(&self) -> bool { self.exact.is_none() }
 
-    pub(crate) const fn exact_values(&self) -> (values: Option<&PermissionSet>)
+    /// Returns the checked exact permission set, or `None` for `AnyWithinParent`.
+    #[must_use]
+    pub const fn exact_values(&self) -> (values: Option<&PermissionSet>)
+        ensures match values {
+            Some(values) => self.spec_exact_values() == Some(values.spec_values()),
+            None => self.spec_exact_values().is_none(),
+        },
+    { self.exact.as_ref() }
+
+    pub(crate) const fn exact_values_internal(&self) -> (values: Option<&PermissionSet>)
         ensures match values {
             Some(values) => {
                 self.spec_exact_values() == Some(values.spec_values())
