@@ -7,7 +7,7 @@ use crate::trust::manifest_model::{ProofImpactDocument, ProofImpactVerdict};
 use std::collections::BTreeMap;
 use std::fs;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 pub(super) fn validate(
     root: &Path,
@@ -38,7 +38,7 @@ pub(super) fn validate(
     let mut present = Vec::new();
     collect_review_files(root, !referenced.is_empty(), &mut present, diagnostics);
     for relative in present {
-        if relative.to_str().is_none_or(|path| !referenced.contains_key(path)) {
+        if repository_path(&relative).is_none_or(|path| !referenced.contains_key(&path)) {
             diagnostics.push(Diagnostic::at(
                 &relative,
                 "detached review file is not referenced by exactly one PCR artifact inventory",
@@ -46,6 +46,19 @@ pub(super) fn validate(
             ));
         }
     }
+}
+
+fn repository_path(path: &Path) -> Option<String> {
+    let mut encoded = String::new();
+    for component in path.components() {
+        let Component::Normal(segment) = component else { return None };
+        let segment = segment.to_str()?;
+        if !encoded.is_empty() {
+            encoded.push('/');
+        }
+        encoded.push_str(segment);
+    }
+    (!encoded.is_empty()).then_some(encoded)
 }
 
 fn collect_review_files(
@@ -140,4 +153,22 @@ fn review_inventory_error(
         format!("detached review inventory cannot enumerate or inspect an entry: {error}"),
         "restore a completely readable regular-file inventory; unreadable review state fails closed",
     ));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::repository_path;
+    use std::path::PathBuf;
+
+    #[test]
+    fn repository_paths_use_manifest_separators_on_every_host() {
+        let mut path = PathBuf::new();
+        for component in ["verification", "reviews", "PCR-0005", "review-report.md"] {
+            path.push(component);
+        }
+        assert_eq!(
+            repository_path(&path).as_deref(),
+            Some("verification/reviews/PCR-0005/review-report.md")
+        );
+    }
 }
