@@ -1,6 +1,6 @@
 {
   "next_display_id": 10,
-  "next_comment_id": 159,
+  "next_comment_id": 160,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "2b288a30-b5b1-4452-81bd-20950bebd2d3": 9,
@@ -75,7 +75,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-23T09:26:36.193516281Z",
-      "updated_at": "2026-08-23T12:09:32.134630049Z",
+      "updated_at": "2026-08-23T12:10:45.692622761Z",
       "labels": [
         "feature"
       ],
@@ -115,6 +115,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAfH6jpkaxbGEiXEXm8lPjLoCCVbwSWPagu+prHGNkDTQ+CAgeo/WDU3b0c9cDQrQXcq1bfj1CDzP9UQYvNd+pDQ=="
+        },
+        "79797b53-727f-48f8-991a-b7a7db672967": {
+          "display_id": 159,
+          "author": "6ME5",
+          "content": "Committed 66de3df86e0552c74ad3edf9465accc55158e544 (feat(state): implement durable C0 substrate). Full just gate-a passed after bounded QA remediation: workspace build/tests/doc-tests, strict Clippy/rustdoc, xtask architecture/source-layout/reproducibility/trust/API checks, cargo-deny, pinned toolchain, full Verus verification, and workspace plus all-H no-cheating release builds. Regression coverage includes ambiguous migration commit reconciliation, stale outbox fences, evidence retry after journal advance, and state-history/current-row integrity.",
+          "created_at": "2026-08-23T12:10:45.690127495Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAnvHv5Ew0Ntad/FISLAgJJX8EIFb6ydd+LjVMLEZnOBhH25sfjAO5fQIr4rTmOD4O2d2OIgW2oP0YjxLGkQm2AQ=="
         },
         "821a0ba0-94e0-40e4-b3a3-fd13d092c597": {
           "display_id": 153,
@@ -1605,8 +1614,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-23T12:09:32.134630049Z",
+    "timestamp": "2026-08-23T12:10:45.692622761Z",
     "agent_id": "6ME5",
-    "agent_seq": 209
+    "agent_seq": 210
   }
 }
