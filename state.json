@@ -71,11 +71,12 @@
       "display_id": 9,
       "title": "Implement C0 journal, projections, artifacts, migrations, and evidence",
       "description": "Complete the production C0 persistence slice: transactional SQLite journal and durable authority receipts; content-addressed artifact storage; deterministic projections and replay; forward-only migrations and recovery; revision-bound evidence; all five C0 refinements; A2 conformance, architecture, CI, documentation, and realistic crash/restart evidence.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-23T09:26:36.193516281Z",
-      "updated_at": "2026-08-23T12:17:06.737749042Z",
+      "updated_at": "2026-08-23T12:17:10.770697647Z",
+      "closed_at": "2026-08-23T12:17:10.770692786Z",
       "labels": [
         "feature"
       ],
@@ -1623,8 +1624,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-23T12:17:06.737749042Z",
+    "timestamp": "2026-08-23T12:17:10.770697647Z",
     "agent_id": "6ME5",
-    "agent_seq": 211
+    "agent_seq": 212
   }
 }
