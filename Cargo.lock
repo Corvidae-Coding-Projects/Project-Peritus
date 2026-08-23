@@ -216,6 +216,19 @@ name = "peritus-conformance"
 version = "0.0.0"
 
 [[package]]
+name = "peritus-kernel"
+version = "0.0.0"
+dependencies = [
+ "peritus-budget",
+ "peritus-policy",
+ "peritus-quality-policy",
+ "peritus-spec",
+ "peritus-test-support",
+ "peritus-types",
+ "vstd",
+]
+
+[[package]]
 name = "peritus-leases"
 version = "0.0.0"
 dependencies = [
