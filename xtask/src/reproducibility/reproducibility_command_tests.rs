@@ -33,9 +33,9 @@ fn complete_recipe_command_forms_accept_locked_inputs_before_the_boundary() {
         "cargo --locked check --workspace",
         "cargo metadata --format-version 1 --locked",
         "cargo verus verify --workspace --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --rlimit 20",
-        "cargo verus verify --package peritus-approval --package peritus-budget --package peritus-leases --package peritus-policy --package peritus-types --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+        "cargo verus verify --package peritus-approval --package peritus-budget --package peritus-leases --package peritus-policy --package peritus-quality-policy --package peritus-spec --package peritus-types --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
         "cargo verus build --workspace --all-features --release --locked --check-toolchain --fwd-verus-args-to roots -- --rlimit 20",
-        "cargo verus build --package peritus-approval --package peritus-budget --package peritus-leases --package peritus-policy --package peritus-types --all-features --release --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
+        "cargo verus build --package peritus-approval --package peritus-budget --package peritus-leases --package peritus-policy --package peritus-quality-policy --package peritus-spec --package peritus-types --all-features --release --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20",
         "cargo fmt --all -- --check",
         "cargo xtask reproducibility-check",
     ] {

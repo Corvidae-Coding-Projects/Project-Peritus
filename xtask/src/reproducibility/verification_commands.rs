@@ -92,6 +92,20 @@ layer = "foundation"
 verification_class = "V"
 
 [[packages]]
+name = "peritus-quality-policy"
+path = "crates/foundation/peritus-quality-policy"
+owner = "B2"
+layer = "foundation"
+verification_class = "V"
+
+[[packages]]
+name = "peritus-spec"
+path = "crates/foundation/peritus-spec"
+owner = "B2"
+layer = "foundation"
+verification_class = "V"
+
+[[packages]]
 name = "peritus-types"
 path = "crates/foundation/peritus-types"
 owner = "A1"

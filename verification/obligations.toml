@@ -1,10 +1,59 @@
 # Schema contract: verification/README.md#proof-obligation-manifest
-# B1 records are intentionally `in-progress`: the exact symbols and executable proof evidence
-# exist, while independent protected-review authorization remains deferred. Nothing in this file
-# claims discharge until a registered independent reviewer approves the final source identities.
+# B1 and B2 records are intentionally `in-progress`: the exact symbols and executable proof
+# evidence exist, while independent protected-review authorization remains deferred. Nothing in
+# this file claims discharge until a registered independent reviewer approves the final identities.
 schema = "peritus.verification.obligations"
 schema_version = 1
 baseline = "A1"
+
+[[entries]]
+id = "INV-003"
+kind = "invariant"
+statement = "An acceptance decision can be acceptable only when every gate, review, artifact, approval, and waiver observation is bound to the exact requested RevisionTuple."
+owning_crate = "peritus-quality-policy"
+source_file = "crates/foundation/peritus-quality-policy/src/evidence.rs"
+symbol = "peritus_quality_policy::evidence::AcceptanceEvidence::spec_all_current"
+status = "in-progress"
+dependencies = ["OBL-0111", "OBL-0113"]
+live_issue = "#6"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-quality-policy/src/proofs/freshness.rs", symbol = "peritus_quality_policy::proofs::freshness::freshness_implies_exact_revision", command = "cargo verus verify --package peritus-quality-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/foundation/peritus-quality-policy/tests/cases/freshness.rs", symbol = "peritus_quality_policy::tests::cases::freshness::one_field_revision_drift_is_stale_for_every_tuple_dimension", command = "cargo test --package peritus-quality-policy --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "INV-004"
+kind = "invariant"
+statement = "An acceptable decision implies exact contract binding, fresh observations, complete evaluator phase flags, no typed unmet condition, and passing gate and review observations within the recorded completion limits; adversarial tests refine the remaining contract semantics."
+owning_crate = "peritus-quality-policy"
+source_file = "crates/foundation/peritus-quality-policy/src/evaluator.rs"
+symbol = "peritus_quality_policy::evaluator::accepted_evaluation_contract"
+status = "in-progress"
+dependencies = ["INV-003", "INV-011", "OBL-0113"]
+live_issue = "#6"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-quality-policy/src/evaluator.rs", symbol = "peritus_quality_policy::evaluator::accepted_evaluation_contract", command = "cargo verus verify --package peritus-quality-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/foundation/peritus-quality-policy/tests/cases/happy_path.rs", symbol = "peritus_quality_policy::tests::cases::happy_path::complete_exact_revision_evidence_is_acceptable", command = "cargo test --package peritus-quality-policy --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "INV-011"
+kind = "invariant"
+statement = "A checked gate graph has unique declared gates, rejects unknown, self, and cyclic dependencies, and exposes a complete deterministic order in which every dependency precedes its dependent gate."
+owning_crate = "peritus-spec"
+source_file = "crates/foundation/peritus-spec/src/gate.rs"
+symbol = "peritus_spec::gate::GateGraph::invariant"
+status = "in-progress"
+dependencies = ["OBL-0112"]
+live_issue = "#6"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-spec/src/gate_model.rs", symbol = "peritus_spec::gate_model::gate_execution_order_is_valid", command = "cargo verus verify --package peritus-spec --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-spec/src/gate_model.rs", symbol = "peritus_spec::gate_model::valid_graph_has_dependency_order_certificate", command = "cargo verus verify --package peritus-spec --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/foundation/peritus-spec/tests/gate_graph.rs", symbol = "peritus_spec::tests::gate_graph::graph_rejects_unknown_dependencies_and_cycles", command = "cargo test --package peritus-spec --all-targets --all-features --locked" },
+]
 
 [[entries]]
 id = "INV-006"
@@ -275,4 +324,52 @@ owner = "ACTOR-0001"
 evidence = [
   { kind = "verus-proof", source_file = "crates/state/peritus-approval/src/proofs/replay.rs", symbol = "peritus_approval::proofs::replay::exact_replay_is_idempotent", command = "cargo verus verify --package peritus-approval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "verus-proof", source_file = "crates/state/peritus-approval/src/proofs/replay.rs", symbol = "peritus_approval::proofs::replay::terminal_state_cannot_change", command = "cargo verus verify --package peritus-approval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+]
+
+[[entries]]
+id = "OBL-0111"
+kind = "contract"
+statement = "A successful contract binding preserves the immutable contract identity and digest, stores the exact supplied RevisionTuple, and exists only when the tuple names that acceptance specification."
+owning_crate = "peritus-spec"
+source_file = "crates/foundation/peritus-spec/src/contract.rs"
+symbol = "peritus_spec::contract::ContractBinding::invariant"
+status = "in-progress"
+dependencies = []
+live_issue = "#6"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-spec/src/contract.rs", symbol = "peritus_spec::contract::ContractBinding::invariant", command = "cargo verus verify --package peritus-spec --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/foundation/peritus-spec/tests/binding.rs", symbol = "peritus_spec::tests::binding::binding_requires_the_tuple_to_name_the_exact_contract", command = "cargo test --package peritus-spec --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0112"
+kind = "contract"
+statement = "Every successfully constructed GateGraph satisfies the executable-refined validity predicate: declared and scheduled gate identities are unique and complete, every dependency precedes its gate, and the stored Kahn order is deterministic."
+owning_crate = "peritus-spec"
+source_file = "crates/foundation/peritus-spec/src/gate.rs"
+symbol = "peritus_spec::gate::GateGraph::new"
+status = "in-progress"
+dependencies = []
+live_issue = "#6"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-spec/src/gate.rs", symbol = "peritus_spec::gate::GateGraph::invariant", command = "cargo verus verify --package peritus-spec --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-spec/src/gate_model.rs", symbol = "peritus_spec::gate_model::valid_graph_has_dependency_order_certificate", command = "cargo verus verify --package peritus-spec --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+]
+
+[[entries]]
+id = "OBL-0113"
+kind = "contract"
+statement = "The executable acceptance evaluator can report acceptable only with exact contract binding and freshness, complete phase flags, concrete gate-attempt and review-cycle predicates at the recorded limits, and an empty typed unmet-condition sequence."
+owning_crate = "peritus-quality-policy"
+source_file = "crates/foundation/peritus-quality-policy/src/evaluator.rs"
+symbol = "peritus_quality_policy::evaluator::evaluate_acceptance"
+status = "in-progress"
+dependencies = ["OBL-0111"]
+live_issue = "#6"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-quality-policy/src/evaluator.rs", symbol = "peritus_quality_policy::evaluator::accepted_evaluation_contract", command = "cargo verus verify --package peritus-quality-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/foundation/peritus-quality-policy/tests/cases/happy_path.rs", symbol = "peritus_quality_policy::tests::cases::happy_path::complete_exact_revision_evidence_is_acceptable", command = "cargo test --package peritus-quality-policy --all-targets --all-features --locked" },
 ]

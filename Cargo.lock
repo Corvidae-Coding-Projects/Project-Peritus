@@ -235,6 +235,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "peritus-quality-policy"
+version = "0.0.0"
+dependencies = [
+ "peritus-spec",
+ "peritus-types",
+ "vstd",
+]
+
+[[package]]
+name = "peritus-spec"
+version = "0.0.0"
+dependencies = [
+ "peritus-types",
+ "vstd",
+]
+
+[[package]]
 name = "peritus-tcb"
 version = "0.0.0"
 dependencies = [

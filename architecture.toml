@@ -134,6 +134,20 @@ layer = "foundation"
 verification_class = "V"
 
 [[packages]]
+name = "peritus-quality-policy"
+path = "crates/foundation/peritus-quality-policy"
+owner = "B2"
+layer = "foundation"
+verification_class = "V"
+
+[[packages]]
+name = "peritus-spec"
+path = "crates/foundation/peritus-spec"
+owner = "B2"
+layer = "foundation"
+verification_class = "V"
+
+[[packages]]
 name = "peritus-tcb"
 path = "crates/foundation/peritus-tcb"
 owner = "A1"
@@ -244,6 +258,36 @@ id = "REF-B2-B1-CONTRACT-REVISION"
 introduced_by = "B1"
 future_owner = "B2"
 statement = "Acceptance-contract validation binds every authority request to one exact RevisionTuple."
+
+[[refinement_reservations]]
+id = "REF-B0-B2-CURRENT-EVIDENCE"
+introduced_by = "B2"
+future_owner = "B0"
+statement = "The lifecycle kernel evaluates acceptance only from its exact current contract, RevisionTuple, and V-owned current-evidence projection; raw B2 observation values or an AcceptanceDecision are logical facts and do not independently authorize a lifecycle transition."
+
+[[refinement_reservations]]
+id = "REF-B3-B2-CONTRACT-BYTES"
+introduced_by = "B2"
+future_owner = "B3"
+statement = "Canonical protocol bytes preserve every checked acceptance-contract component and bind AcceptanceSpecId and the complete content digest to one immutable contract revision."
+
+[[refinement_reservations]]
+id = "REF-C0-B2-EVIDENCE-PROVENANCE"
+introduced_by = "B2"
+future_owner = "C0"
+statement = "Durable evidence projections admit B2 observations only from matching digest-verified committed records and preserve exact RevisionTuple freshness under replay and invalidation."
+
+[[refinement_reservations]]
+id = "REF-D1-B2-GATE-OBSERVATION"
+introduced_by = "B2"
+future_owner = "D1"
+statement = "Gate observations correspond to actual executions of the frozen GateDefinition against the exact clean candidate snapshot, environment, parser, success rule, artifacts, and dependency order declared by the contract."
+
+[[refinement_reservations]]
+id = "REF-D2-B2-REVIEW-OBSERVATION"
+introduced_by = "B2"
+future_owner = "D2"
+statement = "Review, finding, and waiver observations correspond to authenticated fresh-context read-only review records and preserve reviewer identity, category coverage, disposition, authority, and exact-revision provenance."
 
 [[refinement_reservations]]
 id = "REF-B0-B1-REVISION-FRESHNESS"

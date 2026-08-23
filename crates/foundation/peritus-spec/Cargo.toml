@@ -1,0 +1,25 @@
+[package]
+name = "peritus-spec"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+description = "Verified immutable acceptance contracts for Project Peritus"
+
+[dependencies]
+peritus-types = { version = "=0.0.0", path = "../peritus-types" }
+vstd.workspace = true
+
+[package.metadata.peritus]
+owner = "B2"
+layer = "foundation"
+verification-class = "V"
+
+[package.metadata.verus]
+verify = true
+
+[lints]
+workspace = true
