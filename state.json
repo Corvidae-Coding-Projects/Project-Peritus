@@ -1,5 +1,5 @@
 {
-  "next_display_id": 7,
+  "next_display_id": 8,
   "next_comment_id": 133,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -7,7 +7,8 @@
     "5542a0ec-9091-4c82-b341-df0b119bc0b1": 3,
     "941c4cb4-2cc2-46e7-b156-262ce7712d9f": 4,
     "951695ae-cc15-4045-8069-eb7bba119e5c": 5,
-    "d94caf6d-2292-44ca-9393-3c7970c87f4f": 6
+    "d94caf6d-2292-44ca-9393-3c7970c87f4f": 6,
+    "dfab9d3d-33b2-4c87-aa21-5e886054ba62": 7
   },
   "locks": {},
   "issues": {
@@ -1309,12 +1310,23 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8foMtbWCpRa2eRzC50j1ANSY8LvbBqgn20Zl3CQqRxAiJoPdRcq3VYxsMEHulLa13SwhO4aMj0SraPqp5tIkAQ=="
         }
       }
+    },
+    "dfab9d3d-33b2-4c87-aa21-5e886054ba62": {
+      "uuid": "dfab9d3d-33b2-4c87-aa21-5e886054ba62",
+      "display_id": 7,
+      "title": "Implement B0 lifecycle kernel",
+      "description": "Create peritus-kernel with session, run, attempt, turn, action, review, waiver, and acceptance state machines; command authorization; authoritative event reduction; legal-transition, causality, and no-implicit-success Verus proofs; B1/B2 integration; and reference-model, adversarial, and transition-matrix tests.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "6ME5",
+      "created_at": "2026-08-23T05:11:32.833578183Z",
+      "updated_at": "2026-08-23T05:11:32.833578183Z"
     }
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-23T04:52:00.402864467Z",
+    "timestamp": "2026-08-23T05:11:32.833578183Z",
     "agent_id": "6ME5",
-    "agent_seq": 170
+    "agent_seq": 171
   }
 }
