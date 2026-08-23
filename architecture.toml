@@ -150,6 +150,13 @@ layer = "testing"
 verification_class = "C"
 
 [[packages]]
+name = "peritus-git"
+path = "crates/runtime/peritus-git"
+owner = "C1"
+layer = "runtime"
+verification_class = "H"
+
+[[packages]]
 name = "peritus-kernel"
 path = "crates/foundation/peritus-kernel"
 owner = "B0"
@@ -175,6 +182,13 @@ name = "peritus-migrations"
 path = "crates/state/peritus-migrations"
 owner = "C0"
 layer = "state"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-patch"
+path = "crates/runtime/peritus-patch"
+owner = "C1"
+layer = "runtime"
 verification_class = "H"
 
 [[packages]]
@@ -234,23 +248,18 @@ layer = "foundation"
 verification_class = "V"
 
 [[packages]]
+name = "peritus-workspace"
+path = "crates/runtime/peritus-workspace"
+owner = "C1"
+layer = "runtime"
+verification_class = "H"
+
+[[packages]]
 name = "xtask"
 path = "xtask"
 owner = "A0"
 layer = "engineering"
 verification_class = "C"
-
-[[refinement_reservations]]
-id = "REF-C1-B1-RESOURCE-IDENTITY"
-introduced_by = "B1"
-future_owner = "C1"
-statement = "Resolved filesystem/workspace targets match exact authorized ResourceId values."
-
-[[refinement_reservations]]
-id = "REF-C1-B1-RECONCILE-SAFETY"
-introduced_by = "B1"
-future_owner = "C1"
-statement = "Exactly correlated post-fence workspace inspection establishes safe-to-acquire or a typed dirty/indeterminate result without guessing."
 
 [[refinement_reservations]]
 id = "REF-C2-B1-HOLDER-QUIESCENCE"
@@ -275,12 +284,6 @@ id = "REF-E0-B1-COMMIT-BEFORE-EFFECT"
 introduced_by = "B1"
 future_owner = "E0"
 statement = "E0 assembles matching capability use, durable budget charge/reservation, lease use when mutating, approval plus its exact credential-registry revision when required, B0 current-state witness, and exact C0 commit/current-registry receipts before invoking a target authorization gateway; it does not construct that target's permit."
-
-[[refinement_reservations]]
-id = "REF-C1-B1-AUTHORITY-GATE"
-introduced_by = "B1"
-future_owner = "C1"
-statement = "The workspace crate owns WorkspaceAuthorizationRequest; its gateway validates E0-supplied B1/B0/C0 inputs and alone constructs its private mutation permit, with no public raw bypass."
 
 [[refinement_reservations]]
 id = "REF-C2-B1-AUTHORITY-GATE"

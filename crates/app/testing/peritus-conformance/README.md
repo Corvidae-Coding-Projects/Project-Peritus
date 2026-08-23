@@ -50,11 +50,13 @@ termination, stack overflow, undefined behavior, foreign-code termination, a pan
 unwinding, and operating-system process death cannot be converted into a report. Callers that need
 evidence for those failures must execute conformance in a supervised subprocess.
 
-## Empty catalog suites and future ownership
+## Catalog suites and ownership
 
-The crate exports runnable empty provider, tool, plugin, sandbox, journal, protocol, and replay
-suites. Their `Empty` status is scaffolding, not Gate C evidence. Later protocol-owning slices add
-typed cases after their contracts exist.
+The crate exports production journal, replay, and C1 workspace suites plus runnable empty provider,
+tool, plugin, sandbox, and protocol suites. The workspace suite exercises the shared Git worktree,
+atomic patch, authorization, rollback, and restart-reconciliation contract through a fresh real
+subject adapter for each case. An empty suite's `Empty` status is scaffolding, not Gate evidence.
+Later protocol-owning slices add typed cases after their contracts exist.
 
 This crate deliberately does not define model messages, streaming normalization, tool schemas,
 capabilities, authorization, retries, idempotency, journal records, or production error taxonomies.

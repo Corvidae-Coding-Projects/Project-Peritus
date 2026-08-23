@@ -352,6 +352,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "peritus-git"
+version = "0.0.0"
+dependencies = [
+ "peritus-codec",
+ "peritus-types",
+ "tempfile",
+ "vstd",
+]
+
+[[package]]
 name = "peritus-journal"
 version = "0.0.0"
 dependencies = [
@@ -404,6 +414,16 @@ dependencies = [
  "peritus-types",
  "rusqlite",
  "sha2",
+ "tempfile",
+ "vstd",
+]
+
+[[package]]
+name = "peritus-patch"
+version = "0.0.0"
+dependencies = [
+ "peritus-codec",
+ "peritus-types",
  "tempfile",
  "vstd",
 ]
@@ -492,6 +512,28 @@ dependencies = [
 name = "peritus-types"
 version = "0.0.0"
 dependencies = [
+ "vstd",
+]
+
+[[package]]
+name = "peritus-workspace"
+version = "0.0.0"
+dependencies = [
+ "peritus-artifact-store",
+ "peritus-budget",
+ "peritus-codec",
+ "peritus-conformance",
+ "peritus-git",
+ "peritus-journal",
+ "peritus-kernel",
+ "peritus-leases",
+ "peritus-patch",
+ "peritus-policy",
+ "peritus-protocol",
+ "peritus-test-support",
+ "peritus-types",
+ "sha2",
+ "tempfile",
  "vstd",
 ]
 

@@ -112,9 +112,11 @@ typed observations make repeated runs directly comparable. Suite status is one o
 `Empty` is never equivalent to `Passed` and cannot satisfy a release verdict. There is no skipped,
 ignored, quarantined or caller-forced success state.
 
-A2 publishes named empty provider, tool, plugin, sandbox, journal, protocol and replay suites.
-They prove that registration and reporting work before their owning slices add cases; they do not
-claim that any later protocol or adapter conforms.
+A2 publishes named empty provider, tool, plugin, sandbox, and protocol suites. C0 supplies real
+journal and replay cases, and C1 supplies real Git/workspace/patch cases covering atomic candidate
+creation, stale generation and resource rejection, read-only isolation, rollback history, and
+restart reconciliation. Only a nonempty passed report from a production adapter proves the named
+contract.
 
 ## Ownership boundaries
 

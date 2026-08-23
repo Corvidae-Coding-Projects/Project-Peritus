@@ -3,7 +3,9 @@ use peritus_conformance::{
     JournalAppendFixture, JournalAppendObservation, JournalConformanceError,
     JournalConformanceSubject, JournalSnapshot, ReplayConformanceError, ReplayConformanceSubject,
     ReplayObservation, SubjectDescriptor, SubjectFactory, SubjectFailure, SuiteStatus,
-    journal_suite, replay_suite,
+    WorkspaceConformanceError, WorkspaceConformanceSubject, WorkspaceMutationDisposition,
+    WorkspaceMutationObservation, WorkspacePatchFixture, WorkspaceReconciliationDisposition,
+    WorkspaceSnapshot, journal_suite, replay_suite, workspace_suite,
 };
 
 use super::harness::{block_on, text};
@@ -117,4 +119,117 @@ fn replay_catalog_executes_determinism_and_restart_cases() {
     let report = block_on(ConformanceRunner::run(&suite, &factory));
     assert_eq!(report.status(), SuiteStatus::Passed);
     assert_eq!(report.summary().total(), 2);
+}
+
+struct WorkspaceSubject {
+    snapshot: WorkspaceSnapshot,
+    dirty: bool,
+    indeterminate: bool,
+}
+
+impl Default for WorkspaceSubject {
+    fn default() -> Self {
+        Self {
+            snapshot: WorkspaceSnapshot::new(1, 1, vec![1; 20], None, None, true, false, false),
+            dirty: false,
+            indeterminate: false,
+        }
+    }
+}
+
+impl WorkspaceConformanceSubject for WorkspaceSubject {
+    fn snapshot(&self) -> Result<WorkspaceSnapshot, WorkspaceConformanceError> {
+        Ok(self.snapshot.clone())
+    }
+
+    fn apply(
+        &mut self,
+        fixture: &WorkspacePatchFixture,
+    ) -> Result<WorkspaceMutationObservation, WorkspaceConformanceError> {
+        let disposition = if fixture.resource_id() != [2; 16] {
+            WorkspaceMutationDisposition::Unauthorized
+        } else if fixture.generation() != self.snapshot.generation()
+            || fixture.revision() != self.snapshot.revision()
+        {
+            WorkspaceMutationDisposition::Stale
+        } else {
+            self.snapshot = WorkspaceSnapshot::new(
+                self.snapshot.generation(),
+                self.snapshot.revision() + 1,
+                vec![2; 20],
+                Some(fixture.first_contents().to_vec()),
+                Some(fixture.second_contents().to_vec()),
+                true,
+                true,
+                false,
+            );
+            WorkspaceMutationDisposition::Applied
+        };
+        Ok(WorkspaceMutationObservation::new(disposition, self.snapshot.clone()))
+    }
+
+    fn apply_read_only(
+        &mut self,
+        _fixture: &WorkspacePatchFixture,
+    ) -> Result<WorkspaceMutationObservation, WorkspaceConformanceError> {
+        Ok(WorkspaceMutationObservation::new(
+            WorkspaceMutationDisposition::ReadOnly,
+            self.snapshot.clone(),
+        ))
+    }
+
+    fn rollback(&mut self) -> Result<WorkspaceSnapshot, WorkspaceConformanceError> {
+        self.snapshot = WorkspaceSnapshot::new(
+            self.snapshot.generation(),
+            self.snapshot.revision() + 1,
+            vec![1; 20],
+            None,
+            None,
+            true,
+            true,
+            true,
+        );
+        Ok(self.snapshot.clone())
+    }
+
+    fn restart(&mut self) -> Result<(), WorkspaceConformanceError> {
+        Ok(())
+    }
+
+    fn make_dirty(&mut self) -> Result<(), WorkspaceConformanceError> {
+        self.dirty = true;
+        Ok(())
+    }
+
+    fn make_indeterminate(&mut self) -> Result<(), WorkspaceConformanceError> {
+        self.indeterminate = true;
+        Ok(())
+    }
+
+    fn reconcile(
+        &mut self,
+        expected_generation: u64,
+    ) -> Result<WorkspaceReconciliationDisposition, WorkspaceConformanceError> {
+        Ok(if expected_generation != self.snapshot.generation() {
+            WorkspaceReconciliationDisposition::Fenced
+        } else if self.indeterminate {
+            WorkspaceReconciliationDisposition::Indeterminate
+        } else if self.dirty {
+            WorkspaceReconciliationDisposition::Dirty
+        } else {
+            WorkspaceReconciliationDisposition::Clean
+        })
+    }
+}
+
+#[test]
+fn workspace_catalog_executes_git_patch_authority_and_recovery_cases() {
+    let suite = workspace_suite::<WorkspaceSubject>();
+    let factory = Factory {
+        descriptor: SubjectDescriptor::new(text("workspace"), text("reference C1 adapter")),
+        create: WorkspaceSubject::default,
+    };
+    let report = block_on(ConformanceRunner::run(&suite, &factory));
+    assert_eq!(report.status(), SuiteStatus::Passed, "{report:?}");
+    assert_eq!(report.summary().total(), 6);
 }
