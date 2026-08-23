@@ -1,6 +1,6 @@
 {
   "next_display_id": 11,
-  "next_comment_id": 169,
+  "next_comment_id": 170,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "2b288a30-b5b1-4452-81bd-20950bebd2d3": 9,
@@ -244,7 +244,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-23T18:56:23.227916711Z",
-      "updated_at": "2026-08-23T20:02:48.330629520Z",
+      "updated_at": "2026-08-23T20:02:53.025671504Z",
       "labels": [
         "feature"
       ],
@@ -293,6 +293,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABADYhXNZxtqCzCnlYCgd7B3xk8ik7SRvvdxlAhIvCv2ITw4hFAFz2AuwDpaT0I5TFBZFHEzrVjUdYUFexwisW7Dg=="
+        },
+        "ac682688-5654-4e07-8173-5219d05c6f40": {
+          "display_id": 169,
+          "author": "6ME5",
+          "content": "All C1 crates and shared integration are implemented. Git and patch focused gates are green; workspace focused gates were green before final cross-QA. Four concrete workspace defects are now in one bounded correction pass: rollback state after restored effects, detached/exact-baseline open validation, durable action-consumption replay prevention, and exact workspace binding for mutation evidence. Full Gate A, signed commit, PR, merge, and issue closure follow.",
+          "created_at": "2026-08-23T20:02:53.022600694Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAdmtTcj+5s0i1QwK+a5LF50syWNqkZEIT8wK76NA6MaTtu7MTXEeU9hmEqW4KEFYcKqfXmoM8h4UFR7Yxi1amDw=="
         },
         "ba2e96f3-18cf-4db9-bb4d-fa3bafaa6ed5": {
           "display_id": 167,
@@ -1712,8 +1721,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-23T20:02:48.330629520Z",
+    "timestamp": "2026-08-23T20:02:53.025671504Z",
     "agent_id": "6ME5",
-    "agent_seq": 224
+    "agent_seq": 225
   }
 }
