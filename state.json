@@ -1,6 +1,6 @@
 {
   "next_display_id": 6,
-  "next_comment_id": 98,
+  "next_comment_id": 99,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -642,7 +642,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-22T16:02:46.854617936Z",
-      "updated_at": "2026-08-22T23:57:53.560581569Z",
+      "updated_at": "2026-08-23T00:27:53.908030882Z",
       "labels": [
         "feature"
       ],
@@ -890,6 +890,15 @@
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAgYgjw4FEcBvUQTEXHaMx6nUp5cO4qrpKkFoDVPXhkFaz9lAhrIeUb77CX220Km/R+16ohUXXKba6/Bshd/o5Bg=="
         },
+        "c595f5e0-a221-4b9e-a08e-427f4671dd54": {
+          "display_id": 98,
+          "author": "6ME5",
+          "content": "[action] B1 checkpoint: lease AC18 closed and independently accepted at 82-file 9b6c71c with 36 runtime and 6 doctests; governance detached verdict now validates real Git object kinds/tree/ancestry/tree snapshots, full UTC timestamp, and one-to-one retained artifacts; 49 manifest tests plus strict xtask Clippy green. Policy/budget/approval remain live proof work.",
+          "created_at": "2026-08-23T00:27:53.904360762Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAhDXxxnzM2eY3j21f2f1t2ZCrTfU1i9YvWpdt1chqp5cO9FdhyVCXt+QS2tX3f8BIfSiWRnxon38sNTEc8GAZAA=="
+        },
         "c757b26d-6d7d-4d8c-8a4c-bda9efc970bc": {
           "display_id": 78,
           "author": "6ME5",
@@ -985,8 +994,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-22T23:57:53.560581569Z",
+    "timestamp": "2026-08-23T00:27:53.908030882Z",
     "agent_id": "6ME5",
-    "agent_seq": 126
+    "agent_seq": 127
   }
 }
