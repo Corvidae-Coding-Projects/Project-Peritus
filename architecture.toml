@@ -120,6 +120,13 @@ layer = "testing"
 verification_class = "C"
 
 [[packages]]
+name = "peritus-kernel"
+path = "crates/foundation/peritus-kernel"
+owner = "B0"
+layer = "foundation"
+verification_class = "V"
+
+[[packages]]
 name = "peritus-leases"
 path = "crates/state/peritus-leases"
 owner = "B1"
@@ -312,3 +319,21 @@ id = "REF-G0-B1-STARTUP-FENCING"
 introduced_by = "B1"
 future_owner = "G0"
 statement = "Restart advances the durable epoch, fences/reconciles every active lease, invalidates prior capability/approval time state, and blocks mutation intake until complete."
+
+[[refinement_reservations]]
+id = "REF-B3-B0-LIFECYCLE-BYTES"
+introduced_by = "B0"
+future_owner = "B3"
+statement = "Canonical protocol bytes preserve every command, event, subject, phase, error, envelope revision, causal predecessor, and sequence field without granting authority to decoded data."
+
+[[refinement_reservations]]
+id = "REF-C0-B0-DURABLE-TRANSITION"
+introduced_by = "B0"
+future_owner = "C0"
+statement = "C0 atomically compares the durable revision and causal head, appends exactly B0's accepted event, and installs exactly B0's next aggregate once; a logical B0 transition is not itself a durable commit receipt."
+
+[[refinement_reservations]]
+id = "REF-E0-B0-CURRENT-LIFECYCLE"
+introduced_by = "B0"
+future_owner = "E0"
+statement = "Orchestration requests effects only for the exact current run, attempt, turn, and action recorded by B0 and only after C0 commits the matching B0 transition and returns its non-forgeable receipt."

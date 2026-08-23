@@ -1,10 +1,76 @@
 # Schema contract: verification/README.md#proof-obligation-manifest
-# B1 and B2 records are intentionally `in-progress`: the exact symbols and executable proof
+# B0, B1, and B2 records are intentionally `in-progress`: the exact symbols and executable proof
 # evidence exist, while independent protected-review authorization remains deferred. Nothing in
 # this file claims discharge until a registered independent reviewer approves the final identities.
 schema = "peritus.verification.obligations"
 schema_version = 1
 baseline = "A1"
+
+[[entries]]
+id = "INV-001"
+kind = "invariant"
+statement = "Every successful lifecycle reduction is admitted by B0's closed critical-step relation, while every rejection returns the input aggregate unchanged; executable aggregate validation and the command-family matrix cover the complete concrete transition surface."
+owning_crate = "peritus-kernel"
+source_file = "crates/foundation/peritus-kernel/src/reducer.rs"
+symbol = "peritus_kernel::reducer::reducer_result_refines"
+status = "in-progress"
+dependencies = ["OBL-0114", "OBL-0117"]
+live_issue = "#7"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-kernel/src/reducer.rs", symbol = "peritus_kernel::reducer::reducer_result_refines", command = "cargo verus verify --package peritus-kernel --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/foundation/peritus-kernel/tests/reference_model.rs", symbol = "peritus_kernel::tests::reference_model::generated_traces_match_reference_after_each_step_and_first_rejection", command = "cargo test --package peritus-kernel --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "INV-002"
+kind = "invariant"
+statement = "Genesis starts at event sequence one, and each applied reducer transition advances the exact prior sequence once while binding the emitted event and next aggregate to the prior causal head and exact RevisionTuple."
+owning_crate = "peritus-kernel"
+source_file = "crates/foundation/peritus-kernel/src/model.rs"
+symbol = "peritus_kernel::model::causal_transition_refines"
+status = "in-progress"
+dependencies = ["OBL-0115"]
+live_issue = "#7"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-kernel/src/aggregate.rs", symbol = "peritus_kernel::aggregate::KernelAggregate::genesis_result_refines", command = "cargo verus verify --package peritus-kernel --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-kernel/src/reducer.rs", symbol = "peritus_kernel::reducer::reducer_result_refines", command = "cargo verus verify --package peritus-kernel --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/foundation/peritus-kernel/tests/lifecycle_trace.rs", symbol = "peritus_kernel::tests::lifecycle_trace::complete_writer_action_review_acceptance_trace_is_causal", command = "cargo test --package peritus-kernel --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "INV-005"
+kind = "invariant"
+statement = "A run can enter Accepted only through the exact AcceptanceAccepted edge from Reviewing and Evaluating; failure, cancellation, exhaustion, rejection, pause, closure, and needs-changes transitions cannot introduce acceptance."
+owning_crate = "peritus-kernel"
+source_file = "crates/foundation/peritus-kernel/src/model.rs"
+symbol = "peritus_kernel::model::no_new_accepted_run"
+status = "in-progress"
+dependencies = ["INV-003", "INV-004", "OBL-0113", "OBL-0116"]
+live_issue = "#7"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-kernel/src/proofs.rs", symbol = "peritus_kernel::proofs::accepted_step_requires_acceptance_event", command = "cargo verus verify --package peritus-kernel --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/foundation/peritus-kernel/tests/transition_matrix.rs", symbol = "peritus_kernel::tests::transition_matrix::run_pause_resume_and_all_non_acceptance_terminal_edges_are_explicit", command = "cargo test --package peritus-kernel --all-targets --all-features --locked" },
+  { kind = "property-test", source_file = "crates/foundation/peritus-kernel/tests/adversarial.rs", symbol = "peritus_kernel::tests::adversarial::incomplete_current_evidence_enters_fixer_state_without_implicit_success", command = "cargo test --package peritus-kernel --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "INV-020"
+kind = "invariant"
+statement = "Every stored attempt, turn, action, review, and waiver resolves to its declared parent chain, and commands with unknown or mismatched parents are rejected without an event."
+owning_crate = "peritus-kernel"
+source_file = "crates/foundation/peritus-kernel/src/aggregate/validation.rs"
+symbol = "peritus_kernel::aggregate::validation::parents_are_valid"
+status = "in-progress"
+dependencies = ["OBL-0117"]
+live_issue = "#7"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/foundation/peritus-kernel/tests/transition_matrix.rs", symbol = "peritus_kernel::tests::transition_matrix::missing_parents_and_illegal_child_edges_fail_without_events", command = "cargo test --package peritus-kernel --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/foundation/peritus-kernel/tests/reference_model.rs", symbol = "peritus_kernel::tests::reference_model::generated_traces_match_reference_after_each_step_and_first_rejection", command = "cargo test --package peritus-kernel --all-targets --all-features --locked" },
+]
 
 [[entries]]
 id = "INV-003"
@@ -372,4 +438,67 @@ owner = "ACTOR-0001"
 evidence = [
   { kind = "verus-proof", source_file = "crates/foundation/peritus-quality-policy/src/evaluator.rs", symbol = "peritus_quality_policy::evaluator::accepted_evaluation_contract", command = "cargo verus verify --package peritus-quality-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "property-test", source_file = "crates/foundation/peritus-quality-policy/tests/cases/happy_path.rs", symbol = "peritus_quality_policy::tests::cases::happy_path::complete_exact_revision_evidence_is_acceptable", command = "cargo test --package peritus-quality-policy --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0114"
+kind = "contract"
+statement = "The executable B0 reducer directly refines the closed concrete session and acceptance transition relation, and every rejected outcome contains the unchanged input aggregate."
+owning_crate = "peritus-kernel"
+source_file = "crates/foundation/peritus-kernel/src/reducer.rs"
+symbol = "peritus_kernel::reducer::reducer_result_refines"
+status = "in-progress"
+dependencies = []
+live_issue = "#7"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-kernel/src/reducer.rs", symbol = "peritus_kernel::reducer::reducer_result_refines", command = "cargo verus verify --package peritus-kernel --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+]
+
+[[entries]]
+id = "OBL-0115"
+kind = "contract"
+statement = "Successful genesis and reducer results preserve exact revision freshness, bind every event to the expected predecessor, and advance sequence one time."
+owning_crate = "peritus-kernel"
+source_file = "crates/foundation/peritus-kernel/src/aggregate.rs"
+symbol = "peritus_kernel::aggregate::KernelAggregate::genesis_result_refines"
+status = "in-progress"
+dependencies = []
+live_issue = "#7"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-kernel/src/aggregate.rs", symbol = "peritus_kernel::aggregate::KernelAggregate::genesis_result_refines", command = "cargo verus verify --package peritus-kernel --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-kernel/src/model.rs", symbol = "peritus_kernel::model::causal_transition_refines", command = "cargo verus verify --package peritus-kernel --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+]
+
+[[entries]]
+id = "OBL-0116"
+kind = "invariant"
+statement = "Every accepted run is created by AcceptanceAccepted from current Evaluating evidence, while every other applied event proves that it introduced no accepted run."
+owning_crate = "peritus-kernel"
+source_file = "crates/foundation/peritus-kernel/src/proofs.rs"
+symbol = "peritus_kernel::proofs::accepted_step_requires_acceptance_event"
+status = "in-progress"
+dependencies = ["OBL-0113"]
+live_issue = "#7"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-kernel/src/proofs.rs", symbol = "peritus_kernel::proofs::accepted_step_requires_acceptance_event", command = "cargo verus verify --package peritus-kernel --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-kernel/src/reducer.rs", symbol = "peritus_kernel::reducer::reducer_result_refines", command = "cargo verus verify --package peritus-kernel --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+]
+
+[[entries]]
+id = "OBL-0117"
+kind = "contract"
+statement = "The executable aggregate validator rejects duplicate identities, more than one live run, accepted-state mismatches, terminal-state mismatches, and missing or mismatched parent chains."
+owning_crate = "peritus-kernel"
+source_file = "crates/foundation/peritus-kernel/src/aggregate/validation.rs"
+symbol = "peritus_kernel::aggregate::validation::is_valid"
+status = "in-progress"
+dependencies = []
+live_issue = "#7"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/foundation/peritus-kernel/tests/transition_matrix.rs", symbol = "peritus_kernel::tests::transition_matrix::missing_parents_and_illegal_child_edges_fail_without_events", command = "cargo test --package peritus-kernel --all-targets --all-features --locked" },
+  { kind = "property-test", source_file = "crates/foundation/peritus-kernel/tests/adversarial.rs", symbol = "peritus_kernel::tests::adversarial::revision_forks_and_replayed_identities_preserve_the_aggregate", command = "cargo test --package peritus-kernel --all-targets --all-features --locked" },
 ]

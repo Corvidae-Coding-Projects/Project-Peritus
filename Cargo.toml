@@ -3,6 +3,7 @@ members = [
     "crates/app/testing/peritus-conformance",
     "crates/app/testing/peritus-test-support",
     "crates/foundation/peritus-budget",
+    "crates/foundation/peritus-kernel",
     "crates/foundation/peritus-policy",
     "crates/foundation/peritus-quality-policy",
     "crates/foundation/peritus-spec",

@@ -162,6 +162,9 @@ mod tests {
                 "REF-B0-B1-BUDGET-CEILING",
                 "REF-C0-B1-CLOCK-EPOCH",
                 "REF-G0-B1-STARTUP-FENCING",
+                "REF-B3-B0-LIFECYCLE-BYTES",
+                "REF-C0-B0-DURABLE-TRANSITION",
+                "REF-E0-B0-CURRENT-LIFECYCLE",
             ]
         );
     }

@@ -73,9 +73,9 @@ The workspace proof commands and ordinary-Rust boundary audit are exact and poli
 ```text
 cargo run --locked --package xtask -- ordinary-api-check
 cargo verus verify --workspace --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --rlimit 20
-cargo verus verify --package peritus-approval --package peritus-budget --package peritus-leases --package peritus-policy --package peritus-quality-policy --package peritus-spec --package peritus-types --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+cargo verus verify --package peritus-approval --package peritus-budget --package peritus-kernel --package peritus-leases --package peritus-policy --package peritus-quality-policy --package peritus-spec --package peritus-types --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
 cargo verus build --workspace --all-features --release --locked --check-toolchain --fwd-verus-args-to roots -- --rlimit 20
-cargo verus build --package peritus-approval --package peritus-budget --package peritus-leases --package peritus-policy --package peritus-quality-policy --package peritus-spec --package peritus-types --all-features --release --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+cargo verus build --package peritus-approval --package peritus-budget --package peritus-kernel --package peritus-leases --package peritus-policy --package peritus-quality-policy --package peritus-spec --package peritus-types --all-features --release --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
 ```
 
 The workspace commands cover every opted-in V, H, and T package with the bundled solver-version

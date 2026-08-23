@@ -1,0 +1,32 @@
+[package]
+name = "peritus-kernel"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+description = "Verified lifecycle state machines and authoritative event reduction for Peritus"
+
+[dependencies]
+peritus-budget = { version = "=0.0.0", path = "../peritus-budget" }
+peritus-policy = { version = "=0.0.0", path = "../peritus-policy" }
+peritus-quality-policy = { version = "=0.0.0", path = "../peritus-quality-policy" }
+peritus-spec = { version = "=0.0.0", path = "../peritus-spec" }
+peritus-types = { version = "=0.0.0", path = "../peritus-types" }
+vstd.workspace = true
+
+[dev-dependencies]
+peritus-test-support = { version = "=0.0.0", path = "../../app/testing/peritus-test-support" }
+
+[package.metadata.peritus]
+owner = "B0"
+layer = "foundation"
+verification-class = "V"
+
+[package.metadata.verus]
+verify = true
+
+[lints]
+workspace = true

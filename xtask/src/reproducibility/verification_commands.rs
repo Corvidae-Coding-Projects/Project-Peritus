@@ -78,6 +78,13 @@ layer = "foundation"
 verification_class = "V"
 
 [[packages]]
+name = "peritus-kernel"
+path = "crates/foundation/peritus-kernel"
+owner = "B0"
+layer = "foundation"
+verification_class = "V"
+
+[[packages]]
 name = "peritus-leases"
 path = "crates/state/peritus-leases"
 owner = "B1"
