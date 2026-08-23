@@ -1,6 +1,6 @@
 {
   "next_display_id": 8,
-  "next_comment_id": 135,
+  "next_comment_id": 136,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -1325,7 +1325,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-23T05:11:32.833578183Z",
-      "updated_at": "2026-08-23T05:55:19.069786132Z",
+      "updated_at": "2026-08-23T06:39:39.804461079Z",
       "labels": [
         "feature"
       ],
@@ -1347,14 +1347,23 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAhkvLI6kaT8SBRN/GltQD+ClzO5Q4T9BQjW0ofHhQeAkAeiCbHlAaOu7RLdBFknVGTJeT5/JyaevJXBnArvRuCA=="
+        },
+        "f25aaca8-5fea-4f60-ac70-3d606840b63a": {
+          "display_id": 135,
+          "author": "6ME5",
+          "content": "[action] B0 implementation and candidate Gate A complete: lifecycle reducer, B1/B2 witness integration, direct no-cheating refinement, full command/reference/adversarial tests, architecture and obligation registration. Beginning reviewed commit.",
+          "created_at": "2026-08-23T06:39:39.795850013Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA30yjoCK6w1XC2C+TeN3x45DTyfGykT6lbPLMpyMirdG3k4tu81Se+q+QI+6g7lG71Jz4TbGvFlOLt8lP5eaDAw=="
         }
       }
     }
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-23T05:55:19.069786132Z",
+    "timestamp": "2026-08-23T06:39:39.804461079Z",
     "agent_id": "6ME5",
-    "agent_seq": 175
+    "agent_seq": 176
   }
 }
