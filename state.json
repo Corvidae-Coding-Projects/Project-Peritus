@@ -1,6 +1,6 @@
 {
   "next_display_id": 11,
-  "next_comment_id": 163,
+  "next_comment_id": 164,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "2b288a30-b5b1-4452-81bd-20950bebd2d3": 9,
@@ -244,11 +244,20 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-23T18:56:23.227916711Z",
-      "updated_at": "2026-08-23T18:56:51.991892766Z",
+      "updated_at": "2026-08-23T19:14:07.337524040Z",
       "labels": [
         "feature"
       ],
       "comments": {
+        "87971ed3-bfc3-4370-b2dd-6aa6ae866458": {
+          "display_id": 163,
+          "author": "6ME5",
+          "content": "C1 design is frozen at .design/c1-git-workspace-patch.md with 18 testable requirements and 18 acceptance criteria. Shared Cargo/architecture/strict-Verus CI registration is in progress; peritus-git, peritus-patch, and peritus-workspace now have isolated Sol/xhigh crate owners writing real implementations. A2 now has a nonempty six-case C1 workspace conformance contract covering candidate creation, stale/resource denial, read-only isolation, rollback, and restart reconciliation.",
+          "created_at": "2026-08-23T19:14:07.332719589Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAXguqIP8YOPYJE2fxwwolKFwSWoacm/L9GUtpiFQMfD3mMPN7k+UQj0HxYhoBERAkXQgxI/1lR/0WSOpILdCsDQ=="
+        },
         "9886f2fe-e290-4144-af82-c5d8f158c2e5": {
           "display_id": 162,
           "author": "6ME5",
@@ -1658,8 +1667,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-23T18:56:51.991892766Z",
+    "timestamp": "2026-08-23T19:14:07.337524040Z",
     "agent_id": "6ME5",
-    "agent_seq": 218
+    "agent_seq": 219
   }
 }
