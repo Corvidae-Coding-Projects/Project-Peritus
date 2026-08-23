@@ -1194,13 +1194,16 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-23T03:36:27.934804481Z",
-      "updated_at": "2026-08-23T03:36:27.934804481Z"
+      "updated_at": "2026-08-23T03:36:32.420073959Z",
+      "labels": [
+        "feature"
+      ]
     }
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-23T03:36:27.934804481Z",
+    "timestamp": "2026-08-23T03:36:32.420073959Z",
     "agent_id": "6ME5",
-    "agent_seq": 154
+    "agent_seq": 155
   }
 }
