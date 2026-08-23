@@ -1195,11 +1195,12 @@
       "uuid": "d94caf6d-2292-44ca-9393-3c7970c87f4f",
       "display_id": 6,
       "title": "Implement B2 acceptance specification and quality policy",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-23T03:36:27.934804481Z",
-      "updated_at": "2026-08-23T04:51:37.399923804Z",
+      "updated_at": "2026-08-23T04:51:42.378083343Z",
+      "closed_at": "2026-08-23T04:51:42.378082099Z",
       "labels": [
         "feature"
       ],
@@ -1308,8 +1309,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-23T04:51:37.399923804Z",
+    "timestamp": "2026-08-23T04:51:42.378083343Z",
     "agent_id": "6ME5",
-    "agent_seq": 167
+    "agent_seq": 168
   }
 }
