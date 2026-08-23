@@ -588,3 +588,54 @@ evidence = [
   { kind = "property-test", source_file = "crates/state/peritus-evidence/tests/freshness.rs", symbol = "peritus_evidence::tests::freshness::every_revision_tuple_component_drifts_independently", command = "cargo test --package peritus-evidence --all-targets --all-features --locked" },
   { kind = "refinement-test", source_file = "crates/state/peritus-evidence/tests/freshness.rs", symbol = "peritus_evidence::tests::freshness::explicit_later_invalidation_is_durable_and_dominates_revision_freshness", command = "cargo test --package peritus-evidence --all-targets --all-features --locked" },
 ]
+
+[[entries]]
+id = "OBL-0123"
+kind = "refinement"
+statement = "Every C1 workspace effect target exactly matches the workspace binding, B0 authorization witness, action intent, B1 capability permission, and generation-fenced lease scope by nominal WorkspaceId, ResourceId, and EnvironmentId before any filesystem effect."
+owning_crate = "peritus-workspace"
+source_file = "crates/runtime/peritus-workspace/src/refinement.rs"
+symbol = "peritus_workspace::refinement::accepted_target_is_exact_authorized_resource"
+status = "in-progress"
+dependencies = ["OBL-0101", "OBL-0108", "OBL-0114", "OBL-0119"]
+live_issue = "#10"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/runtime/peritus-workspace/src/refinement.rs", symbol = "peritus_workspace::refinement::accepted_target_is_exact_authorized_resource", command = "cargo verus verify --package peritus-workspace --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/runtime/peritus-workspace/src/verified.rs", symbol = "peritus_workspace::verified::tests::resource_identity_rejects_each_independent_mismatch", command = "cargo test --package peritus-workspace --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/runtime/peritus-workspace/tests/authorized_gateway.rs", symbol = "peritus_workspace::tests::authorized_gateway::exact_committed_receipts_are_required_before_real_patch_effect", command = "cargo test --package peritus-workspace --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0124"
+kind = "refinement"
+statement = "The target-owned C1 gateway alone constructs its private one-use mutation permit after exact current committed B0 dispatch, B1 capability and lease-use, C0 receipt, resource, actor, session, revision, generation, and authority-time facts all match; every rejected request has no target effect."
+owning_crate = "peritus-workspace"
+source_file = "crates/runtime/peritus-workspace/src/refinement.rs"
+symbol = "peritus_workspace::refinement::permit_implies_complete_committed_authority"
+status = "in-progress"
+dependencies = ["OBL-0103", "OBL-0108", "OBL-0114", "OBL-0118", "OBL-0119"]
+live_issue = "#10"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/runtime/peritus-workspace/src/refinement.rs", symbol = "peritus_workspace::refinement::permit_implies_complete_committed_authority", command = "cargo verus verify --package peritus-workspace --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/runtime/peritus-workspace/src/verified.rs", symbol = "peritus_workspace::verified::tests::authority_gate_rejects_every_missing_fact", command = "cargo test --package peritus-workspace --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/runtime/peritus-workspace/tests/authorized_gateway.rs", symbol = "peritus_workspace::tests::authorized_gateway::exact_committed_receipts_are_required_before_real_patch_effect", command = "cargo test --package peritus-workspace --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0125"
+kind = "refinement"
+statement = "C1 classifies a workspace clean only from a complete exact post-fence correlation to its observed scope, generation, and prior holder plus clean transaction and Git state; mismatches and incomplete observations remain typed fenced, dirty, or indeterminate and cannot independently claim SafeToAcquire."
+owning_crate = "peritus-workspace"
+source_file = "crates/runtime/peritus-workspace/src/refinement.rs"
+symbol = "peritus_workspace::refinement::safe_assessment_requires_exact_complete_post_fence_observation"
+status = "in-progress"
+dependencies = ["OBL-0107", "OBL-0119"]
+live_issue = "#10"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/runtime/peritus-workspace/src/refinement.rs", symbol = "peritus_workspace::refinement::safe_assessment_requires_exact_complete_post_fence_observation", command = "cargo verus verify --package peritus-workspace --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/runtime/peritus-workspace/src/reconcile_tests.rs", symbol = "peritus_workspace::reconcile_tests::post_fence_classification_never_guesses_safety", command = "cargo test --package peritus-workspace --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/runtime/peritus-workspace/tests/production_conformance.rs", symbol = "peritus_workspace::tests::production_conformance::production_workspace_passes_a2_git_patch_snapshot_and_recovery_suite", command = "cargo test --package peritus-workspace --all-targets --all-features --locked" },
+]

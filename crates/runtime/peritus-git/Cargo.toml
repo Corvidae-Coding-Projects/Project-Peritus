@@ -1,0 +1,31 @@
+[package]
+name = "peritus-git"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+description = "Structured Git repository and detached-worktree operations for Project Peritus"
+keywords = ["git", "worktree", "snapshots", "formal-verification"]
+categories = ["development-tools", "filesystem"]
+
+[dependencies]
+peritus-codec = { path = "../../foundation/peritus-codec", version = "=0.0.0" }
+peritus-types = { path = "../../foundation/peritus-types", version = "=0.0.0" }
+vstd.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[package.metadata.peritus]
+owner = "C1"
+layer = "runtime"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true
+
+[lints]
+workspace = true

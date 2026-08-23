@@ -23,6 +23,7 @@ mod report;
 mod runner;
 mod text;
 mod unwind;
+mod workspace;
 
 pub use catalog::{plugin_suite, protocol_suite, provider_suite, sandbox_suite, tool_suite};
 pub use contracts::{
@@ -47,3 +48,8 @@ pub use replay::{
 pub use report::{CaseReport, CaseStatus, SuiteReport, SuiteStatus, SuiteSummary};
 pub use runner::ConformanceRunner;
 pub use text::{ReportText, ReportTextError};
+pub use workspace::{
+    WorkspaceConformanceError, WorkspaceConformanceSubject, WorkspaceMutationDisposition,
+    WorkspaceMutationObservation, WorkspacePatchFixture, WorkspaceReconciliationDisposition,
+    WorkspaceSnapshot, workspace_suite,
+};

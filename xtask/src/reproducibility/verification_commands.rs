@@ -96,6 +96,13 @@ layer = "state"
 verification_class = "H"
 
 [[packages]]
+name = "peritus-git"
+path = "crates/runtime/peritus-git"
+owner = "C1"
+layer = "runtime"
+verification_class = "H"
+
+[[packages]]
 name = "peritus-journal"
 path = "crates/state/peritus-journal"
 owner = "C0"
@@ -121,6 +128,13 @@ name = "peritus-migrations"
 path = "crates/state/peritus-migrations"
 owner = "C0"
 layer = "state"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-patch"
+path = "crates/runtime/peritus-patch"
+owner = "C1"
+layer = "runtime"
 verification_class = "H"
 
 [[packages]]
@@ -164,6 +178,13 @@ path = "crates/foundation/peritus-types"
 owner = "A1"
 layer = "foundation"
 verification_class = "V"
+
+[[packages]]
+name = "peritus-workspace"
+path = "crates/runtime/peritus-workspace"
+owner = "C1"
+layer = "runtime"
+verification_class = "H"
 
 [[packages]]
 name = "peritus-tcb"

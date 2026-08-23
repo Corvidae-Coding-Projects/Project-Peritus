@@ -1,0 +1,217 @@
+//! Authorized candidate creation and content-addressed manifest finalization.
+
+use peritus_artifact_store::{ArtifactDigest, ArtifactStore, FinalizedArtifact};
+use peritus_git::{CandidateRequest, CandidateSnapshot, SnapshotRequest};
+use peritus_patch::PatchIdentity;
+use peritus_types::{ActionId, SnapshotId};
+
+use crate::{
+    ErrorCode, MutationOutcome, RecoveryClass, SnapshotIdentity, WorkspaceAuthorizationRequest,
+    WorkspaceCondition, WorkspaceError, WorkspaceGateway, WorkspaceManifest, WorkspaceOperation,
+};
+
+/// Retained immutable candidate and its finalized C0 artifact observation.
+pub struct CandidateOutcome {
+    action_id: ActionId,
+    patch_id: PatchIdentity,
+    snapshot: CandidateSnapshot,
+    identity: SnapshotIdentity,
+    manifest: WorkspaceManifest,
+    artifact: FinalizedArtifact,
+}
+
+impl CandidateOutcome {
+    /// Returns the exact authorized action.
+    #[must_use]
+    pub const fn action_id(&self) -> ActionId {
+        self.action_id
+    }
+    /// Returns the installed patch identity incorporated by the candidate.
+    #[must_use]
+    pub const fn patch_id(&self) -> PatchIdentity {
+        self.patch_id
+    }
+    /// Borrows the retained Git snapshot registration.
+    #[must_use]
+    pub const fn snapshot(&self) -> &CandidateSnapshot {
+        &self.snapshot
+    }
+    /// Returns the exact immutable workspace identity.
+    #[must_use]
+    pub const fn identity(&self) -> &SnapshotIdentity {
+        &self.identity
+    }
+    /// Returns the finalized manifest artifact identity.
+    #[must_use]
+    pub const fn artifact_digest(&self) -> ArtifactDigest {
+        self.artifact.digest()
+    }
+    /// Borrows the canonical outcome manifest.
+    #[must_use]
+    pub const fn manifest(&self) -> &WorkspaceManifest {
+        &self.manifest
+    }
+}
+
+impl WorkspaceGateway {
+    /// Reconciles the exact applied patch, creates a Git tree and successor snapshot, finalizes its
+    /// manifest, and only then marks the logical workspace revision clean.
+    ///
+    /// # Errors
+    ///
+    /// On any Git or artifact failure, the live workspace remains dirty and requires inspection.
+    pub fn create_candidate(
+        &mut self,
+        authorization: &WorkspaceAuthorizationRequest<'_>,
+        mutation: &MutationOutcome,
+        snapshot_id: SnapshotId,
+        artifacts: &ArtifactStore,
+    ) -> Result<CandidateOutcome, WorkspaceError> {
+        validate_mutation_input(self.state(), mutation)?;
+        let payload = candidate_authorization_payload(mutation, snapshot_id);
+        let permit =
+            self.authorize_in_condition(authorization, &payload, WorkspaceCondition::Dirty)?;
+        validate_mutation_input(self.state(), mutation)?;
+        if mutation.generation() != permit.generation() || mutation.revision() != permit.revision()
+        {
+            return Err(candidate_error(
+                ErrorCode::StaleWorkspace,
+                RecoveryClass::Reauthorize,
+                "patch outcome differs from candidate permit",
+            ));
+        }
+        let prior = self.state().current_snapshot().clone();
+        let repository = self.workspace_mut().repository().clone();
+        let worktree = self.workspace_mut().worktree().clone();
+        let candidate = repository
+            .create_candidate(CandidateRequest::new(
+                &worktree,
+                self.state().binding().baseline_commit(),
+            ))
+            .map_err(|_| {
+                candidate_error(
+                    ErrorCode::Git,
+                    RecoveryClass::Reconcile,
+                    "Git could not create the exact candidate tree",
+                )
+            })?;
+        let snapshot = repository
+            .create_snapshot(SnapshotRequest::new(
+                &worktree,
+                &candidate,
+                self.state().binding().workspace_id(),
+                snapshot_id,
+                prior.commit(),
+            ))
+            .map_err(|_| {
+                candidate_error(
+                    ErrorCode::Git,
+                    RecoveryClass::Reconcile,
+                    "Git could not retain the candidate snapshot",
+                )
+            })?;
+        let next_revision = prior.revision().checked_next().map_err(|_| {
+            candidate_error(
+                ErrorCode::RevisionExhausted,
+                RecoveryClass::Quarantine,
+                "workspace revision is exhausted",
+            )
+        })?;
+        let identity = SnapshotIdentity::new(
+            prior.workspace_id(),
+            prior.generation(),
+            next_revision,
+            snapshot.commit(),
+            snapshot.tree(),
+        );
+        let detail_digest = combined_detail(
+            mutation.applied_patch().manifest_digest(),
+            candidate.manifest_digest(),
+        );
+        let manifest = WorkspaceManifest::candidate(
+            prior.workspace_id(),
+            prior.generation(),
+            prior.revision(),
+            next_revision,
+            permit.action_id(),
+            permit.action_digest(),
+            snapshot.tree(),
+            detail_digest,
+        );
+        let artifact = manifest.finalize(artifacts, permit.dispatch_event()).map_err(|_| {
+            self.workspace_mut().state_mut().set_condition(WorkspaceCondition::Dirty);
+            candidate_error(
+                ErrorCode::Artifact,
+                RecoveryClass::Reconcile,
+                "candidate exists but its manifest was not finalized",
+            )
+        })?;
+        self.workspace_mut().state_mut().install(identity.clone());
+        Ok(CandidateOutcome {
+            action_id: permit.action_id(),
+            patch_id: mutation.patch_identity(),
+            snapshot,
+            identity,
+            manifest,
+            artifact,
+        })
+    }
+}
+
+/// Returns canonical payload bytes for a candidate action intent.
+#[must_use]
+pub fn candidate_authorization_payload(
+    mutation: &MutationOutcome,
+    snapshot_id: SnapshotId,
+) -> Vec<u8> {
+    let mut bytes = b"PERITUS-WORKSPACE-CANDIDATE-V1\0".to_vec();
+    bytes.extend_from_slice(mutation.action_id().as_bytes());
+    bytes.extend_from_slice(mutation.workspace_id().as_bytes());
+    bytes.extend_from_slice(mutation.resource_id().as_bytes());
+    bytes.extend_from_slice(&mutation.generation().get().to_be_bytes());
+    bytes.extend_from_slice(&mutation.revision().get().to_be_bytes());
+    bytes.extend_from_slice(mutation.patch_identity().as_bytes());
+    bytes.extend_from_slice(snapshot_id.as_bytes());
+    bytes
+}
+
+fn validate_mutation_input(
+    state: &crate::WorkspaceState,
+    mutation: &MutationOutcome,
+) -> Result<(), WorkspaceError> {
+    if mutation.workspace_id() != state.binding().workspace_id()
+        || mutation.resource_id() != state.binding().resource_id()
+    {
+        return Err(candidate_error(
+            ErrorCode::ResourceMismatch,
+            RecoveryClass::CorrectRequest,
+            "patch outcome belongs to another exact workspace resource",
+        ));
+    }
+    if mutation.generation() != state.generation() || mutation.revision() != state.revision() {
+        return Err(candidate_error(
+            ErrorCode::StaleWorkspace,
+            RecoveryClass::Reauthorize,
+            "patch outcome differs from current workspace counters",
+        ));
+    }
+    Ok(())
+}
+
+fn combined_detail(
+    left: peritus_types::Sha256Digest,
+    right: peritus_types::Sha256Digest,
+) -> peritus_types::Sha256Digest {
+    let mut bytes = b"PERITUS-WORKSPACE-CANDIDATE-DETAIL-V1\0".to_vec();
+    bytes.extend_from_slice(left.as_bytes());
+    bytes.extend_from_slice(right.as_bytes());
+    peritus_codec::sha256(&bytes)
+}
+
+const fn candidate_error(
+    code: ErrorCode,
+    recovery: RecoveryClass,
+    detail: &'static str,
+) -> WorkspaceError {
+    WorkspaceError::new(code, WorkspaceOperation::Candidate, recovery, detail)
+}

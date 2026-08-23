@@ -34,9 +34,13 @@ The [formal foundation](docs/formal-foundation.md) documents the verified value 
 TCB baseline, semantic manifests, and the claims that A1 deliberately does and does not establish.
 The [test and conformance foundation](docs/test-conformance-foundation.md) defines deterministic
 clock, identifier, event, fault, script, provider, tool, repository and content-addressed fixture
-semantics, plus the runtime-neutral conformance runner and its fail-closed empty-suite verdict.
+semantics, plus the runtime-neutral conformance runner and its fail-closed suite verdicts.
 Focused A2 checks are `cargo test --package peritus-test-support --all-targets --all-features
 --locked` and `cargo test --package peritus-conformance --all-targets --all-features --locked`.
+The [C0 durable-state guide](docs/c0-durable-state.md) documents the journal, projections,
+artifacts, migrations, and evidence boundary. The [C1 workspace guide](docs/c1-workspaces.md)
+documents structured Git worktrees, typed atomic patches, target-owned authorization, snapshots,
+rollback, and restart reconciliation.
 The [GitHub governance runbook](docs/github-governance.md) defines the GitHub Team-compatible
 repository ruleset and required `Gate A` status that must be active after the A1 genesis push.
 Immutable required-workflow authority remains an explicitly documented Enterprise Cloud deferral.

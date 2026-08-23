@@ -18,6 +18,9 @@ members = [
     "crates/state/peritus-leases",
     "crates/state/peritus-migrations",
     "crates/state/peritus-projection",
+    "crates/runtime/peritus-git",
+    "crates/runtime/peritus-patch",
+    "crates/runtime/peritus-workspace",
     "xtask",
 ]
 default-members = ["xtask"]
