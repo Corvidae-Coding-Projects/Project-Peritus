@@ -1,6 +1,6 @@
 {
   "next_display_id": 10,
-  "next_comment_id": 150,
+  "next_comment_id": 151,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "2b288a30-b5b1-4452-81bd-20950bebd2d3": 9,
@@ -75,10 +75,21 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-23T09:26:36.193516281Z",
-      "updated_at": "2026-08-23T09:26:40.612385429Z",
+      "updated_at": "2026-08-23T09:32:25.543603811Z",
       "labels": [
         "feature"
-      ]
+      ],
+      "comments": {
+        "f5a945b1-d0ee-4f3e-829f-d814bf49c403": {
+          "display_id": 150,
+          "author": "6ME5",
+          "content": "[action] Completed C0 preflight and architecture design at .design/c0-journal-projections-artifacts.md; starting only the two requested initial storage workstreams: peritus-journal and peritus-artifact-store.",
+          "created_at": "2026-08-23T09:32:25.540267442Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIDoYQCNG/DsrnsJ8jJfZVNfJg+8V6hZW0i/WlhKBMDfN29aEOSwSv8yg3aQ0Ovinld31EB19n6rgUQn51cAyCw=="
+        }
+      }
     },
     "3b238879-13c9-48ae-9b8e-1009717114b8": {
       "uuid": "3b238879-13c9-48ae-9b8e-1009717114b8",
@@ -1522,8 +1533,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-23T09:26:47.112162657Z",
+    "timestamp": "2026-08-23T09:32:25.543603811Z",
     "agent_id": "6ME5",
-    "agent_seq": 200
+    "agent_seq": 201
   }
 }
