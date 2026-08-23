@@ -7,4 +7,5 @@ mod conformance {
     mod identity;
     mod panic_paths;
     mod runner_paths;
+    mod state_catalog;
 }

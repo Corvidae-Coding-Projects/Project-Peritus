@@ -1,0 +1,41 @@
+[package]
+name = "peritus-evidence"
+description = "Durable provenance, freshness, invalidation, and portable evidence bundles for Peritus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["evidence", "provenance", "artifacts", "formal-verification"]
+categories = ["database", "data-structures"]
+
+[dependencies]
+peritus-artifact-store = { version = "=0.0.0", path = "../peritus-artifact-store" }
+peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
+peritus-journal = { version = "=0.0.0", path = "../peritus-journal" }
+peritus-projection = { version = "=0.0.0", path = "../peritus-projection" }
+peritus-protocol = { version = "=0.0.0", path = "../../foundation/peritus-protocol" }
+peritus-quality-policy = { version = "=0.0.0", path = "../../foundation/peritus-quality-policy" }
+peritus-spec = { version = "=0.0.0", path = "../../foundation/peritus-spec" }
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+rusqlite.workspace = true
+sha2.workspace = true
+vstd.workspace = true
+
+[dev-dependencies]
+peritus-kernel = { version = "=0.0.0", path = "../../foundation/peritus-kernel" }
+peritus-test-support = { version = "=0.0.0", path = "../../app/testing/peritus-test-support" }
+tempfile.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.peritus]
+owner = "C0"
+layer = "state"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true

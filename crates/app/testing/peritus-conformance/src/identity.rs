@@ -148,6 +148,11 @@ impl CaseId {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    pub(crate) fn catalog(value: &'static str) -> Self {
+        assert!(validate_path_identifier(value).is_ok(), "invalid standard case identifier");
+        Self(value.to_owned())
+    }
 }
 
 impl fmt::Display for CaseId {
@@ -179,6 +184,11 @@ impl ObservationId {
     #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+
+    pub(crate) fn catalog(value: &'static str) -> Self {
+        assert!(validate_path_identifier(value).is_ok(), "invalid standard observation identifier");
+        Self(value.to_owned())
     }
 }
 
@@ -212,6 +222,11 @@ impl FailureCode {
     #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+
+    pub(crate) fn catalog(value: &'static str) -> Self {
+        assert!(validate_failure_code(value).is_ok(), "invalid standard failure code");
+        Self(value.to_owned())
     }
 }
 

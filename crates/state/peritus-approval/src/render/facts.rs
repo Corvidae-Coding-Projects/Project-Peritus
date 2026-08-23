@@ -107,6 +107,10 @@ fn resolution(
         &decimal_u64(value.registry_revision().get()),
     )?;
     builder.required_field(
+        "resolution-registry-digest",
+        &digest_value(value.registry_digest()),
+    )?;
+    builder.required_field(
         "resolution-credential-generation",
         &decimal_u64(value.credential_generation().get()),
     )?;

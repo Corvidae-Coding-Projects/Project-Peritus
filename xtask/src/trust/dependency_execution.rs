@@ -3,11 +3,14 @@ use crate::model::CargoMetadata;
 use std::collections::BTreeSet;
 use std::path::Path;
 
-const REVIEWED_BUILD_SCRIPT_PACKAGES: [&str; 11] = [
+const REVIEWED_BUILD_SCRIPT_PACKAGES: [&str; 14] = [
     "registry+https://github.com/rust-lang/crates.io-index#curve25519-dalek@5.0.0",
+    "registry+https://github.com/rust-lang/crates.io-index#getrandom@0.4.3",
     "registry+https://github.com/rust-lang/crates.io-index#libc@0.2.189",
+    "registry+https://github.com/rust-lang/crates.io-index#libsqlite3-sys@0.38.2",
     "registry+https://github.com/rust-lang/crates.io-index#proc-macro2@1.0.107",
     "registry+https://github.com/rust-lang/crates.io-index#quote@1.0.47",
+    "registry+https://github.com/rust-lang/crates.io-index#rustix@1.1.4",
     "registry+https://github.com/rust-lang/crates.io-index#serde@1.0.229",
     "registry+https://github.com/rust-lang/crates.io-index#serde_core@1.0.229",
     "registry+https://github.com/rust-lang/crates.io-index#serde_json@1.0.149",
@@ -128,6 +131,21 @@ mod tests {
                 package(
                     "registry+https://github.com/rust-lang/crates.io-index#serde@1.0.229",
                     "serde",
+                    "custom-build",
+                ),
+                package(
+                    "registry+https://github.com/rust-lang/crates.io-index#getrandom@0.4.3",
+                    "getrandom",
+                    "custom-build",
+                ),
+                package(
+                    "registry+https://github.com/rust-lang/crates.io-index#libsqlite3-sys@0.38.2",
+                    "libsqlite3-sys",
+                    "custom-build",
+                ),
+                package(
+                    "registry+https://github.com/rust-lang/crates.io-index#rustix@1.1.4",
+                    "rustix",
                     "custom-build",
                 ),
                 package(

@@ -42,9 +42,8 @@ pub(super) fn scan(source: &str) -> Vec<Occurrence> {
             continue;
         }
         let construct = match token.kind {
-            TokenKind::Identifier(identifier) => {
-                call_construct(&tokens, index).or_else(|| identifier_construct(identifier))
-            }
+            TokenKind::Identifier(identifier) => call_construct(&tokens, index)
+                .or_else(|| identifier_construct(&tokens, index, identifier)),
             TokenKind::AllowInlineAir => Some(Construct::AllowInlineAir),
             TokenKind::Punctuation(_) => None,
         };
@@ -240,7 +239,10 @@ impl ScopeTracker {
     }
 }
 
-fn identifier_construct(identifier: &str) -> Option<Construct> {
+fn identifier_construct(tokens: &[Token<'_>], index: usize, identifier: &str) -> Option<Construct> {
+    if identifier == "admit" && !is_bare_admit_call(tokens, index) {
+        return None;
+    }
     match identifier {
         "assume" => Some(Construct::Assume),
         "assume_" => Some(Construct::BuiltinAssume),
@@ -252,6 +254,14 @@ fn identifier_construct(identifier: &str) -> Option<Construct> {
         concat!("allow_", "inline_air") => Some(Construct::AllowInlineAir),
         _ => None,
     }
+}
+
+fn is_bare_admit_call(tokens: &[Token<'_>], index: usize) -> bool {
+    matches!(tokens.get(index + 1).map(|token| token.kind), Some(TokenKind::Punctuation(b'(')))
+        && !matches!(
+            tokens.get(index.wrapping_sub(1)).map(|token| token.kind),
+            Some(TokenKind::Punctuation(b'.') | TokenKind::Identifier("fn"))
+        )
 }
 
 fn call_construct(tokens: &[Token<'_>], index: usize) -> Option<Construct> {

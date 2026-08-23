@@ -185,10 +185,21 @@ fn inspect_header(tokens: &[Token], function: usize) -> Option<Header> {
     angles = 0;
     let mut clauses = Vec::new();
     let mut opaque_return = false;
+    let mut in_contract = false;
     while cursor < tokens.len() {
-        let top_level = parentheses == 0 && brackets == 0 && angles == 0;
+        let top_level = parentheses == 0 && brackets == 0 && (in_contract || angles == 0);
         if top_level {
-            if punctuation_is(&tokens[cursor], '{') || punctuation_is(&tokens[cursor], ';') {
+            if punctuation_is(&tokens[cursor], ';') {
+                return Some(Header { clauses, opaque_return });
+            }
+            if punctuation_is(&tokens[cursor], '{') {
+                if in_contract {
+                    let end = matching_group(tokens, cursor, '{', '}')?;
+                    if braced_contract_expression_continues(tokens, end) {
+                        cursor = end;
+                        continue;
+                    }
+                }
                 return Some(Header { clauses, opaque_return });
             }
             if let Some(word) = identifier(&tokens[cursor]) {
@@ -198,8 +209,9 @@ fn inspect_header(tokens: &[Token], function: usize) -> Option<Header> {
                 ) && !clauses.iter().any(|clause| clause == word)
                 {
                     clauses.push(word.to_owned());
+                    in_contract = true;
                 }
-                opaque_return |= word == "impl";
+                opaque_return |= !in_contract && word == "impl";
             }
         }
         match punctuation(&tokens[cursor]) {
@@ -207,14 +219,50 @@ fn inspect_header(tokens: &[Token], function: usize) -> Option<Header> {
             Some(')') => parentheses = parentheses.saturating_sub(1),
             Some('[') => brackets += 1,
             Some(']') => brackets = brackets.saturating_sub(1),
-            Some('<') => angles += 1,
-            Some('>') => angles = angles.saturating_sub(1),
+            Some('<') if !in_contract => angles += 1,
+            Some('>') if !in_contract => angles = angles.saturating_sub(1),
             Some('}') if top_level => return None,
             _ => {}
         }
         cursor += 1;
     }
     None
+}
+
+fn braced_contract_expression_continues(tokens: &[Token], end: usize) -> bool {
+    let Some(next) = tokens.get(end) else { return false };
+    if punctuation_is(next, ',') {
+        return true;
+    }
+    if matches!(
+        punctuation(next),
+        Some(
+            '{' | ';'
+                | '.'
+                | '?'
+                | '['
+                | '('
+                | '='
+                | '!'
+                | '<'
+                | '>'
+                | '&'
+                | '|'
+                | '+'
+                | '-'
+                | '*'
+                | '/'
+                | '%'
+        )
+    ) {
+        return true;
+    }
+    identifier(next).is_some_and(|word| {
+        matches!(
+            word,
+            "requires" | "ensures" | "no_unwind" | "opens_invariants" | "decreases" | "as"
+        )
+    })
 }
 
 fn classify_context(tokens: &[Token], brace: usize) -> Context {

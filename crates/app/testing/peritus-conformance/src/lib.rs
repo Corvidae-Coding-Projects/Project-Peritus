@@ -16,16 +16,15 @@ mod contracts;
 mod descriptor;
 mod failure;
 mod identity;
+mod journal;
 mod outcome;
+mod replay;
 mod report;
 mod runner;
 mod text;
 mod unwind;
 
-pub use catalog::{
-    journal_suite, plugin_suite, protocol_suite, provider_suite, replay_suite, sandbox_suite,
-    tool_suite,
-};
+pub use catalog::{plugin_suite, protocol_suite, provider_suite, sandbox_suite, tool_suite};
 pub use contracts::{
     BoxedCase, ConformanceCase, ConformanceFuture, ConformanceSuite, StaticSuite, SubjectFactory,
 };
@@ -37,7 +36,14 @@ pub use failure::{
 pub use identity::{
     CaseId, FailureCode, FailureCodeError, IdentifierError, ObservationId, SuiteId,
 };
+pub use journal::{
+    JournalAppendDisposition, JournalAppendFixture, JournalAppendObservation,
+    JournalConformanceError, JournalConformanceSubject, JournalSnapshot, journal_suite,
+};
 pub use outcome::{CaseResult, Observation, ObservationValue};
+pub use replay::{
+    ReplayConformanceError, ReplayConformanceSubject, ReplayObservation, replay_suite,
+};
 pub use report::{CaseReport, CaseStatus, SuiteReport, SuiteStatus, SuiteSummary};
 pub use runner::ConformanceRunner;
 pub use text::{ReportText, ReportTextError};

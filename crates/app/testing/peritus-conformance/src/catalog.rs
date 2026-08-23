@@ -41,29 +41,10 @@ pub fn sandbox_suite<S>() -> StaticSuite<S> {
     empty("peritus.sandbox", "Sandbox conformance cases supplied after sandbox contracts exist")
 }
 
-/// Returns the runnable empty journal conformance suite.
-///
-/// C0 owns the future journal contract and storage cases.
-#[must_use]
-pub fn journal_suite<S>() -> StaticSuite<S> {
-    empty("peritus.journal", "Journal conformance cases supplied after journal contracts exist")
-}
-
 /// Returns the runnable empty protocol conformance suite.
 ///
 /// B3 owns the future domain protocol and codec cases.
 #[must_use]
 pub fn protocol_suite<S>() -> StaticSuite<S> {
     empty("peritus.protocol", "Protocol conformance cases supplied after domain protocols exist")
-}
-
-/// Returns the runnable empty replay conformance suite.
-///
-/// B3 and C0 own the future replay definitions and cases.
-#[must_use]
-pub fn replay_suite<S>() -> StaticSuite<S> {
-    empty(
-        "peritus.replay",
-        "Replay conformance cases supplied after event and journal contracts exist",
-    )
 }

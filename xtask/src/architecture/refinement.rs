@@ -139,12 +139,10 @@ mod tests {
         assert_eq!(
             actual,
             [
-                "REF-C0-B1-COMMIT-ONCE",
                 "REF-C1-B1-RESOURCE-IDENTITY",
                 "REF-C1-B1-RECONCILE-SAFETY",
                 "REF-C2-B1-HOLDER-QUIESCENCE",
                 "REF-C4-B1-OPERATION-CLASS",
-                "REF-C0-B1-CREDENTIAL-REGISTRY-CURRENT",
                 "REF-B0-B1-CURRENT-STATE-WITNESS",
                 "REF-E0-B1-COMMIT-BEFORE-EFFECT",
                 "REF-C1-B1-AUTHORITY-GATE",
@@ -153,14 +151,11 @@ mod tests {
                 "REF-E0-B1-POLICY-ACTIVATION",
                 "REF-B2-B1-CONTRACT-REVISION",
                 "REF-B0-B2-CURRENT-EVIDENCE",
-                "REF-C0-B2-EVIDENCE-PROVENANCE",
                 "REF-D1-B2-GATE-OBSERVATION",
                 "REF-D2-B2-REVIEW-OBSERVATION",
                 "REF-B0-B1-REVISION-FRESHNESS",
                 "REF-B0-B1-BUDGET-CEILING",
-                "REF-C0-B1-CLOCK-EPOCH",
                 "REF-G0-B1-STARTUP-FENCING",
-                "REF-C0-B0-DURABLE-TRANSITION",
                 "REF-E0-B0-CURRENT-LIFECYCLE",
             ]
         );
