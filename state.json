@@ -1,6 +1,6 @@
 {
   "next_display_id": 9,
-  "next_comment_id": 146,
+  "next_comment_id": 147,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -1424,11 +1424,20 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-23T07:57:26.582505889Z",
-      "updated_at": "2026-08-23T08:31:32.128384623Z",
+      "updated_at": "2026-08-23T08:57:17.699063421Z",
       "labels": [
         "feature"
       ],
       "comments": {
+        "1e53a117-4e90-4a1c-9ff0-a483c73b18af": {
+          "display_id": 146,
+          "author": "6ME5",
+          "content": "[action] Completed B3 canonical codec/protocol, full B0/B1/B2 DTO coverage, generated lifecycle discriminants, compatibility corpus, refinement discharge, and green Gate A; preparing signed commit.",
+          "created_at": "2026-08-23T08:57:17.696099416Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA2poku9s21OqFZeZg4ePesa7OoBizEPoikDfgVayIzyQaizxl7hNq2L1leOv/cZoW/2SZRydsD4lyS66lLJXIDg=="
+        },
         "30ac8ac1-a0f8-4963-8bd4-a9f1f43cda39": {
           "display_id": 143,
           "author": "6ME5",
@@ -1470,8 +1479,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-23T08:31:32.128384623Z",
+    "timestamp": "2026-08-23T08:57:17.699063421Z",
     "agent_id": "6ME5",
-    "agent_seq": 191
+    "agent_seq": 192
   }
 }
