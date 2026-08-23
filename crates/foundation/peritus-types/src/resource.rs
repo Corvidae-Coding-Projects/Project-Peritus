@@ -31,6 +31,8 @@ pub enum ResourceKind {
     ProcessCount,
     /// Concurrent execution slots.
     ConcurrencySlots,
+    /// Total execution-attempt count, including the initial attempt.
+    AttemptCount,
     /// Retry count.
     RetryCount,
 }

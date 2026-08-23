@@ -18,6 +18,8 @@ ignore = []
 confidence-threshold = 0.93
 allow = [
     "Apache-2.0",
+    # Reviewed for the pinned Ed25519 verifier implementation and its curve backend.
+    "BSD-3-Clause",
     "MIT",
     "Unicode-3.0",
     "Zlib",

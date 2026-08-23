@@ -1,0 +1,34 @@
+[package]
+name = "peritus-approval"
+description = "Verified digest-bound human approval transitions for Peritus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["approval", "authorization", "formal-verification", "cryptography"]
+categories = ["authentication", "cryptography", "data-structures"]
+
+[dependencies]
+ed25519-dalek.workspace = true
+peritus-policy = { version = "=0.0.0", path = "../../foundation/peritus-policy" }
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+sha2.workspace = true
+vstd.workspace = true
+
+[dev-dependencies]
+ed25519-compact = { version = "=2.3.1", default-features = false }
+peritus-test-support = { version = "=0.0.0", path = "../../app/testing/peritus-test-support" }
+
+[lints]
+workspace = true
+
+[package.metadata.peritus]
+owner = "B1"
+layer = "state"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true

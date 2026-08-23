@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 fn policy() -> ArchitecturePolicy {
     toml::from_str(
         r#"
-            schema = 2
+            schema = 3
             soft_source_lines = 400
             hard_source_lines = 700
             root_module_lines = 80
@@ -219,6 +219,14 @@ fn policy_rejects_layer_cycles_and_unknown_verification_classes() {
     assert!(
         diagnostics.iter().any(|diagnostic| diagnostic.message().contains("verification class"))
     );
+}
+
+#[test]
+fn schema_two_is_rejected_after_refinement_reservations_are_introduced() {
+    let mut policy = policy();
+    policy.schema = 2;
+    let diagnostics = validate_policy(&policy);
+    assert!(diagnostics.iter().any(|diagnostic| diagnostic.message().contains("expected 3")));
 }
 
 #[test]

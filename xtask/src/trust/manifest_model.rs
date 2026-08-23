@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -207,6 +207,15 @@ pub(super) struct ProofImpactChange {
     pub(super) owner: String,
     pub(super) reviewer: String,
     pub(super) review_date: String,
+    #[serde(default)]
+    pub(super) verdict: Option<ProofImpactVerdictRef>,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(super) struct ProofImpactVerdictRef {
+    pub(super) path: String,
+    pub(super) sha256: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
@@ -249,11 +258,113 @@ pub(super) struct ProofImpactEvidence {
     pub(super) command: String,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub(super) enum ProofImpactEvidenceKind {
     OrdinaryTest,
     VerusVerify,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct ProofImpactVerdict {
+    pub(super) schema: String,
+    pub(super) schema_version: u64,
+    pub(super) id: String,
+    pub(super) pcr_id: String,
+    pub(super) reviewer: String,
+    pub(super) reviewer_principal: String,
+    pub(super) authorization_base_commit: String,
+    pub(super) implementation_commit: String,
+    pub(super) implementation_tree: String,
+    pub(super) source_transitions_sha256: String,
+    pub(super) gate_evidence_sha256: String,
+    pub(super) finding_set_sha256: String,
+    pub(super) artifact_inventory_sha256: String,
+    pub(super) decision: ProofImpactVerdictDecision,
+    pub(super) reviewed_at: String,
+    pub(super) review_report: ProofImpactVerdictArtifactRef,
+    pub(super) gate_evidence: Vec<ProofImpactVerdictGate>,
+    pub(super) findings: Vec<ProofImpactVerdictFinding>,
+    pub(super) artifacts: Vec<ProofImpactVerdictArtifact>,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub(super) enum ProofImpactVerdictDecision {
+    Approved,
+    Rejected,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct ProofImpactVerdictGate {
+    pub(super) kind: ProofImpactEvidenceKind,
+    pub(super) owning_crate: String,
+    pub(super) command: String,
+    pub(super) result: ProofImpactGateResult,
+    pub(super) output: ProofImpactVerdictArtifactRef,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub(super) enum ProofImpactGateResult {
+    Passed,
+    Failed,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct ProofImpactVerdictFinding {
+    pub(super) id: String,
+    pub(super) severity: ProofImpactFindingSeverity,
+    pub(super) blocking: bool,
+    pub(super) disposition: ProofImpactFindingDisposition,
+    pub(super) detail: ProofImpactVerdictArtifactRef,
+    pub(super) evidence: ProofImpactVerdictArtifactRef,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct ProofImpactVerdictArtifactRef {
+    pub(super) path: String,
+    pub(super) sha256: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct ProofImpactVerdictArtifact {
+    pub(super) kind: ProofImpactVerdictArtifactKind,
+    pub(super) path: String,
+    pub(super) sha256: String,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub(super) enum ProofImpactVerdictArtifactKind {
+    ReviewReport,
+    GateOutput,
+    FindingDetail,
+    FindingEvidence,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub(super) enum ProofImpactFindingSeverity {
+    Critical,
+    High,
+    Medium,
+    Low,
+    Informational,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub(super) enum ProofImpactFindingDisposition {
+    Open,
+    Fixed,
+    Invalid,
+    Superseded,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]

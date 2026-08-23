@@ -46,6 +46,7 @@ fn policy() -> ArchitecturePolicy {
         verification_classes: Vec::new(),
         forbidden_dependencies: Vec::new(),
         controlled_source_roots: Vec::new(),
+        refinement_reservations: Vec::new(),
         packages: vec![PackagePolicy {
             name: "fixture".to_owned(),
             path: PathBuf::from("fixture"),

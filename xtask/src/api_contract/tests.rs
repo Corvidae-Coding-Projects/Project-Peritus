@@ -2,15 +2,18 @@ use super::scanner::scan;
 use super::violation::ViolationKind;
 
 #[test]
-fn rejects_public_safe_preconditions_but_accepts_private_helpers() {
+fn rejects_public_safe_preconditions_but_accepts_internal_helpers() {
     let result = scan(
         r"
         verus! {
             fn private_helper(value: u64) requires value > 0 { }
             pub fn checked(value: u64) -> Result<(), ()> { Ok(()) }
-            pub(crate) const fn exposed(value: u64)
+            pub(crate) const fn crate_helper(value: u64)
                 requires value > 0,
             { }
+            pub(super) fn parent_helper(value: u64) requires value > 0 { }
+            pub(in crate::model) fn scoped_helper(value: u64) requires value > 0 { }
+            pub fn exposed(value: u64) requires value > 0 { }
         }
         ",
     );
@@ -237,13 +240,19 @@ fn rejects_conditional_qualified_and_unmodeled_expansions() {
 #[test]
 fn permits_only_modeled_builtin_verus_and_trust_accounted_expansions() {
     let result = scan(
-        r"
+        r#"
         #![allow(dead_code)]
         #[derive(Clone, Copy)]
         #[cfg(verus_only)]
         struct Value;
 
         verus! {
+            spec fn quantified(values: Seq<int>) -> bool {
+                forall |index: int| #![auto]
+                    0 <= index < values.len()
+                        ==> #[trigger] values[index] == values[index]
+            }
+
             #[verifier::type_invariant]
             spec fn invariant(&self) -> bool { true }
 
@@ -251,8 +260,17 @@ fn permits_only_modeled_builtin_verus_and_trust_accounted_expansions() {
             fn modeled_boundary() { let _ = 3_u8; }
         }
 
-        pub fn ordinary() { assert!(true); }
-        ",
+        pub fn ordinary() {
+            assert!(true);
+            assert_ne!(1_u8, 2_u8);
+            let _ = format!("{}", 1_u8);
+            let _ = matches!(Some(1_u8), Some(_));
+            let _ = ValueWithVector { values: vec![1_u8] };
+        }
+
+        #[path = "split.rs"]
+        mod split;
+        "#,
     );
 
     assert!(
@@ -290,6 +308,10 @@ fn rejects_custom_derives_and_external_expansion_imports() {
     let result = scan(
         r"
         use external_macros::evil as assert;
+        use external_macros::evil as assert_ne;
+        use external_macros::evil as auto;
+        use external_macros::evil as matches;
+        use external_macros::evil as trigger;
         use external_macros::*;
         use crate::reexported::evil as assert_eq;
 
@@ -315,6 +337,6 @@ fn rejects_custom_derives_and_external_expansion_imports() {
             .iter()
             .filter(|violation| violation.kind == ViolationKind::UnsupportedMacro)
             .count(),
-        3
+        7
     );
 }

@@ -69,6 +69,140 @@ pub(super) fn scan(source: &str) -> Vec<Occurrence> {
     occurrences
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum DeclarationScope {
+    Function,
+    Namespace(String),
+    Other,
+}
+
+/// Returns the inline-module and associated-item path for every declaration of `item`.
+///
+/// An empty path identifies a file/module item. Tokenization excludes comments and literals, and
+/// declarations nested in a function are ineligible, so a manifest symbol cannot be redirected by
+/// declaration-shaped text that does not name a repository-visible item.
+pub(super) fn declaration_paths(source: &str, item: &str) -> Vec<Vec<String>> {
+    let tokens = tokenize(source);
+    let mut paths = Vec::new();
+    let mut scopes = Vec::new();
+    let mut pending = None;
+    let mut impl_header = None;
+
+    for (index, token) in tokens.iter().enumerate() {
+        match token.kind {
+            TokenKind::Identifier("impl") => {
+                impl_header = Some(index + 1);
+                pending = None;
+            }
+            TokenKind::Identifier("fn") => {
+                if next_identifier(&tokens, index + 1) == Some(item)
+                    && let Some(path) = enclosing_declaration_path(&scopes)
+                {
+                    paths.push(path);
+                }
+                pending = Some(DeclarationScope::Function);
+            }
+            TokenKind::Identifier("mod" | "trait") if impl_header.is_none() => {
+                pending = next_identifier(&tokens, index + 1)
+                    .map(|owner| DeclarationScope::Namespace(owner.to_owned()));
+            }
+            TokenKind::Identifier("struct" | "enum" | "union") if impl_header.is_none() => {
+                pending = Some(DeclarationScope::Other);
+            }
+            TokenKind::Punctuation(b'{') => {
+                let scope = impl_header
+                    .take()
+                    .and_then(|start| impl_owner(&tokens[start..index]))
+                    .map_or_else(
+                        || pending.take().unwrap_or(DeclarationScope::Other),
+                        DeclarationScope::Namespace,
+                    );
+                scopes.push(scope);
+            }
+            TokenKind::Punctuation(b'}') => {
+                scopes.pop();
+                pending = None;
+                impl_header = None;
+            }
+            TokenKind::Punctuation(b';') => {
+                pending = None;
+                impl_header = None;
+            }
+            _ => {}
+        }
+    }
+    paths.sort();
+    paths.dedup();
+    paths
+}
+
+fn next_identifier<'source>(tokens: &[Token<'source>], start: usize) -> Option<&'source str> {
+    tokens.get(start).and_then(|token| match token.kind {
+        TokenKind::Identifier(identifier) => Some(identifier),
+        _ => None,
+    })
+}
+
+fn enclosing_declaration_path(scopes: &[DeclarationScope]) -> Option<Vec<String>> {
+    if scopes.contains(&DeclarationScope::Function) {
+        return None;
+    }
+    let mut path = Vec::new();
+    for scope in scopes {
+        match scope {
+            DeclarationScope::Namespace(owner) => path.push(owner.clone()),
+            DeclarationScope::Function | DeclarationScope::Other => {}
+        }
+    }
+    Some(path)
+}
+
+fn impl_owner(tokens: &[Token<'_>]) -> Option<String> {
+    let mut angle_depth = 0_usize;
+    let mut start = 0;
+    for (index, token) in tokens.iter().enumerate() {
+        match token.kind {
+            TokenKind::Punctuation(b'<') => angle_depth += 1,
+            TokenKind::Punctuation(b'>') => angle_depth = angle_depth.saturating_sub(1),
+            TokenKind::Identifier("for") if angle_depth == 0 => start = index + 1,
+            _ => {}
+        }
+    }
+
+    let mut cursor = start;
+    if matches!(tokens.get(cursor).map(|token| token.kind), Some(TokenKind::Punctuation(b'<'))) {
+        let mut depth = 0_usize;
+        while cursor < tokens.len() {
+            match tokens[cursor].kind {
+                TokenKind::Punctuation(b'<') => depth += 1,
+                TokenKind::Punctuation(b'>') => {
+                    depth = depth.saturating_sub(1);
+                    if depth == 0 {
+                        cursor += 1;
+                        break;
+                    }
+                }
+                _ => {}
+            }
+            cursor += 1;
+        }
+    }
+
+    let mut owner = None;
+    for token in &tokens[cursor..] {
+        match token.kind {
+            TokenKind::Identifier("where") | TokenKind::Punctuation(b'<') => break,
+            TokenKind::Identifier(identifier)
+                if !matches!(identifier, "const" | "unsafe" | "default") =>
+            {
+                owner = Some(identifier.to_owned());
+            }
+            _ => {}
+        }
+    }
+    owner
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum ScopeKind {
     Function,

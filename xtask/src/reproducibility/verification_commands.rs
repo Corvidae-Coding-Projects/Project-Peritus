@@ -11,11 +11,11 @@ pub(super) fn validate(policy: &ArchitecturePolicy, diagnostics: &mut Vec<Diagno
         .filter(|package| matches!(package.verification_class.as_str(), "V" | "H"))
         .map(|package| package.name.as_str())
         .collect();
-    let verify = package_argument(VERUS_STRICT_VERIFY_ARGS);
-    let build = package_argument(VERUS_STRICT_BUILD_ARGS);
-    let configured: BTreeSet<_> = verify.into_iter().collect();
+    let verify = package_arguments(VERUS_STRICT_VERIFY_ARGS);
+    let build = package_arguments(VERUS_STRICT_BUILD_ARGS);
+    let expected: Vec<_> = required.iter().copied().collect();
 
-    if configured != required || verify != build {
+    if verify != expected || build != expected {
         diagnostics.push(Diagnostic::at(
             Path::new("justfile"),
             "V/H no-cheating command coverage differs from the architecture registry",
@@ -27,22 +27,20 @@ pub(super) fn validate(policy: &ArchitecturePolicy, diagnostics: &mut Vec<Diagno
     }
 }
 
-fn package_argument<'arguments>(
-    arguments: &'arguments [&'arguments str],
-) -> Option<&'arguments str> {
-    arguments.windows(2).find_map(|pair| (pair[0] == "--package").then_some(pair[1]))
+fn package_arguments<'arguments>(arguments: &'arguments [&'arguments str]) -> Vec<&'arguments str> {
+    arguments.windows(2).filter_map(|pair| (pair[0] == "--package").then_some(pair[1])).collect()
 }
 
 #[cfg(test)]
 mod tests {
-    use super::validate;
+    use super::{package_arguments, validate};
     use crate::error::Diagnostic;
     use crate::model::ArchitecturePolicy;
 
     fn policy(packages: &str) -> ArchitecturePolicy {
         toml::from_str(&format!(
             r#"
-schema = 2
+schema = 3
 soft_source_lines = 400
 hard_source_lines = 700
 root_module_lines = 80
@@ -65,6 +63,34 @@ controlled_source_roots = []
     fn canonical_strict_root_inventory_matches_architecture() {
         let policy = policy(
             r#"
+[[packages]]
+name = "peritus-approval"
+path = "crates/state/peritus-approval"
+owner = "B1"
+layer = "state"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-budget"
+path = "crates/foundation/peritus-budget"
+owner = "B1"
+layer = "foundation"
+verification_class = "V"
+
+[[packages]]
+name = "peritus-leases"
+path = "crates/state/peritus-leases"
+owner = "B1"
+layer = "state"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-policy"
+path = "crates/foundation/peritus-policy"
+owner = "B1"
+layer = "foundation"
+verification_class = "V"
+
 [[packages]]
 name = "peritus-types"
 path = "crates/foundation/peritus-types"
@@ -89,6 +115,34 @@ verification_class = "T"
             let policy = policy(&format!(
                 r#"
 [[packages]]
+name = "peritus-approval"
+path = "crates/state/peritus-approval"
+owner = "B1"
+layer = "state"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-budget"
+path = "crates/foundation/peritus-budget"
+owner = "B1"
+layer = "foundation"
+verification_class = "V"
+
+[[packages]]
+name = "peritus-leases"
+path = "crates/state/peritus-leases"
+owner = "B1"
+layer = "state"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-policy"
+path = "crates/foundation/peritus-policy"
+owner = "B1"
+layer = "foundation"
+verification_class = "V"
+
+[[packages]]
 name = "peritus-types"
 path = "crates/foundation/peritus-types"
 owner = "A1"
@@ -105,6 +159,23 @@ verification_class = "{class}"
             ));
             assert!(!diagnostics(&policy).is_empty());
         }
+    }
+
+    #[test]
+    fn package_inventory_preserves_duplicates_and_order_for_fail_closed_comparison() {
+        assert_eq!(
+            package_arguments(&[
+                "verus",
+                "verify",
+                "--package",
+                "peritus-policy",
+                "--package",
+                "peritus-policy",
+                "--package",
+                "peritus-types",
+            ]),
+            ["peritus-policy", "peritus-policy", "peritus-types"]
+        );
     }
 
     fn diagnostics(policy: &ArchitecturePolicy) -> Vec<Diagnostic> {

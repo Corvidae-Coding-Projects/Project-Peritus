@@ -4,11 +4,22 @@ use super::violation::{Violation, ViolationKind};
 use crate::source::reference_lexer::{Token, TokenKind};
 
 const SIMPLE_ATTRIBUTES: &[&str] =
-    &["allow", "cfg", "doc", "must_use", "no_std", "test", "verus_spec"];
+    &["allow", "auto", "cfg", "doc", "must_use", "no_std", "path", "test", "trigger", "verus_spec"];
 const BUILTIN_DERIVES: &[&str] =
     &["Clone", "Copy", "Debug", "Eq", "Hash", "Ord", "PartialEq", "PartialOrd"];
-const MODELED_MACROS: &[&str] =
-    &["assert", "assert_eq", "include", "panic", "proof", "vec", "verus"];
+const MODELED_MACROS: &[&str] = &[
+    "assert",
+    "assert_eq",
+    "assert_ne",
+    "format",
+    "include",
+    "matches",
+    "panic",
+    "proof",
+    "vec",
+    "verus",
+];
+const FORBIDDEN_EXPANSION_NAMES: &[&str] = &["state_machine", "tokenized_state_machine"];
 
 pub(super) fn violations(tokens: &[Token]) -> Vec<Violation> {
     let local_modules = local_module_names(tokens);
@@ -92,7 +103,9 @@ fn inspect_macro(tokens: &[Token], cursor: usize, violations: &mut Vec<Violation
     {
         return;
     }
-    let qualified = cursor > 0 && punctuation_is(&tokens[cursor - 1], ':');
+    let qualified = cursor >= 2
+        && punctuation_is(&tokens[cursor - 2], ':')
+        && punctuation_is(&tokens[cursor - 1], ':');
     if qualified || !MODELED_MACROS.contains(&name) {
         violations.push(Violation {
             line: tokens[cursor].line,
@@ -136,6 +149,7 @@ fn inspect_use(
 fn is_expansion_name(name: &str) -> bool {
     SIMPLE_ATTRIBUTES.contains(&name)
         || MODELED_MACROS.contains(&name)
+        || FORBIDDEN_EXPANSION_NAMES.contains(&name)
         || BUILTIN_DERIVES.contains(&name)
         || name == "derive"
 }

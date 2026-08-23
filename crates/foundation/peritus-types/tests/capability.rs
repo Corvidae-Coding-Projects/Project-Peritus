@@ -1,6 +1,7 @@
 //! Boundary and negative tests for the capability-name grammar.
 
 use peritus_types::{CapabilityName, CapabilityNameError};
+use std::cmp::Ordering;
 
 fn validate(value: &str) -> Result<CapabilityName, CapabilityNameError> {
     CapabilityName::new(value.to_owned())
@@ -44,4 +45,18 @@ fn rejects_non_ascii_and_disallowed_ascii() {
     for value in ["read_file", "read/file", "read file", "réad"] {
         assert_eq!(validate(value), Err(CapabilityNameError::InvalidCharacter), "{value:?}");
     }
+}
+
+#[test]
+fn canonical_comparison_is_exact_ascii_lexicographic_order() {
+    let a = validate("repo.read").expect("valid capability");
+    let b = validate("repo.write").expect("valid capability");
+    let prefix = validate("repo").expect("valid capability");
+    let same = validate("repo.read").expect("valid capability");
+
+    assert_eq!(a.canonical_cmp(&b), Ordering::Less);
+    assert_eq!(b.canonical_cmp(&a), Ordering::Greater);
+    assert_eq!(prefix.canonical_cmp(&a), Ordering::Less);
+    assert_eq!(a.canonical_cmp(&same), Ordering::Equal);
+    assert_eq!(a.canonical_cmp(&b), a.as_str().as_bytes().cmp(b.as_str().as_bytes()));
 }

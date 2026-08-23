@@ -34,15 +34,37 @@ mod manifest_impact;
 mod manifest_model;
 #[path = "trust/manifest_support.rs"]
 mod manifest_support;
+#[path = "trust/manifest_symbol.rs"]
+mod manifest_symbol;
 #[path = "trust/manifest_trust.rs"]
 mod manifest_trust;
 
 pub(crate) fn check(root: &Path, policy: &ArchitecturePolicy) -> Result<usize, XtaskError> {
+    check_workspace(root, policy, true)
+}
+
+/// Runs the locally executable trust boundary without protected-base proof-impact authorization.
+pub(crate) fn check_local(root: &Path, policy: &ArchitecturePolicy) -> Result<usize, XtaskError> {
+    check_workspace(root, policy, false)
+}
+
+fn check_workspace(
+    root: &Path,
+    policy: &ArchitecturePolicy,
+    include_proof_impact: bool,
+) -> Result<usize, XtaskError> {
     let cargo = metadata::cargo_metadata(root)?;
     let dependencies = metadata::cargo_metadata_with_dependencies(root)?;
     let (target_roots, mut diagnostics) = workspace_target_policy(root, &cargo);
     dependency_execution::validate(root, &dependencies, &mut diagnostics);
-    check_with_policy_diagnostics(root, policy, Some(&cargo), &target_roots, diagnostics)
+    check_with_policy_diagnostics(
+        root,
+        policy,
+        Some(&cargo),
+        &target_roots,
+        diagnostics,
+        include_proof_impact,
+    )
 }
 
 fn workspace_target_policy(root: &Path, cargo: &CargoMetadata) -> (Vec<PathBuf>, Vec<Diagnostic>) {
@@ -87,7 +109,7 @@ fn check_cargo_fixture(root: &Path, policy: &ArchitecturePolicy) -> Result<usize
     let dependencies = metadata::cargo_metadata_with_dependencies(root)?;
     let (target_roots, mut diagnostics) = workspace_target_policy(root, &cargo);
     dependency_execution::validate(root, &dependencies, &mut diagnostics);
-    check_with_policy_diagnostics(root, policy, None, &target_roots, diagnostics)
+    check_with_policy_diagnostics(root, policy, None, &target_roots, diagnostics, true)
 }
 
 #[cfg(test)]
@@ -96,7 +118,7 @@ fn check_with_roots(
     policy: &ArchitecturePolicy,
     target_roots: &[PathBuf],
 ) -> Result<usize, XtaskError> {
-    check_with_policy_diagnostics(root, policy, None, target_roots, Vec::new())
+    check_with_policy_diagnostics(root, policy, None, target_roots, Vec::new(), true)
 }
 
 fn check_with_policy_diagnostics(
@@ -105,6 +127,7 @@ fn check_with_policy_diagnostics(
     cargo: Option<&CargoMetadata>,
     target_roots: &[PathBuf],
     mut diagnostics: Vec<Diagnostic>,
+    include_proof_impact: bool,
 ) -> Result<usize, XtaskError> {
     let discovery = source::discover_compilation_sources(root, policy, target_roots)?;
     diagnostics.extend(discovery.diagnostics);
@@ -185,15 +208,26 @@ fn check_with_policy_diagnostics(
     }
 
     if let Some(cargo) = cargo {
-        manifest::validate(
-            root,
-            policy,
-            cargo,
-            &compilation_sources,
-            &trusted_occurrences,
-            true,
-            &mut diagnostics,
-        )?;
+        if include_proof_impact {
+            manifest::validate(
+                root,
+                policy,
+                cargo,
+                &compilation_sources,
+                &trusted_occurrences,
+                true,
+                &mut diagnostics,
+            )?;
+        } else {
+            manifest::validate_local(
+                root,
+                policy,
+                cargo,
+                &compilation_sources,
+                &trusted_occurrences,
+                &mut diagnostics,
+            )?;
+        }
     }
 
     if diagnostics.is_empty() {

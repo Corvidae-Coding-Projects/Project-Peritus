@@ -5,11 +5,11 @@ use peritus_test_support::{
     FakeClock, IdSourceError,
 };
 use peritus_types::{
-    AcceptanceSpecId, ActionId, ActorId, ApprovalRequestId, ArtifactId, AttemptId, CommandId,
-    EnvironmentId, EvaluationCampaignId, EventId, EventSequence, EvidenceId, EvolutionCampaignId,
-    FindingId, GateExecutionId, GateId, HarnessId, IdentifierError, PolicyId, ProcessId, ProjectId,
-    ProviderProfileId, ResourceId, ReviewCycleId, RunId, SessionId, SnapshotId, TurnId,
-    WorkspaceId,
+    AcceptanceSpecId, ActionId, ActorId, ApprovalRequestId, ArtifactId, AttemptId, BudgetId,
+    BudgetReservationId, CommandId, EnvironmentId, EvaluationCampaignId, EventId, EventSequence,
+    EvidenceId, EvolutionCampaignId, FindingId, GateExecutionId, GateId, HarnessId,
+    IdentifierError, PolicyId, ProcessId, ProjectId, ProviderProfileId, ResourceId, ReviewCycleId,
+    RunId, SessionId, SnapshotId, TurnId, WorkspaceId,
 };
 use std::num::NonZeroU64;
 use std::time::{Duration, UNIX_EPOCH};
@@ -99,8 +99,10 @@ fn every_a1_identifier_constructor_accepts_exact_sequence_bytes() {
         ids.next(ReviewCycleId::new).expect("ReviewCycleId").into_bytes(),
         ids.next(FindingId::new).expect("FindingId").into_bytes(),
         ids.next(ApprovalRequestId::new).expect("ApprovalRequestId").into_bytes(),
+        ids.next(BudgetId::new).expect("BudgetId").into_bytes(),
+        ids.next(BudgetReservationId::new).expect("BudgetReservationId").into_bytes(),
     ];
-    assert_eq!(values.len(), 27);
+    assert_eq!(values.len(), 29);
     for (index, value) in values.iter().enumerate() {
         assert_eq!(&value[..8], b"a1-types");
         assert_eq!(&value[8..], &u64::try_from(index + 1).expect("small index").to_be_bytes());

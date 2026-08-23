@@ -86,6 +86,7 @@ fn visibility(tokens: &[Token], mut cursor: usize) -> Option<(usize, bool)> {
     cursor += 1;
     if punctuation_is(tokens, cursor, '(') {
         cursor = matching_group(tokens, cursor, '(', ')')?;
+        return Some((cursor, false));
     }
     Some((cursor, true))
 }

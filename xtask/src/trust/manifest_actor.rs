@@ -19,6 +19,10 @@ pub(super) struct ActorRegistry<'a> {
 }
 
 impl ActorRegistry<'_> {
+    pub(super) fn principal(&self, actor_id: &str) -> Option<&str> {
+        self.entries.get(actor_id).map(|actor| actor.principal.as_str())
+    }
+
     pub(super) fn validate_reference(
         &self,
         manifest: &Path,

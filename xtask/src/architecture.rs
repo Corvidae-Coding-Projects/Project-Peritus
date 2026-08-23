@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 
 mod dependency;
 mod policy;
+mod refinement;
 
 use dependency::validate_dependency_edges;
 use policy::validate_policy;

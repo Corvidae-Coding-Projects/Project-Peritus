@@ -17,7 +17,18 @@ pub(crate) struct ArchitecturePolicy {
     pub(crate) verification_classes: Vec<VerificationClassPolicy>,
     pub(crate) forbidden_dependencies: Vec<ForbiddenDependencyPolicy>,
     pub(crate) controlled_source_roots: Vec<ControlledSourceRoot>,
+    #[serde(default)]
+    pub(crate) refinement_reservations: Vec<RefinementReservation>,
     pub(crate) packages: Vec<PackagePolicy>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct RefinementReservation {
+    pub(crate) id: String,
+    pub(crate) introduced_by: String,
+    pub(crate) future_owner: String,
+    pub(crate) statement: String,
 }
 
 #[derive(Debug, Deserialize)]

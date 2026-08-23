@@ -33,7 +33,12 @@ An entry ID is stable after review. Renaming or moving its symbol updates its so
 without recycling the ID. `owning_crate` must equal the Cargo package that owns `source_file`, and
 `source_file` must be a regular, repository-owned file under that package with no symbolic-link
 component. `symbol` is the fully qualified Rust or Verus item path. `source_line` is the positive
-line on which the governed construct or item begins.
+line on which the governed construct or item begins. A file-level function uses
+`crate::module::function`; an associated function or method uses
+`crate::module::TypeOrTrait::function`. Inline module and associated-item owners are retained in
+order, so two same-named methods in one source file remain distinct. Symbol validation tokenizes
+Rust declarations, ignores comments and literals, and rejects function-local declarations as
+repository-governance targets.
 
 Issue fields contain the repository's canonical issue identifier or URL and must resolve to an open
 issue at review/release time. Every `owner` and `reviewer` is a stable `ACTOR-NNNN` reference into
@@ -275,6 +280,7 @@ Each `[[changes]]` table has exactly:
 | `owner` | string | Registered accountable actor with the `owner` role. |
 | `reviewer` | string | Distinct registered actor with the `reviewer` role. |
 | `review_date` | date string | Completed review date; future dates are rejected. |
+| `verdict` | inline table | Required for PCR-0005 and later: exact `verification/reviews/PCR-NNNN.toml` path and lowercase raw-byte `sha256`; absent only for protected A1 PCR-0001 through PCR-0004. |
 
 Each `previous` or `current` snapshot has exactly `sha256` and `affected_packages`. Snapshot package
 names and formal classes remain immutable historical identities; they need not equal the later
@@ -287,6 +293,49 @@ have exactly `kind` (`ordinary-test` or `verus-verify`), `owning_crate`, and `co
 verification evidence includes `--no-cheating`; T verification evidence omits it so
 manifest-accounted trusted bodies remain possible. Ordinary tests alone never satisfy formal
 change evidence.
+
+PCR-0005 and later additionally require a detached verdict artifact with schema
+`peritus.verification.proof-impact-verdict`, version `1`. Its root fields are exactly `schema`,
+`schema_version`, `id`, `pcr_id`, `reviewer`, `reviewer_principal`,
+`authorization_base_commit`, `implementation_commit`, `implementation_tree`,
+`source_transitions_sha256`, `gate_evidence_sha256`, `finding_set_sha256`,
+`artifact_inventory_sha256`, `decision`, `reviewed_at`, `review_report`, `gate_evidence`, `findings`,
+and `artifacts`. The verdict ID is `VERDICT-PCR-NNNN`; PCR, actor, canonical reviewer principal, and
+the UTC date of `reviewed_at` must equal the PCR. `reviewed_at` is a complete `Z`-suffixed UTC
+timestamp with seconds and optional one-to-nine-digit fractional seconds, not a date-only claim.
+
+Git identities are lowercase nonzero full 40-hex object IDs that must resolve in the repository to
+the declared kinds: both commit fields resolve to commits, while `implementation_tree` resolves to
+a tree and equals the exact `implementation_commit^{tree}` object. The reviewed implementation
+commit differs from and descends from the authorization base. Every current PCR snapshot equals the
+raw blob bytes at the declared implementation tree, and a reviewed removal is absent from that
+tree. A newly appended PCR's authorization base must equal the exact protected base used by CI.
+
+`gate_evidence` is a canonically sorted array containing exactly one row for every PCR evidence
+command. Each row repeats its `kind`, `owning_crate`, and exact `command`, and adds `result`
+(`passed` or `failed`) plus an `output` path/content-address pair. `findings` is sorted by unique
+nonzero `FINDING-NNNN` ID and records `severity`, `blocking`, `disposition`, and separate `detail`
+and `evidence` path/content-address pairs. An approved PCR requires an approving verdict, every gate
+passed, and every declared blocking finding fixed, invalid, or superseded.
+
+`review_report` is a mandatory retained, non-empty review record describing scope, procedure, and
+the complete finding ledger; consequently an empty `findings` array is never the only retained
+evidence for a no-findings verdict. This contract makes omissions from retained evidence
+review-visible; it does not claim that software can prove a human reviewer noticed every defect.
+`artifacts` is a strictly sorted, unique array of exact `kind`, `path`, and `sha256` records. It
+contains one `review-report`, every `gate-output`, and every `finding-detail` and `finding-evidence`
+reference exactly once. All are regular, nonsymlinked, non-empty files beneath
+`verification/reviews/PCR-NNNN/`, and their raw bytes must match their content addresses. Recursive
+directory reconciliation rejects unreferenced artifacts, duplicate references, path traversal,
+unreadable entries, and inventories owned by more than one PCR.
+
+The validator recomputes four domain-separated, length-prefixed canonical SHA-256 bindings over
+the complete sorted source transitions, gate evidence, finding set, and retained artifact
+inventory. Reordering does not change their identity; changing any bound field does. The PCR
+content-addresses the raw verdict artifact, and every regular file under `verification/reviews/`
+must be referenced exactly once either as that verdict or by its artifact inventory. The immutable
+PCR prefix therefore also makes every historical review file immutable without adding it to the
+self-referential current-source inventory.
 
 Raw-byte hashing deliberately treats formatting and comments as review-visible. A1 does not trust
 a partial Rust/Verus parser, so every byte or affected-scope change conservatively requires review
@@ -324,3 +373,8 @@ they do not make an unauthenticated network-liveness claim. Independent protecte
 review confirms issue liveness. The canonical workspace Gate A commands execute the test and
 class-correct verification superset represented by proof-impact evidence against the reviewed
 revision.
+
+The local aggregate `cargo xtask all` scans the complete trust boundary and validates actor, trust,
+exclusion, and obligation records without pretending that a local working tree is a protected
+review base. Full proof-impact history, transition, and detached-verdict enforcement remains the
+explicit `cargo xtask verify-trust` command while hosted protected-runner enforcement is deferred.

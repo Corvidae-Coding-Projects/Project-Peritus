@@ -173,3 +173,114 @@ fn upstream_versions_reject_floating_refs_in_composite_text() {
         assert!(!version_is_pinned(floating), "accepted floating reference `{floating}`");
     }
 }
+
+#[test]
+fn exclusion_symbols_distinguish_same_named_associated_functions() {
+    let fixture = Fixture::new();
+    let relative = "crates/state/peritus-approval/src/digest.rs";
+    fixture.write(
+        relative,
+        r"
+pub struct ApprovalRequestDigest;
+pub struct ApprovalDecisionDigest;
+
+impl ApprovalRequestDigest {
+    pub fn compute() -> u8 { 1 }
+}
+
+impl ApprovalDecisionDigest {
+    pub fn compute() -> u8 { 2 }
+}
+",
+    );
+    let source = fixture.path().join(relative);
+
+    for symbol in [
+        "peritus_approval::digest::ApprovalRequestDigest::compute",
+        "peritus_approval::digest::ApprovalDecisionDigest::compute",
+    ] {
+        let mut diagnostics = Vec::new();
+        validate_symbol(
+            Path::new("verification/exclusions.toml"),
+            "EXCL-0002",
+            "peritus-approval",
+            Some(&source),
+            symbol,
+            &mut diagnostics,
+        );
+        assert!(diagnostics.is_empty(), "rejected `{symbol}`: {diagnostics:?}");
+    }
+
+    let mut diagnostics = Vec::new();
+    validate_symbol(
+        Path::new("verification/exclusions.toml"),
+        "EXCL-0002",
+        "peritus-approval",
+        Some(&source),
+        "peritus_approval::digest::compute",
+        &mut diagnostics,
+    );
+    assert!(
+        diagnostics.iter().any(|item| item.message().contains("source module path")),
+        "collapsed associated symbol was accepted: {diagnostics:?}"
+    );
+}
+
+#[test]
+fn exclusion_symbols_ignore_declaration_shaped_non_items() {
+    let fixture = Fixture::new();
+    let relative = "crates/state/peritus-approval/src/digest.rs";
+    fixture.write(
+        relative,
+        r#"
+// pub fn compute() -> u8 { 1 }
+const TEXT: &str = "pub fn compute() -> u8 { 1 }";
+
+pub fn enclosing() {
+    fn compute() -> u8 { 1 }
+    let _value = compute();
+}
+"#,
+    );
+    let source = fixture.path().join(relative);
+    let mut diagnostics = Vec::new();
+    validate_symbol(
+        Path::new("verification/exclusions.toml"),
+        "EXCL-0002",
+        "peritus-approval",
+        Some(&source),
+        "peritus_approval::digest::compute",
+        &mut diagnostics,
+    );
+    assert!(
+        diagnostics.iter().any(|item| item.message().contains("source module path")),
+        "non-item declaration text was accepted: {diagnostics:?}"
+    );
+}
+
+#[test]
+fn exclusion_symbols_include_inline_modules_and_trait_owners() {
+    let fixture = Fixture::new();
+    let relative = "crates/state/peritus-approval/src/digest.rs";
+    fixture.write(
+        relative,
+        r"
+mod version_one {
+    pub trait CanonicalDigest {
+        fn compute();
+    }
+}
+",
+    );
+    let source = fixture.path().join(relative);
+    let mut diagnostics = Vec::new();
+    validate_symbol(
+        Path::new("verification/exclusions.toml"),
+        "EXCL-0002",
+        "peritus-approval",
+        Some(&source),
+        "peritus_approval::digest::version_one::CanonicalDigest::compute",
+        &mut diagnostics,
+    );
+    assert!(diagnostics.is_empty(), "unexpected diagnostics: {diagnostics:?}");
+}

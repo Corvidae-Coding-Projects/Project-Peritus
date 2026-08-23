@@ -17,9 +17,10 @@ fn zero_and_all_resource_dimensions_are_representable() {
         ResourceKind::OutputBytes,
         ResourceKind::ProcessCount,
         ResourceKind::ConcurrencySlots,
+        ResourceKind::AttemptCount,
         ResourceKind::RetryCount,
     ];
-    assert_eq!(kinds.len(), 10);
+    assert_eq!(kinds.len(), 11);
 }
 
 #[test]

@@ -89,7 +89,7 @@ pub(super) fn validate(
             ),
             (
                 "canonical CI does not enforce no-cheating for every V/H verification root",
-                "run the exact peritus-types no-cheating verification after workspace verification",
+                "run the exact all-V/H no-cheating verification after workspace verification",
             ),
             (
                 "canonical CI does not run the locked verified release build",
@@ -97,7 +97,7 @@ pub(super) fn validate(
             ),
             (
                 "canonical CI does not enforce no-cheating for every V/H release build root",
-                "run the exact peritus-types no-cheating release build after the workspace build",
+                "run the exact all-V/H no-cheating release build after the workspace build",
             ),
         ] {
             diagnostics.push(Diagnostic::at(path, message, help));

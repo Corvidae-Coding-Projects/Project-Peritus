@@ -1,4 +1,5 @@
 use super::dependency::find_cycle;
+use super::refinement::validate_refinement_reservations;
 use crate::error::Diagnostic;
 use crate::model::ArchitecturePolicy;
 use std::collections::{BTreeMap, BTreeSet};
@@ -14,6 +15,7 @@ pub(super) fn validate_policy(policy: &ArchitecturePolicy) -> Vec<Diagnostic> {
     validate_controlled_roots(policy, &mut diagnostics);
     validate_trusted_source_roots(policy, &mut diagnostics);
     validate_source_exceptions(policy, &mut diagnostics);
+    validate_refinement_reservations(&policy.refinement_reservations, &mut diagnostics);
     diagnostics
 }
 
@@ -70,10 +72,10 @@ fn is_normal_relative_path(path: &Path) -> bool {
 }
 
 fn validate_schema_and_budgets(policy: &ArchitecturePolicy, diagnostics: &mut Vec<Diagnostic>) {
-    if policy.schema != 2 {
+    if policy.schema != 3 {
         diagnostics.push(Diagnostic::at(
             "architecture.toml",
-            format!("unsupported schema {}; expected 2", policy.schema),
+            format!("unsupported schema {}; expected 3", policy.schema),
             "migrate the policy deliberately before changing its schema number",
         ));
     }

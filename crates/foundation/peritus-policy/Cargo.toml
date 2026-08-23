@@ -1,0 +1,28 @@
+[package]
+name = "peritus-policy"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+description = "Verified policy, capability, and authority-time core for Project Peritus"
+
+[dependencies]
+peritus-types = { version = "=0.0.0", path = "../peritus-types" }
+vstd.workspace = true
+
+[dev-dependencies]
+peritus-test-support = { version = "=0.0.0", path = "../../app/testing/peritus-test-support" }
+
+[package.metadata.peritus]
+owner = "B1"
+layer = "foundation"
+verification-class = "V"
+
+[package.metadata.verus]
+verify = true
+
+[lints]
+workspace = true

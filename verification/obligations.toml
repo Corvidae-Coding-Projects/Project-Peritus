@@ -1,6 +1,278 @@
 # Schema contract: verification/README.md#proof-obligation-manifest
-# Absence means untracked, never discharged. A1 makes no INV-001..INV-022 discharge claim.
+# B1 records are intentionally `in-progress`: the exact symbols and executable proof evidence
+# exist, while independent protected-review authorization remains deferred. Nothing in this file
+# claims discharge until a registered independent reviewer approves the final source identities.
 schema = "peritus.verification.obligations"
 schema_version = 1
 baseline = "A1"
-entries = []
+
+[[entries]]
+id = "INV-006"
+kind = "invariant"
+statement = "For one lease aggregate and generation, every current logical claim identifies the same holder and claim version, and every accepted fence makes every previously current claim non-current."
+owning_crate = "peritus-leases"
+source_file = "crates/state/peritus-leases/src/model/concrete.rs"
+symbol = "peritus_leases::model::concrete::concrete_exclusive"
+status = "in-progress"
+dependencies = ["OBL-0103", "OBL-0107"]
+live_issue = "#5"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/state/peritus-leases/src/proofs/exclusivity.rs", symbol = "peritus_leases::proofs::exclusivity::two_concrete_current_claims_are_identical_in_holder_and_generation", command = "cargo verus verify --package peritus-leases --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/state/peritus-leases/src/proofs/fencing.rs", symbol = "peritus_leases::proofs::fencing::concrete_fence_invalidates_previous_claim", command = "cargo verus verify --package peritus-leases --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+]
+
+[[entries]]
+id = "INV-007"
+kind = "invariant"
+statement = "The immutable role-operation matrix denies mutation to reviewer and evaluator roles, denies acceptance, waiver, amendment, and promotion to writer and fixer roles, and grants no raw-effect authority to the orchestrator role."
+owning_crate = "peritus-policy"
+source_file = "crates/foundation/peritus-policy/src/model.rs"
+symbol = "peritus_policy::model::role_permits"
+status = "in-progress"
+dependencies = []
+live_issue = "#5"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-policy/src/proofs/role_separation.rs", symbol = "peritus_policy::proofs::role_separation::reviewer_cannot_mutate", command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-policy/src/proofs/role_separation.rs", symbol = "peritus_policy::proofs::role_separation::evaluator_cannot_mutate", command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-policy/src/proofs/role_separation.rs", symbol = "peritus_policy::proofs::role_separation::writer_cannot_accept_or_amend", command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-policy/src/proofs/role_separation.rs", symbol = "peritus_policy::proofs::role_separation::fixer_cannot_accept_or_amend", command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-policy/src/proofs/role_separation.rs", symbol = "peritus_policy::proofs::role_separation::orchestrator_has_no_raw_effect_authority", command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+]
+
+[[entries]]
+id = "INV-008"
+kind = "invariant"
+statement = "Every successful capability use preserves the exact actor, role, environment, revision, and permission pair from its issued scope and decrements a finite positive use count exactly once; every rejected use preserves the prior capability."
+owning_crate = "peritus-policy"
+source_file = "crates/foundation/peritus-policy/src/model.rs"
+symbol = "peritus_policy::model::capability_use_success"
+status = "in-progress"
+dependencies = ["INV-007", "OBL-0101", "OBL-0103"]
+live_issue = "#5"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-policy/src/proofs/scope.rs", symbol = "peritus_policy::proofs::scope::identical_scope_dimensions_are_preserved", command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-policy/src/proofs/refinement.rs", symbol = "peritus_policy::proofs::refinement::one_success_decrements_once", command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-policy/src/proofs/refinement.rs", symbol = "peritus_policy::proofs::refinement::rejected_use_preserves_remaining", command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+]
+
+[[entries]]
+id = "INV-009"
+kind = "invariant"
+statement = "Every reachable approval model state has at most one semantic resolution and at most one approve-once consumption, with exact replay preserving the state and terminal phases rejecting a second semantic result."
+owning_crate = "peritus-approval"
+source_file = "crates/state/peritus-approval/src/model.rs"
+symbol = "peritus_approval::model::inv_009"
+status = "in-progress"
+dependencies = ["INV-008", "OBL-0103", "OBL-0109", "OBL-0110"]
+live_issue = "#5"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/state/peritus-approval/src/proofs/refinement.rs", symbol = "peritus_approval::proofs::refinement::reachable_preserves_inv_009", command = "cargo verus verify --package peritus-approval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/state/peritus-approval/src/proofs/binding.rs", symbol = "peritus_approval::proofs::binding::consume_once_preserves_digest", command = "cargo verus verify --package peritus-approval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+]
+
+[[entries]]
+id = "INV-012"
+kind = "invariant"
+statement = "Every accepted budget transition preserves ledger well-formedness, monotonic consumption and observation high-water marks, stable identities, ancestor charge propagation, and conservative reservation and delegation accounting; every rejected transition preserves the input ledger."
+owning_crate = "peritus-budget"
+source_file = "crates/foundation/peritus-budget/src/reachability.rs"
+symbol = "peritus_budget::reachability::complete_refinement"
+status = "in-progress"
+dependencies = ["OBL-0104", "OBL-0105", "OBL-0106"]
+live_issue = "#5"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-budget/src/reachability.rs", symbol = "peritus_budget::reachability::accepted_step_is_valid_and_complete", command = "cargo verus verify --package peritus-budget --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-budget/src/reachability/total.rs", symbol = "peritus_budget::reachability::total::rejected_is_budget_step", command = "cargo verus verify --package peritus-budget --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+]
+
+[[entries]]
+id = "INV-022"
+kind = "invariant"
+statement = "Ordinary policy-layer composition is pointwise no broader than its protected ceiling and prior layers, while every accepted amendment is an exact one-tier successor bounded by the rebound higher-tier ceiling and immutable denial set."
+owning_crate = "peritus-policy"
+source_file = "crates/foundation/peritus-policy/src/monotonicity_model.rs"
+symbol = "peritus_policy::monotonicity_model::decision_respects_allowed_query_set"
+status = "in-progress"
+dependencies = ["OBL-0100", "OBL-0102"]
+live_issue = "#5"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-policy/src/proofs/monotonicity.rs", symbol = "peritus_policy::proofs::monotonicity::evaluator_cannot_broaden_allowed_queries", command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-policy/src/amendment/preview.rs", symbol = "peritus_policy::amendment::preview::preview_amendment_result_is_exact", command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+]
+
+[[entries]]
+id = "OBL-0100"
+kind = "contract"
+statement = "An applicable deny has the least decision rank, dominates every other policy decision under composition, and prevents whole-request capability issuance."
+owning_crate = "peritus-policy"
+source_file = "crates/foundation/peritus-policy/src/proofs/monotonicity.rs"
+symbol = "peritus_policy::proofs::monotonicity::deny_wins"
+status = "in-progress"
+dependencies = []
+live_issue = "#5"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-policy/src/proofs/monotonicity.rs", symbol = "peritus_policy::proofs::monotonicity::deny_wins", command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+]
+
+[[entries]]
+id = "OBL-0101"
+kind = "contract"
+statement = "Authorization of independent resource and capability atoms never authorizes an unlisted Cartesian resource-capability pair."
+owning_crate = "peritus-policy"
+source_file = "crates/foundation/peritus-policy/src/proofs/scope.rs"
+symbol = "peritus_policy::proofs::scope::independent_atoms_do_not_imply_cartesian_authority"
+status = "in-progress"
+dependencies = []
+live_issue = "#5"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-policy/src/proofs/scope.rs", symbol = "peritus_policy::proofs::scope::independent_atoms_do_not_imply_cartesian_authority", command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+]
+
+[[entries]]
+id = "OBL-0102"
+kind = "contract"
+statement = "A successful policy amendment has an exact successor identity, replaces exactly its declared tier, rebinds all retained components to that successor revision, and remains within the protected ceiling and immutable denial set."
+owning_crate = "peritus-policy"
+source_file = "crates/foundation/peritus-policy/src/amendment/preview.rs"
+symbol = "peritus_policy::amendment::preview::preview_amendment_result_is_exact"
+status = "in-progress"
+dependencies = []
+live_issue = "#5"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-policy/src/amendment/preview.rs", symbol = "peritus_policy::amendment::preview::preview_amendment_result_is_exact", command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+]
+
+[[entries]]
+id = "OBL-0103"
+kind = "contract"
+statement = "An accepted authority-time observation has the same epoch and a tick no lower than the prior floor; an epoch discontinuity or regressing tick returns an unchanged linear floor and no accepted authority."
+owning_crate = "peritus-policy"
+source_file = "crates/foundation/peritus-policy/src/time.rs"
+symbol = "peritus_policy::time::AuthorityTimeState::spec_accepts"
+status = "in-progress"
+dependencies = []
+live_issue = "#5"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-policy/src/proofs/refinement.rs", symbol = "peritus_policy::proofs::refinement::accepted_time_never_regresses", command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-policy/src/time.rs", symbol = "peritus_policy::time::AuthorityTimeState::spec_accepts", command = "cargo verus verify --package peritus-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+]
+
+[[entries]]
+id = "OBL-0104"
+kind = "invariant"
+statement = "Every well-formed budget ledger conserves each immutable account limit across consumed, reserved, delegated, and available quantities."
+owning_crate = "peritus-budget"
+source_file = "crates/foundation/peritus-budget/src/model.rs"
+symbol = "peritus_budget::model::ledger_well_formed"
+status = "in-progress"
+dependencies = []
+live_issue = "#5"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-budget/src/reachability.rs", symbol = "peritus_budget::reachability::accepted_step_is_valid_and_complete", command = "cargo verus verify --package peritus-budget --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+]
+
+[[entries]]
+id = "OBL-0105"
+kind = "invariant"
+statement = "For every accepted usage observation, each reservation cumulative observation is nondecreasing and only its positive delta is charged; exact replay charges nothing twice."
+owning_crate = "peritus-budget"
+source_file = "crates/foundation/peritus-budget/src/model.rs"
+symbol = "peritus_budget::model::ledger_high_water_monotonic"
+status = "in-progress"
+dependencies = []
+live_issue = "#5"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-budget/src/reachability/reducer_proofs/observation.rs", symbol = "peritus_budget::reachability::reducer_proofs::observation::observation_refines", command = "cargo verus verify --package peritus-budget --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+]
+
+[[entries]]
+id = "OBL-0106"
+kind = "invariant"
+statement = "Child allocation cannot exceed parent availability, and every accepted descendant consumption delta is propagated exactly through each ancestor in its lineage."
+owning_crate = "peritus-budget"
+source_file = "crates/foundation/peritus-budget/src/refinement_model.rs"
+symbol = "peritus_budget::refinement_model::ancestor_consumption_propagates"
+status = "in-progress"
+dependencies = []
+live_issue = "#5"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-budget/src/reachability.rs", symbol = "peritus_budget::reachability::accepted_step_is_valid_and_complete", command = "cargo verus verify --package peritus-budget --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-budget/src/reachability/guards.rs", symbol = "peritus_budget::reachability::guards::request_capacity_from_available", command = "cargo verus verify --package peritus-budget --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+]
+
+[[entries]]
+id = "OBL-0107"
+kind = "invariant"
+statement = "Release, expiry, holder loss, clock discontinuity, revocation, and boundary retirement advance or retire the lease generation before availability, invalidating every prior current claim."
+owning_crate = "peritus-leases"
+source_file = "crates/state/peritus-leases/src/proofs/fencing.rs"
+symbol = "peritus_leases::proofs::fencing::concrete_fence_invalidates_previous_claim"
+status = "in-progress"
+dependencies = []
+live_issue = "#5"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/state/peritus-leases/src/proofs/fencing.rs", symbol = "peritus_leases::proofs::fencing::concrete_fence_invalidates_previous_claim", command = "cargo verus verify --package peritus-leases --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/state/peritus-leases/src/proofs/fencing.rs", symbol = "peritus_leases::proofs::fencing::accepted_boundary_fence_is_terminal", command = "cargo verus verify --package peritus-leases --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+]
+
+[[entries]]
+id = "OBL-0108"
+kind = "contract"
+statement = "Every accepted logical lease-use transition is bounded by the exact current lease claim and by the exact actor, role, environment, revision, permission, action, and time authority in the consumed capability use."
+owning_crate = "peritus-leases"
+source_file = "crates/state/peritus-leases/src/model.rs"
+symbol = "peritus_leases::model::exact_authority_intersection"
+status = "in-progress"
+dependencies = ["INV-007", "INV-008"]
+live_issue = "#5"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/state/peritus-leases/src/proofs/authority.rs", symbol = "peritus_leases::proofs::authority::exact_intersection_is_no_broader_than_both_inputs", command = "cargo verus verify --package peritus-leases --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/state/peritus-leases/src/proofs/authority.rs", symbol = "peritus_leases::proofs::authority::executable_logical_use_remains_bound_to_current_claim", command = "cargo verus verify --package peritus-leases --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+]
+
+[[entries]]
+id = "OBL-0109"
+kind = "contract"
+statement = "Every accepted approval decision and approve-once use preserves the exact request, action, policy revision, decision, registry revision, and amendment identity digests selected by authenticated validation."
+owning_crate = "peritus-approval"
+source_file = "crates/state/peritus-approval/src/state/use_specification.rs"
+symbol = "peritus_approval::state::use_specification::consume_once_result_relation"
+status = "in-progress"
+dependencies = []
+live_issue = "#5"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/state/peritus-approval/src/proofs/binding.rs", symbol = "peritus_approval::proofs::binding::consume_once_preserves_digest", command = "cargo verus verify --package peritus-approval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/state/peritus-approval/src/state/specification.rs", symbol = "peritus_approval::state::specification::consume_once_refines", command = "cargo verus verify --package peritus-approval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+]
+
+[[entries]]
+id = "OBL-0110"
+kind = "invariant"
+statement = "An exact repeated approval response is idempotent, and no terminal approval phase can transition to a different semantic resolution or create a second consumption."
+owning_crate = "peritus-approval"
+source_file = "crates/state/peritus-approval/src/proofs/replay.rs"
+symbol = "peritus_approval::proofs::replay::terminal_state_cannot_change"
+status = "in-progress"
+dependencies = []
+live_issue = "#5"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/state/peritus-approval/src/proofs/replay.rs", symbol = "peritus_approval::proofs::replay::exact_replay_is_idempotent", command = "cargo verus verify --package peritus-approval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/state/peritus-approval/src/proofs/replay.rs", symbol = "peritus_approval::proofs::replay::terminal_state_cannot_change", command = "cargo verus verify --package peritus-approval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+]

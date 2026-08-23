@@ -37,6 +37,45 @@ pub(super) fn validate(
     enforce_review_base: bool,
     diagnostics: &mut Vec<Diagnostic>,
 ) -> Result<(), XtaskError> {
+    validate_with_proof_impact(
+        root,
+        policy,
+        cargo,
+        compilation_sources,
+        occurrences,
+        Some(enforce_review_base),
+        diagnostics,
+    )
+}
+
+pub(super) fn validate_local(
+    root: &Path,
+    policy: &ArchitecturePolicy,
+    cargo: &CargoMetadata,
+    compilation_sources: &[PathBuf],
+    occurrences: &[TrustedOccurrence],
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Result<(), XtaskError> {
+    validate_with_proof_impact(
+        root,
+        policy,
+        cargo,
+        compilation_sources,
+        occurrences,
+        None,
+        diagnostics,
+    )
+}
+
+fn validate_with_proof_impact(
+    root: &Path,
+    policy: &ArchitecturePolicy,
+    cargo: &CargoMetadata,
+    compilation_sources: &[PathBuf],
+    occurrences: &[TrustedOccurrence],
+    enforce_review_base: Option<bool>,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Result<(), XtaskError> {
     if policy.trusted_source_roots != [PathBuf::from(TCB_SOURCE_ROOT)] {
         diagnostics.push(Diagnostic::at(
             "architecture.toml",
@@ -55,8 +94,8 @@ pub(super) fn validate(
         manifest_file::read_toml(root, Path::new(OBLIGATIONS_PATH), diagnostics);
     let proof_impact: Option<ProofImpactDocument> =
         manifest_file::read_toml(root, Path::new(PROOF_IMPACT_PATH), diagnostics);
-    let (Some(actors), Some(trust), Some(exclusions), Some(obligations), Some(proof_impact)) =
-        (actors, trust, exclusions, obligations, proof_impact)
+    let (Some(actors), Some(trust), Some(exclusions), Some(obligations)) =
+        (actors, trust, exclusions, obligations)
     else {
         return Ok(());
     };
@@ -67,20 +106,23 @@ pub(super) fn validate(
     manifest_trust::validate(&context, &actors, &trust, occurrences, diagnostics);
     let indexed_exclusions = validate_exclusions(&context, &actors, &exclusions, diagnostics);
     validate_obligations(&context, &actors, &obligations, &indexed_exclusions, diagnostics);
-    manifest_impact::validate(
-        &context,
-        &actors,
-        &proof_impact,
-        compilation_sources,
-        enforce_review_base,
-        diagnostics,
-    )?;
+    if let (Some(enforce_review_base), Some(proof_impact)) = (enforce_review_base, proof_impact) {
+        manifest_impact::validate(
+            &context,
+            &actors,
+            &proof_impact,
+            compilation_sources,
+            enforce_review_base,
+            diagnostics,
+        )?;
+    }
     Ok(())
 }
 
 fn validate_inventory(root: &Path, diagnostics: &mut Vec<Diagnostic>) {
-    let expected = [ACTORS_PATH, TRUST_PATH, EXCLUSIONS_PATH, OBLIGATIONS_PATH, PROOF_IMPACT_PATH];
-    for relative in expected {
+    let required = [ACTORS_PATH, TRUST_PATH, EXCLUSIONS_PATH, OBLIGATIONS_PATH, PROOF_IMPACT_PATH];
+    let registered = required;
+    for relative in required {
         if !manifest_file::is_regular_without_symlink(root, Path::new(relative)) {
             diagnostics.push(Diagnostic::at(
                 relative,
@@ -125,15 +167,17 @@ fn validate_inventory(root: &Path, diagnostics: &mut Vec<Diagnostic>) {
                 continue;
             }
         };
-        if file_type.is_symlink() || file_type.is_dir() {
+        let relative = path.strip_prefix(root).unwrap_or(&path);
+        let registered_review_directory = relative == Path::new("verification/reviews");
+        if file_type.is_symlink() || file_type.is_dir() && !registered_review_directory {
             diagnostics.push(Diagnostic::at(
-                path.strip_prefix(root).unwrap_or(&path),
+                relative,
                 "verification inventory contains a symlink or nested directory",
-                "keep the A1 manifest directory flat and fully scanned",
+                "keep the manifest directory flat except for the recursively reconciled verification/reviews tree",
             ));
         }
         let is_toml = path.extension().and_then(|extension| extension.to_str()) == Some("toml");
-        if is_toml && !expected.iter().any(|expected| path == root.join(expected)) {
+        if is_toml && !registered.iter().any(|expected| path == root.join(expected)) {
             diagnostics.push(Diagnostic::at(
                 path.strip_prefix(root).unwrap_or(&path),
                 "unregistered verification TOML can evade the canonical schemas",

@@ -1,11 +1,11 @@
 //! Boundary tests shared by every nominal identifier type.
 
 use peritus_types::{
-    AcceptanceSpecId, ActionId, ActorId, ApprovalRequestId, ArtifactId, AttemptId, CommandId,
-    EnvironmentId, EvaluationCampaignId, EventId, EvidenceId, EvolutionCampaignId, FindingId,
-    GateExecutionId, GateId, HarnessId, IdentifierError, PolicyId, ProcessId, ProjectId,
-    ProviderProfileId, ResourceId, ReviewCycleId, RunId, SessionId, SnapshotId, TurnId,
-    WorkspaceId,
+    AcceptanceSpecId, ActionId, ActorId, ApprovalRequestId, ArtifactId, AttemptId, BudgetId,
+    BudgetReservationId, CommandId, EnvironmentId, EvaluationCampaignId, EventId, EvidenceId,
+    EvolutionCampaignId, FindingId, GateExecutionId, GateId, HarnessId, IdentifierError, PolicyId,
+    ProcessId, ProjectId, ProviderProfileId, ResourceId, ReviewCycleId, RunId, SessionId,
+    SnapshotId, TurnId, WorkspaceId,
 };
 use std::collections::BTreeSet;
 
@@ -48,6 +48,8 @@ fn every_nominal_identifier_enforces_the_shared_boundary() {
     assert_identifier(ReviewCycleId::new, ReviewCycleId::into_bytes);
     assert_identifier(FindingId::new, FindingId::into_bytes);
     assert_identifier(ApprovalRequestId::new, ApprovalRequestId::into_bytes);
+    assert_identifier(BudgetId::new, BudgetId::into_bytes);
+    assert_identifier(BudgetReservationId::new, BudgetReservationId::into_bytes);
     assert_identifier(EvaluationCampaignId::new, EvaluationCampaignId::into_bytes);
     assert_identifier(EvolutionCampaignId::new, EvolutionCampaignId::into_bytes);
 }
