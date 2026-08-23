@@ -1,6 +1,6 @@
 {
   "next_display_id": 6,
-  "next_comment_id": 120,
+  "next_comment_id": 121,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -642,7 +642,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-22T16:02:46.854617936Z",
-      "updated_at": "2026-08-23T03:18:21.055879336Z",
+      "updated_at": "2026-08-23T03:19:07.669919856Z",
       "labels": [
         "feature"
       ],
@@ -898,6 +898,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAOEIycxksfsAdhUKWa7ziBAXCH1FN7t60YZwmbssKhLZ1F+bd/2wNIRScF1tuh66IJR9pkwAHsTQMkoIAS7e5Aw=="
+        },
+        "891fa094-8ec3-49d1-a795-53a048176901": {
+          "display_id": 120,
+          "author": "6ME5",
+          "content": "B1 authority foundation is integrated on main at 482b9fc39752aab3e806f2c0d86a72a448e67332 through PR #3. The candidate and exact-main Foundation verification and Gate A matrices passed across Linux, macOS, Windows, strict Verus verification/release builds, source/API policy, dependencies, and supply chain. Six implementation commits retain valid local SSH signatures; the GitHub merge commit is server-created. The Enterprise-only detached proof-impact reviewer/PCR runner remains explicitly deferred by owner direction and is not represented as completed.",
+          "created_at": "2026-08-23T03:19:07.666135704Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAVfqEXPeL8ti1R9mddmyKevGo53kyDbF2AA1extLfwkgvRnHOKVtRaqy9HqeZcFFN9Hj977uzEDwMU1WxJNNOBw=="
         },
         "89b910f9-1f36-49aa-87da-d94b77d91b9d": {
           "display_id": 63,
@@ -1183,8 +1192,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-23T03:18:21.055879336Z",
+    "timestamp": "2026-08-23T03:19:07.669919856Z",
     "agent_id": "6ME5",
-    "agent_seq": 150
+    "agent_seq": 151
   }
 }
