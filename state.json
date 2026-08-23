@@ -1,6 +1,6 @@
 {
   "next_display_id": 7,
-  "next_comment_id": 125,
+  "next_comment_id": 126,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -1199,7 +1199,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-23T03:36:27.934804481Z",
-      "updated_at": "2026-08-23T03:38:54.318137786Z",
+      "updated_at": "2026-08-23T04:13:36.432038672Z",
       "labels": [
         "feature"
       ],
@@ -1239,14 +1239,23 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAunnnxo0CO92pMtqpo4NIRNh4Ryhb6kWQ0Zr8C1XlqBH97biraTnasHMroK8w0uZqK6ULxOWdT7VeVI8HtK9bAg=="
+        },
+        "c2fca735-407e-4fb6-bc62-bfd123b42c83": {
+          "display_id": 125,
+          "author": "6ME5",
+          "content": "Gate A completed green. The single independent final review found two concrete blockers: completion limits were not enforced by acceptance evaluation, and formal DAG/completeness claims needed executable bridges. The two owning agents are repairing those scoped causes; no B2 scope expansion.",
+          "created_at": "2026-08-23T04:13:36.420954303Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA2GjqkwRhMkb0rwIJqiIfwjws0iGKrEtABVcDMNq7zE2KzU4ARUfi7uKMiiu4mp7QmTUI8oWUYRkNpqGLzlTVBw=="
         }
       }
     }
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-23T03:38:54.318137786Z",
+    "timestamp": "2026-08-23T04:13:36.432038672Z",
     "agent_id": "6ME5",
-    "agent_seq": 160
+    "agent_seq": 161
   }
 }
