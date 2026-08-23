@@ -1,6 +1,6 @@
 {
   "next_display_id": 6,
-  "next_comment_id": 114,
+  "next_comment_id": 115,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -642,7 +642,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-22T16:02:46.854617936Z",
-      "updated_at": "2026-08-23T02:36:41.028736330Z",
+      "updated_at": "2026-08-23T02:37:45.144649846Z",
       "labels": [
         "feature"
       ],
@@ -1052,6 +1052,15 @@
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAGcHaFHgJ6wOxt/lSZsyFzBb4ALHo4lcJjj6vgsRoP4KS/uaWWqvc5duR4VtyNhuuKMEmPpos7yK8BD+OB9nFCw=="
         },
+        "df2e9125-afcf-46fd-b9cb-e6093cf741ca": {
+          "display_id": 114,
+          "author": "6ME5",
+          "content": "[action] B1 goal marked blocked after three consecutive remote checks: local HEAD 16bf12b remains absent from origin; no additional local functional work remains, and protected PCR/reviewer workflows are deferred.",
+          "created_at": "2026-08-23T02:37:45.141798997Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIhV2oJ+VzSMwpg8u5mL9o3Dq1B+O4zwBMCpo9e4wvQ0DbHQhEskqHHCWt32l6adipx9o3EkGnY54tRKhu1s+Bw=="
+        },
         "e6cc16ef-6027-43e9-8e0a-d642022148e3": {
           "display_id": 64,
           "author": "6ME5",
@@ -1129,8 +1138,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-23T02:36:41.028736330Z",
+    "timestamp": "2026-08-23T02:37:45.144649846Z",
     "agent_id": "6ME5",
-    "agent_seq": 144
+    "agent_seq": 145
   }
 }
