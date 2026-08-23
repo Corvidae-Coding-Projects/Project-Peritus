@@ -1,6 +1,6 @@
 {
   "next_display_id": 10,
-  "next_comment_id": 151,
+  "next_comment_id": 152,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "2b288a30-b5b1-4452-81bd-20950bebd2d3": 9,
@@ -75,11 +75,20 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-23T09:26:36.193516281Z",
-      "updated_at": "2026-08-23T09:32:25.543603811Z",
+      "updated_at": "2026-08-23T09:32:29.881887376Z",
       "labels": [
         "feature"
       ],
       "comments": {
+        "490c9cb0-8f85-43f1-8948-b42448934be4": {
+          "display_id": 151,
+          "author": "6ME5",
+          "content": "C0 preflight complete. Design recorded at .design/c0-journal-projections-artifacts.md with 17 testable requirements, 15 acceptance criteria, SQLite/artifact transaction boundaries, replay/migration/evidence contracts, and all five refinement discharges. Beginning only the two initial independent workstreams: peritus-journal and peritus-artifact-store.",
+          "created_at": "2026-08-23T09:32:29.879430425Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAfH6jpkaxbGEiXEXm8lPjLoCCVbwSWPagu+prHGNkDTQ+CAgeo/WDU3b0c9cDQrQXcq1bfj1CDzP9UQYvNd+pDQ=="
+        },
         "f5a945b1-d0ee-4f3e-829f-d814bf49c403": {
           "display_id": 150,
           "author": "6ME5",
@@ -1533,8 +1542,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-23T09:32:25.543603811Z",
+    "timestamp": "2026-08-23T09:32:29.881887376Z",
     "agent_id": "6ME5",
-    "agent_seq": 201
+    "agent_seq": 202
   }
 }
