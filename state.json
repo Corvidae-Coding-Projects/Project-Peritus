@@ -1420,11 +1420,12 @@
       "display_id": 8,
       "title": "Implement B3 domain protocol and canonical codec",
       "description": "Create peritus-codec and peritus-protocol with canonical versioned encoding, bounded decoding, checked wire/domain conversion, complete B0 command/event/error coverage, B1/B2 digest and contract bindings, compatibility fixtures, schema/code generation, architecture/proof registration, and CI evidence.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-23T07:57:26.582505889Z",
-      "updated_at": "2026-08-23T09:14:12.940161108Z",
+      "updated_at": "2026-08-23T09:14:17.083533456Z",
+      "closed_at": "2026-08-23T09:14:17.083532200Z",
       "labels": [
         "feature"
       ],
@@ -1506,8 +1507,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-23T09:14:12.940161108Z",
+    "timestamp": "2026-08-23T09:14:17.083533456Z",
     "agent_id": "6ME5",
-    "agent_seq": 195
+    "agent_seq": 196
   }
 }
