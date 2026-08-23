@@ -40,7 +40,7 @@ mod tests {
     fn policy(packages: &str) -> ArchitecturePolicy {
         toml::from_str(&format!(
             r#"
-schema = 2
+schema = 3
 soft_source_lines = 400
 hard_source_lines = 700
 root_module_lines = 80

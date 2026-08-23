@@ -1,4 +1,4 @@
-schema = 2
+schema = 3
 soft_source_lines = 400
 hard_source_lines = 700
 root_module_lines = 80
@@ -160,3 +160,111 @@ path = "xtask"
 owner = "A0"
 layer = "engineering"
 verification_class = "C"
+
+[[refinement_reservations]]
+id = "REF-C0-B1-COMMIT-ONCE"
+introduced_by = "B1"
+future_owner = "C0"
+statement = "Transactional append/CAS and opaque commit receipts preserve capability, budget begin/reservation/usage/finalization, lease, and approval transitions under crash/replay without lost/double consumption or unsafe release. In particular, C0 cannot commit CancelHeld from a raw ReservationReference, B1 receipt, or B1 transition; it requires the matching committed begin lineage plus its own non-forgeable authoritative target/journal observation proving non-activation."
+
+[[refinement_reservations]]
+id = "REF-B3-B1-DIGEST-BYTES"
+introduced_by = "B1"
+future_owner = "B3"
+statement = "Canonical action/event/amendment bytes match every digest consumed by B1. Amendment bytes include the base policy, successor policy, replacement tier, and complete canonical replacement policy layer; equal approved amendment digests therefore denote equal candidate replacements."
+
+[[refinement_reservations]]
+id = "REF-C1-B1-RESOURCE-IDENTITY"
+introduced_by = "B1"
+future_owner = "C1"
+statement = "Resolved filesystem/workspace targets match exact authorized ResourceId values."
+
+[[refinement_reservations]]
+id = "REF-C1-B1-RECONCILE-SAFETY"
+introduced_by = "B1"
+future_owner = "C1"
+statement = "Exactly correlated post-fence workspace inspection establishes safe-to-acquire or a typed dirty/indeterminate result without guessing."
+
+[[refinement_reservations]]
+id = "REF-C2-B1-HOLDER-QUIESCENCE"
+introduced_by = "B1"
+future_owner = "C2"
+statement = "Process/task ownership evidence proves the exact prior lease holder is quiescent before normal release or safe reconciliation."
+
+[[refinement_reservations]]
+id = "REF-C4-B1-OPERATION-CLASS"
+introduced_by = "B1"
+future_owner = "C4"
+statement = "Each concrete tool consumes B1 OperationDescriptor values and its implementation matches the authenticated operation class."
+
+[[refinement_reservations]]
+id = "REF-C0-B1-CREDENTIAL-REGISTRY-CURRENT"
+introduced_by = "B1"
+future_owner = "C0"
+statement = "The durable credential registry advances a nonreused revision/generation on issue, disable, revoke, and same-key reissue; it returns an opaque non-forgeable observation identifying the exact checked snapshot bytes and revision. A raw or stale B1 snapshot is not a currentness claim."
+
+[[refinement_reservations]]
+id = "REF-B0-B1-CURRENT-STATE-WITNESS"
+introduced_by = "B1"
+future_owner = "B0"
+statement = "V-only kernel logic binds current lifecycle/policy/revision/action facts, exact producing-attempt and review-participant sets, and the exact current credential-registry revision, and produces the logical PolicyActivationTransition and next-state plan from V-owned candidate facts without importing H approval or C0 types."
+
+[[refinement_reservations]]
+id = "REF-E0-B1-COMMIT-BEFORE-EFFECT"
+introduced_by = "B1"
+future_owner = "E0"
+statement = "E0 assembles matching capability use, durable budget charge/reservation, lease use when mutating, approval plus its exact credential-registry revision when required, B0 current-state witness, and exact C0 commit/current-registry receipts before invoking a target authorization gateway; it does not construct that target's permit."
+
+[[refinement_reservations]]
+id = "REF-C1-B1-AUTHORITY-GATE"
+introduced_by = "B1"
+future_owner = "C1"
+statement = "The workspace crate owns WorkspaceAuthorizationRequest; its gateway validates E0-supplied B1/B0/C0 inputs and alone constructs its private mutation permit, with no public raw bypass."
+
+[[refinement_reservations]]
+id = "REF-C2-B1-AUTHORITY-GATE"
+introduced_by = "B1"
+future_owner = "C2"
+statement = "The process crate owns ExecutionAuthorizationRequest; its gateway validates E0-supplied B1/B0/C0 inputs and alone constructs its private execution permit, with no public raw bypass."
+
+[[refinement_reservations]]
+id = "REF-C4-B1-AUTHORITY-GATE"
+introduced_by = "B1"
+future_owner = "C4"
+statement = "The tool router owns ToolAuthorizationRequest; it validates E0-supplied B1/B0/C0 inputs and alone constructs its private invocation permit, with no built-in-tool bypass."
+
+[[refinement_reservations]]
+id = "REF-E0-B1-POLICY-ACTIVATION"
+introduced_by = "B1"
+future_owner = "E0"
+statement = "E0 matches candidate, H-owned approved amendment, B0 witness, and first C0 approval receipt; submits B0's unchanged V-only activation plan for a distinct linked C0 commit; then installs/replays only B0's exact next state after the second receipt."
+
+[[refinement_reservations]]
+id = "REF-B2-B1-CONTRACT-REVISION"
+introduced_by = "B1"
+future_owner = "B2"
+statement = "Acceptance-contract validation binds every authority request to one exact RevisionTuple."
+
+[[refinement_reservations]]
+id = "REF-B0-B1-REVISION-FRESHNESS"
+introduced_by = "B1"
+future_owner = "B0"
+statement = "Kernel lifecycle checks reject B1 transitions whose exact RevisionTuple is not current."
+
+[[refinement_reservations]]
+id = "REF-B0-B1-BUDGET-CEILING"
+introduced_by = "B1"
+future_owner = "B0"
+statement = "Kernel integration proves root limit is within the B2 effective policy ceiling and child limit is within parent availability."
+
+[[refinement_reservations]]
+id = "REF-C0-B1-CLOCK-EPOCH"
+introduced_by = "B1"
+future_owner = "C0"
+statement = "Durable compare-and-swap allocation never reuses or decreases the authority-clock epoch and returns bounded observations."
+
+[[refinement_reservations]]
+id = "REF-G0-B1-STARTUP-FENCING"
+introduced_by = "B1"
+future_owner = "G0"
+statement = "Restart advances the durable epoch, fences/reconciles every active lease, invalidates prior capability/approval time state, and blocks mutation intake until complete."

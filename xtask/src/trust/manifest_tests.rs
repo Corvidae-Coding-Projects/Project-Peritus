@@ -45,7 +45,7 @@ impl Drop for Fixture {
 
 fn policy() -> ArchitecturePolicy {
     ArchitecturePolicy {
-        schema: 2,
+        schema: 3,
         soft_source_lines: 400,
         hard_source_lines: 700,
         root_module_lines: 80,
@@ -58,6 +58,7 @@ fn policy() -> ArchitecturePolicy {
         verification_classes: Vec::new(),
         forbidden_dependencies: Vec::new(),
         controlled_source_roots: Vec::new(),
+        refinement_reservations: Vec::new(),
         packages: vec![
             PackagePolicy {
                 name: "peritus-tcb".to_owned(),
@@ -120,7 +121,7 @@ fn write_fixture(fixture: &Fixture, trust_entries: &str) {
         (".cargo/config.toml", "[build]\nincremental = false\n"),
         ("rust-toolchain.toml", "[toolchain]\nchannel='1.97.1'\n"),
         ("toolchains.toml", "schema = 1\n"),
-        ("architecture.toml", "schema = 2\n"),
+        ("architecture.toml", "schema = 3\n"),
         ("crates/foundation/peritus-tcb/Cargo.toml", "[package]\nname='peritus-tcb'\n"),
         ("crates/foundation/peritus-types/Cargo.toml", "[package]\nname='peritus-types'\n"),
         (

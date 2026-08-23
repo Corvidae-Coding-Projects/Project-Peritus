@@ -164,7 +164,7 @@ fn check(fixture: &Fixture) -> Result<super::Report, crate::error::XtaskError> {
 fn fixture_policy() -> ArchitecturePolicy {
     toml::from_str(
         r#"
-schema = 2
+schema = 3
 soft_source_lines = 400
 hard_source_lines = 700
 root_module_lines = 80
@@ -192,7 +192,7 @@ verification_class = "V"
 fn b1_fixture_policy(package: &str) -> ArchitecturePolicy {
     toml::from_str(&format!(
         r#"
-schema = 2
+schema = 3
 soft_source_lines = 400
 hard_source_lines = 700
 root_module_lines = 80
