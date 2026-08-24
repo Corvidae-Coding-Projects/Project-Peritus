@@ -1,6 +1,6 @@
 {
   "next_display_id": 15,
-  "next_comment_id": 248,
+  "next_comment_id": 249,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "19b7b53a-b2fb-41c1-835d-ffd6ce605c08": 14,
@@ -74,7 +74,7 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-08-24T18:11:58.216818603Z",
-      "updated_at": "2026-08-24T22:40:02.712481943Z",
+      "updated_at": "2026-08-24T22:40:07.400953091Z",
       "labels": [
         "feature"
       ],
@@ -285,6 +285,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAUMHHPLSBvP53XSJXYqn+Xid/CbAA0H2ZsafajVKps4Sy9zQA6d24Sx/H9qAZJyFxFHWZ40ljzewGVBxTm/c/AQ=="
+        },
+        "b162b151-9dd8-4a12-a8f9-8b12f391b8fd": {
+          "display_id": 248,
+          "author": "6ME5",
+          "content": "Codex account runtime milestone accepted: official codex executable is a credential-owning stateless router; 17 direct/unit tests plus a real-process A2 integration running all 14 fresh-subject cases pass; strict Clippy/rustdoc, fixture hashes, source-layout, architecture, ordinary API, and unscoped all-feature Verus verify/release build pass.",
+          "created_at": "2026-08-24T22:40:07.398369503Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAaGFIcG04SMVTQSkdPv+I6/riKqb4Um3ZH5ccSbOZFZIv40tOg7n3BObGnla7osUIg1XuPshtIRvk5qw6tmrqDg=="
         },
         "b37b81c6-f617-4cb7-a034-e8099b5e5249": {
           "display_id": 208,
@@ -2488,8 +2497,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-24T22:40:02.712481943Z",
+    "timestamp": "2026-08-24T22:40:07.400953091Z",
     "agent_id": "6ME5",
-    "agent_seq": 325
+    "agent_seq": 326
   }
 }
