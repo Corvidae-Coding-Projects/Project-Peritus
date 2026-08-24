@@ -71,6 +71,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Fixed
 - Canonicalize account-runtime fake executable working directories so their isolation assertions
   remain valid across macOS `/var` and `/private/var` path aliases
+- Make explicit fake-HTTP release points wait briefly for an already-issued peer close instead of
+  racing the macOS loopback stack with a single immediate observation
 - Make malformed completed UTF-8 or JSON establish an irreversible failed reducer terminal, reject
   all post-terminal events without replacing the original outcome, and classify explicit
   non-accepting HTTP responses separately from ambiguous post-send failures

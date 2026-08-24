@@ -10,6 +10,9 @@ use super::{FakeHttpError, FakeHttpErrorKind};
 use std::io::{Read, Write};
 use std::net::{Shutdown, TcpListener, TcpStream};
 use std::sync::Arc;
+use std::time::Duration;
+
+const RELEASED_PEER_SIGNAL_TIMEOUT: Duration = Duration::from_millis(250);
 
 pub fn serve(
     listener: &TcpListener,
@@ -153,8 +156,9 @@ fn write_response(
     response: &ScriptedHttpResponse,
     shared: &Arc<Shared>,
 ) -> Result<(usize, FakeHttpTermination), FakeHttpError> {
-    pause_if_selected(shared, response.release, FakeHttpReleasePoint::BeforeHeaders)?;
-    if peer_closed(stream) {
+    let released =
+        pause_if_selected(shared, response.release, FakeHttpReleasePoint::BeforeHeaders)?;
+    if peer_closed(stream, released) {
         return Ok((0, FakeHttpTermination::PeerClosed));
     }
     let status = format!("HTTP/1.1 {} {}\r\n", response.status, reason(response.status));
@@ -181,8 +185,9 @@ fn write_response(
         if response.fault == FakeHttpFault::CloseAfterChunks(sent) {
             return scripted_close(stream, shared, response.release, sent);
         }
-        pause_if_selected(shared, response.release, FakeHttpReleasePoint::BeforeChunk(index))?;
-        if peer_closed(stream) {
+        let released =
+            pause_if_selected(shared, response.release, FakeHttpReleasePoint::BeforeChunk(index))?;
+        if peer_closed(stream, released) {
             return Ok((sent, FakeHttpTermination::PeerClosed));
         }
         if write_part(stream, chunk).is_err() {
@@ -203,7 +208,7 @@ fn scripted_close(
     release: Option<FakeHttpReleasePoint>,
     sent: usize,
 ) -> Result<(usize, FakeHttpTermination), FakeHttpError> {
-    pause_if_selected(shared, release, FakeHttpReleasePoint::BeforeClose)?;
+    let _released = pause_if_selected(shared, release, FakeHttpReleasePoint::BeforeClose)?;
     let _shutdown = stream.shutdown(Shutdown::Both);
     Ok((sent, FakeHttpTermination::ScriptedClose))
 }
@@ -212,9 +217,9 @@ fn pause_if_selected(
     shared: &Arc<Shared>,
     selected: Option<FakeHttpReleasePoint>,
     current: FakeHttpReleasePoint,
-) -> Result<(), FakeHttpError> {
+) -> Result<bool, FakeHttpError> {
     if selected != Some(current) {
-        return Ok(());
+        return Ok(false);
     }
     let mut control = shared.control.lock().map_err(|_poisoned| sync_error())?;
     control.blocked = Some(current);
@@ -229,14 +234,23 @@ fn pause_if_selected(
     if shutdown {
         return Err(io_error("HTTP worker was shut down at its release point"));
     }
-    Ok(())
+    Ok(true)
 }
 
 fn write_part(stream: &mut TcpStream, bytes: &[u8]) -> std::io::Result<()> {
     stream.write_all(bytes)
 }
 
-fn peer_closed(stream: &TcpStream) -> bool {
+fn peer_closed(stream: &TcpStream, released: bool) -> bool {
+    if released {
+        if stream.set_read_timeout(Some(RELEASED_PEER_SIGNAL_TIMEOUT)).is_err() {
+            return false;
+        }
+        let mut byte = [0_u8; 1];
+        let closed = matches!(stream.peek(&mut byte), Ok(0));
+        let _timeout = stream.set_read_timeout(None);
+        return closed;
+    }
     if stream.set_nonblocking(true).is_err() {
         return false;
     }
