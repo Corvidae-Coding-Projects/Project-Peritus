@@ -6,7 +6,11 @@ mod integration_support;
 mod process_authority;
 mod router_authority;
 
-use std::{sync::Arc, thread, time::Duration};
+use std::{
+    sync::Arc,
+    thread,
+    time::{Duration, Instant},
+};
 
 use integration_support::{NativeBackend, quality_plan, shell_plan};
 use peritus_artifact_store::{ArtifactStore, StoreConfig};
@@ -327,14 +331,18 @@ fn artifact_store(root: &process_authority::TestRoot) -> ArtifactStore {
 }
 
 fn await_result(router: &mut ToolRouter, handle: InvocationHandle, first_tick: u64) -> ToolResult {
-    for tick in first_tick..70 {
+    let began = Instant::now();
+    let deadline = Duration::from_secs(10);
+    let mut tick = first_tick;
+    while began.elapsed() < deadline {
         let update = router.poll(handle, instant(tick)).expect("poll execution");
         if let Some(result) = update.terminal() {
             return result.clone();
         }
+        tick = tick.checked_add(1).expect("test authority tick overflow");
         thread::sleep(Duration::from_millis(10));
     }
-    panic!("execution did not terminate before the test authority deadline")
+    panic!("execution did not terminate within the ten-second test deadline")
 }
 
 fn candidate_outcome(result: &ToolResult) -> String {
