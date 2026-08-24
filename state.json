@@ -1,6 +1,6 @@
 {
   "next_display_id": 15,
-  "next_comment_id": 211,
+  "next_comment_id": 212,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "19b7b53a-b2fb-41c1-835d-ffd6ce605c08": 14,
@@ -79,11 +79,20 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-08-24T18:11:58.216818603Z",
-      "updated_at": "2026-08-24T18:23:18.899443239Z",
+      "updated_at": "2026-08-24T19:07:56.155825502Z",
       "labels": [
         "feature"
       ],
       "comments": {
+        "1384c2f3-1730-41b4-8c43-3e04ee525156": {
+          "display_id": 211,
+          "author": "6ME5",
+          "content": "Provider-core implementation boundary is complete locally: validated/redacted endpoints, credentials and HTTP ownership; Reqwest/Rustls transport; cancellation-aware bounded byte streams; SSE/NDJSON framing; retry/backoff; normalized ModelProvider/OwnedModelStream interfaces; exact profile rebinding; early-EOF failure and drop cancellation. HTTP/framing responsibilities were split below the 400-line source budget. Focused core tests pass; final strict integrated evidence awaits the protocol compatibility track.",
+          "created_at": "2026-08-24T19:07:56.147111771Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAV3dOIyhZ+9UTVU7Q8fMdym2tqpa3CnDNu2f4/5NRpoO59pN24jBWkes+sPuRxo02nCBGVJE9XYPSq/RBpVdsAQ=="
+        },
         "813f1374-8926-4a8c-ae97-179803678cd5": {
           "display_id": 209,
           "author": "6ME5",
@@ -2160,8 +2169,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-24T18:23:18.899443239Z",
+    "timestamp": "2026-08-24T19:07:56.155825502Z",
     "agent_id": "6ME5",
-    "agent_seq": 287
+    "agent_seq": 288
   }
 }
