@@ -1,6 +1,6 @@
 {
   "next_display_id": 15,
-  "next_comment_id": 224,
+  "next_comment_id": 225,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "19b7b53a-b2fb-41c1-835d-ffd6ce605c08": 14,
@@ -79,7 +79,7 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-08-24T18:11:58.216818603Z",
-      "updated_at": "2026-08-24T20:24:20.334787234Z",
+      "updated_at": "2026-08-24T20:24:25.639096129Z",
       "labels": [
         "feature"
       ],
@@ -146,6 +146,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJJ38omLvEyi7LT978ihmn313MniHTlDkT034R7xn+HRNgYnEy8V8NhA2FUdUd7apZb8g+ggBx2wWnOnMxEncDQ=="
+        },
+        "ad2e8dba-ee58-419c-8e7b-9f7503f567d7": {
+          "display_id": 224,
+          "author": "6ME5",
+          "content": "[action] Validated provider-core cancellation boundary; next complete OpenAI and Anthropic, then reuse the same two tracks for Google and compatible before C5 integration.",
+          "created_at": "2026-08-24T20:24:25.636352035Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAUMHHPLSBvP53XSJXYqn+Xid/CbAA0H2ZsafajVKps4Sy9zQA6d24Sx/H9qAZJyFxFHWZ40ljzewGVBxTm/c/AQ=="
         },
         "b37b81c6-f617-4cb7-a034-e8099b5e5249": {
           "display_id": 208,
@@ -2277,8 +2286,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-24T20:24:20.334787234Z",
+    "timestamp": "2026-08-24T20:24:25.639096129Z",
     "agent_id": "6ME5",
-    "agent_seq": 300
+    "agent_seq": 301
   }
 }
