@@ -1,6 +1,6 @@
 {
   "next_display_id": 15,
-  "next_comment_id": 240,
+  "next_comment_id": 241,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "19b7b53a-b2fb-41c1-835d-ffd6ce605c08": 14,
@@ -79,7 +79,7 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-08-24T18:11:58.216818603Z",
-      "updated_at": "2026-08-24T21:41:05.898111025Z",
+      "updated_at": "2026-08-24T21:41:11.560775381Z",
       "labels": [
         "feature"
       ],
@@ -128,6 +128,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABArfPab/qhVjzm1XWoupAtmtOOSTIL5NrPx/s4CfJeO+jdfwMbHUmDqHTOf2PyX8arTUNTOjAp8r8vVKmlgmuHDg=="
+        },
+        "2e684713-a554-4e78-8758-c9c6428e4023": {
+          "display_id": 240,
+          "author": "6ME5",
+          "content": "[action] Amended .design/c5-model-providers.md for official Codex/Claude executable-as-router account transports, advisory output-limit semantics, bounded provider-core process ownership, and A2 fake-executable acceptance.",
+          "created_at": "2026-08-24T21:41:11.557584515Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAkNzw1iHx/Xx31JTsuQSA6PXznWljQEZFEVOEEFXcZIl/XRVW2kAUMvrZbeoLr26aQgRLIaSwaAyUZ7ndyhUaAg=="
         },
         "442105ed-1c7e-4f71-86eb-3bc318089a7b": {
           "display_id": 217,
@@ -2421,8 +2430,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-24T21:41:05.898111025Z",
+    "timestamp": "2026-08-24T21:41:11.560775381Z",
     "agent_id": "6ME5",
-    "agent_seq": 316
+    "agent_seq": 317
   }
 }
