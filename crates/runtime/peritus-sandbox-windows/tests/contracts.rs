@@ -138,11 +138,12 @@ fn descriptor_admission_and_inert_config_fail_closed() {
     assert!(!unsupported.core_supported());
     assert_eq!(unsupported.supported_features().bits(), 0);
 
+    let root = tempfile::tempdir().unwrap();
     let invalid = WindowsBackendConfig::new(
-        "/tmp/helper.exe".into(),
+        root.path().join("helper.exe"),
         WindowsPath::new(r"C:\workspace").unwrap(),
         Vec::new(),
-        "/tmp/acl".into(),
+        root.path().join("acl"),
         token(),
         Some(Sha256Digest::new([9; 32])),
         None,
@@ -161,11 +162,12 @@ fn descriptor_admission_and_inert_config_fail_closed() {
 fn supported_backend_admits_deny_all_without_starting_native_effects() {
     let plan = support::checked_plan(Vec::new());
     let helper_digest = Sha256Digest::new([0xC3; 32]);
+    let root = tempfile::tempdir().unwrap();
     let config = WindowsBackendConfig::new(
-        "/tmp/peritus-windows-helper.exe".into(),
+        root.path().join("peritus-windows-helper.exe"),
         WindowsPath::new(r"C:\workspace").unwrap(),
         vec![WindowsPath::new(r"C:\workspace\.git").unwrap()],
-        "/tmp/peritus-acl".into(),
+        root.path().join("peritus-acl"),
         token(),
         None,
         None,
