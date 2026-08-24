@@ -69,6 +69,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Implement A2 test/conformance foundation (#4)
 
 ### Fixed
+- Canonicalize account-runtime fake executable working directories so their isolation assertions
+  remain valid across macOS `/var` and `/private/var` path aliases
 - Make malformed completed UTF-8 or JSON establish an irreversible failed reducer terminal, reject
   all post-terminal events without replacing the original outcome, and classify explicit
   non-accepting HTTP responses separately from ambiguous post-send failures

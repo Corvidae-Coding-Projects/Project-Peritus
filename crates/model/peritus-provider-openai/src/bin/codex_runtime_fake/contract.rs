@@ -20,15 +20,21 @@ pub(super) fn valid(arguments: &[String], stdin: &str) -> bool {
     ];
     let required_present = required.iter().all(|value| arguments.iter().any(|item| item == value));
     let schema = argument_value(arguments, "--output-schema").map(PathBuf::from);
-    let cwd = std::env::current_dir().ok();
-    let isolated_schema = schema.as_ref().is_some_and(|path| {
-        path.is_file() && cwd.as_ref().is_some_and(|directory| path.parent() == Some(directory))
-    });
+    let isolated_schema = schema.as_deref().is_some_and(is_file_in_working_directory);
     required_present
         && environment_absent()
         && isolated_schema
         && arguments.iter().filter(|value| value.as_str() == "--disable").count() >= 16
         && stdin.starts_with("Peritus is the sole host agent")
+}
+
+fn is_file_in_working_directory(path: &std::path::Path) -> bool {
+    let Some(parent) = path.parent() else {
+        return false;
+    };
+    path.is_file()
+        && std::fs::canonicalize(parent).ok()
+            == std::env::current_dir().and_then(std::fs::canonicalize).ok()
 }
 
 pub(super) fn environment_absent() -> bool {

@@ -58,11 +58,8 @@ fn valid_turn(arguments: &[String], stdin: &str) -> bool {
         "--system-prompt-file",
         "--json-schema",
     ];
-    let cwd = std::env::current_dir().ok();
     let system = argument_value(arguments, "--system-prompt-file").map(PathBuf::from);
-    let isolated_system = system.as_ref().is_some_and(|path| {
-        path.is_file() && cwd.as_ref().is_some_and(|directory| path.parent() == Some(directory))
-    });
+    let isolated_system = system.as_deref().is_some_and(is_file_in_working_directory);
     let system_owned = system
         .as_deref()
         .and_then(|path| std::fs::read_to_string(path).ok())
@@ -77,6 +74,15 @@ fn valid_turn(arguments: &[String], stdin: &str) -> bool {
         && system_owned
         && schema_is_inert
         && stdin.starts_with("The following JSON is the complete ordered conversation state")
+}
+
+fn is_file_in_working_directory(path: &std::path::Path) -> bool {
+    let Some(parent) = path.parent() else {
+        return false;
+    };
+    path.is_file()
+        && std::fs::canonicalize(parent).ok()
+            == std::env::current_dir().and_then(std::fs::canonicalize).ok()
 }
 
 fn environment_absent() -> bool {
