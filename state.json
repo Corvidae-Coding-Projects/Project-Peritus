@@ -1,6 +1,6 @@
 {
   "next_display_id": 15,
-  "next_comment_id": 237,
+  "next_comment_id": 238,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "19b7b53a-b2fb-41c1-835d-ffd6ce605c08": 14,
@@ -79,7 +79,7 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-08-24T18:11:58.216818603Z",
-      "updated_at": "2026-08-24T21:21:57.866979420Z",
+      "updated_at": "2026-08-24T21:25:51.520381864Z",
       "labels": [
         "feature"
       ],
@@ -326,6 +326,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAj1oy+EhVysQQw1I6cdYaoxn9kKZ+cjXiHf5rkVav+mEUMoAFqkdsErG23KOAin2aeJMkbV3bxmGk3SYWTjDiDw=="
+        },
+        "f2ee7057-dd23-4f3f-bfb5-1e86c33827c9": {
+          "display_id": 237,
+          "author": "6ME5",
+          "content": "Scope addition from user: add account-backed OpenAI Codex and Anthropic Claude Agent SDK transports, using OpenClaudia's official-executable ownership pattern. Direct API-key clients remain. No token extraction/impersonation: Codex App Server/CLI and unmodified Claude runtime own login, refresh, account routing. Architecture review in progress before implementation.",
+          "created_at": "2026-08-24T21:25:51.515503043Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAiqiU6rTi5MeKP85q0Y9MTpCWZbtp6S2S/BLhaY3vvUUrVMP7YeDfwTX6sEVdUzcXLuoHVePlUIGU12MYP3YTAw=="
         },
         "fb58acd0-8d52-4d05-a212-9c786f7eeff0": {
           "display_id": 212,
@@ -2394,8 +2403,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-24T21:21:57.866979420Z",
+    "timestamp": "2026-08-24T21:25:51.520381864Z",
     "agent_id": "6ME5",
-    "agent_seq": 313
+    "agent_seq": 314
   }
 }
