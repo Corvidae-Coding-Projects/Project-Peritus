@@ -10,11 +10,10 @@ fn managed_proxy_revalidates_and_suppresses_a_denied_absolute_redirect() {
     let upstream_task = thread::spawn(move || {
         let (mut stream, _) = upstream.accept().unwrap();
         let _ = read_head(&mut stream);
-        write!(
-            stream,
+        let response = format!(
             "HTTP/1.1 302 Found\r\nLocation: http://denied.test:{port}/next\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
-        )
-        .unwrap();
+        );
+        stream.write_all(response.as_bytes()).unwrap();
     });
     let plan = runtime_plan(
         vec![
@@ -38,11 +37,10 @@ fn managed_proxy_revalidates_and_suppresses_a_denied_absolute_redirect() {
     .unwrap();
     let mut client = TcpStream::connect(proxy.endpoint().socket_addr()).unwrap();
     proxy.routing_token().expose_header(|token| {
-        write!(
-            client,
+        let request = format!(
             "GET http://loop.test:{port}/start HTTP/1.1\r\nHost: loop.test:{port}\r\nProxy-Authorization: Peritus {token}\r\n\r\n"
-        )
-        .unwrap();
+        );
+        client.write_all(request.as_bytes()).unwrap();
     });
     let response = read_to_close(&mut client);
     assert!(response.is_empty());
@@ -92,11 +90,10 @@ fn managed_proxy_follows_relative_redirect_and_returns_only_final_response() {
     .unwrap();
     let mut client = TcpStream::connect(proxy.endpoint().socket_addr()).unwrap();
     proxy.routing_token().expose_header(|token| {
-        write!(
-            client,
+        let request = format!(
             "GET http://loop.test:{port}/start HTTP/1.1\r\nHost: loop.test:{port}\r\nProxy-Authorization: Peritus {token}\r\n\r\n"
-        )
-        .unwrap();
+        );
+        client.write_all(request.as_bytes()).unwrap();
     });
     let response = String::from_utf8(read_to_close(&mut client)).unwrap();
     assert!(response.starts_with("HTTP/1.1 200 OK"));
@@ -114,11 +111,10 @@ fn managed_proxy_preserves_redirect_count_across_upstream_connections() {
         for next in ["/one", "/two"] {
             let (mut stream, _) = upstream.accept().unwrap();
             let _ = read_head(&mut stream);
-            write!(
-                stream,
+            let response = format!(
                 "HTTP/1.1 302 Found\r\nLocation: {next}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
-            )
-            .unwrap();
+            );
+            stream.write_all(response.as_bytes()).unwrap();
         }
     });
     let plan = runtime_plan(
@@ -143,11 +139,10 @@ fn managed_proxy_preserves_redirect_count_across_upstream_connections() {
     .unwrap();
     let mut client = TcpStream::connect(proxy.endpoint().socket_addr()).unwrap();
     proxy.routing_token().expose_header(|token| {
-        write!(
-            client,
+        let request = format!(
             "GET http://loop.test:{port}/start HTTP/1.1\r\nHost: loop.test:{port}\r\nProxy-Authorization: Peritus {token}\r\n\r\n"
-        )
-        .unwrap();
+        );
+        client.write_all(request.as_bytes()).unwrap();
     });
     let response = read_to_close(&mut client);
     assert!(response.is_empty());
