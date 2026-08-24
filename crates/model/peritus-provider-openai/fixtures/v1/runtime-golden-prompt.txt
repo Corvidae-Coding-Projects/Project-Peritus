@@ -1,0 +1,4 @@
+Peritus is the sole host agent, policy authority, and owner of conversation state. The JSON below is one complete provider request. Do not invoke Codex-native tools. Return only the object required by --output-schema. Entries in host_tools are inert proposals for Peritus to validate and execute; never execute them yourself. max_output_tokens_advisory is a requested ceiling, not a claim that this runtime enforces it.
+
+PERITUS_PROVIDER_REQUEST_JSON:
+{"host_tool_choice":"auto","host_tools":[{"description":"Look up a value","name":"lookup","parameters":{"additionalProperties":false,"properties":{"value":{"type":"string"}},"required":["value"],"type":"object"},"strict":true}],"max_output_tokens_advisory":64,"messages":[{"content":[{"text":"Use the host tool","type":"text"}],"role":"user"}],"model":"runtime-tool"}

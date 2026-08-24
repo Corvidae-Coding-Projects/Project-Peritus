@@ -1,15 +1,7 @@
 //! Runtime-neutral, deterministic conformance-suite contracts and execution.
-//!
-//! Cases are sorted by validated identifier, receive fresh subjects, and retain setup, assertion,
-//! panic, and teardown failures without defining any production protocol. Report-bearing text is
-//! bounded by [`ReportText`]. Empty catalog suites are runnable scaffolding; only
-//! [`SuiteStatus::Passed`] proves conformance.
-//!
-//! Rust unwinding is caught at runner-controlled boundaries. Aborting panics, process termination,
-//! out-of-memory failure, stack overflow, undefined behavior, and double panics require supervised
-//! subprocess isolation and cannot be represented reliably by an in-process report.
-//! Dropping a pending runner is cancellation: in-flight futures and subjects are dropped in place,
-//! teardown is not newly invoked or awaited, and no report is produced. Subjects must be RAII-safe.
+//! Cases receive fresh subjects in stable identifier order and retain typed setup, assertion,
+//! panic, and teardown failures. Report text is bounded, and only a nonempty passed suite proves
+//! conformance. Pending-run cancellation drops owned work in place, so subjects must be RAII-safe.
 
 mod catalog;
 mod contracts;
@@ -19,6 +11,7 @@ mod identity;
 mod journal;
 mod outcome;
 mod process;
+mod provider;
 mod replay;
 mod report;
 mod runner;
@@ -28,7 +21,7 @@ mod tool;
 mod unwind;
 mod workspace;
 
-pub use catalog::{plugin_suite, protocol_suite, provider_suite};
+pub use catalog::{plugin_suite, protocol_suite};
 pub use contracts::{
     BoxedCase, ConformanceCase, ConformanceFuture, ConformanceSuite, StaticSuite, SubjectFactory,
 };
@@ -52,6 +45,15 @@ pub use process::{
     ProcessIoMode, ProcessOutputObservation, ProcessOutputStream, ProcessOwnershipObservation,
     ProcessRecoveryDisposition, ProcessRecoveryProbe, ProcessScenario,
     ProcessStreamOffsetObservation, ProcessTrigger, process_suite,
+};
+pub use provider::{
+    ProviderAttemptObservation, ProviderAttemptOutcome, ProviderCancellationObservation,
+    ProviderCapability, ProviderCapabilityObservation, ProviderConformanceError,
+    ProviderConformanceFixture, ProviderConformanceObservation, ProviderConformanceSubject,
+    ProviderEventKind, ProviderEventObservation, ProviderFailureKind, ProviderFailureObservation,
+    ProviderIsolationObservation, ProviderRedactionObservation, ProviderRetryObservation,
+    ProviderScenario, ProviderStreamObservation, ProviderTerminal, ProviderUsageObservation,
+    ProviderUsageSnapshot, provider_suite,
 };
 pub use replay::{
     ReplayConformanceError, ReplayConformanceSubject, ReplayObservation, replay_suite,

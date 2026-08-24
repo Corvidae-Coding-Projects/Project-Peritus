@@ -1,0 +1,4 @@
+data: {"responseId":"gen_tool","modelVersion":"gemini-3.7-pro","candidates":[{"index":0,"content":{"role":"model","parts":[{"thought":true,"text":"checking","thoughtSignature":"opaque-google-signature"},{"functionCall":{"id":"call-weather","name":"weather","args":{"city":"Paris"}}}]}}],"usageMetadata":{"promptTokenCount":8,"candidatesTokenCount":2,"thoughtsTokenCount":2,"totalTokenCount":10}}
+
+data: {"responseId":"gen_tool","candidates":[{"index":0,"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":8,"candidatesTokenCount":4,"thoughtsTokenCount":2,"totalTokenCount":12}}
+

@@ -1,0 +1,47 @@
+[package]
+name = "peritus-provider-anthropic"
+description = "First-party Anthropic Messages adapter for Peritus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+
+[features]
+test-runtime-fake = []
+
+[dependencies]
+base64.workspace = true
+peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
+peritus-model-protocol = { version = "=0.0.0", path = "../peritus-model-protocol" }
+peritus-provider-core = { version = "=0.0.0", path = "../peritus-provider-core" }
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+serde.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
+vstd.workspace = true
+
+[dev-dependencies]
+peritus-conformance = { version = "=0.0.0", path = "../../app/testing/peritus-conformance" }
+peritus-test-support = { version = "=0.0.0", path = "../../app/testing/peritus-test-support" }
+tokio.workspace = true
+
+[[bin]]
+name = "peritus-anthropic-claude-fake"
+path = "src/bin/claude_runtime_fake.rs"
+test = false
+bench = false
+required-features = ["test-runtime-fake"]
+
+[package.metadata.peritus]
+owner = "C5"
+layer = "model"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true
+
+[lints]
+workspace = true

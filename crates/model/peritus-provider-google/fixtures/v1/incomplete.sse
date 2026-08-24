@@ -1,0 +1,12 @@
+id: i-1
+event: interaction.created
+data: {"event_type":"interaction.created","interaction":{"id":"int_incomplete","model":"gemini-3.7-flash"}}
+
+id: i-2
+event: step.start
+data: {"event_type":"step.start","index":0,"step":{"type":"model_output"}}
+
+id: i-3
+event: step.delta
+data: {"event_type":"step.delta","index":0,"delta":{"type":"text","text":"partial-secret"}}
+

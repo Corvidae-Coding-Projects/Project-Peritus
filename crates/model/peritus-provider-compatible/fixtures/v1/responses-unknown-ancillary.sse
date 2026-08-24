@@ -1,0 +1,11 @@
+event: response.created
+data: {"type":"response.created","sequence_number":1,"response":{"id":"resp_ancillary","model":"model-test","status":"in_progress"}}
+
+event: provider.notice
+data: {"type":"provider.notice","sequence_number":2,"future":"bounded"}
+
+event: response.completed
+data: {"type":"response.completed","sequence_number":3,"response":{"id":"resp_ancillary","model":"model-test","status":"completed","usage":null}}
+
+data: [DONE]
+

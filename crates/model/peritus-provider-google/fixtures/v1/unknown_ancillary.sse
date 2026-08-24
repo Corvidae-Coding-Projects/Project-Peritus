@@ -1,0 +1,9 @@
+event: interaction.created
+data: {"event_type":"interaction.created","interaction":{"id":"int_unknown","model":"gemini-3.7-flash"}}
+
+event: telemetry.sample
+data: {"event_type":"telemetry.sample","bounded":true}
+
+event: interaction.completed
+data: {"event_type":"interaction.completed","interaction":{"id":"int_unknown","status":"completed","usage":{"total_input_tokens":1,"total_output_tokens":1,"total_tokens":2}}}
+

@@ -7,6 +7,7 @@ mod clock;
 mod event;
 mod fault;
 mod fixture;
+mod http_server;
 mod ids;
 mod provider;
 mod repository;
@@ -23,6 +24,12 @@ pub use fixture::{
     CompatibilityCoverage, CompatibilityPolicy, FixtureCase, FixtureCatalog, FixtureError,
     FixtureErrorKind, FixtureFile, FixtureKind, FixtureManifest, FixtureName, FixturePath,
     FixtureVersion,
+};
+pub use http_server::{
+    CapturedHttpHeader, CapturedHttpRequest, ExpectedHttpRequest, FakeHttpError, FakeHttpErrorKind,
+    FakeHttpExchange, FakeHttpExchangeScript, FakeHttpFault, FakeHttpHeader, FakeHttpLimits,
+    FakeHttpReleasePoint, FakeHttpSequenceServer, FakeHttpServer, FakeHttpTermination,
+    HeaderMatchMode, ScriptedHttpResponse,
 };
 pub use ids::{DeterministicIdSource, IdSourceError};
 pub use provider::{FakeProvider, ProviderScriptError};

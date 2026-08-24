@@ -1,0 +1,150 @@
+//! Deterministic transcript projection for the credential-owning Codex router.
+
+mod schema;
+
+use peritus_model_protocol::{
+    CachePolicy, ContentBlock, ModelRequest, ReasoningPolicy, Role, StructuredOutput, ToolChoice,
+};
+use peritus_provider_core::ProviderCoreError;
+use serde_json::{Map, Value};
+
+const PROMPT_PREFIX: &str = "Peritus is the sole host agent, policy authority, and owner of conversation state. The JSON below is one complete provider request. Do not invoke Codex-native tools. Return only the object required by --output-schema. Entries in host_tools are inert proposals for Peritus to validate and execute; never execute them yourself. max_output_tokens_advisory is a requested ceiling, not a claim that this runtime enforces it.\n\nPERITUS_PROVIDER_REQUEST_JSON:\n";
+
+pub struct RuntimeRequest {
+    pub prompt: Vec<u8>,
+    pub schema: Vec<u8>,
+    pub allowed_tools: std::collections::BTreeSet<String>,
+    pub max_calls: usize,
+}
+
+pub fn encode(request: &ModelRequest) -> Result<RuntimeRequest, ProviderCoreError> {
+    validate_controls(request)?;
+    let messages = request.messages().iter().map(message).collect::<Result<Vec<_>, _>>()?;
+    let tools = request.tools().iter().map(tool).collect::<Result<Vec<_>, _>>()?;
+    let payload = object(vec![
+        ("model", Value::String(request.model().as_str().to_owned())),
+        (
+            "max_output_tokens_advisory",
+            Value::Number(request.options().generation().max_output_tokens().into()),
+        ),
+        ("messages", Value::Array(messages)),
+        ("host_tools", Value::Array(tools)),
+        ("host_tool_choice", tool_choice(request.tool_choice())),
+    ]);
+    let mut prompt = PROMPT_PREFIX.as_bytes().to_vec();
+    let payload = serde_json::to_vec(&payload)
+        .map_err(|_| invalid("Codex runtime transcript serialization failed"))?;
+    prompt.extend_from_slice(&payload);
+    let contract = schema::result_contract(request)?;
+    Ok(RuntimeRequest {
+        prompt,
+        schema: contract.bytes,
+        allowed_tools: contract.allowed_tools,
+        max_calls: contract.max_calls,
+    })
+}
+
+fn validate_controls(request: &ModelRequest) -> Result<(), ProviderCoreError> {
+    let generation = request.options().generation();
+    if !matches!(request.options().output(), StructuredOutput::Text)
+        || request.options().reasoning() != ReasoningPolicy::Disabled
+        || !matches!(request.options().cache(), CachePolicy::Disabled)
+        || request.options().persistence().store()
+        || request.options().persistence().background()
+        || request.options().continuation().is_some()
+        || !request.options().extensions().is_empty()
+        || !generation.stop_sequences().is_empty()
+        || generation.seed().is_some()
+        || generation.temperature_millionths().is_some()
+        || generation.top_p_millionths().is_some()
+    {
+        return Err(invalid(
+            "Codex runtime supports text output, advisory length, disabled reasoning/cache, and local replay only",
+        ));
+    }
+    Ok(())
+}
+
+fn message(message: &peritus_model_protocol::Message) -> Result<Value, ProviderCoreError> {
+    let content = message.content().iter().map(content).collect::<Result<Vec<_>, _>>()?;
+    Ok(object(vec![
+        ("role", Value::String(role_name(message.role()).to_owned())),
+        ("content", Value::Array(content)),
+    ]))
+}
+
+fn content(block: &ContentBlock) -> Result<Value, ProviderCoreError> {
+    match block {
+        ContentBlock::Text(text) | ContentBlock::Refusal(text) => Ok(object(vec![
+            ("type", Value::String("text".to_owned())),
+            ("text", Value::String(text.expose_for_wire().to_owned())),
+        ])),
+        ContentBlock::ToolCall(call) => Ok(object(vec![
+            ("type", Value::String("host_tool_call".to_owned())),
+            ("id", Value::String(call.id().expose_for_wire().to_owned())),
+            ("name", Value::String(call.name().as_str().to_owned())),
+            ("arguments", json_value(call.arguments().canonical_bytes())?),
+        ])),
+        ContentBlock::ToolResult(result) => Ok(object(vec![
+            ("type", Value::String("host_tool_result".to_owned())),
+            ("call_id", Value::String(result.call_id().expose_for_wire().to_owned())),
+            ("output", json_value(result.output().canonical_bytes())?),
+            ("is_error", Value::Bool(result.is_error())),
+        ])),
+        ContentBlock::Image(_)
+        | ContentBlock::Audio(_)
+        | ContentBlock::Document(_)
+        | ContentBlock::Reasoning(_)
+        | ContentBlock::ProviderExtension(_) => {
+            Err(invalid("Codex runtime accepts only text and host tool history"))
+        }
+    }
+}
+
+fn tool(tool: &peritus_model_protocol::ToolDefinition) -> Result<Value, ProviderCoreError> {
+    let mut fields = Map::new();
+    fields.insert("name".to_owned(), Value::String(tool.name().as_str().to_owned()));
+    fields.insert("parameters".to_owned(), json_value(tool.parameters().canonical_bytes())?);
+    fields.insert("strict".to_owned(), Value::Bool(tool.strict()));
+    if let Some(description) = tool.description() {
+        fields.insert(
+            "description".to_owned(),
+            Value::String(description.expose_for_wire().to_owned()),
+        );
+    }
+    Ok(Value::Object(fields))
+}
+
+fn tool_choice(choice: &ToolChoice) -> Value {
+    match choice {
+        ToolChoice::Auto => Value::String("auto".to_owned()),
+        ToolChoice::None => Value::String("none".to_owned()),
+        ToolChoice::Required => Value::String("required".to_owned()),
+        ToolChoice::Specific(name) => object(vec![
+            ("type", Value::String("specific".to_owned())),
+            ("name", Value::String(name.as_str().to_owned())),
+        ]),
+    }
+}
+
+const fn role_name(role: Role) -> &'static str {
+    match role {
+        Role::System => "system",
+        Role::Developer => "developer",
+        Role::User => "user",
+        Role::Assistant => "assistant",
+        Role::Tool => "tool",
+    }
+}
+
+fn json_value(bytes: &[u8]) -> Result<Value, ProviderCoreError> {
+    serde_json::from_slice(bytes).map_err(|_| invalid("canonical JSON could not be projected"))
+}
+
+pub(super) fn object(fields: Vec<(&str, Value)>) -> Value {
+    Value::Object(fields.into_iter().map(|(key, value)| (key.to_owned(), value)).collect())
+}
+
+pub(super) const fn invalid(detail: &'static str) -> ProviderCoreError {
+    ProviderCoreError::invalid_request("codex_runtime_request", detail)
+}

@@ -1,0 +1,3 @@
+{"type":"thread.started","thread_id":"thread-tool"}
+{"type":"item.completed","item":{"type":"agent_message","text":"{\"content\":\"\",\"tool_calls\":[{\"name\":\"lookup\",\"arguments_json\":\"{\\\"value\\\":\\\"fragmented-arguments-for-host-tool\\\"}\"}]}"}}
+{"type":"turn.completed","usage":{"input_tokens":9,"output_tokens":4,"total_tokens":13}}

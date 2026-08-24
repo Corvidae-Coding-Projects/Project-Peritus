@@ -1,0 +1,1 @@
+{"is_error":false,"structured_output":{"content":"calling lookup","tool_calls":[{"arguments":{"id":"42"},"name":"lookup"}]},"usage":{"input_tokens":12,"output_tokens":7}}

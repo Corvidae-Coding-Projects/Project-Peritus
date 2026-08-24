@@ -66,70 +66,66 @@ path = "crates/state/peritus-approval"
 owner = "B1"
 layer = "state"
 verification_class = "H"
-
 [[packages]]
 name = "peritus-artifact-store"
 path = "crates/state/peritus-artifact-store"
 owner = "C0"
 layer = "state"
 verification_class = "H"
-
 [[packages]]
 name = "peritus-budget"
 path = "crates/foundation/peritus-budget"
 owner = "B1"
 layer = "foundation"
 verification_class = "V"
-
 [[packages]]
 name = "peritus-codec"
 path = "crates/foundation/peritus-codec"
 owner = "B3"
 layer = "foundation"
 verification_class = "H"
-
 [[packages]]
 name = "peritus-evidence"
 path = "crates/state/peritus-evidence"
 owner = "C0"
 layer = "state"
 verification_class = "H"
-
 [[packages]]
 name = "peritus-git"
 path = "crates/runtime/peritus-git"
 owner = "C1"
 layer = "runtime"
 verification_class = "H"
-
 [[packages]]
 name = "peritus-journal"
 path = "crates/state/peritus-journal"
 owner = "C0"
 layer = "state"
 verification_class = "H"
-
 [[packages]]
 name = "peritus-kernel"
 path = "crates/foundation/peritus-kernel"
 owner = "B0"
 layer = "foundation"
 verification_class = "V"
-
 [[packages]]
 name = "peritus-leases"
 path = "crates/state/peritus-leases"
 owner = "B1"
 layer = "state"
 verification_class = "H"
-
 [[packages]]
 name = "peritus-migrations"
 path = "crates/state/peritus-migrations"
 owner = "C0"
 layer = "state"
 verification_class = "H"
-
+[[packages]]
+name = "peritus-model-protocol"
+path = "crates/model/peritus-model-protocol"
+owner = "C5"
+layer = "model"
+verification_class = "H"
 [[packages]]
 name = "peritus-network"
 path = "crates/runtime/peritus-network"
@@ -163,6 +159,41 @@ name = "peritus-protocol"
 path = "crates/foundation/peritus-protocol"
 owner = "B3"
 layer = "foundation"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-provider-anthropic"
+path = "crates/model/peritus-provider-anthropic"
+owner = "C5"
+layer = "model"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-provider-compatible"
+path = "crates/model/peritus-provider-compatible"
+owner = "C5"
+layer = "model"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-provider-core"
+path = "crates/model/peritus-provider-core"
+owner = "C5"
+layer = "model"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-provider-google"
+path = "crates/model/peritus-provider-google"
+owner = "C5"
+layer = "model"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-provider-openai"
+path = "crates/model/peritus-provider-openai"
+owner = "C5"
+layer = "model"
 verification_class = "H"
 
 [[packages]]

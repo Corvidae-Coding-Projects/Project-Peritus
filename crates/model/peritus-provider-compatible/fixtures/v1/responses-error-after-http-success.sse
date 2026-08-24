@@ -1,0 +1,6 @@
+event: response.created
+data: {"type":"response.created","sequence_number":1,"response":{"id":"resp_error","model":"model-test","status":"in_progress"}}
+
+event: error
+data: {"type":"error","sequence_number":2,"code":"provider_error","message":"private provider detail"}
+

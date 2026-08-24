@@ -304,6 +304,27 @@ fn rejects_compile_environment_and_embedded_data_macros() {
 }
 
 #[test]
+fn permits_only_audited_cargo_environment_macros() {
+    let result = scan(
+        r#"
+        const MANIFEST: &str = env!("CARGO_MANIFEST_DIR");
+        const CLAUDE: &str = env!("CARGO_BIN_EXE_peritus-anthropic-claude-fake");
+        const CODEX: &str = env!("CARGO_BIN_EXE_peritus-openai-codex-fake");
+        const UNREVIEWED: &str = env!("CARGO_BIN_EXE_unreviewed-helper");
+        "#,
+    );
+
+    assert_eq!(
+        result
+            .violations
+            .iter()
+            .filter(|violation| violation.kind == ViolationKind::UnsupportedMacro)
+            .count(),
+        1
+    );
+}
+
+#[test]
 fn rejects_custom_derives_and_external_expansion_imports() {
     let result = scan(
         r"
