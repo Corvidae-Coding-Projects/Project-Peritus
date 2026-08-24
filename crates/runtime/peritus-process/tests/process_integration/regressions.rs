@@ -8,9 +8,11 @@ use std::{
 use peritus_artifact_store::{ArtifactStore, StoreConfig};
 use peritus_process::{
     CancellationReason, ErrorCode, ExecutionAuthorizationRequest, ExecutionGateway, GracefulAction,
-    IoMode, ProcessCursor, ProcessResourceDimension, ProcessStore, ResourceFidelity, StdinPolicy,
-    TerminalDisposition, TerminalSize, WorkspaceAccess,
+    IoMode, ProcessCursor, ProcessStore, StdinPolicy, TerminalDisposition, TerminalSize,
+    WorkspaceAccess,
 };
+#[cfg(unix)]
+use peritus_process::{ProcessResourceDimension, ResourceFidelity};
 use peritus_types::EventId;
 
 use super::support::{Ids, PlanOptions, TestRoot, commit_authority, intent, open_journal, plan};
@@ -96,6 +98,7 @@ fn inherited_environment_authority_cannot_bind_a_literal_value() {
     assert_eq!(error.code(), ErrorCode::InvalidInput);
 }
 
+#[cfg(unix)]
 #[test]
 fn process_count_overrun_is_observed_cancelled_and_classified() {
     let root = TestRoot::new();
@@ -127,13 +130,23 @@ fn process_count_overrun_is_observed_cancelled_and_classified() {
     assert!(terminal.tree_cleanup_complete());
     assert!(terminal.support_tasks_joined());
     assert_eq!(terminal.resources().len(), 8);
+    let processes = terminal
+        .resources()
+        .iter()
+        .find(|value| value.dimension() == ProcessResourceDimension::ProcessCount)
+        .expect("process-count observation");
+    assert_eq!(processes.ceiling(), 1);
+    assert_eq!(processes.fidelity(), ResourceFidelity::Sampled);
     let handles = terminal
         .resources()
         .iter()
         .find(|value| value.dimension() == ProcessResourceDimension::OpenHandles)
         .expect("open-handle observation");
     assert_eq!(handles.ceiling(), 32);
+    #[cfg(target_os = "linux")]
     assert_eq!(handles.fidelity(), ResourceFidelity::Sampled);
+    #[cfg(not(target_os = "linux"))]
+    assert_eq!(handles.fidelity(), ResourceFidelity::Unsupported);
 }
 
 #[cfg(unix)]
