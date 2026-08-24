@@ -159,11 +159,25 @@ layer = "foundation"
 verification_class = "H"
 
 [[packages]]
+name = "peritus-process"
+path = "crates/runtime/peritus-process"
+owner = "C2"
+layer = "runtime"
+verification_class = "H"
+
+[[packages]]
 name = "peritus-quality-policy"
 path = "crates/foundation/peritus-quality-policy"
 owner = "B2"
 layer = "foundation"
 verification_class = "V"
+
+[[packages]]
+name = "peritus-sandbox"
+path = "crates/runtime/peritus-sandbox"
+owner = "C2"
+layer = "runtime"
+verification_class = "H"
 
 [[packages]]
 name = "peritus-spec"

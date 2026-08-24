@@ -1,0 +1,104 @@
+//! A2 canonical-preparation fixtures mapped to real plans and backend admission.
+
+use super::plan_fixture::{
+    FileShape, NetworkShape, PlanShape, TerminalShape, checked_preparation_plan,
+};
+use peritus_conformance::{
+    SandboxFeature as ConformanceFeature, SandboxPreparationFixture, SandboxPreparationObservation,
+};
+use peritus_sandbox::{
+    AdmissionProfile, BackendDescriptor, BackendKind, BackendName, BackendVersion, FeatureSet,
+    PathSemantics, ResourceFidelity, SandboxError, SandboxFeature, admit_backend,
+};
+use peritus_types::Sha256Digest;
+
+pub(super) fn prepare(
+    fixture: &SandboxPreparationFixture,
+) -> Result<SandboxPreparationObservation, SandboxError> {
+    let mut canonical = fixture.required_features().to_vec();
+    canonical.sort_unstable();
+    canonical.dedup();
+    let missing = canonical
+        .iter()
+        .copied()
+        .filter(|feature| !fixture.backend_features().contains(feature))
+        .collect::<Vec<_>>();
+    let marker = u8::try_from(fixture.authority_marker()).map_err(|_| {
+        SandboxError::new(
+            peritus_sandbox::SandboxErrorKind::LimitExceeded,
+            peritus_sandbox::SandboxOperation::Compile,
+            peritus_sandbox::RecoveryClass::CorrectRequest,
+            "conformance authority marker exceeds adapter bound",
+        )
+    })?;
+    let plan = checked_preparation_plan(shape(&canonical), marker)?;
+    let missing_runtime = FeatureSet::from_features(missing.iter().copied().map(runtime_feature));
+    let supported = FeatureSet::from_features(
+        plan.required_features().iter().filter(|feature| !missing_runtime.contains(*feature)),
+    );
+    let descriptor = BackendDescriptor::new(
+        BackendName::new("peritus-conformance-reference")?,
+        BackendVersion::new("1")?,
+        BackendKind::ReferenceOnly,
+        PathSemantics::LogicalUtf8,
+        ResourceFidelity::Reference,
+        supported,
+    );
+    let admission = admit_backend(&plan, &descriptor, AdmissionProfile::Conformance);
+    let (admitted, preparation_digest) = admission.map_or_else(
+        |_| (false, Sha256Digest::new([0; 32])),
+        |value| (true, value.preparation_digest()),
+    );
+    Ok(SandboxPreparationObservation::new(
+        canonical,
+        missing,
+        *plan.digest().as_bytes(),
+        *preparation_digest.as_bytes(),
+        admitted,
+        plan.canonical_bytes().to_vec(),
+        0,
+    ))
+}
+
+fn shape(features: &[ConformanceFeature]) -> PlanShape {
+    let mut shape = PlanShape::baseline(8);
+    if features.contains(&ConformanceFeature::FilesystemRead)
+        || features.contains(&ConformanceFeature::FilesystemWrite)
+    {
+        shape.filesystem = FileShape::Allow;
+    }
+    shape.filesystem_write = features.contains(&ConformanceFeature::FilesystemWrite);
+    shape.environment_secret = features.contains(&ConformanceFeature::EnvironmentLiteral)
+        || features.contains(&ConformanceFeature::SecretEnvironment);
+    if features.contains(&ConformanceFeature::NetworkOutbound) {
+        shape.network = NetworkShape::Allow;
+    }
+    if features.contains(&ConformanceFeature::Descendants) {
+        shape.descendant_limit = 1;
+        shape.descendant_required = 1;
+    }
+    shape.terminal = if features.contains(&ConformanceFeature::Resize) {
+        TerminalShape::PtyResize
+    } else if features.contains(&ConformanceFeature::Pty) {
+        TerminalShape::Pty
+    } else {
+        TerminalShape::Pipes
+    };
+    shape
+}
+
+const fn runtime_feature(feature: ConformanceFeature) -> SandboxFeature {
+    match feature {
+        ConformanceFeature::FilesystemRead => SandboxFeature::FilesystemRead,
+        ConformanceFeature::FilesystemWrite => SandboxFeature::FilesystemWrite,
+        ConformanceFeature::Descendants => SandboxFeature::ProcessDescendants,
+        ConformanceFeature::EnvironmentLiteral => SandboxFeature::EnvironmentClear,
+        ConformanceFeature::NetworkOutbound => SandboxFeature::NetworkEgress,
+        ConformanceFeature::SecretEnvironment => SandboxFeature::SecretEnvironment,
+        ConformanceFeature::WallTime => SandboxFeature::WallTime,
+        ConformanceFeature::OutputBytes => SandboxFeature::Output,
+        ConformanceFeature::Pty => SandboxFeature::Pty,
+        ConformanceFeature::Resize => SandboxFeature::TerminalResize,
+        ConformanceFeature::TreeContainment => SandboxFeature::ProcessTree,
+    }
+}

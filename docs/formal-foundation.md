@@ -60,11 +60,10 @@ record, or an ambiguous record fails the gate. Issue liveness is additionally ch
 protected-branch/release authority because the repository-only checker deliberately performs no
 network calls.
 
-The trust, exclusion, and obligation A1 entry lists are empty. The actor registry contains the
-implementation owner and independent final reviewer used by the three genesis proof-impact
-records. Empty means no registered trust, exclusion, or obligation record; it never means that
-absent work was proved. In particular, A1 makes no discharge claim for `INV-001` through
-`INV-022`.
+The trust and exclusion lists remain empty. The obligation manifest now carries the named,
+in-progress proofs and executable evidence added by later slices; `in-progress` is not a discharge
+claim. The actor registry contains the implementation owner and independent final reviewer used by
+the proof-impact records.
 
 ## Canonical proof gate
 
@@ -73,9 +72,9 @@ The workspace proof commands and ordinary-Rust boundary audit are exact and poli
 ```text
 cargo run --locked --package xtask -- ordinary-api-check
 cargo verus verify --workspace --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --rlimit 20
-cargo verus verify --package peritus-approval --package peritus-artifact-store --package peritus-budget --package peritus-codec --package peritus-evidence --package peritus-journal --package peritus-kernel --package peritus-leases --package peritus-migrations --package peritus-policy --package peritus-projection --package peritus-protocol --package peritus-quality-policy --package peritus-spec --package peritus-types --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+cargo verus verify --package peritus-approval --package peritus-artifact-store --package peritus-budget --package peritus-codec --package peritus-evidence --package peritus-git --package peritus-journal --package peritus-kernel --package peritus-leases --package peritus-migrations --package peritus-patch --package peritus-policy --package peritus-process --package peritus-projection --package peritus-protocol --package peritus-quality-policy --package peritus-sandbox --package peritus-spec --package peritus-types --package peritus-workspace --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
 cargo verus build --workspace --all-features --release --locked --check-toolchain --fwd-verus-args-to roots -- --rlimit 20
-cargo verus build --package peritus-approval --package peritus-artifact-store --package peritus-budget --package peritus-codec --package peritus-evidence --package peritus-journal --package peritus-kernel --package peritus-leases --package peritus-migrations --package peritus-policy --package peritus-projection --package peritus-protocol --package peritus-quality-policy --package peritus-spec --package peritus-types --all-features --release --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+cargo verus build --package peritus-approval --package peritus-artifact-store --package peritus-budget --package peritus-codec --package peritus-evidence --package peritus-git --package peritus-journal --package peritus-kernel --package peritus-leases --package peritus-migrations --package peritus-patch --package peritus-policy --package peritus-process --package peritus-projection --package peritus-protocol --package peritus-quality-policy --package peritus-sandbox --package peritus-spec --package peritus-types --package peritus-workspace --all-features --release --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
 ```
 
 The workspace commands cover every opted-in V, H, and T package with the bundled solver-version

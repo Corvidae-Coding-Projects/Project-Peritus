@@ -139,11 +139,9 @@ mod tests {
         assert_eq!(
             actual,
             [
-                "REF-C2-B1-HOLDER-QUIESCENCE",
                 "REF-C4-B1-OPERATION-CLASS",
                 "REF-B0-B1-CURRENT-STATE-WITNESS",
                 "REF-E0-B1-COMMIT-BEFORE-EFFECT",
-                "REF-C2-B1-AUTHORITY-GATE",
                 "REF-C4-B1-AUTHORITY-GATE",
                 "REF-E0-B1-POLICY-ACTIVATION",
                 "REF-B2-B1-CONTRACT-REVISION",
