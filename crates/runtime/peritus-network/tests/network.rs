@@ -4,7 +4,7 @@ use base64::Engine;
 #[cfg(unix)]
 use std::os::fd::AsRawFd;
 use std::{
-    io::{Read, Write},
+    io::{ErrorKind, Read, Write},
     net::{IpAddr, Ipv4Addr, Shutdown, TcpListener, TcpStream},
     sync::Arc,
     thread,
@@ -288,7 +288,9 @@ fn managed_proxy_denies_unlisted_destination_before_resolution_or_connect() {
         .unwrap();
     });
     let mut response = Vec::new();
-    client.read_to_end(&mut response).unwrap();
+    if let Err(error) = client.read_to_end(&mut response) {
+        assert_eq!(error.kind(), ErrorKind::ConnectionReset);
+    }
     assert!(response.is_empty());
     wait_for_closed(&proxy, ConnectionDecision::Denied);
     let shutdown = proxy.shutdown().unwrap();
