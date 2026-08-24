@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use peritus_git::{GitRepository, RegisteredWorktree};
 
-use crate::{SnapshotIdentity, WorkspaceState};
+use crate::{SnapshotIdentity, WorkspaceBinding, WorkspaceState};
 
 /// Complete inputs needed to open one move-only writable workspace.
 pub struct WritableOpenRequest {
@@ -37,6 +37,7 @@ pub struct ReadOnlyOpenRequest {
     worktree: RegisteredWorktree,
     snapshot: SnapshotIdentity,
     writer_root: PathBuf,
+    binding: Option<WorkspaceBinding>,
 }
 
 impl ReadOnlyOpenRequest {
@@ -48,12 +49,20 @@ impl ReadOnlyOpenRequest {
         snapshot: SnapshotIdentity,
         writer_root: impl Into<PathBuf>,
     ) -> Self {
-        Self { repository, worktree, snapshot, writer_root: writer_root.into() }
+        Self { repository, worktree, snapshot, writer_root: writer_root.into(), binding: None }
+    }
+
+    /// Adds the actual writable lineage binding from which C4 read target identity is derived.
+    #[must_use]
+    pub fn with_workspace_binding(mut self, binding: WorkspaceBinding) -> Self {
+        self.binding = Some(binding);
+        self
     }
 
     pub(crate) fn into_parts(
         self,
-    ) -> (GitRepository, RegisteredWorktree, SnapshotIdentity, PathBuf) {
-        (self.repository, self.worktree, self.snapshot, self.writer_root)
+    ) -> (GitRepository, RegisteredWorktree, SnapshotIdentity, PathBuf, Option<WorkspaceBinding>)
+    {
+        (self.repository, self.worktree, self.snapshot, self.writer_root, self.binding)
     }
 }

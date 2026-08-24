@@ -1,0 +1,39 @@
+[package]
+name = "peritus-tools-quality"
+description = "Explicit quality check discovery, execution, and evidence adapters for Peritus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+
+[dependencies]
+peritus-artifact-store = { version = "=0.0.0", path = "../../state/peritus-artifact-store" }
+peritus-patch = { version = "=0.0.0", path = "../../runtime/peritus-patch" }
+peritus-policy = { version = "=0.0.0", path = "../../foundation/peritus-policy" }
+peritus-process = { version = "=0.0.0", path = "../../runtime/peritus-process" }
+peritus-quality-policy = { version = "=0.0.0", path = "../../foundation/peritus-quality-policy" }
+peritus-sandbox = { version = "=0.0.0", path = "../../runtime/peritus-sandbox" }
+peritus-tool-protocol = { version = "=0.0.0", path = "../peritus-tool-protocol" }
+peritus-tool-router = { version = "=0.0.0", path = "../peritus-tool-router" }
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+peritus-workspace = { version = "=0.0.0", path = "../../runtime/peritus-workspace" }
+serde_json.workspace = true
+sha2.workspace = true
+toml.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[package.metadata.peritus]
+owner = "C4"
+layer = "tools"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true
+
+[lints]
+workspace = true

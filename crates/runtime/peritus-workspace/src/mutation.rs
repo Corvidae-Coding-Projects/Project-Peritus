@@ -73,7 +73,7 @@ impl WorkspaceGateway {
         authorization: &WorkspaceAuthorizationRequest<'_>,
         patch: PatchSet,
     ) -> Result<MutationOutcome, WorkspaceError> {
-        let payload = patch_authorization_payload(&patch);
+        let payload = patch_payload(&patch, authorization.caller_binding());
         let permit = self.authorize(authorization, &payload)?;
         let state = self.state();
         let plan = patch
@@ -123,11 +123,31 @@ impl WorkspaceGateway {
 /// Returns canonical adapter payload bytes to bind into [`peritus_protocol::ActionIntentDto`].
 #[must_use]
 pub fn patch_authorization_payload(patch: &PatchSet) -> Vec<u8> {
-    let mut bytes = b"PERITUS-WORKSPACE-PATCH-V1\0".to_vec();
+    patch_payload(patch, None)
+}
+
+/// Returns canonical patch payload bytes bound to one exact validated C4 caller.
+#[must_use]
+pub fn patch_authorization_payload_for_caller(
+    patch: &PatchSet,
+    caller: &crate::WorkspaceCallerBinding,
+) -> Vec<u8> {
+    patch_payload(patch, Some(caller))
+}
+
+fn patch_payload(patch: &PatchSet, caller: Option<&crate::WorkspaceCallerBinding>) -> Vec<u8> {
+    let mut bytes = if caller.is_some() {
+        b"PERITUS-WORKSPACE-PATCH-V2\0".to_vec()
+    } else {
+        b"PERITUS-WORKSPACE-PATCH-V1\0".to_vec()
+    };
     bytes.extend_from_slice(patch.workspace_id().as_bytes());
     bytes.extend_from_slice(&patch.expected_generation().get().to_be_bytes());
     bytes.extend_from_slice(&patch.expected_revision().get().to_be_bytes());
     bytes.extend_from_slice(patch.identity().as_bytes());
+    if let Some(caller) = caller {
+        crate::caller::append_caller(&mut bytes, Some(caller));
+    }
     bytes
 }
 

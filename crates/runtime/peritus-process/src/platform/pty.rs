@@ -246,7 +246,9 @@ impl PlatformProcess for PtyProcess {
     }
 
     fn graceful_stop(&mut self, action: GracefulAction) -> Result<(), ProcessError> {
-        self.input.take();
+        if action == GracefulAction::CloseInput {
+            self.input.take();
+        }
         match action {
             GracefulAction::CloseInput => Ok(()),
             GracefulAction::Interrupt => signal_group(self.identity, Signal::SIGINT),

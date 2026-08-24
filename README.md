@@ -25,13 +25,16 @@ The implemented foundation and runtime spine now covers:
   executable reference semantics, and reusable A2 qualification; and
 - C3: target-owned native backend preparation and lifecycle hooks, protected helper channels,
   native Linux, macOS, and Windows enforcement backends and probes, managed HTTP/CONNECT egress,
-  exact secret leases and delivery, redaction, native recovery, and complete backend teardown.
+  exact secret leases and delivery, redaction, native recovery, and complete backend teardown; and
+- C4: bounded canonical tool descriptors and JSON schemas, capability/role exposure, target-owned
+  one-use authorization and routing, replay/control/result envelopes, and C1/C2/C3-backed
+  filesystem, Git, shell, and explicit quality tools with fresh-subject conformance.
 
 These are library and verification layers. There is not yet a user-facing `peritus` CLI, daemon,
 TUI, provider integration, complete agent loop, writer-reviewer-fixer orchestrator, or native
-packaged-host qualification. C4 is the next runtime boundary: the tool protocol/router and
-model-facing filesystem, shell, Git, and quality tools. A3, C4–C7, D0–D3, E0–E3, F0, G0–G3,
-and H0–H4 remain before production release and qualification.
+packaged-host qualification. C5 is the next runtime boundary: the provider-neutral model protocol
+and first-party OpenAI, Anthropic, Google, and explicit compatible-endpoint adapters. A3, C5–C7,
+D0–D3, E0–E3, F0, G0–G3, and H0–H4 remain before production release and qualification.
 
 Local Gate A is the current merge authority: ordinary Rust checks, architecture and API policy,
 supply-chain policy, pinned toolchains, full Verus verification, and verified release builds must
@@ -83,6 +86,9 @@ The [C3 platform security guide](docs/c3-platform-security.md) documents the nat
 protected helper protocol, Linux/macOS/Windows enforcement and probes, managed egress, exact secret
 delivery, teardown, recovery, and the distinction between implementation and packaged-host
 qualification.
+The [C4 tool system guide](docs/c4-tool-system.md) documents bounded schemas and envelopes,
+capability/role exposure, two-phase authorization and one-use routing, C1/C2/C3-backed built-ins,
+owned controls and replay, and the boundary between quality invocation and the future D1 gate DAG.
 The [GitHub governance runbook](docs/github-governance.md) defines the GitHub Team-compatible
 repository ruleset and required `Gate A` status that must be active after the A1 genesis push.
 Immutable required-workflow authority remains an explicitly documented Enterprise Cloud deferral.

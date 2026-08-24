@@ -112,8 +112,9 @@ typed observations make repeated runs directly comparable. Suite status is one o
 `Empty` is never equivalent to `Passed` and cannot satisfy a release verdict. There is no skipped,
 ignored, quarantined or caller-forced success state.
 
-A2 publishes named empty provider, tool, plugin, and protocol suites. C0 supplies real journal and
-replay cases, and C1 supplies real Git/workspace/patch cases covering atomic candidate creation,
+A2 publishes named empty provider, plugin, and protocol suites. C4 supplies real tool descriptor,
+schema, exposure, authorization, dispatch, result, control, deadline, and replay cases. C0 supplies
+real journal and replay cases, and C1 supplies real Git/workspace/patch cases covering atomic candidate creation,
 stale generation and resource rejection, read-only isolation, rollback history, and restart
 reconciliation. C2 supplies fresh-subject process and sandbox cases covering structured execution,
 bounded supervision and recovery plus the complete platform-neutral sandbox contract and backend
@@ -128,7 +129,8 @@ mismatch, exhaustion, fault scheduling and isolation. The following remain outsi
 - B0 lifecycle and success semantics;
 - B1 authorization, capabilities, leases and budgets;
 - B2 acceptance and quality policy;
-- C4 tool calls, results, routing and idempotency;
+- C4 production tool calls, results, routing and idempotency storage; A2 now owns their
+  runtime-neutral fresh-subject qualification contract;
 - C5 provider requests, normalized streams, retry policy and adapters; and
 - C0/C1/C2 production persistence, workspace, process, and sandbox implementations. A2 owns only
   the runtime-neutral subject contracts and cases used to qualify those adapters.

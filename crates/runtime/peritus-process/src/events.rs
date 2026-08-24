@@ -4,7 +4,7 @@ use std::collections::VecDeque;
 
 use peritus_types::{ProcessId, Sha256Digest};
 
-use crate::{CancellationReason, OutputStream, TerminalSize};
+use crate::{CancellationReason, OutputStream, ProcessSignal, TerminalSize};
 
 /// Stable kind of one execution observation.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -29,6 +29,8 @@ pub enum ProcessEventKind {
     StdinClosed,
     /// A PTY resize was applied.
     Resized(TerminalSize),
+    /// A portable non-cancelling signal was delivered.
+    Signalled(ProcessSignal),
     /// The first cancellation trigger was accepted.
     Cancellation(CancellationReason),
     /// Forced process-tree termination was applied.

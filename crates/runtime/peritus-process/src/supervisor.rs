@@ -133,7 +133,9 @@ fn start_with_native(
     let shared = Arc::new(SharedObservation {
         state: std::sync::Mutex::new(SharedExecution {
             events: EventLog::new(plan.output_policy().event_count()),
-            retained_output: Vec::new(),
+            retained_stdout: Vec::new(),
+            retained_stderr: Vec::new(),
+            retained_terminal: Vec::new(),
             terminal: None,
         }),
         changed: std::sync::Condvar::new(),

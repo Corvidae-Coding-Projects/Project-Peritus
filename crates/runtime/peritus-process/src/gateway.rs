@@ -119,6 +119,12 @@ fn validate_request(
         plan.backend().descriptor_digest(),
     );
     let expected_class = plan.isolation().operation_class();
+    let caller_exact = plan.caller_binding().is_none_or(|binding| {
+        binding.actor_id() == intent.actor_id
+            && binding.role() == intent.role
+            && binding.environment_id() == intent.environment_id
+            && binding.resource_id() == intent.resource_id
+    });
     let intent_exact = intent.media_type == crate::EXECUTION_INTENT_MEDIA_TYPE
         && intent.operation_class == expected_class
         && matches!(expected_class, OperationClass::Execution | OperationClass::RawEffect)
@@ -128,7 +134,8 @@ fn validate_request(
         && intent.action_id == identity.action_id()
         && intent.actor_id == identity.actor_id()
         && intent.environment_id == identity.environment_id()
-        && intent.resource_id == identity.resource_id();
+        && intent.resource_id == identity.resource_id()
+        && caller_exact;
     let action_digest = intent
         .digest(CodecLimits::PRODUCTION)
         .map_err(|_| mismatch("action intent cannot be encoded canonically"))?;

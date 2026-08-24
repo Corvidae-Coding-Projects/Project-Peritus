@@ -24,10 +24,11 @@ mod report;
 mod runner;
 mod sandbox;
 mod text;
+mod tool;
 mod unwind;
 mod workspace;
 
-pub use catalog::{plugin_suite, protocol_suite, provider_suite, tool_suite};
+pub use catalog::{plugin_suite, protocol_suite, provider_suite};
 pub use contracts::{
     BoxedCase, ConformanceCase, ConformanceFuture, ConformanceSuite, StaticSuite, SubjectFactory,
 };
@@ -64,6 +65,12 @@ pub use sandbox::{
     SandboxScenario, sandbox_suite,
 };
 pub use text::{ReportText, ReportTextError};
+pub use tool::{
+    ToolAuthorizationDrift, ToolConformanceError, ToolConformanceFixture,
+    ToolConformanceObservation, ToolConformanceSubject, ToolDescriptorObservation, ToolDisposition,
+    ToolEffectObservation, ToolReplayMode, ToolReplayObservation, ToolResultObservation,
+    ToolScenario, tool_suite,
+};
 pub use workspace::{
     WorkspaceConformanceError, WorkspaceConformanceSubject, WorkspaceMutationDisposition,
     WorkspaceMutationObservation, WorkspacePatchFixture, WorkspaceReconciliationDisposition,

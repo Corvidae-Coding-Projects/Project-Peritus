@@ -1,8 +1,12 @@
 //! Exact committed B0/B1/C0 receipts through the production workspace mutation boundary.
 
 mod authority_support;
+#[path = "authorized_gateway/caller_binding.rs"]
+mod caller_binding;
 #[path = "authority_support/namespace_safety.rs"]
 mod namespace_safety;
+#[path = "authorized_gateway/tool_binding.rs"]
+mod tool_binding;
 
 use peritus_leases::{LeaseHolder, LeaseScope, ReconciliationCorrelation};
 use peritus_patch::PatchSet;
@@ -14,8 +18,9 @@ use peritus_types::{
 };
 use peritus_workspace::{
     RestartDisposition, RollbackRequest, WorkspaceAuthorizationRequest, WorkspaceCondition,
-    WorkspaceGateway, candidate_authorization_payload, patch_authorization_payload,
-    rollback_authorization_payload,
+    WorkspaceGateway, candidate_authorization_payload, candidate_authorization_payload_for_caller,
+    patch_authorization_payload, rollback_authorization_payload,
+    rollback_authorization_payload_for_caller,
 };
 use tempfile::TempDir;
 
@@ -23,6 +28,7 @@ use authority_support::{
     Ids, artifact_store, authorized_patch, commit_authority, intent, mismatched_preimage_patch,
     open_journal, receipts, reopen_fixture, try_reopen_fixture, workspace_fixture,
 };
+use tool_binding::tool_binding;
 
 #[test]
 fn exact_committed_receipts_are_required_before_real_patch_effect() {
@@ -88,10 +94,21 @@ fn gateway_runs_candidate_rollback_and_clean_reconciliation_with_real_effects() 
 
     let candidate_ids = ids.for_action_revision(21, RevisionNumber::first());
     let successor = SnapshotId::new([81; 16]).expect("candidate snapshot");
-    let candidate_intent =
-        intent(&candidate_ids, candidate_authorization_payload(&mutation, successor));
+    let candidate_binding = tool_binding(&candidate_ids, 61, "git.candidate", 62, 63);
+    caller_binding::assert_candidate_payload(&mutation, successor, &candidate_binding);
+    let candidate_intent = intent(
+        &candidate_ids,
+        candidate_authorization_payload_for_caller(&mutation, successor, &candidate_binding),
+    );
     let candidate_receipts = receipts(&temp, &candidate_ids, &candidate_intent);
-    let candidate_request = exact_request(&candidate_intent, &candidate_receipts, &candidate_ids);
+    let swapped_candidate = tool_binding(&candidate_ids, 61, "git.candidate", 62, 64);
+    let swapped_request = exact_request(&candidate_intent, &candidate_receipts, &candidate_ids)
+        .with_caller_binding(swapped_candidate);
+    assert!(gateway.create_candidate(&swapped_request, &mutation, successor, &artifacts).is_err());
+    assert_eq!(gateway.state().condition(), WorkspaceCondition::Dirty);
+    assert_eq!(gateway.state().revision(), RevisionNumber::first());
+    let candidate_request = exact_request(&candidate_intent, &candidate_receipts, &candidate_ids)
+        .with_caller_binding(candidate_binding);
     let candidate = gateway
         .create_candidate(&candidate_request, &mutation, successor, &artifacts)
         .expect("authorized candidate");
@@ -104,10 +121,36 @@ fn gateway_runs_candidate_rollback_and_clean_reconciliation_with_real_effects() 
         &fixture.initial,
         SnapshotId::new([82; 16]).expect("rollback successor"),
     );
-    let rollback_intent =
-        intent(&rollback_ids, rollback_authorization_payload(gateway.state(), &rollback_request));
+    let rollback_binding = tool_binding(&rollback_ids, 65, "git.rollback", 66, 67);
+    caller_binding::assert_rollback_payload(gateway.state(), &rollback_request, &rollback_binding);
+    let rollback_intent = intent(
+        &rollback_ids,
+        rollback_authorization_payload_for_caller(
+            gateway.state(),
+            &rollback_request,
+            &rollback_binding,
+        ),
+    );
     let rollback_receipts = receipts(&temp, &rollback_ids, &rollback_intent);
-    let authorization = exact_request(&rollback_intent, &rollback_receipts, &rollback_ids);
+    let swapped_rollback = tool_binding(&rollback_ids, 65, "git.rollback", 66, 68);
+    let swapped_authorization = exact_request(&rollback_intent, &rollback_receipts, &rollback_ids)
+        .with_caller_binding(swapped_rollback);
+    assert!(
+        gateway
+            .rollback(
+                &swapped_authorization,
+                RollbackRequest::new(
+                    &fixture.initial,
+                    SnapshotId::new([82; 16]).expect("rollback successor"),
+                ),
+                &artifacts,
+            )
+            .is_err()
+    );
+    assert_eq!(gateway.state().condition(), WorkspaceCondition::Clean);
+    assert!(gateway.state().binding().root().join("authorized.txt").exists());
+    let authorization = exact_request(&rollback_intent, &rollback_receipts, &rollback_ids)
+        .with_caller_binding(rollback_binding);
     let rollback = gateway
         .rollback(&authorization, rollback_request, &artifacts)
         .expect("authorized rollback");

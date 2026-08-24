@@ -8,6 +8,8 @@ use peritus_policy::AuthorityInstant;
 use peritus_protocol::ActionIntentDto;
 use peritus_types::{Generation, RevisionNumber, RevisionTuple, SessionId};
 
+use crate::WorkspaceCallerBinding;
+
 /// Exact C0 receipts and current facts required by one workspace mutation.
 pub struct WorkspaceAuthorizationRequest<'a> {
     intent: &'a ActionIntentDto,
@@ -20,6 +22,7 @@ pub struct WorkspaceAuthorizationRequest<'a> {
     expected_generation: Generation,
     expected_revision: RevisionNumber,
     observed_at: AuthorityInstant,
+    caller: Option<WorkspaceCallerBinding>,
 }
 
 impl<'a> WorkspaceAuthorizationRequest<'a> {
@@ -49,7 +52,21 @@ impl<'a> WorkspaceAuthorizationRequest<'a> {
             expected_generation,
             expected_revision,
             observed_at,
+            caller: None,
         }
+    }
+
+    /// Binds a validated dependency-neutral C4 caller projection into this request.
+    #[must_use]
+    pub fn with_caller_binding(mut self, caller: WorkspaceCallerBinding) -> Self {
+        self.caller = Some(caller);
+        self
+    }
+
+    /// Borrows the optional exact C4 caller projection.
+    #[must_use]
+    pub const fn caller_binding(&self) -> Option<&WorkspaceCallerBinding> {
+        self.caller.as_ref()
     }
 
     pub(crate) const fn intent(&self) -> &ActionIntentDto {

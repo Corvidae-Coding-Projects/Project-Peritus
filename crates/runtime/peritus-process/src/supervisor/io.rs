@@ -111,6 +111,14 @@ pub(super) fn drain_controls(
                 process.resize(size)?;
                 emit(shared, plan, None, ProcessEventKind::Resized(size), Vec::new());
             }
+            Ok(ControlCommand::Signal(signal)) => {
+                let action = match signal {
+                    crate::ProcessSignal::Interrupt => crate::GracefulAction::Interrupt,
+                    crate::ProcessSignal::Terminate => crate::GracefulAction::Terminate,
+                };
+                process.graceful_stop(action)?;
+                emit(shared, plan, None, ProcessEventKind::Signalled(signal), Vec::new());
+            }
             Ok(ControlCommand::Cancel(reason)) => accept_trigger(
                 reason,
                 plan,
@@ -242,10 +250,12 @@ fn accept_output(
     }
     spool_mut(spools, stream)?.write(&bytes[..accepted])?;
     *total_spooled = total_spooled.saturating_add(u64::try_from(accepted).unwrap_or(u64::MAX));
-    window.push(&bytes[..accepted]);
-    let retained = window.bytes();
-    shared.state.lock().unwrap_or_else(std::sync::PoisonError::into_inner).retained_output =
-        retained;
+    window.push(stream, &bytes[..accepted]);
+    let mut state = shared.state.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    state.retained_stdout = window.stream_bytes(OutputStream::Stdout);
+    state.retained_stderr = window.stream_bytes(OutputStream::Stderr);
+    state.retained_terminal = window.stream_bytes(OutputStream::Terminal);
+    drop(state);
     emit(shared, plan, Some(offset), ProcessEventKind::Output(stream), bytes[..accepted].to_vec());
     Ok(())
 }
