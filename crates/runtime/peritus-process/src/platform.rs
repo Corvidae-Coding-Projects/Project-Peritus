@@ -20,6 +20,8 @@ use crate::{GracefulAction, NativeProtectedHandle, OutputStream, ProcessError, T
 pub(crate) use inheritance::configure_protected_inheritance;
 pub use ownership::ProcessTreeIdentity;
 pub(crate) use ownership::current_start_token;
+#[cfg(unix)]
+pub(crate) use resource::process_group_count;
 pub(crate) use resource::{local_supervisor_resources_supported, sample_resources};
 
 pub(crate) struct OutputReader {
@@ -72,20 +74,6 @@ pub(crate) fn process_group_quiescent(identity: ProcessTreeIdentity) -> Result<b
         Err(Errno::ESRCH) => Ok(true),
         Err(_) => Err(tree_observation_error("process-group quiescence cannot be observed")),
     }
-}
-
-#[cfg(target_os = "linux")]
-pub(crate) fn process_group_count(
-    identity: ProcessTreeIdentity,
-) -> Result<Option<u64>, ProcessError> {
-    sample_resources(identity).map(|sample| Some(sample.process_count()))
-}
-
-#[cfg(all(unix, not(target_os = "linux")))]
-pub(crate) const fn process_group_count(
-    _identity: ProcessTreeIdentity,
-) -> Result<Option<u64>, ProcessError> {
-    Ok(None)
 }
 
 #[cfg(unix)]

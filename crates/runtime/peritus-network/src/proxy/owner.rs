@@ -1,7 +1,7 @@
 //! Listener lifetime, worker bounds, and complete joins.
 
 use std::{
-    net::TcpListener,
+    net::{Shutdown, TcpListener},
     sync::{
         Arc, Mutex,
         atomic::{AtomicU64, Ordering},
@@ -117,6 +117,10 @@ pub(super) fn run(
                         &mut stream,
                         b"HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\nContent-Length: 0\r\n\r\n",
                     );
+                    // Complete the response half of the connection before dropping the
+                    // overloaded socket. Windows otherwise resets a socket that still has
+                    // unread request bytes, which can discard the 503 response in flight.
+                    let _ = stream.shutdown(Shutdown::Write);
                     observe_limited(&shared);
                     continue;
                 }

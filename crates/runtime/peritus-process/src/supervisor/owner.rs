@@ -162,6 +162,11 @@ impl SpawnedOwner {
     }
 
     fn tick(&mut self) -> Result<(), ProcessError> {
+        if self.resources.requires_process_count_sample()
+            && let Some(process_count) = self.process.process_count()?
+        {
+            self.resources.observe_process_count(process_count);
+        }
         if self.os_exit.is_none()
             && let Some(session) = self.native.as_deref_mut()
             && session.poll_resources(self.tree)? == crate::NativePoll::ResourceLimitExceeded

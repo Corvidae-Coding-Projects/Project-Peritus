@@ -4,13 +4,14 @@ use peritus_process::{
 };
 use peritus_sandbox::{CapabilityDomain, ObservationKind};
 use peritus_types::Sha256Digest;
+use std::path::Path;
 
 use super::{MacosSession, ObservationEvent, SessionPhase, SessionResources, TerminationReason};
 
-pub(super) fn session() -> MacosSession {
+pub(super) fn session(workspace: &Path) -> MacosSession {
     let (exec_status, exec_status_handle) = crate::exec_status::prepare().unwrap();
     let descriptor = u32::try_from(exec_status_handle.raw_handle()).unwrap();
-    let manifest = crate::test_support::manifest_with_exec_status(descriptor);
+    let manifest = crate::test_support::manifest_with_exec_status(descriptor, workspace);
     let launch = NativeLaunchDescription::new(
         CommandSpec::new("/helper", std::iter::empty::<String>()).unwrap(),
         "peritus-macos-helper:test",
@@ -33,7 +34,8 @@ pub(super) fn session() -> MacosSession {
 
 #[test]
 fn lifecycle_is_ordered_bounded_and_release_is_idempotent() {
-    let mut session = session();
+    let workspace = tempfile::tempdir().unwrap();
+    let mut session = session(workspace.path());
     assert!(session.record_activation(ProcessTreeIdentity::new(44, Some(1), None, true)).is_err());
     assert!(
         session.record_activation(ProcessTreeIdentity::new(44, Some(1), Some(45), true)).is_err()
@@ -82,7 +84,8 @@ fn lifecycle_is_ordered_bounded_and_release_is_idempotent() {
 #[test]
 fn target_reserved_range_exit_remains_exact_after_activation() {
     for code in 120..=125 {
-        let mut session = session();
+        let workspace = tempfile::tempdir().unwrap();
+        let mut session = session(workspace.path());
         session.record_activation(ProcessTreeIdentity::new(44, Some(1), Some(44), true)).unwrap();
         session.record_termination(&OsExitObservation::Code(code)).unwrap();
         assert_eq!(session.termination(), Some(TerminationReason::TargetExit(code)));
@@ -93,7 +96,8 @@ fn target_reserved_range_exit_remains_exact_after_activation() {
 
 #[test]
 fn prepared_abandonment_cleans_without_normal_release_observation() {
-    let mut session = session();
+    let workspace = tempfile::tempdir().unwrap();
+    let mut session = session(workspace.path());
     assert!(!session.record_release().unwrap().already_released());
     assert!(session.record_release().unwrap().already_released());
     assert_eq!(session.phase(), SessionPhase::Released);

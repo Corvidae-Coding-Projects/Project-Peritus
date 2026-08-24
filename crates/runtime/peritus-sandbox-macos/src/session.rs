@@ -18,7 +18,7 @@ mod adapter;
 mod cleanup;
 mod lifecycle;
 mod observation_mapping;
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;
 
 pub(crate) use adapter::process_error;

@@ -221,6 +221,7 @@ fn invocation(
         .map(|value| (value.name().to_owned(), value.value().to_owned()))
         .collect();
     if fixture.scenario() == ProcessScenario::LiteralInvocation {
+        let workspace = std::fs::canonicalize(root.workspace()).map_err(|_| infrastructure())?;
         let fields: Vec<_> = stream(events, OutputStream::Stdout)
             .split(|byte| *byte == 0)
             .filter(|field| !field.is_empty())
@@ -229,7 +230,7 @@ fn invocation(
             .map_err(|_| infrastructure())?;
         let expected_count = fixture.arguments().len() + 3;
         if fields.len() != expected_count
-            || fields[0] != root.workspace().to_string_lossy()
+            || fields[0] != workspace.to_string_lossy()
             || fields[1] != fixture.environment()[0].value()
             || fields[2] != fixture.environment()[1].value()
             || !fields[3..].iter().map(String::as_str).eq(fixture.arguments().iter().copied())

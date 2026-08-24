@@ -1,7 +1,7 @@
 //! Durable per-revision action-consumption markers owned by the writable target.
 
 use std::{
-    fs::{self, File, OpenOptions},
+    fs::{self, OpenOptions},
     io::{ErrorKind, Write},
     path::{Path, PathBuf},
 };
@@ -85,8 +85,7 @@ impl WritableWorkspace {
             .write_all(&bytes)
             .and_then(|()| marker.sync_all())
             .map_err(|_| consumption_error("action marker cannot be synchronized"))?;
-        File::open(&directory)
-            .and_then(|directory| directory.sync_all())
+        crate::filesystem::sync_directory(&directory)
             .map_err(|_| consumption_error("action ledger directory cannot be synchronized"))?;
         self.state_mut().record_consumed_action(action_id, action_digest);
         Ok(())

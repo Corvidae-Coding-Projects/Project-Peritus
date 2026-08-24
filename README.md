@@ -36,10 +36,10 @@ packaged-host qualification. C5 is the next runtime boundary: the provider-neutr
 and first-party OpenAI, Anthropic, Google, and explicit compatible-endpoint adapters. A3, C5–C7,
 D0–D3, E0–E3, F0, G0–G3, and H0–H4 remain before production release and qualification.
 
-Local Gate A is the current merge authority: ordinary Rust checks, architecture and API policy,
+Gate A is the current merge authority: ordinary Rust checks, architecture and API policy,
 supply-chain policy, pinned toolchains, full Verus verification, and verified release builds must
-all pass together. GitHub-hosted jobs are configured but currently cannot start because of the
-known account-level runner restriction; a queued job is not treated as passing evidence.
+all pass together. Required GitHub-hosted checks now execute on Ubuntu, macOS, and Windows, with a
+separate locked Foundation matrix covering the same platform, dependency, and Verus boundaries.
 
 ## Foundation checks
 

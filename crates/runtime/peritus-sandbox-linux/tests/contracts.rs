@@ -2,15 +2,16 @@
 
 mod support;
 
+#[cfg(target_os = "linux")]
 use peritus_sandbox::SandboxResourceKind;
 use peritus_sandbox_linux::{
-    ActivationRecord, EnforcementLevel, EnvironmentEntry, HelperManifest, LandlockAccess,
-    LandlockRule, LinuxError, LinuxErrorKind, LinuxOperation, LinuxRecovery, MountAction,
-    MountPlan, MountPolicy, NativePhase, NetworkIsolation, RecoveryClassification, RefinementFacts,
-    ResourcePlan, RuntimeRecord, TargetCommand,
+    ActivationRecord, EnvironmentEntry, HelperManifest, LandlockAccess, LandlockRule, LinuxError,
+    LinuxErrorKind, LinuxOperation, LinuxRecovery, NativePhase, NetworkIsolation,
+    RecoveryClassification, RefinementFacts, RuntimeRecord, TargetCommand,
 };
+#[cfg(target_os = "linux")]
+use peritus_sandbox_linux::{EnforcementLevel, MountAction, MountPlan, MountPolicy, ResourcePlan};
 use peritus_types::Sha256Digest;
-use std::path::PathBuf;
 
 const fn digest(seed: u8) -> Sha256Digest {
     Sha256Digest::new([seed; 32])
@@ -18,6 +19,7 @@ const fn digest(seed: u8) -> Sha256Digest {
 
 #[test]
 fn manifest_round_trip_is_deterministic_and_checksum_bound() {
+    let host_root = tempfile::tempdir().expect("host path fixture");
     let manifest = HelperManifest::new(
         digest(1),
         digest(2),
@@ -28,12 +30,12 @@ fn manifest_round_trip_is_deterministic_and_checksum_bound() {
             vec!["%s".to_owned(), "literal;not-shell".to_owned()],
         )
         .expect("target"),
-        PathBuf::from("/tmp"),
-        PathBuf::from("/sys/fs/cgroup/peritus-contract-test"),
+        host_root.path().to_path_buf(),
+        host_root.path().join("peritus-contract-test"),
         false,
         vec![EnvironmentEntry::new("MODE".to_owned(), "checked".to_owned()).expect("env")],
         vec![
-            LandlockRule::new(PathBuf::from("/"), LandlockAccess::host_read_only())
+            LandlockRule::new(host_root.path().to_path_buf(), LandlockAccess::host_read_only())
                 .expect("Landlock rule"),
         ],
         support::resource_plan(),
@@ -64,6 +66,7 @@ fn activation_record_is_fixed_and_corruption_detected() {
     assert!(ActivationRecord::decode(&corrupted).is_err());
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn filesystem_projection_is_deterministic_and_protected_metadata_dominates() {
     let workspace = tempfile::tempdir().expect("workspace");
@@ -103,6 +106,7 @@ fn filesystem_projection_is_deterministic_and_protected_metadata_dominates() {
     assert!(writable < masked);
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn absent_protected_root_overlapping_creation_fails_closed() {
     let workspace = tempfile::tempdir().expect("workspace");

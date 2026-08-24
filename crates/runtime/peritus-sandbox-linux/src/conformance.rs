@@ -4,7 +4,7 @@ use crate::{LinuxBackendDescriptor, LinuxProbe};
 use peritus_sandbox::{BackendAdmission, CheckedSandboxPlan};
 use peritus_types::Sha256Digest;
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "linux"))]
 mod tests;
 
 /// Exact conformance binding without exposing platform effects or authority constructors.

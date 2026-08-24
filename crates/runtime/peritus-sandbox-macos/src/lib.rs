@@ -12,7 +12,7 @@
 
 mod activation;
 mod canonical;
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod conformance_tests;
 mod descriptor;
 mod environment;
@@ -33,7 +33,7 @@ mod resource_monitor;
 mod runner;
 mod secret;
 mod session;
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod test_support;
 mod verified;
 

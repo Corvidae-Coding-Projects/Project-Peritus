@@ -1,4 +1,6 @@
-//! Platform-neutral macOS compiler, protocol, and recovery contracts.
+//! Unix-hosted macOS compiler, protocol, and recovery contracts.
+
+#![cfg(unix)]
 
 mod support;
 

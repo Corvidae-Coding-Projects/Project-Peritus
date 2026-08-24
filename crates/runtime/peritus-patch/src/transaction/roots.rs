@@ -63,7 +63,11 @@ fn same_device(left: &Path, right: &Path) -> Result<bool, PatchError> {
 }
 
 #[cfg(not(unix))]
-fn same_device(_left: &Path, _right: &Path) -> Result<bool, PatchError> {
+#[allow(
+    clippy::unnecessary_wraps,
+    reason = "the cross-platform root-validation contract reports Unix metadata failures"
+)]
+const fn same_device(_left: &Path, _right: &Path) -> Result<bool, PatchError> {
     Ok(true)
 }
 

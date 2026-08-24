@@ -85,6 +85,7 @@ fn inert_proxy_preparation_starts_only_from_the_checked_plan() {
 #[cfg(unix)]
 #[test]
 fn inherited_listener_bridge_accepts_inside_namespace_and_connects_from_parent() {
+    let _guard = serial_proxy_test();
     let upstream = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
     let upstream_port = upstream.local_addr().unwrap().port();
     let upstream_task = thread::spawn(move || {

@@ -308,7 +308,7 @@ fn observation_binding(
     )
 }
 
-fn vacuous(
+const fn vacuous(
     decision: SandboxDecision,
     denied_domains: Vec<SandboxDomain>,
     fixture: &SandboxConformanceFixture,

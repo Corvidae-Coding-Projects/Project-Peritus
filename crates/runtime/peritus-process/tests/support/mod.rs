@@ -261,7 +261,7 @@ pub fn fixture_binary() -> String {
         .expect("Cargo integration test profile directory");
     let fixture = profile.join(format!("peritus-process-fixture{}", std::env::consts::EXE_SUFFIX));
     assert!(fixture.is_file(), "fixture binary was not built: {}", fixture.display());
-    fixture.into_os_string().into_string().expect("UTF-8 fixture binary path")
+    executable_text(fixture)
 }
 
 #[allow(dead_code, reason = "shared support is also compiled by the raw conformance target")]
@@ -278,7 +278,19 @@ fn sibling_binary(name: &str) -> String {
         .expect("Cargo integration test profile directory");
     let binary = profile.join(format!("{name}{}", std::env::consts::EXE_SUFFIX));
     assert!(binary.is_file(), "fixture binary was not built: {}", binary.display());
-    binary.into_os_string().into_string().expect("UTF-8 fixture binary path")
+    executable_text(binary)
+}
+
+fn executable_text(path: std::path::PathBuf) -> String {
+    let text = path.into_os_string().into_string().expect("UTF-8 fixture binary path");
+    #[cfg(windows)]
+    {
+        text.replace('\\', "/")
+    }
+    #[cfg(not(windows))]
+    {
+        text
+    }
 }
 
 pub fn contract_dto() -> AcceptanceContractDto {

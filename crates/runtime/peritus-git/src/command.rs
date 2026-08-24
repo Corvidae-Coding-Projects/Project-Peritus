@@ -140,8 +140,32 @@ impl GitRunner {
 
 fn git_path_argument(prefix: &str, path: &Path) -> OsString {
     let mut argument = OsString::from(prefix);
-    argument.push(path.as_os_str());
+    argument.push(git_path(path));
     argument
+}
+
+pub fn git_path(path: &Path) -> OsString {
+    #[cfg(not(windows))]
+    {
+        path.as_os_str().to_owned()
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::ffi::{OsStrExt as _, OsStringExt as _};
+
+        const VERBATIM_PREFIX: &[u16] = &[92, 92, 63, 92];
+        const VERBATIM_UNC_PREFIX: &[u16] = &[92, 92, 63, 92, 85, 78, 67, 92];
+        let encoded: Vec<_> = path.as_os_str().encode_wide().collect();
+        match (encoded.strip_prefix(VERBATIM_UNC_PREFIX), encoded.strip_prefix(VERBATIM_PREFIX)) {
+            (Some(remainder), _) => {
+                let mut conventional = vec![92_u16, 92];
+                conventional.extend_from_slice(remainder);
+                OsString::from_wide(&conventional)
+            }
+            (None, Some(remainder)) => OsString::from_wide(remainder),
+            (None, None) => path.as_os_str().to_owned(),
+        }
+    }
 }
 
 fn apply_environment(command: &mut Command) {

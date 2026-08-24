@@ -53,6 +53,7 @@ pub(crate) fn validate_native_launch(plan: &ExecutionPlan) -> Result<(), Process
 
 pub(super) struct ResourceTracker {
     sampling_supported: bool,
+    process_count_sampled: bool,
     baseline_disk: u64,
     greatest_cpu: u64,
     greatest_memory: u64,
@@ -68,6 +69,7 @@ impl ResourceTracker {
         let sampling_supported = platform::local_supervisor_resources_supported();
         Ok(Self {
             sampling_supported,
+            process_count_sampled: false,
             baseline_disk: if sampling_supported {
                 disk_usage(plan.working_directory().path())?
             } else {
@@ -162,7 +164,7 @@ impl ResourceTracker {
                 ProcessResourceDimension::ProcessCount,
                 self.greatest_processes,
                 ceiling.process_count(),
-                self.sampled_fidelity(),
+                self.process_count_fidelity(),
             ),
             observation(
                 ProcessResourceDimension::OpenHandles,
@@ -180,7 +182,12 @@ impl ResourceTracker {
     }
 
     pub(super) fn observe_process_count(&mut self, process_count: u64) {
+        self.process_count_sampled = true;
         self.greatest_processes = self.greatest_processes.max(process_count);
+    }
+
+    pub(super) const fn requires_process_count_sample(&self) -> bool {
+        !self.sampling_supported
     }
 
     pub(super) const fn limit_exceeded(&self, plan: &ExecutionPlan) -> bool {
@@ -198,6 +205,14 @@ impl ResourceTracker {
 
     const fn sampled_fidelity(&self) -> ResourceFidelity {
         if self.sampling_supported {
+            ResourceFidelity::Sampled
+        } else {
+            ResourceFidelity::Unsupported
+        }
+    }
+
+    const fn process_count_fidelity(&self) -> ResourceFidelity {
+        if self.process_count_sampled {
             ResourceFidelity::Sampled
         } else {
             ResourceFidelity::Unsupported

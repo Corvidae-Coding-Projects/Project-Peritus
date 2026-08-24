@@ -1,6 +1,6 @@
 //! Repository discovery and stable identity binding.
 
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
 use peritus_types::Sha256Digest;
@@ -323,8 +323,4 @@ fn put_path(bytes: &mut Vec<u8>, path: &Path) -> Result<(), GitError> {
 
 pub fn strings(values: &[&str]) -> Vec<OsString> {
     values.iter().map(|value| OsString::from(*value)).collect()
-}
-
-pub fn os(value: impl AsRef<OsStr>) -> OsString {
-    value.as_ref().to_owned()
 }

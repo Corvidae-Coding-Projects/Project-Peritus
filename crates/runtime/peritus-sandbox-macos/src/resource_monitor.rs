@@ -172,7 +172,7 @@ fn sample_error() -> MacosError {
 mod native {
     use std::{
         ffi::{c_int, c_void},
-        mem::MaybeUninit,
+        mem::{MaybeUninit, size_of_val},
     };
 
     use peritus_process::ProcessTreeIdentity;
@@ -205,7 +205,7 @@ mod native {
         let group = tree.process_group().ok_or_else(sample_error)?;
         let mut pids = vec![0_i32; MAX_GROUP_PROCESSES];
         let buffer_bytes =
-            c_int::try_from(std::mem::size_of_val(pids.as_slice())).map_err(|_| sample_error())?;
+            c_int::try_from(size_of_val(pids.as_slice())).map_err(|_| sample_error())?;
         // SAFETY: `pids` is writable for `buffer_bytes`; the selector requests only process IDs
         // belonging to the exact C2-owned process group and transfers no ownership.
         let count = unsafe {
@@ -301,11 +301,28 @@ mod tests {
     use peritus_sandbox::SandboxResourceKind;
 
     use super::{ResourceUsage, exceeds};
+    use crate::{EnforcementLevel, ResourceControl, ResourceControlPlan};
 
     #[test]
     fn resource_ceiling_comparison_is_exact_and_dimension_complete() {
-        let manifest = crate::test_support::manifest();
-        let controls = manifest.resources();
+        let controls = ResourceControlPlan::from_controls([
+            ResourceControl::new(SandboxResourceKind::WallTime, 100, EnforcementLevel::Supervisor),
+            ResourceControl::new(SandboxResourceKind::CpuTime, 100, EnforcementLevel::Supervisor),
+            ResourceControl::new(SandboxResourceKind::Memory, 100, EnforcementLevel::Supervisor),
+            ResourceControl::new(SandboxResourceKind::Disk, 100, EnforcementLevel::Supervisor),
+            ResourceControl::new(SandboxResourceKind::Output, 100, EnforcementLevel::Supervisor),
+            ResourceControl::new(
+                SandboxResourceKind::OpenHandles,
+                100,
+                EnforcementLevel::Supervisor,
+            ),
+            ResourceControl::new(SandboxResourceKind::Processes, 100, EnforcementLevel::Supervisor),
+            ResourceControl::new(
+                SandboxResourceKind::Concurrency,
+                100,
+                EnforcementLevel::Supervisor,
+            ),
+        ]);
         let at_limit = ResourceUsage {
             cpu_nanos: controls.control(SandboxResourceKind::CpuTime).ceiling() * 1_000_000,
             memory_bytes: controls.control(SandboxResourceKind::Memory).ceiling(),
@@ -313,10 +330,10 @@ mod tests {
             open_handles: controls.control(SandboxResourceKind::OpenHandles).ceiling(),
             processes: controls.control(SandboxResourceKind::Processes).ceiling(),
         };
-        assert!(!exceeds(&at_limit, controls));
+        assert!(!exceeds(&at_limit, &controls));
         assert!(exceeds(
             &ResourceUsage { processes: at_limit.processes + 1, ..at_limit },
-            controls,
+            &controls,
         ));
     }
 }

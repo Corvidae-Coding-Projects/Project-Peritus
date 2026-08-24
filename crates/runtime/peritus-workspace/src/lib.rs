@@ -9,6 +9,7 @@ mod caller;
 mod candidate;
 mod consumption;
 mod error;
+mod filesystem;
 mod gateway;
 mod git_inspection;
 mod identity;

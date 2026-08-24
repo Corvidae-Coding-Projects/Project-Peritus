@@ -1,7 +1,7 @@
 //! Canonical target-owned transaction namespaces and durable identity binding.
 
 use std::{
-    fs::{self, File, OpenOptions},
+    fs::{self, OpenOptions},
     io::{ErrorKind, Write},
     path::{Path, PathBuf},
 };
@@ -36,8 +36,7 @@ pub fn open(
     }
     let namespace = root.join(namespace_name(state));
     match fs::create_dir(&namespace) {
-        Ok(()) => File::open(&root)
-            .and_then(|directory| directory.sync_all())
+        Ok(()) => crate::filesystem::sync_directory(&root)
             .map_err(|_| namespace_error("transaction namespace parent cannot be synchronized"))?,
         Err(error) if error.kind() == ErrorKind::AlreadyExists => {}
         Err(_) => return Err(namespace_error("transaction namespace cannot be created")),
@@ -94,7 +93,7 @@ fn establish_binding(namespace: &Path, state: &WorkspaceState) -> Result<(), Wor
                 .write_all(&expected)
                 .and_then(|()| marker.sync_all())
                 .map_err(|_| namespace_error("transaction namespace binding cannot be written"))?;
-            File::open(namespace).and_then(|directory| directory.sync_all()).map_err(|_| {
+            crate::filesystem::sync_directory(namespace).map_err(|_| {
                 namespace_error("transaction namespace binding cannot be synchronized")
             })?;
             Ok(())

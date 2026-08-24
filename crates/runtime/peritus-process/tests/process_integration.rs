@@ -11,9 +11,11 @@ mod support;
 use peritus_leases::ReconciliationCorrelation;
 use peritus_process::{
     CancellationReason, ExecutionAuthorizationRequest, ExecutionGateway, GracefulAction, IoMode,
-    ProbeObservation, ProcessCursor, ProcessEventKind, ProcessProbe, ProcessSignal, ProcessStore,
-    ProcessTreeIdentity, QuiescenceBlocker, StdinPolicy, TerminalDisposition, TerminalSize,
+    ProbeObservation, ProcessCursor, ProcessEventKind, ProcessProbe, ProcessStore,
+    ProcessTreeIdentity, QuiescenceBlocker, StdinPolicy, TerminalDisposition,
 };
+#[cfg(unix)]
+use peritus_process::{ProcessSignal, TerminalSize};
 use peritus_types::{EvidenceId, Generation};
 
 use support::authority::commit_authority_without_dispatch;

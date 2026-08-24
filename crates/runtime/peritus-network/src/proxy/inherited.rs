@@ -16,6 +16,7 @@ use std::{
 
 use nix::{
     errno::Errno,
+    fcntl::{FcntlArg, FdFlag, fcntl},
     sys::socket::{ControlMessage, ControlMessageOwned, MsgFlags, cmsg_space, recvmsg, sendmsg},
 };
 
@@ -234,7 +235,7 @@ fn receive_listener(
                 channel.as_raw_fd(),
                 &mut slices,
                 Some(&mut space),
-                MsgFlags::MSG_CMSG_CLOEXEC,
+                descriptor_receive_flags(),
             ) {
                 Ok(message) => message,
                 Err(Errno::EAGAIN) => {
@@ -272,7 +273,22 @@ fn receive_listener(
         let descriptor = received[0];
         // SAFETY: SCM_RIGHTS returned one fresh owned descriptor and this is its sole owner claim.
         let owned = unsafe { OwnedFd::from_raw_fd(descriptor) };
+        let flags = fcntl(&owned, FcntlArg::F_GETFD)
+            .map_err(|_| owner::proxy_error("netns proxy descriptor flags are unavailable"))?;
+        let flags = FdFlag::from_bits_retain(flags) | FdFlag::FD_CLOEXEC;
+        fcntl(&owned, FcntlArg::F_SETFD(flags))
+            .map_err(|_| owner::proxy_error("netns proxy descriptor cannot be close-on-exec"))?;
         return Ok(TcpListener::from(owned));
     }
     Err(owner::teardown_error("netns proxy listener wait was cancelled"))
+}
+
+#[cfg(any(target_os = "android", target_os = "linux"))]
+const fn descriptor_receive_flags() -> MsgFlags {
+    MsgFlags::MSG_CMSG_CLOEXEC
+}
+
+#[cfg(not(any(target_os = "android", target_os = "linux")))]
+const fn descriptor_receive_flags() -> MsgFlags {
+    MsgFlags::empty()
 }

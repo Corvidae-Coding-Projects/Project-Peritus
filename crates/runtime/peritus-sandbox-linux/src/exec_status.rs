@@ -46,34 +46,42 @@ pub fn prepare() -> Result<(ExecStatusOwner, NativeProtectedHandle, InheritedHan
 
 impl ExecStatusOwner {
     /// Observes close-on-exec success or one exact authenticated helper failure record.
+    #[cfg(target_os = "linux")]
     pub fn observe(
         &mut self,
         manifest: Sha256Digest,
         preparation: Sha256Digest,
     ) -> Result<(), LinuxError> {
-        #[cfg(target_os = "linux")]
-        {
-            use std::io::Read;
+        use std::io::Read;
 
-            let mut bytes = Vec::new();
-            self.reader
-                .by_ref()
-                .take(33)
-                .read_to_end(&mut bytes)
-                .map_err(|_| status_error("helper exec status timed out or could not be read"))?;
-            if bytes.is_empty() {
-                return Ok(());
-            }
-            if bytes.as_slice() == failure_record(manifest, preparation).as_bytes() {
-                return Err(status_error("native helper could not exec the literal target"));
-            }
-            Err(status_error("native helper exec status record is malformed"))
+        let mut bytes = Vec::new();
+        self.reader
+            .by_ref()
+            .take(33)
+            .read_to_end(&mut bytes)
+            .map_err(|_| status_error("helper exec status timed out or could not be read"))?;
+        if bytes.is_empty() {
+            return Ok(());
         }
-        #[cfg(not(target_os = "linux"))]
-        {
-            let _ = (manifest, preparation);
-            Err(status_error("Linux exec status cannot be observed on this target"))
+        if bytes.as_slice() == failure_record(manifest, preparation).as_bytes() {
+            return Err(status_error("native helper could not exec the literal target"));
         }
+        Err(status_error("native helper exec status record is malformed"))
+    }
+
+    /// Rejects observation when the Linux backend is compiled for another host.
+    #[cfg(not(target_os = "linux"))]
+    #[allow(
+        clippy::needless_pass_by_ref_mut,
+        clippy::unused_self,
+        reason = "the cross-platform owner API retains its receiver while rejecting non-Linux use"
+    )]
+    pub fn observe(
+        &mut self,
+        _manifest: Sha256Digest,
+        _preparation: Sha256Digest,
+    ) -> Result<(), LinuxError> {
+        Err(status_error("Linux exec status cannot be observed on this target"))
     }
 }
 
@@ -116,6 +124,7 @@ pub fn report_helper_failure(
         .map_err(|error| LinuxError::io(LinuxOperation::Activate, "report exec failure", &error))
 }
 
+#[cfg(target_os = "linux")]
 fn failure_record(manifest: Sha256Digest, preparation: Sha256Digest) -> Sha256Digest {
     peritus_process::native_target_exec_failed_record(manifest, preparation)
 }

@@ -300,3 +300,5 @@ pub fn activate_manifest(_manifest: &HelperManifest) -> Result<(), MacosError> {
 
 #[cfg(target_os = "macos")]
 mod native;
+#[cfg(target_os = "macos")]
+pub(crate) use native::write_exec_status;

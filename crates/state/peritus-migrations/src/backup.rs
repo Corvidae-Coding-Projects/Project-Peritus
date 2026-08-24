@@ -86,18 +86,20 @@ fn hash_file(path: &Path) -> Result<Sha256Digest, MigrationError> {
     Ok(Sha256Digest::new(hasher.finalize().into()))
 }
 
+#[cfg(unix)]
 fn sync_directory(path: &Path) -> Result<(), MigrationError> {
-    #[cfg(unix)]
-    {
-        fs::File::open(path)
-            .and_then(|file| file.sync_all())
-            .map_err(|error| MigrationError::io("synchronize backup directory", error))
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = path;
-        Ok(())
-    }
+    fs::File::open(path)
+        .and_then(|file| file.sync_all())
+        .map_err(|error| MigrationError::io("synchronize backup directory", error))
+}
+
+#[cfg(not(unix))]
+#[allow(
+    clippy::unnecessary_wraps,
+    reason = "the cross-platform backup contract reports Unix directory-sync failures"
+)]
+const fn sync_directory(_path: &Path) -> Result<(), MigrationError> {
+    Ok(())
 }
 
 const fn invalid_path() -> MigrationError {

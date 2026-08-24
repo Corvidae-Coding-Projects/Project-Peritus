@@ -93,7 +93,7 @@ fn shell_exec_runs_literal_argv_accepts_stdin_and_publishes_output_artifacts() {
         .expect("stdin accepted");
     let result =
         update.terminal().cloned().unwrap_or_else(|| await_result(&mut setup.router, handle, 22));
-    assert_eq!(result.status(), ResultStatus::Succeeded);
+    assert_eq!(result.status(), ResultStatus::Succeeded, "{result:?}");
     assert!(
         result.human_rendering().as_str().contains("argv:a;printf-not-executed:hello"),
         "unexpected retained output: {:?}",
@@ -106,7 +106,7 @@ fn shell_exec_runs_literal_argv_accepts_stdin_and_publishes_output_artifacts() {
 #[test]
 fn quality_run_emits_candidate_evidence_and_invalid_json_never_passes() {
     let passed = run_quality(131, "quality-valid", "quality.valid");
-    assert_eq!(passed.status(), ResultStatus::Succeeded);
+    assert_eq!(passed.status(), ResultStatus::Succeeded, "{passed:?}");
     assert_eq!(candidate_outcome(&passed), "passed");
     assert!(!passed.artifacts().is_empty());
 
