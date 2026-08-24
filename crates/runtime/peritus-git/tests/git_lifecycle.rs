@@ -16,7 +16,10 @@ fn opens_resolves_and_manages_an_exact_detached_worktree() {
     let fixture = RepositoryFixture::sha1();
     let repository = fixture.open();
     assert_eq!(repository.identity().object_format(), ObjectFormat::Sha1);
-    assert_eq!(repository.identity().repository_root(), fixture.root);
+    assert_eq!(
+        repository.identity().repository_root(),
+        std::fs::canonicalize(&fixture.root).expect("canonical repository root")
+    );
     let baseline = repository.resolve_baseline("HEAD").expect("baseline");
     let destination = fixture.worktree_path("writer");
     let worktree = repository

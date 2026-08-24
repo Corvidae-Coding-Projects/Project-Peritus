@@ -265,7 +265,7 @@ fn mode_from_metadata(metadata: &Metadata) -> FileMode {
 }
 
 #[cfg(not(unix))]
-fn mode_from_metadata(_metadata: &Metadata) -> FileMode {
+const fn mode_from_metadata(_metadata: &Metadata) -> FileMode {
     FileMode::Regular
 }
 

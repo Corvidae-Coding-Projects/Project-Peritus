@@ -128,18 +128,19 @@ const fn layout_escape() -> ArtifactStoreError {
     )
 }
 
+#[cfg(unix)]
 pub fn sync_directory(path: &Path) -> Result<(), ArtifactStoreError> {
-    #[cfg(unix)]
-    {
-        let directory =
-            fs::File::open(path).map_err(|error| io(StoreOperation::Synchronize, error))?;
-        directory.sync_all().map_err(|error| io(StoreOperation::Synchronize, error))
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = path;
-        Ok(())
-    }
+    let directory = fs::File::open(path).map_err(|error| io(StoreOperation::Synchronize, error))?;
+    directory.sync_all().map_err(|error| io(StoreOperation::Synchronize, error))
+}
+
+#[cfg(not(unix))]
+#[allow(
+    clippy::unnecessary_wraps,
+    reason = "the cross-platform persistence contract reports Unix directory-sync failures"
+)]
+pub const fn sync_directory(_path: &Path) -> Result<(), ArtifactStoreError> {
+    Ok(())
 }
 
 pub fn io(operation: StoreOperation, error: std::io::Error) -> ArtifactStoreError {

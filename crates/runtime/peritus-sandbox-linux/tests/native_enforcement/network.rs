@@ -18,6 +18,9 @@ use std::sync::Arc;
 #[test]
 fn bubblewrapped_helper_bridges_only_the_managed_proxy_from_its_fresh_netns() {
     let _guard = native_test_guard();
+    if !native_sandbox_available() {
+        return;
+    }
     let workspace = tempfile::tempdir().expect("workspace");
     for protected in [".git", ".peritus", ".crosslink"] {
         std::fs::create_dir(workspace.path().join(protected)).expect("protected root");

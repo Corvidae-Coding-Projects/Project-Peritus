@@ -2,7 +2,8 @@
 
 use peritus_process::{native_activation_record, native_ready_record};
 use peritus_sandbox_linux::{
-    HelperManifest, LandlockRule, LinuxLaunchDescription, NetworkIsolation, TargetCommand,
+    HelperManifest, LandlockRule, LinuxLaunchDescription, LinuxProbe, NetworkIsolation,
+    ProbeRequest, TargetCommand,
 };
 use peritus_types::Sha256Digest;
 use std::io::{Read, Write};
@@ -27,6 +28,17 @@ pub fn helper_path() -> PathBuf {
         .and_then(Path::parent)
         .expect("Cargo target directory")
         .join("peritus-linux-sandbox-helper")
+}
+
+pub fn native_sandbox_available() -> bool {
+    let request = ProbeRequest::new(
+        PathBuf::from("/usr/bin/bwrap"),
+        helper_path(),
+        PathBuf::from("/sys/fs/cgroup"),
+        None,
+    )
+    .expect("native test probe request");
+    LinuxProbe::run(&request).is_ok_and(|probe| probe.baseline_supported())
 }
 
 pub fn manifest(

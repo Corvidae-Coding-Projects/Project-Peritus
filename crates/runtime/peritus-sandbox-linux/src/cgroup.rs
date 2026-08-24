@@ -40,7 +40,7 @@ impl CgroupSupport {
     }
 
     #[cfg(not(target_os = "linux"))]
-    pub(crate) fn unavailable(root: PathBuf) -> Self {
+    pub(crate) const fn unavailable(root: PathBuf) -> Self {
         Self {
             root,
             unified: false,

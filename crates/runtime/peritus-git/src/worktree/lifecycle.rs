@@ -3,8 +3,8 @@
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
-use crate::command::{CommandAccess, one_line};
-use crate::repository::{os, strings};
+use crate::command::{CommandAccess, git_path, one_line};
+use crate::repository::strings;
 use crate::{CommitId, ErrorKind, GitError, GitRepository, ObjectId, Operation, RecoveryClass};
 
 use super::{CreateWorktree, RegisteredWorktree, RemovalPolicy, WorktreeObservation};
@@ -22,7 +22,7 @@ impl GitRepository {
             OsString::from("worktree"),
             OsString::from("add"),
             OsString::from("--detach"),
-            os(&destination),
+            git_path(&destination),
             OsString::from(request.baseline.commit().to_string()),
         ];
         self.checked_repo_command(
@@ -134,7 +134,7 @@ impl GitRepository {
         if policy == RemovalPolicy::ForceRegistered {
             arguments.push(OsString::from("--force"));
         }
-        arguments.push(os(&worktree.root));
+        arguments.push(git_path(&worktree.root));
         self.checked_repo_command(
             Operation::RemoveWorktree,
             CommandAccess::Write,

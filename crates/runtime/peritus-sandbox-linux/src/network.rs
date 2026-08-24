@@ -64,8 +64,8 @@ pub type ManagedProxyOwner = peritus_network::InheritedListenerProxy;
 #[derive(Debug)]
 pub struct ManagedProxyOwner;
 
+#[cfg(unix)]
 pub fn shutdown_managed_proxy(proxy: &mut Option<ManagedProxyOwner>) -> Result<(), LinuxError> {
-    #[cfg(unix)]
     if let Some(owner) = proxy.take()
         && owner.shutdown().is_err()
     {
@@ -76,9 +76,17 @@ pub fn shutdown_managed_proxy(proxy: &mut Option<ManagedProxyOwner>) -> Result<(
             "managed proxy shutdown did not prove complete worker release",
         ));
     }
-    #[cfg(not(unix))]
-    {
-        *proxy = None;
-    }
+    Ok(())
+}
+
+#[cfg(not(unix))]
+#[allow(
+    clippy::unnecessary_wraps,
+    reason = "the cross-platform shutdown contract reports Unix managed-proxy release failures"
+)]
+pub const fn shutdown_managed_proxy(
+    proxy: &mut Option<ManagedProxyOwner>,
+) -> Result<(), LinuxError> {
+    *proxy = None;
     Ok(())
 }

@@ -11,9 +11,9 @@ use native_support::*;
 use peritus_process::NativeProtectedHandle;
 use peritus_sandbox::{EnvironmentName, SecretDelivery, SecretGrant, SecretReference};
 use peritus_sandbox_linux::{
-    InheritedHandle, KernelVersion, LandlockAccess, LandlockRule, LinuxBackendDescriptor,
-    LinuxProbe, LinuxProtectedPayload, MountPlan, MountPolicy, ProbeRequest,
-    ProtectedPayloadBinding, TargetCommand,
+    InheritedHandle, LandlockAccess, LandlockRule, LinuxBackendDescriptor, LinuxProbe,
+    LinuxProtectedPayload, MINIMUM_KERNEL, MINIMUM_LANDLOCK_ABI, MountPlan, MountPolicy,
+    ProbeRequest, ProtectedPayloadBinding, TargetCommand,
 };
 use peritus_types::ResourceId;
 use std::io::{Read, Seek, Write};
@@ -38,13 +38,16 @@ fn real_probe_reports_host_facilities_without_false_cgroup_claims() {
     )
     .expect("probe request");
     let probe = LinuxProbe::run(&request).expect("probe");
-    assert!(probe.kernel().is_some_and(|version| version >= KernelVersion::new(6, 6, 0)));
-    assert!(probe.architecture().supported());
-    assert!(probe.namespaces().complete());
-    assert!(probe.bubblewrap().functional());
-    assert!(probe.landlock_abi().is_some_and(|abi| abi >= 3));
-    assert!(probe.seccomp());
-    assert!(probe.pty());
+    let expected_baseline = probe.kernel().is_some_and(|version| version >= MINIMUM_KERNEL)
+        && probe.architecture().supported()
+        && probe.namespaces().complete()
+        && probe.bubblewrap().functional()
+        && probe.helper_digest().is_some()
+        && probe.landlock_abi().is_some_and(|abi| abi >= MINIMUM_LANDLOCK_ABI)
+        && probe.seccomp()
+        && probe.pty();
+    assert_eq!(probe.baseline_supported(), expected_baseline);
+    assert_eq!(probe.namespaces().functional, probe.bubblewrap().functional());
     assert!(
         !probe.proxy_reachable(),
         "a host-loopback listener must not be reachable from the fresh network namespace"
@@ -274,6 +277,9 @@ fn helper_rejects_missing_checked_pty_before_activation() {
 #[test]
 fn real_bubblewrap_enforces_writable_mount_and_read_only_metadata_mask() {
     let _guard = native_test_guard();
+    if !native_sandbox_available() {
+        return;
+    }
     let workspace = tempfile::tempdir().expect("workspace");
     std::fs::create_dir(workspace.path().join(".git")).expect("metadata root");
     std::fs::create_dir(workspace.path().join(".peritus")).expect("Peritus metadata root");

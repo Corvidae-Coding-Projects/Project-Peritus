@@ -9,9 +9,11 @@ mod regressions;
 mod support;
 
 use peritus_leases::ReconciliationCorrelation;
+#[cfg(unix)]
+use peritus_process::ProcessSignal;
 use peritus_process::{
     CancellationReason, ExecutionAuthorizationRequest, ExecutionGateway, GracefulAction, IoMode,
-    ProbeObservation, ProcessCursor, ProcessEventKind, ProcessProbe, ProcessSignal, ProcessStore,
+    ProbeObservation, ProcessCursor, ProcessEventKind, ProcessProbe, ProcessStore,
     ProcessTreeIdentity, QuiescenceBlocker, StdinPolicy, TerminalDisposition, TerminalSize,
 };
 use peritus_types::{EvidenceId, Generation};
