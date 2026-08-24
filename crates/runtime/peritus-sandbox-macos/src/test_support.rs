@@ -15,6 +15,7 @@ use peritus_types::{
     AcceptanceSpecId, EnvironmentId, Generation, HarnessId, PolicyId, ProcessId, ProviderProfileId,
     ResourceId, ResourceQuantity, RevisionNumber, RevisionTuple, Sha256Digest, WorkspaceId,
 };
+use std::path::Path;
 
 use crate::{
     HelperManifest, MacosDescriptor, MacosHostProbe, ProcessContainment, ProfileCompiler,
@@ -23,20 +24,24 @@ use crate::{
 };
 
 pub(crate) fn manifest() -> HelperManifest {
-    manifest_with_options(None, 10)
+    manifest_with_options(None, 10, Path::new("/workspace"))
 }
 
 pub(crate) fn manifest_with_file_secret(path: SandboxPath) -> HelperManifest {
-    manifest_with_options(Some(path), 10)
+    manifest_with_options(Some(path), 10, Path::new("/workspace"))
 }
 
-pub(crate) fn manifest_with_exec_status(exec_status_descriptor: u32) -> HelperManifest {
-    manifest_with_options(None, exec_status_descriptor)
+pub(crate) fn manifest_with_exec_status(
+    exec_status_descriptor: u32,
+    working_directory: &Path,
+) -> HelperManifest {
+    manifest_with_options(None, exec_status_descriptor, working_directory)
 }
 
 fn manifest_with_options(
     file_secret: Option<SandboxPath>,
     exec_status_descriptor: u32,
+    working_directory: &Path,
 ) -> HelperManifest {
     let resources = limits();
     let filesystem = FilesystemContract::new(vec![
@@ -108,7 +113,7 @@ fn manifest_with_options(
     .unwrap();
     let admission =
         admit_backend(&plan, descriptor.descriptor(), AdmissionProfile::Production).unwrap();
-    let profile = ProfileCompiler::compile(&plan, "/workspace".as_ref(), &[], None).unwrap();
+    let profile = ProfileCompiler::compile(&plan, working_directory, &[], None).unwrap();
     HelperManifest::build(
         plan.binding().process_id(),
         &plan,
@@ -118,7 +123,7 @@ fn manifest_with_options(
         &profile,
         "/usr/bin/sandbox-exec".into(),
         &CommandSpec::new("/bin/tool", std::iter::empty::<String>()).unwrap(),
-        "/workspace".into(),
+        working_directory.to_path_buf(),
         Vec::new(),
         exec_status_descriptor,
         None,

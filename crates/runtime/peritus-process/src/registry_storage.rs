@@ -2,10 +2,13 @@
 
 use std::{
     collections::BTreeMap,
-    fs::{self, File, OpenOptions},
+    fs::{self, OpenOptions},
     io::{ErrorKind, Write},
     path::{Path, PathBuf},
 };
+
+#[cfg(not(windows))]
+use std::fs::File;
 
 use peritus_types::{ProcessId, Sha256Digest};
 
@@ -196,9 +199,26 @@ pub(crate) fn create_checked_directory(root: &Path, directory: &Path) -> Result<
 }
 
 fn sync_directory(directory: &Path) -> Result<(), ProcessError> {
-    File::open(directory)
-        .and_then(|file| file.sync_all())
+    sync_directory_os(directory)
         .map_err(|_| store_error("registry directory cannot be synchronized"))
+}
+
+#[cfg(not(windows))]
+fn sync_directory_os(directory: &Path) -> std::io::Result<()> {
+    File::open(directory)?.sync_all()
+}
+
+#[cfg(windows)]
+fn sync_directory_os(directory: &Path) -> std::io::Result<()> {
+    use std::os::windows::fs::OpenOptionsExt as _;
+
+    const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
+
+    OpenOptions::new()
+        .write(true)
+        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
+        .open(directory)?
+        .sync_all()
 }
 
 pub(crate) fn hex(bytes: &[u8]) -> String {
