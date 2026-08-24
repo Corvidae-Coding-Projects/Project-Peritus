@@ -134,11 +134,10 @@ fn inherited_listener_bridge_accepts_inside_namespace_and_connects_from_parent()
     assert_eq!(proxy.endpoint(), Some(endpoint));
     let mut client = TcpStream::connect(endpoint.socket_addr()).unwrap();
     proxy.routing_token().expose_header(|token| {
-        write!(
-            client,
+        let request = format!(
             "GET http://loop.test:{upstream_port}/value HTTP/1.1\r\nHost: loop.test:{upstream_port}\r\nProxy-Authorization: Peritus {token}\r\n\r\n"
-        )
-        .unwrap();
+        );
+        client.write_all(request.as_bytes()).unwrap();
     });
     let mut response = String::new();
     client.read_to_string(&mut response).unwrap();

@@ -22,6 +22,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   patch, network, durable registry, and tool-shell test boundaries (#12)
 - Remove macOS socket-close races from the managed-proxy worker-backpressure conformance test
 - Stabilize hosted Windows native shell conformance polling under runner scheduling delays
+- Make managed-proxy HTTP fixtures issue each complete request in one socket write, and preserve the
+  process cleanup regression's timing distinction with realistic hosted-runner scheduling allowance
 
 ### Changed
 - Implement C4 tool system (#13)

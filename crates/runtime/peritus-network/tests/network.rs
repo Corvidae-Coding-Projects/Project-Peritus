@@ -91,11 +91,10 @@ fn managed_proxy_forwards_http_injects_scoped_credential_and_joins() {
     .unwrap();
     let mut client = TcpStream::connect(proxy.endpoint().socket_addr()).unwrap();
     proxy.routing_token().expose_header(|token| {
-        write!(
-            client,
+        let request = format!(
             "GET http://loop.test:{port}/value HTTP/1.1\r\nHost: loop.test:{port}\r\nProxy-Authorization: Peritus {token}\r\n\r\n"
-        )
-        .unwrap();
+        );
+        client.write_all(request.as_bytes()).unwrap();
     });
     let response = String::from_utf8(read_to_close(&mut client)).unwrap();
     assert!(response.ends_with("OK"));
@@ -141,11 +140,10 @@ fn managed_proxy_connect_tunnels_bidirectionally_and_joins_both_relays() {
     let mut client = TcpStream::connect(proxy.endpoint().socket_addr()).unwrap();
     client.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
     proxy.routing_token().expose_header(|token| {
-        write!(
-            client,
+        let request = format!(
             "CONNECT loop.test:{port} HTTP/1.1\r\nHost: loop.test:{port}\r\nProxy-Authorization: Peritus {token}\r\n\r\n"
-        )
-        .unwrap();
+        );
+        client.write_all(request.as_bytes()).unwrap();
     });
     assert!(read_head(&mut client).starts_with("HTTP/1.1 200"));
     client.write_all(b"ping").unwrap();
@@ -192,11 +190,10 @@ fn proxy_shutdown_cancels_an_active_connect_and_joins_the_worker() {
     let mut client = TcpStream::connect(proxy.endpoint().socket_addr()).unwrap();
     client.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
     proxy.routing_token().expose_header(|token| {
-        write!(
-            client,
+        let request = format!(
             "CONNECT loop.test:{port} HTTP/1.1\r\nHost: loop.test:{port}\r\nProxy-Authorization: Peritus {token}\r\n\r\n"
-        )
-        .unwrap();
+        );
+        client.write_all(request.as_bytes()).unwrap();
     });
     assert!(read_head(&mut client).starts_with("HTTP/1.1 200"));
     let shutdown = proxy.shutdown().unwrap();
@@ -279,11 +276,10 @@ fn managed_proxy_denies_unlisted_destination_before_resolution_or_connect() {
             .unwrap();
     let mut client = TcpStream::connect(proxy.endpoint().socket_addr()).unwrap();
     proxy.routing_token().expose_header(|token| {
-        write!(
-            client,
+        let request = format!(
             "CONNECT denied.test:{port} HTTP/1.1\r\nHost: denied.test:{port}\r\nProxy-Authorization: Peritus {token}\r\n\r\n"
-        )
-        .unwrap();
+        );
+        client.write_all(request.as_bytes()).unwrap();
     });
     let response = read_to_close(&mut client);
     assert!(response.is_empty());
@@ -327,11 +323,10 @@ fn connect_byte_ceiling_stops_the_tunnel_and_reports_a_limited_close() {
     .unwrap();
     let mut client = TcpStream::connect(proxy.endpoint().socket_addr()).unwrap();
     proxy.routing_token().expose_header(|token| {
-        write!(
-            client,
+        let request = format!(
             "CONNECT loop.test:{port} HTTP/1.1\r\nHost: loop.test:{port}\r\nProxy-Authorization: Peritus {token}\r\n\r\n"
-        )
-        .unwrap();
+        );
+        client.write_all(request.as_bytes()).unwrap();
     });
     assert!(read_head(&mut client).starts_with("HTTP/1.1 200"));
     let _ = client.write_all(b"ping");

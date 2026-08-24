@@ -61,7 +61,11 @@ fn root_exit_cleans_descendant_before_waiting_for_pipe_eof() {
     let began = Instant::now();
     let (owned, _) = launch(&root, &ids, execution);
     let terminal = owned.wait().expect("bounded descendant cleanup");
-    assert!(began.elapsed() < Duration::from_secs(3));
+    let elapsed = began.elapsed();
+    assert!(
+        elapsed < Duration::from_secs(10),
+        "descendant cleanup exceeded its hosted-runner allowance: {elapsed:?}"
+    );
     assert!(terminal.tree_cleanup_complete());
     assert!(terminal.support_tasks_joined());
 }

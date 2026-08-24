@@ -123,5 +123,5 @@ fn pipe_holder() {
 }
 
 fn hold_open() {
-    thread::sleep(Duration::from_secs(5));
+    thread::sleep(Duration::from_secs(30));
 }
