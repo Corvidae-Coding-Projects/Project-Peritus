@@ -1,6 +1,6 @@
 {
   "next_display_id": 13,
-  "next_comment_id": 190,
+  "next_comment_id": 191,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "2b288a30-b5b1-4452-81bd-20950bebd2d3": 9,
@@ -193,7 +193,7 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-08-24T00:19:03.377437473Z",
-      "updated_at": "2026-08-24T01:40:10.141904054Z",
+      "updated_at": "2026-08-24T02:03:02.358987895Z",
       "labels": [
         "feature"
       ],
@@ -224,6 +224,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAFHHg9DsWXpZieZZFVKPAwlfLBh2pZ8WMkcZLCx3Ww6aq7dRBJnu+mWsOsxTyU7dMzzCBOTH56IBy6t3ECghvCQ=="
+        },
+        "bdcc8b6a-477c-48ab-8429-d21f4cc0670a": {
+          "display_id": 190,
+          "author": "6ME5",
+          "content": "C3 integration milestone: process-owned anonymous protected handles now cross the exact direct-child launch on Unix and Windows paths, with focused lifecycle test; managed proxy gained inert authorized preparation, IPv6/multi-answer/backpressure coverage (11 tests); secrets gained exact current-context delivery, inert store/lease preparation, retained lease cleanup, platform error mapping, and redacted test-store ownership (6 tests). Platform lanes are adapting their helpers/sessions to own these resources. All focused tests and strict package Clippy run at CARGO_BUILD_JOBS=2 due saturated swap.",
+          "created_at": "2026-08-24T02:03:02.356017705Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA3FHsm7I5pynM4X5zjtJWYm65COyZ7BuiyDnZMXVY7ti7Ch7W9+ROUbc63Om26JJFQ9pZNo8bLeWugmfjSfCBCQ=="
         },
         "c3b2f48d-cb59-4672-b07a-eacb31bab8ce": {
           "display_id": 186,
@@ -1935,8 +1944,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-24T01:40:10.141904054Z",
+    "timestamp": "2026-08-24T02:03:02.358987895Z",
     "agent_id": "6ME5",
-    "agent_seq": 255
+    "agent_seq": 256
   }
 }
