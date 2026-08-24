@@ -43,6 +43,7 @@ use support::*;
 
 #[test]
 fn managed_proxy_forwards_http_injects_scoped_credential_and_joins() {
+    let _guard = serial_proxy_test();
     let upstream = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
     let port = upstream.local_addr().unwrap().port();
     let upstream_task = thread::spawn(move || {
@@ -106,6 +107,7 @@ fn managed_proxy_forwards_http_injects_scoped_credential_and_joins() {
 
 #[test]
 fn managed_proxy_connect_tunnels_bidirectionally_and_joins_both_relays() {
+    let _guard = serial_proxy_test();
     let upstream = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
     let port = upstream.local_addr().unwrap().port();
     let upstream_task = thread::spawn(move || {
@@ -158,6 +160,7 @@ fn managed_proxy_connect_tunnels_bidirectionally_and_joins_both_relays() {
 
 #[test]
 fn proxy_shutdown_cancels_an_active_connect_and_joins_the_worker() {
+    let _guard = serial_proxy_test();
     let upstream = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
     let port = upstream.local_addr().unwrap().port();
     let upstream_task = thread::spawn(move || {
@@ -205,6 +208,7 @@ fn proxy_shutdown_cancels_an_active_connect_and_joins_the_worker() {
 
 #[test]
 fn worker_bound_applies_backpressure_and_shutdown_joins_the_active_tunnel() {
+    let _guard = serial_proxy_test();
     let upstream = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
     let port = upstream.local_addr().unwrap().port();
     let upstream_task = thread::spawn(move || {
@@ -266,6 +270,7 @@ fn worker_bound_applies_backpressure_and_shutdown_joins_the_active_tunnel() {
 
 #[test]
 fn managed_proxy_denies_unlisted_destination_before_resolution_or_connect() {
+    let _guard = serial_proxy_test();
     let unused = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
     let port = unused.local_addr().unwrap().port();
     let plan = runtime_plan(
@@ -294,6 +299,7 @@ fn managed_proxy_denies_unlisted_destination_before_resolution_or_connect() {
 
 #[test]
 fn connect_byte_ceiling_stops_the_tunnel_and_reports_a_limited_close() {
+    let _guard = serial_proxy_test();
     let upstream = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
     let port = upstream.local_addr().unwrap().port();
     let upstream_task = thread::spawn(move || {

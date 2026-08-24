@@ -111,6 +111,11 @@ pub fn read_to_close(stream: &mut TcpStream) -> Vec<u8> {
     bytes
 }
 
+pub fn serial_proxy_test() -> std::sync::MutexGuard<'static, ()> {
+    static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
 pub fn checked_plan(
     rules: Vec<NetworkRule>,
     required_host: &str,
