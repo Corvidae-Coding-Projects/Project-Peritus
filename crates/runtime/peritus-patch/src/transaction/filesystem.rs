@@ -270,9 +270,27 @@ const fn mode_from_metadata(_metadata: &Metadata) -> FileMode {
 }
 
 pub(super) fn sync_directory(directory: &Path, rollback: RollbackStatus) -> Result<(), PatchError> {
-    File::open(directory).and_then(|file| file.sync_all()).map_err(|error| {
+    sync_directory_os(directory).map_err(|error| {
         PatchError::io(PatchOperationContext::SynchronizeDirectory, rollback, error)
     })
+}
+
+#[cfg(not(windows))]
+fn sync_directory_os(directory: &Path) -> io::Result<()> {
+    File::open(directory)?.sync_all()
+}
+
+#[cfg(windows)]
+fn sync_directory_os(directory: &Path) -> io::Result<()> {
+    use std::{fs::OpenOptions, os::windows::fs::OpenOptionsExt as _};
+
+    const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
+
+    OpenOptions::new()
+        .write(true)
+        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
+        .open(directory)?
+        .sync_all()
 }
 
 pub(super) fn remove_created_directories(

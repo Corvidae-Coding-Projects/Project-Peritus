@@ -57,6 +57,8 @@ pub(super) fn apply_with_faults(
         PatchOperationContext::Prepare,
         RollbackStatus::NotRequired,
     )?;
+    #[cfg(not(unix))]
+    validate_platform_modes(plan)?;
     let roots = prepare_roots(workspace_root, transaction_root)?;
     verify_plan_preimages(&roots.workspace, plan)?;
     let created_directories = discover_missing_directories(
@@ -141,6 +143,30 @@ pub(super) fn apply_with_faults(
     .is_err()
         || cleanup_transaction(&transaction_directory, &roots.transaction_root).is_err();
     Ok(AppliedPatch::new(plan.identity(), installed_manifest, cleanup_pending))
+}
+
+#[cfg(not(unix))]
+fn validate_platform_modes(plan: &PatchPlan) -> Result<(), PatchError> {
+    for operation in plan.operations() {
+        let executable_preimage = matches!(
+            operation.preimage(),
+            Preimage::Present { mode: crate::FileMode::Executable, .. }
+        );
+        let executable_final = operation
+            .final_file()
+            .is_some_and(|final_file| final_file.mode() == crate::FileMode::Executable);
+        if executable_preimage || executable_final {
+            return Err(PatchError::message(
+                ErrorCode::InvalidContent,
+                RecoveryClass::CorrectPatch,
+                PatchOperationContext::Plan,
+                RollbackStatus::NotRequired,
+                "executable file mode is unsupported on this platform",
+            )
+            .at(operation.path().clone()));
+        }
+    }
+    Ok(())
 }
 
 fn install_all(

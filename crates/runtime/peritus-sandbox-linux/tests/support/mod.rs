@@ -80,6 +80,7 @@ fn checked_plan_with_network(
     network: NetworkContract,
     network_requirements: Vec<NetworkTarget>,
 ) -> CheckedSandboxPlan {
+    let workspace = workspace.canonicalize().expect("canonical workspace path");
     let root = SandboxPath::new(workspace.to_string_lossy().into_owned()).expect("workspace path");
     let git = SandboxPath::new(workspace.join(".git").to_string_lossy().into_owned())
         .expect("metadata path");

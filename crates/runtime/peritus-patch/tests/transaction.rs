@@ -21,6 +21,11 @@ fn plan(operations: Vec<PatchOperation>) -> peritus_patch::PatchPlan {
         .expect("plan")
 }
 
+#[cfg(unix)]
+const CREATED_MODE: FileMode = FileMode::Executable;
+#[cfg(not(unix))]
+const CREATED_MODE: FileMode = FileMode::Regular;
+
 #[test]
 fn applies_create_replace_and_delete_as_one_real_transaction() {
     let workspace = tempfile::tempdir().expect("workspace");
@@ -30,7 +35,7 @@ fn applies_create_replace_and_delete_as_one_real_transaction() {
     let operations = vec![
         PatchOperation::create(
             WorkspacePath::new("nested/create").expect("path"),
-            final_file(b"created", FileMode::Executable),
+            final_file(b"created", CREATED_MODE),
         ),
         PatchOperation::replace(
             WorkspacePath::new("replace").expect("path"),
@@ -62,6 +67,22 @@ fn applies_create_replace_and_delete_as_one_real_transaction() {
             .mode();
         assert_ne!(mode & 0o111, 0);
     }
+}
+
+#[cfg(not(unix))]
+#[test]
+fn rejects_unrepresentable_executable_mode_before_filesystem_effects() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let transactions = tempfile::tempdir().expect("transactions");
+    let operation = PatchOperation::create(
+        WorkspacePath::new("executable").expect("path"),
+        final_file(b"executable", FileMode::Executable),
+    );
+    let error = apply_patch(workspace.path(), transactions.path(), &plan(vec![operation]))
+        .expect_err("non-Unix executable mode");
+    assert_eq!(error.code(), ErrorCode::InvalidContent);
+    assert!(!workspace.path().join("executable").exists());
+    assert_eq!(std::fs::read_dir(transactions.path()).expect("transactions").count(), 0);
 }
 
 #[test]

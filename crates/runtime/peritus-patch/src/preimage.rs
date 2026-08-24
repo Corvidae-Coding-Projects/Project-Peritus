@@ -7,7 +7,7 @@ use peritus_types::Sha256Digest;
 pub enum FileMode {
     /// A non-executable regular file (`100644` in Git).
     Regular,
-    /// An executable regular file (`100755` in Git).
+    /// An executable regular file (`100755` in Git); filesystem application requires Unix mode bits.
     Executable,
 }
 
