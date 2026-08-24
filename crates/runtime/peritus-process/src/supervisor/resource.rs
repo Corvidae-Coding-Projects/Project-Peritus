@@ -183,6 +183,10 @@ impl ResourceTracker {
         self.greatest_processes = self.greatest_processes.max(process_count);
     }
 
+    pub(super) const fn requires_process_count_sample(&self) -> bool {
+        !self.sampling_supported
+    }
+
     pub(super) const fn limit_exceeded(&self, plan: &ExecutionPlan) -> bool {
         self.exceeded(plan)
     }
