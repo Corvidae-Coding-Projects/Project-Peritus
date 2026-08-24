@@ -1,6 +1,6 @@
 {
   "next_display_id": 13,
-  "next_comment_id": 188,
+  "next_comment_id": 189,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "2b288a30-b5b1-4452-81bd-20950bebd2d3": 9,
@@ -193,11 +193,20 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-08-24T00:19:03.377437473Z",
-      "updated_at": "2026-08-24T00:30:41.251848544Z",
+      "updated_at": "2026-08-24T01:40:06.085234041Z",
       "labels": [
         "feature"
       ],
       "comments": {
+        "3718052f-645e-4de6-829e-76d859bd341b": {
+          "display_id": 188,
+          "author": "6ME5",
+          "content": "C3 shared-runtime milestone: implemented the process-owned restricted backend gateway, two-phase helper handshake, separate pipe/PTY protocol transport, supervised native lifecycle/resource polling, and production network/secret services. Focused suites now pass 4 native-seam cases, 8 managed-network cases, and 5 secret cases; three OS backend lanes remain active under bounded two-job package checks.",
+          "created_at": "2026-08-24T01:40:06.081953469Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzHsYhpLuuAoVcktvQ3QYuSjuOw1DSHBaq+d6MosTO1mcXIusTfVDJjDB6j110/x6BhWVLa56usX2Fr4MgDURAQ=="
+        },
         "55c1ca94-646b-409d-8125-d1d6553096d9": {
           "display_id": 185,
           "author": "6ME5",
@@ -1917,8 +1926,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-24T00:30:41.251848544Z",
+    "timestamp": "2026-08-24T01:40:06.085234041Z",
     "agent_id": "6ME5",
-    "agent_seq": 253
+    "agent_seq": 254
   }
 }
