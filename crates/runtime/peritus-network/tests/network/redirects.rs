@@ -43,8 +43,7 @@ fn managed_proxy_revalidates_and_suppresses_a_denied_absolute_redirect() {
         )
         .unwrap();
     });
-    let mut response = Vec::new();
-    client.read_to_end(&mut response).unwrap();
+    let response = read_to_close(&mut client);
     assert!(response.is_empty());
     upstream_task.join().unwrap();
     wait_for_closed(&proxy, ConnectionDecision::Failed);
@@ -97,8 +96,7 @@ fn managed_proxy_follows_relative_redirect_and_returns_only_final_response() {
         )
         .unwrap();
     });
-    let mut response = String::new();
-    client.read_to_string(&mut response).unwrap();
+    let response = String::from_utf8(read_to_close(&mut client)).unwrap();
     assert!(response.starts_with("HTTP/1.1 200 OK"));
     assert!(response.ends_with("OK"));
     upstream_task.join().unwrap();
@@ -148,8 +146,7 @@ fn managed_proxy_preserves_redirect_count_across_upstream_connections() {
         )
         .unwrap();
     });
-    let mut response = Vec::new();
-    client.read_to_end(&mut response).unwrap();
+    let response = read_to_close(&mut client);
     assert!(response.is_empty());
     upstream_task.join().unwrap();
     wait_for_closed(&proxy, ConnectionDecision::Failed);

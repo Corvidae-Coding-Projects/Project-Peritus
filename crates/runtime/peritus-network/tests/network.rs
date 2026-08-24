@@ -96,8 +96,7 @@ fn managed_proxy_forwards_http_injects_scoped_credential_and_joins() {
         )
         .unwrap();
     });
-    let mut response = String::new();
-    client.read_to_string(&mut response).unwrap();
+    let response = String::from_utf8(read_to_close(&mut client)).unwrap();
     assert!(response.ends_with("OK"));
     upstream_task.join().unwrap();
     let shutdown = proxy.shutdown().unwrap();
@@ -149,8 +148,7 @@ fn managed_proxy_connect_tunnels_bidirectionally_and_joins_both_relays() {
     assert!(read_head(&mut client).starts_with("HTTP/1.1 200"));
     client.write_all(b"ping").unwrap();
     client.shutdown(Shutdown::Write).unwrap();
-    let mut response = Vec::new();
-    client.read_to_end(&mut response).unwrap();
+    let response = read_to_close(&mut client);
     assert_eq!(response, b"pong");
     upstream_task.join().unwrap();
     let shutdown = proxy.shutdown().unwrap();
@@ -287,10 +285,7 @@ fn managed_proxy_denies_unlisted_destination_before_resolution_or_connect() {
         )
         .unwrap();
     });
-    let mut response = Vec::new();
-    if let Err(error) = client.read_to_end(&mut response) {
-        assert_eq!(error.kind(), ErrorKind::ConnectionReset);
-    }
+    let response = read_to_close(&mut client);
     assert!(response.is_empty());
     wait_for_closed(&proxy, ConnectionDecision::Denied);
     let shutdown = proxy.shutdown().unwrap();
