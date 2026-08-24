@@ -1,6 +1,6 @@
 {
   "next_display_id": 15,
-  "next_comment_id": 219,
+  "next_comment_id": 220,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "19b7b53a-b2fb-41c1-835d-ffd6ce605c08": 14,
@@ -79,7 +79,7 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-08-24T18:11:58.216818603Z",
-      "updated_at": "2026-08-24T19:58:54.688734570Z",
+      "updated_at": "2026-08-24T20:03:49.656305124Z",
       "labels": [
         "feature"
       ],
@@ -137,6 +137,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7CzoynYvTeOfid6z1W8tUC9yk0dD1Yjz2htUtXOhoKBqXQMmQSm2vW12j1gMQ8MDz/UAiHYkxH+MELqwHGZlAQ=="
+        },
+        "b4a9d0ec-beb5-423a-8af9-2eb0e6b66b44": {
+          "display_id": 219,
+          "author": "6ME5",
+          "content": "C5 protocol acceptance audit found and fixed two reducer lifecycle defects: malformed completed UTF-8/JSON now irreversibly establishes a Failed terminal, and events after terminal are rejected without replacing the original outcome. Added reducer matrix for reasoning, strict structured output, parallel tools, indexed ordering, refusal, cancellation, terminal immutability, malformed fragments, aggregate limits, sequence gaps, open-item terminal, and EOF. Protocol now passes 25 tests, strict clippy, rustdoc, and diff check.",
+          "created_at": "2026-08-24T20:03:49.650231184Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzL5el14IO5YGKahcADmNz6KPsmYozBkUXGEpYU64xnxtT2+xEX82zxf3UNC0eUzQeqgyT+dCczeZbQjID82PDw=="
         },
         "c4ddaea4-41f7-46a9-84b7-b5822d6f0e2a": {
           "display_id": 213,
@@ -2232,8 +2241,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-24T19:58:54.688734570Z",
+    "timestamp": "2026-08-24T20:03:49.656305124Z",
     "agent_id": "6ME5",
-    "agent_seq": 295
+    "agent_seq": 296
   }
 }
