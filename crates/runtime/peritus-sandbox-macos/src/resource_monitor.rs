@@ -301,11 +301,28 @@ mod tests {
     use peritus_sandbox::SandboxResourceKind;
 
     use super::{ResourceUsage, exceeds};
+    use crate::{EnforcementLevel, ResourceControl, ResourceControlPlan};
 
     #[test]
     fn resource_ceiling_comparison_is_exact_and_dimension_complete() {
-        let manifest = crate::test_support::manifest();
-        let controls = manifest.resources();
+        let controls = ResourceControlPlan::from_controls([
+            ResourceControl::new(SandboxResourceKind::WallTime, 100, EnforcementLevel::Supervisor),
+            ResourceControl::new(SandboxResourceKind::CpuTime, 100, EnforcementLevel::Supervisor),
+            ResourceControl::new(SandboxResourceKind::Memory, 100, EnforcementLevel::Supervisor),
+            ResourceControl::new(SandboxResourceKind::Disk, 100, EnforcementLevel::Supervisor),
+            ResourceControl::new(SandboxResourceKind::Output, 100, EnforcementLevel::Supervisor),
+            ResourceControl::new(
+                SandboxResourceKind::OpenHandles,
+                100,
+                EnforcementLevel::Supervisor,
+            ),
+            ResourceControl::new(SandboxResourceKind::Processes, 100, EnforcementLevel::Supervisor),
+            ResourceControl::new(
+                SandboxResourceKind::Concurrency,
+                100,
+                EnforcementLevel::Supervisor,
+            ),
+        ]);
         let at_limit = ResourceUsage {
             cpu_nanos: controls.control(SandboxResourceKind::CpuTime).ceiling() * 1_000_000,
             memory_bytes: controls.control(SandboxResourceKind::Memory).ceiling(),
@@ -313,10 +330,10 @@ mod tests {
             open_handles: controls.control(SandboxResourceKind::OpenHandles).ceiling(),
             processes: controls.control(SandboxResourceKind::Processes).ceiling(),
         };
-        assert!(!exceeds(&at_limit, controls));
+        assert!(!exceeds(&at_limit, &controls));
         assert!(exceeds(
             &ResourceUsage { processes: at_limit.processes + 1, ..at_limit },
-            controls,
+            &controls,
         ));
     }
 }

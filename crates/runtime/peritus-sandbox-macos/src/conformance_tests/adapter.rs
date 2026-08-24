@@ -61,7 +61,7 @@ impl MacosConformanceSubject {
         &self.workspace
     }
 
-    pub(super) fn descriptor(&self) -> &MacosDescriptor {
+    pub(super) const fn descriptor(&self) -> &MacosDescriptor {
         &self.descriptor
     }
 

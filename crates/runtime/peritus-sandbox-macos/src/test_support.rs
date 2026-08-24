@@ -23,10 +23,6 @@ use crate::{
     TerminalMapping,
 };
 
-pub(crate) fn manifest() -> HelperManifest {
-    manifest_with_options(None, 10, Path::new("/workspace"))
-}
-
 pub(crate) fn manifest_with_file_secret(path: SandboxPath) -> HelperManifest {
     manifest_with_options(Some(path), 10, Path::new("/workspace"))
 }

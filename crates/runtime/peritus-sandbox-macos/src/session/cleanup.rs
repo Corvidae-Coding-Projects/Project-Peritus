@@ -95,7 +95,7 @@ fn cleanup_error(detail: &'static str) -> MacosError {
     )
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests {
     use peritus_sandbox::SandboxPath;
 
@@ -106,7 +106,8 @@ mod tests {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("delivered.secret");
         std::fs::write(&path, b"material").unwrap();
-        let sandbox_path = SandboxPath::new(path.to_str().unwrap()).unwrap();
+        let logical_path = path.to_str().unwrap().replace('\\', "/");
+        let sandbox_path = SandboxPath::new(logical_path).unwrap();
         let manifest = crate::test_support::manifest_with_file_secret(sandbox_path);
         remove_materialized_secret_files(&manifest).unwrap();
         assert!(!path.exists());
