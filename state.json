@@ -1,6 +1,6 @@
 {
   "next_display_id": 15,
-  "next_comment_id": 261,
+  "next_comment_id": 262,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "19b7b53a-b2fb-41c1-835d-ffd6ce605c08": 14,
@@ -74,7 +74,7 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-08-24T18:11:58.216818603Z",
-      "updated_at": "2026-08-24T23:34:40.718345005Z",
+      "updated_at": "2026-08-24T23:46:25.919895127Z",
       "labels": [
         "feature"
       ],
@@ -87,6 +87,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA0+tbAjuwH0Awgm7Q+Ocx3nIX3oms1Bm+ARDTmXbGqIY8stHl2XT/uihvnf+8xaWWitLocZQkMGrdjTlJjYHJCQ=="
+        },
+        "03df5a27-1670-46a5-a35d-6d91157aa065": {
+          "display_id": 261,
+          "author": "6ME5",
+          "content": "C5 is complete. PR #16 passed all 30 hosted candidate checks; signed merge 0a7a9c4 is on main; fresh-main Gate A run 32789944500 and Foundation run 32789944501 both completed successfully across Linux, macOS, Windows, supply chain, workflow policy, and Verus.",
+          "created_at": "2026-08-24T23:46:25.917028941Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAo0e2JMt/mIYEYA+ncENO3wXOyxy7696Otv7xPZd4o37Lx0+FJLVCRgfKUNfENLr2daYt0iineWnI33dMKVZABQ=="
         },
         "107f799d-1a4d-4ea2-bdda-a4aba1be15e1": {
           "display_id": 242,
@@ -2605,8 +2614,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-24T23:34:40.718345005Z",
+    "timestamp": "2026-08-24T23:46:25.919895127Z",
     "agent_id": "6ME5",
-    "agent_seq": 340
+    "agent_seq": 341
   }
 }
