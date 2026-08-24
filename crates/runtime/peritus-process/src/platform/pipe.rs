@@ -205,14 +205,30 @@ impl PlatformProcess for PipeProcess {
         std::mem::take(&mut self.readers)
     }
 
+    #[cfg_attr(
+        windows,
+        allow(
+            unsafe_code,
+            reason = "the process-wrap job must retain its completion message while C2 polls only the uniquely borrowed raw root child"
+        )
+    )]
     fn try_wait(&mut self) -> Result<Option<PlatformExit>, ProcessError> {
         #[cfg(unix)]
         let status = self.child.try_wait().map_err(|_| tree_error("pipe process wait failed"))?;
         #[cfg(windows)]
-        let status = self
+        let child = self
             .child
             .as_mut()
-            .ok_or_else(|| tree_error("pipe process is already being reaped"))?
+            .ok_or_else(|| tree_error("pipe process is already being reaped"))?;
+        // Poll only the root handle here. `JobObjectChild::try_wait` also consumes one job
+        // completion-port message, which can discard the all-processes-exited notification
+        // before the bounded job-reap task calls `wait`.
+        // SAFETY: `try_wait` only observes and caches the root exit status. It does not move or
+        // replace the raw child, and both std Child and the outer JobObjectChild permit repeated
+        // waits after exit. The wrapper remains uniquely borrowed and intact for the later job
+        // completion wait.
+        #[cfg(windows)]
+        let status = unsafe { child.inner_child_mut() }
             .try_wait()
             .map_err(|_| tree_error("pipe process wait failed"))?;
         Ok(status.map(convert_status))

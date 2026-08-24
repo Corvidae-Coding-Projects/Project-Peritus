@@ -9,13 +9,13 @@ mod regressions;
 mod support;
 
 use peritus_leases::ReconciliationCorrelation;
-#[cfg(unix)]
-use peritus_process::ProcessSignal;
 use peritus_process::{
     CancellationReason, ExecutionAuthorizationRequest, ExecutionGateway, GracefulAction, IoMode,
     ProbeObservation, ProcessCursor, ProcessEventKind, ProcessProbe, ProcessStore,
-    ProcessTreeIdentity, QuiescenceBlocker, StdinPolicy, TerminalDisposition, TerminalSize,
+    ProcessTreeIdentity, QuiescenceBlocker, StdinPolicy, TerminalDisposition,
 };
+#[cfg(unix)]
+use peritus_process::{ProcessSignal, TerminalSize};
 use peritus_types::{EvidenceId, Generation};
 
 use support::authority::commit_authority_without_dispatch;

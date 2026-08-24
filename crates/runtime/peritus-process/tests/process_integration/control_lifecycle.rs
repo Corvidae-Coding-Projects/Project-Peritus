@@ -6,13 +6,17 @@ use super::*;
 fn cancellation_publishes_one_terminal_owned_tree_result() {
     let root = TestRoot::new();
     let ids = Ids::new(30);
+    #[cfg(unix)]
+    let io = IoMode::Pty(TerminalSize::new(24, 80, 0, 0).expect("terminal size"));
+    #[cfg(windows)]
+    let io = IoMode::Pipes;
     let plan = plan(
         &root,
         &ids,
         PlanOptions {
             arguments: vec!["control".to_owned()],
             environment: Vec::new(),
-            io: IoMode::Pty(TerminalSize::new(24, 80, 0, 0).expect("terminal size")),
+            io,
             stdin: StdinPolicy::bounded(16, 16).expect("stdin policy"),
             output_limit: 64,
             wall_timeout: None,
