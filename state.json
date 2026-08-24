@@ -1,6 +1,6 @@
 {
   "next_display_id": 15,
-  "next_comment_id": 247,
+  "next_comment_id": 248,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "19b7b53a-b2fb-41c1-835d-ffd6ce605c08": 14,
@@ -74,7 +74,7 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-08-24T18:11:58.216818603Z",
-      "updated_at": "2026-08-24T22:33:52.006912834Z",
+      "updated_at": "2026-08-24T22:40:02.712481943Z",
       "labels": [
         "feature"
       ],
@@ -339,6 +339,15 @@
           "kind": "progress",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAO/mPKvq/Q1qevuvrQqvqJohRI+HbsSO4NfwWxEiY8OuBagdo/2VUA/MRDom/t8VAwlmdJOUueMLsMD6zaBLXDg=="
+        },
+        "d1150da3-613d-4b7b-8439-9b6d8258c101": {
+          "display_id": 247,
+          "author": "6ME5",
+          "content": "[action] Accepted both official-executable account runtime routes after real-process A2 and unscoped all-feature Verus compilation; proceeding to integrated C5 and Gate A qualification.",
+          "created_at": "2026-08-24T22:40:02.706040857Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAhmL3WadRjvRh8mIH0jS/53aRtwdRO3mN/PAl3w/gjFSi6vMmU8p6/TOdMesc5l1WXWbwvB2YBYlfOBpMZED0Bw=="
         },
         "d895eedb-1d6b-48f0-ae4a-8ac5fdaf321c": {
           "display_id": 210,
@@ -2479,8 +2488,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-24T22:33:52.006912834Z",
+    "timestamp": "2026-08-24T22:40:02.712481943Z",
     "agent_id": "6ME5",
-    "agent_seq": 324
+    "agent_seq": 325
   }
 }
