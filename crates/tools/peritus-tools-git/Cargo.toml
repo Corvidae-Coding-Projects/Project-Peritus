@@ -1,0 +1,45 @@
+[package]
+name = "peritus-tools-git"
+description = "Authorized structured Git tools for Peritus workspaces"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["git", "tools", "workspace", "formal-verification"]
+categories = ["development-tools"]
+
+[dependencies]
+base64.workspace = true
+peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
+peritus-artifact-store = { version = "=0.0.0", path = "../../state/peritus-artifact-store" }
+peritus-git = { version = "=0.0.0", path = "../../runtime/peritus-git" }
+peritus-policy = { version = "=0.0.0", path = "../../foundation/peritus-policy" }
+peritus-tool-protocol = { version = "=0.0.0", path = "../peritus-tool-protocol" }
+peritus-tool-router = { version = "=0.0.0", path = "../peritus-tool-router" }
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+peritus-workspace = { version = "=0.0.0", path = "../../runtime/peritus-workspace" }
+vstd.workspace = true
+
+[dev-dependencies]
+peritus-budget = { version = "=0.0.0", path = "../../foundation/peritus-budget" }
+peritus-journal = { version = "=0.0.0", path = "../../state/peritus-journal" }
+peritus-kernel = { version = "=0.0.0", path = "../../foundation/peritus-kernel" }
+peritus-leases = { version = "=0.0.0", path = "../../state/peritus-leases" }
+peritus-patch = { version = "=0.0.0", path = "../../runtime/peritus-patch" }
+peritus-protocol = { version = "=0.0.0", path = "../../foundation/peritus-protocol" }
+peritus-test-support = { version = "=0.0.0", path = "../../app/testing/peritus-test-support" }
+tempfile.workspace = true
+
+[package.metadata.peritus]
+owner = "C4"
+layer = "tools"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true
+
+[lints]
+workspace = true

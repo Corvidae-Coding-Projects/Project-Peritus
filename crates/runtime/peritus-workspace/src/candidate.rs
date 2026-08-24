@@ -68,7 +68,7 @@ impl WorkspaceGateway {
         artifacts: &ArtifactStore,
     ) -> Result<CandidateOutcome, WorkspaceError> {
         validate_mutation_input(self.state(), mutation)?;
-        let payload = candidate_authorization_payload(mutation, snapshot_id);
+        let payload = candidate_payload(mutation, snapshot_id, authorization.caller_binding());
         let permit =
             self.authorize_in_condition(authorization, &payload, WorkspaceCondition::Dirty)?;
         validate_mutation_input(self.state(), mutation)?;
@@ -164,7 +164,29 @@ pub fn candidate_authorization_payload(
     mutation: &MutationOutcome,
     snapshot_id: SnapshotId,
 ) -> Vec<u8> {
-    let mut bytes = b"PERITUS-WORKSPACE-CANDIDATE-V1\0".to_vec();
+    candidate_payload(mutation, snapshot_id, None)
+}
+
+/// Returns canonical candidate payload bytes bound to one exact validated C4 caller.
+#[must_use]
+pub fn candidate_authorization_payload_for_caller(
+    mutation: &MutationOutcome,
+    snapshot_id: SnapshotId,
+    caller: &crate::WorkspaceCallerBinding,
+) -> Vec<u8> {
+    candidate_payload(mutation, snapshot_id, Some(caller))
+}
+
+fn candidate_payload(
+    mutation: &MutationOutcome,
+    snapshot_id: SnapshotId,
+    caller: Option<&crate::WorkspaceCallerBinding>,
+) -> Vec<u8> {
+    let mut bytes = if caller.is_some() {
+        b"PERITUS-WORKSPACE-CANDIDATE-V2\0".to_vec()
+    } else {
+        b"PERITUS-WORKSPACE-CANDIDATE-V1\0".to_vec()
+    };
     bytes.extend_from_slice(mutation.action_id().as_bytes());
     bytes.extend_from_slice(mutation.workspace_id().as_bytes());
     bytes.extend_from_slice(mutation.resource_id().as_bytes());
@@ -172,6 +194,9 @@ pub fn candidate_authorization_payload(
     bytes.extend_from_slice(&mutation.revision().get().to_be_bytes());
     bytes.extend_from_slice(mutation.patch_identity().as_bytes());
     bytes.extend_from_slice(snapshot_id.as_bytes());
+    if let Some(caller) = caller {
+        crate::caller::append_caller(&mut bytes, Some(caller));
+    }
     bytes
 }
 

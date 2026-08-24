@@ -653,7 +653,7 @@ live_issue = "#11"
 owner = "ACTOR-0001"
 evidence = [
   { kind = "verus-proof", source_file = "crates/runtime/peritus-process/src/refinement.rs", symbol = "peritus_process::refinement::terminal_result_implies_unique_owned_completion", command = "cargo verus verify --package peritus-process --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
-  { kind = "refinement-test", source_file = "crates/runtime/peritus-process/tests/process_integration.rs", symbol = "peritus_process::tests::process_integration::cancellation_publishes_one_terminal_owned_tree_result", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/runtime/peritus-process/tests/process_integration/control_lifecycle.rs", symbol = "peritus_process::tests::process_integration::control_lifecycle::cancellation_publishes_one_terminal_owned_tree_result", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
   { kind = "refinement-test", source_file = "crates/runtime/peritus-process/tests/process_conformance.rs", symbol = "peritus_process::tests::process_conformance::production_process_passes_complete_a2_suite_with_fresh_case_subjects", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
 ]
 
@@ -722,7 +722,7 @@ live_issue = "#11"
 owner = "ACTOR-0001"
 evidence = [
   { kind = "verus-proof", source_file = "crates/runtime/peritus-process/src/refinement.rs", symbol = "peritus_process::refinement::terminal_result_implies_unique_owned_completion", command = "cargo verus verify --package peritus-process --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
-  { kind = "refinement-test", source_file = "crates/runtime/peritus-process/tests/process_integration.rs", symbol = "peritus_process::tests::process_integration::cancellation_publishes_one_terminal_owned_tree_result", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/runtime/peritus-process/tests/process_integration/control_lifecycle.rs", symbol = "peritus_process::tests::process_integration::control_lifecycle::cancellation_publishes_one_terminal_owned_tree_result", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
   { kind = "property-test", source_file = "crates/runtime/peritus-process/tests/process_conformance.rs", symbol = "peritus_process::tests::process_conformance::production_process_passes_complete_a2_suite_with_fresh_case_subjects", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
 ]
 
@@ -807,4 +807,37 @@ evidence = [
   { kind = "verus-proof", source_file = "crates/runtime/peritus-process/src/refinement.rs", symbol = "peritus_process::refinement::invalid_native_preparation_has_no_effect", command = "cargo verus verify --package peritus-process --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "property-test", source_file = "crates/runtime/peritus-process/tests/process_integration/native_backend/rejection.rs", symbol = "peritus_process::tests::process_integration::native_backend::rejection::descriptor_drift_never_calls_prepare_or_consumes_authority", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
   { kind = "refinement-test", source_file = "crates/runtime/peritus-process/tests/process_integration/native_backend/rejection.rs", symbol = "peritus_process::tests::process_integration::native_backend::rejection::preparation_failure_is_durable_and_cannot_be_replayed", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0135"
+kind = "refinement"
+statement = "Every registered C4 tool descriptor names the exact authenticated B1 operation, matches its operation class and mandatory risks, and declares a side-effect class no broader than that operation."
+owning_crate = "peritus-tool-router"
+source_file = "crates/tools/peritus-tool-router/src/verified.rs"
+symbol = "peritus_tool_router::verified::tool_operation_refinement_complete"
+status = "in-progress"
+dependencies = []
+live_issue = "#13"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/tools/peritus-tool-router/src/verified.rs", symbol = "peritus_tool_router::verified::tool_operation_refinement_complete", command = "cargo verus verify --package peritus-tool-router --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/tools/peritus-tool-router/src/verified.rs", symbol = "peritus_tool_router::verified::tests::operation_refinement_rejects_each_independent_mismatch", command = "cargo test --package peritus-tool-router --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0136"
+kind = "refinement"
+statement = "The C4 router alone constructs its private one-use invocation permit after the prepared descriptor, intent, lifecycle, capability, budget, conditional lease, committed dispatch, authority time, revision, and caller target all match; every rejected request has zero built-in-tool effects."
+owning_crate = "peritus-tool-router"
+source_file = "crates/tools/peritus-tool-router/src/verified.rs"
+symbol = "peritus_tool_router::verified::tool_authority_complete"
+status = "in-progress"
+dependencies = ["OBL-0103", "OBL-0108", "OBL-0114", "OBL-0118", "OBL-0119"]
+live_issue = "#13"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/tools/peritus-tool-router/src/verified.rs", symbol = "peritus_tool_router::verified::tool_authority_complete", command = "cargo verus verify --package peritus-tool-router --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/tools/peritus-tool-router/tests/router_authority.rs", symbol = "peritus_tool_router::tests::router_authority::authority_rejection_never_calls_dispatcher", command = "cargo test --package peritus-tool-router --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/tools/peritus-tool-router/tests/production_conformance.rs", symbol = "peritus_tool_router::tests::production_conformance::production_router_passes_all_eight_a2_tool_cases", command = "cargo test --package peritus-tool-router --all-targets --all-features --locked" },
 ]

@@ -1,8 +1,8 @@
-//! Authorized owned process, PTY, output, cancellation, and recovery backplane.
-//! [`ExecutionGateway`] consumes exact authority into a private [`OwnedProcess`] argv launch.
+//! Authorized process backplane; [`ExecutionGateway`] consumes authority into an [`OwnedProcess`].
 
 #![allow(clippy::redundant_pub_crate, reason = "documents internal contracts")]
 mod authorization;
+mod caller_binding;
 mod cancellation;
 mod command;
 mod consumption;
@@ -32,10 +32,11 @@ mod verified;
 mod working_directory;
 
 pub use authorization::ExecutionAuthorizationRequest;
+pub use caller_binding::{ExecutionCallerBinding, ExecutionCallerTarget};
 pub use cancellation::{CancellationReason, EscalationRecord, StopTrigger};
 pub use command::CommandSpec;
 pub use consumption::ProcessStore;
-pub use control::ProcessControl;
+pub use control::{ProcessControl, ProcessSignal};
 pub use environment::{
     EnvironmentPlan, EnvironmentSource, EnvironmentValueSource, EnvironmentVariable,
 };

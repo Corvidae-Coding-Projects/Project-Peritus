@@ -18,12 +18,24 @@ pub(crate) enum ControlCommand {
     Write(Vec<u8>),
     CloseInput,
     Resize(TerminalSize),
+    Signal(ProcessSignal),
     Cancel(CancellationReason),
+}
+
+/// Closed portable signal vocabulary supported by owned native process trees.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum ProcessSignal {
+    /// Request an interactive interrupt (`SIGINT` or the platform-native equivalent).
+    Interrupt,
+    /// Request graceful termination (`SIGTERM` or the platform-native equivalent).
+    Terminate,
 }
 
 pub(crate) struct SharedExecution {
     pub(crate) events: EventLog,
-    pub(crate) retained_output: Vec<u8>,
+    pub(crate) retained_stdout: Vec<u8>,
+    pub(crate) retained_stderr: Vec<u8>,
+    pub(crate) retained_terminal: Vec<u8>,
     pub(crate) terminal: Option<TerminalResult>,
 }
 
@@ -98,6 +110,23 @@ impl ProcessControl {
         self.try_send(ControlCommand::Resize(size))
     }
 
+    /// Queues one portable signal without classifying the operation as cancellation.
+    ///
+    /// # Errors
+    /// Returns an error when terminal signal delivery was not authorized, or when the bounded
+    /// control queue is full or closed.
+    pub fn signal(&self, signal: ProcessSignal) -> Result<(), ProcessError> {
+        if !self.terminal.signals_allowed() {
+            return Err(ProcessError::new(
+                ErrorCode::InvalidInput,
+                ProcessOperation::Control,
+                RecoveryClass::CorrectRequest,
+                "process signals were not authorized by the checked execution plan",
+            ));
+        }
+        self.try_send(ControlCommand::Signal(signal))
+    }
+
     /// Queues an idempotent stop request.
     ///
     /// # Errors
@@ -141,15 +170,36 @@ impl ProcessControl {
         events
     }
 
-    /// Returns the current bounded combined tail window.
+    /// Returns the current bounded tail in canonical stdout, stderr, terminal order.
+    ///
+    /// Stream bytes remain contiguous even when operating-system readers observe chunks in an
+    /// interleaved order. A newline separates adjacent nonempty streams.
     #[must_use]
     pub fn retained_output(&self) -> Vec<u8> {
-        self.shared
-            .state
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .retained_output
-            .clone()
+        let state = self.shared.state.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut output = Vec::with_capacity(
+            state
+                .retained_stdout
+                .len()
+                .saturating_add(state.retained_stderr.len())
+                .saturating_add(state.retained_terminal.len())
+                .saturating_add(2),
+        );
+        append_stream(&mut output, &state.retained_stdout);
+        append_stream(&mut output, &state.retained_stderr);
+        append_stream(&mut output, &state.retained_terminal);
+        output
+    }
+
+    /// Returns the current bounded tail for one exact stream.
+    #[must_use]
+    pub fn retained_stream_output(&self, stream: crate::OutputStream) -> Vec<u8> {
+        let state = self.shared.state.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        match stream {
+            crate::OutputStream::Stdout => state.retained_stdout.clone(),
+            crate::OutputStream::Stderr => state.retained_stderr.clone(),
+            crate::OutputStream::Terminal => state.retained_terminal.clone(),
+        }
     }
 
     /// Returns the terminal result after publication.
@@ -174,6 +224,16 @@ impl ProcessControl {
             ),
         })
     }
+}
+
+fn append_stream(output: &mut Vec<u8>, stream: &[u8]) {
+    if stream.is_empty() {
+        return;
+    }
+    if !output.is_empty() && !output.ends_with(b"\n") {
+        output.push(b'\n');
+    }
+    output.extend_from_slice(stream);
 }
 
 const fn input_error(detail: &'static str) -> ProcessError {

@@ -10,9 +10,9 @@ use peritus_sandbox::{
 use peritus_types::Sha256Digest;
 
 use crate::{
-    CommandSpec, DeadlinePolicy, EnvironmentPlan, ExecutionIdentity, IoMode, OutputPolicy,
-    ProcessError, ProcessResourcePolicy, StdinPolicy, TerminalCapabilities, WorkingDirectory,
-    error::invalid,
+    CommandSpec, DeadlinePolicy, EnvironmentPlan, ExecutionCallerBinding, ExecutionIdentity,
+    IoMode, OutputPolicy, ProcessError, ProcessResourcePolicy, StdinPolicy, TerminalCapabilities,
+    WorkingDirectory, error::invalid,
 };
 
 mod projection;
@@ -149,6 +149,7 @@ pub struct ExecutionPlan {
     output: OutputPolicy,
     deadlines: DeadlinePolicy,
     resources: ProcessResourcePolicy,
+    caller_binding: Option<ExecutionCallerBinding>,
     isolation: ExecutionIsolation,
     sandbox_digest: Sha256Digest,
     backend: BackendSelection,
@@ -246,6 +247,7 @@ impl ExecutionPlan {
             output,
             deadlines,
             resources,
+            caller_binding: None,
             isolation,
             sandbox_digest,
             backend,
@@ -306,6 +308,25 @@ impl ExecutionPlan {
     #[must_use]
     pub const fn resource_policy(&self) -> ProcessResourcePolicy {
         self.resources
+    }
+    /// Returns an optional higher-layer invocation identity bound into this plan.
+    #[must_use]
+    pub const fn caller_binding(&self) -> Option<&ExecutionCallerBinding> {
+        self.caller_binding.as_ref()
+    }
+
+    /// Binds one exact higher-layer invocation and recomputes canonical plan identity.
+    ///
+    /// # Errors
+    /// Returns a typed failure if a binding already exists or canonical encoding fails.
+    pub fn bind_caller(mut self, binding: ExecutionCallerBinding) -> Result<Self, ProcessError> {
+        if self.caller_binding.is_some() {
+            return Err(invalid("execution plan already has a caller binding"));
+        }
+        self.caller_binding = Some(binding);
+        self.canonical = crate::plan_canonical::encode(&self)?;
+        self.digest = Sha256Digest::new(Sha256::digest(&self.canonical).into());
+        Ok(self)
     }
     /// Returns isolation class.
     #[must_use]

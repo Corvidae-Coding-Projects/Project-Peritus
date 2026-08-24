@@ -71,6 +71,10 @@ pub enum Operation {
     RemoveWorktree,
     /// Observe porcelain-v2 status.
     Status,
+    /// Observe a structured immutable commit diff.
+    Diff,
+    /// Observe bounded first-parent-independent commit history.
+    History,
     /// Write the isolated worktree index as a tree.
     CreateCandidate,
     /// Create or retain a snapshot commit/ref.
@@ -144,6 +148,8 @@ impl GitError {
             | Operation::ResolveBaseline
             | Operation::InspectWorktree
             | Operation::Status
+            | Operation::Diff
+            | Operation::History
             | Operation::CreateSnapshot
             | Operation::ReleaseSnapshot
             | Operation::Reconcile

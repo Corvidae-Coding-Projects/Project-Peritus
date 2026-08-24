@@ -70,19 +70,31 @@ pub enum IoMode {
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct TerminalCapabilities {
     resize_allowed: bool,
+    signals_allowed: bool,
     event_count: u64,
     output_bytes: u64,
 }
 
 impl TerminalCapabilities {
-    pub(crate) const fn new(resize_allowed: bool, event_count: u64, output_bytes: u64) -> Self {
-        Self { resize_allowed, event_count, output_bytes }
+    pub(crate) const fn new(
+        resize_allowed: bool,
+        signals_allowed: bool,
+        event_count: u64,
+        output_bytes: u64,
+    ) -> Self {
+        Self { resize_allowed, signals_allowed, event_count, output_bytes }
     }
 
     /// Returns whether runtime PTY resizing was authorized.
     #[must_use]
     pub const fn resize_allowed(self) -> bool {
         self.resize_allowed
+    }
+
+    /// Returns whether portable runtime signal delivery was authorized.
+    #[must_use]
+    pub const fn signals_allowed(self) -> bool {
+        self.signals_allowed
     }
 
     /// Returns the sandbox-authorized retained event ceiling.

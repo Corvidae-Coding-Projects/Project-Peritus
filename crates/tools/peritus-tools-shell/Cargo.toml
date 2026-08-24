@@ -1,0 +1,56 @@
+[package]
+name = "peritus-tools-shell"
+description = "Authorized structured argv and explicit script tools for Peritus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+
+[features]
+default = []
+integration-fixtures = ["dep:peritus-codec"]
+
+[dependencies]
+peritus-artifact-store = { version = "=0.0.0", path = "../../state/peritus-artifact-store" }
+peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec", optional = true }
+peritus-policy = { version = "=0.0.0", path = "../../foundation/peritus-policy" }
+peritus-process = { version = "=0.0.0", path = "../../runtime/peritus-process" }
+peritus-sandbox = { version = "=0.0.0", path = "../../runtime/peritus-sandbox" }
+peritus-tool-protocol = { version = "=0.0.0", path = "../peritus-tool-protocol" }
+peritus-tool-router = { version = "=0.0.0", path = "../peritus-tool-router" }
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+serde_json.workspace = true
+vstd.workspace = true
+
+[dev-dependencies]
+peritus-budget = { version = "=0.0.0", path = "../../foundation/peritus-budget" }
+peritus-journal = { version = "=0.0.0", path = "../../state/peritus-journal" }
+peritus-kernel = { version = "=0.0.0", path = "../../foundation/peritus-kernel" }
+peritus-leases = { version = "=0.0.0", path = "../../state/peritus-leases" }
+peritus-protocol = { version = "=0.0.0", path = "../../foundation/peritus-protocol" }
+peritus-tools-quality = { version = "=0.0.0", path = "../peritus-tools-quality" }
+tempfile.workspace = true
+
+[[bin]]
+name = "peritus-c4-native-helper-fixture"
+path = "tests/fixtures/native_helper.rs"
+required-features = ["integration-fixtures"]
+
+[[bin]]
+name = "peritus-c4-process-fixture"
+path = "tests/fixtures/process_fixture.rs"
+required-features = ["integration-fixtures"]
+
+[package.metadata.peritus]
+owner = "C4"
+layer = "tools"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true
+
+[lints]
+workspace = true

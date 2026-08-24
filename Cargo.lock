@@ -1305,6 +1305,128 @@ dependencies = [
 ]
 
 [[package]]
+name = "peritus-tool-protocol"
+version = "0.0.0"
+dependencies = [
+ "peritus-codec",
+ "peritus-policy",
+ "peritus-types",
+ "serde_json",
+ "vstd",
+]
+
+[[package]]
+name = "peritus-tool-router"
+version = "0.0.0"
+dependencies = [
+ "peritus-approval",
+ "peritus-budget",
+ "peritus-codec",
+ "peritus-conformance",
+ "peritus-journal",
+ "peritus-kernel",
+ "peritus-leases",
+ "peritus-policy",
+ "peritus-protocol",
+ "peritus-spec",
+ "peritus-test-support",
+ "peritus-tool-protocol",
+ "peritus-types",
+ "tempfile",
+ "vstd",
+]
+
+[[package]]
+name = "peritus-tools-fs"
+version = "0.0.0"
+dependencies = [
+ "base64",
+ "peritus-budget",
+ "peritus-codec",
+ "peritus-git",
+ "peritus-journal",
+ "peritus-kernel",
+ "peritus-leases",
+ "peritus-patch",
+ "peritus-policy",
+ "peritus-protocol",
+ "peritus-test-support",
+ "peritus-tool-protocol",
+ "peritus-tool-router",
+ "peritus-types",
+ "peritus-workspace",
+ "tempfile",
+ "vstd",
+]
+
+[[package]]
+name = "peritus-tools-git"
+version = "0.0.0"
+dependencies = [
+ "base64",
+ "peritus-artifact-store",
+ "peritus-budget",
+ "peritus-codec",
+ "peritus-git",
+ "peritus-journal",
+ "peritus-kernel",
+ "peritus-leases",
+ "peritus-patch",
+ "peritus-policy",
+ "peritus-protocol",
+ "peritus-test-support",
+ "peritus-tool-protocol",
+ "peritus-tool-router",
+ "peritus-types",
+ "peritus-workspace",
+ "tempfile",
+ "vstd",
+]
+
+[[package]]
+name = "peritus-tools-quality"
+version = "0.0.0"
+dependencies = [
+ "peritus-artifact-store",
+ "peritus-patch",
+ "peritus-policy",
+ "peritus-process",
+ "peritus-quality-policy",
+ "peritus-sandbox",
+ "peritus-tool-protocol",
+ "peritus-tool-router",
+ "peritus-types",
+ "peritus-workspace",
+ "serde_json",
+ "sha2 0.11.0",
+ "tempfile",
+ "toml",
+]
+
+[[package]]
+name = "peritus-tools-shell"
+version = "0.0.0"
+dependencies = [
+ "peritus-artifact-store",
+ "peritus-budget",
+ "peritus-codec",
+ "peritus-journal",
+ "peritus-kernel",
+ "peritus-leases",
+ "peritus-policy",
+ "peritus-process",
+ "peritus-protocol",
+ "peritus-sandbox",
+ "peritus-tool-protocol",
+ "peritus-tool-router",
+ "peritus-tools-quality",
+ "peritus-types",
+ "serde_json",
+ "tempfile",
+ "vstd",
+]
+
+[[package]]
 name = "peritus-types"
 version = "0.0.0"
 dependencies = [

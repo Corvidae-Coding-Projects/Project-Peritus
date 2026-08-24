@@ -17,6 +17,8 @@ source_exceptions = []
 forbidden_dependencies = []
 controlled_source_roots = [
     { path = "crates/foundation/peritus-protocol/src/schema", owner = "B3", kind = "schema", rationale = "B3 owns the handwritten family registry, deterministic renderers, fixture constructors, and code-generation implementation." },
+    { path = "crates/tools/peritus-tool-protocol/src/schema.rs", owner = "C4", kind = "schema", rationale = "C4 owns the bounded tool schema model, builders, canonical encoding, validation, and compatibility contract." },
+    { path = "crates/tools/peritus-tool-protocol/src/schema", owner = "C4", kind = "schema", rationale = "C4 owns the reviewed tool schema canonicalization, validation, duplicate detection, and compatibility implementation." },
     { path = "crates/state/peritus-artifact-store/src/catalog/schema.rs", owner = "C0", kind = "schema", rationale = "C0 owns the artifact catalog schema used by the shared durable SQLite database." },
     { path = "crates/state/peritus-evidence/src/sqlite/schema.rs", owner = "C0", kind = "schema", rationale = "C0 owns the durable evidence catalog schema and its provenance constraints." },
     { path = "crates/state/peritus-journal/src/sqlite/schema.rs", owner = "C0", kind = "schema", rationale = "C0 owns the authoritative journal schema and transactional state tables." },
@@ -290,6 +292,48 @@ layer = "testing"
 verification_class = "C"
 
 [[packages]]
+name = "peritus-tool-protocol"
+path = "crates/tools/peritus-tool-protocol"
+owner = "C4"
+layer = "tools"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-tool-router"
+path = "crates/tools/peritus-tool-router"
+owner = "C4"
+layer = "tools"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-tools-fs"
+path = "crates/tools/peritus-tools-fs"
+owner = "C4"
+layer = "tools"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-tools-git"
+path = "crates/tools/peritus-tools-git"
+owner = "C4"
+layer = "tools"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-tools-quality"
+path = "crates/tools/peritus-tools-quality"
+owner = "C4"
+layer = "tools"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-tools-shell"
+path = "crates/tools/peritus-tools-shell"
+owner = "C4"
+layer = "tools"
+verification_class = "H"
+
+[[packages]]
 name = "peritus-types"
 path = "crates/foundation/peritus-types"
 owner = "A1"
@@ -311,12 +355,6 @@ layer = "engineering"
 verification_class = "C"
 
 [[refinement_reservations]]
-id = "REF-C4-B1-OPERATION-CLASS"
-introduced_by = "B1"
-future_owner = "C4"
-statement = "Each concrete tool consumes B1 OperationDescriptor values and its implementation matches the authenticated operation class."
-
-[[refinement_reservations]]
 id = "REF-B0-B1-CURRENT-STATE-WITNESS"
 introduced_by = "B1"
 future_owner = "B0"
@@ -327,12 +365,6 @@ id = "REF-E0-B1-COMMIT-BEFORE-EFFECT"
 introduced_by = "B1"
 future_owner = "E0"
 statement = "E0 assembles matching capability use, durable budget charge/reservation, lease use when mutating, approval plus its exact credential-registry revision when required, B0 current-state witness, and exact C0 commit/current-registry receipts before invoking a target authorization gateway; it does not construct that target's permit."
-
-[[refinement_reservations]]
-id = "REF-C4-B1-AUTHORITY-GATE"
-introduced_by = "B1"
-future_owner = "C4"
-statement = "The tool router owns ToolAuthorizationRequest; it validates E0-supplied B1/B0/C0 inputs and alone constructs its private invocation permit, with no built-in-tool bypass."
 
 [[refinement_reservations]]
 id = "REF-E0-B1-POLICY-ACTIVATION"

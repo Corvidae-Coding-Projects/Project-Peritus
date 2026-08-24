@@ -33,11 +33,25 @@ pub(crate) fn encode(plan: &ExecutionPlan) -> Result<Vec<u8>, ProcessError> {
     encode_stdin(&mut writer, plan.stdin_policy());
     let terminal = plan.terminal_capabilities();
     writer.u8(u8::from(terminal.resize_allowed()));
+    writer.u8(u8::from(terminal.signals_allowed()));
     writer.u64(terminal.event_count());
     writer.u64(terminal.output_bytes());
     encode_output(&mut writer, plan.output_policy());
     encode_deadlines(&mut writer, plan.deadline_policy());
     encode_resources(&mut writer, plan.resource_policy());
+    if let Some(binding) = plan.caller_binding() {
+        writer.u8(1);
+        writer.raw(binding.action_id().as_bytes());
+        writer.string(binding.capability_name().as_str())?;
+        writer.raw(binding.descriptor_digest().as_bytes());
+        writer.raw(binding.prepared_digest().as_bytes());
+        writer.raw(binding.actor_id().as_bytes());
+        writer.u8(role_tag(binding.role()));
+        writer.raw(binding.environment_id().as_bytes());
+        writer.raw(binding.resource_id().as_bytes());
+    } else {
+        writer.u8(0);
+    }
     writer.u8(match plan.isolation() {
         ExecutionIsolation::Restricted => 1,
         ExecutionIsolation::ExplicitRawEffect => 2,
@@ -55,6 +69,22 @@ pub(crate) fn encode(plan: &ExecutionPlan) -> Result<Vec<u8>, ProcessError> {
     writer.raw(plan.backend().support_digest().as_bytes());
     writer.raw(plan.backend().preparation_digest().as_bytes());
     Ok(writer.finish())
+}
+
+const fn role_tag(role: peritus_policy::ActorRole) -> u8 {
+    match role {
+        peritus_policy::ActorRole::Writer => 1,
+        peritus_policy::ActorRole::Fixer => 2,
+        peritus_policy::ActorRole::Reviewer => 3,
+        peritus_policy::ActorRole::Evaluator => 4,
+        peritus_policy::ActorRole::GateRunner => 5,
+        peritus_policy::ActorRole::Orchestrator => 6,
+        peritus_policy::ActorRole::EvolutionAgent => 7,
+        peritus_policy::ActorRole::HumanAuthority => 8,
+        peritus_policy::ActorRole::DaemonService => 9,
+        peritus_policy::ActorRole::ProviderToolWorker => 10,
+        peritus_policy::ActorRole::Plugin => 11,
+    }
 }
 
 fn encode_identity(writer: &mut PlanWriter, identity: &ExecutionIdentity) {

@@ -75,6 +75,8 @@ pub enum WorkspaceOperation {
     FinalizeManifest,
     /// Inspect state after restart or fencing.
     Reconcile,
+    /// Inspect immutable snapshot content.
+    Inspect,
 }
 
 /// Stable caller recovery category.

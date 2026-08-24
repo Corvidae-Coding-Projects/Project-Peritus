@@ -6,7 +6,9 @@
 
 mod baseline;
 mod command;
+mod diff;
 mod error;
+mod history;
 mod manifest;
 mod name;
 mod object_id;
@@ -18,7 +20,11 @@ mod verified;
 mod worktree;
 
 pub use baseline::Baseline;
+pub use diff::{
+    DiffChange, DiffEntry, DiffRequest, GitDiffObservation, MAX_DIFF_BYTES, MAX_DIFF_ENTRIES,
+};
 pub use error::{ErrorKind, GitError, Operation, RecoveryClass};
+pub use history::{CommitObservation, GitHistoryObservation, HistoryRequest, MAX_HISTORY_COMMITS};
 pub use manifest::{
     CandidateSnapshotManifest, CandidateTreeManifest, WorktreeRegistrationManifest,
 };

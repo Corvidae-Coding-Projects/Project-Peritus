@@ -17,14 +17,6 @@ pub fn provider_suite<S>() -> StaticSuite<S> {
     )
 }
 
-/// Returns the runnable empty tool conformance suite.
-///
-/// B3 and C4 own the future tool protocol and router cases.
-#[must_use]
-pub fn tool_suite<S>() -> StaticSuite<S> {
-    empty("peritus.tool", "Tool conformance cases supplied after tool protocols exist")
-}
-
 /// Returns the runnable empty plugin conformance suite.
 ///
 /// G3 owns the future plugin contract and host cases.

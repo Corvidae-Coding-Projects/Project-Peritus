@@ -2,6 +2,7 @@
 
 use peritus_sandbox::{
     CheckedSandboxPlan, InputPermission, ResizePermission, SandboxResourceKind, TerminalMode,
+    TerminalSignalPermission,
 };
 
 use crate::{
@@ -30,6 +31,7 @@ pub(super) fn validate_sandbox_projection(
     let input_matches =
         matches!(stdin, StdinPolicy::Closed) == matches!(terminal.input(), InputPermission::Denied);
     let resize_allowed = matches!(terminal.resize(), ResizePermission::Allowed);
+    let signals_allowed = matches!(terminal.signals(), TerminalSignalPermission::Allowed);
     let event_count = terminal.event_count().get();
     let output_bytes = terminal.output_bytes().get();
     let output_matches = output.event_count() <= event_count
@@ -44,7 +46,7 @@ pub(super) fn validate_sandbox_projection(
         return Err(invalid("process I/O differs from checked sandbox requirements"));
     }
     validate_resources(resources, requirements.resources())?;
-    Ok(TerminalCapabilities::new(resize_allowed, event_count, output_bytes))
+    Ok(TerminalCapabilities::new(resize_allowed, signals_allowed, event_count, output_bytes))
 }
 
 fn validate_environment(

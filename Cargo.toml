@@ -28,6 +28,12 @@ members = [
     "crates/runtime/peritus-sandbox-windows",
     "crates/runtime/peritus-secrets",
     "crates/runtime/peritus-workspace",
+    "crates/tools/peritus-tool-protocol",
+    "crates/tools/peritus-tool-router",
+    "crates/tools/peritus-tools-fs",
+    "crates/tools/peritus-tools-git",
+    "crates/tools/peritus-tools-quality",
+    "crates/tools/peritus-tools-shell",
     "xtask",
 ]
 default-members = ["xtask"]

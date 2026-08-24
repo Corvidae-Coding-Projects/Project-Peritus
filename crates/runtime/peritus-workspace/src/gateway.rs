@@ -195,7 +195,8 @@ fn validate_request(
         && capability.action_id() == intent.action_id
         && capability.action_digest() == digest
         && lease_use.action_id() == intent.action_id
-        && lease_use.action_digest() == digest;
+        && lease_use.action_digest() == digest
+        && caller_matches(state, request, intent);
     let actor_matches = action.actor_id() == intent.actor_id
         && action.role() == intent.role
         && action.environment_id() == intent.environment_id
@@ -244,6 +245,22 @@ fn validate_request(
         expected_generation: request.expected_generation(),
         revision: state.revision(),
         expected_revision: request.expected_revision(),
+    })
+}
+
+fn caller_matches(
+    state: &WorkspaceState,
+    request: &WorkspaceAuthorizationRequest<'_>,
+    intent: &peritus_protocol::ActionIntentDto,
+) -> bool {
+    request.caller_binding().is_none_or(|caller| {
+        caller.actor_id() == intent.actor_id
+            && caller.role() == intent.role
+            && caller.workspace_id() == state.binding().workspace_id()
+            && caller.environment_id() == intent.environment_id
+            && caller.environment_id() == state.binding().environment_id()
+            && caller.resource_id() == intent.resource_id
+            && caller.resource_id() == state.binding().resource_id()
     })
 }
 

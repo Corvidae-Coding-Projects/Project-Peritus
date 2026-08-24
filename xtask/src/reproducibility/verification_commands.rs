@@ -222,6 +222,48 @@ layer = "foundation"
 verification_class = "V"
 
 [[packages]]
+name = "peritus-tool-protocol"
+path = "crates/tools/peritus-tool-protocol"
+owner = "C4"
+layer = "tools"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-tool-router"
+path = "crates/tools/peritus-tool-router"
+owner = "C4"
+layer = "tools"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-tools-fs"
+path = "crates/tools/peritus-tools-fs"
+owner = "C4"
+layer = "tools"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-tools-git"
+path = "crates/tools/peritus-tools-git"
+owner = "C4"
+layer = "tools"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-tools-quality"
+path = "crates/tools/peritus-tools-quality"
+owner = "C4"
+layer = "tools"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-tools-shell"
+path = "crates/tools/peritus-tools-shell"
+owner = "C4"
+layer = "tools"
+verification_class = "H"
+
+[[packages]]
 name = "peritus-types"
 path = "crates/foundation/peritus-types"
 owner = "A1"

@@ -10,4 +10,5 @@ mod conformance {
     mod runner_paths;
     mod sandbox_catalog;
     mod state_catalog;
+    mod tool_catalog;
 }

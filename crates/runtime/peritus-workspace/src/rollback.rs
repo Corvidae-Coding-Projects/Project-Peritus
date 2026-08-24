@@ -95,7 +95,7 @@ impl WorkspaceGateway {
         request: RollbackRequest<'_>,
         artifacts: &ArtifactStore,
     ) -> Result<RollbackOutcome, WorkspaceError> {
-        let payload = rollback_authorization_payload(self.state(), &request);
+        let payload = rollback_payload(self.state(), &request, authorization.caller_binding());
         let permit = self.authorize(authorization, &payload)?;
         let prior = self.state().current_snapshot().clone();
         let next_revision = prior.revision().checked_next().map_err(|_| {
@@ -203,13 +203,38 @@ pub fn rollback_authorization_payload(
     state: &crate::WorkspaceState,
     request: &RollbackRequest<'_>,
 ) -> Vec<u8> {
-    let mut bytes = b"PERITUS-WORKSPACE-ROLLBACK-V1\0".to_vec();
+    rollback_payload(state, request, None)
+}
+
+/// Returns canonical rollback payload bytes bound to one exact validated C4 caller.
+#[must_use]
+pub fn rollback_authorization_payload_for_caller(
+    state: &crate::WorkspaceState,
+    request: &RollbackRequest<'_>,
+    caller: &crate::WorkspaceCallerBinding,
+) -> Vec<u8> {
+    rollback_payload(state, request, Some(caller))
+}
+
+fn rollback_payload(
+    state: &crate::WorkspaceState,
+    request: &RollbackRequest<'_>,
+    caller: Option<&crate::WorkspaceCallerBinding>,
+) -> Vec<u8> {
+    let mut bytes = if caller.is_some() {
+        b"PERITUS-WORKSPACE-ROLLBACK-V2\0".to_vec()
+    } else {
+        b"PERITUS-WORKSPACE-ROLLBACK-V1\0".to_vec()
+    };
     bytes.extend_from_slice(state.binding().workspace_id().as_bytes());
     bytes.extend_from_slice(&state.generation().get().to_be_bytes());
     bytes.extend_from_slice(&state.revision().get().to_be_bytes());
     put_object(&mut bytes, request.target().commit().object_id());
     put_object(&mut bytes, request.target().tree().object_id());
     bytes.extend_from_slice(request.successor_snapshot_id().as_bytes());
+    if let Some(caller) = caller {
+        crate::caller::append_caller(&mut bytes, Some(caller));
+    }
     bytes
 }
 
