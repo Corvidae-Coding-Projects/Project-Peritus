@@ -17,45 +17,131 @@ use std::{
 };
 
 use crate::{
-    ErrorCode, ExecutionPlan, GracefulAction, OutputStream, ProcessError, ProcessOperation,
-    RecoveryClass, StdinPolicy, TerminalSize,
+    CommandSpec, ErrorCode, ExecutionPlan, GracefulAction, OutputStream, ProcessError,
+    ProcessOperation, RecoveryClass, StdinPolicy, TerminalSize,
 };
 
 use super::{
-    OutputReader, PlatformExit, PlatformProcess, ProcessTreeIdentity, current_start_token,
+    NativeHandshake, OutputReader, PlatformExit, PlatformProcess, ProcessTreeIdentity,
+    current_start_token,
 };
 
-pub(super) fn launch(plan: &ExecutionPlan) -> Result<Box<dyn PlatformProcess>, ProcessError> {
-    let mut command = Command::new(plan.command().executable());
+#[allow(
+    clippy::too_many_lines,
+    reason = "the direct-child spawn and bounded native handshake are one rollback transaction"
+)]
+pub(super) fn launch(
+    plan: &ExecutionPlan,
+    launch_command: &CommandSpec,
+    handshake: Option<NativeHandshake<'_>>,
+) -> Result<Box<dyn PlatformProcess>, ProcessError> {
+    #[cfg(windows)]
+    let native_windows_pty = matches!(plan.io_mode(), crate::IoMode::Pty(_))
+        && handshake.as_ref().and_then(|value| value.windows_channels).is_some();
+    #[cfg(not(windows))]
+    let native_windows_pty = false;
+    let mut command = Command::new(launch_command.executable());
     command
-        .args(plan.command().arguments())
+        .args(launch_command.arguments())
         .current_dir(plan.working_directory().path())
         .env_clear()
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
+        .stderr(if native_windows_pty { Stdio::null() } else { Stdio::piped() });
     for variable in plan.environment().variables() {
         command.env(variable.name(), variable.value());
     }
-    match plan.stdin_policy() {
-        StdinPolicy::Closed => {
+    #[cfg(windows)]
+    if let Some(channels) = handshake.as_ref().and_then(|value| value.windows_channels) {
+        command.env(crate::NATIVE_WINDOWS_STATUS_HANDLE_ENV, channels.status_handle().to_string());
+        command
+            .env(crate::NATIVE_WINDOWS_CONTROL_HANDLE_ENV, channels.control_handle().to_string());
+    }
+    let protected_handles = handshake.as_ref().map_or(&[][..], |value| value.protected_handles);
+    match (handshake.is_some(), plan.stdin_policy()) {
+        (false, StdinPolicy::Closed) => {
             command.stdin(Stdio::null());
         }
-        StdinPolicy::Bounded { .. } => {
+        (false, StdinPolicy::Bounded { .. }) | (true, _) => {
             command.stdin(Stdio::piped());
         }
     }
-    let mut wrapped = CommandWrap::from(command);
-    #[cfg(unix)]
-    wrapped.wrap(ProcessSession);
     #[cfg(windows)]
-    wrapped.wrap(JobObject);
-    let mut child = wrapped.spawn().map_err(|_| spawn_error("pipe process creation failed"))?;
+    let windows_channels = handshake.as_ref().and_then(|value| value.windows_channels).cloned();
+    #[cfg(windows)]
+    let status_reader = windows_channels
+        .as_ref()
+        .map(crate::NativeWindowsHelperChannels::status_reader)
+        .transpose()?;
+    let child = {
+        let _inheritance = super::configure_protected_inheritance(&mut command, protected_handles)?;
+        let mut wrapped = CommandWrap::from(command);
+        #[cfg(unix)]
+        wrapped.wrap(ProcessSession);
+        #[cfg(windows)]
+        wrapped.wrap(JobObject);
+        wrapped.spawn()
+    };
+    let mut child = child.map_err(|_| spawn_error("pipe process creation failed"))?;
     let root_pid = child.id();
-    let input = child.stdin().take().map(|input| Box::new(input) as Box<dyn Write + Send>);
-    let stdout = child
-        .stdout()
-        .take()
-        .map(|reader| OutputReader { stream: OutputStream::Stdout, reader: Box::new(reader) });
+    let mut input = child.stdin().take().map(|input| Box::new(input) as Box<dyn Write + Send>);
+    let stdout =
+        child.stdout().take().map(|reader| Box::new(reader) as Box<dyn std::io::Read + Send>);
+    let stdout = if let Some(handshake) = handshake {
+        let reader =
+            stdout.ok_or_else(|| spawn_error("native helper has no activation output stream"))?;
+        let reader = match super::verify_helper_record(reader, handshake.ready, || {
+            let _ = child.start_kill();
+        }) {
+            Ok(reader) => reader,
+            Err(error) => {
+                let _ = child.start_kill();
+                return Err(error);
+            }
+        };
+        let writer = input
+            .as_deref_mut()
+            .ok_or_else(|| spawn_error("native helper has no manifest input stream"))?;
+        super::write_helper_manifest(writer, handshake.manifest)?;
+        let reader = match super::verify_helper_record(reader, handshake.activated, || {
+            let _ = child.start_kill();
+        }) {
+            Ok(reader) => reader,
+            Err(error) => {
+                let _ = child.start_kill();
+                return Err(error);
+            }
+        };
+        #[cfg(windows)]
+        if let Some(status_reader) = status_reader {
+            let _status = match super::verify_helper_record(
+                Box::new(status_reader),
+                handshake.started,
+                || {
+                    let _ = child.start_kill();
+                },
+            ) {
+                Ok(reader) => reader,
+                Err(error) => {
+                    let _ = child.start_kill();
+                    return Err(error);
+                }
+            };
+        }
+        if plan.stdin_policy() == StdinPolicy::Closed {
+            input.take();
+        }
+        Some(reader)
+    } else {
+        stdout
+    };
+    let stdout = stdout.map(|reader| OutputReader {
+        stream: if matches!(plan.io_mode(), crate::IoMode::Pty(_)) {
+            OutputStream::Terminal
+        } else {
+            OutputStream::Stdout
+        },
+        reader,
+    });
     let stderr = child
         .stderr()
         .take()
@@ -83,6 +169,10 @@ pub(super) fn launch(plan: &ExecutionPlan) -> Result<Box<dyn PlatformProcess>, P
         job_reap: None,
         #[cfg(windows)]
         job_reaped: false,
+        #[cfg(windows)]
+        windows_channels,
+        #[cfg(windows)]
+        windows_terminal: matches!(plan.io_mode(), crate::IoMode::Pty(_)),
     }))
 }
 
@@ -100,6 +190,10 @@ struct PipeProcess {
     job_reap: Option<WindowsJobReap>,
     #[cfg(windows)]
     job_reaped: bool,
+    #[cfg(windows)]
+    windows_channels: Option<crate::NativeWindowsHelperChannels>,
+    #[cfg(windows)]
+    windows_terminal: bool,
 }
 
 #[cfg(windows)]
@@ -145,6 +239,11 @@ impl PlatformProcess for PipeProcess {
         }
         #[cfg(not(unix))]
         {
+            if self.windows_terminal
+                && let Some(channels) = &self.windows_channels
+            {
+                return channels.graceful(action);
+            }
             match action {
                 GracefulAction::CloseInput => Ok(()),
                 GracefulAction::Interrupt | GracefulAction::Terminate => {
@@ -188,7 +287,15 @@ impl PlatformProcess for PipeProcess {
         }
     }
 
-    fn resize(&mut self, _size: TerminalSize) -> Result<(), ProcessError> {
+    fn resize(&mut self, size: TerminalSize) -> Result<(), ProcessError> {
+        #[cfg(windows)]
+        if self.windows_terminal
+            && let Some(channels) = &self.windows_channels
+        {
+            return channels.resize(size);
+        }
+        #[cfg(not(windows))]
+        let _ = size;
         Err(ProcessError::new(
             ErrorCode::InvalidInput,
             ProcessOperation::Control,

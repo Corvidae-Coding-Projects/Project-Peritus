@@ -147,4 +147,132 @@ pub const fn holder_quiescence_exact(
         && tasks_joined
 }
 
+/// Independent facts required for an exact post-consumption native preparation.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "every native binding is independently drift-tested"
+)]
+pub struct NativePreparationFacts {
+    /// Complete execution authority was validated and durably consumed.
+    pub authority_consumed: bool,
+    /// Execution and checked sandbox plan digests match.
+    pub plan_exact: bool,
+    /// Admission and selected preparation digests match.
+    pub admission_exact: bool,
+    /// Probed and selected descriptor/support identities match.
+    pub descriptor_exact: bool,
+    /// The implementation platform equals the current native platform.
+    pub platform_exact: bool,
+    /// The helper manifest bytes, digest, and preparation identity match.
+    pub manifest_exact: bool,
+}
+
+/// Mathematical exact native-preparation predicate for `OBL-0130`.
+pub open spec fn native_preparation_complete_spec(facts: NativePreparationFacts) -> bool {
+    facts.authority_consumed
+        && facts.plan_exact
+        && facts.admission_exact
+        && facts.descriptor_exact
+        && facts.platform_exact
+        && facts.manifest_exact
+}
+
+/// Checks the complete native preparation binding.
+#[must_use]
+pub const fn native_preparation_complete(facts: NativePreparationFacts) -> (result: bool)
+    ensures result == native_preparation_complete_spec(facts),
+{
+    facts.authority_consumed
+        && facts.plan_exact
+        && facts.admission_exact
+        && facts.descriptor_exact
+        && facts.platform_exact
+        && facts.manifest_exact
+}
+
+/// Mathematical complete native-release predicate for `OBL-0133`.
+pub open spec fn native_release_complete_spec(
+    tree_quiescent: bool,
+    terminated: bool,
+    backend_released: bool,
+    proxy_released: bool,
+    secrets_released: bool,
+    support_joined: bool,
+) -> bool {
+    tree_quiescent
+        && terminated
+        && backend_released
+        && proxy_released
+        && secrets_released
+        && support_joined
+}
+
+/// Checks that every native-owned resource family is released.
+#[must_use]
+#[allow(
+    clippy::fn_params_excessive_bools,
+    reason = "each independently owned cleanup family remains explicit"
+)]
+pub const fn native_release_complete(
+    tree_quiescent: bool,
+    terminated: bool,
+    backend_released: bool,
+    proxy_released: bool,
+    secrets_released: bool,
+    support_joined: bool,
+) -> (result: bool)
+    ensures result == native_release_complete_spec(
+        tree_quiescent,
+        terminated,
+        backend_released,
+        proxy_released,
+        secrets_released,
+        support_joined,
+    ),
+{
+    tree_quiescent
+        && terminated
+        && backend_released
+        && proxy_released
+        && secrets_released
+        && support_joined
+}
+
+/// Mathematical fail-closed pre-activation rule for `OBL-0134`.
+pub open spec fn native_effect_count_valid_spec(
+    supported: bool,
+    binding_exact: bool,
+    authority_consumed: bool,
+    effect_count: int,
+) -> bool {
+    if supported && binding_exact && authority_consumed {
+        0 <= effect_count <= 1
+    } else {
+        effect_count == 0
+    }
+}
+
+/// Checks that unsupported, mismatched, or unauthorized native preparation has no effect.
+#[must_use]
+pub const fn native_effect_count_valid(
+    supported: bool,
+    binding_exact: bool,
+    authority_consumed: bool,
+    effect_count: u64,
+) -> (result: bool)
+    ensures result == native_effect_count_valid_spec(
+        supported,
+        binding_exact,
+        authority_consumed,
+        effect_count as int,
+    ),
+{
+    if supported && binding_exact && authority_consumed {
+        effect_count <= 1
+    } else {
+        effect_count == 0
+    }
+}
+
 } // verus!

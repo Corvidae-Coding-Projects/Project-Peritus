@@ -213,14 +213,18 @@ impl ProcessStore {
         })
     }
 
-    pub(crate) fn record_spawn_failed(&self, process_id: ProcessId) -> Result<(), ProcessError> {
+    pub(crate) fn record_spawn_failed(
+        &self,
+        process_id: ProcessId,
+        support_tasks_joined: bool,
+    ) -> Result<(), ProcessError> {
         self.update(process_id, |manifest| {
             if manifest.phase != LifecyclePhase::Starting {
                 return Err(store_error("spawn failure is out of sequence"));
             }
             manifest.exit = Some(OsExitObservation::Unavailable);
             manifest.tree_quiescent = true;
-            manifest.support_tasks_joined = true;
+            manifest.support_tasks_joined = support_tasks_joined;
             manifest.phase = LifecyclePhase::Closed;
             Ok(())
         })

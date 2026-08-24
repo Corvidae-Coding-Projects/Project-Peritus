@@ -10,6 +10,7 @@ use vstd::prelude::*;
 
 verus! {
 
+#[verifier::spinoff_prover]
 #[allow(
     clippy::too_many_arguments,
     reason = "The refinement compares both explicit candidate tuples and their bound witnesses"

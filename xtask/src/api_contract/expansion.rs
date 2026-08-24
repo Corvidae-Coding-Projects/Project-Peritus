@@ -14,6 +14,7 @@ const SIMPLE_ATTRIBUTES: &[&str] = &[
     "path",
     "test",
     "trigger",
+    "verifier::spinoff_prover",
     "verus_spec",
 ];
 const BUILTIN_DERIVES: &[&str] =

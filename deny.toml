@@ -40,9 +40,17 @@ allow = []
 deny = []
 skip = [
     { crate = "bitflags@1.3.2", reason = "Pinned portable-pty 0.9 requires bitflags 1 for its Windows backend while current platform and state dependencies use bitflags 2; both are locked implementation-only types." },
+    { crate = "block-buffer@0.10.4", reason = "Pinned keyring 4.1.6 reaches the Secret Service crypto stack through sha2 0.10 while Peritus uses sha2 0.11; this locked implementation-only buffer type does not cross a Peritus API." },
     { crate = "cfg_aliases@0.1.1", reason = "Pinned portable-pty 0.9 requires nix 0.28 and its cfg_aliases 0.1 build helper while the process owner uses current nix 0.31 and cfg_aliases 0.2; both helpers are locked and build-time-only." },
+    { crate = "cpufeatures@0.2.17", reason = "Pinned keyring 4.1.6 reaches the Secret Service crypto stack through sha2 0.10 while Peritus uses sha2 0.11; this locked implementation-only CPU feature detector does not cross a Peritus API." },
+    { crate = "crypto-common@0.1.7", reason = "Pinned keyring 4.1.6 reaches the Secret Service crypto stack through sha2 0.10 while Peritus uses sha2 0.11; this locked implementation-only crypto trait version does not cross a Peritus API." },
+    { crate = "digest@0.10.7", reason = "Pinned keyring 4.1.6 reaches the Secret Service crypto stack through sha2 0.10 while Peritus uses sha2 0.11; this locked implementation-only digest trait version does not cross a Peritus API." },
+    { crate = "getrandom@0.2.17", reason = "Pinned keyring 4.1.6 reaches Secret Service 5.1, which retains getrandom 0.2 while current workspace utilities use getrandom 0.4; neither locked version crosses a Peritus API." },
     { crate = "nix@0.28.0", reason = "Pinned portable-pty 0.9 owns its private nix 0.28 PTY implementation while process-wrap and Peritus tree control share nix 0.31; neither version crosses the public C2 API." },
+    { crate = "sha2@0.10.9", reason = "Pinned keyring 4.1.6 uses Secret Service 5.1 and its private sha2 0.10 crypto implementation while Peritus uses sha2 0.11; both versions are locked and do not share public types." },
     { crate = "syn@2.0.119", reason = "Pinned vstd procedural macros require syn 2 while pinned Serde derive requires syn 3; both are locked, build-time-only parser dependencies." },
+    { crate = "thiserror@1.0.69", reason = "Pinned portable-pty 0.9 retains thiserror 1 while pinned Landlock 0.4 uses thiserror 2; both are private error implementations and do not cross Peritus APIs." },
+    { crate = "thiserror-impl@1.0.69", reason = "Pinned portable-pty 0.9 retains thiserror 1 while pinned Landlock 0.4 uses thiserror 2; both derive implementations are locked build-time dependencies." },
 ]
 skip-tree = []
 

@@ -1,0 +1,45 @@
+[package]
+name = "peritus-secrets"
+description = "Exact secret leases, zeroizing delivery, redaction, and credential-store adapters"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["secrets", "credentials", "sandbox", "zeroize", "formal-verification"]
+categories = ["development-tools", "authentication"]
+
+[dependencies]
+peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
+peritus-sandbox = { version = "=0.0.0", path = "../peritus-sandbox" }
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+vstd.workspace = true
+zeroize.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { workspace = true, features = ["v1"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { workspace = true, features = ["v1"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { workspace = true, features = ["v1"] }
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[package.metadata.peritus]
+owner = "C3"
+layer = "runtime"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true
+
+[features]
+test-memory-store = []
+
+[lints]
+workspace = true

@@ -37,6 +37,20 @@ pub(crate) fn validate_launch(plan: &ExecutionPlan) -> Result<(), ProcessError> 
     Ok(())
 }
 
+pub(crate) fn validate_native_launch(plan: &ExecutionPlan) -> Result<(), ProcessError> {
+    if plan.isolation() != ExecutionIsolation::Restricted
+        || plan.backend().resource_fidelity() == BackendResourceFidelity::Reference
+    {
+        return Err(ProcessError::new(
+            ErrorCode::Unsupported,
+            ProcessOperation::Validate,
+            RecoveryClass::SelectBackend,
+            "native execution requires restricted authority and a non-reference resource enforcer",
+        ));
+    }
+    Ok(())
+}
+
 pub(super) struct ResourceTracker {
     sampling_supported: bool,
     baseline_disk: u64,

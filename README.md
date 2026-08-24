@@ -22,13 +22,16 @@ The implemented foundation and runtime spine now covers:
 - C2: structured process and PTY execution, the target-owned execution gateway, complete
   platform-neutral sandbox contracts, bounded supervision/output/cancellation and resource
   accounting, durable process recovery and retryable output publication, holder quiescence,
-  executable reference semantics, and reusable A2 qualification.
+  executable reference semantics, and reusable A2 qualification; and
+- C3: target-owned native backend preparation and lifecycle hooks, protected helper channels,
+  native Linux, macOS, and Windows enforcement backends and probes, managed HTTP/CONNECT egress,
+  exact secret leases and delivery, redaction, native recovery, and complete backend teardown.
 
 These are library and verification layers. There is not yet a user-facing `peritus` CLI, daemon,
 TUI, provider integration, complete agent loop, writer-reviewer-fixer orchestrator, or native
-production sandbox. C3 is the next runtime boundary: native Linux, macOS, and Windows enforcement,
-managed network controls, and secret delivery implementing C2's frozen contracts. A3, C4–C7,
-D0–D3, E0–E3, F0, G0–G3, and H0–H4 remain before production release and qualification.
+packaged-host qualification. C4 is the next runtime boundary: the tool protocol/router and
+model-facing filesystem, shell, Git, and quality tools. A3, C4–C7, D0–D3, E0–E3, F0, G0–G3,
+and H0–H4 remain before production release and qualification.
 
 Local Gate A is the current merge authority: ordinary Rust checks, architecture and API policy,
 supply-chain policy, pinned toolchains, full Verus verification, and verified release builds must
@@ -76,6 +79,10 @@ rollback, and restart reconciliation. The
 [C2 process and sandbox guide](docs/c2-process-sandbox.md) documents structured process execution,
 complete sandbox contracts, target-owned launch authorization, bounded supervision, terminal
 accounting, restart reconciliation, and holder quiescence.
+The [C3 platform security guide](docs/c3-platform-security.md) documents the native backend seam,
+protected helper protocol, Linux/macOS/Windows enforcement and probes, managed egress, exact secret
+delivery, teardown, recovery, and the distinction between implementation and packaged-host
+qualification.
 The [GitHub governance runbook](docs/github-governance.md) defines the GitHub Team-compatible
 repository ruleset and required `Gate A` status that must be active after the A1 genesis push.
 Immutable required-workflow authority remains an explicitly documented Enterprise Cloud deferral.

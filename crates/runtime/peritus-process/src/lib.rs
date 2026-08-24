@@ -1,15 +1,7 @@
 //! Authorized owned process, PTY, output, cancellation, and recovery backplane.
-//!
-//! [`ExecutionGateway`] is the sole public operating-system execution effect boundary. It checks
-//! exact committed B0/B1/B3/C0 authority, durably consumes one action/process pair, and transfers
-//! a private one-use launch into an [`OwnedProcess`]. Commands are always structured argv; this
-//! crate contains no command-line parser or shell-string launch path.
+//! [`ExecutionGateway`] consumes exact authority into a private [`OwnedProcess`] argv launch.
 
-#![allow(
-    clippy::redundant_pub_crate,
-    reason = "explicit crate visibility documents internal cross-module contracts"
-)]
-
+#![allow(clippy::redundant_pub_crate, reason = "documents internal contracts")]
 mod authorization;
 mod cancellation;
 mod command;
@@ -23,6 +15,7 @@ mod identity;
 mod intent;
 mod io_policy;
 mod lifecycle;
+mod native;
 mod output;
 mod plan;
 mod plan_canonical;
@@ -32,6 +25,7 @@ mod recovery;
 mod refinement;
 mod registry_storage;
 mod resource;
+mod result_api;
 mod supervisor;
 mod terminal;
 mod verified;
@@ -55,19 +49,31 @@ pub use io_policy::{
     TerminalCapabilities, TerminalSize,
 };
 pub use lifecycle::{LifecyclePhase, LifecycleState};
+pub use native::{
+    AuthorizedPreparationContext, NativeLaunchDescription, NativePlatform, NativePoll,
+    NativeProtectedHandle, NativeSandboxBackend, NativeSandboxSession, native_activation_record,
+    native_ready_record, native_target_exec_failed_record, native_target_started_record,
+};
+#[cfg(unix)]
+pub use native::{NATIVE_PTY_SLAVE_ENV, NativePtyAttachment};
+#[cfg(windows)]
+pub use native::{
+    NATIVE_WINDOWS_CONTROL_HANDLE_ENV, NATIVE_WINDOWS_STATUS_HANDLE_ENV,
+    NativeWindowsHelperAttachment, NativeWindowsHelperChannels,
+};
 pub use output::{OutputCompleteness, OutputStream, StreamAccounting};
 pub use plan::{BackendResourceFidelity, BackendSelection, ExecutionIsolation, ExecutionPlan};
 pub use platform::ProcessTreeIdentity;
-pub use quiescence::{HolderQuiescenceObservation, QuiescenceBlocker};
-pub use recovery::{
-    ProbeObservation, ProcessProbe, RecoveryDisposition, RecoveryEntry, RecoveryReport,
-};
-pub use resource::{
-    ProcessResourceDimension, ProcessResourceObservation, ProcessResourcePolicy, ResourceFidelity,
+pub use result_api::{
+    HolderQuiescenceObservation, OsExitObservation, OutputArtifact, OutputSummary,
+    ProbeObservation, ProcessInstant, ProcessProbe, ProcessResourceDimension,
+    ProcessResourceObservation, ProcessResourcePolicy, QuiescenceBlocker, RecoveryDisposition,
+    RecoveryEntry, RecoveryReport, ResourceFidelity, TerminalDisposition, TerminalRecovery,
+    TerminalResult,
 };
 pub use supervisor::{OwnedProcess, WaitAndPublishError};
-pub use terminal::{
-    OsExitObservation, OutputArtifact, OutputSummary, ProcessInstant, TerminalDisposition,
-    TerminalRecovery, TerminalResult,
+pub use verified::{
+    NativePreparationFacts, native_effect_count_valid, native_preparation_complete,
+    native_release_complete,
 };
 pub use working_directory::{WorkingDirectory, WorkspaceAccess};

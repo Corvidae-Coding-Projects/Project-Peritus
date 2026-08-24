@@ -7,6 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = false
+autobins = false
 readme = "README.md"
 keywords = ["process", "pty", "sandbox", "authorization", "formal-verification"]
 categories = ["development-tools"]
@@ -25,16 +26,34 @@ peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
 portable-pty.workspace = true
 process-wrap.workspace = true
 sha2.workspace = true
+tempfile.workspace = true
 vstd.workspace = true
+zeroize.workspace = true
 
 [target.'cfg(unix)'.dependencies]
+libc.workspace = true
 nix.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_Pipes",
+] }
 
 [dev-dependencies]
 peritus-approval = { version = "=0.0.0", path = "../../state/peritus-approval" }
 peritus-conformance = { version = "=0.0.0", path = "../../app/testing/peritus-conformance" }
 peritus-test-support = { version = "=0.0.0", path = "../../app/testing/peritus-test-support" }
 tempfile.workspace = true
+
+[[bin]]
+name = "peritus-native-helper-fixture"
+path = "src/bin/peritus-native-helper-fixture.rs"
+
+[[bin]]
+name = "peritus-process-fixture"
+path = "src/bin/peritus-process-fixture.rs"
 
 [package.metadata.peritus]
 owner = "C2"

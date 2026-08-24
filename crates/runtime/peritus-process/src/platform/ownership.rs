@@ -10,7 +10,12 @@ pub struct ProcessTreeIdentity {
 }
 
 impl ProcessTreeIdentity {
-    pub(crate) const fn new(
+    /// Creates one observed native process-tree identity.
+    ///
+    /// This is an observation value, not execution authority. C2 validates and persists the value
+    /// before it contributes to lifecycle or recovery decisions.
+    #[must_use]
+    pub const fn new(
         root_pid: u32,
         start_token: Option<u64>,
         process_group: Option<u32>,

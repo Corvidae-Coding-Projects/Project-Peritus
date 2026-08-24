@@ -1,0 +1,61 @@
+[package]
+name = "peritus-sandbox-windows"
+description = "Fail-closed Windows native sandbox preparation, helper, observation, and recovery"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["windows", "sandbox", "appcontainer", "job-object", "security"]
+categories = ["development-tools", "os::windows-apis"]
+
+[package.metadata.peritus]
+owner = "C3"
+layer = "runtime"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true
+
+[dependencies]
+peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
+peritus-network = { version = "=0.0.0", path = "../peritus-network" }
+peritus-process = { version = "=0.0.0", path = "../peritus-process" }
+peritus-sandbox = { version = "=0.0.0", path = "../peritus-sandbox" }
+peritus-secrets = { version = "=0.0.0", path = "../peritus-secrets" }
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+vstd.workspace = true
+zeroize.workspace = true
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { workspace = true, features = [
+    "Win32_Foundation",
+    "Win32_NetworkManagement_WindowsFilteringPlatform",
+    "Win32_Security",
+    "Win32_Security_Authorization",
+    "Win32_Security_Isolation",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Console",
+    "Win32_System_JobObjects",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Memory",
+    "Win32_System_Pipes",
+    "Win32_System_Rpc",
+    "Win32_System_SystemInformation",
+    "Win32_System_Threading",
+    "Win32_System_WindowsProgramming",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+[dev-dependencies]
+peritus-conformance = { version = "=0.0.0", path = "../../app/testing/peritus-conformance" }
+tempfile.workspace = true
+
+[[bin]]
+name = "peritus-windows-sandbox-helper"
+path = "src/bin/peritus-windows-sandbox-helper.rs"
+
+[lints]
+workspace = true
