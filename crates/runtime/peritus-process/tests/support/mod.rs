@@ -144,6 +144,30 @@ pub fn plan(
     ids: &Ids,
     options: PlanOptions<'_>,
 ) -> Result<ExecutionPlan, peritus_process::ProcessError> {
+    build_plan(root, ids, options, false).map(|(execution, _, _)| execution)
+}
+
+#[allow(dead_code, reason = "shared support is also compiled by the raw conformance target")]
+pub fn native_plan(
+    root: &TestRoot,
+    ids: &Ids,
+    options: PlanOptions<'_>,
+) -> Result<
+    (ExecutionPlan, peritus_sandbox::CheckedSandboxPlan, peritus_sandbox::BackendAdmission),
+    peritus_process::ProcessError,
+> {
+    build_plan(root, ids, options, true)
+}
+
+fn build_plan(
+    root: &TestRoot,
+    ids: &Ids,
+    options: PlanOptions<'_>,
+    native: bool,
+) -> Result<
+    (ExecutionPlan, peritus_sandbox::CheckedSandboxPlan, peritus_sandbox::BackendAdmission),
+    peritus_process::ProcessError,
+> {
     let executable = fixture_binary();
     let command =
         CommandSpec::new(executable.clone(), options.arguments).expect("structured command");
@@ -208,8 +232,12 @@ pub fn plan(
     if let Some((inherited, literals)) = options.environment_authority {
         sandbox_projection = sandbox_projection.with_environment(inherited, literals);
     }
-    let (sandbox, admission) = sandbox::compile(ids, &executable, sandbox_projection);
-    ExecutionPlan::new(
+    let (sandbox, admission) = if native {
+        sandbox::compile_native(ids, &executable, sandbox_projection)
+    } else {
+        sandbox::compile(ids, &executable, sandbox_projection)
+    };
+    let execution = ExecutionPlan::new(
         ids.identity(),
         command,
         working_directory,
@@ -221,7 +249,8 @@ pub fn plan(
         resources,
         &sandbox,
         &admission,
-    )
+    )?;
+    Ok((execution, sandbox, admission))
 }
 
 pub fn fixture_binary() -> String {
@@ -233,6 +262,23 @@ pub fn fixture_binary() -> String {
     let fixture = profile.join(format!("peritus-process-fixture{}", std::env::consts::EXE_SUFFIX));
     assert!(fixture.is_file(), "fixture binary was not built: {}", fixture.display());
     fixture.into_os_string().into_string().expect("UTF-8 fixture binary path")
+}
+
+#[allow(dead_code, reason = "shared support is also compiled by the raw conformance target")]
+pub fn native_helper_binary() -> String {
+    sibling_binary("peritus-native-helper-fixture")
+}
+
+#[allow(dead_code, reason = "shared support is also compiled by the raw conformance target")]
+fn sibling_binary(name: &str) -> String {
+    let test_binary = std::env::current_exe().expect("integration test executable");
+    let profile = test_binary
+        .parent()
+        .and_then(Path::parent)
+        .expect("Cargo integration test profile directory");
+    let binary = profile.join(format!("{name}{}", std::env::consts::EXE_SUFFIX));
+    assert!(binary.is_file(), "fixture binary was not built: {}", binary.display());
+    binary.into_os_string().into_string().expect("UTF-8 fixture binary path")
 }
 
 pub fn contract_dto() -> AcceptanceContractDto {

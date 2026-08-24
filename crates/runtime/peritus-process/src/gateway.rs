@@ -1,5 +1,7 @@
 //! Sole target-owned authorization and execution effect gateway.
 
+mod native;
+
 use peritus_budget::{BudgetDimension, BudgetOperation, BudgetReceiptKind, ReservationPhase};
 use peritus_codec::{CodecLimits, decode_message};
 use peritus_kernel::{ActionPhase, KernelEventKind};

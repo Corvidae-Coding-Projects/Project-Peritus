@@ -71,6 +71,23 @@ pub(super) fn compile(
     executable: &str,
     projection: Projection,
 ) -> (peritus_sandbox::CheckedSandboxPlan, peritus_sandbox::BackendAdmission) {
+    compile_for_backend(ids, executable, projection, false)
+}
+
+pub(super) fn compile_native(
+    ids: &Ids,
+    executable: &str,
+    projection: Projection,
+) -> (peritus_sandbox::CheckedSandboxPlan, peritus_sandbox::BackendAdmission) {
+    compile_for_backend(ids, executable, projection, true)
+}
+
+fn compile_for_backend(
+    ids: &Ids,
+    executable: &str,
+    projection: Projection,
+    native: bool,
+) -> (peritus_sandbox::CheckedSandboxPlan, peritus_sandbox::BackendAdmission) {
     let executable = SandboxPath::new(executable).expect("sandbox executable");
     let filesystem = filesystem(&executable);
     let process = process(&executable, projection.descendants);
@@ -103,7 +120,7 @@ pub(super) fn compile(
         terminal_requirements,
     )
     .expect("sandbox requirements");
-    admitted(ids, contract, requirements, projection.resource_fidelity)
+    admitted(ids, contract, requirements, projection.resource_fidelity, native)
 }
 
 fn admitted(
@@ -111,26 +128,47 @@ fn admitted(
     contract: SandboxContract,
     requirements: SandboxRequirements,
     resource_fidelity: ResourceFidelity,
+    native: bool,
 ) -> (peritus_sandbox::CheckedSandboxPlan, peritus_sandbox::BackendAdmission) {
     let checked = compile_sandbox(
         SandboxBinding::new(ids.process, ids.resource, ids.environment, ids.revision),
-        IsolationRequirement::ExplicitRawEffect,
-        SandboxOperationClass::RawEffect,
+        if native {
+            IsolationRequirement::Restricted
+        } else {
+            IsolationRequirement::ExplicitRawEffect
+        },
+        if native { SandboxOperationClass::Execution } else { SandboxOperationClass::RawEffect },
         contract,
         requirements,
     )
     .expect("checked sandbox");
     let descriptor = BackendDescriptor::new(
-        BackendName::new("peritus-local-test").expect("backend name"),
+        BackendName::new(if native { "peritus-native-test" } else { "peritus-local-test" })
+            .expect("backend name"),
         BackendVersion::new("1").expect("backend version"),
-        BackendKind::ReferenceOnly,
-        PathSemantics::LogicalUtf8,
+        if native { BackendKind::Native } else { BackendKind::ReferenceOnly },
+        if native { native_path_semantics() } else { PathSemantics::LogicalUtf8 },
         resource_fidelity,
         FeatureSet::all(),
     );
-    let admission = admit_backend(&checked, &descriptor, AdmissionProfile::Conformance)
-        .expect("backend admission");
+    let admission = admit_backend(
+        &checked,
+        &descriptor,
+        if native { AdmissionProfile::Production } else { AdmissionProfile::Conformance },
+    )
+    .expect("backend admission");
     (checked, admission)
+}
+
+const fn native_path_semantics() -> PathSemantics {
+    #[cfg(unix)]
+    {
+        PathSemantics::UnixNative
+    }
+    #[cfg(windows)]
+    {
+        PathSemantics::WindowsNative
+    }
 }
 
 fn filesystem(executable: &SandboxPath) -> FilesystemContract {

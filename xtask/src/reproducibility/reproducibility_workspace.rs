@@ -34,7 +34,7 @@ unexpected_cfgs = { level = "deny", check-cfg = [
     "cfg(verus_only)",
     "cfg(verus_verify_core)",
 ] }
-unsafe_code = "forbid"
+unsafe_code = "deny"
 unused_lifetimes = "deny"
 unused_qualifications = "deny"
 

@@ -51,6 +51,7 @@ pub(super) struct SpawnedOwner {
     escalation: EscalationProgress,
     failure: FailureProgress,
     cleanup: CleanupProgress,
+    native: Option<Box<dyn crate::NativeSandboxSession>>,
 }
 
 #[derive(Default)]
@@ -67,6 +68,7 @@ struct FailureProgress {
 #[derive(Default)]
 struct CleanupProgress {
     tree_quiescent: bool,
+    native_released: bool,
     complete: bool,
 }
 
@@ -81,6 +83,7 @@ impl SpawnedOwner {
         spools: SpoolSet,
         resources: ResourceTracker,
         began: Instant,
+        native: Option<Box<dyn crate::NativeSandboxSession>>,
     ) -> Self {
         let tree = process.identity();
         let input = process.take_input();
@@ -90,6 +93,7 @@ impl SpawnedOwner {
         let reader_count = readers.tasks.len();
         let reader_failed = readers.startup_failed;
         drop(output_tx);
+        let native_released = native.is_none();
         Self {
             store,
             accounting: AccountingSet::new(plan.output_policy(), plan.io_mode()),
@@ -115,7 +119,8 @@ impl SpawnedOwner {
             eof_count: 0,
             escalation: EscalationProgress::default(),
             failure: FailureProgress { reader: reader_failed, owner: reader_failed },
-            cleanup: CleanupProgress::default(),
+            cleanup: CleanupProgress { tree_quiescent: false, native_released, complete: false },
+            native,
         }
     }
 
@@ -158,6 +163,12 @@ impl SpawnedOwner {
 
     fn tick(&mut self) -> Result<(), ProcessError> {
         if self.os_exit.is_none()
+            && let Some(session) = self.native.as_deref_mut()
+            && session.poll_resources(self.tree)? == crate::NativePoll::ResourceLimitExceeded
+        {
+            self.trigger_resource_limit()?;
+        }
+        if self.os_exit.is_none()
             && self.resources.sample(self.tree, &self.plan, &self.shared, false)?
         {
             self.trigger_resource_limit()?;
@@ -166,6 +177,7 @@ impl SpawnedOwner {
             &self.control_rx,
             &mut *self.process,
             &mut self.input,
+            &mut self.native,
             &mut self.input_written,
             &self.plan,
             &self.shared,
@@ -211,6 +223,7 @@ impl SpawnedOwner {
             &mut self.escalation.graceful_attempted,
             &mut *self.process,
             &mut self.input,
+            &mut self.native,
         )
     }
 
@@ -228,6 +241,7 @@ impl SpawnedOwner {
             &mut self.escalation.graceful_attempted,
             &mut *self.process,
             &mut self.input,
+            &mut self.native,
         )
     }
 
@@ -252,6 +266,7 @@ impl SpawnedOwner {
                 &mut self.escalation.graceful_attempted,
                 &mut *self.process,
                 &mut self.input,
+                &mut self.native,
             )?;
         }
         if self.os_exit.is_none()
@@ -267,6 +282,14 @@ impl SpawnedOwner {
     }
 
     fn observe_exit(&mut self, exit: OsExitObservation) -> Result<(), ProcessError> {
+        if let Some(session) = self.native.as_deref_mut() {
+            session.terminated(&exit)?;
+            crate::native::validate_terminated_session(
+                session,
+                &self.plan,
+                self.plan.sandbox_digest(),
+            )?;
+        }
         self.os_exit = Some(exit.clone());
         self.input.take();
         self.store.record_exit(self.plan.identity().process_id(), exit)?;
@@ -281,6 +304,9 @@ impl Drop for SpawnedOwner {
         if !self.cleanup.complete {
             self.input.take();
             let _ = self.process.force_kill();
+            if let Some(session) = self.native.as_deref_mut() {
+                let _ = session.release();
+            }
         }
     }
 }

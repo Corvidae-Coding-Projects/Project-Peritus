@@ -1,5 +1,7 @@
 //! Production adapter integration coverage for authorized local process ownership.
 
+#[path = "process_integration/native_backend.rs"]
+mod native_backend;
 #[path = "process_integration/regressions.rs"]
 mod regressions;
 mod support;

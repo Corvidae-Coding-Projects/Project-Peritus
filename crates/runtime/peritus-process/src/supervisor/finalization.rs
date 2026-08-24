@@ -10,6 +10,42 @@ use crate::{
 
 use super::{elapsed_millis, publish_terminal};
 
+pub(crate) fn record_preparation_failure(
+    store: &ProcessStore,
+    plan: &ExecutionPlan,
+    backend_cleanup_complete: bool,
+) -> Result<(), ProcessError> {
+    let process_id = plan.identity().process_id();
+    let trigger = StopTrigger::new(1, CancellationReason::BackendFailure);
+    store.record_phase(process_id, crate::LifecyclePhase::Starting)?;
+    store.record_stopping(process_id, trigger)?;
+    store.record_failed_closed(
+        process_id,
+        OsExitObservation::Unavailable,
+        0,
+        0,
+        0,
+        true,
+        backend_cleanup_complete,
+    )?;
+    let result = TerminalResult::new(
+        process_id,
+        plan.digest(),
+        TerminalDisposition::SandboxDenied,
+        OsExitObservation::Unavailable,
+        Some(trigger),
+        EscalationRecord::new(false, false, true),
+        None,
+        ProcessInstant::from_millis(0),
+        OutputSummary::new(Vec::new(), 0),
+        Vec::new(),
+        true,
+        backend_cleanup_complete,
+        TerminalRecovery::OriginalOwner,
+    );
+    store.record_terminal(process_id, &result)
+}
+
 #[cfg(unix)]
 pub(super) fn convert_exit(exit: &PlatformExit) -> OsExitObservation {
     match exit {
@@ -33,10 +69,11 @@ pub(super) fn publish_spawn_failure(
     plan: &ExecutionPlan,
     shared: &Arc<SharedObservation>,
     began: Instant,
+    backend_cleanup_complete: bool,
     _error: ProcessError,
 ) -> Result<TerminalResult, ProcessError> {
     let process_id = plan.identity().process_id();
-    store.record_spawn_failed(process_id)?;
+    store.record_spawn_failed(process_id, backend_cleanup_complete)?;
     let result = TerminalResult::new(
         process_id,
         plan.digest(),
@@ -49,7 +86,7 @@ pub(super) fn publish_spawn_failure(
         OutputSummary::new(Vec::new(), 0),
         Vec::new(),
         true,
-        true,
+        backend_cleanup_complete,
         TerminalRecovery::OriginalOwner,
     );
     store.record_terminal(process_id, &result)?;

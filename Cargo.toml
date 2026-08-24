@@ -19,9 +19,14 @@ members = [
     "crates/state/peritus-migrations",
     "crates/state/peritus-projection",
     "crates/runtime/peritus-git",
+    "crates/runtime/peritus-network",
     "crates/runtime/peritus-patch",
     "crates/runtime/peritus-process",
     "crates/runtime/peritus-sandbox",
+    "crates/runtime/peritus-sandbox-linux",
+    "crates/runtime/peritus-sandbox-macos",
+    "crates/runtime/peritus-sandbox-windows",
+    "crates/runtime/peritus-secrets",
     "crates/runtime/peritus-workspace",
     "xtask",
 ]
@@ -39,6 +44,9 @@ repository = "https://github.com/Corvidae-Coding-Projects/Project-Peritus"
 base64 = "=0.22.1"
 ed25519-dalek = { version = "=3.0.0", default-features = false }
 fs4 = "=1.1.0"
+keyring = { version = "=4.1.6", default-features = false }
+landlock = { version = "=0.4.7", default-features = false }
+libc = "=0.2.189"
 nix = { version = "=0.31.3", default-features = false, features = ["signal", "term"] }
 portable-pty = { version = "=0.9.0", default-features = false }
 process-wrap = { version = "=9.1.0", default-features = false, features = ["creation-flags", "job-object", "process-group", "process-session", "std"] }
@@ -46,8 +54,11 @@ rusqlite = { version = "=0.40.2", default-features = false, features = ["backup"
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "=1.0.149"
 sha2 = { version = "=0.11.0", default-features = false }
+seccompiler = { version = "=0.5.0", default-features = false }
 tempfile = "=3.27.0"
 toml = "=1.1.4"
+zeroize = { version = "=1.9.0", default-features = false, features = ["alloc"] }
+windows-sys = { version = "=0.61.2", default-features = false }
 vstd = { version = "=0.0.0-2026-08-09-0044", git = "https://github.com/verus-lang/verus.git", rev = "92f466f247f45128c630d1c843fd6e27d2115587" }
 yaml-rust2 = { version = "=0.12.0", default-features = false }
 
@@ -69,7 +80,7 @@ unexpected_cfgs = { level = "deny", check-cfg = [
     "cfg(verus_only)",
     "cfg(verus_verify_core)",
 ] }
-unsafe_code = "forbid"
+unsafe_code = "deny"
 unused_lifetimes = "deny"
 unused_qualifications = "deny"
 

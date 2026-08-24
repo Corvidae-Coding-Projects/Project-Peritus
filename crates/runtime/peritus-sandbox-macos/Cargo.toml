@@ -1,0 +1,44 @@
+[package]
+name = "peritus-sandbox-macos"
+description = "Deterministic macOS Seatbelt preparation and supervised native sandbox lifecycle"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["macos", "sandbox", "seatbelt", "process", "security"]
+categories = ["development-tools"]
+
+[package.metadata.peritus]
+owner = "C3"
+layer = "runtime"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true
+
+[dependencies]
+peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
+peritus-network = { version = "=0.0.0", path = "../peritus-network" }
+peritus-process = { version = "=0.0.0", path = "../peritus-process" }
+peritus-sandbox = { version = "=0.0.0", path = "../peritus-sandbox" }
+peritus-secrets = { version = "=0.0.0", path = "../peritus-secrets" }
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+vstd.workspace = true
+zeroize.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+libc.workspace = true
+
+[dev-dependencies]
+peritus-conformance = { version = "=0.0.0", path = "../../app/testing/peritus-conformance" }
+tempfile.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "peritus-macos-sandbox-helper"
+path = "src/bin/peritus-macos-sandbox-helper.rs"

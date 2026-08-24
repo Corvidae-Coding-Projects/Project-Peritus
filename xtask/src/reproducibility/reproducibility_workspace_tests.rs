@@ -12,7 +12,7 @@ fn canonical_workspace_contract_is_accepted() {
 #[test]
 fn lint_deletion_weakening_and_unreviewed_cfg_are_rejected() {
     for altered in [
-        changed("unsafe_code = \"forbid\"\n", ""),
+        changed("unsafe_code = \"deny\"\n", ""),
         changed("missing_docs = \"deny\"", "missing_docs = \"warn\""),
         changed(
             "    \"cfg(verus_verify_core)\",",

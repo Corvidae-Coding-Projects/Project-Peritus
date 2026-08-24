@@ -16,6 +16,7 @@ use crate::{
     control::{SharedExecution, SharedObservation},
     events::EventLog,
     gateway::AuthorizedLaunch,
+    native::NativeSandboxSession,
     output::SpoolSet,
     platform,
 };
@@ -29,8 +30,10 @@ mod resource;
 
 use artifact::publish_spools;
 use finalization::publish_spawn_failure;
+pub(crate) use finalization::record_preparation_failure;
 use owner::SpawnedOwner;
 pub(crate) use resource::validate_launch;
+pub(crate) use resource::validate_native_launch;
 
 const CONTROL_QUEUE: usize = 64;
 const OUTPUT_QUEUE: usize = 64;
@@ -104,6 +107,24 @@ pub(crate) fn start(
     store: &ProcessStore,
     launch: AuthorizedLaunch,
 ) -> Result<OwnedProcess, ProcessError> {
+    start_with_native(store, launch, None, None)
+}
+
+pub(crate) fn start_native(
+    store: &ProcessStore,
+    launch: AuthorizedLaunch,
+    session: Box<dyn NativeSandboxSession>,
+    sandbox_digest: peritus_types::Sha256Digest,
+) -> Result<OwnedProcess, ProcessError> {
+    start_with_native(store, launch, Some(session), Some(sandbox_digest))
+}
+
+fn start_with_native(
+    store: &ProcessStore,
+    launch: AuthorizedLaunch,
+    session: Option<Box<dyn NativeSandboxSession>>,
+    sandbox_digest: Option<peritus_types::Sha256Digest>,
+) -> Result<OwnedProcess, ProcessError> {
     let (plan, _action_digest) = launch.into_parts();
     let process_id = plan.identity().process_id();
     store.record_phase(process_id, LifecyclePhase::Starting)?;
@@ -124,16 +145,34 @@ pub(crate) fn start(
         plan.stdin_policy(),
         plan.terminal_capabilities(),
     );
+    let pending_session = Arc::new(std::sync::Mutex::new(session));
+    let thread_session = Arc::clone(&pending_session);
     let thread_store = store.clone();
     let thread_shared = Arc::clone(&shared);
     let thread_spool = spool_directory.clone();
     let thread_plan = plan.clone();
     let name = format!("peritus-process-{}", short_id(process_id.as_bytes()));
     let Ok(join) = thread::Builder::new().name(name).spawn(move || {
-        run_owner(&thread_store, &thread_plan, &thread_spool, control_rx, thread_shared)
+        let session =
+            thread_session.lock().unwrap_or_else(std::sync::PoisonError::into_inner).take();
+        run_owner(
+            &thread_store,
+            &thread_plan,
+            &thread_spool,
+            control_rx,
+            thread_shared,
+            session,
+            sandbox_digest,
+        )
     }) else {
         let error = supervisor_error("process owner thread cannot be created");
-        let _ = publish_spawn_failure(store, &plan, &shared, Instant::now(), error);
+        let cleanup_complete = release_pre_spawn_session(
+            &mut pending_session.lock().unwrap_or_else(std::sync::PoisonError::into_inner),
+            &plan,
+            sandbox_digest,
+        );
+        let _ =
+            publish_spawn_failure(store, &plan, &shared, Instant::now(), cleanup_complete, error);
         return Err(supervisor_error("process owner thread cannot be created"));
     };
     Ok(OwnedProcess { store: store.clone(), control, join: Some(join), spool_directory })
@@ -207,6 +246,8 @@ fn run_owner(
     spool_directory: &std::path::Path,
     control_rx: mpsc::Receiver<crate::control::ControlCommand>,
     shared: Arc<SharedObservation>,
+    mut native: Option<Box<dyn NativeSandboxSession>>,
+    sandbox_digest: Option<peritus_types::Sha256Digest>,
 ) -> Result<TerminalResult, ProcessError> {
     let began = Instant::now();
     emit(&shared, plan, None, ProcessEventKind::SpawnAttempt, Vec::new());
@@ -218,17 +259,46 @@ fn run_owner(
     };
     let spools = match spools {
         Ok(spools) => spools,
-        Err(error) => return publish_spawn_failure(store, plan, &shared, began, error),
+        Err(error) => {
+            let cleanup_complete = release_pre_spawn_session(&mut native, plan, sandbox_digest);
+            return publish_spawn_failure(store, plan, &shared, began, cleanup_complete, error);
+        }
     };
     let resources = match resource::ResourceTracker::start(plan) {
         Ok(resources) => resources,
-        Err(error) => return publish_spawn_failure(store, plan, &shared, began, error),
+        Err(error) => {
+            let cleanup_complete = release_pre_spawn_session(&mut native, plan, sandbox_digest);
+            return publish_spawn_failure(store, plan, &shared, began, cleanup_complete, error);
+        }
     };
-    let process = match platform::launch(plan) {
+    let launch_description = native.as_deref().map(NativeSandboxSession::launch_description);
+    let launch_command = launch_description.map_or_else(|| plan.command(), |value| value.command());
+    let handshake = launch_description.map(|value| platform::NativeHandshake {
+        manifest: value.manifest(),
+        ready: value.ready_record(),
+        activated: value.activation_record(),
+        #[cfg(windows)]
+        started: crate::native_target_started_record(
+            value.manifest_digest(),
+            value.preparation_digest(),
+        ),
+        protected_handles: value.protected_handles(),
+        #[cfg(windows)]
+        windows_channels: value.windows_helper_channels(),
+    });
+    let process = match platform::launch(plan, launch_command, handshake) {
         Ok(process) => process,
-        Err(error) => return publish_spawn_failure(store, plan, &shared, began, error),
+        Err(error) => {
+            let cleanup_complete = release_pre_spawn_session(&mut native, plan, sandbox_digest);
+            return publish_spawn_failure(store, plan, &shared, began, cleanup_complete, error);
+        }
     };
-    let initial_failure = !process.identity().complete_containment();
+    let native_failed = native.as_deref_mut().is_some_and(|session| {
+        session.activated(process.identity()).is_err()
+            || crate::native::validate_activated_session(session, plan, plan.sandbox_digest())
+                .is_err()
+    });
+    let initial_failure = !process.identity().complete_containment() || native_failed;
     SpawnedOwner::new(
         store.clone(),
         plan.clone(),
@@ -238,8 +308,24 @@ fn run_owner(
         spools,
         resources,
         began,
+        native,
     )
     .run(initial_failure)
+}
+
+fn release_pre_spawn_session(
+    session: &mut Option<Box<dyn NativeSandboxSession>>,
+    plan: &ExecutionPlan,
+    sandbox_digest: Option<peritus_types::Sha256Digest>,
+) -> bool {
+    let Some(session) = session.as_deref_mut() else {
+        return true;
+    };
+    let Some(sandbox_digest) = sandbox_digest else {
+        return false;
+    };
+    session.release().is_ok()
+        && crate::native::validate_released_session(session, plan, sandbox_digest).is_ok()
 }
 
 pub(super) fn publish_terminal(

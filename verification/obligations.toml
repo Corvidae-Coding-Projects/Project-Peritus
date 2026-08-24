@@ -725,3 +725,86 @@ evidence = [
   { kind = "refinement-test", source_file = "crates/runtime/peritus-process/tests/process_integration.rs", symbol = "peritus_process::tests::process_integration::cancellation_publishes_one_terminal_owned_tree_result", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
   { kind = "property-test", source_file = "crates/runtime/peritus-process/tests/process_conformance.rs", symbol = "peritus_process::tests::process_conformance::production_process_passes_complete_a2_suite_with_fresh_case_subjects", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
 ]
+
+[[entries]]
+id = "OBL-0130"
+kind = "refinement"
+statement = "Every C3 native preparation returned to C2 exists only after durable execution-authority consumption and exactly binds the checked sandbox plan, admitted descriptor and support set, preparation digest, current platform, and checksummed helper manifest."
+owning_crate = "peritus-process"
+source_file = "crates/runtime/peritus-process/src/refinement.rs"
+symbol = "peritus_process::refinement::native_preparation_implies_complete_binding"
+status = "in-progress"
+dependencies = ["OBL-0126", "OBL-0128"]
+live_issue = "#12"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/runtime/peritus-process/src/refinement.rs", symbol = "peritus_process::refinement::native_preparation_implies_complete_binding", command = "cargo verus verify --package peritus-process --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/runtime/peritus-process/tests/process_integration/native_backend/lifecycle.rs", symbol = "peritus_process::tests::process_integration::native_backend::lifecycle::exact_restricted_authority_runs_through_the_helper_and_releases_the_session", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0131"
+kind = "refinement"
+statement = "Every C3 managed-network allow, DNS answer, redirect successor, and credential injection is equal to or narrower than the exact checked C2 network and secret authority; deny precedence and explicit special-address authority remain dominant."
+owning_crate = "peritus-network"
+source_file = "crates/runtime/peritus-network/src/refinement.rs"
+symbol = "peritus_network::refinement::managed_network_allow_implies_checked_allow"
+status = "in-progress"
+dependencies = ["OBL-0128"]
+live_issue = "#12"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/runtime/peritus-network/src/refinement.rs", symbol = "peritus_network::refinement::managed_network_allow_implies_checked_allow", command = "cargo verus verify --package peritus-network --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/runtime/peritus-network/tests/network/policy.rs", symbol = "peritus_network::tests::network::policy::canonical_matching_denies_and_special_addresses_are_narrowed", command = "cargo test --package peritus-network --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/runtime/peritus-network/tests/network.rs", symbol = "peritus_network::tests::network::managed_proxy_denies_unlisted_destination_before_resolution_or_connect", command = "cargo test --package peritus-network --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0132"
+kind = "refinement"
+statement = "Every C3 secret delivery uses the exact authorized reference, owner and destination scope under one live bounded lease, and revocation, expiry, use exhaustion, or binding drift prevents material exposure."
+owning_crate = "peritus-secrets"
+source_file = "crates/runtime/peritus-secrets/src/refinement.rs"
+symbol = "peritus_secrets::refinement::delivered_secret_implies_exact_live_lease"
+status = "in-progress"
+dependencies = ["OBL-0128"]
+live_issue = "#12"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/runtime/peritus-secrets/src/refinement.rs", symbol = "peritus_secrets::refinement::delivered_secret_implies_exact_live_lease", command = "cargo verus verify --package peritus-secrets --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/runtime/peritus-secrets/tests/secrets.rs", symbol = "peritus_secrets::tests::secrets::leases_reject_drift_expiry_reuse_and_revocation", command = "cargo test --package peritus-secrets --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/runtime/peritus-secrets/tests/secrets.rs", symbol = "peritus_secrets::tests::secrets::every_delivery_mode_is_owned_redacted_and_idempotently_cleaned", command = "cargo test --package peritus-secrets --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0133"
+kind = "refinement"
+statement = "Complete C3 native teardown implies the complete owned process tree is quiescent, termination and release are ordered, every backend, proxy, and secret resource is released, and every support task is joined before terminal success."
+owning_crate = "peritus-process"
+source_file = "crates/runtime/peritus-process/src/refinement.rs"
+symbol = "peritus_process::refinement::complete_native_teardown_releases_every_resource"
+status = "in-progress"
+dependencies = ["INV-013", "OBL-0129"]
+live_issue = "#12"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/runtime/peritus-process/src/refinement.rs", symbol = "peritus_process::refinement::complete_native_teardown_releases_every_resource", command = "cargo verus verify --package peritus-process --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/runtime/peritus-process/tests/process_integration/native_backend/lifecycle.rs", symbol = "peritus_process::tests::process_integration::native_backend::lifecycle::exact_restricted_authority_runs_through_the_helper_and_releases_the_session", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0134"
+kind = "refinement"
+statement = "An unsupported, mismatched, unadmitted, wrong-platform, or not-yet-consumed native preparation has zero process, network, secret, or activation effects; a post-consumption preparation failure is durably terminal and cannot replay."
+owning_crate = "peritus-process"
+source_file = "crates/runtime/peritus-process/src/refinement.rs"
+symbol = "peritus_process::refinement::invalid_native_preparation_has_no_effect"
+status = "in-progress"
+dependencies = ["OBL-0126", "OBL-0128"]
+live_issue = "#12"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/runtime/peritus-process/src/refinement.rs", symbol = "peritus_process::refinement::invalid_native_preparation_has_no_effect", command = "cargo verus verify --package peritus-process --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/runtime/peritus-process/tests/process_integration/native_backend/rejection.rs", symbol = "peritus_process::tests::process_integration::native_backend::rejection::descriptor_drift_never_calls_prepare_or_consumes_authority", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/runtime/peritus-process/tests/process_integration/native_backend/rejection.rs", symbol = "peritus_process::tests::process_integration::native_backend::rejection::preparation_failure_is_durable_and_cannot_be_replayed", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
+]

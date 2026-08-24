@@ -27,8 +27,12 @@ impl SpawnedOwner {
         self.cleanup_tree();
         self.finish_output();
         let tasks_joined = self.join_output_tasks();
+        self.release_native();
         synchronize_spools(&mut self.spools, &mut self.failure.reader);
-        self.failure.owner |= self.failure.reader || !self.cleanup.tree_quiescent || !tasks_joined;
+        self.failure.owner |= self.failure.reader
+            || !self.cleanup.tree_quiescent
+            || !self.cleanup.native_released
+            || !tasks_joined;
         if self.failure.reader {
             self.accounting.fail_all();
         }
@@ -49,7 +53,8 @@ impl SpawnedOwner {
         }
         emit(&self.shared, &self.plan, None, ProcessEventKind::OutputClosed, Vec::new());
         let result = self.terminal_result(stream_accounting, observed, tasks_joined);
-        self.cleanup.complete = self.cleanup.tree_quiescent && tasks_joined;
+        self.cleanup.complete =
+            self.cleanup.tree_quiescent && self.cleanup.native_released && tasks_joined;
         self.store.record_terminal(self.plan.identity().process_id(), &result)?;
         publish_terminal(&self.shared, &self.plan, &result);
         Ok(result)
@@ -130,6 +135,21 @@ impl SpawnedOwner {
             return false;
         }
         join_readers(std::mem::take(&mut self.reader_tasks), &mut self.failure.reader)
+    }
+
+    fn release_native(&mut self) {
+        let Some(session) = self.native.as_deref_mut() else {
+            self.cleanup.native_released = true;
+            return;
+        };
+        self.cleanup.native_released = session.release().is_ok()
+            && crate::native::validate_released_session(
+                session,
+                &self.plan,
+                self.plan.sandbox_digest(),
+            )
+            .is_ok();
+        self.failure.owner |= !self.cleanup.native_released;
     }
 
     fn persist_closed(&mut self, observed: u64, retained: u64, dropped: u64, tasks_joined: bool) {

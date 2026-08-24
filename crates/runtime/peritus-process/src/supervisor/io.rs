@@ -87,6 +87,7 @@ pub(super) fn drain_controls(
     receiver: &Receiver<ControlCommand>,
     process: &mut dyn PlatformProcess,
     input: &mut Option<Box<dyn Write + Send>>,
+    native: &mut Option<Box<dyn crate::NativeSandboxSession>>,
     input_written: &mut u64,
     plan: &ExecutionPlan,
     shared: &Arc<SharedObservation>,
@@ -102,6 +103,7 @@ pub(super) fn drain_controls(
             }
             Ok(ControlCommand::CloseInput) => {
                 if input.take().is_some() {
+                    process.graceful_stop(crate::GracefulAction::CloseInput)?;
                     emit(shared, plan, None, ProcessEventKind::StdinClosed, Vec::new());
                 }
             }
@@ -119,6 +121,7 @@ pub(super) fn drain_controls(
                 graceful_attempted,
                 process,
                 input,
+                native,
             )?,
             Err(TryRecvError::Empty | TryRecvError::Disconnected) => break,
         }
@@ -176,6 +179,7 @@ pub(super) fn drain_output(
     graceful_attempted: &mut bool,
     process: &mut dyn PlatformProcess,
     input: &mut Option<Box<dyn Write + Send>>,
+    native: &mut Option<Box<dyn crate::NativeSandboxSession>>,
 ) -> Result<(), ProcessError> {
     loop {
         match receiver.try_recv() {
@@ -203,6 +207,7 @@ pub(super) fn drain_output(
                         graceful_attempted,
                         process,
                         input,
+                        native,
                     )?;
                 }
             }
@@ -256,6 +261,7 @@ pub(super) fn accept_trigger(
     graceful_attempted: &mut bool,
     process: &mut dyn PlatformProcess,
     input: &mut Option<Box<dyn Write + Send>>,
+    native: &mut Option<Box<dyn crate::NativeSandboxSession>>,
 ) -> Result<(), ProcessError> {
     if lifecycle.first_trigger().is_some()
         || !matches!(lifecycle.phase(), LifecyclePhase::Starting | LifecyclePhase::Running)
@@ -266,8 +272,12 @@ pub(super) fn accept_trigger(
     if lifecycle.request_stop(sequence, reason) {
         let trigger = lifecycle.first_trigger().expect("first trigger was just accepted");
         store.record_stopping(plan.identity().process_id(), trigger)?;
-        input.take();
+        if let Some(session) = native.as_deref_mut() {
+            session.cancellation_requested(reason)?;
+            crate::native::validate_activated_session(session, plan, plan.sandbox_digest())?;
+        }
         process.graceful_stop(plan.deadline_policy().graceful_action())?;
+        input.take();
         *graceful_attempted = true;
         *stopping_at = Some(Instant::now());
     }

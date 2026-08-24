@@ -185,6 +185,13 @@ layer = "state"
 verification_class = "H"
 
 [[packages]]
+name = "peritus-network"
+path = "crates/runtime/peritus-network"
+owner = "C3"
+layer = "runtime"
+verification_class = "H"
+
+[[packages]]
 name = "peritus-patch"
 path = "crates/runtime/peritus-patch"
 owner = "C1"
@@ -230,6 +237,34 @@ verification_class = "V"
 name = "peritus-sandbox"
 path = "crates/runtime/peritus-sandbox"
 owner = "C2"
+layer = "runtime"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-sandbox-linux"
+path = "crates/runtime/peritus-sandbox-linux"
+owner = "C3"
+layer = "runtime"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-sandbox-macos"
+path = "crates/runtime/peritus-sandbox-macos"
+owner = "C3"
+layer = "runtime"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-sandbox-windows"
+path = "crates/runtime/peritus-sandbox-windows"
+owner = "C3"
+layer = "runtime"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-secrets"
+path = "crates/runtime/peritus-secrets"
+owner = "C3"
 layer = "runtime"
 verification_class = "H"
 

@@ -43,7 +43,7 @@ pub fn intent(ids: &Ids, plan: &ExecutionPlan) -> ActionIntentDto {
         environment_id: ids.environment,
         resource_id: ids.resource,
         capability_name: ids.capability.clone(),
-        operation_class: OperationClass::RawEffect,
+        operation_class: plan.isolation().operation_class(),
         media_type: EXECUTION_INTENT_MEDIA_TYPE.to_owned(),
         payload: ExecutionIntentPayload::new(
             ids.process,
@@ -80,7 +80,7 @@ pub fn commit_authority_with_lease(
     wall_millis: u64,
 ) -> WritableAuthorityReceipts {
     let action_digest = intent.digest(CodecLimits::PRODUCTION).expect("action digest");
-    let capability_use = capability_use(ids, action_digest);
+    let capability_use = capability_use(ids, action_digest, intent.operation_class);
     let kernel = super::authority_kernel::commit(journal, ids, intent, &capability_use, true);
     let (capability, lease) = super::authority_lease::commit(journal, ids, capability_use);
     let budget = commit_budget(journal, ids, action_digest, wall_millis);
@@ -102,7 +102,7 @@ fn commit_authority_inner(
     dispatch: bool,
 ) -> AuthorityReceipts {
     let action_digest = intent.digest(CodecLimits::PRODUCTION).expect("action digest");
-    let capability_use = capability_use(ids, action_digest);
+    let capability_use = capability_use(ids, action_digest, intent.operation_class);
     let kernel = super::authority_kernel::commit(journal, ids, intent, &capability_use, dispatch);
     let capability = commit_capability(journal, ids, capability_use);
     let budget = commit_budget(journal, ids, action_digest, wall_millis);
@@ -120,7 +120,11 @@ pub(super) const fn instant(tick: u64) -> AuthorityInstant {
     AuthorityInstant::new(Generation::first(), tick)
 }
 
-fn capability_use(ids: &Ids, action_digest: Sha256Digest) -> CapabilityUseTransition {
+fn capability_use(
+    ids: &Ids,
+    action_digest: Sha256Digest,
+    operation_class: OperationClass,
+) -> CapabilityUseTransition {
     let validity = ValidityWindow::new(instant(10), instant(100)).expect("validity");
     let use_limit = UseLimit::limited(3).expect("use limit");
     let permissions = PermissionSet::new(vec![permission(ids)]).expect("permissions");
@@ -158,8 +162,12 @@ fn capability_use(ids: &Ids, action_digest: Sha256Digest) -> CapabilityUseTransi
     .expect("ceiling");
     let operation = OperationDescriptor::new(
         ids.capability.clone(),
-        OperationClass::RawEffect,
-        RiskSet::new(vec![RiskClass::ExternalSideEffect]).expect("risk set"),
+        operation_class,
+        RiskSet::new(vec![match operation_class {
+            OperationClass::Execution => RiskClass::Execution,
+            _ => RiskClass::ExternalSideEffect,
+        }])
+        .expect("risk set"),
     )
     .expect("operation");
     let policy = PolicyDefinition::new(

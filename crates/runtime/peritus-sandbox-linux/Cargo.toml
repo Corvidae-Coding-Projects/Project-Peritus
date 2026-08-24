@@ -1,0 +1,46 @@
+[package]
+name = "peritus-sandbox-linux"
+description = "Fail-closed Linux native sandbox preparation, helper, observation, and recovery"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["linux", "sandbox", "bubblewrap", "landlock", "seccomp"]
+categories = ["development-tools", "os::linux-apis"]
+
+[package.metadata.peritus]
+owner = "C3"
+layer = "runtime"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true
+
+[dependencies]
+peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
+peritus-network = { version = "=0.0.0", path = "../peritus-network" }
+peritus-process = { version = "=0.0.0", path = "../peritus-process" }
+peritus-sandbox = { version = "=0.0.0", path = "../peritus-sandbox" }
+peritus-secrets = { version = "=0.0.0", path = "../peritus-secrets" }
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+vstd.workspace = true
+zeroize.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+landlock = { version = "=0.4.7", default-features = false }
+nix = { workspace = true, features = ["fs", "resource"] }
+seccompiler = { version = "=0.5.0", default-features = false, features = ["json"] }
+
+[dev-dependencies]
+peritus-conformance = { version = "=0.0.0", path = "../../app/testing/peritus-conformance" }
+tempfile.workspace = true
+
+[[bin]]
+name = "peritus-linux-sandbox-helper"
+path = "src/bin/peritus-linux-sandbox-helper.rs"
+
+[lints]
+workspace = true

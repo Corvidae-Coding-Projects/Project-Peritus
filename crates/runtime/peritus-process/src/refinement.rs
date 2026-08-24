@@ -4,6 +4,8 @@ use vstd::prelude::*;
 
 #[cfg(verus_only)]
 use crate::verified::ExecutionAuthorityFacts;
+#[cfg(verus_only)]
+use crate::verified::NativePreparationFacts;
 
 verus! {
 
@@ -70,6 +72,65 @@ pub proof fn terminal_result_implies_unique_owned_completion(
         0 <= retained <= observed,
         dropped == observed - retained,
         tasks_joined,
+{
+}
+
+/// `OBL-0130`: every returned native preparation is exactly bound after durable authority use.
+pub proof fn native_preparation_implies_complete_binding(facts: NativePreparationFacts)
+    requires crate::verified::native_preparation_complete_spec(facts),
+    ensures
+        facts.authority_consumed,
+        facts.plan_exact,
+        facts.admission_exact,
+        facts.descriptor_exact,
+        facts.platform_exact,
+        facts.manifest_exact,
+{
+}
+
+/// `OBL-0133`: complete native teardown leaves no owned backend resource family live.
+pub proof fn complete_native_teardown_releases_every_resource(
+    tree_quiescent: bool,
+    terminated: bool,
+    backend_released: bool,
+    proxy_released: bool,
+    secrets_released: bool,
+    support_joined: bool,
+)
+    requires crate::verified::native_release_complete_spec(
+        tree_quiescent,
+        terminated,
+        backend_released,
+        proxy_released,
+        secrets_released,
+        support_joined,
+    ),
+    ensures
+        tree_quiescent,
+        terminated,
+        backend_released,
+        proxy_released,
+        secrets_released,
+        support_joined,
+{
+}
+
+/// `OBL-0134`: unsupported, mismatched, or unconsumed native preparation has zero effects.
+pub proof fn invalid_native_preparation_has_no_effect(
+    supported: bool,
+    binding_exact: bool,
+    authority_consumed: bool,
+    effect_count: int,
+)
+    requires
+        crate::verified::native_effect_count_valid_spec(
+            supported,
+            binding_exact,
+            authority_consumed,
+            effect_count,
+        ),
+        !supported || !binding_exact || !authority_consumed,
+    ensures effect_count == 0,
 {
 }
 
