@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Fixed
 - Restore hosted Linux, macOS, and Windows runner portability across native sandbox, process, Git,
   patch, network, durable registry, and tool-shell test boundaries (#12)
+- Remove the macOS socket-close race from the managed-proxy worker-backpressure conformance test
 
 ### Changed
 - Implement C4 tool system (#13)
