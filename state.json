@@ -1,6 +1,6 @@
 {
   "next_display_id": 13,
-  "next_comment_id": 186,
+  "next_comment_id": 187,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "2b288a30-b5b1-4452-81bd-20950bebd2d3": 9,
@@ -193,7 +193,7 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-08-24T00:19:03.377437473Z",
-      "updated_at": "2026-08-24T00:19:24.743491926Z",
+      "updated_at": "2026-08-24T00:30:36.761236240Z",
       "labels": [
         "feature"
       ],
@@ -206,6 +206,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAOoyTzh2ihdtpL3RDVxY1/0MIEudbSb+prtyJ3PGoK1+Zm6SMweTqN3kHQafr75vYV/V/2AKrZW+V3igU4MTxCQ=="
+        },
+        "c3b2f48d-cb59-4672-b07a-eacb31bab8ce": {
+          "display_id": 186,
+          "author": "6ME5",
+          "content": "C3 design frozen at .design/c3-platform-security-backends.md: 20 requirements, 22 acceptance criteria, the process-owned native callback seam, five crate boundaries, OBL-0130 through OBL-0134, platform minimums, and no unresolved product decisions.",
+          "created_at": "2026-08-24T00:30:36.756629421Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABeZelboy27XBKlKIl1yCMck2tjVTuadUW63h6RhdkntC+5w82cNB/u4UfxSX8Du4h4f5BAXAxv9Zx2hKwuf5DQ=="
         }
       }
     },
@@ -1899,8 +1908,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-24T00:19:24.743491926Z",
+    "timestamp": "2026-08-24T00:30:36.761236240Z",
     "agent_id": "6ME5",
-    "agent_seq": 251
+    "agent_seq": 252
   }
 }
