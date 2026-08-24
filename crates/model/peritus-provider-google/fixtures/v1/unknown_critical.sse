@@ -1,0 +1,6 @@
+event: interaction.created
+data: {"event_type":"interaction.created","interaction":{"id":"int_future","model":"gemini-3.7-flash"}}
+
+event: interaction.future_semantics
+data: {"event_type":"interaction.future_semantics","state":"unknown"}
+

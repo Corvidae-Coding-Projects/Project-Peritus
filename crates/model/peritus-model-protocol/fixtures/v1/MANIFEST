@@ -1,0 +1,12 @@
+# peritus-model-protocol canonical request corpus v1
+# file | disposition | coverage
+minimal.hex | accept | smallest realistic text request
+realistic.hex | accept | multimodal tools schema reasoning continuation extension
+boundary.hex | accept | negotiated output-limit boundary and repeated stop sequences
+codex-runtime.hex | accept | account-backed Codex runtime dialect tag
+claude-runtime.hex | accept | account-backed Claude runtime dialect tag
+corrupt-truncated.hex | reject | truncated collection field
+unknown-tag.hex | reject | unknown message role tag
+trailing-field.hex | reject | additive unknown field represented as trailing bytes
+invalid-option.hex | reject | invalid closed option tag
+invalid-boolean.hex | reject | invalid closed boolean tag

@@ -19,6 +19,9 @@ controlled_source_roots = [
     { path = "crates/foundation/peritus-protocol/src/schema", owner = "B3", kind = "schema", rationale = "B3 owns the handwritten family registry, deterministic renderers, fixture constructors, and code-generation implementation." },
     { path = "crates/tools/peritus-tool-protocol/src/schema.rs", owner = "C4", kind = "schema", rationale = "C4 owns the bounded tool schema model, builders, canonical encoding, validation, and compatibility contract." },
     { path = "crates/tools/peritus-tool-protocol/src/schema", owner = "C4", kind = "schema", rationale = "C4 owns the reviewed tool schema canonicalization, validation, duplicate detection, and compatibility implementation." },
+    { path = "crates/model/peritus-model-protocol/src/schema.rs", owner = "C5", kind = "schema", rationale = "C5 owns the provider-facing bounded JSON Schema representation and canonical validation contract." },
+    { path = "crates/model/peritus-provider-openai/src/runtime/request/schema.rs", owner = "C5", kind = "schema", rationale = "C5 owns the constrained Codex runtime result schema that represents inert host tool proposals without granting executable authority." },
+    { path = "crates/model/peritus-model-protocol/fixtures/v1", owner = "C5", kind = "generated", rationale = "C5 owns immutable version-one model-protocol compatibility fixtures and their digest inventory." },
     { path = "crates/state/peritus-artifact-store/src/catalog/schema.rs", owner = "C0", kind = "schema", rationale = "C0 owns the artifact catalog schema used by the shared durable SQLite database." },
     { path = "crates/state/peritus-evidence/src/sqlite/schema.rs", owner = "C0", kind = "schema", rationale = "C0 owns the durable evidence catalog schema and its provenance constraints." },
     { path = "crates/state/peritus-journal/src/sqlite/schema.rs", owner = "C0", kind = "schema", rationale = "C0 owns the authoritative journal schema and transactional state tables." },
@@ -187,6 +190,13 @@ layer = "state"
 verification_class = "H"
 
 [[packages]]
+name = "peritus-model-protocol"
+path = "crates/model/peritus-model-protocol"
+owner = "C5"
+layer = "model"
+verification_class = "H"
+
+[[packages]]
 name = "peritus-network"
 path = "crates/runtime/peritus-network"
 owner = "C3"
@@ -212,6 +222,41 @@ name = "peritus-process"
 path = "crates/runtime/peritus-process"
 owner = "C2"
 layer = "runtime"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-provider-anthropic"
+path = "crates/model/peritus-provider-anthropic"
+owner = "C5"
+layer = "model"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-provider-compatible"
+path = "crates/model/peritus-provider-compatible"
+owner = "C5"
+layer = "model"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-provider-core"
+path = "crates/model/peritus-provider-core"
+owner = "C5"
+layer = "model"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-provider-google"
+path = "crates/model/peritus-provider-google"
+owner = "C5"
+layer = "model"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-provider-openai"
+path = "crates/model/peritus-provider-openai"
+owner = "C5"
+layer = "model"
 verification_class = "H"
 
 [[packages]]

@@ -6,17 +6,6 @@ fn empty<S>(id: &'static str, summary: &'static str) -> StaticSuite<S> {
     StaticSuite::empty(SuiteDescriptor::new(SuiteId::catalog(id), ReportText::literal(summary)))
 }
 
-/// Returns the runnable empty model-provider conformance suite.
-///
-/// B3 and C5 own the future provider protocol and adapter cases.
-#[must_use]
-pub fn provider_suite<S>() -> StaticSuite<S> {
-    empty(
-        "peritus.provider",
-        "Model-provider conformance cases supplied after provider protocols exist",
-    )
-}
-
 /// Returns the runnable empty plugin conformance suite.
 ///
 /// G3 owns the future plugin contract and host cases.

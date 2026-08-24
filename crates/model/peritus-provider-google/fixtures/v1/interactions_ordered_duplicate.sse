@@ -1,0 +1,24 @@
+id: g-1
+event: interaction.created
+data: {"event_type":"interaction.created","interaction":{"id":"int_dup","model":"gemini-3.7-flash"}}
+
+id: g-2
+event: step.start
+data: {"event_type":"step.start","index":0,"step":{"type":"model_output"}}
+
+id: g-3
+event: step.delta
+data: {"event_type":"step.delta","index":0,"delta":{"type":"text","text":"one"}}
+
+id: g-3
+event: step.delta
+data: {"event_type":"step.delta","index":0,"delta":{"type":"text","text":"one"}}
+
+id: g-4
+event: step.stop
+data: {"event_type":"step.stop","index":0}
+
+id: g-5
+event: interaction.completed
+data: {"event_type":"interaction.completed","interaction":{"id":"int_dup","status":"completed","usage":{"total_input_tokens":1,"total_output_tokens":1,"total_tokens":2}}}
+

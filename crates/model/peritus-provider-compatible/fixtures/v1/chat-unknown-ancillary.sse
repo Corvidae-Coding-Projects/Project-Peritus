@@ -1,0 +1,6 @@
+data: {"id":"chat_ancillary","object":"chat.completion.chunk","model":"model-test","choices":[],"provider_metadata":{"future":"bounded"}}
+
+data: {"id":"chat_ancillary","object":"chat.completion.chunk","model":"model-test","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+
+data: [DONE]
+

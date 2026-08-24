@@ -28,13 +28,19 @@ The implemented foundation and runtime spine now covers:
   exact secret leases and delivery, redaction, native recovery, and complete backend teardown; and
 - C4: bounded canonical tool descriptors and JSON schemas, capability/role exposure, target-owned
   one-use authorization and routing, replay/control/result envelopes, and C1/C2/C3-backed
-  filesystem, Git, shell, and explicit quality tools with fresh-subject conformance.
+  filesystem, Git, shell, and explicit quality tools with fresh-subject conformance; and
+- C5: a versioned provider-neutral model protocol, exact capability negotiation, bounded normalized
+  streaming and reduction, deterministic retry/idempotency and cancellation semantics, a hardened
+  HTTP/process transport boundary, production OpenAI Responses, Anthropic Messages, stable-v1
+  Google Interactions/Generate Content, explicitly profiled compatible endpoints, and separate
+  account-backed Codex/Claude routes through their credential-owning official executables, with
+  immutable wire fixtures and fresh-subject A2 conformance.
 
 These are library and verification layers. There is not yet a user-facing `peritus` CLI, daemon,
-TUI, provider integration, complete agent loop, writer-reviewer-fixer orchestrator, or native
-packaged-host qualification. C5 is the next runtime boundary: the provider-neutral model protocol
-and first-party OpenAI, Anthropic, Google, and explicit compatible-endpoint adapters. A3, C5–C7,
-D0–D3, E0–E3, F0, G0–G3, and H0–H4 remain before production release and qualification.
+TUI, complete agent loop, writer-reviewer-fixer orchestrator, or native packaged-host
+qualification. C6 is the next runtime boundary: provenance-aware context construction, compaction,
+memory selection/lifecycle, and role capabilities. A3, C6–C7, D0–D3, E0–E3, F0, G0–G3, and
+H0–H4 remain before production release and qualification.
 
 Gate A is the current merge authority: ordinary Rust checks, architecture and API policy,
 supply-chain policy, pinned toolchains, full Verus verification, and verified release builds must
@@ -89,6 +95,10 @@ qualification.
 The [C4 tool system guide](docs/c4-tool-system.md) documents bounded schemas and envelopes,
 capability/role exposure, two-phase authorization and one-use routing, C1/C2/C3-backed built-ins,
 owned controls and replay, and the boundary between quality invocation and the future D1 gate DAG.
+The [C5 model provider guide](docs/c5-model-providers.md) documents the provider-neutral protocol,
+verified reduction and retry semantics, hardened HTTP/process ownership, official first-party API
+and account-runtime contracts, explicit compatible profiles, immutable fixtures, and provider
+conformance boundary.
 The [GitHub governance runbook](docs/github-governance.md) defines the GitHub Team-compatible
 repository ruleset and required `Gate A` status that must be active after the A1 genesis push.
 Immutable required-workflow authority remains an explicitly documented Enterprise Cloud deferral.

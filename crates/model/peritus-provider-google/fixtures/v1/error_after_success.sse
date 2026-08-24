@@ -1,0 +1,6 @@
+event: interaction.created
+data: {"event_type":"interaction.created","interaction":{"id":"int_error","model":"gemini-3.7-flash"}}
+
+event: error
+data: {"event_type":"error","error":{"code":"service_unavailable","message":"sensitive upstream details"}}
+

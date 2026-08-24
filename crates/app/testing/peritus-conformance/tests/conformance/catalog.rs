@@ -1,20 +1,20 @@
 use peritus_conformance::{
-    ConformanceRunner, ConformanceSuite, SuiteStatus, plugin_suite, protocol_suite, provider_suite,
+    ConformanceRunner, ConformanceSuite, SuiteStatus, plugin_suite, protocol_suite,
 };
 
 use super::harness::{FactoryState, OperationBehavior, TestFactory, TestSubject, block_on};
 
 #[test]
-fn three_unimplemented_catalog_suites_have_stable_unique_names() {
-    let suites = [provider_suite::<TestSubject>(), plugin_suite(), protocol_suite()];
+fn two_unimplemented_catalog_suites_have_stable_unique_names() {
+    let suites = [plugin_suite::<TestSubject>(), protocol_suite()];
     let ids = suites.iter().map(|suite| suite.descriptor().id().as_str()).collect::<Vec<_>>();
-    assert_eq!(ids, ["peritus.provider", "peritus.plugin", "peritus.protocol"]);
+    assert_eq!(ids, ["peritus.plugin", "peritus.protocol"]);
     assert!(suites.iter().all(|suite| suite.cases().is_empty()));
 }
 
 #[test]
 fn empty_suite_runs_without_creating_a_subject_or_claiming_conformance() {
-    let suite = provider_suite::<TestSubject>();
+    let suite = plugin_suite::<TestSubject>();
     let factory = TestFactory::new(OperationBehavior::Pass, OperationBehavior::Pass);
     let first = block_on(ConformanceRunner::run(&suite, &factory));
     let second = block_on(ConformanceRunner::run(&suite, &factory));

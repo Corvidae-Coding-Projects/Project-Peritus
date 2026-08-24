@@ -52,8 +52,13 @@ evidence for those failures must execute conformance in a supervised subprocess.
 
 ## Catalog suites and ownership
 
-The crate exports production journal, replay, C1 workspace, C2 process, C2/C3 sandbox, and C4 tool
-suites plus runnable empty provider, plugin, and protocol suites. The tool suite exercises
+The crate exports production journal, replay, C1 workspace, C2 process, C2/C3 sandbox, C4 tool,
+and C5 provider suites plus runnable empty plugin and protocol suites. The provider suite contains
+fourteen fixed cases covering capability honesty, ordering and exact deduplication, fragmented
+tool calls, malformed and incomplete streams, interruption, cancellation, authentication, rate
+limits and retry-after, transient retry, ambiguous submission, usage, redaction, and adapter
+isolation. Its subjects return direct event, attempt, usage, and routing observations rather than
+self-reported verdicts. The tool suite exercises
 descriptor/schema determinism, schema rejection before effect, canonical role/capability exposure,
 exact one-use dispatch, independent authority drift, truthful structured results, owned controls
 and deadlines, and replay without duplicate effects. The process suite exercises
@@ -68,10 +73,11 @@ and observations into their own domain values. A2 neither constructs privileged 
 nor depends on a process or sandbox implementation. An empty suite's `Empty` status is scaffolding,
 not Gate evidence. Later protocol-owning slices add typed cases after their contracts exist.
 
-This crate deliberately does not define model messages, streaming normalization, production tool
-schemas, capabilities, authorization receipts, retries, idempotency storage, journal records, or
-production error taxonomies. Those remain owned by B3 and the relevant C slices; A2 exposes only
-runtime-neutral tool fixtures and observations for qualifying C4 adapters.
+This crate deliberately does not define model messages, provider wire formats, production
+streaming normalization, production tool schemas, authorization receipts, retry policy,
+idempotency storage, journal records, or production error taxonomies. Those remain owned by B3 and
+the relevant C slices; A2 exposes only runtime-neutral fixtures and direct observations for
+qualifying C4 tools and C5 provider adapters.
 
 ## Dependency policy
 

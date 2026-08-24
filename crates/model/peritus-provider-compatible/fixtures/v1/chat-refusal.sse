@@ -1,0 +1,8 @@
+data: {"id":"chat_refusal","object":"chat.completion.chunk","model":"model-test","choices":[{"index":0,"delta":{"role":"assistant","refusal":"not "},"finish_reason":null}]}
+
+data: {"id":"chat_refusal","object":"chat.completion.chunk","model":"model-test","choices":[{"index":0,"delta":{"refusal":"allowed"},"finish_reason":null}]}
+
+data: {"id":"chat_refusal","object":"chat.completion.chunk","model":"model-test","choices":[{"index":0,"delta":{},"finish_reason":"content_filter"}]}
+
+data: [DONE]
+

@@ -20,7 +20,11 @@ allow = [
     "Apache-2.0",
     # Reviewed for the pinned Ed25519 verifier implementation and its curve backend.
     "BSD-3-Clause",
+    # Reviewed for the pinned Rustls/AWS-LC cryptography dependency closure.
+    "ISC",
     "MIT",
+    # Reviewed for the pinned AWS-LC generated/build support dependency closure.
+    "MIT-0",
     "Unicode-3.0",
     "Zlib",
 ]

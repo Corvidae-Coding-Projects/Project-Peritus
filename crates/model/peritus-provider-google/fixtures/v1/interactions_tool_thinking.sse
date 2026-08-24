@@ -1,0 +1,40 @@
+id: t-1
+event: interaction.created
+data: {"event_type":"interaction.created","interaction":{"id":"int_tool","model":"gemini-3.7-pro"}}
+
+id: t-2
+event: step.start
+data: {"event_type":"step.start","index":0,"step":{"type":"thought"}}
+
+id: t-3
+event: step.delta
+data: {"event_type":"step.delta","index":0,"delta":{"type":"thought_summary","content":{"text":"checking"}}}
+
+id: t-4
+event: step.delta
+data: {"event_type":"step.delta","index":0,"delta":{"type":"thought_signature","signature":"opaque-google-signature"}}
+
+id: t-5
+event: step.stop
+data: {"event_type":"step.stop","index":0}
+
+id: t-6
+event: step.start
+data: {"event_type":"step.start","index":1,"step":{"type":"function_call","id":"call-weather","name":"weather"}}
+
+id: t-7
+event: step.delta
+data: {"event_type":"step.delta","index":1,"delta":{"type":"arguments_delta","arguments":"{\"city\":"}}
+
+id: t-8
+event: step.delta
+data: {"event_type":"step.delta","index":1,"delta":{"type":"arguments_delta","arguments":"\"Paris\"}"}}
+
+id: t-9
+event: step.stop
+data: {"event_type":"step.stop","index":1}
+
+id: t-10
+event: interaction.completed
+data: {"event_type":"interaction.completed","interaction":{"id":"int_tool","status":"requires_action","usage":{"total_input_tokens":9,"total_output_tokens":4,"total_thought_tokens":2,"total_tool_use_tokens":1,"total_tokens":13}}}
+

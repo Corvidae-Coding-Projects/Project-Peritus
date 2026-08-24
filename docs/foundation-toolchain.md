@@ -35,7 +35,9 @@ Direct registry dependencies use exact `=version` requirements. Git dependencies
 40-character revisions. `Cargo.lock` is committed, and every dependency-resolving developer and CI
 command uses `--locked`. GitHub Actions use immutable commit SHAs. `cargo-deny` denies unknown
 registries, unknown Git sources, wildcard requirements, duplicate versions, unapproved licenses,
-and known advisories under the checked-in policy.
+and known advisories under the checked-in policy. The reviewed license set is Apache-2.0,
+BSD-3-Clause, ISC, MIT, MIT-0, Unicode-3.0, and Zlib; ISC and MIT-0 cover the pinned
+Rustls/AWS-LC cryptography closure introduced by C5 rather than a package-specific exception.
 
 Path dependencies are accepted only when they resolve without symbolic links to registered
 workspace packages inside this repository. External and unregistered in-repository path crates are
@@ -78,17 +80,30 @@ macro-synthesized compilation inputs. External executable preprocessing is separ
 fail-closed. Full locked Cargo metadata is searched for every dependency build-script and
 procedural-macro target; only these exact package identities are admitted:
 
-- build scripts: `anyhow@1.0.104`, `curve25519-dalek@5.0.0`, `getrandom@0.4.3`,
-  `libc@0.2.189`, `libsqlite3-sys@0.38.2`, `nix@0.28.0`, `nix@0.31.3`,
-  `proc-macro2@1.0.107`, `quote@1.0.47`, `rustix@1.1.4`, `serde@1.0.229`,
-  `serde_core@1.0.229`, `serde_json@1.0.149`, `thiserror@1.0.69`, `winapi@0.3.9`,
-  `winapi-i686-pc-windows-gnu@0.4.0`, `winapi-x86_64-pc-windows-gnu@0.4.0`,
-  `winreg@0.10.1`, `zmij@1.0.23`, and the pinned Verus revision's
-  `verus_prettyplease@0.0.0-2026-08-09-0044`, `verus_syn@0.0.0-2026-08-02-0125`, and
-  `vstd@0.0.0-2026-08-09-0044`;
-- procedural macros: `curve25519-dalek-derive@0.1.1`, `serde_derive@1.0.229`,
-  `thiserror-impl@1.0.69`, `windows-implement@0.60.2`, `windows-interface@0.59.3`, and the
-  pinned Verus revision's `verus_builtin_macros@0.0.0-2026-08-09-0044` and
+- build scripts: `anyhow@1.0.104`, `async-io@2.6.0`, `aws-lc-rs@1.18.0`,
+  `aws-lc-sys@0.44.0`, `crossbeam-utils@0.8.22`, `curve25519-dalek@5.0.0`,
+  `generic-array@0.14.7`, `getrandom@0.4.3`, `httparse@1.10.1`,
+  `icu_normalizer_data@2.3.0`, `icu_properties_data@2.3.0`, `jni@0.22.4`,
+  `jni-macros@0.22.4`, `libc@0.2.189`, `libsqlite3-sys@0.38.2`, `memoffset@0.9.1`,
+  `nix@0.28.0`, `nix@0.31.3`, `num-traits@0.2.19`, `proc-macro2@1.0.107`,
+  `quote@1.0.47`, `quinn@0.11.11`, `quinn-udp@0.5.15`, `ring@0.17.14`,
+  `rustix@1.1.4`, `rustls@0.23.43`, `rustversion@1.0.23`, `serde@1.0.229`,
+  `serde_core@1.0.229`, `serde_json@1.0.149`, `thiserror@1.0.69`,
+  `thiserror@2.0.20`, `wasm-bindgen@0.2.127`, `wasm-bindgen-shared@0.2.127`,
+  `winapi@0.3.9`, `winapi-i686-pc-windows-gnu@0.4.0`,
+  `winapi-x86_64-pc-windows-gnu@0.4.0`, `winreg@0.10.1`, `zmij@1.0.23`, all eight
+  `windows_*@0.52.6` architecture archives selected by Cargo metadata, and the pinned Verus
+  revision's `verus_prettyplease@0.0.0-2026-08-09-0044`,
+  `verus_syn@0.0.0-2026-08-02-0125`, and `vstd@0.0.0-2026-08-09-0044`;
+- procedural macros: `async-recursion@1.1.1`, `async-trait@0.1.92`,
+  `curve25519-dalek-derive@0.1.1`, `displaydoc@0.2.7`, `enumflags2_derive@0.7.12`,
+  `futures-macro@0.3.34`, `jni-macros@0.22.4`, `jni-sys-macros@0.4.1`,
+  `rustversion@1.0.23`, `serde_derive@1.0.229`, `serde_repr@0.1.21`,
+  `thiserror-impl@1.0.69`, `thiserror-impl@2.0.20`, `tokio-macros@2.7.2`,
+  `tracing-attributes@0.1.31`, `wasm-bindgen-macro@0.2.127`, `zbus_macros@5.19.0`,
+  `zvariant_derive@5.15.0`, `windows-implement@0.60.2`, `windows-interface@0.59.3`,
+  `yoke-derive@0.8.2`, `zerofrom-derive@0.1.7`, `zerovec-derive@0.11.6`, and the pinned
+  Verus revision's `verus_builtin_macros@0.0.0-2026-08-09-0044` and
   `verus_state_machines_macros@0.0.0-2026-08-02-0125`.
 
 For C2, the reviewed `nix` build scripts use `cfg_aliases` to emit target-derived configuration;
@@ -99,6 +114,16 @@ probe artifacts; `anyhow` also queries the compiler version. The `thiserror-impl
 `windows-implement`, and `windows-interface` procedural macros transform caller token streams and
 perform no independent network, repository, or child-process access. Their complete executable
 identities and dependency closures remain exact-lockfile inputs to Gate A.
+
+For C5, the reviewed HTTP/TLS dependency scripts are platform/compiler configuration and packaged
+native-build steps. `httparse`, `rustls`, `quinn`, `quinn-udp`, the ICU data crates, JNI crates, and
+Windows architecture archives emit target configuration or link paths. `aws-lc-sys`, `aws-lc-rs`,
+and `ring` compile their packaged C/assembly sources with Cargo-selected build tools; they do not
+fetch source at build time. The newly admitted procedural macros implement Tokio async
+entry/select expansion, display text derivation, JNI bindings, and ICU zero-copy derives from
+caller token streams. Their exact versions, registry identities, archive checksums, build inputs,
+and complete transitive closures are locked; changing any executable package identity reopens this
+review and fails A0 before candidate execution.
 
 For B1, the reviewed `curve25519-dalek` build script reads exactly
 `CARGO_CFG_TARGET_FEATURE`, `CARGO_CFG_TARGET_ARCH`, `CARGO_CFG_CURVE25519_DALEK_BITS`,

@@ -1,0 +1,12 @@
+data: {"id":"chat_success","object":"chat.completion.chunk","created":1,"model":"model-test","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}
+
+data: {"id":"chat_success","object":"chat.completion.chunk","created":1,"model":"model-test","choices":[{"index":0,"delta":{"content":"hel"},"finish_reason":null}]}
+
+data: {"id":"chat_success","object":"chat.completion.chunk","created":1,"model":"model-test","choices":[{"index":0,"delta":{"content":"lo"},"finish_reason":null}]}
+
+data: {"id":"chat_success","object":"chat.completion.chunk","created":1,"model":"model-test","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+
+data: {"id":"chat_success","object":"chat.completion.chunk","created":1,"model":"model-test","choices":[],"usage":{"prompt_tokens":10,"completion_tokens":2,"total_tokens":12}}
+
+data: [DONE]
+

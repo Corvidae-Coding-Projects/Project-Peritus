@@ -3,6 +3,9 @@
 use super::violation::{Violation, ViolationKind};
 use crate::source::reference_lexer::{Token, TokenKind};
 
+#[path = "expansion/environment.rs"]
+mod environment;
+
 const SIMPLE_ATTRIBUTES: &[&str] = &[
     "allow",
     "auto",
@@ -132,11 +135,9 @@ fn inspect_macro(
     let qualified = cursor >= 2
         && punctuation_is(&tokens[cursor - 2], ':')
         && punctuation_is(&tokens[cursor - 1], ':');
-    if *raw
-        || qualified
-        || !MODELED_MACROS.contains(&name.as_str())
-        || name == "params" && !params_imported
-    {
+    let modeled = MODELED_MACROS.contains(&name.as_str())
+        || name == "env" && environment::audited_cargo_env(tokens, cursor);
+    if *raw || qualified || !modeled || name == "params" && !params_imported {
         violations.push(Violation {
             line: tokens[cursor].line,
             function: if qualified { format!("qualified::{name}!") } else { format!("{name}!") },
