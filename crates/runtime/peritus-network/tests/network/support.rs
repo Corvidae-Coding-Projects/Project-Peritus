@@ -263,7 +263,9 @@ pub fn secret_reference(value: &[u8]) -> SecretReference {
 }
 
 pub fn read_head(stream: &mut TcpStream) -> String {
-    stream.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+    if stream.read_timeout().unwrap().is_none() {
+        stream.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+    }
     let mut bytes = Vec::new();
     let mut byte = [0; 1];
     while !bytes.ends_with(b"\r\n\r\n") {

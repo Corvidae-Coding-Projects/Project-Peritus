@@ -243,23 +243,18 @@ fn worker_bound_applies_backpressure_and_shutdown_joins_the_active_tunnel() {
     let mut active = TcpStream::connect(proxy.endpoint().socket_addr()).unwrap();
     active.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
     proxy.routing_token().expose_header(|token| {
-        write!(
-            active,
+        let request = format!(
             "CONNECT loop.test:{port} HTTP/1.1\r\nHost: loop.test:{port}\r\nProxy-Authorization: Peritus {token}\r\n\r\n"
-        )
-        .unwrap();
+        );
+        active.write_all(request.as_bytes()).unwrap();
     });
     assert!(read_head(&mut active).starts_with("HTTP/1.1 200"));
 
     let mut rejected = TcpStream::connect(proxy.endpoint().socket_addr()).unwrap();
     rejected.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
-    proxy.routing_token().expose_header(|token| {
-        write!(
-            rejected,
-            "CONNECT loop.test:{port} HTTP/1.1\r\nHost: loop.test:{port}\r\nProxy-Authorization: Peritus {token}\r\n\r\n"
-        )
-        .unwrap();
-    });
+    // Worker backpressure is enforced when the connection is accepted, before
+    // request parsing. Reading the response directly avoids racing a request
+    // write against the intentional close of the rejected socket.
     assert!(read_head(&mut rejected).starts_with("HTTP/1.1 503"));
     let observations = proxy.observations();
     assert!(observations.windows(2).all(|pair| pair[0].sequence() < pair[1].sequence()));
