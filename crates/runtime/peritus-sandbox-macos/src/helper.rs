@@ -43,8 +43,10 @@ fn run() -> Result<(), ReservedHelperExit> {
         .map_err(|_| ReservedHelperExit::Protocol)?;
 
     let manifest = HelperManifest::read_framed(input).map_err(|_| ReservedHelperExit::Protocol)?;
-    let target = prepare_target_command(&manifest).map_err(classify_activation_error)?;
-    activate_manifest_with_pty(&manifest, pty.as_ref()).map_err(classify_activation_error)?;
+    let target = prepare_target_command(&manifest)
+        .map_err(|error| classify_activation_kind(error.kind()))?;
+    activate_manifest_with_pty(&manifest, pty.as_ref())
+        .map_err(|error| classify_activation_kind(error.kind()))?;
 
     let activation = native_activation_record(manifest.digest(), manifest.preparation_digest());
     output
@@ -62,11 +64,6 @@ fn run() -> Result<(), ReservedHelperExit> {
         return Err(ReservedHelperExit::TargetExec);
     }
     Ok(())
-}
-
-#[cfg(target_os = "macos")]
-fn classify_activation_error(error: crate::MacosError) -> ReservedHelperExit {
-    classify_activation_kind(error.kind())
 }
 
 #[cfg(target_os = "macos")]

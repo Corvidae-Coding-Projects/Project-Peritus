@@ -92,15 +92,14 @@ fn command_output(executable: &str, arguments: &[&str]) -> Option<String> {
 }
 
 fn command_succeeds(executable: &Path, arguments: &[&str], timeout: Duration) -> bool {
-    let mut child = match Command::new(executable)
+    let Ok(mut child) = Command::new(executable)
         .args(arguments)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
-    {
-        Ok(child) => child,
-        Err(_) => return false,
+    else {
+        return false;
     };
     wait_success(&mut child, timeout)
 }

@@ -17,7 +17,8 @@ use crate::{
 use super::{connect, http, owner::SharedWorkerConfig};
 
 pub(super) fn run(mut client: TcpStream, config: &SharedWorkerConfig) -> Result<(), NetworkError> {
-    let timeout = Duration::from_millis(100);
+    let timeout =
+        Duration::from_millis(config.plan.options().bounds().connection_millis().min(1_000));
     client.set_read_timeout(Some(timeout)).map_err(|_| stream_error())?;
     client.set_write_timeout(Some(timeout)).map_err(|_| stream_error())?;
     let bounds = config.plan.options().bounds();

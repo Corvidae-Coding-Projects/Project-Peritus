@@ -34,14 +34,14 @@ impl SandboxLibrary {
         // handle remains live for every call through the stored function pointers.
         unsafe {
             let handle = libc::dlopen(
-                b"/usr/lib/libsandbox.1.dylib\0".as_ptr().cast(),
+                c"/usr/lib/libsandbox.1.dylib".as_ptr(),
                 libc::RTLD_NOW | libc::RTLD_LOCAL,
             );
             if handle.is_null() {
                 return Err(seatbelt_library_error());
             }
-            let init = libc::dlsym(handle, b"sandbox_init\0".as_ptr().cast());
-            let free_error = libc::dlsym(handle, b"sandbox_free_error\0".as_ptr().cast());
+            let init = libc::dlsym(handle, c"sandbox_init".as_ptr());
+            let free_error = libc::dlsym(handle, c"sandbox_free_error".as_ptr());
             if init.is_null() || free_error.is_null() {
                 let _ = libc::dlclose(handle);
                 return Err(seatbelt_library_error());
@@ -65,7 +65,7 @@ impl Drop for SandboxLibrary {
 
 pub(super) fn verify_protected_channels(manifest: &HelperManifest) -> Result<(), MacosError> {
     for descriptor in core::iter::once(manifest.exec_status_descriptor())
-        .chain(manifest.proxy().map(|route| route.routing_handle()).into_iter())
+        .chain(manifest.proxy().map(crate::ProxyRoute::routing_handle))
         .chain(manifest.secrets().iter().map(crate::SecretHandleDescriptor::descriptor))
     {
         // SAFETY: F_GETFD takes no third argument and the manifest bounded the descriptor.
