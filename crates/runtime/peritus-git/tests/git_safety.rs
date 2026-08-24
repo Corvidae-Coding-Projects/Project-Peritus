@@ -160,7 +160,16 @@ fn recovers_existing_exact_worktree_after_interrupted_registration() {
     let commit = baseline.commit().to_string();
     checked_git(
         &fixture.root,
-        &["worktree", "add", "--quiet", "--detach", destination.to_str().expect("path"), &commit],
+        &[
+            "-c",
+            "core.autocrlf=false",
+            "worktree",
+            "add",
+            "--quiet",
+            "--detach",
+            destination.to_str().expect("path"),
+            &commit,
+        ],
     );
     let recovered = repository
         .recover_existing_worktree(CreateWorktree::new(
