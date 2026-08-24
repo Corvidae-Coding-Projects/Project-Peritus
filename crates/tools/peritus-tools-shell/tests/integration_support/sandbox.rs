@@ -26,8 +26,9 @@ pub fn sandbox(
     resources: ProcessResourcePolicy,
     stdin: StdinPolicy,
 ) -> (CheckedSandboxPlan, BackendAdmission) {
-    let executable = SandboxPath::new(executable).expect("sandbox executable");
-    let workspace = SandboxPath::new(workspace.to_string_lossy()).expect("sandbox workspace");
+    let executable = SandboxPath::new(executable.replace('\\', "/")).expect("sandbox executable");
+    let workspace = SandboxPath::new(workspace.to_string_lossy().replace('\\', "/"))
+        .expect("sandbox workspace");
     let filesystem = execution_filesystem(&executable, workspace);
     let process = execution_process(&executable);
     let literal_names = environment
