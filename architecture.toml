@@ -199,6 +199,13 @@ layer = "foundation"
 verification_class = "V"
 
 [[packages]]
+name = "peritus-process"
+path = "crates/runtime/peritus-process"
+owner = "C2"
+layer = "runtime"
+verification_class = "H"
+
+[[packages]]
 name = "peritus-protocol"
 path = "crates/foundation/peritus-protocol"
 owner = "B3"
@@ -218,6 +225,13 @@ path = "crates/foundation/peritus-quality-policy"
 owner = "B2"
 layer = "foundation"
 verification_class = "V"
+
+[[packages]]
+name = "peritus-sandbox"
+path = "crates/runtime/peritus-sandbox"
+owner = "C2"
+layer = "runtime"
+verification_class = "H"
 
 [[packages]]
 name = "peritus-spec"
@@ -262,12 +276,6 @@ layer = "engineering"
 verification_class = "C"
 
 [[refinement_reservations]]
-id = "REF-C2-B1-HOLDER-QUIESCENCE"
-introduced_by = "B1"
-future_owner = "C2"
-statement = "Process/task ownership evidence proves the exact prior lease holder is quiescent before normal release or safe reconciliation."
-
-[[refinement_reservations]]
 id = "REF-C4-B1-OPERATION-CLASS"
 introduced_by = "B1"
 future_owner = "C4"
@@ -284,12 +292,6 @@ id = "REF-E0-B1-COMMIT-BEFORE-EFFECT"
 introduced_by = "B1"
 future_owner = "E0"
 statement = "E0 assembles matching capability use, durable budget charge/reservation, lease use when mutating, approval plus its exact credential-registry revision when required, B0 current-state witness, and exact C0 commit/current-registry receipts before invoking a target authorization gateway; it does not construct that target's permit."
-
-[[refinement_reservations]]
-id = "REF-C2-B1-AUTHORITY-GATE"
-introduced_by = "B1"
-future_owner = "C2"
-statement = "The process crate owns ExecutionAuthorizationRequest; its gateway validates E0-supplied B1/B0/C0 inputs and alone constructs its private execution permit, with no public raw bypass."
 
 [[refinement_reservations]]
 id = "REF-C4-B1-AUTHORITY-GATE"

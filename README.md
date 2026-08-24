@@ -1,7 +1,39 @@
 # Project Peritus
 
-Peritus is a local-first, Verus-first coding-agent harness under active foundation work. The
-repository is not yet a releasable product.
+Peritus is a local-first, Verus-first coding-agent harness under active production construction.
+It combines explicit durable workspace/state semantics, a tight inspect/edit/run/test loop,
+writer-reviewer-fixer orchestration, and evidence-driven harness observability and evolution.
+
+The repository is not yet a releasable product. Implementation is staged for safe parallel work,
+but no stage is an MVP and no intermediate stage carries a production-readiness claim.
+
+## Current development state
+
+The implemented foundation and runtime spine now covers:
+
+- A0–A2: pinned Rust/Verus workspace governance, verified foundational types and trust accounting,
+  deterministic test support, and reusable conformance execution;
+- B0–B3: the lifecycle kernel, capabilities/policy/budgets/leases/approvals, acceptance contracts,
+  quality policy, and the versioned domain protocol/codec;
+- C0: the durable journal, rebuildable projections, artifact store, migrations, evidence admission,
+  committed B0/B1 receipts, and restart-safe authority observations;
+- C1: structured Git/worktree operations, checked atomic patches, target-owned workspace
+  authorization, candidates, snapshots, rollback, and restart reconciliation; and
+- C2: structured process and PTY execution, the target-owned execution gateway, complete
+  platform-neutral sandbox contracts, bounded supervision/output/cancellation and resource
+  accounting, durable process recovery and retryable output publication, holder quiescence,
+  executable reference semantics, and reusable A2 qualification.
+
+These are library and verification layers. There is not yet a user-facing `peritus` CLI, daemon,
+TUI, provider integration, complete agent loop, writer-reviewer-fixer orchestrator, or native
+production sandbox. C3 is the next runtime boundary: native Linux, macOS, and Windows enforcement,
+managed network controls, and secret delivery implementing C2's frozen contracts. A3, C4–C7,
+D0–D3, E0–E3, F0, G0–G3, and H0–H4 remain before production release and qualification.
+
+Local Gate A is the current merge authority: ordinary Rust checks, architecture and API policy,
+supply-chain policy, pinned toolchains, full Verus verification, and verified release builds must
+all pass together. GitHub-hosted jobs are configured but currently cannot start because of the
+known account-level runner restriction; a queued job is not treated as passing evidence.
 
 ## Foundation checks
 
@@ -40,7 +72,10 @@ Focused A2 checks are `cargo test --package peritus-test-support --all-targets -
 The [C0 durable-state guide](docs/c0-durable-state.md) documents the journal, projections,
 artifacts, migrations, and evidence boundary. The [C1 workspace guide](docs/c1-workspaces.md)
 documents structured Git worktrees, typed atomic patches, target-owned authorization, snapshots,
-rollback, and restart reconciliation.
+rollback, and restart reconciliation. The
+[C2 process and sandbox guide](docs/c2-process-sandbox.md) documents structured process execution,
+complete sandbox contracts, target-owned launch authorization, bounded supervision, terminal
+accounting, restart reconciliation, and holder quiescence.
 The [GitHub governance runbook](docs/github-governance.md) defines the GitHub Team-compatible
 repository ruleset and required `Gate A` status that must be active after the A1 genesis push.
 Immutable required-workflow authority remains an explicitly documented Enterprise Cloud deferral.

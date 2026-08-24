@@ -112,11 +112,12 @@ typed observations make repeated runs directly comparable. Suite status is one o
 `Empty` is never equivalent to `Passed` and cannot satisfy a release verdict. There is no skipped,
 ignored, quarantined or caller-forced success state.
 
-A2 publishes named empty provider, tool, plugin, sandbox, and protocol suites. C0 supplies real
-journal and replay cases, and C1 supplies real Git/workspace/patch cases covering atomic candidate
-creation, stale generation and resource rejection, read-only isolation, rollback history, and
-restart reconciliation. Only a nonempty passed report from a production adapter proves the named
-contract.
+A2 publishes named empty provider, tool, plugin, and protocol suites. C0 supplies real journal and
+replay cases, and C1 supplies real Git/workspace/patch cases covering atomic candidate creation,
+stale generation and resource rejection, read-only isolation, rollback history, and restart
+reconciliation. C2 supplies fresh-subject process and sandbox cases covering structured execution,
+bounded supervision and recovery plus the complete platform-neutral sandbox contract and backend
+lifecycle. Only a nonempty passed report from a production adapter proves the named contract.
 
 ## Ownership boundaries
 
@@ -129,7 +130,8 @@ mismatch, exhaustion, fault scheduling and isolation. The following remain outsi
 - B2 acceptance and quality policy;
 - C4 tool calls, results, routing and idempotency;
 - C5 provider requests, normalized streams, retry policy and adapters; and
-- C0/C1/C2 persistence, workspace, process and sandbox production behavior.
+- C0/C1/C2 production persistence, workspace, process, and sandbox implementations. A2 owns only
+  the runtime-neutral subject contracts and cases used to qualify those adapters.
 
 Those owners declare their own conformance cases and translate their local types into the generic
 A2 mechanics. A verification-class `T` adapter must not become a normal dependency of either A2

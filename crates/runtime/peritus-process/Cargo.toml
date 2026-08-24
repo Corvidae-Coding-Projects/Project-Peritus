@@ -1,0 +1,48 @@
+[package]
+name = "peritus-process"
+description = "Authorized owned process, PTY, output, cancellation, and recovery backplane"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["process", "pty", "sandbox", "authorization", "formal-verification"]
+categories = ["development-tools"]
+
+[dependencies]
+peritus-artifact-store = { version = "=0.0.0", path = "../../state/peritus-artifact-store" }
+peritus-budget = { version = "=0.0.0", path = "../../foundation/peritus-budget" }
+peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
+peritus-journal = { version = "=0.0.0", path = "../../state/peritus-journal" }
+peritus-kernel = { version = "=0.0.0", path = "../../foundation/peritus-kernel" }
+peritus-leases = { version = "=0.0.0", path = "../../state/peritus-leases" }
+peritus-policy = { version = "=0.0.0", path = "../../foundation/peritus-policy" }
+peritus-protocol = { version = "=0.0.0", path = "../../foundation/peritus-protocol" }
+peritus-sandbox = { version = "=0.0.0", path = "../peritus-sandbox" }
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+portable-pty.workspace = true
+process-wrap.workspace = true
+sha2.workspace = true
+vstd.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+nix.workspace = true
+
+[dev-dependencies]
+peritus-approval = { version = "=0.0.0", path = "../../state/peritus-approval" }
+peritus-conformance = { version = "=0.0.0", path = "../../app/testing/peritus-conformance" }
+peritus-test-support = { version = "=0.0.0", path = "../../app/testing/peritus-test-support" }
+tempfile.workspace = true
+
+[package.metadata.peritus]
+owner = "C2"
+layer = "runtime"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true
+
+[lints]
+workspace = true

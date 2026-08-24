@@ -2,7 +2,7 @@
 
 `peritus-conformance` is Peritus's runtime-neutral conformance harness. It supplies typed suite,
 case, subject-factory, failure, observation, and report contracts without defining any production
-provider, tool, journal, sandbox, plugin, protocol, or replay interface.
+provider, tool, journal, process, sandbox, plugin, protocol, or replay implementation.
 
 ## Invariants
 
@@ -52,11 +52,18 @@ evidence for those failures must execute conformance in a supervised subprocess.
 
 ## Catalog suites and ownership
 
-The crate exports production journal, replay, and C1 workspace suites plus runnable empty provider,
-tool, plugin, sandbox, and protocol suites. The workspace suite exercises the shared Git worktree,
-atomic patch, authorization, rollback, and restart-reconciliation contract through a fresh real
-subject adapter for each case. An empty suite's `Empty` status is scaffolding, not Gate evidence.
-Later protocol-owning slices add typed cases after their contracts exist.
+The crate exports production journal, replay, C1 workspace, C2 process, and C2/C3 sandbox suites
+plus runnable empty provider, tool, plugin, and protocol suites. The process suite exercises
+literal structured invocation, pipe and PTY observations, bounded output, cancellation, deadlines,
+tree ownership, terminal uniqueness, restart classification, and authorization no-effect. The
+sandbox suite exercises default denial across every domain, deny dominance, exact environment,
+secret, network, descendant, terminal, and resource policy, unsupported admission, cancellation,
+observation binding, and deterministic inert preparation. Every case receives a fresh subject.
+
+Production crates implement only the subject traits and translate these runtime-neutral fixtures
+and observations into their own domain values. A2 neither constructs privileged runtime permits
+nor depends on a process or sandbox implementation. An empty suite's `Empty` status is scaffolding,
+not Gate evidence. Later protocol-owning slices add typed cases after their contracts exist.
 
 This crate deliberately does not define model messages, streaming normalization, tool schemas,
 capabilities, authorization, retries, idempotency, journal records, or production error taxonomies.

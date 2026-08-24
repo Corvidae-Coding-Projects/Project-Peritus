@@ -78,13 +78,27 @@ macro-synthesized compilation inputs. External executable preprocessing is separ
 fail-closed. Full locked Cargo metadata is searched for every dependency build-script and
 procedural-macro target; only these exact package identities are admitted:
 
-- build scripts: `curve25519-dalek@5.0.0`, `libc@0.2.189`, `proc-macro2@1.0.107`,
-  `quote@1.0.47`, `serde@1.0.229`, `serde_core@1.0.229`, `serde_json@1.0.149`, `zmij@1.0.23`,
-  and the pinned Verus revision's `verus_prettyplease@0.0.0-2026-08-09-0044`,
-  `verus_syn@0.0.0-2026-08-02-0125`, and `vstd@0.0.0-2026-08-09-0044`;
-- procedural macros: `curve25519-dalek-derive@0.1.1`, `serde_derive@1.0.229`, and the pinned
-  Verus revision's `verus_builtin_macros@0.0.0-2026-08-09-0044` and
+- build scripts: `anyhow@1.0.104`, `curve25519-dalek@5.0.0`, `getrandom@0.4.3`,
+  `libc@0.2.189`, `libsqlite3-sys@0.38.2`, `nix@0.28.0`, `nix@0.31.3`,
+  `proc-macro2@1.0.107`, `quote@1.0.47`, `rustix@1.1.4`, `serde@1.0.229`,
+  `serde_core@1.0.229`, `serde_json@1.0.149`, `thiserror@1.0.69`, `winapi@0.3.9`,
+  `winapi-i686-pc-windows-gnu@0.4.0`, `winapi-x86_64-pc-windows-gnu@0.4.0`,
+  `winreg@0.10.1`, `zmij@1.0.23`, and the pinned Verus revision's
+  `verus_prettyplease@0.0.0-2026-08-09-0044`, `verus_syn@0.0.0-2026-08-02-0125`, and
+  `vstd@0.0.0-2026-08-09-0044`;
+- procedural macros: `curve25519-dalek-derive@0.1.1`, `serde_derive@1.0.229`,
+  `thiserror-impl@1.0.69`, `windows-implement@0.60.2`, `windows-interface@0.59.3`, and the
+  pinned Verus revision's `verus_builtin_macros@0.0.0-2026-08-09-0044` and
   `verus_state_machines_macros@0.0.0-2026-08-02-0125`.
+
+For C2, the reviewed `nix` build scripts use `cfg_aliases` to emit target-derived configuration;
+the `winapi`, GNU architecture support, and `winreg` build scripts emit target and feature link
+configuration. The reviewed `anyhow` and `thiserror` scripts compile packaged capability probes
+with Cargo's selected compiler into `OUT_DIR`, inspect the result, and remove their temporary
+probe artifacts; `anyhow` also queries the compiler version. The `thiserror-impl`,
+`windows-implement`, and `windows-interface` procedural macros transform caller token streams and
+perform no independent network, repository, or child-process access. Their complete executable
+identities and dependency closures remain exact-lockfile inputs to Gate A.
 
 For B1, the reviewed `curve25519-dalek` build script reads exactly
 `CARGO_CFG_TARGET_FEATURE`, `CARGO_CFG_TARGET_ARCH`, `CARGO_CFG_CURVE25519_DALEK_BITS`,

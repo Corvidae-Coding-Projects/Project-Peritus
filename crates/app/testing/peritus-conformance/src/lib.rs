@@ -18,14 +18,16 @@ mod failure;
 mod identity;
 mod journal;
 mod outcome;
+mod process;
 mod replay;
 mod report;
 mod runner;
+mod sandbox;
 mod text;
 mod unwind;
 mod workspace;
 
-pub use catalog::{plugin_suite, protocol_suite, provider_suite, sandbox_suite, tool_suite};
+pub use catalog::{plugin_suite, protocol_suite, provider_suite, tool_suite};
 pub use contracts::{
     BoxedCase, ConformanceCase, ConformanceFuture, ConformanceSuite, StaticSuite, SubjectFactory,
 };
@@ -42,11 +44,25 @@ pub use journal::{
     JournalConformanceError, JournalConformanceSubject, JournalSnapshot, journal_suite,
 };
 pub use outcome::{CaseResult, Observation, ObservationValue};
+pub use process::{
+    ProcessAuthorizationDrift, ProcessConformanceError, ProcessConformanceFixture,
+    ProcessConformanceObservation, ProcessConformanceSubject, ProcessDisposition,
+    ProcessEffectObservation, ProcessEnvironmentBinding, ProcessInvocationObservation,
+    ProcessIoMode, ProcessOutputObservation, ProcessOutputStream, ProcessOwnershipObservation,
+    ProcessRecoveryDisposition, ProcessRecoveryProbe, ProcessScenario,
+    ProcessStreamOffsetObservation, ProcessTrigger, process_suite,
+};
 pub use replay::{
     ReplayConformanceError, ReplayConformanceSubject, ReplayObservation, replay_suite,
 };
 pub use report::{CaseReport, CaseStatus, SuiteReport, SuiteStatus, SuiteSummary};
 pub use runner::ConformanceRunner;
+pub use sandbox::{
+    SandboxConformanceError, SandboxConformanceFixture, SandboxConformanceObservation,
+    SandboxConformanceSubject, SandboxDecision, SandboxDomain, SandboxFeature,
+    SandboxLifecyclePhase, SandboxPreparationFixture, SandboxPreparationObservation,
+    SandboxScenario, sandbox_suite,
+};
 pub use text::{ReportText, ReportTextError};
 pub use workspace::{
     WorkspaceConformanceError, WorkspaceConformanceSubject, WorkspaceMutationDisposition,

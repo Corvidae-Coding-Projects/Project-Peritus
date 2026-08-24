@@ -1,0 +1,31 @@
+[package]
+name = "peritus-sandbox"
+description = "Checked platform-neutral sandbox contracts and executable reference semantics"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["sandbox", "process", "capabilities", "formal-verification"]
+categories = ["development-tools"]
+
+[package.metadata.peritus]
+owner = "C2"
+layer = "runtime"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true
+
+[dependencies]
+peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+vstd.workspace = true
+
+[dev-dependencies]
+peritus-conformance = { version = "=0.0.0", path = "../../app/testing/peritus-conformance" }
+
+[lints]
+workspace = true

@@ -639,3 +639,89 @@ evidence = [
   { kind = "refinement-test", source_file = "crates/runtime/peritus-workspace/src/reconcile_tests.rs", symbol = "peritus_workspace::reconcile_tests::post_fence_classification_never_guesses_safety", command = "cargo test --package peritus-workspace --all-targets --all-features --locked" },
   { kind = "refinement-test", source_file = "crates/runtime/peritus-workspace/tests/production_conformance.rs", symbol = "peritus_workspace::tests::production_conformance::production_workspace_passes_a2_git_patch_snapshot_and_recovery_suite", command = "cargo test --package peritus-workspace --all-targets --all-features --locked" },
 ]
+
+[[entries]]
+id = "INV-013"
+kind = "invariant"
+statement = "Every C2 execution is durably owned by one exact process identity and accepts at most one terminal result only after the owned process tree is quiescent and all support tasks are joined."
+owning_crate = "peritus-process"
+source_file = "crates/runtime/peritus-process/src/refinement.rs"
+symbol = "peritus_process::refinement::terminal_result_implies_unique_owned_completion"
+status = "in-progress"
+dependencies = ["OBL-0129"]
+live_issue = "#11"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/runtime/peritus-process/src/refinement.rs", symbol = "peritus_process::refinement::terminal_result_implies_unique_owned_completion", command = "cargo verus verify --package peritus-process --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/runtime/peritus-process/tests/process_integration.rs", symbol = "peritus_process::tests::process_integration::cancellation_publishes_one_terminal_owned_tree_result", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/runtime/peritus-process/tests/process_conformance.rs", symbol = "peritus_process::tests::process_conformance::production_process_passes_complete_a2_suite_with_fresh_case_subjects", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0126"
+kind = "refinement"
+statement = "The C2 target gateway alone constructs its private one-use execution permit after exact current committed B0 dispatch, B1 capability use, active-effect budget begin, conditional lease use, C0 receipts, authority time, revision, owner lineage, sandbox, backend, preparation, and execution-plan facts all match; every rejection has no target effect."
+owning_crate = "peritus-process"
+source_file = "crates/runtime/peritus-process/src/refinement.rs"
+symbol = "peritus_process::refinement::permit_implies_complete_execution_authority"
+status = "in-progress"
+dependencies = ["OBL-0103", "OBL-0108", "OBL-0114", "OBL-0118", "OBL-0119"]
+live_issue = "#11"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/runtime/peritus-process/src/refinement.rs", symbol = "peritus_process::refinement::permit_implies_complete_execution_authority", command = "cargo verus verify --package peritus-process --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/runtime/peritus-process/tests/process_integration.rs", symbol = "peritus_process::tests::process_integration::exact_committed_authority_launches_separate_bounded_pipe_streams", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
+  { kind = "property-test", source_file = "crates/runtime/peritus-process/tests/process_conformance.rs", symbol = "peritus_process::tests::process_conformance::production_process_passes_complete_a2_suite_with_fresh_case_subjects", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0127"
+kind = "refinement"
+statement = "C2 holder-quiescence evidence implies exact fenced-claim and prior-holder correlation, a complete durable-registry inspection, zero matching live or unresolved processes, complete owned-tree cleanup, and joined support tasks."
+owning_crate = "peritus-process"
+source_file = "crates/runtime/peritus-process/src/refinement.rs"
+symbol = "peritus_process::refinement::holder_evidence_implies_exact_complete_quiescence"
+status = "in-progress"
+dependencies = ["OBL-0107", "OBL-0119"]
+live_issue = "#11"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/runtime/peritus-process/src/refinement.rs", symbol = "peritus_process::refinement::holder_evidence_implies_exact_complete_quiescence", command = "cargo verus verify --package peritus-process --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/runtime/peritus-process/tests/process_integration.rs", symbol = "peritus_process::tests::process_integration::holder_quiescence_requires_exact_terminal_correlated_manifests", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0128"
+kind = "refinement"
+statement = "Every checked C2 sandbox plan admits every requested capability domain within its declared contract without broadening, and backend admission succeeds only when the selected profile and descriptor cover every enforcement feature required by that complete plan."
+owning_crate = "peritus-sandbox"
+source_file = "crates/runtime/peritus-sandbox/src/refinement.rs"
+symbol = "peritus_sandbox::refinement::checked_plan_is_no_broader_than_contract"
+status = "in-progress"
+dependencies = []
+live_issue = "#11"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/runtime/peritus-sandbox/src/refinement.rs", symbol = "peritus_sandbox::refinement::checked_plan_is_no_broader_than_contract", command = "cargo verus verify --package peritus-sandbox --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/runtime/peritus-sandbox/src/refinement.rs", symbol = "peritus_sandbox::refinement::admitted_backend_covers_required_features", command = "cargo verus verify --package peritus-sandbox --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/runtime/peritus-sandbox/tests/backend_reference.rs", symbol = "peritus_sandbox::tests::backend_reference::admission_requires_default_filesystem_and_descendant_denial_controls", command = "cargo test --package peritus-sandbox --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/runtime/peritus-sandbox/tests/contracts.rs", symbol = "peritus_sandbox::tests::contracts::terminal_bounds_validate_and_reject_each_one_over_requirement", command = "cargo test --package peritus-sandbox --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/runtime/peritus-sandbox/tests/production_conformance.rs", symbol = "peritus_sandbox::tests::production_conformance::production_reference_adapter_passes_the_complete_a2_sandbox_suite", command = "cargo test --package peritus-sandbox --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0129"
+kind = "refinement"
+statement = "C2 lifecycle and output accounting accepts one first-trigger terminal classification, one terminal result, monotonic bounded observations, exact observed-retained-dropped byte conservation, complete owned-tree cleanup, and joined support tasks."
+owning_crate = "peritus-process"
+source_file = "crates/runtime/peritus-process/src/refinement.rs"
+symbol = "peritus_process::refinement::terminal_result_implies_unique_owned_completion"
+status = "in-progress"
+dependencies = []
+live_issue = "#11"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/runtime/peritus-process/src/refinement.rs", symbol = "peritus_process::refinement::terminal_result_implies_unique_owned_completion", command = "cargo verus verify --package peritus-process --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/runtime/peritus-process/tests/process_integration.rs", symbol = "peritus_process::tests::process_integration::cancellation_publishes_one_terminal_owned_tree_result", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
+  { kind = "property-test", source_file = "crates/runtime/peritus-process/tests/process_conformance.rs", symbol = "peritus_process::tests::process_conformance::production_process_passes_complete_a2_suite_with_fresh_case_subjects", command = "cargo test --package peritus-process --all-targets --all-features --locked" },
+]

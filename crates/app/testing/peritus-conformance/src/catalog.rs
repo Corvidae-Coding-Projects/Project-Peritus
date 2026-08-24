@@ -33,14 +33,6 @@ pub fn plugin_suite<S>() -> StaticSuite<S> {
     empty("peritus.plugin", "Plugin conformance cases supplied after plugin contracts exist")
 }
 
-/// Returns the runnable empty sandbox conformance suite.
-///
-/// C2 and C3 own the future abstract and platform sandbox cases.
-#[must_use]
-pub fn sandbox_suite<S>() -> StaticSuite<S> {
-    empty("peritus.sandbox", "Sandbox conformance cases supplied after sandbox contracts exist")
-}
-
 /// Returns the runnable empty protocol conformance suite.
 ///
 /// B3 owns the future domain protocol and codec cases.

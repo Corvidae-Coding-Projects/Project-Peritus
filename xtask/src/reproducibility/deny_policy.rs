@@ -37,6 +37,9 @@ external-default-features = "allow"
 allow = []
 deny = []
 skip = [
+    { crate = "bitflags@1.3.2", reason = "Pinned portable-pty 0.9 requires bitflags 1 for its Windows backend while current platform and state dependencies use bitflags 2; both are locked implementation-only types." },
+    { crate = "cfg_aliases@0.1.1", reason = "Pinned portable-pty 0.9 requires nix 0.28 and its cfg_aliases 0.1 build helper while the process owner uses current nix 0.31 and cfg_aliases 0.2; both helpers are locked and build-time-only." },
+    { crate = "nix@0.28.0", reason = "Pinned portable-pty 0.9 owns its private nix 0.28 PTY implementation while process-wrap and Peritus tree control share nix 0.31; neither version crosses the public C2 API." },
     { crate = "syn@2.0.119", reason = "Pinned vstd procedural macros require syn 2 while pinned Serde derive requires syn 3; both are locked, build-time-only parser dependencies." },
 ]
 skip-tree = []
@@ -71,7 +74,7 @@ fn validate_contents(
         diagnostics.push(Diagnostic::at(
             path,
             "cargo-deny policy differs from the exact reviewed foundation contract",
-            "restore strict advisory/license/source/bans policy and only the version-specific syn 2 exception required by pinned vstd",
+            "restore strict advisory/license/source/bans policy and only the exact reviewed version-specific exceptions required by pinned dependencies",
         ));
     }
     Ok(())
@@ -96,6 +99,7 @@ mod tests {
         for altered in [
             REVIEWED_POLICY
                 .replace("multiple-versions = \"deny\"", "multiple-versions = \"allow\""),
+            REVIEWED_POLICY.replace("nix@0.28.0", "nix"),
             REVIEWED_POLICY.replace("syn@2.0.119", "syn"),
             REVIEWED_POLICY.replace("skip-tree = []", "skip-tree = [\"vstd\"]"),
         ] {
