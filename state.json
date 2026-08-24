@@ -1,6 +1,6 @@
 {
   "next_display_id": 12,
-  "next_comment_id": 183,
+  "next_comment_id": 184,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "2b288a30-b5b1-4452-81bd-20950bebd2d3": 9,
@@ -1453,7 +1453,7 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-08-23T21:27:54.649913615Z",
-      "updated_at": "2026-08-24T00:07:55.146638719Z",
+      "updated_at": "2026-08-24T00:10:32.380934578Z",
       "labels": [
         "feature"
       ],
@@ -1484,6 +1484,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAgKq2+1iXw9SNEwTp6OkhLs/H6XOAI+PnkoWYn4uHEY6AKzpcCYNyWBhN3ELceOJ0fNY0LezuV3eUC+ZYr1t8Ag=="
+        },
+        "1403c0ea-98bb-4d0e-a68b-2ffc18b4c02f": {
+          "display_id": 183,
+          "author": "6ME5",
+          "content": "result: PR #9 merged to main as 7003a43664164e55a29f9b14f0239409594e4793. Signed source commit 33d1a5abf2c74e61cd7cccb7f0869a8c3a8af646 is an ancestor of origin/main. Full local Gate A passed; hosted jobs executed zero steps because of the known runner-account restriction. The temporary user-only pull-request bypass was removed immediately; the active ruleset again has zero bypass actors, merge-only PR policy, and all 22 required statuses.",
+          "created_at": "2026-08-24T00:10:32.378177525Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAgJFSgJaHRecWPpXu9t7tudgkZzBSIfaFScQ1hIMomERMRrOjBqUhYCnCCPoN79rdNlaLSgOKFzr3Gpj3aTtwAg=="
         },
         "231fa3bc-dd6f-4ab6-a94d-5caddfd93b9c": {
           "display_id": 180,
@@ -1855,8 +1864,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-24T00:07:55.146638719Z",
+    "timestamp": "2026-08-24T00:10:32.380934578Z",
     "agent_id": "6ME5",
-    "agent_seq": 243
+    "agent_seq": 244
   }
 }
