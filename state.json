@@ -1,6 +1,6 @@
 {
   "next_display_id": 15,
-  "next_comment_id": 223,
+  "next_comment_id": 224,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "19b7b53a-b2fb-41c1-835d-ffd6ce605c08": 14,
@@ -79,7 +79,7 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-08-24T18:11:58.216818603Z",
-      "updated_at": "2026-08-24T20:10:41.494439900Z",
+      "updated_at": "2026-08-24T20:24:20.334787234Z",
       "labels": [
         "feature"
       ],
@@ -218,6 +218,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAq7w1BzXWhLPLVQciRbqX1BpYVLbdigb05UehU4CROse4ppuPj9BgfFiuF4AQ6qUzdLP7s7q45WnD+aGYEQE7AQ=="
+        },
+        "fbd5fc47-8c85-4e34-b6eb-c28df7d029f9": {
+          "display_id": 223,
+          "author": "6ME5",
+          "content": "Added and validated the provider-neutral server cancellation hook: ModelProvider defaults to an explicit Unsupported no-effect outcome, while background-capable adapters can implement confirmed cancellation without leaking provider transport into the public API. Provider-core tests, strict Clippy, rustdoc warnings, and diff check pass.",
+          "created_at": "2026-08-24T20:24:20.332029889Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAup+tFgpxH1xoiwFJGFCY111qW3+EdmAj4maidJj1ocnCW/SirMcdli39VkH5GFlvMxbIuzXmc9J7/pBH/f2UDQ=="
         }
       }
     },
@@ -2268,8 +2277,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-24T20:10:41.494439900Z",
+    "timestamp": "2026-08-24T20:24:20.334787234Z",
     "agent_id": "6ME5",
-    "agent_seq": 299
+    "agent_seq": 300
   }
 }
