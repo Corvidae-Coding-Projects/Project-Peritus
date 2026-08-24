@@ -89,10 +89,7 @@ pub(crate) fn report_helper_failure(
     manifest: Sha256Digest,
     preparation: Sha256Digest,
 ) -> Result<(), MacosError> {
-    crate::runner::native::write_exec_status(
-        descriptor,
-        failure_record(manifest, preparation).as_bytes(),
-    )
+    crate::runner::write_exec_status(descriptor, failure_record(manifest, preparation).as_bytes())
 }
 
 #[cfg(unix)]

@@ -172,7 +172,7 @@ fn sample_error() -> MacosError {
 mod native {
     use std::{
         ffi::{c_int, c_void},
-        mem::MaybeUninit,
+        mem::{MaybeUninit, size_of_val},
     };
 
     use peritus_process::ProcessTreeIdentity;
@@ -205,7 +205,7 @@ mod native {
         let group = tree.process_group().ok_or_else(sample_error)?;
         let mut pids = vec![0_i32; MAX_GROUP_PROCESSES];
         let buffer_bytes =
-            c_int::try_from(std::mem::size_of_val(pids.as_slice())).map_err(|_| sample_error())?;
+            c_int::try_from(size_of_val(pids.as_slice())).map_err(|_| sample_error())?;
         // SAFETY: `pids` is writable for `buffer_bytes`; the selector requests only process IDs
         // belonging to the exact C2-owned process group and transfers no ownership.
         let count = unsafe {
