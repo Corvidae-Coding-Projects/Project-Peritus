@@ -1,8 +1,9 @@
 {
-  "next_display_id": 17,
+  "next_display_id": 18,
   "next_comment_id": 286,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
+    "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
     "19b7b53a-b2fb-41c1-835d-ffd6ce605c08": 14,
     "2b288a30-b5b1-4452-81bd-20950bebd2d3": 9,
     "338b10ed-ebc5-4da2-a725-fa46ca662fda": 12,
@@ -67,6 +68,17 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA0i6WkXNwDIJADSIg7tyklrdxZKOPc9BWrFyupQ4+cqi9Jf5SD+lK6xoINwqKR1k7sV1n1ORDAVHToVQw9wsxCw=="
         }
       }
+    },
+    "1384f136-8a99-4b49-838f-841a017d1ff4": {
+      "uuid": "1384f136-8a99-4b49-838f-841a017d1ff4",
+      "display_id": 17,
+      "title": "Implement complete production D1 Gate Engine and C7 Trace/Telemetry",
+      "description": "Deliver the complete D1 peritus-gates and C7 peritus-trace/peritus-telemetry slices, including durable C0/B3 integration, A2 conformance, formal verification, documentation, signed PR/merge, and green PR/fresh-main hosted matrices.",
+      "status": "open",
+      "priority": "medium",
+      "created_by": "6ME5",
+      "created_at": "2026-08-25T06:31:12.546192685Z",
+      "updated_at": "2026-08-25T06:31:12.546192685Z"
     },
     "19b7b53a-b2fb-41c1-835d-ffd6ce605c08": {
       "uuid": "19b7b53a-b2fb-41c1-835d-ffd6ce605c08",
@@ -2865,8 +2877,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-25T06:22:17.804594422Z",
+    "timestamp": "2026-08-25T06:31:12.546192685Z",
     "agent_id": "6ME5",
-    "agent_seq": 376
+    "agent_seq": 377
   }
 }
