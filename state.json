@@ -1,6 +1,6 @@
 {
   "next_display_id": 20,
-  "next_comment_id": 337,
+  "next_comment_id": 338,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -1669,7 +1669,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-25T18:46:53.361245432Z",
-      "updated_at": "2026-08-25T22:10:58.882058448Z",
+      "updated_at": "2026-08-25T22:11:37.292175270Z",
       "labels": [
         "D3",
         "E0",
@@ -1693,6 +1693,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7i2WVA8rodsvVN7yIKx4gUOHpm2Ywh5cAyQ67GiAO/O58dYKFY65b2ByF9HXQaYTe8D6Cw5sIb26AOxaicXJBA=="
+        },
+        "187560d2-9275-4dae-a428-3d390664c21a": {
+          "display_id": 337,
+          "author": "6ME5",
+          "content": "fd0cf01 feat(e0): add durable AcTor orchestration (#19). Signed ED25519 commit. Verification: serialized CARGO_BUILD_JOBS=1 Gate A passed completely (fmt, workspace build/tests/doctests/Clippy/rustdoc, policy/ordinary API/dependency/toolchain checks, workspace and strict no-cheating Verus verify/build). E0 reports 10 verified/0 errors; peritus-budget proof repair reports 447/0. Focused D3/E0 package, protocol, migration, A2 conformance, exact fixture, durability, recovery, cancellation, and acceptance-path suites are green.",
+          "created_at": "2026-08-25T22:11:37.289245996Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAxktNNkejEYsCHhXw/qBLnK9Lf04TaM4e7qtAegKdw0U/50B60ZjDWfSHc5p1cj8rWS4lQvJStWIkr8//QMU4BQ=="
         },
         "1bede736-dff7-4ff2-b344-bf9960c68169": {
           "display_id": 329,
@@ -3384,8 +3393,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-25T22:10:58.882058448Z",
+    "timestamp": "2026-08-25T22:11:37.292175270Z",
     "agent_id": "6ME5",
-    "agent_seq": 443
+    "agent_seq": 444
   }
 }
