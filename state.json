@@ -1,6 +1,6 @@
 {
   "next_display_id": 20,
-  "next_comment_id": 323,
+  "next_comment_id": 324,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -1669,7 +1669,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-25T18:46:53.361245432Z",
-      "updated_at": "2026-08-25T19:09:57.460775511Z",
+      "updated_at": "2026-08-25T19:54:38.995868689Z",
       "labels": [
         "D3",
         "E0",
@@ -1702,6 +1702,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAaowRFoprTJrJ/Ki6udPlGavEuK0BRDGQmlYeDBMm/KaZJqFZCMmtcKI0cokPL59Jlv2ARxE7vjOgs1qLI3V7Bw=="
+        },
+        "bb7d1bdf-e714-47a0-8ebf-b4e631c9bfed": {
+          "display_id": 323,
+          "author": "6ME5",
+          "content": "D3 scheduler and collaboration domain, wire families 70-75, C0 replay, projections, immutable fixtures, tests, Clippy, rustdoc, and strict Verus are green. Architecture/source/reproducibility policies pass; workers are expanding seven identity macro definitions and removing three unsupported test/fixture macros identified by the ordinary-Rust formal API gate before the signed D3 checkpoint.",
+          "created_at": "2026-08-25T19:54:38.992858228Z",
+          "kind": "progress",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAo9ld7T7lGRA+BKZiRMByPQgoq2X6ZC16lAEwEbw0fIasK2vW6d+Sr80gBmCJikfdlp1MyO/ejLKuUigfpwarDA=="
         },
         "bcf88121-5c7e-47da-9cc0-2b99403f7d54": {
           "display_id": 322,
@@ -3258,8 +3267,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-25T19:09:57.460775511Z",
+    "timestamp": "2026-08-25T19:54:38.995868689Z",
     "agent_id": "6ME5",
-    "agent_seq": 429
+    "agent_seq": 430
   }
 }
