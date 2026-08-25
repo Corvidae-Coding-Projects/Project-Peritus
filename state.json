@@ -1,6 +1,6 @@
 {
   "next_display_id": 16,
-  "next_comment_id": 274,
+  "next_comment_id": 275,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "19b7b53a-b2fb-41c1-835d-ffd6ce605c08": 14,
@@ -1334,7 +1334,7 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-08-25T01:14:49.150248866Z",
-      "updated_at": "2026-08-25T03:04:07.349043504Z",
+      "updated_at": "2026-08-25T03:04:12.285080786Z",
       "labels": [
         "feature"
       ],
@@ -1401,6 +1401,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA5Qecd+h6fFOMrrc1DC6xoPaYzPiFt76GAAwPOo+n2UF5B8q1FXqCTa4A6cDGlJXEgLXTgra2IYLr4LTnifVPDw=="
+        },
+        "9b11d255-7e83-4b21-8b67-42296c8a2cbc": {
+          "display_id": 274,
+          "author": "6ME5",
+          "content": "[action] Confirmed fresh-main Gate A and Foundation green for signed merge 68d24e7; closing C6 tracking.",
+          "created_at": "2026-08-25T03:04:12.282645579Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8HiCYLuC6oWYKUr99nE/6Za7GQX3XYIVQvU+19EK1lkyAQjyJuZXJSxSYMsZavtSG2BKXp6Edncz/Sugci7JDQ=="
         },
         "a113908b-1b41-4c60-b7c6-281b36fb7e33": {
           "display_id": 267,
@@ -2744,8 +2753,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-25T03:04:07.349043504Z",
+    "timestamp": "2026-08-25T03:04:12.285080786Z",
     "agent_id": "6ME5",
-    "agent_seq": 357
+    "agent_seq": 358
   }
 }
