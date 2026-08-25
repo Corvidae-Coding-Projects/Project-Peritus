@@ -30,8 +30,8 @@ pub(super) fn open(
     let stream =
         TcpStream::connect_timeout(&SocketAddr::new(selected.address(), request.port()), timeout)
             .map_err(|_| connect_error("admitted upstream connection failed"))?;
-    stream.set_read_timeout(Some(Duration::from_millis(100))).map_err(|_| io_error())?;
-    stream.set_write_timeout(Some(Duration::from_millis(100))).map_err(|_| io_error())?;
+    stream.set_read_timeout(Some(timeout)).map_err(|_| io_error())?;
+    stream.set_write_timeout(Some(timeout)).map_err(|_| io_error())?;
     Ok((stream, selected))
 }
 

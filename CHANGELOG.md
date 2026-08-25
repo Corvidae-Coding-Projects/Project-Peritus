@@ -186,6 +186,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Implement A2 test/conformance foundation (#4)
 
 ### Fixed
+- Honor the checked managed-network connection budget for upstream socket reads and writes instead
+  of imposing an undocumented 100 ms cutoff, with a delayed redirect-response regression test
 - Canonicalize account-runtime fake executable working directories so their isolation assertions
   remain valid across macOS `/var` and `/private/var` path aliases
 - Make explicit fake-HTTP release points wait briefly for an already-issued peer close instead of

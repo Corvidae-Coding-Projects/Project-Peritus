@@ -64,6 +64,9 @@ fn managed_proxy_follows_relative_redirect_and_returns_only_final_response() {
             .unwrap();
         let (mut second, _) = upstream.accept().unwrap();
         assert!(read_head(&mut second).contains("GET /final HTTP/1.1"));
+        // The checked connection budget, rather than a hidden sub-budget, governs
+        // how long the proxy may wait for an admitted upstream response.
+        thread::sleep(Duration::from_millis(150));
         second
             .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nOK")
             .unwrap();
