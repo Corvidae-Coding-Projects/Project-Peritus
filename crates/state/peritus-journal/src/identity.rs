@@ -110,6 +110,10 @@ pub enum AggregateKind {
     CredentialRegistry,
     /// D0 durable inner-turn state and observations.
     Agent,
+    /// D1 durable deterministic gate execution state and observations.
+    Gate,
+    /// C7 durable causal trace observations.
+    Trace,
 }
 
 impl AggregateKind {
@@ -121,6 +125,8 @@ impl AggregateKind {
             Self::Approval => 4,
             Self::CredentialRegistry => 5,
             Self::Agent => 6,
+            Self::Gate => 7,
+            Self::Trace => 8,
         }
     }
 
@@ -132,6 +138,8 @@ impl AggregateKind {
             Self::Approval => 4,
             Self::CredentialRegistry => 5,
             Self::Agent => 6,
+            Self::Gate => 7,
+            Self::Trace => 8,
         }
     }
 
@@ -143,6 +151,8 @@ impl AggregateKind {
             4 => Some(Self::Approval),
             5 => Some(Self::CredentialRegistry),
             6 => Some(Self::Agent),
+            7 => Some(Self::Gate),
+            8 => Some(Self::Trace),
             _ => None,
         }
     }

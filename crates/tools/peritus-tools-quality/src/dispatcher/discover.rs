@@ -188,6 +188,7 @@ const fn parser_name(value: OutputParser) -> &'static str {
         OutputParser::None => "none",
         OutputParser::Utf8 { .. } => "utf8",
         OutputParser::Json { .. } => "json",
+        OutputParser::JsonSuccess { .. } => "json-success",
     }
 }
 

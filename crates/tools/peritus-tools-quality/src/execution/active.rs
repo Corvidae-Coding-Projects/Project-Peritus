@@ -159,11 +159,14 @@ impl QualityExecution {
             completeness,
             self.parser_sequence_complete && !self.parser_overflow,
         );
+        let predicate_satisfied =
+            parsed.as_ref().is_ok_and(parser::ParsedOutput::predicate_satisfied);
         let terminal = terminal::build(
             &self.prepared,
             &self.definition,
             &result,
             parsed.is_ok(),
+            predicate_satisfied,
             &retained,
             self.started_at,
             observed_at,

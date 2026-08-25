@@ -25,6 +25,12 @@ repair, and a projection value is not a durable transition receipt. Artifact obj
 only when their bytes and metadata agree; only finalized active artifacts may be referenced.
 Evidence is immutable history, but its currentness is a separate revision and invalidation decision.
 
+The shared journal schema is currently version 3. Its closed aggregate-kind registry includes the
+permanent D0 `Agent`, D1 `Gate`, and C7 `Trace` kinds in addition to the foundational kernel and
+B1 state kinds. Upgrades from version 1 preserve existing event and head rows exactly while
+version 2 admits `Agent` and version 3 admits `Gate` and `Trace`; both upgrades require a verified
+whole-file backup before table replacement.
+
 For the intended composed deployment, configure `ArtifactStore` with
 `StoreConfig::with_database_path` and pass that same SQLite path to `SqliteJournal`,
 `ProjectionStore`, `MigrationEngine`, and `EvidenceStore`. This shared file is what lets a journal

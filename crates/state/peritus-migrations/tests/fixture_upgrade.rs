@@ -92,7 +92,7 @@ fn unversioned_fixture_upgrades_without_damaging_journal_replay_contract() {
 }
 
 #[test]
-fn v1_journal_rows_migrate_byte_exactly_and_agent_records_append() {
+fn v1_journal_rows_migrate_byte_exactly_and_new_aggregate_records_append() {
     let temp = tempfile::tempdir().expect("tempdir");
     let database = temp.path().join("journal-v1.sqlite3");
     let connection = rusqlite::Connection::open(&database).expect("v1 connection");
@@ -106,10 +106,10 @@ fn v1_journal_rows_migrate_byte_exactly_and_agent_records_append() {
     let mut engine =
         MigrationEngine::open(config(&temp, database.clone()), MigrationRegistry::current())
             .expect("migration engine");
-    let plan = engine.preflight(version(2)).expect("v2 preflight").into_plan();
+    let plan = engine.preflight(version(3)).expect("v3 preflight").into_plan();
     assert_eq!(plan.current_version(), 1);
     assert!(plan.backup_required());
-    let applied = engine.apply(&plan, operation(10)).expect("v2 apply");
+    let applied = engine.apply(&plan, operation(10)).expect("v3 apply");
     assert!(applied.backup_path().expect("required backup").is_file());
     drop(engine);
 
@@ -123,7 +123,7 @@ fn v1_journal_rows_migrate_byte_exactly_and_agent_records_append() {
                 0
             ))
             .expect("schema version"),
-        2
+        3
     );
     assert!(
         !connection
@@ -139,7 +139,7 @@ fn v1_journal_rows_migrate_byte_exactly_and_agent_records_append() {
         StoreId::new([1; 16]).expect("store identity"),
         SqliteJournalOptions::default(),
     )
-    .expect("schema-v2 journal");
+    .expect("schema-v3 journal");
     assert_eq!(journal.integrity_scan().expect("pre-D0 integrity").event_count(), 1);
 
     let aggregate = AggregateKey::new(
@@ -172,7 +172,48 @@ fn v1_journal_rows_migrate_byte_exactly_and_agent_records_append() {
     .plan()
     .expect("agent append plan");
     journal.append(append).expect("agent append");
-    assert_eq!(journal.integrity_scan().expect("post-D0 integrity").event_count(), 2);
+    append_new_aggregate(&mut journal, AggregateKind::Gate, 30, 31, 32, 51);
+    append_new_aggregate(&mut journal, AggregateKind::Trace, 40, 41, 42, 60);
+    assert_eq!(journal.integrity_scan().expect("post-upgrade integrity").event_count(), 4);
+}
+
+fn append_new_aggregate(
+    journal: &mut SqliteJournal,
+    kind: AggregateKind,
+    aggregate_identity: u8,
+    event_identity: u8,
+    command_identity: u8,
+    family: u16,
+) {
+    let aggregate = AggregateKey::new(
+        kind,
+        AggregateId::new([aggregate_identity; 16]).expect("aggregate identity"),
+    );
+    let draft = EventDraft::new(
+        aggregate,
+        EventSequence::first(),
+        EventId::new([event_identity; 16]).expect("event identity"),
+        None,
+        ExactFrame::new(frame(family, &[aggregate_identity])).expect("domain frame"),
+        Sha256Digest::new([event_identity; 32]),
+        Vec::new(),
+    )
+    .expect("domain event draft");
+    let plan = AppendRequest::new(
+        StoreId::new([1; 16]).expect("store identity"),
+        CommandId::new([command_identity; 16]).expect("command identity"),
+        Sha256Digest::new([command_identity; 32]),
+        vec![HeadExpectation::Absent(aggregate)],
+        vec![draft],
+        Vec::new(),
+        Vec::new(),
+        None,
+        None,
+        Vec::new(),
+    )
+    .plan()
+    .expect("domain append plan");
+    journal.append(plan).expect("domain append");
 }
 
 #[derive(Debug, Eq, PartialEq)]

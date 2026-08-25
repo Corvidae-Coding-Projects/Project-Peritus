@@ -171,6 +171,13 @@ layer = "runtime"
 verification_class = "H"
 
 [[packages]]
+name = "peritus-gates"
+path = "crates/orchestration/peritus-gates"
+owner = "D1"
+layer = "orchestration"
+verification_class = "H"
+
+[[packages]]
 name = "peritus-kernel"
 path = "crates/foundation/peritus-kernel"
 owner = "B0"
@@ -374,6 +381,13 @@ layer = "testing"
 verification_class = "C"
 
 [[packages]]
+name = "peritus-telemetry"
+path = "crates/observe/peritus-telemetry"
+owner = "C7"
+layer = "observe"
+verification_class = "H"
+
+[[packages]]
 name = "peritus-tool-protocol"
 path = "crates/tools/peritus-tool-protocol"
 owner = "C4"
@@ -413,6 +427,13 @@ name = "peritus-tools-shell"
 path = "crates/tools/peritus-tools-shell"
 owner = "C4"
 layer = "tools"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-trace"
+path = "crates/observe/peritus-trace"
+owner = "C7"
+layer = "observe"
 verification_class = "H"
 
 [[packages]]

@@ -12,8 +12,8 @@ use peritus_tool_router::{AuthorizedInvocation, DispatchFailure, ToolDispatcher,
 use super::adapter_failure;
 use crate::execution::failure;
 use crate::{
-    CheckCatalog, QualityError, QualityErrorKind, RunInput, execution::QualityExecution,
-    run_descriptor,
+    CheckCatalog, CleanQualitySnapshot, QualityError, QualityErrorKind, RunInput,
+    execution::QualityExecution, run_descriptor,
 };
 
 /// One-use exact-check dispatcher bound to C2 authority and one native C3 backend.
@@ -33,6 +33,26 @@ impl<'gateway, 'authority, B> QualityRunDispatcher<'gateway, 'authority, B>
 where
     B: NativeSandboxBackend,
 {
+    /// Binds an exact clean C1 snapshot in addition to the existing C2/C3/C4 checks.
+    ///
+    /// # Errors
+    /// Returns a typed failure unless `plan` targets the revalidated immutable snapshot exactly.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_for_snapshot(
+        gateway: &'gateway ExecutionGateway,
+        authorization: &'gateway ExecutionAuthorizationRequest<'authority>,
+        plan: ExecutionPlan,
+        snapshot: &CleanQualitySnapshot,
+        sandbox: CheckedSandboxPlan,
+        admission: BackendAdmission,
+        backend: B,
+        artifacts: ArtifactStore,
+        catalog: CheckCatalog,
+    ) -> Result<Self, QualityError> {
+        snapshot.validate_plan(&plan)?;
+        Self::new(gateway, authorization, plan, sandbox, admission, backend, artifacts, catalog)
+    }
+
     /// Binds a discovered catalog and exact restricted lower-layer execution resources.
     ///
     /// # Errors

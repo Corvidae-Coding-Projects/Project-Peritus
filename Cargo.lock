@@ -1510,6 +1510,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "peritus-gates"
+version = "0.0.0"
+dependencies = [
+ "peritus-codec",
+ "peritus-evidence",
+ "peritus-journal",
+ "peritus-quality-policy",
+ "peritus-spec",
+ "peritus-tool-protocol",
+ "peritus-tools-quality",
+ "peritus-types",
+ "sha2 0.11.0",
+ "tempfile",
+ "vstd",
+]
+
+[[package]]
 name = "peritus-git"
 version = "0.0.0"
 dependencies = [
@@ -1890,6 +1907,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "peritus-telemetry"
+version = "0.0.0"
+dependencies = [
+ "peritus-codec",
+ "peritus-trace",
+ "peritus-types",
+ "tempfile",
+ "vstd",
+]
+
+[[package]]
 name = "peritus-test-support"
 version = "0.0.0"
 dependencies = [
@@ -1983,11 +2011,13 @@ name = "peritus-tools-quality"
 version = "0.0.0"
 dependencies = [
  "peritus-artifact-store",
+ "peritus-codec",
  "peritus-patch",
  "peritus-policy",
  "peritus-process",
  "peritus-quality-policy",
  "peritus-sandbox",
+ "peritus-spec",
  "peritus-tool-protocol",
  "peritus-tool-router",
  "peritus-types",
@@ -2019,6 +2049,20 @@ dependencies = [
  "serde_json",
  "tempfile",
  "vstd",
+]
+
+[[package]]
+name = "peritus-trace"
+version = "0.0.0"
+dependencies = [
+ "peritus-artifact-store",
+ "peritus-codec",
+ "peritus-journal",
+ "peritus-projection",
+ "peritus-types",
+ "tempfile",
+ "vstd",
+ "zeroize",
 ]
 
 [[package]]

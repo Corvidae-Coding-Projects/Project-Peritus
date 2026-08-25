@@ -38,17 +38,25 @@ The implemented foundation and runtime spine now covers:
 - C6: canonical role-specific context views, provenance and authority-aware context DAGs,
   deterministic dependency-complete selection and token accounting, validated compaction lineage,
   typed provider-neutral render plans, scoped evidence-backed memory lifecycle and tombstones,
-  deterministic explainable retrieval, and rebuildable canonical indexes; and
+  deterministic explainable retrieval, and rebuildable canonical indexes;
+- C7: durable causal trace observations with canonical persistence and replay, default-surface
+  redaction, bounded rebuildable projections, non-authoritative metrics, bounded telemetry
+  buffering, exporter failure isolation, acknowledgement, shutdown, and restart recovery;
 - D0: a durable verified inner-agent state machine and cooperative runtime composition for
   role-scoped context/memory preparation, normalized provider streaming, independently authorized
   C4 tool execution and long-running control, stable result ordering, bounded accounting,
-  completion proposals, pause/cancel/retry/recovery, and crash-safe C0 replay.
+  completion proposals, pause/cancel/retry/recovery, and crash-safe C0 replay; and
+- D1: a durable gate DAG engine with exact specification/workspace/snapshot bindings, deterministic
+  dependency planning and aggregation, C4-only quality execution, strict structured result parsing,
+  clean read-only snapshots, explicit assertion-versus-infrastructure outcomes, bounded retry and
+  cancellation, crash recovery, fresh evidence admission, and fail-closed acceptance.
 
 These are library and verification layers. There is not yet a user-facing `peritus` CLI, daemon,
-TUI, gate engine, writer-reviewer-fixer orchestrator, scheduler, or native packaged-host
-qualification. D1 is the next functional runtime boundary: the durable gate DAG and evidence
-engine used by later review/orchestration. A3, C7, D1–D3, E0–E3, F0, G0–G3, and H0–H4 remain
-before production release and qualification.
+TUI, writer-reviewer-fixer orchestrator, review engine, scheduler, or native packaged-host
+qualification. D2 is the next functional runtime boundary: the durable finding lifecycle,
+independent review quorum, reconciliation, resolution, waiver, and invalidation engine consumed by
+later orchestration. A3, D2–D3, E0–E3, F0, G0–G3, and H0–H4 remain before production release and
+qualification.
 
 Gate A is the current merge authority: ordinary Rust checks, architecture and API policy,
 supply-chain policy, pinned toolchains, full Verus verification, and verified release builds must
@@ -110,9 +118,15 @@ conformance boundary.
 The [C6 context and memory guide](docs/c6-context-memory.md) documents canonical role views,
 provenance-aware context graphs, deterministic selection and token planning, validated compaction,
 typed rendering, scoped derived-memory lifecycle, explainable retrieval, and rebuildable indexes.
+The [C7 trace and telemetry guide](docs/c7-trace-telemetry.md) documents causal durable
+observations, redaction, replay, projections, bounded buffering, export acknowledgement, failure
+isolation, shutdown, and restart recovery.
 The [D0 agent-loop guide](docs/d0-agent-loop.md) documents durable inner-turn transitions,
 provider acknowledgement, independent tool authority, bounded parallel execution and control,
 budget/limit handling, completion proposals, and honest restart recovery.
+The [D1 gate-engine guide](docs/d1-gate-engine.md) documents deterministic gate planning and
+aggregation, exact revision and clean-snapshot freshness, C4 quality execution, strict parsing,
+evidence admission, bounded retry/cancellation, and crash-safe replay.
 The [GitHub governance runbook](docs/github-governance.md) defines the GitHub Team-compatible
 repository ruleset and required `Gate A` status that must be active after the A1 genesis push.
 Immutable required-workflow authority remains an explicitly documented Enterprise Cloud deferral.

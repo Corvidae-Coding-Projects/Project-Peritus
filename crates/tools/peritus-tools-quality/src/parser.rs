@@ -10,6 +10,16 @@ pub enum ParsedOutput {
     NotRequested,
     Utf8,
     Json(serde_json::Value),
+    JsonSuccess(bool),
+}
+
+impl ParsedOutput {
+    pub const fn predicate_satisfied(&self) -> bool {
+        match self {
+            Self::NotRequested | Self::Utf8 | Self::Json(_) => true,
+            Self::JsonSuccess(passed) => *passed,
+        }
+    }
 }
 
 pub fn parse(
@@ -18,16 +28,18 @@ pub fn parse(
     completeness: OutputCompleteness,
     sequence_complete: bool,
 ) -> Result<ParsedOutput, QualityError> {
-    if parser == OutputParser::None {
-        return Ok(ParsedOutput::NotRequested);
-    }
+    let maximum = match parser {
+        OutputParser::None => return Ok(ParsedOutput::NotRequested),
+        OutputParser::Utf8 { maximum_bytes }
+        | OutputParser::Json { maximum_bytes }
+        | OutputParser::JsonSuccess { maximum_bytes } => maximum_bytes,
+    };
     if completeness != OutputCompleteness::Complete || !sequence_complete {
         return Err(QualityError::new(
             QualityErrorKind::Parser,
             "complete ordered process output is unavailable",
         ));
     }
-    let maximum = parser.maximum_bytes().expect("non-None parser has a byte bound");
     if output.len() > maximum as usize {
         return Err(QualityError::new(
             QualityErrorKind::Parser,
@@ -40,15 +52,22 @@ pub fn parse(
     match parser {
         OutputParser::None => Ok(ParsedOutput::NotRequested),
         OutputParser::Utf8 { .. } => Ok(ParsedOutput::Utf8),
-        OutputParser::Json { .. } => {
-            serde_json::from_str(text).map(ParsedOutput::Json).map_err(|error| {
-                QualityError::new(
-                    QualityErrorKind::Parser,
-                    format!("process output is not one valid JSON value: {error}"),
-                )
-            })
-        }
+        OutputParser::Json { .. } => parse_json(text).map(ParsedOutput::Json),
+        OutputParser::JsonSuccess { .. } => parse_json(text).map(|value| {
+            ParsedOutput::JsonSuccess(
+                value.get("success").and_then(serde_json::Value::as_bool) == Some(true),
+            )
+        }),
     }
+}
+
+fn parse_json(text: &str) -> Result<serde_json::Value, QualityError> {
+    serde_json::from_str(text).map_err(|error| {
+        QualityError::new(
+            QualityErrorKind::Parser,
+            format!("process output is not one valid JSON value: {error}"),
+        )
+    })
 }
 
 #[cfg(test)]
@@ -65,5 +84,22 @@ mod tests {
             parse(parser, b"{\"ok\":true}", OutputCompleteness::Complete, true),
             Ok(ParsedOutput::Json(_))
         ));
+    }
+
+    #[test]
+    fn json_success_requires_an_explicit_true_member() {
+        let parser = OutputParser::JsonSuccess { maximum_bytes: 64 };
+        assert_eq!(
+            parse(parser, b"{}", OutputCompleteness::Complete, true),
+            Ok(ParsedOutput::JsonSuccess(false))
+        );
+        assert_eq!(
+            parse(parser, b"{\"success\":false}", OutputCompleteness::Complete, true),
+            Ok(ParsedOutput::JsonSuccess(false))
+        );
+        assert_eq!(
+            parse(parser, b"{\"success\":true}", OutputCompleteness::Complete, true),
+            Ok(ParsedOutput::JsonSuccess(true))
+        );
     }
 }

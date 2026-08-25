@@ -4,6 +4,7 @@ mod conformance {
     mod agent_catalog;
     mod cancellation;
     mod catalog;
+    mod gate_catalog;
     mod harness;
     mod identity;
     mod panic_paths;
@@ -13,4 +14,5 @@ mod conformance {
     mod sandbox_catalog;
     mod state_catalog;
     mod tool_catalog;
+    mod trace_catalog;
 }
