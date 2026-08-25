@@ -1,6 +1,6 @@
 {
   "next_display_id": 20,
-  "next_comment_id": 319,
+  "next_comment_id": 320,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -1669,13 +1669,22 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-25T18:46:53.361245432Z",
-      "updated_at": "2026-08-25T18:54:30.997096978Z",
+      "updated_at": "2026-08-25T18:54:35.635823891Z",
       "labels": [
         "D3",
         "E0",
         "feature"
       ],
       "comments": {
+        "78c050f3-7c0e-451f-96ab-ee92a3062c08": {
+          "display_id": 319,
+          "author": "6ME5",
+          "content": "[action] Design freeze committed as 07b4081. Next: dispatch two non-overlapping D3 implementation workers for peritus-scheduler and peritus-collaboration; root owns all shared integration.",
+          "created_at": "2026-08-25T18:54:35.632918174Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9ZvN667hzJVWAxoPIllu/ulPP/WbODLpSiRaxyNuCD9GNg6ymEB8ayosRXzToCJGBmKIFwZ19SrkKHoVXvWeBg=="
+        },
         "91b37e6f-1c23-425f-a7d0-47ae50b3eb7f": {
           "display_id": 318,
           "author": "6ME5",
@@ -3222,8 +3231,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-25T18:54:30.997096978Z",
+    "timestamp": "2026-08-25T18:54:35.635823891Z",
     "agent_id": "6ME5",
-    "agent_seq": 425
+    "agent_seq": 426
   }
 }
