@@ -31,6 +31,9 @@ export const MESSAGE_FAMILY = {
   POLICY_AMENDMENT: 23,
   ACCEPTANCE_CONTRACT_CONTENT: 30,
   ACCEPTANCE_CONTRACT: 31,
+  AGENT_COMMAND: 40,
+  AGENT_EVENT: 41,
+  AGENT_STATE: 42,
 } as const;
 
 export type MessageFamilyTag = typeof MESSAGE_FAMILY[keyof typeof MESSAGE_FAMILY];

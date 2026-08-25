@@ -86,6 +86,10 @@ pub enum ContextErrorKind {
     IncompatibleCompactionClasses,
     /// The proposal named the wrong compaction-policy digest.
     CompactionPolicyMismatch,
+    /// A source became required between selection and checked replacement.
+    RequiredCompactionSource,
+    /// A source's content or security/dependency metadata changed after validation.
+    CompactionSourceChanged,
 }
 
 /// Comparable context error with optional node and numeric detail.

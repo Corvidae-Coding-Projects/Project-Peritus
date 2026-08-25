@@ -10,6 +10,7 @@ pub mod capability;
 pub mod content;
 pub mod error;
 pub mod event;
+mod event_codec;
 pub mod failure;
 pub mod finish;
 pub mod identity;
@@ -39,6 +40,9 @@ pub use content::{
 };
 pub use error::{ProtocolError, ProtocolErrorKind};
 pub use event::{EventEnvelope, ItemKind, ModelEvent, StreamFragment};
+pub use event_codec::{
+    EVENT_ENVELOPE_SCHEMA_VERSION, decode_event_envelope, encode_event_envelope,
+};
 pub use failure::{FailureCategory, ModelFailure, OutcomeCertainty, Retryability, TransportPhase};
 pub use finish::{FinishReason, TerminalOutcome};
 pub use identity::{

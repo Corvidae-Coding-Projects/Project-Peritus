@@ -31,7 +31,10 @@
     {"tag": 22, "name": "policy-amendment-content", "schemaVersion": 1, "inertOnly": true},
     {"tag": 23, "name": "policy-amendment", "schemaVersion": 1, "inertOnly": false},
     {"tag": 30, "name": "acceptance-contract-content", "schemaVersion": 1, "inertOnly": true},
-    {"tag": 31, "name": "acceptance-contract", "schemaVersion": 1, "inertOnly": false}
+    {"tag": 31, "name": "acceptance-contract", "schemaVersion": 1, "inertOnly": false},
+    {"tag": 40, "name": "agent-command", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 41, "name": "agent-event", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 42, "name": "agent-state", "schemaVersion": 1, "inertOnly": true}
   ],
   "variants": {
     "kernel-command": [

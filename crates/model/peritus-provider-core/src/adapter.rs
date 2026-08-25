@@ -3,7 +3,8 @@
 use peritus_model_protocol::{ModelRequest, ProviderProfile, ResponseId};
 
 use crate::{
-    BoxFuture, CancellationToken, OwnedModelStream, ProviderCoreError, ProviderCoreErrorKind,
+    BoxFuture, CancellationToken, ContinuationRestoreOutcome, OwnedModelStream,
+    PersistedContinuation, ProviderCoreError, ProviderCoreErrorKind,
 };
 
 /// Provider-side result of requesting cancellation for one known response identity.
@@ -52,6 +53,18 @@ pub trait ModelProvider: Send + Sync {
         _cancellation: &'a CancellationToken,
     ) -> BoxFuture<'a, Result<ResponseCancellationOutcome, ProviderCoreError>> {
         Box::pin(async { Ok(ResponseCancellationOutcome::Unsupported) })
+    }
+
+    /// Restores a locally persisted continuation into provider-owned runtime state.
+    ///
+    /// The default performs no effect and explicitly reports unsupported. An adapter may report
+    /// `Restored` only when the persisted binding matches its immutable profile and its provider
+    /// contract supports exact cursor retrieval after local process loss.
+    fn restore_continuation<'a>(
+        &'a self,
+        _persisted: &'a PersistedContinuation,
+    ) -> BoxFuture<'a, Result<ContinuationRestoreOutcome, ProviderCoreError>> {
+        Box::pin(async { Ok(ContinuationRestoreOutcome::Unsupported) })
     }
 }
 

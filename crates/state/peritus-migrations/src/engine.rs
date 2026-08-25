@@ -148,7 +148,7 @@ impl MigrationEngine {
         connection
             .pragma_update(None, "foreign_keys", true)
             .map_err(|error| MigrationError::sqlite("configure foreign keys", error))?;
-        verify_integrity(&connection)?;
+        verify_database(&connection)?;
         catalog::install(&connection)?;
         Ok(Self {
             connection,
@@ -167,7 +167,7 @@ impl MigrationEngine {
     ///
     /// Returns registry drift, corruption, incompatibility, arithmetic, space, or `SQLite` errors.
     pub fn preflight(&self, target: MigrationVersion) -> Result<PreflightReport, MigrationError> {
-        verify_integrity(&self.connection)?;
+        verify_database(&self.connection)?;
         let current = catalog::current_version(&self.connection, self.registry)?;
         let database_bytes = logical_database_bytes(&self.connection)?;
         let database_available_bytes = fs4::available_space(&self.database)
@@ -253,7 +253,14 @@ impl MigrationEngine {
             backup::verify(&path, digest)?;
         }
         catalog::update_state(&self.connection, operation, RecoveryState::Applying, None, None)?;
-        match self.apply_transaction(plan, operation, hooks) {
+        self.connection
+            .pragma_update(None, "foreign_keys", false)
+            .map_err(|error| MigrationError::sqlite("suspend foreign keys for migration", error))?;
+        let apply_result = self.apply_transaction(plan, operation, hooks);
+        self.connection.pragma_update(None, "foreign_keys", true).map_err(|error| {
+            MigrationError::sqlite("restore foreign keys after migration", error)
+        })?;
+        match apply_result {
             Ok(()) => {}
             Err(ApplyTransactionError::BeforeCommit(error)) => {
                 let state = if plan.backup_required() {
@@ -271,6 +278,21 @@ impl MigrationEngine {
                 return Err(error);
             }
             Err(ApplyTransactionError::CommitIndeterminate(error)) => return Err(error),
+        }
+        if let Err(error) = verify_database(&self.connection) {
+            let state = if plan.backup_required() {
+                RecoveryState::RestoreRequired
+            } else {
+                RecoveryState::Failed
+            };
+            catalog::update_state(
+                &self.connection,
+                operation,
+                state,
+                None,
+                Some(error.code().as_str()),
+            )?;
+            return Err(error);
         }
         catalog::update_state(&self.connection, operation, RecoveryState::Applied, None, None)?;
         Ok(self.applied(plan, operation, false))
@@ -319,6 +341,25 @@ fn verify_integrity(connection: &Connection) -> Result<(), MigrationError> {
             RecoveryClass::Terminal,
             "run SQLite integrity check",
             "SQLite integrity_check did not return ok",
+        ));
+    }
+    Ok(())
+}
+
+fn verify_database(connection: &Connection) -> Result<(), MigrationError> {
+    verify_integrity(connection)?;
+    let mut statement = connection
+        .prepare("PRAGMA foreign_key_check")
+        .map_err(|error| MigrationError::sqlite("prepare SQLite foreign-key check", error))?;
+    let has_failure = statement
+        .exists([])
+        .map_err(|error| MigrationError::sqlite("run SQLite foreign-key check", error))?;
+    if has_failure {
+        return Err(MigrationError::message(
+            MigrationErrorCode::IntegrityCheckFailed,
+            RecoveryClass::Terminal,
+            "run SQLite foreign-key check",
+            "SQLite foreign_key_check reported a violation",
         ));
     }
     Ok(())

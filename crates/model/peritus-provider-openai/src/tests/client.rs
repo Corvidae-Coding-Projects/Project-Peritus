@@ -1,10 +1,10 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use peritus_model_protocol::ModelEvent;
+use peritus_model_protocol::{Continuation, EventId, ModelEvent, ResponseId};
 use peritus_provider_core::{
-    BoxFuture, CancellationToken, Endpoint, HttpRequest, HttpTransport, ModelProvider,
-    ProviderCoreError, ProviderCoreErrorKind,
+    BoxFuture, CancellationToken, ContinuationRestoreOutcome, Endpoint, HttpRequest, HttpTransport,
+    ModelProvider, PersistedContinuation, ProviderCoreError, ProviderCoreErrorKind,
 };
 use peritus_test_support::{
     ExpectedHttpRequest, FakeHttpFault, FakeHttpHeader, FakeHttpLimits, FakeHttpServer,
@@ -12,8 +12,8 @@ use peritus_test_support::{
 };
 
 use super::support::{
-    StaticCredential, block_on, credential_reference, fixture, minimal_request, profile_minimal,
-    request_with_capabilities,
+    StaticCredential, block_on, credential_reference, fixture, minimal_request, profile_full,
+    profile_minimal, request_with_capabilities,
 };
 use crate::{OpenAiConfig, OpenAiProvider};
 
@@ -118,5 +118,51 @@ fn nonnegotiated_streaming_rejects_before_credentials_and_transport() {
         assert_eq!(error.kind(), ProviderCoreErrorKind::InvalidRequest);
         assert_eq!(credentials.resolutions(), 0);
         assert_eq!(transport.0.load(Ordering::SeqCst), 0);
+    });
+}
+
+#[test]
+fn persisted_exact_background_cursor_restores_only_for_its_bound_profile() {
+    block_on(async {
+        let profile = profile_full();
+        let config = OpenAiConfig::for_test(
+            Endpoint::new("http://127.0.0.1:9".to_owned()).expect("endpoint"),
+            credential_reference(),
+        )
+        .expect("config");
+        let provider = OpenAiProvider::with_transport(
+            config,
+            profile.clone(),
+            Arc::new(StaticCredential::new()),
+            Arc::new(CountingTransport(AtomicU64::new(0))),
+        )
+        .expect("provider");
+        let continuation = Continuation::new(
+            ResponseId::new("resp_background".to_owned()).expect("response"),
+            Some(EventId::new("evt_cursor".to_owned()).expect("event")),
+            Some(17),
+        )
+        .expect("exact continuation");
+        let persisted = PersistedContinuation::new(
+            profile.profile_id(),
+            profile.revision(),
+            continuation.clone(),
+        )
+        .expect("persisted continuation");
+        assert_eq!(
+            provider.restore_continuation(&persisted).await.expect("restore"),
+            ContinuationRestoreOutcome::Restored(continuation)
+        );
+
+        let wrong_revision = PersistedContinuation::new(
+            profile.profile_id(),
+            profile.revision() + 1,
+            persisted.continuation().clone(),
+        )
+        .expect("drifted binding");
+        assert_eq!(
+            provider.restore_continuation(&wrong_revision).await.expect("outcome"),
+            ContinuationRestoreOutcome::Unsupported
+        );
     });
 }

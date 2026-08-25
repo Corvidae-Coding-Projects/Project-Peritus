@@ -8,12 +8,14 @@ use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use peritus_model_protocol::{ModelRequest, ProviderProfile, ResponseId, StructuredOutput};
+use peritus_model_protocol::{
+    Capability, ModelRequest, ProviderProfile, ResponseId, ResumeKind, StateMode, StructuredOutput,
+};
 use peritus_provider_core::{
-    BoxFuture, CancellationToken, CredentialSource, HttpTransport, ModelProvider, OwnedModelStream,
-    ProviderCoreError, ProviderCoreErrorKind, ReqwestTransport, ResponseCancellationOutcome,
-    RetryAction, RetryFailure, RetryObservation, SubmissionState, validate_request_profile,
-    wait_for_backoff,
+    BoxFuture, CancellationToken, ContinuationRestoreOutcome, CredentialSource, HttpTransport,
+    ModelProvider, OwnedModelStream, PersistedContinuation, ProviderCoreError,
+    ProviderCoreErrorKind, ReqwestTransport, ResponseCancellationOutcome, RetryAction,
+    RetryFailure, RetryObservation, SubmissionState, validate_request_profile, wait_for_backoff,
 };
 
 use crate::config::OpenAiConfig;
@@ -233,6 +235,28 @@ impl ModelProvider for OpenAiProvider {
         cancellation: &'a CancellationToken,
     ) -> BoxFuture<'a, Result<ResponseCancellationOutcome, ProviderCoreError>> {
         cancel::cancel(self, response_id, cancellation)
+    }
+
+    fn restore_continuation<'a>(
+        &'a self,
+        persisted: &'a PersistedContinuation,
+    ) -> BoxFuture<'a, Result<ContinuationRestoreOutcome, ProviderCoreError>> {
+        Box::pin(async move {
+            let exact_profile = persisted.profile_id() == self.profile.profile_id()
+                && persisted.profile_revision() == self.profile.revision();
+            let exact_resume = self.profile.state_mode() == StateMode::BackgroundResumable
+                && self.profile.resume_kind() == ResumeKind::ExactCursor
+                && self.profile.capabilities().supports(Capability::ResumableResponse)
+                && persisted.continuation().sequence().is_some();
+            if !exact_profile || !exact_resume {
+                return Ok(ContinuationRestoreOutcome::Unsupported);
+            }
+            self.resumable_background
+                .lock()
+                .map_err(|_| error::invalid("OpenAI continuation registry is unavailable"))?
+                .insert(persisted.continuation().response_id().clone());
+            Ok(ContinuationRestoreOutcome::Restored(persisted.continuation().clone()))
+        })
     }
 }
 

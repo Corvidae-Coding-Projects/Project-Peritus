@@ -1,6 +1,7 @@
 //! Boundary and adversarial integration tests for the public conformance API.
 
 mod conformance {
+    mod agent_catalog;
     mod cancellation;
     mod catalog;
     mod harness;

@@ -6,7 +6,8 @@ use peritus_codec::sha256;
 use peritus_context::{
     AuthorityClass, CompactionPolicy, CompactionPolicyId, CompactionProposal, ContentKind,
     ContextErrorKind, ContextPlanId, Provenance, RequirementMode, SelectionPolicy, SourceRange,
-    TokenBudget, TrustClass, bind_context_content, validate_compaction,
+    TokenBudget, TrustClass, bind_context_content, replace_validated_compaction,
+    validate_compaction,
 };
 use peritus_policy::ActorRole;
 use peritus_role::{ContextClass, HarnessRole, RoleProfile};
@@ -337,5 +338,90 @@ fn hidden_source_is_rejected_even_with_a_plan_from_another_graph() {
         .expect_err("source is hidden")
         .kind(),
         ContextErrorKind::HiddenCompactionSource
+    );
+}
+
+#[test]
+fn replacement_separates_lineage_and_rewrites_live_dependencies() {
+    let graph = make_graph(vec![
+        evidence_node(1, "external", 2, RequirementMode::Optional, Vec::new()),
+        evidence_node(2, "source one", 8, RequirementMode::Optional, vec![id(1)]),
+        evidence_node(3, "source two", 7, RequirementMode::Optional, vec![id(1), id(2)]),
+        evidence_node(4, "dependent", 2, RequirementMode::Optional, vec![id(2), id(3)]),
+    ]);
+    let plan = selected_plan(&graph);
+    let policy = compaction_policy(7, false);
+    let ranges = vec![
+        SourceRange::new(id(2), graph.node(id(2)).expect("source").digest(), 0, 6).expect("range"),
+        SourceRange::new(id(3), graph.node(id(3)).expect("source").digest(), 0, 6).expect("range"),
+    ];
+    let validated = validate_compaction(
+        &graph,
+        &plan,
+        &proposal(9, policy, 5, ranges.clone()),
+        policy,
+        limits(),
+    )
+    .expect("validation");
+    let applied = replace_validated_compaction(&graph, validated).expect("replacement");
+
+    assert_eq!(applied.source_ids(), &[id(2), id(3)]);
+    assert_eq!(applied.source_ranges(), ranges);
+    assert_eq!(applied.replaced_tokens(), 15);
+    assert_eq!(applied.replacement_tokens(), 5);
+    assert_eq!(
+        applied.graph().nodes().iter().map(peritus_context::ContextNode::id).collect::<Vec<_>>(),
+        vec![id(1), id(4), id(9)]
+    );
+    assert_eq!(applied.graph().node(id(9)).expect("replacement").dependencies(), &[id(1)]);
+    assert_eq!(applied.graph().node(id(4)).expect("dependent").dependencies(), &[id(9)]);
+}
+
+#[test]
+fn replacement_rejects_required_sources_and_graph_drift() {
+    let required_graph =
+        make_graph(vec![evidence_node(1, "required", 8, RequirementMode::Required, Vec::new())]);
+    let plan = selected_plan(&required_graph);
+    let policy = compaction_policy(8, false);
+    let range = SourceRange::new(id(1), required_graph.node(id(1)).expect("source").digest(), 0, 4)
+        .expect("range");
+    let validated = validate_compaction(
+        &required_graph,
+        &plan,
+        &proposal(9, policy, 1, vec![range]),
+        policy,
+        limits(),
+    )
+    .expect("validation remains backward compatible");
+    assert_eq!(
+        replace_validated_compaction(&required_graph, validated)
+            .expect_err("required source")
+            .kind(),
+        ContextErrorKind::RequiredCompactionSource
+    );
+
+    let original =
+        make_graph(vec![evidence_node(1, "source", 8, RequirementMode::Optional, Vec::new())]);
+    let plan = selected_plan(&original);
+    let range = SourceRange::new(id(1), original.node(id(1)).expect("source").digest(), 0, 4)
+        .expect("range");
+    let validated = validate_compaction(
+        &original,
+        &plan,
+        &proposal(9, policy, 1, vec![range]),
+        policy,
+        limits(),
+    )
+    .expect("validation");
+    let changed = make_graph(vec![evidence_node(
+        1,
+        "source changed",
+        8,
+        RequirementMode::Optional,
+        Vec::new(),
+    )]);
+    assert_eq!(
+        replace_validated_compaction(&changed, validated).expect_err("source drift").kind(),
+        ContextErrorKind::CompactionSourceChanged
     );
 }

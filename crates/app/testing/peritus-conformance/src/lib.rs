@@ -3,6 +3,7 @@
 //! panic, and teardown failures. Report text is bounded, and only a nonempty passed suite proves
 //! conformance. Pending-run cancellation drops owned work in place, so subjects must be RAII-safe.
 
+mod agent;
 mod catalog;
 mod contracts;
 mod descriptor;
@@ -21,6 +22,7 @@ mod tool;
 mod unwind;
 mod workspace;
 
+pub use agent::*;
 pub use catalog::{plugin_suite, protocol_suite};
 pub use contracts::{
     BoxedCase, ConformanceCase, ConformanceFuture, ConformanceSuite, StaticSuite, SubjectFactory,
@@ -30,9 +32,7 @@ pub use failure::{
     AssertionFailure, CaseFailure, DuplicateCaseIdFailure, FailureKind, FailurePhase, PanicFailure,
     PanicMessage, SubjectFailure, SuiteFailure, TeardownFailure,
 };
-pub use identity::{
-    CaseId, FailureCode, FailureCodeError, IdentifierError, ObservationId, SuiteId,
-};
+pub use identity::*;
 pub use journal::{
     JournalAppendDisposition, JournalAppendFixture, JournalAppendObservation,
     JournalConformanceError, JournalConformanceSubject, JournalSnapshot, journal_suite,

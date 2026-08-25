@@ -1,6 +1,6 @@
 //! Filesystem driver for deterministic protocol artifacts.
 
-use super::{generated_artifacts, generated_binary_artifacts};
+use super::{generated_agent_binary_artifacts, generated_artifacts, generated_binary_artifacts};
 use peritus_codec::sha256;
 use std::ffi::OsString;
 use std::fs;
@@ -41,7 +41,22 @@ pub fn run_codegen(
         manifest.push('\n');
         write_or_check_binary(&root.join(artifact.path), &artifact.content, check)?;
     }
-    write_or_check_text(&root.join("protocol/fixtures/v1/SHA256SUMS"), &manifest, check)
+    write_or_check_text(&root.join("protocol/fixtures/v1/SHA256SUMS"), &manifest, check)?;
+    let agent_artifacts = generated_agent_binary_artifacts()?;
+    let mut agent_manifest = String::from("# peritus agent protocol compatibility corpus v1\n");
+    for artifact in &agent_artifacts {
+        let digest = sha256(&artifact.content);
+        agent_manifest.push_str(&hex(digest.as_bytes()));
+        agent_manifest.push_str("  ");
+        agent_manifest.push_str(artifact.path);
+        agent_manifest.push('\n');
+        write_or_check_binary(&root.join(artifact.path), &artifact.content, check)?;
+    }
+    write_or_check_text(
+        &root.join("crates/foundation/peritus-protocol/tests/fixtures/v1/SHA256SUMS"),
+        &agent_manifest,
+        check,
+    )
 }
 
 fn write_or_check_text(

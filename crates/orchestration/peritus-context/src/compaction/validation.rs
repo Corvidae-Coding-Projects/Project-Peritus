@@ -1,10 +1,10 @@
 //! Transactional validation and construction of compacted nodes.
 
-use super::{CompactionPolicy, CompactionProposal, ValidatedCompaction};
+use super::{CompactionPolicy, CompactionProposal, ValidatedCompaction, ValidatedSource};
 use crate::{
     AuthorityClass, ContentKind, ContextError, ContextErrorKind, ContextGraph, ContextLimits,
     ContextNode, ContextNodeMetadata, ContextPlan, Provenance, RequirementMode, RoleVisibility,
-    TrustClass,
+    SelectionReason, TrustClass,
 };
 use core::cmp::Ordering;
 use peritus_policy::ActorRole;
@@ -59,6 +59,7 @@ pub fn validate_compaction(
     let mut replaced_tokens = 0u64;
     let mut requirement = RequirementMode::Optional;
     let mut all_trusted = true;
+    let mut sources = Vec::new();
     let mut range_index = 0;
     while range_index < proposal.source_ranges.len()
         invariant range_index <= proposal.source_ranges.len(),
@@ -135,6 +136,9 @@ pub fn validate_compaction(
             if source.trust() != TrustClass::Trusted {
                 all_trusted = false;
             }
+            let required = source.requirement() != RequirementMode::Optional
+                || selected_as_required(plan, range.source_id());
+            sources.push(ValidatedSource { node: source.clone(), required });
         }
         range_index += 1;
     }
@@ -178,7 +182,27 @@ pub fn validate_compaction(
         policy_id: policy.id(),
         source_ranges: proposal.source_ranges.clone(),
         replaced_tokens,
+        sources,
     })
+}
+
+fn selected_as_required(plan: &ContextPlan, source_id: crate::ContextNodeId) -> bool {
+    let selected_entries = plan.selected();
+    let mut index = 0;
+    while index < selected_entries.len()
+        invariant index <= selected_entries.len(),
+        decreases selected_entries.len() - index,
+    {
+        let selected = selected_entries[index];
+        if selected.node_id() == source_id {
+            return matches!(
+                selected.reason(),
+                SelectionReason::RequiredRoot | SelectionReason::RequiredDependency
+            );
+        }
+        index += 1;
+    }
+    false
 }
 
 fn intersect_visibility(current: Option<Vec<ActorRole>>, next: &[ActorRole]) -> Vec<ActorRole> {

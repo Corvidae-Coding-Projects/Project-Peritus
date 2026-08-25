@@ -1,0 +1,49 @@
+[package]
+name = "peritus-agent"
+description = "Pure deterministic D0 agent-turn state machine"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+
+[features]
+default = ["protocol-bridge"]
+protocol-bridge = ["dep:peritus-protocol"]
+
+[dependencies]
+peritus-budget = { version = "=0.0.0", path = "../../foundation/peritus-budget" }
+peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
+peritus-context = { version = "=0.0.0", path = "../peritus-context" }
+peritus-evidence = { version = "=0.0.0", path = "../../state/peritus-evidence" }
+peritus-journal = { version = "=0.0.0", path = "../../state/peritus-journal" }
+peritus-memory = { version = "=0.0.0", path = "../peritus-memory" }
+peritus-model-protocol = { version = "=0.0.0", path = "../../model/peritus-model-protocol" }
+peritus-policy = { version = "=0.0.0", path = "../../foundation/peritus-policy" }
+peritus-protocol = { version = "=0.0.0", path = "../../foundation/peritus-protocol", optional = true }
+peritus-provider-core = { version = "=0.0.0", path = "../../model/peritus-provider-core" }
+peritus-role = { version = "=0.0.0", path = "../peritus-role" }
+peritus-tool-protocol = { version = "=0.0.0", path = "../../tools/peritus-tool-protocol" }
+peritus-tool-router = { version = "=0.0.0", path = "../../tools/peritus-tool-router" }
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+serde_json.workspace = true
+vstd.workspace = true
+
+[dev-dependencies]
+peritus-kernel = { version = "=0.0.0", path = "../../foundation/peritus-kernel" }
+peritus-leases = { version = "=0.0.0", path = "../../state/peritus-leases" }
+tempfile.workspace = true
+tokio.workspace = true
+
+[package.metadata.peritus]
+owner = "D0"
+layer = "orchestration"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true
+
+[lints]
+workspace = true

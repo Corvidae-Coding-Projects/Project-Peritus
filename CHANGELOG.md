@@ -7,6 +7,75 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Implement the complete production D0 Agent Loop boundary with a maintainable H-class
+  `peritus-agent` orchestration crate, small pure-domain/runtime modules, a cooperative one-action
+  driver surface, and explicit composition of the completed B0/B1/B3 and C0-C6 contracts (#16)
+- Add the durable inner-turn lifecycle from context preparation through model streaming,
+  independently authorized tool proposals/execution/result recording, iterative context rebuild,
+  and non-accepting completion proposals, including explicit pause, resume, cancellation,
+  provider/tool failure, legal retry, malformed response, interruption, limit exhaustion, and
+  crash-recovery paths
+- Add causally fenced deterministic D0 commands/events/state with checked logical revision,
+  aggregate sequence, predecessor event and prior/successor state digests, exact immutable turn
+  binding, typed stable rejection/recovery classes, and replay equivalence tests
+- Add canonical inert B3 agent command, event, and state families 40-42 with complete bounded
+  counters, revision bindings, opaque payload digests, adversarial codec/fixture coverage, and
+  redacted Debug surfaces that never disclose provider, model, or tool content
+- Extend C0 with the permanent `Agent` aggregate tag 6, schema-version-two fresh databases, a
+  backup-required v1-to-v2 migration that rebuilds constrained tables byte-for-byte, restart-safe
+  state checkpoints, and a rebuildable agent projection over exact journal observations
+- Add atomic D0 journal composition that cross-checks command/event/checkpoint bindings and commits
+  the event plus replacement state under aggregate-head and state-revision compare-and-swap, along
+  with checked restart loading that refuses missing, stale, or mismatched checkpoints
+- Add role-scoped context preparation that retrieves C6 memory before selection, materializes it as
+  explicitly delimited non-authoritative evidence with retained source provenance, executes
+  dependency-complete C6 token selection, and maps every typed render segment into a separately
+  delimited provider-neutral C5 message without authority promotion
+- Make C6 compaction operational by installing a validated derived node, removing only admitted
+  replaceable sources, rewriting and deduplicating live dependent edges, retaining exact audit
+  lineage separately, and rejecting graph drift, protected/required sources, cycles, missing
+  dependencies, or a result that does not reduce selected tokens
+- Add a versioned canonical codec for all normalized C5 `EventEnvelope` variants, including exact
+  identity/order/digest metadata and rejection of unknown versions/tags, truncation, trailing data,
+  malformed nested values, or values outside provider-protocol limits
+- Add a pull-based C5 model session that keeps exactly one normalized envelope pending until its D0
+  journal event is committed, then advances the response reducer, preserving durable stream order,
+  duplicate handling, fragmented output/tool assembly, terminal truth, usage high-water accounting,
+  cancellation, and explicit EOF failure
+- Add a profile-bound persisted-continuation restore seam to provider core with default unsupported
+  behavior and exact OpenAI background-response restoration only when immutable profile revision,
+  advertised resumability, response identity, and cursor semantics agree
+- Persist each bounded canonical provider envelope in its D0 event, rebuild the complete C5 reducer
+  prefix before exact continuation restore, require the restored response identity and cursor to
+  match, and continue from the next cursor without replaying acknowledged semantics
+- Add C5-to-C4 tool planning that converts only completely reduced model calls into bounded inert
+  C4 envelopes, validates current exposure and schemas before authority, rejects duplicate actions,
+  and gives model output no dispatcher or effect permit
+- Add bounded tool coordination through the sole C4 router, requiring the complete independently
+  committed authorization request for every dispatch, serializing mutations, permitting bounded
+  parallel inspection/execution only when descriptors allow it, and retaining original proposal
+  order independently from physical completion order
+- Add cooperative long-running tool polling, bounded stdin/PTY/signal control, cancellation and
+  recovery through C4-owned handles, explicit success/failure/cancel/timeout/indeterminate terminal
+  observations, and post-crash active-call classification that never redispatches an uncertain
+  effect
+- Add checked D0 structural accounting for provider events, output bytes, tool calls/results,
+  context cycles, concurrent calls, and transitions plus a concrete B1 reservation lifecycle for
+  model/tool effects: checked plans, held-to-active activation, C5 usage high-water observations,
+  exact terminal token/cost/time reconciliation, attempt/retry charging, and conservative
+  indeterminate settlement, with no wrapping or placeholder-success path
+- Add structured completion proposals bound to exact workspace/specification revisions, fresh
+  evidence references, context/model/tool transcript digests, unresolved uncertainties, and a
+  requested next phase; D0 completion explicitly does not accept, waive, promote, or mark gates
+  successful
+- Extend A2 with a nonempty D0 conformance catalog covering complete inspect/edit/run/test,
+  pause/resume, cancellation, provider reduction and retry safety, tool authorization/control,
+  bounded parallel result ordering, budget exhaustion, completion eligibility, prefix replay, and
+  crash recovery without uncertain-effect redispatch
+- Add the complete D0 grounded design, crate README, production operating guide, formal obligations,
+  fake provider/tool integration matrices, architecture registration, generated protocol clients,
+  and updated repository development-state documentation
+
 - Implement the complete production C6 Context and Memory boundary with separate maintainable
   `peritus-role`, `peritus-context`, and `peritus-memory` orchestration crates (#15)
 - Project every canonical B1 actor role into an explicit non-widening context policy, including
@@ -117,6 +186,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Implement A2 test/conformance foundation (#4)
 
 ### Fixed
+- Honor the checked managed-network connection budget for upstream socket reads and writes instead
+  of imposing an undocumented 100 ms cutoff, with a delayed redirect-response regression test
 - Canonicalize account-runtime fake executable working directories so their isolation assertions
   remain valid across macOS `/var` and `/private/var` path aliases
 - Make explicit fake-HTTP release points wait briefly for an already-issued peer close instead of

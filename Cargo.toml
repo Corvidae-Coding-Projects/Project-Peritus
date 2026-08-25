@@ -35,6 +35,7 @@ members = [
     "crates/model/peritus-provider-google",
     "crates/model/peritus-provider-compatible",
     "crates/orchestration/peritus-context",
+    "crates/orchestration/peritus-agent",
     "crates/orchestration/peritus-memory",
     "crates/orchestration/peritus-role",
     "crates/tools/peritus-tool-protocol",
