@@ -1,6 +1,6 @@
 {
   "next_display_id": 21,
-  "next_comment_id": 346,
+  "next_comment_id": 347,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -3419,12 +3419,21 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-25T23:07:27.355677826Z",
-      "updated_at": "2026-08-25T23:54:02.685995944Z",
+      "updated_at": "2026-08-25T23:54:07.593510543Z",
       "labels": [
         "E1",
         "feature"
       ],
       "comments": {
+        "0b25caed-9a20-4e27-b0d6-bb2ec43b76dc": {
+          "display_id": 346,
+          "author": "6ME5",
+          "content": "Shared integration is now concrete: C0 has bounded verified artifact reads, Harness tag 13/schema v6 migration, and exact append-time outbox acknowledgements so E1 success/failure can settle the claimed directive atomically with event/checkpoint. Focused C0 settlement test passes with CARGO_BUILD_JOBS=1. E1 ceilings aligned to C0: 2,048 components and 16 MiB complete checkpoint.",
+          "created_at": "2026-08-25T23:54:07.590928790Z",
+          "kind": "progress",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAOurJaWX5sSL4GIxhVTlByTYig6ZicnE9Zm33BRxinLONt5cNi1NKmR4lvRwubW3GQkprLNczlBUKlbzdUm7JDg=="
+        },
         "28457cbf-198b-405c-a07b-01b3cf2fc022": {
           "display_id": 344,
           "author": "6ME5",
@@ -3484,8 +3493,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-25T23:54:02.685995944Z",
+    "timestamp": "2026-08-25T23:54:07.593510543Z",
     "agent_id": "6ME5",
-    "agent_seq": 458
+    "agent_seq": 459
   }
 }
