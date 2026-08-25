@@ -1,6 +1,6 @@
 {
   "next_display_id": 20,
-  "next_comment_id": 322,
+  "next_comment_id": 323,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -1669,7 +1669,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-25T18:46:53.361245432Z",
-      "updated_at": "2026-08-25T19:04:43.442810476Z",
+      "updated_at": "2026-08-25T19:09:57.460775511Z",
       "labels": [
         "D3",
         "E0",
@@ -1702,6 +1702,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAaowRFoprTJrJ/Ki6udPlGavEuK0BRDGQmlYeDBMm/KaZJqFZCMmtcKI0cokPL59Jlv2ARxE7vjOgs1qLI3V7Bw=="
+        },
+        "bcf88121-5c7e-47da-9cc0-2b99403f7d54": {
+          "display_id": 322,
+          "author": "6ME5",
+          "content": "[action] D3 migration registry split under source limit; v4-to-v5 fixture and migration package green; D3 operator guide drafted while workers finish",
+          "created_at": "2026-08-25T19:09:57.458245747Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAaKq/Iu7ZYuZDPUnzzB6vB04CF3/I17GheZyO80W6G7fiH1PCw+B6dLXZ8+O7Gt2OYjJFIkeeeZAOV5MpDofeDw=="
         },
         "f2633692-dee7-4dba-97ef-72d65a60e93e": {
           "display_id": 321,
@@ -3249,8 +3258,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-25T19:04:43.442810476Z",
+    "timestamp": "2026-08-25T19:09:57.460775511Z",
     "agent_id": "6ME5",
-    "agent_seq": 428
+    "agent_seq": 429
   }
 }
