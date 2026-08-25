@@ -157,7 +157,79 @@ const VERSION_THREE_DIGEST: [u8; 32] = [
     0xfc, 0x15, 0xf0, 0xfc, 0x92, 0x6d, 0xcb, 0x83, 0x3a, 0xfe, 0x62, 0xc5, 0x2b, 0xd9, 0x7e, 0x29,
     0xb6, 0xe6, 0x40, 0x0e, 0x6d, 0xe6, 0xe6, 0xfc, 0xbc, 0x56, 0xf9, 0xd9, 0x13, 0x6e, 0xe9, 0xa5,
 ];
-const CURRENT_DESCRIPTORS: [MigrationDescriptor; 3] = [
+const VERSION_FOUR_SQL: &str = r"PRAGMA defer_foreign_keys = ON;
+CREATE TABLE aggregate_heads_v4 (
+    aggregate_kind INTEGER NOT NULL CHECK (aggregate_kind BETWEEN 1 AND 9),
+    aggregate_id BLOB NOT NULL CHECK (length(aggregate_id) = 16),
+    sequence INTEGER NOT NULL CHECK (sequence > 0),
+    event_id BLOB NOT NULL CHECK (length(event_id) = 16),
+    event_hash BLOB NOT NULL CHECK (length(event_hash) = 32),
+    PRIMARY KEY (aggregate_kind, aggregate_id)
+) STRICT, WITHOUT ROWID;
+INSERT INTO aggregate_heads_v4(
+    aggregate_kind, aggregate_id, sequence, event_id, event_hash
+)
+SELECT aggregate_kind, aggregate_id, sequence, event_id, event_hash
+FROM aggregate_heads ORDER BY aggregate_kind, aggregate_id;
+CREATE TEMP TABLE migration_v4_head_count(
+    valid INTEGER NOT NULL CHECK (valid = 1)
+) STRICT;
+INSERT INTO migration_v4_head_count(valid)
+SELECT COUNT(*) = (SELECT COUNT(*) FROM aggregate_heads_v4) FROM aggregate_heads;
+DROP TABLE aggregate_heads;
+ALTER TABLE aggregate_heads_v4 RENAME TO aggregate_heads;
+DROP TABLE migration_v4_head_count;
+CREATE TABLE events_v4 (
+    global_position INTEGER PRIMARY KEY AUTOINCREMENT CHECK (global_position > 0),
+    event_id BLOB NOT NULL UNIQUE CHECK (length(event_id) = 16),
+    aggregate_kind INTEGER NOT NULL CHECK (aggregate_kind BETWEEN 1 AND 9),
+    aggregate_id BLOB NOT NULL CHECK (length(aggregate_id) = 16),
+    sequence INTEGER NOT NULL CHECK (sequence > 0),
+    previous_event_id BLOB CHECK (previous_event_id IS NULL OR length(previous_event_id) = 16),
+    previous_event_hash BLOB NOT NULL CHECK (length(previous_event_hash) = 32),
+    event_hash BLOB NOT NULL CHECK (length(event_hash) = 32),
+    command_id BLOB NOT NULL CHECK (length(command_id) = 16),
+    frame_family INTEGER NOT NULL CHECK (frame_family > 0),
+    frame_schema INTEGER NOT NULL CHECK (frame_schema > 0),
+    frame_digest BLOB NOT NULL CHECK (length(frame_digest) = 32),
+    revision_digest BLOB NOT NULL CHECK (length(revision_digest) = 32),
+    causal_ids BLOB NOT NULL CHECK ((length(causal_ids) % 16) = 0),
+    frame BLOB NOT NULL,
+    UNIQUE (aggregate_kind, aggregate_id, sequence)
+) STRICT;
+INSERT INTO events_v4(
+    global_position, event_id, aggregate_kind, aggregate_id, sequence, previous_event_id,
+    previous_event_hash, event_hash, command_id, frame_family, frame_schema, frame_digest,
+    revision_digest, causal_ids, frame
+)
+SELECT global_position, event_id, aggregate_kind, aggregate_id, sequence, previous_event_id,
+       previous_event_hash, event_hash, command_id, frame_family, frame_schema, frame_digest,
+       revision_digest, causal_ids, frame
+FROM events ORDER BY global_position;
+CREATE TEMP TABLE migration_v4_event_count(
+    valid INTEGER NOT NULL CHECK (valid = 1)
+) STRICT;
+INSERT INTO migration_v4_event_count(valid)
+SELECT COUNT(*) = (SELECT COUNT(*) FROM events_v4) FROM events;
+DROP TABLE events;
+ALTER TABLE events_v4 RENAME TO events;
+CREATE INDEX events_command ON events(command_id, global_position);
+DROP TABLE migration_v4_event_count;
+UPDATE store_meta SET schema_version = 4 WHERE singleton = 1 AND schema_version = 3;
+CREATE TEMP TABLE migration_v4_meta_check(
+    valid INTEGER NOT NULL CHECK (valid = 1)
+) STRICT;
+INSERT INTO migration_v4_meta_check(valid)
+SELECT COUNT(*) = 1 FROM store_meta WHERE singleton = 1 AND schema_version = 4;
+DROP TABLE migration_v4_meta_check;
+PRAGMA user_version = 4;
+";
+// Updated whenever the reviewed exact VERSION_FOUR_SQL source changes.
+const VERSION_FOUR_DIGEST: [u8; 32] = [
+    0x5d, 0x9e, 0x44, 0x2b, 0x23, 0xd0, 0x47, 0xbb, 0xf4, 0x2f, 0xe0, 0xcd, 0xc6, 0xfc, 0xfe, 0x1c,
+    0x2c, 0x66, 0x91, 0x01, 0xd4, 0x17, 0x6b, 0x4c, 0xaa, 0x9d, 0x50, 0xe0, 0xda, 0x12, 0x3c, 0xb6,
+];
+const CURRENT_DESCRIPTORS: [MigrationDescriptor; 4] = [
     MigrationDescriptor::new(
         MigrationVersion::FIRST,
         "0.0.0",
@@ -179,6 +251,14 @@ const CURRENT_DESCRIPTORS: [MigrationDescriptor; 3] = [
         "0.0.0",
         VERSION_THREE_SQL,
         Sha256Digest::new(VERSION_THREE_DIGEST),
+        BackupPolicy::Required,
+        32 * 1024 * 1024,
+    ),
+    MigrationDescriptor::new(
+        MigrationVersion::FOURTH,
+        "0.0.0",
+        VERSION_FOUR_SQL,
+        Sha256Digest::new(VERSION_FOUR_DIGEST),
         BackupPolicy::Required,
         32 * 1024 * 1024,
     ),

@@ -123,8 +123,11 @@ failure, malformed parser output, revision drift, cancellation, restart recovery
 retry bounds, artifact evidence, and deterministic aggregation. C7 supplies nine trace/telemetry
 cases covering causality, redaction, bounded load, exporter failure, replay, duplicate conflict,
 backpressure, shutdown recovery, and non-authority. Negative catalog tests prove implicit gate
-success and default-surface secret leakage cannot pass. Only a nonempty passed report from a
-production adapter proves the named contract.
+success and default-surface secret leakage cannot pass. D2 supplies ten review cases covering
+lifecycle, quorum, every independence dimension, duplicate reconciliation, stale revisions,
+reviewer-confirmed resolution, external waiver authority, restart, oscillation, and malformed
+submissions; its negative oracle proves stale implicit completion fails. Only a nonempty passed
+report from a production adapter proves the named contract.
 
 ## Ownership boundaries
 
@@ -140,6 +143,7 @@ mismatch, exhaustion, fault scheduling and isolation. The following remain outsi
 - C5 provider requests, normalized streams, retry policy and adapters; and
 - C0/C1/C2 production persistence, workspace, process, and sandbox implementations;
 - D1 gate planning, execution, parsing, persistence, evidence, freshness, and acceptance; and
+- D2 review lifecycle, finding conservation, quorum, reconciliation, waiver observation, and replay;
 - C7 trace persistence, redaction, projection, buffering, and export. A2 owns only the
   runtime-neutral subject contracts and cases used to qualify those adapters.
 

@@ -21,11 +21,15 @@ source_exceptions = [
     { path = "crates/orchestration/peritus-agent/tests/runtime_driver.rs", owner = "D0", rationale = "The fake-provider durability matrix shares one exact scripted-provider and request fixture across completion, duplicate, malformed-order, and restart cases." },
     { path = "crates/orchestration/peritus-agent/tests/runtime_tools.rs", owner = "D0", rationale = "The end-to-end D0/C4 test intentionally shows complete B0/B1/C0 authority and lease assembly beside inspect, edit, run, and test effect ordering." },
     { path = "crates/orchestration/peritus-context/tests/compaction_matrix.rs", owner = "C6", rationale = "The compaction matrix keeps source validation and operational graph-replacement cases beside their shared canonical graph fixture." },
+    { path = "crates/orchestration/peritus-review/tests/domain_engine.rs", owner = "D2", rationale = "The D2 engine matrix keeps exact binding, quorum, waiver, terminal, and shared identity fixtures together so each assertion exercises the same deterministic domain construction." },
+    { path = "crates/orchestration/peritus-review/tests/domain_transitions.rs", owner = "D2", rationale = "The D2 transition matrix keeps reconciliation, confirmation, cancellation, supersession, and oscillation sequences beside one shared canonical review-history fixture." },
     { path = "crates/state/peritus-migrations/src/engine.rs", owner = "C0", rationale = "The migration engine keeps backup, transaction, integrity, recovery, and version publication ordering in one auditable implementation." },
+    { path = "crates/state/peritus-migrations/tests/fixture_upgrade.rs", owner = "C0", rationale = "The historical migration matrix keeps v1, v3, and unversioned byte-preservation fixtures with their shared journal hash and row-snapshot machinery." },
 ]
 forbidden_dependencies = []
 controlled_source_roots = [
     { path = "crates/foundation/peritus-protocol/src/schema", owner = "B3", kind = "schema", rationale = "B3 owns the handwritten family registry, deterministic renderers, fixture constructors, and code-generation implementation." },
+    { path = "crates/orchestration/peritus-review/tests/fixtures", owner = "D2", kind = "generated", rationale = "D2 owns immutable schema-versioned command, event, and complete-state compatibility frames plus their SHA-256 manifest." },
     { path = "crates/tools/peritus-tool-protocol/src/schema.rs", owner = "C4", kind = "schema", rationale = "C4 owns the bounded tool schema model, builders, canonical encoding, validation, and compatibility contract." },
     { path = "crates/tools/peritus-tool-protocol/src/schema", owner = "C4", kind = "schema", rationale = "C4 owns the reviewed tool schema canonicalization, validation, duplicate detection, and compatibility implementation." },
     { path = "crates/model/peritus-model-protocol/src/schema.rs", owner = "C5", kind = "schema", rationale = "C5 owns the provider-facing bounded JSON Schema representation and canonical validation contract." },
@@ -174,6 +178,13 @@ verification_class = "H"
 name = "peritus-gates"
 path = "crates/orchestration/peritus-gates"
 owner = "D1"
+layer = "orchestration"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-review"
+path = "crates/orchestration/peritus-review"
+owner = "D2"
 layer = "orchestration"
 verification_class = "H"
 

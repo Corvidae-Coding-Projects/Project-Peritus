@@ -49,13 +49,18 @@ The implemented foundation and runtime spine now covers:
 - D1: a durable gate DAG engine with exact specification/workspace/snapshot bindings, deterministic
   dependency planning and aggregation, C4-only quality execution, strict structured result parsing,
   clean read-only snapshots, explicit assertion-versus-infrastructure outcomes, bounded retry and
-  cancellation, crash recovery, fresh evidence admission, and fail-closed acceptance.
+  cancellation, crash recovery, fresh evidence admission, and fail-closed acceptance; and
+- D2: a durable deterministic independent-review engine with immutable contract/revision/context
+  bindings, bounded structured submissions, separately reported quorum dimensions, stable finding
+  provenance and conservation, duplicate reconciliation, fixer/reviewer disposition handshakes,
+  externally authorized waiver observation, exact revision invalidation, oscillation/escalation,
+  B2 quality projections, and crash-safe C0 replay.
 
 These are library and verification layers. There is not yet a user-facing `peritus` CLI, daemon,
-TUI, writer-reviewer-fixer orchestrator, review engine, scheduler, or native packaged-host
-qualification. D2 is the next functional runtime boundary: the durable finding lifecycle,
-independent review quorum, reconciliation, resolution, waiver, and invalidation engine consumed by
-later orchestration. A3, D2–D3, E0–E3, F0, G0–G3, and H0–H4 remain before production release and
+TUI, writer-reviewer-fixer orchestrator, scheduler/collaboration runtime, or native packaged-host
+qualification. D3 is the next functional runtime boundary: bounded resource-aware scheduling,
+reservations, cancellation trees, causal collaboration, and deterministic worker coordination for
+later orchestration. A3, D3, E0–E3, F0, G0–G3, and H0–H4 remain before production release and
 qualification.
 
 Gate A is the current merge authority: ordinary Rust checks, architecture and API policy,
@@ -127,6 +132,10 @@ budget/limit handling, completion proposals, and honest restart recovery.
 The [D1 gate-engine guide](docs/d1-gate-engine.md) documents deterministic gate planning and
 aggregation, exact revision and clean-snapshot freshness, C4 quality execution, strict parsing,
 evidence admission, bounded retry/cancellation, and crash-safe replay.
+The [D2 review-engine guide](docs/d2-review-engine.md) documents immutable review bindings,
+structured submissions, independent quorum, finding conservation and reconciliation,
+fixer/reviewer dispositions, externally authorized waiver observations, revision invalidation,
+truthful escalation, B2 projections, and crash-safe replay.
 The [GitHub governance runbook](docs/github-governance.md) defines the GitHub Team-compatible
 repository ruleset and required `Gate A` status that must be active after the A1 genesis push.
 Immutable required-workflow authority remains an explicitly documented Enterprise Cloud deferral.

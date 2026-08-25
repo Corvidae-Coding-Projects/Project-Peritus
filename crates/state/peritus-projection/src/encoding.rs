@@ -35,5 +35,6 @@ pub(super) const fn kind_tag(kind: AggregateKind) -> u16 {
         AggregateKind::Agent => 6,
         AggregateKind::Gate => 7,
         AggregateKind::Trace => 8,
+        AggregateKind::Review => 9,
     }
 }

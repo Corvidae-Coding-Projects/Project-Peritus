@@ -38,6 +38,9 @@
     {"tag": 50, "name": "gate-command", "schemaVersion": 1, "inertOnly": true},
     {"tag": 51, "name": "gate-event", "schemaVersion": 1, "inertOnly": true},
     {"tag": 52, "name": "gate-state", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 53, "name": "review-command", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 54, "name": "review-event", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 55, "name": "review-state", "schemaVersion": 1, "inertOnly": true},
     {"tag": 60, "name": "trace-observation", "schemaVersion": 1, "inertOnly": true}
   ],
   "variants": {

@@ -1,0 +1,4 @@
+# peritus review protocol compatibility corpus v1
+5698774980c67550140f31c649851ada0d9c043454943b4638dd9e6ca3c62789  review-command.bin
+c0fdc5fb09b50e493f4cbb510ae58c9992f3b805b4f0e3b63506d7bdc63f5f87  review-event.bin
+7c8cb85f106fb62153d57e84408c526543af873a21571e535726bd9aa0d81388  review-state.bin

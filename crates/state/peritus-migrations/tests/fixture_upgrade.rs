@@ -106,10 +106,10 @@ fn v1_journal_rows_migrate_byte_exactly_and_new_aggregate_records_append() {
     let mut engine =
         MigrationEngine::open(config(&temp, database.clone()), MigrationRegistry::current())
             .expect("migration engine");
-    let plan = engine.preflight(version(3)).expect("v3 preflight").into_plan();
+    let plan = engine.preflight(version(4)).expect("v4 preflight").into_plan();
     assert_eq!(plan.current_version(), 1);
     assert!(plan.backup_required());
-    let applied = engine.apply(&plan, operation(10)).expect("v3 apply");
+    let applied = engine.apply(&plan, operation(10)).expect("v4 apply");
     assert!(applied.backup_path().expect("required backup").is_file());
     drop(engine);
 
@@ -123,7 +123,7 @@ fn v1_journal_rows_migrate_byte_exactly_and_new_aggregate_records_append() {
                 0
             ))
             .expect("schema version"),
-        3
+        4
     );
     assert!(
         !connection
@@ -139,7 +139,7 @@ fn v1_journal_rows_migrate_byte_exactly_and_new_aggregate_records_append() {
         StoreId::new([1; 16]).expect("store identity"),
         SqliteJournalOptions::default(),
     )
-    .expect("schema-v3 journal");
+    .expect("schema-v4 journal");
     assert_eq!(journal.integrity_scan().expect("pre-D0 integrity").event_count(), 1);
 
     let aggregate = AggregateKey::new(
@@ -174,7 +174,72 @@ fn v1_journal_rows_migrate_byte_exactly_and_new_aggregate_records_append() {
     journal.append(append).expect("agent append");
     append_new_aggregate(&mut journal, AggregateKind::Gate, 30, 31, 32, 51);
     append_new_aggregate(&mut journal, AggregateKind::Trace, 40, 41, 42, 60);
-    assert_eq!(journal.integrity_scan().expect("post-upgrade integrity").event_count(), 4);
+    append_new_aggregate(&mut journal, AggregateKind::Review, 50, 51, 52, 54);
+    assert_eq!(journal.integrity_scan().expect("post-upgrade integrity").event_count(), 5);
+}
+
+#[test]
+fn v3_fixture_preserves_every_historical_aggregate_tag_through_d2_migration() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let database = temp.path().join("journal-v3.sqlite3");
+    let connection = rusqlite::Connection::open(&database).expect("v3 connection");
+    let fixture = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fixtures/v3.sql");
+    connection
+        .execute_batch(&fs::read_to_string(fixture).expect("read v3 fixture"))
+        .expect("install frozen v3 schema");
+    for tag in 1_u8..=8 {
+        insert_v3_record(&connection, tag, tag.saturating_mul(10), 40 + u16::from(tag));
+    }
+    let preserved = snapshot_v3_rows(&connection);
+    drop(connection);
+
+    let mut engine =
+        MigrationEngine::open(config(&temp, database.clone()), MigrationRegistry::current())
+            .expect("migration engine");
+    let plan = engine.preflight(version(4)).expect("v4 preflight").into_plan();
+    assert_eq!(plan.current_version(), 3);
+    assert!(plan.backup_required());
+    let applied = engine.apply(&plan, operation(11)).expect("v4 apply");
+    assert!(applied.backup_path().expect("required backup").is_file());
+    drop(engine);
+
+    let connection = rusqlite::Connection::open(&database).expect("migrated connection");
+    assert_eq!(snapshot_v3_rows(&connection), preserved);
+    assert_eq!(
+        connection
+            .query_row("SELECT schema_version FROM store_meta WHERE singleton = 1", [], |row| {
+                row.get::<_, i64>(0)
+            })
+            .expect("schema version"),
+        4
+    );
+    drop(connection);
+
+    let mut journal = SqliteJournal::open(
+        &database,
+        StoreId::new([1; 16]).expect("store identity"),
+        SqliteJournalOptions::default(),
+    )
+    .expect("schema-v4 journal");
+    assert_eq!(journal.integrity_scan().expect("migrated integrity").event_count(), 8);
+    append_new_aggregate(&mut journal, AggregateKind::Review, 90, 91, 92, 54);
+    assert_eq!(journal.integrity_scan().expect("review integrity").event_count(), 9);
+    drop(journal);
+
+    let mut rollback =
+        MigrationEngine::open(config(&temp, database.clone()), MigrationRegistry::current())
+            .expect("rollback engine");
+    let restored = rollback.restore_backup(operation(11)).expect("restore v3 backup");
+    assert_eq!(restored.state(), RecoveryState::Restored);
+    drop(rollback);
+    let restored = rusqlite::Connection::open(database).expect("restored v3 fixture");
+    assert_eq!(snapshot_v3_rows(&restored), preserved);
+    assert_eq!(
+        restored
+            .pragma_query_value(None, "user_version", |row| row.get::<_, i64>(0))
+            .expect("restored user version"),
+        3
+    );
 }
 
 fn append_new_aggregate(
@@ -214,6 +279,77 @@ fn append_new_aggregate(
     .plan()
     .expect("domain append plan");
     journal.append(plan).expect("domain append");
+}
+
+fn insert_v3_record(connection: &rusqlite::Connection, kind: u8, identity: u8, family: u16) {
+    let position = i64::from(kind);
+    let aggregate = [identity; 16];
+    let event = [identity.saturating_add(1); 16];
+    let command = [identity.saturating_add(2); 16];
+    let request = Sha256Digest::new([identity.saturating_add(3); 32]);
+    let revision = Sha256Digest::new([identity.saturating_add(4); 32]);
+    let frame = frame(family, &[kind, identity]);
+    let frame_digest = digest(&frame);
+    let event_hash =
+        event_hash_for_kind(u16::from(kind), aggregate, event, command, frame_digest, revision);
+    let batch_hash = batch_hash(command, request, event_hash);
+    connection
+        .execute(
+            "INSERT INTO events(global_position, event_id, aggregate_kind, aggregate_id, sequence,
+             previous_event_id, previous_event_hash, event_hash, command_id, frame_family,
+             frame_schema, frame_digest, revision_digest, causal_ids, frame)
+             VALUES (?1, ?2, ?3, ?4, 1, NULL, zeroblob(32), ?5, ?6, ?7, 1, ?8, ?9, X'', ?10)",
+            params![
+                position,
+                event,
+                i64::from(kind),
+                aggregate,
+                event_hash.as_bytes(),
+                command,
+                i64::from(family),
+                frame_digest.as_bytes(),
+                revision.as_bytes(),
+                frame,
+            ],
+        )
+        .expect("insert v3 event");
+    connection
+        .execute(
+            "INSERT INTO aggregate_heads(aggregate_kind, aggregate_id, sequence, event_id, event_hash)
+             VALUES (?1, ?2, 1, ?3, ?4)",
+            params![i64::from(kind), aggregate, event, event_hash.as_bytes()],
+        )
+        .expect("insert v3 head");
+    connection
+        .execute(
+            "INSERT INTO commands(command_id, request_digest, first_position, last_position, event_count, batch_hash)
+             VALUES (?1, ?2, ?3, ?3, 1, ?4)",
+            params![command, request.as_bytes(), position, batch_hash.as_bytes()],
+        )
+        .expect("insert v3 command");
+}
+
+fn snapshot_v3_rows(connection: &rusqlite::Connection) -> (Vec<String>, Vec<String>) {
+    let query = |sql: &str| {
+        let mut statement = connection.prepare(sql).expect("snapshot statement");
+        statement
+            .query_map([], |row| row.get::<_, String>(0))
+            .expect("snapshot rows")
+            .map(|row| row.expect("snapshot row"))
+            .collect::<Vec<_>>()
+    };
+    let heads = query(
+        "SELECT printf('%d:%s:%d:%s:%s', aggregate_kind, hex(aggregate_id), sequence,
+         hex(event_id), hex(event_hash)) FROM aggregate_heads ORDER BY aggregate_kind, aggregate_id",
+    );
+    let events = query(
+        "SELECT printf('%d:%s:%d:%s:%d:%s:%s:%s:%s:%d:%d:%s:%s:%s:%s', global_position,
+         hex(event_id), aggregate_kind, hex(aggregate_id), sequence, ifnull(hex(previous_event_id), ''),
+         hex(previous_event_hash), hex(event_hash), hex(command_id), frame_family, frame_schema,
+         hex(frame_digest), hex(revision_digest), hex(causal_ids), hex(frame))
+         FROM events ORDER BY global_position",
+    );
+    (heads, events)
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -351,8 +487,19 @@ fn event_hash(
     frame: Sha256Digest,
     revision: Sha256Digest,
 ) -> Sha256Digest {
+    event_hash_for_kind(1, aggregate, event, command, frame, revision)
+}
+
+fn event_hash_for_kind(
+    kind: u16,
+    aggregate: [u8; 16],
+    event: [u8; 16],
+    command: [u8; 16],
+    frame: Sha256Digest,
+    revision: Sha256Digest,
+) -> Sha256Digest {
     let mut bytes = b"peritus.journal.event.v1\0".to_vec();
-    bytes.extend_from_slice(&1_u16.to_be_bytes());
+    bytes.extend_from_slice(&kind.to_be_bytes());
     bytes.extend_from_slice(&aggregate);
     bytes.extend_from_slice(&1_u64.to_be_bytes());
     bytes.extend_from_slice(&event);

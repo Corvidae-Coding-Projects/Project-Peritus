@@ -7,6 +7,66 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Implement the complete production D2 Review Engine as a maintainable H-class `peritus-review`
+  orchestration crate, preserving B0/B1/B2 acceptance and approval authority while making review,
+  finding, disposition, escalation, and restart truth durable and deterministic (#18)
+- Bind each review run to a checked immutable B2 acceptance contract and review-policy snapshot,
+  exact seven-component `RevisionTuple`, candidate/tree digests, producer identities and ancestry,
+  and a domain-separated digest covering every review-relevant input
+- Add independently bounded review limits for cycles, assignments, submissions, findings,
+  categories, requirements, source locations, evidence, provenance, dispositions, text/path/opaque
+  values, and the complete 16 MiB protocol/state boundary
+- Add checked reviewer assignments with stable cycle identity and ordinal, canonical contract
+  categories, exact C6 context-plan identity, fresh-context fact, reviewer/provider/model identity,
+  producer independence, and no-shared-ancestry evidence
+- Add atomic structured review submissions and rich stable findings retaining category, severity,
+  blocking status, confidence, requirements, source locations, evidence, reproduction, expected
+  behavior, remediation, exact affected revision, normalized digest, all source reviewers/cycles,
+  and complete append-only disposition history
+- Add provenance-preserving duplicate reconciliation that retains absorbed finding identities,
+  sources, evidence, and histories while rejecting self/cyclic/conflicting supersession,
+  category/revision mismatch, and any provenance loss
+- Add explicit fixer responses for fixed, disputed, proposed-supersession, and waiver-requested
+  outcomes; keep each finding open until current independent reviewer confirmation or an exact
+  externally authorized B1/B2 waiver observation is durably recorded
+- Enforce finding conservation across reviewer-confirmed resolution, invalidation, supersession,
+  and externally authorized waiver, with no implicit closure through fixer claims, malformed
+  input, cancellation, exhaustion, missing evidence, or historical state
+- Compute required review count, category coverage, distinct reviewer, producer independence,
+  distinct C6 context, distinct model family, distinct provider, no-shared-ancestry, and fresh
+  context as separately named quorum dimensions rather than a lossy composite result
+- Add exact revision advance semantics that retain all historical review/finding/waiver evidence
+  while excluding every stale cycle, disposition, and authority observation from current quorum,
+  conservation, projections, and completion
+- Add deterministic finding-set repetition, severity stagnation/regression, disagreement,
+  maximum-cycle, and budget-exhaustion accounting with truthful `NeedsHuman`/`Failed` outcomes and
+  a closed `Completed`, `NeedsHuman`, `Failed`, or `Cancelled` terminal vocabulary
+- Add a causally fenced closed D2 command/event/state reducer covering genesis, revision advance,
+  assignment, submission, reconciliation, fixer response, reviewer confirmations, waiver request
+  and observation, cycle/run cancellation, budget exhaustion, failure, and finalization
+- Add canonical schema-v1 D2 codecs for inert B3 families 53 review-command, 54 review-event, and
+  55 review-state, strict tag/bounds/trailing-byte rejection, deterministic digests, immutable
+  fixtures, and a rebuildable non-authoritative D2 projection
+- Add C0 `Review` aggregate tag 9 and namespace `0xD201` atomic event/checkpoint composition with
+  aggregate/state compare-and-swap, exact command idempotency, conflict detection, genesis semantic
+  replay, and complete checkpoint equivalence validation
+- Extend C0 to schema version four with a backup-required, exact-source-digest table-copy migration
+  that widens only aggregate-kind constraints from tags 1–8 to 1–9, validates row counts/metadata,
+  preserves historical rows and frames byte-for-byte, and supports exact version-three restore
+- Add B2 `ReviewObservation`, `FindingObservation`, and previously authorized `WaiverObservation`
+  projection without giving D2 any waiver-issuance, provider/tool execution, workspace mutation,
+  or overall run-acceptance path
+- Add executable Verus refinements and ordinary-Rust witnesses for bounds, reducer fences, exact
+  freshness, independent quorum, disposition legality, finding conservation, truthful terminal
+  state, oscillation limits, replay equivalence, and the absence of implicit success
+- Extend A2 with ten runtime-neutral D2 scenarios covering lifecycle, quorum, independence,
+  reconciliation, stale revision, resolution, waiver, restart, oscillation, and malformed
+  submission, including fail-closed negative oracles
+- Add real SQLite restart/idempotency/conflict/corruption and schema-migration coverage, domain and
+  adversarial codec matrices, generated protocol/schema/client metadata, architecture and strict
+  no-cheating command inventories, the grounded D2 design, crate README, and production operator
+  guide
+
 - Implement complete production D1 Gate Engine and C7 Trace/Telemetry (#17)
 - Implement the complete production D1 Gate Engine boundary with a maintainable H-class
   `peritus-gates` orchestration crate and the required narrow `peritus-tools-quality` extensions,
