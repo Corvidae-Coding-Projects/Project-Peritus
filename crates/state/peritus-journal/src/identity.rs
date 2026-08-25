@@ -108,6 +108,8 @@ pub enum AggregateKind {
     Approval,
     /// B1 credential-registry history.
     CredentialRegistry,
+    /// D0 durable inner-turn state and observations.
+    Agent,
 }
 
 impl AggregateKind {
@@ -118,6 +120,7 @@ impl AggregateKind {
             Self::Lease => 3,
             Self::Approval => 4,
             Self::CredentialRegistry => 5,
+            Self::Agent => 6,
         }
     }
 
@@ -128,6 +131,7 @@ impl AggregateKind {
             Self::Lease => 3,
             Self::Approval => 4,
             Self::CredentialRegistry => 5,
+            Self::Agent => 6,
         }
     }
 
@@ -138,6 +142,7 @@ impl AggregateKind {
             3 => Some(Self::Lease),
             4 => Some(Self::Approval),
             5 => Some(Self::CredentialRegistry),
+            6 => Some(Self::Agent),
             _ => None,
         }
     }

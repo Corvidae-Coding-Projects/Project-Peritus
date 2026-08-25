@@ -9,8 +9,10 @@ use vstd::prelude::*;
 verus! {
 
 mod validation;
+mod replacement;
 
 pub use validation::validate_compaction;
+pub use replacement::{AppliedCompaction, replace_validated_compaction};
 
 /// One nonempty half-open byte range bound to its source's complete digest.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -191,6 +193,13 @@ pub struct ValidatedCompaction {
     policy_id: CompactionPolicyId,
     source_ranges: Vec<SourceRange>,
     replaced_tokens: u64,
+    sources: Vec<ValidatedSource>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct ValidatedSource {
+    node: ContextNode,
+    required: bool,
 }
 
 impl ValidatedCompaction {

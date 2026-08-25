@@ -32,5 +32,6 @@ pub(super) const fn kind_tag(kind: AggregateKind) -> u16 {
         AggregateKind::Lease => 3,
         AggregateKind::Approval => 4,
         AggregateKind::CredentialRegistry => 5,
+        AggregateKind::Agent => 6,
     }
 }

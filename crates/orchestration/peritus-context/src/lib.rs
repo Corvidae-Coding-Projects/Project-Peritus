@@ -26,7 +26,8 @@ mod verified;
 pub use authority::AuthorityClass;
 pub use budget::{TokenAccounting, TokenBudget};
 pub use compaction::{
-    CompactionPolicy, CompactionProposal, SourceRange, ValidatedCompaction, validate_compaction,
+    AppliedCompaction, CompactionPolicy, CompactionProposal, SourceRange, ValidatedCompaction,
+    replace_validated_compaction, validate_compaction,
 };
 pub use content::{ContentKind, ContextContent, ContextLimits};
 #[cfg(not(verus_only))]

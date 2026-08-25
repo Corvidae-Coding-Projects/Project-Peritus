@@ -3,12 +3,12 @@
 use peritus_codec::{CodecLimits, decode_message};
 use peritus_protocol::schema::{
     FAMILIES, KERNEL_COMMAND_VARIANTS, KERNEL_ERROR_VARIANTS, KERNEL_EVENT_VARIANTS,
-    KERNEL_SUBJECT_VARIANTS, LIFECYCLE_PHASE_VARIANTS, LIFECYCLE_VARIANTS, generated_artifacts,
-    generated_binary_artifacts,
+    KERNEL_SUBJECT_VARIANTS, LIFECYCLE_PHASE_VARIANTS, LIFECYCLE_VARIANTS,
+    generated_agent_binary_artifacts, generated_artifacts, generated_binary_artifacts,
 };
 use peritus_protocol::{
-    AcceptanceContractDto, ActionIntentDto, BudgetAmountsDto, CommandEnvelopeDto, KernelCommandDto,
-    PolicyAmendmentDto,
+    AcceptanceContractDto, ActionIntentDto, AgentCommandDto, AgentEventDto, AgentStateDto,
+    BudgetAmountsDto, CommandEnvelopeDto, KernelCommandDto, PolicyAmendmentDto,
 };
 use std::fs;
 use std::path::PathBuf;
@@ -16,6 +16,24 @@ use std::path::PathBuf;
 fn repository_root() -> PathBuf {
     PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").expect("Cargo manifest directory"))
         .join("../../..")
+}
+
+#[test]
+fn checked_in_agent_frames_are_exact_and_decodable() {
+    let root = repository_root();
+    let artifacts = generated_agent_binary_artifacts().expect("generate agent corpus");
+    for artifact in &artifacts {
+        let actual = fs::read(root.join(artifact.path)).expect("agent compatibility fixture");
+        assert_eq!(actual, artifact.content);
+    }
+    let read = |name: &str| {
+        fs::read(root.join("crates/foundation/peritus-protocol/tests/fixtures/v1").join(name))
+            .expect("agent fixture")
+    };
+    let limits = CodecLimits::PRODUCTION;
+    decode_message::<AgentCommandDto>(&read("agent-command.bin"), limits).expect("command");
+    decode_message::<AgentEventDto>(&read("agent-event.bin"), limits).expect("event");
+    decode_message::<AgentStateDto>(&read("agent-state.bin"), limits).expect("state");
 }
 
 #[test]

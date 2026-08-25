@@ -14,13 +14,13 @@ bytes.workspace = true
 futures-core.workspace = true
 futures-util.workspace = true
 peritus-model-protocol = { version = "=0.0.0", path = "../peritus-model-protocol" }
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
 reqwest.workspace = true
 tokio = { workspace = true, features = ["io-util", "process"] }
 url.workspace = true
 zeroize.workspace = true
 
 [dev-dependencies]
-peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
 tempfile.workspace = true
 
 [package.metadata.peritus]

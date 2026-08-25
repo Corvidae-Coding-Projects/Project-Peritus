@@ -13,7 +13,16 @@ ignored_directories = [
 ]
 forbidden_module_names = ["common", "helpers", "manager", "misc", "utils"]
 trusted_source_roots = ["crates/foundation/peritus-tcb/src"]
-source_exceptions = []
+source_exceptions = [
+    { path = "crates/orchestration/peritus-agent/src/canonical/event_wire.rs", owner = "D0", rationale = "The closed version-one command payload codec keeps its exhaustive encode/decode tag correspondence in one audited source." },
+    { path = "crates/orchestration/peritus-agent/src/reducer.rs", owner = "D0", rationale = "The pure reducer keeps the complete closed command vocabulary and legal phase transitions visible in one exhaustive audit surface." },
+    { path = "crates/orchestration/peritus-agent/src/runtime/driver.rs", owner = "D0", rationale = "The cooperative driver core keeps commit-before-state and commit-before-provider-ack ordering together; C4 tool steps are already split out." },
+    { path = "crates/orchestration/peritus-agent/src/runtime/tools.rs", owner = "D0", rationale = "The C4 coordinator keeps proposal-order slot state and the sole prepare, dispatch, control, recovery, and result projection boundary together." },
+    { path = "crates/orchestration/peritus-agent/tests/runtime_driver.rs", owner = "D0", rationale = "The fake-provider durability matrix shares one exact scripted-provider and request fixture across completion, duplicate, malformed-order, and restart cases." },
+    { path = "crates/orchestration/peritus-agent/tests/runtime_tools.rs", owner = "D0", rationale = "The end-to-end D0/C4 test intentionally shows complete B0/B1/C0 authority and lease assembly beside inspect, edit, run, and test effect ordering." },
+    { path = "crates/orchestration/peritus-context/tests/compaction_matrix.rs", owner = "C6", rationale = "The compaction matrix keeps source validation and operational graph-replacement cases beside their shared canonical graph fixture." },
+    { path = "crates/state/peritus-migrations/src/engine.rs", owner = "C0", rationale = "The migration engine keeps backup, transaction, integrity, recovery, and version publication ordering in one auditable implementation." },
+]
 forbidden_dependencies = []
 controlled_source_roots = [
     { path = "crates/foundation/peritus-protocol/src/schema", owner = "B3", kind = "schema", rationale = "B3 owns the handwritten family registry, deterministic renderers, fixture constructors, and code-generation implementation." },
@@ -279,6 +288,13 @@ path = "crates/orchestration/peritus-role"
 owner = "C6"
 layer = "orchestration"
 verification_class = "V"
+
+[[packages]]
+name = "peritus-agent"
+path = "crates/orchestration/peritus-agent"
+owner = "D0"
+layer = "orchestration"
+verification_class = "H"
 
 [[packages]]
 name = "peritus-protocol"

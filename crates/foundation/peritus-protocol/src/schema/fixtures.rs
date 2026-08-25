@@ -1,8 +1,10 @@
 //! Deterministic version-one compatibility frames.
 
 use crate::{
-    AcceptanceContractDto, ActionIntentDto, BudgetAmountsDto, CommandEnvelopeDto,
-    GateDefinitionDto, KernelCommandDto, PolicyAmendmentDto, RestrictionLayerDto, ReviewPolicyDto,
+    AcceptanceContractDto, ActionIntentDto, AgentCommandDto, AgentCommandKindDto, AgentCountersDto,
+    AgentEventDto, AgentEventKindDto, AgentPhaseDto, AgentResumablePhaseDto, AgentStateDto,
+    BudgetAmountsDto, CommandEnvelopeDto, GateDefinitionDto, KernelCommandDto, PolicyAmendmentDto,
+    RestrictionLayerDto, ReviewPolicyDto,
 };
 use peritus_budget::BudgetAmounts;
 use peritus_codec::{CodecError, CodecLimits, encode_message};
@@ -15,9 +17,9 @@ use peritus_spec::{
     RequirementId, ReviewCategory, ReviewerIndependence, WaiverPolicy,
 };
 use peritus_types::{
-    AcceptanceSpecId, ActionId, ActorId, CapabilityName, CommandId, EnvironmentId, EventId, GateId,
-    Generation, HarnessId, PolicyId, ProviderProfileId, ResourceId, RevisionNumber, RevisionTuple,
-    Sha256Digest, WorkspaceId,
+    AcceptanceSpecId, ActionId, ActorId, AttemptId, CapabilityName, CommandId, EnvironmentId,
+    EventId, EventSequence, GateId, Generation, HarnessId, PolicyId, ProviderProfileId, ResourceId,
+    RevisionNumber, RevisionTuple, SessionId, Sha256Digest, TurnId, WorkspaceId,
 };
 
 /// One generated repository-relative binary compatibility fixture.
@@ -53,6 +55,80 @@ pub fn generated_binary_artifacts() -> Result<Vec<GeneratedBinaryArtifact>, Code
         binary("protocol/fixtures/v1/action-intent.bin", action),
         binary("protocol/fixtures/v1/policy-amendment.bin", amendment),
         binary("protocol/fixtures/v1/acceptance-contract.bin", contract),
+    ])
+}
+
+/// Builds the frozen D0 command, event, and state compatibility frames.
+///
+/// # Errors
+///
+/// Returns a codec error if the checked fixture values cannot be encoded under production limits.
+///
+/// # Panics
+///
+/// Panics only if a source-code fixture identity is changed to the reserved all-zero value.
+pub fn generated_agent_binary_artifacts() -> Result<Vec<GeneratedBinaryArtifact>, CodecError> {
+    let limits = CodecLimits::PRODUCTION;
+    let command = AgentCommandDto::new(
+        CommandId::new([80; 16]).expect("fixture id"),
+        EventId::new([81; 16]).expect("fixture id"),
+        TurnId::new([82; 16]).expect("fixture id"),
+        0,
+        None,
+        revision(),
+        AgentPhaseDto::Active(AgentResumablePhaseDto::PreparingContext),
+        AgentCommandKindDto::StartTurn,
+        Sha256Digest::new([83; 32]),
+        AgentCountersDto::default(),
+        b"agent-command-v1".to_vec(),
+        limits,
+    )?;
+    let event = AgentEventDto::new(
+        EventId::new([81; 16]).expect("fixture id"),
+        CommandId::new([80; 16]).expect("fixture id"),
+        EventSequence::first(),
+        None,
+        TurnId::new([82; 16]).expect("fixture id"),
+        revision(),
+        AgentPhaseDto::Active(AgentResumablePhaseDto::PreparingContext),
+        AgentEventKindDto::TurnStarted,
+        Sha256Digest::new([83; 32]),
+        AgentCountersDto::new(0, 0, 1, 0, 0, 0, 1),
+        b"agent-event-v1".to_vec(),
+        limits,
+    )?;
+    let state = AgentStateDto::new(
+        TurnId::new([82; 16]).expect("fixture id"),
+        AttemptId::new([84; 16]).expect("fixture id"),
+        ActorId::new([85; 16]).expect("fixture id"),
+        ActorRole::Writer,
+        SessionId::new([86; 16]).expect("fixture id"),
+        EnvironmentId::new([87; 16]).expect("fixture id"),
+        revision(),
+        RevisionNumber::first(),
+        RevisionNumber::first(),
+        RevisionNumber::first(),
+        EventSequence::first(),
+        EventId::new([81; 16]).expect("fixture id"),
+        AgentPhaseDto::Active(AgentResumablePhaseDto::PreparingContext),
+        AgentCountersDto::new(0, 0, 1, 0, 0, 0, 1),
+        Sha256Digest::new([83; 32]),
+        b"agent-state-v1".to_vec(),
+        limits,
+    )?;
+    Ok(vec![
+        binary(
+            "crates/foundation/peritus-protocol/tests/fixtures/v1/agent-command.bin",
+            encode_message(&command, limits)?,
+        ),
+        binary(
+            "crates/foundation/peritus-protocol/tests/fixtures/v1/agent-event.bin",
+            encode_message(&event, limits)?,
+        ),
+        binary(
+            "crates/foundation/peritus-protocol/tests/fixtures/v1/agent-state.bin",
+            encode_message(&state, limits)?,
+        ),
     ])
 }
 

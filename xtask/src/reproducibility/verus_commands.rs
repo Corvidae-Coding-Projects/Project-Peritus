@@ -16,6 +16,8 @@ pub(super) const VERUS_STRICT_VERIFY_ARGS: &[&str] = &[
     "verus",
     "verify",
     "--package",
+    "peritus-agent",
+    "--package",
     "peritus-approval",
     "--package",
     "peritus-artifact-store",
@@ -124,6 +126,8 @@ pub(super) const VERUS_WORKSPACE_BUILD_ARGS: &[&str] = &[
 pub(super) const VERUS_STRICT_BUILD_ARGS: &[&str] = &[
     "verus",
     "build",
+    "--package",
+    "peritus-agent",
     "--package",
     "peritus-approval",
     "--package",

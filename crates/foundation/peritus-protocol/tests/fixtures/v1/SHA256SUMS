@@ -1,0 +1,4 @@
+# peritus agent protocol compatibility corpus v1
+de88f6fa5f67be3866fb220e3e13139786561cb0246a526571e92109c576e19a  crates/foundation/peritus-protocol/tests/fixtures/v1/agent-command.bin
+4d4a5af9cac4c7a9c9774be391f523159b1f8f41e1208232dedc28c8d85f745e  crates/foundation/peritus-protocol/tests/fixtures/v1/agent-event.bin
+9110dd149476e748e0732939126c98cdac6a8734b88ce43b22b5eeb777302edc  crates/foundation/peritus-protocol/tests/fixtures/v1/agent-state.bin

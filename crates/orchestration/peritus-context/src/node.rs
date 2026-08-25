@@ -278,6 +278,29 @@ impl ContextNode {
     pub const fn dependencies(&self) -> &[ContextNodeId] {
         self.metadata.dependencies.as_slice()
     }
+
+    pub(crate) fn replace_dependencies(
+        &self,
+        dependencies: Vec<ContextNodeId>,
+        limits: ContextLimits,
+    ) -> Result<Self, ContextError> {
+        let metadata = ContextNodeMetadata::new(
+            self.id(),
+            self.provenance(),
+            self.authority(),
+            self.trust(),
+            self.context_class(),
+            self.content_kind(),
+            self.token_estimate(),
+            self.recency_sequence(),
+            self.requirement(),
+            self.priority(),
+            self.visibility().clone(),
+            dependencies,
+            limits,
+        )?;
+        Ok(Self::new(metadata, self.content.clone()))
+    }
 }
 
 const fn kind_matches_authority(kind: ContentKind, authority: AuthorityClass) -> bool {

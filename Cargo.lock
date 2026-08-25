@@ -1405,6 +1405,32 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 
 [[package]]
+name = "peritus-agent"
+version = "0.0.0"
+dependencies = [
+ "peritus-budget",
+ "peritus-codec",
+ "peritus-context",
+ "peritus-evidence",
+ "peritus-journal",
+ "peritus-kernel",
+ "peritus-leases",
+ "peritus-memory",
+ "peritus-model-protocol",
+ "peritus-policy",
+ "peritus-protocol",
+ "peritus-provider-core",
+ "peritus-role",
+ "peritus-tool-protocol",
+ "peritus-tool-router",
+ "peritus-types",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "vstd",
+]
+
+[[package]]
 name = "peritus-approval"
 version = "0.0.0"
 dependencies = [

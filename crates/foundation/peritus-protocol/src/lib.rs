@@ -4,6 +4,7 @@
 //! budget, acceptance, or durable-event authority.
 
 mod acceptance;
+mod agent;
 mod budget;
 mod lifecycle;
 mod policy;
@@ -11,6 +12,10 @@ mod primitive;
 pub mod schema;
 mod version;
 
+pub use agent::{
+    AgentCommandDto, AgentCommandKindDto, AgentCountersDto, AgentEventDto, AgentEventKindDto,
+    AgentPhaseDto, AgentResumablePhaseDto, AgentStateDto,
+};
 pub use budget::{
     BudgetAmountsDto, BudgetCommandDto, BudgetErrorDto, BudgetReceiptDto, BudgetSnapshotDto,
     ReservationSnapshotDto,

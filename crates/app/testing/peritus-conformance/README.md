@@ -53,7 +53,7 @@ evidence for those failures must execute conformance in a supervised subprocess.
 ## Catalog suites and ownership
 
 The crate exports production journal, replay, C1 workspace, C2 process, C2/C3 sandbox, C4 tool,
-and C5 provider suites plus runnable empty plugin and protocol suites. The provider suite contains
+C5 provider, and D0 agent-loop suites plus runnable empty plugin and protocol suites. The provider suite contains
 fourteen fixed cases covering capability honesty, ordering and exact deduplication, fragmented
 tool calls, malformed and incomplete streams, interruption, cancellation, authentication, rate
 limits and retry-after, transient retry, ambiguous submission, usage, redaction, and adapter
@@ -67,6 +67,11 @@ tree ownership, terminal uniqueness, restart classification, and authorization n
 sandbox suite exercises default denial across every domain, deny dominance, exact environment,
 secret, network, descendant, terminal, and resource policy, unsupported admission, cancellation,
 observation binding, and deterministic inert preparation. Every case receives a fresh subject.
+The agent suite contains thirteen fixed cases covering the complete inspect/edit/run/test cycle,
+pause/resume, cancellation, prefix replay, context composition, provider reduction, safe retry,
+independent tool authorization, active controls, parallel result ordering, budget exhaustion,
+completion eligibility, and crash recovery without uncertain-effect redispatch. Its subjects report
+direct transition, ownership, ordering, authority, revision, and completion observations.
 
 Production crates implement only the subject traits and translate these runtime-neutral fixtures
 and observations into their own domain values. A2 neither constructs privileged runtime permits

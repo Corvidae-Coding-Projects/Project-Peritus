@@ -4,6 +4,7 @@
 //! behind [`ProjectionStore`], so replay code cannot acquire a database connection or perform an
 //! external effect.
 
+mod agent;
 mod artifacts;
 mod authority;
 mod budget;
@@ -20,6 +21,7 @@ mod replay;
 pub mod sqlite;
 pub mod verified;
 
+pub use agent::{AgentEntry, AgentProjection, AgentState};
 pub use artifacts::{
     ArtifactReferenceEntry, ArtifactReferenceProjection, ArtifactReferenceState,
     replay_artifact_references,

@@ -42,4 +42,7 @@ pub const FAMILIES: &[MessageFamily] = &[
         inert_only: true,
     },
     MessageFamily { tag: 31, name: "acceptance-contract", schema_version: 1, inert_only: false },
+    MessageFamily { tag: 40, name: "agent-command", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 41, name: "agent-event", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 42, name: "agent-state", schema_version: 1, inert_only: true },
 ];

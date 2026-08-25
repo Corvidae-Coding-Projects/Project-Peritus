@@ -8,6 +8,7 @@
 mod adapter;
 mod backoff;
 mod cancellation;
+mod continuation;
 mod credential;
 mod diagnostic;
 mod endpoint;
@@ -24,6 +25,7 @@ mod transport;
 pub use adapter::{ModelProvider, ResponseCancellationOutcome, validate_request_profile};
 pub use backoff::wait_for_backoff;
 pub use cancellation::{CancellationFuture, CancellationToken};
+pub use continuation::{ContinuationRestoreOutcome, PersistedContinuation};
 pub use credential::{Credential, CredentialReference, CredentialSource};
 pub use diagnostic::{Diagnostic, DiagnosticValue, TransportPhase};
 pub use endpoint::Endpoint;

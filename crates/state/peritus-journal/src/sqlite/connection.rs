@@ -43,7 +43,7 @@ pub struct SqliteJournal {
 }
 
 impl SqliteJournal {
-    /// Opens or creates a file-backed journal and installs schema version one.
+    /// Opens or creates a file-backed journal and installs schema version two.
     ///
     /// # Errors
     ///

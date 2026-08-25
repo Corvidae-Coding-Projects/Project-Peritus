@@ -7,14 +7,16 @@ use std::collections::VecDeque;
 
 use peritus_model_protocol::{
     BoundedText, CachePolicy, CancellationKind, CapabilityMatrix, CapabilityProvenance,
-    EventEnvelope, GenerationConfig, Message, ModelEvent, ModelLimits, ModelName, ModelRequest,
-    OutputLimitEnforcement, ParallelToolPolicy, PersistencePolicy, ProtocolLimits, ProviderName,
-    ProviderProfile, ReasoningPolicy, RequestId, RequestOptions, RequestedCapabilities, ResumeKind,
-    Role, StateMode, StructuredOutput, ToolChoice, WireDialect, negotiate,
+    Continuation, EventEnvelope, GenerationConfig, Message, ModelEvent, ModelLimits, ModelName,
+    ModelRequest, OutputLimitEnforcement, ParallelToolPolicy, PersistencePolicy, ProtocolLimits,
+    ProviderName, ProviderProfile, ReasoningPolicy, RequestId, RequestOptions,
+    RequestedCapabilities, ResumeKind, Role, StateMode, StructuredOutput, ToolChoice, WireDialect,
+    negotiate,
 };
 use peritus_provider_core::{
-    BoxFuture, CancellationToken, ModelProvider, ModelStream, OwnedModelStream,
-    ProviderCoreErrorKind, ResponseCancellationOutcome, validate_request_profile,
+    BoxFuture, CancellationToken, ContinuationRestoreOutcome, ModelProvider, ModelStream,
+    OwnedModelStream, PersistedContinuation, ProviderCoreErrorKind, ResponseCancellationOutcome,
+    validate_request_profile,
 };
 use peritus_types::{ProviderProfileId, Sha256Digest};
 
@@ -180,5 +182,25 @@ fn provider_default_response_cancellation_performs_no_effect() {
             ResponseCancellationOutcome::Unsupported
         );
         assert!(!cancellation.is_cancelled());
+    });
+}
+
+#[test]
+fn provider_default_continuation_restore_is_explicitly_unsupported() {
+    runtime::block_on(async {
+        let profile = profile(1);
+        let provider = DefaultCancellationProvider(profile.clone());
+        let continuation = Continuation::new(
+            peritus_model_protocol::ResponseId::new("response-1".to_owned()).expect("response"),
+            None,
+            Some(7),
+        )
+        .expect("continuation");
+        let persisted = PersistedContinuation::new(profile.profile_id(), 1, continuation)
+            .expect("persisted continuation");
+        assert_eq!(
+            provider.restore_continuation(&persisted).await.expect("outcome"),
+            ContinuationRestoreOutcome::Unsupported
+        );
     });
 }

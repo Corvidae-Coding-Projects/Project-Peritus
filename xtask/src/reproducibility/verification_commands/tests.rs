@@ -26,6 +26,12 @@ controlled_source_roots = []
 
 const CANONICAL_POLICY_PACKAGES: &str = r#"
 [[packages]]
+name = "peritus-agent"
+path = "crates/orchestration/peritus-agent"
+owner = "D0"
+layer = "orchestration"
+verification_class = "H"
+[[packages]]
 name = "peritus-approval"
 path = "crates/state/peritus-approval"
 owner = "B1"

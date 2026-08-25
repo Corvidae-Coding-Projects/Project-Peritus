@@ -13,14 +13,96 @@ const VERSION_ONE_DIGEST: [u8; 32] = [
     0xef, 0x5d, 0x06, 0x65, 0x33, 0xdb, 0x1a, 0xfc, 0x26, 0x00, 0x90, 0x28, 0xc1, 0x86, 0xb2, 0x9c,
     0xfe, 0x53, 0xf4, 0xe6, 0x74, 0x4d, 0x2e, 0x79, 0xf5, 0x29, 0x5f, 0x98, 0x1b, 0xc7, 0x81, 0x3a,
 ];
-const CURRENT_DESCRIPTORS: [MigrationDescriptor; 1] = [MigrationDescriptor::new(
-    MigrationVersion::FIRST,
-    "0.0.0",
-    VERSION_ONE_SQL,
-    Sha256Digest::new(VERSION_ONE_DIGEST),
-    BackupPolicy::Required,
-    64 * 1024,
-)];
+const VERSION_TWO_SQL: &str = r"PRAGMA defer_foreign_keys = ON;
+CREATE TABLE aggregate_heads_v2 (
+    aggregate_kind INTEGER NOT NULL CHECK (aggregate_kind BETWEEN 1 AND 6),
+    aggregate_id BLOB NOT NULL CHECK (length(aggregate_id) = 16),
+    sequence INTEGER NOT NULL CHECK (sequence > 0),
+    event_id BLOB NOT NULL CHECK (length(event_id) = 16),
+    event_hash BLOB NOT NULL CHECK (length(event_hash) = 32),
+    PRIMARY KEY (aggregate_kind, aggregate_id)
+) STRICT, WITHOUT ROWID;
+INSERT INTO aggregate_heads_v2(
+    aggregate_kind, aggregate_id, sequence, event_id, event_hash
+)
+SELECT aggregate_kind, aggregate_id, sequence, event_id, event_hash
+FROM aggregate_heads ORDER BY aggregate_kind, aggregate_id;
+CREATE TEMP TABLE migration_v2_head_count(
+    valid INTEGER NOT NULL CHECK (valid = 1)
+) STRICT;
+INSERT INTO migration_v2_head_count(valid)
+SELECT COUNT(*) = (SELECT COUNT(*) FROM aggregate_heads_v2) FROM aggregate_heads;
+DROP TABLE aggregate_heads;
+ALTER TABLE aggregate_heads_v2 RENAME TO aggregate_heads;
+DROP TABLE migration_v2_head_count;
+CREATE TABLE events_v2 (
+    global_position INTEGER PRIMARY KEY AUTOINCREMENT CHECK (global_position > 0),
+    event_id BLOB NOT NULL UNIQUE CHECK (length(event_id) = 16),
+    aggregate_kind INTEGER NOT NULL CHECK (aggregate_kind BETWEEN 1 AND 6),
+    aggregate_id BLOB NOT NULL CHECK (length(aggregate_id) = 16),
+    sequence INTEGER NOT NULL CHECK (sequence > 0),
+    previous_event_id BLOB CHECK (previous_event_id IS NULL OR length(previous_event_id) = 16),
+    previous_event_hash BLOB NOT NULL CHECK (length(previous_event_hash) = 32),
+    event_hash BLOB NOT NULL CHECK (length(event_hash) = 32),
+    command_id BLOB NOT NULL CHECK (length(command_id) = 16),
+    frame_family INTEGER NOT NULL CHECK (frame_family > 0),
+    frame_schema INTEGER NOT NULL CHECK (frame_schema > 0),
+    frame_digest BLOB NOT NULL CHECK (length(frame_digest) = 32),
+    revision_digest BLOB NOT NULL CHECK (length(revision_digest) = 32),
+    causal_ids BLOB NOT NULL CHECK ((length(causal_ids) % 16) = 0),
+    frame BLOB NOT NULL,
+    UNIQUE (aggregate_kind, aggregate_id, sequence)
+) STRICT;
+INSERT INTO events_v2(
+    global_position, event_id, aggregate_kind, aggregate_id, sequence, previous_event_id,
+    previous_event_hash, event_hash, command_id, frame_family, frame_schema, frame_digest,
+    revision_digest, causal_ids, frame
+)
+SELECT global_position, event_id, aggregate_kind, aggregate_id, sequence, previous_event_id,
+       previous_event_hash, event_hash, command_id, frame_family, frame_schema, frame_digest,
+       revision_digest, causal_ids, frame
+FROM events ORDER BY global_position;
+CREATE TEMP TABLE migration_v2_event_count(
+    valid INTEGER NOT NULL CHECK (valid = 1)
+) STRICT;
+INSERT INTO migration_v2_event_count(valid)
+SELECT COUNT(*) = (SELECT COUNT(*) FROM events_v2) FROM events;
+DROP TABLE events;
+ALTER TABLE events_v2 RENAME TO events;
+CREATE INDEX events_command ON events(command_id, global_position);
+DROP TABLE migration_v2_event_count;
+UPDATE store_meta SET schema_version = 2 WHERE singleton = 1 AND schema_version = 1;
+CREATE TEMP TABLE migration_v2_meta_check(
+    valid INTEGER NOT NULL CHECK (valid = 1)
+) STRICT;
+INSERT INTO migration_v2_meta_check(valid)
+SELECT COUNT(*) = 1 FROM store_meta WHERE singleton = 1 AND schema_version = 2;
+DROP TABLE migration_v2_meta_check;
+PRAGMA user_version = 2;
+";
+// Updated whenever the reviewed exact VERSION_TWO_SQL source changes.
+const VERSION_TWO_DIGEST: [u8; 32] = [
+    0xb5, 0x35, 0x45, 0xa8, 0xbf, 0x5c, 0x04, 0x13, 0x4f, 0xc6, 0xc9, 0x0b, 0xfa, 0x34, 0xb9, 0xb6,
+    0x81, 0x16, 0x9d, 0x28, 0x73, 0xca, 0xac, 0x67, 0x60, 0xc9, 0x6d, 0x0e, 0x40, 0x63, 0x91, 0x71,
+];
+const CURRENT_DESCRIPTORS: [MigrationDescriptor; 2] = [
+    MigrationDescriptor::new(
+        MigrationVersion::FIRST,
+        "0.0.0",
+        VERSION_ONE_SQL,
+        Sha256Digest::new(VERSION_ONE_DIGEST),
+        BackupPolicy::Required,
+        64 * 1024,
+    ),
+    MigrationDescriptor::new(
+        MigrationVersion::SECOND,
+        "0.0.0",
+        VERSION_TWO_SQL,
+        Sha256Digest::new(VERSION_TWO_DIGEST),
+        BackupPolicy::Required,
+        32 * 1024 * 1024,
+    ),
+];
 
 /// Immutable ordered migration registry.
 #[derive(Clone, Copy, Debug)]
