@@ -1,6 +1,6 @@
 {
   "next_display_id": 17,
-  "next_comment_id": 281,
+  "next_comment_id": 282,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "19b7b53a-b2fb-41c1-835d-ffd6ce605c08": 14,
@@ -876,7 +876,7 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-08-25T03:27:57.489313997Z",
-      "updated_at": "2026-08-25T04:46:34.773387702Z",
+      "updated_at": "2026-08-25T05:19:39.307692027Z",
       "labels": [
         "feature"
       ],
@@ -934,6 +934,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJvEwI8bcRTuSpNNo1lXfsWOPmZC8IN0Sna50mhigN2emGq1ciQrfpQ4uqgXz1sRPWHyNaJu68l8Z1vGnjOkkAg=="
+        },
+        "b79235f2-031c-46a0-a6ec-b5e22b32c4e5": {
+          "display_id": 281,
+          "author": "6ME5",
+          "content": "[action] Completed concrete B1 reservation lifecycle and durable C5 exact-prefix restoration; focused D0 tests, strict lint/docs, xtask all, and ordinary API checks pass. Starting final full Gate A.",
+          "created_at": "2026-08-25T05:19:39.304624631Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+x0PrjyKjVaxjTl3R0z4zV30blL6zbjZ0IFaIxi2NzZTkURRYNIAMMh+mT61Cqwl1awtvsrbnsCDGEfhUViLCA=="
         }
       }
     },
@@ -2824,8 +2833,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-25T04:46:34.773387702Z",
+    "timestamp": "2026-08-25T05:19:39.307692027Z",
     "agent_id": "6ME5",
-    "agent_seq": 369
+    "agent_seq": 370
   }
 }
