@@ -34,13 +34,17 @@ The implemented foundation and runtime spine now covers:
   HTTP/process transport boundary, production OpenAI Responses, Anthropic Messages, stable-v1
   Google Interactions/Generate Content, explicitly profiled compatible endpoints, and separate
   account-backed Codex/Claude routes through their credential-owning official executables, with
-  immutable wire fixtures and fresh-subject A2 conformance.
+  immutable wire fixtures and fresh-subject A2 conformance; and
+- C6: canonical role-specific context views, provenance and authority-aware context DAGs,
+  deterministic dependency-complete selection and token accounting, validated compaction lineage,
+  typed provider-neutral render plans, scoped evidence-backed memory lifecycle and tombstones,
+  deterministic explainable retrieval, and rebuildable canonical indexes.
 
 These are library and verification layers. There is not yet a user-facing `peritus` CLI, daemon,
 TUI, complete agent loop, writer-reviewer-fixer orchestrator, or native packaged-host
-qualification. C6 is the next runtime boundary: provenance-aware context construction, compaction,
-memory selection/lifecycle, and role capabilities. A3, C6–C7, D0–D3, E0–E3, F0, G0–G3, and
-H0–H4 remain before production release and qualification.
+qualification. D0 is the next functional runtime boundary: the durable model/tool loop that
+combines the completed C0–C6 contracts. A3, C7, D0–D3, E0–E3, F0, G0–G3, and H0–H4 remain before
+production release and qualification.
 
 Gate A is the current merge authority: ordinary Rust checks, architecture and API policy,
 supply-chain policy, pinned toolchains, full Verus verification, and verified release builds must
@@ -99,6 +103,9 @@ The [C5 model provider guide](docs/c5-model-providers.md) documents the provider
 verified reduction and retry semantics, hardened HTTP/process ownership, official first-party API
 and account-runtime contracts, explicit compatible profiles, immutable fixtures, and provider
 conformance boundary.
+The [C6 context and memory guide](docs/c6-context-memory.md) documents canonical role views,
+provenance-aware context graphs, deterministic selection and token planning, validated compaction,
+typed rendering, scoped derived-memory lifecycle, explainable retrieval, and rebuildable indexes.
 The [GitHub governance runbook](docs/github-governance.md) defines the GitHub Team-compatible
 repository ruleset and required `Gate A` status that must be active after the A1 genesis push.
 Immutable required-workflow authority remains an explicitly documented Enterprise Cloud deferral.

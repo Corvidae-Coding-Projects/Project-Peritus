@@ -7,6 +7,54 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Implement the complete production C6 Context and Memory boundary with separate maintainable
+  `peritus-role`, `peritus-context`, and `peritus-memory` orchestration crates (#15)
+- Project every canonical B1 actor role into an explicit non-widening context policy, including
+  writer, reviewer, fixer, evaluator, and evolver profiles plus restricted service/worker/plugin
+  profiles, without introducing another security-role identity or issuing capabilities
+- Add checked ordered capability views whose Verus specification proves every visible operation
+  remains permitted by the exact B1 actor role, along with presentation, contribution, freshness,
+  memory, hidden-reasoning, and producer-ancestry controls
+- Require an independent reviewer view to use fresh read-only context, exclude producer-hidden
+  reasoning and memory-derived producer rationale, and preserve every B2 reviewer-independence
+  requirement as evidence that later orchestration must establish
+- Add bounded provenance-aware context nodes that bind content digests, authority and trust
+  ceilings, semantic classes, required/optional mode, priority, recency, role visibility, and
+  canonical dependencies, with graph rejection for duplicates, missing edges, and cycles
+- Add deterministic required-first context selection with complete dependency closures, atomic
+  optional admission, stable integer precedence, explicit selection/omission reasons, checked node
+  and byte limits, and exact context-window, output-reserve, protocol-overhead, used, and remaining
+  token accounting
+- Add transactional compaction validation over selected canonical source ranges, including policy
+  binding, digest and lineage checks, visibility, range ordering, token savings, protected policy,
+  specification, user-instruction, capability, and blocking-finding classes, and trust-preserving
+  derivation only when every source and policy allow it
+- Add provider-neutral render plans whose individually delimited segments preserve source identity,
+  message role, provenance, authority, trust, context class, content digest, and bounded bytes
+  without concatenating untrusted text into an elevated instruction channel
+- Add immutable scoped memory records with stable identities and revisions, original provenance,
+  source events, supporting and contradicting evidence, bounded confidence and relevance features,
+  logical observations, review/expiry state, feedback, and canonical content digests
+- Add explicit memory review, quarantine, release, expiry, supersession, forgetting, and tombstone
+  transitions; tombstones bind prior digest and revision and deterministically dominate replayed
+  records at or below the deleted revision
+- Add deterministic filter-before-rank retrieval with exact project/workspace/repository/actor/role
+  scope checks, lifecycle and tombstone exclusion, confidence and feature policy, bounded integer
+  score components, stable identity tie-breaking, result/token limits, and an explanation for every
+  selected or excluded record
+- Add rebuildable canonical memory indexes and digests over active records and tombstones, with
+  deterministic posting lists and equivalence tests that keep storage an implementation detail for
+  the future C0/D0 composition boundary
+- Add context and memory poisoning matrices proving instruction-like repository, external, tool,
+  provider, and recalled text remains quoted non-authoritative evidence with its original
+  provenance and cannot become policy, a capability, or an authority transition
+- Add focused no-cheating Verus roots for role narrowing, context graph/selection/accounting and
+  compaction invariants, memory non-authority, lifecycle advancement, tombstone dominance, and
+  bounded retrieval; register all three crates in architecture, ordinary-API, reproducibility, and
+  hosted formal-governance command surfaces
+- Add the complete C6 design, operating guide, crate READMEs, construction/selection/compaction/
+  rendering/lifecycle/index/retrieval test matrices, and the documented D0 integration boundary
+
 - Implement the complete production C5 Model Providers boundary with six maintainable model-layer
   crates for the provider-neutral protocol, shared provider core, OpenAI, Anthropic, Google, and
   explicitly configured compatible endpoints (#14)

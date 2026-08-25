@@ -841,3 +841,115 @@ evidence = [
   { kind = "refinement-test", source_file = "crates/tools/peritus-tool-router/tests/router_authority.rs", symbol = "peritus_tool_router::tests::router_authority::authority_rejection_never_calls_dispatcher", command = "cargo test --package peritus-tool-router --all-targets --all-features --locked" },
   { kind = "refinement-test", source_file = "crates/tools/peritus-tool-router/tests/production_conformance.rs", symbol = "peritus_tool_router::tests::production_conformance::production_router_passes_all_eight_a2_tool_cases", command = "cargo test --package peritus-tool-router --all-targets --all-features --locked" },
 ]
+
+[[entries]]
+id = "OBL-0137"
+kind = "refinement"
+statement = "Every checked C6 capability view contains only operation classes permitted by its exact canonical B1 actor role, so role-aware context presentation cannot widen authority or issue a capability."
+owning_crate = "peritus-role"
+source_file = "crates/orchestration/peritus-role/src/capability_view.rs"
+symbol = "peritus_role::capability_view::CapabilityView::spec_is_narrow"
+status = "in-progress"
+dependencies = ["INV-006"]
+live_issue = "#15"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-role/src/capability_view.rs", symbol = "peritus_role::capability_view::CapabilityView::spec_is_narrow", command = "cargo verus verify --package peritus-role --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/orchestration/peritus-role/tests/role_matrix.rs", symbol = "peritus_role::tests::role_matrix::every_b1_role_has_an_explicit_non_widening_profile", command = "cargo test --package peritus-role --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "INV-021"
+kind = "invariant"
+statement = "Every selected C6 memory candidate is structurally limited to the closed evidence-source set and mandatory quoted-evidence presentation; the memory boundary cannot represent policy, a capability, or an authority transition."
+owning_crate = "peritus-memory"
+source_file = "crates/orchestration/peritus-memory/src/retrieval/output.rs"
+symbol = "peritus_memory::retrieval::output::MemoryCandidate::spec_is_quoted_evidence"
+status = "in-progress"
+dependencies = ["INV-006"]
+live_issue = "#15"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-memory/src/retrieval/output.rs", symbol = "peritus_memory::retrieval::output::MemoryCandidate::spec_is_quoted_evidence", command = "cargo verus verify --package peritus-memory --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/orchestration/peritus-memory/tests/poisoning.rs", symbol = "peritus_memory::tests::poisoning::instruction_like_payloads_retain_source_and_quote_boundary", command = "cargo test --package peritus-memory --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0138"
+kind = "refinement"
+statement = "Every C6 context provenance label enforces its exact authority ceiling, and repository, external, memory, tool, agent, review, and compacted content can carry only non-authoritative metadata regardless of its text."
+owning_crate = "peritus-context"
+source_file = "crates/orchestration/peritus-context/src/provenance.rs"
+symbol = "peritus_context::provenance::Provenance::spec_permits_authority"
+status = "in-progress"
+dependencies = ["INV-006", "INV-021"]
+live_issue = "#15"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-context/src/provenance.rs", symbol = "peritus_context::provenance::Provenance::spec_permits_authority", command = "cargo verus verify --package peritus-context --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/orchestration/peritus-context/tests/poisoning.rs", symbol = "peritus_context::tests::poisoning::instruction_like_payloads_from_every_non_authoritative_source_stay_evidence", command = "cargo test --package peritus-context --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0139"
+kind = "contract"
+statement = "C6 compaction rejects system policy, application policy, immutable specifications, active user instructions, capability facts, and unresolved blocking findings as sources before constructing a derived node."
+owning_crate = "peritus-context"
+source_file = "crates/orchestration/peritus-context/src/content.rs"
+symbol = "peritus_context::content::ContentKind::spec_is_compaction_protected"
+status = "in-progress"
+dependencies = ["OBL-0138"]
+live_issue = "#15"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-context/src/content.rs", symbol = "peritus_context::content::ContentKind::spec_is_compaction_protected", command = "cargo verus verify --package peritus-context --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-context/tests/compaction_matrix.rs", symbol = "peritus_context::tests::compaction_matrix::protected_and_mixed_context_sources_are_rejected", command = "cargo test --package peritus-context --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0140"
+kind = "invariant"
+statement = "Every successful C6 token plan keeps output, protocol, and selected-input use within the context window and exactly conserves usable input as selected plus remaining input."
+owning_crate = "peritus-context"
+source_file = "crates/orchestration/peritus-context/src/budget.rs"
+symbol = "peritus_context::budget::TokenAccounting::spec_is_bounded"
+status = "in-progress"
+dependencies = []
+live_issue = "#15"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-context/src/budget.rs", symbol = "peritus_context::budget::TokenAccounting::spec_is_bounded", command = "cargo verus verify --package peritus-context --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/orchestration/peritus-context/tests/selection_matrix.rs", symbol = "peritus_context::tests::selection_matrix::token_budget_checks_boundaries_and_reports_each_component", command = "cargo test --package peritus-context --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0141"
+kind = "invariant"
+statement = "A C6 memory tombstone suppresses exactly the same memory identity at every revision less than or equal to its last-known revision, while a genuinely newer revision remains eligible for replay."
+owning_crate = "peritus-memory"
+source_file = "crates/orchestration/peritus-memory/src/tombstone.rs"
+symbol = "peritus_memory::tombstone::MemoryTombstone::spec_dominates"
+status = "in-progress"
+dependencies = ["INV-021"]
+live_issue = "#15"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-memory/src/tombstone.rs", symbol = "peritus_memory::tombstone::MemoryTombstone::spec_dominates", command = "cargo verus verify --package peritus-memory --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-memory/tests/index_rebuild.rs", symbol = "peritus_memory::tests::index_rebuild::tombstone_dominates_records_at_or_below_its_revision", command = "cargo test --package peritus-memory --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0142"
+kind = "invariant"
+statement = "Every C6 retrieval plan admits selected memory only while its summed estimated tokens remain within the exact caller-supplied token budget."
+owning_crate = "peritus-memory"
+source_file = "crates/orchestration/peritus-memory/src/retrieval/output.rs"
+symbol = "peritus_memory::retrieval::output::RetrievalPlan::spec_is_bounded"
+status = "in-progress"
+dependencies = ["INV-021"]
+live_issue = "#15"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-memory/src/retrieval/output.rs", symbol = "peritus_memory::retrieval::output::RetrievalPlan::spec_is_bounded", command = "cargo verus verify --package peritus-memory --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/orchestration/peritus-memory/tests/retrieval_matrix.rs", symbol = "peritus_memory::tests::retrieval_matrix::budget_and_result_limits_explain_every_unselected_candidate", command = "cargo test --package peritus-memory --all-targets --all-features --locked" },
+]

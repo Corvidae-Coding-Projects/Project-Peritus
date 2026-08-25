@@ -260,6 +260,27 @@ layer = "model"
 verification_class = "H"
 
 [[packages]]
+name = "peritus-context"
+path = "crates/orchestration/peritus-context"
+owner = "C6"
+layer = "orchestration"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-memory"
+path = "crates/orchestration/peritus-memory"
+owner = "C6"
+layer = "orchestration"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-role"
+path = "crates/orchestration/peritus-role"
+owner = "C6"
+layer = "orchestration"
+verification_class = "V"
+
+[[packages]]
 name = "peritus-protocol"
 path = "crates/foundation/peritus-protocol"
 owner = "B3"

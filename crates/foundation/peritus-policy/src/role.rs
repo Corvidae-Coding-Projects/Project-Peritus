@@ -34,6 +34,11 @@ pub enum ActorRole {
 }
 
 impl ActorRole {
+    /// Returns the non-configurable B1 operation-permission decision used by specifications.
+    pub open spec fn spec_permits_operation(self, operation: OperationClass) -> bool {
+        model::role_permits(self, operation)
+    }
+
     /// Returns the stable canonical role rank used by executable specifications.
     pub open spec fn spec_rank(self) -> int {
         match self {
@@ -72,7 +77,7 @@ impl ActorRole {
     /// Returns whether this role may receive the operation class under compiled invariants.
     #[must_use]
     pub const fn permits_operation(self, operation: OperationClass) -> (result: bool)
-        ensures result == model::role_permits(self, operation),
+        ensures result == self.spec_permits_operation(operation),
     {
         match self {
             Self::Writer | Self::Fixer => matches!(
