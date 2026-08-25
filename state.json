@@ -79,11 +79,12 @@
       "display_id": 17,
       "title": "Implement complete production D1 Gate Engine and C7 Trace/Telemetry",
       "description": "Deliver the complete D1 peritus-gates and C7 peritus-trace/peritus-telemetry slices, including durable C0/B3 integration, A2 conformance, formal verification, documentation, signed PR/merge, and green PR/fresh-main hosted matrices.",
-      "status": "open",
+      "status": "closed",
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-08-25T06:31:12.546192685Z",
-      "updated_at": "2026-08-25T09:20:14.699081582Z",
+      "updated_at": "2026-08-25T09:20:19.688805100Z",
+      "closed_at": "2026-08-25T09:20:19.688800659Z",
       "labels": [
         "feature"
       ],
@@ -3067,8 +3068,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-25T09:20:14.699081582Z",
+    "timestamp": "2026-08-25T09:20:19.688805100Z",
     "agent_id": "6ME5",
-    "agent_seq": 399
+    "agent_seq": 400
   }
 }
