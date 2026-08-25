@@ -1,6 +1,6 @@
 {
   "next_display_id": 19,
-  "next_comment_id": 317,
+  "next_comment_id": 318,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -1663,7 +1663,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-25T10:17:08.885730234Z",
-      "updated_at": "2026-08-25T12:41:08.280078613Z",
+      "updated_at": "2026-08-25T13:18:41.792472102Z",
       "closed_at": "2026-08-25T12:41:08.280076817Z",
       "labels": [
         "D2"
@@ -1704,6 +1704,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAC8OLzUBFd2oba8U2HIxDWh0Q3V94hw3ciowOjZW2U3EcTAfxV4hc8jFaOgJw3+0omyXA8abMsK0VvNlHqA47AA=="
+        },
+        "b200aae3-f2d4-4fb0-b53e-6d2b17d0c9a2": {
+          "display_id": 317,
+          "author": "6ME5",
+          "content": "Closure complete: changelog audit entry merged through PR #22 as signed main commit 0a4aa0a. Final local main equals origin/main and serialized CARGO_BUILD_JOBS=1 just gate-a passed. Final hosted main Gate A passed 24/24 and Foundation passed 6/6. PR #21 and PR #22 are merged; issue #18 is closed.",
+          "created_at": "2026-08-25T13:18:41.789084079Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAFOKV2aBHzEGtCw4RbYfmLJC+1WBI0E+qGp9uzwJrGF5/+xKuuWgyoN6ymsws5OgioG/NNPflBHZqau+aygPNCw=="
         },
         "b7a6c75d-7089-4403-8c96-088c1f408ab3": {
           "display_id": 316,
@@ -3180,8 +3189,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-25T12:41:12.826967624Z",
+    "timestamp": "2026-08-25T13:18:41.792472102Z",
     "agent_id": "6ME5",
-    "agent_seq": 417
+    "agent_seq": 418
   }
 }
