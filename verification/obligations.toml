@@ -953,3 +953,120 @@ evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-memory/src/retrieval/output.rs", symbol = "peritus_memory::retrieval::output::RetrievalPlan::spec_is_bounded", command = "cargo verus verify --package peritus-memory --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "property-test", source_file = "crates/orchestration/peritus-memory/tests/retrieval_matrix.rs", symbol = "peritus_memory::tests::retrieval_matrix::budget_and_result_limits_explain_every_unselected_candidate", command = "cargo test --package peritus-memory --all-targets --all-features --locked" },
 ]
+
+[[entries]]
+id = "INV-010"
+kind = "invariant"
+statement = "Every current D2 finding remains open until the same current revision carries a reviewer-confirmed resolution, reviewer-confirmed invalidation, provenance-preserving confirmed supersession, or an exact externally authorized waiver observation; no fixer claim or historical record can remove it implicitly."
+owning_crate = "peritus-review"
+source_file = "crates/orchestration/peritus-review/src/verified/executable.rs"
+symbol = "peritus_review::verified::executable::findings_are_conserved"
+status = "in-progress"
+dependencies = ["INV-003", "INV-004"]
+live_issue = "#18"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-review/src/verified.rs", symbol = "peritus_review::verified::missing_conservation_cannot_complete", command = "cargo verus verify --package peritus-review --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/orchestration/peritus-review/tests/domain_engine.rs", symbol = "peritus_review::tests::domain_engine::fixer_evidence_needs_independent_current_reviewer_confirmation", command = "cargo test --package peritus-review --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-review/tests/domain_transitions.rs", symbol = "peritus_review::tests::domain_transitions::reconciliation_retains_all_sources_evidence_and_history", command = "cargo test --package peritus-review --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0143"
+kind = "refinement"
+statement = "D2 treats review, finding, disposition, and waiver evidence as current only when every exact RevisionTuple component and the candidate/tree binding match; advancing the binding retains history but removes stale material from quorum, conservation, and completion."
+owning_crate = "peritus-review"
+source_file = "crates/orchestration/peritus-review/src/verified.rs"
+symbol = "peritus_review::verified::exact_freshness"
+status = "in-progress"
+dependencies = ["INV-003"]
+live_issue = "#18"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-review/src/verified.rs", symbol = "peritus_review::verified::stale_evidence_is_not_fresh", command = "cargo verus verify --package peritus-review --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/orchestration/peritus-review/tests/domain_engine.rs", symbol = "peritus_review::tests::domain_engine::external_waiver_is_consumed_exactly_and_revision_advance_resets_current_truth", command = "cargo test --package peritus-review --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0144"
+kind = "invariant"
+statement = "D2 review completion requires every named quorum dimension independently: submitted count, category coverage, distinct reviewers, producer independence, distinct contexts, model families, providers, no shared ancestry, and fresh C6 context."
+owning_crate = "peritus-review"
+source_file = "crates/orchestration/peritus-review/src/verified.rs"
+symbol = "peritus_review::verified::complete_quorum"
+status = "in-progress"
+dependencies = ["INV-004", "OBL-0138"]
+live_issue = "#18"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-review/src/verified.rs", symbol = "peritus_review::verified::missing_fresh_context_breaks_quorum", command = "cargo verus verify --package peritus-review --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/orchestration/peritus-review/tests/domain_engine.rs", symbol = "peritus_review::tests::domain_engine::independent_quorum_dimensions_and_truthful_completion", command = "cargo test --package peritus-review --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-review/tests/domain_engine.rs", symbol = "peritus_review::tests::domain_engine::each_independence_fact_stays_visible_in_the_report", command = "cargo test --package peritus-review --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0145"
+kind = "invariant"
+statement = "D2 can report Completed only with complete current quorum, complete finding conservation, and no oscillation trigger; cancellation, failure, budget/cycle exhaustion, stale or malformed evidence, and non-progress remain explicit non-success."
+owning_crate = "peritus-review"
+source_file = "crates/orchestration/peritus-review/src/verified/executable.rs"
+symbol = "peritus_review::verified::executable::no_implicit_success"
+status = "in-progress"
+dependencies = ["INV-005", "INV-010", "OBL-0144"]
+live_issue = "#18"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-review/src/verified.rs", symbol = "peritus_review::verified::missing_quorum_cannot_complete", command = "cargo verus verify --package peritus-review --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-review/src/verified.rs", symbol = "peritus_review::verified::bounded_cycle_successor", command = "cargo verus verify --package peritus-review --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/orchestration/peritus-review/tests/domain_engine.rs", symbol = "peritus_review::tests::domain_engine::cancellation_budget_exhaustion_and_failure_never_become_completion", command = "cargo test --package peritus-review --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-review/tests/domain_transitions.rs", symbol = "peritus_review::tests::domain_transitions::repeated_fingerprint_and_cycle_exhaustion_finalize_needs_human", command = "cargo test --package peritus-review --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0146"
+kind = "refinement"
+statement = "Every durable D2 state is reconstructed by applying the closed reducer to the exact contiguous C0 event chain from genesis, and startup accepts a family-55 checkpoint only when its complete canonical state equals semantic replay."
+owning_crate = "peritus-review"
+source_file = "crates/orchestration/peritus-review/src/verified/executable.rs"
+symbol = "peritus_review::verified::executable::replay_equivalent"
+status = "in-progress"
+dependencies = ["OBL-0115", "OBL-0143", "OBL-0145"]
+live_issue = "#18"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-review/src/verified.rs", symbol = "peritus_review::verified::replay_is_reflexive", command = "cargo verus verify --package peritus-review --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-review/tests/durability_restart.rs", symbol = "peritus_review::tests::durability_restart::durability_restart_idempotency_conflict_and_checkpoint_corruption", command = "cargo test --package peritus-review --all-targets --all-features --locked" },
+  { kind = "property-test", source_file = "crates/orchestration/peritus-review/tests/domain_engine.rs", symbol = "peritus_review::tests::domain_engine::independent_quorum_dimensions_and_truthful_completion", command = "cargo test --package peritus-review --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0147"
+kind = "contract"
+statement = "The closed D2 command, event, and state wire families have byte-exact checked-in version-one fixtures; their canonical decoders reject unknown closed tags and trailing bytes instead of accepting an ambiguous representation."
+owning_crate = "peritus-review"
+source_file = "crates/orchestration/peritus-review/src/wire/fixture_tests.rs"
+symbol = "peritus_review::wire::fixture_tests::canonical_binary_corpus_is_exact_and_rejects_closed_tag_or_trailing_corruption"
+status = "in-progress"
+dependencies = ["OBL-0146"]
+live_issue = "#18"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-review/src/wire/fixture_tests.rs", symbol = "peritus_review::wire::fixture_tests::canonical_binary_corpus_is_exact_and_rejects_closed_tag_or_trailing_corruption", command = "cargo test --package peritus-review --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0148"
+kind = "invariant"
+statement = "D2 accepts only exact bounded bindings, authority-correct finding-disposition transitions, and single-event reducer successors with current sequence, predecessor, revision, digest, and command-identity fences; any deterministic repeat, stagnation, regression, disagreement, or cycle exhaustion input requires escalation."
+owning_crate = "peritus-review"
+source_file = "crates/orchestration/peritus-review/src/verified.rs"
+symbol = "peritus_review::verified::legal_reducer_step"
+status = "in-progress"
+dependencies = ["INV-010", "OBL-0143", "OBL-0145"]
+live_issue = "#18"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-review/src/verified.rs", symbol = "peritus_review::verified::stale_sequence_rejects_reducer_step", command = "cargo verus verify --package peritus-review --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-review/src/verified.rs", symbol = "peritus_review::verified::reviewer_resolution_requires_confirmation", command = "cargo verus verify --package peritus-review --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-review/tests/domain_transitions.rs", symbol = "peritus_review::tests::domain_transitions::repeated_fingerprint_and_cycle_exhaustion_finalize_needs_human", command = "cargo test --package peritus-review --all-targets --all-features --locked" },
+]

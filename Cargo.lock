@@ -1807,6 +1807,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "peritus-review"
+version = "0.0.0"
+dependencies = [
+ "peritus-codec",
+ "peritus-context",
+ "peritus-evidence",
+ "peritus-journal",
+ "peritus-quality-policy",
+ "peritus-role",
+ "peritus-spec",
+ "peritus-types",
+ "rusqlite",
+ "sha2 0.11.0",
+ "tempfile",
+ "vstd",
+]
+
+[[package]]
 name = "peritus-role"
 version = "0.0.0"
 dependencies = [

@@ -200,6 +200,13 @@ layer = "foundation"
 verification_class = "V"
 
 [[packages]]
+name = "peritus-review"
+path = "crates/orchestration/peritus-review"
+owner = "D2"
+layer = "orchestration"
+verification_class = "H"
+
+[[packages]]
 name = "peritus-role"
 path = "crates/orchestration/peritus-role"
 owner = "C6"

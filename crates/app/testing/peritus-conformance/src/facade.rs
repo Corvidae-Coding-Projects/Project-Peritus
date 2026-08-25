@@ -41,6 +41,10 @@ pub use crate::replay::{
     ReplayConformanceError, ReplayConformanceSubject, ReplayObservation, replay_suite,
 };
 pub use crate::report::{CaseReport, CaseStatus, SuiteReport, SuiteStatus, SuiteSummary};
+pub use crate::review::{
+    ReviewConformanceError, ReviewConformanceFixture, ReviewConformanceObservation,
+    ReviewConformanceSubject, ReviewScenario, ReviewTerminal, review_suite,
+};
 pub use crate::runner::ConformanceRunner;
 pub use crate::sandbox::{
     SandboxConformanceError, SandboxConformanceFixture, SandboxConformanceObservation,

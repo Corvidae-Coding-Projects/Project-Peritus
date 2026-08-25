@@ -114,6 +114,8 @@ pub enum AggregateKind {
     Gate,
     /// C7 durable causal trace observations.
     Trace,
+    /// D2 durable review-cycle and finding-lifecycle state.
+    Review,
 }
 
 impl AggregateKind {
@@ -127,6 +129,7 @@ impl AggregateKind {
             Self::Agent => 6,
             Self::Gate => 7,
             Self::Trace => 8,
+            Self::Review => 9,
         }
     }
 
@@ -140,6 +143,7 @@ impl AggregateKind {
             Self::Agent => 6,
             Self::Gate => 7,
             Self::Trace => 8,
+            Self::Review => 9,
         }
     }
 
@@ -153,6 +157,7 @@ impl AggregateKind {
             6 => Some(Self::Agent),
             7 => Some(Self::Gate),
             8 => Some(Self::Trace),
+            9 => Some(Self::Review),
             _ => None,
         }
     }
