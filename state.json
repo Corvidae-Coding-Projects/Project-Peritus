@@ -1,6 +1,6 @@
 {
   "next_display_id": 19,
-  "next_comment_id": 309,
+  "next_comment_id": 310,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -1668,7 +1668,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-25T10:17:08.885730234Z",
-      "updated_at": "2026-08-25T10:17:34.930268581Z",
+      "updated_at": "2026-08-25T10:22:34.383221166Z",
       "labels": [
         "D2"
       ],
@@ -1681,6 +1681,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAg1buqP6oLQRcRqbOngWjHYnyvuzfFi4I6+s2v92ixNnBjpVcQISznOXcI1B4tHUfWjKqMd9FoeK9AsAT46caCw=="
+        },
+        "efb4c624-230e-477c-af6b-5b6196bd0474": {
+          "display_id": 309,
+          "author": "6ME5",
+          "content": "result: d2b12bd design(d2): freeze production review engine boundary. Verification: full 445-line design diff reviewed; git diff --check passed. Frozen ownership splits core/formal and codec/durability work; root retains all shared integration and verification.",
+          "created_at": "2026-08-25T10:22:34.380813260Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABZU2TASPlj0B4BqGd+32Wt41aPo+f/6bkI1vhraFK/aF/KP1SRUhb9Q913hfTWsJWu6Bdupv8mEPMQYbXAczBA=="
         }
       }
     },
@@ -3112,8 +3121,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-25T10:17:34.930268581Z",
+    "timestamp": "2026-08-25T10:22:34.383221166Z",
     "agent_id": "6ME5",
-    "agent_seq": 407
+    "agent_seq": 408
   }
 }
