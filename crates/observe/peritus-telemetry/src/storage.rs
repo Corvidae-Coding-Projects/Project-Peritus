@@ -353,7 +353,11 @@ fn sync_directory(path: &Path) -> Result<(), TelemetryError> {
 }
 
 #[cfg(windows)]
-fn sync_directory(_path: &Path) -> Result<(), TelemetryError> {
+#[allow(
+    clippy::unnecessary_wraps,
+    reason = "the cross-platform checkpoint contract reports Unix directory-sync failures"
+)]
+const fn sync_directory(_path: &Path) -> Result<(), TelemetryError> {
     Ok(())
 }
 
