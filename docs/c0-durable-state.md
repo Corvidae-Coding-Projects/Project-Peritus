@@ -25,11 +25,12 @@ repair, and a projection value is not a durable transition receipt. Artifact obj
 only when their bytes and metadata agree; only finalized active artifacts may be referenced.
 Evidence is immutable history, but its currentness is a separate revision and invalidation decision.
 
-The shared journal schema is currently version 4. Its closed aggregate-kind registry includes the
-permanent D0 `Agent`, D1 `Gate`, and C7 `Trace` kinds in addition to the foundational kernel and
-B1 state kinds. Upgrades from version 1 preserve existing event and head rows exactly while
-version 2 admits `Agent`, version 3 admits `Gate` and `Trace`, and version 4 admits `Review`; all
-three upgrades require a verified
+The shared journal schema is currently version 5. Its closed aggregate-kind registry includes the
+permanent D0 `Agent`, D1 `Gate`, C7 `Trace`, D2 `Review`, D3 `Scheduler`/`Collaboration`, and E0
+`Orchestrator` kinds in addition to the foundational kernel and B1 state kinds. Upgrades from
+version 1 preserve existing event and head rows exactly while version 2 admits `Agent`, version 3
+admits `Gate` and `Trace`, version 4 admits `Review`, and version 5 admits the D3/E0 kinds; all four
+table-rebuilding upgrades require a verified
 whole-file backup before table replacement.
 
 For the intended composed deployment, configure `ArtifactStore` with

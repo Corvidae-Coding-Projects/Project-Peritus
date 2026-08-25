@@ -1,0 +1,4 @@
+# peritus orchestrator protocol compatibility corpus v1
+c67c1eec2d4c550bc94f5f94065c7d6d6e6be02dc30d6bd6ce1c9031188c21a1  orchestrator-command.bin
+cfcc83bb209b0d0d8104f40f6fe7ac8aaa8b31e8f465fc2364962aa790b3703a  orchestrator-event.bin
+f05b74d889beaa5a0518eb2794ce6aadb4e4f8dcf854407da2872aa070c16193  orchestrator-state.bin

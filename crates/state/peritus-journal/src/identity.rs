@@ -116,6 +116,12 @@ pub enum AggregateKind {
     Trace,
     /// D2 durable review-cycle and finding-lifecycle state.
     Review,
+    /// D3 durable resource scheduler and worker-ownership state.
+    Scheduler,
+    /// D3 durable causal collaboration and delegation state.
+    Collaboration,
+    /// E0 durable writer-gate-review-fixer orchestration state.
+    Orchestrator,
 }
 
 impl AggregateKind {
@@ -130,6 +136,9 @@ impl AggregateKind {
             Self::Gate => 7,
             Self::Trace => 8,
             Self::Review => 9,
+            Self::Scheduler => 10,
+            Self::Collaboration => 11,
+            Self::Orchestrator => 12,
         }
     }
 
@@ -144,6 +153,9 @@ impl AggregateKind {
             Self::Gate => 7,
             Self::Trace => 8,
             Self::Review => 9,
+            Self::Scheduler => 10,
+            Self::Collaboration => 11,
+            Self::Orchestrator => 12,
         }
     }
 
@@ -158,6 +170,9 @@ impl AggregateKind {
             7 => Some(Self::Gate),
             8 => Some(Self::Trace),
             9 => Some(Self::Review),
+            10 => Some(Self::Scheduler),
+            11 => Some(Self::Collaboration),
+            12 => Some(Self::Orchestrator),
             _ => None,
         }
     }

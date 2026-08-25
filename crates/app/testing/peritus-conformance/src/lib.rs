@@ -5,6 +5,7 @@
 
 mod agent;
 mod catalog;
+mod collaboration;
 mod contracts;
 mod descriptor;
 mod facade;
@@ -12,6 +13,7 @@ mod failure;
 mod gate;
 mod identity;
 mod journal;
+mod orchestrator;
 mod outcome;
 mod process;
 mod provider;
@@ -20,6 +22,7 @@ mod report;
 mod review;
 mod runner;
 mod sandbox;
+mod scheduler;
 mod text;
 mod tool;
 mod trace;

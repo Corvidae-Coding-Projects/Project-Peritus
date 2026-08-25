@@ -7,6 +7,93 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Deliver production D3 scheduling/collaboration and the E0 AcTor delivery orchestrator as three
+  focused H-class crates, composing the existing B0-B3, C0, C6, and D0-D2 boundaries without
+  introducing another provider, process, workspace, policy, waiver, or acceptance authority (#19)
+- Add a durable bounded D3 scheduler whose immutable binding, checked identities, compiled limits,
+  resource vectors, worker descriptors, work specifications, dependencies, and recovery policy
+  make every admission and dispatch decision explicit
+- Add deterministic dependency readiness and feasible worker selection ordered by bounded bypass,
+  priority, enqueue sequence, work identity, and worker identity, independent of wall time, map
+  iteration order, task wakeups, or result arrival order
+- Add exact reservation ownership with checked capacity addition/subtraction, one live work and
+  worker owner per dispatch, acknowledgement-before-execution observation, conservative worker-loss
+  classification, retry ambiguity, and capacity-preserving release
+- Add bounded pause, drain, retry, dependency-failure propagation, cancellation-tree processing,
+  worker loss, terminal quiescence, and truthful scheduler completion without implicit success
+- Add a durable causal D3 collaboration aggregate with one acyclic depth-consistent task tree,
+  explicit delegation offer/accept/activation, stable ownership, bounded fan-out and depth,
+  canonical messages, exact artifact handoffs, and declared all-required/any-required joins
+- Preserve actor, role, scheduler work/reservation, revision, parent, message, artifact, evidence,
+  and causal predecessor bindings through every collaboration transition so an inert handoff cannot
+  widen authority or detach work from its owner
+- Add collaboration pause/resume and descendant-first cancellation whose durable pending work must
+  settle before terminal cancellation; late success cannot resurrect a cancelled ancestor or
+  manufacture aggregate completion
+- Add closed scheduler and collaboration command/event/state reducers, complete rebuildable
+  projections, exact sequence/predecessor replay, command idempotency, conflicting-command
+  detection, complete checkpoint equality, and restart-safe C0 persistence
+- Add canonical schema-v1 scheduler families 70-72 and collaboration families 73-75 with strict
+  tag, bound, truncation, noncanonical-value, and trailing-byte rejection plus immutable binary
+  corpora and SHA-256 manifests
+- Extend C0 with permanent `Scheduler`, `Collaboration`, and `Orchestrator` aggregate tags 10-12;
+  add schema version five with backup-required constrained-table copying that preserves every tag
+  1-9 row and frame byte-for-byte while admitting the complete D3/E0 range
+- Extend A2 with nonempty scheduler and collaboration scenario catalogs covering fair selection,
+  dependencies, reservations, resource conservation, worker loss, retries, replay, delegation,
+  joins, handoffs, cancellation, malformed input, and panic/teardown behavior
+- Add executable Verus specifications and proofs for scheduler capacity conservation, bounded
+  bypass, dependency readiness, terminal quiescence, replay claims, collaboration causality, join
+  truth, cancellation dominance, pending-directive exclusion, and replay equivalence
+- Add the complete D3 design and operator guide, architecture registration, formal obligations,
+  generated protocol metadata, strict no-cheating inventories, focused domain/durability/replay
+  tests, and resource-aware build guidance
+
+- Add the production E0 `peritus-orchestrator` aggregate for the closed writer -> gates -> reviewer
+  lifecycle and the sole review -> fixer -> new revision -> fresh gates correction loop
+- Bind every E0 run to the exact B2 acceptance contract, B0 run/attempt, D1 plan, D2 policy,
+  initial revision, D3 scheduler/collaboration identities, explicit service/writer/fixer/reviewer
+  ownership, and independently bounded completion policy
+- Add complete candidate bindings covering workspace snapshot, candidate/tree/artifact identities
+  and digests, producer actors and ancestry, and a canonical binding digest; material change creates
+  a full successor revision and invalidates all earlier D1/D2/B2 acceptance evidence
+- Make writer completion install the actual changed candidate together with its checked
+  same-revision D1/D2 quality-cycle binding while retaining the already-active D3 identities, so
+  the normal path never pre-binds an unknown writer output
+- Add canonical role handoffs that retain source/destination phase, actor and role, exact current
+  candidate, D3 task/work ownership, input artifacts/evidence, and stable idempotency identity while
+  excluding hidden reviewer reasoning from fixer inputs
+- Consume checked D0 completion, D1 terminal/evidence, D2 quorum/finding/oscillation, D3 ownership,
+  and B0 lifecycle observations through their public projections instead of reimplementing or
+  weakening those authorities inside E0
+- Add independently bounded writer, fixer, gate, review, revision, handoff, child-directive,
+  retained-observation, artifact-reference, event/state-size, repeated-finding, and cancellation-
+  reconciliation counters with exact `Rejected`, `Failed`, `Exhausted`, `NeedsHuman`, and
+  `Cancelled` terminal causes
+- Make `AcceptanceCertificate::from_evaluation` the only E0 certificate constructor, requiring the
+  exact current B2 `AcceptanceEvidence` and acceptable `AcceptanceDecision`; require a matching
+  durable B0 `AcceptanceAccepted` event before E0 can enter `Accepted`
+- Add one-at-a-time commit-before-effect directives with stable destination/payload identity,
+  bounded delivery state, durable acknowledgement, exact child-head observations, and explicit
+  deliverable/awaiting-result/awaiting-observation/stale/ambiguous restart classification
+- Add pause with an exact resumable phase and child-head reconciliation, plus cancellation that
+  commits before propagation and remains cancelling until every active D0-D3 child is terminal or
+  an evidence-backed current-revision unreachable/ambiguous classification is retained, without
+  allowing any classification or late success to manufacture acceptance
+- Add closed causally fenced E0 command/event/state reduction, exact idempotent command resolution,
+  complete checkpoint replay, read-only projections, and a one-step runtime driver that orders
+  reduction, C0 commit, outbox publication, acknowledgement, and checked observation
+- Add canonical schema-v1 E0 command, event, and complete-state families 76-78, strict immutable
+  fixtures, namespace `0xE001` durability, tag-12 projection support, and corruption/conflict/crash
+  matrices across every commit/publish/acknowledge/result boundary
+- Extend A2 with nonempty E0 happy-path, fixer-loop, role drift, stale evidence, bounded exhaustion,
+  pause, cancellation, restart, malformed protocol, panic, and teardown scenarios
+- Add executable Verus refinements for legal phase order, role separation, candidate freshness,
+  evidence invalidation, bounded counters, unique directives, cancellation dominance, terminal
+  truth, absence of implicit acceptance, and replay equivalence
+- Add the complete E0 design, crate README, production operator guide, architecture/formal/CI
+  inventories, generated artifacts, and repository development-state documentation
+
 - Implement the complete production D2 Review Engine as a maintainable H-class `peritus-review`
   orchestration crate, preserving B0/B1/B2 acceptance and approval authority while making review,
   finding, disposition, escalation, and restart truth durable and deterministic (#18)

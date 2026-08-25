@@ -2,6 +2,11 @@
 
 pub use crate::agent::*;
 pub use crate::catalog::{plugin_suite, protocol_suite};
+pub use crate::collaboration::{
+    CollaborationConformanceError, CollaborationConformanceFixture,
+    CollaborationConformanceObservation, CollaborationConformanceSubject, CollaborationScenario,
+    CollaborationTerminal, collaboration_suite,
+};
 pub use crate::contracts::{
     BoxedCase, ConformanceCase, ConformanceFuture, ConformanceSuite, StaticSuite, SubjectFactory,
 };
@@ -18,6 +23,11 @@ pub use crate::identity::*;
 pub use crate::journal::{
     JournalAppendDisposition, JournalAppendFixture, JournalAppendObservation,
     JournalConformanceError, JournalConformanceSubject, JournalSnapshot, journal_suite,
+};
+pub use crate::orchestrator::{
+    OrchestratorConformanceError, OrchestratorConformanceFixture,
+    OrchestratorConformanceObservation, OrchestratorConformanceSubject, OrchestratorScenario,
+    OrchestratorTerminal, orchestrator_suite,
 };
 pub use crate::outcome::{CaseResult, Observation, ObservationValue};
 pub use crate::process::{
@@ -51,6 +61,10 @@ pub use crate::sandbox::{
     SandboxConformanceSubject, SandboxDecision, SandboxDomain, SandboxFeature,
     SandboxLifecyclePhase, SandboxPreparationFixture, SandboxPreparationObservation,
     SandboxScenario, sandbox_suite,
+};
+pub use crate::scheduler::{
+    SchedulerConformanceError, SchedulerConformanceFixture, SchedulerConformanceObservation,
+    SchedulerConformanceSubject, SchedulerScenario, SchedulerTerminal, scheduler_suite,
 };
 pub use crate::text::{ReportText, ReportTextError};
 pub use crate::tool::{

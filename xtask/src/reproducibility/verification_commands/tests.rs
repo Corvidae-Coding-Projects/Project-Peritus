@@ -56,6 +56,12 @@ owner = "B3"
 layer = "foundation"
 verification_class = "H"
 [[packages]]
+name = "peritus-collaboration"
+path = "crates/orchestration/peritus-collaboration"
+owner = "D3"
+layer = "orchestration"
+verification_class = "H"
+[[packages]]
 name = "peritus-context"
 path = "crates/orchestration/peritus-context"
 owner = "C6"
@@ -120,6 +126,13 @@ name = "peritus-network"
 path = "crates/runtime/peritus-network"
 owner = "C3"
 layer = "runtime"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-orchestrator"
+path = "crates/orchestration/peritus-orchestrator"
+owner = "E0"
+layer = "orchestration"
 verification_class = "H"
 
 [[packages]]
@@ -239,6 +252,13 @@ name = "peritus-sandbox-windows"
 path = "crates/runtime/peritus-sandbox-windows"
 owner = "C3"
 layer = "runtime"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-scheduler"
+path = "crates/orchestration/peritus-scheduler"
+owner = "D3"
+layer = "orchestration"
 verification_class = "H"
 
 [[packages]]

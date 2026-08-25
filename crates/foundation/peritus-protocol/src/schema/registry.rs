@@ -52,4 +52,13 @@ pub const FAMILIES: &[MessageFamily] = &[
     MessageFamily { tag: 54, name: "review-event", schema_version: 1, inert_only: true },
     MessageFamily { tag: 55, name: "review-state", schema_version: 1, inert_only: true },
     MessageFamily { tag: 60, name: "trace-observation", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 70, name: "scheduler-command", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 71, name: "scheduler-event", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 72, name: "scheduler-state", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 73, name: "collaboration-command", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 74, name: "collaboration-event", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 75, name: "collaboration-state", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 76, name: "orchestrator-command", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 77, name: "orchestrator-event", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 78, name: "orchestrator-state", schema_version: 1, inert_only: true },
 ];

@@ -1475,6 +1475,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "peritus-collaboration"
+version = "0.0.0"
+dependencies = [
+ "peritus-codec",
+ "peritus-evidence",
+ "peritus-journal",
+ "peritus-role",
+ "peritus-scheduler",
+ "peritus-types",
+ "rusqlite",
+ "sha2 0.11.0",
+ "tempfile",
+ "vstd",
+]
+
+[[package]]
 name = "peritus-conformance"
 version = "0.0.0"
 
@@ -1627,6 +1643,29 @@ dependencies = [
  "tempfile",
  "vstd",
  "zeroize",
+]
+
+[[package]]
+name = "peritus-orchestrator"
+version = "0.0.0"
+dependencies = [
+ "peritus-agent",
+ "peritus-codec",
+ "peritus-collaboration",
+ "peritus-gates",
+ "peritus-journal",
+ "peritus-kernel",
+ "peritus-policy",
+ "peritus-quality-policy",
+ "peritus-review",
+ "peritus-role",
+ "peritus-scheduler",
+ "peritus-spec",
+ "peritus-types",
+ "rusqlite",
+ "sha2 0.11.0",
+ "tempfile",
+ "vstd",
 ]
 
 [[package]]
@@ -1894,6 +1933,20 @@ dependencies = [
  "vstd",
  "windows-sys 0.61.2",
  "zeroize",
+]
+
+[[package]]
+name = "peritus-scheduler"
+version = "0.0.0"
+dependencies = [
+ "peritus-codec",
+ "peritus-evidence",
+ "peritus-journal",
+ "peritus-types",
+ "rusqlite",
+ "sha2 0.11.0",
+ "tempfile",
+ "vstd",
 ]
 
 [[package]]
