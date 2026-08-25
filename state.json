@@ -1,6 +1,6 @@
 {
   "next_display_id": 17,
-  "next_comment_id": 285,
+  "next_comment_id": 286,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "19b7b53a-b2fb-41c1-835d-ffd6ce605c08": 14,
@@ -876,7 +876,7 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-08-25T03:27:57.489313997Z",
-      "updated_at": "2026-08-25T05:55:14.633918131Z",
+      "updated_at": "2026-08-25T06:22:08.174483861Z",
       "labels": [
         "feature"
       ],
@@ -934,6 +934,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA4D7GBJJ8x/gsYf2s07e32ugqtatn1mBs+dxjTjhYzAoLFIlnqAC4wcE/W9icfKrVMW5RiTi7IuXBDmYD3k09CA=="
+        },
+        "94217cb9-e677-4169-906f-24760e86e81d": {
+          "display_id": 285,
+          "author": "6ME5",
+          "content": "Delivered and merged production D0. Signed implementation commit 29654aa, signed runner-fix commit 5a5f6a5, and signed merge commit 97e710d are on main via PR #18. Fresh-main local CARGO_BUILD_JOBS=2 just gate-a passed. Fresh-main hosted Foundation run 32815742453 passed 6/6 and Gate A run 32815742463 passed 24/24 across Linux, macOS, Windows, dependency/policy checks, and Verus. The macOS runner finding was repaired at its shared timeout cause with a deterministic regression. README, CHANGELOG, design, operating docs, fixtures, conformance, and architecture registration are current.",
+          "created_at": "2026-08-25T06:22:08.164419817Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAFL4gfdXxMHWQx1NpHqO4ubKGmwuA6dyQTnxwejucWa1H+HwLoSj/cxHRB2mhIFx081d2kHOwr0wk49avnnzaCw=="
         },
         "99e8f308-9927-4156-8d70-eab4f68ec4ea": {
           "display_id": 278,
@@ -2860,8 +2869,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-25T05:55:14.633918131Z",
+    "timestamp": "2026-08-25T06:22:08.174483861Z",
     "agent_id": "6ME5",
-    "agent_seq": 373
+    "agent_seq": 374
   }
 }
