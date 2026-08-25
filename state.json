@@ -1,6 +1,6 @@
 {
   "next_display_id": 18,
-  "next_comment_id": 288,
+  "next_comment_id": 289,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -83,7 +83,7 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-08-25T06:31:12.546192685Z",
-      "updated_at": "2026-08-25T06:35:22.922571612Z",
+      "updated_at": "2026-08-25T06:40:10.077340312Z",
       "labels": [
         "feature"
       ],
@@ -96,6 +96,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA40c/mtNj3yB0aLsWTrXqn+qWwhipqFXPOz1I0A0v1iw6fgN1Iu6t9J4aHgIu5vgyN/iIc9x5hErVHFPyp2BlBQ=="
+        },
+        "91a15de1-92f8-4b6a-8e91-c00f0c81f1fe": {
+          "display_id": 288,
+          "author": "6ME5",
+          "content": "[action] Integrated shared schema v3: Gate/Trace aggregate tags 7/8, protocol families 50-52/60, external pure-fold error constructor, byte-preserving v1-to-v3 migration, generated clients/schema. Focused C0/B3 tests green after expected codegen refresh.",
+          "created_at": "2026-08-25T06:40:10.074174012Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALIhOAnzQP5pID2IdA3sT6DikKif/P/vWfAZru/Xk9F/p8oarVpH1a3pZG+NmbkBmvZ357KJ4S3KI+f8868D+DQ=="
         },
         "e25f3d19-1793-4b9b-ae47-02cf2418b2de": {
           "display_id": 287,
@@ -2905,8 +2914,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-25T06:35:22.922571612Z",
+    "timestamp": "2026-08-25T06:40:10.077340312Z",
     "agent_id": "6ME5",
-    "agent_seq": 381
+    "agent_seq": 382
   }
 }
