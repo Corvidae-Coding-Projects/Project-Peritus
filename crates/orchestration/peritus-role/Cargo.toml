@@ -1,0 +1,26 @@
+[package]
+name = "peritus-role"
+description = "Verified role-aware context and capability views for Peritus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+
+[dependencies]
+peritus-policy = { version = "=0.0.0", path = "../../foundation/peritus-policy" }
+peritus-spec = { version = "=0.0.0", path = "../../foundation/peritus-spec" }
+vstd.workspace = true
+
+[package.metadata.peritus]
+owner = "C6"
+layer = "orchestration"
+verification-class = "V"
+
+[package.metadata.verus]
+verify = true
+
+[lints]
+workspace = true

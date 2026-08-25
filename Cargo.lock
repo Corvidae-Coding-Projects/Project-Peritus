@@ -1453,6 +1453,17 @@ name = "peritus-conformance"
 version = "0.0.0"
 
 [[package]]
+name = "peritus-context"
+version = "0.0.0"
+dependencies = [
+ "peritus-codec",
+ "peritus-policy",
+ "peritus-role",
+ "peritus-types",
+ "vstd",
+]
+
+[[package]]
 name = "peritus-evidence"
 version = "0.0.0"
 dependencies = [
@@ -1522,6 +1533,17 @@ version = "0.0.0"
 dependencies = [
  "peritus-policy",
  "peritus-test-support",
+ "peritus-types",
+ "vstd",
+]
+
+[[package]]
+name = "peritus-memory"
+version = "0.0.0"
+dependencies = [
+ "peritus-codec",
+ "peritus-policy",
+ "peritus-role",
  "peritus-types",
  "vstd",
 ]
@@ -1738,6 +1760,15 @@ version = "0.0.0"
 dependencies = [
  "peritus-spec",
  "peritus-types",
+ "vstd",
+]
+
+[[package]]
+name = "peritus-role"
+version = "0.0.0"
+dependencies = [
+ "peritus-policy",
+ "peritus-spec",
  "vstd",
 ]
 
