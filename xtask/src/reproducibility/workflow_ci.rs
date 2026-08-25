@@ -132,7 +132,7 @@ fn rust_job_is_exact(job: &Yaml) -> bool {
         && string(job, "name") == Some("Rust (${{ matrix.os }})")
         && string(job, "needs") == Some("bootstrap")
         && string(job, "runs-on") == Some("${{ matrix.os }}")
-        && integer(job, "timeout-minutes") == Some(20)
+        && integer(job, "timeout-minutes") == Some(45)
         && rust_matrix(mapping_value(job, "strategy"))
         && mapping_value(job, "steps").and_then(Yaml::as_vec).is_some_and(|steps| {
             steps.len() == 9
