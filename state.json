@@ -1,6 +1,6 @@
 {
   "next_display_id": 16,
-  "next_comment_id": 264,
+  "next_comment_id": 265,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "19b7b53a-b2fb-41c1-835d-ffd6ce605c08": 14,
@@ -1334,11 +1334,20 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-08-25T01:14:49.150248866Z",
-      "updated_at": "2026-08-25T01:29:09.055902260Z",
+      "updated_at": "2026-08-25T02:16:13.295036073Z",
       "labels": [
         "feature"
       ],
       "comments": {
+        "0845f70e-024d-4944-a7f6-43b1c76a5e37": {
+          "display_id": 264,
+          "author": "6ME5",
+          "content": "[action] Completed peritus-context with 22 tests and 214 verified; peritus-memory reached 361 verified with one concrete test-layout split remaining. Updated README and detailed changelog for the full C6 boundary.",
+          "created_at": "2026-08-25T02:16:13.291196856Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAERU70BJwpPQL9N+RJO50Wbtmvt2rIWdkDqIBnuj4xy3dUfYSYK0Mn+KNZZPtaIMwIWvpsf/b9s8ZxWdQBFMQCg=="
+        },
         "4930bfd4-2983-41a4-8f76-75f5b5bb9a58": {
           "display_id": 262,
           "author": "6ME5",
@@ -2654,8 +2663,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-25T01:29:09.055902260Z",
+    "timestamp": "2026-08-25T02:16:13.295036073Z",
     "agent_id": "6ME5",
-    "agent_seq": 347
+    "agent_seq": 348
   }
 }
