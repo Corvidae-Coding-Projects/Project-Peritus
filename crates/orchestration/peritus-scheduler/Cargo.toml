@@ -1,0 +1,33 @@
+[package]
+name = "peritus-scheduler"
+description = "Durable deterministic bounded resource scheduling and worker ownership"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+
+[dependencies]
+peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
+peritus-evidence = { version = "=0.0.0", path = "../../state/peritus-evidence" }
+peritus-journal = { version = "=0.0.0", path = "../../state/peritus-journal" }
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+sha2.workspace = true
+vstd.workspace = true
+
+[dev-dependencies]
+rusqlite.workspace = true
+tempfile.workspace = true
+
+[package.metadata.peritus]
+owner = "D3"
+layer = "orchestration"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true
+
+[lints]
+workspace = true

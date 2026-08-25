@@ -2,6 +2,11 @@
 
 pub use crate::agent::*;
 pub use crate::catalog::{plugin_suite, protocol_suite};
+pub use crate::collaboration::{
+    CollaborationConformanceError, CollaborationConformanceFixture,
+    CollaborationConformanceObservation, CollaborationConformanceSubject, CollaborationScenario,
+    CollaborationTerminal, collaboration_suite,
+};
 pub use crate::contracts::{
     BoxedCase, ConformanceCase, ConformanceFuture, ConformanceSuite, StaticSuite, SubjectFactory,
 };
@@ -51,6 +56,10 @@ pub use crate::sandbox::{
     SandboxConformanceSubject, SandboxDecision, SandboxDomain, SandboxFeature,
     SandboxLifecyclePhase, SandboxPreparationFixture, SandboxPreparationObservation,
     SandboxScenario, sandbox_suite,
+};
+pub use crate::scheduler::{
+    SchedulerConformanceError, SchedulerConformanceFixture, SchedulerConformanceObservation,
+    SchedulerConformanceSubject, SchedulerScenario, SchedulerTerminal, scheduler_suite,
 };
 pub use crate::text::{ReportText, ReportTextError};
 pub use crate::tool::{

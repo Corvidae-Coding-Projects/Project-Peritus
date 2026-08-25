@@ -38,3 +38,8 @@ declarations, six representative golden frames, and their SHA-256 inventory. `--
 stale artifacts. `crates/foundation/peritus-protocol/tests/compatibility.rs` independently
 regenerates, compares, and decodes the checked-in corpus. Decoding establishes syntax and domain
 validity only; it never proves provenance, durable commit, evidence freshness, or effect authority.
+
+The registry also reserves the merged production orchestration families without changing the
+version-one frame format: D3 scheduler command/event/state use 70-72, D3 collaboration uses 73-75,
+and E0 orchestrator uses 76-78. Their owning crates define the complete canonical payload codecs;
+the B3 registry and generated TypeScript/schema declarations provide stable global family identity.

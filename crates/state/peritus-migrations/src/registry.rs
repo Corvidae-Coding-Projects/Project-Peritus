@@ -1,5 +1,8 @@
 //! Immutable ordered migration registry.
 
+mod v1;
+mod v5;
+
 use peritus_types::Sha256Digest;
 use sha2::{Digest, Sha256};
 
@@ -8,11 +11,6 @@ use crate::{
     RecoveryClass, verified::versions_are_contiguous,
 };
 
-const VERSION_ONE_SQL: &str = "PRAGMA user_version = 1;\n";
-const VERSION_ONE_DIGEST: [u8; 32] = [
-    0xef, 0x5d, 0x06, 0x65, 0x33, 0xdb, 0x1a, 0xfc, 0x26, 0x00, 0x90, 0x28, 0xc1, 0x86, 0xb2, 0x9c,
-    0xfe, 0x53, 0xf4, 0xe6, 0x74, 0x4d, 0x2e, 0x79, 0xf5, 0x29, 0x5f, 0x98, 0x1b, 0xc7, 0x81, 0x3a,
-];
 const VERSION_TWO_SQL: &str = r"PRAGMA defer_foreign_keys = ON;
 CREATE TABLE aggregate_heads_v2 (
     aggregate_kind INTEGER NOT NULL CHECK (aggregate_kind BETWEEN 1 AND 6),
@@ -229,12 +227,12 @@ const VERSION_FOUR_DIGEST: [u8; 32] = [
     0x5d, 0x9e, 0x44, 0x2b, 0x23, 0xd0, 0x47, 0xbb, 0xf4, 0x2f, 0xe0, 0xcd, 0xc6, 0xfc, 0xfe, 0x1c,
     0x2c, 0x66, 0x91, 0x01, 0xd4, 0x17, 0x6b, 0x4c, 0xaa, 0x9d, 0x50, 0xe0, 0xda, 0x12, 0x3c, 0xb6,
 ];
-const CURRENT_DESCRIPTORS: [MigrationDescriptor; 4] = [
+const CURRENT_DESCRIPTORS: [MigrationDescriptor; 5] = [
     MigrationDescriptor::new(
         MigrationVersion::FIRST,
         "0.0.0",
-        VERSION_ONE_SQL,
-        Sha256Digest::new(VERSION_ONE_DIGEST),
+        v1::SQL,
+        Sha256Digest::new(v1::DIGEST),
         BackupPolicy::Required,
         64 * 1024,
     ),
@@ -259,6 +257,14 @@ const CURRENT_DESCRIPTORS: [MigrationDescriptor; 4] = [
         "0.0.0",
         VERSION_FOUR_SQL,
         Sha256Digest::new(VERSION_FOUR_DIGEST),
+        BackupPolicy::Required,
+        32 * 1024 * 1024,
+    ),
+    MigrationDescriptor::new(
+        MigrationVersion::FIFTH,
+        "0.0.0",
+        v5::SQL,
+        Sha256Digest::new(v5::DIGEST),
         BackupPolicy::Required,
         32 * 1024 * 1024,
     ),

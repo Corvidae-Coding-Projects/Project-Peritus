@@ -29,6 +29,7 @@ source_exceptions = [
 forbidden_dependencies = []
 controlled_source_roots = [
     { path = "crates/foundation/peritus-protocol/src/schema", owner = "B3", kind = "schema", rationale = "B3 owns the handwritten family registry, deterministic renderers, fixture constructors, and code-generation implementation." },
+    { path = "crates/orchestration/peritus-collaboration/tests/fixtures/v1", owner = "D3", kind = "generated", rationale = "D3 owns immutable schema-versioned collaboration command, event, and complete-state compatibility frames plus their SHA-256 manifest." },
     { path = "crates/orchestration/peritus-review/tests/fixtures", owner = "D2", kind = "generated", rationale = "D2 owns immutable schema-versioned command, event, and complete-state compatibility frames plus their SHA-256 manifest." },
     { path = "crates/tools/peritus-tool-protocol/src/schema.rs", owner = "C4", kind = "schema", rationale = "C4 owns the bounded tool schema model, builders, canonical encoding, validation, and compatibility contract." },
     { path = "crates/tools/peritus-tool-protocol/src/schema", owner = "C4", kind = "schema", rationale = "C4 owns the reviewed tool schema canonicalization, validation, duplicate detection, and compatibility implementation." },
@@ -40,6 +41,7 @@ controlled_source_roots = [
     { path = "crates/state/peritus-journal/src/sqlite/schema.rs", owner = "C0", kind = "schema", rationale = "C0 owns the authoritative journal schema and transactional state tables." },
     { path = "crates/state/peritus-migrations/fixtures", owner = "C0", kind = "generated", rationale = "C0 owns immutable old-schema fixtures exercised by forward migration and restoration tests." },
     { path = "crates/state/peritus-projection/src/sqlite/schema.rs", owner = "C0", kind = "schema", rationale = "C0 owns versioned projection generations and atomic activation metadata." },
+    { path = "fixtures/protocol/scheduler-v1", owner = "D3", kind = "generated", rationale = "D3 owns immutable schema-versioned scheduler command, event, and complete-state compatibility frames plus their SHA-256 manifest." },
     { path = "protocol/generated", owner = "B3", kind = "generated-schema", rationale = "B3 deterministically generates the reviewed protocol schema and TypeScript client declarations." },
     { path = "protocol/fixtures/v1", owner = "B3", kind = "generated", rationale = "B3 deterministically generates the immutable version-one binary compatibility corpus and digest inventory." },
 ]
@@ -166,6 +168,13 @@ path = "crates/app/testing/peritus-conformance"
 owner = "A2"
 layer = "testing"
 verification_class = "C"
+
+[[packages]]
+name = "peritus-collaboration"
+path = "crates/orchestration/peritus-collaboration"
+owner = "D3"
+layer = "orchestration"
+verification_class = "H"
 
 [[packages]]
 name = "peritus-git"
@@ -340,6 +349,13 @@ name = "peritus-sandbox"
 path = "crates/runtime/peritus-sandbox"
 owner = "C2"
 layer = "runtime"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-scheduler"
+path = "crates/orchestration/peritus-scheduler"
+owner = "D3"
+layer = "orchestration"
 verification_class = "H"
 
 [[packages]]

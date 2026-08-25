@@ -1,0 +1,4 @@
+# peritus collaboration protocol compatibility corpus v1
+f1e05096158a7e5cb2770560d81838de99c8ef8e6d80d53aa2323e0e5e98777c  collaboration-command.bin
+c9b97cf3654edb3e82588225775db8b2d30b4448b6007fda16ca30de6c6287ba  collaboration-event.bin
+1282505e0574ca6f7e08537735222e85d81e557ea04c6e9e3b47163c279c3b98  collaboration-state.bin

@@ -41,7 +41,16 @@
     {"tag": 53, "name": "review-command", "schemaVersion": 1, "inertOnly": true},
     {"tag": 54, "name": "review-event", "schemaVersion": 1, "inertOnly": true},
     {"tag": 55, "name": "review-state", "schemaVersion": 1, "inertOnly": true},
-    {"tag": 60, "name": "trace-observation", "schemaVersion": 1, "inertOnly": true}
+    {"tag": 60, "name": "trace-observation", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 70, "name": "scheduler-command", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 71, "name": "scheduler-event", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 72, "name": "scheduler-state", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 73, "name": "collaboration-command", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 74, "name": "collaboration-event", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 75, "name": "collaboration-state", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 76, "name": "orchestrator-command", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 77, "name": "orchestrator-event", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 78, "name": "orchestrator-state", "schemaVersion": 1, "inertOnly": true}
   ],
   "variants": {
     "kernel-command": [

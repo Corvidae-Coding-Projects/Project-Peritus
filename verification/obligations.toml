@@ -1070,3 +1070,117 @@ evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-review/src/verified.rs", symbol = "peritus_review::verified::reviewer_resolution_requires_confirmation", command = "cargo verus verify --package peritus-review --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-review/tests/domain_transitions.rs", symbol = "peritus_review::tests::domain_transitions::repeated_fingerprint_and_cycle_exhaustion_finalize_needs_human", command = "cargo test --package peritus-review --all-targets --all-features --locked" },
 ]
+
+[[entries]]
+id = "OBL-0149"
+kind = "invariant"
+statement = "D3 scheduler reservations preserve every global and worker resource capacity, each live dispatch has one work and worker owner, and checked release cannot create or lose capacity."
+owning_crate = "peritus-scheduler"
+source_file = "crates/orchestration/peritus-scheduler/src/verified.rs"
+symbol = "peritus_scheduler::verified::reservations_fit"
+status = "in-progress"
+dependencies = ["INV-003", "INV-005"]
+live_issue = "#19"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-scheduler/src/verified.rs", symbol = "peritus_scheduler::verified::conservation_preserves_capacity", command = "cargo verus verify --package peritus-scheduler --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/orchestration/peritus-scheduler/tests/resource_invariants.rs", symbol = "peritus_scheduler::tests::resource_invariants::resource_addition_and_subtraction_are_exact_and_checked", command = "cargo test --package peritus-scheduler --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0150"
+kind = "refinement"
+statement = "D3 scheduler readiness requires successful dependencies and deterministic feasible selection uses bounded bypass, priority, enqueue order, and identity without wall time or runtime ordering."
+owning_crate = "peritus-scheduler"
+source_file = "crates/orchestration/peritus-scheduler/src/selection.rs"
+symbol = "peritus_scheduler::selection::select_next"
+status = "in-progress"
+dependencies = ["OBL-0149"]
+live_issue = "#19"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-scheduler/src/verified.rs", symbol = "peritus_scheduler::verified::saturated_bypass_stays_bounded", command = "cargo verus verify --package peritus-scheduler --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-scheduler/src/verified.rs", symbol = "peritus_scheduler::verified::missing_dependency_success_blocks", command = "cargo verus verify --package peritus-scheduler --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/orchestration/peritus-scheduler/tests/selection_fairness.rs", symbol = "peritus_scheduler::tests::selection_fairness::implementation_matches_independent_reference_and_forces_aged_work", command = "cargo test --package peritus-scheduler --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0151"
+kind = "invariant"
+statement = "D3 scheduler completion requires every admitted work item to succeed with no live reservation or pending directive; cancellation, failure, dependency failure, ambiguity, and exhaustion remain non-success."
+owning_crate = "peritus-scheduler"
+source_file = "crates/orchestration/peritus-scheduler/src/verified.rs"
+symbol = "peritus_scheduler::verified::no_implicit_success"
+status = "in-progress"
+dependencies = ["INV-005", "OBL-0149", "OBL-0150"]
+live_issue = "#19"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-scheduler/src/verified.rs", symbol = "peritus_scheduler::verified::completion_requires_quiescence", command = "cargo verus verify --package peritus-scheduler --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-scheduler/tests/domain_transitions.rs", symbol = "peritus_scheduler::tests::domain_transitions::pause_drain_and_terminal_truth_are_closed_and_explicit", command = "cargo test --package peritus-scheduler --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0152"
+kind = "refinement"
+statement = "Every durable D3 scheduler state is reconstructed from the exact contiguous event chain and a family-72 checkpoint is accepted only when complete canonical state equals semantic replay."
+owning_crate = "peritus-scheduler"
+source_file = "crates/orchestration/peritus-scheduler/src/verified.rs"
+symbol = "peritus_scheduler::verified::replay_equivalent"
+status = "in-progress"
+dependencies = ["OBL-0115", "OBL-0151"]
+live_issue = "#19"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-scheduler/tests/durability_restart.rs", symbol = "peritus_scheduler::tests::durability_restart::commit_restart_resolution_and_conflicting_command_are_exact", command = "cargo test --package peritus-scheduler --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0153"
+kind = "invariant"
+statement = "Every D3 collaboration task has one acyclic depth-consistent parent chain to its root, and a successful task satisfies its exact all-required or any-required child join."
+owning_crate = "peritus-collaboration"
+source_file = "crates/orchestration/peritus-collaboration/src/verified/executable.rs"
+symbol = "peritus_collaboration::verified::executable::causal_graph_is_valid"
+status = "in-progress"
+dependencies = ["INV-002", "OBL-0149"]
+live_issue = "#19"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-collaboration/src/verified.rs", symbol = "peritus_collaboration::verified::child_requires_parent", command = "cargo verus verify --package peritus-collaboration --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-collaboration/src/verified.rs", symbol = "peritus_collaboration::verified::all_join_rejects_missing", command = "cargo verus verify --package peritus-collaboration --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/orchestration/peritus-collaboration/tests/domain_lifecycle.rs", symbol = "peritus_collaboration::tests::domain_lifecycle::all_required_lifecycle_message_handoff_and_finalization_are_exact", command = "cargo test --package peritus-collaboration --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0154"
+kind = "invariant"
+statement = "D3 collaboration cancellation dominates every descendant and later success, while aggregate completion requires a successful root, truthful joins, terminal tasks, and no pending delivery or cancellation."
+owning_crate = "peritus-collaboration"
+source_file = "crates/orchestration/peritus-collaboration/src/verified/executable.rs"
+symbol = "peritus_collaboration::verified::executable::cancellation_dominates"
+status = "in-progress"
+dependencies = ["INV-005", "OBL-0153"]
+live_issue = "#19"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-collaboration/src/verified.rs", symbol = "peritus_collaboration::verified::cancellation_excludes_success", command = "cargo verus verify --package peritus-collaboration --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-collaboration/src/verified.rs", symbol = "peritus_collaboration::verified::pending_directive_blocks_completion", command = "cargo verus verify --package peritus-collaboration --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-collaboration/tests/cancellation_causality.rs", symbol = "peritus_collaboration::tests::cancellation_causality::cancellation_propagates_canonically_and_cannot_resurrect_success", command = "cargo test --package peritus-collaboration --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0155"
+kind = "refinement"
+statement = "Every durable D3 collaboration state is reconstructed through its closed reducer from a contiguous causal event chain, and family-75 checkpoint bytes must equal semantic replay."
+owning_crate = "peritus-collaboration"
+source_file = "crates/orchestration/peritus-collaboration/src/verified/executable.rs"
+symbol = "peritus_collaboration::verified::executable::replay_equivalent"
+status = "in-progress"
+dependencies = ["OBL-0115", "OBL-0153", "OBL-0154"]
+live_issue = "#19"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-collaboration/src/verified.rs", symbol = "peritus_collaboration::verified::replay_claim_requires_equality", command = "cargo verus verify --package peritus-collaboration --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-collaboration/tests/durability_restart.rs", symbol = "peritus_collaboration::tests::durability_restart::exact_transition_survives_restart_and_resolves_idempotently", command = "cargo test --package peritus-collaboration --all-targets --all-features --locked" },
+]
