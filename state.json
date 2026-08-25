@@ -1664,9 +1664,10 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-25T18:46:53.361245432Z",
-      "updated_at": "2026-08-25T18:47:03.033751205Z",
+      "updated_at": "2026-08-25T18:47:07.568258253Z",
       "labels": [
         "D3",
+        "E0",
         "feature"
       ]
     },
@@ -3205,8 +3206,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-25T18:47:03.033751205Z",
+    "timestamp": "2026-08-25T18:47:07.568258253Z",
     "agent_id": "6ME5",
-    "agent_seq": 421
+    "agent_seq": 422
   }
 }
