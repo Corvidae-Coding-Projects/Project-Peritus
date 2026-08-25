@@ -1,6 +1,6 @@
 {
   "next_display_id": 20,
-  "next_comment_id": 320,
+  "next_comment_id": 321,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -1669,13 +1669,22 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-25T18:46:53.361245432Z",
-      "updated_at": "2026-08-25T18:54:35.635823891Z",
+      "updated_at": "2026-08-25T19:04:38.824108752Z",
       "labels": [
         "D3",
         "E0",
         "feature"
       ],
       "comments": {
+        "5d33607e-482d-41d8-96e2-659a87c8e409": {
+          "display_id": 320,
+          "author": "6ME5",
+          "content": "Design freeze 07b4081 complete. Shared integration now has protocol families 70-78, C0 aggregate tags 10-12, schema v5 with checked v4 fixture and backup/restore migration, plus nonempty A2 D3 scheduler/collaboration catalogs. Targeted journal+migration and conformance suites pass. Scheduler/collaboration crate owners are implementing disjoint complete domain/reducer/codec/durability/test surfaces; no overlapping heavy commands.",
+          "created_at": "2026-08-25T19:04:38.821503141Z",
+          "kind": "progress",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+xS4zWgc1ezX0ZpXbF3xAX4r2gyOY0z9OxZwhOkkGnmrWIqMFkOJ//AF6LjJuFAHNmReHFWcNIAO6zUyFOsmAg=="
+        },
         "78c050f3-7c0e-451f-96ab-ee92a3062c08": {
           "display_id": 319,
           "author": "6ME5",
@@ -3231,8 +3240,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-25T18:54:35.635823891Z",
+    "timestamp": "2026-08-25T19:04:38.824108752Z",
     "agent_id": "6ME5",
-    "agent_seq": 426
+    "agent_seq": 427
   }
 }
