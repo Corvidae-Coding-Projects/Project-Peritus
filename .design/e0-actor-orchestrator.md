@@ -27,7 +27,9 @@ AcTor delivery loop E0. Both are delivered sequentially by the same goal and mig
    completion policy.
 2. E0 durably creates the writer D3 collaboration task/work directive. The writer executes through
    D0 and returns an inert completion proposal bound to the exact revision and transcript/evidence
-   digests.
+   digests. Successful observation atomically installs the actual writer output plus the
+   same-revision D1/D2 quality binding while retaining the already-active writer D3 identities;
+   no gate or review binding guesses the writer result.
 3. A valid writer proposal advances to D1 gates. A clean current D1 terminal advances to D2
    review; gate infrastructure failure, deterministic failure, cancellation, or exhaustion follows
    an explicit configured branch and never counts as success.
@@ -58,8 +60,11 @@ AcTor delivery loop E0. Both are delivered sequentially by the same goal and mig
 ### Immutable binding, roles, and candidate identity
 
 - **E0-R001:** `OrchestratorBinding::from_contract` shall retain `RunId`, `AttemptId`, immutable
-  contract identity/digest, exact initial `RevisionTuple`, D1 plan digest, D2 policy/binding digest,
-  D3 scheduler/collaboration identities, and `OrchestratorLimits`.
+  contract identity/digest, exact initial `RevisionTuple`, initial D1/D3 child run identities, D1
+  plan digest, D2 policy/binding digest, D3 scheduler/collaboration identities and binding digests,
+  and `OrchestratorLimits`. Writer completion rebounds the bootstrap same-revision cycle to its
+  actual candidate's checked D1 plan and D2 binding while preserving live D3 identities. A later
+  material revision advance installs an entirely fresh per-candidate cycle.
 - **E0-R002:** `CandidateBinding` shall retain exact `RevisionTuple`, workspace snapshot identity,
   candidate digest, tree digest, optional patch/artifact identity, artifact digest, producer actors,
   producer ancestry, and a canonical complete binding digest. Material change requires a new
@@ -69,8 +74,9 @@ AcTor delivery loop E0. Both are delivered sequentially by the same goal and mig
   have mutating roles; reviewers must have fresh read-only profiles and satisfy D2 independence.
   E0 cannot widen any role's capability view.
 - **E0-R004:** Handoffs shall name the source/destination phase, source/destination actor and role,
-  exact candidate binding, D3 task/work identity, input artifact/evidence digests, and one stable
-  idempotency identity. Hidden reasoning and unbound free-form instructions are not handoff inputs.
+  exact candidate binding, D3 task/work identity, exact D0 turn identity for writer/fixer work,
+  input artifact/evidence digests, and one stable idempotency identity. Hidden reasoning and
+  unbound free-form instructions are not handoff inputs.
 - **E0-R005:** `OrchestratorLimits` independently bounds revisions, writer cycles, fixer cycles,
   gate cycles, review cycles, handoffs, child directives, retained observations, artifact refs,
   state/event bytes, and cancellation reconciliation. Contract completion limits may tighten but
@@ -93,7 +99,8 @@ AcTor delivery loop E0. Both are delivered sequentially by the same goal and mig
 - **E0-R013:** A D0 completion counts only when the child turn is terminal-completed, its actor/
   role/task/work/run/attempt/revision match the pending handoff, its request is legal for the
   current phase, and all evidence references are current. A proposal remains data and cannot
-  execute its requested action.
+  execute its requested action. Writer success carries both its changed candidate and the exact
+  same-revision quality cycle derived from checked D1, D2, and D3 child bindings.
 - **E0-R014:** Gate completion requires a D1 projection for the exact run/revision/plan digest,
   terminal `Completed`, fresh evidence receipts for every required gate, and no pending recovery.
   Deterministic gate failure may consume a bounded fix policy; infrastructure/ambiguous failure is
@@ -106,8 +113,10 @@ AcTor delivery loop E0. Both are delivered sequentially by the same goal and mig
   response identities covering every handed-off current blocking finding. It cannot close a
   finding. D2 reviewer confirmation or external waiver remains required.
 - **E0-R017:** Revision advance retains all prior cycle history, marks its D1/D2/acceptance facts
-  historical, increments the bounded revision/fix counters once, and creates new exact D1/D2
-  bindings. Reusing an old candidate/tree/artifact tuple as a claimed new revision is rejected.
+  historical, increments the bounded revision/fix counters once, creates fresh exact D1 and D3
+  single-revision child aggregates, and applies D2's explicit revision-advance binding without
+  discarding finding history. Reusing an old candidate/tree/artifact tuple, child run, scheduler,
+  or collaboration identity as a claimed new cycle is rejected.
 - **E0-R018:** Repeated D2 finding fingerprints, non-improving severity, incompatible reviewer
   outcomes, configured stagnation, maximum fixer/review/revision count, or explicit budget
   exhaustion produces `NeedsHuman` or `Exhausted` according to the recorded cause. No unbounded
@@ -125,16 +134,19 @@ AcTor delivery loop E0. Both are delivered sequentially by the same goal and mig
 - **E0-R022:** The certificate binds contract, revision, candidate, D1/D2 state digests, canonical
   evidence digest, evaluation result digest, and completion limits. Any child/revision advancement
   invalidates it before another lifecycle transition.
-- **E0-R023:** After committing the certificate, E0 emits durable idempotent requests for B0
-  `BeginAcceptance` and `EvaluateAcceptance`. The kernel reducer receives the original contract and
-  exact `AcceptanceEvidence`; E0 records no accepted terminal from a request or local boolean.
+- **E0-R023:** The certificate commits distinct B0 Begin/Evaluate command and event identities plus
+  the exact prior kernel head. After committing it, E0 emits durable idempotent requests for B0
+  `BeginAcceptance`, observes the matching durable begun event, and only then emits
+  `EvaluateAcceptance`. The kernel reducer receives the original contract and exact
+  `AcceptanceEvidence`; E0 records no accepted terminal from a request or local boolean.
 - **E0-R024:** `OrchestratorTerminal::Accepted` requires a durable B0 `AcceptanceAccepted` event
   naming the same run/revision and causally linked to the certificate/request. B0
   `AcceptanceNeedsChanges` returns to the bounded fix/review path or a truthful terminal.
 - **E0-R025:** `Rejected`, `Failed`, `Exhausted`, `NeedsHuman`, and `Cancelled` are distinct closed
-  terminal kinds with stable cause codes. No cancellation, malformed observation, stale evidence,
-  missing approval, unresolved finding, gate failure, review failure, or reconciliation ambiguity
-  may produce `Accepted`.
+  terminal kinds with stable cause codes. Every terminal first settles or reconciles all owned
+  children without changing its retained cause. No cancellation, malformed observation, stale
+  evidence, missing approval, unresolved finding, gate failure, review failure, or reconciliation
+  ambiguity may produce `Accepted`.
 
 ### Pause, cancellation, crash recovery, and directives
 

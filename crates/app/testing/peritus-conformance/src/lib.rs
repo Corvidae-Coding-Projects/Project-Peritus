@@ -13,6 +13,7 @@ mod failure;
 mod gate;
 mod identity;
 mod journal;
+mod orchestrator;
 mod outcome;
 mod process;
 mod provider;

@@ -1184,3 +1184,109 @@ evidence = [
   { kind = "verus-proof", source_file = "crates/orchestration/peritus-collaboration/src/verified.rs", symbol = "peritus_collaboration::verified::replay_claim_requires_equality", command = "cargo verus verify --package peritus-collaboration --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-collaboration/tests/durability_restart.rs", symbol = "peritus_collaboration::tests::durability_restart::exact_transition_survives_restart_and_resolves_idempotently", command = "cargo test --package peritus-collaboration --all-targets --all-features --locked" },
 ]
+
+[[entries]]
+id = "OBL-0156"
+kind = "invariant"
+statement = "E0 keeps service, writer, fixer, and reviewer authority separated, and every installed candidate cycle binds changed material to the exact revision without reusing any historical D1 or D3 aggregate identity."
+owning_crate = "peritus-orchestrator"
+source_file = "crates/orchestration/peritus-orchestrator/src/verified.rs"
+symbol = "peritus_orchestrator::verified::roles_are_separated"
+status = "in-progress"
+dependencies = ["INV-003", "INV-004", "OBL-0153"]
+live_issue = "#19"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-orchestrator/src/verified.rs", symbol = "peritus_orchestrator::verified::writer_fixer_alias_breaks_separation", command = "cargo verus verify --package peritus-orchestrator --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-orchestrator/src/verified.rs", symbol = "peritus_orchestrator::verified::reused_child_run_breaks_freshness", command = "cargo verus verify --package peritus-orchestrator --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/orchestration/peritus-orchestrator/tests/domain_quality_cycle.rs", symbol = "peritus_orchestrator::tests::domain_quality_cycle::cycle_validation_is_typed_to_the_current_candidate_revision", command = "cargo test --package peritus-orchestrator --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-orchestrator/src/integration_tests/lifecycle.rs", symbol = "peritus_orchestrator::integration_tests::lifecycle::blocking_finding_fixer_revision_and_fresh_quality_cycle_reach_acceptance", command = "cargo test --package peritus-orchestrator --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0157"
+kind = "invariant"
+statement = "Every accepted E0 reducer step consumes one exact run, revision, sequence, predecessor, state-digest, and fresh command fence, emits exactly one event, and keeps each independent work and retention counter within its immutable bound."
+owning_crate = "peritus-orchestrator"
+source_file = "crates/orchestration/peritus-orchestrator/src/verified.rs"
+symbol = "peritus_orchestrator::verified::transition_is_legal"
+status = "in-progress"
+dependencies = ["INV-005", "OBL-0115", "OBL-0156"]
+live_issue = "#19"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-orchestrator/src/verified.rs", symbol = "peritus_orchestrator::verified::counter_over_limit_is_rejected", command = "cargo verus verify --package peritus-orchestrator --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-orchestrator/src/verified.rs", symbol = "peritus_orchestrator::verified::reducer_step_emits_exactly_one_event", command = "cargo verus verify --package peritus-orchestrator --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/orchestration/peritus-orchestrator/tests/domain_identity_limits.rs", symbol = "peritus_orchestrator::tests::domain_identity_limits::every_limit_rejects_zero_or_compiled_ceiling_excess", command = "cargo test --package peritus-orchestrator --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-orchestrator/src/integration_tests/lifecycle.rs", symbol = "peritus_orchestrator::integration_tests::lifecycle::writer_gates_review_b2_and_durable_b0_are_the_only_success_path", command = "cargo test --package peritus-orchestrator --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0158"
+kind = "invariant"
+statement = "E0 Accepted is quiescent and requires an exact current B2 certificate plus both planned durable B0 Begin and Evaluate observations; no certificate, request, local decision, stale child result, or missing stage can imply acceptance."
+owning_crate = "peritus-orchestrator"
+source_file = "crates/orchestration/peritus-orchestrator/src/verified.rs"
+symbol = "peritus_orchestrator::verified::terminal_is_truthful"
+status = "in-progress"
+dependencies = ["INV-005", "OBL-0145", "OBL-0157"]
+live_issue = "#19"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-orchestrator/src/verified.rs", symbol = "peritus_orchestrator::verified::certificate_alone_cannot_accept", command = "cargo verus verify --package peritus-orchestrator --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-orchestrator/src/verified.rs", symbol = "peritus_orchestrator::verified::evaluation_without_begin_cannot_accept", command = "cargo verus verify --package peritus-orchestrator --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-orchestrator/src/wire/fixture_tests/accepted.rs", symbol = "peritus_orchestrator::wire::fixture_tests::accepted::accepted_checkpoint_requires_planned_begin_and_evaluate_observations", command = "cargo test --package peritus-orchestrator --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-orchestrator/src/integration_tests/lifecycle.rs", symbol = "peritus_orchestrator::integration_tests::lifecycle::writer_gates_review_b2_and_durable_b0_are_the_only_success_path", command = "cargo test --package peritus-orchestrator --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0159"
+kind = "invariant"
+statement = "Once E0 enters cancellation or non-success settlement, late success cannot win; every owned child must become terminal or retain an exact evidence-backed unreachable or ambiguous classification before finalization."
+owning_crate = "peritus-orchestrator"
+source_file = "crates/orchestration/peritus-orchestrator/src/verified.rs"
+symbol = "peritus_orchestrator::verified::cancellation_dominates"
+status = "in-progress"
+dependencies = ["INV-005", "OBL-0154", "OBL-0158"]
+live_issue = "#19"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-orchestrator/src/verified.rs", symbol = "peritus_orchestrator::verified::cancelled_run_cannot_accept_late_success", command = "cargo verus verify --package peritus-orchestrator --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-orchestrator/src/verified.rs", symbol = "peritus_orchestrator::verified::live_child_blocks_terminal", command = "cargo verus verify --package peritus-orchestrator --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-orchestrator/src/integration_tests/cancellation.rs", symbol = "peritus_orchestrator::integration_tests::cancellation::cancellation_settles_owned_children_and_late_success_cannot_win", command = "cargo test --package peritus-orchestrator --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-orchestrator/src/integration_tests/cancellation.rs", symbol = "peritus_orchestrator::integration_tests::cancellation::ambiguous_child_settlement_truthfully_requires_human_judgment", command = "cargo test --package peritus-orchestrator --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0160"
+kind = "refinement"
+statement = "Every durable E0 state is reconstructed from its exact contiguous family-77 event chain, and a family-78 checkpoint is accepted only when its complete semantic state equals replay; committed directives remain commit-before-effect and idempotent across restart."
+owning_crate = "peritus-orchestrator"
+source_file = "crates/orchestration/peritus-orchestrator/src/replay.rs"
+symbol = "peritus_orchestrator::replay::OrchestratorReplay::rebuild"
+status = "in-progress"
+dependencies = ["OBL-0115", "OBL-0157", "OBL-0159"]
+live_issue = "#19"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-orchestrator/src/verified.rs", symbol = "peritus_orchestrator::verified::replay_claim_requires_equality", command = "cargo verus verify --package peritus-orchestrator --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-orchestrator/src/integration_tests/durability.rs", symbol = "peritus_orchestrator::integration_tests::durability::every_lifecycle_commit_restarts_to_the_exact_checkpoint", command = "cargo test --package peritus-orchestrator --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-orchestrator/src/integration_tests/crash_matrix.rs", symbol = "peritus_orchestrator::integration_tests::crash_matrix::crash_after_commit_before_publish_recovers_the_same_deliverable_directive", command = "cargo test --package peritus-orchestrator --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0161"
+kind = "contract"
+statement = "The closed E0 command, event, and complete-state wire families 76, 77, and 78 have byte-exact immutable version-one fixtures; decoders reject unknown closed tags, trailing bytes, stale D1 snapshots, stale D2 bindings, and accepted checkpoints missing exact B0 stages."
+owning_crate = "peritus-orchestrator"
+source_file = "crates/orchestration/peritus-orchestrator/src/wire/fixture_tests.rs"
+symbol = "peritus_orchestrator::wire::fixture_tests::canonical_corpus_is_exact_and_rejects_corruption"
+status = "in-progress"
+dependencies = ["OBL-0158", "OBL-0160"]
+live_issue = "#19"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-orchestrator/src/wire/fixture_tests.rs", symbol = "peritus_orchestrator::wire::fixture_tests::canonical_corpus_is_exact_and_rejects_corruption", command = "cargo test --package peritus-orchestrator --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-orchestrator/src/wire/fixture_tests/observation_binding.rs", symbol = "peritus_orchestrator::wire::fixture_tests::observation_binding::checkpoint_rejects_stale_gate_snapshot_and_review_binding", command = "cargo test --package peritus-orchestrator --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-orchestrator/src/integration_tests/lifecycle.rs", symbol = "peritus_orchestrator::integration_tests::lifecycle::one_field_contract_candidate_artifact_and_child_binding_drift_is_rejected", command = "cargo test --package peritus-orchestrator --all-targets --all-features --locked" },
+]

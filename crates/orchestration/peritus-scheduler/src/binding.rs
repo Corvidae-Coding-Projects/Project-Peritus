@@ -1,6 +1,6 @@
 //! Immutable run/revision/capacity binding.
 
-use peritus_types::{RevisionTuple, RunId};
+use peritus_types::{RevisionTuple, RunId, Sha256Digest};
 
 use crate::{ResourceVector, SchedulerError, SchedulerId, SchedulerLimits};
 
@@ -55,6 +55,12 @@ impl SchedulerBinding {
     #[must_use]
     pub const fn capacity(&self) -> &ResourceVector {
         &self.capacity
+    }
+
+    /// Returns the domain-separated canonical digest of every immutable binding field.
+    #[must_use]
+    pub fn digest(&self) -> Sha256Digest {
+        crate::canonical::binding_digest(self)
     }
 
     pub(crate) fn validate(&self) -> Result<(), SchedulerError> {

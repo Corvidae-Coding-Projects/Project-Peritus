@@ -129,6 +129,13 @@ layer = "runtime"
 verification_class = "H"
 
 [[packages]]
+name = "peritus-orchestrator"
+path = "crates/orchestration/peritus-orchestrator"
+owner = "E0"
+layer = "orchestration"
+verification_class = "H"
+
+[[packages]]
 name = "peritus-patch"
 path = "crates/runtime/peritus-patch"
 owner = "C1"

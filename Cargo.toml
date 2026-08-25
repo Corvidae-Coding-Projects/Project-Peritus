@@ -39,6 +39,7 @@ members = [
     "crates/orchestration/peritus-agent",
     "crates/orchestration/peritus-gates",
     "crates/orchestration/peritus-memory",
+    "crates/orchestration/peritus-orchestrator",
     "crates/orchestration/peritus-review",
     "crates/orchestration/peritus-role",
     "crates/orchestration/peritus-scheduler",

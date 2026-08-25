@@ -1646,6 +1646,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "peritus-orchestrator"
+version = "0.0.0"
+dependencies = [
+ "peritus-agent",
+ "peritus-codec",
+ "peritus-collaboration",
+ "peritus-gates",
+ "peritus-journal",
+ "peritus-kernel",
+ "peritus-policy",
+ "peritus-quality-policy",
+ "peritus-review",
+ "peritus-role",
+ "peritus-scheduler",
+ "peritus-spec",
+ "peritus-types",
+ "rusqlite",
+ "sha2 0.11.0",
+ "tempfile",
+ "vstd",
+]
+
+[[package]]
 name = "peritus-patch"
 version = "0.0.0"
 dependencies = [

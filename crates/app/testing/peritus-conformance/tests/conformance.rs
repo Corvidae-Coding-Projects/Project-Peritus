@@ -8,6 +8,7 @@ mod conformance {
     mod gate_catalog;
     mod harness;
     mod identity;
+    mod orchestrator_catalog;
     mod panic_paths;
     mod process_catalog;
     mod provider_catalog;

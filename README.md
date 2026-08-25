@@ -54,14 +54,19 @@ The implemented foundation and runtime spine now covers:
   bindings, bounded structured submissions, separately reported quorum dimensions, stable finding
   provenance and conservation, duplicate reconciliation, fixer/reviewer disposition handshakes,
   externally authorized waiver observation, exact revision invalidation, oscillation/escalation,
-  B2 quality projections, and crash-safe C0 replay.
+  B2 quality projections, and crash-safe C0 replay; and
+- D3: durable bounded resource-aware scheduling with dependency readiness, explicit worker
+  reservations, deterministic fairness and recovery, plus causal collaboration task trees,
+  delegation, message and artifact handoff, truthful joins, cancellation propagation, and
+  crash-safe C0 replay; and
+- E0: a durable deterministic AcTor delivery orchestrator that composes writer D0 turns, fresh D1
+  gates, independent D2 review, bounded fixer revision cycles, D3 work/task ownership, B2
+  evaluation, and durable B0 acceptance truth with commit-before-effect directives, pause,
+  cancellation, and exact restart reconciliation.
 
 These are library and verification layers. There is not yet a user-facing `peritus` CLI, daemon,
-TUI, writer-reviewer-fixer orchestrator, scheduler/collaboration runtime, or native packaged-host
-qualification. D3 is the next functional runtime boundary: bounded resource-aware scheduling,
-reservations, cancellation trees, causal collaboration, and deterministic worker coordination for
-later orchestration. A3, D3, E0–E3, F0, G0–G3, and H0–H4 remain before production release and
-qualification.
+TUI, harness materialization/evolution runtime, or native packaged-host qualification. A3,
+E1–E3, F0, G0–G3, and H0–H4 remain before production release and qualification.
 
 Gate A is the current merge authority: ordinary Rust checks, architecture and API policy,
 supply-chain policy, pinned toolchains, full Verus verification, and verified release builds must
@@ -136,6 +141,12 @@ The [D2 review-engine guide](docs/d2-review-engine.md) documents immutable revie
 structured submissions, independent quorum, finding conservation and reconciliation,
 fixer/reviewer dispositions, externally authorized waiver observations, revision invalidation,
 truthful escalation, B2 projections, and crash-safe replay.
+The [D3 scheduler and collaboration guide](docs/d3-scheduler-collaboration.md) documents bounded
+resource scheduling, deterministic fairness, dependency readiness, worker ownership, causal task
+trees, joins, handoffs, cancellation propagation, and restart recovery.
+The [E0 AcTor orchestrator guide](docs/e0-actor-orchestrator.md) documents exact writer, gate,
+reviewer, fixer, evaluation, and B0 handoffs; bounded revision loops; commit-before-effect
+directives; pause and cancellation; replay; and terminal acceptance truth.
 The [GitHub governance runbook](docs/github-governance.md) defines the GitHub Team-compatible
 repository ruleset and required `Gate A` status that must be active after the A1 genesis push.
 Immutable required-workflow authority remains an explicitly documented Enterprise Cloud deferral.

@@ -12,6 +12,14 @@ use crate::{
 
 use encoder::Encoder;
 
+/// Hashes every immutable scheduler binding field under a stable domain separator.
+#[must_use]
+pub fn binding_digest(binding: &SchedulerBinding) -> Sha256Digest {
+    let mut out = Encoder::new(b"peritus-d3-scheduler-binding-v1\0");
+    encode_binding(&mut out, binding);
+    out.hash()
+}
+
 /// Hashes every scheduler state field while logically zeroing its state-digest field.
 #[must_use]
 pub fn state_digest(state: &SchedulerState) -> Sha256Digest {

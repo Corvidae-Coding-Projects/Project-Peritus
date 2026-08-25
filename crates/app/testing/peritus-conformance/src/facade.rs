@@ -24,6 +24,11 @@ pub use crate::journal::{
     JournalAppendDisposition, JournalAppendFixture, JournalAppendObservation,
     JournalConformanceError, JournalConformanceSubject, JournalSnapshot, journal_suite,
 };
+pub use crate::orchestrator::{
+    OrchestratorConformanceError, OrchestratorConformanceFixture,
+    OrchestratorConformanceObservation, OrchestratorConformanceSubject, OrchestratorScenario,
+    OrchestratorTerminal, orchestrator_suite,
+};
 pub use crate::outcome::{CaseResult, Observation, ObservationValue};
 pub use crate::process::{
     ProcessAuthorizationDrift, ProcessConformanceError, ProcessConformanceFixture,
