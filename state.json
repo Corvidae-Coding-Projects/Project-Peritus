@@ -3414,16 +3414,17 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-25T23:07:27.355677826Z",
-      "updated_at": "2026-08-25T23:07:32.040658657Z",
+      "updated_at": "2026-08-25T23:07:36.955202837Z",
       "labels": [
+        "E1",
         "feature"
       ]
     }
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-25T23:07:32.040658657Z",
+    "timestamp": "2026-08-25T23:07:36.955202837Z",
     "agent_id": "6ME5",
-    "agent_seq": 450
+    "agent_seq": 451
   }
 }
