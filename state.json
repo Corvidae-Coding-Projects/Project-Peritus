@@ -1665,11 +1665,12 @@
       "display_id": 19,
       "title": "Deliver D3 scheduling and E0 AcTor orchestration",
       "description": "Goal:\nDeliver the frozen D3 scheduler/collaboration dependency, then the durable deterministic E0 writer -> gates -> reviewer -> fixer AcTor orchestrator requested by the active goal.\n\nAcceptance criteria:\n- D3 provides bounded fair queues, explicit reservations, dependency readiness, cancellation trees, causal collaboration, bounded fan-out, deterministic coordination, crash-safe replay, and conformance.\n- E0 provides explicit writer/reviewer/fixer ownership and handoffs, exact artifact/revision binding, D1 gate and D2 review integration, bounded retry/oscillation, pause/cancel/resume, and truthful terminal outcomes.\n- Protocol schemas, state replay/projections/migrations, fixtures, formal inventory, architecture, README, CHANGELOG, and generated artifacts are current.\n- Maximum practical Verus properties cover the pure scheduling, causal, ownership, and orchestration safety rules.\n- Focused modules contain no stubs, TODOs, placeholders, or deferred core behavior.\n- Signed commits and PR merge only; serialized local Gate A and hosted Gate A/Foundation across Linux, macOS, and Windows are green; final main equals origin/main.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-25T18:46:53.361245432Z",
-      "updated_at": "2026-08-25T22:25:50.859112681Z",
+      "updated_at": "2026-08-25T22:26:28.676194194Z",
+      "closed_at": "2026-08-25T22:26:28.676192712Z",
       "labels": [
         "D3",
         "E0",
@@ -3402,8 +3403,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-25T22:25:50.859112681Z",
+    "timestamp": "2026-08-25T22:26:28.676194194Z",
     "agent_id": "6ME5",
-    "agent_seq": 445
+    "agent_seq": 446
   }
 }
