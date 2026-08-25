@@ -1,6 +1,6 @@
 {
   "next_display_id": 19,
-  "next_comment_id": 310,
+  "next_comment_id": 311,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -1668,11 +1668,20 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-25T10:17:08.885730234Z",
-      "updated_at": "2026-08-25T10:22:34.383221166Z",
+      "updated_at": "2026-08-25T10:41:05.479884825Z",
       "labels": [
         "D2"
       ],
       "comments": {
+        "12c16b62-cd80-47e0-ba8f-b725cc0929d6": {
+          "display_id": 310,
+          "author": "6ME5",
+          "content": "[action] D2 shared C0 schema-v4/B3 families 53-55/A2 ten-case integration and full docs/changelog are drafted; core worker implementing reducer/proofs/tests; codec worker implementing event codec/durability/replay/tests; no builds until both stop; CARGO_BUILD_JOBS=1 because swap remains full.",
+          "created_at": "2026-08-25T10:41:05.476055701Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABApce3KUE0I+D/+21jfxQcs1EmH0Ah3i4GIkGtI/g1zFkG5GEOMORNs0O3zdZCRMK3/uSycriChEAmKgE8ZvS2CA=="
+        },
         "c8e08cb9-ffa6-492f-91ce-babc03f9a982": {
           "display_id": 308,
           "author": "6ME5",
@@ -3121,8 +3130,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-25T10:22:34.383221166Z",
+    "timestamp": "2026-08-25T10:41:05.479884825Z",
     "agent_id": "6ME5",
-    "agent_seq": 408
+    "agent_seq": 409
   }
 }
