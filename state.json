@@ -1,6 +1,6 @@
 {
   "next_display_id": 18,
-  "next_comment_id": 291,
+  "next_comment_id": 292,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -83,7 +83,7 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-08-25T06:31:12.546192685Z",
-      "updated_at": "2026-08-25T07:03:55.090978608Z",
+      "updated_at": "2026-08-25T07:03:59.673466944Z",
       "labels": [
         "feature"
       ],
@@ -114,6 +114,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAFPbDg8b/RtzsJf8oN6QK5dfK+vWJ6DYASexgt7u2XSoVIGMJXksxVKqGURrNW1YDzoIcMWqx/o5Z7mthb/WGDA=="
+        },
+        "82ed0213-7480-4cf0-a391-fdf866ba93af": {
+          "display_id": 291,
+          "author": "6ME5",
+          "content": "Shared integration is landed in the working tree: workspace + architecture registrations for peritus-gates/peritus-trace/peritus-telemetry; strict no-cheating Verus lists and exact reproducibility/CI mirrors; schema-v3 migration docs; A2 gate/trace catalog docs; current-state README and substantial D1/C7 changelog. Lockfile metadata refreshed offline. Heavy verification remains serialized after both source tracks finish.",
+          "created_at": "2026-08-25T07:03:59.670443569Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAptJXXEEnxEXcGWVUjudSEQfBVHg5Kv/xws3xWXRGjcnP3yiij0aWrLVwgQvdfzDAUPPLInuIjYLd0MEvt22fCA=="
         },
         "91a15de1-92f8-4b6a-8e91-c00f0c81f1fe": {
           "display_id": 288,
@@ -2932,8 +2941,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-25T07:03:55.090978608Z",
+    "timestamp": "2026-08-25T07:03:59.673466944Z",
     "agent_id": "6ME5",
-    "agent_seq": 384
+    "agent_seq": 385
   }
 }
