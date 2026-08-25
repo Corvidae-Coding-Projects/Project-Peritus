@@ -1,6 +1,6 @@
 {
   "next_display_id": 17,
-  "next_comment_id": 284,
+  "next_comment_id": 285,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "19b7b53a-b2fb-41c1-835d-ffd6ce605c08": 14,
@@ -876,7 +876,7 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-08-25T03:27:57.489313997Z",
-      "updated_at": "2026-08-25T05:23:29.820115154Z",
+      "updated_at": "2026-08-25T05:55:14.633918131Z",
       "labels": [
         "feature"
       ],
@@ -961,6 +961,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+x0PrjyKjVaxjTl3R0z4zV30blL6zbjZ0IFaIxi2NzZTkURRYNIAMMh+mT61Cqwl1awtvsrbnsCDGEfhUViLCA=="
+        },
+        "d4a85d2c-c53c-4e4a-9edd-ae5e728f953c": {
+          "display_id": 284,
+          "author": "6ME5",
+          "content": "Hosted macOS candidate testing exposed a real managed-network timeout defect: upstream sockets imposed an undocumented 100 ms read/write cutoff despite a checked 5 s connection budget. Repaired the shared socket configuration to honor the checked budget and added a deterministic delayed-redirect regression. Focused network test, all 14 peritus-network tests, formatting, strict crate Clippy, and full local Gate A pass. Signed repair commit: 5a5f6a5.",
+          "created_at": "2026-08-25T05:55:14.631171313Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA0JlIha30rzqDpZyljcJ5Fd/mX2KdSAv7HmITxycpqtESUji9G90zqKH3xdoE1hmwxYMDnbVXNp6JL7bEUVxEBw=="
         }
       }
     },
@@ -2851,8 +2860,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-25T05:23:29.820115154Z",
+    "timestamp": "2026-08-25T05:55:14.633918131Z",
     "agent_id": "6ME5",
-    "agent_seq": 372
+    "agent_seq": 373
   }
 }
