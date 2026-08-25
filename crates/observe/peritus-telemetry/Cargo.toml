@@ -1,0 +1,32 @@
+[package]
+name = "peritus-telemetry"
+description = "Bounded OpenTelemetry-compatible projections and exporters for Peritus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["telemetry", "opentelemetry", "metrics", "formal-verification"]
+categories = ["development-tools::profiling", "data-structures"]
+
+[dependencies]
+peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
+peritus-trace = { version = "=0.0.0", path = "../peritus-trace" }
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+vstd.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.peritus]
+owner = "C7"
+layer = "observe"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true

@@ -53,7 +53,8 @@ evidence for those failures must execute conformance in a supervised subprocess.
 ## Catalog suites and ownership
 
 The crate exports production journal, replay, C1 workspace, C2 process, C2/C3 sandbox, C4 tool,
-C5 provider, and D0 agent-loop suites plus runnable empty plugin and protocol suites. The provider suite contains
+C5 provider, D0 agent-loop, D1 gate, and C7 trace/telemetry suites plus runnable empty plugin and
+protocol suites. The provider suite contains
 fourteen fixed cases covering capability honesty, ordering and exact deduplication, fragmented
 tool calls, malformed and incomplete streams, interruption, cancellation, authentication, rate
 limits and retry-after, transient retry, ambiguous submission, usage, redaction, and adapter
@@ -72,6 +73,13 @@ pause/resume, cancellation, prefix replay, context composition, provider reducti
 independent tool authorization, active controls, parallel result ordering, budget exhaustion,
 completion eligibility, and crash recovery without uncertain-effect redispatch. Its subjects report
 direct transition, ownership, ordering, authority, revision, and completion observations.
+The gate suite contains ten fixed cases covering the complete inspect/edit/run/test path, failed
+prerequisites, malformed parser output, stale revision, cancellation, crash recovery, clean
+snapshots, bounded retries, artifact evidence, and deterministic aggregation. The trace suite
+contains nine fixed cases covering causal integrity, redaction leakage, bounded load, exporter
+failure, durable replay, duplicate conflict, backpressure, shutdown recovery, and non-authority.
+Their negative tests deliberately inject implicit success and default-surface canaries and require
+the corresponding suites to fail.
 
 Production crates implement only the subject traits and translate these runtime-neutral fixtures
 and observations into their own domain values. A2 neither constructs privileged runtime permits

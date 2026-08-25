@@ -105,6 +105,7 @@ pub fn classify(
     definition: &CheckDefinition,
     terminal: &TerminalResult,
     parser_complete: bool,
+    predicate_satisfied: bool,
 ) -> (QualityExecutionObservation, CandidateGateObservation) {
     let output_complete = terminal.output().is_complete();
     let artifact_complete = terminal.artifact_publication_complete();
@@ -124,12 +125,15 @@ pub fn classify(
         GateOutcome::Failed(GateFailure::InvalidResult)
     } else if !infrastructure_complete || terminal.disposition() != TerminalDisposition::Exited {
         GateOutcome::Failed(GateFailure::Infrastructure)
+    } else if !predicate_satisfied {
+        GateOutcome::Failed(GateFailure::PredicateFailed)
     } else if expected_exit(definition.expected_success(), terminal.os_exit()) {
         GateOutcome::Passed
     } else {
         GateOutcome::Failed(GateFailure::UnsuccessfulExit)
     };
-    let result_digest = result_digest(definition, terminal, parser_complete, outcome);
+    let result_digest =
+        result_digest(definition, terminal, parser_complete, predicate_satisfied, outcome);
     let candidate =
         CandidateGateObservation { gate_id: definition.gate_id(), outcome, result_digest };
     (observation, candidate)
@@ -148,6 +152,7 @@ fn result_digest(
     definition: &CheckDefinition,
     terminal: &TerminalResult,
     parser_complete: bool,
+    predicate_satisfied: bool,
     outcome: GateOutcome,
 ) -> Sha256Digest {
     let mut hash = Sha256::new();
@@ -156,6 +161,7 @@ fn result_digest(
     hash.update(terminal.plan_digest().as_bytes());
     hash.update([disposition_tag(terminal.disposition())]);
     hash.update([u8::from(parser_complete)]);
+    hash.update([u8::from(predicate_satisfied)]);
     hash.update([outcome_tag(outcome)]);
     for stream in terminal.output().streams() {
         hash.update([stream_tag(stream.stream())]);

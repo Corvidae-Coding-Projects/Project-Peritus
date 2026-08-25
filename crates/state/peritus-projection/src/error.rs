@@ -58,6 +58,20 @@ pub struct ProjectionError {
 }
 
 impl ProjectionError {
+    /// Creates a redaction-safe failure for an external pure projection fold.
+    ///
+    /// The static operation and detail prevent journal payloads from being copied into errors.
+    /// This constructor grants no persistence or replay authority.
+    #[must_use]
+    pub fn fold(
+        kind: ProjectionErrorKind,
+        recovery: RecoveryClass,
+        operation: &'static str,
+        detail: &'static str,
+    ) -> Self {
+        Self { kind, recovery, operation, detail: detail.to_owned(), source: None }
+    }
+
     pub(crate) fn new(
         kind: ProjectionErrorKind,
         recovery: RecoveryClass,

@@ -34,6 +34,10 @@ export const MESSAGE_FAMILY = {
   AGENT_COMMAND: 40,
   AGENT_EVENT: 41,
   AGENT_STATE: 42,
+  GATE_COMMAND: 50,
+  GATE_EVENT: 51,
+  GATE_STATE: 52,
+  TRACE_OBSERVATION: 60,
 } as const;
 
 export type MessageFamilyTag = typeof MESSAGE_FAMILY[keyof typeof MESSAGE_FAMILY];

@@ -7,6 +7,113 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Implement the complete production D1 Gate Engine boundary with a maintainable H-class
+  `peritus-gates` orchestration crate and the required narrow `peritus-tools-quality` extensions,
+  without introducing another process, shell, sandbox, workspace, or acceptance-authority path
+  (#17)
+- Bind every gate run to one validated immutable B2 acceptance contract, exact seven-component
+  `RevisionTuple`, deterministic proven gate order, complete set of explicit quality definitions,
+  and physically distinct clean read-only C1 snapshot before an effect can be requested
+- Add canonical gate descriptors and plans whose domain-separated digests cover every execution-
+  and interpretation-relevant check field, dependency, evidence requirement, retry bound,
+  environment, resource profile, parser, deadline, snapshot, and revision binding
+- Add a closed causally fenced D1 command/event/state machine for start, prepare, dispatch,
+  observation, reconciliation, retry, cancellation, evidence publication, and finalization, with
+  deterministic dependency blocking and canonical aggregation independent of result arrival order
+- Persist attempt intent before dispatch and terminal truth before dependency or acceptance
+  advancement, resolving uncertain C0 appends by the original command identity and request digest
+  and refusing to redispatch an effect whose post-crash outcome remains indeterminate
+- Treat only a newly committed dispatch transition as permit-bearing; an exact already-resolved
+  retry is idempotent without recreating a permit, while a later durable checkpoint requires replay
+  instead of installing stale local state or executing a stale effect
+- Distinguish success, candidate failure, infrastructure failure, cancellation, timeout, malformed
+  output, incomplete evidence, exhaustion, blocking, and indeterminate recovery as closed typed
+  outcomes; only complete fresh success evidence can satisfy a required gate
+- Enforce nonzero per-gate attempt limits, fresh action identities, reconciliation-before-retry,
+  idempotent cancellation, no dispatch after cancellation begins, and durable terminal/recovery
+  classification for every active attempt before a run may terminate
+- Extend `peritus-tools-quality` with deterministic acceptance bindings, a strict closed decoder for
+  its structured `quality.run` result, JSON-success evaluation, complete artifact/result checks, and
+  construction that admits only the exact clean immutable snapshot selected by D1
+- Add normalized D1 evidence requests binding gate/run/execution/attempt/result identities, exact
+  revision and clean-snapshot provenance, complete finalized artifact references, and the committed
+  C0 event; incomplete or mismatched evidence is permanently non-passing
+- Bind every evidence receipt to a canonical domain-separated publication covering the committed
+  result position and digest, revision, snapshot, ordered requirements, and exact artifact
+  identity/digest/completeness/provenance, including gates whose requirement set is empty
+- Bind every replayed or started engine to its originating C0 store identity, reject foreign-store
+  commits and evidence publication before mutation or publisher invocation, verify the result
+  record against that authoritative journal, and require one-to-one evidence discharge by rejecting
+  repeated evidence identities, record digests, or journal provenance across distinct requirements
+- Add canonical schema-v1 D1 codecs for inert B3 families 50–52, permanent `Gate` aggregate tag 7,
+  atomic event/checkpoint journal composition, genesis replay, checkpoint equivalence checks, and a
+  rebuildable non-authoritative gate projection
+- Add executable Verus refinements and ordinary-Rust witnesses for dependency readiness, exact
+  freshness, bounded attempts, terminal pass truth, replay equivalence, deterministic aggregation,
+  and the absence of implicit success
+- Add D1 reducer, planning, codec, replay, durability, clean-snapshot, quality-adapter, cancellation,
+  retry, parser-corruption, artifact-publication, and inspect/edit/run/test integration coverage,
+  plus the grounded design, crate README, and production operator guide
+
+- Implement the complete production C7 observation boundary as separate maintainable H-class
+  `peritus-trace` and `peritus-telemetry` crates, keeping durable causal facts distinct from derived
+  metrics/export state and preventing either crate from granting execution or acceptance authority
+  (#17)
+- Add canonical nonzero 16-byte trace and 8-byte span identities, one-based span sequencing,
+  structural parents, canonical prior-event sets, observed wall/monotonic time, closed observation
+  kinds, sorted safe attributes, sorted redaction decisions, and exact cross-subsystem bindings
+- Validate causal refinement across session, run, attempt, turn, action, provider, tool, gate, and
+  gate-execution identities, including parent latest-event continuity and same-trace predecessor
+  existence without treating timestamps or telemetry as authoritative ordering
+- Add deterministic family-60/schema-1 trace encoding with permanent `Trace` aggregate tag 8,
+  exact-duplicate recognition, changed-duplicate rejection, aggregate/frame/causal validation, and
+  byte-identical projection replay from C0 integrity exports
+- Add a C0-backed trace store that observes and compares aggregate heads, binds finalized encrypted
+  vault artifacts as journal dependencies, appends exact inert frames, resolves uncertain command
+  acknowledgements safely, and returns correlation receipts that cannot authorize work
+- Add a redaction boundary whose default observation vocabulary contains no arbitrary text or raw
+  byte field, zeroizes consumed sensitive payloads, and emits only omission or a digest/size/
+  finalization/quarantine/encryption-checked artifact vault reference
+- Add closed redaction-safe diagnostics and non-authoritative metric projections for providers,
+  tools, gates, budgets, retries, cancellation, recovery, resources, exporter failures, drops, and
+  shutdown, with stable metric names and low-cardinality typed dimensions
+- Add OpenTelemetry-compatible spans, events, and metric points with exact identity widths, parent,
+  timestamps, status, and safe attribute values, plus immutable idempotent export batches and
+  acknowledgement identities that reject partial or mismatched success claims
+- Add a capacity-checked telemetry queue with deterministic reject-newest or drop-oldest policy,
+  checked monotonic accepted/drop/export accounting, stable batch ranges and digests, full retention
+  after exporter failure, and removal only after exact acknowledgement
+- Add bounded shutdown flushing and durable export checkpoints published through synchronized atomic
+  replacement, with restart validation for stream/projection identity, future positions, corruption,
+  and deterministic recovery accounting when restored observations exceed buffer capacity
+- Define export checkpoint V2 around the highest contiguous final-disposition prefix, proving every
+  covered sequence was either exactly acknowledged or deterministically dropped before restart;
+  reject legacy V1 markers closed, preserve gaps under both overflow policies, and make identical
+  checkpoint retries repeat directory synchronization and retention pruning before reporting success
+- Add executable C7 Verus obligations for sequencing, causal facts, redaction decisions, replay
+  equivalence, authority preservation, queue bounds, monotonic accounting, and acknowledgement
+  legality, together with domain/codec/storage/projection/redaction/buffer/export/recovery tests
+- Add seeded canary coverage proving sensitive prompt, model, tool, secret, environment, workspace,
+  and artifact content is absent from `Debug`, `Display`, error chains, frames, projections, metrics,
+  and export values, plus the grounded C7 design, crate READMEs, and production operator guide
+
+- Extend C0 to schema version 3 with append-only Gate and Trace aggregate identities and an exact-
+  source-digest, backup-required v2-to-v3 migration that rebuilds constrained journal tables,
+  preserves existing rows byte-for-byte, count-checks replacements, and validates new appends
+- Register inert B3 families 50 gate-command, 51 gate-event, 52 gate-state, and 60
+  trace-observation; regenerate the reviewed JSON Schema and TypeScript protocol artifacts without
+  moving D1/C7 typed DTO ownership into the foundation layer
+- Extend A2 with ten runtime-neutral D1 gate cases, nine C7 trace/telemetry cases, and negative
+  implicit-success/default-surface-leakage oracles; the complete conformance target now runs 42
+  deterministic fresh-subject cases
+- Register all three new crates in the workspace, architecture ownership/layer/class policy,
+  strict no-cheating Verus verify/build closure, local Just recipes, reproducibility fixtures,
+  Linux hosted verification, and fresh-main formal-governance workflow without weakening any
+  existing Ubuntu, macOS, Windows, dependency, lint, documentation, or proof gate
+- Update the root development state, C0 migration/durability guidance, A2 catalog documentation,
+  formal-foundation command inventory, D1/C7 operating guides, and next-boundary roadmap so D2 is
+  identified as the next functional slice after this paired delivery
+
 - Implement the complete production D0 Agent Loop boundary with a maintainable H-class
   `peritus-agent` orchestration crate, small pure-domain/runtime modules, a cooperative one-action
   driver surface, and explicit composition of the completed B0/B1/B3 and C0-C6 contracts (#16)

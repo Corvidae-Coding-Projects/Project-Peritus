@@ -114,11 +114,17 @@ ignored, quarantined or caller-forced success state.
 
 A2 publishes named empty provider, plugin, and protocol suites. C4 supplies real tool descriptor,
 schema, exposure, authorization, dispatch, result, control, deadline, and replay cases. C0 supplies
-real journal and replay cases, and C1 supplies real Git/workspace/patch cases covering atomic candidate creation,
-stale generation and resource rejection, read-only isolation, rollback history, and restart
-reconciliation. C2 supplies fresh-subject process and sandbox cases covering structured execution,
-bounded supervision and recovery plus the complete platform-neutral sandbox contract and backend
-lifecycle. Only a nonempty passed report from a production adapter proves the named contract.
+real journal and replay cases, and C1 supplies real Git/workspace/patch cases covering atomic
+candidate creation, stale generation and resource rejection, read-only isolation, rollback history,
+and restart reconciliation. C2 supplies fresh-subject process and sandbox cases covering structured
+execution, bounded supervision and recovery plus the complete platform-neutral sandbox contract and
+backend lifecycle. D1 supplies ten gate cases covering the inspect/edit/run/test path, prerequisite
+failure, malformed parser output, revision drift, cancellation, restart recovery, clean snapshots,
+retry bounds, artifact evidence, and deterministic aggregation. C7 supplies nine trace/telemetry
+cases covering causality, redaction, bounded load, exporter failure, replay, duplicate conflict,
+backpressure, shutdown recovery, and non-authority. Negative catalog tests prove implicit gate
+success and default-surface secret leakage cannot pass. Only a nonempty passed report from a
+production adapter proves the named contract.
 
 ## Ownership boundaries
 
@@ -132,8 +138,10 @@ mismatch, exhaustion, fault scheduling and isolation. The following remain outsi
 - C4 production tool calls, results, routing and idempotency storage; A2 now owns their
   runtime-neutral fresh-subject qualification contract;
 - C5 provider requests, normalized streams, retry policy and adapters; and
-- C0/C1/C2 production persistence, workspace, process, and sandbox implementations. A2 owns only
-  the runtime-neutral subject contracts and cases used to qualify those adapters.
+- C0/C1/C2 production persistence, workspace, process, and sandbox implementations;
+- D1 gate planning, execution, parsing, persistence, evidence, freshness, and acceptance; and
+- C7 trace persistence, redaction, projection, buffering, and export. A2 owns only the
+  runtime-neutral subject contracts and cases used to qualify those adapters.
 
 Those owners declare their own conformance cases and translate their local types into the generic
 A2 mechanics. A verification-class `T` adapter must not become a normal dependency of either A2

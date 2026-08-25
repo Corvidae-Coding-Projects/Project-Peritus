@@ -26,13 +26,15 @@ pub(super) fn build(
     definition: &CheckDefinition,
     terminal: &TerminalResult,
     parser_complete: bool,
+    predicate_satisfied: bool,
     retained: &[u8],
     started_at: AuthorityInstant,
     finished_at: AuthorityInstant,
     progress_count: u32,
     progress_truncated: bool,
 ) -> Result<ToolResult, peritus_tool_router::DispatchFailure> {
-    let (observation, candidate) = classify(definition, terminal, parser_complete);
+    let (observation, candidate) =
+        classify(definition, terminal, parser_complete, predicate_satisfied);
     let structured = structured(&observation, candidate, progress_truncated)
         .map_err(|error| adapter_failure("quality-result-structure", &error.to_string()))?;
     let artifacts = artifacts(prepared, terminal)
@@ -158,13 +160,22 @@ fn quality_failure(outcome: GateOutcome, terminal: &TerminalResult) -> (ResultSt
                 RecoveryRoute::ReconcileProcess,
                 "C2 could not establish the quality process outcome",
             ),
+            (_, GateOutcome::Failed(GateFailure::PredicateFailed)) => (
+                ResultStatus::Failed,
+                FailureCategory::Execution,
+                "quality-predicate-failed",
+                ResponsibleSubsystem::Tool,
+                Retryability::Never,
+                RecoveryRoute::None,
+                "the frozen check success predicate did not pass",
+            ),
             (_, GateOutcome::Failed(GateFailure::UnsuccessfulExit)) => (
                 ResultStatus::Failed,
                 FailureCategory::Execution,
                 "quality-unsuccessful-exit",
                 ResponsibleSubsystem::Tool,
-                Retryability::NewAction,
-                RecoveryRoute::Reauthorize,
+                Retryability::Never,
+                RecoveryRoute::None,
                 "the frozen check exit predicate did not pass",
             ),
             (_, GateOutcome::Failed(GateFailure::InvalidResult)) => (

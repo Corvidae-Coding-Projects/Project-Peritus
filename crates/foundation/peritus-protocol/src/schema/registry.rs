@@ -45,4 +45,8 @@ pub const FAMILIES: &[MessageFamily] = &[
     MessageFamily { tag: 40, name: "agent-command", schema_version: 1, inert_only: true },
     MessageFamily { tag: 41, name: "agent-event", schema_version: 1, inert_only: true },
     MessageFamily { tag: 42, name: "agent-state", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 50, name: "gate-command", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 51, name: "gate-event", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 52, name: "gate-state", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 60, name: "trace-observation", schema_version: 1, inert_only: true },
 ];

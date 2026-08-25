@@ -77,13 +77,20 @@ pub enum OutputParser {
         /// Maximum complete output bytes accepted by the parser.
         maximum_bytes: u32,
     },
+    /// Complete output must be a JSON object whose `success` member is exactly `true`.
+    JsonSuccess {
+        /// Maximum complete output bytes accepted by the parser.
+        maximum_bytes: u32,
+    },
 }
 
 impl OutputParser {
     pub(crate) const fn maximum_bytes(self) -> Option<u32> {
         match self {
             Self::None => None,
-            Self::Utf8 { maximum_bytes } | Self::Json { maximum_bytes } => Some(maximum_bytes),
+            Self::Utf8 { maximum_bytes }
+            | Self::Json { maximum_bytes }
+            | Self::JsonSuccess { maximum_bytes } => Some(maximum_bytes),
         }
     }
 }

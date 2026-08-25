@@ -11,11 +11,13 @@ readme = "README.md"
 
 [dependencies]
 peritus-artifact-store = { version = "=0.0.0", path = "../../state/peritus-artifact-store" }
+peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
 peritus-patch = { version = "=0.0.0", path = "../../runtime/peritus-patch" }
 peritus-policy = { version = "=0.0.0", path = "../../foundation/peritus-policy" }
 peritus-process = { version = "=0.0.0", path = "../../runtime/peritus-process" }
 peritus-quality-policy = { version = "=0.0.0", path = "../../foundation/peritus-quality-policy" }
 peritus-sandbox = { version = "=0.0.0", path = "../../runtime/peritus-sandbox" }
+peritus-spec = { version = "=0.0.0", path = "../../foundation/peritus-spec" }
 peritus-tool-protocol = { version = "=0.0.0", path = "../peritus-tool-protocol" }
 peritus-tool-router = { version = "=0.0.0", path = "../peritus-tool-router" }
 peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
