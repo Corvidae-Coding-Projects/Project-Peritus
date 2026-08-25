@@ -1,6 +1,6 @@
 {
   "next_display_id": 19,
-  "next_comment_id": 316,
+  "next_comment_id": 317,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -1668,7 +1668,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-25T10:17:08.885730234Z",
-      "updated_at": "2026-08-25T12:23:23.417454013Z",
+      "updated_at": "2026-08-25T12:40:59.762715943Z",
       "labels": [
         "D2"
       ],
@@ -1708,6 +1708,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAC8OLzUBFd2oba8U2HIxDWh0Q3V94hw3ciowOjZW2U3EcTAfxV4hc8jFaOgJw3+0omyXA8abMsK0VvNlHqA47AA=="
+        },
+        "b7a6c75d-7089-4403-8c96-088c1f408ab3": {
+          "display_id": 316,
+          "author": "6ME5",
+          "content": "Final delivery evidence: PR #21 merged to main as signed merge commit 4b574e6; local main equals origin/main; serialized fresh-main CARGO_BUILD_JOBS=1 just gate-a passed; hosted main Gate A attempt 2 passed 24/24 and Foundation passed 6/6. The one macOS peritus-process supervisor flake passed its isolated rerun and did not reproduce.",
+          "created_at": "2026-08-25T12:40:59.759313538Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALEkYiG0sa5/wZbVupWc8Upk4gAyQJV8V3w4iLdoGpW1GojvASgO9xToPpDcCquyCpOuSs+w87ekKULQTL6fUDw=="
         },
         "c8e08cb9-ffa6-492f-91ce-babc03f9a982": {
           "display_id": 308,
@@ -3175,8 +3184,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-25T12:23:23.417454013Z",
+    "timestamp": "2026-08-25T12:40:59.762715943Z",
     "agent_id": "6ME5",
-    "agent_seq": 414
+    "agent_seq": 415
   }
 }
