@@ -1,6 +1,6 @@
 {
   "next_display_id": 20,
-  "next_comment_id": 333,
+  "next_comment_id": 334,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -1669,7 +1669,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-25T18:46:53.361245432Z",
-      "updated_at": "2026-08-25T21:52:25.095939257Z",
+      "updated_at": "2026-08-25T22:01:19.614569714Z",
       "labels": [
         "D3",
         "E0",
@@ -1774,6 +1774,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAaowRFoprTJrJ/Ki6udPlGavEuK0BRDGQmlYeDBMm/KaZJqFZCMmtcKI0cokPL59Jlv2ARxE7vjOgs1qLI3V7Bw=="
+        },
+        "ae9cbf07-30bc-4646-ab0a-820af42fb866": {
+          "display_id": 333,
+          "author": "6ME5",
+          "content": "[action] D3/E0 integration green: strict orchestrator-root Verus passes at rlimit 20 (budget 447, E0 10); six-package all-target test matrix, strict Clippy, rustdoc, 252 xtask tests, reproducibility, ordinary API, architecture, source-layout, and local trust checks pass; QA found and fixed only missing test docs and two prohibited test macros",
+          "created_at": "2026-08-25T22:01:19.611943521Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAsk/oUfOGBziSpPwNYADkUcFB/2HEeuMJdPgGCIrSutoj2/AANFkGl5xy1enCdFA2Tlw8X+h0FUEx5mOf4XPHDg=="
         },
         "bb7d1bdf-e714-47a0-8ebf-b4e631c9bfed": {
           "display_id": 323,
@@ -3348,8 +3357,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-25T21:52:25.095939257Z",
+    "timestamp": "2026-08-25T22:01:19.614569714Z",
     "agent_id": "6ME5",
-    "agent_seq": 439
+    "agent_seq": 440
   }
 }
