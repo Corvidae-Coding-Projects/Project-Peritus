@@ -376,6 +376,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   process cleanup regression's timing distinction with realistic hosted-runner scheduling allowance
 
 ### Changed
+- Implement complete production D2 Review Engine (#18)
 - Implement C4 tool system (#13)
 - Document production architecture for Verus-first coding harness (#1)
 - Implement A1 formal foundation (#3)
