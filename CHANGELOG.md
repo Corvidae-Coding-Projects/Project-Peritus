@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Deliver D3 scheduling and E0 AcTor orchestration (#19)
 - Deliver production D3 scheduling/collaboration and the E0 AcTor delivery orchestrator as three
   focused H-class crates, composing the existing B0-B3, C0, C6, and D0-D2 boundaries without
   introducing another provider, process, workspace, policy, waiver, or acceptance authority (#19)
