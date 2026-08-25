@@ -1664,12 +1664,12 @@
       "uuid": "566b1c8e-fb61-4b2e-bc9b-8a781b362f04",
       "display_id": 19,
       "title": "Deliver D3 scheduling and E0 AcTor orchestration",
-      "description": "Goal: \n\nAcceptance criteria:\n- \n\nComplete the frozen D3 scheduler/collaboration dependency, then deliver the durable writer -> gates -> reviewer -> fixer E0 orchestration requested by the active goal. Include formal models, crash-safe replay/resume, pause/cancel, bounded retries and oscillation, protocol/persistence/conformance integration, documentation, and full local/hosted verification.",
+      "description": "Goal:\nDeliver the frozen D3 scheduler/collaboration dependency, then the durable deterministic E0 writer -> gates -> reviewer -> fixer AcTor orchestrator requested by the active goal.\n\nAcceptance criteria:\n- D3 provides bounded fair queues, explicit reservations, dependency readiness, cancellation trees, causal collaboration, bounded fan-out, deterministic coordination, crash-safe replay, and conformance.\n- E0 provides explicit writer/reviewer/fixer ownership and handoffs, exact artifact/revision binding, D1 gate and D2 review integration, bounded retry/oscillation, pause/cancel/resume, and truthful terminal outcomes.\n- Protocol schemas, state replay/projections/migrations, fixtures, formal inventory, architecture, README, CHANGELOG, and generated artifacts are current.\n- Maximum practical Verus properties cover the pure scheduling, causal, ownership, and orchestration safety rules.\n- Focused modules contain no stubs, TODOs, placeholders, or deferred core behavior.\n- Signed commits and PR merge only; serialized local Gate A and hosted Gate A/Foundation across Linux, macOS, and Windows are green; final main equals origin/main.",
       "status": "open",
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-25T18:46:53.361245432Z",
-      "updated_at": "2026-08-25T18:47:07.568258253Z",
+      "updated_at": "2026-08-25T18:47:22.921491938Z",
       "labels": [
         "D3",
         "E0",
@@ -3211,8 +3211,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-25T18:47:14.286506482Z",
+    "timestamp": "2026-08-25T18:47:22.921491938Z",
     "agent_id": "6ME5",
-    "agent_seq": 423
+    "agent_seq": 424
   }
 }
