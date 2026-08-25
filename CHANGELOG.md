@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Implement complete production D1 Gate Engine and C7 Trace/Telemetry (#17)
 - Implement the complete production D1 Gate Engine boundary with a maintainable H-class
   `peritus-gates` orchestration crate and the required narrow `peritus-tools-quality` extensions,
   without introducing another process, shell, sandbox, workspace, or acceptance-authority path
