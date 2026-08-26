@@ -50,6 +50,26 @@ fn family_registry_is_nonzero_unique_and_strictly_ordered() {
 }
 
 #[test]
+fn f0_family_allocations_are_frozen() {
+    let f0 = FAMILIES
+        .iter()
+        .filter(|family| (88..=93).contains(&family.tag))
+        .map(|family| (family.tag, family.name, family.schema_version, family.inert_only))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        f0,
+        vec![
+            (88, "evolution-campaign-command", 1, true),
+            (89, "evolution-campaign-event", 1, true),
+            (90, "evolution-campaign-state", 1, true),
+            (91, "production-harness-command", 1, true),
+            (92, "production-harness-event", 1, true),
+            (93, "production-harness-state", 1, true),
+        ]
+    );
+}
+
+#[test]
 fn lifecycle_registry_is_complete_unique_and_nonzero() {
     assert_eq!(LIFECYCLE_VARIANTS.len(), 5);
     assert_eq!(KERNEL_COMMAND_VARIANTS.len(), 35);

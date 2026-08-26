@@ -7,16 +7,20 @@ use peritus_approval::{
     ApprovalPublicKey, ApprovalSignature, ApproverCredential, CredentialRegistrySnapshot,
     CredentialStatus, SignedApprovalDecision, verify_signed_decision,
 };
+use peritus_codec::{CodecLimits, encode_frame};
 use peritus_journal::{
-    ApprovalCommitRequest, CredentialRegistryInstall, HeadExpectation, JournalErrorKind,
+    AggregateKind, AppendRequest, ApprovalCommitRequest, ApprovalUseCommitRequest,
+    ApprovalUseResolution, ApprovalUseResolutionRequest, CredentialRegistryInstall, EventDraft,
+    ExactFrame, HeadExpectation, JournalErrorKind,
 };
 use peritus_policy::{ActorRole, AuthorityTier, ValidityWindow};
-use peritus_types::{ActorId, Generation, RevisionNumber};
+use peritus_types::{ActorId, EventSequence, Generation, RevisionNumber};
 use tempfile::TempDir;
 
-use support::b1::{approval_request, instant};
+use support::b1::{approval_request, consume_resolution, instant};
 use support::{
     DomainIds, aggregate, append_request, command, digest, event, frame, open, registry_plan,
+    store_id,
 };
 
 const SIGNATURE: ApprovalSignature = ApprovalSignature::new([
@@ -132,10 +136,173 @@ fn signed_approval_rejects_same_revision_wrong_digest_and_commits_exact_snapshot
     assert_eq!(committed.state_revision(), 1);
 }
 
+#[test]
+fn approval_use_augments_a_multi_aggregate_append_atomically() {
+    let temp = TempDir::new().expect("temporary directory");
+    let mut journal = open(&temp);
+    let exact_registry = install_exact_registry(&mut journal);
+    let current = journal.current_credential_registry().expect("current exact registry");
+    assert_eq!(exact_registry.digest().expect("registry digest"), current.digest());
+
+    let (resolution, reproduced_registry) = approval_resolution(AuthorityTier::Organization);
+    assert_eq!(reproduced_registry.digest().expect("reproduced registry digest"), current.digest());
+    let approved = journal
+        .commit_approval_transition(
+            ApprovalCommitRequest::new(approval_append(), resolution, None, Some(&current))
+                .expect("bind approval resolution"),
+        )
+        .expect("commit approval resolution")
+        .into_parts()
+        .1;
+    let request_id = approved.request().request_id();
+    let action_id = approved.request().action_id();
+    let action_digest = approved.request().action_digest();
+    let outcome = approved
+        .consume_once(action_id, action_digest, instant(40))
+        .expect("consume exact approved action");
+
+    let campaign = aggregate(AggregateKind::EvolutionCampaign, 70);
+    let pointer = aggregate(AggregateKind::ProductionHarness, 71);
+    let committed = journal
+        .commit_approval_use(
+            ApprovalUseCommitRequest::new(f0_activation_append(), outcome, 1, &current)
+                .expect("bind approval use"),
+        )
+        .expect("commit atomic approval use");
+
+    assert_eq!(committed.batch().records().len(), 2);
+    assert_eq!(committed.batch().heads().len(), 2);
+    assert_eq!(committed.aggregate().phase(), ApprovalPhase::Consumed);
+    assert_eq!(committed.state_revision(), 2);
+    assert_eq!(committed.registry_binding(), (2, 7, current.digest()));
+    assert!(journal.head(campaign).expect("campaign head query").is_some());
+    assert!(journal.head(pointer).expect("pointer head query").is_some());
+    let durable = journal
+        .state_record(104, request_id.as_bytes())
+        .expect("approval state query")
+        .expect("consumed approval state");
+    assert_eq!(durable.revision(), 2);
+    assert_eq!(durable.digest(), committed.state_digest());
+    assert_eq!(durable.producing_position(), committed.batch().last_position());
+}
+
+#[test]
+fn approval_use_rejects_stale_registry_and_state_without_partial_activation() {
+    let temp = TempDir::new().expect("temporary directory");
+    let mut journal = open(&temp);
+    install_exact_registry(&mut journal);
+    let current = journal.current_credential_registry().expect("current exact registry");
+
+    let (wrong_resolution, _) = approval_resolution(AuthorityTier::User);
+    let wrong_use = consume_resolution(wrong_resolution);
+    let Err(error) = ApprovalUseCommitRequest::new(f0_activation_append(), wrong_use, 1, &current)
+    else {
+        panic!("wrong registry digest must be rejected before append");
+    };
+    assert_eq!(error.kind(), JournalErrorKind::StaleRegistry);
+
+    let (resolution, _) = approval_resolution(AuthorityTier::Organization);
+    let approved = journal
+        .commit_approval_transition(
+            ApprovalCommitRequest::new(approval_append(), resolution, None, Some(&current))
+                .expect("bind approval resolution"),
+        )
+        .expect("commit approval resolution")
+        .into_parts()
+        .1;
+    let request_id = approved.request().request_id();
+    let action_id = approved.request().action_id();
+    let action_digest = approved.request().action_digest();
+    let use_outcome = approved
+        .consume_once(action_id, action_digest, instant(40))
+        .expect("consume approved action");
+    let stale = ApprovalUseCommitRequest::new(f0_activation_append(), use_outcome, 2, &current)
+        .expect("construct stale state CAS");
+    let Err(error) = journal.commit_approval_use(stale) else {
+        panic!("stale approval-state revision must reject the complete append");
+    };
+    assert_eq!(error.kind(), JournalErrorKind::StaleHead);
+    assert!(
+        journal
+            .head(aggregate(AggregateKind::EvolutionCampaign, 70))
+            .expect("campaign head query")
+            .is_none()
+    );
+    assert!(
+        journal
+            .head(aggregate(AggregateKind::ProductionHarness, 71))
+            .expect("pointer head query")
+            .is_none()
+    );
+    assert_eq!(
+        journal
+            .state_record(104, request_id.as_bytes())
+            .expect("approval state query")
+            .expect("approved state remains")
+            .revision(),
+        1
+    );
+}
+
+#[test]
+fn exact_approval_use_retry_returns_the_original_atomic_batch() {
+    let temp = TempDir::new().expect("temporary directory");
+    let mut journal = open(&temp);
+    install_exact_registry(&mut journal);
+    let current = journal.current_credential_registry().expect("current exact registry");
+    let (resolution, _) = approval_resolution(AuthorityTier::Organization);
+    let approved = journal
+        .commit_approval_transition(
+            ApprovalCommitRequest::new(approval_append(), resolution, None, Some(&current))
+                .expect("bind approval resolution"),
+        )
+        .expect("commit approval resolution")
+        .into_parts()
+        .1;
+    let action_id = approved.request().action_id();
+    let action_digest = approved.request().action_digest();
+    let first_use = approved
+        .consume_once(action_id, action_digest, instant(40))
+        .expect("consume approved action");
+    let first = journal
+        .commit_approval_use(
+            ApprovalUseCommitRequest::new(f0_activation_append(), first_use, 1, &current)
+                .expect("bind first approval use"),
+        )
+        .expect("commit first approval use");
+    let first_position = first.batch().first_position();
+    let last_position = first.batch().last_position();
+    let batch_hash = first.batch().batch_hash();
+    let state_digest = first.state_digest();
+
+    let (replayed_resolution, _) = approval_resolution(AuthorityTier::Organization);
+    let replayed_use = consume_resolution(replayed_resolution);
+    let resolution = ApprovalUseResolutionRequest::new(
+        command(61),
+        digest(61),
+        Vec::new(),
+        &replayed_use,
+        1,
+        &current,
+    )
+    .expect("reconstruct exact approval-use request");
+    let ApprovalUseResolution::Committed(replayed) = journal
+        .resolve_approval_use(&resolution, replayed_use)
+        .expect("resolve exact approval-use retry")
+    else {
+        panic!("committed approval use must resolve before mutable-head checks");
+    };
+    assert_eq!(replayed.batch().first_position(), first_position);
+    assert_eq!(replayed.batch().last_position(), last_position);
+    assert_eq!(replayed.batch().batch_hash(), batch_hash);
+    assert_eq!(replayed.state_revision(), 2);
+    assert_eq!(replayed.state_digest(), state_digest);
+}
+
 fn install_exact_registry(
     journal: &mut peritus_journal::SqliteJournal,
 ) -> CredentialRegistrySnapshot {
-    let aggregate = aggregate(peritus_journal::AggregateKind::CredentialRegistry, 50);
+    let aggregate = aggregate(AggregateKind::CredentialRegistry, 50);
     let initial = CredentialRegistrySnapshot::new(RevisionNumber::first(), Vec::new())
         .expect("initial registry");
     let install = CredentialRegistryInstall::new(None, 6, &initial).expect("initial install");
@@ -167,8 +334,8 @@ fn install_exact_registry(
     exact
 }
 
-fn approval_append() -> peritus_journal::AppendRequest {
-    let aggregate = aggregate(peritus_journal::AggregateKind::Approval, 60);
+fn approval_append() -> AppendRequest {
+    let aggregate = aggregate(AggregateKind::Approval, 60);
     append_request(
         command(60),
         digest(60),
@@ -178,5 +345,46 @@ fn approval_append() -> peritus_journal::AppendRequest {
         None,
         frame(60),
         digest(160),
+    )
+}
+
+fn f0_activation_append() -> AppendRequest {
+    let campaign = aggregate(AggregateKind::EvolutionCampaign, 70);
+    let pointer = aggregate(AggregateKind::ProductionHarness, 71);
+    let campaign_event = EventDraft::new(
+        campaign,
+        EventSequence::first(),
+        event(71),
+        None,
+        ExactFrame::new(
+            encode_frame(89, 1, &[1], CodecLimits::PRODUCTION).expect("campaign frame"),
+        )
+        .expect("exact campaign frame"),
+        digest(171),
+        Vec::new(),
+    )
+    .expect("campaign event");
+    let pointer_event = EventDraft::new(
+        pointer,
+        EventSequence::first(),
+        event(72),
+        None,
+        ExactFrame::new(encode_frame(92, 1, &[2], CodecLimits::PRODUCTION).expect("pointer frame"))
+            .expect("exact pointer frame"),
+        digest(172),
+        Vec::new(),
+    )
+    .expect("pointer event");
+    AppendRequest::new(
+        store_id(),
+        command(61),
+        digest(61),
+        vec![HeadExpectation::Absent(campaign), HeadExpectation::Absent(pointer)],
+        vec![campaign_event, pointer_event],
+        Vec::new(),
+        Vec::new(),
+        None,
+        None,
+        Vec::new(),
     )
 }

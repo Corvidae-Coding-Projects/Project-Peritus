@@ -70,4 +70,40 @@ pub const FAMILIES: &[MessageFamily] = &[
     MessageFamily { tag: 85, name: "evaluation-command", schema_version: 1, inert_only: true },
     MessageFamily { tag: 86, name: "evaluation-event", schema_version: 1, inert_only: true },
     MessageFamily { tag: 87, name: "evaluation-state", schema_version: 1, inert_only: true },
+    MessageFamily {
+        tag: 88,
+        name: "evolution-campaign-command",
+        schema_version: 1,
+        inert_only: true,
+    },
+    MessageFamily {
+        tag: 89,
+        name: "evolution-campaign-event",
+        schema_version: 1,
+        inert_only: true,
+    },
+    MessageFamily {
+        tag: 90,
+        name: "evolution-campaign-state",
+        schema_version: 1,
+        inert_only: true,
+    },
+    MessageFamily {
+        tag: 91,
+        name: "production-harness-command",
+        schema_version: 1,
+        inert_only: true,
+    },
+    MessageFamily {
+        tag: 92,
+        name: "production-harness-event",
+        schema_version: 1,
+        inert_only: true,
+    },
+    MessageFamily {
+        tag: 93,
+        name: "production-harness-state",
+        schema_version: 1,
+        inert_only: true,
+    },
 ];

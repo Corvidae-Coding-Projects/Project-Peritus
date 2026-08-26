@@ -80,6 +80,12 @@ owner = "E3"
 layer = "analysis"
 verification_class = "H"
 [[packages]]
+name = "peritus-evolution"
+path = "crates/analysis/peritus-evolution"
+owner = "F0"
+layer = "analysis"
+verification_class = "H"
+[[packages]]
 name = "peritus-evidence"
 path = "crates/state/peritus-evidence"
 owner = "C0"

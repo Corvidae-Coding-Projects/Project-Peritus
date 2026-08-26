@@ -59,7 +59,13 @@
     {"tag": 84, "name": "debugger-state", "schemaVersion": 1, "inertOnly": true},
     {"tag": 85, "name": "evaluation-command", "schemaVersion": 1, "inertOnly": true},
     {"tag": 86, "name": "evaluation-event", "schemaVersion": 1, "inertOnly": true},
-    {"tag": 87, "name": "evaluation-state", "schemaVersion": 1, "inertOnly": true}
+    {"tag": 87, "name": "evaluation-state", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 88, "name": "evolution-campaign-command", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 89, "name": "evolution-campaign-event", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 90, "name": "evolution-campaign-state", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 91, "name": "production-harness-command", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 92, "name": "production-harness-event", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 93, "name": "production-harness-state", "schemaVersion": 1, "inertOnly": true}
   ],
   "variants": {
     "kernel-command": [

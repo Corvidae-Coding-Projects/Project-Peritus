@@ -1,6 +1,6 @@
-//! Immutable schema-version-eight SQL.
+//! Immutable schema-version-nine SQL.
 
-pub(super) const SCHEMA_VERSION: i64 = 8;
+pub(super) const SCHEMA_VERSION: i64 = 9;
 
 pub(super) const INSTALL_SCHEMA: &str = r"
 BEGIN IMMEDIATE;
@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS store_meta (
     schema_version INTEGER NOT NULL CHECK (schema_version > 0)
 ) STRICT;
 CREATE TABLE IF NOT EXISTS aggregate_heads (
-    aggregate_kind INTEGER NOT NULL CHECK (aggregate_kind BETWEEN 1 AND 15),
+    aggregate_kind INTEGER NOT NULL CHECK (aggregate_kind BETWEEN 1 AND 17),
     aggregate_id BLOB NOT NULL CHECK (length(aggregate_id) = 16),
     sequence INTEGER NOT NULL CHECK (sequence > 0),
     event_id BLOB NOT NULL CHECK (length(event_id) = 16),
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS aggregate_heads (
 CREATE TABLE IF NOT EXISTS events (
     global_position INTEGER PRIMARY KEY AUTOINCREMENT CHECK (global_position > 0),
     event_id BLOB NOT NULL UNIQUE CHECK (length(event_id) = 16),
-    aggregate_kind INTEGER NOT NULL CHECK (aggregate_kind BETWEEN 1 AND 15),
+    aggregate_kind INTEGER NOT NULL CHECK (aggregate_kind BETWEEN 1 AND 17),
     aggregate_id BLOB NOT NULL CHECK (length(aggregate_id) = 16),
     sequence INTEGER NOT NULL CHECK (sequence > 0),
     previous_event_id BLOB CHECK (previous_event_id IS NULL OR length(previous_event_id) = 16),

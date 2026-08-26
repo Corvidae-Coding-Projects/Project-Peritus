@@ -183,31 +183,8 @@ impl AppendRequest {
         mut installs: Vec<StateInstall>,
     ) -> Result<Self, JournalError> {
         self.state_installs.append(&mut installs);
-        self.state_installs.sort_by(|left, right| {
-            (left.namespace(), left.key()).cmp(&(right.namespace(), right.key()))
-        });
-        validate_state_installs(&self.state_installs)?;
-        let mut binding = Vec::with_capacity(64 + domain.len() + self.state_installs.len() * 90);
-        binding.extend_from_slice(b"PERITUS-C0-DOMAIN-STATE\0");
-        binding.extend_from_slice(&(domain.len() as u64).to_be_bytes());
-        binding.extend_from_slice(domain);
-        binding.extend_from_slice(self.request_digest.as_bytes());
-        binding.extend_from_slice(&(self.state_installs.len() as u64).to_be_bytes());
-        for install in &self.state_installs {
-            binding.extend_from_slice(&install.namespace().to_be_bytes());
-            binding.extend_from_slice(&(install.key().len() as u64).to_be_bytes());
-            binding.extend_from_slice(install.key());
-            match install.expected_revision() {
-                Some(revision) => {
-                    binding.push(1);
-                    binding.extend_from_slice(&revision.to_be_bytes());
-                }
-                None => binding.push(0),
-            }
-            binding.extend_from_slice(&install.revision().to_be_bytes());
-            binding.extend_from_slice(install.digest().as_bytes());
-        }
-        self.request_digest = peritus_codec::sha256(&binding);
+        self.request_digest =
+            bind_domain_state_digest(self.request_digest, domain, &mut self.state_installs)?;
         Ok(self)
     }
 
@@ -219,13 +196,8 @@ impl AppendRequest {
     ) -> Self {
         self.expected_registry =
             Some(crate::authority::RegistryExpectation { revision, generation, digest });
-        let mut bytes = Vec::with_capacity(80);
-        bytes.extend_from_slice(b"PERITUS-C0-REGISTRY-CURRENT\0");
-        bytes.extend_from_slice(self.request_digest.as_bytes());
-        bytes.extend_from_slice(&revision.to_be_bytes());
-        bytes.extend_from_slice(&generation.to_be_bytes());
-        bytes.extend_from_slice(digest.as_bytes());
-        self.request_digest = peritus_codec::sha256(&bytes);
+        self.request_digest =
+            bind_registry_current_digest(self.request_digest, revision, generation, digest);
         self
     }
 
@@ -256,6 +228,53 @@ impl AppendRequest {
         }
         Ok(())
     }
+}
+
+pub fn bind_registry_current_digest(
+    request_digest: Sha256Digest,
+    revision: u64,
+    generation: u64,
+    digest: Sha256Digest,
+) -> Sha256Digest {
+    let mut bytes = Vec::with_capacity(80);
+    bytes.extend_from_slice(b"PERITUS-C0-REGISTRY-CURRENT\0");
+    bytes.extend_from_slice(request_digest.as_bytes());
+    bytes.extend_from_slice(&revision.to_be_bytes());
+    bytes.extend_from_slice(&generation.to_be_bytes());
+    bytes.extend_from_slice(digest.as_bytes());
+    peritus_codec::sha256(&bytes)
+}
+
+pub fn bind_domain_state_digest(
+    request_digest: Sha256Digest,
+    domain: &[u8],
+    installs: &mut [StateInstall],
+) -> Result<Sha256Digest, JournalError> {
+    installs.sort_by(|left, right| {
+        (left.namespace(), left.key()).cmp(&(right.namespace(), right.key()))
+    });
+    validate_state_installs(installs)?;
+    let mut binding = Vec::with_capacity(64 + domain.len() + installs.len() * 90);
+    binding.extend_from_slice(b"PERITUS-C0-DOMAIN-STATE\0");
+    binding.extend_from_slice(&(domain.len() as u64).to_be_bytes());
+    binding.extend_from_slice(domain);
+    binding.extend_from_slice(request_digest.as_bytes());
+    binding.extend_from_slice(&(installs.len() as u64).to_be_bytes());
+    for install in installs {
+        binding.extend_from_slice(&install.namespace().to_be_bytes());
+        binding.extend_from_slice(&(install.key().len() as u64).to_be_bytes());
+        binding.extend_from_slice(install.key());
+        match install.expected_revision() {
+            Some(revision) => {
+                binding.push(1);
+                binding.extend_from_slice(&revision.to_be_bytes());
+            }
+            None => binding.push(0),
+        }
+        binding.extend_from_slice(&install.revision().to_be_bytes());
+        binding.extend_from_slice(install.digest().as_bytes());
+    }
+    Ok(peritus_codec::sha256(&binding))
 }
 
 /// Complete validated effect-free append plan accepted by the `SQLite` boundary.

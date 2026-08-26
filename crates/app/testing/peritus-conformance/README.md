@@ -54,8 +54,8 @@ evidence for those failures must execute conformance in a supervised subprocess.
 
 The crate exports production journal, replay, C1 workspace, C2 process, C2/C3 sandbox, C4 tool,
 C5 provider, D0 agent-loop, D1 gate, D2 review, D3 scheduler/collaboration, E0 orchestrator, E1
-harness materialization, E2 debugger, and C7 trace/telemetry suites plus runnable empty plugin and
-protocol suites. The provider suite contains
+harness materialization, E2 debugger, E3 evaluation, F0 evolution, and C7 trace/telemetry suites
+plus runnable empty plugin and protocol suites. The provider suite contains
 fourteen fixed cases covering capability honesty, ordering and exact deduplication, fragmented
 tool calls, malformed and incomplete streams, interruption, cancellation, authentication, rate
 limits and retry-after, transient retry, ambiguous submission, usage, redaction, and adapter
@@ -96,6 +96,13 @@ The debugger suite contains thirteen cases covering immutable evidence selection
 timelines, closed taxonomy, citation containment, invalid model-output rejection, deterministic
 clustering, replay, durable cancellation, malformed input, redaction, independent bounds, panic
 containment, and teardown isolation.
+The evaluation suite contains thirteen cases covering frozen inputs, candidate/evaluator
+isolation, deterministic planning, complete accounting, statistical validity, infrastructure
+classification, cancellation, replay, malformed input, publication ordering, redaction, panic
+containment, and teardown isolation. The evolution suite contains fourteen cases covering frozen
+evidence, complete isolated changes, interaction attribution, contamination, metric gaming,
+deterministic selection, stale evidence, independent review, exact human authority, atomic
+activation, append-only rollback, replay, malformed input, and independent bounds.
 
 Production crates implement only the subject traits and translate these runtime-neutral fixtures
 and observations into their own domain values. A2 neither constructs privileged runtime permits

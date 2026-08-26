@@ -1573,6 +1573,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "peritus-evolution"
+version = "0.0.0"
+dependencies = [
+ "peritus-approval",
+ "peritus-artifact-store",
+ "peritus-codec",
+ "peritus-conformance",
+ "peritus-debugger",
+ "peritus-eval",
+ "peritus-evidence",
+ "peritus-harness",
+ "peritus-journal",
+ "peritus-kernel",
+ "peritus-policy",
+ "peritus-review",
+ "peritus-test-support",
+ "peritus-types",
+ "tempfile",
+ "vstd",
+]
+
+[[package]]
 name = "peritus-gates"
 version = "0.0.0"
 dependencies = [

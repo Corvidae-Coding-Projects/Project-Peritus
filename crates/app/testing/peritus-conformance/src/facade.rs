@@ -19,6 +19,10 @@ pub use crate::evaluation::{
     EvaluationConformanceError, EvaluationConformanceFixture, EvaluationConformanceObservation,
     EvaluationConformanceSubject, EvaluationScenario, EvaluationTerminal, evaluation_suite,
 };
+pub use crate::evolution::{
+    EvolutionConformanceError, EvolutionConformanceFixture, EvolutionConformanceObservation,
+    EvolutionConformanceSubject, EvolutionScenario, EvolutionTerminal, evolution_suite,
+};
 pub use crate::failure::{
     AssertionFailure, CaseFailure, DuplicateCaseIdFailure, FailureKind, FailurePhase, PanicFailure,
     PanicMessage, SubjectFailure, SuiteFailure, TeardownFailure,
