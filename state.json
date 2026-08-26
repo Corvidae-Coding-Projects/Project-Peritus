@@ -1,6 +1,6 @@
 {
   "next_display_id": 25,
-  "next_comment_id": 397,
+  "next_comment_id": 398,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -950,7 +950,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T19:24:03.235908577Z",
-      "updated_at": "2026-08-26T19:26:53.733447262Z",
+      "updated_at": "2026-08-26T19:34:04.956943476Z",
       "labels": [
         "feature"
       ],
@@ -963,6 +963,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAFm8xMDHlJ4bjBPDd6luFLNjZ9Jhp6svxwVjJsOdIN+p8bZ8jNTAZksMPXi8ztXt23VRtggM9dibWzktKoGkoCQ=="
+        },
+        "482b5384-010f-4292-a779-48c0192a4ccb": {
+          "display_id": 397,
+          "author": "6ME5",
+          "content": "A3 preflight complete. The signed design fixes six app families, exact B3 envelope plus command-frame binding, deterministic negotiation, bounded idempotency/subscription/artifact/prompt/terminal state machines, stable errors, A2 compatibility/conformance, formal obligations, G0 exclusions, and parallel write surfaces. Design: .design/a3-app-protocol.md",
+          "created_at": "2026-08-26T19:34:04.954522399Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAFI7L4lgfUQoy/gc1l61/5UQi/9ypQ/P0RRp6JZ4BuHWmxwegdzgXHPMD+DutkQzLDPjliqUezH61+vv8k+zPDw=="
         }
       }
     },
@@ -4016,8 +4025,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-26T19:26:53.733447262Z",
+    "timestamp": "2026-08-26T19:34:04.956943476Z",
     "agent_id": "6ME5",
-    "agent_seq": 533
+    "agent_seq": 534
   }
 }
