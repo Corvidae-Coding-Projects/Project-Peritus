@@ -1,6 +1,6 @@
 {
   "next_display_id": 23,
-  "next_comment_id": 379,
+  "next_comment_id": 380,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -1213,7 +1213,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T08:38:06.537413124Z",
-      "updated_at": "2026-08-26T10:42:51.099063283Z",
+      "updated_at": "2026-08-26T10:54:40.375105133Z",
       "labels": [
         "feature"
       ],
@@ -1271,6 +1271,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAuRLVvVJQP1CvyWqwXypmHB6/ewPrC8FQlGdyeeG/h6hCvbJkRLk54qr77dwUxY28SZmC0lti9WKxUTXrSEdcDg=="
+        },
+        "f7b3ecaa-a391-4e52-91bc-c8e1f4d4e648": {
+          "display_id": 379,
+          "author": "6ME5",
+          "content": "Hosted macOS Rust tests exposed a real cross-platform C3 accept-boundary defect: the production proxy listener is nonblocking, but accepted client sockets were not normalized before bounded blocking worker I/O. The CONNECT worker could therefore observe WouldBlock as a fatal request read and close before its response. The production accept path now explicitly restores blocking mode. Focused network tests (14/14), strict Clippy, formatting, and peritus-network no-cheating Verus verification (3 verified, 0 errors) pass.",
+          "created_at": "2026-08-26T10:54:40.370692446Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAktH4gmggDh+hV2WULayxoLza8hGYEUOByi4diuQGCuGB+jDnGvfZEKETyrji6XU5L6lx+aEFVCKrF4NY8GLkCg=="
         },
         "fcc22001-a4e5-49aa-bb2f-880061fb360c": {
           "display_id": 376,
@@ -3818,8 +3827,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-26T10:42:51.099063283Z",
+    "timestamp": "2026-08-26T10:54:40.375105133Z",
     "agent_id": "6ME5",
-    "agent_seq": 505
+    "agent_seq": 506
   }
 }
