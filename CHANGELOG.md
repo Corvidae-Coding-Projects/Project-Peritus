@@ -7,6 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Normalize every managed-proxy client socket to bounded blocking I/O at the production accept
+  boundary, avoiding platform-dependent inheritance of the nonblocking listener flag and
+  premature CONNECT closure on macOS (#22)
 - Bound managed-network integration fixture accepts and reads, and serialize canonical test
   execution per binary so a transient macOS socket stall fails promptly instead of exhausting a
   hosted runner (#20)
