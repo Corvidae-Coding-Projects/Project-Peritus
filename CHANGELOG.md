@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Implement complete production E1 Harness Materialization (#20)
 - Deliver complete production E1 harness materialization as the H-class `peritus-harness` crate,
   turning reviewed harness source into checked immutable revisions and exact durable workspace
   candidates without adding evaluation or promotion authority (#20)
