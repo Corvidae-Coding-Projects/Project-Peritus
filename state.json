@@ -1,6 +1,6 @@
 {
   "next_display_id": 24,
-  "next_comment_id": 383,
+  "next_comment_id": 384,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -304,11 +304,20 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T15:36:15.834953593Z",
-      "updated_at": "2026-08-26T15:36:41.533072921Z",
+      "updated_at": "2026-08-26T15:51:01.721959699Z",
       "labels": [
         "feature"
       ],
       "comments": {
+        "95ba31f7-5a33-4c9c-b00c-b5cc8922b8ea": {
+          "display_id": 383,
+          "author": "6ME5",
+          "content": "[action] Refining and signing the F0 design after preflight; campaign history and production pointer use separate durable aggregates with atomic activation.",
+          "created_at": "2026-08-26T15:51:01.719323241Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAHkdOLgwoQeI3XzwooQFjp2FGAgkVMfyblEYozyTl7fWjcowij+a598at4AT+eRd2H2FEAoGPULh8TYbxkXKvDA=="
+        },
         "9a159884-331c-40fc-aa6d-2fbea1dbf682": {
           "display_id": 382,
           "author": "6ME5",
@@ -3872,8 +3881,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-26T15:36:41.533072921Z",
+    "timestamp": "2026-08-26T15:51:01.721959699Z",
     "agent_id": "6ME5",
-    "agent_seq": 514
+    "agent_seq": 515
   }
 }
