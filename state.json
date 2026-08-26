@@ -1,6 +1,6 @@
 {
   "next_display_id": 22,
-  "next_comment_id": 368,
+  "next_comment_id": 369,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -2877,7 +2877,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T05:27:41.533821616Z",
-      "updated_at": "2026-08-26T07:34:11.930979186Z",
+      "updated_at": "2026-08-26T07:52:42.636643504Z",
       "labels": [
         "E2",
         "feature"
@@ -2918,6 +2918,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAAV2gXdRjkAf1Dy8dU5VsybCyjeSz2KmtQeF6HHhfXpTOKYLPsr/rgmAFIOxwRjnuHshzOEfUlBaWmnXcFeFBCg=="
+        },
+        "66582348-432f-48d5-bcc7-a4c5ce7ed4bb": {
+          "display_id": 368,
+          "author": "6ME5",
+          "content": "Hosted Windows Rust test exposed a pre-existing fixture portability defect: accept_with_timeout temporarily makes the listener nonblocking, and Windows can propagate that mode to the accepted socket, so read_to_end observed WSAEWOULDBLOCK. The root fix explicitly restores blocking mode on every accepted fixture stream before applying bounded read/write timeouts. Exact failing test, all 14 peritus-network tests, strict package Clippy, formatting, and diff checks pass locally.",
+          "created_at": "2026-08-26T07:52:42.634213162Z",
+          "kind": "resolution",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+89BV9vr2hrEJMatlTH2+OHcerfB2KJOsUH+8jvDQw77Hsc2mYCVeUom8QkSnM1iem0TLo7Q/q8+zPpi+AfPCA=="
         },
         "710f7d1e-b4ab-462d-ab52-c248c574c467": {
           "display_id": 363,
@@ -3701,8 +3710,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-26T07:34:11.930979186Z",
+    "timestamp": "2026-08-26T07:52:42.636643504Z",
     "agent_id": "6ME5",
-    "agent_seq": 489
+    "agent_seq": 490
   }
 }
