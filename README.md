@@ -76,11 +76,16 @@ The implemented foundation and runtime spine now covers:
   paired D3 rollout plans, complete attempt/outcome/resource accounting, frozen integer/fixed-point
   statistical analysis, crash-safe schedule/execution/publication effects, canonical reports,
   C0 evidence admission, protocol fixtures, migration, Verus refinements, and independent A2
-  conformance without harness mutation or promotion authority.
+  conformance without harness mutation or promotion authority; and
+- F0: immutable evidence-citing evolution campaigns, isolated E1 candidate variants and interaction
+  groups, deterministic E3-backed attribution and deny-wins multi-objective selection, exact D2
+  review and B0/B1 human-authority binding, atomic durable production-pointer activation,
+  append-only rollback, crash-safe replay/publication, protocol fixtures, migration, Verus
+  promotion/evaluator-isolation refinements, and independent A2 conformance.
 
 These are library and verification layers. There is not yet a user-facing `peritus` CLI, daemon,
-TUI, harness evolution/promotion runtime, or native packaged-host qualification. A3, F0, G0–G3,
-and H0–H4 remain before production release and qualification.
+TUI, application composition, or native packaged-host qualification. A3, G0–G3, and H0–H4 remain
+before production release and qualification.
 
 Gate A is the current merge authority: ordinary Rust checks, architecture and API policy,
 supply-chain policy, pinned toolchains, full Verus verification, and verified release builds must
@@ -135,6 +140,9 @@ model analysis, durable replay/publication, and the non-mutation/non-authority b
 candidate/evaluator isolation, deterministic paired planning, complete outcome/resource
 accounting, frozen statistical methods, durable execution/publication, replay, migration, and the
 non-promotion boundary. The
+[F0 production harness evolution guide](docs/f0-evolution.md) documents evidence-bound campaigns,
+change manifests, interaction-aware attribution, deterministic selection, exact human promotion
+authority, atomic production-pointer activation, recovery, and append-only rollback. The
 [C2 process and sandbox guide](docs/c2-process-sandbox.md) documents structured process execution,
 complete sandbox contracts, target-owned launch authorization, bounded supervision, terminal
 accounting, restart reconciliation, and holder quiescence.

@@ -1406,7 +1406,7 @@ evidence = [
 ]
 
 [[entries]]
-id = "INV-018"
+id = "OBL-0173"
 kind = "invariant"
 statement = "Every E2 selection-manifest entry belongs to exactly one frozen diagnostic subject and one matching C0-backed C7 event; causal closure adds only valid same-subject ancestors and the complete selection remains within its frozen bounds."
 owning_crate = "peritus-debugger"
@@ -1429,7 +1429,7 @@ owning_crate = "peritus-debugger"
 source_file = "crates/analysis/peritus-debugger/src/verified.rs"
 symbol = "peritus_debugger::verified::citation_containment"
 status = "in-progress"
-dependencies = ["INV-018"]
+dependencies = ["OBL-0173"]
 live_issue = "#21"
 owner = "ACTOR-0001"
 evidence = [
@@ -1445,7 +1445,7 @@ owning_crate = "peritus-debugger"
 source_file = "crates/analysis/peritus-debugger/src/verified.rs"
 symbol = "peritus_debugger::verified::report_validity"
 status = "in-progress"
-dependencies = ["INV-018", "OBL-0168"]
+dependencies = ["OBL-0173", "OBL-0168"]
 live_issue = "#21"
 owner = "ACTOR-0001"
 evidence = [
@@ -1461,7 +1461,7 @@ owning_crate = "peritus-debugger"
 source_file = "crates/analysis/peritus-debugger/src/verified.rs"
 symbol = "peritus_debugger::verified::replay_equivalence"
 status = "in-progress"
-dependencies = ["OBL-0115", "INV-018"]
+dependencies = ["OBL-0115", "OBL-0173"]
 live_issue = "#21"
 owner = "ACTOR-0001"
 evidence = [
@@ -1477,7 +1477,7 @@ owning_crate = "peritus-debugger"
 source_file = "crates/analysis/peritus-debugger/src/verified.rs"
 symbol = "peritus_debugger::verified::bounded_analysis"
 status = "in-progress"
-dependencies = ["INV-018", "OBL-0169", "OBL-0170"]
+dependencies = ["OBL-0173", "OBL-0169", "OBL-0170"]
 live_issue = "#21"
 owner = "ACTOR-0001"
 evidence = [
@@ -1499,4 +1499,272 @@ owner = "ACTOR-0001"
 evidence = [
   { kind = "verus-proof", source_file = "crates/analysis/peritus-debugger/src/verified.rs", symbol = "peritus_debugger::verified::non_authority", command = "cargo verus verify --package peritus-debugger --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
   { kind = "refinement-test", source_file = "crates/analysis/peritus-debugger/tests/domain_primitives.rs", symbol = "peritus_debugger::tests::domain_primitives::refinement_non_authority", command = "cargo test --package peritus-debugger --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0174"
+kind = "invariant"
+statement = "Every frozen E3 profile binds the exact dataset and partition identities, provider snapshot, model controls, baseline and candidate E1 revisions, execution policies, evaluator policy, and independent limits before planning or execution."
+owning_crate = "peritus-eval"
+source_file = "crates/analysis/peritus-eval/src/verified.rs"
+symbol = "peritus_eval::verified::frozen_profile_spec"
+status = "in-progress"
+dependencies = ["OBL-0167"]
+live_issue = "#23"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/analysis/peritus-eval/src/verified.rs", symbol = "peritus_eval::verified::frozen_profile_spec", command = "cargo verus verify --package peritus-eval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/analysis/peritus-eval/tests/verified_refinement.rs", symbol = "peritus_eval::tests::verified_refinement::frozen_ledger_transition_replay_and_non_authority_roots_are_exact_conjunctions", command = "cargo test --package peritus-eval --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0175"
+kind = "invariant"
+statement = "Every E3 campaign conserves a duplicate-free planned rollout ledger into exactly one bounded terminal classification per rollout with monotonic attempts and complete paired-arm accounting."
+owning_crate = "peritus-eval"
+source_file = "crates/analysis/peritus-eval/src/verified.rs"
+symbol = "peritus_eval::verified::ledger_validity_spec"
+status = "in-progress"
+dependencies = ["OBL-0174"]
+live_issue = "#23"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/analysis/peritus-eval/src/verified.rs", symbol = "peritus_eval::verified::ledger_validity_spec", command = "cargo verus verify --package peritus-eval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/analysis/peritus-eval/tests/verified_refinement.rs", symbol = "peritus_eval::tests::verified_refinement::frozen_ledger_transition_replay_and_non_authority_roots_are_exact_conjunctions", command = "cargo test --package peritus-eval --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0176"
+kind = "invariant"
+statement = "E3 statistical outputs use only checked integer and fixed-point inputs with valid pass-at-k preconditions, bounded ordered intervals, complete task pairing, deterministic bootstrap seeds, and frozen infrastructure exclusion policy."
+owning_crate = "peritus-eval"
+source_file = "crates/analysis/peritus-eval/src/verified.rs"
+symbol = "peritus_eval::verified::statistical_validity_spec"
+status = "in-progress"
+dependencies = ["OBL-0175"]
+live_issue = "#23"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/analysis/peritus-eval/src/verified.rs", symbol = "peritus_eval::verified::statistical_validity_spec", command = "cargo verus verify --package peritus-eval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/analysis/peritus-eval/tests/verified_refinement.rs", symbol = "peritus_eval::tests::verified_refinement::accounting_and_statistical_preconditions_match_runtime_boundaries", command = "cargo test --package peritus-eval --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0177"
+kind = "invariant"
+statement = "Every accepted E3 transition has an exact command fence, legal campaign and rollout edge, finalized artifact closure, matching durable directive, and terminal dominance including cancellation."
+owning_crate = "peritus-eval"
+source_file = "crates/analysis/peritus-eval/src/verified.rs"
+symbol = "peritus_eval::verified::transition_validity_spec"
+status = "in-progress"
+dependencies = ["OBL-0115", "OBL-0175"]
+live_issue = "#23"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/analysis/peritus-eval/src/verified.rs", symbol = "peritus_eval::verified::transition_validity_spec", command = "cargo verus verify --package peritus-eval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/analysis/peritus-eval/tests/cancellation.rs", symbol = "peritus_eval::tests::cancellation::cancellation_waits_for_each_external_rollout_before_terminal_completion", command = "cargo test --package peritus-eval --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0178"
+kind = "refinement"
+statement = "Replaying the complete contiguous E3 event prefix produces the exact checkpoint state and digest, while exact command retry and commit-before-effect directives cannot duplicate execution or publication."
+owning_crate = "peritus-eval"
+source_file = "crates/analysis/peritus-eval/src/verified.rs"
+symbol = "peritus_eval::verified::replay_refinement_spec"
+status = "in-progress"
+dependencies = ["OBL-0115", "OBL-0177"]
+live_issue = "#23"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/analysis/peritus-eval/src/verified.rs", symbol = "peritus_eval::verified::replay_refinement_spec", command = "cargo verus verify --package peritus-eval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/analysis/peritus-eval/tests/durability_restart.rs", symbol = "peritus_eval::tests::durability_restart::genesis_commit_is_idempotent_and_restart_replay_matches_checkpoint", command = "cargo test --package peritus-eval --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0179"
+kind = "contract"
+statement = "The closed E3 command, event, and complete-state wire families 85, 86, and 87 have immutable schema-one fixtures and checked decoders that reject wrong families, malformed semantics, unknown tags, noncanonical values, truncation, and trailing bytes."
+owning_crate = "peritus-eval"
+source_file = "crates/analysis/peritus-eval/tests/replay_wire.rs"
+symbol = "peritus_eval::tests::replay_wire::frozen_wire_corpus_is_byte_exact_and_malformed_frames_reject"
+status = "in-progress"
+dependencies = ["OBL-0178"]
+live_issue = "#23"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/analysis/peritus-eval/tests/replay_wire.rs", symbol = "peritus_eval::tests::replay_wire::frozen_wire_corpus_is_byte_exact_and_malformed_frames_reject", command = "cargo test --package peritus-eval --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0180"
+kind = "invariant"
+statement = "E3 reports retain source evidence unchanged and cannot represent harness mutation, acceptance, promotion, deployment, a production pointer, rollback authority, or an executable capability."
+owning_crate = "peritus-eval"
+source_file = "crates/analysis/peritus-eval/src/verified.rs"
+symbol = "peritus_eval::verified::non_authority_spec"
+status = "in-progress"
+dependencies = ["OBL-0174", "OBL-0176", "OBL-0178"]
+live_issue = "#23"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/analysis/peritus-eval/src/verified.rs", symbol = "peritus_eval::verified::non_authority_spec", command = "cargo verus verify --package peritus-eval --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/analysis/peritus-eval/tests/verified_refinement.rs", symbol = "peritus_eval::tests::verified_refinement::frozen_ledger_transition_replay_and_non_authority_roots_are_exact_conjunctions", command = "cargo test --package peritus-eval --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "INV-018"
+kind = "invariant"
+statement = "Every F0 candidate evaluation binds the exact E1 baseline and candidate, frozen E3 dataset/profile, unchanged sealed evaluator and protected promotion assets, and a complete declared change set before attribution or selection."
+owning_crate = "peritus-evolution"
+source_file = "crates/analysis/peritus-evolution/src/verified.rs"
+symbol = "peritus_evolution::verified::evaluator_isolation"
+status = "in-progress"
+dependencies = ["OBL-0167", "OBL-0174", "OBL-0176"]
+live_issue = "#23"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/analysis/peritus-evolution/src/verified.rs", symbol = "peritus_evolution::verified::evaluator_isolation", command = "cargo verus verify --package peritus-evolution --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/analysis/peritus-evolution/tests/verified_refinement.rs", symbol = "peritus_evolution::tests::verified_refinement::evaluator_isolation_requires_every_checked_boundary_fact", command = "cargo test --package peritus-evolution --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "INV-019"
+kind = "invariant"
+statement = "F0 production promotion is legal only when immutable evidence is complete, the production baseline is current, attribution and deny-wins selection pass, evaluator isolation and schema compatibility hold, required review is complete, and exact fresh action and human authority are consumed."
+owning_crate = "peritus-evolution"
+source_file = "crates/analysis/peritus-evolution/src/verified.rs"
+symbol = "peritus_evolution::verified::promotion_safety"
+status = "in-progress"
+dependencies = ["INV-018", "OBL-0181", "OBL-0185"]
+live_issue = "#23"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/analysis/peritus-evolution/src/verified.rs", symbol = "peritus_evolution::verified::promotion_safety", command = "cargo verus verify --package peritus-evolution --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/analysis/peritus-evolution/tests/verified_refinement.rs", symbol = "peritus_evolution::tests::verified_refinement::promotion_safety_is_a_conjunction_not_a_score", command = "cargo test --package peritus-evolution --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0181"
+kind = "invariant"
+statement = "F0 mandatory evaluation criteria are independently classified and deny-wins: incomplete, failed, or unavailable correctness, regression, safety, reliability, cost, latency, trace, teardown, attribution, compatibility, or review evidence cannot become an eligible selection."
+owning_crate = "peritus-evolution"
+source_file = "crates/analysis/peritus-evolution/src/verified.rs"
+symbol = "peritus_evolution::verified::deny_wins"
+status = "in-progress"
+dependencies = ["OBL-0176", "INV-018"]
+live_issue = "#23"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/analysis/peritus-evolution/src/verified.rs", symbol = "peritus_evolution::verified::deny_wins", command = "cargo verus verify --package peritus-evolution --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/analysis/peritus-evolution/tests/attribution_selection.rs", symbol = "peritus_evolution::tests::attribution_selection::duplicate_objectives_are_rejected_and_unavailable_denies", command = "cargo test --package peritus-evolution --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0182"
+kind = "invariant"
+statement = "F0 rollback selects a distinct compatible target retained in append-only activation history under the exact protected policy and requires a new matching human approval."
+owning_crate = "peritus-evolution"
+source_file = "crates/analysis/peritus-evolution/src/verified.rs"
+symbol = "peritus_evolution::verified::rollback_legality"
+status = "in-progress"
+dependencies = ["INV-019"]
+live_issue = "#23"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/analysis/peritus-evolution/src/verified.rs", symbol = "peritus_evolution::verified::rollback_legality", command = "cargo verus verify --package peritus-evolution --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/analysis/peritus-evolution/tests/verified_refinement.rs", symbol = "peritus_evolution::tests::verified_refinement::rollback_replay_and_terminal_refinements_fail_closed", command = "cargo test --package peritus-evolution --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0183"
+kind = "invariant"
+statement = "Every accepted F0 activation increments the pointer generation exactly once, installs the exact successor, retains the exact predecessor, and appends rather than rewrites activation history."
+owning_crate = "peritus-evolution"
+source_file = "crates/analysis/peritus-evolution/src/verified.rs"
+symbol = "peritus_evolution::verified::pointer_conservation"
+status = "in-progress"
+dependencies = ["INV-019", "OBL-0182"]
+live_issue = "#23"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/analysis/peritus-evolution/src/verified.rs", symbol = "peritus_evolution::verified::pointer_conservation", command = "cargo verus verify --package peritus-evolution --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/analysis/peritus-evolution/tests/verified_refinement.rs", symbol = "peritus_evolution::tests::verified_refinement::rollback_replay_and_terminal_refinements_fail_closed", command = "cargo test --package peritus-evolution --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0184"
+kind = "refinement"
+statement = "Replaying each complete contiguous F0 campaign or production-pointer event prefix reconstructs the exact successor checkpoint and rejects head, prior digest, immutable binding, or successor digest drift."
+owning_crate = "peritus-evolution"
+source_file = "crates/analysis/peritus-evolution/src/verified.rs"
+symbol = "peritus_evolution::verified::replay_refinement"
+status = "in-progress"
+dependencies = ["OBL-0115", "OBL-0183"]
+live_issue = "#23"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/analysis/peritus-evolution/src/verified.rs", symbol = "peritus_evolution::verified::replay_refinement", command = "cargo verus verify --package peritus-evolution --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/analysis/peritus-evolution/tests/durability_restart.rs", symbol = "peritus_evolution::tests::durability_restart::ordinary_campaign_and_pointer_commits_replay_exact_checkpoints", command = "cargo test --package peritus-evolution --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0185"
+kind = "refinement"
+statement = "C0 adds exact approve-once consumption to an existing multi-aggregate append in one transaction; stale registry or approval-state CAS leaves every supplied aggregate head and state projection unchanged."
+owning_crate = "peritus-journal"
+source_file = "crates/state/peritus-journal/src/domain/approval_use.rs"
+symbol = "peritus_journal::domain::approval_use::SqliteJournal::commit_approval_use"
+status = "in-progress"
+dependencies = ["OBL-0115"]
+live_issue = "#23"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/state/peritus-journal/tests/approval_registry.rs", symbol = "peritus_journal::tests::approval_registry::approval_use_augments_a_multi_aggregate_append_atomically", command = "cargo test --package peritus-journal --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/state/peritus-journal/tests/approval_registry.rs", symbol = "peritus_journal::tests::approval_registry::approval_use_rejects_stale_registry_and_state_without_partial_activation", command = "cargo test --package peritus-journal --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0186"
+kind = "contract"
+statement = "The closed F0 campaign families 88 through 90 and production-pointer families 91 through 93 have canonical schema-one frames whose decoders reconstruct complete restart semantics and reject wrong family, unknown tag, noncanonical value, truncation, and trailing bytes."
+owning_crate = "peritus-evolution"
+source_file = "crates/analysis/peritus-evolution/tests/replay_wire.rs"
+symbol = "peritus_evolution::tests::replay_wire::six_f0_frames_round_trip_and_reject_malformed_bytes"
+status = "in-progress"
+dependencies = ["OBL-0184"]
+live_issue = "#23"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/analysis/peritus-evolution/tests/replay_wire.rs", symbol = "peritus_evolution::tests::replay_wire::six_f0_frames_round_trip_and_reject_malformed_bytes", command = "cargo test --package peritus-evolution --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0187"
+kind = "contract"
+statement = "A2 owns an independent runtime-neutral F0 conformance catalog covering immutable evidence, change isolation, attribution, metric gaming, deterministic selection, stale authority, atomic activation, rollback history, replay, malformed input, and bounds."
+owning_crate = "peritus-conformance"
+source_file = "crates/app/testing/peritus-conformance/tests/conformance/evolution_catalog.rs"
+symbol = "peritus_conformance::tests::conformance::evolution_catalog::evolution_catalog_runs_all_fourteen_cases"
+status = "in-progress"
+dependencies = ["INV-018", "INV-019", "OBL-0182", "OBL-0186"]
+live_issue = "#23"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/app/testing/peritus-conformance/tests/conformance/evolution_catalog.rs", symbol = "peritus_conformance::tests::conformance::evolution_catalog::evolution_catalog_runs_all_fourteen_cases", command = "cargo test --package peritus-conformance --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0188"
+kind = "refinement"
+statement = "F0 promotion and rollback compose their decided campaign and pointer events, complete checkpoints, artifact closure, publication directive, and exact approval-use binding into the C0 atomic approval-use transaction."
+owning_crate = "peritus-evolution"
+source_file = "crates/analysis/peritus-evolution/src/durability/activation.rs"
+symbol = "peritus_evolution::durability::activation::commit_atomic_activation"
+status = "in-progress"
+dependencies = ["INV-019", "OBL-0183", "OBL-0184", "OBL-0185"]
+live_issue = "#23"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/analysis/peritus-evolution/tests/promotion_authority.rs", symbol = "peritus_evolution::tests::promotion_authority::authorization_digest_binds_every_authority_observation", command = "cargo test --package peritus-evolution --all-targets --all-features --locked" },
 ]

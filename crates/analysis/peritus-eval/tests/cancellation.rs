@@ -14,10 +14,7 @@ use peritus_types::{ActorId, CommandId, EventId};
 use support::{artifact, bytes, campaign_id, digest, frozen_profile, revision};
 
 #[test]
-#[allow(
-    clippy::too_many_lines,
-    reason = "one linear state-machine scenario proves cancellation terminal dominance"
-)]
+#[allow(clippy::too_many_lines, reason = "one linear scenario proves cancellation dominance")]
 fn cancellation_waits_for_each_external_rollout_before_terminal_completion() {
     let profile = frozen_profile();
     let plan = EvaluationPlan::build(campaign_id(), &profile).expect("plan");

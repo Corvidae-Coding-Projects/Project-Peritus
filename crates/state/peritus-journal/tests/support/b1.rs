@@ -183,6 +183,17 @@ pub fn approval_request(ids: &mut DomainIds) -> ApprovalRequest {
     .expect("approval request")
 }
 
+pub fn consume_resolution(
+    outcome: peritus_approval::ApprovalTransitionOutcome,
+) -> peritus_approval::ApprovalUseOutcome {
+    let approved = outcome.into_parts().0;
+    let action_id = approved.request().action_id();
+    let action_digest = approved.request().action_digest();
+    approved
+        .consume_once(action_id, action_digest, instant(40))
+        .expect("consume deterministic approved action")
+}
+
 pub fn accepted_lease(outcome: LeaseTransitionOutcome) -> LeaseTransition {
     match outcome {
         LeaseTransitionOutcome::Accepted(transition) => transition,

@@ -26,11 +26,12 @@ pub use authority::{
     ExpectedAuthorityEpoch,
 };
 pub use domain::{
-    ApprovalCommitRequest, BudgetCommitRequest, CapabilityCommitRequest,
-    CommittedApprovalTransition, CommittedBudgetTransition, CommittedCapabilityUse,
-    CommittedKernelTransition, CommittedLeaseTransition, KernelCommitRequest, KernelInputReference,
-    KernelReplayCapsule, KernelReplayDriver, KernelReplayFailure, LeaseCommitRequest,
-    NonActivationObservation, RecoveredKernelAggregate,
+    ApprovalCommitRequest, ApprovalUseCommitRequest, ApprovalUseResolution,
+    ApprovalUseResolutionRequest, BudgetCommitRequest, CapabilityCommitRequest,
+    CommittedApprovalTransition, CommittedApprovalUse, CommittedBudgetTransition,
+    CommittedCapabilityUse, CommittedKernelTransition, CommittedLeaseTransition,
+    KernelCommitRequest, KernelInputReference, KernelReplayCapsule, KernelReplayDriver,
+    KernelReplayFailure, LeaseCommitRequest, NonActivationObservation, RecoveredKernelAggregate,
 };
 pub use error::{JournalError, JournalErrorKind, RecoveryClass};
 pub use head::AggregateHead;

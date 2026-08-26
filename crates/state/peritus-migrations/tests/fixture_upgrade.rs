@@ -106,10 +106,10 @@ fn v1_journal_rows_migrate_byte_exactly_and_new_aggregate_records_append() {
     let mut engine =
         MigrationEngine::open(config(&temp, database.clone()), MigrationRegistry::current())
             .expect("migration engine");
-    let plan = engine.preflight(version(8)).expect("v8 preflight").into_plan();
+    let plan = engine.preflight(version(9)).expect("v9 preflight").into_plan();
     assert_eq!(plan.current_version(), 1);
     assert!(plan.backup_required());
-    let applied = engine.apply(&plan, operation(10)).expect("v8 apply");
+    let applied = engine.apply(&plan, operation(10)).expect("v9 apply");
     assert!(applied.backup_path().expect("required backup").is_file());
     drop(engine);
 
@@ -123,7 +123,7 @@ fn v1_journal_rows_migrate_byte_exactly_and_new_aggregate_records_append() {
                 0
             ))
             .expect("schema version"),
-        8
+        9
     );
     assert!(
         !connection
@@ -139,7 +139,7 @@ fn v1_journal_rows_migrate_byte_exactly_and_new_aggregate_records_append() {
         StoreId::new([1; 16]).expect("store identity"),
         SqliteJournalOptions::default(),
     )
-    .expect("schema-v8 journal");
+    .expect("schema-v9 journal");
     assert_eq!(journal.integrity_scan().expect("pre-D0 integrity").event_count(), 1);
 
     let aggregate = AggregateKey::new(
@@ -200,10 +200,10 @@ fn v3_fixture_preserves_every_historical_aggregate_tag_through_d2_and_d3_migrati
     let mut engine =
         MigrationEngine::open(config(&temp, database.clone()), MigrationRegistry::current())
             .expect("migration engine");
-    let plan = engine.preflight(version(8)).expect("v8 preflight").into_plan();
+    let plan = engine.preflight(version(9)).expect("v9 preflight").into_plan();
     assert_eq!(plan.current_version(), 3);
     assert!(plan.backup_required());
-    let applied = engine.apply(&plan, operation(11)).expect("v8 apply");
+    let applied = engine.apply(&plan, operation(11)).expect("v9 apply");
     assert!(applied.backup_path().expect("required backup").is_file());
     drop(engine);
 
@@ -215,7 +215,7 @@ fn v3_fixture_preserves_every_historical_aggregate_tag_through_d2_and_d3_migrati
                 row.get::<_, i64>(0)
             })
             .expect("schema version"),
-        8
+        9
     );
     drop(connection);
 
@@ -224,7 +224,7 @@ fn v3_fixture_preserves_every_historical_aggregate_tag_through_d2_and_d3_migrati
         StoreId::new([1; 16]).expect("store identity"),
         SqliteJournalOptions::default(),
     )
-    .expect("schema-v8 journal");
+    .expect("schema-v9 journal");
     assert_eq!(journal.integrity_scan().expect("migrated integrity").event_count(), 8);
     append_new_aggregate(&mut journal, AggregateKind::Review, 90, 91, 92, 54);
     append_new_aggregate(&mut journal, AggregateKind::Scheduler, 100, 101, 102, 71);
@@ -268,10 +268,10 @@ fn v4_fixture_preserves_tags_one_through_nine_and_admits_d3_e0_aggregates() {
     let mut engine =
         MigrationEngine::open(config(&temp, database.clone()), MigrationRegistry::current())
             .expect("migration engine");
-    let plan = engine.preflight(version(8)).expect("v8 preflight").into_plan();
+    let plan = engine.preflight(version(9)).expect("v9 preflight").into_plan();
     assert_eq!(plan.current_version(), 4);
     assert!(plan.backup_required());
-    let applied = engine.apply(&plan, operation(12)).expect("v8 apply");
+    let applied = engine.apply(&plan, operation(12)).expect("v9 apply");
     assert!(applied.backup_path().expect("required backup").is_file());
     drop(engine);
 
@@ -283,7 +283,7 @@ fn v4_fixture_preserves_tags_one_through_nine_and_admits_d3_e0_aggregates() {
                 row.get::<_, i64>(0)
             })
             .expect("schema version"),
-        8
+        9
     );
     drop(connection);
 
@@ -292,7 +292,7 @@ fn v4_fixture_preserves_tags_one_through_nine_and_admits_d3_e0_aggregates() {
         StoreId::new([1; 16]).expect("store identity"),
         SqliteJournalOptions::default(),
     )
-    .expect("schema-v8 journal");
+    .expect("schema-v9 journal");
     assert_eq!(journal.integrity_scan().expect("migrated integrity").event_count(), 9);
     append_new_aggregate(&mut journal, AggregateKind::Scheduler, 130, 131, 132, 71);
     append_new_aggregate(&mut journal, AggregateKind::Collaboration, 140, 141, 142, 74);
@@ -335,10 +335,10 @@ fn v5_fixture_preserves_tags_one_through_twelve_and_admits_e1_harness() {
     let mut engine =
         MigrationEngine::open(config(&temp, database.clone()), MigrationRegistry::current())
             .expect("migration engine");
-    let plan = engine.preflight(version(8)).expect("v8 preflight").into_plan();
+    let plan = engine.preflight(version(9)).expect("v9 preflight").into_plan();
     assert_eq!(plan.current_version(), 5);
     assert!(plan.backup_required());
-    let applied = engine.apply(&plan, operation(13)).expect("v8 apply");
+    let applied = engine.apply(&plan, operation(13)).expect("v9 apply");
     assert!(applied.backup_path().expect("required backup").is_file());
     drop(engine);
 
@@ -350,7 +350,7 @@ fn v5_fixture_preserves_tags_one_through_twelve_and_admits_e1_harness() {
                 row.get::<_, i64>(0)
             })
             .expect("schema version"),
-        8
+        9
     );
     drop(connection);
 
@@ -359,7 +359,7 @@ fn v5_fixture_preserves_tags_one_through_twelve_and_admits_e1_harness() {
         StoreId::new([1; 16]).expect("store identity"),
         SqliteJournalOptions::default(),
     )
-    .expect("schema-v8 journal");
+    .expect("schema-v9 journal");
     assert_eq!(journal.integrity_scan().expect("migrated integrity").event_count(), 12);
     append_new_aggregate(&mut journal, AggregateKind::Harness, 200, 201, 202, 80);
     assert_eq!(journal.integrity_scan().expect("E1 integrity").event_count(), 13);
@@ -399,10 +399,10 @@ fn v6_fixture_preserves_tags_one_through_thirteen_and_admits_e2_debugger() {
     let mut engine =
         MigrationEngine::open(config(&temp, database.clone()), MigrationRegistry::current())
             .expect("migration engine");
-    let plan = engine.preflight(version(8)).expect("v8 preflight").into_plan();
+    let plan = engine.preflight(version(9)).expect("v9 preflight").into_plan();
     assert_eq!(plan.current_version(), 6);
     assert!(plan.backup_required());
-    let applied = engine.apply(&plan, operation(14)).expect("v8 apply");
+    let applied = engine.apply(&plan, operation(14)).expect("v9 apply");
     assert!(applied.backup_path().expect("required backup").is_file());
     drop(engine);
 
@@ -414,7 +414,7 @@ fn v6_fixture_preserves_tags_one_through_thirteen_and_admits_e2_debugger() {
                 row.get::<_, i64>(0)
             })
             .expect("schema version"),
-        8
+        9
     );
     drop(connection);
 
@@ -423,7 +423,7 @@ fn v6_fixture_preserves_tags_one_through_thirteen_and_admits_e2_debugger() {
         StoreId::new([1; 16]).expect("store identity"),
         SqliteJournalOptions::default(),
     )
-    .expect("schema-v8 journal");
+    .expect("schema-v9 journal");
     assert_eq!(journal.integrity_scan().expect("migrated integrity").event_count(), 13);
     append_new_aggregate(&mut journal, AggregateKind::Debugger, 220, 221, 222, 83);
     assert_eq!(journal.integrity_scan().expect("E2 integrity").event_count(), 14);
@@ -463,10 +463,10 @@ fn v7_fixture_preserves_tags_one_through_fourteen_and_admits_e3_evaluation() {
     let mut engine =
         MigrationEngine::open(config(&temp, database.clone()), MigrationRegistry::current())
             .expect("migration engine");
-    let plan = engine.preflight(version(8)).expect("v8 preflight").into_plan();
+    let plan = engine.preflight(version(9)).expect("v9 preflight").into_plan();
     assert_eq!(plan.current_version(), 7);
     assert!(plan.backup_required());
-    let applied = engine.apply(&plan, operation(15)).expect("v8 apply");
+    let applied = engine.apply(&plan, operation(15)).expect("v9 apply");
     assert!(applied.backup_path().expect("required backup").is_file());
     drop(engine);
 
@@ -478,7 +478,7 @@ fn v7_fixture_preserves_tags_one_through_fourteen_and_admits_e3_evaluation() {
                 row.get::<_, i64>(0)
             })
             .expect("schema version"),
-        8
+        9
     );
     drop(connection);
 
@@ -487,7 +487,7 @@ fn v7_fixture_preserves_tags_one_through_fourteen_and_admits_e3_evaluation() {
         StoreId::new([1; 16]).expect("store identity"),
         SqliteJournalOptions::default(),
     )
-    .expect("schema-v8 journal");
+    .expect("schema-v9 journal");
     assert_eq!(journal.integrity_scan().expect("migrated integrity").event_count(), 14);
     append_new_aggregate(&mut journal, AggregateKind::Evaluation, 230, 231, 232, 85);
     assert_eq!(journal.integrity_scan().expect("E3 integrity").event_count(), 15);
@@ -506,6 +506,71 @@ fn v7_fixture_preserves_tags_one_through_fourteen_and_admits_e3_evaluation() {
             .pragma_query_value(None, "user_version", |row| row.get::<_, i64>(0))
             .expect("restored user version"),
         7
+    );
+}
+
+#[test]
+fn v8_fixture_preserves_tags_one_through_fifteen_and_admits_f0_aggregates() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let database = temp.path().join("journal-v8.sqlite3");
+    let connection = rusqlite::Connection::open(&database).expect("v8 connection");
+    let fixture = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fixtures/v8.sql");
+    connection
+        .execute_batch(&fs::read_to_string(fixture).expect("read v8 fixture"))
+        .expect("install frozen v8 schema");
+    for tag in 1_u8..=15 {
+        insert_v3_record(&connection, tag, tag.saturating_mul(10), 40 + u16::from(tag));
+    }
+    let preserved = snapshot_v3_rows(&connection);
+    drop(connection);
+
+    let mut engine =
+        MigrationEngine::open(config(&temp, database.clone()), MigrationRegistry::current())
+            .expect("migration engine");
+    let plan = engine.preflight(version(9)).expect("v9 preflight").into_plan();
+    assert_eq!(plan.current_version(), 8);
+    assert!(plan.backup_required());
+    let applied = engine.apply(&plan, operation(16)).expect("v9 apply");
+    assert!(applied.backup_path().expect("required backup").is_file());
+    drop(engine);
+
+    let connection = rusqlite::Connection::open(&database).expect("migrated connection");
+    assert_eq!(snapshot_v3_rows(&connection), preserved);
+    assert_eq!(
+        connection
+            .query_row("SELECT schema_version FROM store_meta WHERE singleton = 1", [], |row| {
+                row.get::<_, i64>(0)
+            })
+            .expect("schema version"),
+        9
+    );
+    drop(connection);
+
+    let mut journal = SqliteJournal::open(
+        &database,
+        StoreId::new([1; 16]).expect("store identity"),
+        SqliteJournalOptions::default(),
+    )
+    .expect("schema-v9 journal");
+    assert_eq!(journal.integrity_scan().expect("migrated integrity").event_count(), 15);
+    append_new_aggregate(&mut journal, AggregateKind::EvolutionCampaign, 240, 241, 242, 89);
+    append_new_aggregate(&mut journal, AggregateKind::ProductionHarness, 243, 244, 245, 92);
+    assert_eq!(journal.integrity_scan().expect("F0 integrity").event_count(), 17);
+    drop(journal);
+
+    let mut rollback =
+        MigrationEngine::open(config(&temp, database.clone()), MigrationRegistry::current())
+            .expect("rollback engine");
+    let restored = rollback.restore_backup(operation(16)).expect("restore v8 backup");
+    assert_eq!(restored.state(), RecoveryState::Restored);
+    drop(rollback);
+    let restored = rusqlite::Connection::open(database).expect("restored v8 fixture");
+    assert_eq!(snapshot_v3_rows(&restored), preserved);
+    assert_eq!(
+        restored
+            .pragma_query_value(None, "user_version", |row| row.get::<_, i64>(0))
+            .expect("restored user version"),
+        8
     );
 }
 

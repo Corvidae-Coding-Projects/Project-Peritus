@@ -15,6 +15,69 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Implement complete production F0 Production Harness Evolution (#23)
+- Deliver the H-class `peritus-evolution` analysis crate as the durable authority from immutable
+  E1 revisions, E2 diagnosis, E3 evaluation, D2 review, and B0/B1 authorization to auditable
+  production-harness activation and rollback
+- Split durable ownership between terminating `EvolutionCampaign` aggregates and one long-lived
+  `ProductionHarness` aggregate per project, allowing concurrent analysis while preserving a
+  single project-global pointer compare-and-swap
+- Add exact installed-production bindings carrying the shared revision tuple, full branch-aware E1
+  revision identity, materialization receipt digest, installed snapshot digest, policy identity,
+  generation, and prior activation provenance
+- Add F0-owned restart-consumable published E2/E3 evidence summaries captured only from live
+  validated reports, frozen profiles, durable publication state, artifact/evidence identities, and
+  exact journal provenance
+- Add bounded immutable change manifests with cited diagnostic claims, hypotheses and alternatives,
+  exact before/after component deltas, predicted fixes and regressions, resource/safety effects,
+  falsification criteria, compatibility impact, and rollback targets
+- Enforce complete E1 graph deltas and ordinary-campaign exclusion of security roots, human
+  authority, sealed evaluators and datasets, trust-boundary definitions, and the protected
+  production-promotion policy
+- Add isolated materialized candidate variants and explicit interaction groups, rejecting
+  undeclared changes and preventing unsupported per-change attribution for grouped experiments
+- Add deterministic attribution from E3 integer/fixed-point observations with explicit confirmed,
+  contradicted, inconclusive, and not-observed verdicts plus retained missing-data evidence
+- Add typed deny-wins promotion criteria for correctness lower bounds, task/critical regressions,
+  safety, reliability, stability, cost, latency, trace/teardown completeness, attribution coverage,
+  review, and schema compatibility
+- Add stable lexicographic candidate selection with explicit rejection matrices, insertion-order
+  independence, checked arithmetic, and no floating-point, wall-clock, or host-path dependence
+- Bind executable changes to complete independent D2 review state with exact candidate digest,
+  quorum, finding conservation, and terminal completion instead of a boolean review marker
+- Add exact promotion and rollback action digests covering project, campaign, current/candidate
+  pointer, manifests, attribution, evaluation, review, policy, evidence bundle, and rollback target
+- Require matching B0 dispatch, durably committed B1 capability use, current authority registry,
+  and move-only approve-once B1 human approval for every production pointer change
+- Extend C0 with a durable approval-use commit adapter so approval consumption can join an existing
+  multi-aggregate append without exposing private state/currentness builders
+- Atomically commit campaign terminalization, production-pointer activation, both complete
+  checkpoints, prior-pointer history, artifact dependencies, approval consumption, and optional
+  downstream notification in one journal transaction
+- Make rollback a newly authorized append-only activation of a retained compatible E1 revision,
+  preserving the failed promotion and leaving every existing run bound to its original harness
+- Add commit-before-effect decision/activation publication, content-addressed artifacts,
+  provenance-checked evidence admission, exact outbox settlement, idempotent reconciliation, and
+  deterministic crash-window recovery
+- Add canonical schema-v1 campaign command/event/state families 88–90 and production-pointer
+  families 91–93 with strict semantic activation, malformed/future/trailing rejection, immutable
+  binary fixtures, and SHA-256 inventories
+- Extend C0 with permanent aggregate tags 16 and 17, checkpoint namespaces `0xF001` and `0xF002`,
+  and schema version nine that preserves schema-8 rows, frames, positions, hashes, integrity, and
+  verified backup restoration while admitting both F0 authorities
+- Extend A2 with fourteen runtime-neutral F0 cases covering immutable evidence, complete changes,
+  interaction attribution, contamination, metric gaming, deterministic selection, stale evidence,
+  independent review, human authority, atomic activation, rollback history, replay, malformed
+  input, and independent bounds, plus a fresh production subject
+- Add executable Verus specifications and ordinary refinement tests for evaluator isolation,
+  promotion safety, transition legality, deterministic deny-wins selection, pointer conservation,
+  approval equality, rollback reachability, and replay equivalence without claiming effectful I/O
+- Repair the formal obligation inventory to register E3 frozen-profile, accounting, statistical,
+  transition, cancellation, replay, protocol, and non-authority proofs before adding F0 obligations
+- Add the signed F0 architecture, developer/operator guide, analysis-layer registration,
+  architecture and protocol inventories, strict CI/Verus command coverage, migration guidance,
+  resource-aware verification commands, and updated project development state
+
 - Implement complete production E3 Evaluation (#22)
 - Deliver the H-class `peritus-eval` analysis crate as the durable boundary from immutable E1
   harness revisions and frozen evaluation inputs to reproducible statistical evidence, without

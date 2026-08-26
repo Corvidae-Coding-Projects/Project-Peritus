@@ -128,6 +128,10 @@ pub enum AggregateKind {
     Debugger,
     /// E3 durable reproducible evaluation campaigns and reports.
     Evaluation,
+    /// F0 durable production-harness evolution campaigns.
+    EvolutionCampaign,
+    /// F0 durable project-scoped production-harness pointer and activation history.
+    ProductionHarness,
 }
 
 impl AggregateKind {
@@ -148,6 +152,8 @@ impl AggregateKind {
             Self::Harness => 13,
             Self::Debugger => 14,
             Self::Evaluation => 15,
+            Self::EvolutionCampaign => 16,
+            Self::ProductionHarness => 17,
         }
     }
 
@@ -168,6 +174,8 @@ impl AggregateKind {
             Self::Harness => 13,
             Self::Debugger => 14,
             Self::Evaluation => 15,
+            Self::EvolutionCampaign => 16,
+            Self::ProductionHarness => 17,
         }
     }
 
@@ -188,6 +196,8 @@ impl AggregateKind {
             13 => Some(Self::Harness),
             14 => Some(Self::Debugger),
             15 => Some(Self::Evaluation),
+            16 => Some(Self::EvolutionCampaign),
+            17 => Some(Self::ProductionHarness),
             _ => None,
         }
     }

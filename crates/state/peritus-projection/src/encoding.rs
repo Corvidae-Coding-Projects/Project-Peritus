@@ -42,5 +42,7 @@ pub(super) const fn kind_tag(kind: AggregateKind) -> u16 {
         AggregateKind::Harness => 13,
         AggregateKind::Debugger => 14,
         AggregateKind::Evaluation => 15,
+        AggregateKind::EvolutionCampaign => 16,
+        AggregateKind::ProductionHarness => 17,
     }
 }

@@ -10,6 +10,7 @@ mod contracts;
 mod debugger;
 mod descriptor;
 mod evaluation;
+mod evolution;
 mod facade;
 mod failure;
 mod gate;
