@@ -1,6 +1,6 @@
 {
   "next_display_id": 24,
-  "next_comment_id": 384,
+  "next_comment_id": 385,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -304,11 +304,20 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T15:36:15.834953593Z",
-      "updated_at": "2026-08-26T15:51:01.721959699Z",
+      "updated_at": "2026-08-26T15:51:37.906959279Z",
       "labels": [
         "feature"
       ],
       "comments": {
+        "6909c8dd-863e-4251-86ea-cc0125474f04": {
+          "display_id": 384,
+          "author": "6ME5",
+          "content": "F0 freezes split durable authority: EvolutionCampaign tag 16/families 88-90 owns terminating campaign history; ProductionHarness tag 17/families 91-93 owns the long-lived project pointer. Promotion/rollback atomically commits both transitions plus B1 approve-once consumption through a new C0-owned approval-use adapter. E2/E3 evidence is captured into F0-owned canonical committed summaries rather than adding broad external decoders.",
+          "created_at": "2026-08-26T15:51:37.904434821Z",
+          "kind": "decision",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAbnIyN/Z/TkraQLfFb86HnP4rjBLq0Z4F8C/bZL11aTw34tcMAzM7pLaQOzVY309uuvaEJF4hhGI7hXGyNqjiCA=="
+        },
         "95ba31f7-5a33-4c9c-b00c-b5cc8922b8ea": {
           "display_id": 383,
           "author": "6ME5",
@@ -3881,8 +3890,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-26T15:51:01.721959699Z",
+    "timestamp": "2026-08-26T15:51:37.906959279Z",
     "agent_id": "6ME5",
-    "agent_seq": 515
+    "agent_seq": 516
   }
 }
