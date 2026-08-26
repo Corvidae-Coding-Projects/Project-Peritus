@@ -1,6 +1,6 @@
 {
   "next_display_id": 22,
-  "next_comment_id": 360,
+  "next_comment_id": 361,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -2877,7 +2877,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T05:27:41.533821616Z",
-      "updated_at": "2026-08-26T05:40:03.398876624Z",
+      "updated_at": "2026-08-26T05:40:07.756097713Z",
       "labels": [
         "E2",
         "feature"
@@ -2891,6 +2891,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABARszRPZZREOCE3qhy0fXa1LAJNPDXpZw09tVyyvgNst/pljfuTvNV1Pg/zadce0LEHMnSlPygUNSj0XEwENUnCg=="
+        },
+        "2cd97fdc-3022-43d5-8c46-dffd1286c5d0": {
+          "display_id": 360,
+          "author": "6ME5",
+          "content": "Signed design freeze badcc91 (docs(e2): freeze debugger design (#21)). Added .design/e2-debugger.md with complete public contracts, exact provenance/selection semantics, full taxonomy, deterministic and C5/C6 model-assisted analysis, durable B3/C0 allocations, migration v7, A2/formal acceptance, and disjoint implementation ownership. Verification: git diff --cached --check passed; commit signature verified good.",
+          "created_at": "2026-08-26T05:40:07.753533791Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAkeG1dMdkdUhNpnqP+fxOtAwcGjiWn/5AX7t2BACJLrAguOMw+0gUzCZxeLgmOqswRXnWSACcW8zhv7KvNWHiAg=="
         },
         "36d5864a-610c-4d92-a7a5-75b4346c110c": {
           "display_id": 359,
@@ -3629,7 +3638,7 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-26T05:40:03.398876624Z",
+    "timestamp": "2026-08-26T05:40:07.756097713Z",
     "agent_id": "6ME5",
     "agent_seq": 482
   }
