@@ -1,11 +1,12 @@
 {
-  "next_display_id": 24,
+  "next_display_id": 25,
   "next_comment_id": 396,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
     "14913d8a-8b79-4929-8613-5e6f011364fa": 23,
     "19b7b53a-b2fb-41c1-835d-ffd6ce605c08": 14,
+    "27633189-3dec-4781-9940-42a3e8eb9e60": 24,
     "2b288a30-b5b1-4452-81bd-20950bebd2d3": 9,
     "338b10ed-ebc5-4da2-a725-fa46ca662fda": 12,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
@@ -934,6 +935,17 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9hvYVeEpaJvWp215yPjNpzfPkd74D8bN4UbvbxRNCMNU6qgs6GNduD72sTyXNawilRpDw32eWL59Ef5+j2zfCw=="
         }
       }
+    },
+    "27633189-3dec-4781-9940-42a3e8eb9e60": {
+      "uuid": "27633189-3dec-4781-9940-42a3e8eb9e60",
+      "display_id": 24,
+      "title": "A3 Application Protocol Foundation",
+      "description": "Goal: \n\nAcceptance criteria:\n- \n\nGoal:\nDeliver the complete production A3 transport-neutral application protocol foundation for G0/G1/G2 clients.\n\nAcceptance criteria:\n- Signed architecture design precedes implementation.\n- peritus-app-protocol provides bounded canonical negotiation, request/response/event/control, subscription/cursor, artifact transfer, approval/input, terminal, readiness/shutdown, and stable error contracts without transport or persistence authority.\n- Deterministic Verus roots, generated schemas/bindings, immutable compatibility fixtures, and an independent A2 conformance catalog are complete.\n- Focused verification and CARGO_BUILD_JOBS=1 just gate-a pass.\n- Signed PR is open, clean, mergeable, and all Linux/macOS/Windows/Foundation/Verus checks are green.\n\nConstraints:\nNo MVP, stubs, god files, Crosslink kickoff, concurrent Cargo/Verus workloads, transport implementation, or staging of local provider metadata.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "6ME5",
+      "created_at": "2026-08-26T19:24:03.235908577Z",
+      "updated_at": "2026-08-26T19:24:03.235908577Z"
     },
     "2b288a30-b5b1-4452-81bd-20950bebd2d3": {
       "uuid": "2b288a30-b5b1-4452-81bd-20950bebd2d3",
@@ -3985,8 +3997,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-26T18:41:37.960308481Z",
+    "timestamp": "2026-08-26T19:24:03.235908577Z",
     "agent_id": "6ME5",
-    "agent_seq": 529
+    "agent_seq": 530
   }
 }
