@@ -1,6 +1,6 @@
 {
   "next_display_id": 26,
-  "next_comment_id": 405,
+  "next_comment_id": 406,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -3587,7 +3587,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T22:59:08.003031292Z",
-      "updated_at": "2026-08-26T22:59:40.778375365Z",
+      "updated_at": "2026-08-26T23:15:21.082990912Z",
       "labels": [
         "feature"
       ],
@@ -3609,6 +3609,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAH8iFzcv1u2FQRSyMllH4I4UgG1fV/h8c6hfIx8067y0bPyonK2Mp9uk+QZ4S14S6G2GYR5/tJDk3a352Oxt+CQ=="
+        },
+        "edcbff90-f3cd-4dea-9efa-230a113a26d1": {
+          "display_id": 405,
+          "author": "6ME5",
+          "content": "[action] Resolved G0 design review: signed approvals, filtered source cursors, durable peer/actor binding, owned artifact streams, registry decoding, and local telemetry export; design ready to sign",
+          "created_at": "2026-08-26T23:15:21.080085157Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAs96AHyrDPXEbxkrCC1KLLp3pB+qp77+W9yParuBrVPea3TQlgztK1o4joYS6oEoBLtBu7dD6xjq15lHHUvv/Dg=="
         }
       }
     },
@@ -4106,8 +4115,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-26T22:59:40.778375365Z",
+    "timestamp": "2026-08-26T23:15:21.082990912Z",
     "agent_id": "6ME5",
-    "agent_seq": 546
+    "agent_seq": 547
   }
 }
