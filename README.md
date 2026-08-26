@@ -11,8 +11,10 @@ but no stage is an MVP and no intermediate stage carries a production-readiness 
 
 The implemented foundation and runtime spine now covers:
 
-- A0–A2: pinned Rust/Verus workspace governance, verified foundational types and trust accounting,
-  deterministic test support, and reusable conformance execution;
+- A0–A3: pinned Rust/Verus workspace governance, verified foundational types and trust accounting,
+  deterministic test support, reusable conformance execution, and the transport-neutral
+  application protocol with negotiated versions/features, canonical envelopes, resumable events,
+  artifact/prompt/terminal flows, generated schemas, compatibility fixtures, and Verus refinements;
 - B0–B3: the lifecycle kernel, capabilities/policy/budgets/leases/approvals, acceptance contracts,
   quality policy, and the versioned domain protocol/codec;
 - C0: the durable journal, rebuildable projections, artifact store, migrations, evidence admission,
@@ -84,7 +86,7 @@ The implemented foundation and runtime spine now covers:
   promotion/evaluator-isolation refinements, and independent A2 conformance.
 
 These are library and verification layers. There is not yet a user-facing `peritus` CLI, daemon,
-TUI, application composition, or native packaged-host qualification. A3, G0–G3, and H0–H4 remain
+TUI, application composition, or native packaged-host qualification. G0–G3 and H0–H4 remain
 before production release and qualification.
 
 Gate A is the current merge authority: ordinary Rust checks, architecture and API policy,
@@ -126,6 +128,10 @@ clock, identifier, event, fault, script, provider, tool, repository and content-
 semantics, plus the runtime-neutral conformance runner and its fail-closed suite verdicts.
 Focused A2 checks are `cargo test --package peritus-test-support --all-targets --all-features
 --locked` and `cargo test --package peritus-conformance --all-targets --all-features --locked`.
+The [A3 application protocol guide](docs/a3-app-protocol.md) documents version and feature
+negotiation, exact B3 command/event bindings, bounded idempotency and resumable subscriptions,
+artifact/prompt/terminal flows, daemon controls, stable errors, schemas, compatibility, and the
+transport/non-authority boundary.
 The [C0 durable-state guide](docs/c0-durable-state.md) documents the journal, projections,
 artifacts, migrations, and evidence boundary. The [C1 workspace guide](docs/c1-workspaces.md)
 documents structured Git worktrees, typed atomic patches, target-owned authorization, snapshots,

@@ -1,0 +1,13 @@
+schema = 1
+surface = "app-protocol"
+surface_version = "v1"
+case = "realistic-shutdown-event"
+kind = "realistic"
+
+[[files]]
+path = "expectation.toml"
+sha256 = "2e98bcd7569a0ab551c91c9c0e88414e5089efef57434cf5f6872e44aa8092f8"
+
+[[files]]
+path = "payload.bin"
+sha256 = "03cf45e3a92cf37ed436a507d2af1d73367b14a0fa77941ec263a81162413162"

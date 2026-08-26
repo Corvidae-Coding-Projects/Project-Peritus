@@ -15,6 +15,82 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Implement complete production A3 Application Protocol Foundation (#24)
+- Deliver the H-class `peritus-app-protocol` crate as the transport-neutral contract between
+  clients and the future G0 daemon, without adding sockets, named pipes, peer authentication,
+  daemon composition, database ownership, worker execution, credentials, or process lifecycle
+- Add stable nominal protocol, request, correlation, subscription, transfer, prompt, terminal,
+  delivery-attempt, and heartbeat identities while reusing durable A1 session, actor, event,
+  artifact, process, revision, and digest identities
+- Add deterministic version and feature negotiation with canonical ranges and feature sets,
+  required/optional separation, greatest-common-version selection, pointwise negotiated limits,
+  and explicit compatible, downgraded, and incompatible outcomes
+- Add complete typed client/server hello values and request, response, event, subscription,
+  acknowledgement, cancellation, and control envelopes with exact negotiated protocol/session
+  context and closed version-one payload vocabularies
+- Allocate permanent PRTS schema-one application families 94–99 after B3's existing family 93,
+  with stable semantic tags for every negotiation, request, response, event, and control payload
+- Extend B3's single family registry with a closed semantic role classification so A3 can validate
+  exact command and event frames without copying B3 family lists or data-transfer objects
+- Add exact B3 command-envelope and registered-command frame parsing that preserves original bytes,
+  family, schema, SHA-256 digest, and decoded revision instead of reserializing a second authority
+  representation
+- Bind command submission to actor, durable session, request, correlation, bounded idempotency key,
+  optional expected revision, exact B3 frames, and a domain-separated canonical request digest
+- Add stable command results that always retain the original request and require an exact nonempty
+  committed event range for committed or replayed outcomes, without claiming stronger durability
+  than the responding implementation observed
+- Add a bounded actor/session/key-scoped idempotency window with explicit new, replay, conflict,
+  capacity, record, and removal behavior and no hidden clock, eviction, or persistence policy
+- Add at-least-once resumable event subscriptions with explicit origin/requested/delivered/
+  acknowledged cursors, exact registered B3 event bytes, stable event IDs and delivery attempts,
+  identity-preserving redelivery, and cumulative acknowledgement
+- Add lossless flow-control semantics for in-flight ceilings, pause/resume, backpressure,
+  cancellation, retention gaps, retained intervals, and mandatory snapshot recovery rather than
+  silent truncation or cursor advancement
+- Add bounded artifact metadata and streaming chunks with transfer/artifact identity, canonical
+  media type, declared size and digest, ordinal and offset ordering, conserved byte count,
+  cancellation, failure, zero-size completion, and observed-digest completion
+- Add approval and user-input prompt contracts binding prompt kind, origin request, session, actor,
+  exact revision, freshness digest, cancellation generation, bounded choices/constraints, and one
+  checked answer or cancellation without treating client input as authorization
+- Add terminal attach, output, input, resize, detach, cancellation, and exit contracts bound to an
+  exact attachment and C2-owned process, with bounded bytes, positive dimensions, global contiguous
+  output offsets, monotonic sequence, and one final exit fence
+- Add truthful daemon readiness, read-only diagnostic, heartbeat, shutdown request, acceptance,
+  draining-progress, and clean/unclean completion values while leaving every lifecycle effect to G0
+- Add stable numeric and kebab-case application error codes with independent retry disposition,
+  responsible subsystem, and bounded human diagnostic text that is never parsed for control flow
+- Add independent application limits for protocol versions/features, idempotency, topics,
+  in-flight delivery, artifact chunks, prompt choices, terminal chunks, diagnostics, and remaining
+  shutdown work, all intersected with the existing bounded canonical codec limits
+- Add canonical PRTS codecs and generic family dispatch for all six application families with
+  strict family/schema/tag checks, complete payload consumption, deterministic field order, and
+  rejection of malformed, truncated, trailing, over-limit, or noncanonical input
+- Add Rust-owned append-only schema metadata for every family, payload and error allocation plus
+  deterministic JSON Schema, branded TypeScript declarations, and a human-readable wire registry
+- Add classified minimal, realistic, corrupt, and adversarial compatibility cases under the A2
+  `compat/app-protocol/v1/<case>/fixture.toml` convention, with exact per-file lowercase SHA-256
+  inventories and reproducible generation/check mode
+- Replace A2's empty protocol scaffold with sixteen runtime-neutral application-protocol cases for
+  exact/downgraded/incompatible negotiation, required features, command binding, idempotency,
+  resume/redelivery/acknowledgement, gaps, backpressure, artifacts, prompts, terminal ordering,
+  daemon lifecycle, malformed input, and independent bounds
+- Add executable Verus specifications, proof lemmas, and ordinary refinement tests for negotiation
+  safety, cursor progression, acknowledgement legality, redelivery identity, artifact chunk
+  conservation and completion, terminal output/exit ordering, and independent resource bounds
+- Register `INV-023` through `INV-027` and `OBL-0189` through `OBL-0198` with exact source symbols,
+  proof commands, refinement tests, dependency edges, active issue ownership, and A2 evidence
+- Add focused integration tests for negotiation, exact command binding, idempotency, subscription
+  traces, artifact traces, prompt freshness, terminal traces, daemon controls, all-family wire
+  round trips, generator drift, compatibility fixtures, and the production A2 subject
+- Register A3 across Cargo, architecture ownership, controlled generated roots, strict Verus
+  package inventories, Linux/macOS/Windows hosted commands, formal-governance workflows,
+  reproducibility fixtures, Gate A, and the lockfile
+- Add the signed A3 architecture design, application-protocol developer/operator guide, generated
+  asset guidance, compatibility policy, resource-aware verification commands, and updated project
+  development state
+
 - Implement complete production F0 Production Harness Evolution (#23)
 - Deliver the H-class `peritus-evolution` analysis crate as the durable authority from immutable
   E1 revisions, E2 diagnosis, E3 evaluation, D2 review, and B0/B1 authorization to auditable

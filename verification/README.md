@@ -238,7 +238,7 @@ evidence array. A `discharged` entry requires non-empty evidence including `veru
 one matching `EXCL-NNNN` reference, no discharge reviewer/date, and cannot be counted as proved.
 
 Dependencies must reference existing obligation IDs, contain no duplicates, and form an acyclic
-graph. Every `INV-001` through `INV-022` remains not discharged until its owning slice adds a real
+graph. Every `INV-001` through `INV-027` remains not discharged until its owning slice adds a real
 entry and reviewed proof evidence. Their absence from the A1 list is deliberately not a coverage or
 success claim.
 
@@ -351,7 +351,7 @@ manifest, preventing an older base selection from reopening bootstrap after A1.
 On GitHub Actions, `PERITUS_PROOF_IMPACT_BASE` is mandatory, must be a nonzero full 40-hex commit,
 must resolve locally, must be an ancestor of and differ from `HEAD`; CI fetches full history and
 selects the pull-request base, push-before SHA, or required dispatch input. Local checks use `HEAD`
-when the variable is unset. This inventory makes no `INV-001` through `INV-022` discharge claim.
+when the variable is unset. This inventory makes no `INV-001` through `INV-027` discharge claim.
 
 ## Integration requirements
 

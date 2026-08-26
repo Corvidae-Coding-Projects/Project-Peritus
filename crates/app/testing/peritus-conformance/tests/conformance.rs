@@ -15,6 +15,7 @@ mod conformance {
     mod orchestrator_catalog;
     mod panic_paths;
     mod process_catalog;
+    mod protocol_catalog;
     mod provider_catalog;
     mod review_catalog;
     mod runner_paths;

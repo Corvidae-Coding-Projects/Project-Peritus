@@ -1,0 +1,34 @@
+[package]
+name = "peritus-app-protocol"
+description = "Transport-neutral application protocol contract for Peritus clients and daemons"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["agents", "protocol", "ipc", "formal-verification"]
+categories = ["development-tools"]
+
+[dependencies]
+peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
+peritus-protocol = { version = "=0.0.0", path = "../../foundation/peritus-protocol" }
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+vstd.workspace = true
+
+[dev-dependencies]
+peritus-conformance = { version = "=0.0.0", path = "../testing/peritus-conformance" }
+peritus-test-support = { version = "=0.0.0", path = "../testing/peritus-test-support" }
+tempfile.workspace = true
+
+[package.metadata.peritus]
+owner = "A3"
+layer = "app"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true
+
+[lints]
+workspace = true

@@ -1,0 +1,13 @@
+schema = 1
+surface = "app-protocol"
+surface_version = "v1"
+case = "minimal-daemon-status-request"
+kind = "minimal"
+
+[[files]]
+path = "expectation.toml"
+sha256 = "9bfec43ae16414cb30f096371819e7785ea0460cc576310813b3ac2e7208039c"
+
+[[files]]
+path = "payload.bin"
+sha256 = "5c3151f1fabc33ca2deca812c14e6f7099d67e59fbab2b2f22cf632d1fe6e130"

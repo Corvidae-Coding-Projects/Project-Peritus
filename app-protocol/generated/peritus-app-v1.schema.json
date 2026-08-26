@@ -1,0 +1,638 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://peritus.invalid/schema/app/v1",
+  "title": "Peritus application protocol v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["family", "schemaVersion", "payloadKind", "payload"],
+  "properties": {
+    "family": { "enum": [94, 95, 96, 97, 98, 99] },
+    "schemaVersion": { "const": 1 },
+    "payloadKind": { "enum": ["client-hello", "compatible", "downgraded", "incompatible", "submit-command", "subscribe", "open-artifact", "cancel-artifact", "answer-prompt", "cancel-prompt", "attach-terminal", "terminal-input", "terminal-resize", "detach-terminal", "cancel-terminal", "daemon-status", "shutdown", "command-result", "subscription-started", "artifact-opened", "prompt-accepted", "terminal-attached", "acknowledged", "daemon-status", "shutdown-accepted", "error", "domain-event", "subscription-gap", "backpressure", "artifact-metadata", "artifact-chunk", "artifact-complete", "prompt-requested", "terminal-output", "terminal-exited", "readiness-changed", "diagnostic", "heartbeat", "shutdown-progress", "shutdown-complete", "acknowledge", "cancel-subscription", "cancel-artifact", "cancel-prompt", "cancel-terminal", "subscription", "heartbeat-reply"] },
+    "payload": { "type": "string", "contentEncoding": "base64", "description": "Exact canonical semantic payload bytes" }
+  },
+  "$defs": {
+    "AppErrorCode": { "type": "string", "enum": ["unsupported-format", "unsupported-family", "unsupported-schema", "unknown-tag", "malformed-frame", "truncated-frame", "trailing-bytes", "limit-exceeded", "invalid-identifier", "invalid-version", "incompatible-version", "missing-required-feature", "invalid-limits", "session-mismatch", "idempotency-conflict", "idempotency-capacity", "stale-revision", "invalid-command-frame", "command-binding-mismatch", "invalid-event-range", "subscription-state", "subscription-gap", "illegal-acknowledgement", "backpressure", "artifact-state", "artifact-ordering", "artifact-size", "artifact-digest", "prompt-mismatch", "prompt-stale", "terminal-state", "terminal-ordering", "read-only", "not-ready", "cancelled", "internal"] },
+    "ClientHelloData": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ClientHello",
+      "properties": {
+        "protocolId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ProtocolId", "x-bounds": ["nonzero"] },
+        "versions": { "type": "array", "items": { "$ref": "#/$defs/VersionRange" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<VersionRange>", "x-bounds": ["nonzero", "app.max-versions", "strictly-sorted-unique"] },
+        "requiredFeatures": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "ProtocolFeatureSet", "x-bounds": ["app.max-features", "strictly-sorted-unique"] },
+        "optionalFeatures": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "ProtocolFeatureSet", "x-bounds": ["app.max-features", "strictly-sorted-unique"] },
+        "receiveLimits": { "$ref": "#/$defs/AppProtocolLimits", "x-canonical-wire": "ordered-fields", "x-rust-type": "AppProtocolLimits" },
+        "implementation": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "ImplementationMetadata", "x-bounds": ["codec.max-string-bytes"] }
+      },
+      "required": ["protocolId", "versions", "requiredFeatures", "optionalFeatures", "receiveLimits", "implementation"]
+    },
+    "ServerHelloPreamble": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ServerHello",
+      "properties": {
+        "protocolId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ProtocolId", "x-bounds": ["nonzero"] },
+        "implementation": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "ImplementationMetadata", "x-bounds": ["codec.max-string-bytes"] }
+      },
+      "required": ["protocolId", "implementation"]
+    },
+    "RequestEnvelopeFields": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "AppRequestEnvelope",
+      "properties": {
+        "context": { "$ref": "#/$defs/ProtocolContext", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProtocolContext" },
+        "requestId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "RequestId", "x-bounds": ["nonzero"] },
+        "correlationId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "CorrelationId", "x-bounds": ["nonzero"] }
+      },
+      "required": ["context", "requestId", "correlationId"]
+    },
+    "ResponseEnvelopeFields": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "AppResponseEnvelope",
+      "properties": {
+        "context": { "$ref": "#/$defs/ProtocolContext", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProtocolContext" },
+        "requestId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "RequestId", "x-bounds": ["nonzero"] },
+        "correlationId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "CorrelationId", "x-bounds": ["nonzero"] }
+      },
+      "required": ["context", "requestId", "correlationId"]
+    },
+    "EventEnvelopeFields": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "AppEventEnvelope",
+      "properties": {
+        "context": { "$ref": "#/$defs/ProtocolContext", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProtocolContext" }
+      },
+      "required": ["context"]
+    },
+    "ControlEnvelopeFields": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ControlEnvelope",
+      "properties": {
+        "context": { "$ref": "#/$defs/ProtocolContext", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProtocolContext" },
+        "correlationId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "CorrelationId", "x-bounds": ["nonzero"] }
+      },
+      "required": ["context", "correlationId"]
+    },
+    "ProtocolVersion": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ProtocolVersion",
+      "properties": {
+        "major": { "type": "integer", "minimum": 0, "maximum": 65535, "x-canonical-wire": "u16-be", "x-rust-type": "u16", "x-bounds": ["nonzero"] },
+        "minor": { "type": "integer", "minimum": 0, "maximum": 65535, "x-canonical-wire": "u16-be", "x-rust-type": "u16" }
+      },
+      "required": ["major", "minor"]
+    },
+    "VersionRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "VersionRange",
+      "properties": {
+        "major": { "type": "integer", "minimum": 0, "maximum": 65535, "x-canonical-wire": "u16-be", "x-rust-type": "u16", "x-bounds": ["nonzero"] },
+        "minorMin": { "type": "integer", "minimum": 0, "maximum": 65535, "x-canonical-wire": "u16-be", "x-rust-type": "u16" },
+        "minorMax": { "type": "integer", "minimum": 0, "maximum": 65535, "x-canonical-wire": "u16-be", "x-rust-type": "u16" }
+      },
+      "required": ["major", "minorMin", "minorMax"]
+    },
+    "ProtocolContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ProtocolContext",
+      "properties": {
+        "protocolId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ProtocolId", "x-bounds": ["nonzero"] },
+        "version": { "$ref": "#/$defs/ProtocolVersion", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProtocolVersion" },
+        "sessionId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "SessionId", "x-bounds": ["nonzero"] }
+      },
+      "required": ["protocolId", "version", "sessionId"]
+    },
+    "CodecLimits": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "CodecLimits",
+      "properties": {
+        "maxFrameBytes": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "usize", "x-bounds": ["nonzero"] },
+        "maxPayloadBytes": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "usize", "x-bounds": ["nonzero"] },
+        "maxCollectionItems": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "usize", "x-bounds": ["nonzero"] },
+        "maxStringBytes": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "usize", "x-bounds": ["nonzero"] },
+        "maxOpaqueBytes": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "usize", "x-bounds": ["nonzero"] },
+        "maxNestingDepth": { "type": "integer", "minimum": 0, "maximum": 65535, "x-canonical-wire": "u16-be", "x-rust-type": "u16", "x-bounds": ["nonzero"] }
+      },
+      "required": ["maxFrameBytes", "maxPayloadBytes", "maxCollectionItems", "maxStringBytes", "maxOpaqueBytes", "maxNestingDepth"]
+    },
+    "AppProtocolLimits": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "AppProtocolLimits",
+      "properties": {
+        "codec": { "$ref": "#/$defs/CodecLimits", "x-canonical-wire": "ordered-fields", "x-rust-type": "CodecLimits" },
+        "maxVersions": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "usize", "x-bounds": ["nonzero", "app.max-versions"] },
+        "maxFeatures": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "usize", "x-bounds": ["nonzero", "app.max-features"] },
+        "maxIdempotencyEntries": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "usize", "x-bounds": ["nonzero", "codec.max-collection-items"] },
+        "maxTopics": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "usize", "x-bounds": ["nonzero", "app.max-topics"] },
+        "maxInFlightEvents": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "usize", "x-bounds": ["nonzero", "app.max-in-flight-events"] },
+        "maxArtifactChunkBytes": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "usize", "x-bounds": ["nonzero", "app.max-artifact-chunk-bytes"] },
+        "maxPromptChoices": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "usize", "x-bounds": ["nonzero", "app.max-prompt-choices"] },
+        "maxTerminalChunkBytes": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "usize", "x-bounds": ["nonzero", "app.max-terminal-chunk-bytes"] },
+        "maxDiagnosticBytes": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "usize", "x-bounds": ["nonzero", "app.max-diagnostic-bytes"] },
+        "maxRemainingWorkItems": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "usize", "x-bounds": ["nonzero", "app.max-remaining-work-items"] }
+      },
+      "required": ["codec", "maxVersions", "maxFeatures", "maxIdempotencyEntries", "maxTopics", "maxInFlightEvents", "maxArtifactChunkBytes", "maxPromptChoices", "maxTerminalChunkBytes", "maxDiagnosticBytes", "maxRemainingWorkItems"]
+    },
+    "NegotiatedProtocol": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "NegotiatedProtocol",
+      "properties": {
+        "version": { "$ref": "#/$defs/ProtocolVersion", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProtocolVersion" },
+        "features": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "ProtocolFeatureSet", "x-bounds": ["app.max-features", "strictly-sorted-unique"] },
+        "limits": { "$ref": "#/$defs/AppProtocolLimits", "x-canonical-wire": "ordered-fields", "x-rust-type": "AppProtocolLimits" }
+      },
+      "required": ["version", "features", "limits"]
+    },
+    "IncompatibilityReason": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "IncompatibilityReason",
+      "properties": {
+        "reason": { "type": "string", "enum": ["no-common-version", "missing-required-features"], "x-canonical-wire": "u8", "x-rust-type": "IncompatibilityReason" },
+        "missingRequiredFeatures": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "ProtocolFeatureSet", "x-bounds": ["app.max-features", "strictly-sorted-unique"] }
+      },
+      "required": ["reason"]
+    },
+    "RevisionTuple": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "RevisionTuple",
+      "properties": {
+        "acceptanceSpecId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "AcceptanceSpecId", "x-bounds": ["nonzero"] },
+        "harnessId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "HarnessId", "x-bounds": ["nonzero"] },
+        "workspaceId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "WorkspaceId", "x-bounds": ["nonzero"] },
+        "workspaceGeneration": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "Generation", "x-bounds": ["nonzero"] },
+        "workspaceRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "RevisionNumber", "x-bounds": ["nonzero"] },
+        "policyId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "PolicyId", "x-bounds": ["nonzero"] },
+        "providerProfileId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ProviderProfileId", "x-bounds": ["nonzero"] }
+      },
+      "required": ["acceptanceSpecId", "harnessId", "workspaceId", "workspaceGeneration", "workspaceRevision", "policyId", "providerProfileId"]
+    },
+    "CommandBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "CommandBinding",
+      "properties": {
+        "actorId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ActorId", "x-bounds": ["nonzero"] },
+        "sessionId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "SessionId", "x-bounds": ["nonzero", "envelope-binding"] },
+        "requestId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "RequestId", "x-bounds": ["nonzero", "envelope-binding"] },
+        "correlationId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "CorrelationId", "x-bounds": ["nonzero", "envelope-binding"] },
+        "idempotencyKey": { "type": "string", "contentEncoding": "base64", "x-canonical-wire": "len+bytes", "x-rust-type": "IdempotencyKey", "x-bounds": ["nonzero", "128 bytes"] },
+        "expectedRevision": { "$ref": "#/$defs/RevisionTuple", "x-canonical-wire": "option+value", "x-rust-type": "Option<RevisionTuple>" },
+        "envelopeFrame": { "type": "string", "contentEncoding": "base64", "x-canonical-wire": "len+bytes", "x-rust-type": "ExactB3Frame", "x-bounds": ["codec.max-frame-bytes"] },
+        "commandFrame": { "type": "string", "contentEncoding": "base64", "x-canonical-wire": "len+bytes", "x-rust-type": "ExactB3Frame", "x-bounds": ["codec.max-frame-bytes"] }
+      },
+      "required": ["actorId", "sessionId", "requestId", "correlationId", "idempotencyKey", "envelopeFrame", "commandFrame"]
+    },
+    "CommittedEventRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "CommittedEventRange",
+      "properties": {
+        "first": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "EventCursor", "x-bounds": ["nonzero", "contiguous"] },
+        "last": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "EventCursor", "x-bounds": ["nonzero", "contiguous"] }
+      },
+      "required": ["first", "last"]
+    },
+    "AppProtocolError": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "AppProtocolError",
+      "properties": {
+        "code": { "$ref": "#/$defs/AppErrorCode", "x-canonical-wire": "u16-be", "x-rust-type": "AppErrorCode" },
+        "retry": { "type": "string", "enum": ["never", "same-request", "new-request", "after-recovery", "reconnect"], "x-canonical-wire": "u8", "x-rust-type": "RetryDisposition" },
+        "subsystem": { "type": "string", "enum": ["codec", "negotiation", "session", "command", "subscription", "artifact", "prompt", "terminal", "daemon", "internal"], "x-canonical-wire": "u8", "x-rust-type": "ResponsibleSubsystem" },
+        "diagnostic": { "type": "string", "x-canonical-wire": "option+value", "x-rust-type": "Option<AppDiagnostic>", "x-bounds": ["app.max-diagnostic-bytes"] }
+      },
+      "required": ["code", "retry", "subsystem"]
+    },
+    "CommandResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "CommandResult",
+      "properties": {
+        "originalRequestId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "RequestId", "x-bounds": ["nonzero", "envelope-binding"] },
+        "disposition": { "type": "string", "enum": ["committed", "replayed", "rejected"], "x-canonical-wire": "u8", "x-rust-type": "CommandDisposition" },
+        "committedEvents": { "$ref": "#/$defs/CommittedEventRange", "x-canonical-wire": "ordered-fields", "x-rust-type": "Option<CommittedEventRange>", "x-bounds": ["contiguous"] },
+        "error": { "$ref": "#/$defs/AppProtocolError", "x-canonical-wire": "ordered-fields", "x-rust-type": "Option<AppProtocolError>" }
+      },
+      "required": ["originalRequestId", "disposition"]
+    },
+    "SubscriptionFilter": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "SubscriptionFilter",
+      "properties": {
+        "topics": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<String>", "x-bounds": ["app.max-topics", "codec.max-string-bytes", "strictly-sorted-unique"] }
+      },
+      "required": ["topics"]
+    },
+    "SubscriptionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "SubscriptionRequest",
+      "properties": {
+        "subscriptionId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "SubscriptionId", "x-bounds": ["nonzero"] },
+        "filter": { "$ref": "#/$defs/SubscriptionFilter", "x-canonical-wire": "ordered-fields", "x-rust-type": "SubscriptionFilter" },
+        "after": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "EventCursor" },
+        "maximumInFlight": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["nonzero", "app.max-in-flight-events"] },
+        "snapshotAcceptable": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
+      },
+      "required": ["subscriptionId", "filter", "after", "maximumInFlight", "snapshotAcceptable"]
+    },
+    "SubscriptionStarted": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "SubscriptionStarted",
+      "properties": {
+        "subscriptionId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "SubscriptionId", "x-bounds": ["nonzero"] },
+        "after": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "EventCursor" },
+        "maximumInFlight": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["nonzero", "app.max-in-flight-events"] }
+      },
+      "required": ["subscriptionId", "after", "maximumInFlight"]
+    },
+    "Delivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "Delivery",
+      "properties": {
+        "subscriptionId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "SubscriptionId", "x-bounds": ["nonzero"] },
+        "eventId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "EventId", "x-bounds": ["nonzero"] },
+        "cursor": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "EventCursor", "x-bounds": ["nonzero", "contiguous"] },
+        "attemptId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "DeliveryAttemptId", "x-bounds": ["nonzero"] },
+        "attempt": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["nonzero"] },
+        "frame": { "type": "string", "contentEncoding": "base64", "x-canonical-wire": "len+bytes", "x-rust-type": "RegisteredEventFrame", "x-bounds": ["codec.max-frame-bytes"] }
+      },
+      "required": ["subscriptionId", "eventId", "cursor", "attemptId", "attempt", "frame"]
+    },
+    "SubscriptionGap": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "SubscriptionGap",
+      "properties": {
+        "requested": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "EventCursor" },
+        "earliest": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "EventCursor", "x-bounds": ["contiguous"] },
+        "latest": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "EventCursor", "x-bounds": ["contiguous"] }
+      },
+      "required": ["requested", "earliest", "latest"]
+    },
+    "SubscriptionGapEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "AppEventPayload::SubscriptionGap",
+      "properties": {
+        "subscriptionId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "SubscriptionId", "x-bounds": ["nonzero"] },
+        "gap": { "$ref": "#/$defs/SubscriptionGap", "x-canonical-wire": "ordered-fields", "x-rust-type": "SubscriptionGap" }
+      },
+      "required": ["subscriptionId", "gap"]
+    },
+    "SubscriptionBackpressure": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "SubscriptionBackpressure",
+      "properties": {
+        "subscriptionId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "SubscriptionId", "x-bounds": ["nonzero"] },
+        "lastDelivered": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "EventCursor" },
+        "lastAcknowledged": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "EventCursor", "x-bounds": ["contiguous"] },
+        "maximumInFlight": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["nonzero", "app.max-in-flight-events"] }
+      },
+      "required": ["subscriptionId", "lastDelivered", "lastAcknowledged", "maximumInFlight"]
+    },
+    "Acknowledgement": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "Acknowledgement",
+      "properties": {
+        "subscriptionId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "SubscriptionId", "x-bounds": ["nonzero"] },
+        "cursor": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "EventCursor", "x-bounds": ["contiguous"] }
+      },
+      "required": ["subscriptionId", "cursor"]
+    },
+    "SubscriptionCancellation": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "SubscriptionCancellation",
+      "properties": {
+        "subscriptionId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "SubscriptionId", "x-bounds": ["nonzero"] },
+        "correlationId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "CorrelationId", "x-bounds": ["nonzero", "envelope-binding"] },
+        "source": { "type": "string", "enum": ["client", "server"], "x-canonical-wire": "u8", "x-rust-type": "SubscriptionCancellationSource" }
+      },
+      "required": ["subscriptionId", "correlationId", "source"]
+    },
+    "SubscriptionControl": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "SubscriptionControl",
+      "properties": {
+        "action": { "type": "string", "enum": ["pause", "resume"], "x-canonical-wire": "u8", "x-rust-type": "SubscriptionControl" },
+        "subscriptionId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "SubscriptionId", "x-bounds": ["nonzero"] },
+        "reason": { "type": "string", "enum": ["client", "slow-consumer"], "x-canonical-wire": "u8", "x-rust-type": "Option<PauseReason>" }
+      },
+      "required": ["action", "subscriptionId"]
+    },
+    "ArtifactOpenRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ArtifactOpenRequest",
+      "properties": {
+        "transferId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "TransferId", "x-bounds": ["nonzero"] },
+        "artifactId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ArtifactId", "x-bounds": ["nonzero"] }
+      },
+      "required": ["transferId", "artifactId"]
+    },
+    "ArtifactMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ArtifactMetadata",
+      "properties": {
+        "transferId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "TransferId", "x-bounds": ["nonzero"] },
+        "artifactId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ArtifactId", "x-bounds": ["nonzero"] },
+        "byteSize": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["declared-artifact-size"] },
+        "mediaType": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "CanonicalMediaType", "x-bounds": ["codec.max-string-bytes"] },
+        "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" },
+        "preferredChunkSize": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["nonzero", "app.max-artifact-chunk-bytes"] }
+      },
+      "required": ["transferId", "artifactId", "byteSize", "mediaType", "digest", "preferredChunkSize"]
+    },
+    "ArtifactChunk": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ArtifactChunk",
+      "properties": {
+        "transferId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "TransferId", "x-bounds": ["nonzero"] },
+        "artifactId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ArtifactId", "x-bounds": ["nonzero"] },
+        "ordinal": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["contiguous"] },
+        "offset": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["contiguous"] },
+        "bytes": { "type": "string", "contentEncoding": "base64", "x-canonical-wire": "len+bytes", "x-rust-type": "Vec<u8>", "x-bounds": ["app.max-artifact-chunk-bytes", "declared-artifact-size"] }
+      },
+      "required": ["transferId", "artifactId", "ordinal", "offset", "bytes"]
+    },
+    "ArtifactCompletion": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ArtifactCompletion",
+      "properties": {
+        "transferId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "TransferId", "x-bounds": ["nonzero"] },
+        "artifactId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ArtifactId", "x-bounds": ["nonzero"] },
+        "byteSize": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["declared-artifact-size"] },
+        "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" }
+      },
+      "required": ["transferId", "artifactId", "byteSize", "digest"]
+    },
+    "ArtifactCancellation": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ArtifactCancellation",
+      "properties": {
+        "transferId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "TransferId", "x-bounds": ["nonzero"] },
+        "artifactId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ArtifactId", "x-bounds": ["nonzero"] },
+        "correlationId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "CorrelationId", "x-bounds": ["nonzero", "envelope-binding"] }
+      },
+      "required": ["transferId", "artifactId", "correlationId"]
+    },
+    "PromptCorrelation": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "PromptCorrelation",
+      "properties": {
+        "originatingRequestId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "RequestId", "x-bounds": ["nonzero"] },
+        "promptId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "PromptId", "x-bounds": ["nonzero"] },
+        "sessionId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "SessionId", "x-bounds": ["nonzero"] },
+        "actorId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ActorId", "x-bounds": ["nonzero"] },
+        "revision": { "$ref": "#/$defs/RevisionTuple", "x-canonical-wire": "ordered-fields", "x-rust-type": "RevisionTuple" },
+        "freshnessDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "fixed[32]", "x-rust-type": "Sha256Digest" },
+        "cancellationGeneration": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "Generation", "x-bounds": ["nonzero"] }
+      },
+      "required": ["originatingRequestId", "promptId", "sessionId", "actorId", "revision", "freshnessDigest", "cancellationGeneration"]
+    },
+    "PromptChoice": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "PromptChoice",
+      "properties": {
+        "id": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["nonzero", "codec.max-string-bytes"] },
+        "label": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["nonzero", "codec.max-string-bytes"] }
+      },
+      "required": ["id", "label"]
+    },
+    "PromptConstraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "PromptConstraint",
+      "properties": {
+        "kind": { "type": "string", "enum": ["non-empty", "maximum-text-bytes", "bound-choice-only", "secret-reference"], "x-canonical-wire": "u8", "x-rust-type": "PromptConstraint" },
+        "maximumTextBytes": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "Option<u32>", "x-bounds": ["codec.max-string-bytes"] }
+      },
+      "required": ["kind"]
+    },
+    "PromptBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "PromptBinding",
+      "properties": {
+        "kind": { "type": "string", "enum": ["approval", "user-input"], "x-canonical-wire": "u8", "x-rust-type": "PromptKind" },
+        "correlation": { "$ref": "#/$defs/PromptCorrelation", "x-canonical-wire": "ordered-fields", "x-rust-type": "PromptCorrelation" },
+        "choices": { "type": "array", "items": { "$ref": "#/$defs/PromptChoice" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<PromptChoice>", "x-bounds": ["app.max-prompt-choices"] },
+        "constraints": { "type": "array", "items": { "$ref": "#/$defs/PromptConstraint" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<PromptConstraint>", "x-bounds": ["codec.max-collection-items"] }
+      },
+      "required": ["kind", "correlation", "choices", "constraints"]
+    },
+    "PromptAnswer": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "PromptAnswer",
+      "properties": {
+        "correlation": { "$ref": "#/$defs/PromptCorrelation", "x-canonical-wire": "ordered-fields", "x-rust-type": "PromptCorrelation" },
+        "answerKind": { "type": "string", "enum": ["approval", "user-input"], "x-canonical-wire": "u8", "x-rust-type": "PromptAnswerPayload" },
+        "approvalIntent": { "type": "string", "enum": ["approve", "deny", "cancel"], "x-canonical-wire": "u8", "x-rust-type": "Option<ApprovalIntent>" },
+        "rationale": { "type": "string", "x-canonical-wire": "option+value", "x-rust-type": "Option<String>", "x-bounds": ["codec.max-string-bytes"] },
+        "inputKind": { "type": "string", "enum": ["text", "selection", "confirmation", "secret-reference"], "x-canonical-wire": "u8", "x-rust-type": "Option<UserInputValue>" },
+        "textValue": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "Option<String>", "x-bounds": ["codec.max-string-bytes"] },
+        "confirmationValue": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "Option<bool>" }
+      },
+      "required": ["correlation", "answerKind"]
+    },
+    "PromptCancellation": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "PromptCancellation",
+      "properties": {
+        "correlation": { "$ref": "#/$defs/PromptCorrelation", "x-canonical-wire": "ordered-fields", "x-rust-type": "PromptCorrelation" },
+        "correlationId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "CorrelationId", "x-bounds": ["nonzero", "envelope-binding"] }
+      },
+      "required": ["correlation", "correlationId"]
+    },
+    "TerminalBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "TerminalBinding",
+      "properties": {
+        "attachmentId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "TerminalAttachmentId", "x-bounds": ["nonzero"] },
+        "processId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ProcessId", "x-bounds": ["nonzero"] },
+        "originatingRequestId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "RequestId", "x-bounds": ["nonzero", "envelope-binding"] }
+      },
+      "required": ["attachmentId", "processId", "originatingRequestId"]
+    },
+    "TerminalInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "TerminalInput",
+      "properties": {
+        "binding": { "$ref": "#/$defs/TerminalBinding", "x-canonical-wire": "ordered-fields", "x-rust-type": "TerminalBinding" },
+        "bytes": { "type": "string", "contentEncoding": "base64", "x-canonical-wire": "len+bytes", "x-rust-type": "Vec<u8>", "x-bounds": ["app.max-terminal-chunk-bytes"] }
+      },
+      "required": ["binding", "bytes"]
+    },
+    "TerminalResize": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "TerminalResize",
+      "properties": {
+        "binding": { "$ref": "#/$defs/TerminalBinding", "x-canonical-wire": "ordered-fields", "x-rust-type": "TerminalBinding" },
+        "columns": { "type": "integer", "minimum": 0, "maximum": 65535, "x-canonical-wire": "u16-be", "x-rust-type": "u16", "x-bounds": ["nonzero"] },
+        "rows": { "type": "integer", "minimum": 0, "maximum": 65535, "x-canonical-wire": "u16-be", "x-rust-type": "u16", "x-bounds": ["nonzero"] }
+      },
+      "required": ["binding", "columns", "rows"]
+    },
+    "TerminalDetach": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "TerminalDetach",
+      "properties": {
+        "binding": { "$ref": "#/$defs/TerminalBinding", "x-canonical-wire": "ordered-fields", "x-rust-type": "TerminalBinding" },
+        "correlationId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "CorrelationId", "x-bounds": ["nonzero"] }
+      },
+      "required": ["binding", "correlationId"]
+    },
+    "TerminalCancellation": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "TerminalCancellation",
+      "properties": {
+        "binding": { "$ref": "#/$defs/TerminalBinding", "x-canonical-wire": "ordered-fields", "x-rust-type": "TerminalBinding" },
+        "correlationId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "CorrelationId", "x-bounds": ["nonzero", "envelope-binding"] }
+      },
+      "required": ["binding", "correlationId"]
+    },
+    "TerminalOutput": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "TerminalOutput",
+      "properties": {
+        "binding": { "$ref": "#/$defs/TerminalBinding", "x-canonical-wire": "ordered-fields", "x-rust-type": "TerminalBinding" },
+        "sequence": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["contiguous"] },
+        "offset": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["contiguous"] },
+        "stream": { "type": "string", "enum": ["stdout", "stderr"], "x-canonical-wire": "u8", "x-rust-type": "TerminalStream" },
+        "bytes": { "type": "string", "contentEncoding": "base64", "x-canonical-wire": "len+bytes", "x-rust-type": "Vec<u8>", "x-bounds": ["app.max-terminal-chunk-bytes"] }
+      },
+      "required": ["binding", "sequence", "offset", "stream", "bytes"]
+    },
+    "TerminalExit": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "TerminalExit",
+      "properties": {
+        "binding": { "$ref": "#/$defs/TerminalBinding", "x-canonical-wire": "ordered-fields", "x-rust-type": "TerminalBinding" },
+        "nextSequence": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["contiguous"] },
+        "finalOffset": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["contiguous"] },
+        "disposition": { "$ref": "#/$defs/TerminalExitDisposition", "x-canonical-wire": "u8", "x-rust-type": "TerminalExitDisposition" }
+      },
+      "required": ["binding", "nextSequence", "finalOffset", "disposition"]
+    },
+    "TerminalExitDisposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "TerminalExitDisposition",
+      "properties": {
+        "kind": { "type": "string", "enum": ["code", "signal", "unknown"], "x-canonical-wire": "u8", "x-rust-type": "TerminalExitDisposition" },
+        "value": { "type": "integer", "minimum": -2147483648, "maximum": 2147483647, "x-canonical-wire": "i32-be", "x-rust-type": "Option<i32>" }
+      },
+      "required": ["kind"]
+    },
+    "DaemonStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "DaemonStatus",
+      "properties": {
+        "readiness": { "type": "string", "enum": ["starting", "ready-read-write", "ready-read-only", "draining", "unavailable"], "x-canonical-wire": "u8", "x-rust-type": "DaemonReadiness" },
+        "diagnostic": { "type": "string", "x-canonical-wire": "option+value", "x-rust-type": "Option<String>", "x-bounds": ["app.max-diagnostic-bytes"] }
+      },
+      "required": ["readiness"]
+    },
+    "DaemonHeartbeat": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "DaemonHeartbeat",
+      "properties": {
+        "heartbeatId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "HeartbeatId", "x-bounds": ["nonzero"] },
+        "sequence": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["contiguous"] },
+        "status": { "$ref": "#/$defs/DaemonStatus", "x-canonical-wire": "ordered-fields", "x-rust-type": "DaemonStatus" }
+      },
+      "required": ["heartbeatId", "sequence", "status"]
+    },
+    "ShutdownRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ShutdownRequest",
+      "properties": {
+        "requestId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "RequestId", "x-bounds": ["nonzero", "envelope-binding"] },
+        "correlationId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "CorrelationId", "x-bounds": ["nonzero", "envelope-binding"] }
+      },
+      "required": ["requestId", "correlationId"]
+    },
+    "RemainingWork": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "RemainingWork",
+      "properties": {
+        "kind": { "type": "string", "enum": ["request", "subscription", "artifact-transfer", "terminal-attachment", "other"], "x-canonical-wire": "u8", "x-rust-type": "RemainingWorkKind" },
+        "descriptor": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["app.max-diagnostic-bytes"] }
+      },
+      "required": ["kind", "descriptor"]
+    },
+    "ShutdownProgress": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ShutdownProgress",
+      "properties": {
+        "request": { "$ref": "#/$defs/ShutdownRequest", "x-canonical-wire": "ordered-fields", "x-rust-type": "ShutdownRequest" },
+        "completedSteps": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32" },
+        "totalSteps": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32" },
+        "remaining": { "type": "array", "items": { "$ref": "#/$defs/RemainingWork" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<RemainingWork>", "x-bounds": ["app.max-remaining-work-items"] }
+      },
+      "required": ["request", "completedSteps", "totalSteps", "remaining"]
+    },
+    "ShutdownComplete": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ShutdownComplete",
+      "properties": {
+        "request": { "$ref": "#/$defs/ShutdownRequest", "x-canonical-wire": "ordered-fields", "x-rust-type": "ShutdownRequest" },
+        "disposition": { "type": "string", "enum": ["clean", "unclean"], "x-canonical-wire": "u8", "x-rust-type": "ShutdownCompletionDisposition" },
+        "remaining": { "type": "array", "items": { "$ref": "#/$defs/RemainingWork" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<RemainingWork>", "x-bounds": ["app.max-remaining-work-items"] }
+      },
+      "required": ["request", "disposition", "remaining"]
+    },
+    "HeartbeatReply": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "HeartbeatReply",
+      "properties": {
+        "heartbeatId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "HeartbeatId", "x-bounds": ["nonzero"] },
+        "sequence": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["contiguous"] }
+      },
+      "required": ["heartbeatId", "sequence"]
+    }
+  }
+}

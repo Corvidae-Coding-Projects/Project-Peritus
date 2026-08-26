@@ -1768,3 +1768,248 @@ owner = "ACTOR-0001"
 evidence = [
   { kind = "refinement-test", source_file = "crates/analysis/peritus-evolution/tests/promotion_authority.rs", symbol = "peritus_evolution::tests::promotion_authority::authorization_digest_binds_every_authority_observation", command = "cargo test --package peritus-evolution --all-targets --all-features --locked" },
 ]
+
+[[entries]]
+id = "INV-023"
+kind = "invariant"
+statement = "Every successful A3 negotiation selects a mutually supported version, contains every required feature, fixes nonzero pointwise-bounded limits, and binds one echoed protocol relationship identity; incompatible peers cannot construct a negotiated session."
+owning_crate = "peritus-app-protocol"
+source_file = "crates/app/peritus-app-protocol/src/verified/mod.rs"
+symbol = "peritus_app_protocol::verified::negotiation_safe_spec"
+status = "in-progress"
+dependencies = ["OBL-0189"]
+live_issue = "#24"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/app/peritus-app-protocol/src/verified/mod.rs", symbol = "peritus_app_protocol::verified::negotiation_safe_spec", command = "cargo verus verify --package peritus-app-protocol --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/verified_refinement.rs", symbol = "peritus_app_protocol::tests::verified_refinement::negotiation_predicates_cover_success_and_failure_boundaries", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "INV-024"
+kind = "invariant"
+statement = "Every A3 subscription advances distinct delivery by exactly one cursor, preserves exact event and frame identity across redelivery, and accepts cumulative acknowledgements only within the contiguous delivered prefix before any gap."
+owning_crate = "peritus-app-protocol"
+source_file = "crates/app/peritus-app-protocol/src/verified/mod.rs"
+symbol = "peritus_app_protocol::verified::delivery_advances_spec"
+status = "in-progress"
+dependencies = ["OBL-0192"]
+live_issue = "#24"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/app/peritus-app-protocol/src/verified/mod.rs", symbol = "peritus_app_protocol::verified::legal_ack_never_exceeds_delivery", command = "cargo verus verify --package peritus-app-protocol --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/verified_refinement.rs", symbol = "peritus_app_protocol::tests::verified_refinement::delivery_and_ack_predicates_enforce_contiguous_monotonic_progress", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "INV-025"
+kind = "invariant"
+statement = "Every accepted A3 artifact chunk begins at the conserved offset, is nonempty and independently bounded, cannot exceed the declared size, and completes only at exact size with the declared digest."
+owning_crate = "peritus-app-protocol"
+source_file = "crates/app/peritus-app-protocol/src/verified/mod.rs"
+symbol = "peritus_app_protocol::verified::chunk_accepted_spec"
+status = "in-progress"
+dependencies = ["OBL-0193"]
+live_issue = "#24"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/app/peritus-app-protocol/src/verified/mod.rs", symbol = "peritus_app_protocol::verified::accepted_chunk_fits", command = "cargo verus verify --package peritus-app-protocol --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/verified_refinement.rs", symbol = "peritus_app_protocol::tests::verified_refinement::transfer_predicates_conserve_exact_size", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "INV-026"
+kind = "invariant"
+statement = "A3 terminal output advances sequence exactly once at the conserved byte offset before exit, and one terminal exit advances the final sequence exactly once and forbids later output."
+owning_crate = "peritus-app-protocol"
+source_file = "crates/app/peritus-app-protocol/src/verified/mod.rs"
+symbol = "peritus_app_protocol::verified::terminal_output_spec"
+status = "in-progress"
+dependencies = ["OBL-0195"]
+live_issue = "#24"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/app/peritus-app-protocol/src/verified/mod.rs", symbol = "peritus_app_protocol::verified::terminal_exit_spec", command = "cargo verus verify --package peritus-app-protocol --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/verified_refinement.rs", symbol = "peritus_app_protocol::tests::verified_refinement::terminal_and_bound_predicates_reject_post_terminal_or_excess_input", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "INV-027"
+kind = "invariant"
+statement = "Every A3 canonical collection, frame, string, diagnostic, event window, artifact chunk, prompt answer, terminal chunk, and shutdown record is admitted only within its independently configured nonzero bound."
+owning_crate = "peritus-app-protocol"
+source_file = "crates/app/peritus-app-protocol/src/verified/mod.rs"
+symbol = "peritus_app_protocol::verified::within_bound_spec"
+status = "in-progress"
+dependencies = ["OBL-0197"]
+live_issue = "#24"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/app/peritus-app-protocol/src/verified/mod.rs", symbol = "peritus_app_protocol::verified::within_bound_spec", command = "cargo verus verify --package peritus-app-protocol --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/verified_refinement.rs", symbol = "peritus_app_protocol::tests::verified_refinement::terminal_and_bound_predicates_reject_post_terminal_or_excess_input", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0189"
+kind = "contract"
+statement = "A3 version and feature negotiation is canonical and insertion-order-independent, chooses the greatest usable version, distinguishes compatible, downgraded, and incompatible outcomes, and cannot omit a required feature."
+owning_crate = "peritus-app-protocol"
+source_file = "crates/app/peritus-app-protocol/src/version/negotiation.rs"
+symbol = "peritus_app_protocol::version::negotiation::negotiate"
+status = "in-progress"
+dependencies = []
+live_issue = "#24"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/negotiation.rs", symbol = "peritus_app_protocol::tests::negotiation::negotiation_matrix_is_deterministic_and_explicit", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0190"
+kind = "contract"
+statement = "An A3 command submission binds actor, durable session, correlation, idempotency, request digest, expected revision, and exact canonical B3 envelope and command frames without duplicating B3 DTOs or treating decoded bytes as authority."
+owning_crate = "peritus-app-protocol"
+source_file = "crates/app/peritus-app-protocol/src/command/binding.rs"
+symbol = "peritus_app_protocol::command::binding::CommandBinding::new"
+status = "in-progress"
+dependencies = []
+live_issue = "#24"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/command_binding.rs", symbol = "peritus_app_protocol::tests::command_binding::binding_preserves_exact_b3_frames_and_rejects_revision_drift", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0191"
+kind = "invariant"
+statement = "The bounded A3 idempotency window replays only the same actor-session-key request digest and original result, reports changed reuse as conflict, and never evicts or invents an entry implicitly."
+owning_crate = "peritus-app-protocol"
+source_file = "crates/app/peritus-app-protocol/src/command/idempotency.rs"
+symbol = "peritus_app_protocol::command::idempotency::IdempotencyWindow::admit"
+status = "in-progress"
+dependencies = ["OBL-0190"]
+live_issue = "#24"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/idempotency.rs", symbol = "peritus_app_protocol::tests::idempotency::window_distinguishes_new_replay_conflict_capacity_and_removal", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0192"
+kind = "invariant"
+statement = "A3 at-least-once subscriptions preserve exact event/frame identity across redelivery, enforce cumulative acknowledgement legality, make retention gaps and snapshot requirements explicit, and apply bounded backpressure without loss."
+owning_crate = "peritus-app-protocol"
+source_file = "crates/app/peritus-app-protocol/src/subscription/transitions.rs"
+symbol = "peritus_app_protocol::subscription::transitions::SubscriptionState::deliver"
+status = "in-progress"
+dependencies = []
+live_issue = "#24"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/subscription_traces.rs", symbol = "peritus_app_protocol::tests::subscription_traces::resume_redelivery_ack_gap_and_backpressure_are_explicit", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0193"
+kind = "invariant"
+statement = "A3 artifact transfers bind metadata, identities, media type, size, digest and ordering, conserve byte count across bounded chunks, and distinguish completion, cancellation, and failure without claiming persistence."
+owning_crate = "peritus-app-protocol"
+source_file = "crates/app/peritus-app-protocol/src/artifact/state.rs"
+symbol = "peritus_app_protocol::artifact::state::ArtifactTransferState::accept_chunk"
+status = "in-progress"
+dependencies = []
+live_issue = "#24"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/artifact_traces.rs", symbol = "peritus_app_protocol::tests::artifact_traces::chunks_conserve_order_size_digest_and_terminal_state", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0194"
+kind = "contract"
+statement = "A3 approval and user-input answers retain exact prompt, request, session, actor, revision, freshness digest and cancellation generation, and stale or mismatched answers cannot be accepted."
+owning_crate = "peritus-app-protocol"
+source_file = "crates/app/peritus-app-protocol/src/prompt/state.rs"
+symbol = "peritus_app_protocol::prompt::state::PromptState::answer"
+status = "in-progress"
+dependencies = []
+live_issue = "#24"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/prompt_freshness.rs", symbol = "peritus_app_protocol::tests::prompt_freshness::answers_require_complete_binding_and_live_revision", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0195"
+kind = "invariant"
+statement = "A3 terminal attach, output, input, resize, detach, cancellation and exit messages retain attachment and process binding, bounded stream data, monotonic sequence and offset, and a single terminal ordering."
+owning_crate = "peritus-app-protocol"
+source_file = "crates/app/peritus-app-protocol/src/terminal/state.rs"
+symbol = "peritus_app_protocol::terminal::state::TerminalState::accept_output"
+status = "in-progress"
+dependencies = []
+live_issue = "#24"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/terminal_traces.rs", symbol = "peritus_app_protocol::tests::terminal_traces::terminal_attach_stream_resize_detach_cancel_and_exit_ordering_is_exact", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0196"
+kind = "contract"
+statement = "A3 daemon readiness, read-only diagnostics, heartbeat and shutdown states remain distinct truthful observations, and clean completion cannot be constructed with remaining work."
+owning_crate = "peritus-app-protocol"
+source_file = "crates/app/peritus-app-protocol/src/daemon/shutdown.rs"
+symbol = "peritus_app_protocol::daemon::shutdown::ShutdownState::complete"
+status = "in-progress"
+dependencies = []
+live_issue = "#24"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/daemon_controls.rs", symbol = "peritus_app_protocol::tests::daemon_controls::readiness_heartbeat_diagnostics_and_shutdown_report_truthful_states", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0197"
+kind = "contract"
+statement = "The six closed A3 PRTS families 94 through 99 have canonical schema-one typed decoders that consume complete bounded payloads and reject foreign family, schema, tag, malformed semantics, truncation, and trailing bytes."
+owning_crate = "peritus-app-protocol"
+source_file = "crates/app/peritus-app-protocol/src/wire/mod.rs"
+symbol = "peritus_app_protocol::wire::decode_app_message"
+status = "in-progress"
+dependencies = ["OBL-0190", "OBL-0192", "OBL-0193", "OBL-0194", "OBL-0195", "OBL-0196"]
+live_issue = "#24"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/wire_matrix.rs", symbol = "peritus_app_protocol::tests::wire_matrix::all_six_families_round_trip_and_reject_malformed_frames", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0198"
+kind = "refinement"
+statement = "The independent sixteen-case A2 protocol catalog exercises the complete A3 public contract without importing A3 implementation internals."
+owning_crate = "peritus-conformance"
+source_file = "crates/app/testing/peritus-conformance/tests/conformance/protocol_catalog.rs"
+symbol = "peritus_conformance::tests::conformance::protocol_catalog::protocol_catalog_runs_all_sixteen_cases"
+status = "in-progress"
+dependencies = ["INV-023", "INV-024", "INV-025", "INV-026", "INV-027", "OBL-0197"]
+live_issue = "#24"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/app/testing/peritus-conformance/tests/conformance/protocol_catalog.rs", symbol = "peritus_conformance::tests::conformance::protocol_catalog::protocol_catalog_runs_all_sixteen_cases", command = "cargo test --package peritus-conformance --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0199"
+kind = "refinement"
+statement = "A3 Rust schema metadata, generated Draft 2020-12 JSON Schema and TypeScript declarations, and classified SHA-256 compatibility fixtures deterministically agree with the canonical typed wire contract."
+owning_crate = "peritus-app-protocol"
+source_file = "crates/app/peritus-app-protocol/tests/schema_assets.rs"
+symbol = "peritus_app_protocol::tests::schema_assets::checked_in_schema_and_fixture_assets_match_rust_metadata"
+status = "in-progress"
+dependencies = ["OBL-0197"]
+live_issue = "#24"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/schema_assets.rs", symbol = "peritus_app_protocol::tests::schema_assets::checked_in_schema_and_fixture_assets_match_rust_metadata", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
+]
