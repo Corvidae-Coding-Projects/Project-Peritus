@@ -41,5 +41,6 @@ pub(super) const fn kind_tag(kind: AggregateKind) -> u16 {
         AggregateKind::Orchestrator => 12,
         AggregateKind::Harness => 13,
         AggregateKind::Debugger => 14,
+        AggregateKind::Evaluation => 15,
     }
 }

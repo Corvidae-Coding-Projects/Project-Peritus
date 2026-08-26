@@ -56,6 +56,9 @@ export const MESSAGE_FAMILY = {
   DEBUGGER_COMMAND: 82,
   DEBUGGER_EVENT: 83,
   DEBUGGER_STATE: 84,
+  EVALUATION_COMMAND: 85,
+  EVALUATION_EVENT: 86,
+  EVALUATION_STATE: 87,
 } as const;
 
 export type MessageFamilyTag = typeof MESSAGE_FAMILY[keyof typeof MESSAGE_FAMILY];

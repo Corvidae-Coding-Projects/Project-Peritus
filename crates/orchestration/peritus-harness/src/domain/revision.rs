@@ -21,6 +21,19 @@ pub struct HarnessRevisionIdentity {
 }
 
 impl HarnessRevisionIdentity {
+    /// Reconstructs an inert exact identity from already validated component values.
+    ///
+    /// This does not create or validate harness contents; callers that need a usable revision
+    /// must resolve the identity through the E1 aggregate.
+    #[must_use]
+    pub const fn new(
+        harness_id: HarnessId,
+        number: RevisionNumber,
+        digest: RevisionDigest,
+    ) -> Self {
+        Self { harness_id, number, digest }
+    }
+
     /// Returns the stable lineage identity.
     #[must_use]
     pub const fn harness_id(self) -> HarnessId {

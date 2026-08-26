@@ -56,7 +56,10 @@
     {"tag": 81, "name": "harness-state", "schemaVersion": 1, "inertOnly": true},
     {"tag": 82, "name": "debugger-command", "schemaVersion": 1, "inertOnly": true},
     {"tag": 83, "name": "debugger-event", "schemaVersion": 1, "inertOnly": true},
-    {"tag": 84, "name": "debugger-state", "schemaVersion": 1, "inertOnly": true}
+    {"tag": 84, "name": "debugger-state", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 85, "name": "evaluation-command", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 86, "name": "evaluation-event", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 87, "name": "evaluation-state", "schemaVersion": 1, "inertOnly": true}
   ],
   "variants": {
     "kernel-command": [

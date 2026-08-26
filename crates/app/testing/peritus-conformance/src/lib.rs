@@ -9,6 +9,7 @@ mod collaboration;
 mod contracts;
 mod debugger;
 mod descriptor;
+mod evaluation;
 mod facade;
 mod failure;
 mod gate;

@@ -126,6 +126,8 @@ pub enum AggregateKind {
     Harness,
     /// E2 durable evidence-linked debugger jobs and reports.
     Debugger,
+    /// E3 durable reproducible evaluation campaigns and reports.
+    Evaluation,
 }
 
 impl AggregateKind {
@@ -145,6 +147,7 @@ impl AggregateKind {
             Self::Orchestrator => 12,
             Self::Harness => 13,
             Self::Debugger => 14,
+            Self::Evaluation => 15,
         }
     }
 
@@ -164,6 +167,7 @@ impl AggregateKind {
             Self::Orchestrator => 12,
             Self::Harness => 13,
             Self::Debugger => 14,
+            Self::Evaluation => 15,
         }
     }
 
@@ -183,6 +187,7 @@ impl AggregateKind {
             12 => Some(Self::Orchestrator),
             13 => Some(Self::Harness),
             14 => Some(Self::Debugger),
+            15 => Some(Self::Evaluation),
             _ => None,
         }
     }

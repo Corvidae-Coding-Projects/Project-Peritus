@@ -71,11 +71,16 @@ The implemented foundation and runtime spine now covers:
   failure taxonomy, citation-complete root-cause analysis, cross-run pattern clustering, E1
   component correlation and harness-health summaries, optional strictly validated C5/C6 model
   assistance, plus crash-safe jobs, replay, report artifact/evidence publication, protocol
-  fixtures, migration, Verus obligations, and independent A2 conformance.
+  fixtures, migration, Verus obligations, and independent A2 conformance; and
+- E3: immutable dataset and evaluator isolation, exact E1/C5/C2/C3 profile binding, deterministic
+  paired D3 rollout plans, complete attempt/outcome/resource accounting, frozen integer/fixed-point
+  statistical analysis, crash-safe schedule/execution/publication effects, canonical reports,
+  C0 evidence admission, protocol fixtures, migration, Verus refinements, and independent A2
+  conformance without harness mutation or promotion authority.
 
 These are library and verification layers. There is not yet a user-facing `peritus` CLI, daemon,
-TUI, harness evaluation/promotion runtime, or native packaged-host qualification. A3, E3, F0,
-G0–G3, and H0–H4 remain before production release and qualification.
+TUI, harness evolution/promotion runtime, or native packaged-host qualification. A3, F0, G0–G3,
+and H0–H4 remain before production release and qualification.
 
 Gate A is the current merge authority: ordinary Rust checks, architecture and API policy,
 supply-chain policy, pinned toolchains, full Verus verification, and verified release builds must
@@ -126,6 +131,10 @@ and ancestor rollback. The
 [E2 debugger guide](docs/e2-debugger.md) documents exact subject and evidence binding,
 deterministic selection/timelines/causes/clustering, closed taxonomy, citations, optional validated
 model analysis, durable replay/publication, and the non-mutation/non-authority boundary. The
+[E3 evaluation guide](docs/e3-evaluation.md) documents immutable datasets and profiles,
+candidate/evaluator isolation, deterministic paired planning, complete outcome/resource
+accounting, frozen statistical methods, durable execution/publication, replay, migration, and the
+non-promotion boundary. The
 [C2 process and sandbox guide](docs/c2-process-sandbox.md) documents structured process execution,
 complete sandbox contracts, target-owned launch authorization, bounded supervision, terminal
 accounting, restart reconciliation, and holder quiescence.

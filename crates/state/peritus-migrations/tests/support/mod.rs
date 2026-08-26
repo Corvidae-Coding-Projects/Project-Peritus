@@ -42,7 +42,7 @@ pub fn config(temp: &TempDir, database: PathBuf) -> MigrationConfig {
         database,
         temp.path().join("backups"),
         "test-release",
-        ApplicationCompatibility::new(0, version(7)).expect("compatibility"),
+        ApplicationCompatibility::new(0, version(8)).expect("compatibility"),
         0,
     )
     .expect("migration config")
