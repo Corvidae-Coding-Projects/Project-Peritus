@@ -1,6 +1,6 @@
 {
   "next_display_id": 26,
-  "next_comment_id": 403,
+  "next_comment_id": 404,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -3587,10 +3587,21 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T22:59:08.003031292Z",
-      "updated_at": "2026-08-26T22:59:13.302440777Z",
+      "updated_at": "2026-08-26T22:59:35.892726708Z",
       "labels": [
         "feature"
-      ]
+      ],
+      "comments": {
+        "4e977a55-fa62-464d-b713-fb832910296a": {
+          "display_id": 403,
+          "author": "6ME5",
+          "content": "[action] Started G0 from merged PR #31 at origin/main 402d7516; preflight and interface maps complete; authoring signed design before implementation",
+          "created_at": "2026-08-26T22:59:35.890338318Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAiiVOaOKPNMwfAeIfNrCCXAVXN8DSDpTj4VMablcP0+rsL9DoYWmCu7DwY8PFq1zQrqqoIuuz7+pi2d1l12T9CQ=="
+        }
+      }
     },
     "d94caf6d-2292-44ca-9393-3c7970c87f4f": {
       "uuid": "d94caf6d-2292-44ca-9393-3c7970c87f4f",
@@ -4086,8 +4097,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-26T22:59:27.763856624Z",
+    "timestamp": "2026-08-26T22:59:35.892726708Z",
     "agent_id": "6ME5",
-    "agent_seq": 544
+    "agent_seq": 545
   }
 }
