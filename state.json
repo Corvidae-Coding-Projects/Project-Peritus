@@ -1,9 +1,10 @@
 {
-  "next_display_id": 23,
+  "next_display_id": 24,
   "next_comment_id": 382,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
+    "14913d8a-8b79-4929-8613-5e6f011364fa": 23,
     "19b7b53a-b2fb-41c1-835d-ffd6ce605c08": 14,
     "2b288a30-b5b1-4452-81bd-20950bebd2d3": 9,
     "338b10ed-ebc5-4da2-a725-fa46ca662fda": 12,
@@ -288,6 +289,17 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA3EWk4Cd6EVGFWlaMUqhZymV1QhcsOOZaHg8gZX4gyybzlGI73guL0sazChfAge1lc6RZKlxQOg/rkvILv+etCw=="
         }
       }
+    },
+    "14913d8a-8b79-4929-8613-5e6f011364fa": {
+      "uuid": "14913d8a-8b79-4929-8613-5e6f011364fa",
+      "display_id": 23,
+      "title": "F0 Production Harness Evolution",
+      "description": "Goal: \n\nAcceptance criteria:\n- \n\n## Summary\nImplement the complete F0 peritus-evolution production slice on merged E1-E3 foundations.\n\n## Scope\nDeliver durable immutable evolution campaigns, typed change manifests and variants, deterministic attribution and multi-objective selection, verified evaluator isolation and promotion safety, authorized atomic production-pointer promotion and rollback, protocol/codec/migration/projection/evidence integration, A2 conformance, Verus proof roots, documentation, and complete runner evidence.\n\n## Acceptance\nA signed design precedes implementation. Focused F0 verification and serialized Gate A pass. A signed PR is open and mergeable with all required Linux, macOS, Windows, Foundation, and Verus checks green.\n\n## Constraints\nNo MVP, stubs, god files, Crosslink kickoff, concurrent heavyweight builds, or staging of local provider metadata.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "6ME5",
+      "created_at": "2026-08-26T15:36:15.834953593Z",
+      "updated_at": "2026-08-26T15:36:15.834953593Z"
     },
     "19b7b53a-b2fb-41c1-835d-ffd6ce605c08": {
       "uuid": "19b7b53a-b2fb-41c1-835d-ffd6ce605c08",
@@ -3841,8 +3853,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-26T11:22:39.167040286Z",
+    "timestamp": "2026-08-26T15:36:15.834953593Z",
     "agent_id": "6ME5",
-    "agent_seq": 510
+    "agent_seq": 511
   }
 }
