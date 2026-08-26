@@ -10,7 +10,7 @@ fmt:
 build:
     cargo build --workspace --all-targets --all-features --locked
 test:
-    cargo test --workspace --all-targets --all-features --locked
+    cargo test --workspace --all-targets --all-features --locked -- --test-threads=1
 doc-test:
     cargo test --doc --workspace --all-features --locked
 clippy:
@@ -71,7 +71,7 @@ fn ignored_failure_sigil_and_partial_deny_are_rejected() {
 #[test]
 fn multiline_commands_are_validated_after_joining() {
     let altered = CANONICAL.replace(
-        "cargo test --workspace --all-targets --all-features --locked",
+        "cargo test --workspace --all-targets --all-features --locked -- --test-threads=1",
         "cargo test --workspace \\\n+      --all-targets --all-features",
     );
     let diagnostics = validate(&altered);
@@ -120,8 +120,8 @@ fn just_rejects_wrapper_and_path_assignments_but_retains_exact_docs_flags() {
             "RUSTC_WRAPPER=./evil cargo build --workspace --all-targets --all-features --locked",
         ),
         CANONICAL.replace(
-            "cargo test --workspace --all-targets --all-features --locked",
-            "PATH=./attacker cargo test --workspace --all-targets --all-features --locked",
+            "cargo test --workspace --all-targets --all-features --locked -- --test-threads=1",
+            "PATH=./attacker cargo test --workspace --all-targets --all-features --locked -- --test-threads=1",
         ),
     ] {
         assert_ne!(altered, CANONICAL, "fixture mutation must apply");

@@ -3,7 +3,7 @@ use super::verus_commands::{
     VERUS_WORKSPACE_VERIFY_ARGS,
 };
 use super::workflow_actionlint;
-use super::workflow_commands::{ParsedScript, parse_script};
+use super::workflow_commands::{ParsedScript, WORKSPACE_TEST_ARGS, parse_script};
 use super::workflow_governance::{
     candidate_checkout, config_step, exact_keys, integer, mapping_value, rust_step, string,
 };
@@ -71,11 +71,7 @@ fn rust_gate_is_exact(job: &Yaml) -> bool {
                     "matrix.operation == 'build'",
                     &["build", "--workspace", "--all-targets", "--all-features", "--locked"],
                 )
-                && conditional_cargo(
-                    &steps[5],
-                    "matrix.operation == 'test'",
-                    &["test", "--workspace", "--all-targets", "--all-features", "--locked"],
-                )
+                && conditional_cargo(&steps[5], "matrix.operation == 'test'", WORKSPACE_TEST_ARGS)
                 && conditional_cargo(
                     &steps[6],
                     "matrix.operation == 'doc-test'",

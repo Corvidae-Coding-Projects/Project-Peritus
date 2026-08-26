@@ -129,8 +129,8 @@ fn workflow_root_controls_are_exact_and_automatic() {
 fn ci_cargo_steps_reject_wrapper_and_path_assignments() {
     for (needle, replacement) in [
         (
-            "run: cargo test --workspace --all-targets --all-features --locked",
-            "run: RUSTC_WRAPPER=./evil cargo test --workspace --all-targets --all-features --locked",
+            "run: cargo test --workspace --all-targets --all-features --locked -- --test-threads=1",
+            "run: RUSTC_WRAPPER=./evil cargo test --workspace --all-targets --all-features --locked -- --test-threads=1",
         ),
         ("run: cargo deny --locked check", "run: PATH=./attacker cargo deny --locked check"),
     ] {

@@ -47,7 +47,7 @@ fn managed_proxy_forwards_http_injects_scoped_credential_and_joins() {
     let upstream = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
     let port = upstream.local_addr().unwrap().port();
     let upstream_task = thread::spawn(move || {
-        let (mut stream, _) = upstream.accept().unwrap();
+        let mut stream = accept_with_timeout(&upstream);
         let head = read_head(&mut stream);
         assert!(head.contains("GET /value HTTP/1.1"));
         assert!(head.contains("Authorization: Bearer canary-value"));
@@ -110,7 +110,7 @@ fn managed_proxy_connect_tunnels_bidirectionally_and_joins_both_relays() {
     let upstream = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
     let port = upstream.local_addr().unwrap().port();
     let upstream_task = thread::spawn(move || {
-        let (mut stream, _) = upstream.accept().unwrap();
+        let mut stream = accept_with_timeout(&upstream);
         let mut request = [0_u8; 4];
         stream.read_exact(&mut request).unwrap();
         assert_eq!(&request, b"ping");
@@ -162,7 +162,7 @@ fn proxy_shutdown_cancels_an_active_connect_and_joins_the_worker() {
     let upstream = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
     let port = upstream.local_addr().unwrap().port();
     let upstream_task = thread::spawn(move || {
-        let (mut stream, _) = upstream.accept().unwrap();
+        let mut stream = accept_with_timeout(&upstream);
         stream.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
         let mut bytes = Vec::new();
         let _ = stream.read_to_end(&mut bytes);
@@ -209,7 +209,7 @@ fn worker_bound_applies_backpressure_and_shutdown_joins_the_active_tunnel() {
     let upstream = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
     let port = upstream.local_addr().unwrap().port();
     let upstream_task = thread::spawn(move || {
-        let (mut stream, _) = upstream.accept().unwrap();
+        let mut stream = accept_with_timeout(&upstream);
         stream.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
         let mut bytes = Vec::new();
         let _ = stream.read_to_end(&mut bytes);
@@ -294,7 +294,7 @@ fn connect_byte_ceiling_stops_the_tunnel_and_reports_a_limited_close() {
     let upstream = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
     let port = upstream.local_addr().unwrap().port();
     let upstream_task = thread::spawn(move || {
-        let (mut stream, _) = upstream.accept().unwrap();
+        let mut stream = accept_with_timeout(&upstream);
         let mut bytes = Vec::new();
         stream.read_to_end(&mut bytes).unwrap();
         assert!(bytes.is_empty());
@@ -331,8 +331,7 @@ fn connect_byte_ceiling_stops_the_tunnel_and_reports_a_limited_close() {
     assert!(read_head(&mut client).starts_with("HTTP/1.1 200"));
     let _ = client.write_all(b"ping");
     let _ = client.shutdown(Shutdown::Write);
-    let mut response = Vec::new();
-    let _ = client.read_to_end(&mut response);
+    let _ = read_to_close(&mut client);
     upstream_task.join().unwrap();
     wait_for_closed(&proxy, ConnectionDecision::Limited);
     assert!(proxy.shutdown().unwrap().workers_joined());

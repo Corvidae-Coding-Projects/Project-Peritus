@@ -3,7 +3,7 @@ use super::verus_commands::{
     VERUS_WORKSPACE_VERIFY_ARGS,
 };
 use super::workflow_command_policy;
-use super::workflow_commands::{CommandPolicy, parse_script};
+use super::workflow_commands::{CommandPolicy, WORKSPACE_TEST_ARGS, parse_script};
 use crate::error::{Diagnostic, XtaskError};
 use std::collections::BTreeMap;
 use std::fs;
@@ -81,7 +81,7 @@ fn validate_recipe_contract(recipes: &BTreeMap<String, Recipe>, diagnostics: &mu
     for (name, operation) in [
         ("fmt", &["fmt", "--all", "--", "--check"][..]),
         ("build", &["build", "--workspace", "--all-targets", "--all-features", "--locked"][..]),
-        ("test", &["test", "--workspace", "--all-targets", "--all-features", "--locked"][..]),
+        ("test", WORKSPACE_TEST_ARGS),
         ("doc-test", &["test", "--doc", "--workspace", "--all-features", "--locked"][..]),
         (
             "clippy",

@@ -131,7 +131,7 @@ jobs:
       - name: Run tests
         if: matrix.operation == 'test'
         working-directory: candidate
-        run: cargo test --workspace --all-targets --all-features --locked
+        run: cargo test --workspace --all-targets --all-features --locked -- --test-threads=1
       - name: Run documentation tests
         if: matrix.operation == 'doc-test'
         working-directory: candidate

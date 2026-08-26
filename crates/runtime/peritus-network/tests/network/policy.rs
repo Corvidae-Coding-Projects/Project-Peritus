@@ -89,7 +89,7 @@ fn inherited_listener_bridge_accepts_inside_namespace_and_connects_from_parent()
     let upstream = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
     let upstream_port = upstream.local_addr().unwrap().port();
     let upstream_task = thread::spawn(move || {
-        let (mut stream, _) = upstream.accept().unwrap();
+        let mut stream = accept_with_timeout(&upstream);
         let _ = read_head(&mut stream);
         stream
             .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nOK")

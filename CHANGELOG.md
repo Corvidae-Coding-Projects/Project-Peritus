@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+- Bound managed-network integration fixture accepts and reads, and serialize canonical test
+  execution per binary so a transient macOS socket stall fails promptly instead of exhausting a
+  hosted runner (#20)
+
 ### Added
 - Implement complete production E1 Harness Materialization (#20)
 - Deliver complete production E1 harness materialization as the H-class `peritus-harness` crate,
