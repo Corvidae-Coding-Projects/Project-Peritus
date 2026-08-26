@@ -1,6 +1,6 @@
 {
   "next_display_id": 24,
-  "next_comment_id": 388,
+  "next_comment_id": 389,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -304,7 +304,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T15:36:15.834953593Z",
-      "updated_at": "2026-08-26T16:05:03.484857651Z",
+      "updated_at": "2026-08-26T16:47:04.886934970Z",
       "labels": [
         "feature"
       ],
@@ -362,6 +362,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA66Q06QuAvoohFMxH0hD2OHyMj1PX2ndlJ4fMKxX71x/XzGEQr5zLYD8khMoINLsKFgA4n7JHIn6Tbsrp0vV5Bw=="
+        },
+        "df68813e-0d82-4e39-81c8-e9fec4f2f550": {
+          "display_id": 388,
+          "author": "6ME5",
+          "content": "[action] F0 domain, persistence/B3 migration, A2, docs, formal inventory, durable ordinary commits/replay, atomic promotion-rollback approval consumption, publication/runtime adapters, and projections implemented; canonical six-family wire and focused tests are the two remaining active lanes before serialized compilation.",
+          "created_at": "2026-08-26T16:47:04.881147126Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAquJpo7Ixfx+SBRLmzM/nA2/WgWK0ovMQP1GH8HEin+w1P5ZCH5qQ0SchykVOwQLZ0004DYt1pCRtg5b1ZGFSBw=="
         }
       }
     },
@@ -3917,8 +3926,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-26T16:05:03.484857651Z",
+    "timestamp": "2026-08-26T16:47:04.886934970Z",
     "agent_id": "6ME5",
-    "agent_seq": 519
+    "agent_seq": 520
   }
 }
