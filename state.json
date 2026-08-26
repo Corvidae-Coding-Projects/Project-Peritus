@@ -1,6 +1,6 @@
 {
   "next_display_id": 21,
-  "next_comment_id": 356,
+  "next_comment_id": 357,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -3419,7 +3419,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-25T23:07:27.355677826Z",
-      "updated_at": "2026-08-26T03:53:51.870633977Z",
+      "updated_at": "2026-08-26T03:59:29.709648348Z",
       "labels": [
         "E1",
         "feature"
@@ -3524,6 +3524,15 @@
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAVucgIVilYLIINjc0op/kZ2uhFBzfR5lagx68N5Xfc6PTYX9We8UJ7WmV+xxbXrSDJ3D2/OW4slgkPcsV+6WDBw=="
         },
+        "a76af8c5-de13-4ae0-8376-2e2c0945ada1": {
+          "display_id": 356,
+          "author": "6ME5",
+          "content": "Runner stabilization patch is locally green: peritus-network all targets/features passed with canonical single-thread execution; the 14-test managed-network integration suite also passed three consecutive parallel stress runs; strict Clippy passed for peritus-network and xtask; 87 reproducibility tests, formatting, git diff check, and xtask all passed. The original single full local Gate A remains the only full local Gate A run.",
+          "created_at": "2026-08-26T03:59:29.706741769Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA6GQaP67KFIIgmB1JKNHUE5/HYjNkHrmcVgP9DfnCbGqQbnWWkZzgQ5lyWSDYHBZCF1y5W460cZV96l+n0CyNDg=="
+        },
         "c404c366-1f82-46f8-8391-61068bc9e309": {
           "display_id": 342,
           "author": "6ME5",
@@ -3574,8 +3583,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-26T03:53:51.870633977Z",
+    "timestamp": "2026-08-26T03:59:29.709648348Z",
     "agent_id": "6ME5",
-    "agent_seq": 472
+    "agent_seq": 473
   }
 }
