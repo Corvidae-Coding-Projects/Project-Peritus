@@ -19,6 +19,10 @@ pub use crate::gate::{
     GateConformanceError, GateConformanceFixture, GateConformanceObservation,
     GateConformanceSubject, GateScenario, GateTerminal, gate_suite,
 };
+pub use crate::harness_materialization::{
+    HarnessConformanceError, HarnessConformanceFixture, HarnessConformanceObservation,
+    HarnessConformanceSubject, HarnessScenario, HarnessTerminal, harness_suite,
+};
 pub use crate::identity::*;
 pub use crate::journal::{
     JournalAppendDisposition, JournalAppendFixture, JournalAppendObservation,

@@ -49,6 +49,54 @@ pub fn verify_finalized(
     verify_exact(path, digest, size, ExistingFailure::Corruption)
 }
 
+pub fn read_finalized(
+    path: &Path,
+    digest: ArtifactDigest,
+    size: u64,
+    maximum_bytes: u64,
+) -> Result<Vec<u8>, ArtifactStoreError> {
+    if size > maximum_bytes {
+        return Err(ArtifactStoreError::limit(ErrorCode::ByteLimitExceeded, size, maximum_bytes));
+    }
+    let path_metadata = fs::symlink_metadata(path).map_err(|error| {
+        if error.kind() == std::io::ErrorKind::NotFound {
+            ArtifactStoreError::message(
+                ErrorCode::MissingArtifact,
+                RecoveryClass::RecoverStore,
+                "artifact file is missing",
+            )
+        } else {
+            io(StoreOperation::InspectObject, error)
+        }
+    })?;
+    if !path_metadata.file_type().is_file() {
+        return Err(corrupt("artifact object is not a regular file"));
+    }
+    let capacity = usize::try_from(size).map_err(|_| overflow())?;
+    let file = File::open(path).map_err(|error| io(StoreOperation::InspectObject, error))?;
+    let mut bytes = Vec::with_capacity(capacity);
+    let read_limit = maximum_bytes.checked_add(1).ok_or_else(overflow)?;
+    file.take(read_limit)
+        .read_to_end(&mut bytes)
+        .map_err(|error| io(StoreOperation::InspectObject, error))?;
+    let actual_size = u64::try_from(bytes.len()).map_err(|_| overflow())?;
+    if actual_size > maximum_bytes {
+        return Err(ArtifactStoreError::limit(
+            ErrorCode::ByteLimitExceeded,
+            actual_size,
+            maximum_bytes,
+        ));
+    }
+    if actual_size != size {
+        return Err(corrupt("artifact bytes disagree with durable size"));
+    }
+    let actual_digest = ArtifactDigest::new(Sha256::digest(&bytes).into());
+    if actual_digest != digest {
+        return Err(corrupt("artifact bytes disagree with durable digest"));
+    }
+    Ok(bytes)
+}
+
 pub fn inspect_file(
     path: &Path,
     expected_digest: ArtifactDigest,

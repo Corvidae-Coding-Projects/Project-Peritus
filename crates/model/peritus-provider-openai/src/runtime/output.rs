@@ -4,7 +4,7 @@ use std::collections::{BTreeSet, HashSet};
 use std::fmt;
 
 use peritus_model_protocol::{CanonicalJson, JsonBounds, ProtocolLimits, UsageCounters};
-use serde::de::{self, Deserialize, Deserializer, MapAccess, Visitor};
+use serde::de::{self, Deserializer, MapAccess, Visitor};
 use serde_json::Value;
 
 const MAX_JSONL_LINES: usize = 100_000;
@@ -75,7 +75,7 @@ struct StructuredToolCall {
     arguments_json: String,
 }
 
-impl<'de> Deserialize<'de> for StructuredTurn {
+impl<'de> de::Deserialize<'de> for StructuredTurn {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -114,7 +114,7 @@ impl<'de> Visitor<'de> for StructuredTurnVisitor {
     }
 }
 
-impl<'de> Deserialize<'de> for StructuredToolCall {
+impl<'de> de::Deserialize<'de> for StructuredToolCall {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,

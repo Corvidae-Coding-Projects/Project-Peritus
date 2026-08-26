@@ -30,6 +30,7 @@ pub use authorization::WorkspaceAuthorizationRequest;
 pub use caller::{ReadOnlyTargetBinding, WorkspaceCallerBinding};
 pub use candidate::{
     CandidateOutcome, candidate_authorization_payload, candidate_authorization_payload_for_caller,
+    predicted_candidate_authorization_payload,
 };
 pub use error::{ErrorCode, RecoveryClass, WorkspaceError, WorkspaceOperation};
 pub use gateway::WorkspaceGateway;

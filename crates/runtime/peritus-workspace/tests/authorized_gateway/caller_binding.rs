@@ -7,7 +7,8 @@ use peritus_workspace::{
     MutationOutcome, RollbackRequest, WorkspaceCallerBinding, WorkspaceState,
     candidate_authorization_payload, candidate_authorization_payload_for_caller,
     patch_authorization_payload, patch_authorization_payload_for_caller,
-    rollback_authorization_payload, rollback_authorization_payload_for_caller,
+    predicted_candidate_authorization_payload, rollback_authorization_payload,
+    rollback_authorization_payload_for_caller,
 };
 use tempfile::TempDir;
 
@@ -120,6 +121,21 @@ pub fn assert_candidate_payload(
     assert_eq!(
         candidate_authorization_payload_for_caller(mutation, snapshot, caller),
         candidate_authorization_payload_for_caller(mutation, snapshot, caller)
+    );
+}
+
+pub fn assert_predicted_candidate_payload(mutation: &MutationOutcome, snapshot: SnapshotId) {
+    assert_eq!(
+        candidate_authorization_payload(mutation, snapshot),
+        predicted_candidate_authorization_payload(
+            mutation.action_id(),
+            mutation.workspace_id(),
+            mutation.resource_id(),
+            mutation.generation(),
+            mutation.revision(),
+            mutation.patch_identity(),
+            snapshot,
+        ),
     );
 }
 

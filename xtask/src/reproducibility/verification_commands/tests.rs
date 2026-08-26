@@ -86,6 +86,12 @@ owner = "C1"
 layer = "runtime"
 verification_class = "H"
 [[packages]]
+name = "peritus-harness"
+path = "crates/orchestration/peritus-harness"
+owner = "E1"
+layer = "orchestration"
+verification_class = "H"
+[[packages]]
 name = "peritus-journal"
 path = "crates/state/peritus-journal"
 owner = "C0"

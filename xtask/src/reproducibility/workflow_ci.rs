@@ -1,3 +1,5 @@
+mod yaml;
+
 use super::verus_commands::{
     VERUS_STRICT_BUILD_ARGS, VERUS_STRICT_VERIFY_ARGS, VERUS_WORKSPACE_BUILD_ARGS,
     VERUS_WORKSPACE_VERIFY_ARGS,
@@ -8,6 +10,8 @@ use crate::model::ToolchainPolicy;
 use std::path::Path;
 use yaml_rust2::Yaml;
 use yaml_rust2::yaml::Hash;
+
+use self::yaml::{exact_keys, integer, mapping_value, string};
 
 const CHECKOUT: &str = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1";
 const RUST_ACTION: &str = "dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772";
@@ -232,8 +236,15 @@ fn root_env_is_exact(workflow: &Hash, tools: &ToolchainPolicy) -> bool {
     let Some(env) = mapping_value(workflow, "env").and_then(Yaml::as_hash) else { return false };
     exact_keys(
         env,
-        &["RUST_VERSION", "VERUS_VERSION", "VERUS_LINUX_SHA256", "PERITUS_PROOF_IMPACT_BASE"],
-    ) && string(env, "RUST_VERSION") == Some(&tools.rust)
+        &[
+            "CARGO_BUILD_JOBS",
+            "RUST_VERSION",
+            "VERUS_VERSION",
+            "VERUS_LINUX_SHA256",
+            "PERITUS_PROOF_IMPACT_BASE",
+        ],
+    ) && string(env, "CARGO_BUILD_JOBS") == Some("1")
+        && string(env, "RUST_VERSION") == Some(&tools.rust)
         && string(env, "VERUS_VERSION") == Some(&tools.verus)
         && string(env, "VERUS_LINUX_SHA256") == Some(&tools.archives.linux_x86_64.sha256)
         && string(env, "PERITUS_PROOF_IMPACT_BASE") == Some(PROOF_IMPACT_BASE_REFERENCE)
@@ -373,25 +384,8 @@ fn cargo_script(script: Option<&str>, expected: &[&str]) -> bool {
     script.map(parse_script).is_some_and(|parsed| parsed.exact_cargo_command(expected))
 }
 
-fn exact_keys(mapping: &Hash, expected: &[&str]) -> bool {
-    mapping.len() == expected.len()
-        && mapping.keys().all(|key| key.as_str().is_some_and(|key| expected.contains(&key)))
-}
-
-fn string<'a>(mapping: &'a Hash, key: &str) -> Option<&'a str> {
-    mapping_value(mapping, key).and_then(Yaml::as_str)
-}
-
-fn integer(mapping: &Hash, key: &str) -> Option<i64> {
-    mapping_value(mapping, key).and_then(Yaml::as_i64)
-}
-
 fn require(valid: bool, path: &Path, message: &str, help: &str, diagnostics: &mut Vec<Diagnostic>) {
     if !valid {
         diagnostics.push(Diagnostic::at(path, message, help));
     }
-}
-
-fn mapping_value<'a>(mapping: &'a Hash, key: &str) -> Option<&'a Yaml> {
-    mapping.get(&Yaml::String(key.to_owned()))
 }

@@ -1553,6 +1553,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "peritus-harness"
+version = "0.0.0"
+dependencies = [
+ "peritus-artifact-store",
+ "peritus-codec",
+ "peritus-git",
+ "peritus-journal",
+ "peritus-patch",
+ "peritus-test-support",
+ "peritus-types",
+ "peritus-workspace",
+ "serde",
+ "tempfile",
+ "toml",
+ "vstd",
+]
+
+[[package]]
 name = "peritus-journal"
 version = "0.0.0"
 dependencies = [

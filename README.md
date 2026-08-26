@@ -62,11 +62,15 @@ The implemented foundation and runtime spine now covers:
 - E0: a durable deterministic AcTor delivery orchestrator that composes writer D0 turns, fresh D1
   gates, independent D2 review, bounded fixer revision cycles, D3 work/task ownership, B2
   evaluation, and durable B0 acceptance truth with commit-before-effect directives, pause,
-  cancellation, and exact restart reconciliation.
+  cancellation, and exact restart reconciliation; and
+- E1: strict C1-backed harness manifests and complete typed component catalogs, deterministic
+  compatibility/authority graphs, protected controlled assets, immutable content-addressed
+  revision DAGs, exact owned-path C1 materialization and ancestor rollback, plus C0 durability,
+  replay, projections, protocol fixtures, and independent A2 conformance.
 
 These are library and verification layers. There is not yet a user-facing `peritus` CLI, daemon,
-TUI, harness materialization/evolution runtime, or native packaged-host qualification. A3,
-E1–E3, F0, G0–G3, and H0–H4 remain before production release and qualification.
+TUI, harness diagnosis/evaluation/promotion runtime, or native packaged-host qualification. A3,
+E2–E3, F0, G0–G3, and H0–H4 remain before production release and qualification.
 
 Gate A is the current merge authority: ordinary Rust checks, architecture and API policy,
 supply-chain policy, pinned toolchains, full Verus verification, and verified release builds must
@@ -111,6 +115,9 @@ The [C0 durable-state guide](docs/c0-durable-state.md) documents the journal, pr
 artifacts, migrations, and evidence boundary. The [C1 workspace guide](docs/c1-workspaces.md)
 documents structured Git worktrees, typed atomic patches, target-owned authorization, snapshots,
 rollback, and restart reconciliation. The
+[E1 harness-materialization guide](docs/e1-harness-materialization.md) documents strict manifest
+inventory, checked component graphs, immutable revision history, C0/C1 materialization, restart,
+and ancestor rollback. The
 [C2 process and sandbox guide](docs/c2-process-sandbox.md) documents structured process execution,
 complete sandbox contracts, target-owned launch authorization, bounded supervision, terminal
 accounting, restart reconciliation, and holder quiescence.

@@ -3,7 +3,7 @@
 use peritus_artifact_store::{ArtifactDigest, ArtifactStore, FinalizedArtifact};
 use peritus_git::{CandidateRequest, CandidateSnapshot, SnapshotRequest};
 use peritus_patch::PatchIdentity;
-use peritus_types::{ActionId, SnapshotId};
+use peritus_types::{ActionId, Generation, ResourceId, RevisionNumber, SnapshotId, WorkspaceId};
 
 use crate::{
     ErrorCode, MutationOutcome, RecoveryClass, SnapshotIdentity, WorkspaceAuthorizationRequest,
@@ -167,6 +167,37 @@ pub fn candidate_authorization_payload(
     candidate_payload(mutation, snapshot_id, None)
 }
 
+/// Returns the canonical candidate payload for an exact predicted patch outcome.
+///
+/// This is inert preparation for independently obtaining the candidate authorization before an
+/// atomic caller enters a patch-then-candidate flow. C1 still reconstructs the payload from the
+/// actual [`MutationOutcome`] and rejects any disagreement before candidate creation.
+#[must_use]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "the complete predicted mutation identity remains explicit"
+)]
+pub fn predicted_candidate_authorization_payload(
+    patch_action_id: ActionId,
+    workspace_id: WorkspaceId,
+    resource_id: ResourceId,
+    generation: Generation,
+    revision: RevisionNumber,
+    patch_id: PatchIdentity,
+    snapshot_id: SnapshotId,
+) -> Vec<u8> {
+    candidate_payload_fields(
+        patch_action_id,
+        workspace_id,
+        resource_id,
+        generation,
+        revision,
+        patch_id,
+        snapshot_id,
+        None,
+    )
+}
+
 /// Returns canonical candidate payload bytes bound to one exact validated C4 caller.
 #[must_use]
 pub fn candidate_authorization_payload_for_caller(
@@ -182,17 +213,43 @@ fn candidate_payload(
     snapshot_id: SnapshotId,
     caller: Option<&crate::WorkspaceCallerBinding>,
 ) -> Vec<u8> {
+    candidate_payload_fields(
+        mutation.action_id(),
+        mutation.workspace_id(),
+        mutation.resource_id(),
+        mutation.generation(),
+        mutation.revision(),
+        mutation.patch_identity(),
+        snapshot_id,
+        caller,
+    )
+}
+
+#[allow(
+    clippy::too_many_arguments,
+    reason = "the canonical candidate authority identity has seven independent fields"
+)]
+fn candidate_payload_fields(
+    patch_action_id: ActionId,
+    workspace_id: WorkspaceId,
+    resource_id: ResourceId,
+    generation: Generation,
+    revision: RevisionNumber,
+    patch_id: PatchIdentity,
+    snapshot_id: SnapshotId,
+    caller: Option<&crate::WorkspaceCallerBinding>,
+) -> Vec<u8> {
     let mut bytes = if caller.is_some() {
         b"PERITUS-WORKSPACE-CANDIDATE-V2\0".to_vec()
     } else {
         b"PERITUS-WORKSPACE-CANDIDATE-V1\0".to_vec()
     };
-    bytes.extend_from_slice(mutation.action_id().as_bytes());
-    bytes.extend_from_slice(mutation.workspace_id().as_bytes());
-    bytes.extend_from_slice(mutation.resource_id().as_bytes());
-    bytes.extend_from_slice(&mutation.generation().get().to_be_bytes());
-    bytes.extend_from_slice(&mutation.revision().get().to_be_bytes());
-    bytes.extend_from_slice(mutation.patch_identity().as_bytes());
+    bytes.extend_from_slice(patch_action_id.as_bytes());
+    bytes.extend_from_slice(workspace_id.as_bytes());
+    bytes.extend_from_slice(resource_id.as_bytes());
+    bytes.extend_from_slice(&generation.get().to_be_bytes());
+    bytes.extend_from_slice(&revision.get().to_be_bytes());
+    bytes.extend_from_slice(patch_id.as_bytes());
     bytes.extend_from_slice(snapshot_id.as_bytes());
     if let Some(caller) = caller {
         crate::caller::append_caller(&mut bytes, Some(caller));

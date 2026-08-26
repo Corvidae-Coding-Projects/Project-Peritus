@@ -284,6 +284,41 @@ fn permits_only_modeled_builtin_verus_and_trust_accounted_expansions() {
 }
 
 #[test]
+fn permits_only_the_exact_reviewed_serde_and_numeric_tag_forms() {
+    let accepted = scan(
+        r#"
+        use serde::Deserialize;
+
+        #[derive(Clone, Debug, Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Input { value: u8 }
+
+        #[derive(Copy, Clone, Deserialize)]
+        #[serde(rename_all = "snake_case")]
+        #[repr(u8)]
+        enum Tag { First = 1 }
+        "#,
+    );
+    assert!(accepted.violations.is_empty(), "{:?}", accepted.violations);
+
+    for source in [
+        "#[repr(C)] struct WrongRepresentation;",
+        "#[serde(default)] struct Defaulted;",
+        "use adversary::Deserialize; #[derive(Deserialize)] struct Shadowed;",
+    ] {
+        let rejected = scan(source);
+        assert!(
+            rejected.violations.iter().any(|violation| matches!(
+                violation.kind,
+                ViolationKind::UnsupportedAttribute | ViolationKind::UnsupportedMacro
+            )),
+            "{source}: {:?}",
+            rejected.violations
+        );
+    }
+}
+
+#[test]
 fn rejects_compile_environment_and_embedded_data_macros() {
     let result = scan(
         r#"

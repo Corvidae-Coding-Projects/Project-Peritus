@@ -1,0 +1,37 @@
+[package]
+name = "peritus-harness"
+description = "Durable checked harness definitions and exact workspace materialization"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+
+[dependencies]
+peritus-artifact-store = { version = "=0.0.0", path = "../../state/peritus-artifact-store" }
+peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
+peritus-git = { version = "=0.0.0", path = "../../runtime/peritus-git" }
+peritus-journal = { version = "=0.0.0", path = "../../state/peritus-journal" }
+peritus-patch = { version = "=0.0.0", path = "../../runtime/peritus-patch" }
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+peritus-workspace = { version = "=0.0.0", path = "../../runtime/peritus-workspace" }
+serde.workspace = true
+toml.workspace = true
+vstd.workspace = true
+
+[dev-dependencies]
+peritus-test-support = { version = "=0.0.0", path = "../../app/testing/peritus-test-support" }
+tempfile.workspace = true
+
+[package.metadata.peritus]
+owner = "E1"
+layer = "orchestration"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true
+
+[lints]
+workspace = true

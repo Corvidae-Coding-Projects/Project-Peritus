@@ -13,6 +13,7 @@ pub(super) fn apply_rows(
     install_registry(transaction, plan, positions.1)?;
     insert_artifact_references(transaction, plan, positions.1)?;
     insert_outbox(transaction, plan, positions.1)?;
+    acknowledge_outbox(transaction, plan)?;
     Ok(positions)
 }
 
@@ -177,6 +178,31 @@ fn insert_outbox(
                 ],
             )
             .map_err(|error| JournalError::sqlite("insert outbox message", error))?;
+    }
+    Ok(())
+}
+
+fn acknowledge_outbox(
+    transaction: &Transaction<'_>,
+    plan: &AppendPlan,
+) -> Result<(), JournalError> {
+    for acknowledgement in &plan.outbox_acknowledgements {
+        let affected = transaction
+            .execute(
+                "UPDATE outbox SET state = 3, lease_until = NULL WHERE outbox_id = ?1 AND state = 2 AND fence = ?2",
+                params![
+                    acknowledgement.id().as_bytes().as_slice(),
+                    super::append::to_i64(acknowledgement.fence(), "outbox fence")?,
+                ],
+            )
+            .map_err(|error| JournalError::sqlite("acknowledge outbox during append", error))?;
+        if affected != 1 {
+            return Err(JournalError::new(
+                JournalErrorKind::CorruptJournal,
+                "acknowledge outbox during append",
+                "validated outbox acknowledgement changed inside one transaction",
+            ));
+        }
     }
     Ok(())
 }

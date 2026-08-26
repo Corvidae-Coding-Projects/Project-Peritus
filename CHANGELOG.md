@@ -7,6 +7,70 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Deliver complete production E1 harness materialization as the H-class `peritus-harness` crate,
+  turning reviewed harness source into checked immutable revisions and exact durable workspace
+  candidates without adding evaluation or promotion authority (#20)
+- Add a complete closed catalog of thirty component kinds spanning instructions, roles, tools,
+  middleware, skills, collaboration, memory, gates, orchestration, providers, observability, and
+  evolution definitions, plus compiled protection for security roots, human authority, sealed
+  evaluators, trust boundaries, and production-promotion rules
+- Add strict schema-v1 `.peritus-harness/manifest.toml` parsing and C1 no-follow recursive loading
+  with exact declaration/inventory equality, source/target confinement, byte-size and SHA-256
+  verification, opaque binary component support, unknown-field rejection, and independent bounds
+- Add typed component IDs, owners, provenance, media types, source/target paths, schema intervals,
+  provider/platform feature requirements, dependencies, optional executable artifact identities,
+  and canonical private-field constructors
+- Add deterministic complete graph validation for duplicate/missing/self/cyclic dependencies,
+  required kind/schema/digest and feature compatibility, protected dependency legality, canonical
+  topological order, graph identity, and exact artifact-root projection
+- Add closed descriptive authority sets with compiled per-kind ceilings and transitive dependency
+  checks, while keeping actual effect authority exclusively in B1 and the target-owned gateways
+- Add domain-separated content-addressed genesis and successor revisions whose identities bind the
+  complete manifest, graph, declaration, content, provenance, compatibility, authority, path, and
+  executable-artifact state
+- Add an append-only bounded branched harness-history DAG with stable lineage identity, exact
+  predecessor/number checks, ancestry queries, deterministic canonical snapshots, and no mutable
+  revision API
+- Make every protected controlled asset structurally immutable across successors: addition,
+  removal, rename, reorder, content, schema, owner, provenance, dependency, compatibility,
+  authority, path, and executable binding drift are all rejected
+- Add deterministic materialization plans that bind an exact harness revision and C1 workspace
+  snapshot, canonical create/replace operations, and deletes limited to paths proven owned by the
+  exact prior E1 receipt, preserving every unrelated workspace path, with compiled file/count/byte
+  ceilings fixed to the sole atomic C1 patch boundary
+- Add bounded verified finalized-artifact reads to C0 and use exact returned bytes to construct one
+  C1 `PatchSet`, expose deterministic inert patch/predicted-candidate authorization payloads, then
+  perform separately authorized `WorkspaceGateway` patch and candidate creation
+- Add complete materialization receipts retaining plan, patch, action, prior/current workspace,
+  Git commit/tree, C1 manifest artifact, output inventory, rollback reason, and canonical identity
+- Add ancestor-only rollback through the normal materialization pipeline, producing a fresh C1
+  candidate and receipt without rewriting history, deleting descendants, or moving a production
+  harness pointer
+- Add a closed E1 command/event/state reducer with commit-before-effect planning, stable outbox
+  directives, command idempotency, artifact dependencies, complete checkpoints, typed failures,
+  and restart reconciliation for untouched, exactly completed, stale, and conflicting targets
+- Add rebuildable read-only harness projections exposing immutable lineage/branches, graph and
+  protected summaries, pending materialization, delivery state, receipts/failures, rollback
+  ancestry, and artifact roots without mutation or promotion methods
+- Add canonical schema-v1 harness command/event/state families 79-81 with strict tag, length,
+  canonical-order, truncation, and trailing-byte rejection plus immutable compatibility fixtures
+  and SHA-256 inventories
+- Extend C0 with permanent `Harness` aggregate tag 13 and checkpoint namespace `0xE101`; add schema
+  version six with a required-backup constrained-table copy that preserves every v5 tag 1-12 row
+  and frame byte, admits E1, and verifies exact v5 restoration
+- Add a narrow C0 append-time outbox acknowledgement mutation so an E1 success or failure event,
+  complete checkpoint, and the exact claimed directive fence settle in one transaction
+- Extend A2 with fourteen nonempty E1 scenarios covering manifest inventory, complete component
+  catalog, graph/authority rejection, protected immutability, content-addressed history, forward
+  and rollback materialization, artifacts, independent bounds, replay/idempotency, malformed
+  frames, panic containment, and teardown isolation
+- Add executable Verus specifications and proof-facing reference tests for component uniqueness,
+  graph order and acyclicity, compatibility, authority non-widening, protected invariance,
+  append-only ancestry, rollback confinement, materialization ownership, and replay equivalence
+- Add the signed E1 design freeze, crate and operator documentation, architecture/formal/CI
+  inventories, generated protocol metadata, resource-aware single-job hosted builds, and current
+  repository development-state guidance
+
 - Deliver D3 scheduling and E0 AcTor orchestration (#19)
 - Deliver production D3 scheduling/collaboration and the E0 AcTor delivery orchestrator as three
   focused H-class crates, composing the existing B0-B3, C0, C6, and D0-D2 boundaries without

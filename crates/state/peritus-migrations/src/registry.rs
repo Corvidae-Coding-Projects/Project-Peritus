@@ -2,6 +2,8 @@
 
 mod v1;
 mod v5;
+mod v6;
+mod validation;
 
 use peritus_types::Sha256Digest;
 use sha2::{Digest, Sha256};
@@ -10,6 +12,7 @@ use crate::{
     BackupPolicy, MigrationDescriptor, MigrationError, MigrationErrorCode, MigrationVersion,
     RecoveryClass, verified::versions_are_contiguous,
 };
+use validation::{invalid_registry, reject_transaction_control};
 
 const VERSION_TWO_SQL: &str = r"PRAGMA defer_foreign_keys = ON;
 CREATE TABLE aggregate_heads_v2 (
@@ -227,7 +230,7 @@ const VERSION_FOUR_DIGEST: [u8; 32] = [
     0x5d, 0x9e, 0x44, 0x2b, 0x23, 0xd0, 0x47, 0xbb, 0xf4, 0x2f, 0xe0, 0xcd, 0xc6, 0xfc, 0xfe, 0x1c,
     0x2c, 0x66, 0x91, 0x01, 0xd4, 0x17, 0x6b, 0x4c, 0xaa, 0x9d, 0x50, 0xe0, 0xda, 0x12, 0x3c, 0xb6,
 ];
-const CURRENT_DESCRIPTORS: [MigrationDescriptor; 5] = [
+const CURRENT_DESCRIPTORS: [MigrationDescriptor; 6] = [
     MigrationDescriptor::new(
         MigrationVersion::FIRST,
         "0.0.0",
@@ -265,6 +268,14 @@ const CURRENT_DESCRIPTORS: [MigrationDescriptor; 5] = [
         "0.0.0",
         v5::SQL,
         Sha256Digest::new(v5::DIGEST),
+        BackupPolicy::Required,
+        32 * 1024 * 1024,
+    ),
+    MigrationDescriptor::new(
+        MigrationVersion::SIXTH,
+        "0.0.0",
+        v6::SQL,
+        Sha256Digest::new(v6::DIGEST),
         BackupPolicy::Required,
         32 * 1024 * 1024,
     ),
@@ -372,28 +383,4 @@ impl MigrationRegistry {
         }
         Ok(Sha256Digest::new(hasher.finalize().into()))
     }
-}
-
-fn reject_transaction_control(sql: &str) -> Result<(), MigrationError> {
-    let uppercase = sql.to_ascii_uppercase();
-    for forbidden in ["BEGIN", "COMMIT", "ROLLBACK", "ATTACH", "DETACH", "VACUUM"] {
-        if uppercase
-            .split(|character: char| !character.is_ascii_alphanumeric() && character != '_')
-            .any(|token| token == forbidden)
-        {
-            return Err(invalid_registry(
-                "migration SQL must not control transactions, attachment, or vacuum",
-            ));
-        }
-    }
-    Ok(())
-}
-
-const fn invalid_registry(message: &'static str) -> MigrationError {
-    MigrationError::message(
-        MigrationErrorCode::InvalidRegistry,
-        RecoveryClass::CorrectRequest,
-        "validate migration registry",
-        message,
-    )
 }

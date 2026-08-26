@@ -11,6 +11,7 @@ mod descriptor;
 mod facade;
 mod failure;
 mod gate;
+mod harness_materialization;
 mod identity;
 mod journal;
 mod orchestrator;
