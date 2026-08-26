@@ -1,6 +1,6 @@
 {
   "next_display_id": 24,
-  "next_comment_id": 386,
+  "next_comment_id": 387,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -304,11 +304,20 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T15:36:15.834953593Z",
-      "updated_at": "2026-08-26T15:54:45.597447524Z",
+      "updated_at": "2026-08-26T16:04:58.257182911Z",
       "labels": [
         "feature"
       ],
       "comments": {
+        "62f126ff-ef82-47c7-ba38-0c0b0c124853": {
+          "display_id": 386,
+          "author": "6ME5",
+          "content": "Signed design a66deaf is complete. Implementation is now split into non-overlapping pure-domain and C0/B3 lanes with one build owner. Root integration has added the A2 F0 contract/catalog, workspace/architecture/strict Verus command registration, formal E3 inventory repair, README state, operator guide, and detailed CHANGELOG. No heavy build has started while lanes are active.",
+          "created_at": "2026-08-26T16:04:58.254250170Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAQSpb0BgiW/tGoxhTWU3sUcK4XbADVcknZbEGGUPzzmz4p08IfVWKIzSj89Larq/Kes0jvxOg3FjS5PqaYq96AA=="
+        },
         "6909c8dd-863e-4251-86ea-cc0125474f04": {
           "display_id": 384,
           "author": "6ME5",
@@ -3899,8 +3908,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-26T15:54:45.597447524Z",
+    "timestamp": "2026-08-26T16:04:58.257182911Z",
     "agent_id": "6ME5",
-    "agent_seq": 517
+    "agent_seq": 518
   }
 }
