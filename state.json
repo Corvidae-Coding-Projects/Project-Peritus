@@ -1,6 +1,6 @@
 {
   "next_display_id": 25,
-  "next_comment_id": 399,
+  "next_comment_id": 400,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -950,7 +950,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T19:24:03.235908577Z",
-      "updated_at": "2026-08-26T19:34:29.262270560Z",
+      "updated_at": "2026-08-26T19:43:50.302439138Z",
       "labels": [
         "feature"
       ],
@@ -972,6 +972,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAFI7L4lgfUQoy/gc1l61/5UQi/9ypQ/P0RRp6JZ4BuHWmxwegdzgXHPMD+DutkQzLDPjliqUezH61+vv8k+zPDw=="
+        },
+        "5efc95c7-108a-4cef-8a1b-7b3d1f659621": {
+          "display_id": 399,
+          "author": "6ME5",
+          "content": "Signed design committed at 8604e71. Implementation is active in three non-overlapping surfaces: core negotiation/command/idempotency, stateful subscription/artifact/prompt/terminal/daemon contracts, and root-owned envelope/wire/schema/A2/governance integration. Cargo and Verus remain serialized with CARGO_BUILD_JOBS=1; no workload has run concurrently.",
+          "created_at": "2026-08-26T19:43:50.299434883Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAuzk5xwahD+pvEfVLTpYuulS2EoQC10Kb9K0B6+8j0qFdxwqppTmSl9/VIrljafzvEiM8D0neYYFp5SoaJEoTCg=="
         },
         "8616be40-aea7-4aea-bac5-a4853a952e0d": {
           "display_id": 398,
@@ -4034,8 +4043,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-26T19:34:29.262270560Z",
+    "timestamp": "2026-08-26T19:43:50.302439138Z",
     "agent_id": "6ME5",
-    "agent_seq": 535
+    "agent_seq": 536
   }
 }
