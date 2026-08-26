@@ -114,7 +114,7 @@ fn exact_matrix(matrix: &Hash) -> bool {
 
 fn supply_gate_is_exact(job: &Yaml) -> bool {
     let Some(job) = job.as_hash() else { return false };
-    exact_job(job, "Supply chain")
+    exact_job(job, "Supply chain", 20)
         && mapping_value(job, "steps").and_then(Yaml::as_vec).is_some_and(|steps| {
             steps.len() == 5
                 && candidate_checkout(&steps[0])
@@ -130,7 +130,7 @@ fn supply_gate_is_exact(job: &Yaml) -> bool {
 
 fn verus_gate_is_exact(job: &Yaml, tools: &ToolchainPolicy) -> bool {
     let Some(job) = job.as_hash() else { return false };
-    exact_job(job, "Verus")
+    exact_job(job, "Verus", 30)
         && mapping_value(job, "steps").and_then(Yaml::as_vec).is_some_and(|steps| {
             steps.len() == 10
                 && candidate_checkout(&steps[0])
@@ -146,12 +146,12 @@ fn verus_gate_is_exact(job: &Yaml, tools: &ToolchainPolicy) -> bool {
         })
 }
 
-fn exact_job(job: &Hash, name: &str) -> bool {
+fn exact_job(job: &Hash, name: &str, timeout_minutes: i64) -> bool {
     exact_keys(job, &["name", "needs", "runs-on", "timeout-minutes", "steps"])
         && string(job, "name") == Some(name)
         && string(job, "needs") == Some("policy")
         && string(job, "runs-on") == Some("ubuntu-24.04")
-        && integer(job, "timeout-minutes") == Some(20)
+        && integer(job, "timeout-minutes") == Some(timeout_minutes)
 }
 
 fn conditional_cargo(step: &Yaml, condition: &str, expected: &[&str]) -> bool {

@@ -61,4 +61,7 @@ pub const FAMILIES: &[MessageFamily] = &[
     MessageFamily { tag: 76, name: "orchestrator-command", schema_version: 1, inert_only: true },
     MessageFamily { tag: 77, name: "orchestrator-event", schema_version: 1, inert_only: true },
     MessageFamily { tag: 78, name: "orchestrator-state", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 79, name: "harness-command", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 80, name: "harness-event", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 81, name: "harness-state", schema_version: 1, inert_only: true },
 ];

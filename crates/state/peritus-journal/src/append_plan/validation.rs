@@ -6,11 +6,12 @@ use peritus_types::{CommandId, EventId, Sha256Digest};
 
 use super::{
     AppendRequest, HeadExpectation, MAX_ARTIFACT_DEPENDENCIES, MAX_BATCH_AGGREGATES,
-    MAX_BATCH_EVENTS, MAX_OUTBOX_ENTRIES, MAX_STATE_INSTALLS, PlannedEvent,
+    MAX_BATCH_EVENTS, MAX_OUTBOX_ACKNOWLEDGEMENTS, MAX_OUTBOX_ENTRIES, MAX_STATE_INSTALLS,
+    PlannedEvent,
 };
 use crate::{
-    ArtifactDependency, EventDraft, JournalError, JournalErrorKind, OutboxDraft, StateInstall,
-    hash_chain::event_hash,
+    ArtifactDependency, EventDraft, JournalError, JournalErrorKind, OutboxAcknowledgement,
+    OutboxDraft, StateInstall, hash_chain::event_hash,
 };
 
 pub(super) const fn validate_bounds(request: &AppendRequest) -> Result<(), JournalError> {
@@ -26,6 +27,7 @@ pub(super) const fn validate_bounds(request: &AppendRequest) -> Result<(), Journ
         || request.heads.len() > MAX_BATCH_AGGREGATES
         || request.state_installs.len() > MAX_STATE_INSTALLS
         || request.outbox.len() > MAX_OUTBOX_ENTRIES
+        || request.outbox_acknowledgements.len() > MAX_OUTBOX_ACKNOWLEDGEMENTS
         || request.artifact_dependencies.len() > MAX_ARTIFACT_DEPENDENCIES
     {
         return Err(JournalError::new(
@@ -113,6 +115,28 @@ pub(super) fn validate_outbox(outbox: &[OutboxDraft]) -> Result<(), JournalError
                 JournalErrorKind::NonCanonicalOrder,
                 "plan append",
                 "outbox entries must be strictly ordered",
+            ));
+        }
+    }
+    Ok(())
+}
+
+pub(super) fn validate_outbox_acknowledgements(
+    acknowledgements: &[OutboxAcknowledgement],
+) -> Result<(), JournalError> {
+    for pair in acknowledgements.windows(2) {
+        if pair[0].id() == pair[1].id() {
+            return Err(JournalError::new(
+                JournalErrorKind::DuplicateIdentity,
+                "plan append",
+                "duplicate outbox acknowledgement identity",
+            ));
+        }
+        if pair[0].id() > pair[1].id() {
+            return Err(JournalError::new(
+                JournalErrorKind::NonCanonicalOrder,
+                "plan append",
+                "outbox acknowledgements must be strictly ordered",
             ));
         }
     }

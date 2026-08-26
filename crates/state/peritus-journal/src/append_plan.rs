@@ -4,13 +4,14 @@ mod validation;
 
 use crate::{
     AggregateHead, AggregateKey, ArtifactDependency, CredentialRegistryInstall, EventDraft,
-    JournalError, JournalErrorKind, OutboxDraft, StateInstall, StoreId, hash_chain::batch_hash,
+    JournalError, JournalErrorKind, OutboxAcknowledgement, OutboxDraft, StateInstall, StoreId,
+    hash_chain::batch_hash,
 };
 use peritus_types::{CommandId, Sha256Digest};
 
 use validation::{
     validate_and_hash_events, validate_artifacts, validate_bounds, validate_heads, validate_outbox,
-    validate_state_installs,
+    validate_outbox_acknowledgements, validate_state_installs,
 };
 
 /// Maximum immutable events in one atomic batch.
@@ -21,6 +22,8 @@ pub const MAX_BATCH_AGGREGATES: usize = 1_024;
 pub const MAX_STATE_INSTALLS: usize = 4_096;
 /// Maximum outbox rows in one atomic batch.
 pub const MAX_OUTBOX_ENTRIES: usize = 4_096;
+/// Maximum existing outbox rows acknowledged in one atomic batch.
+pub const MAX_OUTBOX_ACKNOWLEDGEMENTS: usize = 4_096;
 /// Maximum artifact dependencies in one atomic batch.
 pub const MAX_ARTIFACT_DEPENDENCIES: usize = 4_096;
 
@@ -67,6 +70,7 @@ pub struct AppendRequest {
     expected_registry: Option<crate::authority::RegistryExpectation>,
     registry_install: Option<CredentialRegistryInstall>,
     outbox: Vec<OutboxDraft>,
+    outbox_acknowledgements: Vec<OutboxAcknowledgement>,
 }
 
 impl AppendRequest {
@@ -97,7 +101,38 @@ impl AppendRequest {
             expected_registry: None,
             registry_install,
             outbox,
+            outbox_acknowledgements: Vec::new(),
         }
+    }
+
+    /// Binds claimed outbox acknowledgements to the same transaction and command identity.
+    ///
+    /// # Errors
+    ///
+    /// Rejects duplicate, noncanonical, or excessive acknowledgement collections.
+    pub fn with_outbox_acknowledgements(
+        mut self,
+        acknowledgements: Vec<OutboxAcknowledgement>,
+    ) -> Result<Self, JournalError> {
+        validate_outbox_acknowledgements(&acknowledgements)?;
+        if acknowledgements.len() > MAX_OUTBOX_ACKNOWLEDGEMENTS {
+            return Err(JournalError::new(
+                JournalErrorKind::InvalidInput,
+                "plan append",
+                "outbox acknowledgement bound exceeded",
+            ));
+        }
+        let mut binding = Vec::with_capacity(64 + acknowledgements.len() * 24);
+        binding.extend_from_slice(b"PERITUS-C0-OUTBOX-ACKNOWLEDGEMENTS\0");
+        binding.extend_from_slice(self.request_digest.as_bytes());
+        binding.extend_from_slice(&(acknowledgements.len() as u64).to_be_bytes());
+        for acknowledgement in &acknowledgements {
+            binding.extend_from_slice(acknowledgement.id().as_bytes());
+            binding.extend_from_slice(&acknowledgement.fence().to_be_bytes());
+        }
+        self.request_digest = peritus_codec::sha256(&binding);
+        self.outbox_acknowledgements = acknowledgements;
+        Ok(self)
     }
 
     /// Validates ordering, identities, sequences, predecessors, CAS successors, and hashes.
@@ -114,6 +149,7 @@ impl AppendRequest {
         validate_state_installs(&self.state_installs)?;
         validate_artifacts(&self.artifact_dependencies)?;
         validate_outbox(&self.outbox)?;
+        validate_outbox_acknowledgements(&self.outbox_acknowledgements)?;
         let planned_events = validate_and_hash_events(&self.heads, self.events, self.command_id)?;
         let batch_hash = batch_hash(
             self.store_id,
@@ -136,6 +172,7 @@ impl AppendRequest {
             expected_registry: self.expected_registry,
             registry_install: self.registry_install,
             outbox: self.outbox,
+            outbox_acknowledgements: self.outbox_acknowledgements,
             batch_hash,
         })
     }
@@ -235,6 +272,7 @@ pub struct AppendPlan {
     pub(crate) expected_registry: Option<crate::authority::RegistryExpectation>,
     pub(crate) registry_install: Option<CredentialRegistryInstall>,
     pub(crate) outbox: Vec<OutboxDraft>,
+    pub(crate) outbox_acknowledgements: Vec<OutboxAcknowledgement>,
     pub(crate) batch_hash: Sha256Digest,
 }
 

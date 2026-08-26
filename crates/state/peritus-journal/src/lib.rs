@@ -37,7 +37,7 @@ pub use head::AggregateHead;
 pub use idempotency::{CommandDecision, decide_command};
 pub use identity::{AggregateId, AggregateKey, AggregateKind, OutboxId, StoreId};
 pub use integrity::{CommittedArtifactReference, IntegrityExport, IntegrityReport};
-pub use outbox::{OutboxDraft, OutboxMessage, OutboxState};
+pub use outbox::{OutboxAcknowledgement, OutboxDraft, OutboxMessage, OutboxState};
 pub use receipt::{CommittedBatch, CurrentCredentialRegistry};
 pub use record::{
     ArtifactDependency, CommittedRecord, DurableStateRecord, EventDraft, ExactFrame, StateInstall,

@@ -16,6 +16,43 @@ pub struct OutboxDraft {
     max_attempts: u16,
 }
 
+/// Exact claimed outbox row to acknowledge in the same transaction as an aggregate append.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct OutboxAcknowledgement {
+    id: OutboxId,
+    fence: u64,
+}
+
+impl OutboxAcknowledgement {
+    /// Creates an acknowledgement bound to a positive claim fence.
+    ///
+    /// # Errors
+    ///
+    /// Rejects the reserved zero fence.
+    pub const fn new(id: OutboxId, fence: u64) -> Result<Self, JournalError> {
+        if fence == 0 {
+            return Err(JournalError::new(
+                JournalErrorKind::InvalidInput,
+                "validate outbox acknowledgement",
+                "outbox fence must be positive",
+            ));
+        }
+        Ok(Self { id, fence })
+    }
+
+    /// Returns the exact outbox identity.
+    #[must_use]
+    pub const fn id(self) -> OutboxId {
+        self.id
+    }
+
+    /// Returns the exact claim fence.
+    #[must_use]
+    pub const fn fence(self) -> u64 {
+        self.fence
+    }
+}
+
 impl OutboxDraft {
     /// Validates one bounded destination and transport payload.
     ///

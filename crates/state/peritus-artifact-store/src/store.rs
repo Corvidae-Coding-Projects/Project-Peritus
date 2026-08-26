@@ -7,7 +7,7 @@ use crate::{
     ErrorCode, GcAction, GcApplication, GcPlan, QuarantineState, QuotaPlan, QuotaSnapshot,
     RecoveryClass, ReferenceOwner, ReferenceRoots, StoreConfig, StoreOperation, WriteRequest,
     catalog::Catalog,
-    finalize::verify_finalized,
+    finalize::{read_finalized, verify_finalized},
     path::{StorePaths, io, sync_directory},
 };
 
@@ -118,6 +118,24 @@ impl ArtifactStore {
         }
         verify_finalized(&self.paths.object(digest), digest, metadata.size())?;
         Ok(metadata)
+    }
+
+    /// Reads one finalized active artifact into a bounded owned buffer and verifies the exact
+    /// durable size and digest against the bytes returned to the caller.
+    ///
+    /// # Errors
+    ///
+    /// Returns a byte-limit, missing-artifact, catalog, I/O, or corruption error.
+    pub fn read(
+        &self,
+        digest: ArtifactDigest,
+        maximum_bytes: u64,
+    ) -> Result<Vec<u8>, ArtifactStoreError> {
+        let metadata = self.catalog.metadata(digest)?.ok_or_else(missing_artifact)?;
+        if !metadata.is_referenceable() {
+            return Err(missing_artifact());
+        }
+        read_finalized(&self.paths.object(digest), digest, metadata.size(), maximum_bytes)
     }
 
     /// Adds an idempotent durable reference to a finalized active artifact.

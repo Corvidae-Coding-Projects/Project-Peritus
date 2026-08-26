@@ -7,6 +7,7 @@ mod conformance {
     mod collaboration_catalog;
     mod gate_catalog;
     mod harness;
+    mod harness_catalog;
     mod identity;
     mod orchestrator_catalog;
     mod panic_paths;

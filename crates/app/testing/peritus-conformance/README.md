@@ -53,8 +53,9 @@ evidence for those failures must execute conformance in a supervised subprocess.
 ## Catalog suites and ownership
 
 The crate exports production journal, replay, C1 workspace, C2 process, C2/C3 sandbox, C4 tool,
-C5 provider, D0 agent-loop, D1 gate, D2 review, and C7 trace/telemetry suites plus runnable empty plugin and
-protocol suites. The provider suite contains
+C5 provider, D0 agent-loop, D1 gate, D2 review, D3 scheduler/collaboration, E0 orchestrator, E1
+harness materialization, and C7 trace/telemetry suites plus runnable empty plugin and protocol
+suites. The provider suite contains
 fourteen fixed cases covering capability honesty, ordering and exact deduplication, fragmented
 tool calls, malformed and incomplete streams, interruption, cancellation, authentication, rate
 limits and retry-after, transient retry, ambiguous submission, usage, redaction, and adapter
@@ -83,6 +84,14 @@ dimension, duplicate reconciliation, stale revisions, reviewer-confirmed resolut
 authorized waivers, restart, oscillation, and malformed submissions. Their negative tests
 deliberately inject implicit gate/review success and default-surface canaries and require the
 corresponding suites to fail.
+
+The scheduler and collaboration suites cover deterministic resource conservation, worker/task
+ownership, causal joins, cancellation, and restart. The orchestrator suite covers the complete
+writer/gate/reviewer/fixer order and durable B0 acceptance observation. The harness suite contains
+fourteen cases covering exact manifest inventory, the complete component catalog, graph and
+authority rejection, protected immutability, content-addressed history, forward and rollback C1
+materialization, finalized artifacts, independent bounds, replay/idempotency, malformed frames,
+panic containment, and teardown isolation.
 
 Production crates implement only the subject traits and translate these runtime-neutral fixtures
 and observations into their own domain values. A2 neither constructs privileged runtime permits

@@ -122,6 +122,8 @@ pub enum AggregateKind {
     Collaboration,
     /// E0 durable writer-gate-review-fixer orchestration state.
     Orchestrator,
+    /// E1 durable immutable harness revision and materialization state.
+    Harness,
 }
 
 impl AggregateKind {
@@ -139,6 +141,7 @@ impl AggregateKind {
             Self::Scheduler => 10,
             Self::Collaboration => 11,
             Self::Orchestrator => 12,
+            Self::Harness => 13,
         }
     }
 
@@ -156,6 +159,7 @@ impl AggregateKind {
             Self::Scheduler => 10,
             Self::Collaboration => 11,
             Self::Orchestrator => 12,
+            Self::Harness => 13,
         }
     }
 
@@ -173,6 +177,7 @@ impl AggregateKind {
             10 => Some(Self::Scheduler),
             11 => Some(Self::Collaboration),
             12 => Some(Self::Orchestrator),
+            13 => Some(Self::Harness),
             _ => None,
         }
     }

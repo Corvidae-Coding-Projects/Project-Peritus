@@ -29,6 +29,11 @@ fn chunked_streaming_finalizes_exact_bytes_and_durable_metadata() {
         content
     );
     assert!(store.verify(digest(content)).expect("object verifies").is_referenceable());
+    assert_eq!(store.read(digest(content), 64).expect("bounded verified read"), content);
+    assert_eq!(
+        store.read(digest(content), 4).expect_err("read bound is enforced").code(),
+        ErrorCode::ByteLimitExceeded,
+    );
 
     drop(store);
     let reopened =

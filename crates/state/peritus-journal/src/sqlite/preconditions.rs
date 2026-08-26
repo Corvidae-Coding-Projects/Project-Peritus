@@ -11,7 +11,8 @@ pub(super) fn verify_all(
     verify_artifacts(transaction, plan)?;
     verify_authority(transaction, plan)?;
     verify_registry(transaction, plan)?;
-    verify_state_installs(transaction, plan)
+    verify_state_installs(transaction, plan)?;
+    verify_outbox_acknowledgements(transaction, plan)
 }
 
 fn verify_heads(transaction: &Transaction<'_>, plan: &AppendPlan) -> Result<(), JournalError> {
@@ -172,6 +173,39 @@ fn verify_state_installs(
                 JournalErrorKind::StaleHead,
                 "compare state record",
                 "stored state revision differs from append plan",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn verify_outbox_acknowledgements(
+    transaction: &Transaction<'_>,
+    plan: &AppendPlan,
+) -> Result<(), JournalError> {
+    for acknowledgement in &plan.outbox_acknowledgements {
+        let observed: Option<(i64, Option<i64>)> = transaction
+            .query_row(
+                "SELECT state, fence FROM outbox WHERE outbox_id = ?1",
+                params![acknowledgement.id().as_bytes().as_slice()],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .optional()
+            .map_err(|error| JournalError::sqlite("observe outbox acknowledgement", error))?;
+        let Some((state, fence)) = observed else {
+            return Err(JournalError::new(
+                JournalErrorKind::NotFound,
+                "compare outbox acknowledgement",
+                "outbox identity does not exist",
+            ));
+        };
+        if state != 2
+            || fence.and_then(|value| u64::try_from(value).ok()) != Some(acknowledgement.fence())
+        {
+            return Err(JournalError::new(
+                JournalErrorKind::StaleHead,
+                "compare outbox acknowledgement",
+                "outbox row is not claimed under the supplied fence",
             ));
         }
     }

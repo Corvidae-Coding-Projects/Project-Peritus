@@ -25,11 +25,17 @@ repair, and a projection value is not a durable transition receipt. Artifact obj
 only when their bytes and metadata agree; only finalized active artifacts may be referenced.
 Evidence is immutable history, but its currentness is a separate revision and invalidation decision.
 
-The shared journal schema is currently version 5. Its closed aggregate-kind registry includes the
+`ArtifactStore::read` is the bounded materialization read boundary. It requires active finalized
+metadata, rejects a caller limit below the durable size, reads a regular object file, and verifies
+that the exact bytes returned still match both the recorded size and SHA-256 digest.
+
+The shared journal schema is currently version 6. Its closed aggregate-kind registry includes the
 permanent D0 `Agent`, D1 `Gate`, C7 `Trace`, D2 `Review`, D3 `Scheduler`/`Collaboration`, and E0
-`Orchestrator` kinds in addition to the foundational kernel and B1 state kinds. Upgrades from
+`Orchestrator` and E1 `Harness` kinds in addition to the foundational kernel and B1 state kinds.
+Upgrades from
 version 1 preserve existing event and head rows exactly while version 2 admits `Agent`, version 3
-admits `Gate` and `Trace`, version 4 admits `Review`, and version 5 admits the D3/E0 kinds; all four
+admits `Gate` and `Trace`, version 4 admits `Review`, version 5 admits the D3/E0 kinds, and version 6
+admits E1; all five
 table-rebuilding upgrades require a verified
 whole-file backup before table replacement.
 
@@ -45,10 +51,11 @@ useful in tests but does not by itself compose an authoritative journal.
 `AppendRequest::plan` is the effect-free boundary before SQLite. A request binds a `StoreId`, one
 `CommandId` and request digest, canonical head expectations, one or more exact complete B3 event
 frames, state installs, finalized artifact dependencies, optional authority/registry expectations,
-and outbox drafts. Planning applies the configured collection bounds, checks canonical ordering and
-unique identities, verifies aggregate sequence and predecessor continuity, computes event hashes,
-and computes the batch hash. Empty batches and noncanonical or inconsistent requests do not reach
-the database.
+outbox drafts, and optional exact claimed-outbox acknowledgements. Planning applies the configured
+collection bounds, checks canonical ordering and unique identities, verifies aggregate sequence
+and predecessor continuity, binds every acknowledgement identity and fence into the command
+request digest, computes event hashes, and computes the batch hash. Empty batches and noncanonical
+or inconsistent requests do not reach the database.
 
 `SqliteJournal::append` starts `BEGIN IMMEDIATE`, then performs these operations as one unit:
 
@@ -57,7 +64,8 @@ the database.
 2. Compare every aggregate head and optional authority or credential-registry precondition.
 3. Require every artifact dependency to be finalized and active in the shared artifact catalog.
 4. Insert exact frame bytes and hash-chain fields, state history/current state, artifact references,
-   outbox rows, and any registry state; then advance aggregate heads.
+   outbox rows, exact claimed-outbox acknowledgements, and any registry state; then advance
+   aggregate heads.
 5. Record the command's global-position range and batch hash and commit.
 6. Re-read the command result before constructing `CommittedBatch`.
 
@@ -100,8 +108,10 @@ evidence. Hash chains detect tampering; they do not authenticate the host.
 Outbox rows commit with their producing events. `claim_outbox` accepts caller-observed positive
 monotonic ticks, advances attempts and a fence, and can reclaim an expired lease.
 `acknowledge_outbox` is idempotent for an already acknowledged row and otherwise requires the exact
-claim fence. The outbox contains transport bytes and destinations; it does not create or reinterpret
-domain events.
+claim fence. A domain transition that must settle a delivered directive atomically uses
+`AppendRequest::with_outbox_acknowledgements`; C0 verifies the same exact claimed fence and applies
+the acknowledgement in the event/state compare-and-swap transaction. The outbox contains transport
+bytes and destinations; it does not create or reinterpret domain events.
 
 ## B0 and B1 durable adapters
 

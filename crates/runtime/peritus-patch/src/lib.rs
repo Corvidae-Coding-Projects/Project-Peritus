@@ -22,7 +22,7 @@ pub use operation::{PatchOperation, PatchOperationKind};
 pub use path::{MAX_COMPONENT_BYTES, MAX_COMPONENTS, MAX_PATH_BYTES, WorkspacePath};
 pub use plan::{PatchIdentity, PatchPlan};
 pub use preimage::{FileMode, Preimage};
-pub use set::{MAX_PATCH_BYTES, MAX_PATCH_OPERATIONS, PatchSet};
+pub use set::{MAX_FILE_BYTES, MAX_PATCH_BYTES, MAX_PATCH_OPERATIONS, PatchSet};
 pub use transaction::{
     AppliedPatch, RecoveryBinding, RecoveryOutcome, RecoveryState, TransactionFaultPoint,
     TransactionPhase, apply_patch, recover_transaction,

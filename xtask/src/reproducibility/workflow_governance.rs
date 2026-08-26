@@ -82,6 +82,7 @@ fn root_is_exact(workflow: &Hash, tools: &ToolchainPolicy) -> bool {
         && exact_keys(
             env,
             &[
+                "CARGO_BUILD_JOBS",
                 "RUST_VERSION",
                 "RUSTUP_TOOLCHAIN",
                 "ACTIONLINT_VERSION",
@@ -91,6 +92,7 @@ fn root_is_exact(workflow: &Hash, tools: &ToolchainPolicy) -> bool {
                 "PERITUS_PROOF_IMPACT_BASE",
             ],
         )
+        && string(env, "CARGO_BUILD_JOBS") == Some("1")
         && string(env, "RUST_VERSION") == Some(&tools.rust)
         && string(env, "RUSTUP_TOOLCHAIN") == Some(&tools.rust)
         && string(env, "ACTIONLINT_VERSION") == Some("1.7.12")

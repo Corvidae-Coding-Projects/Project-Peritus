@@ -1,0 +1,4 @@
+# peritus harness protocol compatibility corpus v1
+ee73e09072b01e5126ecb8e1edf208eb168ad0c30c7f9fefce318b4ff1974d53  harness-command.bin
+4e971284121e812e7a5dc6112d33dd948748dd31ab37c9f59d3f4441906fc98d  harness-event.bin
+24c98f33de165749dec3efda53cb353e70daab0f199061c34df7f0971523e9b9  harness-state.bin

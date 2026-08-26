@@ -50,7 +50,10 @@
     {"tag": 75, "name": "collaboration-state", "schemaVersion": 1, "inertOnly": true},
     {"tag": 76, "name": "orchestrator-command", "schemaVersion": 1, "inertOnly": true},
     {"tag": 77, "name": "orchestrator-event", "schemaVersion": 1, "inertOnly": true},
-    {"tag": 78, "name": "orchestrator-state", "schemaVersion": 1, "inertOnly": true}
+    {"tag": 78, "name": "orchestrator-state", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 79, "name": "harness-command", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 80, "name": "harness-event", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 81, "name": "harness-state", "schemaVersion": 1, "inertOnly": true}
   ],
   "variants": {
     "kernel-command": [

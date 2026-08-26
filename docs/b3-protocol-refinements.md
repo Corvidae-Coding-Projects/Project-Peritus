@@ -41,5 +41,5 @@ validity only; it never proves provenance, durable commit, evidence freshness, o
 
 The registry also reserves the merged production orchestration families without changing the
 version-one frame format: D3 scheduler command/event/state use 70-72, D3 collaboration uses 73-75,
-and E0 orchestrator uses 76-78. Their owning crates define the complete canonical payload codecs;
+E0 orchestrator uses 76-78, and E1 harness command/event/state uses 79-81. Their owning crates define the complete canonical payload codecs;
 the B3 registry and generated TypeScript/schema declarations provide stable global family identity.

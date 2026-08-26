@@ -1290,3 +1290,117 @@ evidence = [
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-orchestrator/src/wire/fixture_tests/observation_binding.rs", symbol = "peritus_orchestrator::wire::fixture_tests::observation_binding::checkpoint_rejects_stale_gate_snapshot_and_review_binding", command = "cargo test --package peritus-orchestrator --all-targets --all-features --locked" },
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-orchestrator/src/integration_tests/lifecycle.rs", symbol = "peritus_orchestrator::integration_tests::lifecycle::one_field_contract_candidate_artifact_and_child_binding_drift_is_rejected", command = "cargo test --package peritus-orchestrator --all-targets --all-features --locked" },
 ]
+
+[[entries]]
+id = "INV-017"
+kind = "invariant"
+statement = "An E1 successor preserves the complete ordered identity and content of every protected controlled asset; additions, removals, reordering, ownership changes, authority changes, path changes, and byte changes are rejected."
+owning_crate = "peritus-harness"
+source_file = "crates/orchestration/peritus-harness/src/domain/verified.rs"
+symbol = "peritus_harness::domain::verified::protected_assets_are_invariant"
+status = "in-progress"
+dependencies = ["INV-003", "OBL-0156"]
+live_issue = "#20"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-harness/src/domain/verified.rs", symbol = "peritus_harness::domain::verified::protected_invariance_reflexive", command = "cargo verus verify --package peritus-harness --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/orchestration/peritus-harness/tests/domain_revision.rs", symbol = "peritus_harness::tests::domain_revision::every_structural_change_to_a_protected_asset_rejects", command = "cargo test --package peritus-harness --all-targets --all-features --locked" },
+  { kind = "property-test", source_file = "crates/orchestration/peritus-harness/tests/domain_revision.rs", symbol = "peritus_harness::tests::domain_revision::protected_asset_addition_removal_and_reordering_reject", command = "cargo test --package peritus-harness --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0162"
+kind = "invariant"
+statement = "Every checked E1 component graph has unique component identities, a complete deterministic dependency-first order, exact kind/schema/digest/feature compatibility, and declared plus transitive authority within compiled ceilings."
+owning_crate = "peritus-harness"
+source_file = "crates/orchestration/peritus-harness/src/domain/verified.rs"
+symbol = "peritus_harness::domain::verified::topological_order_is_complete"
+status = "in-progress"
+dependencies = ["INV-003", "INV-017"]
+live_issue = "#20"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-harness/src/domain/verified.rs", symbol = "peritus_harness::domain::verified::earlier_dependency_is_legal", command = "cargo verus verify --package peritus-harness --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/orchestration/peritus-harness/tests/domain_graph.rs", symbol = "peritus_harness::tests::domain_graph::transitive_authority_and_incompatible_protected_dependencies_reject", command = "cargo test --package peritus-harness --all-targets --all-features --locked" },
+  { kind = "property-test", source_file = "crates/orchestration/peritus-harness/tests/domain_properties.rs", symbol = "peritus_harness::tests::domain_properties::all_small_ranked_dags_match_the_reference_checker_and_round_trip", command = "cargo test --package peritus-harness --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0163"
+kind = "invariant"
+statement = "E1 graph and revision identities bind all canonical bytes, history retains an exact immutable prefix, and rollback can select only a strict retained ancestor while creating new materialization evidence."
+owning_crate = "peritus-harness"
+source_file = "crates/orchestration/peritus-harness/src/domain/verified.rs"
+symbol = "peritus_harness::domain::verified::graph_digest_is_bound"
+status = "in-progress"
+dependencies = ["INV-017", "OBL-0162"]
+live_issue = "#20"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-harness/src/domain/verified.rs", symbol = "peritus_harness::domain::verified::digest_binding_reflexive", command = "cargo verus verify --package peritus-harness --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "verus-proof", source_file = "crates/orchestration/peritus-harness/src/domain/verified.rs", symbol = "peritus_harness::domain::verified::direct_predecessor_is_ancestor", command = "cargo verus verify --package peritus-harness --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "property-test", source_file = "crates/orchestration/peritus-harness/tests/domain_revision.rs", symbol = "peritus_harness::tests::domain_revision::history_retains_branches_and_allows_only_strict_ancestor_rollback", command = "cargo test --package peritus-harness --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0164"
+kind = "contract"
+statement = "A strict E1 manifest and recursive inventory activate only checked bounded component content, and each deterministic C1 plan is confined to the exact owned target set with artifact, preimage, revision, snapshot, and rollback-reason bindings."
+owning_crate = "peritus-harness"
+source_file = "crates/orchestration/peritus-harness/src/materialization/planner.rs"
+symbol = "peritus_harness::materialization::planner::MaterializationPlan::build"
+status = "in-progress"
+dependencies = ["INV-017", "OBL-0162", "OBL-0163"]
+live_issue = "#20"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-harness/tests/manifest_document.rs", symbol = "peritus_harness::tests::manifest_document::strict_manifest_retains_exact_bytes_and_checked_declaration", command = "cargo test --package peritus-harness --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-harness/tests/materialization_safety.rs", symbol = "peritus_harness::tests::materialization_safety::deterministic_plan_round_trips_exact_artifact_and_snapshot_bindings", command = "cargo test --package peritus-harness --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0165"
+kind = "refinement"
+statement = "Every accepted E1 transition, complete checkpoint, artifact dependency, and stable materialization directive commits atomically in C0; exact retries resolve idempotently, restart replay reconstructs the same state, and settlement acknowledges only the exact claimed outbox fence in the same append transaction."
+owning_crate = "peritus-harness"
+source_file = "crates/orchestration/peritus-harness/src/durability/commit.rs"
+symbol = "peritus_harness::durability::commit::commit_harness_settlement"
+status = "in-progress"
+dependencies = ["OBL-0115", "OBL-0163", "OBL-0164"]
+live_issue = "#20"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-harness/tests/durability_restart.rs", symbol = "peritus_harness::tests::durability_restart::atomic_genesis_commit_is_idempotent_and_restart_replay_matches_checkpoint", command = "cargo test --package peritus-harness --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-harness/tests/durability_restart.rs", symbol = "peritus_harness::tests::durability_restart::checked_restart_recreates_plan_and_atomically_settles_exact_claim", command = "cargo test --package peritus-harness --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0166"
+kind = "contract"
+statement = "The closed E1 command, event, and complete-state wire families 79, 80, and 81 have byte-exact immutable version-one fixtures; checked decoders reject wrong families, unknown closed command tags, malformed semantic data, and trailing bytes."
+owning_crate = "peritus-harness"
+source_file = "crates/orchestration/peritus-harness/tests/replay_wire.rs"
+symbol = "peritus_harness::tests::replay_wire::canonical_corpus_is_exact_and_rejects_corruption"
+status = "in-progress"
+dependencies = ["OBL-0163", "OBL-0165"]
+live_issue = "#20"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-harness/tests/replay_wire.rs", symbol = "peritus_harness::tests::replay_wire::canonical_corpus_is_exact_and_rejects_corruption", command = "cargo test --package peritus-harness --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-harness/tests/replay_wire.rs", symbol = "peritus_harness::tests::replay_wire::replay_projection_matches_live_state_and_rejects_duplicate_genesis", command = "cargo test --package peritus-harness --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0167"
+kind = "contract"
+statement = "E0 and later consumers retain the unchanged seven-field shared RevisionTuple while a checked governing binding additionally carries the exact branch-distinguishing E1 revision identity and matching installed materialization receipt."
+owning_crate = "peritus-harness"
+source_file = "crates/orchestration/peritus-harness/src/runtime/binding.rs"
+symbol = "peritus_harness::runtime::binding::GoverningHarnessBinding::new"
+status = "in-progress"
+dependencies = ["OBL-0156", "OBL-0164", "OBL-0165"]
+live_issue = "#20"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-harness/src/runtime/binding.rs", symbol = "peritus_harness::runtime::binding::tests::exact_binding_retains_the_shared_tuple_and_rejects_drift", command = "cargo test --package peritus-harness --all-targets --all-features --locked" },
+]

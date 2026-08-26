@@ -94,6 +94,7 @@ fn gateway_runs_candidate_rollback_and_clean_reconciliation_with_real_effects() 
 
     let candidate_ids = ids.for_action_revision(21, RevisionNumber::first());
     let successor = SnapshotId::new([81; 16]).expect("candidate snapshot");
+    caller_binding::assert_predicted_candidate_payload(&mutation, successor);
     let candidate_binding = tool_binding(&candidate_ids, 61, "git.candidate", 62, 63);
     caller_binding::assert_candidate_payload(&mutation, successor, &candidate_binding);
     let candidate_intent = intent(

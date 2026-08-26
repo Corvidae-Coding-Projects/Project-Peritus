@@ -121,6 +121,19 @@ fn required_workflow_rejects_bootstrap_and_gate_weakening() {
 }
 
 #[test]
+fn required_workflow_retains_the_measured_verus_timeout() {
+    let altered = canonical_governance().replacen(
+        "    name: Verus\n    needs: policy\n    runs-on: ubuntu-24.04\n    timeout-minutes: 30",
+        "    name: Verus\n    needs: policy\n    runs-on: ubuntu-24.04\n    timeout-minutes: 20",
+        1,
+    );
+
+    assert_ne!(altered, canonical_governance());
+    let (_, diagnostics) = validate(PATH, DocumentKind::Workflow, &altered);
+    assert_message(&diagnostics, "does not retain every hardcoded job and final status");
+}
+
+#[test]
 fn required_workflow_is_an_exact_reviewed_definition() {
     let altered = canonical_governance().replace("name: Gate A", "name: Locally renamed gate");
 
