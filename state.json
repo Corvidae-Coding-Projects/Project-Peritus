@@ -1,6 +1,6 @@
 {
   "next_display_id": 24,
-  "next_comment_id": 387,
+  "next_comment_id": 388,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -304,11 +304,20 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T15:36:15.834953593Z",
-      "updated_at": "2026-08-26T16:04:58.257182911Z",
+      "updated_at": "2026-08-26T16:05:03.484857651Z",
       "labels": [
         "feature"
       ],
       "comments": {
+        "1cd9df8e-e9b6-412f-916f-992d867a6ea2": {
+          "display_id": 387,
+          "author": "6ME5",
+          "content": "[action] Implementing F0 in two non-overlapping lanes; root owns A2, runtime/wire integration, governance, documentation, and final serialized verification.",
+          "created_at": "2026-08-26T16:05:03.482336658Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAA2GuYeEaV0eaYvRdpH2L0+JWVbJDiGVYiwrL1dObQj+oxkh4FSutRvGNUPcjSrvA/P9+Oag9VKFJCk4DAOSxAg=="
+        },
         "62f126ff-ef82-47c7-ba38-0c0b0c124853": {
           "display_id": 386,
           "author": "6ME5",
@@ -3908,8 +3917,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-26T16:04:58.257182911Z",
+    "timestamp": "2026-08-26T16:05:03.484857651Z",
     "agent_id": "6ME5",
-    "agent_seq": 518
+    "agent_seq": 519
   }
 }
