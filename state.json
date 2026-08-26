@@ -1,5 +1,5 @@
 {
-  "next_display_id": 22,
+  "next_display_id": 23,
   "next_comment_id": 372,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -9,6 +9,7 @@
     "338b10ed-ebc5-4da2-a725-fa46ca662fda": 12,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
     "3bef48a1-7556-4245-8dc8-a4326deff3ea": 16,
+    "3cc3f0d8-ec40-44e7-9c99-9b245adaea3e": 22,
     "4f2ebc95-0b8b-4acb-b8c0-eba2775c3f7b": 10,
     "5542a0ec-9091-4c82-b341-df0b119bc0b1": 3,
     "566b1c8e-fb61-4b2e-bc9b-8a781b362f04": 19,
@@ -1197,6 +1198,17 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA0JlIha30rzqDpZyljcJ5Fd/mX2KdSAv7HmITxycpqtESUji9G90zqKH3xdoE1hmwxYMDnbVXNp6JL7bEUVxEBw=="
         }
       }
+    },
+    "3cc3f0d8-ec40-44e7-9c99-9b245adaea3e": {
+      "uuid": "3cc3f0d8-ec40-44e7-9c99-9b245adaea3e",
+      "display_id": 22,
+      "title": "E3 production evaluation engine",
+      "description": "Deliver slice E3 per the production architecture: frozen digest-pinned evaluation profiles and datasets, deterministic isolated rollouts, complete outcome and infrastructure accounting, statistical comparison and stability analysis, C0 persistence/replay, Verus obligations, conformance evidence, documentation, and full Gate A plus hosted matrix.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "6ME5",
+      "created_at": "2026-08-26T08:38:06.537413124Z",
+      "updated_at": "2026-08-26T08:38:06.537413124Z"
     },
     "4f2ebc95-0b8b-4acb-b8c0-eba2775c3f7b": {
       "uuid": "4f2ebc95-0b8b-4acb-b8c0-eba2775c3f7b",
@@ -3733,8 +3745,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-26T08:21:06.199689195Z",
+    "timestamp": "2026-08-26T08:38:06.537413124Z",
     "agent_id": "6ME5",
-    "agent_seq": 495
+    "agent_seq": 496
   }
 }
