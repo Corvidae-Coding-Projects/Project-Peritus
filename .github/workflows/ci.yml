@@ -63,7 +63,7 @@ jobs:
       - name: Build every target
         run: cargo build --workspace --all-targets --all-features --locked
       - name: Run tests
-        run: cargo test --workspace --all-targets --all-features --locked
+        run: cargo test --workspace --all-targets --all-features --locked -- --test-threads=1
       - name: Run documentation tests
         run: cargo test --doc --workspace --all-features --locked
       - name: Deny Clippy warnings

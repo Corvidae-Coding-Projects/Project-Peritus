@@ -4,7 +4,7 @@ use super::verus_commands::{
     VERUS_STRICT_BUILD_ARGS, VERUS_STRICT_VERIFY_ARGS, VERUS_WORKSPACE_BUILD_ARGS,
     VERUS_WORKSPACE_VERIFY_ARGS,
 };
-use super::workflow_commands::{ParsedScript, parse_script};
+use super::workflow_commands::{ParsedScript, WORKSPACE_TEST_ARGS, parse_script};
 use crate::error::Diagnostic;
 use crate::model::ToolchainPolicy;
 use std::path::Path;
@@ -147,10 +147,7 @@ fn rust_job_is_exact(job: &Yaml) -> bool {
                     &steps[3],
                     &["build", "--workspace", "--all-targets", "--all-features", "--locked"],
                 )
-                && cargo_step(
-                    &steps[4],
-                    &["test", "--workspace", "--all-targets", "--all-features", "--locked"],
-                )
+                && cargo_step(&steps[4], WORKSPACE_TEST_ARGS)
                 && cargo_step(
                     &steps[5],
                     &["test", "--doc", "--workspace", "--all-features", "--locked"],

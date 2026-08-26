@@ -8,7 +8,7 @@ fn managed_proxy_revalidates_and_suppresses_a_denied_absolute_redirect() {
     let upstream = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
     let port = upstream.local_addr().unwrap().port();
     let upstream_task = thread::spawn(move || {
-        let (mut stream, _) = upstream.accept().unwrap();
+        let mut stream = accept_with_timeout(&upstream);
         let _ = read_head(&mut stream);
         let response = format!(
             "HTTP/1.1 302 Found\r\nLocation: http://denied.test:{port}/next\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
@@ -55,14 +55,14 @@ fn managed_proxy_follows_relative_redirect_and_returns_only_final_response() {
     let upstream = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
     let port = upstream.local_addr().unwrap().port();
     let upstream_task = thread::spawn(move || {
-        let (mut first, _) = upstream.accept().unwrap();
+        let mut first = accept_with_timeout(&upstream);
         assert!(read_head(&mut first).contains("GET /start HTTP/1.1"));
         first
             .write_all(
                 b"HTTP/1.1 302 Found\r\nLocation: /final\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
             )
             .unwrap();
-        let (mut second, _) = upstream.accept().unwrap();
+        let mut second = accept_with_timeout(&upstream);
         assert!(read_head(&mut second).contains("GET /final HTTP/1.1"));
         // The checked connection budget, rather than a hidden sub-budget, governs
         // how long the proxy may wait for an admitted upstream response.
@@ -112,7 +112,7 @@ fn managed_proxy_preserves_redirect_count_across_upstream_connections() {
     let port = upstream.local_addr().unwrap().port();
     let upstream_task = thread::spawn(move || {
         for next in ["/one", "/two"] {
-            let (mut stream, _) = upstream.accept().unwrap();
+            let mut stream = accept_with_timeout(&upstream);
             let _ = read_head(&mut stream);
             let response = format!(
                 "HTTP/1.1 302 Found\r\nLocation: {next}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"

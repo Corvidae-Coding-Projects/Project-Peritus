@@ -7,7 +7,7 @@ build:
     cargo build --workspace --all-targets --all-features --locked
 
 test:
-    cargo test --workspace --all-targets --all-features --locked
+    cargo test --workspace --all-targets --all-features --locked -- --test-threads=1
 
 doc-test:
     cargo test --doc --workspace --all-features --locked

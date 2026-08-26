@@ -4,6 +4,9 @@
 
 use super::*;
 
+const FIXTURE_IO_TIMEOUT: Duration = Duration::from_secs(10);
+const FIXTURE_ACCEPT_POLL: Duration = Duration::from_millis(5);
+
 pub struct LoopbackResolver;
 
 impl Resolver for LoopbackResolver {
@@ -104,11 +107,44 @@ pub fn wait_for_closed(proxy: &ManagedProxy, decision: ConnectionDecision) {
 }
 
 pub fn read_to_close(stream: &mut TcpStream) -> Vec<u8> {
+    if stream.read_timeout().unwrap().is_none() {
+        stream.set_read_timeout(Some(FIXTURE_IO_TIMEOUT)).unwrap();
+    }
     let mut bytes = Vec::new();
-    if let Err(error) = stream.read_to_end(&mut bytes) {
-        assert_eq!(error.kind(), ErrorKind::ConnectionReset);
+    match stream.read_to_end(&mut bytes) {
+        Ok(_) => {}
+        Err(error) if error.kind() == ErrorKind::ConnectionReset => {}
+        Err(error) if matches!(error.kind(), ErrorKind::TimedOut | ErrorKind::WouldBlock) => {
+            panic!("network fixture did not close within {FIXTURE_IO_TIMEOUT:?}")
+        }
+        Err(error) => panic!("network fixture read failed: {error}"),
     }
     bytes
+}
+
+pub fn accept_with_timeout(listener: &TcpListener) -> TcpStream {
+    listener.set_nonblocking(true).unwrap();
+    let deadline = std::time::Instant::now() + FIXTURE_IO_TIMEOUT;
+    loop {
+        match listener.accept() {
+            Ok((stream, _)) => {
+                listener.set_nonblocking(false).unwrap();
+                stream.set_read_timeout(Some(FIXTURE_IO_TIMEOUT)).unwrap();
+                stream.set_write_timeout(Some(FIXTURE_IO_TIMEOUT)).unwrap();
+                return stream;
+            }
+            Err(error)
+                if error.kind() == ErrorKind::WouldBlock
+                    && std::time::Instant::now() < deadline =>
+            {
+                thread::sleep(FIXTURE_ACCEPT_POLL);
+            }
+            Err(error) if error.kind() == ErrorKind::WouldBlock => {
+                panic!("network fixture did not accept a connection within {FIXTURE_IO_TIMEOUT:?}")
+            }
+            Err(error) => panic!("network fixture accept failed: {error}"),
+        }
+    }
 }
 
 pub fn serial_proxy_test() -> std::sync::MutexGuard<'static, ()> {
