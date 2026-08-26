@@ -300,11 +300,12 @@
       "display_id": 23,
       "title": "F0 Production Harness Evolution",
       "description": "Goal: \n\nAcceptance criteria:\n- \n\n## Summary\nImplement the complete F0 peritus-evolution production slice on merged E1-E3 foundations.\n\n## Scope\nDeliver durable immutable evolution campaigns, typed change manifests and variants, deterministic attribution and multi-objective selection, verified evaluator isolation and promotion safety, authorized atomic production-pointer promotion and rollback, protocol/codec/migration/projection/evidence integration, A2 conformance, Verus proof roots, documentation, and complete runner evidence.\n\n## Acceptance\nA signed design precedes implementation. Focused F0 verification and serialized Gate A pass. A signed PR is open and mergeable with all required Linux, macOS, Windows, Foundation, and Verus checks green.\n\n## Constraints\nNo MVP, stubs, god files, Crosslink kickoff, concurrent heavyweight builds, or staging of local provider metadata.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T15:36:15.834953593Z",
-      "updated_at": "2026-08-26T18:41:27.818000848Z",
+      "updated_at": "2026-08-26T18:41:32.947865928Z",
+      "closed_at": "2026-08-26T18:41:32.947864364Z",
       "labels": [
         "feature"
       ],
@@ -3989,8 +3990,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-26T18:41:27.818000848Z",
+    "timestamp": "2026-08-26T18:41:32.947865928Z",
     "agent_id": "6ME5",
-    "agent_seq": 527
+    "agent_seq": 528
   }
 }
