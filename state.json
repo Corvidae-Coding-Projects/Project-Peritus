@@ -1,6 +1,6 @@
 {
   "next_display_id": 21,
-  "next_comment_id": 352,
+  "next_comment_id": 353,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -3419,7 +3419,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-25T23:07:27.355677826Z",
-      "updated_at": "2026-08-26T03:53:20.003367008Z",
+      "updated_at": "2026-08-26T03:53:32.114344794Z",
       "labels": [
         "E1",
         "feature"
@@ -3524,6 +3524,15 @@
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAYOkGlR5QJZS8Ixl0z9eCaCXJl5pfaewENop1esWK5rOSeGHRKQ4HxksQlHRQS33V8Hk67HEPz5Iuo9CgpJVjBw=="
         },
+        "cb3ca0ff-0c60-446f-ae79-8216c2f79a6d": {
+          "display_id": 352,
+          "author": "6ME5",
+          "content": "Final main Foundation exposed a macOS-only network integration hang: one unbounded fixture can hold the shared proxy-test mutex while two waiters make the failure look broader. Fixing test-fixture accept/read bounds and making canonical workspace test execution single-threaded for deterministic, resource-aware runners; no production network redesign.",
+          "created_at": "2026-08-26T03:53:32.111791062Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWy1QW1f/i8SWgZyHvReESbUkF3p+xgyqNcZxh3LgoL+xGT388UrLJ7hIQjySnDi+QONLCkQomjiGVk/zbO4FAQ=="
+        },
         "f0e7225b-beb3-4d6a-804a-41a56b6d5d74": {
           "display_id": 350,
           "author": "6ME5",
@@ -3538,8 +3547,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-26T03:53:26.357618474Z",
+    "timestamp": "2026-08-26T03:53:32.114344794Z",
     "agent_id": "6ME5",
-    "agent_seq": 468
+    "agent_seq": 469
   }
 }
