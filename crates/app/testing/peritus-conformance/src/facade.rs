@@ -15,6 +15,10 @@ pub use crate::debugger::{
     DebuggerConformanceSubject, DebuggerScenario, DebuggerTerminal, debugger_suite,
 };
 pub use crate::descriptor::{CaseDescriptor, SubjectDescriptor, SuiteDescriptor};
+pub use crate::evaluation::{
+    EvaluationConformanceError, EvaluationConformanceFixture, EvaluationConformanceObservation,
+    EvaluationConformanceSubject, EvaluationScenario, EvaluationTerminal, evaluation_suite,
+};
 pub use crate::failure::{
     AssertionFailure, CaseFailure, DuplicateCaseIdFailure, FailureKind, FailurePhase, PanicFailure,
     PanicMessage, SubjectFailure, SuiteFailure, TeardownFailure,

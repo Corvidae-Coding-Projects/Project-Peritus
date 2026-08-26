@@ -12,6 +12,83 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Implement complete production E3 Evaluation (#22)
+- Deliver the H-class `peritus-eval` analysis crate as the durable boundary from immutable E1
+  harness revisions and frozen evaluation inputs to reproducible statistical evidence, without
+  adding workspace mutation, acceptance, waiver, selection, promotion, rollback, capability, or
+  production-pointer authority (#22)
+- Add checked immutable dataset manifests with stable identities, revisions, declared partitions,
+  positive task weights, bounded resource ceilings, canonical ordering, and domain-separated
+  digests
+- Separate candidate-visible task inputs from sealed evaluator inputs and reject artifact-role
+  collisions across candidate, evaluator, verifier, environment, and sandbox-image roots
+- Add exact frozen profile bindings for dataset, baseline/candidate E1 revisions and receipts, C5
+  provider/model controls, C2/C3 execution and isolation, resources, deadlines, concurrency,
+  retries, seeds, metrics, infrastructure treatment, rollout multiplicity, and compiled limits
+- Require baseline and candidate revision distinction with common lineage by default, preserving
+  explicit cross-lineage comparisons as visible but unpaired evidence rather than promotion input
+- Add deterministic paired rollout planning with stable task/arm/ordinal seeds, rollout identities,
+  D3 work identities, request digests, canonical batches, and complete plan roots
+- Reuse D3 coordination work, reservations, fairness, capacity, retry, loss, and cancellation
+  ownership through exact schedule directives instead of creating a second evaluation queue
+- Add commit-before-effect schedule, execution, cancellation, and publication directives with
+  deterministic outbox identities, checked claims, atomic fence acknowledgement, and exact retry
+- Add the runtime-neutral `RolloutExecutionPort` boundary with explicit C2/C3 isolation,
+  environment, resource, deadline, teardown, provider, seed, and request fidelity observations
+- Enforce candidate/evaluator stage isolation so evaluator work begins only after finalized
+  candidate output, candidate failures skip evaluation, and evaluator outages remain
+  infrastructure failures rather than task failures
+- Add closed task-pass, task-failure, infrastructure-failure, ambiguous, and cancelled outcomes
+  with complete attempt, request, provider, execution, output, trace, evidence, and resource
+  provenance
+- Add a bounded plan-derived `RolloutLedger` that retains every attempt, admits exactly one logical
+  terminal per expected rollout, accepts exact duplicates idempotently, rejects conflicting
+  terminals, and proves complete accounting before analysis
+- Make cancellation durable and terminal while reusing each rollout's existing schedule or
+  execution claim, so late success cannot resurrect cancelled work or create competing outbox
+  messages
+- Add exact checked resource observations for elapsed time, input/output tokens, cost microunits,
+  memory and CPU use, process high-water count, trace completeness, and teardown completeness,
+  preserving missing values and rejecting arithmetic overflow
+- Add explicit per-metric infrastructure and missing-data treatment so cancelled, ambiguous,
+  incomplete, or unavailable observations never silently become zero, success, or omitted rows
+- Add deterministic correctness counts, frozen Wilson-95 intervals, exact combinatorial pass-at-k,
+  paired outcome conservation, hash-seeded bootstrap and sign diagnostics, per-task stability, and
+  checked resource distributions with retained raw inputs
+- Add canonical validated non-authoritative reports binding the exact dataset, profile, plan,
+  analysis, reliability, constraints, and unavailable-metric reasons without any executable or
+  promotion operation
+- Add a closed evaluation command/event/state reducer covering creation, plan batches, scheduling,
+  execution, terminal settlement, cancellation, analysis, report readiness, publication, and
+  typed failure with exact sequence, predecessor, state digest, and command-idempotency checks
+- Add atomic C0 transition persistence with sorted artifact dependencies, complete checkpoints,
+  stable outbox insertion, claimed-transition commits, settlement commits, and restart-safe
+  schedule/execution/publication ownership
+- Add deterministic replay and recovery classification for redelivery, analysis, report-artifact
+  reconciliation, publication retry, evidence settlement, cancellation continuation, completion,
+  and identity-conflict quarantine without guessing external success
+- Add content-addressed canonical report staging, artifact verification, provenance-bound C0
+  `evaluation-report` evidence admission, and exact atomic publication settlement that cannot
+  create a second logical report after restart
+- Add rebuildable read-only evaluation projections exposing bounded phase, progress, counts,
+  analysis/report/publication identities, cancellation, and safe failures without candidate or
+  evaluator payloads, credentials, capabilities, or mutation methods
+- Add canonical schema-v1 evaluation command/event/state families 85–87 with strict family, tag,
+  bound, canonical-order, truncation, and trailing-byte rejection plus immutable compatibility
+  fixtures and SHA-256 inventory
+- Extend C0 with permanent `Evaluation` aggregate tag 15 and checkpoint namespace `0xE301`; add
+  schema version eight with a required-backup constrained-table copy that preserves every v7 tag
+  1–14 row and frame byte, admits E3, verifies integrity, and restores the exact frozen v7 backup
+- Extend A2 with thirteen nonempty E3 scenarios covering frozen inputs, isolation, determinism,
+  accounting, statistics, infrastructure classification, cancellation, replay, malformed frames,
+  publication, redaction, panic containment, and teardown isolation, plus a production E3 bridge
+- Add executable Verus specifications, proofs, and ordinary refinement tests for conservation,
+  pass-at-k preconditions, terminal dominance, frozen profiles, ledger and statistical validity,
+  legal transitions, replay equivalence facts, and report non-authority with no cheating markers
+- Add the signed E3 design freeze, crate and operator documentation, analysis-layer architecture
+  registration, reviewed cohesive source exceptions, formal/CI/reproducibility inventories, B3
+  schema registration, resource-aware single-job commands, and current repository state guidance
+
 - Implement complete production E2 Debugger (#21)
 - Deliver the H-class `peritus-debugger` analysis crate as the durable boundary from immutable C7
   trace/C0 evidence to reproducible diagnosis, without adding harness mutation, evaluation,

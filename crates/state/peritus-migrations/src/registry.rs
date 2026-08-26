@@ -4,6 +4,7 @@ mod v1;
 mod v5;
 mod v6;
 mod v7;
+mod v8;
 mod validation;
 
 use peritus_types::Sha256Digest;
@@ -231,7 +232,7 @@ const VERSION_FOUR_DIGEST: [u8; 32] = [
     0x5d, 0x9e, 0x44, 0x2b, 0x23, 0xd0, 0x47, 0xbb, 0xf4, 0x2f, 0xe0, 0xcd, 0xc6, 0xfc, 0xfe, 0x1c,
     0x2c, 0x66, 0x91, 0x01, 0xd4, 0x17, 0x6b, 0x4c, 0xaa, 0x9d, 0x50, 0xe0, 0xda, 0x12, 0x3c, 0xb6,
 ];
-const CURRENT_DESCRIPTORS: [MigrationDescriptor; 7] = [
+const CURRENT_DESCRIPTORS: [MigrationDescriptor; 8] = [
     MigrationDescriptor::new(
         MigrationVersion::FIRST,
         "0.0.0",
@@ -285,6 +286,14 @@ const CURRENT_DESCRIPTORS: [MigrationDescriptor; 7] = [
         "0.0.0",
         v7::SQL,
         Sha256Digest::new(v7::DIGEST),
+        BackupPolicy::Required,
+        32 * 1024 * 1024,
+    ),
+    MigrationDescriptor::new(
+        MigrationVersion::EIGHTH,
+        "0.0.0",
+        v8::SQL,
+        Sha256Digest::new(v8::DIGEST),
         BackupPolicy::Required,
         32 * 1024 * 1024,
     ),

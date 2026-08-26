@@ -6,6 +6,7 @@ mod conformance {
     mod catalog;
     mod collaboration_catalog;
     mod debugger_catalog;
+    mod evaluation_catalog;
     mod gate_catalog;
     mod harness;
     mod harness_catalog;

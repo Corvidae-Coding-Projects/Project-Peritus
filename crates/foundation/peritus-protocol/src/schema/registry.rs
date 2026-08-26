@@ -67,4 +67,7 @@ pub const FAMILIES: &[MessageFamily] = &[
     MessageFamily { tag: 82, name: "debugger-command", schema_version: 1, inert_only: true },
     MessageFamily { tag: 83, name: "debugger-event", schema_version: 1, inert_only: true },
     MessageFamily { tag: 84, name: "debugger-state", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 85, name: "evaluation-command", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 86, name: "evaluation-event", schema_version: 1, inert_only: true },
+    MessageFamily { tag: 87, name: "evaluation-state", schema_version: 1, inert_only: true },
 ];

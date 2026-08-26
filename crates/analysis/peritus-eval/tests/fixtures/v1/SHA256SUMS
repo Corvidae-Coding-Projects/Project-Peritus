@@ -1,0 +1,4 @@
+# peritus evaluation protocol compatibility corpus v1
+6f7f31347b9afd66587285d0aa251db6fa3c613706bf9769720425715859280a  evaluation-command.bin
+556fea26474da111ba78629810e85f738369a1d09f73a5ac4e9d0946b6503847  evaluation-event.bin
+8963165551ec6b00b20db633c4b777134a0dc633e9c61b74e8f0acba98ec0ed4  evaluation-state.bin

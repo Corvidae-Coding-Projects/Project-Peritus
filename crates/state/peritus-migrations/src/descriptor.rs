@@ -16,6 +16,7 @@ impl MigrationVersion {
     pub(crate) const FIFTH: Self = Self(5);
     pub(crate) const SIXTH: Self = Self(6);
     pub(crate) const SEVENTH: Self = Self(7);
+    pub(crate) const EIGHTH: Self = Self(8);
     /// Creates a positive, `SQLite`-representable version.
     ///
     /// # Errors

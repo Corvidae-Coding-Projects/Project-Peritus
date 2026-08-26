@@ -1534,6 +1534,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "peritus-eval"
+version = "0.0.0"
+dependencies = [
+ "peritus-artifact-store",
+ "peritus-codec",
+ "peritus-conformance",
+ "peritus-evidence",
+ "peritus-harness",
+ "peritus-journal",
+ "peritus-model-protocol",
+ "peritus-scheduler",
+ "peritus-test-support",
+ "peritus-types",
+ "tempfile",
+ "tokio",
+ "vstd",
+]
+
+[[package]]
 name = "peritus-evidence"
 version = "0.0.0"
 dependencies = [
