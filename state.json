@@ -1,6 +1,6 @@
 {
   "next_display_id": 22,
-  "next_comment_id": 358,
+  "next_comment_id": 359,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -2877,11 +2877,22 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T05:27:41.533821616Z",
-      "updated_at": "2026-08-26T05:27:50.736940419Z",
+      "updated_at": "2026-08-26T05:28:08.672236216Z",
       "labels": [
         "E2",
         "feature"
-      ]
+      ],
+      "comments": {
+        "1715dc08-f72c-4b95-aebd-2aafeee95fe1": {
+          "display_id": 358,
+          "author": "6ME5",
+          "content": "[action] Started E2 from signed main 4c87716 on feature/e2-debugger; design and ownership freeze precede implementation.",
+          "created_at": "2026-08-26T05:28:08.669742567Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABARszRPZZREOCE3qhy0fXa1LAJNPDXpZw09tVyyvgNst/pljfuTvNV1Pg/zadce0LEHMnSlPygUNSj0XEwENUnCg=="
+        }
+      }
     },
     "ab24c7bc-0720-480b-b39f-23f603a8b11f": {
       "uuid": "ab24c7bc-0720-480b-b39f-23f603a8b11f",
@@ -3609,8 +3620,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-26T05:27:57.384757493Z",
+    "timestamp": "2026-08-26T05:28:08.672236216Z",
     "agent_id": "6ME5",
-    "agent_seq": 480
+    "agent_seq": 481
   }
 }
