@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "manifest_id": "11111111111111111111111111111111",
+  "manifest_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+  "deterministic_digest": "3333333333333333333333333333333333333333333333333333333333333333",
+  "findings": [
+    {
+      "statement": "The selected attempt ended after a provider stream failure.",
+      "citations": [
+        {
+          "subject_id": "44444444444444444444444444444444",
+          "event_id": "55555555555555555555555555555555",
+          "journal_position": 7,
+          "frame_digest": "6666666666666666666666666666666666666666666666666666666666666666"
+        }
+      ]
+    }
+  ],
+  "recommendations": [
+    {
+      "statement": "Inspect the provider adapter retry classification.",
+      "citations": [
+        {
+          "subject_id": "44444444444444444444444444444444",
+          "event_id": "55555555555555555555555555555555",
+          "journal_position": 7,
+          "frame_digest": "6666666666666666666666666666666666666666666666666666666666666666"
+        }
+      ],
+      "affected_component_tags": [1]
+    }
+  ]
+}

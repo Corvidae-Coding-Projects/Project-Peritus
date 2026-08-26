@@ -1,0 +1,49 @@
+[package]
+name = "peritus-debugger"
+description = "Durable evidence-linked trace diagnosis and harness analysis for Peritus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["debugging", "diagnostics", "agents", "formal-verification"]
+categories = ["development-tools::debugging"]
+
+[dependencies]
+peritus-agent = { version = "=0.0.0", path = "../../orchestration/peritus-agent" }
+peritus-artifact-store = { version = "=0.0.0", path = "../../state/peritus-artifact-store" }
+peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
+peritus-context = { version = "=0.0.0", path = "../../orchestration/peritus-context" }
+peritus-evidence = { version = "=0.0.0", path = "../../state/peritus-evidence" }
+peritus-harness = { version = "=0.0.0", path = "../../orchestration/peritus-harness" }
+peritus-journal = { version = "=0.0.0", path = "../../state/peritus-journal" }
+peritus-model-protocol = { version = "=0.0.0", path = "../../model/peritus-model-protocol" }
+peritus-orchestrator = { version = "=0.0.0", path = "../../orchestration/peritus-orchestrator" }
+peritus-provider-core = { version = "=0.0.0", path = "../../model/peritus-provider-core" }
+peritus-trace = { version = "=0.0.0", path = "../../observe/peritus-trace" }
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+vstd.workspace = true
+
+[dev-dependencies]
+peritus-conformance = { version = "=0.0.0", path = "../../app/testing/peritus-conformance" }
+peritus-policy = { version = "=0.0.0", path = "../../foundation/peritus-policy" }
+peritus-role = { version = "=0.0.0", path = "../../orchestration/peritus-role" }
+peritus-test-support = { version = "=0.0.0", path = "../../app/testing/peritus-test-support" }
+tempfile.workspace = true
+tokio.workspace = true
+
+[package.metadata.peritus]
+owner = "E2"
+layer = "analysis"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true
+
+[lints]
+workspace = true

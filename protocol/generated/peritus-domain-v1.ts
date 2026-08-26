@@ -53,6 +53,9 @@ export const MESSAGE_FAMILY = {
   HARNESS_COMMAND: 79,
   HARNESS_EVENT: 80,
   HARNESS_STATE: 81,
+  DEBUGGER_COMMAND: 82,
+  DEBUGGER_EVENT: 83,
+  DEBUGGER_STATE: 84,
 } as const;
 
 export type MessageFamilyTag = typeof MESSAGE_FAMILY[keyof typeof MESSAGE_FAMILY];

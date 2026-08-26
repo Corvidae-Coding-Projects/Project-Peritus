@@ -129,6 +129,9 @@ pub fn accept_with_timeout(listener: &TcpListener) -> TcpStream {
         match listener.accept() {
             Ok((stream, _)) => {
                 listener.set_nonblocking(false).unwrap();
+                // Windows can inherit the listener's nonblocking mode on the
+                // accepted socket; make the fixture stream blocking explicitly.
+                stream.set_nonblocking(false).unwrap();
                 stream.set_read_timeout(Some(FIXTURE_IO_TIMEOUT)).unwrap();
                 stream.set_write_timeout(Some(FIXTURE_IO_TIMEOUT)).unwrap();
                 return stream;

@@ -29,13 +29,14 @@ Evidence is immutable history, but its currentness is a separate revision and in
 metadata, rejects a caller limit below the durable size, reads a regular object file, and verifies
 that the exact bytes returned still match both the recorded size and SHA-256 digest.
 
-The shared journal schema is currently version 6. Its closed aggregate-kind registry includes the
+The shared journal schema is currently version 7. Its closed aggregate-kind registry includes the
 permanent D0 `Agent`, D1 `Gate`, C7 `Trace`, D2 `Review`, D3 `Scheduler`/`Collaboration`, and E0
-`Orchestrator` and E1 `Harness` kinds in addition to the foundational kernel and B1 state kinds.
+`Orchestrator`, E1 `Harness`, and E2 `Debugger` kinds in addition to the foundational kernel and B1
+state kinds.
 Upgrades from
 version 1 preserve existing event and head rows exactly while version 2 admits `Agent`, version 3
 admits `Gate` and `Trace`, version 4 admits `Review`, version 5 admits the D3/E0 kinds, and version 6
-admits E1; all five
+admits E1, and version 7 admits E2; all six
 table-rebuilding upgrades require a verified
 whole-file backup before table replacement.
 
