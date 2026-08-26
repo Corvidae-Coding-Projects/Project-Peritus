@@ -27,12 +27,7 @@
     "ef6ed3ab-52cd-436a-aa6e-d5d098c89f6c": 8,
     "f27888a7-5366-4703-a68a-9f17b1adad81": 20
   },
-  "locks": {
-    "24": {
-      "agent_id": "6ME5",
-      "claimed_at": "2026-08-26T19:24:15.074066605Z"
-    }
-  },
+  "locks": {},
   "issues": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": {
       "uuid": "0e2f54b8-fe27-4bbd-a983-9644f1da6f71",
@@ -4071,8 +4066,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-26T21:23:30.613915173Z",
+    "timestamp": "2026-08-26T21:23:34.986384944Z",
     "agent_id": "6ME5",
-    "agent_seq": 540
+    "agent_seq": 541
   }
 }
