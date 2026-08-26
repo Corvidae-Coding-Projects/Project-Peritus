@@ -1,6 +1,6 @@
 {
   "next_display_id": 24,
-  "next_comment_id": 389,
+  "next_comment_id": 390,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -304,7 +304,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T15:36:15.834953593Z",
-      "updated_at": "2026-08-26T16:47:04.886934970Z",
+      "updated_at": "2026-08-26T16:47:09.777877770Z",
       "labels": [
         "feature"
       ],
@@ -371,6 +371,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAquJpo7Ixfx+SBRLmzM/nA2/WgWK0ovMQP1GH8HEin+w1P5ZCH5qQ0SchykVOwQLZ0004DYt1pCRtg5b1ZGFSBw=="
+        },
+        "f6ccdb57-098d-43dc-a740-342e7029f762": {
+          "display_id": 389,
+          "author": "6ME5",
+          "content": "Integrated the F0 durable spine: C0 campaign/pointer commits, exact restart replay, atomic two-head activation plus approve-once consumption, authority observation, artifact/evidence publication, deterministic recovery, and query projections. Canonical wire and focused tests are finishing in non-overlapping resource-light lanes; no Cargo or Verus workload has run concurrently.",
+          "created_at": "2026-08-26T16:47:09.775373950Z",
+          "kind": "action",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAb29nvsfamqaPOgLImcbwmH+y0GrDseQL1/5Kh+wwQ5szqtUjkn72o/ZWPjcHn+F1HI1hpAgt/zBgZsEAQ4OqDw=="
         }
       }
     },
@@ -3926,8 +3935,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-26T16:47:04.886934970Z",
+    "timestamp": "2026-08-26T16:47:09.777877770Z",
     "agent_id": "6ME5",
-    "agent_seq": 520
+    "agent_seq": 521
   }
 }
