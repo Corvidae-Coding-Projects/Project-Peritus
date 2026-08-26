@@ -7,6 +7,7 @@ mod agent;
 mod catalog;
 mod collaboration;
 mod contracts;
+mod debugger;
 mod descriptor;
 mod facade;
 mod failure;

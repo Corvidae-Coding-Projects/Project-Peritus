@@ -53,7 +53,10 @@
     {"tag": 78, "name": "orchestrator-state", "schemaVersion": 1, "inertOnly": true},
     {"tag": 79, "name": "harness-command", "schemaVersion": 1, "inertOnly": true},
     {"tag": 80, "name": "harness-event", "schemaVersion": 1, "inertOnly": true},
-    {"tag": 81, "name": "harness-state", "schemaVersion": 1, "inertOnly": true}
+    {"tag": 81, "name": "harness-state", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 82, "name": "debugger-command", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 83, "name": "debugger-event", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 84, "name": "debugger-state", "schemaVersion": 1, "inertOnly": true}
   ],
   "variants": {
     "kernel-command": [

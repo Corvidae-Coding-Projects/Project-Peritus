@@ -1,0 +1,4 @@
+# peritus debugger protocol compatibility corpus v1
+859e4631dd2226db8acc516caa9394183c4e227c2c269d85334b7207b925a54f  debugger-command.bin
+30ee4c08d8980eefc15d4dbdb3764417d22a9a75d1c826686e71625cacf7a59c  debugger-event.bin
+7ef8749981420810f2d255e2390b560d37ec67f4f6a1126aa86c1e7461d29336  debugger-state.bin

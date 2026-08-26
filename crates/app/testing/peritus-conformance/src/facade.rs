@@ -10,6 +10,10 @@ pub use crate::collaboration::{
 pub use crate::contracts::{
     BoxedCase, ConformanceCase, ConformanceFuture, ConformanceSuite, StaticSuite, SubjectFactory,
 };
+pub use crate::debugger::{
+    DebuggerConformanceError, DebuggerConformanceFixture, DebuggerConformanceObservation,
+    DebuggerConformanceSubject, DebuggerScenario, DebuggerTerminal, debugger_suite,
+};
 pub use crate::descriptor::{CaseDescriptor, SubjectDescriptor, SuiteDescriptor};
 pub use crate::failure::{
     AssertionFailure, CaseFailure, DuplicateCaseIdFailure, FailureKind, FailurePhase, PanicFailure,

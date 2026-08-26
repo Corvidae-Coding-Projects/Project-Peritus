@@ -1506,6 +1506,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "peritus-debugger"
+version = "0.0.0"
+dependencies = [
+ "peritus-agent",
+ "peritus-artifact-store",
+ "peritus-codec",
+ "peritus-conformance",
+ "peritus-context",
+ "peritus-evidence",
+ "peritus-harness",
+ "peritus-journal",
+ "peritus-model-protocol",
+ "peritus-orchestrator",
+ "peritus-policy",
+ "peritus-provider-core",
+ "peritus-role",
+ "peritus-test-support",
+ "peritus-trace",
+ "peritus-types",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "tempfile",
+ "tokio",
+ "vstd",
+]
+
+[[package]]
 name = "peritus-evidence"
 version = "0.0.0"
 dependencies = [

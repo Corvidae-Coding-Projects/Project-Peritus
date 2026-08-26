@@ -12,6 +12,77 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Implement complete production E2 Debugger (#21)
+- Deliver the H-class `peritus-debugger` analysis crate as the durable boundary from immutable C7
+  trace/C0 evidence to reproducible diagnosis, without adding harness mutation, evaluation,
+  acceptance, waiver, promotion, production-pointer, workspace, process, tool, or capability
+  authority (#21)
+- Add exact debugger subject bindings across E0 run, D0 attempt/session, workspace, environment,
+  shared revision tuple, full branch-distinguishing E1 harness revision, C6 context/render plan,
+  provider profile, and model identity, rejecting any drift before selection
+- Add checked canonical diagnostic queries for subject, attempt, observation kind, time, trace/span,
+  and same-subject causal-ancestor selection with independently configurable limits that may
+  tighten but never widen compiled ceilings
+- Add immutable trace-selection manifests that retain exact subject, journal position, event,
+  trace/span, parent, sequence, observation kind/time, causal IDs, frame digest/length, selection
+  accounting, and a domain-separated canonical manifest digest
+- Cross-check every selected observation against the checked C0 integrity export and fail the
+  complete selection on missing/corrupt rows, cross-subject causes, malformed bindings, or limit
+  exhaustion rather than emitting a silently partial report
+- Add separate task and infrastructure outcome normalization plus deterministic per-attempt causal
+  timelines with canonical ordering, gaps, boundaries, and retained observation provenance
+- Add the complete closed initial failure taxonomy spanning specifications, context/provenance,
+  models/providers, tools, workspace/Git, process/sandbox/platform, durability/replay,
+  scheduling/collaboration/orchestration, gates/review/acceptance, harness composition,
+  telemetry/evidence, resources, cancellation, and observed unknowns
+- Add bounded root-cause candidates with stable identities, taxonomy, supporting and contrary
+  citations, distinct alternatives, ambiguity, millionth-scale confidence, and explicit
+  deterministic or validated-model derivation without claiming causal certainty
+- Add deterministic cross-run success/failure fingerprints, exact initial clustering, bounded
+  canonical similarity handling, stable pattern membership, recurrence summaries, and reproducible
+  output independent of input iteration order
+- Add E1 component correlations that distinguish exact component IDs from class-only mappings and
+  retain relation strength, supporting evidence, harness revision, and constraint level without
+  manufacturing patches or replacement revisions
+- Add bounded harness-health summaries that preserve successes, failures, unknowns, component and
+  taxonomy recurrence, coverage gaps, infrastructure impairment, and diagnostic-health warnings
+  without turning diagnosis into promotion truth
+- Add typed observation, inference, and recommendation claims with citation validation confined to
+  selected C7 events and nonempty in-range spans of selected finalized C0 artifacts
+- Add canonical validated debugger reports whose checks rerun subject, ordering, limits, taxonomy,
+  timeline, causes, clusters, component mapping, health, claim, citation, and non-authority rules
+  before bytes can be finalized or admitted as evidence
+- Add optional provider-neutral C5/C6 model-assisted analysis with frozen context/render/provider/
+  request/schema identities, separated trust-aware messages, bounded stream reduction, exactly one
+  strict structured result, and complete deterministic revalidation of every proposal
+- Reject text-only output, tool calls, provider-native payloads, refusals, malformed streams,
+  unsupported fields, invalid citations, authority claims, hidden contrary evidence, binding
+  changes, and over-limit model output as a whole while retaining safe failure metadata
+- Add a closed debugger command/event/state reducer with explicit selection, deterministic
+  analysis, model, cancellation, report, artifact, and evidence phases; exact sequence,
+  predecessor, state-digest, command-idempotency, retry, quarantine, and terminal rules
+- Add commit-before-effect durable report publication through content-addressed C0 artifacts and
+  provenance-bound evidence records, including exact outbox settlement and restart reconciliation
+  that cannot duplicate provider work, report artifacts, or evidence admission
+- Add rebuildable debugger projections exposing bounded progress, immutable query/selection/report
+  digests, budgets, retry state, typed safe failures, and artifact/evidence identities without
+  credentials, raw-vault bytes, capabilities, evaluation results, or production pointers
+- Add canonical schema-v1 debugger command/event/state families 82–84 with strict family, tag,
+  bound, canonical-order, truncation, and trailing-byte rejection plus immutable compatibility
+  fixtures and SHA-256 inventory
+- Extend C0 with permanent `Debugger` aggregate tag 14 and checkpoint namespace `0xE201`; add
+  schema version seven with a required-backup constrained-table copy that preserves every v6 tag
+  1–13 row and frame byte, admits E2, verifies integrity, and restores the exact frozen v6 backup
+- Extend A2 with thirteen nonempty E2 scenarios covering selection, timelines, taxonomy,
+  citations, model-output rejection, clustering, replay, cancellation, malformed input,
+  redaction, independent bounds, panic containment, and teardown isolation
+- Add executable Verus specifications and proof-facing refinement tests for selection and citation
+  containment, report validity, replay equivalence, bounded analysis, terminal cancellation, and
+  absence of mutation or authority
+- Add the signed E2 design freeze, analysis-layer architecture registration, crate and operator
+  documentation, formal/CI/reproducibility inventories, generated B3 metadata, serialized
+  resource-aware verification, and current repository development-state guidance
+
 - Implement complete production E1 Harness Materialization (#20)
 - Deliver complete production E1 harness materialization as the H-class `peritus-harness` crate,
   turning reviewed harness source into checked immutable revisions and exact durable workspace

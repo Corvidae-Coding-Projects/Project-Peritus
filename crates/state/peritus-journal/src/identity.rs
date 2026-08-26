@@ -124,6 +124,8 @@ pub enum AggregateKind {
     Orchestrator,
     /// E1 durable immutable harness revision and materialization state.
     Harness,
+    /// E2 durable evidence-linked debugger jobs and reports.
+    Debugger,
 }
 
 impl AggregateKind {
@@ -142,6 +144,7 @@ impl AggregateKind {
             Self::Collaboration => 11,
             Self::Orchestrator => 12,
             Self::Harness => 13,
+            Self::Debugger => 14,
         }
     }
 
@@ -160,6 +163,7 @@ impl AggregateKind {
             Self::Collaboration => 11,
             Self::Orchestrator => 12,
             Self::Harness => 13,
+            Self::Debugger => 14,
         }
     }
 
@@ -178,6 +182,7 @@ impl AggregateKind {
             11 => Some(Self::Collaboration),
             12 => Some(Self::Orchestrator),
             13 => Some(Self::Harness),
+            14 => Some(Self::Debugger),
             _ => None,
         }
     }

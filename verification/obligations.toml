@@ -1404,3 +1404,99 @@ owner = "ACTOR-0001"
 evidence = [
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-harness/src/runtime/binding.rs", symbol = "peritus_harness::runtime::binding::tests::exact_binding_retains_the_shared_tuple_and_rejects_drift", command = "cargo test --package peritus-harness --all-targets --all-features --locked" },
 ]
+
+[[entries]]
+id = "INV-018"
+kind = "invariant"
+statement = "Every E2 selection-manifest entry belongs to exactly one frozen diagnostic subject and one matching C0-backed C7 event; causal closure adds only valid same-subject ancestors and the complete selection remains within its frozen bounds."
+owning_crate = "peritus-debugger"
+source_file = "crates/analysis/peritus-debugger/src/verified.rs"
+symbol = "peritus_debugger::verified::selection_containment"
+status = "in-progress"
+dependencies = ["OBL-0115", "OBL-0167"]
+live_issue = "#21"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/analysis/peritus-debugger/src/verified.rs", symbol = "peritus_debugger::verified::selection_containment", command = "cargo verus verify --package peritus-debugger --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/analysis/peritus-debugger/tests/domain_primitives.rs", symbol = "peritus_debugger::tests::domain_primitives::refinement_selection_containment", command = "cargo test --package peritus-debugger --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0168"
+kind = "invariant"
+statement = "Every validated E2 citation names one selected event with exact subject, journal position, and frame identity; any artifact citation names a selected finalized ordinary artifact and a nonempty in-range byte span."
+owning_crate = "peritus-debugger"
+source_file = "crates/analysis/peritus-debugger/src/verified.rs"
+symbol = "peritus_debugger::verified::citation_containment"
+status = "in-progress"
+dependencies = ["INV-018"]
+live_issue = "#21"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/analysis/peritus-debugger/src/verified.rs", symbol = "peritus_debugger::verified::citation_containment", command = "cargo verus verify --package peritus-debugger --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/analysis/peritus-debugger/tests/domain_primitives.rs", symbol = "peritus_debugger::tests::domain_primitives::refinement_citation_containment", command = "cargo test --package peritus-debugger --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0169"
+kind = "invariant"
+statement = "Every validated E2 report is subject-bound, canonically ordered, bounded, taxonomy-complete, citation-valid, uncertainty-preserving, and diagnostic-only before canonical encoding, artifact finalization, or evidence admission."
+owning_crate = "peritus-debugger"
+source_file = "crates/analysis/peritus-debugger/src/verified.rs"
+symbol = "peritus_debugger::verified::report_validity"
+status = "in-progress"
+dependencies = ["INV-018", "OBL-0168"]
+live_issue = "#21"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/analysis/peritus-debugger/src/verified.rs", symbol = "peritus_debugger::verified::report_validity", command = "cargo verus verify --package peritus-debugger --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/analysis/peritus-debugger/tests/domain_primitives.rs", symbol = "peritus_debugger::tests::domain_primitives::refinement_report_validity", command = "cargo test --package peritus-debugger --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0170"
+kind = "refinement"
+statement = "Applying the complete legal E2 event prefix through the pure reducer produces the same state and digest as the accepted complete checkpoint, and cancellation or another terminal state cannot transition to later success."
+owning_crate = "peritus-debugger"
+source_file = "crates/analysis/peritus-debugger/src/verified.rs"
+symbol = "peritus_debugger::verified::replay_equivalence"
+status = "in-progress"
+dependencies = ["OBL-0115", "INV-018"]
+live_issue = "#21"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/analysis/peritus-debugger/src/verified.rs", symbol = "peritus_debugger::verified::replay_equivalence", command = "cargo verus verify --package peritus-debugger --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/analysis/peritus-debugger/tests/domain_primitives.rs", symbol = "peritus_debugger::tests::domain_primitives::refinement_replay_equivalence", command = "cargo test --package peritus-debugger --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0171"
+kind = "invariant"
+statement = "Every E2 selection, timeline, cause, alternative, contrary citation, cluster, pattern member, component link, claim, diagnostic, model stream, report, event, and complete state remains within the independently frozen job ceilings."
+owning_crate = "peritus-debugger"
+source_file = "crates/analysis/peritus-debugger/src/verified.rs"
+symbol = "peritus_debugger::verified::bounded_analysis"
+status = "in-progress"
+dependencies = ["INV-018", "OBL-0169", "OBL-0170"]
+live_issue = "#21"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/analysis/peritus-debugger/src/verified.rs", symbol = "peritus_debugger::verified::bounded_analysis", command = "cargo verus verify --package peritus-debugger --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/analysis/peritus-debugger/tests/domain_primitives.rs", symbol = "peritus_debugger::tests::domain_primitives::refinement_bounded_analysis", command = "cargo test --package peritus-debugger --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0172"
+kind = "invariant"
+statement = "Checked E2 reports and model proposals leave source evidence unchanged and cannot represent E1 mutation, acceptance, waiver, evaluation, promotion, production activation, rollback authority, a production pointer, or a capability."
+owning_crate = "peritus-debugger"
+source_file = "crates/analysis/peritus-debugger/src/verified.rs"
+symbol = "peritus_debugger::verified::non_authority"
+status = "in-progress"
+dependencies = ["INV-003", "INV-004", "OBL-0169"]
+live_issue = "#21"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/analysis/peritus-debugger/src/verified.rs", symbol = "peritus_debugger::verified::non_authority", command = "cargo verus verify --package peritus-debugger --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/analysis/peritus-debugger/tests/domain_primitives.rs", symbol = "peritus_debugger::tests::domain_primitives::refinement_non_authority", command = "cargo test --package peritus-debugger --all-targets --all-features --locked" },
+]

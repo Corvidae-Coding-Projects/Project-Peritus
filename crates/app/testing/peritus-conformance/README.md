@@ -54,8 +54,8 @@ evidence for those failures must execute conformance in a supervised subprocess.
 
 The crate exports production journal, replay, C1 workspace, C2 process, C2/C3 sandbox, C4 tool,
 C5 provider, D0 agent-loop, D1 gate, D2 review, D3 scheduler/collaboration, E0 orchestrator, E1
-harness materialization, and C7 trace/telemetry suites plus runnable empty plugin and protocol
-suites. The provider suite contains
+harness materialization, E2 debugger, and C7 trace/telemetry suites plus runnable empty plugin and
+protocol suites. The provider suite contains
 fourteen fixed cases covering capability honesty, ordering and exact deduplication, fragmented
 tool calls, malformed and incomplete streams, interruption, cancellation, authentication, rate
 limits and retry-after, transient retry, ambiguous submission, usage, redaction, and adapter
@@ -92,6 +92,10 @@ fourteen cases covering exact manifest inventory, the complete component catalog
 authority rejection, protected immutability, content-addressed history, forward and rollback C1
 materialization, finalized artifacts, independent bounds, replay/idempotency, malformed frames,
 panic containment, and teardown isolation.
+The debugger suite contains thirteen cases covering immutable evidence selection, canonical
+timelines, closed taxonomy, citation containment, invalid model-output rejection, deterministic
+clustering, replay, durable cancellation, malformed input, redaction, independent bounds, panic
+containment, and teardown isolation.
 
 Production crates implement only the subject traits and translate these runtime-neutral fixtures
 and observations into their own domain values. A2 neither constructs privileged runtime permits

@@ -28,6 +28,7 @@ source_exceptions = [
 ]
 forbidden_dependencies = []
 controlled_source_roots = [
+    { path = "crates/analysis/peritus-debugger/tests/fixtures/v1", owner = "E2", kind = "generated", rationale = "E2 owns immutable schema-versioned debugger command, event, and complete-state compatibility frames plus their SHA-256 manifest." },
     { path = "crates/foundation/peritus-protocol/src/schema", owner = "B3", kind = "schema", rationale = "B3 owns the handwritten family registry, deterministic renderers, fixture constructors, and code-generation implementation." },
     { path = "crates/orchestration/peritus-collaboration/tests/fixtures/v1", owner = "D3", kind = "generated", rationale = "D3 owns immutable schema-versioned collaboration command, event, and complete-state compatibility frames plus their SHA-256 manifest." },
     { path = "crates/orchestration/peritus-harness/tests/fixtures/v1", owner = "E1", kind = "generated", rationale = "E1 owns immutable schema-versioned harness command, event, and complete-state compatibility frames plus their SHA-256 manifest." },
@@ -91,6 +92,12 @@ may_depend_on = ["foundation", "state", "observe"]
 may_dev_depend_on = ["foundation", "state", "observe", "testing"]
 
 [[layers]]
+name = "analysis"
+path = "crates/analysis"
+may_depend_on = ["foundation", "state", "model", "orchestration", "observe", "analysis"]
+may_dev_depend_on = ["foundation", "state", "model", "orchestration", "observe", "analysis", "testing"]
+
+[[layers]]
 name = "testing"
 path = "crates/app/testing"
 required_verification_class = "C"
@@ -149,6 +156,13 @@ path = "crates/foundation/peritus-budget"
 owner = "B1"
 layer = "foundation"
 verification_class = "V"
+
+[[packages]]
+name = "peritus-debugger"
+path = "crates/analysis/peritus-debugger"
+owner = "E2"
+layer = "analysis"
+verification_class = "H"
 
 [[packages]]
 name = "peritus-evidence"

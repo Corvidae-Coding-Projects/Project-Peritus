@@ -66,11 +66,16 @@ The implemented foundation and runtime spine now covers:
 - E1: strict C1-backed harness manifests and complete typed component catalogs, deterministic
   compatibility/authority graphs, protected controlled assets, immutable content-addressed
   revision DAGs, exact owned-path C1 materialization and ancestor rollback, plus C0 durability,
-  replay, projections, protocol fixtures, and independent A2 conformance.
+  replay, projections, protocol fixtures, and independent A2 conformance; and
+- E2: immutable subject-bound C7/C0 evidence selection, deterministic causal timelines and closed
+  failure taxonomy, citation-complete root-cause analysis, cross-run pattern clustering, E1
+  component correlation and harness-health summaries, optional strictly validated C5/C6 model
+  assistance, plus crash-safe jobs, replay, report artifact/evidence publication, protocol
+  fixtures, migration, Verus obligations, and independent A2 conformance.
 
 These are library and verification layers. There is not yet a user-facing `peritus` CLI, daemon,
-TUI, harness diagnosis/evaluation/promotion runtime, or native packaged-host qualification. A3,
-E2–E3, F0, G0–G3, and H0–H4 remain before production release and qualification.
+TUI, harness evaluation/promotion runtime, or native packaged-host qualification. A3, E3, F0,
+G0–G3, and H0–H4 remain before production release and qualification.
 
 Gate A is the current merge authority: ordinary Rust checks, architecture and API policy,
 supply-chain policy, pinned toolchains, full Verus verification, and verified release builds must
@@ -118,6 +123,9 @@ rollback, and restart reconciliation. The
 [E1 harness-materialization guide](docs/e1-harness-materialization.md) documents strict manifest
 inventory, checked component graphs, immutable revision history, C0/C1 materialization, restart,
 and ancestor rollback. The
+[E2 debugger guide](docs/e2-debugger.md) documents exact subject and evidence binding,
+deterministic selection/timelines/causes/clustering, closed taxonomy, citations, optional validated
+model analysis, durable replay/publication, and the non-mutation/non-authority boundary. The
 [C2 process and sandbox guide](docs/c2-process-sandbox.md) documents structured process execution,
 complete sandbox contracts, target-owned launch authorization, bounded supervision, terminal
 accounting, restart reconciliation, and holder quiescence.
