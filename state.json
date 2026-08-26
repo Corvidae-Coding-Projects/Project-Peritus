@@ -1,6 +1,6 @@
 {
   "next_display_id": 23,
-  "next_comment_id": 374,
+  "next_comment_id": 375,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -1213,7 +1213,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T08:38:06.537413124Z",
-      "updated_at": "2026-08-26T08:38:35.585259400Z",
+      "updated_at": "2026-08-26T08:53:48.754711135Z",
       "labels": [
         "feature"
       ],
@@ -1226,6 +1226,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAI9xO1OFJtY90fsja8yzypWdjhT89zoxeZm//b2i97R0lQFbN7UiwqHc0a63Ix5e+Tc7eg2ku3VvkSNVmasNDAQ=="
+        },
+        "5d1e11a0-13bc-4629-8a74-77faab33219c": {
+          "display_id": 374,
+          "author": "6ME5",
+          "content": "Signed design commit de8d74a freezes E3 requirements, C0/B3 allocations, runtime-neutral C2/C3 execution port, D3 scheduling reconciliation, complete accounting, portable statistics, storage bounds, Verus obligations, conformance, and release gates. Verification: two independent read-only architecture reviews, required-section/unique-requirement validation, unfinished/security scan, and git diff --check passed; Rust gates are deferred to implementation because this commit is documentation-only.",
+          "created_at": "2026-08-26T08:53:48.751273119Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAMgyLmFS7qrey2P6waKgr9KAQPEaA1o+lcEERsg/kXpfv3DoLMTqneBeLJYFQIpSvuY+L8ov2CBmyXpkkWOQKCw=="
         },
         "8364f9ee-6c23-411e-b9b7-93e6dbf34611": {
           "display_id": 373,
@@ -3773,8 +3782,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-26T08:38:35.585259400Z",
+    "timestamp": "2026-08-26T08:53:48.754711135Z",
     "agent_id": "6ME5",
-    "agent_seq": 500
+    "agent_seq": 501
   }
 }
