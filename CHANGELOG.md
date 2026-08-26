@@ -68,8 +68,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   graph order and acyclicity, compatibility, authority non-widening, protected invariance,
   append-only ancestry, rollback confinement, materialization ownership, and replay equivalence
 - Add the signed E1 design freeze, crate and operator documentation, architecture/formal/CI
-  inventories, generated protocol metadata, resource-aware single-job hosted builds, and current
-  repository development-state guidance
+  inventories, generated protocol metadata, resource-aware single-job hosted builds, measured
+  thirty-minute Verus runner budgets, and current repository development-state guidance
 
 - Deliver D3 scheduling and E0 AcTor orchestration (#19)
 - Deliver production D3 scheduling/collaboration and the E0 AcTor delivery orchestrator as three

@@ -175,7 +175,7 @@ fn rust_job_is_exact(job: &Yaml) -> bool {
 
 fn supply_chain_job_is_exact(job: &Yaml) -> bool {
     let Some(job) = job.as_hash() else { return false };
-    common_job(job, "Licenses and dependency policy", "ubuntu-24.04")
+    common_job(job, "Licenses and dependency policy", "ubuntu-24.04", 20)
         && mapping_value(job, "steps").and_then(Yaml::as_vec).is_some_and(|steps| {
             steps.len() == 4
                 && checkout_step(&steps[0])
@@ -190,7 +190,7 @@ fn supply_chain_job_is_exact(job: &Yaml) -> bool {
 
 fn verus_job_is_exact(job: &Yaml, tools: &ToolchainPolicy) -> bool {
     let Some(job) = job.as_hash() else { return false };
-    common_job(job, "Locked Verus workspace", "ubuntu-24.04")
+    common_job(job, "Locked Verus workspace", "ubuntu-24.04", 30)
         && mapping_value(job, "steps").and_then(Yaml::as_vec).is_some_and(|steps| {
             steps.len() == 9
                 && checkout_step(&steps[0])
@@ -211,12 +211,12 @@ fn verus_job_is_exact(job: &Yaml, tools: &ToolchainPolicy) -> bool {
         })
 }
 
-fn common_job(job: &Hash, name: &str, runner: &str) -> bool {
+fn common_job(job: &Hash, name: &str, runner: &str, timeout_minutes: i64) -> bool {
     exact_keys(job, &["name", "needs", "runs-on", "timeout-minutes", "steps"])
         && string(job, "name") == Some(name)
         && string(job, "needs") == Some("bootstrap")
         && string(job, "runs-on") == Some(runner)
-        && integer(job, "timeout-minutes") == Some(20)
+        && integer(job, "timeout-minutes") == Some(timeout_minutes)
 }
 
 fn rust_matrix(strategy: Option<&Yaml>) -> bool {
