@@ -946,11 +946,12 @@
       "display_id": 24,
       "title": "A3 Application Protocol Foundation",
       "description": "Goal: \n\nAcceptance criteria:\n- \n\nGoal:\nDeliver the complete production A3 transport-neutral application protocol foundation for G0/G1/G2 clients.\n\nAcceptance criteria:\n- Signed architecture design precedes implementation.\n- peritus-app-protocol provides bounded canonical negotiation, request/response/event/control, subscription/cursor, artifact transfer, approval/input, terminal, readiness/shutdown, and stable error contracts without transport or persistence authority.\n- Deterministic Verus roots, generated schemas/bindings, immutable compatibility fixtures, and an independent A2 conformance catalog are complete.\n- Focused verification and CARGO_BUILD_JOBS=1 just gate-a pass.\n- Signed PR is open, clean, mergeable, and all Linux/macOS/Windows/Foundation/Verus checks are green.\n\nConstraints:\nNo MVP, stubs, god files, Crosslink kickoff, concurrent Cargo/Verus workloads, transport implementation, or staging of local provider metadata.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T19:24:03.235908577Z",
-      "updated_at": "2026-08-26T21:23:25.983035287Z",
+      "updated_at": "2026-08-26T21:23:30.613915173Z",
+      "closed_at": "2026-08-26T21:23:30.613913250Z",
       "labels": [
         "feature"
       ],
@@ -4070,8 +4071,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-26T21:23:25.983035287Z",
+    "timestamp": "2026-08-26T21:23:30.613915173Z",
     "agent_id": "6ME5",
-    "agent_seq": 539
+    "agent_seq": 540
   }
 }
