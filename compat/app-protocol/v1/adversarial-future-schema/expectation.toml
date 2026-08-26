@@ -1,0 +1,4 @@
+schema = 1
+accepted = false
+expected_family = 94
+expected_error = "unsupported-schema"

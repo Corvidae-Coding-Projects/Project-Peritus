@@ -1,14 +1,12 @@
-use peritus_conformance::{
-    ConformanceRunner, ConformanceSuite, SuiteStatus, plugin_suite, protocol_suite,
-};
+use peritus_conformance::{ConformanceRunner, ConformanceSuite, SuiteStatus, plugin_suite};
 
 use super::harness::{FactoryState, OperationBehavior, TestFactory, TestSubject, block_on};
 
 #[test]
-fn two_unimplemented_catalog_suites_have_stable_unique_names() {
-    let suites = [plugin_suite::<TestSubject>(), protocol_suite()];
+fn unimplemented_catalog_suite_has_a_stable_name() {
+    let suites = [plugin_suite::<TestSubject>()];
     let ids = suites.iter().map(|suite| suite.descriptor().id().as_str()).collect::<Vec<_>>();
-    assert_eq!(ids, ["peritus.plugin", "peritus.protocol"]);
+    assert_eq!(ids, ["peritus.plugin"]);
     assert!(suites.iter().all(|suite| suite.cases().is_empty()));
 }
 

@@ -1,0 +1,13 @@
+schema = 1
+surface = "app-protocol"
+surface_version = "v1"
+case = "corrupt-truncated-header"
+kind = "corrupt"
+
+[[files]]
+path = "expectation.toml"
+sha256 = "17aacc3171be26c54b46832c95e1b949121c6f9e9accfa0a181012f9b1a853ef"
+
+[[files]]
+path = "payload.bin"
+sha256 = "05fe0793a2957c65fca634928190f33152f7525430ec37144c094abb6775fd0e"

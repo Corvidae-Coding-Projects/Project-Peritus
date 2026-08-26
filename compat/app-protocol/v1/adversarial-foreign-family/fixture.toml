@@ -1,0 +1,13 @@
+schema = 1
+surface = "app-protocol"
+surface_version = "v1"
+case = "adversarial-foreign-family"
+kind = "adversarial"
+
+[[files]]
+path = "expectation.toml"
+sha256 = "6212a143f862f218f0b847dd6ea8427e99213e57a243c3472a44b0d0a94faf41"
+
+[[files]]
+path = "payload.bin"
+sha256 = "c85583c78efa81d1748b4e868dd1eaff2580a76b365a2fb4d23b8a9344023614"

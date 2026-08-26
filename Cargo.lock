@@ -1431,6 +1431,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "peritus-app-protocol"
+version = "0.0.0"
+dependencies = [
+ "peritus-codec",
+ "peritus-conformance",
+ "peritus-protocol",
+ "peritus-test-support",
+ "peritus-types",
+ "tempfile",
+ "vstd",
+]
+
+[[package]]
 name = "peritus-approval"
 version = "0.0.0"
 dependencies = [

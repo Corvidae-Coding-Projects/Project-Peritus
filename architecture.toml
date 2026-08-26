@@ -37,9 +37,12 @@ source_exceptions = [
 ]
 forbidden_dependencies = []
 controlled_source_roots = [
+    { path = "app-protocol/generated", owner = "A3", kind = "generated-schema", rationale = "A3 deterministically generates the reviewed application-protocol JSON Schema, TypeScript declarations, and wire registry." },
+    { path = "compat/app-protocol", owner = "A3", kind = "generated", rationale = "A3 owns minimal, realistic, corrupt, and adversarial application-protocol compatibility fixtures with per-case SHA-256 inventories." },
     { path = "crates/analysis/peritus-debugger/tests/fixtures/v1", owner = "E2", kind = "generated", rationale = "E2 owns immutable schema-versioned debugger command, event, and complete-state compatibility frames plus their SHA-256 manifest." },
     { path = "crates/analysis/peritus-eval/tests/fixtures/v1", owner = "E3", kind = "generated", rationale = "E3 owns immutable schema-versioned evaluation command, event, and complete-state compatibility frames plus their SHA-256 manifest." },
     { path = "crates/analysis/peritus-evolution/tests/fixtures/v1", owner = "F0", kind = "generated", rationale = "F0 owns immutable schema-versioned campaign and production-pointer command, event, and complete-state compatibility frames plus their SHA-256 manifest." },
+    { path = "crates/app/peritus-app-protocol/src/schema", owner = "A3", kind = "schema", rationale = "A3 owns the handwritten application family, variant, error, and field metadata plus deterministic renderers and fixture constructors." },
     { path = "crates/foundation/peritus-protocol/src/schema", owner = "B3", kind = "schema", rationale = "B3 owns the handwritten family registry, deterministic renderers, fixture constructors, and code-generation implementation." },
     { path = "crates/orchestration/peritus-collaboration/tests/fixtures/v1", owner = "D3", kind = "generated", rationale = "D3 owns immutable schema-versioned collaboration command, event, and complete-state compatibility frames plus their SHA-256 manifest." },
     { path = "crates/orchestration/peritus-harness/tests/fixtures/v1", owner = "E1", kind = "generated", rationale = "E1 owns immutable schema-versioned harness command, event, and complete-state compatibility frames plus their SHA-256 manifest." },
@@ -146,6 +149,13 @@ may_dev_depend_on = ["V", "H", "T", "C"]
 name = "C"
 may_depend_on = ["V", "H", "C"]
 may_dev_depend_on = ["V", "H", "C"]
+
+[[packages]]
+name = "peritus-app-protocol"
+path = "crates/app/peritus-app-protocol"
+owner = "A3"
+layer = "app"
+verification_class = "H"
 
 [[packages]]
 name = "peritus-approval"

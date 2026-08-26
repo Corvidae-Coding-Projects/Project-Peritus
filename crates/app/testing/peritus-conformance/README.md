@@ -54,8 +54,12 @@ evidence for those failures must execute conformance in a supervised subprocess.
 
 The crate exports production journal, replay, C1 workspace, C2 process, C2/C3 sandbox, C4 tool,
 C5 provider, D0 agent-loop, D1 gate, D2 review, D3 scheduler/collaboration, E0 orchestrator, E1
-harness materialization, E2 debugger, E3 evaluation, F0 evolution, and C7 trace/telemetry suites
-plus runnable empty plugin and protocol suites. The provider suite contains
+harness materialization, E2 debugger, E3 evaluation, F0 evolution, C7 trace/telemetry, and A3
+application-protocol suites plus one runnable empty plugin suite. The protocol suite contains
+sixteen fixed cases covering exact/downgraded/incompatible negotiation, required features, command
+binding, idempotency, event resume/redelivery/acknowledgement, gaps, backpressure, artifact
+transfer, prompt freshness, terminal ordering, daemon lifecycle, malformed input, and bounds. The
+provider suite contains
 fourteen fixed cases covering capability honesty, ordering and exact deduplication, fragmented
 tool calls, malformed and incomplete streams, interruption, cancellation, authentication, rate
 limits and retry-after, transient retry, ambiguous submission, usage, redaction, and adapter
@@ -107,7 +111,7 @@ activation, append-only rollback, replay, malformed input, and independent bound
 Production crates implement only the subject traits and translate these runtime-neutral fixtures
 and observations into their own domain values. A2 neither constructs privileged runtime permits
 nor depends on a process or sandbox implementation. An empty suite's `Empty` status is scaffolding,
-not Gate evidence. Later protocol-owning slices add typed cases after their contracts exist.
+not Gate evidence.
 
 This crate deliberately does not define model messages, provider wire formats, production
 streaming normalization, production tool schemas, authorization receipts, retry policy,

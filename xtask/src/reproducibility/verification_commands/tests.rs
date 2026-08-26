@@ -32,6 +32,12 @@ owner = "D0"
 layer = "orchestration"
 verification_class = "H"
 [[packages]]
+name = "peritus-app-protocol"
+path = "crates/app/peritus-app-protocol"
+owner = "A3"
+layer = "app"
+verification_class = "H"
+[[packages]]
 name = "peritus-approval"
 path = "crates/state/peritus-approval"
 owner = "B1"

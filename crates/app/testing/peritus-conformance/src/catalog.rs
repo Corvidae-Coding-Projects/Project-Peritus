@@ -1,4 +1,4 @@
-//! Standard empty suite catalog for protocol-owning slices to extend later.
+//! Standard empty suite catalog for future extension contracts.
 
 use crate::{ReportText, StaticSuite, SuiteDescriptor, SuiteId};
 
@@ -12,12 +12,4 @@ fn empty<S>(id: &'static str, summary: &'static str) -> StaticSuite<S> {
 #[must_use]
 pub fn plugin_suite<S>() -> StaticSuite<S> {
     empty("peritus.plugin", "Plugin conformance cases supplied after plugin contracts exist")
-}
-
-/// Returns the runnable empty protocol conformance suite.
-///
-/// B3 owns the future domain protocol and codec cases.
-#[must_use]
-pub fn protocol_suite<S>() -> StaticSuite<S> {
-    empty("peritus.protocol", "Protocol conformance cases supplied after domain protocols exist")
 }

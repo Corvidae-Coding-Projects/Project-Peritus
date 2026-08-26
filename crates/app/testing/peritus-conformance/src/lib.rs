@@ -20,6 +20,7 @@ mod journal;
 mod orchestrator;
 mod outcome;
 mod process;
+mod protocol;
 mod provider;
 mod replay;
 mod report;

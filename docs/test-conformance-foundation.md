@@ -112,8 +112,11 @@ typed observations make repeated runs directly comparable. Suite status is one o
 `Empty` is never equivalent to `Passed` and cannot satisfy a release verdict. There is no skipped,
 ignored, quarantined or caller-forced success state.
 
-A2 publishes named empty provider, plugin, and protocol suites. C4 supplies real tool descriptor,
-schema, exposure, authorization, dispatch, result, control, deadline, and replay cases. C0 supplies
+A2 publishes one named empty plugin suite. A3 supplies sixteen real application-protocol cases for
+negotiation, command binding, idempotency, event resume/redelivery/acknowledgement, gaps,
+backpressure, artifact transfer, prompt freshness, terminal ordering, daemon lifecycle, malformed
+input, and bounds. C4 supplies real tool descriptor, schema, exposure, authorization, dispatch,
+result, control, deadline, and replay cases. C0 supplies
 real journal and replay cases, and C1 supplies real Git/workspace/patch cases covering atomic
 candidate creation, stale generation and resource rejection, read-only isolation, rollback history,
 and restart reconciliation. C2 supplies fresh-subject process and sandbox cases covering structured
@@ -134,7 +137,8 @@ report from a production adapter proves the named contract.
 The A2 provider and tool fixtures verify only generic FIFO capture, exact ordered output,
 mismatch, exhaustion, fault scheduling and isolation. The following remain outside A2:
 
-- A3/B3 messages, version envelopes, codecs and schema compatibility;
+- A3/B3 production messages, codecs, schemas, and compatibility bytes. A2 owns only the
+  runtime-neutral A3 protocol subject contract and fixed behavioral cases;
 - B0 lifecycle and success semantics;
 - B1 authorization, capabilities, leases and budgets;
 - B2 acceptance and quality policy;

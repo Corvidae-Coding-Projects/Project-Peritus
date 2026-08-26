@@ -1,0 +1,13 @@
+schema = 1
+surface = "app-protocol"
+surface_version = "v1"
+case = "realistic-server-hello"
+kind = "realistic"
+
+[[files]]
+path = "expectation.toml"
+sha256 = "44f81a11c55e462c228c26394b6ebe71e5b6bf0d0a4a44837f447f964508a300"
+
+[[files]]
+path = "payload.bin"
+sha256 = "762be46b68d1b8e2c1cadcc8a1eff4dc2729d453c4345eb7d50a956cb7e2568e"

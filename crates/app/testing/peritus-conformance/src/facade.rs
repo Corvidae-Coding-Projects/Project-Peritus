@@ -1,7 +1,7 @@
 //! Stable crate-root facade kept separate from the composition root.
 
 pub use crate::agent::*;
-pub use crate::catalog::{plugin_suite, protocol_suite};
+pub use crate::catalog::plugin_suite;
 pub use crate::collaboration::{
     CollaborationConformanceError, CollaborationConformanceFixture,
     CollaborationConformanceObservation, CollaborationConformanceSubject, CollaborationScenario,
@@ -53,6 +53,10 @@ pub use crate::process::{
     ProcessIoMode, ProcessOutputObservation, ProcessOutputStream, ProcessOwnershipObservation,
     ProcessRecoveryDisposition, ProcessRecoveryProbe, ProcessScenario,
     ProcessStreamOffsetObservation, ProcessTrigger, process_suite,
+};
+pub use crate::protocol::{
+    ProtocolConformanceError, ProtocolConformanceFixture, ProtocolConformanceObservation,
+    ProtocolConformanceSubject, ProtocolScenario, protocol_suite,
 };
 pub use crate::provider::{
     ProviderAttemptObservation, ProviderAttemptOutcome, ProviderCancellationObservation,
