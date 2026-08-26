@@ -1,6 +1,6 @@
 {
   "next_display_id": 21,
-  "next_comment_id": 350,
+  "next_comment_id": 351,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -3419,7 +3419,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-25T23:07:27.355677826Z",
-      "updated_at": "2026-08-26T01:13:44.429728180Z",
+      "updated_at": "2026-08-26T01:39:00.529485129Z",
       "labels": [
         "E1",
         "feature"
@@ -3514,14 +3514,23 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAYOkGlR5QJZS8Ixl0z9eCaCXJl5pfaewENop1esWK5rOSeGHRKQ4HxksQlHRQS33V8Hk67HEPz5Iuo9CgpJVjBw=="
+        },
+        "f0e7225b-beb3-4d6a-804a-41a56b6d5d74": {
+          "display_id": 350,
+          "author": "6ME5",
+          "content": "Hosted run diagnosis: all 27 executable Rust/platform/policy checks passed. Both Verus lanes completed workspace verification, strict no-cheating verification, and verified release build, then GitHub cancelled the final strict build at the old 20-minute job timeout. Signed commit 5c16f83 raises only those two measured Verus budgets to 30 minutes and adds exact workflow-policy regression tests; focused tests and xtask all are green.",
+          "created_at": "2026-08-26T01:39:00.526487057Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA95oYz+TMgugWBDzG0WZNXKUxw5WHyxD98VZYs9lsQ9/B4RSfJmUbjRCw4UkfvS0bfiooiMa9bgJ3Pey0OwquDg=="
         }
       }
     }
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-26T01:13:44.429728180Z",
+    "timestamp": "2026-08-26T01:39:00.529485129Z",
     "agent_id": "6ME5",
-    "agent_seq": 462
+    "agent_seq": 463
   }
 }
