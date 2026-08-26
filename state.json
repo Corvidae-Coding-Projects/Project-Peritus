@@ -1,6 +1,6 @@
 {
   "next_display_id": 24,
-  "next_comment_id": 382,
+  "next_comment_id": 383,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -304,10 +304,21 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T15:36:15.834953593Z",
-      "updated_at": "2026-08-26T15:36:20.246253256Z",
+      "updated_at": "2026-08-26T15:36:41.533072921Z",
       "labels": [
         "feature"
-      ]
+      ],
+      "comments": {
+        "9a159884-331c-40fc-aa6d-2fbea1dbf682": {
+          "display_id": 382,
+          "author": "6ME5",
+          "content": "Preflight complete on origin/main 1ebdfbe (merged PR #29). F0 owns a new analysis-layer peritus-evolution V/H crate and integrates E1 harness revisions, E2 cited diagnosis, E3 immutable evaluation, B1 authority, C0 durability/evidence, B3 codec, A2 conformance, and formal governance. Heavy verification will remain serialized with CARGO_BUILD_JOBS=1; Crosslink kickoff is excluded.",
+          "created_at": "2026-08-26T15:36:41.530411432Z",
+          "kind": "progress",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAcw67UuHUGNLrHPmUNbBaNOv2BrNuaJGL4gYjPyVGlFBpG5HwbNDDmkdnw+6zx8LEXFLMKTbroSE1ZwuCxbxvAA=="
+        }
+      }
     },
     "19b7b53a-b2fb-41c1-835d-ffd6ce605c08": {
       "uuid": "19b7b53a-b2fb-41c1-835d-ffd6ce605c08",
@@ -3861,8 +3872,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-26T15:36:26.530419071Z",
+    "timestamp": "2026-08-26T15:36:41.533072921Z",
     "agent_id": "6ME5",
-    "agent_seq": 513
+    "agent_seq": 514
   }
 }
