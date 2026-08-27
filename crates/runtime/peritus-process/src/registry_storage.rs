@@ -81,6 +81,24 @@ pub(crate) fn load_manifests(
     Ok(())
 }
 
+pub(crate) fn load_quarantine(quarantine: &Path) -> Result<Vec<PathBuf>, ProcessError> {
+    let mut records = Vec::new();
+    for entry in
+        fs::read_dir(quarantine).map_err(|_| store_error("quarantine directory cannot be read"))?
+    {
+        let entry = entry.map_err(|_| store_error("quarantine entry cannot be inspected"))?;
+        let file_type = entry
+            .file_type()
+            .map_err(|_| store_error("quarantine entry type cannot be inspected"))?;
+        if !file_type.is_file() {
+            return Err(store_error("quarantine contains a non-file entry"));
+        }
+        records.push(entry.path());
+    }
+    records.sort();
+    Ok(records)
+}
+
 fn quarantine_path(
     path: &Path,
     quarantine: &Path,

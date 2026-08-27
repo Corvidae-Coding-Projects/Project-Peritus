@@ -2,6 +2,8 @@
 
 #![allow(clippy::unwrap_used, reason = "fixed checked durable fixtures")]
 
+mod d3;
+
 use std::path::Path;
 
 use peritus_codec::{CodecLimits, decode_message};

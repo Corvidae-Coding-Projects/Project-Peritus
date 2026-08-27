@@ -129,6 +129,45 @@ CREATE TABLE IF NOT EXISTS app_commands (
             AND error_code IS NOT NULL AND result_digest IS NOT NULL))
 ) STRICT, WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS app_commands_state ON app_commands(state, command_id);
+CREATE TABLE IF NOT EXISTS app_prompt_targets (
+    prompt_id BLOB PRIMARY KEY CHECK (length(prompt_id) = 16),
+    actor_id BLOB NOT NULL CHECK (length(actor_id) = 16),
+    session_id BLOB NOT NULL CHECK (length(session_id) = 16),
+    originating_request_id BLOB NOT NULL CHECK (length(originating_request_id) = 16),
+    target_kind INTEGER NOT NULL CHECK (target_kind BETWEEN 1 AND 2),
+    acceptance_spec_id BLOB NOT NULL CHECK (length(acceptance_spec_id) = 16),
+    harness_id BLOB NOT NULL CHECK (length(harness_id) = 16),
+    workspace_id BLOB NOT NULL CHECK (length(workspace_id) = 16),
+    workspace_generation INTEGER NOT NULL CHECK (workspace_generation > 0),
+    workspace_revision INTEGER NOT NULL CHECK (workspace_revision > 0),
+    policy_id BLOB NOT NULL CHECK (length(policy_id) = 16),
+    provider_profile_id BLOB NOT NULL CHECK (length(provider_profile_id) = 16),
+    freshness_digest BLOB NOT NULL CHECK (length(freshness_digest) = 32),
+    cancellation_generation INTEGER NOT NULL CHECK (cancellation_generation > 0),
+    binding_digest BLOB NOT NULL CHECK (length(binding_digest) = 32),
+    binding_bytes BLOB NOT NULL CHECK (length(binding_bytes) BETWEEN 1 AND 16777216),
+    maximum_answer_bytes INTEGER NOT NULL CHECK (maximum_answer_bytes BETWEEN 1 AND 1048576),
+    state INTEGER NOT NULL CHECK (state BETWEEN 1 AND 3),
+    settlement_kind INTEGER CHECK (settlement_kind IS NULL OR settlement_kind BETWEEN 1 AND 3),
+    settlement_request_id BLOB CHECK (
+        settlement_request_id IS NULL OR length(settlement_request_id) = 16
+    ),
+    settlement_digest BLOB CHECK (settlement_digest IS NULL OR length(settlement_digest) = 32),
+    settlement_bytes BLOB CHECK (
+        settlement_bytes IS NULL OR length(settlement_bytes) BETWEEN 1 AND 16777216
+    ),
+    FOREIGN KEY(session_id, actor_id) REFERENCES app_sessions(session_id, actor_id),
+    CHECK ((state = 1 AND settlement_kind IS NULL AND settlement_request_id IS NULL
+            AND settlement_digest IS NULL AND settlement_bytes IS NULL)
+        OR (state = 2 AND settlement_kind IN (1, 2) AND settlement_request_id IS NOT NULL
+            AND settlement_digest IS NOT NULL AND settlement_bytes IS NOT NULL)
+        OR (state = 3 AND settlement_kind = 3 AND settlement_request_id IS NOT NULL
+            AND settlement_digest IS NOT NULL AND settlement_bytes IS NOT NULL)),
+    CHECK ((target_kind = 1 AND settlement_kind IN (1, 3))
+        OR (target_kind = 2 AND settlement_kind IN (2, 3))
+        OR settlement_kind IS NULL)
+) STRICT, WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS app_prompt_targets_state ON app_prompt_targets(state, prompt_id);
 CREATE TABLE IF NOT EXISTS app_artifacts (
     artifact_id BLOB PRIMARY KEY CHECK (length(artifact_id) = 16),
     digest BLOB NOT NULL UNIQUE CHECK (length(digest) = 32),

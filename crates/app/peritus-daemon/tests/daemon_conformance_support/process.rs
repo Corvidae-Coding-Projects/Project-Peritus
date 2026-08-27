@@ -61,6 +61,30 @@ impl TestEnvironment {
         &self.state_root
     }
 
+    pub(super) fn database_path(&self) -> PathBuf {
+        self.state_root.join("peritus.sqlite3")
+    }
+
+    pub(super) fn prepare_corrupt_process_record(&self) -> io::Result<()> {
+        let process_root = self.state_root.join("processes");
+        let workspace_root = self.state_root.join("workspaces");
+        fs::create_dir_all(&workspace_root)?;
+        let store = peritus_process::ProcessStore::open(&process_root, &workspace_root)
+            .map_err(super::debug_error)?;
+        let manifest_directory = fs::read_dir(store.root())?
+            .filter_map(Result::ok)
+            .find(|entry| {
+                entry.file_type().is_ok_and(|kind| kind.is_dir())
+                    && entry.file_name().to_string_lossy().starts_with("manifests-")
+            })
+            .map(|entry| entry.path())
+            .ok_or_else(|| io::Error::other("process store exposed no manifest directory"))?;
+        fs::write(
+            manifest_directory.join("corrupt-recovery.manifest"),
+            b"not a canonical process manifest",
+        )
+    }
+
     fn spawn_child(&self) -> io::Result<Child> {
         let log = OpenOptions::new().create(true).append(true).open(&self.log_path)?;
         let stderr = log.try_clone()?;

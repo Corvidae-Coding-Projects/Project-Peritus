@@ -72,7 +72,9 @@ windows-sys = { workspace = true, features = [
 peritus-conformance = { version = "=0.0.0", path = "../testing/peritus-conformance" }
 peritus-kernel = { version = "=0.0.0", path = "../../foundation/peritus-kernel" }
 peritus-protocol = { version = "=0.0.0", path = "../../foundation/peritus-protocol" }
+peritus-role = { version = "=0.0.0", path = "../../orchestration/peritus-role" }
 peritus-test-support = { version = "=0.0.0", path = "../testing/peritus-test-support" }
+rusqlite.workspace = true
 tempfile.workspace = true
 
 [[bin]]

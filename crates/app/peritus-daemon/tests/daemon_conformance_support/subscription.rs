@@ -138,6 +138,56 @@ pub(super) fn backpressure(
     ))
 }
 
+pub(super) fn gap() -> io::Result<DaemonConformanceObservation> {
+    let (environment, _process, mut client) = established(117)?;
+    populate_after(&mut client, 3)?;
+    let mut connection =
+        rusqlite::Connection::open(environment.database_path()).map_err(super::debug_error)?;
+    let transaction = connection.transaction().map_err(super::debug_error)?;
+    let oldest = transaction
+        .query_row("SELECT MIN(global_position) FROM events", [], |row| row.get::<_, i64>(0))
+        .map_err(super::debug_error)?;
+    for table in
+        ["state_records", "state_record_history", "outbox", "credential_registry", "app_artifacts"]
+    {
+        transaction
+            .execute(&format!("DELETE FROM {table} WHERE producing_position = ?1"), [oldest])
+            .map_err(super::debug_error)?;
+    }
+    transaction
+        .execute(
+            "DELETE FROM app_commands WHERE first_position = ?1 OR last_position = ?1",
+            [oldest],
+        )
+        .map_err(super::debug_error)?;
+    let deleted = transaction
+        .execute("DELETE FROM events WHERE global_position = ?1", [oldest])
+        .map_err(super::debug_error)?;
+    if deleted != 1 {
+        return Err(io::Error::other("retention fixture did not remove one oldest event"));
+    }
+    transaction.commit().map_err(super::debug_error)?;
+    let subscription = subscription_id(118)?;
+    subscribe(&mut client, subscription, 0, 1, 119)?;
+    let snapshot_required = receive_gap(&mut client, subscription)?;
+    Ok(observation(
+        if snapshot_required {
+            DaemonSubscriptionOutcome::SnapshotRequired
+        } else {
+            DaemonSubscriptionOutcome::Active
+        },
+        0,
+        None,
+        0,
+        true,
+        true,
+        false,
+        0,
+        0,
+        0,
+    ))
+}
+
 fn populate_after(client: &mut WireClient, target: u64) -> io::Result<u64> {
     let mut last = 0_u64;
     for index in 0_u8..64 {
@@ -208,6 +258,21 @@ fn receive_backpressure(client: &mut WireClient, subscription: SubscriptionId) -
             && backpressure.subscription_id() == subscription
         {
             return Ok(backpressure.maximum_in_flight());
+        }
+    }
+}
+
+fn receive_gap(client: &mut WireClient, subscription: SubscriptionId) -> io::Result<bool> {
+    loop {
+        let AppMessage::Event(event) = client.read()? else {
+            return Err(io::Error::other("subscription emitted a non-event message"));
+        };
+        if let AppEventPayload::SubscriptionGap { subscription_id, gap } = event.payload()
+            && *subscription_id == subscription
+        {
+            return Ok(gap.requested().get() == 0
+                && gap.earliest().get() > 1
+                && gap.latest() >= gap.earliest());
         }
     }
 }

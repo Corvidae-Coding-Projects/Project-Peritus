@@ -9,6 +9,7 @@ use peritus_app_protocol::{
     TerminalBinding, TerminalCancellation, TerminalDetach, TerminalExit, TerminalInput,
     TerminalOutput, TerminalResize, TerminalTransitionDisposition,
 };
+use peritus_process::CancellationReason;
 use peritus_types::{ActorId, ProcessId, SessionId};
 
 use super::{
@@ -16,6 +17,8 @@ use super::{
     error::{TerminalBridgeError, TerminalBridgeErrorKind},
     limits::TerminalRegistryLimits,
 };
+
+mod launch;
 
 /// Result of idempotently opening an exact terminal attachment.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -210,14 +213,14 @@ impl TerminalRegistry {
         exact_bridge_mut(&mut state, actor_id, session_id, binding)?.poll(binding, limits)
     }
 
-    /// Observes and removes a terminal process after all attachment deliveries are settled.
+    /// Observes the bounded C2 stream for a process without requiring a live client attachment.
     ///
-    /// Returns `false` while the process is live or an attachment still has pending output.
+    /// Returns `true` once the unique C2 terminal result has been observed.
     ///
     /// # Errors
     ///
     /// Rejects an unknown process or an unobservable C2 event stream.
-    pub(crate) fn retire(&self, process_id: ProcessId) -> Result<bool, TerminalBridgeError> {
+    pub(crate) fn observe(&self, process_id: ProcessId) -> Result<bool, TerminalBridgeError> {
         let mut state = self.lock();
         let limits = state.limits;
         let bridge = state.processes.get_mut(&process_id).ok_or_else(|| {
@@ -227,14 +230,63 @@ impl TerminalRegistry {
             )
         })?;
         bridge.observe(limits)?;
-        if !bridge.can_retire() {
-            return Ok(false);
-        }
-        let attachment_ids = bridge.attachment_ids();
-        state.processes.remove(&process_id);
-        for attachment_id in attachment_ids {
-            state.attachments.remove(&attachment_id);
-        }
+        Ok(bridge.terminal_observed())
+    }
+
+    /// Propagates daemon-owned worker or shutdown cancellation to one exact C2 process.
+    ///
+    /// # Errors
+    ///
+    /// Rejects an unknown process or a C2 control-queue failure.
+    pub(crate) fn cancel_process(
+        &self,
+        process_id: ProcessId,
+        reason: CancellationReason,
+    ) -> Result<(), TerminalBridgeError> {
+        let state = self.lock();
+        let bridge = state.processes.get(&process_id).ok_or_else(|| {
+            rejected(
+                TerminalBridgeErrorKind::ProcessNotRegistered,
+                "process has no live terminal control in this daemon",
+            )
+        })?;
+        bridge.cancel_process(reason)
+    }
+
+    /// Observes and removes a terminal process after all attachment deliveries are settled.
+    ///
+    /// Returns `false` while the process is live or an attachment still has pending output.
+    ///
+    /// # Errors
+    ///
+    /// Rejects an unknown process or an unobservable C2 event stream.
+    pub(crate) fn retire(&self, process_id: ProcessId) -> Result<bool, TerminalBridgeError> {
+        let bridge = {
+            let mut state = self.lock();
+            let limits = state.limits;
+            let bridge = state.processes.get_mut(&process_id).ok_or_else(|| {
+                rejected(
+                    TerminalBridgeErrorKind::ProcessNotRegistered,
+                    "process has no live terminal control in this daemon",
+                )
+            })?;
+            bridge.observe(limits)?;
+            if !bridge.can_retire() {
+                return Ok(false);
+            }
+            let attachment_ids = bridge.attachment_ids();
+            let bridge = state.processes.remove(&process_id).ok_or_else(|| {
+                rejected(
+                    TerminalBridgeErrorKind::ProcessNotRegistered,
+                    "observed terminal process disappeared before retirement",
+                )
+            })?;
+            for attachment_id in attachment_ids {
+                state.attachments.remove(&attachment_id);
+            }
+            bridge
+        };
+        bridge.join_owner()?;
         Ok(true)
     }
 
@@ -262,10 +314,44 @@ impl TerminalRegistry {
         }
     }
 
+    /// Cancels and joins every C2 process owner after connection intake has stopped.
+    ///
+    /// The registry is drained before any potentially blocking process join, so terminal client
+    /// operations and owner shutdown never run while its synchronous mutex is held.
+    ///
+    /// # Errors
+    ///
+    /// Returns the first C2 cancellation, join, or identity error after every owner has been given
+    /// a chance to shut down.
+    pub(crate) fn shutdown(&self) -> Result<usize, TerminalBridgeError> {
+        let bridges = {
+            let mut state = self.lock();
+            state.attachments.clear();
+            std::mem::take(&mut state.processes).into_values().collect::<Vec<_>>()
+        };
+        let count = bridges.len();
+        let mut first_error = None;
+        for bridge in bridges {
+            if let Err(error) = bridge.shutdown_owner()
+                && first_error.is_none()
+            {
+                first_error = Some(error);
+            }
+        }
+        match first_error {
+            Some(error) => Err(error),
+            None => Ok(count),
+        }
+    }
+
     /// Returns exact live process and attachment counts from the owned registry.
     pub(crate) fn counts(&self) -> (usize, usize) {
         let state = self.lock();
         (state.processes.len(), state.attachments.len())
+    }
+
+    pub(super) fn limits(&self) -> TerminalRegistryLimits {
+        self.lock().limits
     }
 
     fn lock(&self) -> MutexGuard<'_, RegistryState> {

@@ -11,6 +11,8 @@ mod storage;
 
 #[cfg(test)]
 mod orchestrator_tests;
+#[cfg(test)]
+mod prompt_tests;
 
 use peritus_artifact_store::ArtifactStore;
 use peritus_journal::SqliteJournal;

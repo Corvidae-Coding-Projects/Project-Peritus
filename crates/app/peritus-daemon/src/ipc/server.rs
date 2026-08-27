@@ -84,7 +84,10 @@ pub(crate) async fn serve(
                             if let Err(error) = &result {
                                 let _ = write!(
                                     &mut std::io::stderr(),
-                                    "application connection terminated: {error}\n"
+                                    "application connection terminated: {} during {}: {}\n",
+                                    error.code(),
+                                    error.operation(),
+                                    error.detail(),
                                 );
                             }
                             result

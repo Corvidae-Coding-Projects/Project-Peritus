@@ -94,6 +94,11 @@ impl DaemonRuntime {
             ShutdownStage::WorkersJoined,
             self.shutdown_counts(worker_remaining, 0, indeterminate_effects),
         )?;
+        retain_cleanup_failure(
+            &mut coordinator,
+            &mut indeterminate_effects,
+            self.terminals.shutdown().map(|_| ()).map_err(terminal_shutdown_error),
+        )?;
         let process_reconciliation = match reconcile_processes(&self.processes) {
             Ok(None) => Ok(()),
             Ok(Some(_)) => Err(DaemonError::new(
@@ -164,6 +169,16 @@ impl DaemonRuntime {
             .with_outbox(outbox)
             .with_indeterminate_effects(indeterminate_effects)
     }
+}
+
+fn terminal_shutdown_error(error: crate::terminal::TerminalBridgeError) -> DaemonError {
+    DaemonError::with_source(
+        DaemonErrorCode::UncleanShutdown,
+        DaemonRecovery::Reconcile,
+        "shutdown terminal processes",
+        "one or more owned terminal processes could not be cancelled and joined cleanly",
+        error,
+    )
 }
 
 fn retain_cleanup_failure(

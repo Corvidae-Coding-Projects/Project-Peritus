@@ -3,7 +3,7 @@
 use peritus_app_protocol::{
     AppErrorCode, AppMessage, AppProtocolError, AppProtocolLimits, AppRequestEnvelope,
     AppRequestPayload, AppResponseEnvelope, AppResponsePayload, OperationAcknowledgement,
-    ShutdownAccepted, ShutdownRequest,
+    ShutdownAccepted, ShutdownRequest, encode_app_message,
 };
 use tokio::sync::mpsc;
 
@@ -115,6 +115,48 @@ where
                 Err(error) => daemon_error_payload(&error),
             }
         }
+        AppRequestPayload::AnswerPrompt(answer) => {
+            let prompt_id = answer.correlation().prompt_id();
+            let result = match canonical_request_frame(&request, limits) {
+                Ok(frame) => {
+                    authority
+                        .answer_prompt(
+                            actor_id,
+                            request.context().session_id(),
+                            request.request_id(),
+                            answer.clone(),
+                            frame,
+                        )
+                        .await
+                }
+                Err(error) => Err(error),
+            };
+            match result {
+                Ok(_) => AppResponsePayload::PromptAccepted(prompt_id),
+                Err(error) => prompt_error_payload(&error),
+            }
+        }
+        AppRequestPayload::CancelPrompt(cancellation) => {
+            let prompt_id = cancellation.correlation().prompt_id();
+            let result = match canonical_request_frame(&request, limits) {
+                Ok(frame) => {
+                    authority
+                        .cancel_prompt(
+                            actor_id,
+                            request.context().session_id(),
+                            request.request_id(),
+                            *cancellation,
+                            frame,
+                        )
+                        .await
+                }
+                Err(error) => Err(error),
+            };
+            match result {
+                Ok(_) => AppResponsePayload::PromptAccepted(prompt_id),
+                Err(error) => prompt_error_payload(&error),
+            }
+        }
         AppRequestPayload::CancelArtifact(cancellation) => {
             let transfer_id = cancellation.transfer_id();
             match authority
@@ -168,7 +210,6 @@ where
         AppRequestPayload::Shutdown(value) => {
             AppResponsePayload::ShutdownAccepted(ShutdownAccepted::new(*value))
         }
-        _ => AppResponsePayload::Error(AppProtocolError::new(AppErrorCode::NotReady, None)),
     };
     let shutdown_request = match request.payload() {
         AppRequestPayload::Shutdown(value) => Some(*value),
@@ -197,6 +238,33 @@ where
 
 fn acknowledged(request: &AppRequestEnvelope) -> AppResponsePayload {
     AppResponsePayload::Acknowledged(OperationAcknowledgement::new(request.request_id()))
+}
+
+fn canonical_request_frame(
+    request: &AppRequestEnvelope,
+    limits: AppProtocolLimits,
+) -> Result<Vec<u8>, DaemonError> {
+    encode_app_message(&AppMessage::Request(request.clone()), limits).map_err(|error| {
+        DaemonError::with_source(
+            DaemonErrorCode::InvalidInput,
+            DaemonRecovery::CorrectRequest,
+            "encode prompt request settlement",
+            "accepted prompt request cannot be canonically re-encoded",
+            error,
+        )
+    })
+}
+
+fn prompt_error_payload(error: &DaemonError) -> AppResponsePayload {
+    let code = match error.operation() {
+        "authorize prompt ownership" => AppErrorCode::SessionMismatch,
+        "validate prompt freshness" => AppErrorCode::PromptStale,
+        "match prompt target" => AppErrorCode::PromptMismatch,
+        _ if error.code_kind() == DaemonErrorCode::Unauthorized => AppErrorCode::PromptMismatch,
+        _ if error.code_kind() == DaemonErrorCode::RecoveryRequired => AppErrorCode::PromptStale,
+        _ => public_error_code(error),
+    };
+    AppResponsePayload::Error(AppProtocolError::new(code, None))
 }
 
 fn terminal_operation(

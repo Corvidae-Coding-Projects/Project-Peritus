@@ -1,10 +1,20 @@
 use std::{
     future::{Future, pending},
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
     time::Duration,
 };
 
-use peritus_scheduler::{DispatchId, WorkId, WorkerId};
-use peritus_types::Sha256Digest;
+use peritus_scheduler::{
+    AttemptNumber, DispatchId, ResourceEntry, ResourceKind, ResourceQuantity, ResourceVector,
+    SchedulerReservation, WorkId, WorkerId,
+};
+use peritus_types::{
+    AcceptanceSpecId, ActorId, Generation, HarnessId, PolicyId, ProviderProfileId, RevisionNumber,
+    RevisionTuple, Sha256Digest, WorkspaceId,
+};
 use tokio::{runtime::Builder, sync::oneshot};
 
 use super::{
@@ -15,6 +25,24 @@ use super::{
 
 const ASYNC_TEST_BOUND: Duration = Duration::from_secs(1);
 const SHUTDOWN_GRACE: Duration = Duration::from_millis(20);
+
+#[test]
+fn durable_start_acknowledgement_precedes_worker_effect() {
+    let mut supervisor = WorkerSupervisor::new(limits(1, 1, 1));
+    let called = Arc::new(AtomicBool::new(false));
+    let task_called = Arc::clone(&called);
+
+    let error = supervisor
+        .spawn_reserved(&unstarted_reservation(1), move |_| async move {
+            task_called.store(true, Ordering::SeqCst);
+            completed(1)
+        })
+        .expect_err("unstarted reservation cannot produce an effect");
+
+    assert_eq!(error.kind(), WorkerSupervisorErrorKind::ReservationNotStarted);
+    assert!(!called.load(Ordering::SeqCst));
+    assert_eq!(supervisor.snapshot().counts().active_tasks(), 0);
+}
 
 #[test]
 fn rejects_duplicate_dispatch_and_active_task_capacity() {
@@ -285,6 +313,36 @@ fn assignment(seed: u8) -> WorkerAssignment {
         WorkId::new([seed; WorkId::LENGTH]).expect("test work identity is nonzero"),
         DispatchId::new([seed; DispatchId::LENGTH]).expect("test dispatch identity is nonzero"),
         WorkerId::new([seed; WorkerId::LENGTH]).expect("test worker identity is nonzero"),
+    )
+}
+
+fn unstarted_reservation(seed: u8) -> SchedulerReservation {
+    let revision = RevisionTuple::new(
+        AcceptanceSpecId::new([1; 16]).expect("acceptance identity"),
+        HarnessId::new([2; 16]).expect("harness identity"),
+        WorkspaceId::new([3; 16]).expect("workspace identity"),
+        Generation::first(),
+        RevisionNumber::first(),
+        PolicyId::new([4; 16]).expect("policy identity"),
+        ProviderProfileId::new([5; 16]).expect("provider identity"),
+    );
+    let resources = ResourceVector::new(
+        vec![ResourceEntry::new(
+            ResourceKind::CPU,
+            ResourceQuantity::new(1).expect("positive test resource"),
+        )],
+        1,
+    )
+    .expect("canonical test resources");
+    SchedulerReservation::new(
+        assignment(seed).work_id(),
+        assignment(seed).dispatch_id(),
+        assignment(seed).worker_id(),
+        ActorId::new([6; 16]).expect("owner identity"),
+        AttemptNumber::new(1).expect("positive attempt"),
+        revision,
+        resources,
+        Sha256Digest::new([7; 32]),
     )
 }
 

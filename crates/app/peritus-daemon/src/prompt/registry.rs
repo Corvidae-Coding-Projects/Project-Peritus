@@ -21,6 +21,13 @@ struct OutstandingPrompt {
     maximum_answer_bytes: usize,
 }
 
+/// Inert broker registration validated before the durable target row is written.
+pub(crate) struct PreparedPromptRegistration {
+    binding: PromptBinding,
+    maximum_answer_bytes: usize,
+    already_registered: bool,
+}
+
 /// Bounded owner of awaiting prompts and unretired terminal response facts.
 pub struct PromptBroker {
     limits: PromptBrokerLimits,
@@ -48,9 +55,82 @@ impl PromptBroker {
         binding: PromptBinding,
         maximum_answer_bytes: usize,
     ) -> Result<(), PromptBrokerError> {
+        self.validate_new_registration(&binding, maximum_answer_bytes)?;
+        self.insert(binding, maximum_answer_bytes)
+    }
+
+    /// Validates an authority-owned registration without changing broker state.
+    ///
+    /// Exact broker replay is admitted here because the durable target registration decides
+    /// idempotency. The public direct registration API retains duplicate rejection.
+    pub(crate) fn prepare_durable_registration(
+        &self,
+        binding: PromptBinding,
+        maximum_answer_bytes: usize,
+    ) -> Result<PreparedPromptRegistration, PromptBrokerError> {
         let prompt_id = binding.correlation().prompt_id();
         if let Some(existing) = self.entries.get(&prompt_id) {
             let exact = existing.state.binding() == &binding
+                && existing.maximum_answer_bytes == maximum_answer_bytes;
+            if exact {
+                return Ok(PreparedPromptRegistration {
+                    binding,
+                    maximum_answer_bytes,
+                    already_registered: true,
+                });
+            }
+            return Err(PromptBrokerError::new(
+                PromptBrokerErrorKind::ConflictingRegistration,
+                "prompt identity is already bound to different ownership facts",
+            ));
+        }
+        if self.entries.len() >= self.limits.maximum_outstanding() {
+            return Err(PromptBrokerError::new(
+                PromptBrokerErrorKind::CapacityExceeded,
+                "outstanding prompt registry is full",
+            ));
+        }
+        validate_binding(&binding)?;
+        let _state = PromptState::new(binding.clone(), maximum_answer_bytes)
+            .map_err(PromptBrokerError::protocol)?;
+        Ok(PreparedPromptRegistration { binding, maximum_answer_bytes, already_registered: false })
+    }
+
+    /// Installs a registration only after its durable target row exists.
+    pub(crate) fn commit_durable_registration(
+        &mut self,
+        prepared: PreparedPromptRegistration,
+    ) -> Result<(), PromptBrokerError> {
+        if prepared.already_registered {
+            return Ok(());
+        }
+        self.insert(prepared.binding, prepared.maximum_answer_bytes)
+    }
+
+    /// Restores an exact answer already committed by the durable prompt ledger.
+    pub(crate) fn restore_durable_answer(
+        &mut self,
+        answer: PromptAnswer,
+    ) -> Result<PromptTerminalStatus, PromptBrokerError> {
+        self.commit_settlement(PromptSettlementToken::answer(answer))
+    }
+
+    /// Restores an exact cancellation already committed by the durable prompt ledger.
+    pub(crate) fn restore_durable_cancellation(
+        &mut self,
+        cancellation: PromptCancellation,
+    ) -> Result<PromptTerminalStatus, PromptBrokerError> {
+        self.commit_settlement(PromptSettlementToken::cancellation(cancellation))
+    }
+
+    fn validate_new_registration(
+        &self,
+        binding: &PromptBinding,
+        maximum_answer_bytes: usize,
+    ) -> Result<(), PromptBrokerError> {
+        let prompt_id = binding.correlation().prompt_id();
+        if let Some(existing) = self.entries.get(&prompt_id) {
+            let exact = existing.state.binding() == binding
                 && existing.maximum_answer_bytes == maximum_answer_bytes;
             return Err(PromptBrokerError::new(
                 if exact {
@@ -71,7 +151,18 @@ impl PromptBroker {
                 "outstanding prompt registry is full",
             ));
         }
-        validate_binding(&binding)?;
+        validate_binding(binding)?;
+        PromptState::new(binding.clone(), maximum_answer_bytes)
+            .map_err(PromptBrokerError::protocol)?;
+        Ok(())
+    }
+
+    fn insert(
+        &mut self,
+        binding: PromptBinding,
+        maximum_answer_bytes: usize,
+    ) -> Result<(), PromptBrokerError> {
+        let prompt_id = binding.correlation().prompt_id();
         let state =
             PromptState::new(binding, maximum_answer_bytes).map_err(PromptBrokerError::protocol)?;
         self.entries.insert(prompt_id, OutstandingPrompt { state, maximum_answer_bytes });

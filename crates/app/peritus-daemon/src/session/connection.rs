@@ -132,7 +132,7 @@ pub(crate) async fn run_connection(
                     pump_terminals(
                         &mut frames,
                         &terminals,
-                        &terminal_bindings,
+                        &mut terminal_bindings,
                         context.actor_id(),
                         context.protocol().session_id(),
                         context.protocol(),
@@ -175,7 +175,7 @@ enum ConnectionAction {
 async fn pump_terminals<S>(
     frames: &mut crate::AppFrameStream<S>,
     terminals: &TerminalRegistry,
-    bindings: &[peritus_app_protocol::TerminalBinding],
+    bindings: &mut Vec<peritus_app_protocol::TerminalBinding>,
     actor_id: peritus_types::ActorId,
     session_id: peritus_types::SessionId,
     context: peritus_app_protocol::ProtocolContext,
@@ -183,16 +183,21 @@ async fn pump_terminals<S>(
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
 {
-    for binding in bindings {
+    let mut completed = Vec::new();
+    for binding in bindings.iter().copied() {
         let events =
-            terminals.poll(actor_id, session_id, *binding).map_err(terminal_bridge_error)?;
+            terminals.poll(actor_id, session_id, binding).map_err(terminal_bridge_error)?;
         for event in events {
-            let payload = match event {
+            let (payload, terminal) = match event {
                 TerminalBridgeEvent::Output(output) => {
-                    peritus_app_protocol::AppEventPayload::TerminalOutput(output)
+                    (peritus_app_protocol::AppEventPayload::TerminalOutput(output), None)
                 }
                 TerminalBridgeEvent::Exited(exit) => {
-                    peritus_app_protocol::AppEventPayload::TerminalExited(exit)
+                    let process_id = exit.binding().process_id();
+                    (
+                        peritus_app_protocol::AppEventPayload::TerminalExited(exit),
+                        Some((exit.binding(), process_id)),
+                    )
                 }
             };
             frames
@@ -200,8 +205,13 @@ where
                     context, payload,
                 )))
                 .await?;
+            if let Some((binding, process_id)) = terminal {
+                completed.push(binding);
+                terminals.retire(process_id).map_err(terminal_bridge_error)?;
+            }
         }
     }
+    bindings.retain(|binding| !completed.contains(binding));
     Ok(())
 }
 

@@ -8,7 +8,7 @@ use peritus_conformance::{
     SubjectFactory, SubjectFailure,
 };
 
-use super::{artifact, lifecycle, session, subscription};
+use super::{artifact, lifecycle, prompt, session, subscription};
 
 const REACHABLE: &[DaemonScenario] = &[
     DaemonScenario::CompatibleSession,
@@ -18,10 +18,12 @@ const REACHABLE: &[DaemonScenario] = &[
     DaemonScenario::NewCommand,
     DaemonScenario::ReplayCommand,
     DaemonScenario::ConflictingCommand,
+    DaemonScenario::IndeterminateCommand,
     DaemonScenario::StaleRevision,
     DaemonScenario::SubscriptionResume,
     DaemonScenario::SubscriptionRedelivery,
     DaemonScenario::SubscriptionAcknowledgement,
+    DaemonScenario::SubscriptionGap,
     DaemonScenario::SubscriptionBackpressure,
     DaemonScenario::ArtifactDownload,
     DaemonScenario::ArtifactUpload,
@@ -32,6 +34,9 @@ const REACHABLE: &[DaemonScenario] = &[
     DaemonScenario::Bounds,
     DaemonScenario::MalformedFrame,
     DaemonScenario::NonAuthority,
+    DaemonScenario::ReadOnlyAdmission,
+    DaemonScenario::StartupFailure,
+    DaemonScenario::PromptFreshness,
 ];
 
 /// Returns scenarios the current public binary can exercise without internal imports.
@@ -42,23 +47,8 @@ pub(crate) const fn reachable_scenarios() -> &'static [DaemonScenario] {
 /// Returns the exact missing public production seam for a currently unreachable scenario.
 pub(crate) const fn blocker_for(scenario: DaemonScenario) -> Option<&'static str> {
     Some(match scenario {
-        DaemonScenario::IndeterminateCommand => {
-            "peritusd exposes no public command checkpoint or failpoint that can leave and observe an indeterminate application command"
-        }
-        DaemonScenario::SubscriptionGap => {
-            "peritusd exposes no public retention transition or fixture import that can place a cursor before retained global history"
-        }
-        DaemonScenario::PromptFreshness => {
-            "peritusd exposes prompt answers but no public command that creates an outstanding actor-owned prompt challenge"
-        }
         DaemonScenario::PtyOrdering => {
             "peritusd exposes terminal attachment but no public command that starts and registers a C2-owned PTY process"
-        }
-        DaemonScenario::ReadOnlyAdmission => {
-            "peritusd exits on startup error and exposes no public transition that leaves IPC serving in ReadyReadOnly"
-        }
-        DaemonScenario::StartupFailure => {
-            "peritusd has no public diagnostic-safe startup failpoint and exits instead of serving the required typed read-only report"
         }
         DaemonScenario::OutboxCrash => {
             "peritusd exposes no public effect-before-ack crash checkpoint or destination observation control"
@@ -99,10 +89,12 @@ impl DaemonConformanceSubject for BinaryDaemonSubject {
             DaemonScenario::NewCommand => session::new_command(),
             DaemonScenario::ReplayCommand => session::replay_command(),
             DaemonScenario::ConflictingCommand => session::conflicting_command(),
+            DaemonScenario::IndeterminateCommand => session::indeterminate_command(),
             DaemonScenario::StaleRevision => session::stale_revision(),
             DaemonScenario::SubscriptionResume => subscription::resume(fixture),
             DaemonScenario::SubscriptionRedelivery => subscription::redelivery(fixture),
             DaemonScenario::SubscriptionAcknowledgement => subscription::acknowledgement(fixture),
+            DaemonScenario::SubscriptionGap => subscription::gap(),
             DaemonScenario::SubscriptionBackpressure => subscription::backpressure(fixture),
             DaemonScenario::ArtifactDownload => artifact::download(fixture),
             DaemonScenario::ArtifactUpload => artifact::upload(fixture),
@@ -113,13 +105,10 @@ impl DaemonConformanceSubject for BinaryDaemonSubject {
             DaemonScenario::Bounds => lifecycle::bounds(fixture),
             DaemonScenario::MalformedFrame => lifecycle::malformed_frame(),
             DaemonScenario::NonAuthority => lifecycle::non_authority(),
-            DaemonScenario::IndeterminateCommand
-            | DaemonScenario::SubscriptionGap
-            | DaemonScenario::PromptFreshness
-            | DaemonScenario::PtyOrdering
-            | DaemonScenario::ReadOnlyAdmission
-            | DaemonScenario::StartupFailure
-            | DaemonScenario::OutboxCrash => {
+            DaemonScenario::ReadOnlyAdmission => lifecycle::read_only_admission(),
+            DaemonScenario::StartupFailure => lifecycle::startup_failure(),
+            DaemonScenario::PromptFreshness => prompt::freshness(),
+            DaemonScenario::PtyOrdering | DaemonScenario::OutboxCrash => {
                 return Err(DaemonConformanceError::Observation);
             }
         };

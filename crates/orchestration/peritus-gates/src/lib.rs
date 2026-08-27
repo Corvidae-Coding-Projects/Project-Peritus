@@ -52,3 +52,4 @@ pub use verified::{
     attempts_are_bounded, dependencies_are_satisfied, dependency_order_is_legal, evidence_is_fresh,
     no_implicit_success, replay_equivalent, terminal_truthful,
 };
+pub use wire::GateCommandFrame;

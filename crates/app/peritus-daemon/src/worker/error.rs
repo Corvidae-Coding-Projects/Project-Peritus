@@ -13,6 +13,8 @@ pub(crate) enum WorkerSupervisorErrorKind {
     Capacity,
     /// A dispatch identity is already owned by an active task or pending observation.
     DuplicateDispatch,
+    /// The durable scheduler reservation has not recorded its start acknowledgement.
+    ReservationNotStarted,
     /// No active task owns the requested dispatch identity.
     UnknownDispatch,
     /// No running Tokio runtime is available to own the task.

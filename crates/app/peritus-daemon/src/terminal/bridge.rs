@@ -7,8 +7,8 @@ use peritus_app_protocol::{
     TerminalPhase, TerminalResize, TerminalStream, TerminalTransitionDisposition,
 };
 use peritus_process::{
-    CancellationReason, ExecutionPlan, IoMode, ProcessControl, ProcessCursor, ProcessTreeIdentity,
-    TerminalResult, TerminalSize,
+    CancellationReason, ExecutionPlan, IoMode, OwnedProcess, ProcessControl, ProcessCursor,
+    ProcessTreeIdentity, TerminalResult, TerminalSize,
 };
 use peritus_types::{ActorId, ProcessId, SessionId, Sha256Digest};
 
@@ -29,6 +29,7 @@ pub(crate) struct LiveTerminalRegistration {
     plan_digest: Sha256Digest,
     birth_identity: ProcessTreeIdentity,
     control: ProcessControl,
+    owner: OwnedProcess,
 }
 
 impl LiveTerminalRegistration {
@@ -40,8 +41,33 @@ impl LiveTerminalRegistration {
     pub(crate) fn new(
         plan: &ExecutionPlan,
         birth_identity: ProcessTreeIdentity,
-        control: ProcessControl,
+        owner: OwnedProcess,
     ) -> Result<Self, TerminalBridgeError> {
+        Self::validate_plan(plan)?;
+        if birth_identity.root_pid() == 0
+            || birth_identity.start_token().is_none()
+            || !birth_identity.complete_containment()
+        {
+            return Err(rejected(
+                TerminalBridgeErrorKind::BirthIdentityUnavailable,
+                "an exact contained process birth identity is required for live attachment",
+            ));
+        }
+        let identity = plan.identity();
+        let control = owner.control();
+        Ok(Self {
+            actor_id: identity.actor_id(),
+            session_id: identity.session_id(),
+            process_id: identity.process_id(),
+            plan_digest: plan.digest(),
+            birth_identity,
+            control,
+            owner,
+        })
+    }
+
+    /// Validates that a checked C2 plan exposes a bounded pseudo-terminal stream.
+    pub(super) fn validate_plan(plan: &ExecutionPlan) -> Result<(), TerminalBridgeError> {
         if !matches!(plan.io_mode(), IoMode::Pty(_)) {
             return Err(rejected(
                 TerminalBridgeErrorKind::NotPty,
@@ -55,24 +81,7 @@ impl LiveTerminalRegistration {
                 "terminal observation bounds are not authorized by the checked plan",
             ));
         }
-        if birth_identity.root_pid() == 0
-            || birth_identity.start_token().is_none()
-            || !birth_identity.complete_containment()
-        {
-            return Err(rejected(
-                TerminalBridgeErrorKind::BirthIdentityUnavailable,
-                "an exact contained process birth identity is required for live attachment",
-            ));
-        }
-        let identity = plan.identity();
-        Ok(Self {
-            actor_id: identity.actor_id(),
-            session_id: identity.session_id(),
-            process_id: identity.process_id(),
-            plan_digest: plan.digest(),
-            birth_identity,
-            control,
-        })
+        Ok(())
     }
 
     /// Returns the registered process identity.
@@ -96,6 +105,7 @@ pub(super) struct TerminalBridge {
     plan_digest: Sha256Digest,
     birth_identity: ProcessTreeIdentity,
     control: ProcessControl,
+    owner: OwnedProcess,
     process_cursor: ProcessCursor,
     stream_offsets: [u64; 3],
     next_output_offset: u64,
@@ -116,6 +126,7 @@ impl TerminalBridge {
             plan_digest: registration.plan_digest,
             birth_identity: registration.birth_identity,
             control: registration.control,
+            owner: registration.owner,
             process_cursor: ProcessCursor::after(0),
             stream_offsets: [0; 3],
             next_output_offset: 0,
@@ -250,6 +261,65 @@ impl TerminalBridge {
 
     pub(super) fn can_retire(&self) -> bool {
         self.terminal.is_some() && self.attachments.values().all(AttachmentRecord::is_settled)
+    }
+
+    pub(super) fn terminal_observed(&self) -> bool {
+        self.terminal.is_some()
+    }
+
+    pub(super) fn cancel_process(
+        &self,
+        reason: CancellationReason,
+    ) -> Result<(), TerminalBridgeError> {
+        if self.terminal.is_some() {
+            return Ok(());
+        }
+        self.control.cancel(reason)?;
+        Ok(())
+    }
+
+    pub(super) fn join_owner(self) -> Result<(), TerminalBridgeError> {
+        let observed = self.terminal.ok_or_else(|| {
+            rejected(
+                TerminalBridgeErrorKind::ProcessNotLive,
+                "terminal process cannot be retired before its final result is observed",
+            )
+        })?;
+        let joined = self.owner.wait()?;
+        if joined != observed {
+            return Err(rejected(
+                TerminalBridgeErrorKind::ProcessIdentityMismatch,
+                "joined process result differs from its observed terminal result",
+            ));
+        }
+        Ok(())
+    }
+
+    pub(super) fn shutdown_owner(self) -> Result<(), TerminalBridgeError> {
+        let cancellation = self
+            .control
+            .terminal_result()
+            .is_none()
+            .then(|| self.control.cancel(CancellationReason::SupervisorShutdown));
+        let joined = self.owner.wait()?;
+        if joined.process_id() != self.process_id || joined.plan_digest() != self.plan_digest {
+            return Err(rejected(
+                TerminalBridgeErrorKind::ProcessIdentityMismatch,
+                "joined process result differs from its registered process identity",
+            ));
+        }
+        if let Some(observed) = self.terminal
+            && joined != observed
+        {
+            return Err(rejected(
+                TerminalBridgeErrorKind::ProcessIdentityMismatch,
+                "joined process result differs from its observed terminal result",
+            ));
+        }
+        if let Some(Err(error)) = cancellation {
+            return Err(error.into());
+        }
+        Ok(())
     }
 
     fn attachment_mut(

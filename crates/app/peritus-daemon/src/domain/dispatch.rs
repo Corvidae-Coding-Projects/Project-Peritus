@@ -46,6 +46,7 @@ pub(crate) fn dispatch(
     submission: DomainSubmission,
 ) -> Result<DomainOutcome, DaemonError> {
     match submission.family {
+        50 => gates(journal, &submission),
         53 => review(journal, &submission),
         70 => scheduler(journal, &submission),
         73 => collaboration(journal, &submission),
@@ -57,6 +58,38 @@ pub(crate) fn dispatch(
         91 => evolution::dispatch_pointer(journal, &submission),
         _ => Ok(DomainOutcome::Rejected(AppErrorCode::UnsupportedFamily)),
     }
+}
+
+fn gates(
+    journal: &mut SqliteJournal,
+    submission: &DomainSubmission,
+) -> Result<DomainOutcome, DaemonError> {
+    let frame = match decode_message::<peritus_gates::GateCommandFrame>(
+        &submission.frame,
+        CodecLimits::PRODUCTION,
+    ) {
+        Ok(frame) => frame,
+        Err(_) => return malformed(),
+    };
+    let command = frame.into_command();
+    if !binding_matches(
+        submission,
+        command.command_id(),
+        command.event_id(),
+        command.expected_previous_event(),
+        command.revision(),
+    ) {
+        return binding_rejection();
+    }
+    if !matches!(
+        command.kind(),
+        peritus_gates::GateCommandKind::PauseRun | peritus_gates::GateCommandKind::ResumeRun
+    ) {
+        return semantic_rejection();
+    }
+    peritus_gates::commit_gate_lifecycle_transition(journal, &command)
+        .map(DomainOutcome::Committed)
+        .map_err(|error| domain_failure("commit gate lifecycle transition", error))
 }
 
 fn review(

@@ -64,6 +64,29 @@ fn abandoned_preparation_can_be_retried_exactly() {
 }
 
 #[test]
+fn durable_registration_preparation_is_inert_and_exact_replay_is_idempotent() {
+    let binding = binding(0x62, 0x64, 0x63);
+    let correlation = binding.correlation();
+    let mut broker = PromptBroker::new(PromptBrokerLimits::new(4).expect("broker limits"));
+    let prepared = broker
+        .prepare_durable_registration(binding.clone(), 64)
+        .expect("prepare durable registration");
+    assert_eq!(
+        broker.status(correlation).expect_err("preparation is inert").kind(),
+        PromptBrokerErrorKind::NotFound,
+    );
+    broker.commit_durable_registration(prepared).expect("commit durable registration");
+    assert_eq!(
+        broker.status(correlation).expect("registered status"),
+        PromptTerminalStatus::AwaitingAnswer,
+    );
+    let replay =
+        broker.prepare_durable_registration(binding, 64).expect("prepare exact durable replay");
+    broker.commit_durable_registration(replay).expect("commit exact durable replay");
+    assert_eq!(broker.len(), 1);
+}
+
+#[test]
 fn cancellation_is_inert_until_its_target_settles() {
     let (mut broker, binding) = broker();
     let cancellation = PromptCancellation::new(

@@ -29,14 +29,6 @@ impl SchedulerFixture {
     pub(super) fn binding(&self) -> &CommandBinding {
         &self.binding
     }
-
-    pub(super) fn request_id(&self) -> RequestId {
-        self.binding.request_id()
-    }
-
-    pub(super) fn correlation_id(&self) -> CorrelationId {
-        self.binding.correlation_id()
-    }
 }
 
 pub(super) fn genesis(

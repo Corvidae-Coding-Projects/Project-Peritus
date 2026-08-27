@@ -8,7 +8,10 @@ use super::{
     super::message::{AuthorityMessage, Response},
     error::{journal_error, owner_stopped, require_diagnostic, require_mutation},
     orchestrator::{deliver_child_directive, settle_claimed_directive},
-    prompt::{correlations as prompt_correlations, register as register_prompt},
+    prompt::{
+        answer as answer_prompt, cancel as cancel_prompt, correlations as prompt_correlations,
+        register as register_prompt,
+    },
     prompt::{retire as retire_prompt, status as prompt_status},
     storage::reconcile_command,
 };
@@ -23,7 +26,7 @@ pub(super) async fn run(
     mut lifecycle: DaemonLifecycle,
     mut artifacts: ArtifactAuthority,
     mut prompts: PromptBroker,
-    _authority_clock: AuthorityClock,
+    authority_clock: AuthorityClock,
     mut receiver: mpsc::Receiver<AuthorityMessage>,
 ) -> Result<(), DaemonError> {
     while let Some(message) = receiver.recv().await {
@@ -82,12 +85,54 @@ pub(super) async fn run(
             } => reply(
                 respond,
                 register_prompt(
+                    &mut journal,
                     &mut prompts,
                     &lifecycle,
                     actor_id,
                     session_id,
                     binding,
                     maximum_answer_bytes,
+                ),
+            ),
+            AuthorityMessage::AnswerPrompt {
+                actor_id,
+                session_id,
+                request_id,
+                answer,
+                request_frame,
+                respond,
+            } => reply(
+                respond,
+                answer_prompt(
+                    &mut journal,
+                    &mut prompts,
+                    &authority_clock,
+                    &lifecycle,
+                    actor_id,
+                    session_id,
+                    request_id,
+                    answer,
+                    request_frame,
+                ),
+            ),
+            AuthorityMessage::CancelPrompt {
+                actor_id,
+                session_id,
+                request_id,
+                cancellation,
+                request_frame,
+                respond,
+            } => reply(
+                respond,
+                cancel_prompt(
+                    &mut journal,
+                    &mut prompts,
+                    &lifecycle,
+                    actor_id,
+                    session_id,
+                    request_id,
+                    cancellation,
+                    request_frame,
                 ),
             ),
             AuthorityMessage::PromptStatus { actor_id, session_id, correlation, respond } => reply(

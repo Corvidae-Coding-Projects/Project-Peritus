@@ -12,9 +12,10 @@ use peritus_app_protocol::{
 };
 use peritus_codec::{CodecLimits, HEADER_LEN};
 use peritus_conformance::{
-    DaemonBoundsObservation, DaemonConformanceFixture, DaemonConformanceObservation,
-    DaemonFrameObservation, DaemonInstanceObservation, DaemonNonAuthorityObservation,
-    DaemonRecoveryObservation, DaemonShutdownObservation, DaemonShutdownOutcome,
+    DaemonAdmissionObservation, DaemonBoundsObservation, DaemonConformanceFixture,
+    DaemonConformanceObservation, DaemonFrameObservation, DaemonInstanceObservation,
+    DaemonNonAuthorityObservation, DaemonReadiness as ObservedReadiness, DaemonRecoveryObservation,
+    DaemonShutdownObservation, DaemonShutdownOutcome, DaemonStartupObservation,
 };
 
 use super::command;
@@ -36,6 +37,71 @@ pub(super) fn second_instance() -> io::Result<DaemonConformanceObservation> {
         before.dev() == after.dev() && before.ino() == after.ino(),
         before.dev() != after.dev() || before.ino() != after.ino(),
         u64::from(state_bytes_before != state_bytes_after),
+    )))
+}
+
+pub(super) fn read_only_admission() -> io::Result<DaemonConformanceObservation> {
+    let environment = TestEnvironment::new()?;
+    let mut healthy = environment.start()?;
+    let healthy_client = WireClient::establish(healthy.endpoint(), fresh_hello(203))?;
+    let session_id = healthy_client.context().session_id();
+    drop(healthy_client);
+    healthy.kill_for_restart()?;
+    environment.prepare_corrupt_process_record()?;
+    let mut process = environment.start()?;
+    let endpoint = process.endpoint().to_path_buf();
+    let mut client =
+        WireClient::establish(&endpoint, resume_hello(204, session_id)).map_err(|error| {
+            io::Error::other(format!(
+                "read-only session establishment failed: {error}; {}",
+                process.diagnostic()
+            ))
+        })?;
+    let status = daemon_status(&mut client, 205).map_err(|error| {
+        io::Error::other(format!(
+            "read-only status request failed: {error}; {}",
+            process.diagnostic()
+        ))
+    })?;
+    let read_admitted = status.readiness() == peritus_app_protocol::DaemonReadiness::ReadyReadOnly;
+    let mutation_admitted = !mutation_rejected(&mut client, 206)?;
+    Ok(DaemonConformanceObservation::Admission(DaemonAdmissionObservation::new(
+        readiness(status.readiness()),
+        read_admitted,
+        mutation_admitted,
+        0,
+    )))
+}
+
+pub(super) fn startup_failure() -> io::Result<DaemonConformanceObservation> {
+    let environment = TestEnvironment::new()?;
+    let mut healthy = environment.start()?;
+    let healthy_client = WireClient::establish(healthy.endpoint(), fresh_hello(207))?;
+    let session_id = healthy_client.context().session_id();
+    drop(healthy_client);
+    healthy.kill_for_restart()?;
+    environment.prepare_corrupt_process_record()?;
+    let mut first = environment.start()?;
+    let mut client = WireClient::establish(first.endpoint(), resume_hello(208, session_id))?;
+    let initial = daemon_status(&mut client, 209)?;
+    let mutation_rejected = mutation_rejected(&mut client, 210)?;
+    drop(client);
+    first.kill_for_restart()?;
+
+    let second = environment.start()?;
+    let mut resumed = WireClient::establish(second.endpoint(), resume_hello(212, session_id))?;
+    let recovered = daemon_status(&mut resumed, 213)?;
+    let typed = initial
+        .diagnostic()
+        .is_some_and(|value| value.starts_with("PERITUS-STARTUP-RECOVERY-001:"));
+    let idempotent = recovered.readiness() == initial.readiness()
+        && recovered.diagnostic() == initial.diagnostic();
+    Ok(DaemonConformanceObservation::Startup(DaemonStartupObservation::new(
+        readiness(initial.readiness()),
+        typed,
+        0,
+        u64::from(!mutation_rejected),
+        idempotent,
     )))
 }
 
@@ -215,6 +281,50 @@ fn constrained_limits() -> io::Result<AppProtocolLimits> {
         production.max_remaining_work_items(),
     )
     .map_err(super::debug_error)
+}
+
+fn daemon_status(
+    client: &mut WireClient,
+    identity: u8,
+) -> io::Result<peritus_app_protocol::DaemonStatus> {
+    let message = client.request(identity, AppRequestPayload::DaemonStatus)?;
+    let AppMessage::Response(response) = message else {
+        return Err(io::Error::other("daemon status returned a non-response message"));
+    };
+    let AppResponsePayload::DaemonStatus(status) = response.payload() else {
+        return Err(io::Error::other("daemon status request was not admitted"));
+    };
+    Ok(status.clone())
+}
+
+fn mutation_rejected(client: &mut WireClient, seed: u8) -> io::Result<bool> {
+    let fixture =
+        command::genesis(client.context().session_id(), seed, b"read-only-mutation", 0x22)?;
+    match command_result(client, fixture.binding()) {
+        Ok(None) => Ok(true),
+        Ok(Some(_)) => Ok(false),
+        Err(error)
+            if matches!(
+                error.kind(),
+                io::ErrorKind::UnexpectedEof
+                    | io::ErrorKind::ConnectionReset
+                    | io::ErrorKind::BrokenPipe
+            ) =>
+        {
+            Ok(true)
+        }
+        Err(error) => Err(error),
+    }
+}
+
+const fn readiness(value: peritus_app_protocol::DaemonReadiness) -> ObservedReadiness {
+    match value {
+        peritus_app_protocol::DaemonReadiness::ReadyReadOnly => ObservedReadiness::ReadyReadOnly,
+        peritus_app_protocol::DaemonReadiness::ReadyReadWrite => ObservedReadiness::ReadyReadWrite,
+        peritus_app_protocol::DaemonReadiness::Starting
+        | peritus_app_protocol::DaemonReadiness::Draining
+        | peritus_app_protocol::DaemonReadiness::Unavailable => ObservedReadiness::Unavailable,
+    }
 }
 
 fn subscription_request(

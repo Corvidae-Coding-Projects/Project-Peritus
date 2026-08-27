@@ -12,6 +12,11 @@ pub use super::principal_types::{
     ApplicationPrincipal, ApplicationPrincipalKind, ApplicationPrincipalState,
     NewApplicationPrincipal,
 };
+pub use super::prompt_types::{
+    ApplicationPromptId, ApplicationPromptRecord, ApplicationPromptRegistration,
+    ApplicationPromptSettlement, ApplicationPromptSettlementKind, ApplicationPromptState,
+    ApplicationPromptTargetKind, NewApplicationPromptTarget,
+};
 pub use super::session_types::{
     ApplicationSession, ApplicationSessionState, NewApplicationSession,
 };

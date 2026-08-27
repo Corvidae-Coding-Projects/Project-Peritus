@@ -21,7 +21,7 @@ use super::super::{
     registry::bootstrap as bootstrap_approval_registry,
     workspace::install_and_reconcile,
 };
-use super::DaemonRuntime;
+use super::{DaemonRuntime, progress::StartupProgress};
 use crate::instance::InstanceGuard;
 use crate::ipc::serve;
 use crate::outbox::{DestinationRouter, OutboxRuntime};
@@ -30,7 +30,7 @@ use crate::terminal::{TerminalRegistry, TerminalRegistryLimits};
 use crate::worker::{WorkerSupervisor, WorkerSupervisorLimits};
 use crate::{
     AuthorityOwner, DaemonComponents, DaemonConfig, DaemonError, DaemonErrorCode, DaemonIdentity,
-    DaemonLifecycle, DaemonRecovery, LocalEndpoint, StartupPhase, TelemetryExport,
+    DaemonRecovery, LocalEndpoint, StartupPhase, TelemetryExport,
 };
 
 impl DaemonRuntime {
@@ -41,15 +41,19 @@ impl DaemonRuntime {
     /// Returns the exact failed startup boundary. No later worker is started after a failure.
     pub async fn start(config: DaemonConfig) -> Result<Self, DaemonError> {
         let store_id = config.store_identity()?;
+        let mut progress = StartupProgress::new(store_id);
         let identity = DaemonIdentity::new(store_id);
         prepare_roots(&config)?;
+        progress.complete(StartupPhase::Validate)?;
         let instance = InstanceGuard::acquire(config.paths().state_root(), &identity)?;
         LocalEndpoint::recover_stale(config.paths().state_root(), &identity)?;
+        progress.complete(StartupPhase::Lock)?;
         let database = config.paths().database();
         let fresh_database = !database.exists();
         if !fresh_database {
             migrate_existing(&config, &database)?;
         }
+        progress.complete(StartupPhase::Migrate)?;
         let mut journal = SqliteJournal::open(&database, store_id, SqliteJournalOptions::default())
             .map_err(storage_error)?;
         if fresh_database {
@@ -58,6 +62,7 @@ impl DaemonRuntime {
             journal = SqliteJournal::open(&database, store_id, SqliteJournalOptions::default())
                 .map_err(storage_error)?;
         }
+        progress.complete(StartupPhase::Journal)?;
         let artifact_config = StoreConfig::new(
             config.paths().artifact_root(),
             config.limits().maximum_artifact_bytes(),
@@ -67,8 +72,10 @@ impl DaemonRuntime {
         .map_err(|error| component_error("open artifact store", error))?;
         let artifacts = ArtifactStore::open(artifact_config)
             .map_err(|error| component_error("open artifact store", error))?;
+        progress.complete(StartupPhase::Artifacts)?;
         let evidence = EvidenceStore::open(&database, EvidenceStoreOptions::default())
             .map_err(|error| component_error("open evidence store", error))?;
+        progress.complete(StartupPhase::Evidence)?;
         let processes =
             ProcessStore::open(config.paths().process_root(), config.paths().workspace_root())
                 .map_err(|error| component_error("open process registry", error))?;
@@ -83,18 +90,8 @@ impl DaemonRuntime {
             .map_err(|error| component_error("construct worker supervisor", error))?,
         );
 
-        let mut lifecycle = DaemonLifecycle::starting();
-        for phase in [
-            StartupPhase::Lock,
-            StartupPhase::Migrate,
-            StartupPhase::Journal,
-            StartupPhase::Artifacts,
-            StartupPhase::Evidence,
-        ] {
-            lifecycle.advance(phase)?;
-        }
         let projections = ensure_current(&mut journal, &database)?;
-        lifecycle.advance(StartupPhase::Projections)?;
+        progress.complete(StartupPhase::Projections)?;
         bootstrap_approval_registry(&mut journal, config.approval_registry())?;
         let expected = journal
             .current_authority_epoch()
@@ -103,25 +100,26 @@ impl DaemonRuntime {
                 ExpectedAuthorityEpoch::Current(current.epoch())
             });
         let authority_epoch = journal.allocate_authority_epoch(expected).map_err(storage_error)?;
-        lifecycle.advance(StartupPhase::AuthorityEpoch)?;
-        lifecycle.advance(StartupPhase::DomainRecovery)?;
+        progress.complete(StartupPhase::AuthorityEpoch)?;
         let workspaces = install_and_reconcile(&mut journal, &config)?;
         let production = recover_production(&journal, &config, &workspaces)?;
+        progress.complete(StartupPhase::DomainRecovery)?;
         let diagnostic = reconcile_processes(&processes)?;
-        lifecycle.advance(StartupPhase::EffectRecovery)?;
+        progress.complete(StartupPhase::EffectRecovery)?;
         reconcile_application(&mut journal)?;
-        lifecycle.advance(StartupPhase::AppRecovery)?;
+        progress.complete(StartupPhase::AppRecovery)?;
         let telemetry = match config.telemetry() {
             TelemetryExport::Disabled => None,
             TelemetryExport::LocalFile { directory, quota_bytes } => {
                 Some(TelemetryRuntime::open(&mut journal, store_id, directory, *quota_bytes)?)
             }
         };
-        lifecycle.advance(StartupPhase::Outbox)?;
+        progress.complete(StartupPhase::Outbox)?;
         let endpoint = LocalEndpoint::bind(config.paths().state_root(), &identity).await?;
         install_local_principal(&mut journal, &config, &endpoint, store_id)?;
-        lifecycle.advance(StartupPhase::Ipc)?;
-        lifecycle.advance(StartupPhase::Ready)?;
+        progress.complete(StartupPhase::Ipc)?;
+        progress.complete(StartupPhase::Ready)?;
+        let mut lifecycle = progress.into_lifecycle()?;
         let read_only = diagnostic.is_some();
         if let Some(diagnostic) = diagnostic {
             lifecycle.read_only(diagnostic);

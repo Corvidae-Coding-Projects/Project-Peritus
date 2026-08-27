@@ -28,11 +28,14 @@ pub use append_plan::{
 pub use application::{
     ApplicationArtifact, ApplicationArtifactState, ApplicationCommandAdmission,
     ApplicationCommandRecord, ApplicationCommandSettlement, ApplicationCommandState,
-    ApplicationPrincipal, ApplicationPrincipalKind, ApplicationPrincipalState,
+    ApplicationPrincipal, ApplicationPrincipalKind, ApplicationPrincipalState, ApplicationPromptId,
+    ApplicationPromptRecord, ApplicationPromptRegistration, ApplicationPromptSettlement,
+    ApplicationPromptSettlementKind, ApplicationPromptState, ApplicationPromptTargetKind,
     ApplicationRequestId, ApplicationSession, ApplicationSessionState, ApplicationWorkspace,
     ApplicationWorkspacePage, ApplicationWorkspaceState, MAX_APPLICATION_WORKSPACE_PAGE,
     MAX_APPLICATION_WORKSPACE_REGISTRATION_BYTES, NewApplicationArtifact, NewApplicationCommand,
-    NewApplicationPrincipal, NewApplicationSession, NewApplicationWorkspace,
+    NewApplicationPrincipal, NewApplicationPromptTarget, NewApplicationSession,
+    NewApplicationWorkspace,
 };
 pub use authority::{
     AllocatedAuthorityEpoch, AuthorityEpoch, CredentialRegistryInstall, CurrentAuthorityEpoch,

@@ -26,6 +26,8 @@ fn production_registry_is_contiguous_through_application_schema_v10() {
         "CREATE TABLE app_sessions",
         "CREATE TABLE app_commands",
         "CREATE INDEX app_commands_state",
+        "CREATE TABLE app_prompt_targets",
+        "CREATE INDEX app_prompt_targets_state",
         "CREATE TABLE app_artifacts",
         "CREATE TABLE app_workspaces",
     ] {

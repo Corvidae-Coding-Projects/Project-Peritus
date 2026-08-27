@@ -4,14 +4,18 @@ use peritus_codec::{
 
 use crate::{GateCommand, GateCommandKind};
 
-pub struct GateCommandFrame(pub GateCommand);
+/// Canonical B3 command frame for the D1 gate aggregate.
+pub struct GateCommandFrame(GateCommand);
 
 impl GateCommandFrame {
+    /// Wraps one syntax-checked command for canonical transport.
+    #[must_use]
     pub fn from_command(command: &GateCommand) -> Self {
         Self(command.clone())
     }
 
-    #[cfg(test)]
+    /// Consumes the frame into its inert command.
+    #[must_use]
     pub fn into_command(self) -> GateCommand {
         self.0
     }

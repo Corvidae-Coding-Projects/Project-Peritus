@@ -106,7 +106,11 @@ impl RecoveryReport {
     /// Returns whether every record was already terminal.
     #[must_use]
     pub fn all_terminal(&self) -> bool {
-        self.entries.iter().all(|entry| entry.disposition == RecoveryDisposition::AlreadyTerminal)
+        self.quarantined_records == 0
+            && self
+                .entries
+                .iter()
+                .all(|entry| entry.disposition == RecoveryDisposition::AlreadyTerminal)
     }
 }
 

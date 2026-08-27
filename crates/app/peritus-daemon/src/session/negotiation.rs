@@ -6,9 +6,9 @@ use std::{
 };
 
 use peritus_app_protocol::{
-    AppProtocolLimits, ClientHello, NegotiatedProtocol, NegotiationOutcome, ProtocolContext,
-    ProtocolFeatureName, ServerCapabilities, ServerHello, VersionRange, WellKnownProtocolFeature,
-    negotiate,
+    AppProtocolLimits, ClientHello, DaemonReadiness, NegotiatedProtocol, NegotiationOutcome,
+    ProtocolContext, ProtocolFeatureName, ServerCapabilities, ServerHello, VersionRange,
+    WellKnownProtocolFeature, negotiate,
 };
 use peritus_journal::{ApplicationPrincipalState, ApplicationSessionState, NewApplicationSession};
 use peritus_types::{ActorId, SessionId};
@@ -64,6 +64,7 @@ pub(crate) async fn establish(
         return Err(unauthorized("authenticated operating-system principal binding is inactive"));
     }
 
+    let read_only = authority.status().await?.readiness() == DaemonReadiness::ReadyReadOnly;
     let requested = match client.requested_session() {
         Some(session_id) => {
             let session = authority
@@ -102,16 +103,21 @@ pub(crate) async fn establish(
         )
     })?;
     if requested.is_some() {
-        authority
-            .observe_session(
-                candidate,
-                principal.actor_id(),
-                client.protocol_id().into_bytes(),
-                negotiated.version().major(),
-                negotiated.version().minor(),
-            )
-            .await?;
+        if !read_only {
+            authority
+                .observe_session(
+                    candidate,
+                    principal.actor_id(),
+                    client.protocol_id().into_bytes(),
+                    negotiated.version().major(),
+                    negotiated.version().minor(),
+                )
+                .await?;
+        }
     } else {
+        if read_only {
+            return Err(unauthorized("read-only diagnostics require an existing durable session"));
+        }
         let session = NewApplicationSession::new(
             candidate,
             principal.actor_id(),

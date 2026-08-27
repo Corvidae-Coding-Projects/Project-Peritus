@@ -2,7 +2,8 @@
 
 use peritus_app_protocol::{
     ArtifactCancellation, ArtifactChunk, ArtifactCompletion, ArtifactMetadata, ArtifactOpenRequest,
-    DaemonStatus, PromptBinding, PromptCorrelation, TransferId,
+    DaemonStatus, PromptAnswer, PromptBinding, PromptCancellation, PromptCorrelation, RequestId,
+    TransferId,
 };
 use peritus_journal::{
     ApplicationArtifact, ApplicationCommandAdmission, ApplicationCommandRecord,
@@ -61,7 +62,23 @@ pub(super) enum AuthorityMessage {
         session_id: SessionId,
         binding: PromptBinding,
         maximum_answer_bytes: usize,
-        respond: Response<()>,
+        respond: Response<PromptTerminalStatus>,
+    },
+    AnswerPrompt {
+        actor_id: ActorId,
+        session_id: SessionId,
+        request_id: RequestId,
+        answer: PromptAnswer,
+        request_frame: Vec<u8>,
+        respond: Response<PromptTerminalStatus>,
+    },
+    CancelPrompt {
+        actor_id: ActorId,
+        session_id: SessionId,
+        request_id: RequestId,
+        cancellation: PromptCancellation,
+        request_frame: Vec<u8>,
+        respond: Response<PromptTerminalStatus>,
     },
     PromptStatus {
         actor_id: ActorId,

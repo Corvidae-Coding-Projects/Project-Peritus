@@ -9,10 +9,12 @@ use peritus_types::Sha256Digest;
 
 use crate::StartupPhase;
 
-pub(crate) use checkpoint::{StartupCheckpoint, StartupCheckpoints, StartupNextAction};
-pub(crate) use failpoint::{
-    STARTUP_KILL_MATRIX, StartupFailpoint, StartupFailpointBoundary, StartupFailpoints,
-};
+#[cfg(test)]
+pub(crate) use checkpoint::StartupNextAction;
+pub(crate) use checkpoint::{StartupCheckpoint, StartupCheckpoints};
+#[cfg(test)]
+pub(crate) use failpoint::{STARTUP_KILL_MATRIX, StartupFailpointBoundary};
+pub(crate) use failpoint::{StartupFailpoint, StartupFailpoints};
 
 /// Number of phases in the closed daemon startup plan.
 pub(crate) const STARTUP_PHASE_COUNT: usize = 14;

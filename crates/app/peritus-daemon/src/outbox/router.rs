@@ -4,7 +4,7 @@ use std::{collections::BTreeMap, future::Future, pin::Pin, sync::Arc};
 
 use peritus_journal::OutboxMessage;
 
-use super::{CLAIM_DESTINATIONS, TypedOutboxClaim, decode_claim, handlers};
+use super::{CLAIM_DESTINATIONS, DurableOutboxPort, TypedOutboxClaim, decode_claim, handlers};
 use crate::{AuthorityHandle, DaemonError, DaemonErrorCode, DaemonRecovery};
 
 /// One exact typed outbox destination adapter.
@@ -12,7 +12,7 @@ pub(crate) trait OutboxHandler: Send + Sync + 'static {
     /// Performs one idempotent delivery attempt.
     ///
     /// `true` means the generic pump must acknowledge the exact claim after return. `false` means
-    /// the domain handler already settled it atomically with its durable observation.
+    /// the domain handler already settled it through its durable, idempotent owning API.
     fn deliver<'a>(
         &'a self,
         message: &'a OutboxMessage,
@@ -36,6 +36,17 @@ impl DestinationRouter {
         maximum: usize,
     ) -> Result<Self, DaemonError> {
         Self::new(handlers::child_directive_handlers(authority), maximum)
+    }
+
+    /// Builds the complete closed production destination registry.
+    pub(crate) fn production(
+        authority: &AuthorityHandle,
+        durable_port: Arc<dyn DurableOutboxPort>,
+        maximum: usize,
+    ) -> Result<Self, DaemonError> {
+        let mut handlers = handlers::child_directive_handlers(authority);
+        handlers.extend(handlers::durable_domain_handlers(durable_port));
+        Self::new(handlers, maximum)
     }
 
     pub(crate) fn new(

@@ -71,15 +71,26 @@ pub(super) fn reconcile_processes(store: &ProcessStore) -> Result<Option<String>
             error,
         )
     })?;
-    let unresolved = report
+    let indeterminate = report
         .entries()
         .iter()
         .filter(|entry| entry.disposition() == RecoveryDisposition::Indeterminate)
         .count();
+    let quarantined = report.quarantined_records();
+    let unresolved = indeterminate.checked_add(quarantined).ok_or_else(|| {
+        DaemonError::new(
+            DaemonErrorCode::ResourceLimit,
+            DaemonRecovery::Operator,
+            "summarize process recovery",
+            "process recovery record count overflowed",
+        )
+    })?;
     if unresolved == 0 {
         Ok(None)
     } else {
-        Ok(Some(format!("{unresolved} process recovery records remain indeterminate")))
+        Ok(Some(format!(
+            "PERITUS-STARTUP-RECOVERY-001: {indeterminate} indeterminate and {quarantined} quarantined process records require operator reconciliation"
+        )))
     }
 }
 

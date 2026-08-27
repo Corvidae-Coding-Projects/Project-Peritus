@@ -682,7 +682,8 @@ fn application_schema(connection: &rusqlite::Connection) -> Vec<(String, String,
         .prepare(
             "SELECT type, name, sql FROM sqlite_schema
              WHERE name IN ('app_principals', 'app_sessions', 'app_commands',
-                 'app_commands_state', 'app_artifacts', 'app_workspaces')
+                 'app_commands_state', 'app_prompt_targets', 'app_prompt_targets_state',
+                 'app_artifacts', 'app_workspaces')
              ORDER BY type, name",
         )
         .expect("application schema statement");

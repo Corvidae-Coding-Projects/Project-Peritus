@@ -15,8 +15,8 @@ use crate::{
     platform::ProcessTreeIdentity,
     recovery::{claim::ConsumptionClaim, manifest::ExecutionManifest},
     registry_storage::{
-        create_checked_directory, hex, load_claims, load_manifests, persist_claim, restore_backups,
-        write_manifest,
+        create_checked_directory, hex, load_claims, load_manifests, load_quarantine, persist_claim,
+        restore_backups, write_manifest,
     },
 };
 
@@ -85,7 +85,7 @@ impl ProcessStore {
         let mut state = StoreState {
             manifests: BTreeMap::new(),
             claims: BTreeMap::new(),
-            quarantined_records: Vec::new(),
+            quarantined_records: load_quarantine(&quarantine)?,
         };
         load_claims(&claims, &quarantine, &mut state.claims, &mut state.quarantined_records)?;
         load_manifests(

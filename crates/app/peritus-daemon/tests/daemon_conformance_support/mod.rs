@@ -6,6 +6,7 @@ mod command;
 mod error;
 mod lifecycle;
 mod process;
+mod prompt;
 mod session;
 mod subscription;
 mod wire;

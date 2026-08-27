@@ -6,7 +6,7 @@ use super::{AuthorityHandle, AuthorityMessage};
 use crate::{DaemonError, outbox::OrchestratorDirectiveClaim};
 
 impl AuthorityHandle {
-    /// Durably admits one exact D1/D2 pause or resume before atomically settling E0 and C0.
+    /// Durably admits one supported exact D1-D3 child directive before settling E0 and C0.
     ///
     /// # Errors
     ///

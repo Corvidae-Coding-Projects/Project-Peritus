@@ -1,6 +1,8 @@
 //! Prompt ownership methods on the bounded authority client.
 
-use peritus_app_protocol::{PromptBinding, PromptCorrelation};
+use peritus_app_protocol::{
+    PromptAnswer, PromptBinding, PromptCancellation, PromptCorrelation, RequestId,
+};
 use peritus_types::{ActorId, SessionId};
 use tokio::sync::oneshot;
 
@@ -21,7 +23,7 @@ impl AuthorityHandle {
         session_id: SessionId,
         binding: PromptBinding,
         maximum_answer_bytes: usize,
-    ) -> Result<(), DaemonError> {
+    ) -> Result<PromptTerminalStatus, DaemonError> {
         let (respond, receive) = oneshot::channel();
         self.send(
             AuthorityMessage::RegisterPrompt {
@@ -29,6 +31,64 @@ impl AuthorityHandle {
                 session_id,
                 binding,
                 maximum_answer_bytes,
+                respond,
+            },
+            receive,
+        )
+        .await
+    }
+
+    /// Durably settles one exact fresh prompt answer before terminalizing the live broker entry.
+    ///
+    /// `request_frame` must be the canonical A3 request containing `request_id` and `answer`.
+    ///
+    /// # Errors
+    ///
+    /// Returns a typed lifecycle, ownership, freshness, authentication, or storage failure.
+    pub async fn answer_prompt(
+        &self,
+        actor_id: ActorId,
+        session_id: SessionId,
+        request_id: RequestId,
+        answer: PromptAnswer,
+        request_frame: Vec<u8>,
+    ) -> Result<PromptTerminalStatus, DaemonError> {
+        let (respond, receive) = oneshot::channel();
+        self.send(
+            AuthorityMessage::AnswerPrompt {
+                actor_id,
+                session_id,
+                request_id,
+                answer,
+                request_frame,
+                respond,
+            },
+            receive,
+        )
+        .await
+    }
+
+    /// Durably settles one exact fresh prompt cancellation before terminalizing the live broker.
+    ///
+    /// # Errors
+    ///
+    /// Returns a typed lifecycle, ownership, freshness, binding, or storage failure.
+    pub async fn cancel_prompt(
+        &self,
+        actor_id: ActorId,
+        session_id: SessionId,
+        request_id: RequestId,
+        cancellation: PromptCancellation,
+        request_frame: Vec<u8>,
+    ) -> Result<PromptTerminalStatus, DaemonError> {
+        let (respond, receive) = oneshot::channel();
+        self.send(
+            AuthorityMessage::CancelPrompt {
+                actor_id,
+                session_id,
+                request_id,
+                cancellation,
+                request_frame,
                 respond,
             },
             receive,

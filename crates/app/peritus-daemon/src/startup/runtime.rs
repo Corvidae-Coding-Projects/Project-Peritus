@@ -1,5 +1,6 @@
 //! Live daemon ownership and signal-facing runtime API.
 
+mod progress;
 mod runner;
 mod teardown;
 

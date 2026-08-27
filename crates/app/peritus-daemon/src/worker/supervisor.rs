@@ -6,7 +6,7 @@ use std::{
     time::Duration,
 };
 
-use peritus_scheduler::DispatchId;
+use peritus_scheduler::{DispatchId, SchedulerReservation};
 use tokio::time::Instant;
 
 use super::{
@@ -81,6 +81,33 @@ impl WorkerSupervisor {
         self.tasks.insert(dispatch_id, owned);
         self.owned_dispatches.insert(dispatch_id);
         Ok(())
+    }
+
+    /// Spawns work from an exact durable scheduler reservation after start acknowledgement.
+    ///
+    /// This is the production admission seam. The lower-level [`Self::spawn`] remains available
+    /// for recovery adapters that already hold an equivalent reconstructed assignment.
+    ///
+    /// # Errors
+    ///
+    /// Rejects a reservation whose start acknowledgement is not yet durable, then applies the
+    /// normal supervisor lifecycle, capacity, uniqueness, and runtime checks.
+    pub(crate) fn spawn_reserved<F, Fut>(
+        &mut self,
+        reservation: &SchedulerReservation,
+        task: F,
+    ) -> Result<(), WorkerSupervisorError>
+    where
+        F: FnOnce(WorkerCancellation) -> Fut + Send + 'static,
+        Fut: Future<Output = WorkerTaskOutcome> + Send + 'static,
+    {
+        if !reservation.started() {
+            return Err(rejected(
+                WorkerSupervisorErrorKind::ReservationNotStarted,
+                "worker effect cannot start before its durable scheduler acknowledgement",
+            ));
+        }
+        self.spawn(WorkerAssignment::from_reservation(reservation), task)
     }
 
     /// Atomically closes new-work admission.
