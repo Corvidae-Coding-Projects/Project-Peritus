@@ -1,6 +1,6 @@
 {
   "next_display_id": 26,
-  "next_comment_id": 410,
+  "next_comment_id": 411,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -3587,7 +3587,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T22:59:08.003031292Z",
-      "updated_at": "2026-08-27T01:37:16.150637219Z",
+      "updated_at": "2026-08-27T01:42:32.548865478Z",
       "labels": [
         "feature"
       ],
@@ -3645,6 +3645,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAaWsavy+rXg1pkcrwjObxufU1w7cBs37M9hiK1J4J+zVZlVm7HSqXRBINQjLfq72/yK5ZoWZ12oMjqh1wePE1Dw=="
+        },
+        "a2f828ba-5c14-4358-8afd-eddf0525ec7c": {
+          "display_id": 410,
+          "author": "6ME5",
+          "content": "User explicitly authorized the primary agent to merge the G0 pull request after all required hosted checks are green; this supersedes the design/goal handoff-only merge constraint.",
+          "created_at": "2026-08-27T01:42:32.546179520Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA1tMeTmgrJpWaduv+a4DtohhfxgBFoFvfI8JetghH3hgRRp9tVngcKGYKRvskL9Pqp+6BDGPR3EWhWsQOHOekCg=="
         },
         "edcbff90-f3cd-4dea-9efa-230a113a26d1": {
           "display_id": 405,
@@ -4151,8 +4160,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T01:37:16.150637219Z",
+    "timestamp": "2026-08-27T01:42:32.548865478Z",
     "agent_id": "6ME5",
-    "agent_seq": 551
+    "agent_seq": 552
   }
 }
