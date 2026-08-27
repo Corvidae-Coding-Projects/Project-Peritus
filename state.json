@@ -1,6 +1,6 @@
 {
   "next_display_id": 31,
-  "next_comment_id": 448,
+  "next_comment_id": 449,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -3365,7 +3365,18 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-27T12:00:52.785235374Z",
-      "updated_at": "2026-08-27T12:00:52.785235374Z"
+      "updated_at": "2026-08-27T12:04:19.153834778Z",
+      "comments": {
+        "392e20b5-3d03-4d62-ae56-121068bd7094": {
+          "display_id": 448,
+          "author": "6ME5",
+          "content": "Launched three disjoint gpt-5.6-sol xhigh code-only workers: H1 owns peritus-resilience and its guide; H2 owns peritus-platform-qualification, packaging assets, and its guide; H3 owns peritus-benchmarks, workload datasets, and its guide. Primary agent exclusively owns shared manifests, architecture, CI, integration, all verification, commits, PR, runner fixes, and merge.",
+          "created_at": "2026-08-27T12:04:19.151279391Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAuPeRog4NoG0pETcuwh1CS1olZYrje0+CV3tAIA0R6KawgLYkwwDWQZN0YiBIYGuep9fsdt7G8RByIPq02Q9YDA=="
+        }
+      }
     },
     "9de8dfc7-1d53-4ac4-a7a1-98aaf6dd354d": {
       "uuid": "9de8dfc7-1d53-4ac4-a7a1-98aaf6dd354d",
@@ -4560,8 +4571,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T12:01:44.064686249Z",
+    "timestamp": "2026-08-27T12:04:19.153834778Z",
     "agent_id": "6ME5",
-    "agent_seq": 602
+    "agent_seq": 603
   }
 }
