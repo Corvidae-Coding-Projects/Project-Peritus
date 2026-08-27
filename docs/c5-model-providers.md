@@ -263,6 +263,13 @@ bodies and deliberate closure, exposes synchronization points for cancellation, 
 allowlisted digests/counts, and joins all workers on drop. Required tests make no live network calls
 and require no provider credentials.
 
+Credentialed account-route qualification is retained as one live-account example in each owning
+provider crate. The examples call `CodexRuntimeProvider` and `ClaudeRuntimeProvider` directly,
+require authentication through the official executables, and fail unless event sequences are
+contiguous, usage is observed, native tool activity is absent, exact fixed canary text is returned,
+and the normalized terminal is successful. They consume account usage and therefore remain
+explicit operator commands rather than part of credential-free Gate A.
+
 The Verus functional core covers capability intersection, request bounds, reducer lifecycle and
 terminal uniqueness, exact deduplication, fragment completion, monotonic usage, retry legality, and
 the fact that provider observations cannot grant authority or budget. TLS, HTTP, async wakeups,

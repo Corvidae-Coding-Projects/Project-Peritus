@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Keep Codex Code Mode disabled without disabling its inert host feature, avoiding the current CLI
+  0.149.1 nonfatal host-unavailable event that the account-runtime decoder correctly rejects
 - Give native plugin test fixtures a runner-safe process-startup allowance while preserving the
   stricter invocation, cancellation, and shutdown deadlines they are intended to verify (#27)
 - Format each workspace package independently on Windows hosted runners so Rustfmt stays below the
@@ -21,6 +23,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Add retained credentialed Codex and Claude account-route qualification examples that exercise
+  the production Peritus adapters and require contiguous events, usage, exact canaries, no native
+  tool activity, and successful normalized terminals
 - Complete the H0/H4 final production-qualification implementation wave (#31)
 - Add the V-class `peritus-security-policy` crate with literal R-SEC-001 through R-SEC-007 and
   security-relevant acceptance-criterion catalogs, exact integrated-candidate freshness,

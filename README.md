@@ -156,6 +156,12 @@ just verus-build    # full verified release plus no-cheating V/H builds
 just gate-a         # the complete formal-foundation gate
 ```
 
+Credentialed C5 qualification is explicit because hosted and ordinary local gates never receive
+provider accounts. After authenticating the official executables, run the retained
+`peritus-release-qualification` live-account examples documented in the owning provider crate
+READMEs. Each probe exercises the production Peritus adapter and requires normalized
+usage, exact canary text, no native-tool activity, and a completed terminal.
+
 All dependency-resolving commands use `--locked`. `architecture.toml` is the reviewed registry
 for crate ownership, dependency layers, verification classes, trusted source roots, and source
 size exceptions. New crates must inherit the workspace package metadata and lints, declare their

@@ -72,6 +72,20 @@ is partial or ambiguous according to observed JSONL, and the adapter never autom
 turn. Codex CLI error text is redacted and generic; the runtime does not speculate that undocumented
 CLI error codes provide rate-limit or transient classifications.
 
+### Live account qualification
+
+After `codex login status` confirms an authenticated official CLI, run the retained credentialed
+probe from the repository root:
+
+```text
+CARGO_BUILD_JOBS=1 cargo run --locked --package peritus-release-qualification --example codex-live-account --all-features
+```
+
+An optional final argument overrides the default `gpt-5.6-sol` model. The probe goes through
+`CodexRuntimeProvider`, not a direct CLI shortcut. It requires contiguous normalized events,
+usage, an exact fixed canary, no tool activity, and a completed terminal. The command consumes
+account usage and is intentionally not executed by credential-free Gate A.
+
 ## Compatibility corpus
 
 `fixtures/v1` is the immutable official-contract corpus for this adapter revision. `MANIFEST`
