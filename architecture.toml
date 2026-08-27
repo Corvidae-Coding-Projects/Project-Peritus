@@ -330,6 +330,13 @@ layer = "testing"
 verification_class = "C"
 
 [[packages]]
+name = "peritus-performance-qualification"
+path = "crates/app/testing/peritus-performance-qualification"
+owner = "H3"
+layer = "testing"
+verification_class = "C"
+
+[[packages]]
 name = "peritus-resilience"
 path = "crates/app/testing/peritus-resilience"
 owner = "H1"

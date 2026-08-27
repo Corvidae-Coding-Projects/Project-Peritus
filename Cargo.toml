@@ -15,6 +15,7 @@ members = [
     "crates/app/testing/peritus-conformance",
     "crates/app/testing/peritus-external-benchmarks",
     "crates/app/testing/peritus-platform-qualification",
+    "crates/app/testing/peritus-performance-qualification",
     "crates/app/testing/peritus-release-artifacts",
     "crates/app/testing/peritus-release-operator",
     "crates/app/testing/peritus-release-qualification",

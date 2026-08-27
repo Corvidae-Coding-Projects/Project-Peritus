@@ -2414,6 +2414,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "peritus-performance-qualification"
+version = "0.0.0"
+dependencies = [
+ "peritus-benchmarks",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "peritus-platform-qualification"
 version = "0.0.0"
 dependencies = [
