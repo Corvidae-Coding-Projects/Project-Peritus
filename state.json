@@ -1,6 +1,6 @@
 {
   "next_display_id": 26,
-  "next_comment_id": 426,
+  "next_comment_id": 427,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -3587,7 +3587,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T22:59:08.003031292Z",
-      "updated_at": "2026-08-27T05:21:40.452276859Z",
+      "updated_at": "2026-08-27T05:57:12.469356072Z",
       "labels": [
         "feature"
       ],
@@ -3690,6 +3690,15 @@
           "kind": "action",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjFVMDIA017wpmGImGFaOst0qMqYpD81+RC1xhIOU8XZBqhLLlWBmGJY95HWpfL97Ao1oVOW4rofUkcfVXsEzDA=="
+        },
+        "8413b367-8201-4b01-aed0-642c7eaec5d9": {
+          "display_id": 426,
+          "author": "6ME5",
+          "content": "G0 production qualifiers are complete: all 28/28 public subprocess cases pass, including real PTY fragmentation/exit ordering and crash-before-ack outbox recovery. Focused strict Clippy, daemon tests, approval regression tests, rustdoc, and peritus-daemon Verus --no-cheating are green. Starting the resource-limited aggregate gate-a before commit.",
+          "created_at": "2026-08-27T05:57:12.465946540Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAj4+JflP8jqVYkweY8i1OetvVQNFfeKiJoieZbNH9c1HQF0YIt7Oj9wVmF+uXiQJEsN4roQIqzxF7/pl94XspBQ=="
         },
         "89c40d11-408b-4cfd-ac88-4f86e58eb9a0": {
           "display_id": 404,
@@ -4295,8 +4304,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T05:21:40.452276859Z",
+    "timestamp": "2026-08-27T05:57:12.469356072Z",
     "agent_id": "6ME5",
-    "agent_seq": 569
+    "agent_seq": 570
   }
 }
