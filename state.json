@@ -1,5 +1,5 @@
 {
-  "next_display_id": 31,
+  "next_display_id": 32,
   "next_comment_id": 469,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -10,6 +10,7 @@
     "19b7b53a-b2fb-41c1-835d-ffd6ce605c08": 14,
     "27633189-3dec-4781-9940-42a3e8eb9e60": 24,
     "2b288a30-b5b1-4452-81bd-20950bebd2d3": 9,
+    "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c": 31,
     "338b10ed-ebc5-4da2-a725-fa46ca662fda": 12,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
     "3bef48a1-7556-4245-8dc8-a4326deff3ea": 16,
@@ -1203,6 +1204,17 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIDoYQCNG/DsrnsJ8jJfZVNfJg+8V6hZW0i/WlhKBMDfN29aEOSwSv8yg3aQ0Ovinld31EB19n6rgUQn51cAyCw=="
         }
       }
+    },
+    "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c": {
+      "uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
+      "display_id": 31,
+      "title": "H0-H4 final production qualification wave",
+      "description": "Implement the final architecture wave without reducing scope: H0 cross-cutting security qualification and H4 release qualification. Add verified deterministic security/release policy where feasible, effectful red-team and release-evidence boundaries, complete acceptance-criterion traceability, SBOM/provenance/signature/reproducibility contracts, docs and tests. Root owns shared manifests, architecture, integration, verification, signed commits, PR, hosted runners, and merge. Production readiness remains fail-closed until real evidence is present.",
+      "status": "open",
+      "priority": "critical",
+      "created_by": "6ME5",
+      "created_at": "2026-08-27T17:00:37.980863416Z",
+      "updated_at": "2026-08-27T17:00:37.980863416Z"
     },
     "338b10ed-ebc5-4da2-a725-fa46ca662fda": {
       "uuid": "338b10ed-ebc5-4da2-a725-fa46ca662fda",
@@ -4756,8 +4768,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T15:27:24.797808036Z",
+    "timestamp": "2026-08-27T17:00:37.980863416Z",
     "agent_id": "6ME5",
-    "agent_seq": 626
+    "agent_seq": 627
   }
 }
