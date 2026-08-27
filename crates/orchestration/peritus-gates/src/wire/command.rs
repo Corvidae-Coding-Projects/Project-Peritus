@@ -4,14 +4,18 @@ use peritus_codec::{
 
 use crate::{GateCommand, GateCommandKind};
 
-pub struct GateCommandFrame(pub GateCommand);
+/// Canonical B3 command frame for the D1 gate aggregate.
+pub struct GateCommandFrame(GateCommand);
 
 impl GateCommandFrame {
+    /// Wraps one syntax-checked command for canonical transport.
+    #[must_use]
     pub fn from_command(command: &GateCommand) -> Self {
         Self(command.clone())
     }
 
-    #[cfg(test)]
+    /// Consumes the frame into its inert command.
+    #[must_use]
     pub fn into_command(self) -> GateCommand {
         self.0
     }
@@ -69,6 +73,8 @@ impl CanonicalEncode for GateCommandFrame {
             }
             GateCommandKind::BeginCancellation => writer.write_u8(7)?,
             GateCommandKind::FinalizeRun => writer.write_u8(8)?,
+            GateCommandKind::PauseRun => writer.write_u8(9)?,
+            GateCommandKind::ResumeRun => writer.write_u8(10)?,
         }
         Ok(())
     }
@@ -134,6 +140,8 @@ fn read_kind(reader: &mut CanonicalReader<'_>) -> Result<GateCommandKind, CodecE
         }),
         7 => Ok(GateCommandKind::BeginCancellation),
         8 => Ok(GateCommandKind::FinalizeRun),
+        9 => Ok(GateCommandKind::PauseRun),
+        10 => Ok(GateCommandKind::ResumeRun),
         _ => Err(CodecError::at(CodecErrorKind::UnknownTag, offset)),
     }
 }

@@ -54,8 +54,8 @@ evidence for those failures must execute conformance in a supervised subprocess.
 
 The crate exports production journal, replay, C1 workspace, C2 process, C2/C3 sandbox, C4 tool,
 C5 provider, D0 agent-loop, D1 gate, D2 review, D3 scheduler/collaboration, E0 orchestrator, E1
-harness materialization, E2 debugger, E3 evaluation, F0 evolution, C7 trace/telemetry, and A3
-application-protocol suites plus one runnable empty plugin suite. The protocol suite contains
+harness materialization, E2 debugger, E3 evaluation, F0 evolution, C7 trace/telemetry, A3
+application-protocol, and G0 daemon suites plus one runnable empty plugin suite. The protocol suite contains
 sixteen fixed cases covering exact/downgraded/incompatible negotiation, required features, command
 binding, idempotency, event resume/redelivery/acknowledgement, gaps, backpressure, artifact
 transfer, prompt freshness, terminal ordering, daemon lifecycle, malformed input, and bounds. The
@@ -107,6 +107,15 @@ containment, and teardown isolation. The evolution suite contains fourteen cases
 evidence, complete isolated changes, interaction attribution, contamination, metric gaming,
 deterministic selection, stale evidence, independent review, exact human authority, atomic
 activation, append-only rollback, replay, malformed input, and independent bounds.
+
+The daemon suite contains twenty-eight runtime-neutral black-box cases covering compatible and
+incompatible session establishment, peer and negotiated-context mismatch, new/replayed/conflicting/
+indeterminate commands, stale revision rejection, subscription resume/redelivery/acknowledgement/
+gap/backpressure, artifact download/upload/corruption, prompt freshness, combined PTY ordering,
+read-only admission, exclusive instance ownership, startup failure, effect-before-ack outbox
+recovery, graceful shutdown, forced restart, independent bounds, malformed framing, and
+non-authority surfaces. A production adapter must drive the protected local application boundary;
+the suite imports no G0 implementation type and derives every result from direct observations.
 
 Production crates implement only the subject traits and translate these runtime-neutral fixtures
 and observations into their own domain values. A2 neither constructs privileged runtime permits

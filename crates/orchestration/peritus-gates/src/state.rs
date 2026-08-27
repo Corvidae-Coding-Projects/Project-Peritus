@@ -7,6 +7,7 @@ use peritus_types::{
 
 use crate::{GateAttemptResult, GateEvidenceReceipt, GatePlan};
 
+mod checkpoint;
 pub mod mutation;
 
 /// One prepared or dispatched attempt and all replay/idempotency bindings.
@@ -160,11 +161,22 @@ impl GateSlot {
     }
 }
 
+/// Nonterminal run phase retained across an explicit pause.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum GateResumePhase {
+    /// Gate scheduling and observation were active.
+    Active,
+    /// Cancellation was already settling owned effects.
+    Cancelling,
+}
+
 /// Closed run lifecycle.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum GateRunPhase {
     /// Gate scheduling and observation are active.
     Active,
+    /// Progress is suspended while the exact prior nonterminal phase is retained.
+    Paused(GateResumePhase),
     /// No new dispatch may begin; owned effects must reach terminal observations.
     Cancelling,
     /// Deterministic terminal aggregation was committed.

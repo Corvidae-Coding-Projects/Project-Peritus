@@ -130,6 +130,8 @@ pub const fn run_phase_tag(value: GateRunPhase) -> u8 {
         GateRunPhase::Active => 1,
         GateRunPhase::Cancelling => 2,
         GateRunPhase::Terminal => 3,
+        GateRunPhase::Paused(crate::GateResumePhase::Active) => 4,
+        GateRunPhase::Paused(crate::GateResumePhase::Cancelling) => 5,
     }
 }
 

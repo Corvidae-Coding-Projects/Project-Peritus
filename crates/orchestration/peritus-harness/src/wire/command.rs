@@ -82,6 +82,12 @@ impl HarnessCommandFrame {
     pub const fn command_id(&self) -> CommandId {
         self.command_id
     }
+
+    /// Returns the aggregate identity without activating semantic data.
+    #[must_use]
+    pub const fn harness_id(&self) -> HarnessId {
+        self.harness_id
+    }
 }
 
 impl CanonicalEncode for HarnessCommandFrame {

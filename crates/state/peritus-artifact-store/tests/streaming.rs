@@ -46,6 +46,29 @@ fn chunked_streaming_finalizes_exact_bytes_and_durable_metadata() {
 }
 
 #[test]
+fn owned_handles_stream_across_calls_without_borrowing_the_store() {
+    let (_directory, store) = store(64, 256);
+    let content = b"owned streaming handle";
+    let mut writer = store.begin_owned_write(request(content, 64, 7)).expect("owned writer begins");
+    let _store_remains_borrowable = store.root();
+    writer.write_chunk(b"owned ").expect("first owned chunk");
+    writer.write_chunk(b"streaming handle").expect("second owned chunk");
+    let finalized = store.complete_write(writer).expect("store completes owned writer");
+    assert_eq!(finalized.digest(), digest(content));
+
+    let mut reader = store.open_read(digest(content)).expect("owned reader opens");
+    assert_eq!(reader.metadata().size(), content.len() as u64);
+    let first = reader.read_chunk(5).expect("first read").expect("first chunk");
+    assert_eq!(first.offset(), 0);
+    assert_eq!(first.bytes(), b"owned");
+    let second = reader.read_chunk(64).expect("second read").expect("second chunk");
+    assert_eq!(second.offset(), 5);
+    assert_eq!(second.bytes(), b" streaming handle");
+    assert_eq!(reader.remaining_bytes(), 0);
+    assert!(reader.read_chunk(1).expect("exact completion").is_none());
+}
+
+#[test]
 fn exact_limit_succeeds_and_one_over_is_rejected_without_partial_chunk() {
     let (_directory, store) = store(8, 64);
     let content = b"12345678";

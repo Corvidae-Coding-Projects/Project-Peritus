@@ -15,8 +15,8 @@ use crate::{
     platform::ProcessTreeIdentity,
     recovery::{claim::ConsumptionClaim, manifest::ExecutionManifest},
     registry_storage::{
-        create_checked_directory, hex, load_claims, load_manifests, persist_claim, restore_backups,
-        write_manifest,
+        create_checked_directory, hex, load_claims, load_manifests, load_quarantine, persist_claim,
+        restore_backups, write_manifest,
     },
 };
 
@@ -85,7 +85,7 @@ impl ProcessStore {
         let mut state = StoreState {
             manifests: BTreeMap::new(),
             claims: BTreeMap::new(),
-            quarantined_records: Vec::new(),
+            quarantined_records: load_quarantine(&quarantine)?,
         };
         load_claims(&claims, &quarantine, &mut state.claims, &mut state.quarantined_records)?;
         load_manifests(
@@ -118,6 +118,27 @@ impl ProcessStore {
     #[must_use]
     pub fn quarantined_records(&self) -> Vec<PathBuf> {
         self.lock_state().quarantined_records.clone()
+    }
+
+    /// Returns the exact number of durable executions that still require terminal reconciliation.
+    ///
+    /// This includes every nonterminal manifest and every consumption claim whose manifest is
+    /// absent. It performs no platform observation and therefore cannot manufacture quiescence.
+    #[must_use]
+    pub fn recovery_work_count(&self) -> usize {
+        let state = self.lock_state();
+        let nonterminal = state
+            .manifests
+            .values()
+            .filter(|manifest| manifest.phase != LifecyclePhase::Terminal)
+            .count();
+        let orphan_claims = state
+            .claims
+            .keys()
+            .filter(|process_id| !state.manifests.contains_key(process_id))
+            .count();
+        drop(state);
+        nonterminal + orphan_claims
     }
 
     pub(crate) fn consume(

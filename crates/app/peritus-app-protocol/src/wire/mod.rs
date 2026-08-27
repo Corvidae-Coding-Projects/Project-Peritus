@@ -19,7 +19,7 @@ use crate::{
     AppResponseEnvelope, CLIENT_HELLO_FAMILY, CONTROL_FAMILY, ClientHello, ControlEnvelope,
     EVENT_FAMILY, REQUEST_FAMILY, RESPONSE_FAMILY, SERVER_HELLO_FAMILY, ServerHello,
 };
-use peritus_codec::{CanonicalReader, decode_frame, encode_message};
+use peritus_codec::{CanonicalReader, CanonicalWriter, decode_frame, encode_message};
 
 /// Closed typed value produced by dispatching one complete A3 PRTS frame.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -78,6 +78,54 @@ pub fn encode_app_message(
     // the public dispatcher.
     decode_app_message(&encoded, limits)?;
     Ok(encoded)
+}
+
+/// Encodes one prompt binding into its exact canonical semantic bytes.
+///
+/// The returned bytes omit an application envelope and PRTS frame so a durable target registry
+/// can bind the prompt before any connection-specific publication. They are accepted only after
+/// the strict decoder reproduces the same checked binding under the supplied limits.
+///
+/// # Errors
+///
+/// Returns a stable codec-derived application error when the binding exceeds the supplied limits.
+pub fn encode_prompt_binding_value(
+    binding: &crate::PromptBinding,
+    limits: AppProtocolLimits,
+) -> Result<Vec<u8>, AppProtocolError> {
+    let mut writer = CanonicalWriter::new(limits.codec());
+    prompt::write_prompt_binding(&mut writer, binding).map_err(AppProtocolError::from_codec)?;
+    let bytes = writer.into_bytes();
+    let mut reader = CanonicalReader::new(&bytes, limits.codec());
+    let decoded =
+        prompt::read_prompt_binding(&mut reader, limits).map_err(AppProtocolError::from_codec)?;
+    reader.finish().map_err(AppProtocolError::from_codec)?;
+    if decoded != *binding {
+        return Err(AppProtocolError::new(crate::AppErrorCode::MalformedFrame, None));
+    }
+    Ok(bytes)
+}
+
+/// Decodes and completely consumes one canonical prompt binding value.
+///
+/// These envelope-free bytes let a durable prompt owner reconstruct an awaiting challenge after
+/// process restart.
+///
+/// # Errors
+///
+/// Returns a stable protocol error when the value is malformed, noncanonical, or out of bounds.
+pub fn decode_prompt_binding_value(
+    bytes: &[u8],
+    limits: AppProtocolLimits,
+) -> Result<crate::PromptBinding, AppProtocolError> {
+    let mut reader = CanonicalReader::new(bytes, limits.codec());
+    let binding =
+        prompt::read_prompt_binding(&mut reader, limits).map_err(AppProtocolError::from_codec)?;
+    reader.finish().map_err(AppProtocolError::from_codec)?;
+    if encode_prompt_binding_value(&binding, limits)? != bytes {
+        return Err(AppProtocolError::new(crate::AppErrorCode::MalformedFrame, None));
+    }
+    Ok(binding)
 }
 
 /// Decodes and completely consumes one canonical A3 PRTS frame under negotiated limits.

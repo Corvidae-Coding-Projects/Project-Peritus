@@ -13,6 +13,7 @@ use crate::{
 
 mod action_identity;
 mod evidence_binding;
+mod pause;
 
 #[test]
 fn dependency_failure_blocks_successor_and_replays_exactly() {

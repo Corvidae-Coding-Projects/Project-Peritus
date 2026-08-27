@@ -2,10 +2,11 @@
 
 #![allow(clippy::unwrap_used, reason = "fixed durability fixtures use checked values")]
 
+use peritus_codec::{CodecLimits, decode_message, encode_message};
 use peritus_journal::{SqliteJournal, SqliteJournalOptions, StoreId};
 use peritus_review::{
-    ReviewBinding, ReviewCommand, ReviewCommandKind, ReviewErrorKind, ReviewLimits,
-    commit_review_transition, decide, load_review_replay, start,
+    ReviewBinding, ReviewCommand, ReviewCommandFrame, ReviewCommandKind, ReviewErrorKind,
+    ReviewLimits, ReviewRunPhase, commit_review_transition, decide, load_review_replay, start,
 };
 use peritus_spec::{
     AcceptanceContract, Assumption, CompletionPolicy, ContentReference, ContractDocuments,
@@ -51,6 +52,70 @@ fn durability_restart_idempotency_conflict_and_checkpoint_corruption() {
     corrupt_family_55_checkpoint(&path);
     let corrupted = SqliteJournal::open(&path, store_id, SqliteJournalOptions::default()).unwrap();
     assert!(load_review_replay(&corrupted, command.run_id()).is_err());
+}
+
+#[test]
+fn pause_resume_is_canonical_durable_idempotent_and_authority_neutral() {
+    let fixture = Fixture::new();
+    let start_command = fixture.genesis(fixture.binding(92), 10, 11);
+    let started = start(&start_command).unwrap();
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("review-pause.sqlite3");
+    let store_id = StoreId::new(bytes(82)).unwrap();
+    let mut journal =
+        SqliteJournal::open(&path, store_id, SqliteJournalOptions::default()).unwrap();
+    commit_review_transition(&mut journal, &start_command, &started).unwrap();
+    let active = started.into_state();
+
+    let pause_command = fenced(&active, 12, 13, ReviewCommandKind::PauseRun);
+    let paused = decide(&active, &pause_command).unwrap();
+    assert_eq!(paused.state().phase(), ReviewRunPhase::Paused);
+    assert_eq!(paused.state().limits(), active.limits());
+    assert_eq!(paused.state().binding(), active.binding());
+    assert_eq!(paused.state().findings(), active.findings());
+    assert_eq!(paused.state().quorum(), active.quorum());
+    assert!(paused.state().terminal().is_none());
+
+    let bytes =
+        encode_message(&ReviewCommandFrame::from_command(&pause_command), CodecLimits::PRODUCTION)
+            .unwrap();
+    assert_eq!(
+        decode_message::<ReviewCommandFrame>(&bytes, CodecLimits::PRODUCTION).unwrap().0,
+        pause_command
+    );
+    let finalize = fenced(paused.state(), 14, 15, ReviewCommandKind::FinalizeRun);
+    assert_eq!(
+        decide(paused.state(), &finalize).unwrap_err().kind(),
+        ReviewErrorKind::IllegalTransition
+    );
+
+    let first = commit_review_transition(&mut journal, &pause_command, &paused).unwrap();
+    let resolved = commit_review_transition(&mut journal, &pause_command, &paused).unwrap();
+    assert_eq!(first.batch_hash(), resolved.batch_hash());
+    let expected_paused = paused.into_state();
+    drop(journal);
+
+    let mut restarted =
+        SqliteJournal::open(&path, store_id, SqliteJournalOptions::default()).unwrap();
+    let replayed_paused =
+        load_review_replay(&restarted, active.run_id()).unwrap().rebuild().unwrap().unwrap();
+    assert_eq!(replayed_paused, expected_paused);
+    let resume_command = fenced(&replayed_paused, 16, 17, ReviewCommandKind::ResumeRun);
+    let resumed = decide(&replayed_paused, &resume_command).unwrap();
+    assert_eq!(resumed.state().phase(), ReviewRunPhase::Active);
+    assert_eq!(resumed.state().limits(), active.limits());
+    assert_eq!(resumed.state().findings(), active.findings());
+    assert_eq!(resumed.state().quorum(), active.quorum());
+    assert!(resumed.state().terminal().is_none());
+    commit_review_transition(&mut restarted, &resume_command, &resumed).unwrap();
+    let expected_resumed = resumed.into_state();
+    drop(restarted);
+
+    let restarted = SqliteJournal::open(&path, store_id, SqliteJournalOptions::default()).unwrap();
+    assert_eq!(
+        load_review_replay(&restarted, active.run_id()).unwrap().rebuild().unwrap(),
+        Some(expected_resumed)
+    );
 }
 
 #[test]
@@ -253,6 +318,25 @@ impl Fixture {
         )
         .unwrap()
     }
+}
+
+fn fenced(
+    state: &peritus_review::ReviewRunState,
+    command: u8,
+    event: u8,
+    kind: ReviewCommandKind,
+) -> ReviewCommand {
+    ReviewCommand::new(
+        CommandId::new(bytes(command)).unwrap(),
+        EventId::new(bytes(event)).unwrap(),
+        state.run_id(),
+        state.sequence().get(),
+        Some(state.last_event_id()),
+        state.state_digest(),
+        state.binding().revision(),
+        kind,
+    )
+    .unwrap()
 }
 
 fn limits() -> ReviewLimits {

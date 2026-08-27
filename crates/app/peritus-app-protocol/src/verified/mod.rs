@@ -78,17 +78,17 @@ pub const fn next_cursor(last: u64) -> (next: Option<u64>)
     last.checked_add(1)
 }
 
-/// Mathematical new-delivery relation for `INV-024`.
-pub open spec fn delivery_advances_spec(last_delivered: u64, observed: u64) -> bool {
-    last_delivered < u64::MAX && observed == last_delivered + 1
+/// Mathematical source-position delivery relation for `INV-024`.
+pub open spec fn delivery_advances_spec(scanned: u64, observed: u64) -> bool {
+    scanned < observed
 }
 
-/// Checks that one distinct delivery advances the subscription exactly once.
+/// Checks that one distinct delivery strictly advances the scanned source position.
 #[must_use]
-pub const fn delivery_advances(last_delivered: u64, observed: u64) -> (valid: bool)
-    ensures valid == delivery_advances_spec(last_delivered, observed)
+pub const fn delivery_advances(scanned: u64, observed: u64) -> (valid: bool)
+    ensures valid == delivery_advances_spec(scanned, observed)
 {
-    last_delivered < u64::MAX && observed == last_delivered + 1
+    scanned < observed
 }
 
 /// Mathematical cumulative-acknowledgement legality relation.
@@ -97,23 +97,31 @@ pub open spec fn ack_legal_spec(
     last_delivered: u64,
     acknowledged: u64,
     gap_open: bool,
+    delivered_member: bool,
 ) -> bool {
-    !gap_open && last_acknowledged <= acknowledged && acknowledged <= last_delivered
+    !gap_open
+        && last_acknowledged <= acknowledged
+        && acknowledged <= last_delivered
+        && (acknowledged == last_acknowledged || delivered_member)
 }
 
-/// Checks that a cumulative acknowledgement neither regresses nor exceeds contiguous delivery.
+/// Checks that a cumulative acknowledgement closes an actually delivered prefix.
 #[must_use]
 pub const fn ack_legal(
     last_acknowledged: u64,
     last_delivered: u64,
     acknowledged: u64,
     gap_open: bool,
+    delivered_member: bool,
 ) -> (valid: bool)
     ensures valid == ack_legal_spec(
-        last_acknowledged, last_delivered, acknowledged, gap_open,
+        last_acknowledged, last_delivered, acknowledged, gap_open, delivered_member,
     )
 {
-    !gap_open && last_acknowledged <= acknowledged && acknowledged <= last_delivered
+    !gap_open
+        && last_acknowledged <= acknowledged
+        && acknowledged <= last_delivered
+        && (acknowledged == last_acknowledged || delivered_member)
 }
 
 /// Redelivery is legal only when every stable event-identity dimension matches.
@@ -288,8 +296,15 @@ pub proof fn legal_ack_never_exceeds_delivery(
     last_delivered: u64,
     acknowledged: u64,
     gap_open: bool,
+    delivered_member: bool,
 )
-    requires ack_legal_spec(last_acknowledged, last_delivered, acknowledged, gap_open)
+    requires ack_legal_spec(
+        last_acknowledged,
+        last_delivered,
+        acknowledged,
+        gap_open,
+        delivered_member,
+    )
     ensures acknowledged <= last_delivered
 {
 }

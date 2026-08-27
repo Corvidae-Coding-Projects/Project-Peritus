@@ -1519,6 +1519,65 @@ dependencies = [
 ]
 
 [[package]]
+name = "peritus-daemon"
+version = "0.0.0"
+dependencies = [
+ "fs4",
+ "libc",
+ "peritus-app-protocol",
+ "peritus-approval",
+ "peritus-artifact-store",
+ "peritus-codec",
+ "peritus-collaboration",
+ "peritus-conformance",
+ "peritus-debugger",
+ "peritus-eval",
+ "peritus-evidence",
+ "peritus-evolution",
+ "peritus-gates",
+ "peritus-harness",
+ "peritus-journal",
+ "peritus-kernel",
+ "peritus-migrations",
+ "peritus-model-protocol",
+ "peritus-orchestrator",
+ "peritus-policy",
+ "peritus-process",
+ "peritus-projection",
+ "peritus-protocol",
+ "peritus-provider-anthropic",
+ "peritus-provider-compatible",
+ "peritus-provider-core",
+ "peritus-provider-google",
+ "peritus-provider-openai",
+ "peritus-review",
+ "peritus-role",
+ "peritus-sandbox",
+ "peritus-scheduler",
+ "peritus-secrets",
+ "peritus-telemetry",
+ "peritus-test-support",
+ "peritus-tool-protocol",
+ "peritus-tool-router",
+ "peritus-tools-fs",
+ "peritus-tools-git",
+ "peritus-tools-quality",
+ "peritus-tools-shell",
+ "peritus-trace",
+ "peritus-types",
+ "peritus-workspace",
+ "portable-pty",
+ "rusqlite",
+ "serde",
+ "sha2 0.11.0",
+ "tempfile",
+ "tokio",
+ "toml",
+ "vstd",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "peritus-debugger"
 version = "0.0.0"
 dependencies = [

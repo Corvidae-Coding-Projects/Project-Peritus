@@ -98,6 +98,54 @@ pub fn current_version(
     Ok(current)
 }
 
+pub fn adopt_current_install(
+    connection: &mut Connection,
+    registry: MigrationRegistry,
+    operation: MigrationOperationId,
+) -> Result<bool, MigrationError> {
+    registry.validate()?;
+    let applied: i64 = connection
+        .query_row("SELECT COUNT(*) FROM schema_migrations", [], |row| row.get(0))
+        .map_err(|error| MigrationError::sqlite("count applied migrations", error))?;
+    if applied != 0 {
+        return Ok(false);
+    }
+    let pending: i64 = connection
+        .query_row("SELECT COUNT(*) FROM recovery_operations", [], |row| row.get(0))
+        .map_err(|error| MigrationError::sqlite("count migration recovery records", error))?;
+    if pending != 0 {
+        return Err(corrupt("current schema without migration history has recovery records"));
+    }
+    let latest = registry.latest()?.get();
+    let user_version: i64 =
+        connection
+            .pragma_query_value(None, "user_version", |row| row.get(0))
+            .map_err(|error| MigrationError::sqlite("read SQLite user version", error))?;
+    if u64::try_from(user_version).map_err(|_| corrupt("negative SQLite user version"))? != latest {
+        return Ok(false);
+    }
+    let installed: Option<i64> = connection
+        .query_row("SELECT schema_version FROM store_meta WHERE singleton = 1", [], |row| {
+            row.get(0)
+        })
+        .optional()
+        .map_err(|error| MigrationError::sqlite("observe installed schema version", error))?;
+    if installed.and_then(|value| u64::try_from(value).ok()) != Some(latest) {
+        return Err(corrupt("current SQLite version lacks matching journal schema metadata"));
+    }
+    let transaction = connection
+        .transaction()
+        .map_err(|error| MigrationError::sqlite("begin current-schema adoption", error))?;
+    for descriptor in registry.descriptors() {
+        record_step(&transaction, operation, *descriptor)?;
+    }
+    transaction
+        .commit()
+        .map_err(|error| MigrationError::sqlite("commit current-schema adoption", error))?;
+    current_version(connection, registry)?;
+    Ok(true)
+}
+
 pub fn begin_operation(
     connection: &Connection,
     operation: MigrationOperationId,

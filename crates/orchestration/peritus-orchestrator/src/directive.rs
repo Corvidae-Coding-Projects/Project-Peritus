@@ -98,6 +98,8 @@ pub enum DirectiveKind {
     EvaluateKernelAcceptance,
     /// Pause owned children without creating new work.
     PauseChildren,
+    /// Resume one previously paused owned child without creating new work.
+    ResumeChildren,
     /// Cancel owned children and reconcile their terminals.
     CancelChildren,
 }
@@ -145,7 +147,7 @@ pub fn directive_payload_digest(
         DirectiveKind::StartGates | DirectiveKind::FinalizeChildren => {
             matches!(binding, DirectivePayloadBinding::QualityCycle(_))
         }
-        DirectiveKind::PauseChildren => {
+        DirectiveKind::PauseChildren | DirectiveKind::ResumeChildren => {
             matches!(binding, DirectivePayloadBinding::Reconciliation(_))
         }
         DirectiveKind::CancelChildren => {

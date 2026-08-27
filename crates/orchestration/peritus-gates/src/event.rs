@@ -5,7 +5,8 @@ use peritus_types::{
 };
 
 use crate::{
-    ActiveAttempt, GateAttemptResult, GateEvidenceReceipt, GateRunState, RecoveryDisposition,
+    ActiveAttempt, GateAttemptResult, GateEvidenceReceipt, GateResumePhase, GateRunState,
+    RecoveryDisposition,
 };
 
 /// Closed semantic fact accepted by the D1 reducer.
@@ -59,6 +60,16 @@ pub enum GateEventKind {
     },
     /// Run cancellation began.
     CancellationStarted,
+    /// Progress was suspended from an exact nonterminal phase.
+    RunPaused {
+        /// Phase that a resume must restore.
+        resume_phase: GateResumePhase,
+    },
+    /// The exact phase retained by the pause was restored.
+    RunResumed {
+        /// Phase restored by this event.
+        resume_phase: GateResumePhase,
+    },
     /// Deterministic terminal aggregation was committed.
     RunFinalized,
 }

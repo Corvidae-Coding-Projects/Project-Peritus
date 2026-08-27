@@ -4,17 +4,6 @@ use crate::CorrelationId;
 
 use super::{PromptCorrelation, PromptError, PromptErrorKind, error::reject};
 
-/// Unprivileged approval intent; B1 remains responsible for authority and consumption.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub enum ApprovalIntent {
-    /// The user expresses intent to approve.
-    Approve,
-    /// The user expresses intent to deny.
-    Deny,
-    /// The user cancels the approval interaction.
-    Cancel,
-}
-
 /// Closed user-input response value.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum UserInputValue {
@@ -76,10 +65,10 @@ fn bounded(value: String, maximum_bytes: usize, allow_empty: bool) -> Result<Str
 /// Closed answer payload.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum PromptAnswerPayload {
-    /// Approval intent plus bounded optional rationale.
+    /// Externally signed decision or cancellation plus bounded optional rationale.
     Approval {
-        /// Explicit approve, deny, or cancel intent.
-        intent: ApprovalIntent,
+        /// Closed signed-decision or cancellation response.
+        answer: super::ApprovalAnswer,
         /// Optional bounded human rationale.
         rationale: Option<String>,
     },
@@ -88,13 +77,37 @@ pub enum PromptAnswerPayload {
 }
 
 impl PromptAnswerPayload {
-    /// Creates unprivileged approval intent with optional bounded rationale.
+    /// Creates a signed approval response with optional bounded rationale.
     ///
     /// # Errors
     ///
     /// Rejects a zero rationale bound or oversized rationale.
-    pub fn approval(
-        intent: ApprovalIntent,
+    pub fn signed_approval(
+        decision: super::SignedApprovalDecisionFrame,
+        rationale: Option<String>,
+        maximum_rationale_bytes: usize,
+    ) -> Result<Self, PromptError> {
+        Self::approval(
+            super::ApprovalAnswer::SignedDecision(decision),
+            rationale,
+            maximum_rationale_bytes,
+        )
+    }
+
+    /// Creates an unprivileged approval cancellation with optional bounded rationale.
+    ///
+    /// # Errors
+    ///
+    /// Rejects a zero rationale bound or oversized rationale.
+    pub fn cancel_approval(
+        rationale: Option<String>,
+        maximum_rationale_bytes: usize,
+    ) -> Result<Self, PromptError> {
+        Self::approval(super::ApprovalAnswer::Cancel, rationale, maximum_rationale_bytes)
+    }
+
+    fn approval(
+        answer: super::ApprovalAnswer,
         rationale: Option<String>,
         maximum_rationale_bytes: usize,
     ) -> Result<Self, PromptError> {
@@ -107,7 +120,7 @@ impl PromptAnswerPayload {
                 "approval rationale exceeds its negotiated bound",
             ));
         }
-        Ok(Self::Approval { intent, rationale })
+        Ok(Self::Approval { answer, rationale })
     }
 }
 

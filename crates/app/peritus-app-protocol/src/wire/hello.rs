@@ -13,6 +13,7 @@ use super::primitive::{
     invalid, read_features, read_id, read_limits, read_ranges, read_version, unknown,
     write_features, write_id, write_limits, write_ranges, write_version,
 };
+use peritus_types::SessionId;
 
 impl CanonicalEncode for ClientHello {
     const FAMILY: u16 = CLIENT_HELLO_FAMILY;
@@ -21,6 +22,7 @@ impl CanonicalEncode for ClientHello {
     fn encode_payload(&self, writer: &mut CanonicalWriter) -> Result<(), CodecError> {
         writer.write_u16(1)?;
         write_id(writer, self.protocol_id().as_bytes())?;
+        write_session_option(writer, self.requested_session())?;
         write_ranges(writer, self.versions())?;
         write_features(writer, self.required_features())?;
         write_features(writer, self.optional_features())?;
@@ -47,6 +49,7 @@ pub(super) fn read_client_hello(
         return unknown(tag_offset);
     }
     let protocol_id = read_id(reader, ProtocolId::new)?;
+    let requested_session = read_session_option(reader)?;
     let versions = read_ranges(reader, limits.max_versions())?;
     let required = read_features(reader, limits.max_features())?.into_vec();
     let optional = read_features(reader, limits.max_features())?.into_vec();
@@ -57,7 +60,15 @@ pub(super) fn read_client_hello(
     }
     invalid(
         reader.offset(),
-        ClientHello::new(protocol_id, versions, required, optional, receive_limits, implementation),
+        ClientHello::new_with_session(
+            protocol_id,
+            requested_session,
+            versions,
+            required,
+            optional,
+            receive_limits,
+            implementation,
+        ),
     )
 }
 
@@ -68,6 +79,7 @@ impl CanonicalEncode for ServerHello {
     fn encode_payload(&self, writer: &mut CanonicalWriter) -> Result<(), CodecError> {
         write_id(writer, self.protocol_id().as_bytes())?;
         writer.write_str(self.implementation().as_str())?;
+        write_session_option(writer, self.established_session())?;
         match self.outcome() {
             NegotiationOutcome::Compatible(protocol) => {
                 writer.write_u16(1)?;
@@ -116,6 +128,7 @@ pub(super) fn read_server_hello(
     }
     let implementation =
         invalid(implementation_offset, ImplementationMetadata::new(implementation_text, limits))?;
+    let established_session = read_session_option(reader)?;
     let outcome_offset = reader.offset();
     let outcome = match reader.read_u16()? {
         1 => NegotiationOutcome::Compatible(read_negotiated(reader, limits)?),
@@ -140,7 +153,25 @@ pub(super) fn read_server_hello(
         }
         _ => return unknown(outcome_offset),
     };
-    Ok(ServerHello::new(protocol_id, implementation, outcome))
+    invalid(
+        outcome_offset,
+        ServerHello::new(protocol_id, implementation, established_session, outcome),
+    )
+}
+
+fn write_session_option(
+    writer: &mut CanonicalWriter,
+    value: Option<SessionId>,
+) -> Result<(), CodecError> {
+    writer.write_option_tag(value.is_some())?;
+    if let Some(session) = value {
+        write_id(writer, session.as_bytes())?;
+    }
+    Ok(())
+}
+
+fn read_session_option(reader: &mut CanonicalReader<'_>) -> Result<Option<SessionId>, CodecError> {
+    if reader.read_option_tag()? { read_id(reader, SessionId::new).map(Some) } else { Ok(None) }
 }
 
 fn write_negotiated(

@@ -39,8 +39,9 @@ fn all_six_families_round_trip_and_typed_hello_decodes() -> Result<(), Box<dyn s
     let server = ServerHello::new(
         protocol_id,
         ImplementationMetadata::new("wire-test-server".to_owned(), limits)?,
+        None,
         NegotiationOutcome::Incompatible(IncompatibilityReason::NoCommonVersion),
-    );
+    )?;
     let request = AppRequestEnvelope::new(
         context,
         request_id,

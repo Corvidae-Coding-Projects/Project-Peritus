@@ -30,6 +30,7 @@ fn resume_redelivery_ack_gap_and_backpressure_are_explicit() {
 
     let first = match state
         .deliver(
+            EventCursor::new(8),
             fixture_id(11, EventId::new),
             fixture_id(12, DeliveryAttemptId::new),
             event_frame(),
@@ -52,19 +53,24 @@ fn resume_redelivery_ack_gap_and_backpressure_are_explicit() {
     assert_ne!(redelivery.attempt_id(), first.attempt_id());
     assert_eq!(redelivery.attempt(), 2);
 
+    state.scan_to(EventCursor::new(9)).expect("filtered source position advances scanning");
+    assert_eq!(state.scanned_cursor(), EventCursor::new(9));
+
     let second = state
         .deliver(
+            EventCursor::new(10),
             fixture_id(14, EventId::new),
             fixture_id(15, DeliveryAttemptId::new),
             event_frame(),
         )
         .expect("second delivery");
     assert!(
-        matches!(second, DeliveryAdmission::Delivered(ref value) if value.cursor() == EventCursor::new(9))
+        matches!(second, DeliveryAdmission::Delivered(ref value) if value.cursor() == EventCursor::new(10))
     );
     assert_eq!(
         state
             .deliver(
+                EventCursor::new(11),
                 fixture_id(16, EventId::new),
                 fixture_id(17, DeliveryAttemptId::new),
                 event_frame(),
@@ -98,14 +104,14 @@ fn resume_redelivery_ack_gap_and_backpressure_are_explicit() {
     );
     assert_eq!(
         state
-            .acknowledge(Acknowledgement::new(subscription_id, EventCursor::new(10)))
+            .acknowledge(Acknowledgement::new(subscription_id, EventCursor::new(11)))
             .expect_err("future acknowledgement is rejected")
             .kind(),
         SubscriptionErrorKind::AcknowledgementFuture,
     );
     assert_eq!(
         state
-            .acknowledge(Acknowledgement::new(subscription_id, EventCursor::new(9)))
+            .acknowledge(Acknowledgement::new(subscription_id, EventCursor::new(10)))
             .expect("remaining prefix is released"),
         1,
     );
@@ -115,6 +121,7 @@ fn resume_redelivery_ack_gap_and_backpressure_are_explicit() {
     assert_eq!(
         state
             .deliver(
+                EventCursor::new(11),
                 fixture_id(19, EventId::new),
                 fixture_id(20, DeliveryAttemptId::new),
                 event_frame(),
@@ -158,6 +165,7 @@ fn resume_redelivery_ack_gap_and_backpressure_are_explicit() {
     assert_eq!(
         gap_state
             .deliver(
+                EventCursor::new(4),
                 fixture_id(23, EventId::new),
                 fixture_id(24, DeliveryAttemptId::new),
                 event_frame(),

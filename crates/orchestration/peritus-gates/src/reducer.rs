@@ -85,6 +85,34 @@ pub fn decide(
     Ok(GateTransition::new(event, successor))
 }
 
+pub fn decide_lifecycle(
+    state: &GateRunState,
+    command: &GateCommand,
+) -> Result<GateTransition, GateError> {
+    validate_lifecycle_fences(state, command)?;
+    let sequence = state
+        .sequence()
+        .checked_next()
+        .map_err(|_| reject(GateRejection::LimitExceeded, "gate event sequence overflowed"))?;
+    let mut successor = state.clone();
+    let kind = apply::apply_lifecycle(&mut successor, command.kind())?;
+    mutation::advance(&mut successor, sequence, command.event_id(), Sha256Digest::new([0; 32]));
+    let successor_digest = crate::canonical::state_digest(&successor);
+    mutation::set_state_digest(&mut successor, successor_digest);
+    let event = GateEvent::new(
+        command.event_id(),
+        command.command_id(),
+        sequence,
+        Some(state.last_event_id()),
+        command.run_id(),
+        command.revision(),
+        state.state_digest(),
+        successor_digest,
+        kind,
+    );
+    Ok(GateTransition::new(event, successor))
+}
+
 /// Reconstructs exactly the same state from genesis and canonical events.
 ///
 /// # Errors
@@ -141,6 +169,27 @@ fn validate_fences(
     Ok(())
 }
 
+fn validate_lifecycle_fences(state: &GateRunState, command: &GateCommand) -> Result<(), GateError> {
+    let lifecycle =
+        matches!(command.kind(), GateCommandKind::PauseRun | GateCommandKind::ResumeRun);
+    let mismatches = [
+        state.phase() == GateRunPhase::Terminal,
+        command.run_id() != state.run_id(),
+        command.revision() != state.revision(),
+        command.expected_sequence() != state.sequence().get(),
+        command.expected_previous_event() != Some(state.last_event_id()),
+        command.prior_state_digest() != state.state_digest(),
+        !lifecycle,
+    ];
+    if mismatches.into_iter().any(core::convert::identity) {
+        return Err(reject(
+            GateRejection::ReplayMismatch,
+            "gate lifecycle command or predecessor fence differs from the durable checkpoint",
+        ));
+    }
+    Ok(())
+}
+
 fn propagate_blocks(plan: &GatePlan, state: &mut GateRunState) {
     loop {
         let mut changed = false;
@@ -175,6 +224,9 @@ fn propagate_blocks(plan: &GatePlan, state: &mut GateRunState) {
 }
 
 pub fn finalize(state: &mut GateRunState) -> Result<(), GateError> {
+    if matches!(state.phase(), GateRunPhase::Paused(_)) {
+        return Err(illegal("paused gate run must resume or cancel before finalization"));
+    }
     if state.slots().iter().any(|slot| {
         !matches!(
             slot.phase(),
@@ -295,6 +347,8 @@ fn command_from_event(
             }
         }
         GateEventKind::CancellationStarted => GateCommandKind::BeginCancellation,
+        GateEventKind::RunPaused { .. } => GateCommandKind::PauseRun,
+        GateEventKind::RunResumed { .. } => GateCommandKind::ResumeRun,
         GateEventKind::RunFinalized => GateCommandKind::FinalizeRun,
     };
     GateCommand::new(

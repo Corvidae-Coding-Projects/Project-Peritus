@@ -2,46 +2,19 @@
 
 use std::{fs, path::Path};
 
+mod capacity;
+
+pub use capacity::SpaceObservation;
+
 use crate::{
-    ArtifactDigest, ArtifactMetadata, ArtifactStoreError, ArtifactWriter, CollectionGeneration,
-    ErrorCode, GcAction, GcApplication, GcPlan, QuarantineState, QuotaPlan, QuotaSnapshot,
-    RecoveryClass, ReferenceOwner, ReferenceRoots, StoreConfig, StoreOperation, WriteRequest,
+    ArtifactDigest, ArtifactMetadata, ArtifactReadHandle, ArtifactStoreError, ArtifactWriteHandle,
+    ArtifactWriter, CollectionGeneration, ErrorCode, FinalizedArtifact, GcAction, GcApplication,
+    GcPlan, QuarantineState, QuotaPlan, QuotaSnapshot, RecoveryClass, ReferenceOwner,
+    ReferenceRoots, StoreConfig, StoreOperation, WriteRequest,
     catalog::Catalog,
     finalize::{read_finalized, verify_finalized},
     path::{StorePaths, io, sync_directory},
 };
-
-/// Filesystem capacity observed at the canonical store root.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct SpaceObservation {
-    available_bytes: u64,
-    free_bytes: u64,
-    total_bytes: u64,
-    allocation_granularity: u64,
-}
-
-impl SpaceObservation {
-    /// Returns bytes available to an unprivileged process.
-    #[must_use]
-    pub const fn available_bytes(self) -> u64 {
-        self.available_bytes
-    }
-    /// Returns all free filesystem bytes.
-    #[must_use]
-    pub const fn free_bytes(self) -> u64 {
-        self.free_bytes
-    }
-    /// Returns total filesystem bytes.
-    #[must_use]
-    pub const fn total_bytes(self) -> u64 {
-        self.total_bytes
-    }
-    /// Returns filesystem allocation granularity.
-    #[must_use]
-    pub const fn allocation_granularity(self) -> u64 {
-        self.allocation_granularity
-    }
-}
 
 /// Single-owner content-addressed filesystem and durable metadata catalog.
 pub struct ArtifactStore {
@@ -92,6 +65,57 @@ impl ArtifactStore {
             self.config.max_artifact_bytes(),
             self.config.quota_bytes(),
         )
+    }
+
+    /// Creates an owned exclusive streaming writer suitable for a long-lived transfer registry.
+    ///
+    /// # Errors
+    ///
+    /// Returns a catalog, quota, invalid-request, or temporary-file I/O error.
+    pub fn begin_owned_write(
+        &self,
+        request: WriteRequest,
+    ) -> Result<ArtifactWriteHandle, ArtifactStoreError> {
+        let reservation = if self.catalog.metadata(request.expected_digest())?.is_some() {
+            0
+        } else {
+            request.expected_size()
+        };
+        QuotaPlan::reserve(self.quota_snapshot(0)?, reservation)?;
+        ArtifactWriteHandle::create(
+            &self.paths,
+            request,
+            self.config.max_artifact_bytes(),
+            self.config.quota_bytes(),
+        )
+    }
+
+    /// Atomically publishes and catalogs one exact owned streaming writer.
+    ///
+    /// # Errors
+    ///
+    /// Returns exact writer, integrity, publication, catalog, or quota failures.
+    pub fn complete_write(
+        &self,
+        writer: ArtifactWriteHandle,
+    ) -> Result<FinalizedArtifact, ArtifactStoreError> {
+        writer.complete(&self.paths, &self.catalog)
+    }
+
+    /// Opens one owned preverified streaming reader for finalized active content.
+    ///
+    /// # Errors
+    ///
+    /// Returns missing-artifact, catalog, I/O, or corruption errors.
+    pub fn open_read(
+        &self,
+        digest: ArtifactDigest,
+    ) -> Result<ArtifactReadHandle, ArtifactStoreError> {
+        let metadata = self.catalog.metadata(digest)?.ok_or_else(missing_artifact)?;
+        if !metadata.is_referenceable() {
+            return Err(missing_artifact());
+        }
+        ArtifactReadHandle::open(&self.paths, metadata, self.config.max_artifact_bytes())
     }
 
     /// Loads validated durable artifact metadata.
@@ -215,22 +239,6 @@ impl ArtifactStore {
             application.observe(action)?;
         }
         Ok(application)
-    }
-
-    /// Observes capacity without making quota or acceptance decisions.
-    ///
-    /// # Errors
-    ///
-    /// Returns an I/O error when filesystem statistics are unavailable.
-    pub fn observe_space(&self) -> Result<SpaceObservation, ArtifactStoreError> {
-        let stats = fs4::statvfs(self.paths.root())
-            .map_err(|error| io(StoreOperation::ObserveSpace, error))?;
-        Ok(SpaceObservation {
-            available_bytes: stats.available_space(),
-            free_bytes: stats.free_space(),
-            total_bytes: stats.total_space(),
-            allocation_granularity: stats.allocation_granularity(),
-        })
     }
 
     fn apply_action(&mut self, action: GcAction) -> Result<(), ArtifactStoreError> {

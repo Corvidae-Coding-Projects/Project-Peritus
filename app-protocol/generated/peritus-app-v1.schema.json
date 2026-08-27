@@ -8,7 +8,7 @@
   "properties": {
     "family": { "enum": [94, 95, 96, 97, 98, 99] },
     "schemaVersion": { "const": 1 },
-    "payloadKind": { "enum": ["client-hello", "compatible", "downgraded", "incompatible", "submit-command", "subscribe", "open-artifact", "cancel-artifact", "answer-prompt", "cancel-prompt", "attach-terminal", "terminal-input", "terminal-resize", "detach-terminal", "cancel-terminal", "daemon-status", "shutdown", "command-result", "subscription-started", "artifact-opened", "prompt-accepted", "terminal-attached", "acknowledged", "daemon-status", "shutdown-accepted", "error", "domain-event", "subscription-gap", "backpressure", "artifact-metadata", "artifact-chunk", "artifact-complete", "prompt-requested", "terminal-output", "terminal-exited", "readiness-changed", "diagnostic", "heartbeat", "shutdown-progress", "shutdown-complete", "acknowledge", "cancel-subscription", "cancel-artifact", "cancel-prompt", "cancel-terminal", "subscription", "heartbeat-reply"] },
+    "payloadKind": { "enum": ["client-hello", "compatible", "downgraded", "incompatible", "submit-command", "subscribe", "open-artifact", "cancel-artifact", "answer-prompt", "cancel-prompt", "attach-terminal", "terminal-input", "terminal-resize", "detach-terminal", "cancel-terminal", "daemon-status", "shutdown", "begin-artifact-upload", "upload-artifact-chunk", "complete-artifact-upload", "command-result", "subscription-started", "artifact-opened", "prompt-accepted", "terminal-attached", "acknowledged", "daemon-status", "shutdown-accepted", "error", "domain-event", "subscription-gap", "backpressure", "artifact-metadata", "artifact-chunk", "artifact-complete", "prompt-requested", "terminal-output", "terminal-exited", "readiness-changed", "diagnostic", "heartbeat", "shutdown-progress", "shutdown-complete", "acknowledge", "cancel-subscription", "cancel-artifact", "cancel-prompt", "cancel-terminal", "subscription", "heartbeat-reply"] },
     "payload": { "type": "string", "contentEncoding": "base64", "description": "Exact canonical semantic payload bytes" }
   },
   "$defs": {
@@ -19,11 +19,13 @@
       "x-rust-type": "ClientHello",
       "properties": {
         "protocolId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ProtocolId", "x-bounds": ["nonzero"] },
+        "requestedSessionId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "option+value", "x-rust-type": "Option<SessionId>", "x-bounds": ["nonzero"] },
         "versions": { "type": "array", "items": { "$ref": "#/$defs/VersionRange" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<VersionRange>", "x-bounds": ["nonzero", "app.max-versions", "strictly-sorted-unique"] },
         "requiredFeatures": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "ProtocolFeatureSet", "x-bounds": ["app.max-features", "strictly-sorted-unique"] },
         "optionalFeatures": { "type": "array", "items": { "type": "string" }, "x-canonical-wire": "len+items", "x-rust-type": "ProtocolFeatureSet", "x-bounds": ["app.max-features", "strictly-sorted-unique"] },
         "receiveLimits": { "$ref": "#/$defs/AppProtocolLimits", "x-canonical-wire": "ordered-fields", "x-rust-type": "AppProtocolLimits" },
-        "implementation": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "ImplementationMetadata", "x-bounds": ["codec.max-string-bytes"] }
+        "implementation": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "ImplementationMetadata", "x-bounds": ["codec.max-string-bytes"] },
+        "establishedSessionId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "option+value", "x-rust-type": "Option<SessionId>", "x-bounds": ["nonzero"] }
       },
       "required": ["protocolId", "versions", "requiredFeatures", "optionalFeatures", "receiveLimits", "implementation"]
     },
@@ -436,12 +438,33 @@
       },
       "required": ["kind"]
     },
+    "ApprovalChallenge": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ApprovalChallenge",
+      "properties": {
+        "decisionCommandId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "CommandId", "x-bounds": ["nonzero"] },
+        "registryRevision": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "RevisionNumber", "x-bounds": ["nonzero"] },
+        "requestFrame": { "type": "string", "contentEncoding": "base64", "x-canonical-wire": "len+bytes", "x-rust-type": "Vec<u8>", "x-bounds": ["nonzero", "codec.max-opaque-bytes"] }
+      },
+      "required": ["decisionCommandId", "registryRevision", "requestFrame"]
+    },
+    "SignedApprovalDecisionFrame": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "SignedApprovalDecisionFrame",
+      "properties": {
+        "bytes": { "type": "string", "contentEncoding": "base64", "x-canonical-wire": "len+bytes", "x-rust-type": "Vec<u8>", "x-bounds": ["nonzero", "codec.max-opaque-bytes"] }
+      },
+      "required": ["bytes"]
+    },
     "PromptBinding": {
       "type": "object",
       "additionalProperties": false,
       "x-rust-type": "PromptBinding",
       "properties": {
         "kind": { "type": "string", "enum": ["approval", "user-input"], "x-canonical-wire": "u8", "x-rust-type": "PromptKind" },
+        "approvalChallenge": { "$ref": "#/$defs/ApprovalChallenge", "x-canonical-wire": "option+value", "x-rust-type": "Option<ApprovalChallenge>" },
         "correlation": { "$ref": "#/$defs/PromptCorrelation", "x-canonical-wire": "ordered-fields", "x-rust-type": "PromptCorrelation" },
         "choices": { "type": "array", "items": { "$ref": "#/$defs/PromptChoice" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<PromptChoice>", "x-bounds": ["app.max-prompt-choices"] },
         "constraints": { "type": "array", "items": { "$ref": "#/$defs/PromptConstraint" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<PromptConstraint>", "x-bounds": ["codec.max-collection-items"] }
@@ -455,7 +478,8 @@
       "properties": {
         "correlation": { "$ref": "#/$defs/PromptCorrelation", "x-canonical-wire": "ordered-fields", "x-rust-type": "PromptCorrelation" },
         "answerKind": { "type": "string", "enum": ["approval", "user-input"], "x-canonical-wire": "u8", "x-rust-type": "PromptAnswerPayload" },
-        "approvalIntent": { "type": "string", "enum": ["approve", "deny", "cancel"], "x-canonical-wire": "u8", "x-rust-type": "Option<ApprovalIntent>" },
+        "approvalAnswerKind": { "type": "string", "enum": ["signed-decision", "cancel"], "x-canonical-wire": "u8", "x-rust-type": "Option<ApprovalAnswer>" },
+        "signedDecisionFrame": { "type": "string", "contentEncoding": "base64", "x-canonical-wire": "option+value", "x-rust-type": "Option<SignedApprovalDecisionFrame>", "x-bounds": ["codec.max-opaque-bytes"] },
         "rationale": { "type": "string", "x-canonical-wire": "option+value", "x-rust-type": "Option<String>", "x-bounds": ["codec.max-string-bytes"] },
         "inputKind": { "type": "string", "enum": ["text", "selection", "confirmation", "secret-reference"], "x-canonical-wire": "u8", "x-rust-type": "Option<UserInputValue>" },
         "textValue": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "Option<String>", "x-bounds": ["codec.max-string-bytes"] },
@@ -533,7 +557,7 @@
         "binding": { "$ref": "#/$defs/TerminalBinding", "x-canonical-wire": "ordered-fields", "x-rust-type": "TerminalBinding" },
         "sequence": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["contiguous"] },
         "offset": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["contiguous"] },
-        "stream": { "type": "string", "enum": ["stdout", "stderr"], "x-canonical-wire": "u8", "x-rust-type": "TerminalStream" },
+        "stream": { "type": "string", "enum": ["stdout", "stderr", "terminal"], "x-canonical-wire": "u8", "x-rust-type": "TerminalStream" },
         "bytes": { "type": "string", "contentEncoding": "base64", "x-canonical-wire": "len+bytes", "x-rust-type": "Vec<u8>", "x-bounds": ["app.max-terminal-chunk-bytes"] }
       },
       "required": ["binding", "sequence", "offset", "stream", "bytes"]

@@ -138,6 +138,14 @@ pub fn insert_paused_child(state: &mut OrchestratorState, kind: ChildAggregateKi
     }
 }
 
+/// Removes one child from the canonical paused set and reports whether it existed.
+pub fn remove_paused_child(state: &mut OrchestratorState, kind: ChildAggregateKind) -> bool {
+    state.paused_children.binary_search(&kind).is_ok_and(|index| {
+        state.paused_children.remove(index);
+        true
+    })
+}
+
 /// Replaces the retained acceptance certificate.
 pub const fn set_certificate(state: &mut OrchestratorState, value: Option<AcceptanceCertificate>) {
     state.acceptance_certificate = value;

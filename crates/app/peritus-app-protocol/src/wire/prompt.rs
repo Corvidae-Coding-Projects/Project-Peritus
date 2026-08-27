@@ -1,12 +1,13 @@
 //! Canonical prompt binding, answer, and cancellation helpers.
 
 use crate::{
-    AppProtocolLimits, ApprovalIntent, CorrelationId, PromptAnswer, PromptAnswerPayload,
-    PromptBinding, PromptCancellation, PromptChoice, PromptConstraint, PromptCorrelation, PromptId,
-    PromptKind, RequestId, UserInputValue,
+    AppProtocolLimits, ApprovalAnswer, ApprovalChallenge, CorrelationId, PromptAnswer,
+    PromptAnswerPayload, PromptBinding, PromptCancellation, PromptChoice, PromptConstraint,
+    PromptCorrelation, PromptId, PromptKind, RequestId, SignedApprovalDecisionFrame,
+    UserInputValue,
 };
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
-use peritus_types::{ActorId, Generation, SessionId};
+use peritus_types::{ActorId, CommandId, Generation, RevisionNumber, SessionId};
 
 use super::primitive::{
     invalid, read_digest, read_id, read_revision, read_string_option, unknown, write_digest,
@@ -48,6 +49,10 @@ pub(super) fn write_prompt_binding(
 ) -> Result<(), CodecError> {
     writer.write_u8(prompt_kind_tag(value.kind()))?;
     write_prompt_correlation(writer, value.correlation())?;
+    writer.write_option_tag(value.approval_challenge().is_some())?;
+    if let Some(challenge) = value.approval_challenge() {
+        write_approval_challenge(writer, challenge)?;
+    }
     writer.write_collection_len(value.choices().len())?;
     for choice in value.choices() {
         writer.write_str(choice.id())?;
@@ -75,6 +80,11 @@ pub(super) fn read_prompt_binding(
     let offset = reader.offset();
     let kind = read_prompt_kind(reader)?;
     let correlation = read_prompt_correlation(reader)?;
+    let challenge = if reader.read_option_tag()? {
+        Some(read_approval_challenge(reader, limits)?)
+    } else {
+        None
+    };
     let choice_count = reader.read_collection_len()?;
     if choice_count > limits.max_prompt_choices() {
         return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
@@ -104,9 +114,14 @@ pub(super) fn read_prompt_binding(
             _ => return unknown(tag_offset),
         });
     }
-    invalid(
-        offset,
-        PromptBinding::new(
+    let binding = match (kind, challenge) {
+        (PromptKind::Approval, Some(challenge)) if choices.is_empty() => PromptBinding::approval(
+            correlation,
+            challenge,
+            constraints,
+            limits.codec().max_collection_items,
+        ),
+        (PromptKind::UserInput, None) => PromptBinding::new(
             kind,
             correlation,
             choices,
@@ -114,7 +129,9 @@ pub(super) fn read_prompt_binding(
             limits.max_prompt_choices(),
             limits.codec().max_collection_items,
         ),
-    )
+        _ => return Err(CodecError::at(CodecErrorKind::InvalidDomainValue, offset)),
+    };
+    invalid(offset, binding)
 }
 
 pub(super) fn write_prompt_answer(
@@ -123,13 +140,15 @@ pub(super) fn write_prompt_answer(
 ) -> Result<(), CodecError> {
     write_prompt_correlation(writer, value.correlation())?;
     match value.payload() {
-        PromptAnswerPayload::Approval { intent, rationale } => {
+        PromptAnswerPayload::Approval { answer, rationale } => {
             writer.write_u8(1)?;
-            writer.write_u8(match intent {
-                ApprovalIntent::Approve => 1,
-                ApprovalIntent::Deny => 2,
-                ApprovalIntent::Cancel => 3,
-            })?;
+            match answer {
+                ApprovalAnswer::SignedDecision(frame) => {
+                    writer.write_u8(1)?;
+                    writer.write_bytes(frame.bytes())?;
+                }
+                ApprovalAnswer::Cancel => writer.write_u8(2)?,
+            }
             write_string_option(writer, rationale.as_deref())
         }
         PromptAnswerPayload::UserInput(input) => {
@@ -148,26 +167,64 @@ pub(super) fn read_prompt_answer(
     let tag_offset = reader.offset();
     let payload = match reader.read_u8()? {
         1 => {
-            let intent_offset = reader.offset();
-            let intent = match reader.read_u8()? {
-                1 => ApprovalIntent::Approve,
-                2 => ApprovalIntent::Deny,
-                3 => ApprovalIntent::Cancel,
-                _ => return unknown(intent_offset),
+            let answer_offset = reader.offset();
+            let answer = match reader.read_u8()? {
+                1 => ApprovalAnswer::SignedDecision(invalid(
+                    answer_offset,
+                    SignedApprovalDecisionFrame::new(
+                        reader.read_bytes_owned()?,
+                        limits.codec().max_opaque_bytes,
+                    ),
+                )?),
+                2 => ApprovalAnswer::Cancel,
+                _ => return unknown(answer_offset),
             };
-            invalid(
-                offset,
-                PromptAnswerPayload::approval(
-                    intent,
-                    read_string_option(reader)?,
-                    limits.codec().max_string_bytes,
-                ),
-            )?
+            let rationale = read_string_option(reader)?;
+            match answer {
+                ApprovalAnswer::SignedDecision(frame) => invalid(
+                    offset,
+                    PromptAnswerPayload::signed_approval(
+                        frame,
+                        rationale,
+                        limits.codec().max_string_bytes,
+                    ),
+                )?,
+                ApprovalAnswer::Cancel => invalid(
+                    offset,
+                    PromptAnswerPayload::cancel_approval(
+                        rationale,
+                        limits.codec().max_string_bytes,
+                    ),
+                )?,
+            }
         }
         2 => PromptAnswerPayload::UserInput(read_user_input(reader, limits)?),
         _ => return unknown(tag_offset),
     };
     invalid(offset, PromptAnswer::new(correlation, payload, limits.codec().max_string_bytes))
+}
+
+fn write_approval_challenge(
+    writer: &mut CanonicalWriter,
+    value: &ApprovalChallenge,
+) -> Result<(), CodecError> {
+    write_id(writer, value.decision_command_id().as_bytes())?;
+    writer.write_u64(value.registry_revision().get())?;
+    writer.write_bytes(value.request_frame())
+}
+
+fn read_approval_challenge(
+    reader: &mut CanonicalReader<'_>,
+    limits: AppProtocolLimits,
+) -> Result<ApprovalChallenge, CodecError> {
+    let offset = reader.offset();
+    let command_id = read_id(reader, CommandId::new)?;
+    let revision = invalid(offset, RevisionNumber::new(reader.read_u64()?))?;
+    let frame = reader.read_bytes_owned()?;
+    invalid(
+        offset,
+        ApprovalChallenge::new(command_id, revision, frame, limits.codec().max_opaque_bytes),
+    )
 }
 
 pub(super) fn write_prompt_cancellation(

@@ -5,6 +5,7 @@ mod conformance {
     mod cancellation;
     mod catalog;
     mod collaboration_catalog;
+    mod daemon_catalog;
     mod debugger_catalog;
     mod evaluation_catalog;
     mod evolution_catalog;

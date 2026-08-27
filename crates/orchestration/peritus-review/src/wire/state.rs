@@ -104,6 +104,7 @@ impl CanonicalDecode for ReviewStateFrame {
         let phase = match reader.read_u8()? {
             1 => ReviewRunPhase::Active,
             2 => ReviewRunPhase::Terminal,
+            3 => ReviewRunPhase::Paused,
             _ => return Err(super::unknown(phase_offset)),
         };
         let sequence_offset = reader.offset();

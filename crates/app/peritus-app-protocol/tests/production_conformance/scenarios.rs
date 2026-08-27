@@ -99,7 +99,11 @@ fn negotiation(scenario: ProtocolScenario) -> bool {
         "a2-server".to_owned(),
     )
     .expect("server capabilities");
-    match (scenario, negotiate(&client, &server).expect("negotiation observation").outcome()) {
+    let session = fixture_id(2, SessionId::new);
+    match (
+        scenario,
+        negotiate(&client, &server, session).expect("negotiation observation").outcome(),
+    ) {
         (ProtocolScenario::NegotiationExact, NegotiationOutcome::Compatible(value)) => {
             value.version() == ProtocolVersion::new(1, 2).expect("version")
         }
@@ -154,6 +158,7 @@ fn delivery(
             .unwrap();
     match state
         .deliver(
+            EventCursor::new(u64::from(event)),
             fixture_id(event, EventId::new),
             fixture_id(attempt, DeliveryAttemptId::new),
             frame,
@@ -197,8 +202,12 @@ fn backpressure_exact() -> bool {
     let frame =
         RegisteredEventFrame::new(event_fixture_bytes(), AppProtocolLimits::PRODUCTION.codec())
             .unwrap();
-    state.deliver(fixture_id(58, EventId::new), fixture_id(59, DeliveryAttemptId::new), frame)
-        == Ok(DeliveryAdmission::Backpressured)
+    state.deliver(
+        EventCursor::new(58),
+        fixture_id(58, EventId::new),
+        fixture_id(59, DeliveryAttemptId::new),
+        frame,
+    ) == Ok(DeliveryAdmission::Backpressured)
 }
 
 fn artifact_exact() -> bool {

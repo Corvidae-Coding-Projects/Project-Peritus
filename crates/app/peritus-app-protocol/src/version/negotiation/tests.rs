@@ -23,7 +23,9 @@ fn negotiation_selects_greatest_common_version_and_marks_downgrade() {
         "test-server".to_owned(),
     )
     .unwrap();
-    let hello = negotiate(&client, &server).unwrap();
+    let session = SessionId::new([2; 16]).unwrap();
+    let hello = negotiate(&client, &server, session).unwrap();
+    assert_eq!(hello.established_session(), Some(session));
     match hello.outcome() {
         NegotiationOutcome::Downgraded(protocol) => {
             assert_eq!(protocol.version(), ProtocolVersion::new(1, 2).unwrap());

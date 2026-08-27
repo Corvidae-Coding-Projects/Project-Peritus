@@ -38,6 +38,26 @@ fn claim_without_manifest_is_an_explicit_indeterminate_recovery_entry() {
 }
 
 #[test]
+fn quarantined_process_records_remain_visible_after_reopen() {
+    let registry = TestRegistry::new();
+    let store = ProcessStore::open(registry.registry(), registry.workspace()).expect("open store");
+    let corrupt = store.root().join("claims-v1").join("corrupt.claim");
+    std::fs::write(corrupt, b"not a canonical process claim").expect("write corrupt record");
+    drop(store);
+
+    let first = ProcessStore::open(registry.registry(), registry.workspace()).expect("quarantine");
+    assert_eq!(first.quarantined_records().len(), 1);
+    drop(first);
+
+    let reopened = ProcessStore::open(registry.registry(), registry.workspace()).expect("reopen");
+    assert_eq!(reopened.quarantined_records().len(), 1);
+    let report = reopened.reconcile(&mut NoProbe).expect("reconcile quarantine");
+    assert_eq!(report.quarantined_records(), 1);
+    assert!(report.entries().is_empty());
+    assert!(!report.all_terminal());
+}
+
+#[test]
 fn claim_manifest_digest_mismatch_blocks_probe_and_terminal_classification() {
     let registry = TestRegistry::new();
     let identity = identity();

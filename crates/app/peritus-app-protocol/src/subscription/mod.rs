@@ -13,4 +13,4 @@ pub use state::{
     PauseReason, SubscriptionCancellation, SubscriptionCancellationSource, SubscriptionFilter,
     SubscriptionGap, SubscriptionPhase, SubscriptionState,
 };
-pub use verified::{acknowledgement_is_legal, cursor_is_successor, delivery_window_is_safe};
+pub use verified::{acknowledgement_is_legal, cursor_advances, delivery_window_is_safe};

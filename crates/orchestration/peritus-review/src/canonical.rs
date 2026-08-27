@@ -138,10 +138,7 @@ pub const fn disposition_tag(value: DispositionKind) -> u8 {
 }
 
 pub const fn run_phase_tag(value: ReviewRunPhase) -> u8 {
-    match value {
-        ReviewRunPhase::Active => 1,
-        ReviewRunPhase::Terminal => 2,
-    }
+    value as u8
 }
 
 pub const fn terminal_kind_tag(value: ReviewTerminalKind) -> u8 {

@@ -190,6 +190,24 @@ impl MigrationEngine {
         ))
     }
 
+    /// Atomically records the compiled migration history for a directly installed current C0
+    /// schema.
+    ///
+    /// This bridge is only applicable when the journal's own schema metadata and `SQLite`
+    /// `user_version` already equal the registry's latest version, no migration history exists,
+    /// and no recovery operation is present. Existing migration-managed databases are unchanged.
+    ///
+    /// # Errors
+    ///
+    /// Rejects incomplete, mismatched, or recovery-bearing direct installations.
+    pub fn adopt_current_install(
+        &mut self,
+        operation: MigrationOperationId,
+    ) -> Result<bool, MigrationError> {
+        verify_database(&self.connection)?;
+        catalog::adopt_current_install(&mut self.connection, self.registry, operation)
+    }
+
     /// Applies a preflighted plan using production hooks.
     ///
     /// # Errors

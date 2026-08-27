@@ -257,6 +257,8 @@ fn command_from_event(
             ReviewCommandKind::CancelCycle { cycle_id: *cycle_id }
         }
         ReviewEventKind::RunCancelled => ReviewCommandKind::CancelRun,
+        ReviewEventKind::RunPaused => ReviewCommandKind::PauseRun,
+        ReviewEventKind::RunResumed => ReviewCommandKind::ResumeRun,
         ReviewEventKind::BudgetExhausted { reason_digest } => {
             ReviewCommandKind::ExhaustBudget { reason_digest: *reason_digest }
         }
@@ -331,6 +333,8 @@ fn estimated_payload_bytes(kind: &ReviewCommandKind) -> u64 {
         ReviewCommandKind::ObserveWaiver { .. }
         | ReviewCommandKind::CancelCycle { .. }
         | ReviewCommandKind::CancelRun
+        | ReviewCommandKind::PauseRun
+        | ReviewCommandKind::ResumeRun
         | ReviewCommandKind::ExhaustBudget { .. }
         | ReviewCommandKind::FailRun { .. }
         | ReviewCommandKind::FinalizeRun => base,

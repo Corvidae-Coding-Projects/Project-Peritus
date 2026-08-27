@@ -138,6 +138,41 @@ impl ExportBatch {
     pub fn items(&self) -> &[ExportItem] {
         &self.items
     }
+
+    /// Encodes one complete redaction-safe batch for durable local-file export.
+    ///
+    /// # Errors
+    ///
+    /// Returns a telemetry serialization failure if a collection length is unrepresentable.
+    pub fn canonical_bytes(&self) -> Result<Vec<u8>, TelemetryError> {
+        let mut bytes = b"PERITUS-C7-LOCAL-BATCH-V1\0".to_vec();
+        bytes.extend_from_slice(self.stream_id.as_bytes());
+        bytes.extend_from_slice(self.batch_id.as_bytes());
+        bytes.extend_from_slice(&self.first_sequence.to_be_bytes());
+        bytes.extend_from_slice(&self.last_sequence.to_be_bytes());
+        let count = u64::try_from(self.items.len()).map_err(|_| {
+            TelemetryError::new(
+                TelemetryErrorKind::SequenceOverflow,
+                "encode local telemetry batch",
+                "batch item count is unrepresentable",
+            )
+        })?;
+        bytes.extend_from_slice(&count.to_be_bytes());
+        for item in &self.items {
+            let record = item.record.canonical_bytes()?;
+            let length = u64::try_from(record.len()).map_err(|_| {
+                TelemetryError::new(
+                    TelemetryErrorKind::SequenceOverflow,
+                    "encode local telemetry batch",
+                    "record length is unrepresentable",
+                )
+            })?;
+            bytes.extend_from_slice(&item.sequence.to_be_bytes());
+            bytes.extend_from_slice(&length.to_be_bytes());
+            bytes.extend_from_slice(&record);
+        }
+        Ok(bytes)
+    }
 }
 
 /// Exact whole-batch exporter acknowledgement.

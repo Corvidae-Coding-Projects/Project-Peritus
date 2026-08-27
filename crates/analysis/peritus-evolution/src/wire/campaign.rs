@@ -69,6 +69,12 @@ impl CampaignCommandFrame {
     pub const fn command_id(&self) -> CommandId {
         self.command_id
     }
+
+    /// Aggregate identity without activating semantic data.
+    #[must_use]
+    pub const fn campaign_id(&self) -> EvolutionCampaignId {
+        self.campaign_id
+    }
 }
 
 impl CanonicalEncode for CampaignCommandFrame {

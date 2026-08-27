@@ -72,6 +72,12 @@ impl PointerCommandFrame {
     pub const fn command_id(&self) -> CommandId {
         self.command_id
     }
+
+    /// Aggregate identity without activating semantic data.
+    #[must_use]
+    pub const fn project_id(&self) -> ProjectId {
+        self.project_id
+    }
 }
 
 impl CanonicalEncode for PointerCommandFrame {

@@ -8,7 +8,7 @@ use super::{PromptError, PromptErrorKind, error::reject};
 /// Closed prompt purpose.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum PromptKind {
-    /// Requests unprivileged approve/deny/cancel intent.
+    /// Requests one externally signed B1 decision or an unprivileged cancellation.
     Approval,
     /// Requests one bounded user-input value.
     UserInput,
@@ -149,6 +149,7 @@ impl PromptCorrelation {
 pub struct PromptBinding {
     kind: PromptKind,
     correlation: PromptCorrelation,
+    approval_challenge: Option<super::ApprovalChallenge>,
     choices: Vec<PromptChoice>,
     constraints: Vec<PromptConstraint>,
 }
@@ -163,6 +164,54 @@ impl PromptBinding {
     pub fn new(
         kind: PromptKind,
         correlation: PromptCorrelation,
+        choices: Vec<PromptChoice>,
+        constraints: Vec<PromptConstraint>,
+        maximum_choices: usize,
+        maximum_constraints: usize,
+    ) -> Result<Self, PromptError> {
+        if kind == PromptKind::Approval {
+            return Err(reject(
+                PromptErrorKind::InvalidInput,
+                "approval prompt requires an exact signing challenge",
+            ));
+        }
+        Self::checked(
+            kind,
+            correlation,
+            None,
+            choices,
+            constraints,
+            maximum_choices,
+            maximum_constraints,
+        )
+    }
+
+    /// Creates a bounded approval prompt with one exact B1 signing challenge.
+    ///
+    /// # Errors
+    ///
+    /// Rejects zero/exceeded limits or noncanonical constraints.
+    pub fn approval(
+        correlation: PromptCorrelation,
+        challenge: super::ApprovalChallenge,
+        constraints: Vec<PromptConstraint>,
+        maximum_constraints: usize,
+    ) -> Result<Self, PromptError> {
+        Self::checked(
+            PromptKind::Approval,
+            correlation,
+            Some(challenge),
+            Vec::new(),
+            constraints,
+            1,
+            maximum_constraints,
+        )
+    }
+
+    fn checked(
+        kind: PromptKind,
+        correlation: PromptCorrelation,
+        approval_challenge: Option<super::ApprovalChallenge>,
         choices: Vec<PromptChoice>,
         constraints: Vec<PromptConstraint>,
         maximum_choices: usize,
@@ -204,7 +253,13 @@ impl PromptBinding {
                 "approval prompts use closed intent and cannot define choices",
             ));
         }
-        Ok(Self { kind, correlation, choices, constraints })
+        if (kind == PromptKind::Approval) != approval_challenge.is_some() {
+            return Err(reject(
+                PromptErrorKind::InvalidInput,
+                "approval challenge presence does not match prompt kind",
+            ));
+        }
+        Ok(Self { kind, correlation, approval_challenge, choices, constraints })
     }
 
     /// Returns the prompt kind.
@@ -216,6 +271,11 @@ impl PromptBinding {
     #[must_use]
     pub const fn correlation(&self) -> PromptCorrelation {
         self.correlation
+    }
+    /// Borrows the exact signing challenge for an approval prompt.
+    #[must_use]
+    pub const fn approval_challenge(&self) -> Option<&super::ApprovalChallenge> {
+        self.approval_challenge.as_ref()
     }
     /// Borrows canonical choices.
     #[must_use]

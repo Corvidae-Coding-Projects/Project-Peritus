@@ -12,6 +12,30 @@ use sha2::{Digest, Sha256};
 use support::version;
 
 #[test]
+fn production_registry_is_contiguous_through_application_schema_v10() {
+    let registry = MigrationRegistry::current();
+    registry.validate().expect("production registry");
+    assert_eq!(registry.descriptors().len(), 10);
+    assert_eq!(registry.latest().expect("latest migration"), version(10));
+
+    let application = registry.descriptors().last().expect("application migration");
+    assert_eq!(application.version(), version(10));
+    assert_eq!(application.backup_policy(), BackupPolicy::Required);
+    for object in [
+        "CREATE TABLE app_principals",
+        "CREATE TABLE app_sessions",
+        "CREATE TABLE app_commands",
+        "CREATE INDEX app_commands_state",
+        "CREATE TABLE app_prompt_targets",
+        "CREATE INDEX app_prompt_targets_state",
+        "CREATE TABLE app_artifacts",
+        "CREATE TABLE app_workspaces",
+    ] {
+        assert!(application.sql().contains(object), "missing application object: {object}");
+    }
+}
+
+#[test]
 fn source_digest_drift_and_registry_gaps_are_rejected() {
     let drifted: &'static [MigrationDescriptor] = Box::leak(
         vec![MigrationDescriptor::new(

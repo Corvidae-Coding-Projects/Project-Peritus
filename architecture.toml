@@ -121,8 +121,8 @@ may_dev_depend_on = ["foundation", "state", "runtime", "tools", "model", "orches
 [[layers]]
 name = "app"
 path = "crates/app"
-may_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration", "observe", "app"]
-may_dev_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration", "observe", "app", "testing"]
+may_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration", "observe", "analysis", "app"]
+may_dev_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration", "observe", "analysis", "app", "testing"]
 
 [[layers]]
 name = "engineering"
@@ -154,6 +154,13 @@ may_dev_depend_on = ["V", "H", "C"]
 name = "peritus-app-protocol"
 path = "crates/app/peritus-app-protocol"
 owner = "A3"
+layer = "app"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-daemon"
+path = "crates/app/peritus-daemon"
+owner = "G0"
 layer = "app"
 verification_class = "H"
 

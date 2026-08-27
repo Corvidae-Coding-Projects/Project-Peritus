@@ -20,6 +20,7 @@ mod open;
 mod read_only;
 mod reconcile;
 mod refinement;
+mod registration;
 mod rollback;
 mod state;
 mod transaction_namespace;
@@ -48,6 +49,7 @@ pub use reconcile::{
     ReconciliationEvidence, ReconciliationInput, ReconciliationOutcome, RestartDisposition,
     RestartObservation, classify as classify_restart,
 };
+pub use registration::{MAX_WORKSPACE_REGISTRATION_BYTES, WorkspaceRegistration};
 pub use rollback::{
     RollbackOutcome, RollbackRequest, rollback_authorization_payload,
     rollback_authorization_payload_for_caller,

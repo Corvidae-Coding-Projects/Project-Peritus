@@ -26,6 +26,20 @@ pub(super) fn apply(
     event_id: EventId,
     command: &OrchestratorCommandKind,
 ) -> Result<OrchestratorEventKind, OrchestratorError> {
+    if matches!(state.phase(), crate::OrchestratorPhase::Active(_))
+        && state.paused_reconciliation().is_some()
+        && !matches!(
+            command,
+            OrchestratorCommandKind::PublishDirective { directive }
+                if directive.kind() == crate::DirectiveKind::ResumeChildren
+        )
+        && !matches!(command, OrchestratorCommandKind::AcknowledgeDirective { .. })
+        && !matches!(command, OrchestratorCommandKind::Cancel { .. })
+    {
+        return Err(crate::reducer::illegal(
+            "resuming orchestration may commit only child-resume directives",
+        ));
+    }
     match command {
         OrchestratorCommandKind::Start { .. } => {
             Err(crate::reducer::illegal("Start is legal only at genesis"))

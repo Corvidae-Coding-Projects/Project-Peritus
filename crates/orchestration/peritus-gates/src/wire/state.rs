@@ -87,6 +87,47 @@ impl GateStateFrame {
         self == &Self::from_state(state)
     }
 
+    pub(crate) fn into_state(self) -> GateRunState {
+        let slots = self
+            .slots
+            .into_iter()
+            .map(|slot| {
+                crate::GateSlot::from_checkpoint(
+                    slot.gate_id,
+                    slot.phase,
+                    slot.attempts,
+                    slot.active,
+                    slot.result,
+                    slot.result_event,
+                    slot.evidence,
+                    slot.blocked_by,
+                )
+            })
+            .collect();
+        let terminal = self.terminal.map(|terminal| {
+            crate::GateTerminal::from_checkpoint(
+                terminal.kind,
+                terminal.non_passing,
+                terminal.digest,
+            )
+        });
+        GateRunState::from_checkpoint(
+            self.run_id,
+            self.plan_digest,
+            self.revision,
+            self.snapshot_digest,
+            self.maximum_attempts,
+            self.phase,
+            self.sequence,
+            self.last_event_id,
+            self.state_digest,
+            slots,
+            self.used_executions,
+            self.used_actions,
+            terminal,
+        )
+    }
+
     pub const fn run_id(&self) -> peritus_types::RunId {
         self.run_id
     }
@@ -301,6 +342,8 @@ fn read_run_phase(reader: &mut CanonicalReader<'_>) -> Result<GateRunPhase, Code
         1 => Ok(GateRunPhase::Active),
         2 => Ok(GateRunPhase::Cancelling),
         3 => Ok(GateRunPhase::Terminal),
+        4 => Ok(GateRunPhase::Paused(crate::GateResumePhase::Active)),
+        5 => Ok(GateRunPhase::Paused(crate::GateResumePhase::Cancelling)),
         _ => Err(CodecError::at(CodecErrorKind::UnknownTag, offset)),
     }
 }

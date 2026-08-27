@@ -1,7 +1,7 @@
 //! Stable crate-root facade kept separate from the composition root.
 
 pub use crate::agent::*;
-pub use crate::catalog::plugin_suite;
+pub use crate::catalog::{daemon_scenario_suite, daemon_suite, plugin_suite};
 pub use crate::collaboration::{
     CollaborationConformanceError, CollaborationConformanceFixture,
     CollaborationConformanceObservation, CollaborationConformanceSubject, CollaborationScenario,
@@ -9,6 +9,18 @@ pub use crate::collaboration::{
 };
 pub use crate::contracts::{
     BoxedCase, ConformanceCase, ConformanceFuture, ConformanceSuite, StaticSuite, SubjectFactory,
+};
+pub use crate::daemon::{
+    DAEMON_SCENARIOS, DaemonAdmissionObservation, DaemonArtifactIntegrity,
+    DaemonArtifactObservation, DaemonArtifactOutcome, DaemonArtifactPublication,
+    DaemonBoundsObservation, DaemonCommandObservation, DaemonCommandOutcome,
+    DaemonConformanceError, DaemonConformanceFixture, DaemonConformanceObservation,
+    DaemonConformanceSubject, DaemonFrameObservation, DaemonInstanceObservation,
+    DaemonNonAuthorityObservation, DaemonOutboxObservation, DaemonPromptObservation,
+    DaemonPromptRejection, DaemonReadiness, DaemonRecoveryObservation, DaemonScenario,
+    DaemonSessionObservation, DaemonSessionOutcome, DaemonShutdownObservation,
+    DaemonShutdownOutcome, DaemonStartupObservation, DaemonSubscriptionObservation,
+    DaemonSubscriptionOutcome, DaemonTerminalObservation,
 };
 pub use crate::debugger::{
     DebuggerConformanceError, DebuggerConformanceFixture, DebuggerConformanceObservation,

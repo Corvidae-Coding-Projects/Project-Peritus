@@ -76,6 +76,12 @@ impl CommittedRecord {
         self.frame.bytes()
     }
 
+    /// Returns the checked B3 frame-family tag.
+    #[must_use]
+    pub const fn frame_family(&self) -> u16 {
+        self.frame.family()
+    }
+
     /// Returns the complete-frame digest.
     #[must_use]
     pub const fn frame_digest(&self) -> Sha256Digest {

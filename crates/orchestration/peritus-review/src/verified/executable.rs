@@ -45,7 +45,7 @@ pub fn replay_equivalent(expected: &ReviewRunState, observed: &ReviewRunState) -
 pub fn transition_is_legal(prior: &ReviewRunState, transition: &ReviewTransition) -> bool {
     let event = transition.event();
     let successor = transition.state();
-    prior.phase() == ReviewRunPhase::Active
+    matches!(prior.phase(), ReviewRunPhase::Active | ReviewRunPhase::Paused)
         && event.run_id() == prior.run_id()
         && event.previous_event() == Some(prior.last_event_id())
         && event.prior_state_digest() == prior.state_digest()

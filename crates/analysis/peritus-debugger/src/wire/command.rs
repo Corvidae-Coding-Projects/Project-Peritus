@@ -77,6 +77,12 @@ impl DebuggerCommandFrame {
     pub const fn command_id(&self) -> CommandId {
         self.command_id
     }
+
+    /// Aggregate identity without activating semantic data.
+    #[must_use]
+    pub const fn job_id(&self) -> DebuggerJobId {
+        self.job_id
+    }
 }
 
 impl CanonicalEncode for DebuggerCommandFrame {

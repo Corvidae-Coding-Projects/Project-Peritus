@@ -1,6 +1,7 @@
 //! Process-owned extension point for authorized native sandbox sessions.
 
 mod observation;
+mod probe;
 mod protected_handle;
 mod protocol;
 #[cfg(unix)]
@@ -8,6 +9,7 @@ mod pty;
 #[cfg(windows)]
 mod windows_channel;
 
+pub use probe::NativeProcessProbe;
 pub use protected_handle::NativeProtectedHandle;
 pub use protocol::{
     native_activation_record, native_ready_record, native_target_exec_failed_record,

@@ -56,6 +56,9 @@ const REQUESTS: &[AppPayloadDescriptor] = &[
     AppPayloadDescriptor { tag: 11, name: "cancel-terminal" },
     AppPayloadDescriptor { tag: 12, name: "daemon-status" },
     AppPayloadDescriptor { tag: 13, name: "shutdown" },
+    AppPayloadDescriptor { tag: 14, name: "begin-artifact-upload" },
+    AppPayloadDescriptor { tag: 15, name: "upload-artifact-chunk" },
+    AppPayloadDescriptor { tag: 16, name: "complete-artifact-upload" },
 ];
 
 const RESPONSES: &[AppPayloadDescriptor] = &[

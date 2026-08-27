@@ -69,7 +69,7 @@ impl ProjectionState for AuthorityState {
             !matches!(key.kind(), AggregateKind::Approval | AggregateKind::CredentialRegistry)
                 || entry.last_position == 0
                 || entry.sequence == 0
-                || !matches!(entry.family, 20 | 21 | 23 | 31)
+                || !matches!(entry.family, 20 | 21 | 23 | 31 | 94)
         }) {
             return Err(invariant("invalid authority projection entry"));
         }
@@ -96,8 +96,11 @@ impl AuthorityProjection {
     ///
     /// Returns an identity error only if built-in constants are invalid.
     pub fn new() -> Result<Self, ProjectionError> {
-        schema("authority", b"action-intent:v1;policy:v1;amendment:v1;acceptance:v1")
-            .map(|schema| Self { schema })
+        schema(
+            "authority",
+            b"action-intent:v1;policy:v1;amendment:v1;acceptance:v1;credential-registry:v1",
+        )
+        .map(|schema| Self { schema })
     }
 }
 
@@ -135,6 +138,7 @@ impl Projection for AuthorityProjection {
                 .map(|_| ())
                 .map_err(|_| invalid_frame("decode acceptance contract"))?;
             }
+            94 => {}
             _ => return Ok(()),
         }
         let record = input.record();

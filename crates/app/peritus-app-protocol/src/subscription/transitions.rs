@@ -7,17 +7,18 @@ use super::{
     Acknowledgement, CancellationDisposition, Delivery, DeliveryAdmission, EventCursor,
     PauseReason, RegisteredEventFrame, SubscriptionCancellation, SubscriptionError,
     SubscriptionErrorKind, SubscriptionGap, SubscriptionPhase, SubscriptionState,
-    acknowledgement_is_legal, cursor_is_successor, delivery_window_is_safe, error::reject,
+    acknowledgement_is_legal, cursor_advances, delivery_window_is_safe, error::reject,
 };
 
 impl SubscriptionState {
-    /// Admits one new distinct event at the exact next cursor.
+    /// Admits one new distinct event at its exact strictly advancing source cursor.
     ///
     /// # Errors
     ///
     /// Rejects delivery outside the active phase or cursor arithmetic overflow.
     pub fn deliver(
         &mut self,
+        source_cursor: EventCursor,
         event_id: EventId,
         attempt_id: DeliveryAttemptId,
         frame: RegisteredEventFrame,
@@ -31,17 +32,39 @@ impl SubscriptionState {
         if self.in_flight.len() == self.maximum_in_flight {
             return Ok(DeliveryAdmission::Backpressured);
         }
-        let cursor = self.last_delivered.checked_next()?;
-        if !cursor_is_successor(self.last_delivered.get(), cursor.get()) {
+        if !cursor_advances(self.scanned.get(), source_cursor.get()) {
             return Err(reject(
-                SubscriptionErrorKind::NonContiguousDelivery,
-                "new event cursor is not the exact successor",
+                SubscriptionErrorKind::NonMonotonicDelivery,
+                "new event source cursor does not strictly advance the scanned watermark",
             ));
         }
-        let delivery = Delivery::new(self.id, event_id, cursor, attempt_id, 1, frame)?;
-        self.last_delivered = cursor;
+        let delivery = Delivery::new(self.id, event_id, source_cursor, attempt_id, 1, frame)?;
+        self.scanned = source_cursor;
+        self.last_delivered = source_cursor;
         self.in_flight.push(delivery.clone());
         Ok(DeliveryAdmission::Delivered(delivery))
+    }
+
+    /// Advances the examined source watermark across one or more filtered-out positions.
+    ///
+    /// # Errors
+    ///
+    /// Rejects a non-active subscription or a cursor that does not strictly advance.
+    pub const fn scan_to(&mut self, source_cursor: EventCursor) -> Result<(), SubscriptionError> {
+        if !matches!(self.phase, SubscriptionPhase::Active) {
+            return Err(reject(
+                SubscriptionErrorKind::IllegalTransition,
+                "source scanning requires an active subscription",
+            ));
+        }
+        if !cursor_advances(self.scanned.get(), source_cursor.get()) {
+            return Err(reject(
+                SubscriptionErrorKind::NonMonotonicDelivery,
+                "scanned source cursor does not strictly advance",
+            ));
+        }
+        self.scanned = source_cursor;
+        Ok(())
     }
 
     /// Redelivers one in-flight event while preserving event, cursor, frame, and digest.
@@ -115,22 +138,28 @@ impl SubscriptionState {
                 "cumulative acknowledgement exceeds delivered data",
             ));
         }
+        let delivered_member =
+            self.in_flight.iter().any(|delivery| delivery.cursor == acknowledgement.cursor);
         if !acknowledgement_is_legal(
             self.last_acknowledged.get(),
             self.last_delivered.get(),
             acknowledgement.cursor.get(),
             false,
+            delivered_member,
         ) {
             return Err(reject(
-                SubscriptionErrorKind::IllegalTransition,
-                "cumulative acknowledgement is not legal",
+                SubscriptionErrorKind::AcknowledgementUnknown,
+                "cumulative acknowledgement does not close a delivered prefix",
             ));
         }
-        let release = self
-            .in_flight
-            .iter()
-            .take_while(|delivery| delivery.cursor <= acknowledgement.cursor)
-            .count();
+        let release = if acknowledgement.cursor == self.last_acknowledged {
+            0
+        } else {
+            self.in_flight
+                .iter()
+                .position(|delivery| delivery.cursor == acknowledgement.cursor)
+                .map_or(0, |index| index + 1)
+        };
         let retained = self.in_flight.len() - release;
         if !delivery_window_is_safe(
             acknowledgement.cursor.get(),
@@ -193,7 +222,10 @@ impl SubscriptionState {
                 "gap does not name this subscription's requested cursor",
             ));
         }
-        if self.last_delivered != self.requested || !self.in_flight.is_empty() {
+        if self.scanned != self.requested
+            || self.last_delivered != self.requested
+            || !self.in_flight.is_empty()
+        {
             return Err(reject(
                 SubscriptionErrorKind::IllegalTransition,
                 "retention gap must be declared before ordinary delivery",

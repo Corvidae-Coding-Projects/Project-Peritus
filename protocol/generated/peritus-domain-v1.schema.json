@@ -65,7 +65,8 @@
     {"tag": 90, "name": "evolution-campaign-state", "schemaVersion": 1, "inertOnly": true},
     {"tag": 91, "name": "production-harness-command", "schemaVersion": 1, "inertOnly": true},
     {"tag": 92, "name": "production-harness-event", "schemaVersion": 1, "inertOnly": true},
-    {"tag": 93, "name": "production-harness-state", "schemaVersion": 1, "inertOnly": true}
+    {"tag": 93, "name": "production-harness-state", "schemaVersion": 1, "inertOnly": true},
+    {"tag": 94, "name": "credential-registry-event", "schemaVersion": 1, "inertOnly": true}
   ],
   "variants": {
     "kernel-command": [

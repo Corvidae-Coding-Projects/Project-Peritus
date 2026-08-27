@@ -10,8 +10,8 @@ use std::{
 
 use crate::{
     CancellationReason, ErrorCode, ProcessCursor, ProcessError, ProcessEvent, ProcessOperation,
-    RecoveryClass, StdinPolicy, TerminalCapabilities, TerminalResult, TerminalSize,
-    events::EventLog,
+    ProcessTreeIdentity, RecoveryClass, StdinPolicy, TerminalCapabilities, TerminalResult,
+    TerminalSize, events::EventLog,
 };
 
 pub(crate) enum ControlCommand {
@@ -36,6 +36,7 @@ pub(crate) struct SharedExecution {
     pub(crate) retained_stdout: Vec<u8>,
     pub(crate) retained_stderr: Vec<u8>,
     pub(crate) retained_terminal: Vec<u8>,
+    pub(crate) tree: Option<ProcessTreeIdentity>,
     pub(crate) terminal: Option<TerminalResult>,
 }
 
@@ -206,6 +207,15 @@ impl ProcessControl {
     #[must_use]
     pub fn terminal_result(&self) -> Option<TerminalResult> {
         self.shared.state.lock().unwrap_or_else(std::sync::PoisonError::into_inner).terminal.clone()
+    }
+
+    /// Returns the exact operating-system process-tree identity once native launch succeeds.
+    ///
+    /// `None` means the owner has not yet published birth identity or launch failed before a live
+    /// process existed. Callers should observe the process event stream before retrying.
+    #[must_use]
+    pub fn tree_identity(&self) -> Option<ProcessTreeIdentity> {
+        self.shared.state.lock().unwrap_or_else(std::sync::PoisonError::into_inner).tree
     }
 
     fn try_send(&self, command: ControlCommand) -> Result<(), ProcessError> {

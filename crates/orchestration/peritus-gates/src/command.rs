@@ -68,6 +68,10 @@ pub enum GateCommandKind {
     },
     /// Begins idempotent run cancellation.
     BeginCancellation,
+    /// Suspends progress while retaining the exact resumable run phase.
+    PauseRun,
+    /// Restores the exact run phase retained by a prior pause.
+    ResumeRun,
     /// Commits the only deterministic terminal aggregation.
     FinalizeRun,
 }

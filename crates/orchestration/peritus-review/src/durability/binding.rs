@@ -156,6 +156,8 @@ fn event_matches_command(command: &ReviewCommandKind, event: &ReviewEventKind) -
             ReviewEventKind::CycleCancelled { cycle_id: right },
         ) => left == right,
         (ReviewCommandKind::CancelRun, ReviewEventKind::RunCancelled)
+        | (ReviewCommandKind::PauseRun, ReviewEventKind::RunPaused)
+        | (ReviewCommandKind::ResumeRun, ReviewEventKind::RunResumed)
         | (ReviewCommandKind::FinalizeRun, ReviewEventKind::RunFinalized) => true,
         (
             ReviewCommandKind::ExhaustBudget { reason_digest: left },

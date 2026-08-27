@@ -2,6 +2,7 @@
 
 use super::{ProtocolFeatureName, ProtocolFeatureSet, ProtocolVersion, VersionRange};
 use crate::{AppErrorCode, AppProtocolError, AppProtocolLimits, ProtocolId};
+use peritus_types::SessionId;
 
 /// Maximum UTF-8 bytes in one implementation identifier.
 pub const MAX_IMPLEMENTATION_METADATA_BYTES: usize = 256;
@@ -40,6 +41,7 @@ impl ImplementationMetadata {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ClientHello {
     protocol_id: ProtocolId,
+    requested_session: Option<SessionId>,
     versions: Vec<VersionRange>,
     required_features: ProtocolFeatureSet,
     optional_features: ProtocolFeatureSet,
@@ -65,6 +67,31 @@ impl ClientHello {
         receive_limits: AppProtocolLimits,
         implementation: String,
     ) -> Result<Self, AppProtocolError> {
+        Self::new_with_session(
+            protocol_id,
+            None,
+            versions,
+            required_features,
+            optional_features,
+            receive_limits,
+            implementation,
+        )
+    }
+
+    /// Creates canonical client negotiation input with an optional durable session to resume.
+    ///
+    /// # Errors
+    ///
+    /// Returns the same stable validation errors as [`Self::new`].
+    pub fn new_with_session(
+        protocol_id: ProtocolId,
+        requested_session: Option<SessionId>,
+        versions: Vec<VersionRange>,
+        required_features: Vec<ProtocolFeatureName>,
+        optional_features: Vec<ProtocolFeatureName>,
+        receive_limits: AppProtocolLimits,
+        implementation: String,
+    ) -> Result<Self, AppProtocolError> {
         let versions = canonical_versions(versions, receive_limits.max_versions())?;
         let required_features =
             ProtocolFeatureSet::new(required_features, receive_limits.max_features())?;
@@ -83,6 +110,7 @@ impl ClientHello {
         let implementation = ImplementationMetadata::new(implementation, receive_limits)?;
         Ok(Self {
             protocol_id,
+            requested_session,
             versions,
             required_features,
             optional_features,
@@ -95,6 +123,11 @@ impl ClientHello {
     #[must_use]
     pub const fn protocol_id(&self) -> ProtocolId {
         self.protocol_id
+    }
+    /// Returns the durable session requested for resumption, if any.
+    #[must_use]
+    pub const fn requested_session(&self) -> Option<SessionId> {
+        self.requested_session
     }
     /// Borrows canonical supported version ranges.
     #[must_use]
@@ -246,18 +279,31 @@ pub enum NegotiationOutcome {
 pub struct ServerHello {
     protocol_id: ProtocolId,
     implementation: ImplementationMetadata,
+    established_session: Option<SessionId>,
     outcome: NegotiationOutcome,
 }
 
 impl ServerHello {
-    /// Creates a server hello from already checked negotiation components.
-    #[must_use]
-    pub const fn new(
+    /// Creates a server hello with session presence matching the negotiation outcome.
+    ///
+    /// # Errors
+    ///
+    /// Returns a malformed-frame error when a compatible outcome lacks a session or an
+    /// incompatible outcome claims one.
+    pub fn new(
         protocol_id: ProtocolId,
         implementation: ImplementationMetadata,
+        established_session: Option<SessionId>,
         outcome: NegotiationOutcome,
-    ) -> Self {
-        Self { protocol_id, implementation, outcome }
+    ) -> Result<Self, AppProtocolError> {
+        let compatible = matches!(
+            outcome,
+            NegotiationOutcome::Compatible(_) | NegotiationOutcome::Downgraded(_)
+        );
+        if compatible != established_session.is_some() {
+            return Err(AppProtocolError::new(AppErrorCode::MalformedFrame, None));
+        }
+        Ok(Self { protocol_id, implementation, established_session, outcome })
     }
 
     /// Returns the echoed client relationship identity.
@@ -270,12 +316,19 @@ impl ServerHello {
     pub const fn implementation(&self) -> &ImplementationMetadata {
         &self.implementation
     }
+    /// Returns the established durable session for a usable negotiation.
+    #[must_use]
+    pub const fn established_session(&self) -> Option<SessionId> {
+        self.established_session
+    }
     /// Borrows the deterministic outcome.
     #[must_use]
     pub const fn outcome(&self) -> &NegotiationOutcome {
         &self.outcome
     }
 }
+
+mod selection;
 
 /// Selects the greatest common version and canonical features, independent of insertion order.
 ///
@@ -286,51 +339,9 @@ impl ServerHello {
 pub fn negotiate(
     client: &ClientHello,
     server: &ServerCapabilities,
+    established_session: SessionId,
 ) -> Result<ServerHello, AppProtocolError> {
-    let Some(version) = greatest_common_version(client.versions(), server.versions()) else {
-        return Ok(server_hello(
-            client,
-            server,
-            NegotiationOutcome::Incompatible(IncompatibilityReason::NoCommonVersion),
-        ));
-    };
-    let missing = client
-        .required_features()
-        .as_slice()
-        .iter()
-        .filter(|feature| !server.features().contains(feature))
-        .cloned()
-        .collect();
-    let missing = ProtocolFeatureSet::new(missing, client.receive_limits().max_features())?;
-    if !missing.is_empty() {
-        return Ok(server_hello(
-            client,
-            server,
-            NegotiationOutcome::Incompatible(IncompatibilityReason::MissingRequiredFeatures(
-                missing,
-            )),
-        ));
-    }
-
-    let selected_optional = client.optional_features().intersection(server.features());
-    let mut selected = client.required_features().as_slice().to_vec();
-    selected.extend(selected_optional.as_slice().iter().cloned());
-    let features = ProtocolFeatureSet::new(selected, client.receive_limits().max_features())?;
-    let limits = client
-        .receive_limits()
-        .negotiated(server.receive_limits())
-        .map_err(|_| AppProtocolError::new(AppErrorCode::InvalidLimits, None))?;
-    let protocol = NegotiatedProtocol { version, features, limits };
-    let compatible = Some(version) == preferred(client.versions())
-        && Some(version) == preferred(server.versions())
-        && selected_optional.len() == client.optional_features().len()
-        && server.receive_limits().permits_all(client.receive_limits());
-    let outcome = if compatible {
-        NegotiationOutcome::Compatible(protocol)
-    } else {
-        NegotiationOutcome::Downgraded(protocol)
-    };
-    Ok(server_hello(client, server, outcome))
+    selection::select(client, server, established_session)
 }
 
 fn canonical_versions(
@@ -350,32 +361,6 @@ fn canonical_versions(
         return Err(AppProtocolError::new(AppErrorCode::InvalidVersion, None));
     }
     Ok(versions)
-}
-
-fn preferred(ranges: &[VersionRange]) -> Option<ProtocolVersion> {
-    ranges.last().copied().map(VersionRange::preferred)
-}
-
-fn greatest_common_version(
-    client: &[VersionRange],
-    server: &[VersionRange],
-) -> Option<ProtocolVersion> {
-    client
-        .iter()
-        .flat_map(|left| server.iter().filter_map(|right| left.greatest_intersection(*right)))
-        .max()
-}
-
-fn server_hello(
-    client: &ClientHello,
-    server: &ServerCapabilities,
-    outcome: NegotiationOutcome,
-) -> ServerHello {
-    ServerHello {
-        protocol_id: client.protocol_id(),
-        implementation: server.implementation.clone(),
-        outcome,
-    }
 }
 
 #[cfg(test)]

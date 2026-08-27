@@ -151,8 +151,12 @@ pub(super) fn launch(
     if let Some(stderr) = stderr {
         readers.push(stderr);
     }
+    #[cfg(unix)]
+    let process_group = Some(root_pid);
+    #[cfg(windows)]
+    let process_group = None;
     let identity =
-        ProcessTreeIdentity::new(root_pid, current_start_token(root_pid), Some(root_pid), true);
+        ProcessTreeIdentity::new(root_pid, current_start_token(root_pid), process_group, true);
     Ok(Box::new(PipeProcess {
         #[cfg(unix)]
         child,

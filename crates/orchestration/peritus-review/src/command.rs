@@ -110,6 +110,10 @@ pub enum ReviewCommandKind {
     },
     /// Cancels the review run truthfully.
     CancelRun,
+    /// Suspends active review progress without changing acceptance evidence.
+    PauseRun,
+    /// Restores the exact active review phase retained by a pause.
+    ResumeRun,
     /// Records explicit budget exhaustion as non-success.
     ExhaustBudget {
         /// Inert bounded reason digest.

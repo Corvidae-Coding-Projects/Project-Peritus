@@ -136,6 +136,7 @@ fn start_with_native(
             retained_stdout: Vec::new(),
             retained_stderr: Vec::new(),
             retained_terminal: Vec::new(),
+            tree: None,
             terminal: None,
         }),
         changed: std::sync::Condvar::new(),

@@ -75,6 +75,20 @@ pub(super) fn acknowledge(
         }
         mutation::insert_paused_child(state, child);
         mutation::set_pending_directive(state, None);
+    } else if matches!(state.phase(), OrchestratorPhase::Active(_))
+        && state.paused_reconciliation().is_some()
+        && kind == DirectiveKind::ResumeChildren
+    {
+        let child = child_for_destination(destination)
+            .ok_or_else(|| binding_error("resume directive destination is not a child"))?;
+        if !state.active_children().contains(&child) || !mutation::remove_paused_child(state, child)
+        {
+            return Err(binding_error("resume acknowledgement names unowned or active child"));
+        }
+        mutation::set_pending_directive(state, None);
+        if state.paused_children().is_empty() {
+            mutation::set_paused_reconciliation(state, None);
+        }
     }
     Ok(OrchestratorEventKind::DirectiveAcknowledged { directive_id: id })
 }
@@ -82,6 +96,15 @@ pub(super) fn acknowledge(
 fn matches_phase(state: &OrchestratorState, directive: &PendingDirective) -> bool {
     if directive.revision() != state.current_candidate().revision() {
         return false;
+    }
+    if matches!(state.phase(), OrchestratorPhase::Active(_))
+        && let Some(reconciliation) = state.paused_reconciliation()
+    {
+        return directive.kind() == DirectiveKind::ResumeChildren
+            && child_for_destination(directive.destination()).is_some_and(|child| {
+                state.active_children().contains(&child) && state.paused_children().contains(&child)
+            })
+            && payload_matches(directive, DirectivePayloadBinding::Reconciliation(reconciliation));
     }
     match state.phase() {
         OrchestratorPhase::Active(ActivePhase::WriterPending) => {

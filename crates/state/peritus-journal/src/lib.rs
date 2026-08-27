@@ -6,6 +6,7 @@
 //! [`CommittedBatch`] which can only be constructed from an exact post-commit observation.
 
 mod append_plan;
+mod application;
 mod authority;
 mod domain;
 mod error;
@@ -20,7 +21,22 @@ mod record;
 mod sqlite;
 mod verified;
 
-pub use append_plan::{AppendPlan, AppendRequest, HeadExpectation, MAX_BATCH_EVENTS};
+pub use append_plan::{
+    AppendPlan, AppendRequest, HeadExpectation, MAX_BATCH_EVENTS,
+    bind_outbox_acknowledgements_digest,
+};
+pub use application::{
+    ApplicationArtifact, ApplicationArtifactState, ApplicationCommandAdmission,
+    ApplicationCommandRecord, ApplicationCommandSettlement, ApplicationCommandState,
+    ApplicationPrincipal, ApplicationPrincipalKind, ApplicationPrincipalState, ApplicationPromptId,
+    ApplicationPromptRecord, ApplicationPromptRegistration, ApplicationPromptSettlement,
+    ApplicationPromptSettlementKind, ApplicationPromptState, ApplicationPromptTargetKind,
+    ApplicationRequestId, ApplicationSession, ApplicationSessionState, ApplicationWorkspace,
+    ApplicationWorkspacePage, ApplicationWorkspaceState, MAX_APPLICATION_WORKSPACE_PAGE,
+    MAX_APPLICATION_WORKSPACE_REGISTRATION_BYTES, NewApplicationArtifact, NewApplicationCommand,
+    NewApplicationPrincipal, NewApplicationPromptTarget, NewApplicationSession,
+    NewApplicationWorkspace,
+};
 pub use authority::{
     AllocatedAuthorityEpoch, AuthorityEpoch, CredentialRegistryInstall, CurrentAuthorityEpoch,
     ExpectedAuthorityEpoch,
@@ -41,6 +57,7 @@ pub use integrity::{CommittedArtifactReference, IntegrityExport, IntegrityReport
 pub use outbox::{OutboxAcknowledgement, OutboxDraft, OutboxMessage, OutboxState};
 pub use receipt::{CommittedBatch, CurrentCredentialRegistry};
 pub use record::{
-    ArtifactDependency, CommittedRecord, DurableStateRecord, EventDraft, ExactFrame, StateInstall,
+    ArtifactDependency, CommittedRecord, DurableStateRecord, EventDraft, ExactFrame,
+    GlobalEventWindow, MAX_GLOBAL_WINDOW_RECORDS, StateInstall,
 };
 pub use sqlite::{CommandResolution, SqliteJournal, SqliteJournalOptions, SqliteSettings};
