@@ -96,7 +96,7 @@ pub(crate) fn current_start_token(pid: u32) -> Option<u64> {
 
 #[cfg(target_os = "windows")]
 pub(crate) fn current_start_token(pid: u32) -> Option<u64> {
-    use windows_sys::Win32::Foundation::{CloseHandle, FILETIME, HANDLE};
+    use windows_sys::Win32::Foundation::{CloseHandle, FILETIME};
     use windows_sys::Win32::System::Threading::{GetProcessTimes, OpenProcess};
 
     const PROCESS_QUERY_LIMITED_INFORMATION: u32 = 0x1000;

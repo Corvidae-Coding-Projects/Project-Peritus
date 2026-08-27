@@ -95,7 +95,7 @@ fn snapshot(pid: u32) -> Result<Snapshot, ProcessError> {
     if observed == 0 {
         return match std::io::Error::last_os_error().raw_os_error() {
             Some(libc::ESRCH) => Ok(Snapshot::Absent),
-            Some(libc::EPERM) | Some(libc::EACCES) | Some(0) => Ok(Snapshot::Unverifiable),
+            Some(libc::EPERM | libc::EACCES | 0) => Ok(Snapshot::Unverifiable),
             _ => Err(indeterminate("macOS process status cannot be observed")),
         };
     }

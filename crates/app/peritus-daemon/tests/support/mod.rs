@@ -8,6 +8,8 @@ use peritus_types::RevisionNumber;
 
 /// Builds one strict, isolated daemon configuration beneath `root`.
 pub fn configuration(root: &Path) -> DaemonConfig {
+    let canonical_root = fs::canonicalize(root).expect("canonical temporary daemon root");
+    let root = canonical_root.as_path();
     let state = root.join("state");
     let artifacts = state.join("artifacts");
     let evidence = state.join("evidence");

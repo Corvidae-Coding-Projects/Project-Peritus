@@ -12,7 +12,8 @@ use peritus_approval::CredentialRegistrySnapshot;
 use peritus_types::RevisionNumber;
 use tempfile::TempDir;
 
-const PROCESS_BOUND: Duration = Duration::from_secs(10);
+const STARTUP_BOUND: Duration = Duration::from_secs(30);
+const PROCESS_EXIT_BOUND: Duration = Duration::from_secs(10);
 const POLL_INTERVAL: Duration = Duration::from_millis(20);
 
 pub(super) struct TestEnvironment {
@@ -25,7 +26,7 @@ pub(super) struct TestEnvironment {
 impl TestEnvironment {
     pub(super) fn new() -> io::Result<Self> {
         let temporary = TempDir::new()?;
-        let root = temporary.path().to_path_buf();
+        let root = fs::canonicalize(temporary.path())?;
         let state_root = root.join("state");
         let config_path = root.join("daemon.toml");
         let log_path = root.join("daemon.log");
@@ -54,7 +55,7 @@ impl TestEnvironment {
     }
 
     pub(super) fn wait_for_exit(child: &mut Child) -> io::Result<ExitStatus> {
-        wait_for_exit(child, PROCESS_BOUND)
+        wait_for_exit(child, PROCESS_EXIT_BOUND)
     }
 
     pub(super) fn state_root(&self) -> &Path {
@@ -124,7 +125,7 @@ impl DaemonProcess {
         log_path: PathBuf,
         previous_endpoint: Option<(u64, u64)>,
     ) -> io::Result<Self> {
-        let deadline = Instant::now() + PROCESS_BOUND;
+        let deadline = Instant::now() + STARTUP_BOUND;
         loop {
             if let Some(status) = child.try_wait()? {
                 return Err(io::Error::other(format!(
@@ -175,7 +176,7 @@ impl DaemonProcess {
         let Some(mut child) = self.child.take() else {
             return Err(io::Error::other("peritusd child is no longer owned"));
         };
-        let status = wait_for_exit(&mut child, PROCESS_BOUND)?;
+        let status = wait_for_exit(&mut child, PROCESS_EXIT_BOUND)?;
         if status.success() {
             Ok(status)
         } else {

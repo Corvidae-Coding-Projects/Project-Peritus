@@ -50,7 +50,7 @@ pub(super) fn terminate(identity: ProcessTreeIdentity) -> Result<(), ProcessErro
     }
 }
 
-fn exact_binding(identity: ProcessTreeIdentity) -> Option<u64> {
+const fn exact_binding(identity: ProcessTreeIdentity) -> Option<u64> {
     if identity.root_pid() != 0
         && identity.process_group().is_none()
         && identity.complete_containment()

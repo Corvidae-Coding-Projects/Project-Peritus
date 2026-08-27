@@ -72,7 +72,8 @@ fn non_successor_configuration_is_rejected_as_drift() {
 fn declaration(root: &Path, revision: u64, generation: u64) -> ApprovalRegistryDeclaration {
     let revision = RevisionNumber::new(revision).expect("positive test revision");
     let snapshot = CredentialRegistrySnapshot::new(revision, Vec::new()).expect("test registry");
-    let path = root.join(format!("approval-registry-{}.bin", revision.get()));
+    let canonical_root = fs::canonicalize(root).expect("canonical temporary registry root");
+    let path = canonical_root.join(format!("approval-registry-{}.bin", revision.get()));
     fs::write(&path, snapshot.canonical_bytes().expect("canonical test registry"))
         .expect("write test registry");
     ApprovalRegistryDeclaration::new(path, generation).expect("test registry declaration")
