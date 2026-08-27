@@ -1,6 +1,6 @@
 {
   "next_display_id": 26,
-  "next_comment_id": 434,
+  "next_comment_id": 435,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -3587,7 +3587,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T22:59:08.003031292Z",
-      "updated_at": "2026-08-27T07:00:36.294763578Z",
+      "updated_at": "2026-08-27T07:19:04.705236142Z",
       "labels": [
         "feature"
       ],
@@ -3618,6 +3618,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAY2pjP5EA2cEkuNfkDozmPRT4e8hKmJ8jg3WosRc/RPMT2+CYsG6tGsWn5hHx3DH9P7zg0SPHmQtUW/SkJdTeCQ=="
+        },
+        "150a27b0-baba-4c2a-8af6-6e68f98ecc35": {
+          "display_id": 434,
+          "author": "6ME5",
+          "content": "Signed follow-up d2ef6b1 batches the remaining hosted failures. macOS readiness no longer consumes the daemon's first application connection: restart freshness uses device, inode, and modification time. Windows instance-record publication now uses platform-correct record replacement and skips unsupported directory File::open/sync. Verification: formatting and diff checks; daemon conformance 28/28 through the public peritusd subprocess; instance ownership integration test; strict peritus-daemon Clippy on Linux and x86_64-pc-windows-gnu. The superseded b854af5 matrix had already passed all independent Rust jobs; its only Rust failures were the two macOS readiness jobs and two Windows ownership-test jobs covered here.",
+          "created_at": "2026-08-27T07:19:04.702540094Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAVZhS0lxHluawiPtk/hR0JV3+jpOBxMDOpwDxONzYq8m485JdnbTYEdyZxrsNKMx5pfWsBj8e8l2LkVD8s0xTCw=="
         },
         "1b3b1265-c629-4306-b2d8-379ddabde2be": {
           "display_id": 430,
@@ -4367,8 +4376,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T07:00:36.294763578Z",
+    "timestamp": "2026-08-27T07:19:04.705236142Z",
     "agent_id": "6ME5",
-    "agent_seq": 577
+    "agent_seq": 578
   }
 }
