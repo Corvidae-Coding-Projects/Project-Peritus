@@ -52,8 +52,9 @@ pub use io_policy::{
 pub use lifecycle::{LifecyclePhase, LifecycleState};
 pub use native::{
     AuthorizedPreparationContext, NativeLaunchDescription, NativePlatform, NativePoll,
-    NativeProtectedHandle, NativeSandboxBackend, NativeSandboxSession, native_activation_record,
-    native_ready_record, native_target_exec_failed_record, native_target_started_record,
+    NativeProcessProbe, NativeProtectedHandle, NativeSandboxBackend, NativeSandboxSession,
+    native_activation_record, native_ready_record, native_target_exec_failed_record,
+    native_target_started_record,
 };
 #[cfg(unix)]
 pub use native::{NATIVE_PTY_SLAVE_ENV, NativePtyAttachment};

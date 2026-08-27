@@ -3,20 +3,20 @@
 use super::{FixtureClass, GeneratedFixtureCase};
 use crate::{
     AppDiagnostic, AppEventEnvelope, AppEventPayload, AppProtocolLimits, AppRequestEnvelope,
-    AppRequestPayload, AppResponseEnvelope, AppResponsePayload, ArtifactMetadata,
-    CanonicalMediaType, ClientHello, CommandBinding, CommandSubmissionFrames, ControlEnvelope,
-    ControlPayload, CorrelationId, EventCursor, HeartbeatId, HeartbeatReply, IdempotencyKey,
-    ImplementationMetadata, NegotiatedProtocol, NegotiationOutcome, PromptBinding,
-    PromptConstraint, PromptCorrelation, PromptId, PromptKind, ProtocolContext,
-    ProtocolFeatureName, ProtocolFeatureSet, ProtocolId, ProtocolVersion, RequestId, ServerHello,
-    ShutdownProgress, ShutdownRequest, SubscriptionFilter, SubscriptionId, SubscriptionRequest,
-    TerminalAttachmentId, TerminalBinding, TerminalOutput, TerminalStream, TransferId,
-    VersionRange, WellKnownProtocolFeature,
+    AppRequestPayload, AppResponseEnvelope, AppResponsePayload, ApprovalChallenge,
+    ArtifactMetadata, CanonicalMediaType, ClientHello, CommandBinding, CommandSubmissionFrames,
+    ControlEnvelope, ControlPayload, CorrelationId, EventCursor, HeartbeatId, HeartbeatReply,
+    IdempotencyKey, ImplementationMetadata, NegotiatedProtocol, NegotiationOutcome, PromptBinding,
+    PromptConstraint, PromptCorrelation, PromptId, ProtocolContext, ProtocolFeatureName,
+    ProtocolFeatureSet, ProtocolId, ProtocolVersion, RequestId, ServerHello, ShutdownProgress,
+    ShutdownRequest, SubscriptionFilter, SubscriptionId, SubscriptionRequest, TerminalAttachmentId,
+    TerminalBinding, TerminalOutput, TerminalStream, TransferId, VersionRange,
+    WellKnownProtocolFeature,
 };
 use peritus_codec::{CanonicalEncode, CodecError, CodecLimits, encode_message};
 use peritus_protocol::schema::generated_binary_artifacts;
 use peritus_types::{
-    AcceptanceSpecId, ActorId, ArtifactId, Generation, HarnessId, PolicyId, ProcessId,
+    AcceptanceSpecId, ActorId, ArtifactId, CommandId, Generation, HarnessId, PolicyId, ProcessId,
     ProviderProfileId, RevisionNumber, RevisionTuple, SessionId, Sha256Digest, WorkspaceId,
 };
 
@@ -140,12 +140,14 @@ fn server_hello(limits: AppProtocolLimits) -> ServerHello {
         id(1, ProtocolId::new),
         ImplementationMetadata::new("peritus-fixture-daemon".to_owned(), limits)
             .expect("fixture implementation"),
+        Some(id(9, SessionId::new)),
         NegotiationOutcome::Compatible(NegotiatedProtocol::new(
             ProtocolVersion::new(1, 0).expect("fixture version"),
             features,
             limits,
         )),
     )
+    .expect("fixture server hello")
 }
 
 fn heartbeat_control() -> ControlEnvelope {
@@ -228,12 +230,17 @@ fn prompt_event(limits: AppProtocolLimits) -> AppEventEnvelope {
         Sha256Digest::new([25; 32]),
         Generation::new(1).expect("fixture generation"),
     );
-    let prompt = PromptBinding::new(
-        PromptKind::Approval,
+    let challenge = ApprovalChallenge::new(
+        id(28, CommandId::new),
+        RevisionNumber::first(),
+        vec![0x50, 0x52, 0x54, 0x53],
+        limits.codec().max_opaque_bytes,
+    )
+    .expect("fixture approval challenge");
+    let prompt = PromptBinding::approval(
         correlation,
-        Vec::new(),
+        challenge,
         vec![PromptConstraint::NonEmpty],
-        limits.max_prompt_choices(),
         limits.codec().max_collection_items,
     )
     .expect("fixture prompt");

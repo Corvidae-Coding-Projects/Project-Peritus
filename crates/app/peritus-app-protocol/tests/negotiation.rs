@@ -5,9 +5,14 @@ use peritus_app_protocol::{
     ProtocolFeatureName, ProtocolId, ProtocolVersion, ServerCapabilities, VersionRange,
     WellKnownProtocolFeature, negotiate,
 };
+use peritus_types::SessionId;
 
 fn protocol_id() -> ProtocolId {
     ProtocolId::new([1; 16]).expect("fixture protocol identity")
+}
+
+fn session_id() -> SessionId {
+    SessionId::new([2; 16]).expect("fixture session identity")
 }
 
 fn feature(value: WellKnownProtocolFeature) -> ProtocolFeatureName {
@@ -51,8 +56,12 @@ fn negotiation_matrix_is_deterministic_and_explicit() {
     )
     .expect("reordered capabilities canonicalize");
 
-    let compatible = negotiate(&client, &server).expect("negotiation succeeds");
-    assert_eq!(compatible, negotiate(&client, &reordered_server).expect("deterministic result"));
+    let compatible = negotiate(&client, &server, session_id()).expect("negotiation succeeds");
+    assert_eq!(
+        compatible,
+        negotiate(&client, &reordered_server, session_id()).expect("deterministic result")
+    );
+    assert_eq!(compatible.established_session(), Some(session_id()));
     match compatible.outcome() {
         NegotiationOutcome::Compatible(protocol) => {
             assert_eq!(protocol.version(), ProtocolVersion::new(2, 1).expect("valid version"));
@@ -70,7 +79,10 @@ fn negotiation_matrix_is_deterministic_and_explicit() {
         "older-server".to_owned(),
     )
     .expect("older server capabilities");
-    match negotiate(&client, &downgraded_server).expect("downgrade is usable").outcome() {
+    match negotiate(&client, &downgraded_server, session_id())
+        .expect("downgrade is usable")
+        .outcome()
+    {
         NegotiationOutcome::Downgraded(protocol) => {
             assert_eq!(protocol.version(), ProtocolVersion::new(1, 2).expect("valid version"));
             assert!(protocol.features().contains(&artifact));
@@ -86,7 +98,7 @@ fn negotiation_matrix_is_deterministic_and_explicit() {
         "missing-feature-server".to_owned(),
     )
     .expect("server capabilities");
-    match negotiate(&client, &missing_feature_server)
+    match negotiate(&client, &missing_feature_server, session_id())
         .expect("incompatibility is a successful negotiation observation")
         .outcome()
     {
@@ -104,7 +116,9 @@ fn negotiation_matrix_is_deterministic_and_explicit() {
     )
     .expect("server capabilities");
     assert!(matches!(
-        negotiate(&client, &other_major_server).expect("incompatibility is explicit").outcome(),
+        negotiate(&client, &other_major_server, session_id())
+            .expect("incompatibility is explicit")
+            .outcome(),
         NegotiationOutcome::Incompatible(IncompatibilityReason::NoCommonVersion)
     ));
 

@@ -55,6 +55,87 @@ pub struct ApprovalRequest {
 }
 
 impl ApprovalRequest {
+    /// Reconstructs one canonical decoded request from already checked policy value types.
+    ///
+    /// This crate-visible path exists solely for the strict B1 decoder. It rechecks every
+    /// collection bound and authority-time binding, then recomputes the semantic digest rather
+    /// than trusting bytes supplied by the caller.
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "every decoded authority field remains explicit and digest-bound"
+    )]
+    pub(crate) fn from_canonical_parts(
+        request_id: ApprovalRequestId,
+        action_id: ActionId,
+        action_digest: crate::ActionDigest,
+        requester: ActorId,
+        requester_role: ActorRole,
+        scope: CapabilityScope,
+        requirement: ApprovalRequirement,
+        evaluated_at: AuthorityInstant,
+        challenge_epoch: Generation,
+        challenge_tick_millis: u64,
+        authority_time: AuthorityTimeState,
+        risks: RiskSet,
+        risk_details_digest: Sha256Digest,
+        producing_participants: ParticipantSet,
+        review_participants: ParticipantSet,
+        validity: ValidityWindow,
+    ) -> Result<Self, crate::ApprovalError> {
+        if scope.permissions().as_slice().len() > MAX_APPROVAL_PERMISSIONS {
+            return Err(crate::ApprovalError::CollectionTooLarge(
+                crate::CanonicalCollection::Permissions,
+            ));
+        }
+        if risks.as_slice().len() > MAX_RISK_CLASSES {
+            return Err(crate::ApprovalError::CollectionTooLarge(
+                crate::CanonicalCollection::Risks,
+            ));
+        }
+        if requirement.independence().as_slice().len() > MAX_INDEPENDENCE_REQUIREMENTS {
+            return Err(crate::ApprovalError::CollectionTooLarge(
+                crate::CanonicalCollection::IndependenceRequirements,
+            ));
+        }
+        if producing_participants.as_slice().len() > MAX_PRODUCING_PARTICIPANTS {
+            return Err(crate::ApprovalError::CollectionTooLarge(
+                crate::CanonicalCollection::ProducingParticipants,
+            ));
+        }
+        if review_participants.as_slice().len() > MAX_REVIEW_PARTICIPANTS {
+            return Err(crate::ApprovalError::CollectionTooLarge(
+                crate::CanonicalCollection::ReviewParticipants,
+            ));
+        }
+        if challenge_epoch != authority_time.epoch()
+            || challenge_tick_millis != authority_time.greatest_tick_millis()
+        {
+            return Err(crate::ApprovalError::InvalidCanonicalEncoding);
+        }
+        let placeholder = crate::ApprovalRequestDigest::from_sha256(Sha256Digest::new([0; 32]));
+        let mut request = Self {
+            request_id,
+            action_id,
+            action_digest,
+            requester,
+            requester_role,
+            scope,
+            requirement,
+            evaluated_at,
+            challenge_epoch,
+            challenge_tick_millis,
+            authority_time,
+            risks,
+            risk_details_digest,
+            producing_participants,
+            review_participants,
+            validity,
+            digest: placeholder,
+        };
+        request.digest = crate::ApprovalRequestDigest::compute(&request)?;
+        Ok(request)
+    }
+
     /// Returns the exact challenged scope used by specifications.
     pub closed spec fn spec_scope(&self) -> CapabilityScope { self.scope }
 

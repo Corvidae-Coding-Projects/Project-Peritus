@@ -1,0 +1,90 @@
+[package]
+name = "peritus-daemon"
+description = "Production daemon and application composition owner for Peritus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["agents", "daemon", "ipc", "orchestration"]
+categories = ["development-tools"]
+
+[dependencies]
+fs4.workspace = true
+peritus-app-protocol = { version = "=0.0.0", path = "../peritus-app-protocol" }
+peritus-approval = { version = "=0.0.0", path = "../../state/peritus-approval" }
+peritus-artifact-store = { version = "=0.0.0", path = "../../state/peritus-artifact-store" }
+peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
+peritus-evidence = { version = "=0.0.0", path = "../../state/peritus-evidence" }
+peritus-debugger = { version = "=0.0.0", path = "../../analysis/peritus-debugger" }
+peritus-eval = { version = "=0.0.0", path = "../../analysis/peritus-eval" }
+peritus-evolution = { version = "=0.0.0", path = "../../analysis/peritus-evolution" }
+peritus-harness = { version = "=0.0.0", path = "../../orchestration/peritus-harness" }
+peritus-journal = { version = "=0.0.0", path = "../../state/peritus-journal" }
+peritus-migrations = { version = "=0.0.0", path = "../../state/peritus-migrations" }
+peritus-model-protocol = { version = "=0.0.0", path = "../../model/peritus-model-protocol" }
+peritus-policy = { version = "=0.0.0", path = "../../foundation/peritus-policy" }
+peritus-collaboration = { version = "=0.0.0", path = "../../orchestration/peritus-collaboration" }
+peritus-process = { version = "=0.0.0", path = "../../runtime/peritus-process" }
+peritus-projection = { version = "=0.0.0", path = "../../state/peritus-projection" }
+peritus-provider-anthropic = { version = "=0.0.0", path = "../../model/peritus-provider-anthropic" }
+peritus-provider-compatible = { version = "=0.0.0", path = "../../model/peritus-provider-compatible" }
+peritus-provider-core = { version = "=0.0.0", path = "../../model/peritus-provider-core" }
+peritus-provider-google = { version = "=0.0.0", path = "../../model/peritus-provider-google" }
+peritus-provider-openai = { version = "=0.0.0", path = "../../model/peritus-provider-openai" }
+peritus-orchestrator = { version = "=0.0.0", path = "../../orchestration/peritus-orchestrator" }
+peritus-review = { version = "=0.0.0", path = "../../orchestration/peritus-review" }
+peritus-scheduler = { version = "=0.0.0", path = "../../orchestration/peritus-scheduler" }
+peritus-sandbox = { version = "=0.0.0", path = "../../runtime/peritus-sandbox" }
+peritus-secrets = { version = "=0.0.0", path = "../../runtime/peritus-secrets" }
+peritus-telemetry = { version = "=0.0.0", path = "../../observe/peritus-telemetry" }
+peritus-tool-protocol = { version = "=0.0.0", path = "../../tools/peritus-tool-protocol" }
+peritus-tool-router = { version = "=0.0.0", path = "../../tools/peritus-tool-router" }
+peritus-tools-fs = { version = "=0.0.0", path = "../../tools/peritus-tools-fs" }
+peritus-tools-git = { version = "=0.0.0", path = "../../tools/peritus-tools-git" }
+peritus-tools-quality = { version = "=0.0.0", path = "../../tools/peritus-tools-quality" }
+peritus-tools-shell = { version = "=0.0.0", path = "../../tools/peritus-tools-shell" }
+peritus-trace = { version = "=0.0.0", path = "../../observe/peritus-trace" }
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+peritus-workspace = { version = "=0.0.0", path = "../../runtime/peritus-workspace" }
+serde.workspace = true
+sha2.workspace = true
+tokio.workspace = true
+toml.workspace = true
+vstd.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+libc.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Pipes",
+    "Win32_System_Threading",
+] }
+
+[dev-dependencies]
+peritus-conformance = { version = "=0.0.0", path = "../testing/peritus-conformance" }
+peritus-kernel = { version = "=0.0.0", path = "../../foundation/peritus-kernel" }
+peritus-protocol = { version = "=0.0.0", path = "../../foundation/peritus-protocol" }
+peritus-test-support = { version = "=0.0.0", path = "../testing/peritus-test-support" }
+tempfile.workspace = true
+
+[[bin]]
+name = "peritusd"
+path = "src/bin/peritusd.rs"
+
+[package.metadata.peritus]
+owner = "G0"
+layer = "app"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true
+
+[lints]
+workspace = true

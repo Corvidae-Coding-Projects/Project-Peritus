@@ -11,6 +11,47 @@ pub use committed::CommittedRecord;
 pub use state::MAX_STATE_KEY_BYTES;
 pub use state::{DurableStateRecord, StateInstall};
 
+/// Maximum exact records returned by one global event query.
+pub const MAX_GLOBAL_WINDOW_RECORDS: usize = 4_096;
+
+/// One bounded, snapshot-consistent window over store-wide event positions.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct GlobalEventWindow {
+    earliest: u64,
+    latest: u64,
+    records: Vec<CommittedRecord>,
+}
+
+impl GlobalEventWindow {
+    pub(crate) const fn new(earliest: u64, latest: u64, records: Vec<CommittedRecord>) -> Self {
+        Self { earliest, latest, records }
+    }
+
+    /// Returns the oldest retained global position, or zero when the journal is empty.
+    #[must_use]
+    pub const fn earliest(&self) -> u64 {
+        self.earliest
+    }
+
+    /// Returns the newest retained global position, or zero when the journal is empty.
+    #[must_use]
+    pub const fn latest(&self) -> u64 {
+        self.latest
+    }
+
+    /// Borrows exact immutable records in strictly increasing global-position order.
+    #[must_use]
+    pub fn records(&self) -> &[CommittedRecord] {
+        &self.records
+    }
+
+    /// Reports whether resuming after `cursor` requires a retention-gap response.
+    #[must_use]
+    pub const fn has_retention_gap_after(&self, cursor: u64) -> bool {
+        self.earliest > 0 && cursor.saturating_add(1) < self.earliest
+    }
+}
+
 /// Maximum causal parents on one event.
 pub const MAX_CAUSAL_PARENTS: usize = 4_096;
 

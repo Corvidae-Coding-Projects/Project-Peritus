@@ -8,7 +8,7 @@ Generated from Rust metadata. Numeric and semantic allocations are append-only.
 |---:|---|---:|---|
 | 94 | `app-client-hello` | 1 | `1:client-hello` |
 | 95 | `app-server-hello` | 1 | `1:compatible`, `2:downgraded`, `3:incompatible` |
-| 96 | `app-request` | 1 | `1:submit-command`, `2:subscribe`, `3:open-artifact`, `4:cancel-artifact`, `5:answer-prompt`, `6:cancel-prompt`, `7:attach-terminal`, `8:terminal-input`, `9:terminal-resize`, `10:detach-terminal`, `11:cancel-terminal`, `12:daemon-status`, `13:shutdown` |
+| 96 | `app-request` | 1 | `1:submit-command`, `2:subscribe`, `3:open-artifact`, `4:cancel-artifact`, `5:answer-prompt`, `6:cancel-prompt`, `7:attach-terminal`, `8:terminal-input`, `9:terminal-resize`, `10:detach-terminal`, `11:cancel-terminal`, `12:daemon-status`, `13:shutdown`, `14:begin-artifact-upload`, `15:upload-artifact-chunk`, `16:complete-artifact-upload` |
 | 97 | `app-response` | 1 | `1:command-result`, `2:subscription-started`, `3:artifact-opened`, `4:prompt-accepted`, `5:terminal-attached`, `6:acknowledged`, `7:daemon-status`, `8:shutdown-accepted`, `9:error` |
 | 98 | `app-event` | 1 | `1:domain-event`, `2:subscription-gap`, `3:backpressure`, `4:artifact-metadata`, `5:artifact-chunk`, `6:artifact-complete`, `7:prompt-requested`, `8:terminal-output`, `9:terminal-exited`, `10:readiness-changed`, `11:diagnostic`, `12:heartbeat`, `13:shutdown-progress`, `14:shutdown-complete` |
 | 99 | `app-control` | 1 | `1:acknowledge`, `2:cancel-subscription`, `3:cancel-artifact`, `4:cancel-prompt`, `5:cancel-terminal`, `6:subscription`, `7:heartbeat-reply` |
@@ -22,11 +22,13 @@ Rust type: `ClientHello`
 | Field | Required | Canonical wire | Rust | TypeScript | Bounds |
 |---|:---:|---|---|---|---|
 | `protocolId` | yes | `fixed[16]` | `ProtocolId` | `ProtocolId` | `nonzero` |
+| `requestedSessionId` | no | `option+value` | `Option<SessionId>` | `SessionId` | `nonzero` |
 | `versions` | yes | `len+items` | `Vec<VersionRange>` | `readonly VersionRange[]` | `nonzero`, `app.max-versions`, `strictly-sorted-unique` |
 | `requiredFeatures` | yes | `len+items` | `ProtocolFeatureSet` | `readonly string[]` | `app.max-features`, `strictly-sorted-unique` |
 | `optionalFeatures` | yes | `len+items` | `ProtocolFeatureSet` | `readonly string[]` | `app.max-features`, `strictly-sorted-unique` |
 | `receiveLimits` | yes | `ordered-fields` | `AppProtocolLimits` | `AppProtocolLimits` | — |
 | `implementation` | yes | `len+utf8` | `ImplementationMetadata` | `string` | `codec.max-string-bytes` |
+| `establishedSessionId` | no | `option+value` | `Option<SessionId>` | `SessionId` | `nonzero` |
 
 ### `ServerHelloPreamble`
 
@@ -402,6 +404,24 @@ Rust type: `PromptConstraint`
 | `kind` | yes | `u8` | `PromptConstraint` | `"non-empty" | "maximum-text-bytes" | "bound-choice-only" | "secret-reference"` | — |
 | `maximumTextBytes` | no | `u32-be` | `Option<u32>` | `number` | `codec.max-string-bytes` |
 
+### `ApprovalChallenge`
+
+Rust type: `ApprovalChallenge`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `decisionCommandId` | yes | `fixed[16]` | `CommandId` | `CommandId` | `nonzero` |
+| `registryRevision` | yes | `u64-be` | `RevisionNumber` | `UInt64` | `nonzero` |
+| `requestFrame` | yes | `len+bytes` | `Vec<u8>` | `Base64Bytes` | `nonzero`, `codec.max-opaque-bytes` |
+
+### `SignedApprovalDecisionFrame`
+
+Rust type: `SignedApprovalDecisionFrame`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `bytes` | yes | `len+bytes` | `Vec<u8>` | `Base64Bytes` | `nonzero`, `codec.max-opaque-bytes` |
+
 ### `PromptBinding`
 
 Rust type: `PromptBinding`
@@ -409,6 +429,7 @@ Rust type: `PromptBinding`
 | Field | Required | Canonical wire | Rust | TypeScript | Bounds |
 |---|:---:|---|---|---|---|
 | `kind` | yes | `u8` | `PromptKind` | `"approval" | "user-input"` | — |
+| `approvalChallenge` | no | `option+value` | `Option<ApprovalChallenge>` | `ApprovalChallenge` | — |
 | `correlation` | yes | `ordered-fields` | `PromptCorrelation` | `PromptCorrelation` | — |
 | `choices` | yes | `len+items` | `Vec<PromptChoice>` | `readonly PromptChoice[]` | `app.max-prompt-choices` |
 | `constraints` | yes | `len+items` | `Vec<PromptConstraint>` | `readonly PromptConstraint[]` | `codec.max-collection-items` |
@@ -421,7 +442,8 @@ Rust type: `PromptAnswer`
 |---|:---:|---|---|---|---|
 | `correlation` | yes | `ordered-fields` | `PromptCorrelation` | `PromptCorrelation` | — |
 | `answerKind` | yes | `u8` | `PromptAnswerPayload` | `"approval" | "user-input"` | — |
-| `approvalIntent` | no | `u8` | `Option<ApprovalIntent>` | `"approve" | "deny" | "cancel"` | — |
+| `approvalAnswerKind` | no | `u8` | `Option<ApprovalAnswer>` | `"signed-decision" | "cancel"` | — |
+| `signedDecisionFrame` | no | `option+value` | `Option<SignedApprovalDecisionFrame>` | `Base64Bytes` | `codec.max-opaque-bytes` |
 | `rationale` | no | `option+value` | `Option<String>` | `string` | `codec.max-string-bytes` |
 | `inputKind` | no | `u8` | `Option<UserInputValue>` | `"text" | "selection" | "confirmation" | "secret-reference"` | — |
 | `textValue` | no | `len+utf8` | `Option<String>` | `string` | `codec.max-string-bytes` |
@@ -492,7 +514,7 @@ Rust type: `TerminalOutput`
 | `binding` | yes | `ordered-fields` | `TerminalBinding` | `TerminalBinding` | — |
 | `sequence` | yes | `u64-be` | `u64` | `UInt64` | `contiguous` |
 | `offset` | yes | `u64-be` | `u64` | `UInt64` | `contiguous` |
-| `stream` | yes | `u8` | `TerminalStream` | `"stdout" | "stderr"` | — |
+| `stream` | yes | `u8` | `TerminalStream` | `"stdout" | "stderr" | "terminal"` | — |
 | `bytes` | yes | `len+bytes` | `Vec<u8>` | `Base64Bytes` | `app.max-terminal-chunk-bytes` |
 
 ### `TerminalExit`

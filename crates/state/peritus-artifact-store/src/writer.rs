@@ -70,6 +70,24 @@ impl WriteRequest {
     pub const fn declared_limit(&self) -> u64 {
         self.declared_limit
     }
+
+    /// Borrows the validated media type recorded at finalization.
+    #[must_use]
+    pub const fn media_type(&self) -> &MediaType {
+        &self.media_type
+    }
+
+    /// Borrows the external encryption binding metadata.
+    #[must_use]
+    pub const fn encryption(&self) -> &EncryptionMetadata {
+        &self.encryption
+    }
+
+    /// Returns the journal event that will own the finalized object.
+    #[must_use]
+    pub const fn creating_event(&self) -> EventId {
+        self.creating_event
+    }
 }
 
 /// Whether finalization published new bytes or observed identical existing bytes.
@@ -90,6 +108,10 @@ pub struct FinalizedArtifact {
 }
 
 impl FinalizedArtifact {
+    pub(crate) const fn new(digest: ArtifactDigest, size: u64, publication: Publication) -> Self {
+        Self { digest, size, publication }
+    }
+
     /// Returns the verified content digest.
     #[must_use]
     pub const fn digest(self) -> ArtifactDigest {
@@ -298,7 +320,7 @@ impl Drop for ArtifactWriter<'_> {
     }
 }
 
-fn create_temporary(
+pub(super) fn create_temporary(
     paths: &StorePaths,
     digest: ArtifactDigest,
 ) -> Result<(File, PathBuf), ArtifactStoreError> {

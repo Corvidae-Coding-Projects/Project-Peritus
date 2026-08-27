@@ -2,13 +2,10 @@
 
 use vstd::prelude::*;
 
-/// Returns whether `after` is the exact non-wrapping successor of `before`.
+/// Returns whether `after` strictly advances `before` without assigning meaning to skipped values.
 #[must_use]
-pub const fn cursor_is_successor(before: u64, after: u64) -> bool {
-    match before.checked_add(1) {
-        Some(expected) => after == expected,
-        None => false,
-    }
+pub const fn cursor_advances(before: u64, after: u64) -> bool {
+    before < after
 }
 
 /// Returns whether a cumulative acknowledgement stays within contiguous delivery.
@@ -18,28 +15,30 @@ pub const fn acknowledgement_is_legal(
     delivered: u64,
     candidate: u64,
     gap_active: bool,
+    delivered_member: bool,
 ) -> bool {
-    !gap_active && acknowledged <= candidate && candidate <= delivered
+    !gap_active
+        && acknowledged <= candidate
+        && candidate <= delivered
+        && (candidate == acknowledged || delivered_member)
 }
 
 /// Returns whether the retained delivery window agrees with cursor accounting.
 #[must_use]
-pub fn delivery_window_is_safe(
+pub const fn delivery_window_is_safe(
     acknowledged: u64,
     delivered: u64,
     in_flight: usize,
     maximum: usize,
 ) -> bool {
-    acknowledged <= delivered
-        && u64::try_from(in_flight).is_ok_and(|count| delivered - acknowledged == count)
-        && in_flight <= maximum
+    acknowledged <= delivered && in_flight <= maximum
 }
 
 verus! {
 
-/// Mathematical cursor-successor rule for `INV-024 DeliverySafety`.
-pub open spec fn spec_cursor_successor(before: int, after: int) -> bool {
-    0 <= before && after == before + 1
+/// Mathematical strictly-advancing source-cursor rule for `INV-024 DeliverySafety`.
+pub open spec fn spec_cursor_advances(before: int, after: int) -> bool {
+    0 <= before && before < after
 }
 
 /// Mathematical cumulative-acknowledgement rule for `INV-024 DeliverySafety`.
@@ -48,8 +47,13 @@ pub open spec fn spec_acknowledgement_legal(
     delivered: int,
     candidate: int,
     gap_active: bool,
+    delivered_member: bool,
 ) -> bool {
-    !gap_active && 0 <= acknowledged && acknowledged <= candidate && candidate <= delivered
+    !gap_active
+        && 0 <= acknowledged
+        && acknowledged <= candidate
+        && candidate <= delivered
+        && (candidate == acknowledged || delivered_member)
 }
 
 /// Advancing an acknowledgement through delivered data cannot exceed delivery.
@@ -59,7 +63,7 @@ pub proof fn legal_ack_never_exceeds_delivery(
     candidate: int,
 )
     requires
-        spec_acknowledgement_legal(acknowledged, delivered, candidate, false),
+        spec_acknowledgement_legal(acknowledged, delivered, candidate, false, true),
     ensures
         candidate <= delivered,
         acknowledged <= candidate,

@@ -51,6 +51,8 @@ pub enum TerminalStream {
     Stdout,
     /// Standard error bytes.
     Stderr,
+    /// Combined pseudo-terminal output bytes whose stdout/stderr origin is not separable.
+    Terminal,
 }
 
 /// One ordered nonempty opaque terminal output chunk.

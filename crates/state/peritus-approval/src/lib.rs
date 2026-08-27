@@ -5,6 +5,7 @@
 
 mod amendment;
 pub(crate) mod authentication;
+mod codec;
 mod decision;
 mod digest;
 mod failure;
@@ -18,6 +19,11 @@ mod request;
 pub(crate) mod state;
 
 use vstd::prelude::*;
+
+pub use codec::{
+    decode_approval_request, decode_credential_registry, decode_signed_decision,
+    encode_approval_request, encode_signed_decision,
+};
 
 verus! {
 

@@ -1,10 +1,10 @@
 //! Closed typed application request envelope.
 
 use crate::{
-    AppErrorCode, AppProtocolError, ArtifactCancellation, CommandBinding, CorrelationId,
-    EventCursor, PromptAnswer, PromptCancellation, RequestId, ShutdownRequest, SubscriptionFilter,
-    SubscriptionId, TerminalBinding, TerminalCancellation, TerminalDetach, TerminalInput,
-    TerminalResize, TransferId,
+    AppErrorCode, AppProtocolError, ArtifactCancellation, ArtifactChunk, ArtifactCompletion,
+    ArtifactMetadata, CommandBinding, CorrelationId, EventCursor, PromptAnswer, PromptCancellation,
+    RequestId, ShutdownRequest, SubscriptionFilter, SubscriptionId, TerminalBinding,
+    TerminalCancellation, TerminalDetach, TerminalInput, TerminalResize, TransferId,
 };
 use peritus_types::ArtifactId;
 
@@ -103,6 +103,12 @@ pub enum AppRequestPayload {
     OpenArtifact(ArtifactOpenRequest),
     /// Cancels an artifact transfer.
     CancelArtifact(ArtifactCancellation),
+    /// Begins one bounded artifact upload from exact declared metadata.
+    BeginArtifactUpload(ArtifactMetadata),
+    /// Supplies one contiguous artifact-upload chunk.
+    UploadArtifactChunk(ArtifactChunk),
+    /// Completes one artifact upload with exact size and digest.
+    CompleteArtifactUpload(ArtifactCompletion),
     /// Answers an approval or user-input prompt.
     AnswerPrompt(PromptAnswer),
     /// Cancels an outstanding prompt.

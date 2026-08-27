@@ -112,6 +112,30 @@ impl WorktreeRegistrationManifest {
     pub const fn digest(&self) -> Sha256Digest {
         self.digest
     }
+
+    /// Returns the repository identity bound into this registration.
+    #[must_use]
+    pub const fn repository_digest(&self) -> Sha256Digest {
+        self.repository_digest
+    }
+
+    /// Returns the exact canonical registered worktree root.
+    #[must_use]
+    pub fn root(&self) -> &std::path::Path {
+        &self.root
+    }
+
+    /// Returns the immutable baseline bound into this registration.
+    #[must_use]
+    pub const fn baseline(&self) -> Baseline {
+        self.baseline
+    }
+
+    /// Returns the intended access class bound into this registration.
+    #[must_use]
+    pub const fn access(&self) -> WorktreeAccess {
+        self.access
+    }
 }
 
 impl RegisteredWorktree {

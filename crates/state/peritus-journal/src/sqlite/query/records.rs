@@ -9,8 +9,95 @@ use super::{
 };
 use crate::{
     AggregateId, AggregateKey, AggregateKind, CommittedRecord, EventDraft, ExactFrame,
-    JournalError, hash_chain::event_hash,
+    GlobalEventWindow, JournalError, JournalErrorKind, MAX_GLOBAL_WINDOW_RECORDS, SqliteJournal,
+    hash_chain::event_hash,
 };
+
+impl SqliteJournal {
+    /// Reads at most `max_records` exact records strictly after a global cursor.
+    ///
+    /// Retention bounds and returned rows are observed in one deferred read transaction. Cursor
+    /// zero means origin. A cursor older than [`GlobalEventWindow::earliest`] is not silently
+    /// advanced: callers can detect that condition with
+    /// [`GlobalEventWindow::has_retention_gap_after`].
+    ///
+    /// # Errors
+    ///
+    /// Returns invalid input for a zero or over-limit bound, or a typed storage/integrity error.
+    pub fn global_events_after(
+        &self,
+        cursor: u64,
+        max_records: usize,
+    ) -> Result<GlobalEventWindow, JournalError> {
+        if max_records == 0 || max_records > MAX_GLOBAL_WINDOW_RECORDS {
+            return Err(JournalError::new(
+                JournalErrorKind::InvalidInput,
+                "query global events",
+                "global event query bound is outside the production range",
+            ));
+        }
+        let transaction = self
+            .connection
+            .unchecked_transaction()
+            .map_err(|error| JournalError::sqlite("begin global event query", error))?;
+        let bounds = transaction
+            .query_row("SELECT MIN(global_position), MAX(global_position) FROM events", [], |row| {
+                Ok((row.get::<_, Option<i64>>(0)?, row.get::<_, Option<i64>>(1)?))
+            })
+            .map_err(|error| JournalError::sqlite("read global event bounds", error))?;
+        let (earliest, latest) = match bounds {
+            (Some(earliest), Some(latest)) => (
+                positive_u64(earliest, "earliest global event position")?,
+                positive_u64(latest, "latest global event position")?,
+            ),
+            (None, None) => (0, 0),
+            _ => return Err(corrupt("global event retention bounds are inconsistent")),
+        };
+        let records = if latest == 0 || cursor >= latest {
+            Vec::new()
+        } else {
+            let first = cursor.saturating_add(1).max(earliest);
+            let last = first
+                .saturating_add(u64::try_from(max_records - 1).map_err(|_| {
+                    JournalError::new(
+                        JournalErrorKind::SequenceOverflow,
+                        "query global events",
+                        "global event query bound cannot be represented",
+                    )
+                })?)
+                .min(latest);
+            let records = load_records_range(&transaction, first, last)?;
+            validate_contiguous_window(&records, first, last)?;
+            records
+        };
+        transaction
+            .commit()
+            .map_err(|error| JournalError::sqlite("complete global event query", error))?;
+        Ok(GlobalEventWindow::new(earliest, latest, records))
+    }
+}
+
+fn validate_contiguous_window(
+    records: &[CommittedRecord],
+    first: u64,
+    last: u64,
+) -> Result<(), JournalError> {
+    let expected = last
+        .checked_sub(first)
+        .and_then(|distance| distance.checked_add(1))
+        .and_then(|count| usize::try_from(count).ok())
+        .ok_or_else(|| corrupt("global event window length cannot be represented"))?;
+    if records.len() != expected
+        || records.first().is_none_or(|record| record.global_position() != first)
+        || records.last().is_none_or(|record| record.global_position() != last)
+        || records
+            .windows(2)
+            .any(|pair| pair[0].global_position().checked_add(1) != Some(pair[1].global_position()))
+    {
+        return Err(corrupt("global event positions contain an interior gap"));
+    }
+    Ok(())
+}
 
 pub fn load_records_range(
     connection: &Connection,

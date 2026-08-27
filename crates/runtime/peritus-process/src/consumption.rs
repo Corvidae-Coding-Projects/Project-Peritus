@@ -120,6 +120,27 @@ impl ProcessStore {
         self.lock_state().quarantined_records.clone()
     }
 
+    /// Returns the exact number of durable executions that still require terminal reconciliation.
+    ///
+    /// This includes every nonterminal manifest and every consumption claim whose manifest is
+    /// absent. It performs no platform observation and therefore cannot manufacture quiescence.
+    #[must_use]
+    pub fn recovery_work_count(&self) -> usize {
+        let state = self.lock_state();
+        let nonterminal = state
+            .manifests
+            .values()
+            .filter(|manifest| manifest.phase != LifecyclePhase::Terminal)
+            .count();
+        let orphan_claims = state
+            .claims
+            .keys()
+            .filter(|process_id| !state.manifests.contains_key(process_id))
+            .count();
+        drop(state);
+        nonterminal + orphan_claims
+    }
+
     pub(crate) fn consume(
         &self,
         plan: &ExecutionPlan,

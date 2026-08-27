@@ -4,6 +4,52 @@ use super::super::{AppTypeDescriptor, CanonicalWireType, FieldBound as B, JsonSh
 
 pub(super) const PROMPT_TERMINAL_TYPES: &[AppTypeDescriptor] = &[
     AppTypeDescriptor {
+        name: "ApprovalChallenge",
+        rust_type: "ApprovalChallenge",
+        fields: &[
+            field(
+                "decisionCommandId",
+                CanonicalWireType::Identifier,
+                &[B::NonZero],
+                "CommandId",
+                "CommandId",
+                J::Identifier,
+                true,
+            ),
+            field(
+                "registryRevision",
+                CanonicalWireType::U64,
+                &[B::NonZero],
+                "RevisionNumber",
+                "UInt64",
+                J::U64String,
+                true,
+            ),
+            field(
+                "requestFrame",
+                CanonicalWireType::Bytes,
+                &[B::NonZero, B::CodecOpaqueBytes],
+                "Vec<u8>",
+                "Base64Bytes",
+                J::Base64,
+                true,
+            ),
+        ],
+    },
+    AppTypeDescriptor {
+        name: "SignedApprovalDecisionFrame",
+        rust_type: "SignedApprovalDecisionFrame",
+        fields: &[field(
+            "bytes",
+            CanonicalWireType::Bytes,
+            &[B::NonZero, B::CodecOpaqueBytes],
+            "Vec<u8>",
+            "Base64Bytes",
+            J::Base64,
+            true,
+        )],
+    },
+    AppTypeDescriptor {
         name: "PromptBinding",
         rust_type: "PromptBinding",
         fields: &[
@@ -15,6 +61,15 @@ pub(super) const PROMPT_TERMINAL_TYPES: &[AppTypeDescriptor] = &[
                 "\"approval\" | \"user-input\"",
                 J::Enum(&["approval", "user-input"]),
                 true,
+            ),
+            field(
+                "approvalChallenge",
+                CanonicalWireType::Option,
+                &[],
+                "Option<ApprovalChallenge>",
+                "ApprovalChallenge",
+                J::Ref("ApprovalChallenge"),
+                false,
             ),
             field(
                 "correlation",
@@ -68,12 +123,21 @@ pub(super) const PROMPT_TERMINAL_TYPES: &[AppTypeDescriptor] = &[
                 true,
             ),
             field(
-                "approvalIntent",
+                "approvalAnswerKind",
                 CanonicalWireType::U8,
                 &[],
-                "Option<ApprovalIntent>",
-                "\"approve\" | \"deny\" | \"cancel\"",
-                J::Enum(&["approve", "deny", "cancel"]),
+                "Option<ApprovalAnswer>",
+                "\"signed-decision\" | \"cancel\"",
+                J::Enum(&["signed-decision", "cancel"]),
+                false,
+            ),
+            field(
+                "signedDecisionFrame",
+                CanonicalWireType::Option,
+                &[B::CodecOpaqueBytes],
+                "Option<SignedApprovalDecisionFrame>",
+                "Base64Bytes",
+                J::Base64,
                 false,
             ),
             field(
@@ -296,8 +360,8 @@ pub(super) const PROMPT_TERMINAL_TYPES: &[AppTypeDescriptor] = &[
                 CanonicalWireType::U8,
                 &[],
                 "TerminalStream",
-                "\"stdout\" | \"stderr\"",
-                J::Enum(&["stdout", "stderr"]),
+                "\"stdout\" | \"stderr\" | \"terminal\"",
+                J::Enum(&["stdout", "stderr", "terminal"]),
                 true,
             ),
             field(

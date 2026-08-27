@@ -85,6 +85,13 @@ impl ApprovalKeyId {
     pub const fn sha256(self) -> (digest: Sha256Digest)
         ensures digest.spec_bytes() == self.spec_bytes(),
     { self.0 }
+
+    /// Stores an exact decoded key-identifier digest without claiming registry membership.
+    ///
+    /// Strict authentication still recomputes the registered credential key ID before accepting a
+    /// decision.
+    #[must_use]
+    pub const fn from_sha256(digest: Sha256Digest) -> Self { Self(digest) }
 }
 
 } // verus!

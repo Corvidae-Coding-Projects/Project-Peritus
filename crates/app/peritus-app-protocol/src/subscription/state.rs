@@ -27,12 +27,6 @@ impl EventCursor {
     pub const fn get(self) -> u64 {
         self.0
     }
-
-    pub(super) fn checked_next(self) -> Result<Self, SubscriptionError> {
-        self.0.checked_add(1).map(Self).ok_or_else(|| {
-            reject(SubscriptionErrorKind::ArithmeticOverflow, "event cursor overflow")
-        })
-    }
 }
 
 /// Canonical, sorted, nonempty topic filter.
@@ -313,6 +307,7 @@ pub struct SubscriptionState {
     filter: SubscriptionFilter,
     origin: EventCursor,
     pub(super) requested: EventCursor,
+    pub(super) scanned: EventCursor,
     pub(super) last_delivered: EventCursor,
     pub(super) last_acknowledged: EventCursor,
     pub(super) maximum_in_flight: usize,
@@ -343,6 +338,7 @@ impl SubscriptionState {
             filter,
             origin: requested,
             requested,
+            scanned: requested,
             last_delivered: requested,
             last_acknowledged: requested,
             maximum_in_flight,
@@ -370,6 +366,11 @@ impl SubscriptionState {
     #[must_use]
     pub const fn requested_cursor(&self) -> EventCursor {
         self.requested
+    }
+    /// Returns the greatest source cursor examined by the subscription pump.
+    #[must_use]
+    pub const fn scanned_cursor(&self) -> EventCursor {
+        self.scanned
     }
     /// Returns the last distinct delivered cursor.
     #[must_use]

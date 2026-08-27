@@ -15,13 +15,16 @@ fn negotiation_predicates_cover_success_and_failure_boundaries() {
 }
 
 #[test]
-fn delivery_and_ack_predicates_enforce_contiguous_monotonic_progress() {
+fn delivery_and_ack_predicates_enforce_source_monotonic_progress() {
     assert!(delivery_advances(0, 1));
-    assert!(!delivery_advances(1, 3));
-    assert!(ack_legal(2, 5, 4, false));
-    assert!(!ack_legal(4, 5, 3, false));
-    assert!(!ack_legal(2, 5, 6, false));
-    assert!(!ack_legal(2, 5, 4, true));
+    assert!(delivery_advances(1, 3));
+    assert!(!delivery_advances(3, 3));
+    assert!(ack_legal(2, 5, 5, false, true));
+    assert!(ack_legal(2, 5, 2, false, false));
+    assert!(!ack_legal(4, 5, 3, false, true));
+    assert!(!ack_legal(2, 5, 6, false, true));
+    assert!(!ack_legal(2, 5, 4, true, true));
+    assert!(!ack_legal(2, 5, 4, false, false));
     assert!(redelivery_identity(true, true, true, true, true));
     assert!(!redelivery_identity(true, true, false, true, true));
 }

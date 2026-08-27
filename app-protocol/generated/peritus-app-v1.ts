@@ -7,6 +7,7 @@ export type Sha256Digest = string & { readonly __brand: "Sha256Digest" };
 export type AcceptanceSpecId = OpaqueId<"AcceptanceSpecId">;
 export type ActorId = OpaqueId<"ActorId">;
 export type ArtifactId = OpaqueId<"ArtifactId">;
+export type CommandId = OpaqueId<"CommandId">;
 export type CorrelationId = OpaqueId<"CorrelationId">;
 export type DeliveryAttemptId = OpaqueId<"DeliveryAttemptId">;
 export type EventId = OpaqueId<"EventId">;
@@ -43,6 +44,9 @@ export type AppPayloadKind =
   | "cancel-terminal"
   | "daemon-status"
   | "shutdown"
+  | "begin-artifact-upload"
+  | "upload-artifact-chunk"
+  | "complete-artifact-upload"
   | "command-result"
   | "subscription-started"
   | "artifact-opened"
@@ -116,11 +120,13 @@ export type AppErrorCode =
 
 export interface ClientHelloData {
   readonly protocolId: ProtocolId;
+  readonly requestedSessionId?: SessionId;
   readonly versions: readonly VersionRange[];
   readonly requiredFeatures: readonly string[];
   readonly optionalFeatures: readonly string[];
   readonly receiveLimits: AppProtocolLimits;
   readonly implementation: string;
+  readonly establishedSessionId?: SessionId;
 }
 
 export interface ServerHelloPreamble {
@@ -357,8 +363,19 @@ export interface PromptConstraint {
   readonly maximumTextBytes?: number;
 }
 
+export interface ApprovalChallenge {
+  readonly decisionCommandId: CommandId;
+  readonly registryRevision: UInt64;
+  readonly requestFrame: Base64Bytes;
+}
+
+export interface SignedApprovalDecisionFrame {
+  readonly bytes: Base64Bytes;
+}
+
 export interface PromptBinding {
   readonly kind: "approval" | "user-input";
+  readonly approvalChallenge?: ApprovalChallenge;
   readonly correlation: PromptCorrelation;
   readonly choices: readonly PromptChoice[];
   readonly constraints: readonly PromptConstraint[];
@@ -367,7 +384,8 @@ export interface PromptBinding {
 export interface PromptAnswer {
   readonly correlation: PromptCorrelation;
   readonly answerKind: "approval" | "user-input";
-  readonly approvalIntent?: "approve" | "deny" | "cancel";
+  readonly approvalAnswerKind?: "signed-decision" | "cancel";
+  readonly signedDecisionFrame?: Base64Bytes;
   readonly rationale?: string;
   readonly inputKind?: "text" | "selection" | "confirmation" | "secret-reference";
   readonly textValue?: string;
@@ -410,7 +428,7 @@ export interface TerminalOutput {
   readonly binding: TerminalBinding;
   readonly sequence: UInt64;
   readonly offset: UInt64;
-  readonly stream: "stdout" | "stderr";
+  readonly stream: "stdout" | "stderr" | "terminal";
   readonly bytes: Base64Bytes;
 }
 

@@ -122,6 +122,8 @@ pub enum ApprovalError {
     NonCanonicalOrder(CanonicalCollection),
     /// The exact canonical digest preimage exceeded its frozen bound.
     PreimageTooLarge,
+    /// A bounded canonical authority frame was malformed, noncanonical, or had trailing bytes.
+    InvalidCanonicalEncoding,
     /// A public key or signature had the wrong byte length.
     InvalidCryptoLength,
     /// A public key or signature encoding was malformed or noncanonical.
@@ -175,6 +177,7 @@ impl ApprovalError {
             Self::DuplicateCanonicalValue(_) => "PERITUS-APPROVAL-INPUT-003",
             Self::NonCanonicalOrder(_) => "PERITUS-APPROVAL-INPUT-004",
             Self::PreimageTooLarge => "PERITUS-APPROVAL-DIGEST-001",
+            Self::InvalidCanonicalEncoding => "PERITUS-APPROVAL-CODEC-001",
             Self::InvalidCryptoLength => "PERITUS-APPROVAL-AUTH-001",
             Self::InvalidCryptoEncoding => "PERITUS-APPROVAL-AUTH-002",
             Self::SignatureInvalid => "PERITUS-APPROVAL-AUTH-003",
@@ -210,6 +213,7 @@ impl ApprovalError {
             | Self::DuplicateCanonicalValue(_)
             | Self::NonCanonicalOrder(_)
             | Self::PreimageTooLarge
+            | Self::InvalidCanonicalEncoding
             | Self::InvalidCryptoLength
             | Self::InvalidCryptoEncoding
             | Self::BindingMismatch(_)

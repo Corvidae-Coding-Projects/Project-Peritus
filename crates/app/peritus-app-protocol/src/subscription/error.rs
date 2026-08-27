@@ -11,14 +11,16 @@ pub enum SubscriptionErrorKind {
     InvalidInput,
     /// A message names another subscription.
     BindingMismatch,
-    /// A new delivery is not the exact cursor successor.
-    NonContiguousDelivery,
+    /// A scanned or delivered source cursor does not strictly advance.
+    NonMonotonicDelivery,
     /// Delivery-attempt or cursor arithmetic overflowed.
     ArithmeticOverflow,
     /// The cumulative acknowledgement regresses.
     AcknowledgementRegression,
     /// The acknowledgement exceeds delivered data.
     AcknowledgementFuture,
+    /// The acknowledgement names neither the retained acknowledgement nor an in-flight delivery.
+    AcknowledgementUnknown,
     /// The acknowledgement would cross a declared retention gap.
     AcknowledgementAcrossGap,
     /// The negotiated in-flight window is full.

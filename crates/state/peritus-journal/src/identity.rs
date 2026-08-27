@@ -132,6 +132,8 @@ pub enum AggregateKind {
     EvolutionCampaign,
     /// F0 durable project-scoped production-harness pointer and activation history.
     ProductionHarness,
+    /// G0 durable application-facing publication and lifecycle facts.
+    Application,
 }
 
 impl AggregateKind {
@@ -154,6 +156,7 @@ impl AggregateKind {
             Self::Evaluation => 15,
             Self::EvolutionCampaign => 16,
             Self::ProductionHarness => 17,
+            Self::Application => 18,
         }
     }
 
@@ -176,6 +179,7 @@ impl AggregateKind {
             Self::Evaluation => 15,
             Self::EvolutionCampaign => 16,
             Self::ProductionHarness => 17,
+            Self::Application => 18,
         }
     }
 
@@ -198,6 +202,7 @@ impl AggregateKind {
             15 => Some(Self::Evaluation),
             16 => Some(Self::EvolutionCampaign),
             17 => Some(Self::ProductionHarness),
+            18 => Some(Self::Application),
             _ => None,
         }
     }

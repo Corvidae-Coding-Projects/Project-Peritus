@@ -158,6 +158,13 @@ layer = "app"
 verification_class = "H"
 
 [[packages]]
+name = "peritus-daemon"
+path = "crates/app/peritus-daemon"
+owner = "G0"
+layer = "app"
+verification_class = "H"
+
+[[packages]]
 name = "peritus-approval"
 path = "crates/state/peritus-approval"
 owner = "B1"

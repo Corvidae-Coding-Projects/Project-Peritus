@@ -8,6 +8,8 @@ use crate::{ReviewCommand, ReviewCommandKind, ReviewLimits};
 pub struct ReviewCommandFrame(pub ReviewCommand);
 
 impl ReviewCommandFrame {
+    /// Copies one checked review command into its canonical transport frame.
+    #[must_use]
     pub fn from_command(command: &ReviewCommand) -> Self {
         Self(command.clone())
     }

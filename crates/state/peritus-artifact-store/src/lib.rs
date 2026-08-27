@@ -11,6 +11,7 @@ mod error;
 mod finalize;
 mod gc_plan;
 mod metadata;
+mod owned;
 mod path;
 mod quota;
 mod recovery;
@@ -28,6 +29,7 @@ pub use gc_plan::{CollectionGeneration, GcAction, GcApplication, GcInventoryEntr
 pub use metadata::{
     ArtifactMetadata, EncryptionMetadata, FinalizationState, MediaType, QuarantineState,
 };
+pub use owned::{ArtifactReadChunk, ArtifactReadHandle, ArtifactWriteHandle};
 pub use quota::{QuotaPlan, QuotaSnapshot};
 pub use recovery::{QuarantinedArtifact, RecoveryReport};
 pub use references::{ArtifactReferenceSet, ReferenceRoots};

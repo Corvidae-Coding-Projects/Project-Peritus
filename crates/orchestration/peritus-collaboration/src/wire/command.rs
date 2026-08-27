@@ -10,6 +10,8 @@ use crate::{CollaborationCommand, CollaborationCommandKind};
 pub struct CollaborationCommandFrame(pub CollaborationCommand);
 
 impl CollaborationCommandFrame {
+    /// Copies one checked collaboration command into its canonical transport frame.
+    #[must_use]
     pub fn from_command(command: &CollaborationCommand) -> Self {
         Self(command.clone())
     }

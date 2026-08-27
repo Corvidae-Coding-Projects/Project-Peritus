@@ -39,6 +39,7 @@ pub(super) fn write_terminal_output(
     writer.write_u8(match value.stream() {
         TerminalStream::Stdout => 1,
         TerminalStream::Stderr => 2,
+        TerminalStream::Terminal => 3,
     })?;
     writer.write_bytes(value.bytes())
 }
@@ -55,6 +56,7 @@ pub(super) fn read_terminal_output(
     let stream = match reader.read_u8()? {
         1 => TerminalStream::Stdout,
         2 => TerminalStream::Stderr,
+        3 => TerminalStream::Terminal,
         _ => return unknown(stream_offset),
     };
     let bytes = reader.read_bytes_owned()?;

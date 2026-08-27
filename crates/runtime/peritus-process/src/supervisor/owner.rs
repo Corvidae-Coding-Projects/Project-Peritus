@@ -86,6 +86,12 @@ impl SpawnedOwner {
         native: Option<Box<dyn crate::NativeSandboxSession>>,
     ) -> Self {
         let tree = process.identity();
+        {
+            let mut observation =
+                shared.state.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+            observation.tree = Some(tree);
+        }
+        shared.changed.notify_all();
         let input = process.take_input();
         let readers = process.take_readers();
         let (output_tx, output_rx) = mpsc::sync_channel(super::OUTPUT_QUEUE);

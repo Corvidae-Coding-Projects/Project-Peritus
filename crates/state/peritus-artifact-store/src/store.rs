@@ -3,9 +3,10 @@
 use std::{fs, path::Path};
 
 use crate::{
-    ArtifactDigest, ArtifactMetadata, ArtifactStoreError, ArtifactWriter, CollectionGeneration,
-    ErrorCode, GcAction, GcApplication, GcPlan, QuarantineState, QuotaPlan, QuotaSnapshot,
-    RecoveryClass, ReferenceOwner, ReferenceRoots, StoreConfig, StoreOperation, WriteRequest,
+    ArtifactDigest, ArtifactMetadata, ArtifactReadHandle, ArtifactStoreError, ArtifactWriteHandle,
+    ArtifactWriter, CollectionGeneration, ErrorCode, FinalizedArtifact, GcAction, GcApplication,
+    GcPlan, QuarantineState, QuotaPlan, QuotaSnapshot, RecoveryClass, ReferenceOwner,
+    ReferenceRoots, StoreConfig, StoreOperation, WriteRequest,
     catalog::Catalog,
     finalize::{read_finalized, verify_finalized},
     path::{StorePaths, io, sync_directory},
@@ -92,6 +93,57 @@ impl ArtifactStore {
             self.config.max_artifact_bytes(),
             self.config.quota_bytes(),
         )
+    }
+
+    /// Creates an owned exclusive streaming writer suitable for a long-lived transfer registry.
+    ///
+    /// # Errors
+    ///
+    /// Returns a catalog, quota, invalid-request, or temporary-file I/O error.
+    pub fn begin_owned_write(
+        &self,
+        request: WriteRequest,
+    ) -> Result<ArtifactWriteHandle, ArtifactStoreError> {
+        let reservation = if self.catalog.metadata(request.expected_digest())?.is_some() {
+            0
+        } else {
+            request.expected_size()
+        };
+        QuotaPlan::reserve(self.quota_snapshot(0)?, reservation)?;
+        ArtifactWriteHandle::create(
+            &self.paths,
+            request,
+            self.config.max_artifact_bytes(),
+            self.config.quota_bytes(),
+        )
+    }
+
+    /// Atomically publishes and catalogs one exact owned streaming writer.
+    ///
+    /// # Errors
+    ///
+    /// Returns exact writer, integrity, publication, catalog, or quota failures.
+    pub fn complete_write(
+        &self,
+        writer: ArtifactWriteHandle,
+    ) -> Result<FinalizedArtifact, ArtifactStoreError> {
+        writer.complete(&self.paths, &self.catalog)
+    }
+
+    /// Opens one owned preverified streaming reader for finalized active content.
+    ///
+    /// # Errors
+    ///
+    /// Returns missing-artifact, catalog, I/O, or corruption errors.
+    pub fn open_read(
+        &self,
+        digest: ArtifactDigest,
+    ) -> Result<ArtifactReadHandle, ArtifactStoreError> {
+        let metadata = self.catalog.metadata(digest)?.ok_or_else(missing_artifact)?;
+        if !metadata.is_referenceable() {
+            return Err(missing_artifact());
+        }
+        ArtifactReadHandle::open(&self.paths, metadata, self.config.max_artifact_bytes())
     }
 
     /// Loads validated durable artifact metadata.

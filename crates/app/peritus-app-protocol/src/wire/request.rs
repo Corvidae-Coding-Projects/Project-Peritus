@@ -11,7 +11,11 @@ use peritus_codec::{
 use peritus_types::ArtifactId;
 
 use super::{
-    artifact::{read_artifact_cancellation, write_artifact_cancellation},
+    artifact::{
+        read_artifact_cancellation, read_artifact_chunk, read_artifact_completion,
+        read_artifact_metadata, write_artifact_cancellation, write_artifact_chunk,
+        write_artifact_completion, write_artifact_metadata,
+    },
     command::{read_command_binding, write_command_binding},
     daemon::{read_shutdown_request, write_shutdown_request},
     primitive::{invalid, read_context, read_id, unknown, write_context, write_id},
@@ -87,6 +91,18 @@ impl CanonicalEncode for AppRequestEnvelope {
                 writer.write_u16(13)?;
                 write_shutdown_request(writer, *value)
             }
+            AppRequestPayload::BeginArtifactUpload(value) => {
+                writer.write_u16(14)?;
+                write_artifact_metadata(writer, value)
+            }
+            AppRequestPayload::UploadArtifactChunk(value) => {
+                writer.write_u16(15)?;
+                write_artifact_chunk(writer, value)
+            }
+            AppRequestPayload::CompleteArtifactUpload(value) => {
+                writer.write_u16(16)?;
+                write_artifact_completion(writer, *value)
+            }
         }
     }
 }
@@ -123,6 +139,9 @@ pub(super) fn read_request(
         11 => AppRequestPayload::CancelTerminal(read_terminal_cancellation(reader)?),
         12 => AppRequestPayload::DaemonStatus,
         13 => AppRequestPayload::Shutdown(read_shutdown_request(reader)?),
+        14 => AppRequestPayload::BeginArtifactUpload(read_artifact_metadata(reader, limits)?),
+        15 => AppRequestPayload::UploadArtifactChunk(read_artifact_chunk(reader, limits)?),
+        16 => AppRequestPayload::CompleteArtifactUpload(read_artifact_completion(reader)?),
         _ => return unknown(tag_offset),
     };
     let request =
