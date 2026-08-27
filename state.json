@@ -1,6 +1,6 @@
 {
   "next_display_id": 26,
-  "next_comment_id": 424,
+  "next_comment_id": 425,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -3587,7 +3587,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T22:59:08.003031292Z",
-      "updated_at": "2026-08-27T04:04:46.252419871Z",
+      "updated_at": "2026-08-27T04:54:12.239427538Z",
       "labels": [
         "feature"
       ],
@@ -3735,6 +3735,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAgCKiQ/18+T3xNB4460TBocp8+lHd0Ko+EoAZVw59fffsheKZLMQ4v5HrfCH7f/QuI7VSJjnEuha7MQc0MlieCw=="
+        },
+        "b21a4112-aec2-4b6a-9e8c-6b9a10855a8d": {
+          "display_id": 424,
+          "author": "6ME5",
+          "content": "G0 integration checkpoint: repaired read-only diagnostic session semantics by resuming an existing durable session without negotiation writes; the full resource-bounded peritus-daemon all-target/all-feature suite is green (59 tests). Remaining implementation is the five missing public conformance seams plus live production outbox/worker/terminal wiring and strict gates.",
+          "created_at": "2026-08-27T04:54:12.227866730Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAOL5B7dq7djF4JlnbM5EsXJgTBpBU5n83UME6big+posd9Bqk7xv69BY0SEfatLr2T+q6VO/gkMrPys5hUPrBDw=="
         },
         "b83c9f7e-8572-432c-9f48-c17cfd7cae8d": {
           "display_id": 415,
@@ -4277,8 +4286,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T04:04:46.252419871Z",
+    "timestamp": "2026-08-27T04:54:12.239427538Z",
     "agent_id": "6ME5",
-    "agent_seq": 567
+    "agent_seq": 568
   }
 }
