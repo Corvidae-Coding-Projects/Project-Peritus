@@ -1,0 +1,27 @@
+[package]
+name = "peritus-release-artifacts"
+description = "Deterministic H4 release artifact, SBOM, provenance, signature, and recovery evidence contracts"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["release", "sbom", "provenance", "reproducibility"]
+categories = ["development-tools::testing"]
+
+[dependencies]
+ed25519-dalek.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+
+[package.metadata.peritus]
+owner = "H4"
+layer = "testing"
+verification-class = "C"
+
+[lints]
+workspace = true

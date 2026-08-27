@@ -21,6 +21,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Complete the H0/H4 final production-qualification implementation wave (#31)
+- Add the V-class `peritus-security-policy` crate with literal R-SEC-001 through R-SEC-007 and
+  security-relevant acceptance-criterion catalogs, exact integrated-candidate freshness,
+  control/inventory/artifact observations, independent review and finding lifecycles, a private
+  `Ready` construction path, and Verus proofs that readiness implies every security obligation
+- Add the C-class `peritus-security-qualification` crate with a closed 42-case production catalog,
+  unique fresh native subjects, cooperative cancellation, bounded resources, panic/error capture,
+  mandatory cleanup, native execution receipts, deterministic manifests, external-review binding,
+  and an authority-neutral fail-closed H0 report
+- Cover malicious repositories, traversal and filesystem aliasing, instruction poisoning, terminal
+  and output attacks, secret exfiltration, native sandbox escape review, role isolation, stale
+  evidence, evolution confinement, redaction, supply-chain integrity, unsafe code, and trusted
+  computing-base reconciliation in reviewed H0 threat, control, inventory, and schema assets
+- Add the V-class `peritus-release-policy` crate with the exact 25 production acceptance criteria,
+  44 concrete evidence requirements, exact release-candidate/toolchain/platform/profile/schema
+  identity, signed H0-H3 observations, deterministic review/finding/waiver reduction, and canonical
+  missing, stale, mismatched, unsigned, unreviewed, conflicting, and blocker diagnostics
+- Prove that H4 `Ready` implies complete current artifacts, Ready H0-H3 qualifications, independent
+  review quorum, resolved nonignored findings, no release blocker, and no publication authority;
+  retain stable decision fingerprints under evidence permutation
+- Add the C-class `peritus-release-artifacts` crate with canonical artifact inventories,
+  deterministic SPDX 2.3 SBOMs, SLSA-style provenance, public-only detached Ed25519 verification,
+  exact independent-builder byte comparisons, and migration/recovery/license inventories
+- Add the C-class `peritus-release-qualification` crate with signature-bound evidence dispositions,
+  eleven fresh-subject final campaigns, exact AC-01 through AC-25 mappings, H0-H3/native/Gate A/
+  Foundation/soak/multi-language inputs, content-addressed manifests, independent final audit and
+  finding closure, and a deterministic fail-closed qualification report
+- Link H4 collection to the verified release policy through an exact composition adapter that checks
+  release-binding and manifest correspondence, all four H4 digest identities, every supplied
+  artifact observation, H0/H1/H3 report signatures, and the canonical aggregate of Linux/macOS/
+  Windows H2 reports before policy evaluation; any drift makes policy evaluation unavailable
+- Add reviewed release evidence, SBOM, provenance, signature, binding and qualification-report JSON
+  schemas plus deliberately incomplete-safe operator templates that cannot masquerade as evidence
+- Add H0 and H4 guides, a release migration/backup/restore/rollback runbook, crate READMEs, formal
+  obligation registrations, architecture ownership and controlled-source registrations, strict
+  no-cheating Verus inventories, and an updated complete A0-H4 development-state inventory
+
 - Implement the H1-H3 production qualification wave (#27)
 - Add the C-class `peritus-resilience` crate with a deterministic 43-scenario H1 catalog spanning
   both sides of journal, blob, snapshot, lease, patch, gate, and promotion commits and every active

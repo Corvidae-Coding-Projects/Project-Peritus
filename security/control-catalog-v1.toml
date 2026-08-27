@@ -1,0 +1,111 @@
+schema = "peritus.security-control-catalog.v1"
+owner = "H0"
+status = "qualification-input"
+requirements = ["R-SEC-001", "R-SEC-002", "R-SEC-003", "R-SEC-004", "R-SEC-005", "R-SEC-006", "R-SEC-007"]
+acceptance_criteria = [9, 10, 11, 12, 17, 18, 19, 24, 25]
+
+[[control]]
+id = "H0-CONTROL-001"
+title = "model output has no authority"
+requirements = ["R-SEC-001"]
+criteria = [9, 17, 25]
+
+[[control]]
+id = "H0-CONTROL-002"
+title = "actor-bound capability and role separation"
+requirements = ["R-SEC-002"]
+criteria = [10, 11, 17, 18, 25]
+
+[[control]]
+id = "H0-CONTROL-003"
+title = "handle-resolved path containment"
+requirements = ["R-SEC-003"]
+criteria = [9]
+
+[[control]]
+id = "H0-CONTROL-004"
+title = "native sandbox network secret and resource enforcement"
+requirements = ["R-SEC-004"]
+criteria = [9, 10, 19, 25]
+
+[[control]]
+id = "H0-CONTROL-005"
+title = "protected metadata and exact-candidate freshness"
+requirements = ["R-SEC-005"]
+criteria = [9, 12, 17, 18, 25]
+
+[[control]]
+id = "H0-CONTROL-006"
+title = "typed provenance cited evidence and terminal safety"
+requirements = ["R-SEC-006"]
+criteria = [9, 17, 19, 25]
+
+[[control]]
+id = "H0-CONTROL-007"
+title = "auditable reproducible supply chain and reviewed findings"
+requirements = ["R-SEC-007"]
+criteria = [10, 24, 25]
+
+[[control]]
+id = "H0-CONTROL-008"
+title = "independent external review"
+requirements = ["R-SEC-004", "R-SEC-007"]
+criteria = [10, 24, 25]
+
+[[control]]
+id = "H0-CONTROL-009"
+title = "fresh subject bounded execution cancellation and complete cleanup"
+requirements = ["R-SEC-004"]
+criteria = [9, 10, 25]
+
+[[control]]
+id = "H0-CONTROL-010"
+title = "canonical manifest and fail-closed verified readiness"
+requirements = ["R-SEC-001", "R-SEC-005", "R-SEC-006", "R-SEC-007"]
+criteria = [12, 19, 24, 25]
+
+[probe_catalog]
+ids = [
+  "h0.repository.traversal",
+  "h0.repository.symlink-race",
+  "h0.repository.submodule-escape",
+  "h0.repository.worktree-escape",
+  "h0.repository.case-alias",
+  "h0.repository.device-path",
+  "h0.repository.shell-injection",
+  "h0.repository.poisoned-instructions",
+  "h0.repository.oversized-output",
+  "h0.repository.terminal-escape",
+  "h0.repository.secret-exfiltration",
+  "h0.sandbox.linux-capabilities",
+  "h0.sandbox.macos-capabilities",
+  "h0.sandbox.windows-capabilities",
+  "h0.sandbox.escape-review",
+  "h0.network.default-deny",
+  "h0.plugin.capability-scope",
+  "h0.mcp.capability-scope",
+  "h0.role.reviewer-read-only",
+  "h0.role.fixer-cannot-approve",
+  "h0.role.writer-cannot-waive",
+  "h0.freshness.candidate-mutation",
+  "h0.evolution.sealed-answer-denial",
+  "h0.evolution.evaluator-mutation-denial",
+  "h0.evolution.profile-mutation-denial",
+  "h0.evolution.self-promotion-denial",
+  "h0.evolution.campaign-isolation",
+  "h0.promotion.gate-binding",
+  "h0.promotion.atomic-rollback-history",
+  "h0.observability.evidence-citation",
+  "h0.observability.failure-taxonomy",
+  "h0.observability.secret-redaction",
+  "h0.supply-chain.dependency-reproducibility",
+  "h0.supply-chain.signature-sbom",
+  "h0.supply-chain.migration-recovery-docs",
+  "h0.inventory.unsafe",
+  "h0.inventory.tcb",
+  "h0.release.no-quarantine-placeholder",
+  "h0.review.finding-lifecycle",
+  "h0.resources.cancellation-cleanup",
+  "h0.inventory.threats",
+  "h0.inventory.controls",
+]

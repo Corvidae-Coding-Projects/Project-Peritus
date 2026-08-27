@@ -2567,6 +2567,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "peritus-release-artifacts"
+version = "0.0.0"
+dependencies = [
+ "ed25519-dalek",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "thiserror 2.0.20",
+]
+
+[[package]]
+name = "peritus-release-policy"
+version = "0.0.0"
+dependencies = [
+ "peritus-types",
+ "vstd",
+]
+
+[[package]]
+name = "peritus-release-qualification"
+version = "0.0.0"
+dependencies = [
+ "peritus-release-artifacts",
+ "peritus-release-policy",
+ "peritus-types",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "peritus-resilience"
 version = "0.0.0"
 dependencies = [
@@ -2688,6 +2719,26 @@ dependencies = [
  "tempfile",
  "vstd",
  "zeroize",
+]
+
+[[package]]
+name = "peritus-security-policy"
+version = "0.0.0"
+dependencies = [
+ "peritus-types",
+ "vstd",
+]
+
+[[package]]
+name = "peritus-security-qualification"
+version = "0.0.0"
+dependencies = [
+ "peritus-security-policy",
+ "peritus-types",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "thiserror 2.0.20",
 ]
 
 [[package]]

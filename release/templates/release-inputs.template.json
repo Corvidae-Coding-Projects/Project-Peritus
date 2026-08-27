@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "status": "incomplete",
+  "candidate_binding": null,
+  "artifact_inventory": null,
+  "spdx_sbom": null,
+  "provenance": null,
+  "artifact_signatures": [],
+  "independent_build_witnesses": [],
+  "signed_h0_h3_reports": [],
+  "fresh_subject_campaigns": [],
+  "migration_recovery_documents": [],
+  "license_notices": null,
+  "acceptance_criterion_mappings": [],
+  "acceptance_criterion_map_signature": null,
+  "independent_final_audit": null
+}

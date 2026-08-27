@@ -1,6 +1,6 @@
 # Feature: Peritus Production-Grade Verus-First Coding Harness
 
-- **Status:** Architecture draft ready for review
+- **Status:** A0-H4 implementation complete; exact-candidate production evidence and H4 release decision pending
 - **Date:** 2026-08-21
 - **Repository:** `Project-Peritus`
 - **Audience:** senior Rust and formal-methods engineers, security reviewers, agent-runtime engineers, platform engineers, and implementation leads
@@ -201,7 +201,14 @@ Every requirement group has implementation ownership and observable release evid
 
 ## Current architecture
 
-Project-Peritus currently contains only a one-line README, MIT license, Crosslink repository metadata, and local ignored reference clones. There is no Cargo workspace, public API, stored production data, compatibility obligation, or existing implementation to migrate.
+Project-Peritus now implements the complete A0 through H4 crate and documentation topology defined
+by this design. The workspace includes the verified foundation, durable state and runtime spine,
+agent/review/gate/collaboration loops, evaluation and harness evolution, daemon and client surfaces,
+extensions, and the H0-H4 qualification-policy and evidence machinery. Compatibility schemas,
+historical fixtures, proof obligations, trust inventories, packaging assets, and operating runbooks
+are checked repository contracts. No public production release has yet been declared: an exact
+release commit must still produce the native, soak, representative-campaign, reproducibility,
+signature, security-review, and final-audit evidence required for H4 `Ready`.
 
 The reference repositories establish concrete patterns but are evidence, not upstream architecture authority:
 
@@ -210,7 +217,9 @@ The reference repositories establish concrete patterns but are evidence, not ups
 - Codex CLI demonstrates a mature Rust decomposition around protocol events, session/turn state, terminal streaming, patch application, approvals, sandboxing, rollouts, and clients. Peritus adopts those separation principles without forking Codex or reproducing its monolithic protocol surfaces.
 - Verus supports multi-crate Cargo workspaces, executable/specification/proof modes, external function specifications, and state-machine/tokenized-state-machine proof patterns. Trusted assumptions can invalidate guarantees, so Peritus treats the trust boundary as a versioned, reviewed product artifact.
 
-Because the repository is empty, all paths below are proposed. Once scaffolded, the design must be revised against actual interfaces before any incompatible public change.
+The paths and ownership boundaries below are now the architecture authority for the implemented
+workspace. Incompatible public changes require corresponding design, schema, migration, proof,
+conformance, and release-policy updates.
 
 ## Proposed design
 
@@ -1164,11 +1173,11 @@ A0 Workspace/toolchain
 | **G1 CLI** | `peritus-cli` | A3/G0 | Complete scriptable command surface, JSON, stable exits, completions, black-box tests. |
 | **G2 TUI** | `peritus-tui` | A3/G0 | Live runs, terminal, approvals, diffs, traces, reviews, evolution; snapshot and interaction tests. |
 | **G3 Extension integration** | `peritus-mcp`, plugin SDK/host | B1/B3, C2/C4, G0 | Out-of-process/Wasm plugins and MCP with trust/capability/quotas, malicious extension suite. |
-| **H0 Security qualification** | cross-cutting tests/docs only; no silent redesign | all functional slices | Threat model closure, unsafe/TCB audit, sandbox/path/network/plugin/evolution red team, external review findings resolved. |
+| **H0 Security qualification** | `peritus-security-policy`, `peritus-security-qualification`, cross-cutting tests/docs; no silent functional redesign | all functional slices | Verified security-readiness policy, threat/control closure, unsafe/TCB audit, sandbox/path/network/plugin/evolution red team, and resolved independent-review findings. |
 | **H1 Resilience qualification** | `peritus-resilience`, failpoint/chaos/recovery suites | C0 onward | Crash matrix, corruption, disk full, provider/tool/worker death, reboot/reconcile evidence. |
 | **H2 Platform qualification** | `peritus-platform-qualification`, cross-platform conformance/packaging | G0–G3 | Linux/macOS/Windows full matrix, installers, path/sandbox/process equivalence and documented platform deltas. |
 | **H3 Performance qualification** | `peritus-benchmarks`, stable datasets, load/soak and tuning | G0/F0 | Published SLO evidence, bounded resources/backpressure, long-horizon soak, no correctness weakening. |
-| **H4 Release qualification** | docs, migration, SBOM, signatures, reproducibility, final audit | H0–H3 | Every acceptance criterion mapped to signed evidence; production 1.0 artifact only after final `ready` verdict. |
+| **H4 Release qualification** | `peritus-release-policy`, `peritus-release-artifacts`, `peritus-release-qualification`, docs, migration, SBOM, signatures, reproducibility, final audit | H0–H3 | Verified final-readiness policy and effect-boundary evidence map every acceptance criterion to signed evidence; a production 1.0 artifact is permitted only after the final `ready` verdict. |
 
 ### Crate-to-slice ownership registry
 
@@ -1205,9 +1214,11 @@ This registry is canonical for parallel planning. A slice may split internally o
 | G1 | `peritus-cli` |
 | G2 | `peritus-tui` |
 | G3 | `peritus-mcp`, `peritus-plugin-sdk`, `peritus-plugin-host` |
+| H0 | `peritus-security-policy`, `peritus-security-qualification` |
 | H1 | `peritus-resilience` |
 | H2 | `peritus-platform-qualification` |
 | H3 | `peritus-benchmarks` |
+| H4 | `peritus-release-policy`, `peritus-release-artifacts`, `peritus-release-qualification` |
 
 Slices in the same dependency wave may run in parallel. C3 splits by platform; C5 splits by provider; G1/G2 split by client. B1 and B2 proceed in parallel after A1 freezes shared primitives; B0 may develop independent models concurrently but freezes and registers its production interfaces only against completed B1/B2 contracts. D0/D1/D2/D3 proceed in parallel against frozen B/C contracts. H0–H3 begin test design early but issue their qualification verdicts only against the integrated release candidate.
 

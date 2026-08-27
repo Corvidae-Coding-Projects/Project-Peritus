@@ -257,6 +257,13 @@ layer = "foundation"
 verification_class = "V"
 
 [[packages]]
+name = "peritus-release-policy"
+path = "crates/foundation/peritus-release-policy"
+owner = "H4"
+layer = "foundation"
+verification_class = "V"
+
+[[packages]]
 name = "peritus-review"
 path = "crates/orchestration/peritus-review"
 owner = "D2"
@@ -311,6 +318,13 @@ path = "crates/runtime/peritus-secrets"
 owner = "C3"
 layer = "runtime"
 verification_class = "H"
+
+[[packages]]
+name = "peritus-security-policy"
+path = "crates/foundation/peritus-security-policy"
+owner = "H0"
+layer = "foundation"
+verification_class = "V"
 
 [[packages]]
 name = "peritus-spec"

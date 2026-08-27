@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://peritus.invalid/schemas/security/external-review-v1.schema.json",
+  "title": "Peritus H0 independent external review v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["candidate", "reviewer_actor", "reviewer_organization_sha256", "review_context_sha256", "producer_actor", "producer_organization_sha256", "completion", "scopes", "independent_from_producer", "report_sha256", "findings"],
+  "properties": {
+    "candidate": {"type": "object"},
+    "reviewer_actor": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "reviewer_organization_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "review_context_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "producer_actor": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "producer_organization_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "completion": {"enum": ["incomplete", "completed"]},
+    "scopes": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "uniqueItems": true,
+      "items": {"enum": ["sandbox-escape", "authority-isolation", "evolution-and-promotion", "supply-chain", "unsafe-and-tcb"]}
+    },
+    "independent_from_producer": {"type": "boolean"},
+    "report_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["finding_id", "candidate_source_sha256", "severity", "lifecycle", "authority_sha256", "remediation_sha256", "retest_sha256"],
+        "properties": {
+          "finding_id": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+          "candidate_source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "severity": {"enum": ["critical", "high", "medium", "low", "informational"]},
+          "lifecycle": {"enum": ["open", "accepted-risk", "resolved"]},
+          "authority_sha256": {"type": ["string", "null"]},
+          "remediation_sha256": {"type": ["string", "null"]},
+          "retest_sha256": {"type": ["string", "null"]}
+        }
+      }
+    }
+  }
+}
