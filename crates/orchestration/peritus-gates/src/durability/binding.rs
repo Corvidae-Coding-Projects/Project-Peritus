@@ -97,6 +97,8 @@ fn event_matches_command(command: &GateCommandKind, event: &GateEventKind) -> bo
                 && command_receipt == event_receipt
         }
         (GateCommandKind::BeginCancellation, GateEventKind::CancellationStarted)
+        | (GateCommandKind::PauseRun, GateEventKind::RunPaused { .. })
+        | (GateCommandKind::ResumeRun, GateEventKind::RunResumed { .. })
         | (GateCommandKind::FinalizeRun, GateEventKind::RunFinalized) => true,
         _ => false,
     }

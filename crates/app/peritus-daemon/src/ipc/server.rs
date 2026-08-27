@@ -1,6 +1,11 @@
 //! Bounded authenticated local connection acceptor and owned task set.
 
-use std::sync::Arc;
+use std::{
+    future::{Future, poll_fn},
+    io::Write as _,
+    sync::Arc,
+    task::Poll,
+};
 
 use peritus_app_protocol::ShutdownRequest;
 use tokio::{
@@ -8,7 +13,7 @@ use tokio::{
     task::JoinSet,
 };
 
-use super::LocalEndpoint;
+use super::{AuthenticatedConnection, LocalEndpoint};
 use crate::{
     AuthorityHandle, DaemonError, DaemonErrorCode, DaemonRecovery, session::run_connection,
     terminal::TerminalRegistry,
@@ -25,17 +30,40 @@ pub(crate) async fn serve(
     let permits = Arc::new(Semaphore::new(maximum_connections));
     let mut connections = JoinSet::new();
     loop {
-        tokio::select! {
-            changed = stop.changed() => {
-                if changed.is_err() || *stop.borrow() { break; }
-            }
-            Some(joined) = connections.join_next(), if !connections.is_empty() => {
-                match joined {
-                    Ok(Ok(()) | Err(_)) => {}
-                    Err(error) => return Err(worker_error(error)),
+        let action = {
+            let mut changed = Box::pin(stop.changed());
+            let mut accepted =
+                (permits.available_permits() > 0).then(|| Box::pin(endpoint.accept()));
+            poll_fn(|context| {
+                if let Poll::Ready(changed) = changed.as_mut().poll(context) {
+                    return Poll::Ready(ServerAction::Stop(changed));
+                }
+                if !connections.is_empty()
+                    && let Poll::Ready(joined) = connections.poll_join_next(context)
+                {
+                    return Poll::Ready(ServerAction::Joined(joined));
+                }
+                if let Some(accepted) = &mut accepted
+                    && let Poll::Ready(accepted) = accepted.as_mut().poll(context)
+                {
+                    return Poll::Ready(ServerAction::Accepted(accepted));
+                }
+                Poll::Pending
+            })
+            .await
+        };
+        match action {
+            ServerAction::Stop(changed) => {
+                if changed.is_err() || *stop.borrow() {
+                    break;
                 }
             }
-            accepted = endpoint.accept(), if permits.available_permits() > 0 => {
+            ServerAction::Joined(Some(joined)) => match joined {
+                Ok(Ok(()) | Err(_)) => {}
+                Err(error) => return Err(worker_error(error)),
+            },
+            ServerAction::Joined(None) => {}
+            ServerAction::Accepted(accepted) => {
                 let permit = Arc::clone(&permits).acquire_owned().await.map_err(|_| stopped())?;
                 match accepted {
                     Ok(connection) => {
@@ -45,13 +73,21 @@ pub(crate) async fn serve(
                         let connection_stop = stop.clone();
                         connections.spawn(async move {
                             let _permit = permit;
-                            run_connection(
+                            let result = run_connection(
                                 connection,
                                 authority,
                                 terminals,
                                 shutdown_request,
                                 connection_stop,
-                            ).await
+                            )
+                            .await;
+                            if let Err(error) = &result {
+                                let _ = write!(
+                                    &mut std::io::stderr(),
+                                    "application connection terminated: {error}\n"
+                                );
+                            }
+                            result
                         });
                     }
                     Err(error) if error.code_kind() == DaemonErrorCode::Unauthorized => {
@@ -69,6 +105,12 @@ pub(crate) async fn serve(
         }
     }
     Ok(())
+}
+
+enum ServerAction {
+    Stop(Result<(), watch::error::RecvError>),
+    Joined(Option<Result<Result<(), DaemonError>, tokio::task::JoinError>>),
+    Accepted(Result<AuthenticatedConnection, DaemonError>),
 }
 
 fn stopped() -> DaemonError {

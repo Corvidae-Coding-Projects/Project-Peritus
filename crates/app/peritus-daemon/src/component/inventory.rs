@@ -83,7 +83,8 @@ impl DaemonComponents {
     }
 
     /// Returns configured tool names in deterministic order.
-    pub fn tools(&self) -> impl ExactSizeIterator<Item = &str> {
+    #[must_use]
+    pub fn tools(&self) -> Vec<&str> {
         self.tools.names()
     }
 

@@ -38,7 +38,9 @@ impl MessageFamily {
         match self.tag {
             1 | 10 | 40 | 50 | 53 | 70 | 73 | 76 | 79 | 82 | 85 | 88 | 91 => MessageRole::Command,
             2 => MessageRole::CommandEnvelope,
-            3 | 41 | 51 | 54 | 60 | 71 | 74 | 77 | 80 | 83 | 86 | 89 | 92 => MessageRole::Event,
+            3 | 41 | 51 | 54 | 60 | 71 | 74 | 77 | 80 | 83 | 86 | 89 | 92 | 94 => {
+                MessageRole::Event
+            }
             12 | 13 | 42 | 52 | 55 | 72 | 75 | 78 | 81 | 84 | 87 | 90 | 93 => MessageRole::State,
             _ => MessageRole::Record,
         }
@@ -135,6 +137,12 @@ pub const FAMILIES: &[MessageFamily] = &[
     MessageFamily {
         tag: 93,
         name: "production-harness-state",
+        schema_version: 1,
+        inert_only: true,
+    },
+    MessageFamily {
+        tag: 94,
+        name: "credential-registry-event",
         schema_version: 1,
         inert_only: true,
     },

@@ -42,8 +42,8 @@ pub(crate) async fn submit(
     .map_err(journal_value_error)?;
 
     match authority.admit_command(command).await? {
-        ApplicationCommandAdmission::Conflict(record) => Ok(CommandResult::rejected(
-            request_id_from(&record),
+        ApplicationCommandAdmission::Conflict(_) => Ok(CommandResult::rejected(
+            binding.request_id(),
             AppProtocolError::new(AppErrorCode::IdempotencyConflict, None),
         )),
         ApplicationCommandAdmission::Existing(record) => {

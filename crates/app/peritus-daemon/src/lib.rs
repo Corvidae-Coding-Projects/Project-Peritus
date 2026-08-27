@@ -6,6 +6,7 @@
 
 mod artifact;
 mod authority;
+mod cli;
 mod command;
 mod component;
 mod config;
@@ -27,6 +28,7 @@ pub mod verified;
 mod worker;
 
 pub use authority::{AuthorityHandle, AuthorityOwner};
+pub use cli::run_cli;
 pub use component::{
     DaemonComponents, DispatcherBinding, FilesystemDispatcherRoute, GitDispatcherRoute,
     OfficialExecutableSelection, ProviderAdapterKind, ProviderDeclaration, ProviderProfileKey,
@@ -35,9 +37,9 @@ pub use component::{
     ToolRegistration,
 };
 pub use config::{
-    DaemonConfig, DaemonLimits, DaemonPaths, LocalHumanPrincipal, ProjectDeclaration,
-    ProviderProfileDeclaration, ProviderRoute, ProviderRouteKind, TelemetryExport, ToolPolicy,
-    WorkspaceDeclaration,
+    ApprovalRegistryDeclaration, DaemonConfig, DaemonLimits, DaemonPaths, LocalHumanPrincipal,
+    ProjectDeclaration, ProviderProfileDeclaration, ProviderRoute, ProviderRouteKind,
+    TelemetryExport, ToolPolicy, WorkspaceDeclaration,
 };
 pub use error::{DaemonError, DaemonErrorCode, DaemonRecovery};
 pub use identity::DaemonIdentity;
@@ -45,6 +47,7 @@ pub use ipc::{
     AppFrameStream, AuthenticatedConnection, LocalEndpoint, LocalEndpointAddress, PeerIdentity,
 };
 pub use lifecycle::{DaemonLifecycle, StartupPhase};
+pub use prompt::PromptTerminalStatus;
 pub use session::ConnectionContext;
 pub use shutdown::{ShutdownOutcome, ShutdownTrigger};
 pub use startup::DaemonRuntime;

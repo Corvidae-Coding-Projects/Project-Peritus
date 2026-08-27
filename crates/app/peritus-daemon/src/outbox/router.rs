@@ -4,8 +4,8 @@ use std::{collections::BTreeMap, future::Future, pin::Pin, sync::Arc};
 
 use peritus_journal::OutboxMessage;
 
-use super::{CLAIM_DESTINATIONS, TypedOutboxClaim, decode_claim};
-use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
+use super::{CLAIM_DESTINATIONS, TypedOutboxClaim, decode_claim, handlers};
+use crate::{AuthorityHandle, DaemonError, DaemonErrorCode, DaemonRecovery};
 
 /// One exact typed outbox destination adapter.
 pub(crate) trait OutboxHandler: Send + Sync + 'static {
@@ -29,6 +29,13 @@ pub(crate) struct DestinationRouter {
 impl DestinationRouter {
     pub(crate) fn empty(maximum: usize) -> Result<Self, DaemonError> {
         Self::new(std::iter::empty(), maximum)
+    }
+
+    pub(crate) fn production_children(
+        authority: &AuthorityHandle,
+        maximum: usize,
+    ) -> Result<Self, DaemonError> {
+        Self::new(handlers::child_directive_handlers(authority), maximum)
     }
 
     pub(crate) fn new(
@@ -68,5 +75,10 @@ impl DestinationRouter {
             )
         })?;
         handler.deliver(message, &claim).await
+    }
+
+    #[cfg(test)]
+    pub(crate) fn contains(&self, destination: &str) -> bool {
+        self.handlers.contains_key(destination)
     }
 }

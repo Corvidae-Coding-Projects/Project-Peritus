@@ -10,9 +10,10 @@ use peritus_types::{ActorId, SessionId};
 
 use super::approval::{PreparedAnswer, prepare, validate_binding};
 use super::{
-    AuthenticatedApprovalResponse, CurrentApprovalAuthority, PromptAcceptance, PromptAdmission,
-    PromptBrokerError, PromptBrokerErrorKind, PromptBrokerLimits, PromptCancellationAcceptance,
-    PromptTerminalStatus,
+    AuthenticatedApprovalResponse, CurrentApprovalAuthority, PreparedPromptResponse,
+    PromptAcceptance, PromptAdmission, PromptBrokerError, PromptBrokerErrorKind,
+    PromptBrokerLimits, PromptCancellationAcceptance, PromptSettlementToken, PromptTerminalStatus,
+    types::PromptSettlementResponse,
 };
 
 struct OutstandingPrompt {
@@ -77,7 +78,7 @@ impl PromptBroker {
         Ok(())
     }
 
-    /// Admits one answer against authenticated ownership and current freshness observations.
+    /// Prepares one answer against authenticated ownership and current freshness observations.
     ///
     /// Signed approval requires [`CurrentApprovalAuthority`]. User input and cancellation never
     /// consume that authority context.
@@ -85,15 +86,16 @@ impl PromptBroker {
     /// # Errors
     ///
     /// Rejects unknown, mismatched, stale, cancelled, duplicate, conflicting, constraint-invalid,
-    /// or unauthenticated approval input without changing the entry.
-    pub fn answer(
-        &mut self,
+    /// or unauthenticated approval input without changing the entry. Success also leaves the entry
+    /// unchanged until [`Self::commit_settlement`] receives the returned inert token.
+    pub fn prepare_answer(
+        &self,
         admission: PromptAdmission,
         answer: PromptAnswer,
         approval_authority: Option<CurrentApprovalAuthority<'_>>,
-    ) -> Result<PromptAcceptance, PromptBrokerError> {
+    ) -> Result<PreparedPromptResponse, PromptBrokerError> {
         let correlation = answer.correlation();
-        let entry = self.entry_mut(correlation.prompt_id())?;
+        let entry = self.entry(correlation.prompt_id())?;
         validate_admission(entry.state.binding().correlation(), correlation, admission)?;
         classify_answer(entry.state.phase(), &answer)?;
         let mut successor = entry.state.clone();
@@ -102,8 +104,8 @@ impl PromptBroker {
             .map_err(PromptBrokerError::protocol)?;
         let prepared =
             prepare(entry.state.binding(), answer.payload(), admission, approval_authority)?;
-        entry.state = successor;
-        Ok(match prepared {
+        let settlement = PromptSettlementToken::answer(answer.clone());
+        let acceptance = match prepared {
             PreparedAnswer::UserInput => PromptAcceptance::UserInput(answer),
             PreparedAnswer::Cancelled => {
                 PromptAcceptance::Cancelled(PromptCancellationAcceptance::ApprovalAnswer(answer))
@@ -116,26 +118,75 @@ impl PromptBroker {
                     observation,
                 ))
             }
-        })
+        };
+        Ok(PreparedPromptResponse::new(acceptance, settlement))
     }
 
-    /// Admits one dedicated A3 cancellation against current ownership and freshness.
+    /// Prepares one dedicated A3 cancellation against current ownership and freshness.
     ///
     /// # Errors
     ///
     /// Rejects unknown, mismatched, stale, duplicate, cancelled, or conflicting input without
-    /// changing the entry.
-    pub fn cancel(
-        &mut self,
+    /// changing the entry. Success remains inert until [`Self::commit_settlement`].
+    pub fn prepare_cancel(
+        &self,
         admission: PromptAdmission,
         cancellation: PromptCancellation,
-    ) -> Result<PromptCancellationAcceptance, PromptBrokerError> {
+    ) -> Result<PreparedPromptResponse, PromptBrokerError> {
         let correlation = cancellation.correlation();
-        let entry = self.entry_mut(correlation.prompt_id())?;
+        let entry = self.entry(correlation.prompt_id())?;
         validate_admission(entry.state.binding().correlation(), correlation, admission)?;
         classify_cancellation(entry.state.phase(), cancellation)?;
-        entry.state.cancel(cancellation).map_err(PromptBrokerError::protocol)?;
-        Ok(PromptCancellationAcceptance::Control(cancellation))
+        let mut successor = entry.state.clone();
+        successor.cancel(cancellation).map_err(PromptBrokerError::protocol)?;
+        Ok(PreparedPromptResponse::new(
+            PromptAcceptance::Cancelled(PromptCancellationAcceptance::Control(cancellation)),
+            PromptSettlementToken::cancellation(cancellation),
+        ))
+    }
+
+    /// Terminalizes one exact response only after its authoritative target settled durably.
+    ///
+    /// An exact repeated token is idempotent. A different terminal fact cannot replace the first.
+    ///
+    /// # Errors
+    ///
+    /// Rejects unknown, mismatched, cancelled, or conflicting settlement tokens.
+    pub fn commit_settlement(
+        &mut self,
+        settlement: PromptSettlementToken,
+    ) -> Result<PromptTerminalStatus, PromptBrokerError> {
+        let correlation = settlement.correlation();
+        let entry = self.entry_mut(correlation.prompt_id())?;
+        if entry.state.binding().correlation() != correlation {
+            return Err(binding_mismatch());
+        }
+        match settlement.response() {
+            PromptSettlementResponse::Answer(answer) => match entry.state.phase() {
+                PromptPhase::Answered(existing) if existing == answer => {
+                    return Ok(PromptTerminalStatus::Answered);
+                }
+                PromptPhase::AwaitingAnswer => {
+                    entry
+                        .state
+                        .answer(answer.clone(), correlation.revision())
+                        .map_err(PromptBrokerError::protocol)?;
+                    Ok(PromptTerminalStatus::Answered)
+                }
+                PromptPhase::Answered(_) => Err(conflicting_response()),
+                PromptPhase::Cancelled(_) => Err(cancelled()),
+            },
+            PromptSettlementResponse::Cancellation(cancellation) => match entry.state.phase() {
+                PromptPhase::Cancelled(existing) if existing == cancellation => {
+                    return Ok(PromptTerminalStatus::Cancelled);
+                }
+                PromptPhase::AwaitingAnswer => {
+                    entry.state.cancel(*cancellation).map_err(PromptBrokerError::protocol)?;
+                    Ok(PromptTerminalStatus::Cancelled)
+                }
+                PromptPhase::Answered(_) | PromptPhase::Cancelled(_) => Err(conflicting_response()),
+            },
+        }
     }
 
     /// Returns one exact entry's retained lifecycle.
@@ -175,16 +226,40 @@ impl PromptBroker {
     }
 
     /// Returns all exact correlations owned by one authenticated actor/session pair.
+    ///
+    /// The exact set is never silently truncated.
+    ///
+    /// # Errors
+    ///
+    /// Rejects zero or over-capacity result bounds and exact sets larger than the caller's bound.
     pub fn correlations_for(
         &self,
         actor_id: ActorId,
         session_id: SessionId,
-    ) -> impl Iterator<Item = PromptCorrelation> + '_ {
-        self.entries.values().filter_map(move |entry| {
-            let correlation = entry.state.binding().correlation();
-            (correlation.actor_id() == actor_id && correlation.session_id() == session_id)
-                .then_some(correlation)
-        })
+        maximum: usize,
+    ) -> Result<Vec<PromptCorrelation>, PromptBrokerError> {
+        if maximum == 0 || maximum > self.limits.maximum_outstanding() {
+            return Err(PromptBrokerError::new(
+                PromptBrokerErrorKind::InvalidLimit,
+                "prompt correlation result bound is outside the broker capacity",
+            ));
+        }
+        let correlations = self
+            .entries
+            .values()
+            .filter_map(|entry| {
+                let correlation = entry.state.binding().correlation();
+                (correlation.actor_id() == actor_id && correlation.session_id() == session_id)
+                    .then_some(correlation)
+            })
+            .collect::<Vec<_>>();
+        if correlations.len() > maximum {
+            return Err(PromptBrokerError::new(
+                PromptBrokerErrorKind::ListingLimitExceeded,
+                "exact prompt correlation result exceeds the caller's bound",
+            ));
+        }
+        Ok(correlations)
     }
 
     /// Returns awaiting and retained-terminal entry count.
@@ -204,6 +279,10 @@ impl PromptBroker {
         prompt_id: PromptId,
     ) -> Result<&mut OutstandingPrompt, PromptBrokerError> {
         self.entries.get_mut(&prompt_id).ok_or_else(not_found)
+    }
+
+    fn entry(&self, prompt_id: PromptId) -> Result<&OutstandingPrompt, PromptBrokerError> {
+        self.entries.get(&prompt_id).ok_or_else(not_found)
     }
 }
 

@@ -4,7 +4,7 @@
 
 mod support;
 
-use std::{io, path::Path, time::Duration};
+use std::{future::Future, io, path::Path, time::Duration};
 
 use peritus_app_protocol::{
     APP_SCHEMA_V1, AppMessage, AppProtocolLimits, CLIENT_HELLO_FAMILY, ClientHello,
@@ -16,13 +16,18 @@ use tempfile::TempDir;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::UnixStream,
+    runtime::Builder,
 };
 
 const IO_BOUND: Duration = Duration::from_secs(5);
 const LIFECYCLE_BOUND: Duration = Duration::from_secs(10);
 
-#[tokio::test]
-async fn incompatible_hello_returns_no_session_and_closes_the_connection() {
+#[test]
+fn incompatible_hello_returns_no_session_and_closes_the_connection() {
+    run_async_test(incompatible_hello_returns_no_session_and_closes_the_connection_async());
+}
+
+async fn incompatible_hello_returns_no_session_and_closes_the_connection_async() {
     let temporary = TempDir::new().expect("temporary root");
     let runtime = tokio::time::timeout(
         LIFECYCLE_BOUND,
@@ -72,8 +77,14 @@ async fn incompatible_hello_returns_no_session_and_closes_the_connection() {
         .expect("daemon shuts down cleanly");
 }
 
-#[tokio::test]
-async fn malformed_and_oversized_headers_close_without_waiting_for_declared_payloads() {
+#[test]
+fn malformed_and_oversized_headers_close_without_waiting_for_declared_payloads() {
+    run_async_test(
+        malformed_and_oversized_headers_close_without_waiting_for_declared_payloads_async(),
+    );
+}
+
+async fn malformed_and_oversized_headers_close_without_waiting_for_declared_payloads_async() {
     let temporary = TempDir::new().expect("temporary root");
     let runtime = tokio::time::timeout(
         LIFECYCLE_BOUND,
@@ -108,6 +119,14 @@ async fn malformed_and_oversized_headers_close_without_waiting_for_declared_payl
         .await
         .expect("daemon shutdown completes within the bound")
         .expect("daemon shuts down cleanly");
+}
+
+fn run_async_test(test: impl Future<Output = ()>) {
+    let runtime = Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("build current-thread test runtime");
+    runtime.block_on(test);
 }
 
 fn compatible_hello(identity: u8) -> ClientHello {

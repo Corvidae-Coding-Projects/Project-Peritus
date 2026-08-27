@@ -4,7 +4,7 @@
 
 mod support;
 
-use std::time::Duration;
+use std::{future::Future, time::Duration};
 
 use peritus_app_protocol::{
     AppMessage, AppProtocolLimits, AppRequestEnvelope, AppRequestPayload, AppResponsePayload,
@@ -25,13 +25,17 @@ use peritus_types::{
     ProviderProfileId, RevisionNumber, RevisionTuple, RunId, SessionId, Sha256Digest, WorkspaceId,
 };
 use tempfile::TempDir;
-use tokio::net::UnixStream;
+use tokio::{net::UnixStream, runtime::Builder};
 
 const IO_BOUND: Duration = Duration::from_secs(5);
 const LIFECYCLE_BOUND: Duration = Duration::from_secs(10);
 
-#[tokio::test]
-async fn authenticated_shutdown_retains_the_exact_request_and_finishes_cleanly() {
+#[test]
+fn authenticated_shutdown_retains_the_exact_request_and_finishes_cleanly() {
+    run_async_test(authenticated_shutdown_retains_the_exact_request_and_finishes_cleanly_async());
+}
+
+async fn authenticated_shutdown_retains_the_exact_request_and_finishes_cleanly_async() {
     let temporary = TempDir::new().expect("temporary root");
     let mut runtime = tokio::time::timeout(
         LIFECYCLE_BOUND,
@@ -82,8 +86,12 @@ async fn authenticated_shutdown_retains_the_exact_request_and_finishes_cleanly()
     assert!(complete.remaining().is_empty());
 }
 
-#[tokio::test]
-async fn restart_resumes_the_durable_session_and_replays_the_exact_command_result() {
+#[test]
+fn restart_resumes_the_durable_session_and_replays_the_exact_command_result() {
+    run_async_test(restart_resumes_the_durable_session_and_replays_the_exact_command_result_async());
+}
+
+async fn restart_resumes_the_durable_session_and_replays_the_exact_command_result_async() {
     let temporary = TempDir::new().expect("temporary root");
     let config = support::configuration(temporary.path());
     let first = tokio::time::timeout(LIFECYCLE_BOUND, DaemonRuntime::start(config.clone()))
@@ -149,6 +157,14 @@ async fn restart_resumes_the_durable_session_and_replays_the_exact_command_resul
         .expect("restarted daemon shuts down within the bound")
         .expect("restarted daemon shuts down");
     assert_eq!(second_outcome.disposition(), ShutdownCompletionDisposition::Clean);
+}
+
+fn run_async_test(test: impl Future<Output = ()>) {
+    let runtime = Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("build current-thread test runtime");
+    runtime.block_on(test);
 }
 
 fn fresh_hello(identity: u8) -> ClientHello {

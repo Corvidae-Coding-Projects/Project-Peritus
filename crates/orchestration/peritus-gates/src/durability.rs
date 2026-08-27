@@ -1,6 +1,9 @@
 //! Atomic C0 persistence and checked replay loading for one D1 aggregate.
 
 mod binding;
+mod lifecycle;
+
+pub use lifecycle::commit_gate_lifecycle_transition;
 
 use core::fmt;
 

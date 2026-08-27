@@ -7,7 +7,7 @@ use peritus_migrations::{
     MigrationRegistry, RecoveryAction,
 };
 
-use crate::{DaemonConfig, DaemonError, DaemonErrorCode, DaemonRecovery};
+use crate::{DaemonConfig, DaemonError, DaemonErrorCode, DaemonRecovery, config::DAEMON_VERSION};
 
 pub(super) fn migrate_existing(config: &DaemonConfig, database: &Path) -> Result<(), DaemonError> {
     let registry = MigrationRegistry::current();
@@ -16,7 +16,7 @@ pub(super) fn migrate_existing(config: &DaemonConfig, database: &Path) -> Result
     let migration_config = MigrationConfig::new(
         database,
         config.paths().backup_root(),
-        env!("CARGO_PKG_VERSION"),
+        DAEMON_VERSION,
         compatibility,
         64 * 1_024 * 1_024,
     )

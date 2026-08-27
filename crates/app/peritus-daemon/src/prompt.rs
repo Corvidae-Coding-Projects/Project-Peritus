@@ -5,14 +5,19 @@
 //! and signature authentication to B1 without ever holding a human signing key.
 
 mod approval;
+mod clock;
 mod error;
 mod registry;
 mod types;
 
 pub use approval::CurrentApprovalAuthority;
+pub(crate) use clock::AuthorityClock;
 pub use error::{PromptBrokerError, PromptBrokerErrorKind};
 pub use registry::PromptBroker;
 pub use types::{
-    AuthenticatedApprovalResponse, PromptAcceptance, PromptAdmission, PromptBrokerLimits,
-    PromptCancellationAcceptance, PromptTerminalStatus,
+    AuthenticatedApprovalResponse, PreparedPromptResponse, PromptAcceptance, PromptAdmission,
+    PromptBrokerLimits, PromptCancellationAcceptance, PromptSettlementToken, PromptTerminalStatus,
 };
+
+#[cfg(test)]
+mod tests;

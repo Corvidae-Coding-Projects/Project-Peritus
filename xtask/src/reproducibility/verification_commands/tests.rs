@@ -74,6 +74,12 @@ owner = "C6"
 layer = "orchestration"
 verification_class = "H"
 [[packages]]
+name = "peritus-daemon"
+path = "crates/app/peritus-daemon"
+owner = "G0"
+layer = "app"
+verification_class = "H"
+[[packages]]
 name = "peritus-debugger"
 path = "crates/analysis/peritus-debugger"
 owner = "E2"

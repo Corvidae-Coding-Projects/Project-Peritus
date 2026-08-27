@@ -297,6 +297,7 @@ const fn directive_kind_tag(value: DirectiveKind) -> u8 {
         DirectiveKind::EvaluateKernelAcceptance => 8,
         DirectiveKind::PauseChildren => 9,
         DirectiveKind::CancelChildren => 10,
+        DirectiveKind::ResumeChildren => 11,
     }
 }
 

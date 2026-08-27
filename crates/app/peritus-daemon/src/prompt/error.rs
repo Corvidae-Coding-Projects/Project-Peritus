@@ -8,10 +8,12 @@ use peritus_approval::ApprovalError;
 /// Stable category for a rejected prompt-broker operation.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PromptBrokerErrorKind {
-    /// The configured prompt count bound is invalid.
+    /// A configured prompt count or caller result bound is invalid.
     InvalidLimit,
     /// The bounded registry is full.
     CapacityExceeded,
+    /// The exact actor/session-owned correlation set exceeds the caller's result bound.
+    ListingLimitExceeded,
     /// An identical prompt registration already exists.
     DuplicateRegistration,
     /// A prompt identity was reused with different binding facts.

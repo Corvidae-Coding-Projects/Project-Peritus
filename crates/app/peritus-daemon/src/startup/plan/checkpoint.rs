@@ -101,7 +101,9 @@ impl StartupCheckpoints {
     }
 
     /// Iterates over the initialized canonical prefix.
-    pub(crate) fn iter(&self) -> impl Iterator<Item = &StartupCheckpoint> {
+    pub(crate) fn iter(
+        &self,
+    ) -> std::iter::Flatten<std::slice::Iter<'_, Option<StartupCheckpoint>>> {
         self.entries[..usize::from(self.len)].iter().flatten()
     }
 

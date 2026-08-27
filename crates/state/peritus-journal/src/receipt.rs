@@ -104,6 +104,15 @@ impl CurrentCredentialRegistry {
         self.snapshot.bytes()
     }
 
+    /// Borrows the exact canonical B1 registry payload inside the checked C0 frame.
+    ///
+    /// # Errors
+    ///
+    /// Returns an integrity failure if the retained frame no longer has the registry schema.
+    pub fn snapshot_payload(&self) -> Result<&[u8], crate::JournalError> {
+        crate::authority::credential_registry_payload(&self.snapshot)
+    }
+
     /// Returns the producing event position observed with this row.
     #[must_use]
     pub const fn producing_position(&self) -> u64 {

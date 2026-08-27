@@ -2,6 +2,8 @@
 
 mod application;
 mod artifact;
+mod orchestrator;
+mod prompt;
 
 use peritus_app_protocol::DaemonStatus;
 use peritus_journal::{

@@ -7,15 +7,23 @@ use tokio::sync::mpsc;
 use super::{
     super::message::{AuthorityMessage, Response},
     error::{journal_error, owner_stopped, require_diagnostic, require_mutation},
+    orchestrator::{deliver_child_directive, settle_claimed_directive},
+    prompt::{correlations as prompt_correlations, register as register_prompt},
+    prompt::{retire as retire_prompt, status as prompt_status},
     storage::reconcile_command,
 };
-use crate::{DaemonError, DaemonLifecycle, artifact::ArtifactAuthority, prompt::PromptBroker};
+use crate::{
+    DaemonError, DaemonLifecycle,
+    artifact::ArtifactAuthority,
+    prompt::{AuthorityClock, PromptBroker},
+};
 
 pub(super) async fn run(
     mut journal: SqliteJournal,
     mut lifecycle: DaemonLifecycle,
     mut artifacts: ArtifactAuthority,
-    _prompts: PromptBroker,
+    mut prompts: PromptBroker,
+    _authority_clock: AuthorityClock,
     mut receiver: mpsc::Receiver<AuthorityMessage>,
 ) -> Result<(), DaemonError> {
     while let Some(message) = receiver.recv().await {
@@ -54,6 +62,47 @@ pub(super) async fn run(
             }
             AuthorityMessage::AcknowledgeOutbox { id, fence, respond } => {
                 reply(respond, journal.acknowledge_outbox(id, fence).map_err(journal_error));
+            }
+            AuthorityMessage::SettleOrchestratorDirective { claim, respond } => {
+                let result = require_mutation(&lifecycle)
+                    .and_then(|()| settle_claimed_directive(&mut journal, &claim));
+                reply(respond, result);
+            }
+            AuthorityMessage::DeliverOrchestratorChild { claim, respond } => {
+                let result = require_mutation(&lifecycle)
+                    .and_then(|()| deliver_child_directive(&mut journal, &claim));
+                reply(respond, result);
+            }
+            AuthorityMessage::RegisterPrompt {
+                actor_id,
+                session_id,
+                binding,
+                maximum_answer_bytes,
+                respond,
+            } => reply(
+                respond,
+                register_prompt(
+                    &mut prompts,
+                    &lifecycle,
+                    actor_id,
+                    session_id,
+                    binding,
+                    maximum_answer_bytes,
+                ),
+            ),
+            AuthorityMessage::PromptStatus { actor_id, session_id, correlation, respond } => reply(
+                respond,
+                prompt_status(&prompts, &lifecycle, actor_id, session_id, correlation),
+            ),
+            AuthorityMessage::RetirePrompt { actor_id, session_id, correlation, respond } => reply(
+                respond,
+                retire_prompt(&mut prompts, &lifecycle, actor_id, session_id, correlation),
+            ),
+            AuthorityMessage::PromptCorrelations { actor_id, session_id, maximum, respond } => {
+                reply(
+                    respond,
+                    prompt_correlations(&prompts, &lifecycle, actor_id, session_id, maximum),
+                )
             }
             AuthorityMessage::OpenArtifact {
                 actor_id,

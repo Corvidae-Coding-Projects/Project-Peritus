@@ -67,18 +67,18 @@ impl DaemonLifecycle {
         self.readiness
     }
 
-    /// Advances exactly one or more phases without permitting reversal.
+    /// Advances to exactly the next canonical startup phase.
     ///
     /// # Errors
     ///
-    /// Returns corrupt state if a caller attempts lifecycle reversal.
+    /// Returns corrupt state if a caller repeats, skips, or reverses a startup phase.
     pub fn advance(&mut self, next: StartupPhase) -> Result<(), DaemonError> {
-        if next < self.phase {
+        if !crate::verified::startup_transition_exec(self.phase, next) {
             return Err(DaemonError::new(
                 DaemonErrorCode::CorruptState,
                 DaemonRecovery::Operator,
                 "advance daemon startup",
-                "startup phase cannot move backwards",
+                "startup phase is not the exact canonical successor",
             ));
         }
         self.phase = next;
@@ -121,5 +121,20 @@ impl DaemonLifecycle {
                     error,
                 )
             })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{DaemonLifecycle, StartupPhase};
+
+    #[test]
+    fn startup_rejects_repeated_skipped_and_reversed_phases() {
+        let mut lifecycle = DaemonLifecycle::starting();
+        assert!(lifecycle.advance(StartupPhase::Validate).is_err());
+        assert!(lifecycle.advance(StartupPhase::Migrate).is_err());
+        lifecycle.advance(StartupPhase::Lock).expect("exact successor");
+        assert!(lifecycle.advance(StartupPhase::Validate).is_err());
+        lifecycle.advance(StartupPhase::Migrate).expect("next exact successor");
     }
 }

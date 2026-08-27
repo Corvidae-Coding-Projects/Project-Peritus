@@ -1,5 +1,7 @@
 //! Serialized transfer registry co-owned with the journal and artifact catalog.
 
+mod error;
+
 use std::collections::BTreeMap;
 
 use peritus_app_protocol::{
@@ -14,7 +16,11 @@ use peritus_journal::{ApplicationArtifactState, NewApplicationArtifact, SqliteJo
 use peritus_types::{ActorId, SessionId};
 
 use super::publication;
-use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
+use crate::DaemonError;
+
+use error::{
+    corrupt, invalid, journal_error, require_owner, resource_limit, store_error, transfer_error,
+};
 
 pub(crate) struct ArtifactPoll {
     pub(crate) payload: AppEventPayload,
@@ -220,7 +226,13 @@ impl ArtifactAuthority {
         };
         require_owner(download.actor_id, download.session_id, actor_id, session_id)?;
         let metadata = download.state.metadata().clone();
-        match download.reader.read_chunk(maximum_chunk_bytes).map_err(store_error)? {
+        let preferred_chunk_bytes = usize::try_from(metadata.preferred_chunk_size())
+            .map_err(|_| invalid("artifact preferred chunk size cannot be represented"))?;
+        let chunk_bytes = preferred_chunk_bytes.min(maximum_chunk_bytes);
+        if chunk_bytes == 0 {
+            return Err(invalid("artifact download chunk limit must be positive"));
+        }
+        match download.reader.read_chunk(chunk_bytes).map_err(store_error)? {
             Some(read) => {
                 let chunk = ArtifactChunk::new(
                     transfer_id,
@@ -228,7 +240,7 @@ impl ArtifactAuthority {
                     download.state.next_ordinal(),
                     read.offset(),
                     read.bytes().to_vec(),
-                    maximum_chunk_bytes,
+                    chunk_bytes,
                 )
                 .map_err(transfer_error)?;
                 download.state.accept_chunk(&chunk).map_err(transfer_error)?;
@@ -318,88 +330,4 @@ impl ArtifactAuthority {
         require_owner(upload.actor_id, upload.session_id, actor_id, session_id)?;
         Ok(upload)
     }
-}
-
-fn require_owner(
-    owner: ActorId,
-    owner_session: SessionId,
-    actor_id: ActorId,
-    session_id: SessionId,
-) -> Result<(), DaemonError> {
-    if owner == actor_id && owner_session == session_id {
-        Ok(())
-    } else {
-        Err(DaemonError::new(
-            DaemonErrorCode::Unauthorized,
-            DaemonRecovery::CorrectRequest,
-            "access artifact transfer",
-            "artifact transfer belongs to another actor or session",
-        ))
-    }
-}
-
-fn transfer_error(error: peritus_app_protocol::ArtifactTransferError) -> DaemonError {
-    DaemonError::with_source(
-        DaemonErrorCode::InvalidInput,
-        DaemonRecovery::CorrectRequest,
-        "apply artifact transfer",
-        error.to_string(),
-        error,
-    )
-}
-
-fn store_error(error: peritus_artifact_store::ArtifactStoreError) -> DaemonError {
-    let (code, recovery) = match error.recovery_class() {
-        peritus_artifact_store::RecoveryClass::CorrectRequest => {
-            (DaemonErrorCode::InvalidInput, DaemonRecovery::CorrectRequest)
-        }
-        peritus_artifact_store::RecoveryClass::Retry => {
-            (DaemonErrorCode::Storage, DaemonRecovery::Retry)
-        }
-        peritus_artifact_store::RecoveryClass::RecoverStore => {
-            (DaemonErrorCode::RecoveryRequired, DaemonRecovery::Reconcile)
-        }
-        peritus_artifact_store::RecoveryClass::TerminalIntegrity => {
-            (DaemonErrorCode::CorruptState, DaemonRecovery::ReadOnly)
-        }
-        _ => (DaemonErrorCode::Storage, DaemonRecovery::Reconcile),
-    };
-    DaemonError::with_source(code, recovery, "access artifact store", error.to_string(), error)
-}
-
-fn journal_error(error: peritus_journal::JournalError) -> DaemonError {
-    DaemonError::with_source(
-        DaemonErrorCode::Storage,
-        DaemonRecovery::Reconcile,
-        error.operation(),
-        error.to_string(),
-        error,
-    )
-}
-
-fn invalid(detail: &'static str) -> DaemonError {
-    DaemonError::new(
-        DaemonErrorCode::InvalidInput,
-        DaemonRecovery::CorrectRequest,
-        "apply artifact transfer",
-        detail,
-    )
-}
-
-fn resource_limit(detail: &'static str) -> DaemonError {
-    DaemonError::new(
-        DaemonErrorCode::ResourceLimit,
-        DaemonRecovery::Retry,
-        "apply artifact transfer",
-        detail,
-    )
-}
-
-fn corrupt(detail: &'static str) -> DaemonError {
-    DaemonError::new(
-        DaemonErrorCode::CorruptState,
-        DaemonRecovery::ReadOnly,
-        "apply artifact transfer",
-        detail,
-    )
 }

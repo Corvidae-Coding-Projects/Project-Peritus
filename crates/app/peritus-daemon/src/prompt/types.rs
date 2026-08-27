@@ -1,6 +1,6 @@
 //! Public prompt ownership, admission, and accepted-response values.
 
-use peritus_app_protocol::{PromptAnswer, PromptCancellation};
+use peritus_app_protocol::{PromptAnswer, PromptCancellation, PromptCorrelation};
 use peritus_approval::{ApprovalRequest, AuthenticatedApprovalObservation, SignedApprovalDecision};
 use peritus_types::{ActorId, Generation, RevisionTuple, SessionId};
 
@@ -167,6 +167,68 @@ pub enum PromptAcceptance {
     Approval(AuthenticatedApprovalResponse),
     /// Unprivileged cancellation accepted for the exact prompt.
     Cancelled(PromptCancellationAcceptance),
+}
+
+/// Move-only prepared response plus the inert token needed after durable settlement.
+///
+/// Preparing a response performs every freshness, protocol, and signature check but does not
+/// change broker state. The authority owner consumes the acceptance while committing its target,
+/// then supplies the separate token to `PromptBroker::commit_settlement`.
+#[derive(Debug, Eq, PartialEq)]
+pub struct PreparedPromptResponse {
+    acceptance: PromptAcceptance,
+    settlement: PromptSettlementToken,
+}
+
+impl PreparedPromptResponse {
+    pub(super) const fn new(
+        acceptance: PromptAcceptance,
+        settlement: PromptSettlementToken,
+    ) -> Self {
+        Self { acceptance, settlement }
+    }
+
+    /// Consumes the prepared response into its target payload and post-commit broker token.
+    #[must_use]
+    pub fn into_parts(self) -> (PromptAcceptance, PromptSettlementToken) {
+        (self.acceptance, self.settlement)
+    }
+}
+
+/// Inert exact response retained while the authority owner performs durable settlement.
+///
+/// This token grants no approval or target authority. It can only terminalize the matching broker
+/// entry after its caller has established the corresponding durable result.
+#[derive(Debug, Eq, PartialEq)]
+pub struct PromptSettlementToken {
+    response: PromptSettlementResponse,
+}
+
+impl PromptSettlementToken {
+    pub(super) const fn answer(answer: PromptAnswer) -> Self {
+        Self { response: PromptSettlementResponse::Answer(answer) }
+    }
+
+    pub(super) const fn cancellation(cancellation: PromptCancellation) -> Self {
+        Self { response: PromptSettlementResponse::Cancellation(cancellation) }
+    }
+
+    pub(super) const fn correlation(&self) -> PromptCorrelation {
+        match &self.response {
+            PromptSettlementResponse::Answer(answer) => answer.correlation(),
+            PromptSettlementResponse::Cancellation(cancellation) => cancellation.correlation(),
+        }
+    }
+
+    pub(super) const fn response(&self) -> &PromptSettlementResponse {
+        &self.response
+    }
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub(super) enum PromptSettlementResponse {
+    Answer(PromptAnswer),
+    Cancellation(PromptCancellation),
 }
 
 /// Lifecycle retained by the broker until AuthorityOwner retires the entry.

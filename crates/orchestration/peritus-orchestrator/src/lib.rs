@@ -46,8 +46,9 @@ pub use directive::{
     DirectivePayloadBinding, PendingDirective, directive_payload_digest,
 };
 pub use durability::{
-    ORCHESTRATOR_STATE_NAMESPACE, commit_orchestrator_transition, load_orchestrator_replay,
-    orchestrator_aggregate_key, orchestrator_state_key,
+    ClaimedDirectiveAcknowledgement, ORCHESTRATOR_STATE_NAMESPACE,
+    commit_claimed_directive_acknowledgement, commit_orchestrator_transition,
+    load_orchestrator_replay, orchestrator_aggregate_key, orchestrator_state_key,
 };
 pub use error::{OrchestratorError, OrchestratorErrorKind, OrchestratorRecoveryAction};
 pub use event::{OrchestratorEvent, OrchestratorEventKind, OrchestratorTransition};

@@ -114,23 +114,8 @@ impl AppendRequest {
         mut self,
         acknowledgements: Vec<OutboxAcknowledgement>,
     ) -> Result<Self, JournalError> {
-        validate_outbox_acknowledgements(&acknowledgements)?;
-        if acknowledgements.len() > MAX_OUTBOX_ACKNOWLEDGEMENTS {
-            return Err(JournalError::new(
-                JournalErrorKind::InvalidInput,
-                "plan append",
-                "outbox acknowledgement bound exceeded",
-            ));
-        }
-        let mut binding = Vec::with_capacity(64 + acknowledgements.len() * 24);
-        binding.extend_from_slice(b"PERITUS-C0-OUTBOX-ACKNOWLEDGEMENTS\0");
-        binding.extend_from_slice(self.request_digest.as_bytes());
-        binding.extend_from_slice(&(acknowledgements.len() as u64).to_be_bytes());
-        for acknowledgement in &acknowledgements {
-            binding.extend_from_slice(acknowledgement.id().as_bytes());
-            binding.extend_from_slice(&acknowledgement.fence().to_be_bytes());
-        }
-        self.request_digest = peritus_codec::sha256(&binding);
+        self.request_digest =
+            bind_outbox_acknowledgements_digest(self.request_digest, &acknowledgements)?;
         self.outbox_acknowledgements = acknowledgements;
         Ok(self)
     }
@@ -228,6 +213,37 @@ impl AppendRequest {
         }
         Ok(())
     }
+}
+
+/// Binds exact claimed outbox acknowledgements into a command request digest.
+///
+/// This effect-free helper lets domain adapters resolve an indeterminate append against the same
+/// final digest that [`AppendRequest::with_outbox_acknowledgements`] will commit.
+///
+/// # Errors
+///
+/// Rejects duplicate, noncanonical, or excessive acknowledgement collections.
+pub fn bind_outbox_acknowledgements_digest(
+    request_digest: Sha256Digest,
+    acknowledgements: &[OutboxAcknowledgement],
+) -> Result<Sha256Digest, JournalError> {
+    validate_outbox_acknowledgements(acknowledgements)?;
+    if acknowledgements.len() > MAX_OUTBOX_ACKNOWLEDGEMENTS {
+        return Err(JournalError::new(
+            JournalErrorKind::InvalidInput,
+            "plan append",
+            "outbox acknowledgement bound exceeded",
+        ));
+    }
+    let mut binding = Vec::with_capacity(64 + acknowledgements.len() * 24);
+    binding.extend_from_slice(b"PERITUS-C0-OUTBOX-ACKNOWLEDGEMENTS\0");
+    binding.extend_from_slice(request_digest.as_bytes());
+    binding.extend_from_slice(&(acknowledgements.len() as u64).to_be_bytes());
+    for acknowledgement in acknowledgements {
+        binding.extend_from_slice(acknowledgement.id().as_bytes());
+        binding.extend_from_slice(&acknowledgement.fence().to_be_bytes());
+    }
+    Ok(peritus_codec::sha256(&binding))
 }
 
 pub fn bind_registry_current_digest(

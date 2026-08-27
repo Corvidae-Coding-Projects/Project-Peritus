@@ -15,6 +15,43 @@ use crate::{DaemonError, DaemonErrorCode, DaemonIdentity, DaemonRecovery};
 const ROOT_MODE: u32 = 0o700;
 const SOCKET_MODE: u32 = 0o600;
 
+pub(super) fn recover_stale(
+    state_root: &Path,
+    identity: &DaemonIdentity,
+) -> Result<(), DaemonError> {
+    let root = inspect_state_root(state_root)?;
+    let path = state_root.join(format!("{}.sock", identity.endpoint_name()));
+    match fs::symlink_metadata(&path) {
+        Ok(metadata)
+            if metadata.file_type().is_socket()
+                && metadata.uid() == root.uid()
+                && metadata.mode() & 0o777 == SOCKET_MODE =>
+        {
+            fs::remove_file(&path).map_err(|error| {
+                DaemonError::with_source(
+                    DaemonErrorCode::Transport,
+                    DaemonRecovery::Retry,
+                    "recover stale Unix endpoint",
+                    "stale owned Unix endpoint could not be removed",
+                    error,
+                )
+            })
+        }
+        Ok(_) => Err(security_error(
+            "recover stale Unix endpoint",
+            "endpoint path is not an owned mode-0600 Unix socket",
+        )),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(DaemonError::with_source(
+            DaemonErrorCode::Storage,
+            DaemonRecovery::Operator,
+            "recover stale Unix endpoint",
+            "stale Unix endpoint could not be inspected",
+            error,
+        )),
+    }
+}
+
 /// One Unix listener anchored to the exact socket object created at bind time.
 pub(super) struct PlatformEndpoint {
     listener: UnixListener,

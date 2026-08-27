@@ -21,7 +21,10 @@ mod record;
 mod sqlite;
 mod verified;
 
-pub use append_plan::{AppendPlan, AppendRequest, HeadExpectation, MAX_BATCH_EVENTS};
+pub use append_plan::{
+    AppendPlan, AppendRequest, HeadExpectation, MAX_BATCH_EVENTS,
+    bind_outbox_acknowledgements_digest,
+};
 pub use application::{
     ApplicationArtifact, ApplicationArtifactState, ApplicationCommandAdmission,
     ApplicationCommandRecord, ApplicationCommandSettlement, ApplicationCommandState,

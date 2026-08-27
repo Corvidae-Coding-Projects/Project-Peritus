@@ -3,7 +3,7 @@ use peritus_codec::{
 };
 use peritus_types::EventSequence;
 
-use crate::{GateEvent, GateEventKind, RecoveryDisposition};
+use crate::{GateEvent, GateEventKind, GateResumePhase, RecoveryDisposition};
 
 pub struct GateEventFrame(pub GateEvent);
 
@@ -95,6 +95,14 @@ fn write_kind(writer: &mut CanonicalWriter, kind: &GateEventKind) -> Result<(), 
         }
         GateEventKind::CancellationStarted => writer.write_u8(7)?,
         GateEventKind::RunFinalized => writer.write_u8(8)?,
+        GateEventKind::RunPaused { resume_phase } => {
+            writer.write_u8(9)?;
+            writer.write_u8(resume_phase_tag(*resume_phase))?;
+        }
+        GateEventKind::RunResumed { resume_phase } => {
+            writer.write_u8(10)?;
+            writer.write_u8(resume_phase_tag(*resume_phase))?;
+        }
     }
     Ok(())
 }
@@ -128,6 +136,24 @@ fn read_kind(reader: &mut CanonicalReader<'_>) -> Result<GateEventKind, CodecErr
         }),
         7 => Ok(GateEventKind::CancellationStarted),
         8 => Ok(GateEventKind::RunFinalized),
+        9 => Ok(GateEventKind::RunPaused { resume_phase: read_resume_phase(reader)? }),
+        10 => Ok(GateEventKind::RunResumed { resume_phase: read_resume_phase(reader)? }),
+        _ => Err(CodecError::at(CodecErrorKind::UnknownTag, offset)),
+    }
+}
+
+const fn resume_phase_tag(value: GateResumePhase) -> u8 {
+    match value {
+        GateResumePhase::Active => 1,
+        GateResumePhase::Cancelling => 2,
+    }
+}
+
+fn read_resume_phase(reader: &mut CanonicalReader<'_>) -> Result<GateResumePhase, CodecError> {
+    let offset = reader.offset();
+    match reader.read_u8()? {
+        1 => Ok(GateResumePhase::Active),
+        2 => Ok(GateResumePhase::Cancelling),
         _ => Err(CodecError::at(CodecErrorKind::UnknownTag, offset)),
     }
 }

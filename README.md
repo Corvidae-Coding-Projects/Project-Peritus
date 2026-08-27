@@ -83,11 +83,18 @@ The implemented foundation and runtime spine now covers:
   groups, deterministic E3-backed attribution and deny-wins multi-objective selection, exact D2
   review and B0/B1 human-authority binding, atomic durable production-pointer activation,
   append-only rollback, crash-safe replay/publication, protocol fixtures, migration, Verus
-  promotion/evaluator-isolation refinements, and independent A2 conformance.
+  promotion/evaluator-isolation refinements, and independent A2 conformance; and
+- G0: the production `peritusd` application root with strict protected state configuration,
+  singleton local IPC ownership, authenticated durable A3 sessions, one bounded C0 authority owner,
+  exact application idempotency and event subscriptions, streaming artifacts, fresh signed-approval
+  prompts, C2 terminal bridges, configured C3/C4/C5 provider and tool inventories, bounded worker
+  supervision, fenced destination-native outbox delivery, F0 pointer loading, C7 local telemetry,
+  ordered startup/recovery/shutdown, explicit read-only diagnostics, Verus lifecycle refinements,
+  and an independent 28-case A2 daemon contract with real subprocess integration coverage.
 
-These are library and verification layers. There is not yet a user-facing `peritus` CLI, daemon,
-TUI, application composition, or native packaged-host qualification. G0–G3 and H0–H4 remain
-before production release and qualification.
+The production application root is now present, but there is not yet a user-facing `peritus` CLI,
+TUI, MCP/plugin host, installer/service package, or native packaged-host qualification. G1–G3 and
+H0–H4 remain before production release and qualification.
 
 Gate A is the current merge authority: ordinary Rust checks, architecture and API policy,
 supply-chain policy, pinned toolchains, full Verus verification, and verified release builds must
@@ -149,6 +156,11 @@ non-promotion boundary. The
 [F0 production harness evolution guide](docs/f0-evolution.md) documents evidence-bound campaigns,
 change manifests, interaction-aware attribution, deterministic selection, exact human promotion
 authority, atomic production-pointer activation, recovery, and append-only rollback. The
+[G0 daemon guide](docs/g0-daemon.md) documents strict configuration, local application transport,
+single-writer authority, durable services, outbox/worker composition, startup and recovery,
+readiness, and verification. The companion [recovery](docs/g0-recovery-runbook.md) and
+[shutdown](docs/g0-shutdown-runbook.md) runbooks define operator handling for migration, journal,
+approval-registry, outbox, process, artifact, timeout, and forced-kill cases. The
 [C2 process and sandbox guide](docs/c2-process-sandbox.md) documents structured process execution,
 complete sandbox contracts, target-owned launch authorization, bounded supervision, terminal
 accounting, restart reconciliation, and holder quiescence.

@@ -27,8 +27,8 @@ mod tests;
 pub use command::{GateCommand, GateCommandKind, RecoveryDisposition};
 pub use descriptor::{GatePlan, PlannedGate};
 pub use durability::{
-    GATE_STATE_NAMESPACE, GateReplay, commit_gate_transition, gate_aggregate_key, gate_state_key,
-    load_gate_replay,
+    GATE_STATE_NAMESPACE, GateReplay, commit_gate_lifecycle_transition, commit_gate_transition,
+    gate_aggregate_key, gate_state_key, load_gate_replay,
 };
 pub use engine::{
     DispatchReceipt, GateDispatch, GateEngine, GateExecutor, GateRecovery, RecoveryReceipt,
@@ -45,8 +45,8 @@ pub use outcome::{
 pub use projection::{GateProjection, ProjectedGate, ProjectedRun};
 pub use reducer::{decide, replay, start};
 pub use state::{
-    ActiveAttempt, GateRunPhase, GateRunState, GateSlot, GateSlotPhase, GateTerminal,
-    GateTerminalKind,
+    ActiveAttempt, GateResumePhase, GateRunPhase, GateRunState, GateSlot, GateSlotPhase,
+    GateTerminal, GateTerminalKind,
 };
 pub use verified::{
     attempts_are_bounded, dependencies_are_satisfied, dependency_order_is_legal, evidence_is_fresh,

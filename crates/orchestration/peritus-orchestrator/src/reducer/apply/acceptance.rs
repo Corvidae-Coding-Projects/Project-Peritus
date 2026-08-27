@@ -176,8 +176,6 @@ pub(super) fn resume(
         return Err(illegal("resume requires pause acknowledgement from every active child"));
     }
     let phase = OrchestratorPhase::Active(active);
-    mutation::set_paused_reconciliation(state, None);
-    mutation::clear_paused_children(state);
     mutation::set_phase(state, phase);
     Ok(OrchestratorEventKind::Resumed { phase, reconciliation: reconciliation.clone() })
 }
@@ -219,6 +217,7 @@ pub(super) fn cancel(
             DirectiveKind::EvaluateAcceptance
             | DirectiveKind::FinalizeChildren
             | DirectiveKind::PauseChildren
+            | DirectiveKind::ResumeChildren
             | DirectiveKind::CancelChildren => {}
         }
     }
@@ -353,6 +352,7 @@ fn normalize_pending_ownership(state: &mut OrchestratorState) {
         DirectiveKind::EvaluateAcceptance
         | DirectiveKind::FinalizeChildren
         | DirectiveKind::PauseChildren
+        | DirectiveKind::ResumeChildren
         | DirectiveKind::CancelChildren => &[],
     };
     for child in children {

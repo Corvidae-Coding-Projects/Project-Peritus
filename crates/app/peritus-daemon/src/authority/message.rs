@@ -2,7 +2,7 @@
 
 use peritus_app_protocol::{
     ArtifactCancellation, ArtifactChunk, ArtifactCompletion, ArtifactMetadata, ArtifactOpenRequest,
-    DaemonStatus, TransferId,
+    DaemonStatus, PromptBinding, PromptCorrelation, TransferId,
 };
 use peritus_journal::{
     ApplicationArtifact, ApplicationCommandAdmission, ApplicationCommandRecord,
@@ -15,7 +15,8 @@ use peritus_types::{ActorId, ArtifactId, CommandId, SessionId, Sha256Digest, Wor
 use tokio::sync::oneshot;
 
 use crate::domain::{DomainOutcome, DomainSubmission};
-use crate::{DaemonError, StartupPhase};
+use crate::outbox::OrchestratorDirectiveClaim;
+use crate::{DaemonError, PromptTerminalStatus, StartupPhase};
 
 pub(super) enum AuthorityMessage {
     Status {
@@ -46,6 +47,39 @@ pub(super) enum AuthorityMessage {
         id: OutboxId,
         fence: u64,
         respond: Response<()>,
+    },
+    SettleOrchestratorDirective {
+        claim: OrchestratorDirectiveClaim,
+        respond: Response<()>,
+    },
+    DeliverOrchestratorChild {
+        claim: OrchestratorDirectiveClaim,
+        respond: Response<()>,
+    },
+    RegisterPrompt {
+        actor_id: ActorId,
+        session_id: SessionId,
+        binding: PromptBinding,
+        maximum_answer_bytes: usize,
+        respond: Response<()>,
+    },
+    PromptStatus {
+        actor_id: ActorId,
+        session_id: SessionId,
+        correlation: PromptCorrelation,
+        respond: Response<PromptTerminalStatus>,
+    },
+    RetirePrompt {
+        actor_id: ActorId,
+        session_id: SessionId,
+        correlation: PromptCorrelation,
+        respond: Response<PromptTerminalStatus>,
+    },
+    PromptCorrelations {
+        actor_id: ActorId,
+        session_id: SessionId,
+        maximum: usize,
+        respond: Response<Vec<PromptCorrelation>>,
     },
     OpenArtifact {
         actor_id: ActorId,

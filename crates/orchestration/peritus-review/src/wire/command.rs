@@ -15,6 +15,7 @@ impl ReviewCommandFrame {
     }
 
     #[cfg(test)]
+    /// Recovers the checked review command for canonical round-trip assertions.
     pub fn into_command(self) -> ReviewCommand {
         self.0
     }
@@ -177,6 +178,8 @@ fn write_kind(writer: &mut CanonicalWriter, kind: &ReviewCommandKind) -> Result<
             super::write_digest(writer, *failure_digest)?;
         }
         ReviewCommandKind::FinalizeRun => writer.write_u8(16)?,
+        ReviewCommandKind::PauseRun => writer.write_u8(17)?,
+        ReviewCommandKind::ResumeRun => writer.write_u8(18)?,
     }
     Ok(())
 }
@@ -244,6 +247,8 @@ fn read_kind(reader: &mut CanonicalReader<'_>) -> Result<ReviewCommandKind, Code
         14 => Ok(ReviewCommandKind::ExhaustBudget { reason_digest: super::read_digest(reader)? }),
         15 => Ok(ReviewCommandKind::FailRun { failure_digest: super::read_digest(reader)? }),
         16 => Ok(ReviewCommandKind::FinalizeRun),
+        17 => Ok(ReviewCommandKind::PauseRun),
+        18 => Ok(ReviewCommandKind::ResumeRun),
         _ => Err(CodecError::at(CodecErrorKind::UnknownTag, offset)),
     }
 }

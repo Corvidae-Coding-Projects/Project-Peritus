@@ -1,4 +1,5 @@
 use peritus_types::{ActorId, ArtifactId, SessionId, Sha256Digest, WorkspaceId};
+use rusqlite::params;
 
 use crate::{
     ApplicationArtifactState, ApplicationCommandAdmission, ApplicationCommandSettlement,
@@ -250,7 +251,7 @@ fn application_workspace_digest_is_checked_on_input_and_recovery() {
         .connection
         .execute(
             "UPDATE app_workspaces SET registration_digest = ?1 WHERE workspace_id = ?2",
-            rusqlite::params![[2_u8; 32].as_slice(), workspace_id.as_bytes().as_slice()],
+            params![[2_u8; 32].as_slice(), workspace_id.as_bytes().as_slice()],
         )
         .expect("inject durable digest corruption");
     assert_eq!(

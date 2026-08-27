@@ -18,6 +18,7 @@ use super::super::{
     migration::migrate_existing,
     projection::ensure_current,
     recovery::{reconcile_application, reconcile_processes},
+    registry::bootstrap as bootstrap_approval_registry,
     workspace::install_and_reconcile,
 };
 use super::DaemonRuntime;
@@ -43,6 +44,7 @@ impl DaemonRuntime {
         let identity = DaemonIdentity::new(store_id);
         prepare_roots(&config)?;
         let instance = InstanceGuard::acquire(config.paths().state_root(), &identity)?;
+        LocalEndpoint::recover_stale(config.paths().state_root(), &identity)?;
         let database = config.paths().database();
         let fresh_database = !database.exists();
         if !fresh_database {
@@ -93,6 +95,7 @@ impl DaemonRuntime {
         }
         let projections = ensure_current(&mut journal, &database)?;
         lifecycle.advance(StartupPhase::Projections)?;
+        bootstrap_approval_registry(&mut journal, config.approval_registry())?;
         let expected = journal
             .current_authority_epoch()
             .map_err(storage_error)?
@@ -129,6 +132,7 @@ impl DaemonRuntime {
             artifacts,
             config.limits().maximum_artifact_bytes(),
             AppProtocolLimits::PRODUCTION.max_idempotency_entries(),
+            authority_epoch.get(),
             config.limits().authority_queue(),
         )?;
         let outbox = if read_only {
@@ -136,7 +140,7 @@ impl DaemonRuntime {
         } else {
             Some(OutboxRuntime::start(
                 authority.clone(),
-                DestinationRouter::empty(64)?,
+                DestinationRouter::production_children(&authority, 64)?,
                 authority_epoch.get(),
             )?)
         };

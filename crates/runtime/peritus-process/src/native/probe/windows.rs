@@ -8,24 +8,13 @@
 use windows_sys::Win32::Foundation::{
     CloseHandle, ERROR_ACCESS_DENIED, ERROR_INVALID_PARAMETER, FILETIME, GetLastError, HANDLE,
 };
+use windows_sys::Win32::System::Threading::{GetProcessTimes, OpenProcess};
 
 use crate::{ProbeObservation, ProcessError, ProcessTreeIdentity};
 
 use super::indeterminate;
 
 const PROCESS_QUERY_LIMITED_INFORMATION: u32 = 0x1000;
-
-#[link(name = "kernel32")]
-unsafe extern "system" {
-    fn OpenProcess(desired_access: u32, inherit_handle: i32, process_id: u32) -> HANDLE;
-    fn GetProcessTimes(
-        process: HANDLE,
-        creation: *mut FILETIME,
-        exit: *mut FILETIME,
-        kernel: *mut FILETIME,
-        user: *mut FILETIME,
-    ) -> i32;
-}
 
 pub(super) fn observe(identity: ProcessTreeIdentity) -> Result<ProbeObservation, ProcessError> {
     let Some(expected_start) = exact_binding(identity) else {

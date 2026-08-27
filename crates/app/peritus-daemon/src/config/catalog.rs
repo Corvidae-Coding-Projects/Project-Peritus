@@ -6,6 +6,7 @@ use std::{
 };
 
 use serde::Deserialize;
+use serde::Deserializer;
 
 use super::decode_identifier;
 use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
@@ -15,12 +16,30 @@ const MAX_WORKSPACES: usize = 4_096;
 const MAX_TOOLS: usize = 256;
 
 /// One configured project and its exact workspace lineages.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProjectDeclaration {
     project_id: String,
-    #[serde(default)]
     workspace_ids: Vec<String>,
+}
+
+impl<'de> Deserialize<'de> for ProjectDeclaration {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Representation {
+            project_id: String,
+            workspace_ids: Option<Vec<String>>,
+        }
+
+        let representation = Representation::deserialize(deserializer)?;
+        Ok(Self {
+            project_id: representation.project_id,
+            workspace_ids: representation.workspace_ids.unwrap_or_default(),
+        })
+    }
 }
 
 impl ProjectDeclaration {
@@ -66,11 +85,25 @@ impl WorkspaceDeclaration {
 }
 
 /// Closed explicit C4 tool allowlist. An empty list exposes no tools.
-#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct ToolPolicy {
-    #[serde(default)]
     allow: Vec<String>,
+}
+
+impl<'de> Deserialize<'de> for ToolPolicy {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Representation {
+            allow: Option<Vec<String>>,
+        }
+
+        let representation = Representation::deserialize(deserializer)?;
+        Ok(Self { allow: representation.allow.unwrap_or_default() })
+    }
 }
 
 impl ToolPolicy {

@@ -1534,6 +1534,7 @@ dependencies = [
  "peritus-eval",
  "peritus-evidence",
  "peritus-evolution",
+ "peritus-gates",
  "peritus-harness",
  "peritus-journal",
  "peritus-kernel",

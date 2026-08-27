@@ -16,12 +16,15 @@ mod terminal;
 pub use terminal::{ReviewTerminal, ReviewTerminalKind};
 
 /// Closed review-run lifecycle.
+#[repr(u8)]
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum ReviewRunPhase {
     /// Assignments, submissions, and finding lifecycle commands may be admitted.
-    Active,
+    Active = 1,
     /// A truthful immutable terminal was committed.
-    Terminal,
+    Terminal = 2,
+    /// Review progress is durably suspended without changing findings, quorum, or limits.
+    Paused = 3,
 }
 
 /// Complete deterministic replayable review aggregate.

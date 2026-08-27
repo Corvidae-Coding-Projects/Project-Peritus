@@ -9,6 +9,10 @@ pub const fn set_state_digest(state: &mut ReviewRunState, digest: Sha256Digest) 
     state.state_digest = digest;
 }
 
+pub const fn set_phase(state: &mut ReviewRunState, phase: ReviewRunPhase) {
+    state.phase = phase;
+}
+
 pub fn advance_cursor(
     state: &mut ReviewRunState,
     sequence: EventSequence,

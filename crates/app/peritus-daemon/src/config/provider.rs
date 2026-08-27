@@ -15,6 +15,7 @@ use peritus_provider_core::{
 use peritus_provider_google::GoogleConfig;
 use peritus_provider_openai::OpenAiConfig;
 use serde::Deserialize;
+use serde::Deserializer;
 
 use super::decode_identifier;
 use crate::{
@@ -23,10 +24,19 @@ use crate::{
 
 const MAX_PROVIDERS: usize = 256;
 const MAX_CAPABILITIES: usize = 17;
+const PROVIDER_ROUTE_KINDS: &[&str] = &[
+    "open-ai",
+    "anthropic",
+    "google-interactions",
+    "google-generate-content",
+    "compatible-responses",
+    "compatible-chat-completions",
+    "codex-runtime",
+    "claude-runtime",
+];
 
 /// Closed provider adapter families configurable in G0.
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ProviderRouteKind {
     /// First-party OpenAI Responses HTTP route.
     OpenAi,
@@ -46,6 +56,26 @@ pub enum ProviderRouteKind {
     ClaudeRuntime,
 }
 
+impl<'de> Deserialize<'de> for ProviderRouteKind {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let name = String::deserialize(deserializer)?;
+        match name.as_str() {
+            "open-ai" => Ok(Self::OpenAi),
+            "anthropic" => Ok(Self::Anthropic),
+            "google-interactions" => Ok(Self::GoogleInteractions),
+            "google-generate-content" => Ok(Self::GoogleGenerateContent),
+            "compatible-responses" => Ok(Self::CompatibleResponses),
+            "compatible-chat-completions" => Ok(Self::CompatibleChatCompletions),
+            "codex-runtime" => Ok(Self::CodexRuntime),
+            "claude-runtime" => Ok(Self::ClaudeRuntime),
+            _ => Err(serde::de::Error::unknown_variant(&name, PROVIDER_ROUTE_KINDS)),
+        }
+    }
+}
+
 /// Immutable model identity, capabilities, and resource ceilings.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -53,7 +83,6 @@ pub struct ProviderProfileDeclaration {
     profile_id: String,
     revision: u64,
     model: String,
-    #[serde(default)]
     provider_name: Option<String>,
     capabilities: Vec<String>,
     max_input_tokens: u64,
@@ -69,13 +98,9 @@ pub struct ProviderProfileDeclaration {
 pub struct ProviderRoute {
     kind: ProviderRouteKind,
     profile: ProviderProfileDeclaration,
-    #[serde(default)]
     endpoint: Option<String>,
-    #[serde(default)]
     credential_reference: Option<String>,
-    #[serde(default)]
     credential_header: Option<String>,
-    #[serde(default)]
     executable: Option<PathBuf>,
 }
 

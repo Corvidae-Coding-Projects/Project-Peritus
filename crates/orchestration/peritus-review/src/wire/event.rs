@@ -173,6 +173,8 @@ fn write_kind(writer: &mut CanonicalWriter, kind: &ReviewEventKind) -> Result<()
             super::write_digest(writer, *failure_digest)?;
         }
         ReviewEventKind::RunFinalized => writer.write_u8(16)?,
+        ReviewEventKind::RunPaused => writer.write_u8(17)?,
+        ReviewEventKind::RunResumed => writer.write_u8(18)?,
     }
     Ok(())
 }
@@ -244,6 +246,8 @@ fn read_kind(reader: &mut CanonicalReader<'_>) -> Result<ReviewEventKind, CodecE
         14 => Ok(ReviewEventKind::BudgetExhausted { reason_digest: super::read_digest(reader)? }),
         15 => Ok(ReviewEventKind::RunFailed { failure_digest: super::read_digest(reader)? }),
         16 => Ok(ReviewEventKind::RunFinalized),
+        17 => Ok(ReviewEventKind::RunPaused),
+        18 => Ok(ReviewEventKind::RunResumed),
         _ => Err(CodecError::at(CodecErrorKind::UnknownTag, offset)),
     }
 }

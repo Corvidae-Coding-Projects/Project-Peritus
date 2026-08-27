@@ -15,7 +15,7 @@ fn negotiation_predicates_cover_success_and_failure_boundaries() {
 }
 
 #[test]
-fn delivery_and_ack_predicates_enforce_source_monotonic_progress() {
+fn delivery_and_ack_predicates_enforce_contiguous_monotonic_progress() {
     assert!(delivery_advances(0, 1));
     assert!(delivery_advances(1, 3));
     assert!(!delivery_advances(3, 3));

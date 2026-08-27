@@ -84,6 +84,7 @@ pub const fn directive_kind_tag(value: DirectiveKind) -> u8 {
         DirectiveKind::EvaluateKernelAcceptance => 8,
         DirectiveKind::PauseChildren => 9,
         DirectiveKind::CancelChildren => 10,
+        DirectiveKind::ResumeChildren => 11,
     }
 }
 pub fn read_directive_kind(reader: &mut CanonicalReader<'_>) -> Result<DirectiveKind, CodecError> {
@@ -99,6 +100,7 @@ pub fn read_directive_kind(reader: &mut CanonicalReader<'_>) -> Result<Directive
         8 => Ok(DirectiveKind::EvaluateKernelAcceptance),
         9 => Ok(DirectiveKind::PauseChildren),
         10 => Ok(DirectiveKind::CancelChildren),
+        11 => Ok(DirectiveKind::ResumeChildren),
         _ => Err(super::unknown(offset)),
     }
 }

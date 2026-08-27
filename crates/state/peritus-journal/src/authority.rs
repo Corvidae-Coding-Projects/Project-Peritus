@@ -1,5 +1,7 @@
 //! Durable authority-clock and credential-registry values.
 
+mod registry_commit;
+
 use crate::{ExactFrame, JournalError, JournalErrorKind};
 use peritus_approval::CredentialRegistrySnapshot;
 use peritus_codec::{CodecLimits, decode_frame, encode_frame, sha256};
@@ -254,6 +256,10 @@ impl CredentialRegistryInstall {
 pub fn credential_registry_payload_digest(
     snapshot: &ExactFrame,
 ) -> Result<Sha256Digest, JournalError> {
+    Ok(sha256(credential_registry_payload(snapshot)?))
+}
+
+pub(super) fn credential_registry_payload(snapshot: &ExactFrame) -> Result<&[u8], JournalError> {
     if snapshot.family() != CREDENTIAL_REGISTRY_FRAME_FAMILY
         || snapshot.schema_version() != CREDENTIAL_REGISTRY_FRAME_SCHEMA
     {
@@ -270,5 +276,5 @@ pub fn credential_registry_payload_digest(
             "credential registry snapshot frame is not canonical",
         )
     })?;
-    Ok(sha256(frame.payload()))
+    Ok(frame.payload())
 }

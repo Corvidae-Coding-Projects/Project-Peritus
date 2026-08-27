@@ -1,24 +1,24 @@
 //! One sequential bounded A3 connection task.
 
-use std::time::Duration;
+use std::{
+    future::{Future, poll_fn},
+    task::Poll,
+    time::Duration,
+};
 
 use peritus_app_protocol::{
     AppErrorCode, AppMessage, AppProtocolError, AppProtocolLimits, AppRequestEnvelope,
-    AppRequestPayload, AppResponseEnvelope, AppResponsePayload, ControlPayload, NegotiationOutcome,
-    OperationAcknowledgement, ShutdownAccepted, ShutdownRequest,
+    AppResponseEnvelope, AppResponsePayload, ControlPayload, NegotiationOutcome, ShutdownRequest,
 };
 use tokio::sync::{mpsc, watch};
 use tokio::time::MissedTickBehavior;
 
-use super::{heartbeat::ConnectionHeartbeat, negotiation::establish};
+use super::{heartbeat::ConnectionHeartbeat, negotiation::establish, request::handle_request};
 use crate::{
     AuthenticatedConnection, AuthorityHandle, DaemonError, DaemonErrorCode, DaemonRecovery,
     artifact::ArtifactClient,
-    command,
     subscription::SubscriptionRegistry,
-    terminal::{
-        TerminalBridgeError, TerminalBridgeErrorKind, TerminalBridgeEvent, TerminalRegistry,
-    },
+    terminal::{TerminalBridgeError, TerminalBridgeEvent, TerminalRegistry},
 };
 
 pub(crate) async fn run_connection(
@@ -37,8 +37,11 @@ pub(crate) async fn run_connection(
     let establishment = establish(&authority, peer, &client).await?;
     frames.write(&AppMessage::ServerHello(establishment.hello.clone())).await?;
     let Some(context) = establishment.context else {
-        debug_assert!(matches!(establishment.hello.outcome(), NegotiationOutcome::Incompatible(_)));
-        return Ok(());
+        return if matches!(establishment.hello.outcome(), NegotiationOutcome::Incompatible(_)) {
+            Ok(())
+        } else {
+            Err(invalid("compatible negotiation has no established session context"))
+        };
     };
     let mut frames = frames.into_inner().into_framed(context.limits());
     let mut subscriptions = SubscriptionRegistry::new(context.limits());
@@ -52,68 +55,97 @@ pub(crate) async fn run_connection(
     heartbeat_tick.tick().await;
 
     let result = async {
-      loop {
-        tokio::select! {
-            changed = stop.changed() => {
-                if changed.is_err() || *stop.borrow() { return Ok(()); }
-            }
-            message = frames.read() => match message? {
-                AppMessage::Request(request) => {
-                    if request.context() != context.protocol() {
-                        write_error(&mut frames, &request, AppErrorCode::SessionMismatch).await?;
+        loop {
+            let action = {
+                let mut changed = Box::pin(stop.changed());
+                let mut message = Box::pin(frames.read());
+                let mut delivery = Box::pin(delivery_tick.tick());
+                let mut heartbeat = Box::pin(heartbeat_tick.tick());
+                poll_fn(|poll_context| {
+                    if let Poll::Ready(changed) = changed.as_mut().poll(poll_context) {
+                        return Poll::Ready(ConnectionAction::Stop(changed));
+                    }
+                    if let Poll::Ready(message) = message.as_mut().poll(poll_context) {
+                        return Poll::Ready(ConnectionAction::Message(message));
+                    }
+                    if delivery.as_mut().poll(poll_context).is_ready() {
+                        return Poll::Ready(ConnectionAction::Delivery);
+                    }
+                    if heartbeat.as_mut().poll(poll_context).is_ready() {
+                        return Poll::Ready(ConnectionAction::Heartbeat);
+                    }
+                    Poll::Pending
+                })
+                .await
+            };
+            match action {
+                ConnectionAction::Stop(changed) => {
+                    if changed.is_err() || *stop.borrow() {
                         return Ok(());
                     }
-                    handle_request(
-                        &mut frames,
-                        &authority,
-                        &shutdown,
-                        &mut subscriptions,
-                        &mut artifacts,
-                        &terminals,
-                        &mut terminal_bindings,
-                        context.actor_id(),
-                        context.limits(),
-                        request,
-                    ).await?;
                 }
-                AppMessage::Control(control) => {
-                    if control.context() != context.protocol() {
-                        return Err(invalid("control frame does not match the negotiated context"));
+                ConnectionAction::Message(message) => match message? {
+                    AppMessage::Request(request) => {
+                        if request.context() != context.protocol() {
+                            write_error(&mut frames, &request, AppErrorCode::SessionMismatch)
+                                .await?;
+                            return Ok(());
+                        }
+                        handle_request(
+                            &mut frames,
+                            &authority,
+                            &shutdown,
+                            &mut subscriptions,
+                            &mut artifacts,
+                            &terminals,
+                            &mut terminal_bindings,
+                            context.actor_id(),
+                            context.limits(),
+                            request,
+                        )
+                        .await?;
                     }
-                    handle_control(&mut subscriptions, &mut heartbeat, control.payload())?;
+                    AppMessage::Control(control) => {
+                        if control.context() != context.protocol() {
+                            return Err(invalid(
+                                "control frame does not match the negotiated context",
+                            ));
+                        }
+                        handle_control(&mut subscriptions, &mut heartbeat, control.payload())?;
+                    }
+                    _ => return Err(invalid("post-negotiation frame has an illegal family")),
+                },
+                ConnectionAction::Delivery => {
+                    subscriptions
+                        .pump(&mut frames, &authority, context.protocol(), context.limits())
+                        .await?;
+                    artifacts
+                        .pump(
+                            &mut frames,
+                            &authority,
+                            context.actor_id(),
+                            context.protocol().session_id(),
+                            context.protocol(),
+                            context.limits(),
+                        )
+                        .await?;
+                    pump_terminals(
+                        &mut frames,
+                        &terminals,
+                        &terminal_bindings,
+                        context.actor_id(),
+                        context.protocol().session_id(),
+                        context.protocol(),
+                    )
+                    .await?;
                 }
-                _ => return Err(invalid("post-negotiation frame has an illegal family")),
-            },
-            _ = delivery_tick.tick() => {
-                subscriptions.pump(
-                    &mut frames,
-                    &authority,
-                    context.protocol(),
-                    context.limits(),
-                ).await?;
-                artifacts.pump(
-                    &mut frames,
-                    &authority,
-                    context.actor_id(),
-                    context.protocol().session_id(),
-                    context.protocol(),
-                    context.limits(),
-                ).await?;
-                pump_terminals(
-                    &mut frames,
-                    &terminals,
-                    &terminal_bindings,
-                    context.actor_id(),
-                    context.protocol().session_id(),
-                    context.protocol(),
-                ).await?;
-            }
-            _ = heartbeat_tick.tick() => {
-                heartbeat.send(&mut frames, authority.status().await?).await?;
+                ConnectionAction::Heartbeat => {
+                    heartbeat.send(&mut frames, authority.status().await?).await?;
+                }
             }
         }
-      }
-    }.await;
+    }
+    .await;
     let cleanup = authority
         .abandon_artifact_transfers(
             context.actor_id(),
@@ -133,191 +165,11 @@ pub(crate) async fn run_connection(
     }
 }
 
-async fn handle_request<S>(
-    frames: &mut crate::AppFrameStream<S>,
-    authority: &AuthorityHandle,
-    shutdown: &mpsc::Sender<ShutdownRequest>,
-    subscriptions: &mut SubscriptionRegistry,
-    artifacts: &mut ArtifactClient,
-    terminals: &TerminalRegistry,
-    terminal_bindings: &mut Vec<peritus_app_protocol::TerminalBinding>,
-    actor_id: peritus_types::ActorId,
-    limits: AppProtocolLimits,
-    request: AppRequestEnvelope,
-) -> Result<(), DaemonError>
-where
-    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
-{
-    let payload = match request.payload() {
-        AppRequestPayload::SubmitCommand(value) => {
-            AppResponsePayload::CommandResult(command::submit(authority, actor_id, value).await?)
-        }
-        AppRequestPayload::DaemonStatus => {
-            AppResponsePayload::DaemonStatus(authority.status().await?)
-        }
-        AppRequestPayload::Subscribe(value) => match subscriptions.open(value, limits) {
-            Ok(started) => AppResponsePayload::SubscriptionStarted(started),
-            Err(error) => {
-                AppResponsePayload::Error(AppProtocolError::new(public_error_code(&error), None))
-            }
-        },
-        AppRequestPayload::OpenArtifact(value) => {
-            match authority
-                .open_artifact(
-                    actor_id,
-                    request.context().session_id(),
-                    *value,
-                    limits.max_artifact_chunk_bytes(),
-                )
-                .await
-            {
-                Ok(metadata) => match artifacts.register_download(&metadata) {
-                    Ok(()) => AppResponsePayload::ArtifactOpened(metadata),
-                    Err(error) => {
-                        let cancellation = peritus_app_protocol::ArtifactCancellation::new(
-                            value.transfer_id(),
-                            value.artifact_id(),
-                            request.correlation_id(),
-                        );
-                        let _ = authority
-                            .cancel_artifact_transfer(
-                                actor_id,
-                                request.context().session_id(),
-                                cancellation,
-                            )
-                            .await;
-                        daemon_error_payload(&error)
-                    }
-                },
-                Err(error) => daemon_error_payload(&error),
-            }
-        }
-        AppRequestPayload::BeginArtifactUpload(metadata) => {
-            match authority
-                .begin_artifact_upload(
-                    actor_id,
-                    request.context().session_id(),
-                    metadata.clone(),
-                    limits.max_artifact_chunk_bytes(),
-                )
-                .await
-                .and_then(|()| artifacts.register_upload(metadata))
-            {
-                Ok(()) => AppResponsePayload::Acknowledged(OperationAcknowledgement::new(
-                    request.request_id(),
-                )),
-                Err(error) => daemon_error_payload(&error),
-            }
-        }
-        AppRequestPayload::UploadArtifactChunk(chunk) => {
-            match authority
-                .upload_artifact_chunk(actor_id, request.context().session_id(), chunk.clone())
-                .await
-            {
-                Ok(()) => AppResponsePayload::Acknowledged(OperationAcknowledgement::new(
-                    request.request_id(),
-                )),
-                Err(error) => daemon_error_payload(&error),
-            }
-        }
-        AppRequestPayload::CompleteArtifactUpload(completion) => {
-            let transfer_id = completion.transfer_id();
-            match authority
-                .complete_artifact_upload(actor_id, request.context().session_id(), *completion)
-                .await
-            {
-                Ok(()) => {
-                    artifacts.remove(transfer_id);
-                    AppResponsePayload::Acknowledged(OperationAcknowledgement::new(
-                        request.request_id(),
-                    ))
-                }
-                Err(error) => daemon_error_payload(&error),
-            }
-        }
-        AppRequestPayload::CancelArtifact(cancellation) => {
-            let transfer_id = cancellation.transfer_id();
-            match authority
-                .cancel_artifact_transfer(actor_id, request.context().session_id(), *cancellation)
-                .await
-            {
-                Ok(()) => {
-                    artifacts.remove(transfer_id);
-                    AppResponsePayload::Acknowledged(OperationAcknowledgement::new(
-                        request.request_id(),
-                    ))
-                }
-                Err(error) => daemon_error_payload(&error),
-            }
-        }
-        AppRequestPayload::AttachTerminal(binding) => {
-            match terminals.attach(
-                actor_id,
-                request.context().session_id(),
-                *binding,
-                limits.max_terminal_chunk_bytes(),
-            ) {
-                Ok(_) => {
-                    if !terminal_bindings.contains(binding) {
-                        terminal_bindings.push(*binding);
-                    }
-                    AppResponsePayload::TerminalAttached(*binding)
-                }
-                Err(error) => terminal_error_payload(&error),
-            }
-        }
-        AppRequestPayload::TerminalInput(input) => terminal_operation(
-            request.request_id(),
-            terminals.input(actor_id, request.context().session_id(), input),
-        ),
-        AppRequestPayload::TerminalResize(resize) => terminal_operation(
-            request.request_id(),
-            terminals.resize(actor_id, request.context().session_id(), *resize),
-        ),
-        AppRequestPayload::DetachTerminal(detach) => {
-            match terminals.detach(actor_id, request.context().session_id(), *detach) {
-                Ok(_) => {
-                    terminal_bindings.retain(|binding| binding != &detach.binding());
-                    AppResponsePayload::Acknowledged(OperationAcknowledgement::new(
-                        request.request_id(),
-                    ))
-                }
-                Err(error) => terminal_error_payload(&error),
-            }
-        }
-        AppRequestPayload::CancelTerminal(cancellation) => terminal_operation(
-            request.request_id(),
-            terminals.cancel(actor_id, request.context().session_id(), *cancellation).map(|_| ()),
-        ),
-        AppRequestPayload::Shutdown(value) => {
-            let accepted = ShutdownAccepted::new(*value);
-            AppResponsePayload::ShutdownAccepted(accepted)
-        }
-        _ => AppResponsePayload::Error(AppProtocolError::new(AppErrorCode::NotReady, None)),
-    };
-    let shutdown_request = match request.payload() {
-        AppRequestPayload::Shutdown(value) => Some(*value),
-        _ => None,
-    };
-    let response = AppResponseEnvelope::new(
-        request.context(),
-        request.request_id(),
-        request.correlation_id(),
-        payload,
-    );
-    frames.write(&AppMessage::Response(response)).await?;
-    if let Some(shutdown_request) = shutdown_request {
-        shutdown.try_send(shutdown_request).map_err(|error| {
-            DaemonError::with_source(
-                DaemonErrorCode::ResourceLimit,
-                DaemonRecovery::Retry,
-                "queue daemon shutdown request",
-                "shutdown request queue is unavailable or full",
-                error,
-            )
-        })?;
-    }
-    Ok(())
+enum ConnectionAction {
+    Stop(Result<(), watch::error::RecvError>),
+    Message(Result<AppMessage, DaemonError>),
+    Delivery,
+    Heartbeat,
 }
 
 async fn pump_terminals<S>(
@@ -353,35 +205,6 @@ where
     Ok(())
 }
 
-fn terminal_operation(
-    request_id: peritus_app_protocol::RequestId,
-    result: Result<(), TerminalBridgeError>,
-) -> AppResponsePayload {
-    match result {
-        Ok(()) => AppResponsePayload::Acknowledged(OperationAcknowledgement::new(request_id)),
-        Err(error) => terminal_error_payload(&error),
-    }
-}
-
-fn terminal_error_payload(error: &TerminalBridgeError) -> AppResponsePayload {
-    let code = match error.kind() {
-        TerminalBridgeErrorKind::Capacity => AppErrorCode::LimitExceeded,
-        TerminalBridgeErrorKind::Backpressure => AppErrorCode::Backpressure,
-        TerminalBridgeErrorKind::OwnershipMismatch => AppErrorCode::SessionMismatch,
-        TerminalBridgeErrorKind::InvalidLimit => AppErrorCode::Internal,
-        TerminalBridgeErrorKind::ProcessNotRegistered
-        | TerminalBridgeErrorKind::RegistrationConflict
-        | TerminalBridgeErrorKind::NotPty
-        | TerminalBridgeErrorKind::BirthIdentityUnavailable
-        | TerminalBridgeErrorKind::ProcessIdentityMismatch
-        | TerminalBridgeErrorKind::ReplayUnavailable
-        | TerminalBridgeErrorKind::Protocol
-        | TerminalBridgeErrorKind::Process
-        | TerminalBridgeErrorKind::ProcessNotLive => AppErrorCode::TerminalState,
-    };
-    AppResponsePayload::Error(AppProtocolError::new(code, None))
-}
-
 fn terminal_bridge_error(error: TerminalBridgeError) -> DaemonError {
     DaemonError::with_source(
         DaemonErrorCode::RecoveryRequired,
@@ -404,20 +227,6 @@ fn handle_control(
         ControlPayload::HeartbeatReply(reply) => heartbeat.observe(*reply),
         _ => Err(invalid("control frame has no active connection-owned operation")),
     }
-}
-
-fn public_error_code(error: &DaemonError) -> AppErrorCode {
-    match error.code_kind() {
-        DaemonErrorCode::InvalidInput => AppErrorCode::SubscriptionState,
-        DaemonErrorCode::ResourceLimit => AppErrorCode::Backpressure,
-        DaemonErrorCode::Unauthorized => AppErrorCode::ReadOnly,
-        DaemonErrorCode::NotReady => AppErrorCode::NotReady,
-        _ => AppErrorCode::Internal,
-    }
-}
-
-fn daemon_error_payload(error: &DaemonError) -> AppResponsePayload {
-    AppResponsePayload::Error(AppProtocolError::new(public_error_code(error), None))
 }
 
 async fn write_error<S>(

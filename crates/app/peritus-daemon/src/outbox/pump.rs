@@ -64,11 +64,12 @@ async fn run(
         }
         let (now, lease_until) = clock.lease(LEASE_SECONDS)?;
         let Some(message) = authority.claim_outbox(now, lease_until).await? else {
-            tokio::select! {
-                changed = stop.changed() => {
-                    if changed.is_err() || *stop.borrow() { return Ok(()); }
+            if let Ok(changed) =
+                tokio::time::timeout(Duration::from_millis(IDLE_MILLIS), stop.changed()).await
+            {
+                if changed.is_err() || *stop.borrow() {
+                    return Ok(());
                 }
-                () = tokio::time::sleep(Duration::from_millis(IDLE_MILLIS)) => {}
             }
             continue;
         };

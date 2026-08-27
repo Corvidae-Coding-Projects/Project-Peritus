@@ -9,11 +9,18 @@ use serde::Deserialize;
 
 use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
 
+mod approval;
 mod catalog;
+mod deserialize;
+mod paths;
 mod provider;
 
+pub use approval::ApprovalRegistryDeclaration;
 pub use catalog::{ProjectDeclaration, ToolPolicy, WorkspaceDeclaration};
+pub use paths::DaemonPaths;
 pub use provider::{ProviderProfileDeclaration, ProviderRoute, ProviderRouteKind};
+
+pub(crate) const DAEMON_VERSION: &str = "0.0.0";
 
 /// Offline-provisioned local human identity bound to the operating-system account.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
@@ -36,8 +43,7 @@ impl LocalHumanPrincipal {
 }
 
 /// Closed telemetry export policy supported by G0.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
-#[serde(tag = "mode", rename_all = "kebab-case", deny_unknown_fields)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TelemetryExport {
     /// Start no exporter task.
     Disabled,
@@ -48,126 +54,6 @@ pub enum TelemetryExport {
         /// Maximum retained spool bytes.
         quota_bytes: u64,
     },
-}
-
-/// Protected daemon filesystem roots.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct DaemonPaths {
-    state_root: PathBuf,
-    artifact_root: PathBuf,
-    evidence_root: PathBuf,
-    workspace_root: PathBuf,
-    process_root: PathBuf,
-    transaction_root: PathBuf,
-    backup_root: PathBuf,
-}
-
-impl DaemonPaths {
-    /// Creates and validates absolute, lexically normalized daemon roots.
-    ///
-    /// # Errors
-    ///
-    /// Returns invalid input for relative paths, parent traversal, or duplicate roots.
-    pub fn new(
-        state_root: PathBuf,
-        artifact_root: PathBuf,
-        evidence_root: PathBuf,
-        workspace_root: PathBuf,
-        process_root: PathBuf,
-        transaction_root: PathBuf,
-        backup_root: PathBuf,
-    ) -> Result<Self, DaemonError> {
-        let paths = Self {
-            state_root,
-            artifact_root,
-            evidence_root,
-            workspace_root,
-            process_root,
-            transaction_root,
-            backup_root,
-        };
-        paths.validate()?;
-        Ok(paths)
-    }
-
-    /// Returns the protected daemon state root.
-    #[must_use]
-    pub fn state_root(&self) -> &Path {
-        &self.state_root
-    }
-    /// Returns the immutable artifact root.
-    #[must_use]
-    pub fn artifact_root(&self) -> &Path {
-        &self.artifact_root
-    }
-    /// Returns the acceptance-evidence root.
-    #[must_use]
-    pub fn evidence_root(&self) -> &Path {
-        &self.evidence_root
-    }
-    /// Returns the registered-workspace parent.
-    #[must_use]
-    pub fn workspace_root(&self) -> &Path {
-        &self.workspace_root
-    }
-    /// Returns the native process registry root.
-    #[must_use]
-    pub fn process_root(&self) -> &Path {
-        &self.process_root
-    }
-    /// Returns the C1 mutation transaction parent.
-    #[must_use]
-    pub fn transaction_root(&self) -> &Path {
-        &self.transaction_root
-    }
-    /// Returns the migration backup root.
-    #[must_use]
-    pub fn backup_root(&self) -> &Path {
-        &self.backup_root
-    }
-    /// Returns the shared SQLite database path.
-    #[must_use]
-    pub fn database(&self) -> PathBuf {
-        self.state_root.join("peritus.sqlite3")
-    }
-
-    fn validate(&self) -> Result<(), DaemonError> {
-        let children = [
-            &self.artifact_root,
-            &self.evidence_root,
-            &self.workspace_root,
-            &self.process_root,
-            &self.transaction_root,
-            &self.backup_root,
-        ];
-        for path in std::iter::once(&self.state_root).chain(children) {
-            if !path.is_absolute()
-                || path
-                    .components()
-                    .any(|part| matches!(part, Component::CurDir | Component::ParentDir))
-            {
-                return Err(invalid(
-                    "daemon paths must be absolute and contain no parent traversal",
-                ));
-            }
-        }
-        for child in children {
-            if !child.starts_with(&self.state_root) || child == &self.state_root {
-                return Err(invalid("daemon protected component roots must be beneath state_root"));
-            }
-        }
-        for (index, left) in children.iter().enumerate() {
-            if children
-                .iter()
-                .skip(index + 1)
-                .any(|right| left.starts_with(right.as_path()) || right.starts_with(left.as_path()))
-            {
-                return Err(invalid("daemon protected component roots must not overlap"));
-            }
-        }
-        Ok(())
-    }
 }
 
 /// Bounded runtime queue and concurrency limits.
@@ -259,22 +145,17 @@ impl Default for DaemonLimits {
 }
 
 /// Complete strict version-one daemon configuration.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DaemonConfig {
     version: u16,
     store_id: String,
     paths: DaemonPaths,
-    #[serde(default)]
+    approval_registry: ApprovalRegistryDeclaration,
     limits: DaemonLimits,
     human: LocalHumanPrincipal,
-    #[serde(default)]
     projects: Vec<ProjectDeclaration>,
-    #[serde(default)]
     workspaces: Vec<WorkspaceDeclaration>,
-    #[serde(default)]
     tools: ToolPolicy,
-    #[serde(default)]
     providers: Vec<ProviderRoute>,
     telemetry: TelemetryExport,
 }
@@ -349,6 +230,11 @@ impl DaemonConfig {
     pub const fn paths(&self) -> &DaemonPaths {
         &self.paths
     }
+    /// Borrows the required public approval credential-registry declaration.
+    #[must_use]
+    pub const fn approval_registry(&self) -> &ApprovalRegistryDeclaration {
+        &self.approval_registry
+    }
     /// Returns bounded runtime limits.
     #[must_use]
     pub const fn limits(&self) -> DaemonLimits {
@@ -400,6 +286,7 @@ impl DaemonConfig {
         self.store_identity()?;
         self.human.actor_identity()?;
         self.paths.validate()?;
+        self.approval_registry.validate()?;
         self.limits.validate()?;
         catalog::validate(&self.projects, &self.workspaces, &self.tools)?;
         provider::validate(&self.providers)?;

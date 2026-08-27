@@ -8,7 +8,7 @@ use crate::error::{ReviewError, ReviewErrorKind, reject};
 use crate::state::mutation;
 use crate::{
     DispositionKind, DispositionRecord, ReviewCommandKind, ReviewCyclePhase, ReviewEventKind,
-    ReviewRunState, ReviewTerminalKind,
+    ReviewRunPhase, ReviewRunState, ReviewTerminalKind,
 };
 
 use super::illegal;
@@ -22,6 +22,17 @@ pub(super) fn apply(
     event_id: EventId,
     command: &ReviewCommandKind,
 ) -> Result<ReviewEventKind, ReviewError> {
+    if state.phase() == ReviewRunPhase::Paused
+        && !matches!(
+            command,
+            ReviewCommandKind::ResumeRun
+                | ReviewCommandKind::CancelRun
+                | ReviewCommandKind::ExhaustBudget { .. }
+                | ReviewCommandKind::FailRun { .. }
+        )
+    {
+        return Err(illegal("paused review run admits only resume or terminal control"));
+    }
     match command {
         ReviewCommandKind::StartRun { .. } => Err(illegal("review run already started")),
         ReviewCommandKind::AdvanceRevision { binding } => advance_revision(state, binding),
@@ -152,6 +163,8 @@ pub(super) fn apply(
             terminate(state, ReviewTerminalKind::Cancelled, Sha256Digest::new([0; 32]));
             Ok(ReviewEventKind::RunCancelled)
         }
+        ReviewCommandKind::PauseRun => pause(state),
+        ReviewCommandKind::ResumeRun => resume(state),
         ReviewCommandKind::ExhaustBudget { reason_digest } => {
             terminate(state, ReviewTerminalKind::NeedsHuman, *reason_digest);
             Ok(ReviewEventKind::BudgetExhausted { reason_digest: *reason_digest })
@@ -162,6 +175,22 @@ pub(super) fn apply(
         }
         ReviewCommandKind::FinalizeRun => finalize(state),
     }
+}
+
+fn pause(state: &mut ReviewRunState) -> Result<ReviewEventKind, ReviewError> {
+    if state.phase() != ReviewRunPhase::Active {
+        return Err(illegal("only an active review run can pause"));
+    }
+    mutation::set_phase(state, ReviewRunPhase::Paused);
+    Ok(ReviewEventKind::RunPaused)
+}
+
+fn resume(state: &mut ReviewRunState) -> Result<ReviewEventKind, ReviewError> {
+    if state.phase() != ReviewRunPhase::Paused {
+        return Err(illegal("only a paused review run can resume"));
+    }
+    mutation::set_phase(state, ReviewRunPhase::Active);
+    Ok(ReviewEventKind::RunResumed)
 }
 
 fn advance_revision(

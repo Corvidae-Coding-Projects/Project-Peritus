@@ -15,6 +15,100 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Implement production G0 Daemon and Application Composition (#25)
+- Add the H-class `peritus-daemon` crate and `peritusd serve --config <path>` executable as the
+  single local application root for A3, C0-C7, D0-D3, E0-E3, and F0 composition
+- Add one bounded `AuthorityOwner` task as the sole writable C0 owner, with typed request/reply
+  messages and no journal transaction, synchronous lock, writable handle, or reusable authority
+  token crossing an asynchronous effect boundary
+- Add strict version-one TOML configuration with unknown-field rejection, nonzero store and human
+  identities, bounded runtime limits, exact project/workspace inventories, explicit C4 tool
+  allowlists, immutable provider profile revisions, closed telemetry policy, and stable typed errors
+- Require absolute normalized nonoverlapping protected state, artifact, evidence, workspace,
+  process, transaction, backup, telemetry, registration, executable, and public-registry paths
+- Add exact public B1 credential-registry bootstrap from a bounded canonical snapshot file, with
+  fresh installation, byte-exact idempotent restart, next-revision/increased-generation updates,
+  and rejection of same-revision drift, skipped lineage, private-key configuration, or stale state
+- Add user-scoped singleton state-root ownership carrying store, daemon, PID, and native birth
+  identity; reject a second live daemon without replacing its endpoint and recover only a proven
+  stale owner
+- Add protected local Unix-domain-socket IPC on Linux/macOS and owner-restricted named-pipe IPC on
+  Windows, with native peer identity, stale-endpoint handling, bounded PRTS header-first framing,
+  and no TCP or remote bind surface
+- Add authenticated A3 negotiation that durably establishes or resumes sessions, binds the live
+  OS principal to one configured actor, echoes exact negotiated context on every later frame, and
+  closes incompatible, malformed, oversized, or context-drifting clients without mutation
+- Add durable application command admission keyed by actor, session, and idempotency key, retaining
+  exact request/domain digests, pending/committed/replayed/rejected/indeterminate disposition, and
+  authoritative C0 event ranges across disconnect and restart
+- Add a closed B3 command dispatcher that invokes native domain replay/reducer/commit APIs and
+  never treats decoded frames as authorization or exposes a generic arbitrary-append callback
+- Add global C0 event-tail queries and connection-owned at-least-once subscription pumps with
+  canonical topics, authoritative source cursors, filtered scan watermarks, stable event identity,
+  fresh delivery attempts, cumulative acknowledgement, redelivery, pause/resume, explicit gaps,
+  cancellation, bounded windows, and backpressure
+- Add streaming artifact download and upload composition with actor/session/transfer ownership,
+  exact ordinal and byte offsets, independent chunk limits, declared size/digest verification,
+  cancellation, disconnect abandonment, immutable C0 finalization, and durable application catalog
+- Add a bounded exact-correlation prompt broker with actor/session/revision/cancellation-generation
+  freshness, two-phase target settlement, external client-signed B1 approval authentication,
+  authority-epoch monotonic time, idempotent terminal tokens, scoped listing, and explicit retirement
+- Add a C2 terminal bridge with exact process and PTY ownership, native birth-identity validation,
+  bounded input/resize/output, combined PTY offset and sequence conservation, replay/backpressure,
+  detach without process cancellation, explicit cancellation, one exit, and restart classification
+- Add immutable startup provider and tool inventories covering first-party OpenAI, Anthropic, and
+  Google routes, explicitly profiled compatible endpoints, account-backed official Codex/Claude
+  executable routers, opaque C3 credential references, and the configured compiled C4 catalog
+- Add bounded structured worker supervision with unique assignments, owned cancellation and join
+  handles, panic normalization, terminal observations, cooperative drain, bounded forced abort, and
+  exact remaining-work snapshots
+- Add a closed typed outbox decoder for all E0, E1, E2, E3, and F0 destinations, positive claim
+  fences, authority-epoch leases, bounded retry, destination-native reconciliation, terminal-fault
+  read-only transition, and no acknowledgement before durable destination settlement
+- Add atomic E0 claimed-directive acknowledgement that commits the E0 transition and exact C0
+  `(outbox_id, fence)` settlement in one append, including stale-fence rollback, exact retry
+  resolution, and owner-confined publication-prefix reconstruction
+- Add explicit E0 child pause/resume fencing plus durable D1 and D2 pause/resume command, event, and
+  checkpoint semantics that preserve exact resumable phases, immutable bindings, findings, quorum,
+  evidence, attempts, cancellation truth, canonical wire tags, idempotency, and restart replay
+- Add a plan-independent native D1 lifecycle transition API so the daemon can admit only checked
+  pause/resume commands from the durable checkpoint without weakening ordinary plan-bound gate work
+- Add strict startup composition for roots, singleton ownership, migrations, C0 identity and
+  integrity, artifacts/evidence, projections, public approval registry, fresh authority epoch,
+  workspace and F0 pointer loading, process/effect/application recovery, telemetry, outbox, IPC,
+  and truthful read-write or read-only readiness
+- Add deterministic startup checkpoint/failpoint models covering before and after all fourteen
+  startup phases and rejecting repeated, skipped, reversed, or post-completion transitions
+- Add exact pending/indeterminate application recovery using the original domain command identity
+  and digest, plus C2 native process reconciliation that preserves live, absent, mismatched, and
+  indeterminate outcomes instead of inferring from PID existence
+- Add bounded local-file C7 telemetry export with durable checkpoints, synchronized sequence files,
+  quota handling, restart reconciliation, and exporter failure isolation; disabled mode starts no
+  exporter
+- Add graceful shutdown for authenticated A3 requests and operating-system signals, continuing
+  cleanup after individual failures while closing admission, joining connections/outbox/workers,
+  reconciling processes, checkpointing telemetry, stopping authority, and truthfully reporting
+  clean or exact bounded unclean remaining work
+- Make `peritusd` exit nonzero for startup failure or any unclean shutdown instead of presenting
+  partial cleanup as successful process completion
+- Add executable Verus refinements for mutation and diagnostic admission and the exact closed
+  startup successor relation, with ordinary Rust tests for lifecycle and bounded planning behavior
+- Extend A2 with an independent runtime-neutral 28-case daemon contract covering session, peer and
+  context authentication, command idempotency and stale state, subscriptions, artifacts, prompts,
+  terminals, read-only admission, singleton ownership, startup/outbox failures, shutdown/restart,
+  bounds, malformed frames, and non-authority behavior
+- Add 61-case conformance verification including the complete daemon catalog, deterministic
+  scenario observations, typed adapter failures, fail-closed assertions, a fresh reference subject,
+  and negative mutation-in-read-only coverage
+- Add black-box daemon integration scaffolding that owns real `peritusd` subprocesses, isolated
+  protected state roots, raw public A3 codecs, bounded process teardown, second-instance and
+  kill/restart controls, and direct filesystem/process/wire observations without daemon internals
+- Add singleton, protocol-boundary, authenticated runtime, artifact, migration, approval-registry,
+  command replay, recovery/shutdown, worker, prompt, outbox, D1, D2, and E0 integration tests using
+  bounded temporary roots and single-threaded resource-aware verification
+- Add the signed G0 architecture design, daemon operator/developer guide, recovery runbook,
+  shutdown runbook, A2 catalog documentation, and resource-aware focused/hosted verification plan
+
 - Implement complete production A3 Application Protocol Foundation (#24)
 - Deliver the H-class `peritus-app-protocol` crate as the transport-neutral contract between
   clients and the future G0 daemon, without adding sockets, named pipes, peer authentication,

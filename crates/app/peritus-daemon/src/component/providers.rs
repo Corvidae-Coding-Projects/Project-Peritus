@@ -140,8 +140,9 @@ impl ProviderRegistry {
     }
 
     /// Returns the registered keys in deterministic order.
-    pub fn keys(&self) -> impl ExactSizeIterator<Item = ProviderProfileKey> + '_ {
-        self.entries.keys().copied()
+    #[must_use]
+    pub fn keys(&self) -> Vec<ProviderProfileKey> {
+        self.entries.keys().copied().collect()
     }
 
     /// Resolves only the exact profile identity and revision requested by authoritative work.

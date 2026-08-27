@@ -145,8 +145,12 @@ impl ToolComponents {
     }
 
     /// Returns configured names in strict canonical order.
-    pub fn names(&self) -> impl ExactSizeIterator<Item = &str> {
-        self.registrations.iter().map(|registration| registration.descriptor.name().as_str())
+    #[must_use]
+    pub fn names(&self) -> Vec<&str> {
+        self.registrations
+            .iter()
+            .map(|registration| registration.descriptor.name().as_str())
+            .collect()
     }
 
     /// Borrows configured registrations in strict name/version order.

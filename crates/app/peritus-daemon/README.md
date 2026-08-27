@@ -6,3 +6,9 @@ supervises bounded effect work, and coordinates deterministic startup, recovery,
 
 The crate does not expose writable storage handles or reusable authority tokens. Embedders receive
 configuration, lifecycle status, and a bounded authority client.
+
+The [G0 daemon guide](../../../docs/g0-daemon.md) documents strict configuration, startup and
+recovery order, protected A3 IPC, durable service composition, outbox delivery, worker ownership,
+shutdown, and the resource-aware verification commands. Operational procedures live in the
+[recovery](../../../docs/g0-recovery-runbook.md) and
+[shutdown](../../../docs/g0-shutdown-runbook.md) runbooks.

@@ -1,11 +1,8 @@
 //! Durable process-tree identity observations.
 
-#![cfg_attr(
-    any(target_os = "macos", target_os = "windows"),
-    allow(
-        unsafe_code,
-        reason = "process birth-token observation is a narrow operating-system FFI boundary"
-    )
+#![allow(
+    unsafe_code,
+    reason = "process birth-token observation is a narrow operating-system FFI boundary"
 )]
 
 /// Exact root identity used to guard recovery against PID reuse.
@@ -100,19 +97,9 @@ pub(crate) fn current_start_token(pid: u32) -> Option<u64> {
 #[cfg(target_os = "windows")]
 pub(crate) fn current_start_token(pid: u32) -> Option<u64> {
     use windows_sys::Win32::Foundation::{CloseHandle, FILETIME, HANDLE};
+    use windows_sys::Win32::System::Threading::{GetProcessTimes, OpenProcess};
 
     const PROCESS_QUERY_LIMITED_INFORMATION: u32 = 0x1000;
-    #[link(name = "kernel32")]
-    unsafe extern "system" {
-        fn OpenProcess(desired_access: u32, inherit_handle: i32, process_id: u32) -> HANDLE;
-        fn GetProcessTimes(
-            process: HANDLE,
-            creation: *mut FILETIME,
-            exit: *mut FILETIME,
-            kernel: *mut FILETIME,
-            user: *mut FILETIME,
-        ) -> i32;
-    }
 
     // SAFETY: handle inheritance is disabled and `pid` is passed by value.
     let handle = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid) };

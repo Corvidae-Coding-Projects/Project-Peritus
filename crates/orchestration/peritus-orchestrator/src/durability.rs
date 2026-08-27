@@ -1,12 +1,13 @@
 //! Atomic C0 persistence, outbox installation, and checked E0 replay loading.
 
+mod acknowledgement;
 mod binding;
 
 use peritus_codec::{CodecLimits, decode_message, encode_message, sha256};
 use peritus_journal::{
     AggregateId, AggregateKey, AggregateKind, AppendRequest, ArtifactDependency, CommandResolution,
-    CommittedBatch, EventDraft, ExactFrame, HeadExpectation, OutboxDraft, OutboxId, SqliteJournal,
-    StateInstall,
+    CommittedBatch, EventDraft, ExactFrame, HeadExpectation, OutboxAcknowledgement, OutboxDraft,
+    OutboxId, SqliteJournal, StateInstall, bind_outbox_acknowledgements_digest,
 };
 use peritus_types::{EventId, RunId};
 use sha2::{Digest, Sha256};
@@ -15,6 +16,10 @@ use crate::replay::OrchestratorReplay;
 use crate::wire::{OrchestratorCommandFrame, OrchestratorEventFrame, OrchestratorStateFrame};
 use crate::{
     OrchestratorCommand, OrchestratorEventKind, OrchestratorState, OrchestratorTransition,
+};
+
+pub use acknowledgement::{
+    ClaimedDirectiveAcknowledgement, commit_claimed_directive_acknowledgement,
 };
 
 /// Journal-owned E0 checkpoint namespace.
@@ -52,6 +57,15 @@ pub fn commit_orchestrator_transition(
     command: &OrchestratorCommand,
     transition: &OrchestratorTransition,
 ) -> Result<CommittedBatch, crate::OrchestratorError> {
+    commit_transition(journal, command, transition, None)
+}
+
+fn commit_transition(
+    journal: &mut SqliteJournal,
+    command: &OrchestratorCommand,
+    transition: &OrchestratorTransition,
+    acknowledgement: Option<OutboxAcknowledgement>,
+) -> Result<CommittedBatch, crate::OrchestratorError> {
     binding::validate_binding(command, transition)?;
     let event = transition.event();
     let state = transition.state();
@@ -71,7 +85,12 @@ pub fn commit_orchestrator_transition(
     {
         return Err(integrity("E0 event or checkpoint exceeds its configured byte bound"));
     }
-    let request_digest = sha256(&command_bytes);
+    let base_request_digest = sha256(&command_bytes);
+    let request_digest = match acknowledgement {
+        Some(value) => bind_outbox_acknowledgements_digest(base_request_digest, &[value])
+            .map_err(|_| external("C0 rejected the E0 outbox acknowledgement binding"))?,
+        None => base_request_digest,
+    };
     if let Some(batch) = resolve_existing(
         journal,
         command,
@@ -127,7 +146,7 @@ pub fn commit_orchestrator_transition(
     let request = AppendRequest::new(
         journal.store_id(),
         command.command_id(),
-        request_digest,
+        base_request_digest,
         vec![expectation],
         vec![draft],
         vec![install],
@@ -136,6 +155,12 @@ pub fn commit_orchestrator_transition(
         None,
         outbox_drafts(command, state, &command_bytes)?,
     );
+    let request = match acknowledgement {
+        Some(value) => request
+            .with_outbox_acknowledgements(vec![value])
+            .map_err(|_| external("C0 rejected the E0 outbox acknowledgement"))?,
+        None => request,
+    };
     journal
         .append(request.plan().map_err(|_| external("C0 rejected the E0 append plan"))?)
         .map_err(|_| external("C0 failed the E0 append"))

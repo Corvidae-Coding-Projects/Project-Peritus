@@ -2,6 +2,8 @@
 
 use crate::{ReportText, StaticSuite, SuiteDescriptor, SuiteId};
 
+pub use crate::daemon::{daemon_scenario_suite, daemon_suite};
+
 fn empty<S>(id: &'static str, summary: &'static str) -> StaticSuite<S> {
     StaticSuite::empty(SuiteDescriptor::new(SuiteId::catalog(id), ReportText::literal(summary)))
 }

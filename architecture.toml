@@ -121,8 +121,8 @@ may_dev_depend_on = ["foundation", "state", "runtime", "tools", "model", "orches
 [[layers]]
 name = "app"
 path = "crates/app"
-may_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration", "observe", "app"]
-may_dev_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration", "observe", "app", "testing"]
+may_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration", "observe", "analysis", "app"]
+may_dev_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration", "observe", "analysis", "app", "testing"]
 
 [[layers]]
 name = "engineering"

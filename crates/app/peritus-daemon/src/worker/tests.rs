@@ -1,8 +1,11 @@
-use std::{future::pending, time::Duration};
+use std::{
+    future::{Future, pending},
+    time::Duration,
+};
 
 use peritus_scheduler::{DispatchId, WorkId, WorkerId};
 use peritus_types::Sha256Digest;
-use tokio::sync::oneshot;
+use tokio::{runtime::Builder, sync::oneshot};
 
 use super::{
     WorkerAssignment, WorkerCancelDisposition, WorkerCancellationReason, WorkerFailureKind,
@@ -13,8 +16,12 @@ use super::{
 const ASYNC_TEST_BOUND: Duration = Duration::from_secs(1);
 const SHUTDOWN_GRACE: Duration = Duration::from_millis(20);
 
-#[tokio::test(flavor = "current_thread")]
-async fn rejects_duplicate_dispatch_and_active_task_capacity() {
+#[test]
+fn rejects_duplicate_dispatch_and_active_task_capacity() {
+    run_async_test(rejects_duplicate_dispatch_and_active_task_capacity_async());
+}
+
+async fn rejects_duplicate_dispatch_and_active_task_capacity_async() {
     let mut supervisor = WorkerSupervisor::new(limits(2, 2, 2));
 
     supervisor
@@ -41,8 +48,12 @@ async fn rejects_duplicate_dispatch_and_active_task_capacity() {
     assert_eq!(snapshot.counts().pending_observations(), 0);
 }
 
-#[tokio::test(flavor = "current_thread")]
-async fn cancellation_retains_and_delivers_the_first_reason() {
+#[test]
+fn cancellation_retains_and_delivers_the_first_reason() {
+    run_async_test(cancellation_retains_and_delivers_the_first_reason_async());
+}
+
+async fn cancellation_retains_and_delivers_the_first_reason_async() {
     let mut supervisor = WorkerSupervisor::new(limits(1, 1, 1));
     let target = assignment(10);
     let (reason_sender, reason_receiver) = oneshot::channel();
@@ -87,8 +98,12 @@ async fn cancellation_retains_and_delivers_the_first_reason() {
     );
 }
 
-#[tokio::test(flavor = "current_thread")]
-async fn reap_and_result_draining_preserve_bounds_and_order() {
+#[test]
+fn reap_and_result_draining_preserve_bounds_and_order() {
+    run_async_test(reap_and_result_draining_preserve_bounds_and_order_async());
+}
+
+async fn reap_and_result_draining_preserve_bounds_and_order_async() {
     let mut supervisor = WorkerSupervisor::new(limits(2, 2, 2));
     let first = assignment(20);
     let second = assignment(21);
@@ -141,8 +156,12 @@ async fn reap_and_result_draining_preserve_bounds_and_order() {
     assert!(snapshot.remaining().is_empty());
 }
 
-#[tokio::test(flavor = "current_thread")]
-async fn panic_is_normalized_to_a_redaction_safe_failure() {
+#[test]
+fn panic_is_normalized_to_a_redaction_safe_failure() {
+    run_async_test(panic_is_normalized_to_a_redaction_safe_failure_async());
+}
+
+async fn panic_is_normalized_to_a_redaction_safe_failure_async() {
     let mut supervisor = WorkerSupervisor::new(limits(1, 1, 1));
     let target = assignment(30);
 
@@ -163,8 +182,12 @@ async fn panic_is_normalized_to_a_redaction_safe_failure() {
     );
 }
 
-#[tokio::test(flavor = "current_thread")]
-async fn shutdown_reports_cooperative_cancellation_and_forced_abort_exactly() {
+#[test]
+fn shutdown_reports_cooperative_cancellation_and_forced_abort_exactly() {
+    run_async_test(shutdown_reports_cooperative_cancellation_and_forced_abort_exactly_async());
+}
+
+async fn shutdown_reports_cooperative_cancellation_and_forced_abort_exactly_async() {
     let mut supervisor = WorkerSupervisor::new(limits(2, 2, 2));
     let cooperative = assignment(40);
     let stubborn = assignment(41);
@@ -215,8 +238,12 @@ async fn shutdown_reports_cooperative_cancellation_and_forced_abort_exactly() {
     assert_eq!(supervisor.snapshot().phase(), WorkerSupervisorPhase::Stopped);
 }
 
-#[tokio::test(flavor = "current_thread")]
-async fn empty_shutdown_is_clean_and_immediate() {
+#[test]
+fn empty_shutdown_is_clean_and_immediate() {
+    run_async_test(empty_shutdown_is_clean_and_immediate_async());
+}
+
+async fn empty_shutdown_is_clean_and_immediate_async() {
     let mut supervisor = WorkerSupervisor::new(limits(1, 1, 1));
 
     let report = tokio::time::timeout(ASYNC_TEST_BOUND, supervisor.shutdown())
@@ -228,6 +255,14 @@ async fn empty_shutdown_is_clean_and_immediate() {
     assert!(report.observations().is_empty());
     assert!(report.remaining().is_empty());
     assert_eq!(supervisor.snapshot().phase(), WorkerSupervisorPhase::Stopped);
+}
+
+fn run_async_test(test: impl Future<Output = ()>) {
+    let runtime = Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("build current-thread test runtime");
+    runtime.block_on(test);
 }
 
 fn limits(

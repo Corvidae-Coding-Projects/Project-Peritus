@@ -2013,3 +2013,144 @@ owner = "ACTOR-0001"
 evidence = [
   { kind = "refinement-test", source_file = "crates/app/peritus-app-protocol/tests/schema_assets.rs", symbol = "peritus_app_protocol::tests::schema_assets::checked_in_schema_and_fixture_assets_match_rust_metadata", command = "cargo test --package peritus-app-protocol --all-targets --all-features --locked" },
 ]
+
+[[entries]]
+id = "INV-028"
+kind = "invariant"
+statement = "G0 admits mutation only in ready-read-write state, while diagnostics are admitted only in ready-read-write, ready-read-only, or draining state; starting and unavailable states admit neither surface."
+owning_crate = "peritus-daemon"
+source_file = "crates/app/peritus-daemon/src/verified.rs"
+symbol = "peritus_daemon::verified::mutation_admitted"
+status = "in-progress"
+dependencies = ["OBL-0196"]
+live_issue = "#25"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/app/peritus-daemon/src/verified.rs", symbol = "peritus_daemon::verified::mutation_admitted", command = "cargo verus verify --package peritus-daemon --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/app/peritus-daemon/src/verified.rs", symbol = "peritus_daemon::verified::tests::executable_readiness_predicates_match_the_closed_admission_matrix", command = "cargo test --package peritus-daemon --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "INV-029"
+kind = "invariant"
+statement = "G0 startup advances through exactly one closed successor from validation to readiness; repeated, skipped, reversed, and post-readiness phase transitions are rejected."
+owning_crate = "peritus-daemon"
+source_file = "crates/app/peritus-daemon/src/verified.rs"
+symbol = "peritus_daemon::verified::startup_transition"
+status = "in-progress"
+dependencies = []
+live_issue = "#25"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/app/peritus-daemon/src/verified.rs", symbol = "peritus_daemon::verified::startup_transition", command = "cargo verus verify --package peritus-daemon --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/app/peritus-daemon/src/verified.rs", symbol = "peritus_daemon::verified::tests::executable_startup_relation_admits_only_exact_successors", command = "cargo test --package peritus-daemon --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0200"
+kind = "contract"
+statement = "G0 startup binds one protected state root, exact C0 store identity, durable authority epoch, canonical current public credential registry, recovered workspace/process/application state, production harness pointer, outbox, and authenticated local endpoint before read-write admission."
+owning_crate = "peritus-daemon"
+source_file = "crates/app/peritus-daemon/src/startup/runtime/runner.rs"
+symbol = "peritus_daemon::startup::runtime::runner::DaemonRuntime::start"
+status = "in-progress"
+dependencies = ["INV-028", "INV-029"]
+live_issue = "#25"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/app/peritus-daemon/tests/runtime.rs", symbol = "peritus_daemon::tests::runtime::runtime_accepts_authenticated_negotiation_and_status", command = "cargo test --package peritus-daemon --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/app/peritus-daemon/src/startup/registry/tests.rs", symbol = "peritus_daemon::startup::registry::tests::exact_restart_is_idempotent", command = "cargo test --package peritus-daemon --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0201"
+kind = "invariant"
+statement = "A claimed E0 directive is acknowledged only with its exact publication prefix and positive C0 fence, and the E0 acknowledgement plus C0 outbox settlement commit atomically or not at all; exact retry cannot duplicate the transition."
+owning_crate = "peritus-orchestrator"
+source_file = "crates/orchestration/peritus-orchestrator/src/durability/acknowledgement.rs"
+symbol = "peritus_orchestrator::durability::acknowledgement::commit_claimed_directive_acknowledgement"
+status = "in-progress"
+dependencies = []
+live_issue = "#25"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-orchestrator/src/integration_tests/durability.rs", symbol = "peritus_orchestrator::integration_tests::durability::claimed_directive_acknowledgement_commits_with_outbox_settlement", command = "cargo test --package peritus-orchestrator --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-orchestrator/src/integration_tests/durability.rs", symbol = "peritus_orchestrator::integration_tests::durability::stale_claim_fence_rolls_back_the_whole_e0_append", command = "cargo test --package peritus-orchestrator --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0202"
+kind = "contract"
+statement = "G0 prompt response preparation checks the exact authenticated actor, durable session, live revision, cancellation generation, protocol constraints, and current signed B1 approval authority without changing broker state; terminal state advances only after the target settles durably."
+owning_crate = "peritus-daemon"
+source_file = "crates/app/peritus-daemon/src/prompt/registry.rs"
+symbol = "peritus_daemon::prompt::registry::PromptBroker::prepare_answer"
+status = "in-progress"
+dependencies = ["OBL-0194", "OBL-0200"]
+live_issue = "#25"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/app/peritus-daemon/src/prompt/tests.rs", symbol = "peritus_daemon::prompt::tests::prepared_answer_remains_awaiting_until_durable_settlement", command = "cargo test --package peritus-daemon --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/app/peritus-daemon/src/prompt/tests.rs", symbol = "peritus_daemon::prompt::tests::cancellation_is_inert_until_its_target_settles", command = "cargo test --package peritus-daemon --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0203"
+kind = "invariant"
+statement = "E0 pause and resume retain the exact owned D1 and D2 child heads and cannot acknowledge a stale child transition or create success."
+owning_crate = "peritus-orchestrator"
+source_file = "crates/orchestration/peritus-orchestrator/src/reducer/apply/directives.rs"
+symbol = "peritus_orchestrator::reducer::apply::directives::publish"
+status = "in-progress"
+dependencies = ["OBL-0201"]
+live_issue = "#25"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-orchestrator/src/integration_tests/cancellation.rs", symbol = "peritus_orchestrator::integration_tests::cancellation::pause_acknowledges_every_live_child_and_resumes_only_exact_heads", command = "cargo test --package peritus-orchestrator --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0204"
+kind = "refinement"
+statement = "A2 owns an independent runtime-neutral 28-case G0 daemon catalog covering authenticated local sessions, command replay and stale state, subscriptions, artifacts, prompts, terminals, read-only admission, singleton/startup/outbox/shutdown/restart behavior, bounds, malformed framing, and non-authority surfaces."
+owning_crate = "peritus-conformance"
+source_file = "crates/app/testing/peritus-conformance/tests/conformance/daemon_catalog.rs"
+symbol = "peritus_conformance::tests::conformance::daemon_catalog::daemon_catalog_runs_all_twenty_eight_cases"
+status = "in-progress"
+dependencies = ["INV-028", "INV-029", "OBL-0200", "OBL-0201", "OBL-0202", "OBL-0203", "OBL-0205", "OBL-0206"]
+live_issue = "#25"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/app/testing/peritus-conformance/tests/conformance/daemon_catalog.rs", symbol = "peritus_conformance::tests::conformance::daemon_catalog::daemon_catalog_runs_all_twenty_eight_cases", command = "cargo test --package peritus-conformance --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/app/testing/peritus-conformance/tests/conformance/daemon_catalog.rs", symbol = "peritus_conformance::tests::conformance::daemon_catalog::daemon_catalog_rejects_read_only_mutation_admission", command = "cargo test --package peritus-conformance --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0205"
+kind = "invariant"
+statement = "D1 pause and resume are canonical, durable, idempotent, and restore the exact active or cancelling lifecycle without creating a successful gate result."
+owning_crate = "peritus-gates"
+source_file = "crates/orchestration/peritus-gates/src/durability/lifecycle.rs"
+symbol = "peritus_gates::durability::lifecycle::commit_gate_lifecycle_transition"
+status = "in-progress"
+dependencies = []
+live_issue = "#25"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-gates/src/tests/pause.rs", symbol = "peritus_gates::tests::pause::active_pause_is_canonical_durable_idempotent_and_restart_safe", command = "cargo test --package peritus-gates --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0206"
+kind = "invariant"
+statement = "D2 pause and resume are canonical, durable, idempotent, and preserve findings, quorum, evidence, limits, attempts, and unresolved review work."
+owning_crate = "peritus-review"
+source_file = "crates/orchestration/peritus-review/src/durability.rs"
+symbol = "peritus_review::durability::commit_review_transition"
+status = "in-progress"
+dependencies = []
+live_issue = "#25"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/orchestration/peritus-review/tests/durability_restart.rs", symbol = "peritus_review::tests::durability_restart::pause_resume_is_canonical_durable_idempotent_and_authority_neutral", command = "cargo test --package peritus-review --all-targets --all-features --locked" },
+]

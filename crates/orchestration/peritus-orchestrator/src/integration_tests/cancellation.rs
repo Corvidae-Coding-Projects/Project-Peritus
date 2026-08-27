@@ -46,11 +46,38 @@ fn pause_acknowledges_every_live_child_and_resumes_only_exact_heads() {
         );
         acknowledge(&mut scenario, id);
     }
-    scenario.apply_ok(OrchestratorCommandKind::Resume { reconciliation });
+    scenario.apply_ok(OrchestratorCommandKind::Resume { reconciliation: reconciliation.clone() });
     assert_eq!(
         scenario.state().phase(),
         OrchestratorPhase::Active(crate::ActivePhase::WriterActive)
     );
+    assert!(scenario.state().paused_reconciliation().is_some());
+    assert!(scenario.apply(OrchestratorCommandKind::Fail { cause_digest: digest(711) }).is_err());
+
+    let paused = scenario.state().paused_children().to_vec();
+    for child in paused {
+        let destination = destination(child);
+        let payload = directive_payload_digest(
+            DirectiveKind::ResumeChildren,
+            destination,
+            DirectivePayloadBinding::Reconciliation(&reconciliation),
+        )
+        .unwrap();
+        let id = publish(
+            &mut scenario,
+            destination,
+            DirectiveKind::ResumeChildren,
+            payload,
+            None,
+            None,
+            None,
+        );
+        acknowledge(&mut scenario, id);
+    }
+    assert!(scenario.state().paused_children().is_empty());
+    assert!(scenario.state().paused_reconciliation().is_none());
+    let replayed = crate::replay(&scenario.events()).unwrap();
+    assert_eq!(&replayed, scenario.state());
 
     let mut stale = scenario.clone();
     let fresh_heads = stale

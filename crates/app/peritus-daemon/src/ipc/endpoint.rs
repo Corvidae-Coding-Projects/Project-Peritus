@@ -90,6 +90,19 @@ pub struct LocalEndpoint {
 }
 
 impl LocalEndpoint {
+    /// Removes a stale platform endpoint only after the caller has acquired the instance lock.
+    ///
+    /// # Errors
+    ///
+    /// Returns a typed ownership or filesystem error when the endpoint path is not the prior
+    /// daemon's recoverable object.
+    pub(crate) fn recover_stale(
+        state_root: &Path,
+        identity: &DaemonIdentity,
+    ) -> Result<(), DaemonError> {
+        platform::recover_stale(state_root, identity)
+    }
+
     /// Binds the stable endpoint beneath the protected state root.
     ///
     /// The caller must already hold the daemon instance lock. Existing endpoint objects are not

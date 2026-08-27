@@ -14,7 +14,10 @@ use peritus_journal::{ApplicationPrincipalState, ApplicationSessionState, NewApp
 use peritus_types::{ActorId, SessionId};
 use sha2::{Digest, Sha256};
 
-use crate::{AuthorityHandle, DaemonError, DaemonErrorCode, DaemonRecovery, PeerIdentity};
+use crate::{
+    AuthorityHandle, DaemonError, DaemonErrorCode, DaemonRecovery, PeerIdentity,
+    config::DAEMON_VERSION,
+};
 
 static SESSION_NONCE: AtomicU64 = AtomicU64::new(1);
 
@@ -155,7 +158,7 @@ fn server_capabilities() -> Result<ServerCapabilities, DaemonError> {
         vec![VersionRange::new(1, 0, 0).map_err(protocol_error)?],
         features,
         AppProtocolLimits::PRODUCTION,
-        format!("peritusd/{}", env!("CARGO_PKG_VERSION")),
+        format!("peritusd/{DAEMON_VERSION}"),
     )
     .map_err(protocol_error)
 }

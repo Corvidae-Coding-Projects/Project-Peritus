@@ -3,8 +3,8 @@
 use crate::error::{GateError, GateRejection, reject};
 use crate::state::mutation;
 use crate::{
-    GateCommandKind, GateEventKind, GateOutcomeKind, GatePlan, GateRunPhase, GateRunState,
-    GateSlotPhase, RecoveryDisposition, RetryPermission,
+    GateCommandKind, GateEventKind, GateOutcomeKind, GatePlan, GateResumePhase, GateRunPhase,
+    GateRunState, GateSlotPhase, RecoveryDisposition, RetryPermission,
 };
 
 use super::{
@@ -54,6 +54,9 @@ pub fn apply(
         }
         GateCommandKind::ClassifyRecovery { gate_id, execution_id, disposition } => {
             let run_phase = state.phase();
+            if !matches!(run_phase, GateRunPhase::Active | GateRunPhase::Cancelling) {
+                return Err(illegal("recovery cannot be classified while the gate run is paused"));
+            }
             let maximum = state.maximum_attempts();
             let slot = slot_mut(state, *gate_id)?;
             if !matches!(slot.phase(), GateSlotPhase::Dispatched | GateSlotPhase::RecoveryPending)
@@ -76,6 +79,7 @@ pub fn apply(
             publish_evidence(plan, state, *gate_id, *execution_id, receipt)
         }
         GateCommandKind::BeginCancellation => cancel(state),
+        GateCommandKind::PauseRun | GateCommandKind::ResumeRun => apply_lifecycle(state, command),
         GateCommandKind::FinalizeRun => {
             finalize(state)?;
             Ok(GateEventKind::RunFinalized)
@@ -216,8 +220,12 @@ fn recovery_phase(
 }
 
 fn cancel(state: &mut GateRunState) -> Result<GateEventKind, GateError> {
-    if state.phase() == GateRunPhase::Active {
-        mutation::set_phase(state, GateRunPhase::Cancelling);
+    let begin = matches!(
+        state.phase(),
+        GateRunPhase::Active | GateRunPhase::Paused(GateResumePhase::Active)
+    );
+    mutation::set_phase(state, GateRunPhase::Cancelling);
+    if begin {
         let phases =
             state.slots().iter().map(|slot| (slot.gate_id(), slot.phase())).collect::<Vec<_>>();
         for (gate_id, phase) in phases {
@@ -233,4 +241,39 @@ fn cancel(state: &mut GateRunState) -> Result<GateEventKind, GateError> {
         }
     }
     Ok(GateEventKind::CancellationStarted)
+}
+
+pub(super) fn apply_lifecycle(
+    state: &mut GateRunState,
+    command: &GateCommandKind,
+) -> Result<GateEventKind, GateError> {
+    match command {
+        GateCommandKind::PauseRun => pause(state),
+        GateCommandKind::ResumeRun => resume(state),
+        _ => Err(illegal("plan-free gate transition admits only pause or resume")),
+    }
+}
+
+fn pause(state: &mut GateRunState) -> Result<GateEventKind, GateError> {
+    let resume_phase = match state.phase() {
+        GateRunPhase::Active => GateResumePhase::Active,
+        GateRunPhase::Cancelling => GateResumePhase::Cancelling,
+        GateRunPhase::Paused(_) | GateRunPhase::Terminal => {
+            return Err(illegal("only an unpaused nonterminal gate run can pause"));
+        }
+    };
+    mutation::set_phase(state, GateRunPhase::Paused(resume_phase));
+    Ok(GateEventKind::RunPaused { resume_phase })
+}
+
+fn resume(state: &mut GateRunState) -> Result<GateEventKind, GateError> {
+    let GateRunPhase::Paused(resume_phase) = state.phase() else {
+        return Err(illegal("only a paused gate run can resume"));
+    };
+    let phase = match resume_phase {
+        GateResumePhase::Active => GateRunPhase::Active,
+        GateResumePhase::Cancelling => GateRunPhase::Cancelling,
+    };
+    mutation::set_phase(state, phase);
+    Ok(GateEventKind::RunResumed { resume_phase })
 }

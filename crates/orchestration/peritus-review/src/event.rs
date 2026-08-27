@@ -111,6 +111,10 @@ pub enum ReviewEventKind {
     },
     /// The run was cancelled without success.
     RunCancelled,
+    /// Active review progress was durably suspended.
+    RunPaused,
+    /// The exact active review phase was restored.
+    RunResumed,
     /// Explicit budget exhaustion was retained as escalation evidence.
     BudgetExhausted {
         /// Digest of the external bounded budget-exhaustion reason.

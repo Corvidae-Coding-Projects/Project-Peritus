@@ -2,16 +2,21 @@
 
 mod support;
 
-use std::time::Duration;
+use std::{future::Future, time::Duration};
 
 use peritus_app_protocol::ShutdownCompletionDisposition;
 use peritus_daemon::{DaemonErrorCode, DaemonRecovery, DaemonRuntime};
 use tempfile::TempDir;
+use tokio::runtime::Builder;
 
 const TEST_BOUND: Duration = Duration::from_secs(10);
 
-#[tokio::test]
-async fn second_runtime_cannot_acquire_a_live_state_root() {
+#[test]
+fn second_runtime_cannot_acquire_a_live_state_root() {
+    run_async_test(second_runtime_cannot_acquire_a_live_state_root_async());
+}
+
+async fn second_runtime_cannot_acquire_a_live_state_root_async() {
     let temporary = TempDir::new().expect("temporary root");
     let config = support::configuration(temporary.path());
     let owner = tokio::time::timeout(TEST_BOUND, DaemonRuntime::start(config.clone()))
@@ -36,4 +41,12 @@ async fn second_runtime_cannot_acquire_a_live_state_root() {
     assert_eq!(outcome.disposition(), ShutdownCompletionDisposition::Clean);
     assert!(outcome.remaining().is_empty());
     assert!(outcome.failures().is_empty());
+}
+
+fn run_async_test(test: impl Future<Output = ()>) {
+    let runtime = Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("build current-thread test runtime");
+    runtime.block_on(test);
 }
