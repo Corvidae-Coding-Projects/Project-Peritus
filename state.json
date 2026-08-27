@@ -1,6 +1,6 @@
 {
   "next_display_id": 35,
-  "next_comment_id": 485,
+  "next_comment_id": 486,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1325,7 +1325,7 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:01:40.256074700Z",
-      "updated_at": "2026-08-27T22:07:58.222427961Z",
+      "updated_at": "2026-08-27T22:16:59.288132446Z",
       "labels": [
         "qualification",
         "release"
@@ -1357,6 +1357,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAnF9CWkcc/IkVC7Nwfi0rL2arA1Y9DwCySQASc2Wx6JQUJ6B6LUhPtw/r/EcAP0HwrBvFfQFIy4tQ/fVjLulHCA=="
+        },
+        "cd5bad9c-50c9-4882-a50c-6fca5110bbbb": {
+          "display_id": 485,
+          "author": "6ME5",
+          "content": "Final-tree qualification rerun complete. Full resource-limited Gate A passed after moving effectful account probes into the C-class peritus-release-qualification crate. Final Codex gpt-5.6-sol and Claude sonnet adapter probes each passed with 7 contiguous events, usage, exact canary, no tool activity, and completed terminal.",
+          "created_at": "2026-08-27T22:16:59.285166344Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA/fyP+UZ/9ze/mKZTbchUwGzXneipRsm8WOdOgcmY9F42wsy/pnINSJaor/BSl9RE7fZNan1oFvzgIpGA28kJDQ=="
         },
         "d87e89c9-bfbb-4f0b-8d95-8813ff1e8620": {
           "display_id": 473,
@@ -4984,8 +4993,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T22:07:58.222427961Z",
+    "timestamp": "2026-08-27T22:16:59.288132446Z",
     "agent_id": "6ME5",
-    "agent_seq": 654
+    "agent_seq": 655
   }
 }
