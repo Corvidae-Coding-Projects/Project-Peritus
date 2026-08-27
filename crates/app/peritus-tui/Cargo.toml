@@ -1,0 +1,35 @@
+[package]
+name = "peritus-tui"
+description = "Interactive terminal client for the Peritus daemon"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+keywords = ["agents", "terminal", "tui", "client"]
+categories = ["command-line-utilities"]
+
+[dependencies]
+base64.workspace = true
+crossterm.workspace = true
+peritus-app-protocol = { version = "=0.0.0", path = "../peritus-app-protocol" }
+peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
+peritus-protocol = { version = "=0.0.0", path = "../../foundation/peritus-protocol" }
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+ratatui.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+
+[[bin]]
+name = "peritus-tui"
+path = "src/main.rs"
+
+[package.metadata.peritus]
+owner = "G2"
+layer = "app"
+verification-class = "C"
+
+[lints]
+workspace = true

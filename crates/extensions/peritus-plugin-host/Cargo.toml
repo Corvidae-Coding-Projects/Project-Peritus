@@ -1,0 +1,33 @@
+[package]
+name = "peritus-plugin-host"
+description = "Isolated process and Wasm plugin discovery, trust, lifecycle, and quota host"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+
+[dependencies]
+peritus-plugin-sdk = { version = "=0.0.0", path = "../peritus-plugin-sdk" }
+peritus-policy = { version = "=0.0.0", path = "../../foundation/peritus-policy" }
+sha2.workspace = true
+tokio = { workspace = true, features = ["process"] }
+vstd.workspace = true
+
+[dev-dependencies]
+peritus-conformance = { version = "=0.0.0", path = "../../app/testing/peritus-conformance" }
+serde_json.workspace = true
+tempfile.workspace = true
+
+[package.metadata.peritus]
+owner = "G3"
+layer = "extensions"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true
+
+[lints]
+workspace = true

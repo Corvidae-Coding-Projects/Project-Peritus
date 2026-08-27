@@ -3,7 +3,7 @@ use crate::model::CargoMetadata;
 use std::collections::BTreeSet;
 use std::path::Path;
 
-const REVIEWED_BUILD_SCRIPT_PACKAGES: [&str; 50] = [
+const REVIEWED_BUILD_SCRIPT_PACKAGES: [&str; 55] = [
     "registry+https://github.com/rust-lang/crates.io-index#anyhow@1.0.104",
     "registry+https://github.com/rust-lang/crates.io-index#async-io@2.6.0",
     "registry+https://github.com/rust-lang/crates.io-index#aws-lc-rs@1.18.0",
@@ -15,14 +15,18 @@ const REVIEWED_BUILD_SCRIPT_PACKAGES: [&str; 50] = [
     "registry+https://github.com/rust-lang/crates.io-index#httparse@1.10.1",
     "registry+https://github.com/rust-lang/crates.io-index#icu_normalizer_data@2.3.0",
     "registry+https://github.com/rust-lang/crates.io-index#icu_properties_data@2.3.0",
+    "registry+https://github.com/rust-lang/crates.io-index#instability@0.3.13",
     "registry+https://github.com/rust-lang/crates.io-index#jni@0.22.4",
     "registry+https://github.com/rust-lang/crates.io-index#jni-macros@0.22.4",
     "registry+https://github.com/rust-lang/crates.io-index#libc@0.2.189",
+    "registry+https://github.com/rust-lang/crates.io-index#libm@0.2.16",
     "registry+https://github.com/rust-lang/crates.io-index#libsqlite3-sys@0.38.2",
     "registry+https://github.com/rust-lang/crates.io-index#memoffset@0.9.1",
     "registry+https://github.com/rust-lang/crates.io-index#nix@0.28.0",
     "registry+https://github.com/rust-lang/crates.io-index#nix@0.31.3",
     "registry+https://github.com/rust-lang/crates.io-index#num-traits@0.2.19",
+    "registry+https://github.com/rust-lang/crates.io-index#parking_lot_core@0.9.12",
+    "registry+https://github.com/rust-lang/crates.io-index#portable-atomic@1.15.0",
     "registry+https://github.com/rust-lang/crates.io-index#proc-macro2@1.0.107",
     "registry+https://github.com/rust-lang/crates.io-index#quote@1.0.47",
     "registry+https://github.com/rust-lang/crates.io-index#quinn@0.11.11",
@@ -34,6 +38,7 @@ const REVIEWED_BUILD_SCRIPT_PACKAGES: [&str; 50] = [
     "registry+https://github.com/rust-lang/crates.io-index#serde@1.0.229",
     "registry+https://github.com/rust-lang/crates.io-index#serde_core@1.0.229",
     "registry+https://github.com/rust-lang/crates.io-index#serde_json@1.0.149",
+    "registry+https://github.com/rust-lang/crates.io-index#signal-hook@0.3.18",
     "registry+https://github.com/rust-lang/crates.io-index#thiserror@1.0.69",
     "registry+https://github.com/rust-lang/crates.io-index#thiserror@2.0.20",
     "registry+https://github.com/rust-lang/crates.io-index#wasm-bindgen@0.2.127",
@@ -56,18 +61,25 @@ const REVIEWED_BUILD_SCRIPT_PACKAGES: [&str; 50] = [
     "registry+https://github.com/rust-lang/crates.io-index#zmij@1.0.23",
 ];
 
-const REVIEWED_PROC_MACRO_PACKAGES: [&str; 25] = [
+const REVIEWED_PROC_MACRO_PACKAGES: [&str; 32] = [
     "registry+https://github.com/rust-lang/crates.io-index#async-recursion@1.1.1",
     "registry+https://github.com/rust-lang/crates.io-index#async-trait@0.1.92",
     "registry+https://github.com/rust-lang/crates.io-index#curve25519-dalek-derive@0.1.1",
+    "registry+https://github.com/rust-lang/crates.io-index#darling_macro@0.24.1",
+    "registry+https://github.com/rust-lang/crates.io-index#derive_more-impl@2.1.1",
     "registry+https://github.com/rust-lang/crates.io-index#displaydoc@0.2.7",
+    "registry+https://github.com/rust-lang/crates.io-index#document-features@0.2.12",
     "registry+https://github.com/rust-lang/crates.io-index#enumflags2_derive@0.7.12",
     "registry+https://github.com/rust-lang/crates.io-index#futures-macro@0.3.34",
+    "registry+https://github.com/rust-lang/crates.io-index#indoc@2.0.7",
+    "registry+https://github.com/rust-lang/crates.io-index#instability@0.3.13",
     "registry+https://github.com/rust-lang/crates.io-index#jni-macros@0.22.4",
     "registry+https://github.com/rust-lang/crates.io-index#jni-sys-macros@0.4.1",
+    "registry+https://github.com/rust-lang/crates.io-index#palette_derive@0.7.7",
     "registry+https://github.com/rust-lang/crates.io-index#rustversion@1.0.23",
     "registry+https://github.com/rust-lang/crates.io-index#serde_derive@1.0.229",
     "registry+https://github.com/rust-lang/crates.io-index#serde_repr@0.1.21",
+    "registry+https://github.com/rust-lang/crates.io-index#strum_macros@0.28.0",
     "registry+https://github.com/rust-lang/crates.io-index#thiserror-impl@1.0.69",
     "registry+https://github.com/rust-lang/crates.io-index#thiserror-impl@2.0.20",
     "registry+https://github.com/rust-lang/crates.io-index#tokio-macros@2.7.2",

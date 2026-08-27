@@ -15,6 +15,58 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Implement production G1-G3 clients and extension integration (#26)
+- Add the `peritus` command-line client with strict argument cardinality, protected Unix-domain
+  socket and Windows named-pipe connections, negotiated A3 sessions, resumable session identifiers,
+  bounded request timeouts, heartbeat replies, and orderly local transport shutdown
+- Add stable human-readable and JSON/JSON-lines output contracts plus documented process exit
+  categories for usage, connection, negotiation, daemon rejection, local I/O, protocol, internal,
+  and interrupt outcomes
+- Add generic exact-frame B3 command submission with actor, idempotency, envelope/payload digest,
+  and optional expected-revision binding instead of reconstructing domain authority in the client
+- Add resumable event subscriptions with explicit topics, cursor, delivery window, cumulative
+  acknowledgements, duplicate suppression, retention-gap reporting, backpressure, and bounded count
+- Add streaming artifact download/upload/cancellation with safe output replacement, declared media
+  type, chunk sizing, offset/order validation, digest checking, and no partial-success reporting
+- Add prompt answer/cancel support for signed B1 decisions, text, selection, confirmation, and secret
+  references while preserving exact prompt binding and leaving authorization to the daemon
+- Add terminal attach/follow, input, resize, detach, and cancellation commands with exact attachment,
+  process, and originating-request identities, plus Bash, Zsh, Fish, and PowerShell completions
+- Add the `peritus-tui` interactive client with deterministic state reduction and typed effects for
+  runs, diffs, reviews, traces, evolution, approvals, terminals, reconnect, and orderly shutdown
+- Add bounded event projections, cursor-preserving reconnect, pause/resume, keyboard navigation,
+  prompt editing, externally signed approval submission, PTY attach/control, and explicit process
+  cancellation without treating presentation state as durable truth
+- Add streaming terminal sanitation that removes CSI, OSC, and string control sequences, preserves
+  valid UTF-8 split across reads, replaces invalid/incomplete sequences, bounds transcript state,
+  and restores terminal modes on success or failure
+- Add the H-class `peritus-plugin-sdk` with strict unknown-field-rejecting TOML manifests, canonical
+  identity/version/protocol/capability ordering, duplicate capability rejection, bounded payloads,
+  deterministic manifest/trust digests, and length-delimited request/result frames
+- Add the H-class `peritus-plugin-host` with symlink-resistant bounded discovery, exact manifest and
+  artifact hashing, explicit trust verification, duplicate-safe startup, isolated native-process
+  and Wasmtime-CLI execution, protocol negotiation, graceful stop/forced termination, and snapshots
+- Require current authority mediation for every plugin invocation and intersect manifest quotas with
+  host ceilings for concurrency, frame/output bytes, duration, lifecycle calls, violations, and
+  cancellation before any plugin effect is admitted
+- Replace A2's empty plugin placeholder with seven runtime-neutral cases for canonical manifests,
+  required trust, authority denial without effects, lifecycle, quota enforcement, cancellation, and
+  crash isolation, and execute that suite against real isolated plugin processes
+- Add the H-class `peritus-mcp` MCP 2025-06-18 newline-delimited JSON-RPC server with strict
+  initialization, initialized notification, ping, bounded pagination, tool/resource/prompt lists,
+  tool calls, resource reads, prompt rendering, cancellation notifications, and typed failures
+- Add an explicit non-authoritative MCP bridge that projects already-exposed C4 descriptors and
+  terminal results, binds one authenticated actor/session/authority generation, and cannot create
+  capabilities or invocation permits
+- Bound MCP message size, page size, active calls, duplicate request identifiers, writer buffering,
+  request ownership, cancellation responsiveness, malformed-frame cleanup, and task shutdown
+- Register all G1-G3 crates in workspace, architecture, source-layout, lockfile, strict H-class
+  Verus verify/build inventories, Just recipes, Linux/macOS/Windows CI, formal governance, and
+  reproducibility fixtures
+- Add focused parser/process, reducer/input/sanitizer, canonical manifest/framing, real plugin
+  process, conformance, and MCP lifecycle/pagination/cancellation/cleanup tests plus G1, G2, and G3
+  developer/operator guides and the updated production-development inventory
+
 - Implement production G0 Daemon and Application Composition (#25)
 - Add the H-class `peritus-daemon` crate and `peritusd serve --config <path>` executable as the
   single local application root for A3, C0-C7, D0-D3, E0-E3, and F0 composition

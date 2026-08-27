@@ -91,11 +91,25 @@ The implemented foundation and runtime spine now covers:
   supervision, fenced destination-native outbox delivery, F0 pointer loading, C7 local telemetry,
   ordered startup/recovery/shutdown, explicit read-only diagnostics, Verus lifecycle refinements,
   and an independent 28-case A2 daemon contract with 28/28 public-`peritusd` subprocess coverage,
-  including real PTY execution and effect-before-ack kill/recovery qualification.
+  including real PTY execution and effect-before-ack kill/recovery qualification; and
+- G1: the production `peritus` command-line client with strict dependency-free parsing, protected
+  Unix-socket and Windows named-pipe A3 transport, negotiation and session resume, stable human and
+  JSON output/exit categories, generic B3 command submission, resumable event streams, artifact
+  transfer, prompt settlement, terminal control, heartbeat handling, and shell completions; and
+- G2: the production `peritus-tui` client with a deterministic reducer/effect boundary, bounded
+  runs/diff/review/trace/evolution/approval/terminal projections, reconnect and cursor resume,
+  signed approval input, sanitized terminal rendering, PTY control, and reliable terminal-mode
+  restoration; and
+- G3: H-class canonical plugin contracts, strict filesystem discovery and trust binding, isolated
+  process and Wasmtime-CLI plugin hosting, authority-mediated invocation, lifecycle quotas and
+  cancellation, plus a bounded MCP 2025-06-18 JSON-RPC server for authority-filtered tools,
+  resources, and prompts, backed by a seven-case runtime-neutral A2 plugin contract.
 
-The production application root is now present, but there is not yet a user-facing `peritus` CLI,
-TUI, MCP/plugin host, installer/service package, or native packaged-host qualification. G1–G3 and
-H0–H4 remain before production release and qualification.
+The application and extension client surfaces are now implemented as production libraries and
+binaries. G3 deliberately cannot mint C4/B1 authority: the future packaged application embedding
+must supply a current daemon-owned mediator for each exact run, workspace, and target. H0-H4 remain
+before production release: installation/service packaging, platform qualification, operational
+hardening, release engineering, and final production acceptance.
 
 Gate A is the current merge authority: ordinary Rust checks, architecture and API policy,
 supply-chain policy, pinned toolchains, full Verus verification, and verified release builds must
@@ -162,6 +176,13 @@ single-writer authority, durable services, outbox/worker composition, startup an
 readiness, and verification. The companion [recovery](docs/g0-recovery-runbook.md) and
 [shutdown](docs/g0-shutdown-runbook.md) runbooks define operator handling for migration, journal,
 approval-registry, outbox, process, artifact, timeout, and forced-kill cases. The
+[G1 CLI guide](docs/g1-cli.md) documents the complete scriptable A3 surface, stable output and exit
+contract, resumable streams, and local transport boundary. The
+[G2 TUI guide](docs/g2-tui.md) documents deterministic presentation state, keyboard controls,
+reconnection, approval handling, PTY sanitation, and terminal restoration. The
+[G3 extensions guide](docs/g3-extensions.md) documents canonical plugin manifests, discovery and
+trust, isolated process/Wasm lifecycle, authority mediation, quotas, MCP lifecycle and methods,
+conformance, and the remaining daemon-embedding boundary. The
 [C2 process and sandbox guide](docs/c2-process-sandbox.md) documents structured process execution,
 complete sandbox contracts, target-owned launch authorization, bounded supervision, terminal
 accounting, restart reconciliation, and holder quiescence.
