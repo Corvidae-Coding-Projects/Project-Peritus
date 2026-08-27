@@ -24,7 +24,8 @@ pub(super) fn valid(arguments: &[String], stdin: &str) -> bool {
     required_present
         && environment_absent()
         && isolated_schema
-        && arguments.iter().filter(|value| value.as_str() == "--disable").count() >= 16
+        && arguments.iter().filter(|value| value.as_str() == "--disable").count() == 15
+        && !arguments.iter().any(|value| value == "code_mode_host")
         && stdin.starts_with("Peritus is the sole host agent")
 }
 

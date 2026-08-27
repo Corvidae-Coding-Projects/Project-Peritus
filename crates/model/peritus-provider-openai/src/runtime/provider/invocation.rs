@@ -29,7 +29,6 @@ const DISABLED_NATIVE_FEATURES: &[&str] = &[
     "tool_call_mcp_elicitation",
     "request_permissions_tool",
     "code_mode",
-    "code_mode_host",
 ];
 
 pub(super) fn require_authenticated<'a>(
