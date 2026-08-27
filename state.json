@@ -1,6 +1,6 @@
 {
   "next_display_id": 36,
-  "next_comment_id": 491,
+  "next_comment_id": 492,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -2886,12 +2886,21 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T22:24:16.640107633Z",
-      "updated_at": "2026-08-27T22:42:43.478114621Z",
+      "updated_at": "2026-08-27T22:46:37.597926910Z",
       "labels": [
         "performance",
         "qualification"
       ],
       "comments": {
+        "0f2abd17-c73c-4330-bd62-eecb514a0ce0": {
+          "display_id": 491,
+          "author": "6ME5",
+          "content": "Signed foundation commit 7abb83b5 adds the dedicated C-class peritus-performance-qualification crate with monotonic wall-clock plan pacing, shared cooperative cancellation, exact completed/cancelled receipts, and fail-closed reference-machine assessment. Verification: 5 focused tests pass, strict all-target Clippy passes, cargo fmt passes, git diff check passes, and xtask all passes for 72 packages. This is not slice completion; A3 subject integration, concurrent campaign assembly, evidence output, smoke execution, and reference-host soak remain.",
+          "created_at": "2026-08-27T22:46:37.594995038Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA6wqvC4swuR8bsD6I3TBy1JBC3WaISFc6fR/GwHW3t1lT5fI+1jnbqxIyuTBqi/45jkpsf6khpn9Nba2BibXsDw=="
+        },
         "17ac630d-2d16-4a0a-833e-0fe1c8075426": {
           "display_id": 489,
           "author": "6ME5",
@@ -5057,8 +5066,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T22:46:26.102281268Z",
+    "timestamp": "2026-08-27T22:46:37.597926910Z",
     "agent_id": "6ME5",
-    "agent_seq": 665
+    "agent_seq": 666
   }
 }
