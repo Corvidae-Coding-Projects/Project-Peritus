@@ -1,6 +1,6 @@
 {
   "next_display_id": 26,
-  "next_comment_id": 409,
+  "next_comment_id": 410,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -3587,7 +3587,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T22:59:08.003031292Z",
-      "updated_at": "2026-08-27T01:37:11.313666781Z",
+      "updated_at": "2026-08-27T01:37:16.150637219Z",
       "labels": [
         "feature"
       ],
@@ -3627,6 +3627,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAH8iFzcv1u2FQRSyMllH4I4UgG1fV/h8c6hfIx8067y0bPyonK2Mp9uk+QZ4S14S6G2GYR5/tJDk3a352Oxt+CQ=="
+        },
+        "92156574-516a-4e6a-a0e9-3c553ef2b203": {
+          "display_id": 409,
+          "author": "6ME5",
+          "content": "G0 progress: Authority owner is decomposed under 270 lines; nine D/E/F command families now use native replay/reducer/commit APIs; real C4 tool registry and provider registry are composed; C2 exposes exact process birth identity and its 38-test focused suite passes; a bounded scheduler worker supervisor with six tests is integrated; shutdown continues all cleanup after failures; terminal outbox failures now surface by transitioning to read-only. Direct family-1 B0 submission remains intentionally unsupported until its missing durable input-selection/replay authority seam is implemented rather than accepting decoder-only commands.",
+          "created_at": "2026-08-27T01:37:16.148271318Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAe/8Tddrzi5Kcqc3u1+2OKXVS4zVi4I6xXVyF9oc4BrH883QFlPhurZoKVNbwKUf79KhWgWSzH44K8XuDuyDYAw=="
         },
         "9c0a14ad-3537-41f1-af2d-bb0e25741e45": {
           "display_id": 407,
@@ -4142,8 +4151,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T01:37:11.313666781Z",
+    "timestamp": "2026-08-27T01:37:16.150637219Z",
     "agent_id": "6ME5",
-    "agent_seq": 550
+    "agent_seq": 551
   }
 }
