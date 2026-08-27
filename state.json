@@ -1,6 +1,6 @@
 {
   "next_display_id": 26,
-  "next_comment_id": 423,
+  "next_comment_id": 424,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -3587,7 +3587,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T22:59:08.003031292Z",
-      "updated_at": "2026-08-27T03:46:12.775376548Z",
+      "updated_at": "2026-08-27T04:04:46.252419871Z",
       "labels": [
         "feature"
       ],
@@ -3699,6 +3699,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAe/8Tddrzi5Kcqc3u1+2OKXVS4zVi4I6xXVyF9oc4BrH883QFlPhurZoKVNbwKUf79KhWgWSzH44K8XuDuyDYAw=="
+        },
+        "9aec9aa7-9e8d-4046-a6b4-ed9a3aa39529": {
+          "display_id": 423,
+          "author": "6ME5",
+          "content": "Signed G0 checkpoint: durable Gates/Review outbox settlement, prompt authority foundations, 28-case runtime-neutral daemon contract with 21 real peritusd subprocess cases, stale endpoint recovery, formal-boundary cleanup, maintainable module splits, docs, and governance inventory. Focused daemon, journal, process, orchestrator/review/gates suites pass; source-layout and ordinary-api checks pass. Remaining: complete live prompt/terminal/worker/destination wiring, strict Clippy, proof-impact review, full Gate A, hosted PR matrix, then merge.",
+          "created_at": "2026-08-27T04:04:46.249803507Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAR8NZv5kpu1wuhVPXjGWL6+A7K15OI9dDCt9w7jhALsKiFcUtepgav1hplBDFM1WItN630joMkM2J2H05D5VGAw=="
         },
         "9c0a14ad-3537-41f1-af2d-bb0e25741e45": {
           "display_id": 407,
@@ -4268,8 +4277,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T03:46:12.775376548Z",
+    "timestamp": "2026-08-27T04:04:46.252419871Z",
     "agent_id": "6ME5",
-    "agent_seq": 566
+    "agent_seq": 567
   }
 }
