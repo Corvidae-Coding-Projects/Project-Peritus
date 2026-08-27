@@ -1,5 +1,5 @@
 {
-  "next_display_id": 28,
+  "next_display_id": 29,
   "next_comment_id": 448,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -13,6 +13,7 @@
     "3bef48a1-7556-4245-8dc8-a4326deff3ea": 16,
     "3cc3f0d8-ec40-44e7-9c99-9b245adaea3e": 22,
     "4f2ebc95-0b8b-4acb-b8c0-eba2775c3f7b": 10,
+    "5451d33a-0a54-49ff-98d0-eec32c2b67a5": 28,
     "5542a0ec-9091-4c82-b341-df0b119bc0b1": 3,
     "566b1c8e-fb61-4b2e-bc9b-8a781b362f04": 19,
     "5e103ed6-e70e-4298-aee2-4edda920cacc": 26,
@@ -1666,6 +1667,18 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjMjtkXkA14Mbtz8ZbbE7KP69eY0v1uEDd0ZZr4pyYKhyEEwomWybjXwIfoRgpIIudHgHPRd2khh4VtgD+9vQBg=="
         }
       }
+    },
+    "5451d33a-0a54-49ff-98d0-eec32c2b67a5": {
+      "uuid": "5451d33a-0a54-49ff-98d0-eec32c2b67a5",
+      "display_id": 28,
+      "title": "H1 resilience qualification",
+      "description": "Own failpoint, chaos, corruption, disk-full, provider/tool/worker death, restart, reboot, reconciliation, and recovery qualification code and fixtures. Do not edit shared manifests or run tests; primary agent integrates and verifies.",
+      "status": "open",
+      "priority": "high",
+      "parent_uuid": "98cfa726-8e8c-417c-8fa5-3bd3eec94363",
+      "created_by": "6ME5",
+      "created_at": "2026-08-27T12:01:15.473620806Z",
+      "updated_at": "2026-08-27T12:01:15.473620806Z"
     },
     "5542a0ec-9091-4c82-b341-df0b119bc0b1": {
       "uuid": "5542a0ec-9091-4c82-b341-df0b119bc0b1",
@@ -4516,8 +4529,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T12:00:52.785235374Z",
+    "timestamp": "2026-08-27T12:01:15.473620806Z",
     "agent_id": "6ME5",
-    "agent_seq": 598
+    "agent_seq": 599
   }
 }
