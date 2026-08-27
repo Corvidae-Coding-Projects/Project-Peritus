@@ -1,6 +1,6 @@
 {
   "next_display_id": 31,
-  "next_comment_id": 458,
+  "next_comment_id": 459,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -3398,7 +3398,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-27T12:00:52.785235374Z",
-      "updated_at": "2026-08-27T13:29:03.903710311Z",
+      "updated_at": "2026-08-27T13:58:18.965493110Z",
       "comments": {
         "2b02b212-9931-4f63-b73c-eb681bf9862f": {
           "display_id": 454,
@@ -3444,6 +3444,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAtiTF8wwp93n8qF1+Dr50vYCU71AlsOK4ozGV99h8bTuqOxQvgnDy2ZkcJipPhjyEabyDBs9W0Dwee3K+vWqqDQ=="
+        },
+        "83ff9276-7dbe-463e-bb53-106c78a3bd56": {
+          "display_id": 458,
+          "author": "6ME5",
+          "content": "The expanded Gate A Verus lane reached its strict final build with only the old 30-minute bound remaining. Signed commit 32f73090 aligns that lane with the already measured 40-minute foundation Verus bound; canonical workflow policy, its exact timeout test, actionlint, focused tests, and xtask all pass. No gate command or acceptance condition was weakened.",
+          "created_at": "2026-08-27T13:58:18.962816309Z",
+          "kind": "resolution",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAmvJGvUIXWwOUVl/G4zpV16JbKjz5sjpqfdmQ8Q7BfVdyVRurVB6yQ/dvR3fl+hRyuXR3Uya0v160MUB5hjJNAw=="
         },
         "c83139fb-ba77-4680-9fa4-26be9e7c6b00": {
           "display_id": 449,
@@ -4658,8 +4667,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T13:29:03.903710311Z",
+    "timestamp": "2026-08-27T13:58:18.965493110Z",
     "agent_id": "6ME5",
-    "agent_seq": 610
+    "agent_seq": 611
   }
 }
