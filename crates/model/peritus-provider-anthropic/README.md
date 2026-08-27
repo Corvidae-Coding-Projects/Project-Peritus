@@ -65,6 +65,20 @@ provider-core planner with test-only explicit rejected rate/transient fixtures: 
 delay drive two real process turns. This proves planner/process composition without claiming that
 production Claude errors can be classified from undocumented or untrusted result text.
 
+### Live account qualification
+
+After `claude auth status` confirms an authenticated official CLI, run the retained credentialed
+probe from the repository root:
+
+```text
+CARGO_BUILD_JOBS=1 cargo run --locked --package peritus-release-qualification --example claude-live-account --all-features
+```
+
+An optional final argument overrides the default `sonnet` model. The probe goes through
+`ClaudeRuntimeProvider`, not a direct CLI shortcut. It requires contiguous normalized events,
+usage, an exact fixed canary, no tool activity, and a completed terminal. The command consumes
+account usage and is intentionally not executed by credential-free Gate A.
+
 ## Fixtures and qualification
 
 `fixtures/v1/MANIFEST` records the official contract sources and corpus purpose. `SHA256SUMS`

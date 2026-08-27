@@ -2589,12 +2589,17 @@ dependencies = [
 name = "peritus-release-qualification"
 version = "0.0.0"
 dependencies = [
+ "peritus-model-protocol",
+ "peritus-provider-anthropic",
+ "peritus-provider-core",
+ "peritus-provider-openai",
  "peritus-release-artifacts",
  "peritus-release-policy",
  "peritus-types",
  "serde",
  "serde_json",
  "thiserror 2.0.20",
+ "tokio",
 ]
 
 [[package]]
