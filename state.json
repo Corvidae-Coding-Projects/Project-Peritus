@@ -1,5 +1,5 @@
 {
-  "next_display_id": 36,
+  "next_display_id": 37,
   "next_comment_id": 495,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
@@ -21,6 +21,7 @@
     "5451d33a-0a54-49ff-98d0-eec32c2b67a5": 28,
     "5542a0ec-9091-4c82-b341-df0b119bc0b1": 3,
     "566b1c8e-fb61-4b2e-bc9b-8a781b362f04": 19,
+    "59346441-f15a-4950-a0f1-f10b1b9b1f7d": 36,
     "5e103ed6-e70e-4298-aee2-4edda920cacc": 26,
     "79bb0f68-384c-454b-9302-eb88b692c28f": 18,
     "8d3b149c-50c3-4887-9973-8bea59b5f6a2": 15,
@@ -2536,6 +2537,17 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAOneFJvCGaOCVY5WbqwlxT4qdfZ1V7fsTqoCfmO4DmWG7CitTmsQH1iXZ4S4Ef+PQ5ClQm2Hnn4GAaN0zonr7Dw=="
         }
       }
+    },
+    "59346441-f15a-4950-a0f1-f10b1b9b1f7d": {
+      "uuid": "59346441-f15a-4950-a0f1-f10b1b9b1f7d",
+      "display_id": 36,
+      "title": "G4 single-command product experience",
+      "description": "Goal: \n\nAcceptance criteria:\n- \n\nDeliver the production end-user experience for Peritus. Running  with no arguments in an interactive terminal must own first-run and repeat-run startup end to end: platform-local application layout, local identity and public approval registry, resumable configuration, workspace discovery/selection/trust and canonical registration, provider discovery and selectable login for Codex/Claude subscription routes plus keychain-backed direct OpenAI/Anthropic/Google/compatible routes, provider validation, daemon start/reconnect/shutdown, and the interactive prompt/run/review/fix experience. No environment exports, hand-authored TOML, registry binaries, endpoint discovery, or separate daemon commands for ordinary use. Preserve deterministic noninteractive CLI subcommands. Require accessible keyboard navigation, visible focus/status, cancellation, actionable errors, interrupted-setup recovery, packaging integration, native-platform E2E, and documentation. Staging is allowed; this issue is not complete until the cohesive product path is production-ready.",
+      "status": "open",
+      "priority": "critical",
+      "created_by": "6ME5",
+      "created_at": "2026-08-27T23:30:59.824402277Z",
+      "updated_at": "2026-08-27T23:30:59.824402277Z"
     },
     "5e103ed6-e70e-4298-aee2-4edda920cacc": {
       "uuid": "5e103ed6-e70e-4298-aee2-4edda920cacc",
@@ -5089,8 +5101,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T23:04:44.034807232Z",
+    "timestamp": "2026-08-27T23:30:59.824402277Z",
     "agent_id": "6ME5",
-    "agent_seq": 669
+    "agent_seq": 670
   }
 }
