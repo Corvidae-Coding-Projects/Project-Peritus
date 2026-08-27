@@ -1,6 +1,6 @@
 {
   "next_display_id": 27,
-  "next_comment_id": 445,
+  "next_comment_id": 446,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -2223,7 +2223,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-27T07:52:47.509432100Z",
-      "updated_at": "2026-08-27T10:49:38.344750926Z",
+      "updated_at": "2026-08-27T11:23:03.660447353Z",
       "comments": {
         "41ac853c-0a7d-4387-a1b2-b442d82e6835": {
           "display_id": 444,
@@ -2287,6 +2287,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABArVRKkt3niVXk2yqUcWZBepcrsyk73Lj8WUevXpf6VsgD3uRjo7lsOs8u39qmhaIuKpjdg38oxrdiTpNDEsXAAQ=="
+        },
+        "f5c494e8-d71d-44fb-b76e-203a00f41ae5": {
+          "display_id": 445,
+          "author": "6ME5",
+          "content": "Hosted Foundation Locked Verus workspace job 98491976008 was cancelled at its exact 30-minute timeout, while the equivalent Gate A Verus job passed in 29m48s. Raised the duplicate foundation job's reviewed timeout to 40 minutes and updated its exact policy/test pin. Local evidence: actionlint, fmt, diff check, reproducibility-check, 253 xtask unit + 3 CLI tests, and strict xtask Clippy all pass.",
+          "created_at": "2026-08-27T11:23:03.657489802Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAVB4UGEABlp7DdNo6/gfJDFuWIyU8Rt7+rkABjr79THp2qjxbjY5Q6bMHO+xNFmJI+eNJjhsvF1Q7xYYXU5e2Bg=="
         },
         "fab421e9-63ba-4f7d-b4b3-dae160d00867": {
           "display_id": 439,
@@ -4481,8 +4490,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T10:49:38.344750926Z",
+    "timestamp": "2026-08-27T11:23:03.660447353Z",
     "agent_id": "6ME5",
-    "agent_seq": 592
+    "agent_seq": 593
   }
 }
