@@ -1,0 +1,24 @@
+[package]
+name = "peritus-performance-qualification"
+description = "Executable integrated load and soak qualification for Peritus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["performance", "qualification", "load-testing", "soak-testing"]
+categories = ["development-tools::testing"]
+
+[dependencies]
+peritus-benchmarks = { version = "=0.0.0", path = "../peritus-benchmarks" }
+thiserror.workspace = true
+
+[package.metadata.peritus]
+owner = "H3"
+layer = "testing"
+verification-class = "C"
+
+[lints]
+workspace = true
