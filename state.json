@@ -1,5 +1,5 @@
 {
-  "next_display_id": 27,
+  "next_display_id": 28,
   "next_comment_id": 448,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -20,6 +20,7 @@
     "8d3b149c-50c3-4887-9973-8bea59b5f6a2": 15,
     "941c4cb4-2cc2-46e7-b156-262ce7712d9f": 4,
     "951695ae-cc15-4045-8069-eb7bba119e5c": 5,
+    "98cfa726-8e8c-417c-8fa5-3bd3eec94363": 27,
     "9de8dfc7-1d53-4ac4-a7a1-98aaf6dd354d": 21,
     "ab24c7bc-0720-480b-b39f-23f603a8b11f": 11,
     "b46fadc4-8cd4-48dc-8f36-bd78e9ee2e8c": 13,
@@ -3311,6 +3312,17 @@
         }
       }
     },
+    "98cfa726-8e8c-417c-8fa5-3bd3eec94363": {
+      "uuid": "98cfa726-8e8c-417c-8fa5-3bd3eec94363",
+      "display_id": 27,
+      "title": "H1-H3 production qualification wave",
+      "description": "Parallel qualification implementation after G1-G3: H1 resilience and chaos suites, H2 cross-platform packaging and qualification assets, and H3 benchmarks/load/soak machinery. Workers write production-quality code in disjoint paths only. Primary agent owns shared manifests, architecture, integration, tests, runners, signed commits, PR, and merge.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "6ME5",
+      "created_at": "2026-08-27T12:00:52.785235374Z",
+      "updated_at": "2026-08-27T12:00:52.785235374Z"
+    },
     "9de8dfc7-1d53-4ac4-a7a1-98aaf6dd354d": {
       "uuid": "9de8dfc7-1d53-4ac4-a7a1-98aaf6dd354d",
       "display_id": 21,
@@ -4504,8 +4516,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T11:56:16.855236483Z",
+    "timestamp": "2026-08-27T12:00:52.785235374Z",
     "agent_id": "6ME5",
-    "agent_seq": 597
+    "agent_seq": 598
   }
 }
