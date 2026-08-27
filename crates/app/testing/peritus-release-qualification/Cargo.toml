@@ -1,0 +1,30 @@
+[package]
+name = "peritus-release-qualification"
+description = "Fail-closed H4 fresh-subject release evidence collection, audit, and policy adapter"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["release", "qualification", "audit", "evidence"]
+categories = ["development-tools::testing"]
+
+[dependencies]
+peritus-release-artifacts = { version = "=0.0.0", path = "../peritus-release-artifacts" }
+peritus-release-policy = { version = "=0.0.0", path = "../../../foundation/peritus-release-policy" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+peritus-types = { version = "=0.0.0", path = "../../../foundation/peritus-types" }
+
+[package.metadata.peritus]
+owner = "H4"
+layer = "testing"
+verification-class = "C"
+
+[lints]
+workspace = true

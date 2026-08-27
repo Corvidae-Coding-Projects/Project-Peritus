@@ -1,0 +1,49 @@
+schema = "peritus.tcb-inventory.v1"
+owner = "H0"
+status = "requires-exact-candidate-reconciliation"
+
+[[component]]
+id = "rust-toolchain"
+kind = "compiler"
+identity_source = "workspace rust-toolchain and locked release evidence"
+review = "pinned version, provenance, reproducible release build"
+
+[[component]]
+id = "verus-vstd-z3"
+kind = "verification-toolchain"
+identity_source = "workspace Verus and vstd revision plus Z3 evidence"
+review = "pin match, no-cheating scan, trusted construct inventory, verified release"
+
+[[component]]
+id = "native-sandbox-backends"
+kind = "platform-enforcement"
+identity_source = "Linux, macOS, and Windows release artifact digests"
+review = "common capability suite plus independent escape-focused review"
+
+[[component]]
+id = "process-and-path-backends"
+kind = "native-effect-boundary"
+identity_source = "release artifact manifest and exact source digest"
+review = "handle-resolved containment, process-tree ownership, cancellation, cleanup"
+
+[[component]]
+id = "secret-backend"
+kind = "credential-boundary"
+identity_source = "release artifact manifest and provider configuration digest"
+review = "least exposure, zeroization boundary, exfiltration probes, evidence redaction"
+
+[[component]]
+id = "release-signing-and-provenance"
+kind = "supply-chain-boundary"
+identity_source = "signer identity, SBOM, provenance, locked graph, and artifact checksums"
+review = "independent verification against reproducible release outputs"
+
+[[component]]
+id = "external-security-review"
+kind = "independent-human-boundary"
+identity_source = "reviewer actor, organization, context, report, and finding register digests"
+review = "independence, scope completion, remediation and independent retest"
+
+[qualification]
+probe = "h0.inventory.tcb"
+ready_condition = "exact candidate components equal reviewed inventory and every exclusion has compensating evidence"

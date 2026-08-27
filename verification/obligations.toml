@@ -2154,3 +2154,67 @@ owner = "ACTOR-0001"
 evidence = [
   { kind = "refinement-test", source_file = "crates/orchestration/peritus-review/tests/durability_restart.rs", symbol = "peritus_review::tests::durability_restart::pause_resume_is_canonical_durable_idempotent_and_authority_neutral", command = "cargo test --package peritus-review --all-targets --all-features --locked" },
 ]
+
+[[entries]]
+id = "INV-030"
+kind = "invariant"
+statement = "H0 security readiness implies exact integrated-candidate binding, complete R-SEC-001 through R-SEC-007 and acceptance-criterion coverage, reconciled control and trust inventories, independent review, complete evidence, and no unresolved blocker."
+owning_crate = "peritus-security-policy"
+source_file = "crates/foundation/peritus-security-policy/src/proofs.rs"
+symbol = "peritus_security_policy::proofs::readiness_implies_all_security_obligations"
+status = "in-progress"
+dependencies = ["INV-007", "INV-008", "OBL-0182"]
+live_issue = "#32"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-security-policy/src/proofs.rs", symbol = "peritus_security_policy::proofs::readiness_implies_all_security_obligations", command = "cargo verus verify --package peritus-security-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/foundation/peritus-security-policy/tests/policy.rs", symbol = "peritus_security_policy::tests::policy::complete_exact_candidate_is_security_ready_without_release_authority", command = "cargo test --package peritus-security-policy --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0207"
+kind = "refinement"
+statement = "H0 runs its closed 42-case security catalog against a unique fresh native subject with cooperative cancellation, bounded resources, panic and error capture, mandatory cleanup, canonical evidence, and an external-review-bound fail-closed verdict."
+owning_crate = "peritus-security-qualification"
+source_file = "crates/app/testing/peritus-security-qualification/src/runner.rs"
+symbol = "peritus_security_qualification::runner::QualificationRunner::run"
+status = "in-progress"
+dependencies = ["INV-030"]
+live_issue = "#32"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/app/testing/peritus-security-qualification/tests/catalog.rs", symbol = "peritus_security_qualification::tests::catalog::production_catalog_covers_every_literal_requirement_and_criterion", command = "cargo test --package peritus-security-qualification --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/app/testing/peritus-security-qualification/tests/qualification.rs", symbol = "peritus_security_qualification::tests::qualification::full_native_campaign_and_independent_review_can_reach_h0_ready", command = "cargo test --package peritus-security-qualification --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "INV-031"
+kind = "invariant"
+statement = "An H4 Ready decision implies all 25 production acceptance criteria, all 44 exact signed and reviewed evidence requirements, current Ready H0 through H3 qualifications, independent review quorum, resolved nonignored findings, no release blocker, and no publication authority."
+owning_crate = "peritus-release-policy"
+source_file = "crates/foundation/peritus-release-policy/src/decision.rs"
+symbol = "peritus_release_policy::decision::ReleaseDecision::ready_implies_final_obligations"
+status = "in-progress"
+dependencies = ["INV-030", "OBL-0207"]
+live_issue = "#33"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "verus-proof", source_file = "crates/foundation/peritus-release-policy/src/decision.rs", symbol = "peritus_release_policy::decision::ReleaseDecision::ready_implies_final_obligations", command = "cargo verus verify --package peritus-release-policy --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20" },
+  { kind = "refinement-test", source_file = "crates/foundation/peritus-release-policy/tests/acceptance.rs", symbol = "peritus_release_policy::tests::acceptance::complete_exact_evidence_is_ready_without_publication_authority", command = "cargo test --package peritus-release-policy --all-targets --all-features --locked" },
+]
+
+[[entries]]
+id = "OBL-0208"
+kind = "refinement"
+statement = "H4 admits the verified release policy only after exact release binding, artifact inventory, evidence manifest, criterion map, final audit, artifact observation, and H0 through H3 qualification correspondence; drift makes policy evaluation unavailable rather than successful."
+owning_crate = "peritus-release-qualification"
+source_file = "crates/app/testing/peritus-release-qualification/src/verified_policy.rs"
+symbol = "peritus_release_qualification::verified_policy::VerifiedReleasePolicyAdapter::evaluate"
+status = "in-progress"
+dependencies = ["INV-031"]
+live_issue = "#34"
+owner = "ACTOR-0001"
+evidence = [
+  { kind = "refinement-test", source_file = "crates/app/testing/peritus-release-qualification/src/verified_policy/tests.rs", symbol = "peritus_release_qualification::verified_policy::tests::exact_composition_reaches_verified_policy_and_remains_not_ready_without_evidence", command = "cargo test --package peritus-release-qualification --all-targets --all-features --locked" },
+  { kind = "refinement-test", source_file = "crates/app/testing/peritus-release-qualification/src/verified_policy/tests.rs", symbol = "peritus_release_qualification::verified_policy::tests::digest_drift_never_reaches_verified_policy", command = "cargo test --package peritus-release-qualification --all-targets --all-features --locked" },
+]

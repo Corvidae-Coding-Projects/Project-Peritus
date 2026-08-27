@@ -1,6 +1,6 @@
 # Project Peritus
 
-Peritus is a local-first, Verus-first coding-agent harness under active production construction.
+Peritus is a local-first, Verus-first coding-agent harness under active production qualification.
 It combines explicit durable workspace/state semantics, a tight inspect/edit/run/test loop,
 writer-reviewer-fixer orchestration, and evidence-driven harness observability and evolution.
 
@@ -104,6 +104,11 @@ The implemented foundation and runtime spine now covers:
   process and Wasmtime-CLI plugin hosting, authority-mediated invocation, lifecycle quotas and
   cancellation, plus a bounded MCP 2025-06-18 JSON-RPC server for authority-filtered tools,
   resources, and prompts, backed by a seven-case runtime-neutral A2 plugin contract; and
+- H0: a verified exact-candidate security-readiness policy plus a 42-case fresh-native-subject
+  campaign covering R-SEC-001 through R-SEC-007, the nine security-relevant acceptance criteria,
+  malicious repositories, native sandboxes, role isolation, evidence invalidation, evolution,
+  observability/redaction, supply chain, unsafe/TCB reconciliation, independent review, bounded
+  resources, cancellation, panic containment, cleanup, and canonical evidence; and
 - H1: a 43-scenario deterministic resilience qualification catalog covering every authoritative
   commit boundary, active daemon phase, corruption and disk-exhaustion class, provider/tool/worker
   death, reboot and reconciliation path, with fresh subjects, bounded cleanup/resource accounting,
@@ -113,14 +118,21 @@ The implemented foundation and runtime spine now covers:
   systemd, launchd, and Task Scheduler assets that preserve protected configuration and state; and
 - H3: deterministic workload, profile, SLO, measurement, accounting, baseline-comparison, evidence,
   load, and eight-hour soak machinery with a dedicated Criterion benchmark target, stable schemas,
-  bounded-resource/backpressure evaluation, and no fabricated performance baseline.
+  bounded-resource/backpressure evaluation, and no fabricated performance baseline; and
+- H4: a verified exact 25-criterion/44-requirement release policy, deterministic SPDX 2.3 SBOM,
+  provenance, detached Ed25519 verification, independent-builder reproducibility, migration,
+  recovery, licensing and artifact contracts, eleven fresh-subject final campaigns, signed H0-H3
+  inputs, independent final audit, content-addressed evidence, and a fail-closed composition adapter
+  that cannot sign, tag, publish, deploy, or manufacture evidence.
 
-The application, extension, resilience, packaging/platform, and performance-qualification surfaces
-are now implemented. G3 deliberately cannot mint C4/B1 authority: packaged application embedding
-must supply a current daemon-owned mediator for each exact run, workspace, and target. H1-H3 code
-does not itself claim a qualification verdict; those verdicts require execution against the final
-integrated release candidate and reviewed native-host/performance evidence. H0 security
-qualification and H4 release qualification remain before production release.
+All planned architecture slices A0 through H4 now have implemented code, tests, formal-policy
+surfaces, schemas, and operating documentation. G3 deliberately cannot mint C4/B1 authority:
+packaged application embedding must supply a current daemon-owned mediator for each exact run,
+workspace, and target. Qualification machinery does not fabricate a production verdict. A release
+still requires running the H0-H4 campaigns against the exact final commit, retaining reviewed
+native-host, eight-hour-soak, multi-language, signature, reproducibility, and independent-audit
+evidence, and obtaining an H4 `Ready` decision. Until that evidence exists, Peritus remains
+`NotReadyForProduction` by construction.
 
 Gate A is the current merge authority: ordinary Rust checks, architecture and API policy,
 supply-chain policy, pinned toolchains, full Verus verification, and verified release builds must
@@ -138,7 +150,7 @@ just check          # format, build, tests, Clippy, docs, and workspace policy
 just licenses       # dependency, source, and license policy
 just toolchain      # probe the installed Rust/Verus/vstd/Z3 pins
 just ordinary-api   # audit formal APIs callable from ordinary safe Rust
-just test           # includes deterministic H1-H3 unit and qualification-contract suites
+just test           # includes deterministic H0-H4 unit and qualification-contract suites
 just verus-verify   # full TCB-aware verification plus no-cheating V/H roots
 just verus-build    # full verified release plus no-cheating V/H builds
 just gate-a         # the complete formal-foundation gate
@@ -195,12 +207,21 @@ reconnection, approval handling, PTY sanitation, and terminal restoration. The
 [G3 extensions guide](docs/g3-extensions.md) documents canonical plugin manifests, discovery and
 trust, isolated process/Wasm lifecycle, authority mediation, quotas, MCP lifecycle and methods,
 conformance, and the remaining daemon-embedding boundary. The
+[H0 security guide](docs/h0-security-qualification.md) defines the literal R-SEC and acceptance
+catalogs, 42-case fresh-subject campaign, threat/control/unsafe/TCB inventories, independent review,
+evidence binding, cleanup, and fail-closed security verdict. The
 [H1 resilience guide](docs/h1-resilience-qualification.md) defines the 43-case disruption catalog,
 fresh-subject execution, recovery invariants, evidence, and release verdict. The
 [H2 platform guide](docs/h2-platform-qualification.md) defines package layouts, native supervisor
 contracts, install/upgrade/rollback/uninstall behavior, platform equivalence, and host evidence. The
 [H3 performance guide](docs/h3-performance-qualification.md) defines stable workload/profile data,
 SLO evaluation, bounded accounting, baseline regression, load/soak execution, and evidence. The
+[H4 release-policy guide](docs/h4-release-policy.md) defines the verified 25-criterion and
+44-requirement decision boundary. The
+[H4 release-qualification guide](docs/h4-release-qualification.md) and
+[migration/recovery runbook](docs/release-migration-recovery.md) define signed evidence collection,
+release artifacts, independent audit, reproducibility, restoration, policy composition, and the
+non-authorizing final verdict. The
 [C2 process and sandbox guide](docs/c2-process-sandbox.md) documents structured process execution,
 complete sandbox contracts, target-owned launch authorization, bounded supervision, terminal
 accounting, restart reconciliation, and holder quiescence.

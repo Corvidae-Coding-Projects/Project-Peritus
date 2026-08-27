@@ -1,0 +1,93 @@
+schema = "peritus.security-threat-model.v1"
+owner = "H0"
+status = "qualification-input"
+
+[[asset]]
+id = "authoritative-state"
+boundary = "journal, evidence, approvals, policies, revisions, and promotion history"
+
+[[asset]]
+id = "operator-secrets"
+boundary = "secret backend, child environment, logs, traces, terminal, and exports"
+
+[[asset]]
+id = "protected-evaluation"
+boundary = "sealed answers, evaluators, baselines, profiles, and promotion authority"
+
+[[asset]]
+id = "native-host"
+boundary = "filesystem, processes, network, environment, sandbox, IPC, devices, and mounts"
+
+[[asset]]
+id = "release-supply-chain"
+boundary = "locked dependencies, plugins, artifacts, SBOM, provenance, licenses, and signatures"
+
+[[threat]]
+id = "T-H0-001"
+title = "repository path escape"
+attack = "traversal, symlink race, submodule or worktree indirection, mount trick, case alias, or device namespace reaches outside an authorized handle-resolved root"
+requirements = ["R-SEC-002", "R-SEC-003", "R-SEC-005"]
+probes = ["h0.repository.traversal", "h0.repository.symlink-race", "h0.repository.submodule-escape", "h0.repository.worktree-escape", "h0.repository.case-alias", "h0.repository.device-path"]
+
+[[threat]]
+id = "T-H0-002"
+title = "untrusted text becomes authority"
+attack = "model, repository, prompt, memory, external, shell, terminal, plugin, or MCP content changes authority precedence or performs an unapproved effect"
+requirements = ["R-SEC-001", "R-SEC-002", "R-SEC-006"]
+probes = ["h0.repository.shell-injection", "h0.repository.poisoned-instructions", "h0.repository.terminal-escape", "h0.plugin.capability-scope", "h0.mcp.capability-scope"]
+
+[[threat]]
+id = "T-H0-003"
+title = "sandbox or network escape"
+attack = "a child process bypasses native filesystem, process, environment, secret, network, or resource enforcement"
+requirements = ["R-SEC-004"]
+probes = ["h0.sandbox.linux-capabilities", "h0.sandbox.macos-capabilities", "h0.sandbox.windows-capabilities", "h0.sandbox.escape-review", "h0.network.default-deny", "h0.resources.cancellation-cleanup"]
+
+[[threat]]
+id = "T-H0-004"
+title = "secret disclosure"
+attack = "seeded secret bytes escape through files, subprocesses, network, diagnostics, terminal rendering, traces, or exported evidence"
+requirements = ["R-SEC-004", "R-SEC-005", "R-SEC-006"]
+probes = ["h0.repository.secret-exfiltration", "h0.observability.secret-redaction"]
+
+[[threat]]
+id = "T-H0-005"
+title = "role collapse and self-approval"
+attack = "writer, reviewer, fixer, plugin, MCP peer, or evolution candidate exercises authority unavailable to its actor-bound capability"
+requirements = ["R-SEC-001", "R-SEC-002"]
+probes = ["h0.role.reviewer-read-only", "h0.role.fixer-cannot-approve", "h0.role.writer-cannot-waive", "h0.evolution.self-promotion-denial"]
+
+[[threat]]
+id = "T-H0-006"
+title = "stale or substituted evidence"
+attack = "evidence from another source, artifact manifest, workspace revision, policy, provider profile, or qualification plan contributes to readiness"
+requirements = ["R-SEC-005", "R-SEC-006"]
+probes = ["h0.freshness.candidate-mutation", "h0.observability.evidence-citation"]
+
+[[threat]]
+id = "T-H0-007"
+title = "evolution evaluator compromise"
+attack = "a candidate reads sealed answers, edits evaluators or profiles, escapes isolation, or promotes itself"
+requirements = ["R-SEC-001", "R-SEC-002", "R-SEC-005", "R-SEC-006"]
+probes = ["h0.evolution.sealed-answer-denial", "h0.evolution.evaluator-mutation-denial", "h0.evolution.profile-mutation-denial", "h0.evolution.self-promotion-denial", "h0.evolution.campaign-isolation"]
+
+[[threat]]
+id = "T-H0-008"
+title = "supply-chain substitution"
+attack = "dependency, plugin, release artifact, SBOM, provenance, license, signature, or recovery material is absent, unauditable, or irreproducible"
+requirements = ["R-SEC-007"]
+probes = ["h0.supply-chain.dependency-reproducibility", "h0.supply-chain.signature-sbom", "h0.supply-chain.migration-recovery-docs"]
+
+[[threat]]
+id = "T-H0-009"
+title = "unaccounted trusted code"
+attack = "unsafe Rust, trusted Verus constructs, native helpers, toolchains, or review exclusions bypass review and evidence"
+requirements = ["R-SEC-005", "R-SEC-007"]
+probes = ["h0.inventory.unsafe", "h0.inventory.tcb", "h0.release.no-quarantine-placeholder"]
+
+[[threat]]
+id = "T-H0-010"
+title = "false success after failure"
+attack = "unsupported controls, oversized output, timeout, cancellation, panic, incomplete cleanup, or unresolved blockers are reported ready"
+requirements = ["R-SEC-001", "R-SEC-004", "R-SEC-007"]
+probes = ["h0.repository.oversized-output", "h0.resources.cancellation-cleanup", "h0.review.finding-lifecycle"]

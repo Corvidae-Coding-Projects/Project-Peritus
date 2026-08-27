@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Corvidae-Coding-Projects/Project-Peritus/release/schemas/qualification-report-v1.schema.json",
+  "title": "Peritus final H4 qualification report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "binding", "artifact_inventory_digest", "evidence_manifest_digest", "criterion_map_digest", "final_audit_digest", "blockers", "policy_decision", "verdict"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "binding": { "$ref": "release-binding-v1.schema.json" },
+    "artifact_inventory_digest": { "$ref": "#/$defs/optionalDigest" },
+    "evidence_manifest_digest": { "$ref": "#/$defs/optionalDigest" },
+    "criterion_map_digest": { "$ref": "#/$defs/optionalDigest" },
+    "final_audit_digest": { "$ref": "#/$defs/optionalDigest" },
+    "blockers": { "type": "array" },
+    "policy_decision": { "type": ["object", "string", "null"] },
+    "verdict": { "enum": ["ready", "not-ready"] }
+  },
+  "$defs": {
+    "optionalDigest": {
+      "anyOf": [
+        { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        { "type": "null" }
+      ]
+    }
+  }
+}

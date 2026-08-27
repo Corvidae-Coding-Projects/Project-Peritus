@@ -1,0 +1,25 @@
+[package]
+name = "peritus-security-policy"
+description = "Verified H0 security-readiness policy for exact Peritus release candidates"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+
+[dependencies]
+peritus-types = { version = "=0.0.0", path = "../peritus-types" }
+vstd.workspace = true
+
+[package.metadata.peritus]
+owner = "H0"
+layer = "foundation"
+verification-class = "V"
+
+[package.metadata.verus]
+verify = true
+
+[lints]
+workspace = true

@@ -1,0 +1,28 @@
+[package]
+name = "peritus-security-qualification"
+description = "H0 fresh-subject security qualification campaign and evidence for Peritus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["security", "qualification", "release", "sandbox"]
+categories = ["development-tools::testing"]
+
+[dependencies]
+peritus-security-policy = { version = "=0.0.0", path = "../../../foundation/peritus-security-policy" }
+peritus-types = { version = "=0.0.0", path = "../../../foundation/peritus-types" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+
+[package.metadata.peritus]
+owner = "H0"
+layer = "testing"
+verification-class = "C"
+
+[lints]
+workspace = true
