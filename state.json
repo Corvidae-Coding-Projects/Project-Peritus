@@ -1,6 +1,6 @@
 {
   "next_display_id": 35,
-  "next_comment_id": 483,
+  "next_comment_id": 484,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1325,12 +1325,21 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:01:40.256074700Z",
-      "updated_at": "2026-08-27T18:33:17.038102886Z",
+      "updated_at": "2026-08-27T22:01:28.040529712Z",
       "labels": [
         "qualification",
         "release"
       ],
       "comments": {
+        "5aea7ba2-32dd-4f88-a8c4-78d8fe309369": {
+          "display_id": 483,
+          "author": "6ME5",
+          "content": "[action] Authenticated Codex and Claude account runtimes confirmed; beginning retained live C5 adapter qualification before broader H0-H4 campaign",
+          "created_at": "2026-08-27T22:01:28.038145871Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAmQ6gcI9lNva8dOA2imIN0iHW3/5+DF8W3QMVm+/IC4fXEo1mDv1n4aNxL3+K6RKdvgcbx5eHwtdX6CirVo8pDg=="
+        },
         "a56f4124-8bf0-49af-b0b5-619789be68f2": {
           "display_id": 481,
           "author": "6ME5",
@@ -4966,8 +4975,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T22:01:22.141078698Z",
+    "timestamp": "2026-08-27T22:01:28.040529712Z",
     "agent_id": "6ME5",
-    "agent_seq": 652
+    "agent_seq": 653
   }
 }
