@@ -1,6 +1,6 @@
 {
   "next_display_id": 26,
-  "next_comment_id": 408,
+  "next_comment_id": 409,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -3587,7 +3587,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T22:59:08.003031292Z",
-      "updated_at": "2026-08-26T23:16:07.618537703Z",
+      "updated_at": "2026-08-27T01:37:11.313666781Z",
       "labels": [
         "feature"
       ],
@@ -3609,6 +3609,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAiiVOaOKPNMwfAeIfNrCCXAVXN8DSDpTj4VMablcP0+rsL9DoYWmCu7DwY8PFq1zQrqqoIuuz7+pi2d1l12T9CQ=="
+        },
+        "631c5845-439a-47fb-b70e-5e49c504b4c9": {
+          "display_id": 408,
+          "author": "6ME5",
+          "content": "[action] Integrated bounded worker supervisor into daemon lifecycle, fixed C2 process identity notification, made shutdown continue cleanup after first failure, and made terminal outbox failures force explicit read-only diagnostics instead of being swallowed",
+          "created_at": "2026-08-27T01:37:11.309579790Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA72Emv0VhjR44O8j9bp2gvSLCRTGMSW1Oz90c8fvV8aKxQ0SVUD43z0BNtB0THOAgzR4SI288nEMFjjrcqkYKDQ=="
         },
         "89c40d11-408b-4cfd-ac88-4f86e58eb9a0": {
           "display_id": 404,
@@ -4133,8 +4142,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-26T23:16:07.618537703Z",
+    "timestamp": "2026-08-27T01:37:11.313666781Z",
     "agent_id": "6ME5",
-    "agent_seq": 549
+    "agent_seq": 550
   }
 }
