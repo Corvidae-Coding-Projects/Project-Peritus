@@ -1,6 +1,6 @@
 {
   "next_display_id": 31,
-  "next_comment_id": 461,
+  "next_comment_id": 462,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -3398,7 +3398,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-27T12:00:52.785235374Z",
-      "updated_at": "2026-08-27T14:14:59.295548869Z",
+      "updated_at": "2026-08-27T14:15:04.461364764Z",
       "comments": {
         "2b02b212-9931-4f63-b73c-eb681bf9862f": {
           "display_id": 454,
@@ -3489,6 +3489,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAL4qJR2ev52+kmJOXDDv/X4SEwgc4/03iBJCb3kMxjgfrJF9E4qU5gP1uWRKvVGaiJf2+ypWMy1ReOVE1BD/nAQ=="
+        },
+        "cedbf601-e6ba-4e51-be07-db6a640411e3": {
+          "display_id": 461,
+          "author": "6ME5",
+          "content": "[action] Verified and preparing signed push for macOS plugin fixture startup timing fix after complete local gate passed",
+          "created_at": "2026-08-27T14:15:04.458700041Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPysIxBxwmihy3BlceeE3pcOd3+8reroJ2y1mSg0N5mEStazzzroVsKz4iwEgeqPDUrLFDqGpdGArbsjpZFP4AA=="
         }
       }
     },
@@ -4685,8 +4694,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T14:14:59.295548869Z",
+    "timestamp": "2026-08-27T14:15:04.461364764Z",
     "agent_id": "6ME5",
-    "agent_seq": 613
+    "agent_seq": 614
   }
 }
