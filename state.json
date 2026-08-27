@@ -1,6 +1,6 @@
 {
   "next_display_id": 35,
-  "next_comment_id": 478,
+  "next_comment_id": 479,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1258,7 +1258,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-27T18:07:42.168256669Z",
+      "updated_at": "2026-08-27T18:31:16.919052703Z",
       "labels": [
         "qualification",
         "release"
@@ -1281,6 +1281,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAHfPGoFqFWUy+9Im9jN3vEL3cHW9y7AXYmakDmDsiZvHk6FscUDstqX/uTrD8OGDMejlLlaHL6cFYdd5SkFp9AA=="
+        },
+        "e0253408-62db-44d7-b82e-d0935c09a541": {
+          "display_id": 478,
+          "author": "6ME5",
+          "content": "[action] Full resource-limited Gate A green after H4 evidence aggregate split; beginning final pre-commit scope and artifact audit",
+          "created_at": "2026-08-27T18:31:16.916115159Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAdMQ6HJblVZfpz1tb+c5B587Pi++j4FVSMdvUfjCT8A/eCeKgwKNqUpT3Pg3BDD+yEf0DMVLy1KiZi4xiW7NrBA=="
         }
       }
     },
@@ -4917,8 +4926,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T18:07:42.168256669Z",
+    "timestamp": "2026-08-27T18:31:16.919052703Z",
     "agent_id": "6ME5",
-    "agent_seq": 646
+    "agent_seq": 647
   }
 }
