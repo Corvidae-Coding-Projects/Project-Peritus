@@ -1,6 +1,6 @@
 {
   "next_display_id": 26,
-  "next_comment_id": 411,
+  "next_comment_id": 412,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -3587,7 +3587,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T22:59:08.003031292Z",
-      "updated_at": "2026-08-27T01:42:32.548865478Z",
+      "updated_at": "2026-08-27T01:42:37.206476758Z",
       "labels": [
         "feature"
       ],
@@ -3618,6 +3618,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA72Emv0VhjR44O8j9bp2gvSLCRTGMSW1Oz90c8fvV8aKxQ0SVUD43z0BNtB0THOAgzR4SI288nEMFjjrcqkYKDQ=="
+        },
+        "7c04179d-8bfd-42bd-9eac-a5f35181d349": {
+          "display_id": 411,
+          "author": "6ME5",
+          "content": "[action] Recorded explicit authorization to merge the G0 PR after the complete required hosted matrix is green",
+          "created_at": "2026-08-27T01:42:37.203996432Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABArTcZ0wERkhwROYCbGlU8M9PrRpDLKXqh+3zKvMBNfcJUaET2K30AcMfyW2h1WqpAnMu85X9OIa9knS1t1trsDg=="
         },
         "89c40d11-408b-4cfd-ac88-4f86e58eb9a0": {
           "display_id": 404,
@@ -4160,8 +4169,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T01:42:32.548865478Z",
+    "timestamp": "2026-08-27T01:42:37.206476758Z",
     "agent_id": "6ME5",
-    "agent_seq": 552
+    "agent_seq": 553
   }
 }
