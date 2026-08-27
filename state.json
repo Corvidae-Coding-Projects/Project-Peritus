@@ -1,6 +1,6 @@
 {
   "next_display_id": 27,
-  "next_comment_id": 443,
+  "next_comment_id": 444,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -2223,8 +2223,17 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-27T07:52:47.509432100Z",
-      "updated_at": "2026-08-27T10:24:26.988385609Z",
+      "updated_at": "2026-08-27T10:49:15.364645479Z",
       "comments": {
+        "6b9f30eb-690f-4771-a8c1-a4e40a8abd17": {
+          "display_id": 443,
+          "author": "6ME5",
+          "content": "Hosted Gate A Windows test job 98486213274 was cancelled at the matrix's exact 20-minute timeout after 242 xtask tests had passed; the log contains no assertion failure. Raised the reviewed Rust operation matrix timeout to 30 minutes, updated the fail-closed workflow checker, and added a regression test pinning the new allowance. Local evidence: actionlint clean; cargo fmt clean; reproducibility-check passed; xtask 253 unit + 3 CLI tests passed; strict xtask Clippy passed; git diff --check clean.",
+          "created_at": "2026-08-27T10:49:15.362052921Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAsktblT6HWz7Za1u2aZfCqZWrLFAcmLrgqQbmYNJ5qPevKXa1U+A42vDV3ZLmVlurV7rvYOb40NuX2m/VsOzRCw=="
+        },
         "71f4346c-1307-4eef-96b1-5bb1a14f07a2": {
           "display_id": 441,
           "author": "6ME5",
@@ -4463,8 +4472,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T10:24:26.988385609Z",
+    "timestamp": "2026-08-27T10:49:15.364645479Z",
     "agent_id": "6ME5",
-    "agent_seq": 590
+    "agent_seq": 591
   }
 }
