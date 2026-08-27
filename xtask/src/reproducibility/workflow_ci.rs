@@ -187,7 +187,7 @@ fn supply_chain_job_is_exact(job: &Yaml) -> bool {
 
 fn verus_job_is_exact(job: &Yaml, tools: &ToolchainPolicy) -> bool {
     let Some(job) = job.as_hash() else { return false };
-    common_job(job, "Locked Verus workspace", "ubuntu-24.04", 30)
+    common_job(job, "Locked Verus workspace", "ubuntu-24.04", 40)
         && mapping_value(job, "steps").and_then(Yaml::as_vec).is_some_and(|steps| {
             steps.len() == 9
                 && checkout_step(&steps[0])

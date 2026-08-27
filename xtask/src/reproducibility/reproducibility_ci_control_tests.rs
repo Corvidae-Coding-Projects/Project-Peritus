@@ -62,8 +62,8 @@ fn verus_job_rejects_needs_runner_shell_env_and_intervening_steps() {
 #[test]
 fn verus_job_retains_the_measured_workspace_timeout() {
     let altered = canonical_ci().replacen(
+        "    name: Locked Verus workspace\n    needs: bootstrap\n    runs-on: ubuntu-24.04\n    timeout-minutes: 40",
         "    name: Locked Verus workspace\n    needs: bootstrap\n    runs-on: ubuntu-24.04\n    timeout-minutes: 30",
-        "    name: Locked Verus workspace\n    needs: bootstrap\n    runs-on: ubuntu-24.04\n    timeout-minutes: 20",
         1,
     );
 
