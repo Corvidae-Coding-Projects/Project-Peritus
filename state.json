@@ -1,6 +1,6 @@
 {
   "next_display_id": 26,
-  "next_comment_id": 435,
+  "next_comment_id": 436,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -28,12 +28,7 @@
     "ef6ed3ab-52cd-436a-aa6e-d5d098c89f6c": 8,
     "f27888a7-5366-4703-a68a-9f17b1adad81": 20
   },
-  "locks": {
-    "25": {
-      "agent_id": "6ME5",
-      "claimed_at": "2026-08-27T03:46:07.235069088Z"
-    }
-  },
+  "locks": {},
   "issues": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": {
       "uuid": "0e2f54b8-fe27-4bbd-a983-9644f1da6f71",
@@ -3587,7 +3582,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T22:59:08.003031292Z",
-      "updated_at": "2026-08-27T07:19:04.705236142Z",
+      "updated_at": "2026-08-27T07:50:22.166136648Z",
       "labels": [
         "feature"
       ],
@@ -3645,6 +3640,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAMlZ/9PX1M9EZoDwQJBXzKaM6PgBkAwCSKiRLwPaAi0GFetNQvd3ge1bK8Q6+AurQSjWt1cR3lATkHCtVXWTUDw=="
+        },
+        "3035bf57-f5f3-4ccb-a922-1781ac09a773": {
+          "display_id": 435,
+          "author": "6ME5",
+          "content": "Session auto-ended (stale after 267 minutes). No handoff notes provided.",
+          "created_at": "2026-08-27T07:50:22.163205587Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAYi0Rg0WtPw6unC3Q8CdM/1dXdbNYnLePwIJTUwnk9iC0Z7ltbdp0DlkvpLOuU/fWLzecA2k+igtAVKuzAPyzDQ=="
         },
         "35ec9304-979c-4562-be75-e4f52f3bd7b0": {
           "display_id": 425,
@@ -4376,8 +4380,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T07:19:04.705236142Z",
+    "timestamp": "2026-08-27T07:50:22.166136648Z",
     "agent_id": "6ME5",
-    "agent_seq": 578
+    "agent_seq": 580
   }
 }
