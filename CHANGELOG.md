@@ -15,6 +15,87 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Implement the H1-H3 production qualification wave (#27)
+- Add the C-class `peritus-resilience` crate with a deterministic 43-scenario H1 catalog spanning
+  both sides of journal, blob, snapshot, lease, patch, gate, and promotion commits and every active
+  daemon writer/gate/reviewer/fixer/evaluation/evolution phase
+- Model corruption and hash divergence for journals, blobs, projections, snapshots, and production
+  pointers; disk exhaustion at append/finalize/snapshot boundaries; provider, tool, and worker
+  death; outstanding-effect and durable-before-ack reboot; and explicit restart reconciliation
+- Add validated scenario, subject, fault, evidence, retry, resource, milestone, recovery, cleanup,
+  and terminal-state identities with bounded text and collection limits
+- Add an authority-neutral fresh-subject resilience contract whose runner owns cancellation, catches
+  subject panics, attempts cleanup on every path, and cannot reuse state between qualification cases
+- Reject resilience false success for acceptance-before-fault, missing fault reachability,
+  journal divergence, silent corruption, stale projection state, temporary-object leakage,
+  orphaned or unaccounted work, retry overruns, resource overruns, missing evidence, and incomplete
+  cleanup
+- Derive stable per-case and suite evidence digests from canonical observations and emit explicit
+  `Ready` or evidence-backed `NotReadyForProduction` verdicts without granting release authority
+- Add H1 tests for catalog uniqueness and ordering, both sides of every commit, all active daemon
+  phases, fresh-subject ownership, cleanup, false-success rejection, and report reproducibility
+- Add the C-class `peritus-platform-qualification` crate with typed Linux, macOS, and Windows target,
+  version, architecture, package-layout, path-ownership, permission, service, transport, sandbox,
+  process-equivalence, lifecycle, evidence, and readiness contracts
+- Bind package manifests to canonical artifact and layout SHA-256 digests, validated relative paths,
+  executable roles, release versions, preservation ownership, and deterministic serialization
+- Add platform-delta declarations and native minimums for Linux 6.6+, macOS 15+, Windows 11
+  24H2/Server 2025 build 26100+, and the existing x86-64 C3 production backends
+- Add a fresh-subject H2 runner that qualifies install, cold start, authenticated readiness,
+  restart, upgrade, rollback, uninstall, IPC, sandbox, process lifecycle, and protected-state
+  preservation independently for each scenario
+- Add per-user Linux package assets for `peritusd`, `peritus`, `peritus-tui`, and the sandbox helper,
+  including strict checksum verification, owner-only roots, atomic publication, a hardened systemd
+  user service, authenticated readiness, upgrade rollback, and state-preserving uninstall
+- Add equivalent macOS assets using protected Application Support/Logs roots, an owner-scoped
+  launchd LaunchAgent, rendered and linted property-list paths, authenticated readiness, rollback,
+  and state-preserving uninstall
+- Add equivalent Windows PowerShell assets using owner-only ACLs, validated package-relative
+  checksums, atomic publication, a least-privilege Task Scheduler definition, named-pipe readiness,
+  upgrade rollback, and state-preserving uninstall
+- Embed the reviewed packaging assets in H2 qualification so platform fixtures bind the exact
+  repository bytes rather than independently reconstructed service definitions
+- Add H2 tests for canonical manifest round trips, digest parsing, G0 endpoint shapes, production
+  layouts, platform minimums, exact daemon mode, fresh-subject readiness, unsupported scenarios,
+  and complete nonempty native asset inventories
+- Add the C-class `peritus-benchmarks` crate with validated reference-machine, resource-envelope,
+  queue, regression, workload, objective, plan, measurement, baseline, evidence, and report types
+- Add lazy deterministic load and long-horizon soak plans so eight-hour scenarios do not materialize
+  unbounded operation vectors or weaken runtime resource limits
+- Add exact accounting for concurrent runs, processes, provider requests, memory, disk, tokens,
+  command/terminal/exporter/provider queues, lifecycle balance, saturation observations, and
+  backpressure before any performance verdict is evaluated
+- Add binding-checked typed and JSON-lines measurement ingestion with bounded document/record sizes,
+  monotonic sequence and elapsed-time enforcement, known-workload validation, and atomic rejection
+  of malformed observations
+- Add deterministic integer p50/p95/p99, throughput, latency, memory, process, token, disk,
+  cancellation, and recovery evaluation without floating-point verdict drift
+- Add baseline comparison with explicit stable, improvement, warning, blocking, and incomparable
+  classifications plus minimum absolute and basis-point thresholds
+- Require every configured workload, objective, receipt, resource account, and mandatory reviewed
+  baseline before H3 can emit `Ready`; missing execution or baseline evidence remains fail-closed
+- Add content-addressed H3 evidence and qualification-report manifests with stable canonical JSON,
+  artifact ordering, subject/profile/run bindings, runner identity, and source dataset digests
+- Add an authority-neutral H3 subject/runner boundary so G0/F0 adapters retain their own
+  authorization types and benchmark evidence cannot promote a harness or release
+- Add a Criterion 0.8.2 `qualification_core` target for lazy-plan generation, validated 10,000-record
+  ingestion, and 10,000-sample evaluation overhead
+- Add fifteen stable workload definitions, including concurrent runs, journal append, terminal
+  streaming, cancellation, recovery, queue saturation, exporter/provider backpressure, artifact
+  streaming, model/tool fan-out, and four eight-hour soak profiles
+- Add a candidate performance profile with 22 explicit SLO objectives and mandatory reviewed
+  baseline comparison, plus versioned schemas for profiles, workloads, measurements, baselines,
+  evidence manifests, and qualification reports
+- Add H3 unit/integration tests for lifecycle balance, queue backpressure, lazy plan determinism,
+  dataset cross-references, bounded ingestion, blocking regressions, missing-evidence verdicts, and
+  content-addressed report reproducibility
+- Register H1-H3 in the workspace and architecture ownership registry, pin Criterion 0.8.2 against
+  the Rust 1.97.1 toolchain, update the lockfile, and document the H1 resilience, H2 packaging and
+  platform, and H3 performance qualification contracts
+- Review and pin Criterion's exact benchmark-only build execution surface, keeping `half` on the
+  pre-zerocopy 2.4.1 release and recording the packaged `alloca` C shim and deterministic `crunchy`
+  macro generator in the fail-closed dependency trust inventory
+
 - Implement production G1-G3 clients and extension integration (#26)
 - Add the `peritus` command-line client with strict argument cardinality, protected Unix-domain
   socket and Windows named-pipe connections, negotiated A3 sessions, resumable session identifiers,

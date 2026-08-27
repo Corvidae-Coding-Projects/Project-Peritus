@@ -1,0 +1,61 @@
+schema = 1
+release = "@RELEASE@"
+platform = "windows"
+architecture = "x86_64"
+layout_sha256 = "@LAYOUT_SHA256@"
+
+[[artifact]]
+role = "daemon"
+path = "bin/peritusd.exe"
+bytes = @PERITUSD_BYTES@
+sha256 = "@PERITUSD_SHA256@"
+executable = true
+
+[[artifact]]
+role = "cli"
+path = "bin/peritus.exe"
+bytes = @PERITUS_BYTES@
+sha256 = "@PERITUS_SHA256@"
+executable = true
+
+[[artifact]]
+role = "tui"
+path = "bin/peritus-tui.exe"
+bytes = @PERITUS_TUI_BYTES@
+sha256 = "@PERITUS_TUI_SHA256@"
+executable = true
+
+[[artifact]]
+role = "sandbox-helper"
+path = "libexec/peritus-windows-sandbox-helper.exe"
+bytes = @SANDBOX_HELPER_BYTES@
+sha256 = "@SANDBOX_HELPER_SHA256@"
+executable = true
+
+[[artifact]]
+role = "service-definition"
+path = "share/peritus/Peritus.Task.xml.in"
+bytes = @SERVICE_BYTES@
+sha256 = "@SERVICE_SHA256@"
+executable = false
+
+[[artifact]]
+role = "installer"
+path = "Install-Peritus.ps1"
+bytes = @INSTALLER_BYTES@
+sha256 = "@INSTALLER_SHA256@"
+executable = true
+
+[[artifact]]
+role = "uninstaller"
+path = "Uninstall-Peritus.ps1"
+bytes = @UNINSTALLER_BYTES@
+sha256 = "@UNINSTALLER_SHA256@"
+executable = true
+
+[[artifact]]
+role = "upgrader"
+path = "Upgrade-Peritus.ps1"
+bytes = @UPGRADER_BYTES@
+sha256 = "@UPGRADER_SHA256@"
+executable = true

@@ -80,9 +80,9 @@ macro-synthesized compilation inputs. External executable preprocessing is separ
 fail-closed. Full locked Cargo metadata is searched for every dependency build-script and
 procedural-macro target; only these exact package identities are admitted:
 
-- build scripts: `anyhow@1.0.104`, `async-io@2.6.0`, `aws-lc-rs@1.18.0`,
+- build scripts: `alloca@0.4.0`, `anyhow@1.0.104`, `async-io@2.6.0`, `aws-lc-rs@1.18.0`,
   `aws-lc-sys@0.44.0`, `crossbeam-utils@0.8.22`, `curve25519-dalek@5.0.0`,
-  `generic-array@0.14.7`, `getrandom@0.4.3`, `httparse@1.10.1`,
+  `crunchy@0.2.4`, `generic-array@0.14.7`, `getrandom@0.4.3`, `httparse@1.10.1`,
   `icu_normalizer_data@2.3.0`, `icu_properties_data@2.3.0`, `jni@0.22.4`,
   `jni-macros@0.22.4`, `libc@0.2.189`, `libsqlite3-sys@0.38.2`, `memoffset@0.9.1`,
   `nix@0.28.0`, `nix@0.31.3`, `num-traits@0.2.19`, `proc-macro2@1.0.107`,
@@ -149,6 +149,16 @@ emits target-feature wrappers and specializations; that invocation performs no a
 network, process, or environment access. The exact registry package IDs and archive checksums for
 the executable packages and their closure remain pinned by `Cargo.lock`; a version, registry,
 Git/path source, checksum, target-kind, or closure change requires a new proof-impact review.
+
+For H3, Criterion's reviewed `alloca@0.4.0` build script invokes Cargo's `cc` toolchain only to
+compile the package's fixed 12-line `alloca.c` callback shim, optionally enabling supported
+stack-clash protection and Clang LTO flags; it performs no network or source generation. The
+reviewed `crunchy@0.2.4` build script reads only its compile-time feature selection and `OUT_DIR`,
+then writes the corresponding fixed unrolled-loop macro expansion and one `cargo:rustc-env` path.
+It performs no child-process, network, repository, or ambient-file access. H3 directly pins
+`half@2.4.1` with only `std` so Criterion's CBOR dependency does not add the later zerocopy build
+script and derive-macro execution surface. These are benchmark/dev dependencies, not product
+runtime code, but their exact executable identities and locked closures remain Gate A inputs.
 
 The executable identity is Cargo's complete package ID: registry or immutable Git source, package
 name, and exact version—not just the readable labels above. A same-name/same-version package from

@@ -1,0 +1,61 @@
+schema = 1
+release = "@RELEASE@"
+platform = "linux"
+architecture = "@ARCHITECTURE@"
+layout_sha256 = "@LAYOUT_SHA256@"
+
+[[artifact]]
+role = "daemon"
+path = "bin/peritusd"
+bytes = @PERITUSD_BYTES@
+sha256 = "@PERITUSD_SHA256@"
+executable = true
+
+[[artifact]]
+role = "cli"
+path = "bin/peritus"
+bytes = @PERITUS_BYTES@
+sha256 = "@PERITUS_SHA256@"
+executable = true
+
+[[artifact]]
+role = "tui"
+path = "bin/peritus-tui"
+bytes = @PERITUS_TUI_BYTES@
+sha256 = "@PERITUS_TUI_SHA256@"
+executable = true
+
+[[artifact]]
+role = "sandbox-helper"
+path = "libexec/peritus-linux-sandbox-helper"
+bytes = @SANDBOX_HELPER_BYTES@
+sha256 = "@SANDBOX_HELPER_SHA256@"
+executable = true
+
+[[artifact]]
+role = "service-definition"
+path = "share/peritus/peritus.service"
+bytes = @SERVICE_BYTES@
+sha256 = "@SERVICE_SHA256@"
+executable = false
+
+[[artifact]]
+role = "installer"
+path = "Install-Peritus.sh"
+bytes = @INSTALLER_BYTES@
+sha256 = "@INSTALLER_SHA256@"
+executable = true
+
+[[artifact]]
+role = "uninstaller"
+path = "Uninstall-Peritus.sh"
+bytes = @UNINSTALLER_BYTES@
+sha256 = "@UNINSTALLER_SHA256@"
+executable = true
+
+[[artifact]]
+role = "upgrader"
+path = "Upgrade-Peritus.sh"
+bytes = @UPGRADER_BYTES@
+sha256 = "@UPGRADER_SHA256@"
+executable = true

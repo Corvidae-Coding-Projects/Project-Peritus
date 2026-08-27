@@ -1165,9 +1165,9 @@ A0 Workspace/toolchain
 | **G2 TUI** | `peritus-tui` | A3/G0 | Live runs, terminal, approvals, diffs, traces, reviews, evolution; snapshot and interaction tests. |
 | **G3 Extension integration** | `peritus-mcp`, plugin SDK/host | B1/B3, C2/C4, G0 | Out-of-process/Wasm plugins and MCP with trust/capability/quotas, malicious extension suite. |
 | **H0 Security qualification** | cross-cutting tests/docs only; no silent redesign | all functional slices | Threat model closure, unsafe/TCB audit, sandbox/path/network/plugin/evolution red team, external review findings resolved. |
-| **H1 Resilience qualification** | failpoint/chaos/recovery suites | C0 onward | Crash matrix, corruption, disk full, provider/tool/worker death, reboot/reconcile evidence. |
-| **H2 Platform qualification** | cross-platform conformance/packaging | G0–G3 | Linux/macOS/Windows full matrix, installers, path/sandbox/process equivalence and documented platform deltas. |
-| **H3 Performance qualification** | benchmarks/load/soak and tuning | G0/F0 | Published SLO evidence, bounded resources/backpressure, long-horizon soak, no correctness weakening. |
+| **H1 Resilience qualification** | `peritus-resilience`, failpoint/chaos/recovery suites | C0 onward | Crash matrix, corruption, disk full, provider/tool/worker death, reboot/reconcile evidence. |
+| **H2 Platform qualification** | `peritus-platform-qualification`, cross-platform conformance/packaging | G0–G3 | Linux/macOS/Windows full matrix, installers, path/sandbox/process equivalence and documented platform deltas. |
+| **H3 Performance qualification** | `peritus-benchmarks`, stable datasets, load/soak and tuning | G0/F0 | Published SLO evidence, bounded resources/backpressure, long-horizon soak, no correctness weakening. |
 | **H4 Release qualification** | docs, migration, SBOM, signatures, reproducibility, final audit | H0–H3 | Every acceptance criterion mapped to signed evidence; production 1.0 artifact only after final `ready` verdict. |
 
 ### Crate-to-slice ownership registry
@@ -1205,6 +1205,8 @@ This registry is canonical for parallel planning. A slice may split internally o
 | G1 | `peritus-cli` |
 | G2 | `peritus-tui` |
 | G3 | `peritus-mcp`, `peritus-plugin-sdk`, `peritus-plugin-host` |
+| H1 | `peritus-resilience` |
+| H2 | `peritus-platform-qualification` |
 | H3 | `peritus-benchmarks` |
 
 Slices in the same dependency wave may run in parallel. C3 splits by platform; C5 splits by provider; G1/G2 split by client. B1 and B2 proceed in parallel after A1 freezes shared primitives; B0 may develop independent models concurrently but freezes and registers its production interfaces only against completed B1/B2 contracts. D0/D1/D2/D3 proceed in parallel against frozen B/C contracts. H0–H3 begin test design early but issue their qualification verdicts only against the integrated release candidate.

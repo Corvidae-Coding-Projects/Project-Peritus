@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://project-peritus.invalid/schemas/h3/measurement-v1.json",
+  "title": "Peritus H3 measurement record v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["run_id", "profile_id", "workload_id", "metric", "sequence", "elapsed_micros", "value"],
+  "properties": {
+    "run_id":{"$ref":"#/$defs/id"}, "profile_id":{"$ref":"#/$defs/id"}, "workload_id":{"$ref":"#/$defs/id"},
+    "metric":{"type":"string","minLength":1}, "sequence":{"type":"integer","minimum":0},
+    "elapsed_micros":{"type":"integer","minimum":0}, "value":{"type":"integer","minimum":0}
+  },
+  "$defs": {"id":{"type":"string","minLength":1,"maxLength":96,"pattern":"^[A-Za-z0-9._-]+$"}}
+}

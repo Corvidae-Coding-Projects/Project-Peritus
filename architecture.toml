@@ -45,6 +45,7 @@ source_exceptions = [
 forbidden_dependencies = []
 controlled_source_roots = [
     { path = "app-protocol/generated", owner = "A3", kind = "generated-schema", rationale = "A3 deterministically generates the reviewed application-protocol JSON Schema, TypeScript declarations, and wire registry." },
+    { path = "benchmarks/schemas", owner = "H3", kind = "schema", rationale = "H3 owns the versioned performance profile, workload, measurement, baseline, evidence, and qualification report interchange schemas." },
     { path = "compat/app-protocol", owner = "A3", kind = "generated", rationale = "A3 owns minimal, realistic, corrupt, and adversarial application-protocol compatibility fixtures with per-case SHA-256 inventories." },
     { path = "crates/analysis/peritus-debugger/tests/fixtures/v1", owner = "E2", kind = "generated", rationale = "E2 owns immutable schema-versioned debugger command, event, and complete-state compatibility frames plus their SHA-256 manifest." },
     { path = "crates/analysis/peritus-eval/tests/fixtures/v1", owner = "E3", kind = "generated", rationale = "E3 owns immutable schema-versioned evaluation command, event, and complete-state compatibility frames plus their SHA-256 manifest." },
@@ -272,6 +273,27 @@ verification_class = "H"
 name = "peritus-conformance"
 path = "crates/app/testing/peritus-conformance"
 owner = "A2"
+layer = "testing"
+verification_class = "C"
+
+[[packages]]
+name = "peritus-benchmarks"
+path = "crates/app/testing/peritus-benchmarks"
+owner = "H3"
+layer = "testing"
+verification_class = "C"
+
+[[packages]]
+name = "peritus-platform-qualification"
+path = "crates/app/testing/peritus-platform-qualification"
+owner = "H2"
+layer = "testing"
+verification_class = "C"
+
+[[packages]]
+name = "peritus-resilience"
+path = "crates/app/testing/peritus-resilience"
+owner = "H1"
 layer = "testing"
 verification_class = "C"
 

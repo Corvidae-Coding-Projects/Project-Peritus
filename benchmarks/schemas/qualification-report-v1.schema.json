@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://project-peritus.invalid/schemas/h3/qualification-report-v1.json",
+  "title": "Peritus H3 qualification report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "evidence_manifest_digest", "evaluation"],
+  "properties": {
+    "schema_version":{"const":1},
+    "evidence_manifest_digest":{"type":"string","pattern":"^[0-9a-f]{64}$"},
+    "evaluation":{
+      "type":"object",
+      "required":["profile_id","run_id","summaries","objectives","regressions","accounting","runner_receipts","verdict","not_ready_reasons"],
+      "properties":{"verdict":{"enum":["ready","not_ready"]}},
+      "additionalProperties":true
+    }
+  }
+}

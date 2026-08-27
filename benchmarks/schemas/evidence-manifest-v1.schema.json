@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://project-peritus.invalid/schemas/h3/evidence-manifest-v1.json",
+  "title": "Peritus H3 evidence manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "run_id", "profile_id", "subject", "runner", "reference_machine", "profile_digest", "workload_catalog_digest", "started_unix_micros", "finished_unix_micros", "measurement_count", "artifacts"],
+  "properties": {
+    "schema_version":{"const":1}, "run_id":{"type":"string"}, "profile_id":{"type":"string"},
+    "subject":{"type":"object"}, "runner":{"type":"object"}, "reference_machine":{"type":"object"},
+    "profile_digest":{"type":"string","pattern":"^[0-9a-f]{64}$"},
+    "workload_catalog_digest":{"type":"string","pattern":"^[0-9a-f]{64}$"},
+    "started_unix_micros":{"type":"integer","minimum":0}, "finished_unix_micros":{"type":"integer","minimum":0},
+    "measurement_count":{"type":"integer","minimum":0},
+    "artifacts":{"type":"array","items":{"type":"object"}}
+  }
+}
