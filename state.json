@@ -2547,7 +2547,10 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T23:30:59.824402277Z",
-      "updated_at": "2026-08-27T23:30:59.824402277Z"
+      "updated_at": "2026-08-27T23:31:05.019390248Z",
+      "labels": [
+        "feature"
+      ]
     },
     "5e103ed6-e70e-4298-aee2-4edda920cacc": {
       "uuid": "5e103ed6-e70e-4298-aee2-4edda920cacc",
@@ -5101,8 +5104,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T23:30:59.824402277Z",
+    "timestamp": "2026-08-27T23:31:05.019390248Z",
     "agent_id": "6ME5",
-    "agent_seq": 670
+    "agent_seq": 671
   }
 }
