@@ -1,5 +1,5 @@
 {
-  "next_display_id": 39,
+  "next_display_id": 40,
   "next_comment_id": 495,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
@@ -39,7 +39,8 @@
     "dfab9d3d-33b2-4c87-aa21-5e886054ba62": 7,
     "ec4c6d0c-2cbb-40b9-8be2-4ac69e7fc750": 32,
     "ef6ed3ab-52cd-436a-aa6e-d5d098c89f6c": 8,
-    "f27888a7-5366-4703-a68a-9f17b1adad81": 20
+    "f27888a7-5366-4703-a68a-9f17b1adad81": 20,
+    "f68244a3-b4ed-4597-a8e1-330360aa4bb1": 39
   },
   "locks": {
     "31": {
@@ -5139,12 +5140,24 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA95oYz+TMgugWBDzG0WZNXKUxw5WHyxD98VZYs9lsQ9/B4RSfJmUbjRCw4UkfvS0bfiooiMa9bgJ3Pey0OwquDg=="
         }
       }
+    },
+    "f68244a3-b4ed-4597-a8e1-330360aa4bb1": {
+      "uuid": "f68244a3-b4ed-4597-a8e1-330360aa4bb1",
+      "display_id": 39,
+      "title": "G4.3 workspace selection trust and registration",
+      "description": "Goal: \n\nAcceptance criteria:\n- \n\nImplement current-directory discovery, recent workspace selection, path entry, repository validation, browse-only restricted mode, explicit remembered trust, canonical C1 worktree registration, safe transaction roots, workspace switching, and actionable recovery without hand-built registration files.",
+      "status": "open",
+      "priority": "critical",
+      "parent_uuid": "59346441-f15a-4950-a0f1-f10b1b9b1f7d",
+      "created_by": "6ME5",
+      "created_at": "2026-08-27T23:32:20.721850486Z",
+      "updated_at": "2026-08-27T23:32:20.721850486Z"
     }
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T23:32:15.565388551Z",
+    "timestamp": "2026-08-27T23:32:20.721850486Z",
     "agent_id": "6ME5",
-    "agent_seq": 680
+    "agent_seq": 681
   }
 }
