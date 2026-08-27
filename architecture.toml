@@ -14,6 +14,13 @@ ignored_directories = [
 forbidden_module_names = ["common", "helpers", "manager", "misc", "utils"]
 trusted_source_roots = ["crates/foundation/peritus-tcb/src"]
 source_exceptions = [
+    { path = "crates/app/peritus-cli/src/args.rs", owner = "G1", rationale = "The strict dependency-free CLI parser keeps the complete closed command grammar, option cardinality, and stable usage failures in one auditable surface while command value types live separately." },
+    { path = "crates/app/peritus-tui/src/model/interaction.rs", owner = "G2", rationale = "The deterministic TUI interaction reducer keeps navigation, prompt, terminal, and cancellation action-to-effect transitions in one exhaustive state-machine surface." },
+    { path = "crates/app/peritus-tui/src/model.rs", owner = "G2", rationale = "The bounded presentation state keeps view, notice, prompt, event, terminal, and pending-request invariants together while protocol and interaction transitions remain split into submodules." },
+    { path = "crates/app/peritus-tui/src/render.rs", owner = "G2", rationale = "The complete terminal view renderer keeps shared layout and the closed runs, diff, review, trace, evolution, approval, terminal, and help views visually consistent." },
+    { path = "crates/extensions/peritus-mcp/src/server.rs", owner = "G3", rationale = "The MCP server keeps its closed JSON-RPC lifecycle, request dispatch, cancellation registry, bounded pagination, and response mapping in one auditable protocol surface." },
+    { path = "crates/extensions/peritus-plugin-host/src/host.rs", owner = "G3", rationale = "The plugin host keeps discovery-to-start-to-authorize-to-invoke-to-stop lifecycle ordering and owned runtime state in one auditable orchestration surface." },
+    { path = "crates/extensions/peritus-plugin-sdk/src/manifest.rs", owner = "G3", rationale = "The canonical plugin manifest keeps the versioned entrypoint, capability, quota, signature, trust, validation, and digest contract together for compatibility review." },
     { path = "crates/analysis/peritus-eval/src/aggregate/reducer.rs", owner = "E3", rationale = "The pure evaluation reducer keeps its closed command vocabulary, legal phase transitions, and corresponding canonical command encoding in one auditable surface." },
     { path = "crates/analysis/peritus-eval/src/aggregate/state.rs", owner = "E3", rationale = "Complete evaluation state and its versioned canonical encode/decode implementation remain together so replay digest correspondence can be audited directly." },
     { path = "crates/analysis/peritus-eval/src/aggregate/types.rs", owner = "E3", rationale = "The closed durable aggregate vocabulary keeps phase, rollout, plan, publication, report, and failure tag mappings visible together." },
@@ -125,6 +132,12 @@ may_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestrat
 may_dev_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration", "observe", "analysis", "app", "testing"]
 
 [[layers]]
+name = "extensions"
+path = "crates/extensions"
+may_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration", "observe", "analysis", "app", "extensions"]
+may_dev_depend_on = ["foundation", "state", "runtime", "tools", "model", "orchestration", "observe", "analysis", "app", "extensions", "testing"]
+
+[[layers]]
 name = "engineering"
 path = "xtask"
 may_depend_on = ["engineering"]
@@ -158,11 +171,46 @@ layer = "app"
 verification_class = "H"
 
 [[packages]]
+name = "peritus-cli"
+path = "crates/app/peritus-cli"
+owner = "G1"
+layer = "app"
+verification_class = "C"
+
+[[packages]]
 name = "peritus-daemon"
 path = "crates/app/peritus-daemon"
 owner = "G0"
 layer = "app"
 verification_class = "H"
+
+[[packages]]
+name = "peritus-mcp"
+path = "crates/extensions/peritus-mcp"
+owner = "G3"
+layer = "extensions"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-plugin-host"
+path = "crates/extensions/peritus-plugin-host"
+owner = "G3"
+layer = "extensions"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-plugin-sdk"
+path = "crates/extensions/peritus-plugin-sdk"
+owner = "G3"
+layer = "extensions"
+verification_class = "H"
+
+[[packages]]
+name = "peritus-tui"
+path = "crates/app/peritus-tui"
+owner = "G2"
+layer = "app"
+verification_class = "C"
 
 [[packages]]
 name = "peritus-approval"

@@ -52,7 +52,7 @@ fn rust_gate_is_exact(job: &Yaml) -> bool {
         && string(job, "name") == Some("Rust ${{ matrix.operation }} (${{ matrix.os }})")
         && string(job, "needs") == Some("policy")
         && string(job, "runs-on") == Some("${{ matrix.os }}")
-        && integer(job, "timeout-minutes") == Some(20)
+        && integer(job, "timeout-minutes") == Some(30)
         && exact_keys(strategy, &["fail-fast", "matrix"])
         && mapping_value(strategy, "fail-fast").and_then(Yaml::as_bool) == Some(false)
         && exact_matrix(matrix)

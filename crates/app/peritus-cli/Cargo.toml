@@ -1,0 +1,32 @@
+[package]
+name = "peritus-cli"
+description = "Scriptable command-line client for the Peritus daemon"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+keywords = ["agents", "cli", "automation"]
+categories = ["command-line-utilities", "development-tools"]
+
+[dependencies]
+base64.workspace = true
+peritus-app-protocol = { version = "=0.0.0", path = "../peritus-app-protocol" }
+peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+serde_json.workspace = true
+sha2.workspace = true
+tokio.workspace = true
+
+[[bin]]
+name = "peritus"
+path = "src/main.rs"
+
+[package.metadata.peritus]
+owner = "G1"
+layer = "app"
+verification-class = "C"
+
+[lints]
+workspace = true

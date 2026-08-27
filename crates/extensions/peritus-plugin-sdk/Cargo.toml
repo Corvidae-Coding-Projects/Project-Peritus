@@ -1,0 +1,28 @@
+[package]
+name = "peritus-plugin-sdk"
+description = "Versioned wire contracts and canonical manifests for isolated Peritus plugins"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+toml.workspace = true
+vstd.workspace = true
+
+[package.metadata.peritus]
+owner = "G3"
+layer = "extensions"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true
+
+[lints]
+workspace = true

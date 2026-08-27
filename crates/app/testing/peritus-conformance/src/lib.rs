@@ -20,6 +20,7 @@ mod identity;
 mod journal;
 mod orchestrator;
 mod outcome;
+mod plugin;
 mod process;
 mod protocol;
 mod provider;

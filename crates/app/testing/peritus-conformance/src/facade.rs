@@ -58,6 +58,10 @@ pub use crate::orchestrator::{
     OrchestratorTerminal, orchestrator_suite,
 };
 pub use crate::outcome::{CaseResult, Observation, ObservationValue};
+pub use crate::plugin::{
+    PluginConformanceError, PluginConformanceFixture, PluginConformanceObservation,
+    PluginConformanceSubject, PluginDisposition, PluginScenario,
+};
 pub use crate::process::{
     ProcessAuthorizationDrift, ProcessConformanceError, ProcessConformanceFixture,
     ProcessConformanceObservation, ProcessConformanceSubject, ProcessDisposition,
