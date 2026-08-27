@@ -52,6 +52,10 @@
     "36": {
       "agent_id": "6ME5",
       "claimed_at": "2026-08-27T23:31:17.200986615Z"
+    },
+    "37": {
+      "agent_id": "NWAR",
+      "claimed_at": "2026-08-27T23:34:00.767438121Z"
     }
   },
   "issues": {
@@ -5194,8 +5198,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T23:33:01.365823558Z",
-    "agent_id": "6ME5",
-    "agent_seq": 689
+    "timestamp": "2026-08-27T23:34:00.767438121Z",
+    "agent_id": "NWAR",
+    "agent_seq": 1
   }
 }
