@@ -1,5 +1,5 @@
 {
-  "next_display_id": 35,
+  "next_display_id": 36,
   "next_comment_id": 488,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
@@ -24,6 +24,7 @@
     "5e103ed6-e70e-4298-aee2-4edda920cacc": 26,
     "79bb0f68-384c-454b-9302-eb88b692c28f": 18,
     "8d3b149c-50c3-4887-9973-8bea59b5f6a2": 15,
+    "92b485c0-34af-4248-b792-21bc54e81c70": 35,
     "941c4cb4-2cc2-46e7-b156-262ce7712d9f": 4,
     "951695ae-cc15-4045-8069-eb7bba119e5c": 5,
     "98cfa726-8e8c-417c-8fa5-3bd3eec94363": 27,
@@ -2862,6 +2863,18 @@
         }
       }
     },
+    "92b485c0-34af-4248-b792-21bc54e81c70": {
+      "uuid": "92b485c0-34af-4248-b792-21bc54e81c70",
+      "display_id": 35,
+      "title": "H3 integrated load and soak runner",
+      "description": "Implement the retained executable H3 runner and G0/F0 qualification subject adapter that are explicitly required by docs/h3-performance-qualification.md but not supplied by the current peritus-benchmarks core. It must pace all eleven load workloads and four concurrent eight-hour soak workloads against disposable integrated subjects, record bounded measurements and accounting, retain content-bound evidence outside the repository, support candidate-baseline establishment and comparison, and fail closed on machine-profile mismatch. Keep paid provider accounts out of soak traffic; provider pressure uses a deterministic local adapter. Primary agent owns integration, runners, evidence review, and final readiness truth.",
+      "status": "open",
+      "priority": "critical",
+      "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
+      "created_by": "6ME5",
+      "created_at": "2026-08-27T22:24:16.640107633Z",
+      "updated_at": "2026-08-27T22:24:16.640107633Z"
+    },
     "941c4cb4-2cc2-46e7-b156-262ce7712d9f": {
       "uuid": "941c4cb4-2cc2-46e7-b156-262ce7712d9f",
       "display_id": 4,
@@ -5007,8 +5020,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T22:22:51.122350139Z",
+    "timestamp": "2026-08-27T22:24:16.640107633Z",
     "agent_id": "6ME5",
-    "agent_seq": 658
+    "agent_seq": 659
   }
 }
