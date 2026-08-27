@@ -1,5 +1,5 @@
 {
-  "next_display_id": 34,
+  "next_display_id": 35,
   "next_comment_id": 469,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
@@ -12,6 +12,7 @@
     "27633189-3dec-4781-9940-42a3e8eb9e60": 24,
     "2b288a30-b5b1-4452-81bd-20950bebd2d3": 9,
     "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c": 31,
+    "33571295-9ab8-483c-9535-a882d4e8556f": 34,
     "338b10ed-ebc5-4da2-a725-fa46ca662fda": 12,
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
     "3bef48a1-7556-4245-8dc8-a4326deff3ea": 16,
@@ -1242,6 +1243,18 @@
         "qualification",
         "release"
       ]
+    },
+    "33571295-9ab8-483c-9535-a882d4e8556f": {
+      "uuid": "33571295-9ab8-483c-9535-a882d4e8556f",
+      "display_id": 34,
+      "title": "H4 release evidence and artifact qualification",
+      "description": "Implement H4 effect-boundary contracts for release evidence, reproducibility witnesses, SPDX SBOM, provenance, signatures, migration/recovery documentation inventories, artifact manifests, independent audits, final qualification runner/report, schemas, documentation, and tests. Must not sign, publish, tag, or fabricate evidence.",
+      "status": "open",
+      "priority": "critical",
+      "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
+      "created_by": "6ME5",
+      "created_at": "2026-08-27T17:01:40.256074700Z",
+      "updated_at": "2026-08-27T17:01:40.256074700Z"
     },
     "338b10ed-ebc5-4da2-a725-fa46ca662fda": {
       "uuid": "338b10ed-ebc5-4da2-a725-fa46ca662fda",
@@ -4811,8 +4824,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T17:01:35.456525332Z",
+    "timestamp": "2026-08-27T17:01:40.256074700Z",
     "agent_id": "6ME5",
-    "agent_seq": 636
+    "agent_seq": 637
   }
 }
