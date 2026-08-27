@@ -1,7 +1,8 @@
 {
-  "next_display_id": 33,
+  "next_display_id": 34,
   "next_comment_id": 469,
   "display_id_map": {
+    "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
     "14913d8a-8b79-4929-8613-5e6f011364fa": 23,
@@ -42,6 +43,18 @@
     }
   },
   "issues": {
+    "0e00da18-d530-4916-8b3a-05d63719de2b": {
+      "uuid": "0e00da18-d530-4916-8b3a-05d63719de2b",
+      "display_id": 33,
+      "title": "H4 verified release policy",
+      "description": "Implement the deterministic H4 release-policy core with all 25 production acceptance criteria, required evidence categories, exact candidate/revision bindings, H0-H3 readiness inputs, finding/waiver rules, fail-closed verdicts, Verus specifications/proofs where feasible, ordinary wrappers, documentation, and tests.",
+      "status": "open",
+      "priority": "critical",
+      "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
+      "created_by": "6ME5",
+      "created_at": "2026-08-27T17:01:24.792316754Z",
+      "updated_at": "2026-08-27T17:01:24.792316754Z"
+    },
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": {
       "uuid": "0e2f54b8-fe27-4bbd-a983-9644f1da6f71",
       "display_id": 1,
@@ -4794,8 +4807,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T17:01:18.844594400Z",
+    "timestamp": "2026-08-27T17:01:24.792316754Z",
     "agent_id": "6ME5",
-    "agent_seq": 633
+    "agent_seq": 634
   }
 }
