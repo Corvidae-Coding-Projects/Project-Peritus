@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 495,
+  "next_comment_id": 496,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -4289,11 +4289,22 @@
       "parent_uuid": "59346441-f15a-4950-a0f1-f10b1b9b1f7d",
       "created_by": "6ME5",
       "created_at": "2026-08-27T23:31:51.166170874Z",
-      "updated_at": "2026-08-27T23:32:00.607194475Z",
+      "updated_at": "2026-08-27T23:34:09.055174888Z",
       "labels": [
         "feature",
         "ux"
-      ]
+      ],
+      "comments": {
+        "5512b888-fe35-4a5e-9a5f-f4cacac33ab1": {
+          "display_id": 495,
+          "author": "NWAR",
+          "content": "[action] Grounded unified product UX architecture and usability criteria; drafting retained product contract before bootstrap implementation",
+          "created_at": "2026-08-27T23:34:09.052572454Z",
+          "kind": "note",
+          "signed_by": "SHA256:mTwYqorrA4UxSK3se0aIOCOC6y7kyE/sEvoFLwVluf4",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgmuiChqHxrMH8nicBvsKr3z1JEgjcUOEEH/DcxL6kdeEAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA6griF79nHRS2Mr8Owwf6x3SKaUdp0035ut5kUDPQ0BM8l2SC37UVnG6NnxWoE9lE4jvtOGjXrdD0aYxcbAcLBw=="
+        }
+      }
     },
     "d232751e-0c18-4e60-a858-6c3cb8ad26f1": {
       "uuid": "d232751e-0c18-4e60-a858-6c3cb8ad26f1",
@@ -5198,8 +5209,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T23:34:00.767438121Z",
+    "timestamp": "2026-08-27T23:34:09.055174888Z",
     "agent_id": "NWAR",
-    "agent_seq": 1
+    "agent_seq": 2
   }
 }
