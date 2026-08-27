@@ -9,6 +9,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Fixed
 - Format each workspace package independently on Windows hosted runners so Rustfmt stays below the
   operating system command-line limit as the production workspace grows (#27)
+- Give Gate A's verified release and strict no-cheating build lane the same measured 40-minute
+  execution bound as the foundation workflow after the workspace expansion (#27)
 - Normalize every managed-proxy client socket to bounded blocking I/O at the production accept
   boundary, avoiding platform-dependent inheritance of the nonblocking listener flag and
   premature CONNECT closure on macOS (#22)
