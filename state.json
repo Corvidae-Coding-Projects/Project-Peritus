@@ -1,6 +1,6 @@
 {
   "next_display_id": 35,
-  "next_comment_id": 471,
+  "next_comment_id": 472,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -54,11 +54,22 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:01:24.792316754Z",
-      "updated_at": "2026-08-27T17:01:35.456525332Z",
+      "updated_at": "2026-08-27T17:04:02.825371184Z",
       "labels": [
         "qualification",
         "release"
-      ]
+      ],
+      "comments": {
+        "e83a703c-4da5-4739-9b18-36b7ef5ce06a": {
+          "display_id": 471,
+          "author": "6ME5",
+          "content": "Assigned to Sol 5.6 xhigh code-only agent h4_policy. Owns the new V-class peritus-release-policy crate and H4 policy documentation. Agent will not run tools or edit shared files; root integrates and verifies.",
+          "created_at": "2026-08-27T17:04:02.822805729Z",
+          "kind": "decision",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAwJjZGAzVBJLKeXvqJmQOU1Nw21NIhE+Vw/CFkzREm6/GMVpcxCVNdYNOW49Ly0yd9FdvhDQFECjOADuKpzcmDg=="
+        }
+      }
     },
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": {
       "uuid": "0e2f54b8-fe27-4bbd-a983-9644f1da6f71",
@@ -4850,8 +4861,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T17:03:57.882428715Z",
+    "timestamp": "2026-08-27T17:04:02.825371184Z",
     "agent_id": "6ME5",
-    "agent_seq": 641
+    "agent_seq": 642
   }
 }
