@@ -11,7 +11,7 @@ use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
 
 const MAX_SHUTDOWN_FAILURES: usize = 16;
 
-pub(crate) use work::{ShutdownBounds, ShutdownWorkCounts};
+pub use work::{ShutdownBounds, ShutdownWorkCounts};
 
 /// Source that caused the daemon to begin shutdown.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -30,7 +30,7 @@ impl From<Option<ShutdownRequest>> for ShutdownTrigger {
 
 /// Ordered shutdown checkpoint established by the effect-owning runtime.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub(crate) enum ShutdownStage {
+pub enum ShutdownStage {
     /// New client and worker admission has been closed.
     AdmissionClosed,
     /// The local endpoint and its owned connection tasks have joined.
@@ -113,7 +113,7 @@ impl ShutdownOutcome {
 /// This type neither owns nor executes shutdown effects. A caller records a stage only after the
 /// corresponding runtime action and supplies point-in-time counts derived from owned registries.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct ShutdownCoordinator {
+pub struct ShutdownCoordinator {
     trigger: ShutdownTrigger,
     bounds: ShutdownBounds,
     protocol: Option<ShutdownState>,

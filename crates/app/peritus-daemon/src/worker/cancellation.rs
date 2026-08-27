@@ -6,7 +6,7 @@ use super::WorkerCancellationReason;
 
 /// Cloneable read-only cancellation token supplied to a supervised task.
 #[derive(Clone)]
-pub(crate) struct WorkerCancellation {
+pub struct WorkerCancellation {
     receiver: watch::Receiver<Option<WorkerCancellationReason>>,
 }
 

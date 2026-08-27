@@ -4,5 +4,5 @@ mod client;
 mod publication;
 mod service;
 
-pub(crate) use client::ArtifactClient;
-pub(crate) use service::{ArtifactAuthority, ArtifactPoll};
+pub use client::ArtifactClient;
+pub use service::{ArtifactAuthority, ArtifactPoll};

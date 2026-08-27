@@ -5,7 +5,7 @@ use peritus_types::Sha256Digest;
 
 /// Immutable scheduler identities owned by one spawned task.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) struct WorkerAssignment {
+pub struct WorkerAssignment {
     work_id: WorkId,
     dispatch_id: DispatchId,
     worker_id: WorkerId,
@@ -43,7 +43,7 @@ impl WorkerAssignment {
 
 /// Closed reason delivered through the cooperative task cancellation token.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) enum WorkerCancellationReason {
+pub enum WorkerCancellationReason {
     /// The owning scheduler cancelled this dispatch.
     Scheduler,
     /// The authenticated user cancelled the parent operation.
@@ -56,7 +56,7 @@ pub(crate) enum WorkerCancellationReason {
 
 /// Closed redaction-safe worker failure classification.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) enum WorkerFailureKind {
+pub enum WorkerFailureKind {
     /// An authoritative domain reducer rejected or failed the operation.
     Domain,
     /// A provider adapter or model stream failed.
@@ -79,7 +79,7 @@ pub(crate) enum WorkerFailureKind {
 
 /// Only terminal value a supervised worker future may return.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum WorkerTaskOutcome {
+pub enum WorkerTaskOutcome {
     /// Work completed with an exact already-computed result digest.
     Completed {
         /// Digest of the authoritative or publishable result observation.
@@ -98,7 +98,7 @@ pub(crate) enum WorkerTaskOutcome {
 
 /// One terminal task observation fenced to its exact scheduler assignment.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct WorkerTerminalObservation {
+pub struct WorkerTerminalObservation {
     assignment: WorkerAssignment,
     outcome: WorkerTaskOutcome,
 }

@@ -147,7 +147,7 @@ pub(super) async fn run(
                 reply(
                     respond,
                     prompt_correlations(&prompts, &lifecycle, actor_id, session_id, maximum),
-                )
+                );
             }
             AuthorityMessage::OpenArtifact {
                 actor_id,
@@ -281,7 +281,7 @@ pub(super) async fn run(
                     journal
                         .settle_application_command(command_id, request_digest, settlement)
                         .map_err(journal_error),
-                )
+                );
             }
             AuthorityMessage::ReconcileCommand {
                 command_id,

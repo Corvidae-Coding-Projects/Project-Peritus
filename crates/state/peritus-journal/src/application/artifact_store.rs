@@ -17,6 +17,10 @@ impl SqliteJournal {
     /// # Errors
     ///
     /// Returns conflict for identity/digest drift, or a typed storage error.
+    #[allow(
+        clippy::needless_pass_by_value,
+        reason = "the journal consumes a new-record command even when SQLite binds its fields"
+    )]
     pub fn begin_application_artifact(
         &mut self,
         artifact: NewApplicationArtifact,

@@ -3,4 +3,4 @@
 mod local_file;
 mod runtime;
 
-pub(crate) use runtime::TelemetryRuntime;
+pub use runtime::TelemetryRuntime;

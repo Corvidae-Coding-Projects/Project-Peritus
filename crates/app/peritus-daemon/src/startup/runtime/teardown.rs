@@ -28,26 +28,25 @@ impl DaemonRuntime {
         let _ = self.server_stop.send(true);
         let timeout = Duration::from_millis(self.config.limits().shutdown_millis());
         if let Some(mut server_task) = self.server_task.take() {
-            match tokio::time::timeout(timeout, &mut server_task).await {
-                Ok(result) => retain_cleanup_failure(
+            if let Ok(result) = tokio::time::timeout(timeout, &mut server_task).await {
+                retain_cleanup_failure(
                     &mut coordinator,
                     &mut indeterminate_effects,
                     server_exit(result),
-                )?,
-                Err(_) => {
-                    server_task.abort();
-                    let _ = server_task.await;
-                    retain_cleanup_failure(
-                        &mut coordinator,
-                        &mut indeterminate_effects,
-                        Err(DaemonError::new(
-                            DaemonErrorCode::UncleanShutdown,
-                            DaemonRecovery::Reconcile,
-                            "join local endpoint server",
-                            "connection tasks exceeded the configured shutdown bound",
-                        )),
-                    )?;
-                }
+                )?;
+            } else {
+                server_task.abort();
+                let _ = server_task.await;
+                retain_cleanup_failure(
+                    &mut coordinator,
+                    &mut indeterminate_effects,
+                    Err(DaemonError::new(
+                        DaemonErrorCode::UncleanShutdown,
+                        DaemonRecovery::Reconcile,
+                        "join local endpoint server",
+                        "connection tasks exceeded the configured shutdown bound",
+                    )),
+                )?;
             }
         }
         if let Some(mut outbox) = self.outbox.take() {

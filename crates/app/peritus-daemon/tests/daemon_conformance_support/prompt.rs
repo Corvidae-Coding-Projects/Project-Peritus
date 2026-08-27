@@ -194,7 +194,7 @@ fn rejected_answer(
     ))
 }
 
-fn correlation(
+const fn correlation(
     current: PromptCorrelation,
     actor_id: ActorId,
     revision: RevisionTuple,

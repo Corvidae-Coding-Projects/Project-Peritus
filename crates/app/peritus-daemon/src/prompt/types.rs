@@ -95,7 +95,7 @@ impl PromptAdmission {
 
 /// One signed approval admitted by A3 freshness and strict B1 authentication.
 ///
-/// This is not a committed approval or effect permit. AuthorityOwner must resolve the move-only
+/// This is not a committed approval or effect permit. `AuthorityOwner` must resolve the move-only
 /// observation against the same current registry and commit the resulting B1 transition.
 #[derive(Debug, Eq, PartialEq)]
 pub struct AuthenticatedApprovalResponse {
@@ -231,7 +231,7 @@ pub(super) enum PromptSettlementResponse {
     Cancellation(PromptCancellation),
 }
 
-/// Lifecycle retained by the broker until AuthorityOwner retires the entry.
+/// Lifecycle retained by the broker until `AuthorityOwner` retires the entry.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PromptTerminalStatus {
     /// No terminal response has been accepted.

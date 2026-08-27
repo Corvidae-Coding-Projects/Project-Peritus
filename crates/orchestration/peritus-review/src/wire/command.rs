@@ -16,6 +16,7 @@ impl ReviewCommandFrame {
 
     #[cfg(test)]
     /// Recovers the checked review command for canonical round-trip assertions.
+    #[must_use]
     pub fn into_command(self) -> ReviewCommand {
         self.0
     }

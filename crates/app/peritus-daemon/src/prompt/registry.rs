@@ -16,13 +16,20 @@ use super::{
     types::PromptSettlementResponse,
 };
 
+mod validation;
+
+use validation::{
+    binding_mismatch, cancelled, classify_answer, classify_cancellation, conflicting_response,
+    not_found, status, validate_admission,
+};
+
 struct OutstandingPrompt {
     state: PromptState,
     maximum_answer_bytes: usize,
 }
 
 /// Inert broker registration validated before the durable target row is written.
-pub(crate) struct PreparedPromptRegistration {
+pub struct PreparedPromptRegistration {
     binding: PromptBinding,
     maximum_answer_bytes: usize,
     already_registered: bool,
@@ -255,7 +262,7 @@ impl PromptBroker {
         match settlement.response() {
             PromptSettlementResponse::Answer(answer) => match entry.state.phase() {
                 PromptPhase::Answered(existing) if existing == answer => {
-                    return Ok(PromptTerminalStatus::Answered);
+                    Ok(PromptTerminalStatus::Answered)
                 }
                 PromptPhase::AwaitingAnswer => {
                     entry
@@ -269,7 +276,7 @@ impl PromptBroker {
             },
             PromptSettlementResponse::Cancellation(cancellation) => match entry.state.phase() {
                 PromptPhase::Cancelled(existing) if existing == cancellation => {
-                    return Ok(PromptTerminalStatus::Cancelled);
+                    Ok(PromptTerminalStatus::Cancelled)
                 }
                 PromptPhase::AwaitingAnswer => {
                     entry.state.cancel(*cancellation).map_err(PromptBrokerError::protocol)?;
@@ -296,7 +303,7 @@ impl PromptBroker {
         Ok(status(entry.state.phase()))
     }
 
-    /// Retires one exact terminal entry after AuthorityOwner has durably handled its result.
+    /// Retires one exact terminal entry after `AuthorityOwner` has durably handled its result.
     ///
     /// # Errors
     ///
@@ -375,99 +382,4 @@ impl PromptBroker {
     fn entry(&self, prompt_id: PromptId) -> Result<&OutstandingPrompt, PromptBrokerError> {
         self.entries.get(&prompt_id).ok_or_else(not_found)
     }
-}
-
-fn validate_admission(
-    expected: PromptCorrelation,
-    supplied: PromptCorrelation,
-    admission: PromptAdmission,
-) -> Result<(), PromptBrokerError> {
-    if expected.actor_id() != admission.actor_id() || supplied.actor_id() != admission.actor_id() {
-        return Err(PromptBrokerError::new(
-            PromptBrokerErrorKind::ActorMismatch,
-            "prompt response actor does not match the authenticated peer",
-        ));
-    }
-    if expected.session_id() != admission.session_id()
-        || supplied.session_id() != admission.session_id()
-    {
-        return Err(PromptBrokerError::new(
-            PromptBrokerErrorKind::SessionMismatch,
-            "prompt response session does not match the authenticated peer",
-        ));
-    }
-    if expected.revision() != admission.live_revision() {
-        return Err(PromptBrokerError::new(
-            PromptBrokerErrorKind::StaleRevision,
-            "prompt revision is no longer current",
-        ));
-    }
-    if expected.cancellation_generation() != admission.cancellation_generation() {
-        return Err(PromptBrokerError::new(
-            PromptBrokerErrorKind::StaleCancellationGeneration,
-            "prompt cancellation generation is no longer current",
-        ));
-    }
-    if supplied != expected {
-        return Err(binding_mismatch());
-    }
-    Ok(())
-}
-
-fn classify_answer(phase: &PromptPhase, answer: &PromptAnswer) -> Result<(), PromptBrokerError> {
-    match phase {
-        PromptPhase::AwaitingAnswer => Ok(()),
-        PromptPhase::Answered(existing) if existing == answer => Err(duplicate_response()),
-        PromptPhase::Answered(_) => Err(conflicting_response()),
-        PromptPhase::Cancelled(_) => Err(cancelled()),
-    }
-}
-
-fn classify_cancellation(
-    phase: &PromptPhase,
-    cancellation: PromptCancellation,
-) -> Result<(), PromptBrokerError> {
-    match phase {
-        PromptPhase::AwaitingAnswer => Ok(()),
-        PromptPhase::Answered(_) => Err(conflicting_response()),
-        PromptPhase::Cancelled(existing) if *existing == cancellation => Err(duplicate_response()),
-        PromptPhase::Cancelled(_) => Err(conflicting_response()),
-    }
-}
-
-const fn status(phase: &PromptPhase) -> PromptTerminalStatus {
-    match phase {
-        PromptPhase::AwaitingAnswer => PromptTerminalStatus::AwaitingAnswer,
-        PromptPhase::Answered(_) => PromptTerminalStatus::Answered,
-        PromptPhase::Cancelled(_) => PromptTerminalStatus::Cancelled,
-    }
-}
-
-fn not_found() -> PromptBrokerError {
-    PromptBrokerError::new(PromptBrokerErrorKind::NotFound, "prompt identity is not registered")
-}
-
-fn binding_mismatch() -> PromptBrokerError {
-    PromptBrokerError::new(
-        PromptBrokerErrorKind::BindingMismatch,
-        "prompt response does not echo the complete registered correlation",
-    )
-}
-
-fn duplicate_response() -> PromptBrokerError {
-    PromptBrokerError::new(
-        PromptBrokerErrorKind::DuplicateResponse,
-        "the exact terminal prompt response was already accepted",
-    )
-}
-
-fn conflicting_response() -> PromptBrokerError {
-    PromptBrokerError::new(
-        PromptBrokerErrorKind::ConflictingResponse,
-        "a different terminal prompt response was already accepted",
-    )
-}
-
-fn cancelled() -> PromptBrokerError {
-    PromptBrokerError::new(PromptBrokerErrorKind::Cancelled, "prompt was already cancelled")
 }

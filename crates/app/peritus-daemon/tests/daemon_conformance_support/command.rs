@@ -26,7 +26,7 @@ pub(super) struct SchedulerFixture {
 }
 
 impl SchedulerFixture {
-    pub(super) fn binding(&self) -> &CommandBinding {
+    pub(super) const fn binding(&self) -> &CommandBinding {
         &self.binding
     }
 }

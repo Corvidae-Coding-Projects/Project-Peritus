@@ -76,7 +76,7 @@ impl OfficialExecutableSelection {
 /// credential reference: the unmodified official executable owns login state and acts only as the
 /// constrained transport selected here.
 pub enum ProviderDeclaration {
-    /// First-party OpenAI Responses HTTP adapter.
+    /// First-party `OpenAI` Responses HTTP adapter.
     OpenAi {
         /// Checked endpoint, routing, limits, and opaque credential reference.
         config: OpenAiConfig,
@@ -94,14 +94,14 @@ pub enum ProviderDeclaration {
         /// Separately validated compatible wire contract and immutable profile.
         profile: CompatibleProfile,
     },
-    /// Account-backed OpenAI route through the official Codex executable.
+    /// Account-backed `OpenAI` route through the official Codex executable.
     CodexRuntime(CodexRuntimeConfig),
     /// Account-backed Anthropic route through the official Claude executable.
     ClaudeRuntime(ClaudeRuntimeConfig),
 }
 
 impl ProviderDeclaration {
-    /// Declares a first-party OpenAI Responses adapter.
+    /// Declares a first-party `OpenAI` Responses adapter.
     #[must_use]
     pub const fn openai(config: OpenAiConfig, profile: ProviderProfile) -> Self {
         Self::OpenAi { config, profile }

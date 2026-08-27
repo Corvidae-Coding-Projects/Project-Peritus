@@ -12,7 +12,7 @@ use peritus_policy::AuthorityInstant;
 
 use super::{PromptAdmission, PromptBrokerError, PromptBrokerErrorKind};
 
-/// Current durable authority observations injected by AuthorityOwner for signed approval input.
+/// Current durable authority observations injected by `AuthorityOwner` for signed approval input.
 #[derive(Clone, Copy)]
 pub struct CurrentApprovalAuthority<'a> {
     epoch: &'a CurrentAuthorityEpoch,
@@ -128,14 +128,14 @@ fn authenticate(
     Ok(PreparedAnswer::Approval { request, signed, observation })
 }
 
-fn challenge_missing() -> PromptBrokerError {
+const fn challenge_missing() -> PromptBrokerError {
     PromptBrokerError::new(
         PromptBrokerErrorKind::ApprovalChallenge,
         "approval prompt has no exact B1 challenge",
     )
 }
 
-fn challenge_error(error: peritus_approval::ApprovalError) -> PromptBrokerError {
+const fn challenge_error(error: peritus_approval::ApprovalError) -> PromptBrokerError {
     PromptBrokerError::approval(
         PromptBrokerErrorKind::ApprovalChallenge,
         "approval challenge is not a canonical B1 request",
@@ -143,7 +143,7 @@ fn challenge_error(error: peritus_approval::ApprovalError) -> PromptBrokerError 
     )
 }
 
-fn authentication_error(error: peritus_approval::ApprovalError) -> PromptBrokerError {
+const fn authentication_error(error: peritus_approval::ApprovalError) -> PromptBrokerError {
     PromptBrokerError::approval(
         PromptBrokerErrorKind::ApprovalAuthentication,
         "B1 rejected signed approval authentication",
@@ -151,7 +151,7 @@ fn authentication_error(error: peritus_approval::ApprovalError) -> PromptBrokerE
     )
 }
 
-fn stale_registry() -> PromptBrokerError {
+const fn stale_registry() -> PromptBrokerError {
     PromptBrokerError::new(
         PromptBrokerErrorKind::StaleCredentialRegistry,
         "approval prompt does not match the current durable credential registry",

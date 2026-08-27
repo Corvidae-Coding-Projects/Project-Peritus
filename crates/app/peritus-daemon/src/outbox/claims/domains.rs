@@ -8,7 +8,7 @@ use super::{HARNESS_MATERIALIZATION_DESTINATION, domain_claim_error, require_cla
 
 /// Exact decoded E1 plan and the domain-owned C0 claim required for settlement.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct HarnessMaterializationClaim {
+pub struct HarnessMaterializationClaim {
     plan: peritus_harness::MaterializationPlan,
     claim: peritus_harness::DirectiveClaim,
 }
@@ -26,7 +26,7 @@ impl HarnessMaterializationClaim {
 }
 
 /// Decodes an exact claimed E1 materialization plan through its native claim binding.
-pub(crate) fn decode_harness_materialization_claim(
+pub fn decode_harness_materialization_claim(
     message: &OutboxMessage,
 ) -> Result<HarnessMaterializationClaim, DaemonError> {
     require_claimed(message, HARNESS_MATERIALIZATION_DESTINATION)?;
@@ -40,7 +40,7 @@ pub(crate) fn decode_harness_materialization_claim(
 }
 
 /// Decodes an exact claimed E2 model-analysis directive through its native claim API.
-pub(crate) fn decode_debugger_model_claim(
+pub fn decode_debugger_model_claim(
     message: &OutboxMessage,
 ) -> Result<peritus_debugger::ModelDirectiveClaim, DaemonError> {
     require_claimed(message, peritus_debugger::MODEL_ANALYSIS_DESTINATION)?;
@@ -50,7 +50,7 @@ pub(crate) fn decode_debugger_model_claim(
 }
 
 /// Decodes an exact claimed E2 publication directive through its native claim API.
-pub(crate) fn decode_debugger_publication_claim(
+pub fn decode_debugger_publication_claim(
     message: &OutboxMessage,
 ) -> Result<peritus_debugger::PublicationDirectiveClaim, DaemonError> {
     require_claimed(message, peritus_debugger::PUBLICATION_DESTINATION)?;
@@ -59,7 +59,7 @@ pub(crate) fn decode_debugger_publication_claim(
 }
 
 /// Decodes an exact claimed E3 scheduling directive through its native claim API.
-pub(crate) fn decode_evaluation_schedule_claim(
+pub fn decode_evaluation_schedule_claim(
     message: &OutboxMessage,
 ) -> Result<peritus_eval::ScheduleDirectiveClaim, DaemonError> {
     require_claimed(message, peritus_eval::SCHEDULE_DESTINATION)?;
@@ -69,7 +69,7 @@ pub(crate) fn decode_evaluation_schedule_claim(
 }
 
 /// Decodes an exact claimed E3 execution directive through its native claim API.
-pub(crate) fn decode_evaluation_execution_claim(
+pub fn decode_evaluation_execution_claim(
     message: &OutboxMessage,
 ) -> Result<peritus_eval::ExecutionDirectiveClaim, DaemonError> {
     require_claimed(message, peritus_eval::EXECUTION_DESTINATION)?;
@@ -78,7 +78,7 @@ pub(crate) fn decode_evaluation_execution_claim(
 }
 
 /// Decodes an exact claimed E3 publication directive through its native claim API.
-pub(crate) fn decode_evaluation_publication_claim(
+pub fn decode_evaluation_publication_claim(
     message: &OutboxMessage,
 ) -> Result<peritus_eval::PublicationDirectiveClaim, DaemonError> {
     require_claimed(message, peritus_eval::PUBLICATION_DESTINATION)?;
@@ -88,7 +88,7 @@ pub(crate) fn decode_evaluation_publication_claim(
 }
 
 /// Decodes an exact claimed F0 publication directive through its native claim API.
-pub(crate) fn decode_evolution_publication_claim(
+pub fn decode_evolution_publication_claim(
     message: &OutboxMessage,
 ) -> Result<peritus_evolution::EvolutionPublicationClaim, DaemonError> {
     require_claimed(message, peritus_evolution::EVOLUTION_PUBLICATION_DESTINATION)?;

@@ -52,7 +52,7 @@ pub(super) fn install_and_reconcile(
     let referenced = config
         .projects()
         .iter()
-        .map(|project| project.workspace_identities())
+        .map(crate::ProjectDeclaration::workspace_identities)
         .collect::<Result<Vec<_>, _>>()?
         .into_iter()
         .flatten()

@@ -243,7 +243,7 @@ fn load_target(
     Ok(target)
 }
 
-fn admission(target: &ApplicationPromptRecord) -> PromptAdmission {
+const fn admission(target: &ApplicationPromptRecord) -> PromptAdmission {
     PromptAdmission::new(
         target.actor_id(),
         target.session_id(),

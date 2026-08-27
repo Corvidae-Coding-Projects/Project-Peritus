@@ -5,13 +5,13 @@ mod artifact;
 mod command;
 mod error;
 mod lifecycle;
+mod outbox;
 mod process;
 mod prompt;
 mod session;
 mod subscription;
+mod terminal;
 mod wire;
 
-pub(crate) use adapter::{
-    BinaryDaemonFactory, BinaryDaemonSubject, blocker_for, reachable_scenarios,
-};
+pub use adapter::{BinaryDaemonFactory, BinaryDaemonSubject, blocker_for, reachable_scenarios};
 use error::debug_error;

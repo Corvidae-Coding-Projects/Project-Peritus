@@ -11,7 +11,7 @@ const LEASE_SECONDS: u64 = 30;
 const IDLE_MILLIS: u64 = 25;
 
 /// Owned handle for the sole durable outbox claim loop.
-pub(crate) struct OutboxRuntime {
+pub struct OutboxRuntime {
     stop: watch::Sender<bool>,
     task: JoinHandle<Result<(), DaemonError>>,
 }
@@ -66,10 +66,9 @@ async fn run(
         let Some(message) = authority.claim_outbox(now, lease_until).await? else {
             if let Ok(changed) =
                 tokio::time::timeout(Duration::from_millis(IDLE_MILLIS), stop.changed()).await
+                && (changed.is_err() || *stop.borrow())
             {
-                if changed.is_err() || *stop.borrow() {
-                    return Ok(());
-                }
+                return Ok(());
             }
             continue;
         };

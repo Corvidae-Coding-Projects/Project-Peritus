@@ -25,7 +25,8 @@ impl DaemonComponents {
     /// Returns a typed startup failure when a provider, credential backend, or tool inventory
     /// cannot be represented exactly.
     pub fn build(config: &DaemonConfig) -> Result<Self, DaemonError> {
-        let direct = config.providers().iter().any(|route| route.requires_credential_broker());
+        let direct =
+            config.providers().iter().any(crate::ProviderRoute::requires_credential_broker);
         let credential_source = PlatformCredentialSource::new("peritus").map_err(provider_error)?;
         if direct && !credential_source.available() {
             return Err(DaemonError::new(

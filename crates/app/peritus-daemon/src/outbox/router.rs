@@ -8,7 +8,7 @@ use super::{CLAIM_DESTINATIONS, DurableOutboxPort, TypedOutboxClaim, decode_clai
 use crate::{AuthorityHandle, DaemonError, DaemonErrorCode, DaemonRecovery};
 
 /// One exact typed outbox destination adapter.
-pub(crate) trait OutboxHandler: Send + Sync + 'static {
+pub trait OutboxHandler: Send + Sync + 'static {
     /// Performs one idempotent delivery attempt.
     ///
     /// `true` means the generic pump must acknowledge the exact claim after return. `false` means
@@ -22,7 +22,7 @@ pub(crate) trait OutboxHandler: Send + Sync + 'static {
 
 /// Immutable destination inventory shared by the sole outbox pump.
 #[derive(Default)]
-pub(crate) struct DestinationRouter {
+pub struct DestinationRouter {
     handlers: BTreeMap<String, Arc<dyn OutboxHandler>>,
 }
 

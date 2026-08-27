@@ -294,7 +294,7 @@ fn subscription_id(seed: u8) -> io::Result<SubscriptionId> {
     clippy::too_many_arguments,
     reason = "keeps every direct subscription observation explicit at the scenario boundary"
 )]
-fn observation(
+const fn observation(
     outcome: DaemonSubscriptionOutcome,
     supplied_cursor: u64,
     first_source_cursor: Option<u64>,

@@ -26,6 +26,10 @@ struct ReferenceDaemon {
 }
 
 impl DaemonConformanceSubject for ReferenceDaemon {
+    #[allow(
+        clippy::too_many_lines,
+        reason = "the explicit 28-case reference table is audited as one complete catalog"
+    )]
     fn exercise(
         &mut self,
         fixture: &DaemonConformanceFixture,
@@ -203,7 +207,7 @@ impl DaemonConformanceSubject for ReferenceDaemon {
     }
 }
 
-fn command(
+const fn command(
     outcome: DaemonCommandOutcome,
     events: u64,
     range_exact: bool,
@@ -224,7 +228,7 @@ fn command(
 }
 
 #[allow(clippy::too_many_arguments, reason = "mirrors the direct subscription observation")]
-fn subscription(
+const fn subscription(
     outcome: DaemonSubscriptionOutcome,
     supplied_cursor: u64,
     first_cursor: Option<u64>,
@@ -250,7 +254,7 @@ fn subscription(
     ))
 }
 
-fn artifact(
+const fn artifact(
     outcome: DaemonArtifactOutcome,
     bytes: u64,
     integrity: DaemonArtifactIntegrity,

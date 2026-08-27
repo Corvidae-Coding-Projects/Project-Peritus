@@ -10,9 +10,9 @@ use peritus_types::{CommandId, EventId, EventSequence, Sha256Digest};
 
 use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
 
-pub(crate) const ARTIFACT_UPLOAD_ACCEPTED_FAMILY: u16 = 65_000;
+pub const ARTIFACT_UPLOAD_ACCEPTED_FAMILY: u16 = 65_000;
 
-pub(crate) fn record(
+pub fn record(
     journal: &mut SqliteJournal,
     metadata: &ArtifactMetadata,
 ) -> Result<peritus_journal::CommittedBatch, DaemonError> {
@@ -59,7 +59,7 @@ pub(crate) fn record(
     journal.append(plan).map_err(journal_error)
 }
 
-pub(crate) fn event_id(metadata: &ArtifactMetadata) -> EventId {
+pub fn event_id(metadata: &ArtifactMetadata) -> EventId {
     EventId::new(id_with_domain(b"peritus/g0/artifact-upload-event/v1\0", metadata))
         .expect("domain-separated SHA-256 identifier is nonzero")
 }

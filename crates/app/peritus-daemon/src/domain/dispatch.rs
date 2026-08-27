@@ -13,7 +13,7 @@ use peritus_types::{CommandId, EventId, RevisionTuple};
 use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
 
 /// Immutable facts copied from one already-validated A3 command binding.
-pub(crate) struct DomainSubmission {
+pub struct DomainSubmission {
     command_id: CommandId,
     event_id: EventId,
     expected_previous_event: Option<EventId>,
@@ -23,7 +23,7 @@ pub(crate) struct DomainSubmission {
 }
 
 impl DomainSubmission {
-    pub(crate) fn new(
+    pub(crate) const fn new(
         command_id: CommandId,
         event_id: EventId,
         expected_previous_event: Option<EventId>,
@@ -36,12 +36,12 @@ impl DomainSubmission {
 }
 
 /// Authoritative dispatch result retained by the application command ledger.
-pub(crate) enum DomainOutcome {
+pub enum DomainOutcome {
     Committed(CommittedBatch),
     Rejected(AppErrorCode),
 }
 
-pub(crate) fn dispatch(
+pub fn dispatch(
     journal: &mut SqliteJournal,
     submission: DomainSubmission,
 ) -> Result<DomainOutcome, DaemonError> {
@@ -266,15 +266,15 @@ pub(super) fn binding_matches_without_revision(
         && submission.expected_previous_event == expected_previous_event
 }
 
-pub(super) fn malformed() -> Result<DomainOutcome, DaemonError> {
+pub(super) const fn malformed() -> Result<DomainOutcome, DaemonError> {
     Ok(DomainOutcome::Rejected(AppErrorCode::MalformedFrame))
 }
 
-pub(super) fn binding_rejection() -> Result<DomainOutcome, DaemonError> {
+pub(super) const fn binding_rejection() -> Result<DomainOutcome, DaemonError> {
     Ok(DomainOutcome::Rejected(AppErrorCode::CommandBindingMismatch))
 }
 
-pub(super) fn semantic_rejection() -> Result<DomainOutcome, DaemonError> {
+pub(super) const fn semantic_rejection() -> Result<DomainOutcome, DaemonError> {
     Ok(DomainOutcome::Rejected(AppErrorCode::InvalidCommandFrame))
 }
 

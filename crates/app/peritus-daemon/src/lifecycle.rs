@@ -96,12 +96,12 @@ impl DaemonLifecycle {
     }
 
     /// Closes mutation intake while owned work drains.
-    pub fn begin_draining(&mut self) {
+    pub const fn begin_draining(&mut self) {
         self.readiness = DaemonReadiness::Draining;
     }
 
     /// Marks the daemon unavailable after endpoint/storage closure.
-    pub fn unavailable(&mut self) {
+    pub const fn unavailable(&mut self) {
         self.readiness = DaemonReadiness::Unavailable;
     }
 

@@ -169,6 +169,10 @@ fn runtime_streams_uploaded_artifacts_through_the_durable_catalog() {
     run_async_test(runtime_streams_uploaded_artifacts_through_the_durable_catalog_async());
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "the integration trace keeps the complete upload and publication sequence visible"
+)]
 async fn runtime_streams_uploaded_artifacts_through_the_durable_catalog_async() {
     let temporary = TempDir::new().expect("temporary root");
     let runtime = DaemonRuntime::start(support::configuration(temporary.path()))

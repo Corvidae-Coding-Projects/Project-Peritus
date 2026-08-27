@@ -17,13 +17,13 @@ enum Direction {
     Upload,
 }
 
-pub(crate) struct ArtifactClient {
+pub struct ArtifactClient {
     transfers: BTreeMap<TransferId, (ArtifactId, Direction)>,
     maximum: usize,
 }
 
 impl ArtifactClient {
-    pub(crate) fn new(limits: AppProtocolLimits) -> Self {
+    pub(crate) const fn new(limits: AppProtocolLimits) -> Self {
         Self { transfers: BTreeMap::new(), maximum: limits.max_idempotency_entries() }
     }
 

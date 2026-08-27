@@ -3,4 +3,4 @@
 mod pump;
 mod registry;
 
-pub(crate) use pump::SubscriptionRegistry;
+pub use pump::SubscriptionRegistry;

@@ -32,18 +32,18 @@ fn empty_allowlist_exposes_no_router_or_operations() {
 #[test]
 fn duplicates_and_unknown_routes_are_rejected() {
     let duplicate = vec!["fs.read".to_owned(), "fs.read".to_owned()];
-    let error = ToolComponents::build(&duplicate, limits()).err().expect("duplicate rejected");
+    let error = ToolComponents::build(&duplicate, limits()).expect_err("duplicate rejected");
     assert_eq!(error.kind(), ToolComponentErrorKind::DuplicateTool);
 
     let unknown = vec!["fs.teleport".to_owned()];
-    let error = ToolComponents::build(&unknown, limits()).err().expect("unknown rejected");
+    let error = ToolComponents::build(&unknown, limits()).expect_err("unknown rejected");
     assert_eq!(error.kind(), ToolComponentErrorKind::UnknownTool);
 }
 
 #[test]
 fn unsupported_git_merge_is_never_a_production_handler() {
     let allowed = vec!["git.merge".to_owned()];
-    let error = ToolComponents::build(&allowed, limits()).err().expect("merge rejected");
+    let error = ToolComponents::build(&allowed, limits()).expect_err("merge rejected");
     assert_eq!(error.kind(), ToolComponentErrorKind::UnknownTool);
 }
 

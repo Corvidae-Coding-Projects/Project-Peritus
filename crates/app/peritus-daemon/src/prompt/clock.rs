@@ -9,7 +9,7 @@ use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
 
 /// Monotonic millisecond clock whose epoch was durably allocated by C0 at startup.
 #[derive(Debug)]
-pub(crate) struct AuthorityClock {
+pub struct AuthorityClock {
     epoch: Generation,
     started: Instant,
 }

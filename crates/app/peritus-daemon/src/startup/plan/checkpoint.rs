@@ -7,7 +7,7 @@ use crate::StartupPhase;
 
 /// Explicit action following a successfully retained startup checkpoint.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) enum StartupNextAction {
+pub enum StartupNextAction {
     /// Execute the named next phase.
     Execute(StartupPhase),
     /// Startup is fully checkpointed and no phase remains.
@@ -16,7 +16,7 @@ pub(crate) enum StartupNextAction {
 
 /// Exact observation retained after one startup phase completes.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) struct StartupCheckpoint {
+pub struct StartupCheckpoint {
     ordinal: u8,
     phase: StartupPhase,
     input_digest: Sha256Digest,
@@ -58,7 +58,7 @@ impl StartupCheckpoint {
 
 /// Fixed-capacity, exact-prefix startup checkpoint log.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct StartupCheckpoints {
+pub struct StartupCheckpoints {
     entries: [Option<StartupCheckpoint>; STARTUP_PHASE_COUNT],
     len: u8,
 }

@@ -16,11 +16,7 @@ use peritus_types::{
     ProviderProfileId, RevisionNumber, RevisionTuple, RunId, SessionId, Sha256Digest, WorkspaceId,
 };
 
-pub(super) fn command_binding(
-    session: SessionId,
-    request_identity: u8,
-    key: &[u8],
-) -> CommandBinding {
+pub fn command_binding(session: SessionId, request_identity: u8, key: &[u8]) -> CommandBinding {
     let revision = RevisionTuple::new(
         AcceptanceSpecId::new([10; 16]).expect("acceptance identity"),
         HarnessId::new([11; 16]).expect("harness identity"),

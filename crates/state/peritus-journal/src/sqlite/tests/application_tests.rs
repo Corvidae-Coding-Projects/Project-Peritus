@@ -45,7 +45,7 @@ fn global_tail_is_bounded_and_reports_retention_bounds() {
     let first = journal.global_events_after(0, 2).expect("first bounded window");
     assert_eq!((first.earliest(), first.latest()), (1, 3));
     assert_eq!(
-        first.records().iter().map(|record| record.global_position()).collect::<Vec<_>>(),
+        first.records().iter().map(crate::CommittedRecord::global_position).collect::<Vec<_>>(),
         vec![1, 2]
     );
     assert!(!first.has_retention_gap_after(0));

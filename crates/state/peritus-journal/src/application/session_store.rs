@@ -20,6 +20,10 @@ impl SqliteJournal {
     /// # Errors
     ///
     /// Returns a conflict for identity drift, invalid input for an inactive actor, or storage error.
+    #[allow(
+        clippy::needless_pass_by_value,
+        reason = "opening consumes the one-shot session input as part of its public contract"
+    )]
     pub fn open_application_session(
         &mut self,
         session: NewApplicationSession,

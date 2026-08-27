@@ -27,11 +27,27 @@ recovery work; it is never converted into success.
 
 ## Configuration
 
-`peritusd` accepts one command:
+Normal operation uses one production command:
 
 ```text
 peritusd serve --config /absolute/path/peritus.toml
 ```
+
+G0 also exposes three bounded administration entry points used by A2 qualification:
+
+```text
+peritusd qualify-pty
+peritusd qualify-outbox-stage --config /absolute/path/isolated-qualification.toml
+peritusd qualify-outbox-recover --config /absolute/path/isolated-qualification.toml
+```
+
+`qualify-pty` launches and reaps a real host PTY child and reports the directly observed combined
+stream ordering, offsets, exit fence, and buffering bound. The outbox pair writes one deterministic
+identity-bearing filesystem effect, publishes a flushed post-effect/pre-ack checkpoint, is killed
+by the qualification supervisor, then reclaims and acknowledges the exact live C0 fence without a
+duplicate effect. The outbox commands mutate their configured journal and are only for a fresh,
+disposable qualification state root; they are not repair commands for a live daemon. These narrow
+administration commands do not constitute the G1 user CLI.
 
 Configuration is strict version-one TOML. Unknown fields, relative or overlapping protected
 roots, zero or malformed identities, duplicate projects/workspaces/tools/providers, plaintext
@@ -181,8 +197,10 @@ CARGO_BUILD_JOBS=1 cargo verus verify --package peritus-daemon --all-features --
 The independent A2 daemon contract has 28 cases covering negotiation, authentication, command
 idempotency, subscriptions, artifacts, prompts, terminals, read-only admission, singleton
 ownership, startup/outbox crash windows, shutdown/restart, malformed frames, bounds, and
-non-authority behavior. The final merge authority remains `CARGO_BUILD_JOBS=1 just gate-a` plus the
-required Ubuntu, macOS, Windows, and Foundation hosted checks.
+non-authority behavior. All 28 cases execute through the public `peritusd` subprocess boundary;
+none is represented by an unavailable-case waiver. The final merge authority remains
+`CARGO_BUILD_JOBS=1 just gate-a` plus the required Ubuntu, macOS, Windows, and Foundation hosted
+checks.
 
 Operational incident procedures are separated into the
 [recovery runbook](g0-recovery-runbook.md) and [shutdown runbook](g0-shutdown-runbook.md).

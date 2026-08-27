@@ -44,7 +44,7 @@ impl AuthenticatedConnection {
     }
     /// Consumes the accepted connection into bounded A3 framing.
     #[must_use]
-    pub fn into_framed(self, limits: AppProtocolLimits) -> AppFrameStream<Self> {
+    pub const fn into_framed(self, limits: AppProtocolLimits) -> AppFrameStream<Self> {
         AppFrameStream::new(self, limits)
     }
 }

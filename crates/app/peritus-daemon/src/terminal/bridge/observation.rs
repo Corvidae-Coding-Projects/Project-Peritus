@@ -180,7 +180,7 @@ const fn terminal_stream(stream: OutputStream) -> TerminalStream {
     }
 }
 
-fn exit_disposition(result: &TerminalResult) -> TerminalExitDisposition {
+const fn exit_disposition(result: &TerminalResult) -> TerminalExitDisposition {
     match result.os_exit() {
         OsExitObservation::Code(code) => TerminalExitDisposition::Code(*code),
         OsExitObservation::Signal(signal) if *signal > 0 => {

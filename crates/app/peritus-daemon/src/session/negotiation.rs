@@ -47,12 +47,12 @@ impl ConnectionContext {
     }
 }
 
-pub(crate) struct Establishment {
+pub struct Establishment {
     pub(crate) hello: ServerHello,
     pub(crate) context: Option<ConnectionContext>,
 }
 
-pub(crate) async fn establish(
+pub async fn establish(
     authority: &AuthorityHandle,
     peer: PeerIdentity,
     client: &ClientHello,

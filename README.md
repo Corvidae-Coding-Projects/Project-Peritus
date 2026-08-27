@@ -90,7 +90,8 @@ The implemented foundation and runtime spine now covers:
   prompts, C2 terminal bridges, configured C3/C4/C5 provider and tool inventories, bounded worker
   supervision, fenced destination-native outbox delivery, F0 pointer loading, C7 local telemetry,
   ordered startup/recovery/shutdown, explicit read-only diagnostics, Verus lifecycle refinements,
-  and an independent 28-case A2 daemon contract with real subprocess integration coverage.
+  and an independent 28-case A2 daemon contract with 28/28 public-`peritusd` subprocess coverage,
+  including real PTY execution and effect-before-ack kill/recovery qualification.
 
 The production application root is now present, but there is not yet a user-facing `peritus` CLI,
 TUI, MCP/plugin host, installer/service package, or native packaged-host qualification. G1–G3 and

@@ -1,6 +1,10 @@
 //! Black-box durable restart, command replay, and authenticated shutdown tests.
 
 #![cfg(unix)]
+#![allow(
+    clippy::future_not_send,
+    reason = "the recovery fixture intentionally owns its SQLite-backed daemon on one current-thread runtime"
+)]
 
 mod support;
 

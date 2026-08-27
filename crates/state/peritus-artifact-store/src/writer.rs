@@ -320,7 +320,7 @@ impl Drop for ArtifactWriter<'_> {
     }
 }
 
-pub(super) fn create_temporary(
+pub fn create_temporary(
     paths: &StorePaths,
     digest: ArtifactDigest,
 ) -> Result<(File, PathBuf), ArtifactStoreError> {

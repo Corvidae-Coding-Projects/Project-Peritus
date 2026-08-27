@@ -8,19 +8,19 @@ use peritus_orchestrator::DirectiveDestination;
 
 use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
 
-pub(crate) use domains::{
+pub use domains::{
     HarnessMaterializationClaim, decode_debugger_model_claim, decode_debugger_publication_claim,
     decode_evaluation_execution_claim, decode_evaluation_publication_claim,
     decode_evaluation_schedule_claim, decode_evolution_publication_claim,
     decode_harness_materialization_claim,
 };
-pub(crate) use orchestrator::{OrchestratorDirectiveClaim, decode_orchestrator_claim};
+pub use orchestrator::{OrchestratorDirectiveClaim, decode_orchestrator_claim};
 
 /// Exact harness materialization destination, which is private to the harness durability module.
-pub(crate) const HARNESS_MATERIALIZATION_DESTINATION: &str = "peritus.harness.materialize.v1";
+pub const HARNESS_MATERIALIZATION_DESTINATION: &str = "peritus.harness.materialize.v1";
 
 /// Complete closed destination inventory admitted by the production claim decoder.
-pub(crate) const CLAIM_DESTINATIONS: [&str; 14] = [
+pub const CLAIM_DESTINATIONS: [&str; 14] = [
     DirectiveDestination::Scheduler.outbox_destination(),
     DirectiveDestination::Collaboration.outbox_destination(),
     DirectiveDestination::Agent.outbox_destination(),
@@ -39,7 +39,7 @@ pub(crate) const CLAIM_DESTINATIONS: [&str; 14] = [
 
 /// One fully decoded, inert claim from the closed production destination inventory.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) enum TypedOutboxClaim {
+pub enum TypedOutboxClaim {
     /// E0 scheduler directive.
     OrchestratorScheduler(OrchestratorDirectiveClaim),
     /// E0 collaboration directive.
@@ -75,7 +75,7 @@ pub(crate) enum TypedOutboxClaim {
 /// # Errors
 /// Returns a corrupt-state error for a malformed or inconsistent known claim and an unsupported
 /// error for a destination outside the production inventory.
-pub(crate) fn decode_claim(message: &OutboxMessage) -> Result<TypedOutboxClaim, DaemonError> {
+pub fn decode_claim(message: &OutboxMessage) -> Result<TypedOutboxClaim, DaemonError> {
     let destination = message.destination();
     match destination {
         value if value == DirectiveDestination::Scheduler.outbox_destination() => {

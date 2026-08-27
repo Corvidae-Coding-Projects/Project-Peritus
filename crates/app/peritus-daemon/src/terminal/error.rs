@@ -7,7 +7,7 @@ use peritus_process::ProcessError;
 
 /// Stable failure category for live terminal registration and attachment operations.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) enum TerminalBridgeErrorKind {
+pub enum TerminalBridgeErrorKind {
     /// A configured operational limit is zero or internally inconsistent.
     InvalidLimit,
     /// A bounded process or attachment registry is full.
@@ -38,7 +38,7 @@ pub(crate) enum TerminalBridgeErrorKind {
 
 /// Typed terminal bridge error.
 #[derive(Debug)]
-pub(crate) enum TerminalBridgeError {
+pub enum TerminalBridgeError {
     /// A bridge-owned validation or capacity rejection.
     Rejected {
         /// Stable public category.
@@ -71,7 +71,7 @@ impl TerminalBridgeError {
 
     /// Returns inert diagnostic text.
     #[must_use]
-    pub(crate) fn detail(&self) -> &str {
+    pub(crate) const fn detail(&self) -> &str {
         match self {
             Self::Rejected { detail, .. } => detail,
             Self::Protocol(error) => error.detail(),

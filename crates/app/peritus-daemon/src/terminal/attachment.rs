@@ -72,7 +72,7 @@ impl AttachmentRecord {
         &self.state
     }
 
-    pub(super) fn state_mut(&mut self) -> &mut TerminalState {
+    pub(super) const fn state_mut(&mut self) -> &mut TerminalState {
         &mut self.state
     }
 
@@ -198,7 +198,7 @@ impl AttachmentRecord {
             && self.deferred_exit.is_none()
     }
 
-    pub(super) fn mark_fault(&mut self, kind: TerminalBridgeErrorKind, detail: &'static str) {
+    pub(super) const fn mark_fault(&mut self, kind: TerminalBridgeErrorKind, detail: &'static str) {
         self.fault = Some(AttachmentFault { kind, detail });
     }
 

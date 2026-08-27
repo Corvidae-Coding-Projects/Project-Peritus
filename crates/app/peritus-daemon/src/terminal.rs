@@ -4,9 +4,11 @@ mod attachment;
 mod bridge;
 mod error;
 mod limits;
+mod qualification;
 mod recovery;
 mod registry;
 
-pub(crate) use error::{TerminalBridgeError, TerminalBridgeErrorKind};
-pub(crate) use limits::TerminalRegistryLimits;
-pub(crate) use registry::{TerminalBridgeEvent, TerminalRegistry};
+pub use error::{TerminalBridgeError, TerminalBridgeErrorKind};
+pub use limits::TerminalRegistryLimits;
+pub use qualification::qualify_pty_ordering;
+pub use registry::{TerminalBridgeEvent, TerminalRegistry};

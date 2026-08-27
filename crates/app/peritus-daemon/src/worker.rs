@@ -11,16 +11,16 @@ mod task;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use cancellation::WorkerCancellation;
-pub(crate) use error::{WorkerSupervisorError, WorkerSupervisorErrorKind};
-pub(crate) use limits::WorkerSupervisorLimits;
-pub(crate) use observation::{
+pub use cancellation::WorkerCancellation;
+pub use error::{WorkerSupervisorError, WorkerSupervisorErrorKind};
+pub use limits::WorkerSupervisorLimits;
+pub use observation::{
     WorkerAssignment, WorkerCancellationReason, WorkerFailureKind, WorkerTaskOutcome,
     WorkerTerminalObservation,
 };
-pub(crate) use snapshot::{
+pub use snapshot::{
     WorkerCancelDisposition, WorkerCounts, WorkerDrainDisposition, WorkerReapReport,
     WorkerRemainingWork, WorkerShutdownDisposition, WorkerShutdownReport, WorkerSupervisorPhase,
     WorkerSupervisorSnapshot, WorkerTaskSnapshot, WorkerTaskState,
 };
-pub(crate) use supervisor::WorkerSupervisor;
+pub use supervisor::WorkerSupervisor;

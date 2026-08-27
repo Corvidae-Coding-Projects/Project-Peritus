@@ -87,6 +87,10 @@ identity before acknowledging C0.
   read-only/operator recovery rather than skipping the row.
 - Do not delete an outbox row to unblock the queue; it is part of the owning domain's durable truth.
 
+The `qualify-outbox-stage` and `qualify-outbox-recover` administration commands deliberately create
+and crash a deterministic test delivery. Run them only against a fresh disposable qualification
+state root under the A2 supervisor, never against a state root being recovered for normal use.
+
 ## Processes, terminals, and workers
 
 C2 reconciliation compares each process record with the native process birth identity. `Live`,

@@ -25,7 +25,7 @@ fn client_shutdown_reports_monotonic_exact_unclean_truth() {
     .expect("client shutdown begins");
     assert_eq!(coordinator.trigger(), ShutdownTrigger::Client(request));
     assert!(matches!(
-        coordinator.protocol_state().map(|state| state.phase()),
+        coordinator.protocol_state().map(peritus_app_protocol::ShutdownState::phase),
         Some(ShutdownPhase::Accepted(accepted)) if accepted.request() == request
     ));
 

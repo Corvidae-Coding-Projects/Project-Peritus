@@ -4,7 +4,7 @@ use super::{WorkerAssignment, WorkerCancellationReason, WorkerTerminalObservatio
 
 /// Worker-supervisor admission and shutdown lifecycle.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) enum WorkerSupervisorPhase {
+pub enum WorkerSupervisorPhase {
     /// New scheduler dispatches may be accepted.
     Accepting,
     /// New dispatches are rejected while existing work may finish.
@@ -19,7 +19,7 @@ pub(crate) enum WorkerSupervisorPhase {
 
 /// Result of idempotently closing new-work admission.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) enum WorkerDrainDisposition {
+pub enum WorkerDrainDisposition {
     /// This call moved the supervisor from accepting to draining.
     Began,
     /// The supervisor was already non-accepting.
@@ -28,7 +28,7 @@ pub(crate) enum WorkerDrainDisposition {
 
 /// Result of one targeted cancellation request.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) enum WorkerCancelDisposition {
+pub enum WorkerCancelDisposition {
     /// The first cancellation reason was delivered.
     Requested,
     /// The same dispatch already retained a first cancellation reason.
@@ -39,7 +39,7 @@ pub(crate) enum WorkerCancelDisposition {
 
 /// Observable state of one still-owned task.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) enum WorkerTaskState {
+pub enum WorkerTaskState {
     /// The task is active without a cancellation request.
     Running,
     /// Cooperative cancellation was requested.
@@ -52,7 +52,7 @@ pub(crate) enum WorkerTaskState {
 
 /// Exact snapshot of one active or completed-unreaped task.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct WorkerTaskSnapshot {
+pub struct WorkerTaskSnapshot {
     assignment: WorkerAssignment,
     state: WorkerTaskState,
 }
@@ -76,7 +76,7 @@ impl WorkerTaskSnapshot {
 
 /// One bounded item that prevents the supervisor snapshot from being quiescent.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum WorkerRemainingWork {
+pub enum WorkerRemainingWork {
     /// A Tokio task is still owned or awaiting join.
     Task(WorkerTaskSnapshot),
     /// A joined terminal observation still awaits authoritative settlement.
@@ -85,7 +85,7 @@ pub(crate) enum WorkerRemainingWork {
 
 /// Exact bounded worker counts derived from owned registries.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct WorkerCounts {
+pub struct WorkerCounts {
     active_tasks: usize,
     running_tasks: usize,
     cancellation_requested: usize,
@@ -147,7 +147,7 @@ impl WorkerCounts {
 
 /// Complete bounded point-in-time worker-supervisor snapshot.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct WorkerSupervisorSnapshot {
+pub struct WorkerSupervisorSnapshot {
     phase: WorkerSupervisorPhase,
     counts: WorkerCounts,
     remaining: Vec<WorkerRemainingWork>,
@@ -181,7 +181,7 @@ impl WorkerSupervisorSnapshot {
 
 /// Result of one bounded completed-task reap pass.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct WorkerReapReport {
+pub struct WorkerReapReport {
     reaped: usize,
     active_remaining: usize,
     result_capacity_blocked: bool,
@@ -214,7 +214,7 @@ impl WorkerReapReport {
 
 /// Truthful worker shutdown classification.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) enum WorkerShutdownDisposition {
+pub enum WorkerShutdownDisposition {
     /// No task, abort, or terminal observation remains for external settlement.
     Clean,
     /// Returned observations or still-owned tasks require further handling.
@@ -223,7 +223,7 @@ pub(crate) enum WorkerShutdownDisposition {
 
 /// Bounded shutdown outcome with all observations transferred to the coordinator.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct WorkerShutdownReport {
+pub struct WorkerShutdownReport {
     disposition: WorkerShutdownDisposition,
     cancellation_requests: usize,
     abort_requests: usize,

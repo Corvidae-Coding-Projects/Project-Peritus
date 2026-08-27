@@ -7,75 +7,177 @@ use crate::StartupPhase;
 
 verus! {
 
+/// Closed formal model of the A3 readiness vocabulary.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ReadinessModel {
+    /// Startup or recovery is incomplete.
+    Starting,
+    /// Mutation and diagnostics are available.
+    ReadyReadWrite,
+    /// Only diagnostic requests are available.
+    ReadyReadOnly,
+    /// Existing work is draining and diagnostics remain available.
+    Draining,
+    /// No application surface is available.
+    Unavailable,
+}
+
+/// Closed formal model of the G0 startup phase vocabulary.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum StartupPhaseModel {
+    /// Validate configuration and roots.
+    Validate,
+    /// Acquire exclusive ownership.
+    Lock,
+    /// Reconcile and apply migrations.
+    Migrate,
+    /// Open and verify C0.
+    Journal,
+    /// Recover artifact state.
+    Artifacts,
+    /// Recover evidence state.
+    Evidence,
+    /// Rebuild or validate projections.
+    Projections,
+    /// Allocate the authority epoch.
+    AuthorityEpoch,
+    /// Recover domain aggregates.
+    DomainRecovery,
+    /// Reconcile external effects.
+    EffectRecovery,
+    /// Recover application sessions and commands.
+    AppRecovery,
+    /// Resume durable outbox delivery.
+    Outbox,
+    /// Publish the authenticated local endpoint.
+    Ipc,
+    /// Publish final readiness.
+    Ready,
+}
+
 /// Mathematical mutation-admission rule.
-pub open spec fn mutation_admitted(readiness: DaemonReadiness) -> bool {
-    readiness == DaemonReadiness::ReadyReadWrite
+pub open spec fn mutation_admitted(readiness: ReadinessModel) -> bool {
+    readiness == ReadinessModel::ReadyReadWrite
 }
 
 /// Mathematical diagnostic-admission rule.
-pub open spec fn diagnostic_admitted(readiness: DaemonReadiness) -> bool {
-    readiness == DaemonReadiness::ReadyReadWrite
-        || readiness == DaemonReadiness::ReadyReadOnly
-        || readiness == DaemonReadiness::Draining
+pub open spec fn diagnostic_admitted(readiness: ReadinessModel) -> bool {
+    readiness == ReadinessModel::ReadyReadWrite
+        || readiness == ReadinessModel::ReadyReadOnly
+        || readiness == ReadinessModel::Draining
 }
 
 /// Mathematical exact-successor rule for the closed startup sequence.
-pub open spec fn startup_transition(current: StartupPhase, next: StartupPhase) -> bool {
-    match current {
-        StartupPhase::Validate => next == StartupPhase::Lock,
-        StartupPhase::Lock => next == StartupPhase::Migrate,
-        StartupPhase::Migrate => next == StartupPhase::Journal,
-        StartupPhase::Journal => next == StartupPhase::Artifacts,
-        StartupPhase::Artifacts => next == StartupPhase::Evidence,
-        StartupPhase::Evidence => next == StartupPhase::Projections,
-        StartupPhase::Projections => next == StartupPhase::AuthorityEpoch,
-        StartupPhase::AuthorityEpoch => next == StartupPhase::DomainRecovery,
-        StartupPhase::DomainRecovery => next == StartupPhase::EffectRecovery,
-        StartupPhase::EffectRecovery => next == StartupPhase::AppRecovery,
-        StartupPhase::AppRecovery => next == StartupPhase::Outbox,
-        StartupPhase::Outbox => next == StartupPhase::Ipc,
-        StartupPhase::Ipc => next == StartupPhase::Ready,
-        StartupPhase::Ready => false,
-    }
+pub open spec fn startup_transition(current: StartupPhaseModel, next: StartupPhaseModel) -> bool {
+    matches!((current, next),
+        (StartupPhaseModel::Validate, StartupPhaseModel::Lock)
+        | (StartupPhaseModel::Lock, StartupPhaseModel::Migrate)
+        | (StartupPhaseModel::Migrate, StartupPhaseModel::Journal)
+        | (StartupPhaseModel::Journal, StartupPhaseModel::Artifacts)
+        | (StartupPhaseModel::Artifacts, StartupPhaseModel::Evidence)
+        | (StartupPhaseModel::Evidence, StartupPhaseModel::Projections)
+        | (StartupPhaseModel::Projections, StartupPhaseModel::AuthorityEpoch)
+        | (StartupPhaseModel::AuthorityEpoch, StartupPhaseModel::DomainRecovery)
+        | (StartupPhaseModel::DomainRecovery, StartupPhaseModel::EffectRecovery)
+        | (StartupPhaseModel::EffectRecovery, StartupPhaseModel::AppRecovery)
+        | (StartupPhaseModel::AppRecovery, StartupPhaseModel::Outbox)
+        | (StartupPhaseModel::Outbox, StartupPhaseModel::Ipc)
+        | (StartupPhaseModel::Ipc, StartupPhaseModel::Ready)
+    )
 }
 
-/// Runtime mutation-admission predicate corresponding to [`mutation_admitted`].
-pub fn mutation_admitted_exec(readiness: DaemonReadiness) -> (result: bool)
+/// Executable mutation-admission predicate refining `mutation_admitted`.
+#[must_use]
+pub const fn mutation_admitted_model_exec(readiness: ReadinessModel) -> (result: bool)
     ensures result == mutation_admitted(readiness)
 {
-    readiness.mutation_ready()
+    matches!(readiness, ReadinessModel::ReadyReadWrite)
 }
 
-/// Runtime diagnostic-admission predicate corresponding to [`diagnostic_admitted`].
-pub fn diagnostic_admitted_exec(readiness: DaemonReadiness) -> (result: bool)
+/// Executable diagnostic-admission predicate refining `diagnostic_admitted`.
+#[must_use]
+pub const fn diagnostic_admitted_model_exec(readiness: ReadinessModel) -> (result: bool)
     ensures result == diagnostic_admitted(readiness)
 {
-    readiness.diagnostic_ready()
+    matches!(
+        readiness,
+        ReadinessModel::ReadyReadWrite | ReadinessModel::ReadyReadOnly | ReadinessModel::Draining
+    )
 }
 
-/// Runtime startup-order predicate corresponding to [`startup_transition`].
-pub fn startup_transition_exec(current: StartupPhase, next: StartupPhase) -> (result: bool)
+/// Executable startup-order predicate refining `startup_transition`.
+#[must_use]
+pub const fn startup_transition_model_exec(
+    current: StartupPhaseModel,
+    next: StartupPhaseModel,
+) -> (result: bool)
     ensures result == startup_transition(current, next)
 {
-    match current {
-        StartupPhase::Validate => next == StartupPhase::Lock,
-        StartupPhase::Lock => next == StartupPhase::Migrate,
-        StartupPhase::Migrate => next == StartupPhase::Journal,
-        StartupPhase::Journal => next == StartupPhase::Artifacts,
-        StartupPhase::Artifacts => next == StartupPhase::Evidence,
-        StartupPhase::Evidence => next == StartupPhase::Projections,
-        StartupPhase::Projections => next == StartupPhase::AuthorityEpoch,
-        StartupPhase::AuthorityEpoch => next == StartupPhase::DomainRecovery,
-        StartupPhase::DomainRecovery => next == StartupPhase::EffectRecovery,
-        StartupPhase::EffectRecovery => next == StartupPhase::AppRecovery,
-        StartupPhase::AppRecovery => next == StartupPhase::Outbox,
-        StartupPhase::Outbox => next == StartupPhase::Ipc,
-        StartupPhase::Ipc => next == StartupPhase::Ready,
-        StartupPhase::Ready => false,
-    }
+    matches!((current, next),
+        (StartupPhaseModel::Validate, StartupPhaseModel::Lock)
+        | (StartupPhaseModel::Lock, StartupPhaseModel::Migrate)
+        | (StartupPhaseModel::Migrate, StartupPhaseModel::Journal)
+        | (StartupPhaseModel::Journal, StartupPhaseModel::Artifacts)
+        | (StartupPhaseModel::Artifacts, StartupPhaseModel::Evidence)
+        | (StartupPhaseModel::Evidence, StartupPhaseModel::Projections)
+        | (StartupPhaseModel::Projections, StartupPhaseModel::AuthorityEpoch)
+        | (StartupPhaseModel::AuthorityEpoch, StartupPhaseModel::DomainRecovery)
+        | (StartupPhaseModel::DomainRecovery, StartupPhaseModel::EffectRecovery)
+        | (StartupPhaseModel::EffectRecovery, StartupPhaseModel::AppRecovery)
+        | (StartupPhaseModel::AppRecovery, StartupPhaseModel::Outbox)
+        | (StartupPhaseModel::Outbox, StartupPhaseModel::Ipc)
+        | (StartupPhaseModel::Ipc, StartupPhaseModel::Ready)
+    )
 }
 
 } // verus!
+
+/// Applies the verified mutation-admission predicate to the exact A3 readiness value.
+#[must_use]
+pub const fn mutation_admitted_exec(readiness: DaemonReadiness) -> bool {
+    mutation_admitted_model_exec(readiness_model(readiness))
+}
+
+/// Applies the verified diagnostic-admission predicate to the exact A3 readiness value.
+#[must_use]
+pub const fn diagnostic_admitted_exec(readiness: DaemonReadiness) -> bool {
+    diagnostic_admitted_model_exec(readiness_model(readiness))
+}
+
+/// Applies the verified startup relation to the exact runtime phases.
+#[must_use]
+pub const fn startup_transition_exec(current: StartupPhase, next: StartupPhase) -> bool {
+    startup_transition_model_exec(startup_phase_model(current), startup_phase_model(next))
+}
+
+const fn readiness_model(readiness: DaemonReadiness) -> ReadinessModel {
+    match readiness {
+        DaemonReadiness::Starting => ReadinessModel::Starting,
+        DaemonReadiness::ReadyReadWrite => ReadinessModel::ReadyReadWrite,
+        DaemonReadiness::ReadyReadOnly => ReadinessModel::ReadyReadOnly,
+        DaemonReadiness::Draining => ReadinessModel::Draining,
+        DaemonReadiness::Unavailable => ReadinessModel::Unavailable,
+    }
+}
+
+const fn startup_phase_model(phase: StartupPhase) -> StartupPhaseModel {
+    match phase {
+        StartupPhase::Validate => StartupPhaseModel::Validate,
+        StartupPhase::Lock => StartupPhaseModel::Lock,
+        StartupPhase::Migrate => StartupPhaseModel::Migrate,
+        StartupPhase::Journal => StartupPhaseModel::Journal,
+        StartupPhase::Artifacts => StartupPhaseModel::Artifacts,
+        StartupPhase::Evidence => StartupPhaseModel::Evidence,
+        StartupPhase::Projections => StartupPhaseModel::Projections,
+        StartupPhase::AuthorityEpoch => StartupPhaseModel::AuthorityEpoch,
+        StartupPhase::DomainRecovery => StartupPhaseModel::DomainRecovery,
+        StartupPhase::EffectRecovery => StartupPhaseModel::EffectRecovery,
+        StartupPhase::AppRecovery => StartupPhaseModel::AppRecovery,
+        StartupPhase::Outbox => StartupPhaseModel::Outbox,
+        StartupPhase::Ipc => StartupPhaseModel::Ipc,
+        StartupPhase::Ready => StartupPhaseModel::Ready,
+    }
+}
 
 #[cfg(test)]
 mod tests {

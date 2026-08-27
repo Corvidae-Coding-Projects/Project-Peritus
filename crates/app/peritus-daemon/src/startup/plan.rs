@@ -10,17 +10,17 @@ use peritus_types::Sha256Digest;
 use crate::StartupPhase;
 
 #[cfg(test)]
-pub(crate) use checkpoint::StartupNextAction;
-pub(crate) use checkpoint::{StartupCheckpoint, StartupCheckpoints};
+pub use checkpoint::StartupNextAction;
+pub use checkpoint::{StartupCheckpoint, StartupCheckpoints};
 #[cfg(test)]
-pub(crate) use failpoint::{STARTUP_KILL_MATRIX, StartupFailpointBoundary};
-pub(crate) use failpoint::{StartupFailpoint, StartupFailpoints};
+pub use failpoint::{STARTUP_KILL_MATRIX, StartupFailpointBoundary};
+pub use failpoint::{StartupFailpoint, StartupFailpoints};
 
 /// Number of phases in the closed daemon startup plan.
-pub(crate) const STARTUP_PHASE_COUNT: usize = 14;
+pub const STARTUP_PHASE_COUNT: usize = 14;
 
 /// Exact startup order shared by the effect owner and crash-recovery tests.
-pub(crate) const STARTUP_PHASES: [StartupPhase; STARTUP_PHASE_COUNT] = [
+pub const STARTUP_PHASES: [StartupPhase; STARTUP_PHASE_COUNT] = [
     StartupPhase::Validate,
     StartupPhase::Lock,
     StartupPhase::Migrate,
@@ -39,7 +39,7 @@ pub(crate) const STARTUP_PHASES: [StartupPhase; STARTUP_PHASE_COUNT] = [
 
 /// Exact injected stop retained by a halted startup execution.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) struct StartupInjection {
+pub struct StartupInjection {
     failpoint: StartupFailpoint,
     completed_checkpoints: u8,
 }
@@ -66,7 +66,7 @@ impl StartupInjection {
 
 /// Stable structural or injected failure from the pure startup plan.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) enum StartupPlanError {
+pub enum StartupPlanError {
     /// A configured failpoint stopped execution.
     Injected(StartupInjection),
     /// A prior injection already halted this execution instance.
@@ -106,7 +106,7 @@ impl std::error::Error for StartupPlanError {}
 
 /// Pure monotonic executor for the closed startup plan.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct StartupPlan {
+pub struct StartupPlan {
     checkpoints: StartupCheckpoints,
     failpoints: StartupFailpoints,
     active: Option<StartupPhase>,
@@ -192,7 +192,7 @@ impl StartupPlan {
         self.halted.map_or(Ok(()), |injection| Err(StartupPlanError::Halted(injection)))
     }
 
-    fn inject(&mut self, failpoint: StartupFailpoint) -> Result<(), StartupPlanError> {
+    const fn inject(&mut self, failpoint: StartupFailpoint) -> Result<(), StartupPlanError> {
         if !self.failpoints.contains(failpoint) {
             return Ok(());
         }

@@ -4,6 +4,31 @@
 //! tools, and background workers exchange bounded typed messages with that owner and never receive
 //! a writable journal handle.
 
+#![allow(
+    dead_code,
+    reason = "G0 retains closed typed worker, terminal, prompt, startup, and outbox seams that are exercised by focused tests before every producer is live in the application root"
+)]
+#![allow(
+    clippy::double_must_use,
+    clippy::large_enum_variant,
+    clippy::large_types_passed_by_value,
+    clippy::manual_let_else,
+    clippy::match_same_arms,
+    clippy::missing_errors_doc,
+    clippy::missing_panics_doc,
+    clippy::needless_pass_by_value,
+    clippy::option_if_let_else,
+    clippy::significant_drop_tightening,
+    clippy::struct_field_names,
+    clippy::suspicious_operation_groupings,
+    clippy::too_many_lines,
+    clippy::unnecessary_debug_formatting,
+    clippy::unnecessary_wraps,
+    clippy::unused_async,
+    clippy::unused_self,
+    reason = "G0 favors explicit identity-bearing state transitions and stable cross-platform signatures over style-only rewrites in the composition boundary"
+)]
+
 mod artifact;
 mod authority;
 mod cli;

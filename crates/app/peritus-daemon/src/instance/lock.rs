@@ -9,7 +9,7 @@ use std::{
 use super::record::InstanceRecord;
 use crate::{DaemonError, DaemonErrorCode, DaemonIdentity, DaemonRecovery};
 
-pub(crate) struct InstanceGuard {
+pub struct InstanceGuard {
     _lock: File,
     record_path: PathBuf,
     record_bytes: Vec<u8>,

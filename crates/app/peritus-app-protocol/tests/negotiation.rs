@@ -19,6 +19,10 @@ fn feature(value: WellKnownProtocolFeature) -> ProtocolFeatureName {
     ProtocolFeatureName::well_known(value).expect("well-known feature is canonical")
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "the single negotiation matrix keeps all version, feature, and limit outcomes comparable"
+)]
 #[test]
 fn negotiation_matrix_is_deterministic_and_explicit() {
     let artifact = feature(WellKnownProtocolFeature::ArtifactTransfer);

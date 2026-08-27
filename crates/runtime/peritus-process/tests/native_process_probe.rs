@@ -71,7 +71,7 @@ struct ChildGuard(Option<std::process::Child>);
 
 #[cfg(target_os = "linux")]
 impl ChildGuard {
-    fn new(child: std::process::Child) -> Self {
+    const fn new(child: std::process::Child) -> Self {
         Self(Some(child))
     }
 

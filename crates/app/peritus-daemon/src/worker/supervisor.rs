@@ -22,7 +22,7 @@ const SHUTDOWN_POLL: Duration = Duration::from_millis(5);
 
 /// Structured bounded owner for scheduler-dispatched asynchronous work.
 #[must_use = "the worker supervisor must be shut down to observe every owned task"]
-pub(crate) struct WorkerSupervisor {
+pub struct WorkerSupervisor {
     phase: WorkerSupervisorPhase,
     limits: WorkerSupervisorLimits,
     tasks: BTreeMap<DispatchId, OwnedWorkerTask>,
@@ -33,7 +33,7 @@ pub(crate) struct WorkerSupervisor {
 impl WorkerSupervisor {
     /// Creates an empty accepting supervisor.
     #[must_use]
-    pub(crate) fn new(limits: WorkerSupervisorLimits) -> Self {
+    pub(crate) const fn new(limits: WorkerSupervisorLimits) -> Self {
         Self {
             phase: WorkerSupervisorPhase::Accepting,
             limits,

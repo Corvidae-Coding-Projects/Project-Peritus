@@ -59,7 +59,7 @@ impl Default for ProviderRegistryLimits {
 /// Concrete C5 adapter selected for one registry entry.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ProviderAdapterKind {
-    /// First-party OpenAI Responses HTTP adapter.
+    /// First-party `OpenAI` Responses HTTP adapter.
     OpenAi,
     /// First-party Anthropic Messages HTTP adapter.
     Anthropic,

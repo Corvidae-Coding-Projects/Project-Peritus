@@ -53,12 +53,16 @@ impl TestEnvironment {
         self.spawn_child()
     }
 
-    pub(super) fn wait_for_exit(&self, child: &mut Child) -> io::Result<ExitStatus> {
+    pub(super) fn wait_for_exit(child: &mut Child) -> io::Result<ExitStatus> {
         wait_for_exit(child, PROCESS_BOUND)
     }
 
     pub(super) fn state_root(&self) -> &Path {
         &self.state_root
+    }
+
+    pub(super) fn config_path(&self) -> &Path {
+        &self.config_path
     }
 
     pub(super) fn database_path(&self) -> PathBuf {
@@ -99,7 +103,7 @@ impl TestEnvironment {
     }
 }
 
-fn peritusd_executable() -> io::Result<PathBuf> {
+pub(super) fn peritusd_executable() -> io::Result<PathBuf> {
     std::env::current_exe()?
         .parent()
         .and_then(Path::parent)
@@ -128,10 +132,10 @@ impl DaemonProcess {
                     bounded_log(&log_path),
                 )));
             }
-            if let Some(endpoint) = find_endpoint(state_root)? {
-                if Some(endpoint_identity(&endpoint)?) != previous_endpoint {
-                    return Ok(Self { child: Some(child), endpoint, log_path });
-                }
+            if let Some(endpoint) = find_endpoint(state_root)?
+                && Some(endpoint_identity(&endpoint)?) != previous_endpoint
+            {
+                return Ok(Self { child: Some(child), endpoint, log_path });
             }
             if Instant::now() >= deadline {
                 let _ = child.kill();

@@ -13,7 +13,7 @@ const REQUIRED_DESCRIPTOR_BYTES: usize =
 
 /// Bounds that always admit all exact aggregate shutdown summaries.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct ShutdownBounds {
+pub struct ShutdownBounds {
     maximum_remaining_work: NonZeroUsize,
     maximum_descriptor_bytes: NonZeroUsize,
 }
@@ -66,7 +66,7 @@ impl ShutdownBounds {
 
 /// Point-in-time counts derived from the daemon's effect-owning registries.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub(crate) struct ShutdownWorkCounts {
+pub struct ShutdownWorkCounts {
     requests: usize,
     subscriptions: usize,
     artifact_transfers: usize,

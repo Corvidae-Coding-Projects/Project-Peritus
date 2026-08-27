@@ -4,7 +4,7 @@ use core::fmt;
 
 /// Stable category for a rejected supervisor operation.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) enum WorkerSupervisorErrorKind {
+pub enum WorkerSupervisorErrorKind {
     /// A configured or caller-supplied bound is zero or outside its production ceiling.
     InvalidLimit,
     /// New work was submitted after draining began.
@@ -23,7 +23,7 @@ pub(crate) enum WorkerSupervisorErrorKind {
 
 /// Typed supervisor rejection without repository, model, terminal, or provider content.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct WorkerSupervisorError {
+pub struct WorkerSupervisorError {
     kind: WorkerSupervisorErrorKind,
     detail: &'static str,
 }

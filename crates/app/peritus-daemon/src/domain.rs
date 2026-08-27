@@ -2,4 +2,4 @@
 
 mod dispatch;
 
-pub(crate) use dispatch::{DomainOutcome, DomainSubmission, dispatch};
+pub use dispatch::{DomainOutcome, DomainSubmission, dispatch};

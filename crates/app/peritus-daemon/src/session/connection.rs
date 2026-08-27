@@ -21,7 +21,7 @@ use crate::{
     terminal::{TerminalBridgeError, TerminalBridgeEvent, TerminalRegistry},
 };
 
-pub(crate) async fn run_connection(
+pub async fn run_connection(
     connection: AuthenticatedConnection,
     authority: AuthorityHandle,
     terminals: TerminalRegistry,

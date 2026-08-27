@@ -29,7 +29,7 @@ pub(super) fn second_instance() -> io::Result<DaemonConformanceObservation> {
     let before = fs::symlink_metadata(owner.endpoint())?;
     let state_bytes_before = regular_file_bytes(environment.state_root())?;
     let mut competitor = environment.spawn_competitor()?;
-    let status = environment.wait_for_exit(&mut competitor)?;
+    let status = TestEnvironment::wait_for_exit(&mut competitor)?;
     let after = fs::symlink_metadata(owner.endpoint())?;
     let state_bytes_after = regular_file_bytes(environment.state_root())?;
     Ok(DaemonConformanceObservation::Instance(DaemonInstanceObservation::new(

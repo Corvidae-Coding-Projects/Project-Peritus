@@ -5,11 +5,11 @@ use std::{num::NonZeroUsize, time::Duration};
 use super::{WorkerSupervisorError, WorkerSupervisorErrorKind};
 
 const MAXIMUM_TASKS: usize = 4_096;
-const MAXIMUM_SHUTDOWN: Duration = Duration::from_secs(10 * 60);
+const MAXIMUM_SHUTDOWN: Duration = Duration::from_mins(10);
 
 /// Complete operational bounds for one worker supervisor.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct WorkerSupervisorLimits {
+pub struct WorkerSupervisorLimits {
     maximum_active_tasks: NonZeroUsize,
     maximum_results: NonZeroUsize,
     maximum_reap_per_pass: NonZeroUsize,

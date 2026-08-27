@@ -21,6 +21,10 @@ pub(super) struct WireClient {
 }
 
 impl WireClient {
+    #[allow(
+        clippy::needless_pass_by_value,
+        reason = "the test client consumes one complete hello as the opening handshake input"
+    )]
     pub(super) fn establish(endpoint: &Path, hello: ClientHello) -> io::Result<Self> {
         let (stream, server) = exchange_hello(endpoint, &hello)?;
         let negotiated = match server.outcome() {
@@ -36,7 +40,7 @@ impl WireClient {
         Ok(Self { stream, context, limits: negotiated.limits() })
     }
 
-    pub(super) fn context(&self) -> ProtocolContext {
+    pub(super) const fn context(&self) -> ProtocolContext {
         self.context
     }
 

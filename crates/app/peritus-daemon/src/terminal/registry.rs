@@ -19,10 +19,13 @@ use super::{
 };
 
 mod launch;
+mod lookup;
+
+use lookup::{capacity, exact_bridge_mut, process_mut, rejected};
 
 /// Result of idempotently opening an exact terminal attachment.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) enum AttachmentDisposition {
+pub enum AttachmentDisposition {
     /// A new attachment was opened and its retained output prefix was queued.
     Attached,
     /// The same live attachment binding was already open.
@@ -31,7 +34,7 @@ pub(crate) enum AttachmentDisposition {
 
 /// One A3 event produced by the live bridge.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) enum TerminalBridgeEvent {
+pub enum TerminalBridgeEvent {
     /// Ordered opaque process output.
     Output(TerminalOutput),
     /// The unique terminal exit fence.
@@ -46,7 +49,7 @@ struct RegistryState {
 
 /// Cloneable access handle to the bounded live terminal registry.
 #[derive(Clone)]
-pub(crate) struct TerminalRegistry {
+pub struct TerminalRegistry {
     inner: Arc<Mutex<RegistryState>>,
 }
 
@@ -111,13 +114,13 @@ impl TerminalRegistry {
     ) -> Result<AttachmentDisposition, TerminalBridgeError> {
         let mut state = self.lock();
         let process_id = binding.process_id();
-        if let Some(indexed_process) = state.attachments.get(&binding.attachment_id()) {
-            if *indexed_process != process_id {
-                return Err(rejected(
-                    TerminalBridgeErrorKind::RegistrationConflict,
-                    "attachment identity is indexed to another process",
-                ));
-            }
+        if let Some(indexed_process) = state.attachments.get(&binding.attachment_id())
+            && *indexed_process != process_id
+        {
+            return Err(rejected(
+                TerminalBridgeErrorKind::RegistrationConflict,
+                "attachment identity is indexed to another process",
+            ));
         }
         let limits = state.limits;
         let global_full = state.attachments.len() >= limits.maximum_attachments;
@@ -357,55 +360,4 @@ impl TerminalRegistry {
     fn lock(&self) -> MutexGuard<'_, RegistryState> {
         self.inner.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
     }
-}
-
-fn exact_bridge_mut(
-    state: &mut RegistryState,
-    actor_id: ActorId,
-    session_id: SessionId,
-    binding: TerminalBinding,
-) -> Result<&mut TerminalBridge, TerminalBridgeError> {
-    if state.attachments.get(&binding.attachment_id()) != Some(&binding.process_id()) {
-        return Err(rejected(
-            TerminalBridgeErrorKind::RegistrationConflict,
-            "terminal attachment is not indexed to its exact process",
-        ));
-    }
-    let bridge = process_mut(state, binding.process_id(), actor_id, session_id)?;
-    if !bridge.attachment_matches(binding) {
-        return Err(rejected(
-            TerminalBridgeErrorKind::RegistrationConflict,
-            "terminal attachment binding does not match its retained registration",
-        ));
-    }
-    Ok(bridge)
-}
-
-fn process_mut(
-    state: &mut RegistryState,
-    process_id: ProcessId,
-    actor_id: ActorId,
-    session_id: SessionId,
-) -> Result<&mut TerminalBridge, TerminalBridgeError> {
-    let bridge = state.processes.get_mut(&process_id).ok_or_else(|| {
-        rejected(
-            TerminalBridgeErrorKind::ProcessNotRegistered,
-            "process has no live terminal control in this daemon",
-        )
-    })?;
-    if !bridge.owner_matches(actor_id, session_id) {
-        return Err(rejected(
-            TerminalBridgeErrorKind::OwnershipMismatch,
-            "authenticated actor/session does not own the terminal process",
-        ));
-    }
-    Ok(bridge)
-}
-
-const fn capacity(detail: &'static str) -> TerminalBridgeError {
-    rejected(TerminalBridgeErrorKind::Capacity, detail)
-}
-
-const fn rejected(kind: TerminalBridgeErrorKind, detail: &'static str) -> TerminalBridgeError {
-    TerminalBridgeError::rejected(kind, detail)
 }

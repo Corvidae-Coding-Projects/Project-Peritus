@@ -84,7 +84,7 @@ impl DaemonPaths {
     pub fn backup_root(&self) -> &Path {
         &self.backup_root
     }
-    /// Returns the shared SQLite database path.
+    /// Returns the shared `SQLite` database path.
     #[must_use]
     pub fn database(&self) -> PathBuf {
         self.state_root.join("peritus.sqlite3")

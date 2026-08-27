@@ -50,6 +50,7 @@ peritus-tools-shell = { version = "=0.0.0", path = "../../tools/peritus-tools-sh
 peritus-trace = { version = "=0.0.0", path = "../../observe/peritus-trace" }
 peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
 peritus-workspace = { version = "=0.0.0", path = "../../runtime/peritus-workspace" }
+portable-pty.workspace = true
 serde.workspace = true
 sha2.workspace = true
 tokio.workspace = true

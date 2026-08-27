@@ -14,7 +14,7 @@ use super::rejection_result_digest;
 use crate::domain::{DomainOutcome, DomainSubmission};
 use crate::{AuthorityHandle, DaemonError, DaemonErrorCode, DaemonRecovery};
 
-pub(crate) async fn submit(
+pub async fn submit(
     authority: &AuthorityHandle,
     actor_id: ActorId,
     binding: &CommandBinding,

@@ -11,9 +11,9 @@ mod registry;
 mod types;
 
 pub use approval::CurrentApprovalAuthority;
-pub(crate) use clock::AuthorityClock;
+pub use clock::AuthorityClock;
 pub use error::{PromptBrokerError, PromptBrokerErrorKind};
-pub(crate) use registry::PreparedPromptRegistration;
+pub use registry::PreparedPromptRegistration;
 pub use registry::PromptBroker;
 pub use types::{
     AuthenticatedApprovalResponse, PreparedPromptResponse, PromptAcceptance, PromptAdmission,

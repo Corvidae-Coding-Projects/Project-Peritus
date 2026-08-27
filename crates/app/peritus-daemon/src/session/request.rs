@@ -236,7 +236,7 @@ where
     Ok(())
 }
 
-fn acknowledged(request: &AppRequestEnvelope) -> AppResponsePayload {
+const fn acknowledged(request: &AppRequestEnvelope) -> AppResponsePayload {
     AppResponsePayload::Acknowledged(OperationAcknowledgement::new(request.request_id()))
 }
 
@@ -267,7 +267,7 @@ fn prompt_error_payload(error: &DaemonError) -> AppResponsePayload {
     AppResponsePayload::Error(AppProtocolError::new(code, None))
 }
 
-fn terminal_operation(
+const fn terminal_operation(
     request_id: peritus_app_protocol::RequestId,
     result: Result<(), TerminalBridgeError>,
 ) -> AppResponsePayload {
@@ -277,7 +277,7 @@ fn terminal_operation(
     }
 }
 
-fn terminal_error_payload(error: &TerminalBridgeError) -> AppResponsePayload {
+const fn terminal_error_payload(error: &TerminalBridgeError) -> AppResponsePayload {
     let code = match error.kind() {
         TerminalBridgeErrorKind::Capacity => AppErrorCode::LimitExceeded,
         TerminalBridgeErrorKind::Backpressure => AppErrorCode::Backpressure,
@@ -296,7 +296,7 @@ fn terminal_error_payload(error: &TerminalBridgeError) -> AppResponsePayload {
     AppResponsePayload::Error(AppProtocolError::new(code, None))
 }
 
-fn public_error_code(error: &DaemonError) -> AppErrorCode {
+const fn public_error_code(error: &DaemonError) -> AppErrorCode {
     match error.code_kind() {
         DaemonErrorCode::InvalidInput => AppErrorCode::SubscriptionState,
         DaemonErrorCode::ResourceLimit => AppErrorCode::Backpressure,
@@ -306,6 +306,6 @@ fn public_error_code(error: &DaemonError) -> AppErrorCode {
     }
 }
 
-fn daemon_error_payload(error: &DaemonError) -> AppResponsePayload {
+const fn daemon_error_payload(error: &DaemonError) -> AppResponsePayload {
     AppResponsePayload::Error(AppProtocolError::new(public_error_code(error), None))
 }

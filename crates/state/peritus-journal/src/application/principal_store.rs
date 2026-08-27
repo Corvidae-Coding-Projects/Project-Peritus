@@ -17,6 +17,10 @@ impl SqliteJournal {
     /// # Errors
     ///
     /// Returns a typed conflict or storage error.
+    #[allow(
+        clippy::needless_pass_by_value,
+        reason = "binding consumes the one-shot principal input as part of its public contract"
+    )]
     pub fn bind_application_principal(
         &mut self,
         principal: NewApplicationPrincipal,

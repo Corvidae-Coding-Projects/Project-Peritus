@@ -16,7 +16,7 @@ use super::{domain_claim_error, invalid_claim, require_claimed};
 /// This value is inert: decoding it neither publishes the directive nor creates acknowledgement
 /// or append authority.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct OrchestratorDirectiveClaim {
+pub struct OrchestratorDirectiveClaim {
     command: OrchestratorCommand,
     directive: PendingDirective,
     fence: u64,
@@ -49,7 +49,7 @@ impl OrchestratorDirectiveClaim {
 /// # Errors
 /// Rejects any non-claimed row, destination or fence mismatch, noncanonical command frame,
 /// non-publish command, directive identity mismatch, or delivery-bound mismatch.
-pub(crate) fn decode_orchestrator_claim(
+pub fn decode_orchestrator_claim(
     message: &OutboxMessage,
     expected_destination: DirectiveDestination,
 ) -> Result<OrchestratorDirectiveClaim, DaemonError> {

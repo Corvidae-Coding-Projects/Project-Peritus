@@ -20,7 +20,7 @@ pub use catalog::{ProjectDeclaration, ToolPolicy, WorkspaceDeclaration};
 pub use paths::DaemonPaths;
 pub use provider::{ProviderProfileDeclaration, ProviderRoute, ProviderRouteKind};
 
-pub(crate) const DAEMON_VERSION: &str = "0.0.0";
+pub const DAEMON_VERSION: &str = "0.0.0";
 
 /// Offline-provisioned local human identity bound to the operating-system account.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
@@ -290,19 +290,18 @@ impl DaemonConfig {
         self.limits.validate()?;
         catalog::validate(&self.projects, &self.workspaces, &self.tools)?;
         provider::validate(&self.providers)?;
-        if let TelemetryExport::LocalFile { directory, quota_bytes } = &self.telemetry {
-            if !directory.is_absolute()
+        if let TelemetryExport::LocalFile { directory, quota_bytes } = &self.telemetry
+            && (!directory.is_absolute()
                 || directory.components().any(|part| part == Component::ParentDir)
-                || *quota_bytes == 0
-            {
-                return Err(invalid("local telemetry export path or quota is invalid"));
-            }
+                || *quota_bytes == 0)
+        {
+            return Err(invalid("local telemetry export path or quota is invalid"));
         }
         Ok(())
     }
 }
 
-pub(super) fn decode_identifier(value: &str, field: &'static str) -> Result<[u8; 16], DaemonError> {
+pub fn decode_identifier(value: &str, field: &'static str) -> Result<[u8; 16], DaemonError> {
     if value.len() != 32 {
         return Err(invalid(field));
     }

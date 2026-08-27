@@ -5,7 +5,7 @@
 mod daemon_conformance_support;
 
 use peritus_conformance::{
-    ConformanceRunner, DAEMON_SCENARIOS, DaemonScenario, SuiteStatus, daemon_scenario_suite,
+    ConformanceRunner, DAEMON_SCENARIOS, SuiteStatus, daemon_scenario_suite,
 };
 
 use daemon_conformance_support::{
@@ -35,7 +35,7 @@ fn every_publicly_reachable_daemon_case_passes_against_peritusd() {
 fn public_coverage_inventory_partitions_the_complete_contract() {
     let reachable = reachable_scenarios();
     assert_eq!(DAEMON_SCENARIOS.len(), 28);
-    assert_eq!(reachable.len(), 26);
+    assert_eq!(reachable.len(), 28);
     for scenario in DAEMON_SCENARIOS {
         let is_reachable = reachable.contains(scenario);
         let blocker = blocker_for(*scenario);
@@ -47,13 +47,11 @@ fn public_coverage_inventory_partitions_the_complete_contract() {
 }
 
 #[test]
-fn currently_unreachable_cases_have_exact_typed_blockers() {
+fn no_contract_case_remains_blocked_from_the_public_binary() {
     let blocked = DAEMON_SCENARIOS
         .iter()
         .copied()
         .filter_map(|scenario| blocker_for(scenario).map(|detail| (scenario, detail)))
         .collect::<Vec<_>>();
-    assert_eq!(blocked.len(), 2);
-    assert!(blocked.iter().all(|(_, detail)| detail.contains("peritusd")));
-    assert!(blocked.iter().any(|(scenario, _)| *scenario == DaemonScenario::OutboxCrash));
+    assert!(blocked.is_empty(), "complete G0 binary coverage left blockers: {blocked:?}");
 }

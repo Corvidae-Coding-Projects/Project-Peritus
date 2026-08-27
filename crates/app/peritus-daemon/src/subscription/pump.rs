@@ -30,13 +30,13 @@ struct LiveSubscription {
 }
 
 /// All bounded event subscriptions owned by one authenticated connection.
-pub(crate) struct SubscriptionRegistry {
+pub struct SubscriptionRegistry {
     entries: BTreeMap<SubscriptionId, LiveSubscription>,
     maximum: usize,
 }
 
 impl SubscriptionRegistry {
-    pub(crate) fn new(limits: AppProtocolLimits) -> Self {
+    pub(crate) const fn new(limits: AppProtocolLimits) -> Self {
         Self { entries: BTreeMap::new(), maximum: limits.max_topics() }
     }
 
@@ -135,7 +135,7 @@ impl SubscriptionRegistry {
                     .state
                     .in_flight()
                     .iter()
-                    .map(|delivery| delivery.cursor())
+                    .map(peritus_app_protocol::Delivery::cursor)
                     .collect::<Vec<_>>();
                 for cursor in cursors {
                     let delivery = subscription

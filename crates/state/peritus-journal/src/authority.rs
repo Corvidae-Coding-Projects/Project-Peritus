@@ -259,7 +259,7 @@ pub fn credential_registry_payload_digest(
     Ok(sha256(credential_registry_payload(snapshot)?))
 }
 
-pub(super) fn credential_registry_payload(snapshot: &ExactFrame) -> Result<&[u8], JournalError> {
+pub fn credential_registry_payload(snapshot: &ExactFrame) -> Result<&[u8], JournalError> {
     if snapshot.family() != CREDENTIAL_REGISTRY_FRAME_FAMILY
         || snapshot.schema_version() != CREDENTIAL_REGISTRY_FRAME_SCHEMA
     {

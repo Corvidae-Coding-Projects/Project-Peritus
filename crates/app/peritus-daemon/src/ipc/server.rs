@@ -19,7 +19,7 @@ use crate::{
     terminal::TerminalRegistry,
 };
 
-pub(crate) async fn serve(
+pub async fn serve(
     endpoint: LocalEndpoint,
     authority: AuthorityHandle,
     terminals: TerminalRegistry,
@@ -82,13 +82,14 @@ pub(crate) async fn serve(
                             )
                             .await;
                             if let Err(error) = &result {
-                                let _ = write!(
-                                    &mut std::io::stderr(),
-                                    "application connection terminated: {} during {}: {}\n",
-                                    error.code(),
-                                    error.operation(),
-                                    error.detail(),
-                                );
+                                let mut stderr = std::io::stderr().lock();
+                                let _ = stderr.write_all(b"application connection terminated: ");
+                                let _ = stderr.write_all(error.code().as_bytes());
+                                let _ = stderr.write_all(b" during ");
+                                let _ = stderr.write_all(error.operation().as_bytes());
+                                let _ = stderr.write_all(b": ");
+                                let _ = stderr.write_all(error.detail().as_bytes());
+                                let _ = stderr.write_all(b"\n");
                             }
                             result
                         });

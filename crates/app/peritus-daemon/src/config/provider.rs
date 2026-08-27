@@ -38,7 +38,7 @@ const PROVIDER_ROUTE_KINDS: &[&str] = &[
 /// Closed provider adapter families configurable in G0.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ProviderRouteKind {
-    /// First-party OpenAI Responses HTTP route.
+    /// First-party `OpenAI` Responses HTTP route.
     OpenAi,
     /// First-party Anthropic Messages HTTP route.
     Anthropic,

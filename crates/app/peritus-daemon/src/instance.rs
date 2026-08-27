@@ -3,4 +3,4 @@
 mod lock;
 mod record;
 
-pub(crate) use lock::InstanceGuard;
+pub use lock::InstanceGuard;

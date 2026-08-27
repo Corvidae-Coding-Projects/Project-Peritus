@@ -50,7 +50,7 @@ fn revision(
     prior: Option<&peritus_debugger::DebuggerState>,
     kind: &peritus_debugger::DebuggerCommandKind,
 ) -> Option<peritus_types::RevisionTuple> {
-    prior.map(|state| *state.revision()).or_else(|| match kind {
+    prior.map(|state| *state.revision()).or(match kind {
         peritus_debugger::DebuggerCommandKind::CreateJob { revision, .. } => Some(*revision),
         _ => None,
     })

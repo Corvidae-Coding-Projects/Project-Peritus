@@ -203,10 +203,10 @@ mod tests {
     struct SuccessfulPort;
 
     impl DurableOutboxPort for SuccessfulPort {
-        fn deliver_and_settle<'a>(
-            &'a self,
+        fn deliver_and_settle(
+            &self,
             _claim: DurableOutboxClaim,
-        ) -> super::super::DurableDelivery<'a> {
+        ) -> super::super::DurableDelivery<'_> {
             Box::pin(async { Ok(()) })
         }
     }

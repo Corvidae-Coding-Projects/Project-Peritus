@@ -15,7 +15,10 @@ impl CollaborationCommandFrame {
     pub fn from_command(command: &CollaborationCommand) -> Self {
         Self(command.clone())
     }
+
+    /// Returns the decoded command for codec conformance tests.
     #[cfg(test)]
+    #[must_use]
     pub fn into_command(self) -> CollaborationCommand {
         self.0
     }

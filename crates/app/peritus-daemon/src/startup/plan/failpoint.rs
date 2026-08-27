@@ -5,7 +5,7 @@ use crate::StartupPhase;
 
 /// Side of a startup phase at which a deterministic process kill is injected.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) enum StartupFailpointBoundary {
+pub enum StartupFailpointBoundary {
     /// Stop immediately before the phase begins and before it has a checkpoint.
     Before,
     /// Stop immediately after the phase checkpoint has been retained.
@@ -14,7 +14,7 @@ pub(crate) enum StartupFailpointBoundary {
 
 /// One stable injection point in the startup kill/restart matrix.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub(crate) struct StartupFailpoint {
+pub struct StartupFailpoint {
     phase: StartupPhase,
     boundary: StartupFailpointBoundary,
 }
@@ -55,7 +55,7 @@ impl StartupFailpoint {
 }
 
 /// Every meaningful before/after injection point in canonical execution order.
-pub(crate) const STARTUP_KILL_MATRIX: [StartupFailpoint; STARTUP_PHASE_COUNT * 2] = [
+pub const STARTUP_KILL_MATRIX: [StartupFailpoint; STARTUP_PHASE_COUNT * 2] = [
     StartupFailpoint::before(StartupPhase::Validate),
     StartupFailpoint::after(StartupPhase::Validate),
     StartupFailpoint::before(StartupPhase::Lock),
@@ -88,7 +88,7 @@ pub(crate) const STARTUP_KILL_MATRIX: [StartupFailpoint; STARTUP_PHASE_COUNT * 2
 
 /// Fixed-size set of enabled startup failpoints.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub(crate) struct StartupFailpoints {
+pub struct StartupFailpoints {
     before: u16,
     after: u16,
 }
@@ -102,13 +102,13 @@ impl StartupFailpoints {
 
     /// Returns a configuration containing one failpoint.
     #[must_use]
-    pub(crate) fn single(failpoint: StartupFailpoint) -> Self {
+    pub(crate) const fn single(failpoint: StartupFailpoint) -> Self {
         Self::none().with(failpoint)
     }
 
     /// Enables one point without growing an unbounded collection.
     #[must_use]
-    pub(crate) fn with(mut self, failpoint: StartupFailpoint) -> Self {
+    pub(crate) const fn with(mut self, failpoint: StartupFailpoint) -> Self {
         let bit = phase_bit(failpoint.phase);
         match failpoint.boundary {
             StartupFailpointBoundary::Before => self.before |= bit,
@@ -119,7 +119,7 @@ impl StartupFailpoints {
 
     /// Returns whether a point is enabled.
     #[must_use]
-    pub(crate) fn contains(self, failpoint: StartupFailpoint) -> bool {
+    pub(crate) const fn contains(self, failpoint: StartupFailpoint) -> bool {
         let bit = phase_bit(failpoint.phase);
         match failpoint.boundary {
             StartupFailpointBoundary::Before => self.before & bit != 0,
@@ -128,6 +128,6 @@ impl StartupFailpoints {
     }
 }
 
-fn phase_bit(phase: StartupPhase) -> u16 {
+const fn phase_bit(phase: StartupPhase) -> u16 {
     1_u16 << phase_index(phase)
 }

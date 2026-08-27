@@ -8,7 +8,7 @@ use peritus_conformance::{
     SubjectFactory, SubjectFailure,
 };
 
-use super::{artifact, lifecycle, prompt, session, subscription};
+use super::{artifact, lifecycle, outbox, prompt, session, subscription, terminal};
 
 const REACHABLE: &[DaemonScenario] = &[
     DaemonScenario::CompatibleSession,
@@ -37,27 +37,22 @@ const REACHABLE: &[DaemonScenario] = &[
     DaemonScenario::ReadOnlyAdmission,
     DaemonScenario::StartupFailure,
     DaemonScenario::PromptFreshness,
+    DaemonScenario::PtyOrdering,
+    DaemonScenario::OutboxCrash,
 ];
 
 /// Returns scenarios the current public binary can exercise without internal imports.
-pub(crate) const fn reachable_scenarios() -> &'static [DaemonScenario] {
+pub const fn reachable_scenarios() -> &'static [DaemonScenario] {
     REACHABLE
 }
 
 /// Returns the exact missing public production seam for a currently unreachable scenario.
-pub(crate) const fn blocker_for(scenario: DaemonScenario) -> Option<&'static str> {
-    Some(match scenario {
-        DaemonScenario::PtyOrdering => {
-            "peritusd exposes terminal attachment but no public command that starts and registers a C2-owned PTY process"
-        }
-        DaemonScenario::OutboxCrash => {
-            "peritusd exposes no public effect-before-ack crash checkpoint or destination observation control"
-        }
-        _ => return None,
-    })
+pub const fn blocker_for(scenario: DaemonScenario) -> Option<&'static str> {
+    let _ = scenario;
+    None
 }
 
-pub(crate) struct BinaryDaemonFactory {
+pub struct BinaryDaemonFactory {
     descriptor: SubjectDescriptor,
 }
 
@@ -74,7 +69,7 @@ impl BinaryDaemonFactory {
     }
 }
 
-pub(crate) struct BinaryDaemonSubject;
+pub struct BinaryDaemonSubject;
 
 impl DaemonConformanceSubject for BinaryDaemonSubject {
     fn exercise(
@@ -108,9 +103,8 @@ impl DaemonConformanceSubject for BinaryDaemonSubject {
             DaemonScenario::ReadOnlyAdmission => lifecycle::read_only_admission(),
             DaemonScenario::StartupFailure => lifecycle::startup_failure(),
             DaemonScenario::PromptFreshness => prompt::freshness(),
-            DaemonScenario::PtyOrdering | DaemonScenario::OutboxCrash => {
-                return Err(DaemonConformanceError::Observation);
-            }
+            DaemonScenario::PtyOrdering => terminal::pty_ordering(),
+            DaemonScenario::OutboxCrash => outbox::crash_recovery(),
         };
         result.map_err(|error| {
             let message = format!("peritusd {:?} exercise failed: {error}\n", fixture.scenario());

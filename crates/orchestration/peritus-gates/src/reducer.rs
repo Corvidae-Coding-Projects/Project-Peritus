@@ -85,7 +85,7 @@ pub fn decide(
     Ok(GateTransition::new(event, successor))
 }
 
-pub(super) fn decide_lifecycle(
+pub fn decide_lifecycle(
     state: &GateRunState,
     command: &GateCommand,
 ) -> Result<GateTransition, GateError> {

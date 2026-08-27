@@ -2,11 +2,11 @@
 
 use std::time::Duration;
 
-const MAXIMUM_PROCESS_STARTUP_WAIT: Duration = Duration::from_secs(10 * 60);
+const MAXIMUM_PROCESS_STARTUP_WAIT: Duration = Duration::from_mins(10);
 
 /// Operational limits for the live terminal registry.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct TerminalRegistryLimits {
+pub struct TerminalRegistryLimits {
     pub(super) maximum_processes: usize,
     pub(super) maximum_attachments: usize,
     maximum_attachments_per_process: usize,

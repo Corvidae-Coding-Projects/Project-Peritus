@@ -275,7 +275,7 @@ fn established(
     Ok((environment, process, client))
 }
 
-fn observation(
+const fn observation(
     outcome: DaemonArtifactOutcome,
     bytes: u64,
     integrity: DaemonArtifactIntegrity,

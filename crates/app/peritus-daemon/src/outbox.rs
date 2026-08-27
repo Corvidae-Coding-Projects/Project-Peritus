@@ -8,20 +8,19 @@ mod claims;
 mod clock;
 mod handlers;
 mod pump;
+mod qualification;
 mod router;
 
-pub(crate) use claims::{
-    CLAIM_DESTINATIONS, OrchestratorDirectiveClaim, TypedOutboxClaim, decode_claim,
-};
-pub(crate) use pump::OutboxRuntime;
-pub(crate) use router::DestinationRouter;
+pub use claims::{CLAIM_DESTINATIONS, OrchestratorDirectiveClaim, TypedOutboxClaim, decode_claim};
+pub use pump::OutboxRuntime;
+pub use qualification::{recover_outbox_crash, stage_outbox_crash};
+pub use router::DestinationRouter;
 
-pub(crate) type DurableDelivery<'a> =
-    Pin<Box<dyn Future<Output = Result<(), DaemonError>> + Send + 'a>>;
+pub type DurableDelivery<'a> = Pin<Box<dyn Future<Output = Result<(), DaemonError>> + Send + 'a>>;
 
 /// Exact claim not handled by the native authority child adapters.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) enum DurableOutboxClaim {
+pub enum DurableOutboxClaim {
     /// E0 D0-agent work.
     OrchestratorAgent(OrchestratorDirectiveClaim),
     /// E0 pure B2 evaluation.
@@ -52,7 +51,7 @@ pub(crate) enum DurableOutboxClaim {
 /// must mean that the owning API acknowledged C0's exact claim fence, either atomically with its C0
 /// transition or after an idempotently replayable cross-store effect. A plain generic outbox
 /// acknowledgement is not a valid implementation.
-pub(crate) trait DurableOutboxPort: Send + Sync + 'static {
+pub trait DurableOutboxPort: Send + Sync + 'static {
     /// Delivers and durably settles one already decoded E0, E1, E2, E3, or F0 claim.
-    fn deliver_and_settle<'a>(&'a self, claim: DurableOutboxClaim) -> DurableDelivery<'a>;
+    fn deliver_and_settle(&self, claim: DurableOutboxClaim) -> DurableDelivery<'_>;
 }

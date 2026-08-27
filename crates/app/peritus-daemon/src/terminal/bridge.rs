@@ -22,7 +22,7 @@ use super::{
 mod observation;
 
 /// Complete checked registration supplied by the owner of a newly launched C2 process.
-pub(crate) struct LiveTerminalRegistration {
+pub struct LiveTerminalRegistration {
     actor_id: ActorId,
     session_id: SessionId,
     process_id: ProcessId,
@@ -67,7 +67,7 @@ impl LiveTerminalRegistration {
     }
 
     /// Validates that a checked C2 plan exposes a bounded pseudo-terminal stream.
-    pub(super) fn validate_plan(plan: &ExecutionPlan) -> Result<(), TerminalBridgeError> {
+    pub(super) const fn validate_plan(plan: &ExecutionPlan) -> Result<(), TerminalBridgeError> {
         if !matches!(plan.io_mode(), IoMode::Pty(_)) {
             return Err(rejected(
                 TerminalBridgeErrorKind::NotPty,
@@ -263,7 +263,7 @@ impl TerminalBridge {
         self.terminal.is_some() && self.attachments.values().all(AttachmentRecord::is_settled)
     }
 
-    pub(super) fn terminal_observed(&self) -> bool {
+    pub(super) const fn terminal_observed(&self) -> bool {
         self.terminal.is_some()
     }
 

@@ -103,6 +103,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Add black-box daemon integration scaffolding that owns real `peritusd` subprocesses, isolated
   protected state roots, raw public A3 codecs, bounded process teardown, second-instance and
   kill/restart controls, and direct filesystem/process/wire observations without daemon internals
+- Close the A2 daemon inventory at 28/28 public-subprocess cases, including real host-PTY ordering
+  and an actual kill after an identity-bearing outbox effect but before C0 fence acknowledgement,
+  followed by exact-fence recovery with one external effect and no duplicate
+- Add bounded `peritusd qualify-pty`, `qualify-outbox-stage`, and `qualify-outbox-recover`
+  administration entry points for production-boundary qualification without building the G1 CLI
+- Store A3 compatibility payloads as reviewable lowercase hexadecimal text and regenerate exact
+  bytes at test time so executable or binary fixture blobs are not committed to the repository
 - Add singleton, protocol-boundary, authenticated runtime, artifact, migration, approval-registry,
   command replay, recovery/shutdown, worker, prompt, outbox, D1, D2, and E0 integration tests using
   bounded temporary roots and single-threaded resource-aware verification

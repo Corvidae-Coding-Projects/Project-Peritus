@@ -5,7 +5,7 @@ use peritus_types::ProcessId;
 
 /// Restart-visible terminal relation; none of these values grants a live attachment.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) enum RestartTerminalDisposition {
+pub enum RestartTerminalDisposition {
     /// C2 has a complete durable terminal result that may be presented as history.
     PersistedTerminal(TerminalResult),
     /// C2 found and reconciled an exact live tree, but its daemon-owned PTY control was lost.
@@ -28,7 +28,7 @@ impl RestartTerminalDisposition {
 
 /// Classifies one process after C2 restart reconciliation without manufacturing a live control.
 #[must_use]
-pub(crate) fn classify_restart(
+pub fn classify_restart(
     store: &ProcessStore,
     report: &RecoveryReport,
     process_id: ProcessId,

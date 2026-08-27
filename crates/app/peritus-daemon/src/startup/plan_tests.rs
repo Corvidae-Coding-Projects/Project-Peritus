@@ -34,7 +34,7 @@ fn checkpoint_prefix_retains_exact_digests_and_next_actions() {
     assert_eq!(usize::from(plan.checkpoints().len()), STARTUP_PHASE_COUNT);
     assert_eq!(plan.checkpoints().iter().count(), STARTUP_PHASE_COUNT);
     assert_eq!(
-        plan.checkpoints().last().map(|checkpoint| checkpoint.phase()),
+        plan.checkpoints().last().map(super::checkpoint::StartupCheckpoint::phase),
         Some(StartupPhase::Ready)
     );
 }

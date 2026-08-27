@@ -11,7 +11,7 @@ use peritus_telemetry::{
 use super::local_file::LocalFileExporter;
 use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
 
-pub(crate) struct TelemetryRuntime {
+pub struct TelemetryRuntime {
     pump: TelemetryPump,
     exporter: LocalFileExporter,
     checkpoints: CheckpointStore,

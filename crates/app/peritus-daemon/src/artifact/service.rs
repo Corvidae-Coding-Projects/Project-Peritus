@@ -22,12 +22,12 @@ use error::{
     corrupt, invalid, journal_error, require_owner, resource_limit, store_error, transfer_error,
 };
 
-pub(crate) struct ArtifactPoll {
+pub struct ArtifactPoll {
     pub(crate) payload: AppEventPayload,
     pub(crate) terminal: bool,
 }
 
-pub(crate) struct ArtifactAuthority {
+pub struct ArtifactAuthority {
     store: ArtifactStore,
     transfers: BTreeMap<TransferId, ActiveTransfer>,
     maximum_artifact_bytes: u64,
@@ -232,33 +232,30 @@ impl ArtifactAuthority {
         if chunk_bytes == 0 {
             return Err(invalid("artifact download chunk limit must be positive"));
         }
-        match download.reader.read_chunk(chunk_bytes).map_err(store_error)? {
-            Some(read) => {
-                let chunk = ArtifactChunk::new(
+        if let Some(read) = download.reader.read_chunk(chunk_bytes).map_err(store_error)? {
+            let chunk = ArtifactChunk::new(
+                transfer_id,
+                metadata.artifact_id(),
+                download.state.next_ordinal(),
+                read.offset(),
+                read.bytes().to_vec(),
+                chunk_bytes,
+            )
+            .map_err(transfer_error)?;
+            download.state.accept_chunk(&chunk).map_err(transfer_error)?;
+            Ok(ArtifactPoll { payload: AppEventPayload::ArtifactChunk(chunk), terminal: false })
+        } else {
+            download.state.complete(metadata.digest()).map_err(transfer_error)?;
+            self.transfers.remove(&transfer_id);
+            Ok(ArtifactPoll {
+                payload: AppEventPayload::ArtifactComplete(ArtifactCompletion::new(
                     transfer_id,
                     metadata.artifact_id(),
-                    download.state.next_ordinal(),
-                    read.offset(),
-                    read.bytes().to_vec(),
-                    chunk_bytes,
-                )
-                .map_err(transfer_error)?;
-                download.state.accept_chunk(&chunk).map_err(transfer_error)?;
-                Ok(ArtifactPoll { payload: AppEventPayload::ArtifactChunk(chunk), terminal: false })
-            }
-            None => {
-                download.state.complete(metadata.digest()).map_err(transfer_error)?;
-                self.transfers.remove(&transfer_id);
-                Ok(ArtifactPoll {
-                    payload: AppEventPayload::ArtifactComplete(ArtifactCompletion::new(
-                        transfer_id,
-                        metadata.artifact_id(),
-                        metadata.byte_size(),
-                        metadata.digest(),
-                    )),
-                    terminal: true,
-                })
-            }
+                    metadata.byte_size(),
+                    metadata.digest(),
+                )),
+                terminal: true,
+            })
         }
     }
 

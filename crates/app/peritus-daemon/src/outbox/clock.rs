@@ -18,7 +18,7 @@ impl OutboxClock {
     pub(super) fn new(authority_epoch: u64) -> Result<Self, DaemonError> {
         let base = authority_epoch
             .checked_shl(EPOCH_SHIFT)
-            .filter(|value| *value <= i64::MAX as u64)
+            .filter(|value| i64::try_from(*value).is_ok())
             .ok_or_else(clock_exhausted)?;
         Ok(Self { base, started: Instant::now() })
     }

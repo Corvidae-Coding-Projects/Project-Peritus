@@ -7,7 +7,7 @@ use peritus_daemon::DaemonConfig;
 use peritus_types::RevisionNumber;
 
 /// Builds one strict, isolated daemon configuration beneath `root`.
-pub(super) fn configuration(root: &Path) -> DaemonConfig {
+pub fn configuration(root: &Path) -> DaemonConfig {
     let state = root.join("state");
     let artifacts = state.join("artifacts");
     let evidence = state.join("evidence");

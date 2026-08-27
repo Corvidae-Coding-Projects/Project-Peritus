@@ -22,6 +22,10 @@ impl SqliteJournal {
     /// # Errors
     ///
     /// Returns invalid input when the actor/session is not active, or a typed storage error.
+    #[allow(
+        clippy::needless_pass_by_value,
+        reason = "admission consumes the one-shot command input as part of its public contract"
+    )]
     pub fn admit_application_command(
         &mut self,
         command: NewApplicationCommand,
