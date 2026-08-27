@@ -1,6 +1,6 @@
 {
   "next_display_id": 26,
-  "next_comment_id": 431,
+  "next_comment_id": 432,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -3587,7 +3587,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T22:59:08.003031292Z",
-      "updated_at": "2026-08-27T06:37:34.510749845Z",
+      "updated_at": "2026-08-27T06:44:15.021471874Z",
       "labels": [
         "feature"
       ],
@@ -3609,6 +3609,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA3riMaJ3H1ox9gYqeaNcz9nzDd7xwF0gaTaK6VBHL86QMDX1xrh2k01S5z4CxAM7+nXwXdUYfMJg0UlEcYZTlDQ=="
+        },
+        "0eafb603-1d0f-4dc7-a128-715647802c88": {
+          "display_id": 431,
+          "author": "6ME5",
+          "content": "Signed runner-fix commit 95caead addresses every distinct failure from PR #32 run 33046120017/33046120096: canonical macOS temp roots, bounded 30-second hosted-load daemon startup with 10-second exit bound, macOS pattern lint, and Windows import/const lints. Focused verification passed: registry 4/4, public daemon conformance 28/28, process 10/10, Linux daemon/process Clippy, and Windows-target process Clippy. macOS cross-Clippy was attempted but the Linux host lacks an Apple C compiler for bundled SQLite; hosted macOS remains authoritative.",
+          "created_at": "2026-08-27T06:44:15.018781393Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAY2pjP5EA2cEkuNfkDozmPRT4e8hKmJ8jg3WosRc/RPMT2+CYsG6tGsWn5hHx3DH9P7zg0SPHmQtUW/SkJdTeCQ=="
         },
         "1b3b1265-c629-4306-b2d8-379ddabde2be": {
           "display_id": 430,
@@ -4340,8 +4349,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T06:37:34.510749845Z",
+    "timestamp": "2026-08-27T06:44:15.021471874Z",
     "agent_id": "6ME5",
-    "agent_seq": 574
+    "agent_seq": 575
   }
 }
