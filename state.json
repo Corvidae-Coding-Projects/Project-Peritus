@@ -1,6 +1,6 @@
 {
   "next_display_id": 36,
-  "next_comment_id": 492,
+  "next_comment_id": 493,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1322,12 +1322,21 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:01:40.256074700Z",
-      "updated_at": "2026-08-27T22:25:23.073481624Z",
+      "updated_at": "2026-08-27T23:00:21.458569553Z",
       "labels": [
         "qualification",
         "release"
       ],
       "comments": {
+        "105077d8-22d7-495a-9507-1062b9b6cf3f": {
+          "display_id": 492,
+          "author": "6ME5",
+          "content": "Provider qualification merged through PR #36 at 1cdedbaa33b6dfa8b80e56b66a8e1aa64a829452 after all 30 pull-request checks passed. The committed-tree authenticated canaries both completed with exact matches and usage evidence: Codex gpt-5.6-sol (7 events) and Claude sonnet (7 events). Local full Gate A also passed before publication. Main push workflows 33124654711 and 33124654709 are now running.",
+          "created_at": "2026-08-27T23:00:21.456054566Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABATOx4xb6sBDRwRPo5cA2heiwZYP5cntwiJ0wUhnga/a2kDUZYQ01MjlUtJlfP6vyF9+M8y6bnLXj2KaiBCM/xCg=="
+        },
         "24626f03-baab-4434-bf5c-60afae64719d": {
           "display_id": 488,
           "author": "6ME5",
@@ -5062,8 +5071,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T22:59:30.049071607Z",
+    "timestamp": "2026-08-27T23:00:21.458569553Z",
     "agent_id": "6ME5",
-    "agent_seq": 667
+    "agent_seq": 668
   }
 }
