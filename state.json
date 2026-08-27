@@ -1,6 +1,6 @@
 {
   "next_display_id": 26,
-  "next_comment_id": 418,
+  "next_comment_id": 419,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -3587,7 +3587,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T22:59:08.003031292Z",
-      "updated_at": "2026-08-27T02:45:12.539635642Z",
+      "updated_at": "2026-08-27T02:57:06.115629764Z",
       "labels": [
         "feature"
       ],
@@ -3690,6 +3690,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA1tMeTmgrJpWaduv+a4DtohhfxgBFoFvfI8JetghH3hgRRp9tVngcKGYKRvskL9Pqp+6BDGPR3EWhWsQOHOekCg=="
+        },
+        "a7f31b92-7857-47ac-8860-eb43c4609ad4": {
+          "display_id": 418,
+          "author": "6ME5",
+          "content": "[action] Added AuthorityOwner prompt ownership operations and exact E0 child-resume fencing; focused E0 pause/resume/replay test green while D1/D2 durable pause work and A2 daemon conformance proceed in parallel",
+          "created_at": "2026-08-27T02:57:06.113083681Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAgCKiQ/18+T3xNB4460TBocp8+lHd0Ko+EoAZVw59fffsheKZLMQ4v5HrfCH7f/QuI7VSJjnEuha7MQc0MlieCw=="
         },
         "b83c9f7e-8572-432c-9f48-c17cfd7cae8d": {
           "display_id": 415,
@@ -4223,8 +4232,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T02:45:12.539635642Z",
+    "timestamp": "2026-08-27T02:57:06.115629764Z",
     "agent_id": "6ME5",
-    "agent_seq": 559
+    "agent_seq": 560
   }
 }
