@@ -20,6 +20,10 @@ impl WorkspaceCatalog {
     pub(super) fn len(&self) -> usize {
         self.registrations.len()
     }
+
+    pub(super) fn contains(&self, workspace_id: WorkspaceId) -> bool {
+        self.registrations.contains_key(&workspace_id)
+    }
 }
 
 pub(super) fn install_and_reconcile(

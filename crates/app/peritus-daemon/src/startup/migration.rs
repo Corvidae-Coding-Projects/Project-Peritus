@@ -22,6 +22,8 @@ pub(super) fn migrate_existing(config: &DaemonConfig, database: &Path) -> Result
     )
     .map_err(migration_error)?;
     let mut engine = MigrationEngine::open(migration_config, registry).map_err(migration_error)?;
+    let operation = operation_id(registry)?;
+    let _ = engine.adopt_current_install(operation).map_err(migration_error)?;
     let recovery = engine.reconcile().map_err(migration_error)?;
     for action in recovery.actions() {
         match *action {
@@ -44,7 +46,7 @@ pub(super) fn migrate_existing(config: &DaemonConfig, database: &Path) -> Result
     }
     let plan = engine.preflight(latest).map_err(migration_error)?.into_plan();
     if plan.current_version() != latest.get() {
-        engine.apply(&plan, operation_id(registry)?).map_err(migration_error)?;
+        engine.apply(&plan, operation).map_err(migration_error)?;
     }
     Ok(())
 }

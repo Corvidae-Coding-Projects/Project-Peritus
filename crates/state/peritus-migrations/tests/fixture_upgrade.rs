@@ -16,6 +16,20 @@ use sha2::{Digest, Sha256};
 use support::{config, create_journal_database, operation, version};
 
 #[test]
+fn direct_current_journal_install_adopts_exact_migration_history_once() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let database = create_journal_database(&temp);
+    let mut engine = MigrationEngine::open(config(&temp, database), MigrationRegistry::current())
+        .expect("migration engine");
+
+    assert!(engine.adopt_current_install(operation(8)).expect("adopt direct current install"));
+    let plan = engine.preflight(version(10)).expect("current install preflight").into_plan();
+    assert_eq!(plan.current_version(), 10);
+    assert!(plan.steps().is_empty());
+    assert!(!engine.adopt_current_install(operation(8)).expect("repeated adoption is inert"));
+}
+
+#[test]
 fn unversioned_fixture_upgrades_without_damaging_journal_replay_contract() {
     let temp = tempfile::tempdir().expect("tempdir");
     let database = create_journal_database(&temp);

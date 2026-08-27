@@ -65,6 +65,7 @@ impl SqliteJournal {
         peritus_artifact_store::sqlite_interop::install_schema(&connection)
             .map_err(|error| JournalError::sqlite("install artifact catalog schema", error))?;
         bind_store(&connection, store_id)?;
+        bind_migration_version(&connection)?;
         Ok(Self { connection, store_id })
     }
 
@@ -177,6 +178,23 @@ fn bind_store(connection: &Connection, store_id: StoreId) -> Result<(), JournalE
             JournalErrorKind::UnsupportedSchema,
             "open journal",
             "database schema version is unsupported",
+        ));
+    }
+    Ok(())
+}
+
+fn bind_migration_version(connection: &Connection) -> Result<(), JournalError> {
+    connection
+        .pragma_update(None, "user_version", super::schema::SCHEMA_VERSION)
+        .map_err(|error| JournalError::sqlite("bind migration schema version", error))?;
+    let observed: i64 = connection
+        .pragma_query_value(None, "user_version", |row| row.get(0))
+        .map_err(|error| JournalError::sqlite("observe migration schema version", error))?;
+    if observed != super::schema::SCHEMA_VERSION {
+        return Err(JournalError::new(
+            JournalErrorKind::CorruptJournal,
+            "bind migration schema version",
+            "SQLite user_version does not match the installed journal schema",
         ));
     }
     Ok(())
