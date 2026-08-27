@@ -1,6 +1,6 @@
 {
   "next_display_id": 27,
-  "next_comment_id": 440,
+  "next_comment_id": 441,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -2223,7 +2223,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-27T07:52:47.509432100Z",
-      "updated_at": "2026-08-27T10:04:47.099549715Z",
+      "updated_at": "2026-08-27T10:05:22.847404320Z",
       "comments": {
         "d2588fc4-c4a2-4383-a2b0-1ce304dcd376": {
           "display_id": 438,
@@ -2242,6 +2242,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAS5MH5hLNNXUUOXzKlISiyfhK+3U1U4P1JWwt6lSTGHR6Aeg6Q0iJ/Z2xKEzWknaBH8fBHrbXT59jYrUYgNsjBg=="
+        },
+        "eee9a77d-7385-4ec3-b85c-a3c170312183": {
+          "display_id": 440,
+          "author": "6ME5",
+          "content": "Commit f1f455c3 feat(g1-g3): add production clients and extensions (#26). Signed 100-file integration commit with 14,459 insertions. Verification: full just check, focused G1-G3 and conformance tests, 252 xtask tests, strict Clippy, native/Windows/macOS checks, ordinary API, architecture/source-layout/trust/reproducibility/cargo-deny/toolchain, and complete normal plus --no-cheating Verus verify/release builds all passed.",
+          "created_at": "2026-08-27T10:05:22.844286060Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABArVRKkt3niVXk2yqUcWZBepcrsyk73Lj8WUevXpf6VsgD3uRjo7lsOs8u39qmhaIuKpjdg38oxrdiTpNDEsXAAQ=="
         },
         "fab421e9-63ba-4f7d-b4b3-dae160d00867": {
           "display_id": 439,
@@ -4436,8 +4445,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T10:04:47.099549715Z",
+    "timestamp": "2026-08-27T10:05:22.847404320Z",
     "agent_id": "6ME5",
-    "agent_seq": 587
+    "agent_seq": 588
   }
 }
