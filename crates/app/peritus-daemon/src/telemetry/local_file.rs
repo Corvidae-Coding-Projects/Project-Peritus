@@ -154,7 +154,7 @@ fn protect(path: &Path) -> Result<(), ExporterError> {
 }
 
 #[cfg(windows)]
-fn protect(_path: &Path) -> Result<(), ExporterError> {
+const fn protect(_path: &Path) -> Result<(), ExporterError> {
     Ok(())
 }
 
@@ -164,7 +164,7 @@ fn sync_directory(path: &Path) -> Result<(), ExporterError> {
 }
 
 #[cfg(windows)]
-fn sync_directory(_path: &Path) -> Result<(), ExporterError> {
+const fn sync_directory(_path: &Path) -> Result<(), ExporterError> {
     Ok(())
 }
 

@@ -201,7 +201,7 @@ mod native {
         let mut token = ptr::null_mut();
         // SAFETY: the pseudo-process handle is always valid; token points to writable HANDLE
         // storage and ownership transfers to OwnedToken only on success.
-        if unsafe { OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token) } == 0 {
+        if unsafe { OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &raw mut token) } == 0 {
             return Err(io::Error::last_os_error());
         }
         if token.is_null() {
@@ -224,7 +224,7 @@ mod native {
         let mut token = ptr::null_mut();
         // SAFETY: execution has not crossed an await since impersonation, the current-thread
         // pseudo-handle is valid, and token points to writable HANDLE storage.
-        let opened = unsafe { OpenThreadToken(GetCurrentThread(), TOKEN_QUERY, 1, &mut token) };
+        let opened = unsafe { OpenThreadToken(GetCurrentThread(), TOKEN_QUERY, 1, &raw mut token) };
         let open_error = if opened == 0 { Some(io::Error::last_os_error()) } else { None };
         guard.revert()?;
         if let Some(error) = open_error {
@@ -254,7 +254,7 @@ mod native {
                 WinLocalSystemSid,
                 ptr::null_mut(),
                 system.as_mut_ptr().cast(),
-                &mut system_length,
+                &raw mut system_length,
             )
         } == 0
         {
@@ -305,31 +305,20 @@ mod native {
         let mut descriptor = SECURITY_DESCRIPTOR::default();
         // SAFETY: descriptor points to writable storage for one absolute security descriptor.
         if unsafe {
-            InitializeSecurityDescriptor(
-                (&mut descriptor as *mut SECURITY_DESCRIPTOR).cast(),
-                SECURITY_DESCRIPTOR_REVISION,
-            )
+            InitializeSecurityDescriptor((&raw mut descriptor).cast(), SECURITY_DESCRIPTOR_REVISION)
         } == 0
         {
             return Err(io::Error::last_os_error());
         }
         // SAFETY: descriptor was initialized, acl is initialized, and acl_storage remains alive
         // until CreateNamedPipeW has copied the complete descriptor.
-        if unsafe {
-            SetSecurityDescriptorDacl(
-                (&mut descriptor as *mut SECURITY_DESCRIPTOR).cast(),
-                1,
-                acl,
-                0,
-            )
-        } == 0
-        {
+        if unsafe { SetSecurityDescriptorDacl((&raw mut descriptor).cast(), 1, acl, 0) } == 0 {
             return Err(io::Error::last_os_error());
         }
         let mut attributes = SECURITY_ATTRIBUTES {
             nLength: u32::try_from(size_of::<SECURITY_ATTRIBUTES>())
                 .map_err(|_| invalid_native_data())?,
-            lpSecurityDescriptor: (&mut descriptor as *mut SECURITY_DESCRIPTOR).cast(),
+            lpSecurityDescriptor: (&raw mut descriptor).cast(),
             bInheritHandle: 0,
         };
         let mut options = ServerOptions::new();
@@ -340,10 +329,7 @@ mod native {
         // SAFETY: attributes, descriptor, ACL, and SID buffers are initialized and live for the
         // complete synchronous CreateNamedPipeW call made by Tokio.
         unsafe {
-            options.create_with_security_attributes_raw(
-                pipe_name,
-                (&mut attributes as *mut SECURITY_ATTRIBUTES).cast(),
-            )
+            options.create_with_security_attributes_raw(pipe_name, (&raw mut attributes).cast())
         }
     }
 }

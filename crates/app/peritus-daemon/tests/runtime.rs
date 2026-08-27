@@ -11,7 +11,6 @@ use peritus_app_protocol::{
     ProtocolContext, ProtocolId, RequestId, TransferId, VersionRange,
 };
 use peritus_daemon::{AppFrameStream, DaemonConfig, DaemonRuntime, LocalEndpointAddress};
-use tempfile::TempDir;
 use tokio::{net::UnixStream, runtime::Builder};
 
 #[path = "runtime/scheduler.rs"]
@@ -45,7 +44,7 @@ fn resume_hello(session: peritus_types::SessionId) -> ClientHello {
 
 #[test]
 fn strict_configuration_rejects_unknown_and_plaintext_authority_fields() {
-    let temporary = TempDir::new().expect("temporary root");
+    let temporary = support::temporary_root();
     let root = temporary.path();
     let valid = support::configuration(root);
     assert_eq!(valid.version(), 1);
@@ -82,7 +81,7 @@ fn runtime_accepts_authenticated_negotiation_and_status() {
 }
 
 async fn runtime_accepts_authenticated_negotiation_and_status_async() {
-    let temporary = TempDir::new().expect("temporary root");
+    let temporary = support::temporary_root();
     let runtime = DaemonRuntime::start(support::configuration(temporary.path()))
         .await
         .expect("daemon starts");
@@ -174,7 +173,7 @@ fn runtime_streams_uploaded_artifacts_through_the_durable_catalog() {
     reason = "the integration trace keeps the complete upload and publication sequence visible"
 )]
 async fn runtime_streams_uploaded_artifacts_through_the_durable_catalog_async() {
-    let temporary = TempDir::new().expect("temporary root");
+    let temporary = support::temporary_root();
     let runtime = DaemonRuntime::start(support::configuration(temporary.path()))
         .await
         .expect("daemon starts");
@@ -283,7 +282,7 @@ fn runtime_commits_and_replays_registered_scheduler_commands() {
 }
 
 async fn runtime_commits_and_replays_registered_scheduler_commands_async() {
-    let temporary = TempDir::new().expect("temporary root");
+    let temporary = support::temporary_root();
     let runtime = DaemonRuntime::start(support::configuration(temporary.path()))
         .await
         .expect("daemon starts");

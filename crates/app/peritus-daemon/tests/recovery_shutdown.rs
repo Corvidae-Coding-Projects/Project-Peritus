@@ -28,7 +28,6 @@ use peritus_types::{
     AcceptanceSpecId, ActorId, CommandId, EventId, Generation, HarnessId, PolicyId,
     ProviderProfileId, RevisionNumber, RevisionTuple, RunId, SessionId, Sha256Digest, WorkspaceId,
 };
-use tempfile::TempDir;
 use tokio::{net::UnixStream, runtime::Builder};
 
 const IO_BOUND: Duration = Duration::from_secs(5);
@@ -40,7 +39,7 @@ fn authenticated_shutdown_retains_the_exact_request_and_finishes_cleanly() {
 }
 
 async fn authenticated_shutdown_retains_the_exact_request_and_finishes_cleanly_async() {
-    let temporary = TempDir::new().expect("temporary root");
+    let temporary = support::temporary_root();
     let mut runtime = tokio::time::timeout(
         LIFECYCLE_BOUND,
         DaemonRuntime::start(support::configuration(temporary.path())),
@@ -96,7 +95,7 @@ fn restart_resumes_the_durable_session_and_replays_the_exact_command_result() {
 }
 
 async fn restart_resumes_the_durable_session_and_replays_the_exact_command_result_async() {
-    let temporary = TempDir::new().expect("temporary root");
+    let temporary = support::temporary_root();
     let config = support::configuration(temporary.path());
     let first = tokio::time::timeout(LIFECYCLE_BOUND, DaemonRuntime::start(config.clone()))
         .await

@@ -13,7 +13,7 @@ pub(super) fn token_user_sid(token: &OwnedToken) -> io::Result<Vec<u8>> {
     // SAFETY: the null buffer/zero length pair is the documented sizing query and required is
     // writable. The token handle remains owned for both calls.
     unsafe {
-        GetTokenInformation(token.0, TokenUser, ptr::null_mut(), 0, &mut required);
+        GetTokenInformation(token.0, TokenUser, ptr::null_mut(), 0, &raw mut required);
     }
     let required = usize::try_from(required).map_err(|_| invalid_native_data())?;
     if required < size_of::<TOKEN_USER>() || required > MAX_TOKEN_INFORMATION_BYTES {
@@ -28,7 +28,7 @@ pub(super) fn token_user_sid(token: &OwnedToken) -> io::Result<Vec<u8>> {
             TokenUser,
             storage.as_mut_ptr().cast(),
             u32::try_from(required).map_err(|_| invalid_native_data())?,
-            &mut written,
+            &raw mut written,
         )
     } == 0
     {
@@ -67,7 +67,7 @@ pub(super) fn token_user_sid(token: &OwnedToken) -> io::Result<Vec<u8>> {
     let sid_length = usize::try_from(unsafe { GetLengthSid(token_user.User.Sid) })
         .map_err(|_| invalid_native_data())?;
     let sid_end = sid_address.checked_add(sid_length).ok_or_else(invalid_native_data)?;
-    if sid_length < MINIMUM_SID_BYTES || sid_length > MAX_SID_BYTES || sid_end > end {
+    if !(MINIMUM_SID_BYTES..=MAX_SID_BYTES).contains(&sid_length) || sid_end > end {
         return Err(invalid_native_data());
     }
     Ok(initialized[sid_offset..sid_offset + sid_length].to_vec())

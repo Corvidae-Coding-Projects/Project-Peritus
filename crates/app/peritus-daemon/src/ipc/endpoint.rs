@@ -1,10 +1,13 @@
 //! Cross-platform local endpoint facade.
 
 use std::{
-    path::{Path, PathBuf},
+    path::Path,
     pin::Pin,
     task::{Context, Poll},
 };
+
+#[cfg(unix)]
+use std::path::PathBuf;
 
 use super::{AppFrameStream, BoxedLocalIo, PeerIdentity};
 use crate::{DaemonError, DaemonIdentity};
@@ -96,7 +99,16 @@ impl LocalEndpoint {
     ///
     /// Returns a typed ownership or filesystem error when the endpoint path is not the prior
     /// daemon's recoverable object.
+    #[cfg(unix)]
     pub(crate) fn recover_stale(
+        state_root: &Path,
+        identity: &DaemonIdentity,
+    ) -> Result<(), DaemonError> {
+        platform::recover_stale(state_root, identity)
+    }
+
+    #[cfg(windows)]
+    pub(crate) const fn recover_stale(
         state_root: &Path,
         identity: &DaemonIdentity,
     ) -> Result<(), DaemonError> {

@@ -6,7 +6,6 @@ use std::{future::Future, time::Duration};
 
 use peritus_app_protocol::ShutdownCompletionDisposition;
 use peritus_daemon::{DaemonErrorCode, DaemonRecovery, DaemonRuntime};
-use tempfile::TempDir;
 use tokio::runtime::Builder;
 
 const TEST_BOUND: Duration = Duration::from_secs(10);
@@ -17,7 +16,7 @@ fn second_runtime_cannot_acquire_a_live_state_root() {
 }
 
 async fn second_runtime_cannot_acquire_a_live_state_root_async() {
-    let temporary = TempDir::new().expect("temporary root");
+    let temporary = support::temporary_root();
     let config = support::configuration(temporary.path());
     let owner = tokio::time::timeout(TEST_BOUND, DaemonRuntime::start(config.clone()))
         .await

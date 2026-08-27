@@ -2,7 +2,7 @@
 
 use std::fs::{self, OpenOptions};
 use std::io;
-use std::os::unix::fs::{FileTypeExt, MetadataExt};
+use std::os::unix::{fs::FileTypeExt, net::UnixStream};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Stdio};
 use std::thread;
@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 
 use peritus_approval::CredentialRegistrySnapshot;
 use peritus_types::RevisionNumber;
-use tempfile::TempDir;
+use tempfile::{Builder, TempDir};
 
 const STARTUP_BOUND: Duration = Duration::from_secs(30);
 const PROCESS_EXIT_BOUND: Duration = Duration::from_secs(10);
@@ -25,7 +25,7 @@ pub(super) struct TestEnvironment {
 
 impl TestEnvironment {
     pub(super) fn new() -> io::Result<Self> {
-        let temporary = TempDir::new()?;
+        let temporary = short_tempdir()?;
         let root = fs::canonicalize(temporary.path())?;
         let state_root = root.join("state");
         let config_path = root.join("daemon.toml");
@@ -39,15 +39,8 @@ impl TestEnvironment {
     }
 
     pub(super) fn start(&self) -> io::Result<DaemonProcess> {
-        let previous_endpoint =
-            find_endpoint(&self.state_root)?.as_deref().map(endpoint_identity).transpose()?;
         let child = self.spawn_child()?;
-        DaemonProcess::wait_until_ready(
-            child,
-            &self.state_root,
-            self.log_path.clone(),
-            previous_endpoint,
-        )
+        DaemonProcess::wait_until_ready(child, &self.state_root, self.log_path.clone())
     }
 
     pub(super) fn spawn_competitor(&self) -> io::Result<Child> {
@@ -123,7 +116,6 @@ impl DaemonProcess {
         mut child: Child,
         state_root: &Path,
         log_path: PathBuf,
-        previous_endpoint: Option<(u64, u64)>,
     ) -> io::Result<Self> {
         let deadline = Instant::now() + STARTUP_BOUND;
         loop {
@@ -134,7 +126,7 @@ impl DaemonProcess {
                 )));
             }
             if let Some(endpoint) = find_endpoint(state_root)?
-                && Some(endpoint_identity(&endpoint)?) != previous_endpoint
+                && UnixStream::connect(&endpoint).is_ok()
             {
                 return Ok(Self { child: Some(child), endpoint, log_path });
             }
@@ -232,9 +224,9 @@ fn find_endpoint(state_root: &Path) -> io::Result<Option<PathBuf>> {
     }
 }
 
-fn endpoint_identity(path: &Path) -> io::Result<(u64, u64)> {
-    let metadata = fs::symlink_metadata(path)?;
-    Ok((metadata.dev(), metadata.ino()))
+fn short_tempdir() -> io::Result<TempDir> {
+    let base = fs::canonicalize("/tmp")?;
+    Builder::new().prefix("pd-").tempdir_in(base)
 }
 
 fn bounded_log(path: &Path) -> String {

@@ -248,7 +248,7 @@ fn protect_directory(path: &Path) -> Result<(), DaemonError> {
 }
 
 #[cfg(windows)]
-fn protect_directory(_path: &Path) -> Result<(), DaemonError> {
+const fn protect_directory(_path: &Path) -> Result<(), DaemonError> {
     Ok(())
 }
 
@@ -269,7 +269,7 @@ fn verify_directory_owner(path: &Path) -> Result<(), DaemonError> {
 }
 
 #[cfg(windows)]
-fn verify_directory_owner(_path: &Path) -> Result<(), DaemonError> {
+const fn verify_directory_owner(_path: &Path) -> Result<(), DaemonError> {
     Ok(())
 }
 

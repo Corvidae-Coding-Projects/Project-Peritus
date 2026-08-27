@@ -119,7 +119,7 @@ fn sync_directory(path: &Path) -> Result<(), DaemonError> {
 }
 
 #[cfg(windows)]
-fn sync_directory(_path: &Path) -> Result<(), DaemonError> {
+const fn sync_directory(_path: &Path) -> Result<(), DaemonError> {
     // Windows does not provide a portable directory handle that `File::sync_all` accepts. The
     // effect file itself is already flushed above before the checkpoint is published.
     Ok(())

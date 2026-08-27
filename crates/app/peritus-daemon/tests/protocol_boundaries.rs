@@ -12,7 +12,6 @@ use peritus_app_protocol::{
 };
 use peritus_codec::{FORMAT_VERSION, HEADER_LEN, MAGIC};
 use peritus_daemon::{AppFrameStream, DaemonErrorCode, DaemonRuntime, LocalEndpointAddress};
-use tempfile::TempDir;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::UnixStream,
@@ -28,7 +27,7 @@ fn incompatible_hello_returns_no_session_and_closes_the_connection() {
 }
 
 async fn incompatible_hello_returns_no_session_and_closes_the_connection_async() {
-    let temporary = TempDir::new().expect("temporary root");
+    let temporary = support::temporary_root();
     let runtime = tokio::time::timeout(
         LIFECYCLE_BOUND,
         DaemonRuntime::start(support::configuration(temporary.path())),
@@ -85,7 +84,7 @@ fn malformed_and_oversized_headers_close_without_waiting_for_declared_payloads()
 }
 
 async fn malformed_and_oversized_headers_close_without_waiting_for_declared_payloads_async() {
-    let temporary = TempDir::new().expect("temporary root");
+    let temporary = support::temporary_root();
     let runtime = tokio::time::timeout(
         LIFECYCLE_BOUND,
         DaemonRuntime::start(support::configuration(temporary.path())),
