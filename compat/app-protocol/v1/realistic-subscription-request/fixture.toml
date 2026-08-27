@@ -9,5 +9,5 @@ path = "expectation.toml"
 sha256 = "9bfec43ae16414cb30f096371819e7785ea0460cc576310813b3ac2e7208039c"
 
 [[files]]
-path = "payload.bin"
-sha256 = "addd526e6b28a43a21c81c71e442fe6324d36890602709ead2fff1cc96371767"
+path = "payload.hex"
+sha256 = "8addc6aec398a5fc13a83472dfc376bb766b6c88b1707b1cecc600dd73293959"

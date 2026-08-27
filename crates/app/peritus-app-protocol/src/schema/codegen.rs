@@ -21,13 +21,12 @@ pub fn run_codegen(
     for fixture in generated_fixture_cases()? {
         let directory = root.join("compat/app-protocol/v1").join(fixture.case);
         let expectation = fixture.render_expectation();
-        let files = [
-            ("expectation.toml", expectation.as_bytes()),
-            ("payload.bin", fixture.payload.as_slice()),
-        ];
+        let payload = format!("{}\n", hex(&fixture.payload));
+        let files =
+            [("expectation.toml", expectation.as_bytes()), ("payload.hex", payload.as_bytes())];
         let manifest = render_manifest(fixture.class.as_str(), fixture.case, &files);
         write_or_check(&directory.join("expectation.toml"), expectation.as_bytes(), check)?;
-        write_or_check(&directory.join("payload.bin"), &fixture.payload, check)?;
+        write_or_check(&directory.join("payload.hex"), payload.as_bytes(), check)?;
         write_or_check(&directory.join("fixture.toml"), manifest.as_bytes(), check)?;
     }
     Ok(())
@@ -103,10 +102,10 @@ mod tests {
         let manifest = render_manifest(
             "minimal",
             "minimal-client-hello",
-            &[("expectation.toml", b"expectation"), ("payload.bin", b"payload")],
+            &[("expectation.toml", b"expectation"), ("payload.hex", b"7061796c6f6164\n")],
         );
         assert!(manifest.contains("surface = \"app-protocol\""));
-        assert!(manifest.find("expectation.toml") < manifest.find("payload.bin"));
+        assert!(manifest.find("expectation.toml") < manifest.find("payload.hex"));
         assert_eq!(manifest.matches("sha256 = ").count(), 2);
     }
 }
