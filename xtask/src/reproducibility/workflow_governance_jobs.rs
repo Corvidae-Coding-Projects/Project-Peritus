@@ -64,7 +64,7 @@ fn rust_gate_is_exact(job: &Yaml) -> bool {
                 && conditional_cargo(
                     &steps[3],
                     "matrix.operation == 'fmt'",
-                    &["fmt", "--all", "--", "--check"],
+                    &["run", "--locked", "--package", "xtask", "--", "format-check"],
                 )
                 && conditional_cargo(
                     &steps[4],

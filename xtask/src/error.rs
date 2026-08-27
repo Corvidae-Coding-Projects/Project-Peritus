@@ -11,6 +11,8 @@ pub enum ErrorCode {
     Io,
     /// A checked-in policy document is invalid.
     Policy,
+    /// Workspace formatting could not be checked.
+    Formatting,
     /// Cargo metadata could not be obtained or decoded.
     Metadata,
     /// The crate graph violates architecture policy.
@@ -33,6 +35,7 @@ impl ErrorCode {
             Self::Invocation => "PERITUS-XTASK-CLI-001",
             Self::Io => "PERITUS-XTASK-IO-001",
             Self::Policy => "PERITUS-XTASK-POLICY-001",
+            Self::Formatting => "PERITUS-XTASK-FMT-001",
             Self::Metadata => "PERITUS-XTASK-METADATA-001",
             Self::Architecture => "PERITUS-XTASK-ARCH-001",
             Self::SourceLayout => "PERITUS-XTASK-SOURCE-001",
@@ -121,6 +124,10 @@ impl XtaskError {
 
     pub(crate) fn metadata(message: impl Into<String>) -> Self {
         Self::plain(ErrorCode::Metadata, message)
+    }
+
+    pub(crate) fn formatting(message: impl Into<String>) -> Self {
+        Self::plain(ErrorCode::Formatting, message)
     }
 
     pub(crate) fn metadata_decode(source: serde_json::Error) -> Self {

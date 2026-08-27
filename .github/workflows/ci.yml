@@ -59,7 +59,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
           components: clippy,rustfmt
       - name: Check formatting
-        run: cargo fmt --all -- --check
+        run: cargo run --locked --package xtask -- format-check
       - name: Build every target
         run: cargo build --workspace --all-targets --all-features --locked
       - name: Run tests
