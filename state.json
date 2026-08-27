@@ -1,5 +1,5 @@
 {
-  "next_display_id": 40,
+  "next_display_id": 41,
   "next_comment_id": 495,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
@@ -17,6 +17,7 @@
     "3b238879-13c9-48ae-9b8e-1009717114b8": 2,
     "3bef48a1-7556-4245-8dc8-a4326deff3ea": 16,
     "3cc3f0d8-ec40-44e7-9c99-9b245adaea3e": 22,
+    "47cec64d-270a-4ee4-8aea-3dd626c1447e": 40,
     "4f2ebc95-0b8b-4acb-b8c0-eba2775c3f7b": 10,
     "4fb07c6c-0d6b-4458-8aa8-0ae9d6bd810a": 38,
     "5451d33a-0a54-49ff-98d0-eec32c2b67a5": 28,
@@ -1835,6 +1836,18 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAVwHo7ZuZDYVZ1UPprpQ7b/bKynxSMqXlygu+RU8TUY5RXYyhTWyutWqV+hwTnrPcHDQ9/79TnnXO5OK6X+kUCw=="
         }
       }
+    },
+    "47cec64d-270a-4ee4-8aea-3dd626c1447e": {
+      "uuid": "47cec64d-270a-4ee4-8aea-3dd626c1447e",
+      "display_id": 40,
+      "title": "G4.4 interactive prompt and AcTor run experience",
+      "description": "Goal: \n\nAcceptance criteria:\n- \n\nTurn the TUI into the complete coding-product surface: home/dashboard, prompt composer, run creation, provider/model/workspace selection, live writer-reviewer-fixer progress, diffs, approvals, terminal, cancellation, recovery, completion summary, and discoverable settings/help with accessible focus and keyboard behavior.",
+      "status": "open",
+      "priority": "critical",
+      "parent_uuid": "59346441-f15a-4950-a0f1-f10b1b9b1f7d",
+      "created_by": "6ME5",
+      "created_at": "2026-08-27T23:32:35.170356154Z",
+      "updated_at": "2026-08-27T23:32:35.170356154Z"
     },
     "4f2ebc95-0b8b-4acb-b8c0-eba2775c3f7b": {
       "uuid": "4f2ebc95-0b8b-4acb-b8c0-eba2775c3f7b",
@@ -5160,8 +5173,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T23:32:30.522274424Z",
+    "timestamp": "2026-08-27T23:32:35.170356154Z",
     "agent_id": "6ME5",
-    "agent_seq": 683
+    "agent_seq": 684
   }
 }
