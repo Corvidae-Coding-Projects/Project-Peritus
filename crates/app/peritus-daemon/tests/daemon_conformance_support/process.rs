@@ -2,11 +2,11 @@
 
 use std::fs::{self, OpenOptions};
 use std::io;
-use std::os::unix::{fs::FileTypeExt, net::UnixStream};
+use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Stdio};
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
 use peritus_approval::CredentialRegistrySnapshot;
 use peritus_types::RevisionNumber;
@@ -39,8 +39,15 @@ impl TestEnvironment {
     }
 
     pub(super) fn start(&self) -> io::Result<DaemonProcess> {
+        let previous_endpoint =
+            find_endpoint(&self.state_root)?.as_deref().map(endpoint_identity).transpose()?;
         let child = self.spawn_child()?;
-        DaemonProcess::wait_until_ready(child, &self.state_root, self.log_path.clone())
+        DaemonProcess::wait_until_ready(
+            child,
+            &self.state_root,
+            self.log_path.clone(),
+            previous_endpoint,
+        )
     }
 
     pub(super) fn spawn_competitor(&self) -> io::Result<Child> {
@@ -116,6 +123,7 @@ impl DaemonProcess {
         mut child: Child,
         state_root: &Path,
         log_path: PathBuf,
+        previous_endpoint: Option<EndpointIdentity>,
     ) -> io::Result<Self> {
         let deadline = Instant::now() + STARTUP_BOUND;
         loop {
@@ -126,7 +134,7 @@ impl DaemonProcess {
                 )));
             }
             if let Some(endpoint) = find_endpoint(state_root)?
-                && UnixStream::connect(&endpoint).is_ok()
+                && Some(endpoint_identity(&endpoint)?) != previous_endpoint
             {
                 return Ok(Self { child: Some(child), endpoint, log_path });
             }
@@ -222,6 +230,22 @@ fn find_endpoint(state_root: &Path) -> io::Result<Option<PathBuf>> {
         [endpoint] => Ok(Some(endpoint.clone())),
         _ => Err(io::Error::other("state root contains multiple daemon sockets")),
     }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct EndpointIdentity {
+    device: u64,
+    inode: u64,
+    modified: SystemTime,
+}
+
+fn endpoint_identity(path: &Path) -> io::Result<EndpointIdentity> {
+    let metadata = fs::symlink_metadata(path)?;
+    Ok(EndpointIdentity {
+        device: metadata.dev(),
+        inode: metadata.ino(),
+        modified: metadata.modified()?,
+    })
 }
 
 fn short_tempdir() -> io::Result<TempDir> {

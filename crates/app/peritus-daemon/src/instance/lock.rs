@@ -107,12 +107,39 @@ fn publish_record(root: &Path, path: &Path, bytes: &[u8]) -> Result<(), DaemonEr
     let result = file
         .write_all(bytes)
         .and_then(|()| file.sync_all())
-        .and_then(|()| fs::rename(&temporary, path))
-        .and_then(|()| File::open(root).and_then(|directory| directory.sync_all()));
+        .and_then(|()| replace_record(&temporary, path))
+        .and_then(|()| sync_directory(root));
     if let Err(error) = result {
         let _ = fs::remove_file(&temporary);
         return Err(storage("publish daemon instance record", error));
     }
+    Ok(())
+}
+
+#[cfg(unix)]
+fn replace_record(temporary: &Path, path: &Path) -> std::io::Result<()> {
+    fs::rename(temporary, path)
+}
+
+#[cfg(windows)]
+fn replace_record(temporary: &Path, path: &Path) -> std::io::Result<()> {
+    match fs::remove_file(path) {
+        Ok(()) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(error),
+    }
+    fs::rename(temporary, path)
+}
+
+#[cfg(unix)]
+fn sync_directory(path: &Path) -> std::io::Result<()> {
+    File::open(path)?.sync_all()
+}
+
+#[cfg(windows)]
+const fn sync_directory(_path: &Path) -> std::io::Result<()> {
+    // Windows does not support opening a directory through `File::open`; the record itself was
+    // flushed before publication above.
     Ok(())
 }
 
