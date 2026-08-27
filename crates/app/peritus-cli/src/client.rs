@@ -292,20 +292,25 @@ async fn connect_local(endpoint: &OsStr) -> Result<BoxedLocalIo, CliError> {
 }
 
 #[cfg(windows)]
-async fn connect_local(endpoint: &OsStr) -> Result<BoxedLocalIo, CliError> {
-    let endpoint = endpoint
+fn connect_local(endpoint: &OsStr) -> std::future::Ready<Result<BoxedLocalIo, CliError>> {
+    let result = endpoint
         .to_str()
-        .ok_or_else(|| CliError::usage("Windows named-pipe endpoint must be Unicode"))?;
-    let stream = tokio::net::windows::named_pipe::ClientOptions::new()
-        .open(endpoint)
-        .map_err(|error| CliError::connection("connect Windows named pipe", error.to_string()))?;
-    Ok(Box::pin(stream))
+        .ok_or_else(|| CliError::usage("Windows named-pipe endpoint must be Unicode"))
+        .and_then(|endpoint| {
+            tokio::net::windows::named_pipe::ClientOptions::new()
+                .open(endpoint)
+                .map(|stream| Box::pin(stream) as BoxedLocalIo)
+                .map_err(|error| {
+                    CliError::connection("connect Windows named pipe", error.to_string())
+                })
+        });
+    std::future::ready(result)
 }
 
 #[cfg(not(any(unix, windows)))]
-async fn connect_local(_endpoint: &OsStr) -> Result<BoxedLocalIo, CliError> {
-    Err(CliError::connection(
+fn connect_local(_endpoint: &OsStr) -> std::future::Ready<Result<BoxedLocalIo, CliError>> {
+    std::future::ready(Err(CliError::connection(
         "connect local endpoint",
         "this target has no supported Peritus local transport",
-    ))
+    )))
 }
