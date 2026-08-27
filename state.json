@@ -450,12 +450,13 @@
       "display_id": 30,
       "title": "H3 performance qualification",
       "description": "Own the peritus-benchmarks crate, stable datasets, load/soak models, SLO evaluation, bounded-resource reporting, and documentation. Do not edit root manifests, architecture, or CI and do not run tests; primary agent integrates and verifies.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "98cfa726-8e8c-417c-8fa5-3bd3eec94363",
       "created_by": "6ME5",
       "created_at": "2026-08-27T12:01:33.208547807Z",
-      "updated_at": "2026-08-27T14:52:20.773451169Z",
+      "updated_at": "2026-08-27T15:27:15.403534893Z",
+      "closed_at": "2026-08-27T15:27:15.403533561Z",
       "comments": {
         "0cd545d2-04fb-477a-abe6-30c321a06d81": {
           "display_id": 467,
@@ -4759,8 +4760,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T15:27:10.782091642Z",
+    "timestamp": "2026-08-27T15:27:15.403534893Z",
     "agent_id": "6ME5",
-    "agent_seq": 623
+    "agent_seq": 624
   }
 }
