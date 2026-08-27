@@ -1,6 +1,6 @@
 {
   "next_display_id": 26,
-  "next_comment_id": 421,
+  "next_comment_id": 422,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -3582,11 +3582,20 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T22:59:08.003031292Z",
-      "updated_at": "2026-08-27T03:05:23.831853633Z",
+      "updated_at": "2026-08-27T03:23:00.371913098Z",
       "labels": [
         "feature"
       ],
       "comments": {
+        "091de043-397a-4689-8a6d-b33feb08d3e7": {
+          "display_id": 421,
+          "author": "6ME5",
+          "content": "Session auto-ended (stale after 263 minutes). No handoff notes provided.",
+          "created_at": "2026-08-27T03:23:00.369238441Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAxHK3fjGn3gn+zK6r/AhycsIuecf+KmGvE60CEQ16CmhdAv9kRzU2usQvBg3ZOR1ELvHPomysAudgmD1p5/e+BQ=="
+        },
         "0e4d240c-2520-4eb7-b977-587496b2e300": {
           "display_id": 412,
           "author": "6ME5",
@@ -4245,8 +4254,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T03:05:23.831853633Z",
+    "timestamp": "2026-08-27T03:23:00.371913098Z",
     "agent_id": "6ME5",
-    "agent_seq": 563
+    "agent_seq": 564
   }
 }
