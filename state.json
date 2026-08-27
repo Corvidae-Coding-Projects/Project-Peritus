@@ -1,6 +1,6 @@
 {
   "next_display_id": 31,
-  "next_comment_id": 452,
+  "next_comment_id": 453,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -1720,7 +1720,18 @@
       "parent_uuid": "98cfa726-8e8c-417c-8fa5-3bd3eec94363",
       "created_by": "6ME5",
       "created_at": "2026-08-27T12:01:15.473620806Z",
-      "updated_at": "2026-08-27T12:01:15.473620806Z"
+      "updated_at": "2026-08-27T13:19:49.746880065Z",
+      "comments": {
+        "d5e044b7-5e9d-484e-8382-c95bdba7e0ce": {
+          "display_id": 452,
+          "author": "6ME5",
+          "content": "Implemented H1 in signed commit c6a3c7c9: peritus-resilience supplies a deterministic 43-case fault/recovery catalog, fresh-subject runner, cancellation and cleanup ownership, fail-closed invariants, canonical evidence, and 8 focused tests. Verified by full workspace test/Clippy/docs/policy gates plus Verus verification and release build.",
+          "created_at": "2026-08-27T13:19:49.744254368Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAkapVbWWzftV5abReP3z+JjTEBE2tmcoucY8JnL/SMfy+b7+Nt8scmODvZWRj3F5J9Q9mlPoR3jTNtJHR+ZPCDQ=="
+        }
+      }
     },
     "5542a0ec-9091-4c82-b341-df0b119bc0b1": {
       "uuid": "5542a0ec-9091-4c82-b341-df0b119bc0b1",
@@ -4600,7 +4611,7 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T13:19:44.897218186Z",
+    "timestamp": "2026-08-27T13:19:49.746880065Z",
     "agent_id": "6ME5",
     "agent_seq": 606
   }
