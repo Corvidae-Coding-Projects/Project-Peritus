@@ -1,6 +1,6 @@
 {
   "next_display_id": 35,
-  "next_comment_id": 477,
+  "next_comment_id": 478,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1258,12 +1258,21 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-27T17:01:54.538504726Z",
+      "updated_at": "2026-08-27T18:07:42.168256669Z",
       "labels": [
         "qualification",
         "release"
       ],
       "comments": {
+        "682b6a70-e0c1-4f83-8a73-6d184c7ba41b": {
+          "display_id": 477,
+          "author": "6ME5",
+          "content": "[action] H0 strict Verus verification and release build green; resolving H4 Verus boundary errors before full Gate A",
+          "created_at": "2026-08-27T18:07:42.165342451Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAj8Fmgv5KDPs5hgVsDx3l9BukI3TOA8w2pKfDZneGHguqnmc4GGuSAEpBemkD5dy5I69xVVFDe+ociWYfa398Dw=="
+        },
         "7b5d0fa8-22d6-4a01-8501-ccdf98692791": {
           "display_id": 469,
           "author": "6ME5",
@@ -4908,8 +4917,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T18:07:37.308553232Z",
+    "timestamp": "2026-08-27T18:07:42.168256669Z",
     "agent_id": "6ME5",
-    "agent_seq": 645
+    "agent_seq": 646
   }
 }
