@@ -2219,11 +2219,12 @@
       "display_id": 26,
       "title": "G1-G3 production clients and extension integration",
       "description": "Parallel post-G0 functional wave: G1 scriptable CLI, G2 interactive TUI, and G3 MCP/plugin SDK/host. Workers own disjoint crate trees and write production code only. Primary agent owns shared manifests, integration, formatting, tests, Verus, hosted runners, commits, and PR.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-27T07:52:47.509432100Z",
-      "updated_at": "2026-08-27T11:56:02.618519554Z",
+      "updated_at": "2026-08-27T11:56:12.088410423Z",
+      "closed_at": "2026-08-27T11:56:12.088408773Z",
       "comments": {
         "41ac853c-0a7d-4387-a1b2-b442d82e6835": {
           "display_id": 444,
@@ -4508,8 +4509,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T11:56:02.618519554Z",
+    "timestamp": "2026-08-27T11:56:12.088410423Z",
     "agent_id": "6ME5",
-    "agent_seq": 595
+    "agent_seq": 596
   }
 }
