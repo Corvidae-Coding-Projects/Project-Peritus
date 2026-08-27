@@ -1,6 +1,6 @@
 {
   "next_display_id": 35,
-  "next_comment_id": 480,
+  "next_comment_id": 481,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -54,12 +54,21 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:01:24.792316754Z",
-      "updated_at": "2026-08-27T17:45:32.241858086Z",
+      "updated_at": "2026-08-27T18:33:10.435905847Z",
       "labels": [
         "qualification",
         "release"
       ],
       "comments": {
+        "0e5e0c8c-31f6-4ea6-b759-364041a15861": {
+          "display_id": 480,
+          "author": "6ME5",
+          "content": "Implemented H4 verified release policy in signed commit 2f2358fce4d86b14ec8522d8adf4256f3420bd33: exact 25-criterion/44-requirement catalog, H0-H3 qualification inputs, deterministic evidence/review/finding/waiver reduction, canonical diagnostics and decision digest, and Ready implication/permutation proofs. Verification: full Gate A green; peritus-release-policy strict Verus 280 verified/0 errors; optimized verified build green.",
+          "created_at": "2026-08-27T18:33:10.432580848Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAmeHlVKCEvWv7EHXuuWErM+elwNClq1cnamtQMby9+NG3709lCqE8Lt4l27qqUqjDtoMCcPtAWITTXSXGbguwDA=="
+        },
         "3f64595f-c8f6-49e3-8af9-165849533979": {
           "display_id": 475,
           "author": "6ME5",
@@ -4935,8 +4944,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T18:33:05.151946669Z",
+    "timestamp": "2026-08-27T18:33:10.435905847Z",
     "agent_id": "6ME5",
-    "agent_seq": 648
+    "agent_seq": 649
   }
 }
