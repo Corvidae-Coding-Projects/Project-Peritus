@@ -1,6 +1,6 @@
 {
   "next_display_id": 35,
-  "next_comment_id": 470,
+  "next_comment_id": 471,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -4561,11 +4561,22 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:01:08.433031832Z",
-      "updated_at": "2026-08-27T17:01:18.844594400Z",
+      "updated_at": "2026-08-27T17:03:57.882428715Z",
       "labels": [
         "qualification",
         "security"
-      ]
+      ],
+      "comments": {
+        "9d07d4dc-12c0-46e8-b14a-b17ddc6756c5": {
+          "display_id": 470,
+          "author": "6ME5",
+          "content": "Assigned to Sol 5.6 xhigh code-only agent h0_security. Owns new peritus-security-policy and peritus-security-qualification crates plus security assets and H0 documentation. Agent will not run tools or edit shared files; root integrates and verifies.",
+          "created_at": "2026-08-27T17:03:57.879977452Z",
+          "kind": "decision",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABANAGb1K7nYNV7skDRgq4I6wgN7z5zzrQhupSnME2jpS2A4hOq9BVbboTOQslOFGKHQXiGMkY0oZRdOi8EiUdDDQ=="
+        }
+      }
     },
     "ef6ed3ab-52cd-436a-aa6e-d5d098c89f6c": {
       "uuid": "ef6ed3ab-52cd-436a-aa6e-d5d098c89f6c",
@@ -4839,8 +4850,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T17:01:54.538504726Z",
+    "timestamp": "2026-08-27T17:03:57.882428715Z",
     "agent_id": "6ME5",
-    "agent_seq": 640
+    "agent_seq": 641
   }
 }
