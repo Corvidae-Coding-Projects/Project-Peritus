@@ -1,10 +1,11 @@
 {
-  "next_display_id": 29,
+  "next_display_id": 30,
   "next_comment_id": 448,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
     "14913d8a-8b79-4929-8613-5e6f011364fa": 23,
+    "18d12d2e-08fd-450f-bee1-5894f79e83a7": 29,
     "19b7b53a-b2fb-41c1-835d-ffd6ce605c08": 14,
     "27633189-3dec-4781-9940-42a3e8eb9e60": 24,
     "2b288a30-b5b1-4452-81bd-20950bebd2d3": 9,
@@ -437,6 +438,18 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAb29nvsfamqaPOgLImcbwmH+y0GrDseQL1/5Kh+wwQ5szqtUjkn72o/ZWPjcHn+F1HI1hpAgt/zBgZsEAQ4OqDw=="
         }
       }
+    },
+    "18d12d2e-08fd-450f-bee1-5894f79e83a7": {
+      "uuid": "18d12d2e-08fd-450f-bee1-5894f79e83a7",
+      "display_id": 29,
+      "title": "H2 platform qualification and packaging",
+      "description": "Own Linux, macOS, and Windows installation/service packaging assets plus platform qualification code and documentation in isolated paths. Do not edit shared manifests or workflows and do not run tests; primary agent integrates and verifies.",
+      "status": "open",
+      "priority": "high",
+      "parent_uuid": "98cfa726-8e8c-417c-8fa5-3bd3eec94363",
+      "created_by": "6ME5",
+      "created_at": "2026-08-27T12:01:24.437701781Z",
+      "updated_at": "2026-08-27T12:01:24.437701781Z"
     },
     "19b7b53a-b2fb-41c1-835d-ffd6ce605c08": {
       "uuid": "19b7b53a-b2fb-41c1-835d-ffd6ce605c08",
@@ -4529,8 +4542,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T12:01:15.473620806Z",
+    "timestamp": "2026-08-27T12:01:24.437701781Z",
     "agent_id": "6ME5",
-    "agent_seq": 599
+    "agent_seq": 600
   }
 }
