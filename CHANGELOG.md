@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Give native plugin test fixtures a runner-safe process-startup allowance while preserving the
+  stricter invocation, cancellation, and shutdown deadlines they are intended to verify (#27)
 - Format each workspace package independently on Windows hosted runners so Rustfmt stays below the
   operating system command-line limit as the production workspace grows (#27)
 - Give Gate A's verified release and strict no-cheating build lane the same measured 40-minute
