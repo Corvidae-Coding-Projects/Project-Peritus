@@ -123,7 +123,7 @@ fn required_workflow_rejects_bootstrap_and_gate_weakening() {
 #[test]
 fn required_workflow_retains_the_measured_verus_timeout() {
     let altered = canonical_governance().replacen(
-        "    name: Verus\n    needs: policy\n    runs-on: ubuntu-24.04\n    timeout-minutes: 30",
+        "    name: Verus\n    needs: policy\n    runs-on: ubuntu-24.04\n    timeout-minutes: 40",
         "    name: Verus\n    needs: policy\n    runs-on: ubuntu-24.04\n    timeout-minutes: 20",
         1,
     );

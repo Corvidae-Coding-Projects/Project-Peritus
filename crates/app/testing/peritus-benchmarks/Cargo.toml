@@ -1,0 +1,35 @@
+[package]
+name = "peritus-benchmarks"
+description = "Deterministic performance, load, and soak qualification for Peritus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["benchmark", "performance", "load-testing", "soak-testing"]
+categories = ["development-tools::testing"]
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+# Keep Criterion's CBOR value dependency on the reviewed pre-zerocopy release.
+half.workspace = true
+
+[[bench]]
+name = "qualification_core"
+harness = false
+
+[package.metadata.peritus]
+owner = "H3"
+layer = "testing"
+verification-class = "C"
+
+[lints]
+workspace = true

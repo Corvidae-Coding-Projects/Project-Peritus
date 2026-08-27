@@ -19,6 +19,7 @@ Usage: cargo xtask <command>
 Commands:
   all                    Run all locally executable repository policy checks
   architecture-check     Validate packages, layers, ownership, and source layout
+  format-check           Check every workspace package without one oversized command line
   ordinary-api-check     Validate formal APIs callable from ordinary safe Rust
   source-layout-check    Validate module names, crate roots, and source budgets
   reproducibility-check  Validate toolchain pins, lock policy, and immutable CI inputs
@@ -31,6 +32,7 @@ Commands:
 enum Command {
     All,
     Architecture,
+    Formatting,
     OrdinaryApi,
     SourceLayout,
     Reproducibility,
@@ -141,6 +143,13 @@ pub(crate) fn execute(
                 ),
             )?;
         }
+        Command::Formatting => {
+            let packages = crate::formatting::check(root)?;
+            write_output(
+                output,
+                &format!("format-check passed: {packages} workspace package(s)\n"),
+            )?;
+        }
         Command::OrdinaryApi => {
             let policy = metadata::architecture_policy(root)?;
             let report = api_contract::check(root, &policy)?;
@@ -198,6 +207,7 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
     match first.as_deref().and_then(|value| value.to_str()) {
         Some("all") => Ok(Command::All),
         Some("architecture-check") => Ok(Command::Architecture),
+        Some("format-check") => Ok(Command::Formatting),
         Some("ordinary-api-check") => Ok(Command::OrdinaryApi),
         Some("source-layout-check") => Ok(Command::SourceLayout),
         Some("reproducibility-check") => Ok(Command::Reproducibility),

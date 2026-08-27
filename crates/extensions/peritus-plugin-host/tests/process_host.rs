@@ -57,6 +57,11 @@ lifecycle_requests = 16
 protocol_violations = 2
 "#;
 
+// Hosted macOS runners can take several seconds to schedule a freshly spawned
+// interpreter. This budget covers process initialization only; invocation and
+// cancellation deadlines remain governed by their own stricter quotas.
+const FIXTURE_STARTUP_TIMEOUT: Duration = Duration::from_secs(10);
+
 const FIXTURE: &str = r#"#!/usr/bin/env python3
 import json
 import pathlib
@@ -198,7 +203,7 @@ impl Fixture {
                 lifecycle_requests: 16,
                 protocol_violations: 2,
             },
-            startup_timeout: Duration::from_secs(2),
+            startup_timeout: FIXTURE_STARTUP_TIMEOUT,
             shutdown_timeout: Duration::from_secs(2),
         }
     }

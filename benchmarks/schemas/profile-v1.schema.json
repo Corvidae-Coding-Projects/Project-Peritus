@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://project-peritus.invalid/schemas/h3/profile-v1.json",
+  "title": "Peritus H3 qualification profile v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "id", "description", "reference_machine", "resource_envelope",
+    "regression_policy", "max_measurements", "required_workloads", "objectives"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "id": {"$ref": "#/$defs/id"},
+    "description": {"type": "string", "minLength": 1, "maxLength": 512},
+    "reference_machine": {"$ref": "#/$defs/machine"},
+    "resource_envelope": {"$ref": "#/$defs/envelope"},
+    "regression_policy": {"$ref": "#/$defs/regression"},
+    "max_measurements": {"type": "integer", "minimum": 1},
+    "required_workloads": {"type": "array", "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
+    "objectives": {"type": "array", "minItems": 1, "maxItems": 512, "items": {"$ref": "#/$defs/objective"}}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[A-Za-z0-9._-]+$"},
+    "machine": {
+      "type": "object", "additionalProperties": false,
+      "required": ["operating_system", "architecture", "cpu_model", "logical_cores", "memory_bytes", "storage_class"],
+      "properties": {
+        "operating_system": {"$ref": "#/$defs/id"}, "architecture": {"$ref": "#/$defs/id"},
+        "cpu_model": {"type": "string", "minLength": 1, "maxLength": 160},
+        "logical_cores": {"type": "integer", "minimum": 1, "maximum": 65535},
+        "memory_bytes": {"type": "integer", "minimum": 1}, "storage_class": {"$ref": "#/$defs/id"}
+      }
+    },
+    "envelope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["max_active_runs", "max_active_processes", "max_provider_requests", "max_memory_bytes", "max_disk_bytes", "max_tokens", "command_queue_capacity", "terminal_queue_capacity", "exporter_queue_capacity", "provider_queue_capacity"],
+      "properties": {
+        "max_active_runs": {"type":"integer","minimum":1}, "max_active_processes": {"type":"integer","minimum":1},
+        "max_provider_requests": {"type":"integer","minimum":1}, "max_memory_bytes": {"type":"integer","minimum":1},
+        "max_disk_bytes": {"type":"integer","minimum":1}, "max_tokens": {"type":"integer","minimum":1},
+        "command_queue_capacity": {"type":"integer","minimum":1}, "terminal_queue_capacity": {"type":"integer","minimum":1},
+        "exporter_queue_capacity": {"type":"integer","minimum":1}, "provider_queue_capacity": {"type":"integer","minimum":1}
+      }
+    },
+    "regression": {
+      "type": "object", "additionalProperties": false,
+      "required": ["warning_basis_points", "blocking_basis_points", "minimum_absolute_delta", "baseline_required"],
+      "properties": {
+        "warning_basis_points": {"type":"integer","minimum":0,"maximum":10000},
+        "blocking_basis_points": {"type":"integer","minimum":0,"maximum":10000},
+        "minimum_absolute_delta": {"type":"integer","minimum":0}, "baseline_required": {"type":"boolean"}
+      }
+    },
+    "metric": {
+      "enum": [
+        "daemon_startup_latency", "recovery_latency", "command_to_first_event_latency", "event_append_latency",
+        "cancellation_latency", "artifact_gc_pause", "queue_saturation_wait", "provider_backpressure_latency",
+        "exporter_backpressure_latency", "terminal_throughput", "projection_rebuild_throughput", "process_throughput",
+        "token_throughput", "disk_throughput", "steady_memory_per_run", "steady_memory_per_process",
+        "peak_resident_memory", "concurrent_runs", "concurrent_processes", "concurrent_provider_requests",
+        "command_queue_depth", "terminal_queue_depth", "exporter_queue_depth", "provider_queue_depth",
+        "disk_usage", "tokens_consumed", "recovery_success_ratio", "cancellation_success_ratio"
+      ]
+    },
+    "objective": {
+      "type":"object", "additionalProperties":false,
+      "required":["id","workload_id","metric","statistic","bound","threshold","minimum_samples"],
+      "properties": {
+        "id":{"$ref":"#/$defs/id"}, "workload_id":{"$ref":"#/$defs/id"}, "metric":{"$ref":"#/$defs/metric"},
+        "statistic":{"enum":["minimum","mean","p50","p95","p99","maximum","total"]},
+        "bound":{"enum":["at_most","at_least"]}, "threshold":{"type":"integer","minimum":0},
+        "minimum_samples":{"type":"integer","minimum":1}
+      }
+    }
+  }
+}

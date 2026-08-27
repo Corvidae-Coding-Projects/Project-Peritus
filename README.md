@@ -103,13 +103,24 @@ The implemented foundation and runtime spine now covers:
 - G3: H-class canonical plugin contracts, strict filesystem discovery and trust binding, isolated
   process and Wasmtime-CLI plugin hosting, authority-mediated invocation, lifecycle quotas and
   cancellation, plus a bounded MCP 2025-06-18 JSON-RPC server for authority-filtered tools,
-  resources, and prompts, backed by a seven-case runtime-neutral A2 plugin contract.
+  resources, and prompts, backed by a seven-case runtime-neutral A2 plugin contract; and
+- H1: a 43-scenario deterministic resilience qualification catalog covering every authoritative
+  commit boundary, active daemon phase, corruption and disk-exhaustion class, provider/tool/worker
+  death, reboot and reconciliation path, with fresh subjects, bounded cleanup/resource accounting,
+  canonical evidence, false-success rejection, and a fail-closed production verdict; and
+- H2: typed Linux, macOS, and Windows package/layout/service/transport/sandbox/process-equivalence
+  contracts, fresh packaged-host qualification, and per-user install, upgrade, rollback, uninstall,
+  systemd, launchd, and Task Scheduler assets that preserve protected configuration and state; and
+- H3: deterministic workload, profile, SLO, measurement, accounting, baseline-comparison, evidence,
+  load, and eight-hour soak machinery with a dedicated Criterion benchmark target, stable schemas,
+  bounded-resource/backpressure evaluation, and no fabricated performance baseline.
 
-The application and extension client surfaces are now implemented as production libraries and
-binaries. G3 deliberately cannot mint C4/B1 authority: the future packaged application embedding
-must supply a current daemon-owned mediator for each exact run, workspace, and target. H0-H4 remain
-before production release: installation/service packaging, platform qualification, operational
-hardening, release engineering, and final production acceptance.
+The application, extension, resilience, packaging/platform, and performance-qualification surfaces
+are now implemented. G3 deliberately cannot mint C4/B1 authority: packaged application embedding
+must supply a current daemon-owned mediator for each exact run, workspace, and target. H1-H3 code
+does not itself claim a qualification verdict; those verdicts require execution against the final
+integrated release candidate and reviewed native-host/performance evidence. H0 security
+qualification and H4 release qualification remain before production release.
 
 Gate A is the current merge authority: ordinary Rust checks, architecture and API policy,
 supply-chain policy, pinned toolchains, full Verus verification, and verified release builds must
@@ -127,6 +138,7 @@ just check          # format, build, tests, Clippy, docs, and workspace policy
 just licenses       # dependency, source, and license policy
 just toolchain      # probe the installed Rust/Verus/vstd/Z3 pins
 just ordinary-api   # audit formal APIs callable from ordinary safe Rust
+just test           # includes deterministic H1-H3 unit and qualification-contract suites
 just verus-verify   # full TCB-aware verification plus no-cheating V/H roots
 just verus-build    # full verified release plus no-cheating V/H builds
 just gate-a         # the complete formal-foundation gate
@@ -183,6 +195,12 @@ reconnection, approval handling, PTY sanitation, and terminal restoration. The
 [G3 extensions guide](docs/g3-extensions.md) documents canonical plugin manifests, discovery and
 trust, isolated process/Wasm lifecycle, authority mediation, quotas, MCP lifecycle and methods,
 conformance, and the remaining daemon-embedding boundary. The
+[H1 resilience guide](docs/h1-resilience-qualification.md) defines the 43-case disruption catalog,
+fresh-subject execution, recovery invariants, evidence, and release verdict. The
+[H2 platform guide](docs/h2-platform-qualification.md) defines package layouts, native supervisor
+contracts, install/upgrade/rollback/uninstall behavior, platform equivalence, and host evidence. The
+[H3 performance guide](docs/h3-performance-qualification.md) defines stable workload/profile data,
+SLO evaluation, bounded accounting, baseline regression, load/soak execution, and evidence. The
 [C2 process and sandbox guide](docs/c2-process-sandbox.md) documents structured process execution,
 complete sandbox contracts, target-owned launch authorization, bounded supervision, terminal
 accounting, restart reconciliation, and holder quiescence.

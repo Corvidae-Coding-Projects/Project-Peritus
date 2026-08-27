@@ -7,7 +7,10 @@ members = [
     "crates/app/peritus-cli",
     "crates/app/peritus-daemon",
     "crates/app/peritus-tui",
+    "crates/app/testing/peritus-benchmarks",
     "crates/app/testing/peritus-conformance",
+    "crates/app/testing/peritus-platform-qualification",
+    "crates/app/testing/peritus-resilience",
     "crates/app/testing/peritus-test-support",
     "crates/extensions/peritus-mcp",
     "crates/extensions/peritus-plugin-host",
@@ -78,9 +81,11 @@ repository = "https://github.com/Corvidae-Coding-Projects/Project-Peritus"
 base64 = "=0.22.1"
 bytes = "=1.12.1"
 crossterm = { version = "=0.29.0", default-features = false, features = ["bracketed-paste", "events"] }
+criterion = { version = "=0.8.2", default-features = false }
 ed25519-dalek = { version = "=3.0.0", default-features = false }
 fs4 = "=1.1.0"
 futures-core = "=0.3.34"
+half = { version = "=2.4.1", default-features = false, features = ["std"] }
 futures-util = "=0.3.34"
 keyring = { version = "=4.1.6", default-features = false }
 landlock = { version = "=0.4.7", default-features = false }

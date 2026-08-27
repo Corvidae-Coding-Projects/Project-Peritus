@@ -64,7 +64,7 @@ fn rust_gate_is_exact(job: &Yaml) -> bool {
                 && conditional_cargo(
                     &steps[3],
                     "matrix.operation == 'fmt'",
-                    &["fmt", "--all", "--", "--check"],
+                    &["run", "--locked", "--package", "xtask", "--", "format-check"],
                 )
                 && conditional_cargo(
                     &steps[4],
@@ -126,7 +126,7 @@ fn supply_gate_is_exact(job: &Yaml) -> bool {
 
 fn verus_gate_is_exact(job: &Yaml, tools: &ToolchainPolicy) -> bool {
     let Some(job) = job.as_hash() else { return false };
-    exact_job(job, "Verus", 30)
+    exact_job(job, "Verus", 40)
         && mapping_value(job, "steps").and_then(Yaml::as_vec).is_some_and(|steps| {
             steps.len() == 10
                 && candidate_checkout(&steps[0])

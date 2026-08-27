@@ -1,0 +1,20 @@
+[package]
+name = "peritus-resilience"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+
+[package.metadata.peritus]
+owner = "H1"
+layer = "testing"
+verification-class = "C"
+
+[dependencies]
+sha2.workspace = true
+
+[lints]
+workspace = true

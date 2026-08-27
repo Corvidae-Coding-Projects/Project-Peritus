@@ -3,12 +3,14 @@ use crate::model::CargoMetadata;
 use std::collections::BTreeSet;
 use std::path::Path;
 
-const REVIEWED_BUILD_SCRIPT_PACKAGES: [&str; 55] = [
+const REVIEWED_BUILD_SCRIPT_PACKAGES: [&str; 57] = [
+    "registry+https://github.com/rust-lang/crates.io-index#alloca@0.4.0",
     "registry+https://github.com/rust-lang/crates.io-index#anyhow@1.0.104",
     "registry+https://github.com/rust-lang/crates.io-index#async-io@2.6.0",
     "registry+https://github.com/rust-lang/crates.io-index#aws-lc-rs@1.18.0",
     "registry+https://github.com/rust-lang/crates.io-index#aws-lc-sys@0.44.0",
     "registry+https://github.com/rust-lang/crates.io-index#crossbeam-utils@0.8.22",
+    "registry+https://github.com/rust-lang/crates.io-index#crunchy@0.2.4",
     "registry+https://github.com/rust-lang/crates.io-index#curve25519-dalek@5.0.0",
     "registry+https://github.com/rust-lang/crates.io-index#generic-array@0.14.7",
     "registry+https://github.com/rust-lang/crates.io-index#getrandom@0.4.3",

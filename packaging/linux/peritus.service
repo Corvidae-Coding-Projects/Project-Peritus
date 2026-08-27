@@ -1,0 +1,17 @@
+[Unit]
+Description=Peritus local application daemon
+After=default.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/peritusd serve --config %h/.config/peritus/peritus.toml
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=40s
+KillMode=mixed
+UMask=0077
+
+[Install]
+WantedBy=default.target

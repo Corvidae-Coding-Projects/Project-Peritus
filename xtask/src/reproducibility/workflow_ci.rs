@@ -142,7 +142,10 @@ fn rust_job_is_exact(job: &Yaml) -> bool {
             steps.len() == 9
                 && checkout_step(&steps[0])
                 && rust_step(&steps[1], Some("clippy,rustfmt"))
-                && cargo_step(&steps[2], &["fmt", "--all", "--", "--check"])
+                && cargo_step(
+                    &steps[2],
+                    &["run", "--locked", "--package", "xtask", "--", "format-check"],
+                )
                 && cargo_step(
                     &steps[3],
                     &["build", "--workspace", "--all-targets", "--all-features", "--locked"],
