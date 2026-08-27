@@ -1,6 +1,6 @@
 {
   "next_display_id": 35,
-  "next_comment_id": 481,
+  "next_comment_id": 482,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1312,12 +1312,21 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:01:40.256074700Z",
-      "updated_at": "2026-08-27T17:45:22.028252289Z",
+      "updated_at": "2026-08-27T18:33:17.038102886Z",
       "labels": [
         "qualification",
         "release"
       ],
       "comments": {
+        "a56f4124-8bf0-49af-b0b5-619789be68f2": {
+          "display_id": 481,
+          "author": "6ME5",
+          "content": "Implemented H4 evidence/artifact qualification in signed commit 2f2358fce4d86b14ec8522d8adf4256f3420bd33: deterministic artifact inventory, SPDX, provenance, Ed25519 verification, reproducibility and migration/recovery contracts, eleven final campaigns, signed evidence/audit/report schemas, and exact fail-closed adapter into the verified policy. Full resource-limited Gate A and artifact scans are green; no binary or executable artifacts were committed.",
+          "created_at": "2026-08-27T18:33:17.035417463Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAnF9CWkcc/IkVC7Nwfi0rL2arA1Y9DwCySQASc2Wx6JQUJ6B6LUhPtw/r/EcAP0HwrBvFfQFIy4tQ/fVjLulHCA=="
+        },
         "d87e89c9-bfbb-4f0b-8d95-8813ff1e8620": {
           "display_id": 473,
           "author": "6ME5",
@@ -4944,8 +4953,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T18:33:10.435905847Z",
+    "timestamp": "2026-08-27T18:33:17.038102886Z",
     "agent_id": "6ME5",
-    "agent_seq": 649
+    "agent_seq": 650
   }
 }
