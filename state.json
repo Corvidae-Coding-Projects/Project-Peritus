@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 496,
+  "next_comment_id": 497,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -4285,12 +4285,21 @@
       "parent_uuid": "59346441-f15a-4950-a0f1-f10b1b9b1f7d",
       "created_by": "6ME5",
       "created_at": "2026-08-27T23:31:51.166170874Z",
-      "updated_at": "2026-08-27T23:34:09.055174888Z",
+      "updated_at": "2026-08-27T23:59:50.299610925Z",
       "labels": [
         "feature",
         "ux"
       ],
       "comments": {
+        "3e8886a9-3358-4434-8847-569bb932d91e": {
+          "display_id": 496,
+          "author": "NWAR",
+          "content": "Implemented and verified G4.1: immutable-generation bootstrap state, platform-native protected paths, automatic identities/public registry/config, version-matched sibling daemon startup/reuse/shutdown, no-argument TTY dispatch, and current-state documentation. Focused Rust tests, strict Clippy, architecture, source-layout, format, generated daemon readiness, and authenticated CLI status passed.",
+          "created_at": "2026-08-27T23:59:50.296463989Z",
+          "kind": "action",
+          "signed_by": "SHA256:mTwYqorrA4UxSK3se0aIOCOC6y7kyE/sEvoFLwVluf4",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgmuiChqHxrMH8nicBvsKr3z1JEgjcUOEEH/DcxL6kdeEAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzlyIom3gyotoTx6jKGv0CIk+0cTaSqRcNgAIz4zYN+2JPCivEcHo5WDuuqXI8QUbbycoekL4fhZts8HCcfSfAQ=="
+        },
         "5512b888-fe35-4a5e-9a5f-f4cacac33ab1": {
           "display_id": 495,
           "author": "NWAR",
@@ -5205,8 +5214,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T23:37:56.688304393Z",
-    "agent_id": "6ME5",
-    "agent_seq": 690
+    "timestamp": "2026-08-27T23:59:50.299610925Z",
+    "agent_id": "NWAR",
+    "agent_seq": 3
   }
 }
