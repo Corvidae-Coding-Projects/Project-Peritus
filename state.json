@@ -1,6 +1,6 @@
 {
   "next_display_id": 26,
-  "next_comment_id": 414,
+  "next_comment_id": 415,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -3587,7 +3587,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T22:59:08.003031292Z",
-      "updated_at": "2026-08-27T01:50:26.798554352Z",
+      "updated_at": "2026-08-27T02:10:05.352951278Z",
       "labels": [
         "feature"
       ],
@@ -3672,6 +3672,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA1tMeTmgrJpWaduv+a4DtohhfxgBFoFvfI8JetghH3hgRRp9tVngcKGYKRvskL9Pqp+6BDGPR3EWhWsQOHOekCg=="
+        },
+        "dddc907f-de81-4203-aa7d-67fd38a4287b": {
+          "display_id": 414,
+          "author": "6ME5",
+          "content": "Signed checkpoint 1ee4726 completes production-pointer/E1 startup verification, bounded 28-point startup failpoint modeling, focused singleton/protocol/shutdown/restart black-box coverage, clean shutdown ordering, and exact fresh-schema migration-history adoption. Focused daemon restart, migration, journal, and adoption tests are green.",
+          "created_at": "2026-08-27T02:10:05.350508597Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALCF2l190fmUidstisKoNEAE0EeUGjpnmWV8lSwlsx/qMm984o4E0BpXFAsqiZq5ddFEbV08W4GwHvX460ieHAg=="
         },
         "e25a18d3-9195-4cef-a067-2f794444f0e4": {
           "display_id": 413,
@@ -4187,8 +4196,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T01:50:26.798554352Z",
+    "timestamp": "2026-08-27T02:10:05.352951278Z",
     "agent_id": "6ME5",
-    "agent_seq": 555
+    "agent_seq": 556
   }
 }
