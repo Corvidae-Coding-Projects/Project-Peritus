@@ -290,8 +290,10 @@ async fn connect_local(endpoint: &Path) -> Result<BoxedLocalIo, std::io::Error> 
 }
 
 #[cfg(windows)]
-async fn connect_local(endpoint: &Path) -> Result<BoxedLocalIo, std::io::Error> {
+fn connect_local(endpoint: &Path) -> std::future::Ready<Result<BoxedLocalIo, std::io::Error>> {
     use tokio::net::windows::named_pipe::ClientOptions;
 
-    ClientOptions::new().open(endpoint).map(|stream| Box::new(stream) as BoxedLocalIo)
+    std::future::ready(
+        ClientOptions::new().open(endpoint).map(|stream| Box::new(stream) as BoxedLocalIo),
+    )
 }
