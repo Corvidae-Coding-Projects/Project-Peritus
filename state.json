@@ -1,6 +1,6 @@
 {
   "next_display_id": 31,
-  "next_comment_id": 449,
+  "next_comment_id": 450,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -3365,7 +3365,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-27T12:00:52.785235374Z",
-      "updated_at": "2026-08-27T12:04:19.153834778Z",
+      "updated_at": "2026-08-27T12:04:31.486412487Z",
       "comments": {
         "392e20b5-3d03-4d62-ae56-121068bd7094": {
           "display_id": 448,
@@ -3375,6 +3375,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAuPeRog4NoG0pETcuwh1CS1olZYrje0+CV3tAIA0R6KawgLYkwwDWQZN0YiBIYGuep9fsdt7G8RByIPq02Q9YDA=="
+        },
+        "c83139fb-ba77-4680-9fa4-26be9e7c6b00": {
+          "display_id": 449,
+          "author": "6ME5",
+          "content": "Architecture decision: implement H1, H2, and H3 as dedicated C-class qualification crates under crates/app/testing, with platform-native packaging assets outside Cargo. Alternative considered: append all qualification logic to peritus-conformance. Dedicated crates preserve parallel ownership, keep A2 conformance from becoming a cross-cutting god crate, and leave authoritative production state unchanged; root will register dependencies and shared policies after code delivery.",
+          "created_at": "2026-08-27T12:04:31.483615315Z",
+          "kind": "decision",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAGecGUCRfn46YKgODstRI3PorOpWFwBtv3Tbmq1hhaoqiVtcZMJbl3V5hKKu+ujmTb0nrefQuSLst5Fs340aRAQ=="
         }
       }
     },
@@ -4571,8 +4580,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T12:04:19.153834778Z",
+    "timestamp": "2026-08-27T12:04:31.486412487Z",
     "agent_id": "6ME5",
-    "agent_seq": 603
+    "agent_seq": 604
   }
 }
