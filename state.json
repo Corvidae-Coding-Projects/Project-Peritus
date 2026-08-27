@@ -1,6 +1,6 @@
 {
   "next_display_id": 26,
-  "next_comment_id": 417,
+  "next_comment_id": 418,
   "display_id_map": {
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -3587,7 +3587,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-08-26T22:59:08.003031292Z",
-      "updated_at": "2026-08-27T02:45:07.847627322Z",
+      "updated_at": "2026-08-27T02:45:12.539635642Z",
       "labels": [
         "feature"
       ],
@@ -3645,6 +3645,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABArTcZ0wERkhwROYCbGlU8M9PrRpDLKXqh+3zKvMBNfcJUaET2K30AcMfyW2h1WqpAnMu85X9OIa9knS1t1trsDg=="
+        },
+        "7ea91488-f031-4a65-a849-3c34baa9c7d0": {
+          "display_id": 417,
+          "author": "6ME5",
+          "content": "G0 progress: strict canonical public approval registry now bootstraps fresh/restart/successor state; E0 gained atomic claimed directive + C0 outbox settlement with stale-fence and idempotent retry tests; registered family 94 fixed projection restart rejection. Focused daemon registry/restart and E0 durability tests are green. Wiring claimed settlement through AuthorityOwner next.",
+          "created_at": "2026-08-27T02:45:12.537008158Z",
+          "kind": "action",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjFVMDIA017wpmGImGFaOst0qMqYpD81+RC1xhIOU8XZBqhLLlWBmGJY95HWpfL97Ao1oVOW4rofUkcfVXsEzDA=="
         },
         "89c40d11-408b-4cfd-ac88-4f86e58eb9a0": {
           "display_id": 404,
@@ -4214,8 +4223,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T02:45:07.847627322Z",
+    "timestamp": "2026-08-27T02:45:12.539635642Z",
     "agent_id": "6ME5",
-    "agent_seq": 558
+    "agent_seq": 559
   }
 }
