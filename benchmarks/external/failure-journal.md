@@ -388,6 +388,23 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   ground truth and the audit-row failures as unpublished formatting conventions. Do not reuse a
   retired identifier or weaken precise file locations to match hidden answers.
 
+## HBI-013: task 032 treats a denied commitment as a promise
+
+- Suite and task: HarnessBench 2.0, `032-customer-followup-draft`.
+- Symptom: the email contains every required customer, plan, discount, and approved-next-step fact;
+  it makes no unapproved SSO, legal, or pricing promise. The unchanged commitment-boundary check
+  still failed on `legal redline acceptance`.
+- Cause: Peritus wrote “we cannot commit to legal redline acceptance.” The oracle has a general
+  denial/boundary detector and uses it for custom SSO, discounts, and generic promises, but its
+  legal-redline branch unconditionally records a violation whenever that phrase occurs in a
+  sentence, even when `cannot` is present.
+- Evidence: local report `reports/032-customer-followup-draft-negation-bug.json`; outcome 0.8571;
+  process 0.91; security 1.0; combined 0.78; elapsed 190.46 seconds. The approved-next-step and
+  internal no-customer-promises checks both pass.
+- Disposition: retain the unchanged score and classify the failed boundary check as benchmark
+  infrastructure failure. Do not remove a clear customer-facing denial to hide it from a
+  negation-insensitive branch.
+
 ## HBF-005: a fixer deleted evaluator-owned evidence
 
 - Suite and task: HarnessBench 2.0, `022-local-rest-api-summary`.
