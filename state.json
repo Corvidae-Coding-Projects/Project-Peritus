@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 524,
+  "next_comment_id": 525,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -2698,7 +2698,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T23:30:59.824402277Z",
-      "updated_at": "2026-08-28T07:50:30.526192304Z",
+      "updated_at": "2026-08-28T08:04:09.893989128Z",
       "labels": [
         "feature",
         "ux"
@@ -2748,6 +2748,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAr4a/mjvS/cvKrM592yOdNcvZsX91JTVhbnTWUk/430nASykOIM5hDWSbb5N1THwMpNNj4O4xTWH0nI9x+3vkDw=="
+        },
+        "e568eda0-2e6f-414c-b1bd-61595da9710f": {
+          "display_id": 524,
+          "author": "6ME5",
+          "content": "3373ce92 fix(product): recover stale daemon connections. Root cause confirmed from the live daemon log: the upgraded TUI sent a new conversation frame to a still-running pre-upgrade daemon, which rejected the frame and reset the socket. Launcher reuse now binds both immutable configuration and installed peritusd SHA-256, so upgrades replace stale daemon processes. Product TUI recovery now returns to launcher supervision, and offline status visibly shows R restart/reconnect. Regression tests cover binary replacement and TUI recovery routing. Verification: CARGO_BUILD_JOBS=2 just check passed all workspace builds, tests, doc-tests, strict Clippy, rustdoc, and xtask policy checks across 75 packages and 2970 source files.",
+          "created_at": "2026-08-28T08:04:09.891524537Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAlmDsKu58I9MgEj1oTkaTb+L8oqH1IyDalnB8KDIgcyHuaDFiAac0yyxCqRSHzjPA4bv3wq8YiSreVk/VgdKLBQ=="
         },
         "f95a9294-df9a-4791-8820-561d510cb24f": {
           "display_id": 523,
@@ -5468,8 +5477,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-28T07:50:30.526192304Z",
+    "timestamp": "2026-08-28T08:04:09.893989128Z",
     "agent_id": "6ME5",
-    "agent_seq": 697
+    "agent_seq": 698
   }
 }
