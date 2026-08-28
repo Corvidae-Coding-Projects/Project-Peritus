@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 510,
+  "next_comment_id": 511,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1848,7 +1848,7 @@
       "parent_uuid": "59346441-f15a-4950-a0f1-f10b1b9b1f7d",
       "created_by": "6ME5",
       "created_at": "2026-08-27T23:32:35.170356154Z",
-      "updated_at": "2026-08-28T02:23:44.018986241Z",
+      "updated_at": "2026-08-28T02:55:02.542216328Z",
       "labels": [
         "feature",
         "ux"
@@ -1862,6 +1862,15 @@
           "kind": "note",
           "signed_by": "SHA256:mTwYqorrA4UxSK3se0aIOCOC6y7kyE/sEvoFLwVluf4",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgmuiChqHxrMH8nicBvsKr3z1JEgjcUOEEH/DcxL6kdeEAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA0BNehtNyPmgZ14KZiGYN2vdILxgWF5sRHk5ftiInmyAwsC8+vpcRtSWTzN7zwzM+ssiMNryOGM8vHw1hUzssCg=="
+        },
+        "376fe6b6-1b70-413e-bf40-7e07e4604c39": {
+          "display_id": 510,
+          "author": "NWAR",
+          "content": "[action] Resume G4.4 and G4.5 completion: validate product-run path, packaging, native lifecycle, docs, and gates",
+          "created_at": "2026-08-28T02:55:02.539712143Z",
+          "kind": "note",
+          "signed_by": "SHA256:mTwYqorrA4UxSK3se0aIOCOC6y7kyE/sEvoFLwVluf4",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgmuiChqHxrMH8nicBvsKr3z1JEgjcUOEEH/DcxL6kdeEAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAr91eUUpn/Vc+K/VJmVhGkepIOiptqfRlEsvcmxn0uH2zi9VW+2NyUY8bFzRBRqqMotmJk2AcH6fDPdW5xpRPAQ=="
         },
         "aa84c924-6dd8-4338-8622-962d6d2fa6c7": {
           "display_id": 509,
@@ -5342,8 +5351,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-28T02:23:44.018986241Z",
+    "timestamp": "2026-08-28T02:55:02.542216328Z",
     "agent_id": "NWAR",
-    "agent_seq": 24
+    "agent_seq": 25
   }
 }
