@@ -25,6 +25,7 @@ use super::{DaemonRuntime, progress::StartupProgress};
 use crate::instance::InstanceGuard;
 use crate::ipc::serve;
 use crate::outbox::{DestinationRouter, OutboxRuntime};
+use crate::product_run::ProductRunService;
 use crate::telemetry::TelemetryRuntime;
 use crate::terminal::{TerminalRegistry, TerminalRegistryLimits};
 use crate::worker::{WorkerSupervisor, WorkerSupervisorLimits};
@@ -103,6 +104,8 @@ impl DaemonRuntime {
         progress.complete(StartupPhase::AuthorityEpoch)?;
         let workspaces = install_and_reconcile(&mut journal, &config)?;
         let production = recover_production(&journal, &config, &workspaces)?;
+        let product_runs =
+            ProductRunService::open(config.paths().state_root(), &components, &workspaces)?;
         progress.complete(StartupPhase::DomainRecovery)?;
         let diagnostic = reconcile_processes(&processes)?;
         progress.complete(StartupPhase::EffectRecovery)?;
@@ -149,6 +152,7 @@ impl DaemonRuntime {
             endpoint,
             authority.clone(),
             terminals.clone(),
+            product_runs.clone(),
             config.limits().maximum_connections(),
             shutdown_request,
             stop,
@@ -167,6 +171,7 @@ impl DaemonRuntime {
             telemetry,
             workers,
             terminals,
+            product_runs,
             _components: components,
             _evidence: evidence,
             processes,

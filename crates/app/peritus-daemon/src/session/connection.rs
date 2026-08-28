@@ -17,6 +17,7 @@ use super::{heartbeat::ConnectionHeartbeat, negotiation::establish, request::han
 use crate::{
     AuthenticatedConnection, AuthorityHandle, DaemonError, DaemonErrorCode, DaemonRecovery,
     artifact::ArtifactClient,
+    product_run::ProductRunService,
     subscription::SubscriptionRegistry,
     terminal::{TerminalBridgeError, TerminalBridgeEvent, TerminalRegistry},
 };
@@ -25,6 +26,7 @@ pub async fn run_connection(
     connection: AuthenticatedConnection,
     authority: AuthorityHandle,
     terminals: TerminalRegistry,
+    product_runs: ProductRunService,
     shutdown: mpsc::Sender<ShutdownRequest>,
     mut stop: watch::Receiver<bool>,
 ) -> Result<(), DaemonError> {
@@ -98,6 +100,7 @@ pub async fn run_connection(
                             &mut subscriptions,
                             &mut artifacts,
                             &terminals,
+                            &product_runs,
                             &mut terminal_bindings,
                             context.actor_id(),
                             context.limits(),

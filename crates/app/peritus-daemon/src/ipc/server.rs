@@ -15,14 +15,15 @@ use tokio::{
 
 use super::{AuthenticatedConnection, LocalEndpoint};
 use crate::{
-    AuthorityHandle, DaemonError, DaemonErrorCode, DaemonRecovery, session::run_connection,
-    terminal::TerminalRegistry,
+    AuthorityHandle, DaemonError, DaemonErrorCode, DaemonRecovery, product_run::ProductRunService,
+    session::run_connection, terminal::TerminalRegistry,
 };
 
 pub async fn serve(
     endpoint: LocalEndpoint,
     authority: AuthorityHandle,
     terminals: TerminalRegistry,
+    product_runs: ProductRunService,
     maximum_connections: usize,
     shutdown_request: mpsc::Sender<ShutdownRequest>,
     mut stop: watch::Receiver<bool>,
@@ -69,6 +70,7 @@ pub async fn serve(
                     Ok(connection) => {
                         let authority = authority.clone();
                         let terminals = terminals.clone();
+                        let product_runs = product_runs.clone();
                         let shutdown_request = shutdown_request.clone();
                         let connection_stop = stop.clone();
                         connections.spawn(async move {
@@ -77,6 +79,7 @@ pub async fn serve(
                                 connection,
                                 authority,
                                 terminals,
+                                product_runs,
                                 shutdown_request,
                                 connection_stop,
                             )

@@ -47,8 +47,8 @@ pub enum LifecycleStep {
     ValidatePreconditions,
     /// Verify the canonical manifest and every staged artifact checksum before mutation.
     VerifyStagedArtifacts,
-    /// Require an existing operator-provisioned strict G0 configuration.
-    RequireOperatorConfiguration(InstallPath),
+    /// Verify that installed `peritus` can resolve its exact packaged daemon and TUI siblings.
+    VerifySingleCommandEntrypoint,
     /// Stop the supervisor and observe a bounded, terminal daemon exit.
     StopAndObserveDaemon,
     /// Snapshot only files currently owned by the installed package.
@@ -88,7 +88,7 @@ impl LifecycleStep {
             }
             Self::ValidatePreconditions
             | Self::VerifyStagedArtifacts
-            | Self::RequireOperatorConfiguration(_)
+            | Self::VerifySingleCommandEntrypoint
             | Self::SnapshotPackageFiles
             | Self::CreatePackageDirectory(_)
             | Self::PublishPackageFile(_)
@@ -155,52 +155,33 @@ impl LifecyclePlan {
         let mut compensation = Vec::new();
         let rollback = match action {
             LifecycleAction::Install => {
-                steps.push(LifecycleStep::RequireOperatorConfiguration(
-                    layout.config_file().clone(),
-                ));
                 publish_entries(&mut steps, layout, &package_entries);
-                steps.push(LifecycleStep::RegisterSupervisor(layout.service_definition().clone()));
-                steps.push(LifecycleStep::StartDaemon);
-                steps.push(LifecycleStep::AwaitAuthenticatedReadiness);
-                compensation.push(LifecycleStep::StopAndObserveDaemon);
-                compensation.push(LifecycleStep::UnregisterSupervisor);
+                steps.push(LifecycleStep::VerifySingleCommandEntrypoint);
                 for path in package_entries.iter().rev() {
                     compensation.push(LifecycleStep::RemovePackageEntry(path.clone()));
                 }
                 RollbackDisposition::NotApplicable
             }
             LifecycleAction::Upgrade => {
-                steps.push(LifecycleStep::RequireOperatorConfiguration(
-                    layout.config_file().clone(),
-                ));
-                steps.push(LifecycleStep::StopAndObserveDaemon);
                 steps.push(LifecycleStep::SnapshotPackageFiles);
                 publish_entries(&mut steps, layout, &package_entries);
-                steps.push(LifecycleStep::RegisterSupervisor(layout.service_definition().clone()));
-                steps.push(LifecycleStep::StartDaemon);
-                steps.push(LifecycleStep::AwaitAuthenticatedReadiness);
+                steps.push(LifecycleStep::VerifySingleCommandEntrypoint);
                 steps.extend(preserved.iter().cloned().map(LifecycleStep::VerifyPreservedPath));
                 steps.push(LifecycleStep::RemovePackageSnapshot);
                 compensation.extend([
-                    LifecycleStep::StopAndObserveDaemon,
                     LifecycleStep::RestorePackageSnapshot,
-                    LifecycleStep::RegisterSupervisor(layout.service_definition().clone()),
-                    LifecycleStep::StartDaemon,
-                    LifecycleStep::AwaitAuthenticatedReadiness,
+                    LifecycleStep::VerifySingleCommandEntrypoint,
                 ]);
                 RollbackDisposition::RestorePriorPackage
             }
             LifecycleAction::Rollback => {
-                steps.push(LifecycleStep::StopAndObserveDaemon);
                 steps.push(LifecycleStep::RestorePackageSnapshot);
-                steps.push(LifecycleStep::RegisterSupervisor(layout.service_definition().clone()));
-                steps.push(LifecycleStep::StartDaemon);
-                steps.push(LifecycleStep::AwaitAuthenticatedReadiness);
+                steps.push(LifecycleStep::VerifySingleCommandEntrypoint);
                 steps.extend(preserved.iter().cloned().map(LifecycleStep::VerifyPreservedPath));
                 RollbackDisposition::RestorePriorPackage
             }
             LifecycleAction::Uninstall => {
-                steps.push(LifecycleStep::StopAndObserveDaemon);
+                // Unregister legacy pre-G4 supervisors without requiring one to exist.
                 steps.push(LifecycleStep::UnregisterSupervisor);
                 for path in package_entries.iter().rev() {
                     steps.push(LifecycleStep::RemovePackageEntry(path.clone()));

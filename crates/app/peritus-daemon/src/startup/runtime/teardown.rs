@@ -56,6 +56,7 @@ impl DaemonRuntime {
                 outbox.shutdown(timeout).await,
             )?;
         }
+        self.product_runs.shutdown(timeout).await;
         retain_cleanup_failure(
             &mut coordinator,
             &mut indeterminate_effects,

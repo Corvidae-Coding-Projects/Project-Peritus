@@ -11,6 +11,7 @@ pub(crate) mod error;
 pub(crate) mod formatting;
 pub(crate) mod metadata;
 pub(crate) mod model;
+pub(crate) mod product_package;
 pub(crate) mod reproducibility;
 pub(crate) mod source;
 pub(crate) mod toolchain;

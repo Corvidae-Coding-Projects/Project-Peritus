@@ -12,6 +12,7 @@ mod layout;
 mod lifecycle;
 mod manifest;
 mod observation;
+mod package_builder;
 mod platform;
 mod runner;
 mod sandbox;
@@ -42,6 +43,7 @@ pub use manifest::{
 pub use observation::{
     CleanupObservation, ObservationOutcome, QualificationRun, ScenarioObservation,
 };
+pub use package_builder::run_from_env as run_package_builder;
 pub use platform::{
     Architecture, NativePrerequisite, Platform, PlatformContract, PlatformDelta, PlatformVersion,
     QualificationTarget,

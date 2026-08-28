@@ -5,13 +5,23 @@ use crate::{
     AppProtocolLimits, AppRequestEnvelope, AppRequestPayload, AppResponseEnvelope,
     AppResponsePayload, ClientHello, ControlEnvelope, ControlPayload, CorrelationId, EventCursor,
     HeartbeatId, HeartbeatReply, ImplementationMetadata, IncompatibilityReason, NegotiationOutcome,
+    ProductProviderSelection, ProductRunPhase, ProductRunRequest, ProductRunSnapshot,
     ProtocolContext, ProtocolId, ProtocolVersion, RequestId, ServerHello, SubscriptionFilter,
     SubscriptionId, SubscriptionRequest, VersionRange,
 };
 use peritus_codec::{CodecLimits, decode_message, encode_frame, encode_message};
-use peritus_types::SessionId;
+use peritus_types::{ProviderProfileId, RunId, SessionId, WorkspaceId};
 
 use super::{AppMessage, decode_app_message, encode_app_message};
+
+#[test]
+fn product_retry_is_limited_to_unsuccessful_terminal_runs() {
+    assert!(ProductRunPhase::Failed.retryable());
+    assert!(ProductRunPhase::Cancelled.retryable());
+    assert!(ProductRunPhase::RecoveryRequired.retryable());
+    assert!(!ProductRunPhase::Complete.retryable());
+    assert!(!ProductRunPhase::Writing.retryable());
+}
 
 #[test]
 fn all_six_families_round_trip_and_typed_hello_decodes() -> Result<(), Box<dyn std::error::Error>> {
@@ -133,6 +143,66 @@ fn negotiated_frame_limit_is_applied_before_payload_allocation()
     assert_eq!(
         decode_app_message(&encoded, constrained).map_err(|error| error.code()),
         Err(AppErrorCode::LimitExceeded),
+    );
+    Ok(())
+}
+
+#[test]
+fn product_run_requests_and_snapshots_round_trip() -> Result<(), Box<dyn std::error::Error>> {
+    let context = ProtocolContext::new(
+        ProtocolId::new([31; 16]).expect("nonzero protocol id"),
+        ProtocolVersion::new(1, 0)?,
+        SessionId::new([32; 16]).expect("nonzero session id"),
+    );
+    let providers = ProductProviderSelection::new(
+        ProviderProfileId::new([33; 16]).expect("nonzero writer provider id"),
+        ProviderProfileId::new([34; 16]).expect("nonzero reviewer provider id"),
+        ProviderProfileId::new([35; 16]).expect("nonzero fixer provider id"),
+    );
+    let run_id = RunId::new([36; 16]).expect("nonzero run id");
+    let workspace_id = WorkspaceId::new([37; 16]).expect("nonzero workspace id");
+    let request = AppRequestEnvelope::new(
+        context,
+        RequestId::new([38; 16]).expect("nonzero request id"),
+        CorrelationId::new([39; 16]).expect("nonzero correlation id"),
+        AppRequestPayload::StartProductRun(ProductRunRequest::new(
+            run_id,
+            workspace_id,
+            providers,
+            "implement the feature".to_owned(),
+        )?),
+    )?;
+    let encoded =
+        encode_app_message(&AppMessage::Request(request.clone()), AppProtocolLimits::PRODUCTION)?;
+    assert_eq!(
+        decode_app_message(&encoded, AppProtocolLimits::PRODUCTION)?,
+        AppMessage::Request(request)
+    );
+
+    let snapshot = ProductRunSnapshot::new(
+        run_id,
+        workspace_id,
+        providers,
+        ProductRunPhase::Reviewing,
+        1,
+        "implement the feature".to_owned(),
+        "reviewing the diff".to_owned(),
+        "diff --git".to_owned(),
+        "tests passed".to_owned(),
+        "no blocking findings".to_owned(),
+        "implemented".to_owned(),
+    )?;
+    let response = AppResponseEnvelope::new(
+        context,
+        RequestId::new([40; 16]).expect("nonzero request id"),
+        CorrelationId::new([41; 16]).expect("nonzero correlation id"),
+        AppResponsePayload::ProductRuns(vec![snapshot]),
+    );
+    let encoded =
+        encode_app_message(&AppMessage::Response(response.clone()), AppProtocolLimits::PRODUCTION)?;
+    assert_eq!(
+        decode_app_message(&encoded, AppProtocolLimits::PRODUCTION)?,
+        AppMessage::Response(response)
     );
     Ok(())
 }

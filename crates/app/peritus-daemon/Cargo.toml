@@ -29,6 +29,7 @@ peritus-model-protocol = { version = "=0.0.0", path = "../../model/peritus-model
 peritus-policy = { version = "=0.0.0", path = "../../foundation/peritus-policy" }
 peritus-collaboration = { version = "=0.0.0", path = "../../orchestration/peritus-collaboration" }
 peritus-process = { version = "=0.0.0", path = "../../runtime/peritus-process" }
+peritus-product-runner = { version = "=0.0.0", path = "../peritus-product-runner" }
 peritus-projection = { version = "=0.0.0", path = "../../state/peritus-projection" }
 peritus-provider-anthropic = { version = "=0.0.0", path = "../../model/peritus-provider-anthropic" }
 peritus-provider-compatible = { version = "=0.0.0", path = "../../model/peritus-provider-compatible" }
@@ -52,6 +53,7 @@ peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
 peritus-workspace = { version = "=0.0.0", path = "../../runtime/peritus-workspace" }
 portable-pty.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 sha2.workspace = true
 tokio.workspace = true
 toml.workspace = true

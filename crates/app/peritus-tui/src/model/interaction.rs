@@ -48,6 +48,9 @@ impl AppModel {
             return terminal_bytes(key)
                 .map_or_else(Vec::new, |bytes| self.send_terminal_input(bytes));
         }
+        if let Some(effects) = self.handle_product_key(key) {
+            return effects;
+        }
 
         match key.code {
             KeyCode::Char('1') => self.view = View::Runs,
@@ -72,7 +75,7 @@ impl AppModel {
                     terminal.scroll_down();
                 }
             }
-            KeyCode::Char('r') => {
+            KeyCode::Char('r' | 'R') => {
                 self.connection = ConnectionStatus::Connecting;
                 return vec![Effect::Reconnect];
             }
@@ -115,9 +118,42 @@ impl AppModel {
         Vec::new()
     }
 
+    fn handle_product_key(&mut self, key: KeyEvent) -> Option<Vec<Effect>> {
+        if self.view != View::Runs {
+            return None;
+        }
+        match key.code {
+            KeyCode::Char('n') => self.open_task_composer(),
+            KeyCode::Char('x') => {
+                return Some(self.control_selected_product_run(
+                    peritus_app_protocol::ProductRunControlAction::Cancel,
+                ));
+            }
+            KeyCode::Char('r') if self.product.is_some() => {
+                return Some(self.control_selected_product_run(
+                    peritus_app_protocol::ProductRunControlAction::Retry,
+                ));
+            }
+            KeyCode::Char('w') => self.cycle_product_provider(ProviderRole::Writer),
+            KeyCode::Char('e') => self.cycle_product_provider(ProviderRole::Reviewer),
+            KeyCode::Char('f') => self.cycle_product_provider(ProviderRole::Fixer),
+            _ => return None,
+        }
+        Some(Vec::new())
+    }
+
     fn handle_editor_key(&mut self, key: KeyEvent) -> Vec<Effect> {
         if key.code == KeyCode::Esc {
             self.editor = None;
+            return Vec::new();
+        }
+        if key.code == KeyCode::Enter && key.modifiers.contains(KeyModifiers::SHIFT) {
+            if let Some(editor) = &mut self.editor
+                && editor.kind == EditorKind::ProductTask
+            {
+                editor.buffer.insert(editor.cursor, '\n');
+                editor.cursor += 1;
+            }
             return Vec::new();
         }
         if key.code == KeyCode::Enter {
@@ -139,6 +175,7 @@ impl AppModel {
                 self.submit_signed_approval(prompt_id, &editor.buffer)
             }
             EditorKind::PromptAnswer(prompt_id) => self.submit_user_input(prompt_id, editor.buffer),
+            EditorKind::ProductTask => self.submit_product_task(editor.buffer),
         }
     }
 
@@ -450,6 +487,11 @@ impl AppModel {
             self.selected_prompt = self.selected_prompt.saturating_sub(1);
             return;
         }
+        if matches!(self.view, View::Runs | View::Diff | View::Review)
+            && self.select_previous_product()
+        {
+            return;
+        }
         let visible = self.visible_event_indices();
         if visible.is_empty() {
             self.selected_event = None;
@@ -466,6 +508,10 @@ impl AppModel {
         if self.view == View::Approvals {
             self.selected_prompt =
                 (self.selected_prompt + 1).min(self.prompts.len().saturating_sub(1));
+            return;
+        }
+        if matches!(self.view, View::Runs | View::Diff | View::Review) && self.select_next_product()
+        {
             return;
         }
         let visible = self.visible_event_indices();

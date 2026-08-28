@@ -2057,6 +2057,7 @@ dependencies = [
  "peritus-orchestrator",
  "peritus-policy",
  "peritus-process",
+ "peritus-product-runner",
  "peritus-projection",
  "peritus-protocol",
  "peritus-provider-anthropic",
@@ -2083,6 +2084,7 @@ dependencies = [
  "portable-pty",
  "rusqlite",
  "serde",
+ "serde_json",
  "sha2 0.11.0",
  "tempfile",
  "tokio",
@@ -2457,6 +2459,21 @@ dependencies = [
  "vstd",
  "windows-sys 0.61.2",
  "zeroize",
+]
+
+[[package]]
+name = "peritus-product-runner"
+version = "0.0.0"
+dependencies = [
+ "peritus-model-protocol",
+ "peritus-provider-anthropic",
+ "peritus-provider-core",
+ "peritus-provider-openai",
+ "peritus-types",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]

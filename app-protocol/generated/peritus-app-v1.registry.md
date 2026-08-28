@@ -8,8 +8,8 @@ Generated from Rust metadata. Numeric and semantic allocations are append-only.
 |---:|---|---:|---|
 | 94 | `app-client-hello` | 1 | `1:client-hello` |
 | 95 | `app-server-hello` | 1 | `1:compatible`, `2:downgraded`, `3:incompatible` |
-| 96 | `app-request` | 1 | `1:submit-command`, `2:subscribe`, `3:open-artifact`, `4:cancel-artifact`, `5:answer-prompt`, `6:cancel-prompt`, `7:attach-terminal`, `8:terminal-input`, `9:terminal-resize`, `10:detach-terminal`, `11:cancel-terminal`, `12:daemon-status`, `13:shutdown`, `14:begin-artifact-upload`, `15:upload-artifact-chunk`, `16:complete-artifact-upload` |
-| 97 | `app-response` | 1 | `1:command-result`, `2:subscription-started`, `3:artifact-opened`, `4:prompt-accepted`, `5:terminal-attached`, `6:acknowledged`, `7:daemon-status`, `8:shutdown-accepted`, `9:error` |
+| 96 | `app-request` | 1 | `1:submit-command`, `2:subscribe`, `3:open-artifact`, `4:cancel-artifact`, `5:answer-prompt`, `6:cancel-prompt`, `7:attach-terminal`, `8:terminal-input`, `9:terminal-resize`, `10:detach-terminal`, `11:cancel-terminal`, `12:daemon-status`, `13:shutdown`, `14:begin-artifact-upload`, `15:upload-artifact-chunk`, `16:complete-artifact-upload`, `17:start-product-run`, `18:control-product-run`, `19:query-product-runs` |
+| 97 | `app-response` | 1 | `1:command-result`, `2:subscription-started`, `3:artifact-opened`, `4:prompt-accepted`, `5:terminal-attached`, `6:acknowledged`, `7:daemon-status`, `8:shutdown-accepted`, `9:error`, `10:product-run-accepted`, `11:product-runs` |
 | 98 | `app-event` | 1 | `1:domain-event`, `2:subscription-gap`, `3:backpressure`, `4:artifact-metadata`, `5:artifact-chunk`, `6:artifact-complete`, `7:prompt-requested`, `8:terminal-output`, `9:terminal-exited`, `10:readiness-changed`, `11:diagnostic`, `12:heartbeat`, `13:shutdown-progress`, `14:shutdown-complete` |
 | 99 | `app-control` | 1 | `1:acknowledge`, `2:cancel-subscription`, `3:cancel-artifact`, `4:cancel-prompt`, `5:cancel-terminal`, `6:subscription`, `7:heartbeat-reply` |
 

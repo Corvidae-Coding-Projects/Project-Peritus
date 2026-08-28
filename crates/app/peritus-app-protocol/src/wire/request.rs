@@ -19,6 +19,10 @@ use super::{
     command::{read_command_binding, write_command_binding},
     daemon::{read_shutdown_request, write_shutdown_request},
     primitive::{invalid, read_context, read_id, unknown, write_context, write_id},
+    product::{
+        read_run_control, read_run_query, read_run_request, write_run_control, write_run_query,
+        write_run_request,
+    },
     prompt::{
         read_prompt_answer, read_prompt_cancellation, write_prompt_answer,
         write_prompt_cancellation,
@@ -103,6 +107,18 @@ impl CanonicalEncode for AppRequestEnvelope {
                 writer.write_u16(16)?;
                 write_artifact_completion(writer, *value)
             }
+            AppRequestPayload::StartProductRun(value) => {
+                writer.write_u16(17)?;
+                write_run_request(writer, value)
+            }
+            AppRequestPayload::ControlProductRun(value) => {
+                writer.write_u16(18)?;
+                write_run_control(writer, *value)
+            }
+            AppRequestPayload::QueryProductRuns(value) => {
+                writer.write_u16(19)?;
+                write_run_query(writer, *value)
+            }
         }
     }
 }
@@ -142,6 +158,9 @@ pub(super) fn read_request(
         14 => AppRequestPayload::BeginArtifactUpload(read_artifact_metadata(reader, limits)?),
         15 => AppRequestPayload::UploadArtifactChunk(read_artifact_chunk(reader, limits)?),
         16 => AppRequestPayload::CompleteArtifactUpload(read_artifact_completion(reader)?),
+        17 => AppRequestPayload::StartProductRun(read_run_request(reader)?),
+        18 => AppRequestPayload::ControlProductRun(read_run_control(reader)?),
+        19 => AppRequestPayload::QueryProductRuns(read_run_query(reader)?),
         _ => return unknown(tag_offset),
     };
     let request =

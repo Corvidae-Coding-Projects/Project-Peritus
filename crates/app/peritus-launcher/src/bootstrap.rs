@@ -193,7 +193,7 @@ fn prepared(
 }
 
 struct BootstrapLock {
-    _file: File,
+    file: File,
 }
 
 impl BootstrapLock {
@@ -207,7 +207,13 @@ impl BootstrapLock {
             .map_err(|error| LauncherError::filesystem("open bootstrap lock", path, error))?;
         protect_file(&file, path)?;
         fs4::FileExt::try_lock(&file).map_err(|_| LauncherError::BootstrapBusy)?;
-        Ok(Self { _file: file })
+        Ok(Self { file })
+    }
+}
+
+impl Drop for BootstrapLock {
+    fn drop(&mut self) {
+        let _ = fs4::FileExt::unlock(&self.file);
     }
 }
 

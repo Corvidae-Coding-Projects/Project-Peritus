@@ -7,6 +7,6 @@ mod projection;
 mod recovery;
 mod registry;
 mod runtime;
-mod workspace;
+pub mod workspace;
 
 pub use runtime::DaemonRuntime;

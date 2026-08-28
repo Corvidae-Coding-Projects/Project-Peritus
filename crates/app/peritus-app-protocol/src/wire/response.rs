@@ -17,6 +17,7 @@ use super::{
     },
     error::{read_app_error, write_app_error},
     primitive::{read_context, read_id, unknown, write_context, write_id},
+    product::{read_snapshot, read_snapshots, write_snapshot, write_snapshots},
     terminal::{read_terminal_binding, write_terminal_binding},
 };
 
@@ -66,6 +67,14 @@ impl CanonicalEncode for AppResponseEnvelope {
                 writer.write_u16(9)?;
                 write_app_error(writer, value)
             }
+            AppResponsePayload::ProductRunAccepted(value) => {
+                writer.write_u16(10)?;
+                write_snapshot(writer, value)
+            }
+            AppResponsePayload::ProductRuns(value) => {
+                writer.write_u16(11)?;
+                write_snapshots(writer, value)
+            }
         }
     }
 }
@@ -101,6 +110,8 @@ pub(super) fn read_response(
         7 => AppResponsePayload::DaemonStatus(read_daemon_status(reader, limits)?),
         8 => AppResponsePayload::ShutdownAccepted(read_shutdown_accepted(reader)?),
         9 => AppResponsePayload::Error(read_app_error(reader, limits)?),
+        10 => AppResponsePayload::ProductRunAccepted(read_snapshot(reader)?),
+        11 => AppResponsePayload::ProductRuns(read_snapshots(reader)?),
         _ => return unknown(tag_offset),
     };
     let response = AppResponseEnvelope::new(context, request_id, correlation_id, payload);

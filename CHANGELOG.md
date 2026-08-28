@@ -23,6 +23,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Complete the G4 coding surface with canonical A3 start/control/query messages and generated wire
+  assets; a daemon-owned, persisted product-run registry; managed-worktree and provider resolution;
+  progress observation; cancellation, retry, and interrupted-run recovery; and bounded execution
+  state exposed without client-side authority. Active runs are serialized per managed worktree,
+  and retry is limited to failed, cancelled, or interrupted work (#40)
+- Add the modular `peritus-product-runner` writer-reviewer-fixer coordinator with bounded repository
+  context, checked JSON edit plans, rollback on application failure, tracked and new-file diff
+  capture, native Cargo/npm/pytest/Go gate discovery, independent structured review, two bounded
+  fixer cycles, provider-neutral C5 reduction, and focused correctness tests (#40)
+- Turn the Runs, Diff, and Review views into the ordinary coding experience with an accessible task
+  composer, independent writer/reviewer/fixer provider selection, textual phase timeline, live
+  check/review/diff projection, selection, cancellation, retry, reconnect, keyboard help, and
+  automatic daemon polling (#40)
+- Add resource-capped host-native package assembly through `cargo xtask product-package`, per-user
+  release installation through `cargo xtask product-install`, canonical manifest/checksum output,
+  atomic Linux/macOS/Windows installers, package-only upgrade rollback, state-preserving uninstall,
+  and automatic Windows user-PATH registration (#41)
+- Exercise package assembly, install, repeat command launch, upgrade, uninstall, and protected-state
+  preservation on hosted Linux, macOS, and Windows while reusing already checked debug artifacts to
+  keep runner memory and elapsed time bounded; retain optimized locked builds for actual packages
+  (#41)
+- Document the completed single-command onboarding, coding-run controls, native lifecycle,
+  recovery behavior, local state, and exact `peritus` launch path (#40, #41)
 - Add ergonomic G4 workspace onboarding with current-directory and descendant Git discovery,
   recent/path selection, exact-root trust disclosure, restricted-by-default repository state,
   application-managed detached writable worktrees, canonical C1 registration publication and

@@ -1,5 +1,7 @@
 //! Orderly terminal ownership and asynchronous application runtime.
 
+mod product;
+
 use std::{
     io::{self, Stdout},
     path::{Path, PathBuf},
@@ -31,6 +33,8 @@ use crate::{
     render,
 };
 
+pub use product::{ProductLaunchContext, ProductProviderOption};
+
 const INPUT_POLL: Duration = Duration::from_millis(100);
 const UI_TICK: Duration = Duration::from_millis(250);
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(8);
@@ -40,19 +44,27 @@ const CONNECT_TIMEOUT: Duration = Duration::from_secs(8);
 pub struct TuiConfig {
     endpoint: PathBuf,
     requested_session: Option<SessionId>,
+    product: Option<ProductLaunchContext>,
 }
 
 impl TuiConfig {
     /// Creates a configuration for one exact local daemon endpoint.
     #[must_use]
     pub fn new(endpoint: impl Into<PathBuf>) -> Self {
-        Self { endpoint: endpoint.into(), requested_session: None }
+        Self { endpoint: endpoint.into(), requested_session: None, product: None }
     }
 
     /// Requests resumption of an existing durable application session.
     #[must_use]
     pub const fn with_session(mut self, session: SessionId) -> Self {
         self.requested_session = Some(session);
+        self
+    }
+
+    /// Supplies launcher-resolved product workspace and provider choices.
+    #[must_use]
+    pub fn with_product(mut self, product: ProductLaunchContext) -> Self {
+        self.product = Some(product);
         self
     }
 
@@ -66,6 +78,12 @@ impl TuiConfig {
     #[must_use]
     pub const fn requested_session(&self) -> Option<SessionId> {
         self.requested_session
+    }
+
+    /// Borrows launcher-resolved product context when entered through `peritus`.
+    #[must_use]
+    pub const fn product(&self) -> Option<&ProductLaunchContext> {
+        self.product.as_ref()
     }
 }
 
@@ -89,7 +107,7 @@ pub async fn run(config: TuiConfig) -> Result<ExitReason, TuiError> {
     let (input_tx, mut input_rx) = mpsc::channel(128);
     let input = InputPump::start(input_tx)?;
     let (client_events_tx, mut client_events_rx) = mpsc::channel(512);
-    let mut model = AppModel::new(seed);
+    let mut model = AppModel::with_product(seed, config.product().cloned());
     let mut client = None;
     let mut connection_generation = 0_u64;
     connect(&config, &mut model, &mut client, &client_events_tx, &mut connection_generation).await;

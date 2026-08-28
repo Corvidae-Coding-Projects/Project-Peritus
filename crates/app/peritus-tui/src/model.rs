@@ -1,6 +1,7 @@
 //! Deterministic application state and update reducer.
 
 mod interaction;
+mod product;
 mod protocol;
 
 #[cfg(test)]
@@ -21,15 +22,17 @@ use peritus_app_protocol::{
     TerminalResize, UserInputValue,
 };
 use peritus_protocol::schema::FAMILIES;
-use peritus_types::{EventId, ProcessId, SessionId};
+use peritus_types::{EventId, ProcessId, RunId, SessionId};
 use sha2::{Digest, Sha256};
 
 use crate::{
     action::{Action, Effect},
     input::{edit_text, is_active_key, terminal_bytes},
+    runtime::ProductLaunchContext,
     sanitize::inert_preview,
     terminal::TerminalSession,
 };
+use product::{ProductUi, ProviderRole};
 
 const EVENT_CAPACITY: usize = 4_096;
 const NOTICE_TICKS: u16 = 24;
@@ -160,6 +163,9 @@ enum PendingRequest {
     TerminalResize,
     TerminalDetach,
     TerminalCancel,
+    ProductStart,
+    ProductQuery,
+    ProductControl,
 }
 
 /// The kind of value being collected by the modal editor.
@@ -168,6 +174,7 @@ pub enum EditorKind {
     ProcessId,
     ApprovalSignature(PromptId),
     PromptAnswer(PromptId),
+    ProductTask,
 }
 
 /// Modal, single-line input state.
@@ -220,6 +227,10 @@ impl IdFactory {
     fn attachment(&mut self) -> Option<peritus_app_protocol::TerminalAttachmentId> {
         peritus_app_protocol::TerminalAttachmentId::new(self.bytes(b"terminal-attachment")).ok()
     }
+
+    fn run(&mut self) -> Option<RunId> {
+        RunId::new(self.bytes(b"product-run")).ok()
+    }
 }
 
 /// Complete deterministic client presentation state.
@@ -243,10 +254,17 @@ pub struct AppModel {
     last_cursor: EventCursor,
     pending: HashMap<RequestId, PendingRequest>,
     ids: IdFactory,
+    pub(super) product: Option<ProductUi>,
+    tick_count: u64,
 }
 
 impl AppModel {
+    #[cfg(test)]
     pub(crate) fn new(seed: [u8; 32]) -> Self {
+        Self::with_product(seed, None)
+    }
+
+    pub(crate) fn with_product(seed: [u8; 32], product: Option<ProductLaunchContext>) -> Self {
         Self {
             view: View::Runs,
             connection: ConnectionStatus::Connecting,
@@ -266,6 +284,8 @@ impl AppModel {
             last_cursor: EventCursor::origin(),
             pending: HashMap::new(),
             ids: IdFactory::new(seed),
+            product: product.map(ProductUi::new),
+            tick_count: 0,
         }
     }
 
@@ -288,13 +308,18 @@ impl AppModel {
             Action::Message(message) => self.handle_message(message),
             Action::TerminalEvent(event) => self.handle_terminal_event(event),
             Action::Tick => {
+                self.tick_count = self.tick_count.saturating_add(1);
                 if let Some(notice) = &mut self.notice {
                     notice.ticks_remaining = notice.ticks_remaining.saturating_sub(1);
                     if notice.ticks_remaining == 0 {
                         self.notice = None;
                     }
                 }
-                Vec::new()
+                if self.tick_count.is_multiple_of(4) {
+                    self.poll_product_runs()
+                } else {
+                    Vec::new()
+                }
             }
         }
     }

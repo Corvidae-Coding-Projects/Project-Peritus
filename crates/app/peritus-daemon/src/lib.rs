@@ -42,6 +42,7 @@ mod instance;
 mod ipc;
 mod lifecycle;
 mod outbox;
+mod product_run;
 mod prompt;
 mod session;
 mod shutdown;

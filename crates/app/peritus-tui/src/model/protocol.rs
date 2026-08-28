@@ -15,6 +15,7 @@ impl AppModel {
         {
             effects.push(effect);
         }
+        effects.extend(self.poll_product_runs());
         let Some(subscription_id) = self.ids.subscription() else {
             self.notice(NoticeLevel::Error, "failed to allocate subscription identity");
             return effects;
@@ -165,6 +166,13 @@ impl AppModel {
             }
             AppResponsePayload::ShutdownAccepted(_) => {
                 self.notice(NoticeLevel::Warning, "daemon accepted graceful shutdown request");
+            }
+            AppResponsePayload::ProductRunAccepted(snapshot) => {
+                self.accept_product_run(snapshot.clone());
+                self.notice(NoticeLevel::Info, format!("coding run: {}", snapshot.status()));
+            }
+            AppResponsePayload::ProductRuns(snapshots) => {
+                self.accept_product_runs(snapshots.clone());
             }
         }
         Vec::new()

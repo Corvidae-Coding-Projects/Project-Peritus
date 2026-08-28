@@ -11,6 +11,7 @@ use crate::{
     AuthorityHandle, DaemonError, DaemonErrorCode, DaemonRecovery,
     artifact::ArtifactClient,
     command,
+    product_run::{ProductRunService, ProductRunServiceError},
     subscription::SubscriptionRegistry,
     terminal::{TerminalBridgeError, TerminalBridgeErrorKind, TerminalRegistry},
 };
@@ -26,6 +27,7 @@ pub(super) async fn handle_request<S>(
     subscriptions: &mut SubscriptionRegistry,
     artifacts: &mut ArtifactClient,
     terminals: &TerminalRegistry,
+    product_runs: &ProductRunService,
     terminal_bindings: &mut Vec<peritus_app_protocol::TerminalBinding>,
     actor_id: peritus_types::ActorId,
     limits: AppProtocolLimits,
@@ -115,6 +117,20 @@ where
                 Err(error) => daemon_error_payload(&error),
             }
         }
+        AppRequestPayload::StartProductRun(value) => {
+            match product_runs.start(value.clone()).await {
+                Ok(snapshot) => AppResponsePayload::ProductRunAccepted(snapshot),
+                Err(error) => product_run_error(error),
+            }
+        }
+        AppRequestPayload::ControlProductRun(value) => match product_runs.control(*value).await {
+            Ok(snapshot) => AppResponsePayload::ProductRunAccepted(snapshot),
+            Err(error) => product_run_error(error),
+        },
+        AppRequestPayload::QueryProductRuns(value) => match product_runs.query(*value) {
+            Ok(snapshots) => AppResponsePayload::ProductRuns(snapshots),
+            Err(error) => product_run_error(error),
+        },
         AppRequestPayload::AnswerPrompt(answer) => {
             let prompt_id = answer.correlation().prompt_id();
             let result = match canonical_request_frame(&request, limits) {
@@ -234,6 +250,20 @@ where
         })?;
     }
     Ok(())
+}
+
+const fn product_run_error(error: ProductRunServiceError) -> AppResponsePayload {
+    let code = match error {
+        ProductRunServiceError::Duplicate | ProductRunServiceError::InvalidState => {
+            AppErrorCode::IdempotencyConflict
+        }
+        ProductRunServiceError::NotFound => AppErrorCode::InvalidIdentifier,
+        ProductRunServiceError::ProviderUnavailable
+        | ProductRunServiceError::WorkspaceUnavailable => AppErrorCode::StaleRevision,
+        ProductRunServiceError::InvalidMessage => AppErrorCode::MalformedFrame,
+        ProductRunServiceError::Unavailable => AppErrorCode::Backpressure,
+    };
+    AppResponsePayload::Error(AppProtocolError::new(code, None))
 }
 
 const fn acknowledged(request: &AppRequestEnvelope) -> AppResponsePayload {

@@ -1,4 +1,4 @@
-//! Per-user supervisor contracts for the foreground G0 daemon.
+//! Optional per-user supervisor contracts for an explicitly enabled foreground G0 daemon.
 
 use crate::{
     InstallPath, Platform, QualificationError, QualificationErrorCode, QualificationRecovery,
@@ -93,7 +93,7 @@ pub enum ServiceLogContract {
     WindowsTaskSchedulerLog,
 }
 
-/// Exact foreground daemon invocation and lifecycle expected from native packaging.
+/// Exact foreground daemon invocation available to a future always-on runner mode.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ServiceContract {
     platform: Platform,
@@ -109,7 +109,7 @@ pub struct ServiceContract {
 }
 
 impl ServiceContract {
-    /// Constructs the production per-user supervisor contract from a release layout.
+    /// Constructs the optional per-user supervisor contract from a release layout.
     ///
     /// # Errors
     ///

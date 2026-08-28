@@ -27,3 +27,7 @@ verification-class = "C"
 
 [lints]
 workspace = true
+
+[[bin]]
+name = "peritus-package"
+path = "src/bin/peritus-package.rs"

@@ -3,6 +3,7 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
+    path::Path,
 };
 
 use peritus_journal::{ApplicationWorkspaceState, SqliteJournal};
@@ -12,17 +13,32 @@ use peritus_workspace::{MAX_WORKSPACE_REGISTRATION_BYTES, WorkspaceRegistration}
 use crate::{DaemonConfig, DaemonError, DaemonErrorCode, DaemonRecovery};
 
 /// Exact immutable registrations admitted by this daemon instance.
-pub(super) struct WorkspaceCatalog {
+pub struct WorkspaceCatalog {
     registrations: BTreeMap<WorkspaceId, WorkspaceRegistration>,
 }
 
 impl WorkspaceCatalog {
-    pub(super) fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.registrations.len()
     }
 
-    pub(super) fn contains(&self, workspace_id: WorkspaceId) -> bool {
+    pub(crate) fn contains(&self, workspace_id: WorkspaceId) -> bool {
         self.registrations.contains_key(&workspace_id)
+    }
+
+    pub(crate) fn root(&self, workspace_id: WorkspaceId) -> Option<&Path> {
+        self.registrations
+            .get(&workspace_id)
+            .map(|registration| registration.worktree_manifest().root())
+    }
+
+    pub(crate) fn roots(&self) -> BTreeMap<WorkspaceId, std::path::PathBuf> {
+        self.registrations
+            .iter()
+            .map(|(workspace_id, registration)| {
+                (*workspace_id, registration.worktree_manifest().root().to_owned())
+            })
+            .collect()
     }
 }
 
