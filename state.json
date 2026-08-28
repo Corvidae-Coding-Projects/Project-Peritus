@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 557,
+  "next_comment_id": 558,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-28T19:21:40.586763010Z",
+      "updated_at": "2026-08-28T20:09:41.903443100Z",
       "labels": [
         "qualification",
         "release"
@@ -1306,6 +1306,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAeT3SgBF/+t6hR6YAG9FpLh7eyVLigh2Zwv1yyruMoA4Lh41N2NK6+tjzMn9S+r2kTtnkaeErI5ziNPMhnBWEAA=="
+        },
+        "2440d353-07b9-4dea-bf52-73e6218d77b1": {
+          "display_id": 557,
+          "author": "6ME5",
+          "content": "HarnessBench task 022 exposed two general product failures: later roles could delete evaluator-owned evidence, and artifact review could expand optional provenance into deadline-consuming fixer work. The product now retains one workspace-ownership record across the full writer/reviewer/fixer run, routes exact deletion through workspace_remove, preserves literal requirement scope, scales artifact-only work without retained scaffolding, and limits blockers to explicit requirements, deterministic gate failures, or concrete contradictions. Fresh unchanged rerun: outcome 1.0, process 0.8867, security 1.0, combined 0.8867, elapsed 289.057s; local report reports/022-local-rest-api-summary-evidence-owned.json.",
+          "created_at": "2026-08-28T20:09:41.900913900Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAdkrUH4PcY4O0pDxrRQC2pvX0h+0Noxa391nYP3VzfCyMa6Na+3f+BAfov19hmUTYv9QHvTJ1XVt5CjX2HgoUBQ=="
         },
         "2d5c5b1b-37c1-4647-ba4d-976376e5887e": {
           "display_id": 548,
@@ -5765,8 +5774,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-28T20:00:15.774237537Z",
+    "timestamp": "2026-08-28T20:09:41.903443100Z",
     "agent_id": "6ME5",
-    "agent_seq": 734
+    "agent_seq": 735
   }
 }
