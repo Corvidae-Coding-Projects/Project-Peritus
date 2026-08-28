@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 556,
+  "next_comment_id": 557,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -2815,7 +2815,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T23:30:59.824402277Z",
-      "updated_at": "2026-08-28T13:42:41.660287150Z",
+      "updated_at": "2026-08-28T20:00:15.774237537Z",
       "labels": [
         "feature",
         "ux"
@@ -2955,6 +2955,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAow5+LY2WRAO0aBZ2susz/kPtQvCcR3SAV33eFawz4gsKjJc4+3jXiKaqJhByRNI7rQt7TQOh8zqmeuPdEpNyBg=="
+        },
+        "b423400c-c4a9-45b9-8575-eb4472d73dbe": {
+          "display_id": 556,
+          "author": "6ME5",
+          "content": "[action] Resume task 022 after reviewer proportionality and workspace-ownership fixes; manually score retained artifacts, rebuild adapter, then rerun unchanged task from a fresh workspace.",
+          "created_at": "2026-08-28T20:00:15.771149842Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAsy/W6/5Q0QGFjk8y1tJngzo+aciVG96HVTF6OA1XizUrWQEbOLyGLFlk4+EP/U0akDnFL50J6IWiT3167Hj4BQ=="
         },
         "c1fc1cd7-d945-4362-903f-a983170d0ef5": {
           "display_id": 539,
@@ -5756,8 +5765,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-28T19:21:40.586763010Z",
+    "timestamp": "2026-08-28T20:00:15.774237537Z",
     "agent_id": "6ME5",
-    "agent_seq": 733
+    "agent_seq": 734
   }
 }
