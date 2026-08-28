@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 538,
+  "next_comment_id": 539,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -2702,7 +2702,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T23:30:59.824402277Z",
-      "updated_at": "2026-08-28T13:20:21.012637987Z",
+      "updated_at": "2026-08-28T13:20:26.282939603Z",
       "labels": [
         "feature",
         "ux"
@@ -2824,6 +2824,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAow5+LY2WRAO0aBZ2susz/kPtQvCcR3SAV33eFawz4gsKjJc4+3jXiKaqJhByRNI7rQt7TQOh8zqmeuPdEpNyBg=="
+        },
+        "c66dac86-61cf-4f41-a08f-7bd35625e035": {
+          "display_id": 538,
+          "author": "6ME5",
+          "content": "Live tetris-smoke-fresh passed exact source-layout, format, check, build, 30 tests, and strict Clippy, but then exposed a real recovery defect: a no-change fixer returned a terminal without workspace grounding three times because retries repeated the same prompt. Added exact rejection feedback for the next bounded attempt and protected RecoveryRequired from late task updates. Focused product-runner tests (15 unit, 2 integration), daemon lib tests (52), strict Clippy, and rebuilt debug product pass. A live graceful shutdown recorded RecoveryRequired and the restarted daemon automatically resumed the same durable run without manual retry.",
+          "created_at": "2026-08-28T13:20:26.280370994Z",
+          "kind": "progress",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAnXnRiq53Fjd6EhUMzvI9UWaLXMldlyHw7+n652n8qyFvW4PBDBR6qhTjaEdYcp5n+0wQ+vLO6a2boN29xOzjDQ=="
         },
         "c7f5f1d0-4f5f-433d-b8e2-7f0a107cd361": {
           "display_id": 528,
@@ -5598,8 +5607,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-28T13:20:21.012637987Z",
+    "timestamp": "2026-08-28T13:20:26.282939603Z",
     "agent_id": "6ME5",
-    "agent_seq": 714
+    "agent_seq": 715
   }
 }
