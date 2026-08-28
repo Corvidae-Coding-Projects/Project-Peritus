@@ -61,6 +61,10 @@ pub enum SecretOperation {
     Probe,
     /// Resolve exact material.
     Lookup,
+    /// Write or replace one credential entry.
+    Store,
+    /// Remove one credential entry.
+    Remove,
     /// Create a lease.
     Lease,
     /// Deliver material.

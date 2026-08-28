@@ -29,6 +29,9 @@ pub(super) fn violations(tokens: &[Token]) -> Vec<Violation> {
     let deserialize_imported = tokens.iter().enumerate().any(|(index, token)| {
         identifier_is(token, "use") && audited_deserialize_import(tokens, index)
     });
+    let serialize_imported = tokens.iter().enumerate().any(|(index, token)| {
+        identifier_is(token, "use") && audited_serialize_import(tokens, index)
+    });
     let params_imported = tokens
         .iter()
         .enumerate()
@@ -53,6 +56,7 @@ pub(super) fn violations(tokens: &[Token]) -> Vec<Violation> {
                     &tokens[open + 1..end.saturating_sub(1)],
                     tokens[cursor].line,
                     deserialize_imported,
+                    serialize_imported,
                     &mut violations,
                 );
                 cursor = end;
@@ -188,7 +192,9 @@ fn inspect_use(
     let imports_only_audited_expansion = expansion_names == ["params"]
         && audited_params_declaration(declaration)
         || expansion_names == ["Deserialize"]
-            && attributes::audited_deserialize_declaration(declaration);
+            && attributes::audited_deserialize_declaration(declaration)
+        || expansion_names == ["Serialize"]
+            && attributes::audited_serialize_declaration(declaration);
     let imports_modeled_macro = expansion_names
         .iter()
         .any(|name| MODELED_MACROS.contains(name) || FORBIDDEN_EXPANSION_NAMES.contains(name));
@@ -232,6 +238,14 @@ fn audited_deserialize_import(tokens: &[Token], start: usize) -> bool {
         .position(|token| punctuation_is(token, ';'))
         .map_or(tokens.len(), |offset| start + offset);
     attributes::audited_deserialize_declaration(&tokens[start + 1..end])
+}
+
+fn audited_serialize_import(tokens: &[Token], start: usize) -> bool {
+    let end = tokens[start..]
+        .iter()
+        .position(|token| punctuation_is(token, ';'))
+        .map_or(tokens.len(), |offset| start + offset);
+    attributes::audited_serialize_declaration(&tokens[start + 1..end])
 }
 
 fn audited_params_declaration(tokens: &[Token]) -> bool {

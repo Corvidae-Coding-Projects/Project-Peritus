@@ -2,7 +2,8 @@
 
 use std::{collections::HashMap, sync::Arc};
 
-use serde::{Serialize, de::DeserializeOwned};
+use serde::Serialize;
+use serde::de::DeserializeOwned;
 use serde_json::Value;
 use tokio::{
     io::{AsyncBufRead, AsyncWrite},

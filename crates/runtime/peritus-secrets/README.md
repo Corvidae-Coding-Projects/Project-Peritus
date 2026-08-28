@@ -7,3 +7,7 @@ references and keyed redaction fingerprints, never secret bytes.
 
 The in-memory store exists only for deterministic tests. Production probes fail closed when the
 platform credential service is unavailable.
+
+The platform adapter also provides the product onboarding boundary for writing, replacing, and
+removing credentials. Those operations accept zeroizing `SecretMaterial` and return only exact
+content-bound `SecretReference` values.

@@ -23,6 +23,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Add the G4 provider experience with readiness cards and already-authenticated defaults, official
+  Codex browser/device and Claude browser login handoff, direct OpenAI/Anthropic/Gemini/compatible
+  setup, hidden paste-friendly key entry, operating-system credential-store write/replace/remove,
+  durable provider/default/offline selection, focused sign-in repair, generated C5 routes, and a
+  dedicated `peritus providers` settings command with no environment exports (#38)
+- Verify both logged-in account routes through their production C5 adapters and exact credentialed
+  canaries, and cover every generated direct route through production adapter construction (#38)
 - Begin the G4 single-command product experience with pure Verus-refined resumable bootstrap state,
   platform-native protected application directories, automatic non-secret installation identity,
   canonical public approval-registry and strict daemon-config publication, version-matched sibling

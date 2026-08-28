@@ -1,6 +1,7 @@
 //! Stable non-secret installation identity.
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::ProductStateError;
 

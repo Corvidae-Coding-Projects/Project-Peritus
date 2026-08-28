@@ -11,8 +11,9 @@ mod error;
 mod identity;
 mod layout;
 mod persistence;
+mod provider_setup;
 
-pub use app::launch_interactive;
+pub use app::{configure_providers_interactive, launch_interactive};
 pub use bootstrap::{PreparedProduct, ProductBootstrap};
 pub use daemon::{DaemonLaunch, DaemonShutdown, DaemonSupervisor, SiblingBinaries};
 pub use error::LauncherError;

@@ -30,7 +30,7 @@ pub open spec fn bootstrap_transition(
     )
 }
 
-/// Executable refinement of [`bootstrap_transition`].
+/// Executable refinement of the `bootstrap_transition` specification.
 #[must_use]
 pub const fn bootstrap_transition_model_exec(
     current: BootstrapPhaseModel,

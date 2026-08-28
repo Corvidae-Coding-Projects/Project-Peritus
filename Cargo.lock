@@ -2263,17 +2263,20 @@ dependencies = [
 name = "peritus-launcher"
 version = "0.0.0"
 dependencies = [
+ "crossterm",
  "fs4",
  "getrandom 0.4.3",
  "peritus-approval",
  "peritus-daemon",
  "peritus-product-state",
+ "peritus-provider-onboarding",
  "peritus-tui",
  "peritus-types",
  "tempfile",
  "thiserror 2.0.20",
  "tokio",
  "toml",
+ "zeroize",
 ]
 
 [[package]]
@@ -2460,7 +2463,6 @@ version = "0.0.0"
 dependencies = [
  "serde",
  "serde_json",
- "thiserror 2.0.20",
  "vstd",
 ]
 
@@ -2565,6 +2567,20 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "peritus-provider-onboarding"
+version = "0.0.0"
+dependencies = [
+ "getrandom 0.4.3",
+ "peritus-product-state",
+ "peritus-provider-anthropic",
+ "peritus-provider-openai",
+ "peritus-secrets",
+ "peritus-types",
+ "serde_json",
+ "thiserror 2.0.20",
 ]
 
 [[package]]

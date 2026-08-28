@@ -61,10 +61,10 @@ impl AppLayout {
         self.state.join("product-state")
     }
 
-    /// Returns the generated strict daemon configuration path.
+    /// Returns one immutable-generation strict daemon configuration path.
     #[must_use]
-    pub fn daemon_config(&self) -> PathBuf {
-        self.configuration.join("peritus.toml")
+    pub fn daemon_config(&self, generation: u64) -> PathBuf {
+        self.configuration.join(format!("peritus-{generation:020}.toml"))
     }
 
     /// Returns the generated public approval-registry path.

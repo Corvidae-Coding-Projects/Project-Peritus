@@ -9,7 +9,8 @@ use peritus_provider_core::{
     Credential, Endpoint, Header, HeaderName, HttpHeaders, HttpMethod, HttpRequest,
     ProviderCoreError,
 };
-use serde::ser::{Serialize, SerializeMap, Serializer};
+use serde::Serialize;
+use serde::ser::{SerializeMap, Serializer};
 use serde_json::Value;
 
 use crate::{config::OpenAiConfig, error};

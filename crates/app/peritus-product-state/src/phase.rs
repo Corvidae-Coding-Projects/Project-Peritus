@@ -1,6 +1,7 @@
 //! Durable bootstrap phases and derived live-launch readiness.
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Last durably completed local-bootstrap boundary.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]

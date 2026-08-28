@@ -1,16 +1,13 @@
 //! Product-state validation failures.
 
 /// Stable validation failures for durable product state.
-#[derive(Clone, Debug, Eq, PartialEq, thiserror::Error)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ProductStateError {
     /// The persisted schema is newer or older than this executable understands.
-    #[error("unsupported product-state schema version {0}")]
     UnsupportedSchema(u16),
     /// A stable installation identity is zero or has an invalid encoding.
-    #[error("{0} must be 32 lowercase hexadecimal digits and must not be zero")]
     InvalidIdentity(&'static str),
     /// Durable bootstrap progress attempted to skip or reverse a phase.
-    #[error("invalid durable bootstrap transition from {from:?} to {to:?}")]
     InvalidTransition {
         /// Phase currently persisted.
         from: crate::BootstrapPhase,
@@ -18,6 +15,27 @@ pub enum ProductStateError {
         to: crate::BootstrapPhase,
     },
     /// The state payload is malformed or contains unsupported fields.
-    #[error("product-state payload is invalid: {0}")]
     InvalidPayload(String),
 }
+
+impl core::fmt::Display for ProductStateError {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::UnsupportedSchema(version) => {
+                write!(formatter, "unsupported product-state schema version {version}")
+            }
+            Self::InvalidIdentity(field) => write!(
+                formatter,
+                "{field} must be 32 lowercase hexadecimal digits and must not be zero"
+            ),
+            Self::InvalidTransition { from, to } => {
+                write!(formatter, "invalid durable bootstrap transition from {from:?} to {to:?}")
+            }
+            Self::InvalidPayload(message) => {
+                write!(formatter, "product-state payload is invalid: {message}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for ProductStateError {}

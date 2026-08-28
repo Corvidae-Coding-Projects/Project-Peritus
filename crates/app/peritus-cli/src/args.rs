@@ -84,6 +84,10 @@ impl Cli {
 fn parse_command(parser: &mut Parser) -> Result<Command, CliError> {
     let command = parser.command("command")?;
     match command.as_str() {
+        "providers" => {
+            parser.finish()?;
+            Ok(Command::Providers)
+        }
         "status" => {
             parser.finish()?;
             Ok(Command::Status)

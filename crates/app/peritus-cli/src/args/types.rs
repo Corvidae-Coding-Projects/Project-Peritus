@@ -21,6 +21,7 @@ GLOBAL OPTIONS:
   -V, --version              Print version
 
 COMMANDS:
+  providers                    Open provider settings
   status
   shutdown [--wait]
   command submit --actor <ID> --envelope <FILE> --payload <FILE>
@@ -61,6 +62,7 @@ pub enum Command {
     Help { text: String },
     Version,
     Completions(Shell),
+    Providers,
     Status,
     Shutdown { wait: bool },
     Submit(SubmitArgs),

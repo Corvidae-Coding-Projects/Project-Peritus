@@ -14,7 +14,6 @@ categories = ["data-structures", "development-tools"]
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
-thiserror.workspace = true
 vstd.workspace = true
 
 [package.metadata.peritus]

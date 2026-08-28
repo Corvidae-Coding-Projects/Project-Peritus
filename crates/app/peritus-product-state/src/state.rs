@@ -1,8 +1,9 @@
 //! Versioned durable product-state document.
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
-use crate::{BootstrapPhase, InstallIdentity, ProductStateError};
+use crate::{BootstrapPhase, InstallIdentity, ProductStateError, ProviderSelection};
 
 /// Product-state schema understood by this executable.
 pub const PRODUCT_STATE_SCHEMA_VERSION: u16 = 1;
@@ -15,17 +16,23 @@ pub struct ProductState {
     generation: u64,
     identity: InstallIdentity,
     bootstrap_phase: BootstrapPhase,
+    #[serde(default)]
+    providers: ProviderSelection,
+    #[serde(default)]
+    provider_setup_complete: bool,
 }
 
 impl ProductState {
     /// Begins a new installation after identities have been durably selected.
     #[must_use]
-    pub const fn new(identity: InstallIdentity) -> Self {
+    pub fn new(identity: InstallIdentity) -> Self {
         Self {
             schema_version: PRODUCT_STATE_SCHEMA_VERSION,
             generation: 1,
             identity,
             bootstrap_phase: BootstrapPhase::IdentityReady,
+            providers: <ProviderSelection as Default>::default(),
+            provider_setup_complete: false,
         }
     }
 
@@ -78,6 +85,29 @@ impl ProductState {
         self.bootstrap_phase
     }
 
+    /// Borrows durable non-secret provider choices.
+    #[must_use]
+    pub const fn providers(&self) -> &ProviderSelection {
+        &self.providers
+    }
+
+    /// Returns whether the user completed provider setup, including explicit offline mode.
+    #[must_use]
+    pub const fn provider_setup_complete(&self) -> bool {
+        self.provider_setup_complete
+    }
+
+    /// Replaces durable provider choices and advances the immutable generation when changed.
+    pub fn configure_providers(&mut self, providers: ProviderSelection) -> bool {
+        if self.providers == providers && self.provider_setup_complete {
+            return false;
+        }
+        self.providers = providers;
+        self.provider_setup_complete = true;
+        self.generation = self.generation.saturating_add(1);
+        true
+    }
+
     /// Advances to the same phase or its exact successor.
     ///
     /// Repeating the current phase is idempotent and does not change the generation.
@@ -109,7 +139,8 @@ impl ProductState {
                 "product-state generation must be positive".to_owned(),
             ));
         }
-        self.identity.validate()
+        self.identity.validate()?;
+        self.providers.validate()
     }
 }
 
@@ -149,5 +180,20 @@ mod tests {
     fn zero_identity_is_rejected() {
         assert!(InstallIdentity::new([0; 16], [2; 16]).is_err());
         assert!(InstallIdentity::new([1; 16], [0; 16]).is_err());
+    }
+
+    #[test]
+    fn provider_selection_is_durable_and_idempotent() {
+        let mut state = ProductState::new(identity());
+        let selection = ProviderSelection::new(
+            vec![crate::ProviderKind::ClaudeAccount, crate::ProviderKind::CodexAccount],
+            Some(crate::ProviderKind::CodexAccount),
+        )
+        .expect("selection");
+        assert!(state.configure_providers(selection.clone()));
+        assert!(!state.configure_providers(selection));
+        assert_eq!(state.generation(), 2);
+        assert_eq!(state.providers().enabled().len(), 2);
+        assert!(state.provider_setup_complete());
     }
 }

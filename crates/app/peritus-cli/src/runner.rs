@@ -49,6 +49,9 @@ fn run(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
             |()| ExitCode::SUCCESS,
         );
     }
+    if matches!(&cli.command, Command::Providers) {
+        return run_provider_settings();
+    }
 
     let runtime = match tokio::runtime::Builder::new_current_thread().enable_all().build() {
         Ok(runtime) => runtime,
@@ -63,6 +66,21 @@ fn run(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
     match runtime.block_on(execute(cli)) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => report_error(&error, json),
+    }
+}
+
+fn run_provider_settings() -> ExitCode {
+    if !std::io::stdin().is_terminal() || !std::io::stdout().is_terminal() {
+        return report_error(
+            &CliError::usage("provider settings require an interactive terminal"),
+            false,
+        );
+    }
+    match peritus_launcher::configure_providers_interactive() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            report_error(&CliError::runtime("configure providers", error.to_string()), false)
+        }
     }
 }
 
@@ -138,7 +156,9 @@ async fn execute(cli: Cli) -> Result<(), CliError> {
         Command::TerminalCancel(arguments) => {
             terminal::cancel(&endpoint, cli.session, cli.timeout, arguments, &output).await
         }
-        Command::Help { .. } | Command::Version | Command::Completions(_) => Ok(()),
+        Command::Help { .. } | Command::Version | Command::Completions(_) | Command::Providers => {
+            Ok(())
+        }
     }
 }
 

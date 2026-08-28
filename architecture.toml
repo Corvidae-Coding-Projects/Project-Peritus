@@ -204,6 +204,13 @@ layer = "app"
 verification_class = "H"
 
 [[packages]]
+name = "peritus-provider-onboarding"
+path = "crates/app/peritus-provider-onboarding"
+owner = "G4"
+layer = "app"
+verification_class = "C"
+
+[[packages]]
 name = "peritus-mcp"
 path = "crates/extensions/peritus-mcp"
 owner = "G3"

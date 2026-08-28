@@ -108,8 +108,13 @@ The implemented foundation and runtime spine now covers:
   per-user directories, creates protected roots and stable local identities, publishes a canonical
   public approval registry and strict daemon configuration, resumes immutable-generation setup
   state, resolves a version-matched packaged `peritusd`, and starts or reuses its local endpoint
-  before entering the TUI. Provider onboarding, workspace trust/registration, the task composer,
-  and native product qualification remain required before this is a complete user experience; and
+  before entering the TUI. First launch now presents a provider catalog with visible readiness and
+  useful defaults; delegates ChatGPT/Claude subscription login to the official `codex`/`claude`
+  clients; configures direct OpenAI, Anthropic, Gemini, and compatible routes using hidden input and
+  the operating-system credential store; persists switching/default/offline choices; and exposes
+  focused repair plus `peritus providers` settings without environment exports or hand-written
+  configuration. Workspace trust/registration, the task composer, and native product qualification
+  remain required before this is a complete user experience; and
 - H0: a verified exact-candidate security-readiness policy plus a 42-case fresh-native-subject
   campaign covering R-SEC-001 through R-SEC-007, the nine security-relevant acceptance criteria,
   malicious repositories, native sandboxes, role isolation, evidence invalidation, evolution,

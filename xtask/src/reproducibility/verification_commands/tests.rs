@@ -250,6 +250,13 @@ layer = "runtime"
 verification_class = "H"
 
 [[packages]]
+name = "peritus-product-state"
+path = "crates/app/peritus-product-state"
+owner = "G4"
+layer = "app"
+verification_class = "H"
+
+[[packages]]
 name = "peritus-quality-policy"
 path = "crates/foundation/peritus-quality-policy"
 owner = "B2"

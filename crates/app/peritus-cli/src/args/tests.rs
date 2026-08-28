@@ -7,6 +7,13 @@ fn parse(arguments: &[&str]) -> Result<Cli, crate::error::CliError> {
 }
 
 #[test]
+fn provider_settings_are_a_standalone_product_command() {
+    let cli = parse(&["peritus", "providers"]).expect("provider settings");
+    assert!(matches!(cli.command, Command::Providers));
+    assert!(cli.endpoint.is_none());
+}
+
+#[test]
 fn global_options_and_status_are_parsed_strictly() {
     let cli = parse(&[
         "peritus",

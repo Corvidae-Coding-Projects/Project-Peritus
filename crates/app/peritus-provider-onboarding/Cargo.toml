@@ -1,0 +1,30 @@
+[package]
+name = "peritus-provider-onboarding"
+description = "User-facing provider discovery and official account login for Peritus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["agents", "authentication", "onboarding"]
+categories = ["authentication", "command-line-utilities"]
+
+[dependencies]
+getrandom.workspace = true
+peritus-product-state = { version = "=0.0.0", path = "../peritus-product-state" }
+peritus-provider-anthropic = { version = "=0.0.0", path = "../../model/peritus-provider-anthropic" }
+peritus-provider-openai = { version = "=0.0.0", path = "../../model/peritus-provider-openai" }
+peritus-secrets = { version = "=0.0.0", path = "../../runtime/peritus-secrets" }
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+serde_json.workspace = true
+thiserror.workspace = true
+
+[package.metadata.peritus]
+owner = "G4"
+layer = "app"
+verification-class = "C"
+
+[lints]
+workspace = true

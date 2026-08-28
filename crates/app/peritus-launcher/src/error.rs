@@ -25,6 +25,12 @@ pub enum LauncherError {
     /// Another launcher currently owns local bootstrap publication.
     #[error("another Peritus process is currently preparing local application state")]
     BootstrapBusy,
+    /// Interactive setup could not read or render terminal input/output.
+    #[error("interactive setup failed: {0}")]
+    Interaction(String),
+    /// Provider discovery or login failed.
+    #[error("provider setup failed: {0}")]
+    Provider(#[from] peritus_provider_onboarding::OnboardingError),
     /// Pure product state is invalid.
     #[error("local product state is invalid: {0}")]
     ProductState(#[from] peritus_product_state::ProductStateError),
