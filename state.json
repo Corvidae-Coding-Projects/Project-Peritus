@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 544,
+  "next_comment_id": 545,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,12 +1278,21 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-28T13:47:50.482471568Z",
+      "updated_at": "2026-08-28T14:32:41.754210456Z",
       "labels": [
         "qualification",
         "release"
       ],
       "comments": {
+        "5b5db8ef-2217-471f-9447-fa29210c5d98": {
+          "display_id": 544,
+          "author": "6ME5",
+          "content": "HarnessBench checkpoint: pinned upstream 1025086a (106 tasks), added native Peritus adapter and normalized trace projection, reproduced HBF-001 malformed design retry and HBF-002 generic-artifact gate timeout, fixed both with regressions, and passed unchanged task 001 with oracle=1.0. Added localhost rubric bridge through the authenticated official Codex router; fully scored rerun passed with process=0.7833, security=1.0, combined=0.7833. Exact evidence and follow-ups are in benchmarks/external/failure-journal.md; generated traces remain under ~/.local/state/peritus/benchmarks.",
+          "created_at": "2026-08-28T14:32:41.751662539Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAuapZymQjUVvonLwlmmGdGeBObpSHw41obwFmjZhHgQ06lMdCoAZSS6hWARChcD+xqV+gW99EjSjfnGZrYLYHCw=="
+        },
         "682b6a70-e0c1-4f83-8a73-6d184c7ba41b": {
           "display_id": 477,
           "author": "6ME5",
@@ -5652,8 +5661,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-28T13:47:50.482471568Z",
+    "timestamp": "2026-08-28T14:32:41.754210456Z",
     "agent_id": "6ME5",
-    "agent_seq": 720
+    "agent_seq": 721
   }
 }
