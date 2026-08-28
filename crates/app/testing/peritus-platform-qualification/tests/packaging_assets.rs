@@ -35,3 +35,15 @@ fn packaging_assets_have_nonzero_digests() {
             .all(|asset| asset.digest().sha256().as_bytes() != &[0; 32])
     );
 }
+
+#[test]
+fn windows_installer_hashes_without_optional_command_modules() {
+    let installer = bundled_packaging_assets()
+        .iter()
+        .find(|asset| asset.relative_path() == "windows/Install-Peritus.ps1")
+        .expect("Windows installer asset must be embedded");
+    let script = str::from_utf8(installer.bytes()).expect("Windows installer must be UTF-8");
+
+    assert!(script.contains("[Security.Cryptography.SHA256]::Create()"));
+    assert!(!script.contains("Get-FileHash"));
+}

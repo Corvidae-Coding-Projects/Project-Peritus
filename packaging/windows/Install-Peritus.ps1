@@ -12,11 +12,27 @@ $helperRoot = Join-Path $programRoot 'libexec'
 $shareRoot = Join-Path $programRoot 'share'
 if (-not (Test-Path -LiteralPath (Join-Path $bundle 'manifest.toml') -PathType Leaf) -or -not (Test-Path -LiteralPath (Join-Path $bundle 'SHA256SUMS') -PathType Leaf)) { throw 'package manifest and SHA256SUMS are required' }
 
+function Get-Sha256Hex {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $algorithm = [Security.Cryptography.SHA256]::Create()
+    try {
+        $stream = [IO.File]::OpenRead($Path)
+        try {
+            return [BitConverter]::ToString($algorithm.ComputeHash($stream)).Replace('-', '')
+        } finally {
+            $stream.Dispose()
+        }
+    } finally {
+        $algorithm.Dispose()
+    }
+}
+
 foreach ($line in Get-Content -LiteralPath (Join-Path $bundle 'SHA256SUMS')) {
     if ($line -notmatch '^([0-9a-fA-F]{64})  ([A-Za-z0-9._/-]+)$') { throw 'SHA256SUMS contains a malformed line' }
     $candidate = Join-Path $bundle $Matches[2]
     if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) { throw "package artifact is missing: $($Matches[2])" }
-    if ((Get-FileHash -LiteralPath $candidate -Algorithm SHA256).Hash -ne $Matches[1]) { throw "package checksum mismatch for $($Matches[2])" }
+    if ((Get-Sha256Hex -Path $candidate) -ne $Matches[1]) { throw "package checksum mismatch for $($Matches[2])" }
 }
 
 New-Item -ItemType Directory -Path $binRoot, $helperRoot, $shareRoot -Force | Out-Null
