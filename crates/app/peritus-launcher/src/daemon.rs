@@ -203,7 +203,10 @@ impl DaemonSupervisor {
             )));
         }
         let started = Instant::now();
-        while endpoint_ready(&endpoint).await {
+        loop {
+            if !endpoint_ready(&endpoint).await && instance_lock_available(product)? {
+                return Ok(DaemonShutdown::Stopped);
+            }
             if started.elapsed() >= self.readiness_timeout {
                 return Err(LauncherError::DaemonTimeout {
                     seconds: self.readiness_timeout.as_secs(),
@@ -212,7 +215,27 @@ impl DaemonSupervisor {
             }
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
-        Ok(DaemonShutdown::Stopped)
+    }
+}
+
+fn instance_lock_available(product: &PreparedProduct) -> Result<bool, LauncherError> {
+    let path = product.daemon_config().paths().state_root().join("daemon.lock");
+    let file = match OpenOptions::new().read(true).write(true).open(&path) {
+        Ok(file) => file,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(true),
+        Err(error) => {
+            return Err(LauncherError::filesystem("open daemon instance lock", path, error));
+        }
+    };
+    match fs4::FileExt::try_lock(&file) {
+        Ok(()) => {
+            let _ = fs4::FileExt::unlock(&file);
+            Ok(true)
+        }
+        Err(fs4::TryLockError::WouldBlock) => Ok(false),
+        Err(fs4::TryLockError::Error(error)) => {
+            Err(LauncherError::filesystem("probe daemon instance lock", path, error))
+        }
     }
 }
 

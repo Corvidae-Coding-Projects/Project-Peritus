@@ -36,3 +36,23 @@ fn recorded_daemon_is_reused_only_until_its_installed_binary_changes() {
     fs::write(&daemon, b"upgraded daemon build").expect("upgrade daemon fixture");
     assert!(!applied_configuration_matches(&product, &binaries).expect("stale daemon identity"));
 }
+
+#[test]
+fn replacement_waits_until_the_old_daemon_releases_its_instance_lock() {
+    let temporary = tempfile::tempdir().expect("temporary application root");
+    let layout = AppLayout::for_test(temporary.path()).prepare().expect("prepared layout");
+    let product = ProductBootstrap::new(layout).prepare().expect("prepared product");
+    let lock_path = product.daemon_config().paths().state_root().join("daemon.lock");
+    let lock = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(lock_path)
+        .expect("daemon lock fixture");
+    fs4::FileExt::try_lock(&lock).expect("hold old daemon lock");
+
+    assert!(!instance_lock_available(&product).expect("locked state"));
+    fs4::FileExt::unlock(&lock).expect("release old daemon lock");
+    assert!(instance_lock_available(&product).expect("released state"));
+}
