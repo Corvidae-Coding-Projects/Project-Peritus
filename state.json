@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 543,
+  "next_comment_id": 544,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-27T18:33:22.872145363Z",
+      "updated_at": "2026-08-28T13:47:50.482471568Z",
       "labels": [
         "qualification",
         "release"
@@ -1310,6 +1310,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9JLSx0BbzX7UkxKP9VhjZ70ZRogItIq2XeV+Cgncwhsv200/tQ2bZGXMJgOvyz+cueBpMSEqLlSbSnZ+DUBmCQ=="
+        },
+        "978d765d-833c-43ed-aad3-2cf7252ffc2a": {
+          "display_id": 543,
+          "author": "6ME5",
+          "content": "Started external benchmark qualification after completing and pushing G4. HarnessBench is pinned locally at upstream commit 1025086a446653702b80cfb48babbeec35db6b2c. Integrating a shared native Rust benchmark agent first, with thin HarnessBench and Harbor boundaries; heavy suites remain sequential.",
+          "created_at": "2026-08-28T13:47:50.479943221Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAKcel1dRPgswittPX/GmatHt9blwp4uRJ5K3I4QE9xSEAtuHTvYCC/PEO3Hi3SfHhkAnNgJWddF7TEmpUzM+uCA=="
         },
         "e0253408-62db-44d7-b82e-d0935c09a541": {
           "display_id": 478,
@@ -5643,8 +5652,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-28T13:42:41.660287150Z",
+    "timestamp": "2026-08-28T13:47:50.482471568Z",
     "agent_id": "6ME5",
-    "agent_seq": 719
+    "agent_seq": 720
   }
 }
