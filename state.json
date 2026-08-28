@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 571,
+  "next_comment_id": 572,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -2932,7 +2932,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T23:30:59.824402277Z",
-      "updated_at": "2026-08-28T22:19:59.831831790Z",
+      "updated_at": "2026-08-28T23:34:01.868765758Z",
       "labels": [
         "feature",
         "ux"
@@ -3045,6 +3045,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAgih+80borTR8WBkY/OUA4Pvn0iZURAUs0VPl3OOiMKglQ3BGc9QFGm1tCeme/8uZUNCbe/Xlj8Zlj+L+JX6rBg=="
+        },
+        "831da1f4-ec7f-4a03-a9ba-a336319d03a7": {
+          "display_id": 571,
+          "author": "6ME5",
+          "content": "[action] Task 037: fixed canonical-authority handling and finding convergence, retained final external evidence, and passed full Gate A",
+          "created_at": "2026-08-28T23:34:01.866092957Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAqzQPZBv4AlveZQqwkwDzxAuGNG3O403pPAo6GydHZl8IuutL7jz9RbkXC07bwaFYDhb1BVFWOgvKDOIm3A13Cw=="
         },
         "8b8c445b-ea3d-4e7e-8b51-ef78701b364a": {
           "display_id": 542,
@@ -5891,8 +5900,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-28T22:20:12.870197321Z",
+    "timestamp": "2026-08-28T23:34:01.868765758Z",
     "agent_id": "6ME5",
-    "agent_seq": 748
+    "agent_seq": 749
   }
 }
