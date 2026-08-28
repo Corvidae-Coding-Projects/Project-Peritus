@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 519,
+  "next_comment_id": 520,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -4908,7 +4908,7 @@
       "parent_uuid": "59346441-f15a-4950-a0f1-f10b1b9b1f7d",
       "created_by": "6ME5",
       "created_at": "2026-08-27T23:32:49.842696292Z",
-      "updated_at": "2026-08-28T04:03:58.352669310Z",
+      "updated_at": "2026-08-28T04:36:45.205706089Z",
       "closed_at": "2026-08-28T03:49:11.127682691Z",
       "labels": [
         "feature",
@@ -4923,6 +4923,15 @@
           "kind": "result",
           "signed_by": "SHA256:mTwYqorrA4UxSK3se0aIOCOC6y7kyE/sEvoFLwVluf4",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgmuiChqHxrMH8nicBvsKr3z1JEgjcUOEEH/DcxL6kdeEAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAeZ+PFzvcZKTemm4F6aMoyBqfzs8IyK2JwENmB+/BpCWemL2/uBxjztfXjo5+JCagsAHdd2SS/gL6YbygqIKyAQ=="
+        },
+        "47e0cc99-ea65-48a5-bc7f-124f9990d559": {
+          "display_id": 519,
+          "author": "NWAR",
+          "content": "PR #38 merged to main as 58eea35ab6713d0adce0a42439278b25d82eee3b. Hosted qualification is fully green: Gate A aggregate; macOS/Ubuntu/Windows build, test, fmt, Clippy, docs, and doc-tests; Gate A and locked-workspace Verus; supply chain; Foundation verification; and native install/run/upgrade/run/uninstall lifecycle on all three platforms.",
+          "created_at": "2026-08-28T04:36:45.203173613Z",
+          "kind": "result",
+          "signed_by": "SHA256:mTwYqorrA4UxSK3se0aIOCOC6y7kyE/sEvoFLwVluf4",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgmuiChqHxrMH8nicBvsKr3z1JEgjcUOEEH/DcxL6kdeEAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAySwS0vTGTfzNOFGubJWFk+WN5/GqGZD4rdHUGnqLoLeE2hmbDK+yRYC5GDT64qxLiZIVUhAY4gzeW+5wlFXLAw=="
         },
         "a156781a-949d-448c-9345-97dd0ba29c33": {
           "display_id": 516,
@@ -5423,8 +5432,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-28T04:03:58.352669310Z",
+    "timestamp": "2026-08-28T04:36:45.205706089Z",
     "agent_id": "NWAR",
-    "agent_seq": 38
+    "agent_seq": 39
   }
 }
