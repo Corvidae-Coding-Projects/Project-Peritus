@@ -1,6 +1,7 @@
 //! Managed-workspace tools exposed to the D0 developer loop.
 
 mod catalog;
+mod effect;
 mod executor;
 mod grounding;
 mod ownership;

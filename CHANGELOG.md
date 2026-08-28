@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Validate every changed CSV in an artifact workspace with a native exact-target gate before
+  acceptance, rejecting ragged rows, invalid quote placement, unterminated quoted fields, invalid
+  UTF-8, and oversized inputs even when a model-authored check incorrectly reports success (#31)
 - Preserve files created by evaluators, services, hooks, and other external actors during a complete
   writer-reviewer-fixer run; route model-requested deletion through an ownership-aware exact-file
   tool; preserve literal requirement scope; keep artifact-only work free of unrequested package

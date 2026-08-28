@@ -7,6 +7,7 @@ use std::{
 
 use peritus_gates::{GateExecutionRecord, TargetGatePlan, TargetGateReport};
 
+mod artifact_csv;
 mod source_layout;
 
 use crate::{ProductRunnerError, ProductRunnerErrorKind, bundle::limit_text};
@@ -28,11 +29,26 @@ pub fn run(root: &Path, changed_paths: Vec<PathBuf>) -> Result<GateReport, Produ
     let mut records = Vec::new();
     for specification in plan.commands() {
         if specification.program() == "peritus-internal" {
-            records.push(source_layout::run(
-                &root.join(specification.current_dir()),
-                specification.project().kind(),
-                specification.display(),
-            ));
+            let record = match specification.arguments().first().map(String::as_str) {
+                Some("source-layout") => source_layout::run(
+                    &root.join(specification.current_dir()),
+                    specification.project().kind(),
+                    specification.display(),
+                ),
+                Some("artifact-csv-structure") => artifact_csv::run(
+                    root,
+                    specification.project().root(),
+                    plan.changed_paths(),
+                    specification.display(),
+                ),
+                _ => GateExecutionRecord {
+                    command: specification.display(),
+                    label: specification.label().to_owned(),
+                    exit_code: None,
+                    output: "unknown internal exact-target gate".to_owned(),
+                },
+            };
+            records.push(record);
             continue;
         }
         let mut command = Command::new(specification.program());

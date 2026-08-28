@@ -3,7 +3,6 @@
 use std::{
     collections::VecDeque,
     fs,
-    io::Write as _,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -13,12 +12,12 @@ use peritus_model_protocol::{CanonicalJson, CompletedToolCall, JsonBounds, Proto
 use serde_json::{Map, Value};
 
 use super::{
+    effect::{atomic_write, limit, reject_destructive_command},
     grounding::GroundingEvidence,
     ownership::WorkspaceOwnership,
     path::{checked, tool},
 };
 
-const MAX_OUTPUT_BYTES: usize = 512 * 1024;
 const MAX_FILE_BYTES: usize = 2 * 1024 * 1024;
 
 /// Concrete tool executor scoped to one managed workspace.
@@ -321,20 +320,6 @@ impl WorkspaceDeveloperTools {
     }
 }
 
-fn reject_destructive_command(program: &str, args: &[String]) -> Result<(), DeveloperLoopError> {
-    let executable =
-        Path::new(program).file_name().and_then(|name| name.to_str()).unwrap_or(program);
-    let direct_delete = matches!(executable, "rm" | "unlink" | "rmdir");
-    let git_clean = executable == "git" && args.first().is_some_and(|arg| arg == "clean");
-    let find_delete = executable == "find" && args.iter().any(|arg| arg == "-delete");
-    if direct_delete || git_clean || find_delete {
-        return Err(tool(
-            "destructive commands are not available through run_command; inspect the exact target and use workspace_remove for an intentional regular-file deletion",
-        ));
-    }
-    Ok(())
-}
-
 fn object(entries: Vec<(&str, Value)>) -> Value {
     Value::Object(
         entries.into_iter().map(|(key, value)| (key.to_owned(), value)).collect::<Map<_, _>>(),
@@ -384,26 +369,6 @@ fn ignored(path: &Path) -> bool {
             Some(".git" | "target" | "node_modules" | ".venv" | "__pycache__")
         )
     })
-}
-
-fn atomic_write(path: &Path, content: &[u8]) -> Result<(), DeveloperLoopError> {
-    let temporary = path.with_extension("peritus-new");
-    let mut file = fs::File::create(&temporary).map_err(|error| tool(error.to_string()))?;
-    file.write_all(content).map_err(|error| tool(error.to_string()))?;
-    file.sync_all().map_err(|error| tool(error.to_string()))?;
-    #[cfg(windows)]
-    if path.is_file() {
-        fs::remove_file(path).map_err(|error| tool(error.to_string()))?;
-    }
-    fs::rename(temporary, path).map_err(|error| tool(error.to_string()))
-}
-
-fn limit(value: &str) -> String {
-    if value.len() <= MAX_OUTPUT_BYTES {
-        value.to_owned()
-    } else {
-        format!("{}\n[output truncated]", &value[..value.floor_char_boundary(MAX_OUTPUT_BYTES)])
-    }
 }
 
 #[cfg(test)]

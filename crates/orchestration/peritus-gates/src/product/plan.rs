@@ -300,7 +300,8 @@ mod tests {
         assert!(plan.has_complete_coverage());
         assert!(plan.uncovered_paths().is_empty());
         assert_eq!(plan.projects()[0].kind(), ProjectKind::Artifact);
-        assert_eq!(plan.commands().len(), 1);
+        assert_eq!(plan.commands().len(), 2);
         assert_eq!(plan.commands()[0].label(), "Source layout");
+        assert_eq!(plan.commands()[1].label(), "Artifact CSV structure");
     }
 }

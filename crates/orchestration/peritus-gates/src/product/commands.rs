@@ -155,7 +155,12 @@ fn artifact_commands(
             "artifact workspace manifest must contain only schema_version = 1 and kind = \"artifact\"",
         ));
     }
-    Ok(Vec::new())
+    Ok(vec![spec(
+        "Artifact CSV structure",
+        "peritus-internal",
+        vec!["artifact-csv-structure".to_owned()],
+        project,
+    )])
 }
 
 fn spec(

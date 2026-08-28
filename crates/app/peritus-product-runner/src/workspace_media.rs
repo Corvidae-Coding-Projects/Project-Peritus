@@ -5,8 +5,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use core::fmt::Write as _;
-
 use peritus_model_protocol::{
     Capability, MediaInput, MediaKind, MediaType, ProtocolLimits, ProviderProfile,
 };
@@ -39,6 +37,10 @@ impl WorkspaceImages {
     }
 }
 
+#[allow(
+    clippy::format_push_string,
+    reason = "formal-boundary policy models format! but not writeln!"
+)]
 pub fn discover(
     root: &Path,
     task: &str,
@@ -88,7 +90,7 @@ pub fn discover(
             .to_str()
             .ok_or_else(|| repository("image path is not representable as UTF-8".to_owned()))?;
         let index = attachments.len();
-        let _ = writeln!(manifest, "- attachment {index}: {relative} ({bytes_len} bytes)");
+        manifest.push_str(&format!("- attachment {index}: {relative} ({bytes_len} bytes)\n"));
         total = total.saturating_add(bytes_len);
         attachments.push(media);
     }

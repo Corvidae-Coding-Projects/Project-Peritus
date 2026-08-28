@@ -451,6 +451,47 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Disposition: retain the unchanged score and classify the check as a benchmark synonym gap. Do not
   replace clear domain language with a hidden verb allowlist.
 
+## HBF-007: artifact acceptance did not independently validate CSV structure
+
+- Suite and task: HarnessBench 2.0, `036-citation-consistency-audit`.
+- Symptom: the first run reported successful artifact verification even though one CSV evidence
+  field used backslash-escaped quotes. A standard CSV reader split that row into six values, leaving
+  an overflow value under a null header and hiding the DOI evidence from the oracle.
+- Cause: general artifact workspaces had source-layout coverage but no deterministic CSV parser.
+  Acceptance therefore trusted a model-authored verifier that checked headers and semantic values
+  without rejecting overflow fields.
+- Change: every artifact workspace now plans a native CSV-structure gate. The bounded UTF-8 parser
+  checks every changed `.csv` file for consistent field counts, valid quoted and unquoted fields,
+  doubled-quote escaping, and complete quoted fields. Unknown internal gates fail closed.
+- Before evidence: the first task 036 workspace contained eight apparent rows but one parsed with an
+  extra null-key value; outcome 0.78, error hits 7/10, evidence hits 6/10, process 0.94, and 23
+  provider requests. The adapter nevertheless reported one passing exact-target command.
+- After evidence: local report `reports/036-citation-consistency-audit-post-csv-gate.json`; the fresh
+  unchanged run produced nine structurally valid rows, no overflow values, two passing exact-target
+  commands, error hits 8/10, evidence hits 7/10, process 0.9433, security 1.0, combined 0.7358, and
+  17 provider requests in 347.512 seconds. The writer repaired its first malformed draft before the
+  independent native gate ran; the regression separately proves that the original bytes fail the
+  new acceptance boundary.
+
+## HBI-017: task 036 double-counts a key rename and requires an unpublished duplicate key
+
+- Suite and task: HarnessBench 2.0, `036-citation-consistency-audit`.
+- Symptom: the valid rerun corrected every bibliography identity and field, passed all format,
+  audit-note, and citation-graph checks, and matched eight of ten expected error rows. The score
+  remains capped at outcome 0.78 (`good`).
+- Cause: the prompt says the Ortega entry has the correct title and an outdated key and separately
+  requires the citation graph to record its rename. Peritus reports one `year_mismatch:Ortega2018`
+  row and renames it to `Ortega2020`. Hidden ground truth consumes that row as `missing_bib` and then
+  requires a second `orphan_bib:Ortega2018` row for the same work. It also requires
+  `duplicate_key:Chen2024`, while Peritus identifies the visibly synthetic conflicting key
+  `Chen2024Duplicate`; the only alias joins both keys with `/`, which the prompt explicitly forbids.
+- Evidence: local report `reports/036-citation-consistency-audit-post-csv-gate.json`; corrected
+  bibliography fields 13/13, formats 1.0, audit notes 1.0, graph 1.0, nine valid CSV rows, process
+  0.9433, and security 1.0.
+- Disposition: retain the unchanged 0.78 score and classify the two remaining misses as benchmark
+  ground-truth conventions. Do not duplicate one rename into missing and orphan claims or emit a
+  forbidden merged citation key.
+
 ## HBF-005: a fixer deleted evaluator-owned evidence
 
 - Suite and task: HarnessBench 2.0, `022-local-rest-api-summary`.
