@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 506,
+  "next_comment_id": 507,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -2614,12 +2614,21 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T23:30:59.824402277Z",
-      "updated_at": "2026-08-28T00:07:12.039622600Z",
+      "updated_at": "2026-08-28T02:18:44.139447115Z",
       "labels": [
         "feature",
         "ux"
       ],
       "comments": {
+        "02299b86-5a1d-4ff0-8df8-df978f2f7873": {
+          "display_id": 506,
+          "author": "NWAR",
+          "content": "PR #37 merged to main as bb14f605 after all 30 hosted checks passed. G4.1-G4.3 now provide single-command bootstrap, provider onboarding, ergonomic workspace discovery/trust/repair/switch/forget flows, durable product state, generated daemon configuration, and user-facing documentation. Remaining G4 children are #40 interactive prompt and AcTor run experience and #41 packaging/native onboarding qualification.",
+          "created_at": "2026-08-28T02:18:44.136833155Z",
+          "kind": "result",
+          "signed_by": "SHA256:mTwYqorrA4UxSK3se0aIOCOC6y7kyE/sEvoFLwVluf4",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgmuiChqHxrMH8nicBvsKr3z1JEgjcUOEEH/DcxL6kdeEAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7T0+QIt13b0L/YVra6hWgKXtT2v/84qB6S68iXQKImYSnaRC9W8vvLSlRdYDySLQnF7kLNZc5Absw+g4qXLQDA=="
+        },
         "e183abc7-9311-4498-a5e8-336b162537a3": {
           "display_id": 499,
           "author": "6ME5",
@@ -5300,8 +5309,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-28T01:43:28.110699433Z",
+    "timestamp": "2026-08-28T02:18:44.139447115Z",
     "agent_id": "NWAR",
-    "agent_seq": 19
+    "agent_seq": 20
   }
 }
