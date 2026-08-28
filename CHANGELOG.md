@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Separate non-authoritative source text from malicious intent in every built-in role, classifying
+  supplied content by its requested effect so benign policy advice does not become a false-positive
+  quarantine while harmful actions and cross-input triggers remain isolated (#31)
 - Ground image tasks in actual bounded workspace pixels instead of filenames, carry validated
   raster inputs through the developer loop and Codex account runtime, fail clearly for text-only
   providers, and let HarnessBench visual rubrics use the same credential-preserving route (#31)
