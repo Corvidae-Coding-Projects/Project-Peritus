@@ -33,6 +33,8 @@ mod turn;
 mod verified_api;
 #[cfg(not(verus_only))]
 mod workspace_filter;
+#[cfg(not(verus_only))]
+mod workspace_media;
 
 pub use error::{ProductRunnerError, ProductRunnerErrorKind};
 #[cfg(not(verus_only))]

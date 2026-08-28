@@ -161,11 +161,18 @@ output schema. Credential and endpoint-routing environment overrides are removed
 rejects native tool activity, malformed or oversized JSONL, and output without a proven completed
 turn, then normalizes validated text, inert tool-call proposals, usage, and terminal state.
 
+For image-capable turns, Peritus accepts only bounded inline PNG, JPEG, WebP, or GIF inputs. It
+keeps raw bytes out of the text prompt, records an attachment index, media type, and SHA-256 digest,
+then writes private temporary files for the official executable's `--image` option. The temporary
+directory is removed with the turn. Audio, documents, remote media references, unknown image types,
+and oversized media remain unsupported on this route.
+
 Codex itself owns ChatGPT login, credential persistence, and refresh; Peritus never reads its token
 store. The profile is deliberately narrower than direct Responses: stateless replay, no response
 resume or remote cancel, local best-effort child cancellation, and an advisory output limit.
 
-Reviewed sources: [Codex SDK](https://developers.openai.com/codex/sdk/) and
+Reviewed sources: [Codex non-interactive mode](https://developers.openai.com/codex/noninteractive),
+[Codex SDK](https://developers.openai.com/codex/sdk/), and
 [Codex App Server authentication](https://developers.openai.com/codex/app-server/). The delivered
 route uses the official executable directly rather than implementing OAuth or a persistent App
 Server connection.

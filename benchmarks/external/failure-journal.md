@@ -53,8 +53,8 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Diagnostic: the rubric found correct recovery but excessive work for the trivial task, including
   redundant reads and repeated design prose. This becomes an orchestration-efficiency improvement,
   not a benchmark-specific prompt exception.
-- Limitation: the paid-account router is currently text-only, so image rubric messages fail
-  explicitly instead of silently losing content.
+- Follow-up delivered: HBM-001 records the bounded multimodal rubric route added after the initial
+  text qualification.
 
 ## HBF-003: streamed UTF-8 tool arguments were decoded per fragment
 
@@ -113,11 +113,36 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Cause: the developer tool surface could enumerate the supplied image files but could not inspect
   their pixels. The model inferred content from filenames and surrounding context instead of
   grounding its answer in the source images.
-- Evidence: result `results/peritus-codex-claude/gpt-5.6-sol/008-image-recognize.json`; elapsed
-  433.018 seconds; outcome 1.0; process 0.3933; security 1.0; combined 0.3933.
-- Required product change: provide a bounded, traceable image-observation capability and require
-  image-backed evidence before completing tasks whose inputs include images. A stronger unchanged
-  semantic oracle must pass before this finding is closed.
+- Before evidence: workspace
+  `oc-bench-v2-008-image-recognize-gpt-5.6-sol-20260828-121007-1883a509`; elapsed 435.9 seconds;
+  visual quality 0.55; process 0.63; security 1.0. The visual rubric confirmed that the second
+  answer called an orange-and-white kitten a brown-and-white dog.
+- Change: image-bearing work now discovers a bounded set of raster files in the managed workspace,
+  validates their signatures, labels their paths in the prompt, and carries their exact bytes as
+  model media instead of pretending a filename is visual evidence. The Codex account runtime
+  stages those bytes in a private temporary directory and sends them to the official executable
+  with `--image`. Text-only providers fail clearly before work begins.
+- After evidence: local report `reports/008-image-recognize-grounded-images.json`; both unchanged
+  semantic checks passed; visual quality 1.0; outcome 1.0; process 0.7667; security 1.0; combined
+  0.7667; elapsed 161.666 seconds. The second answer correctly describes an orange-and-white kitten
+  on a cream blanket indoors.
+- Follow-up: remove duplicate planning and grounding reads. Correctness is closed, but 14 provider
+  requests and 210,503 tokens remain excessive for two one-line artifacts.
+
+## HBM-001: visual rubrics could not cross the local paid-account boundary
+
+- Suite and task: HarnessBench 2.0, first proved by `013-image-edit`.
+- Symptom: the structural oracle passed, but its visual-quality request received HTTP 502 because
+  the localhost rubric bridge accepted only text messages.
+- Cause: the native benchmark boundary did not parse OpenAI-compatible image content or negotiate
+  image input with the Codex account provider.
+- Change: the Rust boundary now validates bounded image data URLs, preserves text-and-image message
+  order, negotiates image capability, and passes private temporary files to the official Codex
+  executable. Unsupported media and oversized inputs fail explicitly.
+- After evidence: local report `reports/013-image-edit-multimodal-scored.json`; structural oracle
+  1.0; visual quality 0.82; blended outcome 0.838; process 0.9667; security 1.0; combined 0.8101;
+  elapsed 315.99 seconds. The visual rubric could inspect the artifact and reported rough masking
+  and crude integration instead of an infrastructure error.
 
 ## HBF-004: unchanged fixer cycles exhausted the external deadline
 
@@ -166,6 +191,20 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   time. The maximum total outcome under that formula is 0.8725.
 - Disposition: retain the unchanged 0.865 score and report this as benchmark-infrastructure
   evidence. Do not patch, special-case, or game the upstream oracle.
+
+## HBI-003: task 012 looks for ground truth above the task directory
+
+- Suite and task: HarnessBench 2.0, `012-doc-synthesis`.
+- Symptom: Peritus produced the requested synthesis and the process rubric scored 0.91, but the
+  trust-assessment check scored zero while the contradiction and report checks displayed `0/0`.
+- Cause: the unchanged oracle derives `task_dir` from `workspace.parent.parent`, then looks for
+  `ground_truth.json` there. That path is outside the task fixture, so expected trust scores and
+  contradiction/report requirements are empty. Empty contradiction and report checks pass while
+  the empty trust-score comparison reports zero accuracy.
+- Evidence: local report `reports/012-doc-synthesis-upstream-oracle-path.json`; outcome 0.75;
+  process 0.91; security 1.0; combined 0.6825; elapsed 279.762 seconds.
+- Disposition: retain the unchanged score and report the upstream path defect. Do not patch the
+  task, copy its ground truth to the mistaken path, or add benchmark-specific behavior.
 
 ## HBT-001: exact trace projection overflowed the rubric context
 

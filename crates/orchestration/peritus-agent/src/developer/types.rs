@@ -1,6 +1,8 @@
 //! Checked inputs, outputs, and effect ports for the production developer loop.
 
-use peritus_model_protocol::{CanonicalJson, CompletedToolCall, Message, ToolDefinition};
+use peritus_model_protocol::{
+    CanonicalJson, CompletedToolCall, MediaInput, Message, ToolDefinition,
+};
 use peritus_provider_core::CancellationToken;
 
 use super::DeveloperLoopError;
@@ -74,6 +76,8 @@ pub struct DeveloperLoopRequest {
     pub system: String,
     /// Current task, conversation, and prior findings.
     pub prompt: String,
+    /// Bounded media attached to the initial user turn in prompt-described order.
+    pub attachments: Vec<MediaInput>,
     /// Provider-visible application tools.
     pub tools: Vec<ToolDefinition>,
     /// Explicit loop bounds.

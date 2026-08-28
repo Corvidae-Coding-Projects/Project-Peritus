@@ -1,10 +1,11 @@
-//! Text-only local rubric completion through the credential-owning Codex router.
+//! Local text and image rubric completion through the credential-owning Codex router.
 
+use base64::Engine as _;
 use peritus_model_protocol::{
-    BoundedText, CachePolicy, Capability, ContentBlock, GenerationConfig, Message, ModelRequest,
-    ParallelToolPolicy, PersistencePolicy, ProtocolLimits, ReasoningPolicy, ReducedItem, RequestId,
-    RequestOptions, RequestedCapabilities, ResponseReducer, Role, StructuredOutput,
-    TerminalOutcome, ToolChoice, negotiate,
+    BoundedText, CachePolicy, Capability, ContentBlock, GenerationConfig, MediaInput, MediaKind,
+    MediaType, Message, ModelRequest, ParallelToolPolicy, PersistencePolicy, ProtocolLimits,
+    ReasoningPolicy, ReducedItem, RequestId, RequestOptions, RequestedCapabilities,
+    ResponseReducer, Role, StructuredOutput, TerminalOutcome, ToolChoice, negotiate,
 };
 use peritus_provider_core::{CancellationToken, ModelProvider};
 use serde::Deserialize;
@@ -50,11 +51,20 @@ pub async fn complete(body: &[u8]) -> Result<Value, BenchmarkError> {
         .iter()
         .map(|message| protocol_message(message, limits))
         .collect::<Result<Vec<_>, _>>()?;
+    let required_capabilities = if messages.iter().any(message_has_image) {
+        vec![Capability::ImageInput]
+    } else {
+        Vec::new()
+    };
     let cancellation = CancellationToken::new();
     let provider = providers::codex_authenticated(&cancellation).await?;
     let profile = provider.profile();
-    let requested = RequestedCapabilities::new(&[], &[Capability::Streaming], profile.limits())
-        .map_err(|error| BenchmarkError::Provider(error.to_string()))?;
+    let requested = RequestedCapabilities::new(
+        &required_capabilities,
+        &[Capability::Streaming],
+        profile.limits(),
+    )
+    .map_err(|error| BenchmarkError::Provider(error.to_string()))?;
     let negotiated = negotiate(profile, requested)
         .map_err(|error| BenchmarkError::Provider(error.to_string()))?;
     let model_request = ModelRequest::new(
@@ -88,6 +98,10 @@ pub async fn complete(body: &[u8]) -> Result<Value, BenchmarkError> {
     {
         reducer.push(event).map_err(|error| BenchmarkError::Provider(error.to_string()))?;
     }
+    response(&reducer)
+}
+
+fn response(reducer: &ResponseReducer) -> Result<Value, BenchmarkError> {
     if !matches!(reducer.terminal(), Some(TerminalOutcome::Succeeded { .. })) {
         return Err(BenchmarkError::Provider(format!(
             "rubric provider terminal was {:?}",
@@ -148,41 +162,31 @@ fn protocol_message(
             )));
         }
     };
-    let text = content_text(&message.content)?;
-    Message::new(
-        role,
-        vec![ContentBlock::Text(
-            BoundedText::new(text, limits)
-                .map_err(|error| BenchmarkError::Provider(error.to_string()))?,
-        )],
-        limits,
-    )
-    .map_err(|error| BenchmarkError::Provider(error.to_string()))
+    let content = content_blocks(&message.content, limits)?;
+    Message::new(role, content, limits).map_err(|error| BenchmarkError::Provider(error.to_string()))
 }
 
-fn content_text(content: &Value) -> Result<String, BenchmarkError> {
+fn content_blocks(
+    content: &Value,
+    limits: ProtocolLimits,
+) -> Result<Vec<ContentBlock>, BenchmarkError> {
     if let Some(text) = content.as_str() {
-        return Ok(text.to_owned());
+        return Ok(vec![text_block(text, limits)?]);
     }
     let parts = content.as_array().ok_or_else(|| {
         BenchmarkError::Arguments("rubric message content is neither text nor parts".to_owned())
     })?;
-    let mut text = String::new();
+    let mut blocks = Vec::new();
     for part in parts {
         match part.get("type").and_then(Value::as_str) {
             Some("text") => {
                 let value = part.get("text").and_then(Value::as_str).ok_or_else(|| {
                     BenchmarkError::Arguments("rubric text part has no text".to_owned())
                 })?;
-                if !text.is_empty() {
-                    text.push('\n');
-                }
-                text.push_str(value);
+                blocks.push(text_block(value, limits)?);
             }
             Some("image_url") => {
-                return Err(BenchmarkError::Arguments(
-                    "the subscription-backed rubric router does not support image input".to_owned(),
-                ));
+                blocks.push(ContentBlock::Image(image_block(part, limits)?));
             }
             other => {
                 return Err(BenchmarkError::Arguments(format!(
@@ -191,10 +195,46 @@ fn content_text(content: &Value) -> Result<String, BenchmarkError> {
             }
         }
     }
-    if text.is_empty() {
-        return Err(BenchmarkError::Arguments("rubric message has no text content".to_owned()));
+    if blocks.is_empty() {
+        return Err(BenchmarkError::Arguments("rubric message has no content".to_owned()));
     }
-    Ok(text)
+    Ok(blocks)
+}
+
+fn text_block(value: &str, limits: ProtocolLimits) -> Result<ContentBlock, BenchmarkError> {
+    BoundedText::new(value.to_owned(), limits)
+        .map(ContentBlock::Text)
+        .map_err(|error| BenchmarkError::Provider(error.to_string()))
+}
+
+fn image_block(part: &Value, limits: ProtocolLimits) -> Result<MediaInput, BenchmarkError> {
+    let url = part
+        .get("image_url")
+        .and_then(|value| value.get("url"))
+        .and_then(Value::as_str)
+        .ok_or_else(|| BenchmarkError::Arguments("rubric image part has no URL".to_owned()))?;
+    let data = url.strip_prefix("data:").ok_or_else(|| {
+        BenchmarkError::Arguments("rubric image must use an inline data URL".to_owned())
+    })?;
+    let (media_type, encoded) = data.split_once(";base64,").ok_or_else(|| {
+        BenchmarkError::Arguments("rubric image data URL is not base64 encoded".to_owned())
+    })?;
+    if !matches!(media_type, "image/png" | "image/jpeg" | "image/webp" | "image/gif") {
+        return Err(BenchmarkError::Arguments(
+            "rubric image type must be PNG, JPEG, WebP, or GIF".to_owned(),
+        ));
+    }
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(encoded)
+        .map_err(|_| BenchmarkError::Arguments("rubric image base64 is invalid".to_owned()))?;
+    let media_type = MediaType::new(media_type.to_owned())
+        .map_err(|error| BenchmarkError::Provider(error.to_string()))?;
+    MediaInput::inline(MediaKind::Image, media_type, bytes, limits)
+        .map_err(|error| BenchmarkError::Provider(error.to_string()))
+}
+
+fn message_has_image(message: &Message) -> bool {
+    message.content().iter().any(|block| matches!(block, ContentBlock::Image(_)))
 }
 
 fn request_id(body: &[u8]) -> Result<RequestId, BenchmarkError> {
@@ -212,19 +252,32 @@ mod tests {
     use super::*;
 
     #[test]
-    fn text_and_text_parts_project_without_images() {
-        assert_eq!(content_text(&json!("plain")).unwrap(), "plain");
-        assert_eq!(
-            content_text(&json!([
+    fn text_and_image_parts_project_to_protocol_blocks() {
+        let limits = ProtocolLimits::PRODUCTION;
+        let plain = content_blocks(&json!("plain"), limits).unwrap();
+        assert!(matches!(&plain[..], [ContentBlock::Text(_)]));
+        let parts = content_blocks(
+            &json!([
                 {"type": "text", "text": "first"},
+                {"type": "image_url", "image_url": {"url": "data:image/png;base64,aW1hZ2U="}},
                 {"type": "text", "text": "second"}
-            ]))
-            .unwrap(),
-            "first\nsecond"
-        );
-        assert!(
-            content_text(&json!([{"type": "image_url", "image_url": {"url": "data:"}}])).is_err()
-        );
+            ]),
+            limits,
+        )
+        .unwrap();
+        assert!(matches!(
+            &parts[..],
+            [ContentBlock::Text(_), ContentBlock::Image(_), ContentBlock::Text(_)]
+        ));
+        match &parts[1] {
+            ContentBlock::Image(media) => assert_eq!(media.inline_len(), 5),
+            _ => panic!("second block is not an image"),
+        }
+        assert!(content_blocks(
+            &json!([{"type": "image_url", "image_url": {"url": "https://example.invalid/a.png"}}]),
+            limits,
+        )
+        .is_err());
     }
 
     #[test]

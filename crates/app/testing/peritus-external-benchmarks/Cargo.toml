@@ -12,6 +12,7 @@ keywords = ["agents", "benchmark", "qualification"]
 categories = ["development-tools::testing"]
 
 [dependencies]
+base64.workspace = true
 peritus-model-protocol = { version = "=0.0.0", path = "../../../model/peritus-model-protocol" }
 peritus-product-runner = { version = "=0.0.0", path = "../../peritus-product-runner" }
 peritus-provider-anthropic = { version = "=0.0.0", path = "../../../model/peritus-provider-anthropic" }

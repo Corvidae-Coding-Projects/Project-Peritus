@@ -70,7 +70,10 @@ fn validate(profile: &ProviderProfile) -> Result<(), ProviderCoreError> {
             && (state != CapabilityState::Supported
                 || matches!(
                     capability,
-                    Capability::ToolCalls | Capability::ParallelToolCalls | Capability::UsageDetail
+                    Capability::ToolCalls
+                        | Capability::ParallelToolCalls
+                        | Capability::ImageInput
+                        | Capability::UsageDetail
                 ))
     });
     if profile.provider().as_str() != "openai"

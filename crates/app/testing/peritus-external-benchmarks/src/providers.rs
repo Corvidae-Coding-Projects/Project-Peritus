@@ -76,6 +76,14 @@ fn profile(
     model: &str,
     dialect: WireDialect,
 ) -> Result<ProviderProfile, BenchmarkError> {
+    let mut supported =
+        vec![Capability::ToolCalls, Capability::ParallelToolCalls, Capability::UsageDetail];
+    let inline_media_bytes = if dialect == WireDialect::OpenAiCodexRuntime {
+        supported.push(Capability::ImageInput);
+        32 * 1024 * 1024
+    } else {
+        1
+    };
     ProviderProfile::new(
         ProviderProfileId::new(identity)
             .map_err(|_| BenchmarkError::Provider("provider identity is invalid".to_owned()))?,
@@ -85,13 +93,10 @@ fn profile(
         ModelName::new(model.to_owned())
             .map_err(|error| BenchmarkError::Provider(error.to_string()))?,
         dialect,
-        CapabilityMatrix::new(
-            &[Capability::ToolCalls, Capability::ParallelToolCalls, Capability::UsageDetail],
-            &[],
-        )
-        .map_err(|error| BenchmarkError::Provider(error.to_string()))?,
+        CapabilityMatrix::new(&supported, &[])
+            .map_err(|error| BenchmarkError::Provider(error.to_string()))?,
         CapabilityProvenance::Profiled,
-        ModelLimits::new(200_000, 32_000, 32, 8, 1)
+        ModelLimits::new(200_000, 32_000, 32, 8, inline_media_bytes)
             .map_err(|error| BenchmarkError::Provider(error.to_string()))?,
         OutputLimitEnforcement::Advisory,
         StateMode::StatelessReplay,

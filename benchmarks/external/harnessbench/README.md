@@ -57,5 +57,6 @@ RUBRIC_MODEL=gpt-5.6-sol
 
 The Python process only provides the HTTP shape required by HarnessBench. Each request is passed
 unchanged to the native Rust agent, which uses the authenticated official `codex` executable. The
-bridge does not read or copy account credentials. The current subscription router is text-only, so
-multimodal rubric requests remain an explicit limitation rather than silently dropping images.
+bridge does not read or copy account credentials. Text and bounded inline PNG, JPEG, WebP, and GIF
+inputs are preserved. Rust validates image data before the official executable receives private
+temporary files through its documented `--image` option.

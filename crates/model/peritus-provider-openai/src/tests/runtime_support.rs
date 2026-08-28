@@ -2,11 +2,11 @@
 
 use peritus_model_protocol::{
     CachePolicy, CancellationKind, Capability, CapabilityMatrix, CapabilityProvenance,
-    ContentBlock, GenerationConfig, JsonBounds, JsonSchema, Message, ModelRequest,
-    OutputLimitEnforcement, ParallelToolPolicy, PersistencePolicy, ProtocolLimits, ProviderName,
-    ProviderProfile, ReasoningPolicy, RequestId, RequestOptions, RequestedCapabilities, ResumeKind,
-    Role, StateMode, StructuredOutput, ToolChoice, ToolDefinition, ToolName, WireDialect,
-    negotiate,
+    ContentBlock, GenerationConfig, JsonBounds, JsonSchema, MediaInput, MediaKind, MediaType,
+    Message, ModelRequest, OutputLimitEnforcement, ParallelToolPolicy, PersistencePolicy,
+    ProtocolLimits, ProviderName, ProviderProfile, ReasoningPolicy, RequestId, RequestOptions,
+    RequestedCapabilities, ResumeKind, Role, StateMode, StructuredOutput, ToolChoice,
+    ToolDefinition, ToolName, WireDialect, negotiate,
 };
 use peritus_types::ProviderProfileId;
 
@@ -32,6 +32,25 @@ pub fn codex_profile(model: &str, tools: bool) -> ProviderProfile {
         CancellationKind::BestEffortLocalAbort,
     )
     .expect("Codex runtime profile")
+}
+
+pub fn codex_image_profile(model: &str) -> ProviderProfile {
+    ProviderProfile::new(
+        ProviderProfileId::new([12; 16]).expect("profile id"),
+        1,
+        ProviderName::new("openai".to_owned()).expect("provider"),
+        peritus_model_protocol::ModelName::new(model.to_owned()).expect("model"),
+        WireDialect::OpenAiCodexRuntime,
+        CapabilityMatrix::new(&[Capability::ImageInput, Capability::UsageDetail], &[])
+            .expect("capabilities"),
+        CapabilityProvenance::Profiled,
+        model_limits(),
+        OutputLimitEnforcement::Advisory,
+        StateMode::StatelessReplay,
+        ResumeKind::Unsupported,
+        CancellationKind::BestEffortLocalAbort,
+    )
+    .expect("Codex image profile")
 }
 
 pub fn codex_tool_request(profile: &ProviderProfile, request_id: &str) -> ModelRequest {
@@ -65,6 +84,37 @@ pub fn codex_tool_request(profile: &ProviderProfile, request_id: &str) -> ModelR
         ProtocolLimits::PRODUCTION,
     )
     .expect("Codex tool request")
+}
+
+pub fn codex_image_request(profile: &ProviderProfile, request_id: &str) -> ModelRequest {
+    let negotiated = negotiate(
+        profile,
+        RequestedCapabilities::new(&[Capability::ImageInput], &[], model_limits())
+            .expect("requested"),
+    )
+    .expect("negotiated");
+    let media = MediaInput::inline(
+        MediaKind::Image,
+        MediaType::new("image/png".to_owned()).expect("media type"),
+        b"bounded-image-bytes".to_vec(),
+        ProtocolLimits::PRODUCTION,
+    )
+    .expect("inline image");
+    ModelRequest::new(
+        profile,
+        negotiated,
+        RequestId::new(request_id.to_owned()).expect("request id"),
+        vec![message(
+            Role::User,
+            vec![ContentBlock::Text(text("Describe attachment zero")), ContentBlock::Image(media)],
+        )],
+        Vec::new(),
+        ToolChoice::None,
+        ParallelToolPolicy::Disabled,
+        runtime_options(),
+        ProtocolLimits::PRODUCTION,
+    )
+    .expect("Codex image request")
 }
 
 fn runtime_options() -> RequestOptions {

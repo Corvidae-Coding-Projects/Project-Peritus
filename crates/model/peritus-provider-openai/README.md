@@ -51,10 +51,10 @@ refreshes, or exports an account login.
 
 The exact runtime profile names provider `openai`, uses `WireDialect::OpenAiCodexRuntime`, declares
 an advisory output limit, stateless local replay, unsupported resume, and best-effort local
-cancellation. Its only supported capabilities are inert host tool proposals, bounded parallel host
-tool proposals, and usage detail. Media, cache, remote persistence/background execution,
-continuation, reasoning replay, sampling controls, and caller-defined strict structured output are
-rejected before authentication or process submission.
+cancellation. It supports bounded inline images, inert host tool proposals, bounded parallel host
+tool proposals, and usage detail. Cache, audio, documents, remote media,
+remote persistence/background execution, continuation, reasoning replay, sampling controls, and
+caller-defined strict structured output are rejected before authentication or process submission.
 
 Each turn uses an isolated temporary working directory and output schema. The process is invoked in
 JSONL, ephemeral, read-only mode while ignoring user config/rules and Git state; native tools and
@@ -64,6 +64,11 @@ enum plus an `arguments_json` string. Full host schemas are prompt guidance only
 argument objects are parsed and validated before becoming inert Peritus tool proposals. Native tool
 execution items, malformed JSONL, missing turn completion, multiple agent messages, and unknown
 correctness-critical shapes fail closed.
+
+PNG, JPEG, WebP, and GIF bytes remain outside the text prompt. The request projection records only
+their attachment index, media type, and SHA-256 digest. Each image is written beneath the turn's
+private temporary directory and supplied through the official executable's `--image` option; the
+directory lifetime covers the child process and ends with the turn.
 
 Subprocess stdin/stdout/stderr, timeout, cancellation, kill, and reap are bounded by
 `ProcessLimits` and the shared process transport. A normal completed turn is buffered and validated

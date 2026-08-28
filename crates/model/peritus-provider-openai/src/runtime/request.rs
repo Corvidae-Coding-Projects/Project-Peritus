@@ -3,7 +3,8 @@
 mod schema;
 
 use peritus_model_protocol::{
-    CachePolicy, ContentBlock, ModelRequest, ReasoningPolicy, Role, StructuredOutput, ToolChoice,
+    CachePolicy, ContentBlock, MediaInput, MediaKind, ModelRequest, ReasoningPolicy, Role,
+    StructuredOutput, ToolChoice,
 };
 use peritus_provider_core::ProviderCoreError;
 use serde_json::{Map, Value};
@@ -15,11 +16,28 @@ pub struct RuntimeRequest {
     pub schema: Vec<u8>,
     pub allowed_tools: std::collections::BTreeSet<String>,
     pub max_calls: usize,
+    images: Vec<RuntimeImage>,
+}
+
+pub(super) struct RuntimeImage {
+    pub(super) media_type: String,
+    pub(super) bytes: Vec<u8>,
+}
+
+impl RuntimeRequest {
+    pub(super) fn images(&self) -> &[RuntimeImage] {
+        &self.images
+    }
 }
 
 pub fn encode(request: &ModelRequest) -> Result<RuntimeRequest, ProviderCoreError> {
     validate_controls(request)?;
-    let messages = request.messages().iter().map(message).collect::<Result<Vec<_>, _>>()?;
+    let mut images = Vec::new();
+    let messages = request
+        .messages()
+        .iter()
+        .map(|item| message(item, &mut images))
+        .collect::<Result<Vec<_>, _>>()?;
     let tools = request.tools().iter().map(tool).collect::<Result<Vec<_>, _>>()?;
     let payload = object(vec![
         ("model", Value::String(request.model().as_str().to_owned())),
@@ -41,6 +59,7 @@ pub fn encode(request: &ModelRequest) -> Result<RuntimeRequest, ProviderCoreErro
         schema: contract.bytes,
         allowed_tools: contract.allowed_tools,
         max_calls: contract.max_calls,
+        images,
     })
 }
 
@@ -65,15 +84,25 @@ fn validate_controls(request: &ModelRequest) -> Result<(), ProviderCoreError> {
     Ok(())
 }
 
-fn message(message: &peritus_model_protocol::Message) -> Result<Value, ProviderCoreError> {
-    let content = message.content().iter().map(content).collect::<Result<Vec<_>, _>>()?;
+fn message(
+    message: &peritus_model_protocol::Message,
+    images: &mut Vec<RuntimeImage>,
+) -> Result<Value, ProviderCoreError> {
+    let content = message
+        .content()
+        .iter()
+        .map(|block| content(block, images))
+        .collect::<Result<Vec<_>, _>>()?;
     Ok(object(vec![
         ("role", Value::String(role_name(message.role()).to_owned())),
         ("content", Value::Array(content)),
     ]))
 }
 
-fn content(block: &ContentBlock) -> Result<Value, ProviderCoreError> {
+fn content(
+    block: &ContentBlock,
+    images: &mut Vec<RuntimeImage>,
+) -> Result<Value, ProviderCoreError> {
     match block {
         ContentBlock::Text(text) | ContentBlock::Refusal(text) => Ok(object(vec![
             ("type", Value::String("text".to_owned())),
@@ -91,14 +120,42 @@ fn content(block: &ContentBlock) -> Result<Value, ProviderCoreError> {
             ("output", json_value(result.output().canonical_bytes())?),
             ("is_error", Value::Bool(result.is_error())),
         ])),
-        ContentBlock::Image(_)
-        | ContentBlock::Audio(_)
+        ContentBlock::Image(media) => image(media, images),
+        ContentBlock::Audio(_)
         | ContentBlock::Document(_)
         | ContentBlock::Reasoning(_)
         | ContentBlock::ProviderExtension(_) => {
-            Err(invalid("Codex runtime accepts only text and host tool history"))
+            Err(invalid("Codex runtime accepts text, inline images, and host tool history"))
         }
     }
+}
+
+fn image(media: &MediaInput, images: &mut Vec<RuntimeImage>) -> Result<Value, ProviderCoreError> {
+    if media.kind() != MediaKind::Image {
+        return Err(invalid("Codex runtime image block contains another media kind"));
+    }
+    let bytes = media
+        .inline_bytes_for_wire()
+        .ok_or_else(|| invalid("Codex runtime image input must use bounded inline bytes"))?;
+    let index = images.len();
+    images.push(RuntimeImage {
+        media_type: media.media_type().as_str().to_owned(),
+        bytes: bytes.to_vec(),
+    });
+    let digest = media
+        .digest()
+        .ok_or_else(|| invalid("Codex runtime inline image has no content digest"))?;
+    let mut digest_hex = String::with_capacity(64);
+    for byte in digest.as_bytes() {
+        use core::fmt::Write as _;
+        let _ = write!(digest_hex, "{byte:02x}");
+    }
+    Ok(object(vec![
+        ("type", Value::String("image_attachment".to_owned())),
+        ("attachment_index", Value::Number(index.into())),
+        ("media_type", Value::String(media.media_type().as_str().to_owned())),
+        ("sha256", Value::String(digest_hex)),
+    ]))
 }
 
 fn tool(tool: &peritus_model_protocol::ToolDefinition) -> Result<Value, ProviderCoreError> {

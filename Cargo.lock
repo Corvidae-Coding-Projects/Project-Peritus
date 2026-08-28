@@ -2186,6 +2186,7 @@ dependencies = [
 name = "peritus-external-benchmarks"
 version = "0.0.0"
 dependencies = [
+ "base64",
  "peritus-model-protocol",
  "peritus-product-runner",
  "peritus-provider-anthropic",

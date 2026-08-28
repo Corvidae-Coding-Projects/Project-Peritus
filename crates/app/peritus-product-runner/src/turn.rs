@@ -30,7 +30,10 @@ pub async fn complete_developer_turn(
         invocation = invocation.saturating_add(1);
         let revision = input.conversation.revision();
         let transcript = input.conversation.render();
+        let media =
+            crate::workspace_media::discover(&input.workspace_root, &transcript, model.profile())?;
         let prompt = writer_user(&transcript, design, findings, correction.as_deref());
+        let (prompt, attachments) = media.into_parts(prompt);
         let mut tools = WorkspaceDeveloperTools::new(input.workspace_root.clone());
         let mut trace = FileDeveloperTrace::new(input.trace_path.clone());
         let prefix = request_name(input.run_id, role, cycle);
@@ -40,6 +43,7 @@ pub async fn complete_developer_turn(
                 request_prefix: format!("{prefix}-invocation-{invocation}"),
                 system: writer_system(role),
                 prompt,
+                attachments,
                 tools: definitions()?,
                 limits: DeveloperLoopLimits::new(48, 512)
                     .map_err(|error| developer_error(&error))?,

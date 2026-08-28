@@ -5,7 +5,9 @@ use std::collections::BTreeSet;
 use peritus_model_protocol::{Capability, RequestedCapabilities, negotiate};
 use peritus_provider_core::ProcessLimits;
 
-use super::runtime_support::{codex_profile, codex_tool_request};
+use super::runtime_support::{
+    codex_image_profile, codex_image_request, codex_profile, codex_tool_request,
+};
 use super::support::{fixture, model_limits, profile_minimal};
 use crate::runtime::output::{DecodeFailure, decode};
 use crate::runtime::request;
@@ -38,6 +40,22 @@ fn profile_and_projection_are_exact_and_minimum_safe() {
         ProcessLimits::PRODUCTION,
     )
     .is_err());
+}
+
+#[test]
+fn inline_image_is_staged_outside_the_prompt_with_a_digest_descriptor() {
+    let profile = codex_image_profile("runtime-image");
+    let request = codex_image_request(&profile, "runtime-image-projection");
+    let encoded = request::encode(&request).expect("runtime image projection");
+    let prompt = core::str::from_utf8(&encoded.prompt).expect("prompt UTF-8");
+
+    assert!(prompt.contains("image_attachment"));
+    assert!(prompt.contains("attachment_index"));
+    assert!(prompt.contains("sha256"));
+    assert!(!prompt.contains("bounded-image-bytes"));
+    assert!(
+        CodexRuntimeConfig::new(missing_executable(), profile, ProcessLimits::PRODUCTION,).is_ok()
+    );
 }
 
 #[test]

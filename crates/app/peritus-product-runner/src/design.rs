@@ -53,6 +53,10 @@ pub async fn create(
         invocation = invocation.saturating_add(1);
         let revision = input.conversation.revision();
         let transcript = input.conversation.render();
+        let media =
+            crate::workspace_media::discover(&input.workspace_root, &transcript, model.profile())?;
+        let (prompt, attachments) =
+            media.into_parts(user_prompt(&transcript, correction.as_deref()));
         let mut tools = WorkspaceDeveloperTools::new(input.workspace_root.clone());
         let mut trace = FileDeveloperTrace::new(input.trace_path.clone());
         let result = DeveloperLoop::run(
@@ -63,7 +67,8 @@ pub async fn create(
                     crate::turn::request_name(input.run_id, "designer", cycle)
                 ),
                 system: system_prompt(),
-                prompt: user_prompt(&transcript, correction.as_deref()),
+                prompt,
+                attachments,
                 tools: read_only_definitions()?,
                 limits: DeveloperLoopLimits::new(48, 512)
                     .map_err(|error| crate::turn::developer_error(&error))?,

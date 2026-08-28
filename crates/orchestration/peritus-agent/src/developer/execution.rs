@@ -38,15 +38,19 @@ impl DeveloperLoop {
     ) -> Result<DeveloperLoopOutcome, DeveloperLoopError> {
         let protocol_limits = ProtocolLimits::PRODUCTION;
         let profile = provider.profile();
+        let mut required_capabilities = vec![Capability::ToolCalls];
+        if !request.attachments.is_empty() {
+            required_capabilities.push(Capability::ImageInput);
+        }
         let requested = RequestedCapabilities::new(
-            &[Capability::ToolCalls],
+            &required_capabilities,
             &[Capability::Streaming, Capability::ParallelToolCalls],
             profile.limits(),
         )?;
         let negotiated = negotiate(profile, requested)?;
         let mut messages = vec![
             message(Role::System, request.system.clone(), protocol_limits)?,
-            message(Role::User, request.prompt.clone(), protocol_limits)?,
+            user_message(request.prompt.clone(), request.attachments.clone(), protocol_limits)?,
         ];
         let mut tool_calls = 0_u32;
 
@@ -273,4 +277,15 @@ fn message(
     limits: ProtocolLimits,
 ) -> Result<Message, DeveloperLoopError> {
     Ok(Message::new(role, vec![ContentBlock::Text(BoundedText::new(value, limits)?)], limits)?)
+}
+
+fn user_message(
+    value: String,
+    attachments: Vec<peritus_model_protocol::MediaInput>,
+    limits: ProtocolLimits,
+) -> Result<Message, DeveloperLoopError> {
+    let mut content = Vec::with_capacity(attachments.len().saturating_add(1));
+    content.push(ContentBlock::Text(BoundedText::new(value, limits)?));
+    content.extend(attachments.into_iter().map(ContentBlock::Image));
+    Ok(Message::new(Role::User, content, limits)?)
 }

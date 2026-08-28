@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Ground image tasks in actual bounded workspace pixels instead of filenames, carry validated
+  raster inputs through the developer loop and Codex account runtime, fail clearly for text-only
+  providers, and let HarnessBench visual rubrics use the same credential-preserving route (#31)
 - Project large assistant, tool-argument, and tool-output values into digest-labeled bounded
   previews for external process grading while retaining every exact byte in the native trace,
   preventing HarnessBench's rubric context cap from hiding late write and verification events (#31)
@@ -58,6 +61,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Add deterministic workspace image discovery with signature, count, per-file, and total-size
+  bounds; private Codex CLI image staging; and multimodal external-rubric parsing and tests (#31)
 - Add the native external-benchmark adapter and normalized trace projection, pin HarnessBench 2.0
   at its exact upstream commit, retain a reproducible failure journal, and route its text process
   rubric through the already-authenticated official Codex executable without copying credentials
