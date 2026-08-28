@@ -216,6 +216,10 @@ fn protect_directory(path: &std::path::Path) -> Result<(), LauncherError> {
 }
 
 #[cfg(windows)]
+#[allow(
+    clippy::unnecessary_wraps,
+    reason = "keeps the platform implementations behind one fallible directory-protection contract"
+)]
 const fn protect_directory(_path: &std::path::Path) -> Result<(), LauncherError> {
     Ok(())
 }

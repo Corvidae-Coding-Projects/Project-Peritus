@@ -150,6 +150,10 @@ fn protect_directory(path: &Path) -> Result<(), LauncherError> {
 }
 
 #[cfg(windows)]
+#[allow(
+    clippy::unnecessary_wraps,
+    reason = "keeps the platform implementations behind one fallible directory-protection contract"
+)]
 const fn protect_directory(_path: &Path) -> Result<(), LauncherError> {
     Ok(())
 }
@@ -162,6 +166,10 @@ pub fn protect_file(file: &File, path: &Path) -> Result<(), LauncherError> {
 }
 
 #[cfg(windows)]
+#[allow(
+    clippy::unnecessary_wraps,
+    reason = "keeps the platform implementations behind one fallible file-protection contract"
+)]
 pub const fn protect_file(_file: &File, _path: &Path) -> Result<(), LauncherError> {
     Ok(())
 }
@@ -177,6 +185,10 @@ fn sync_parent(path: &Path) -> Result<(), LauncherError> {
 }
 
 #[cfg(windows)]
+#[allow(
+    clippy::unnecessary_wraps,
+    reason = "keeps the platform implementations behind one fallible durable-sync contract"
+)]
 const fn sync_parent(_path: &Path) -> Result<(), LauncherError> {
     Ok(())
 }

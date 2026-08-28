@@ -294,6 +294,10 @@ async fn endpoint_ready(endpoint: &Path) -> bool {
 }
 
 #[cfg(windows)]
+#[allow(
+    clippy::unused_async,
+    reason = "keeps Unix sockets and Windows named pipes behind one awaited readiness contract"
+)]
 async fn endpoint_ready(endpoint: &Path) -> bool {
     let Some(pipe) = endpoint.to_str() else {
         return false;
