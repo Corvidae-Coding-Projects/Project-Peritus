@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 502,
+  "next_comment_id": 503,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -5256,17 +5256,28 @@
       "parent_uuid": "59346441-f15a-4950-a0f1-f10b1b9b1f7d",
       "created_by": "6ME5",
       "created_at": "2026-08-27T23:32:20.721850486Z",
-      "updated_at": "2026-08-27T23:32:30.522274424Z",
+      "updated_at": "2026-08-28T00:58:53.231706825Z",
       "labels": [
         "feature",
         "ux"
-      ]
+      ],
+      "comments": {
+        "f0a0943d-5eb8-4d46-a95b-954c357e45d0": {
+          "display_id": 502,
+          "author": "NWAR",
+          "content": "[action] Starting G4.3 ergonomic workspace discovery, trust, registration, switching, and recovery on the existing product-experience branch.",
+          "created_at": "2026-08-28T00:58:53.228624974Z",
+          "kind": "note",
+          "signed_by": "SHA256:mTwYqorrA4UxSK3se0aIOCOC6y7kyE/sEvoFLwVluf4",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgmuiChqHxrMH8nicBvsKr3z1JEgjcUOEEH/DcxL6kdeEAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAHQVb+KP1yHghG55123e0kAP09+dvokRWkphqqY7HcyhFGa7Gn/qZz8A+GIQH4RFeSnh8Y+ZJyPh7yW7tyw5VBA=="
+        }
+      }
     }
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-28T00:58:47.423338252Z",
+    "timestamp": "2026-08-28T00:58:53.231706825Z",
     "agent_id": "NWAR",
-    "agent_seq": 13
+    "agent_seq": 14
   }
 }
