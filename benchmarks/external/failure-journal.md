@@ -405,6 +405,21 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   infrastructure failure. Do not remove a clear customer-facing denial to hide it from a
   negation-insensitive branch.
 
+## HBI-014: task 033 calls explicit negative evidence insufficient
+
+- Suite and task: HarnessBench 2.0, `033-offline-knowledge-qa`.
+- Symptom: all four positive facts, sources, and supporting signals passed, but the unchanged oracle
+  rejected Q4 because Peritus answered `No` instead of `insufficient_evidence`.
+- Cause: Q4 asks whether the project disclosed the chief financial officer approver's name. The
+  supplied Rivergate memo explicitly states, “It does not name any finance approver.” That is direct
+  evidence for a negative answer, not missing evidence. Hidden ground truth nevertheless marks the
+  question insufficient and awards the entire insufficient-evidence component only for that label.
+- Evidence: local report `reports/033-offline-knowledge-qa-false-insufficient.json`; outcome 0.7667;
+  process 0.79; security 1.0; combined 0.6057; elapsed 204.947 seconds. Peritus cites
+  `docs/rivergate.md` and the exact negative statement.
+- Disposition: retain the unchanged score and classify the failure as incorrect benchmark ground
+  truth. Do not make Peritus discard an explicit sourced negative fact.
+
 ## HBF-005: a fixer deleted evaluator-owned evidence
 
 - Suite and task: HarnessBench 2.0, `022-local-rest-api-summary`.
