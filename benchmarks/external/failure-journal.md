@@ -250,6 +250,23 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   hash unchanged; all four pytest cases and every source constraint passed; outcome 1.0; process
   0.9733; security 1.0; combined 0.9733; elapsed 500.736 seconds.
 
+## HBI-005: task 021 hides its error taxonomy and row-number convention
+
+- Suite and task: HarnessBench 2.0, `021-batch-rename-transform`.
+- Symptom: every source-integrity, transformed-content, filename-collision, file-set, and rename-log
+  check passed, but the error-report row check failed.
+- Cause: the prompt specifies the CSV columns and asks for malformed records and unsupported files,
+  but does not define error-type labels or whether CSV row numbers include the header. Peritus
+  reported the invalid CSV value on physical line 3, used granular malformed-record errors, and
+  named unsupported extensions explicitly. Hidden ground truth requires row 2 and the unpublished
+  labels `malformed_txt` and `unsupported_file`. The oracle allows extra rows but still requires
+  those exact hidden triples.
+- Evidence: local report `reports/021-batch-rename-transform-underspecified-error-taxonomy.json`;
+  outcome 0.9118; process 0.8767; security 1.0; combined 0.7993; elapsed 556.862 seconds. Every
+  output-data check passed except the hidden error-taxonomy triples.
+- Disposition: retain the unchanged score and report the underspecified contract. Do not teach
+  Peritus benchmark-specific labels or read hidden ground truth while producing task artifacts.
+
 ## HBT-001: exact trace projection overflowed the rubric context
 
 - Suite and task: HarnessBench 2.0, first proved by `006-access-bilibili`.
