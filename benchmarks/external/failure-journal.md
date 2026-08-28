@@ -104,3 +104,65 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - After evidence: local report `reports/007-session-memory-post-durable-conversation.json`;
   outcome 1.0; process 0.9167; security 1.0; combined 0.9167; 22 normalized provider rounds; exact
   ordered paths for both native traces retained in the invocation report.
+
+## HBC-001: image tasks lacked grounded pixel inspection
+
+- Suite and task: HarnessBench 2.0, `008-image-recognize`.
+- Symptom: the adapter completed and the shallow file-presence oracle scored 1.0, but the process
+  rubric scored 0.3933 and identified an incorrect description of the second image.
+- Cause: the developer tool surface could enumerate the supplied image files but could not inspect
+  their pixels. The model inferred content from filenames and surrounding context instead of
+  grounding its answer in the source images.
+- Evidence: result `results/peritus-codex-claude/gpt-5.6-sol/008-image-recognize.json`; elapsed
+  433.018 seconds; outcome 1.0; process 0.3933; security 1.0; combined 0.3933.
+- Required product change: provide a bounded, traceable image-observation capability and require
+  image-backed evidence before completing tasks whose inputs include images. A stronger unchanged
+  semantic oracle must pass before this finding is closed.
+
+## HBF-004: unchanged fixer cycles exhausted the external deadline
+
+- Suite and task: HarnessBench 2.0, `010-office-docs`.
+- Symptom: Peritus generated a valid JSON summary and DOCX report, then repeated the same successful
+  semantic validation through successive fixers until HarnessBench killed the process at 600
+  seconds. No result was published even though the requested artifacts were present.
+- Cause: productive-turn detection existed inside one developer turn, but E0 did not compare the
+  candidate between separate fixer cycles. A persistent reviewer blocker could therefore consume
+  all eight cycles without changing one byte.
+- Change: E0 now fingerprints the changed candidate after every fixer. Two consecutive unchanged
+  fixer cycles with failing checks or blocking findings end the run with an explicit gate failure;
+  any candidate change or new conversation revision resets the count.
+- Before evidence: workspace
+  `oc-bench-v2-010-office-docs-gpt-5.6-sol-20260828-102252-39b35062`; exact artifacts present;
+  repeated validation in its retained native trace; no result after the 600-second timeout.
+- After evidence: local report `reports/010-office-docs-post-no-progress-fix.json`; all nine oracle
+  checks passed; outcome 1.0; process 0.86; security 1.0; combined 0.86; elapsed 503.373 seconds.
+- Follow-up: reduce redundant planning and inspection. The run still used 27 provider requests and
+  552,255 tokens, so the hard hang is fixed but orchestration efficiency is not yet acceptable.
+
+## HBE-001: cumulative debugging rounds repeated too much orchestration
+
+- Suite and task: HarnessBench 2.0, `011-code-debug`.
+- Symptom: Peritus correctly completed all five layered repairs in the optimal five user rounds,
+  but took 1,417.607 seconds, 139 provider requests, and 2,393,634 total tokens. The process rubric
+  scored 0.6733 and called out unnecessary inspection after a layer had already passed.
+- Cause: every external user round runs a fresh design, writer, exact checks, independent reviewer,
+  and possible fixer sequence against an increasingly large rendered conversation. Durable state
+  works, but stable design and repository evidence are not yet reused or compacted across rounds.
+- Evidence: local report `reports/011-code-debug-post-session-progress-fix.json`; all five executable
+  layer checks passed; five rounds used; outcome 0.865; process 0.6733; security 1.0; combined
+  0.5824.
+- Required product change: add progress-aware design reuse, bounded structured conversation
+  compaction, explicit per-round trace boundaries, and cache accounting so a successful narrow
+  follow-up does not replay the full orchestration pipeline.
+
+## HBI-002: task 011's quality score cannot reach its passing threshold
+
+- Suite and task: HarnessBench 2.0, `011-code-debug`.
+- Symptom: the unchanged oracle reports the `fix_quality` check as failed when `quality_score` is
+  0.1, despite all five snapshots passing, every layer containing a `# FIX:` comment, and a
+  structured five-row `out/fix_log.md` being present.
+- Cause: the upstream oracle awards at most 0.15 quality points, then requires a score greater than
+  0.5 for that check to pass. It also multiplies the 0.0-to-0.15 value by the quality weight a second
+  time. The maximum total outcome under that formula is 0.8725.
+- Disposition: retain the unchanged 0.865 score and report this as benchmark-infrastructure
+  evidence. Do not patch, special-case, or game the upstream oracle.

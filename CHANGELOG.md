@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Stop the production fixer loop after two consecutive cycles make no candidate change while exact
+  checks or blocking findings remain, resetting the detector after real edits or new conversation
+  input; this turns benchmark deadline kills into bounded, inspectable outcomes (#31)
 - Reassemble streamed tool-call argument bytes before UTF-8 decoding and let completed external
   benchmark attempts reach their upstream oracle even when Peritus's stricter internal review
   rejects the candidate, preserving process grades and multi-round task continuity (#31)

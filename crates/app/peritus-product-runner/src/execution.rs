@@ -1,6 +1,7 @@
 //! E0 production writer-gates-review-fixer composition.
 
 mod cycle;
+mod fix_progress;
 mod summary;
 mod types;
 
@@ -18,6 +19,7 @@ use crate::{
     ProductRunnerError, ProductRunnerErrorKind, candidate::CandidateBaseline, design, review,
 };
 use cycle::{apply_fix, create_design, initial_write, inspect_cycle};
+use fix_progress::{FixProgress, FixProgressObservation};
 use summary::completion_summary;
 
 const MAX_FIX_CYCLES: u32 = 8;
@@ -61,6 +63,7 @@ impl ProductRunner {
             tool_calls: applied.tool_calls,
             conversation_revision: applied.conversation_revision,
             findings: restored_findings,
+            fix_progress: FixProgress::capture(&input.workspace_root)?,
             coordinator: ProductionRunCoordinator::new(MAX_FIX_CYCLES).map_err(|detail| {
                 ProductRunnerError::new(
                     ProductRunnerErrorKind::Gate,
@@ -96,6 +99,7 @@ impl ProductRunner {
                         state.run_instructions = applied.run_instructions;
                         state.tool_calls = state.tool_calls.saturating_add(applied.tool_calls);
                         state.conversation_revision = applied.conversation_revision;
+                        state.fix_progress.reset(&input.workspace_root)?;
                     }
                     AppliedTurn::Waiting { question, conversation_revision } => {
                         return Ok(ProductRunOutcome::WaitingForUser {
@@ -149,6 +153,15 @@ impl ProductRunner {
                     {
                         return Ok(waiting);
                     }
+                    if state.fix_progress.observe(&input.workspace_root)?
+                        == FixProgressObservation::Exhausted
+                    {
+                        return Err(ProductRunnerError::new(
+                            ProductRunnerErrorKind::Gate,
+                            "verify coding run",
+                            "two consecutive fixer cycles made no candidate change while exact checks or blocking findings remained",
+                        ));
+                    }
                 }
                 ProductionDecision::Exhausted => {
                     return Err(ProductRunnerError::new(
@@ -170,6 +183,7 @@ struct RunState {
     tool_calls: u32,
     conversation_revision: u64,
     findings: ProductFindingLedger,
+    fix_progress: FixProgress,
     coordinator: ProductionRunCoordinator,
 }
 
