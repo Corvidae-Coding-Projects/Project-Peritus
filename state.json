@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 504,
+  "next_comment_id": 505,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -5256,12 +5256,21 @@
       "parent_uuid": "59346441-f15a-4950-a0f1-f10b1b9b1f7d",
       "created_by": "6ME5",
       "created_at": "2026-08-27T23:32:20.721850486Z",
-      "updated_at": "2026-08-28T01:07:30.678057177Z",
+      "updated_at": "2026-08-28T01:30:40.561753965Z",
       "labels": [
         "feature",
         "ux"
       ],
       "comments": {
+        "84cbbb50-71a1-44b4-933c-e4efe06b3539": {
+          "display_id": 504,
+          "author": "NWAR",
+          "content": "Implemented and signed commit 99a1d443: ergonomic current/explicit/recent repository selection; Verus-refined restricted/trusted state; managed detached worktrees; canonical C1 registration publication, repair, health, and retained catalog history; exact trusted-workspace C4 configuration; configuration-aware daemon restart; peritus open/workspaces commands; user guide and current-state README/CHANGELOG. Verification: focused Rust tests 32 passed across CLI/launcher/product-state plus doctests; Clippy -D warnings passed; peritus-product-state no-cheating Verus 4 verified/0 errors; cargo xtask all passed 74 packages, 2943 sources, 2520 formal files, 11910 ordinary-safe entry points, 2943 trust-scanned files, and 17 pinned actions. Isolated interactive smoke reached daemon/TUI handoff; the harness PTY could not answer the TUI cursor-position query. No binaries or Crosslink-local files were committed.",
+          "created_at": "2026-08-28T01:30:40.558395138Z",
+          "kind": "result",
+          "signed_by": "SHA256:mTwYqorrA4UxSK3se0aIOCOC6y7kyE/sEvoFLwVluf4",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgmuiChqHxrMH8nicBvsKr3z1JEgjcUOEEH/DcxL6kdeEAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABATixWq9d48u7uf0VL69SyaIuibnDb2MD9ZWV1ewildEuvIJspE32/YPpv9pGUKGDiggRgPqgwsfyRXYGo5840AA=="
+        },
         "a96fc5f9-d438-4f88-9552-4b28218605ea": {
           "display_id": 503,
           "author": "NWAR",
@@ -5285,8 +5294,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-28T01:07:30.678057177Z",
+    "timestamp": "2026-08-28T01:30:40.561753965Z",
     "agent_id": "NWAR",
-    "agent_seq": 15
+    "agent_seq": 16
   }
 }
