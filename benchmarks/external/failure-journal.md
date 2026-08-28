@@ -370,6 +370,24 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   underspecified benchmark convention. Do not represent preservation as a source edit solely to
   expose hidden comment IDs.
 
+## HBI-012: task 031 requires a reference identifier that its appendix retires
+
+- Suite and task: HarnessBench 2.0, `031-cross-doc-citation-check`.
+- Symptom: Peritus found all three citation defects, produced three audit rows, retained every valid
+  source, removed the retired Renewal briefing, and assigned the previously uncited CSAT source the
+  next non-retired local identifier. Four unchanged checks still failed.
+- Cause: the appendix explicitly says `S4 is retired and must not be used`, but hidden ground truth
+  requires `[S4] CSAT survey extract`. Peritus used S5 rather than violate that instruction. The
+  audit-row oracle also requires unpublished conventions: locations must contain `Claim B`,
+  `Claim C`, or `Claim D` instead of a concrete `in/report.md:line`; the S2 issue must contain the
+  exact words `wrong title`; and `expected_source` must omit the supplied `in/` path prefix.
+- Evidence: local report `reports/031-cross-doc-citation-check-contradictory-reference.json`;
+  outcome 0.5556; process 0.7433; security 1.0; combined 0.413; elapsed 534.131 seconds. The output
+  cites the four actual source files and contains no retired source title.
+- Disposition: retain the unchanged score and classify the S4 demand as contradictory benchmark
+  ground truth and the audit-row failures as unpublished formatting conventions. Do not reuse a
+  retired identifier or weaken precise file locations to match hidden answers.
+
 ## HBF-005: a fixer deleted evaluator-owned evidence
 
 - Suite and task: HarnessBench 2.0, `022-local-rest-api-summary`.
