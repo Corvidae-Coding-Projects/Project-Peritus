@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 501,
+  "next_comment_id": 502,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1997,7 +1997,7 @@
       "parent_uuid": "59346441-f15a-4950-a0f1-f10b1b9b1f7d",
       "created_by": "6ME5",
       "created_at": "2026-08-27T23:32:05.606146833Z",
-      "updated_at": "2026-08-28T00:57:35.103694575Z",
+      "updated_at": "2026-08-28T00:57:57.858740968Z",
       "labels": [
         "feature",
         "ux"
@@ -2011,6 +2011,15 @@
           "kind": "note",
           "signed_by": "SHA256:mTwYqorrA4UxSK3se0aIOCOC6y7kyE/sEvoFLwVluf4",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgmuiChqHxrMH8nicBvsKr3z1JEgjcUOEEH/DcxL6kdeEAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAaG//BhcRN1y5UuS5h1lz6V8YVTM9GPYMR0YMgfW4K5pP+U5jlUodd3GLonD/gIXxKHO8w5HQfeN43I3HNCocDw=="
+        },
+        "6f769269-01d0-4d1c-bb99-e3d0506715a9": {
+          "display_id": 501,
+          "author": "NWAR",
+          "content": "Delivered signed commit c95ec4e5: first-launch provider catalog; official Codex/Claude account discovery, status, and login; OpenAI/Anthropic/Google/compatible direct routes with hidden terminal entry and OS credential storage; provider switching/removal; immutable product-state configuration; CLI provider settings; runner governance updates. Verified full workspace build, tests, doctests, Clippy -D warnings, rustdoc -D warnings, cargo xtask all, focused Verus no-cheating, real isolated onboarding/provider-settings interactions, direct-key store/removal, and live Codex plus Claude canaries.",
+          "created_at": "2026-08-28T00:57:57.856388334Z",
+          "kind": "result",
+          "signed_by": "SHA256:mTwYqorrA4UxSK3se0aIOCOC6y7kyE/sEvoFLwVluf4",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgmuiChqHxrMH8nicBvsKr3z1JEgjcUOEEH/DcxL6kdeEAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAsXourd4c4JVUTmYv6efrrWFrRPqS3hRVWLyfGenIn2JZ+d7ZXHuDAXfuIMyi5Er+Vjg/lUkEZKZXRKQpjF5mCQ=="
         },
         "e9c769c0-50e0-46bd-9b0e-1f82ad4ebdb9": {
           "display_id": 500,
@@ -5255,8 +5264,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-28T00:57:35.103694575Z",
+    "timestamp": "2026-08-28T00:57:57.858740968Z",
     "agent_id": "NWAR",
-    "agent_seq": 9
+    "agent_seq": 10
   }
 }
