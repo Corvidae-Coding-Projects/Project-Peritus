@@ -1843,12 +1843,13 @@
       "display_id": 40,
       "title": "G4.4 interactive prompt and AcTor run experience",
       "description": "Goal: \n\nAcceptance criteria:\n- \n\nTurn the TUI into the complete coding-product surface: home/dashboard, prompt composer, run creation, provider/model/workspace selection, live writer-reviewer-fixer progress, diffs, approvals, terminal, cancellation, recovery, completion summary, and discoverable settings/help with accessible focus and keyboard behavior.",
-      "status": "open",
+      "status": "closed",
       "priority": "critical",
       "parent_uuid": "59346441-f15a-4950-a0f1-f10b1b9b1f7d",
       "created_by": "6ME5",
       "created_at": "2026-08-27T23:32:35.170356154Z",
-      "updated_at": "2026-08-28T03:47:36.882851168Z",
+      "updated_at": "2026-08-28T03:47:41.521926068Z",
+      "closed_at": "2026-08-28T03:47:41.521924425Z",
       "labels": [
         "feature",
         "ux"
@@ -5378,8 +5379,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-28T03:47:36.882851168Z",
+    "timestamp": "2026-08-28T03:47:41.521926068Z",
     "agent_id": "NWAR",
-    "agent_seq": 28
+    "agent_seq": 29
   }
 }
