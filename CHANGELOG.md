@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Restart a stale or unavailable packaged daemon after upgrades, and show `R restart/reconnect`
+  directly in the offline TUI status instead of leaving recovery hidden behind the help screen (#36)
 - Recover once from malformed writer/fixer plan JSON, and turn terminal coding-run failures into
   actionable conversations that can be corrected and resumed in the same managed worktree (#36)
 - Keep Codex Code Mode disabled without disabling its inert host feature, avoiding the current CLI

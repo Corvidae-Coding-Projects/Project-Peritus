@@ -299,7 +299,7 @@ fn render_help(frame: &mut Frame<'_>, area: Rect) {
         Line::from("  x/r            cancel / retry selected coding run (Runs)"),
         Line::from(""),
         Line::styled("Live connection", Style::default().fg(ACCENT).add_modifier(Modifier::BOLD)),
-        Line::from("  R              reconnect/resume durable session"),
+        Line::from("  R              restart/reconnect and resume the durable session"),
         Line::from("  p/u            pause/resume event delivery"),
         Line::from("  Ctrl-Q/Ctrl-C  exit and send bounded detach/cancel cleanup"),
         Line::from(""),
@@ -335,7 +335,12 @@ fn render_status(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         ConnectionStatus::Connecting => ("connecting".to_owned(), Style::default().fg(WARN)),
         ConnectionStatus::Online { .. } => ("online".to_owned(), Style::default().fg(GOOD)),
         ConnectionStatus::Disconnected(error) => {
-            (format!("offline: {error}"), Style::default().fg(BAD))
+            let recovery = if model.product.is_some() {
+                "offline · R restart/reconnect"
+            } else {
+                "offline · R reconnect"
+            };
+            (format!("{recovery} · {error}"), Style::default().fg(BAD))
         }
     };
     let readiness = model.daemon_status.as_ref().map_or_else(

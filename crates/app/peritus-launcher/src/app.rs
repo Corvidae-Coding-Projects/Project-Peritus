@@ -36,11 +36,19 @@ pub async fn launch_interactive_at(
     let prepared = provider_setup::ensure_configured(prepared)?;
     let binaries = SiblingBinaries::discover()?;
     let supervisor = DaemonSupervisor::new(Duration::from_secs(30));
-    supervisor.ensure_ready(&prepared, &binaries).await?;
     let product = product_context(&prepared)?;
-    peritus_tui::run(TuiConfig::new(prepared.endpoint_path()).with_product(product))
+    loop {
+        supervisor.ensure_ready(&prepared, &binaries).await?;
+        let outcome = peritus_tui::run(
+            TuiConfig::new(prepared.endpoint_path()).with_product(product.clone()),
+        )
         .await
-        .map_err(LauncherError::Tui)
+        .map_err(LauncherError::Tui)?;
+        match outcome {
+            ExitReason::UserQuit => return Ok(outcome),
+            ExitReason::RecoverDaemon => {}
+        }
+    }
 }
 
 fn product_context(

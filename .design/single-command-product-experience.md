@@ -51,8 +51,9 @@ native qualification in this document is complete.
    canonical C1 workspace registrations, protected roots, daemon configuration, and endpoint
    record.
 9. The application owns daemon reuse, startup, readiness, reconnection, diagnostics, and orderly
-   shutdown. Internal service commands remain available for operators but are not part of normal
-   use.
+   shutdown, including replacing a still-running daemon whose executable no longer matches the
+   installed package. Internal service commands remain available for operators but are not part of
+   normal use.
 10. The main interface can start a coding run from a natural-language task, maintain a durable
     two-way conversation for follow-up and material questions, and expose writer, reviewer, fixer,
     gate, diff, terminal, approval, cancellation, recovery, and completion state.

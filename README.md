@@ -117,13 +117,15 @@ The implemented foundation and runtime spine now covers:
   most-recent workspace list, names the exact repository before trust, starts unknown repositories
   in restricted mode, creates a separate application-managed detached worktree when trusted,
   publishes and recovers canonical C1 registrations, reports clean/dirty/repair state, switches or
-  forgets entries through `peritus workspaces`, and restarts a running daemon only when generated
-  configuration changed. Its daemon-owned coding-run service accepts a task and explicit provider
-  choice for each role, executes the writer, repository checks, independent reviewer, and bounded
-  fixer loop in the managed worktree, persists every visible phase, recovers interrupted records,
-  and supports query, cancellation, and retry through canonical A3 messages. The TUI provides an
-  accessible task composer, textual progress timeline, diff and review/check views, role-provider
-  switching, cancellation, and retry. Host-native package assembly now installs the launcher,
+  forgets entries through `peritus workspaces`, and restarts a running daemon when its generated
+  configuration or installed executable changed. Its daemon-owned coding-run service accepts a
+  task and explicit provider choice for each role, executes the writer, repository checks,
+  independent reviewer, and bounded fixer loop in the managed worktree, persists every visible
+  phase, recovers interrupted records, and supports query, cancellation, and retry through
+  canonical A3 messages. The TUI provides an accessible task composer, textual progress timeline,
+  diff and review/check views, role-provider switching, cancellation, retry, and a visible
+  `R restart/reconnect` action when the daemon link drops. Host-native package assembly now
+  installs the launcher,
   daemon, TUI, sandbox helper, lifecycle scripts, manifest, and checksums while preserving product
   state across repeat install, upgrade, rollback, and uninstall; and
 - H0: a verified exact-candidate security-readiness policy plus a 42-case fresh-native-subject

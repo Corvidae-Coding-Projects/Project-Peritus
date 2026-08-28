@@ -28,6 +28,11 @@ Completed setup is resumable. Repeat launch skips healthy decisions, repairs onl
 workspace that needs attention, regenerates immutable daemon configuration when settings change,
 and starts or reuses the packaged local daemon before entering the UI.
 
+The launcher records both the immutable daemon configuration and the installed daemon executable
+digest. After an upgrade it replaces an older still-running daemon before opening the UI. If a
+connection later drops, the offline status displays `R restart/reconnect`; that action returns
+daemon ownership to the launcher, restores readiness, and resumes the durable application session.
+
 ## Coding runs
 
 The Runs view is the ordinary work surface:

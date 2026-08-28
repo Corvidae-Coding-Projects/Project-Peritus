@@ -23,6 +23,7 @@ peritus-product-state = { version = "=0.0.0", path = "../peritus-product-state" 
 peritus-tui = { version = "=0.0.0", path = "../peritus-tui" }
 peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
 peritus-workspace = { version = "=0.0.0", path = "../../runtime/peritus-workspace" }
+sha2.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 toml.workspace = true
