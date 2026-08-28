@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 526,
+  "next_comment_id": 527,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -2698,7 +2698,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T23:30:59.824402277Z",
-      "updated_at": "2026-08-28T08:19:16.970479965Z",
+      "updated_at": "2026-08-28T08:24:51.580123412Z",
       "labels": [
         "feature",
         "ux"
@@ -2721,6 +2721,15 @@
           "kind": "discovery",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9Vl3tKeE6Qc1ul8fQHI4i7ticAUWsyQDrv/bOtMopWCnSMyCukqd2tcSVnaRrXLcstSTDFdd6FQ5X5STHPG0Dw=="
+        },
+        "771c96b5-66ac-4ed8-a1f5-0f437edd9a58": {
+          "display_id": 526,
+          "author": "6ME5",
+          "content": "8873abb4 fix(product): wait for daemon lock release. Corrected the upgrade shutdown race by requiring both endpoint withdrawal and daemon instance-lock release before replacement startup. Added a regression test for held/released lock handoff and updated product documentation/changelog. Verification: CARGO_BUILD_JOBS=2 cargo test -p peritus-launcher --locked passed 16 tests; launcher strict Clippy passed; CARGO_BUILD_JOBS=2 just check passed workspace build/tests/doctests/strict Clippy/rustdoc and all policy checks across 75 packages and 2970 source files.",
+          "created_at": "2026-08-28T08:24:51.577382876Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABADwmwvUGpxVN3hoy6Ma4Y5G4SIPWGrT0YOHU7A/fw94KV6XkFYrlCvfu3tI/v9PgO6t9c5aMfsqSPt2G7Byb/Bw=="
         },
         "7ec35892-3098-498f-8cea-7f04cadd3cf1": {
           "display_id": 521,
@@ -5486,8 +5495,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-28T08:19:16.970479965Z",
+    "timestamp": "2026-08-28T08:24:51.580123412Z",
     "agent_id": "6ME5",
-    "agent_seq": 699
+    "agent_seq": 700
   }
 }
