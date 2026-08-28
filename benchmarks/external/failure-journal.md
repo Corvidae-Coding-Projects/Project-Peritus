@@ -320,6 +320,23 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   benchmark infrastructure failures. Do not expose hidden wording or remove an accurate negated
   disclaimer from general Peritus behavior.
 
+## HBI-009: task 028 requires unpublished exact prose
+
+- Suite and task: HarnessBench 2.0, `028-email-thread-merge`.
+- Symptom: thread separation, forwarded-message deduplication, unique message IDs, exact timestamps,
+  chronological order, and false-approval avoidance all passed. The final-to-do and reply-fact
+  checks rejected accurate statements of the remaining work and procurement state.
+- Cause: the prompt requires facts, not exact prose, but the oracle searches for unpublished literal
+  substrings. It requires `send security questionnaire`, which rejects “send the security
+  questionnaire,” and `confirm procurement not approved`, which rejects “track procurement
+  approval, which remains pending.” The reply states that procurement approval remains pending and
+  is not yet complete, but the fact check separately requires the exact phrase `not approved`.
+- Evidence: local report `reports/028-email-thread-merge-hidden-phrases.json`; outcome 0.8182;
+  process 0.8867; security 1.0; combined 0.7255; elapsed 231.762 seconds. The retained reply also
+  passes the oracle's dedicated false-approval check.
+- Disposition: retain the unchanged score and classify both failures as benchmark infrastructure
+  defects. Do not make general email writing less natural to match hidden word sequences.
+
 ## HBF-005: a fixer deleted evaluator-owned evidence
 
 - Suite and task: HarnessBench 2.0, `022-local-rest-api-summary`.
