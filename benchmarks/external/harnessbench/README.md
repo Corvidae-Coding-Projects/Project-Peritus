@@ -73,10 +73,11 @@ temporary files through its documented `--image` option.
 
 ## Current qualification progress
 
-The live baseline has exercised tasks 001 through 022 against the pinned, unchanged suite. Task
-022 now completes with oracle outcome 1.0, process score 0.8867, security score 1.0, and combined
-score 0.8867. Task 021 retains its unchanged 0.9118 outcome because its hidden error labels and row
-number convention are not specified by the task prompt. Product failures and benchmark defects are
-kept separate in the [external failure journal](../failure-journal.md); generated workspaces,
+The live baseline has exercised tasks 001 through 024 against the pinned, unchanged suite. Tasks
+022 and 023 complete with oracle outcome 1.0. Task 021 retains its unchanged 0.9118 outcome because
+its hidden error labels and row-number convention are not specified by the prompt. Task 024 retains
+outcome 0.8889 because all three hidden expected slots conflict with the supplied calendars, while
+the three Peritus slots independently validate as available. Product failures and benchmark defects
+are kept separate in the [external failure journal](../failure-journal.md); generated workspaces,
 native traces, and full result JSON remain in the configured external state directory rather than
 Git.

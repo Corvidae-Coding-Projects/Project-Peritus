@@ -267,6 +267,24 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Disposition: retain the unchanged score and report the underspecified contract. Do not teach
   Peritus benchmark-specific labels or read hidden ground truth while producing task artifacts.
 
+## HBI-006: task 024's hidden slots conflict with the supplied calendars
+
+- Suite and task: HarnessBench 2.0, `024-calendar-scheduling-conflict`.
+- Symptom: Peritus produced three 45-minute New York slots that satisfy every participant's working
+  hours and busy calendar, but the unchanged oracle rejected the complete set and scored outcome
+  0.8889.
+- Cause: the oracle requires exact equality with three hidden `allowed_slots` that are not valid
+  under the task inputs. The hidden May 12 10:30 slot overlaps Priya Rao from 10:30 to 11:15 and
+  Marco Silva from 10:00 to 11:00 after conversion to New York. The hidden May 12 14:00 slot
+  overlaps Marco from 14:00 to 15:00. The hidden May 13 11:00 slot overlaps Dana Morris from 10:30
+  to 11:30.
+- Evidence: local report `reports/024-calendar-scheduling-conflict-invalid-ground-truth.json`;
+  outcome 0.8889; process 0.9067; security 1.0; combined 0.8059; elapsed 243.716 seconds. An
+  independent `zoneinfo` calculation found no working-hours or busy-calendar conflict in any of
+  Peritus's proposed slots and found the conflicts above in all three hidden slots.
+- Disposition: retain the unchanged score and classify the exact-slot check as benchmark
+  infrastructure failure. Do not emit conflicting meetings or expose hidden answers to Peritus.
+
 ## HBF-005: a fixer deleted evaluator-owned evidence
 
 - Suite and task: HarnessBench 2.0, `022-local-rest-api-summary`.
