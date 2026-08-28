@@ -420,6 +420,20 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Disposition: retain the unchanged score and classify the failure as incorrect benchmark ground
   truth. Do not make Peritus discard an explicit sourced negative fact.
 
+## HBI-015: task 034 requires nonessential and exact evidence tokens
+
+- Suite and task: HarnessBench 2.0, `034-evidence-matrix-claims`.
+- Symptom: format, exact claim coverage, all five classifications, and all five source paths passed;
+  the unchanged result is still excellent at 0.92. The evidence-token check counted only three of
+  five otherwise decisive signals.
+- Cause: C1 is contradicted by “118 enrolled households, not 120,” but hidden ground truth also
+  requires the nonessential detail `7 pending`. C2 says “diesel was not the primary measure,” but
+  the token check requires the almost identical sequence `not as the primary`.
+- Evidence: local report `reports/034-evidence-matrix-claims-hidden-tokens.json`; outcome 0.92
+  (`excellent`); process 0.79; security 1.0; combined 0.7268; elapsed 500.866 seconds.
+- Disposition: retain the unchanged score and classify the two misses as brittle benchmark token
+  checks. Do not pad short evidence signals with unrelated facts or force hidden phrasing.
+
 ## HBF-005: a fixer deleted evaluator-owned evidence
 
 - Suite and task: HarnessBench 2.0, `022-local-rest-api-summary`.
