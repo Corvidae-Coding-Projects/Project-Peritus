@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 500,
+  "next_comment_id": 501,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1997,7 +1997,7 @@
       "parent_uuid": "59346441-f15a-4950-a0f1-f10b1b9b1f7d",
       "created_by": "6ME5",
       "created_at": "2026-08-27T23:32:05.606146833Z",
-      "updated_at": "2026-08-28T00:01:07.047744570Z",
+      "updated_at": "2026-08-28T00:57:35.103694575Z",
       "labels": [
         "feature",
         "ux"
@@ -2011,6 +2011,15 @@
           "kind": "note",
           "signed_by": "SHA256:mTwYqorrA4UxSK3se0aIOCOC6y7kyE/sEvoFLwVluf4",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgmuiChqHxrMH8nicBvsKr3z1JEgjcUOEEH/DcxL6kdeEAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAaG//BhcRN1y5UuS5h1lz6V8YVTM9GPYMR0YMgfW4K5pP+U5jlUodd3GLonD/gIXxKHO8w5HQfeN43I3HNCocDw=="
+        },
+        "e9c769c0-50e0-46bd-9b0e-1f82ad4ebdb9": {
+          "display_id": 500,
+          "author": "NWAR",
+          "content": "[action] Completed G4.2 ergonomic provider onboarding; all ordinary runner gates and focused Verus verification are green; staged for signed commit.",
+          "created_at": "2026-08-28T00:57:35.099791661Z",
+          "kind": "note",
+          "signed_by": "SHA256:mTwYqorrA4UxSK3se0aIOCOC6y7kyE/sEvoFLwVluf4",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgmuiChqHxrMH8nicBvsKr3z1JEgjcUOEEH/DcxL6kdeEAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAfRDYN/Qp0+EKoj0PMuSSIfs5u9YcnZE/HsYSow6dMQstPS+J3F9SW+VIXvS9YZs6aCuEtb2q3/V1+e8UmnZUDQ=="
         }
       }
     },
@@ -5246,8 +5255,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-28T00:07:12.039622600Z",
-    "agent_id": "6ME5",
-    "agent_seq": 691
+    "timestamp": "2026-08-28T00:57:35.103694575Z",
+    "agent_id": "NWAR",
+    "agent_seq": 9
   }
 }
