@@ -301,6 +301,25 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Disposition: retain the unchanged score and classify the failed term check as benchmark
   infrastructure failure. Do not add unnatural text intended to exploit the normalization defect.
 
+## HBI-008: task 027 scores hidden wording instead of contract meaning
+
+- Suite and task: HarnessBench 2.0, `027-contract-summary-risk`.
+- Symptom: Peritus identified all six policy conflicts with exact contract quotes, correct business
+  actions, and valid severities, and summarized every requested contract area. Three unchanged
+  oracle checks still failed.
+- Cause: the prompt defines no `risk_type` taxonomy, but the oracle requires the hidden substring
+  `security notice` and rejects the accurate label `security incident notification`. The renewal
+  check requires hidden text `auto-renews` and rejects the equivalent summary “automatically
+  renews.” Finally, the forbidden-advice check rejects any occurrence of `legal advice`, including
+  the explicit compliant disclaimer “does not provide legal advice.”
+- Evidence: local report `reports/027-contract-summary-risk-brittle-wording.json`; outcome 0.7857;
+  process 0.87; security 1.0; combined 0.6836; elapsed 171.326 seconds. The retained CSV contains six
+  exact contract quotations and every expected action; the summary covers parties, term, renewal,
+  payment, data/security, liability, termination, and policy risks.
+- Disposition: retain the unchanged score and classify the three lexical false negatives as
+  benchmark infrastructure failures. Do not expose hidden wording or remove an accurate negated
+  disclaimer from general Peritus behavior.
+
 ## HBF-005: a fixer deleted evaluator-owned evidence
 
 - Suite and task: HarnessBench 2.0, `022-local-rest-api-summary`.
