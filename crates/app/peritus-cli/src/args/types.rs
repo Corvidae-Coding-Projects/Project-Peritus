@@ -6,9 +6,10 @@ use peritus_types::SessionId;
 
 use crate::completion::Shell;
 
-pub const HELP: &str = r"peritus - scriptable client for the local Peritus daemon
+pub const HELP: &str = r"peritus - interactive coding-agent harness and scriptable daemon client
 
 USAGE:
+  peritus                              Launch or resume the interactive product
   peritus [GLOBAL OPTIONS] <COMMAND>
 
 GLOBAL OPTIONS:

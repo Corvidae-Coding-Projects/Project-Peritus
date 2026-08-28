@@ -1,0 +1,153 @@
+//! Versioned durable product-state document.
+
+use serde::{Deserialize, Serialize};
+
+use crate::{BootstrapPhase, InstallIdentity, ProductStateError};
+
+/// Product-state schema understood by this executable.
+pub const PRODUCT_STATE_SCHEMA_VERSION: u16 = 1;
+
+/// Canonical durable state needed to resume local bootstrap.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ProductState {
+    schema_version: u16,
+    generation: u64,
+    identity: InstallIdentity,
+    bootstrap_phase: BootstrapPhase,
+}
+
+impl ProductState {
+    /// Begins a new installation after identities have been durably selected.
+    #[must_use]
+    pub const fn new(identity: InstallIdentity) -> Self {
+        Self {
+            schema_version: PRODUCT_STATE_SCHEMA_VERSION,
+            generation: 1,
+            identity,
+            bootstrap_phase: BootstrapPhase::IdentityReady,
+        }
+    }
+
+    /// Parses and validates an exact JSON payload.
+    ///
+    /// # Errors
+    ///
+    /// Returns a typed schema, identity, or JSON failure.
+    pub fn parse_json(bytes: &[u8]) -> Result<Self, ProductStateError> {
+        let state: Self = serde_json::from_slice(bytes)
+            .map_err(|error| ProductStateError::InvalidPayload(error.to_string()))?;
+        state.validate()?;
+        Ok(state)
+    }
+
+    /// Serializes a deterministic compact JSON payload terminated by one newline.
+    ///
+    /// # Errors
+    ///
+    /// Returns a typed serialization failure if the in-memory value cannot be encoded.
+    pub fn canonical_json(&self) -> Result<Vec<u8>, ProductStateError> {
+        self.validate()?;
+        let mut bytes = serde_json::to_vec(self)
+            .map_err(|error| ProductStateError::InvalidPayload(error.to_string()))?;
+        bytes.push(b'\n');
+        Ok(bytes)
+    }
+
+    /// Returns the product-state schema version.
+    #[must_use]
+    pub const fn schema_version(&self) -> u16 {
+        self.schema_version
+    }
+
+    /// Returns the positive generation incremented by every durable phase transition.
+    #[must_use]
+    pub const fn generation(&self) -> u64 {
+        self.generation
+    }
+
+    /// Borrows stable non-secret installation identities.
+    #[must_use]
+    pub const fn identity(&self) -> &InstallIdentity {
+        &self.identity
+    }
+
+    /// Returns the last durably completed bootstrap phase.
+    #[must_use]
+    pub const fn bootstrap_phase(&self) -> BootstrapPhase {
+        self.bootstrap_phase
+    }
+
+    /// Advances to the same phase or its exact successor.
+    ///
+    /// Repeating the current phase is idempotent and does not change the generation.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ProductStateError::InvalidTransition`] for a skip or reversal.
+    pub fn advance(&mut self, next: BootstrapPhase) -> Result<bool, ProductStateError> {
+        if !crate::verified::bootstrap_transition_exec(self.bootstrap_phase, next) {
+            return Err(ProductStateError::InvalidTransition {
+                from: self.bootstrap_phase,
+                to: next,
+            });
+        }
+        if self.bootstrap_phase == next {
+            return Ok(false);
+        }
+        self.bootstrap_phase = next;
+        self.generation = self.generation.saturating_add(1);
+        Ok(true)
+    }
+
+    fn validate(&self) -> Result<(), ProductStateError> {
+        if self.schema_version != PRODUCT_STATE_SCHEMA_VERSION {
+            return Err(ProductStateError::UnsupportedSchema(self.schema_version));
+        }
+        if self.generation == 0 {
+            return Err(ProductStateError::InvalidPayload(
+                "product-state generation must be positive".to_owned(),
+            ));
+        }
+        self.identity.validate()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn identity() -> InstallIdentity {
+        InstallIdentity::new([1; 16], [2; 16]).expect("valid identity")
+    }
+
+    #[test]
+    fn canonical_round_trip_preserves_resume_phase() {
+        let mut state = ProductState::new(identity());
+        assert!(state.advance(BootstrapPhase::RegistryReady).expect("advance"));
+        let bytes = state.canonical_json().expect("encode");
+        assert_eq!(ProductState::parse_json(&bytes).expect("decode"), state);
+        assert_eq!(state.generation(), 2);
+    }
+
+    #[test]
+    fn skip_and_reversal_are_rejected() {
+        let mut state = ProductState::new(identity());
+        assert!(state.advance(BootstrapPhase::ConfigurationReady).is_err());
+        state.advance(BootstrapPhase::RegistryReady).expect("exact successor");
+        assert!(state.advance(BootstrapPhase::IdentityReady).is_err());
+    }
+
+    #[test]
+    fn repeating_completed_effect_is_idempotent() {
+        let mut state = ProductState::new(identity());
+        assert!(!state.advance(BootstrapPhase::IdentityReady).expect("same phase"));
+        assert_eq!(state.generation(), 1);
+    }
+
+    #[test]
+    fn zero_identity_is_rejected() {
+        assert!(InstallIdentity::new([0; 16], [2; 16]).is_err());
+        assert!(InstallIdentity::new([1; 16], [0; 16]).is_err());
+    }
+}

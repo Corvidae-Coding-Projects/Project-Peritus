@@ -104,6 +104,12 @@ The implemented foundation and runtime spine now covers:
   process and Wasmtime-CLI plugin hosting, authority-mediated invocation, lifecycle quotas and
   cancellation, plus a bounded MCP 2025-06-18 JSON-RPC server for authority-filtered tools,
   resources, and prompts, backed by a seven-case runtime-neutral A2 plugin contract; and
+- G4 (in progress): the `peritus` no-argument product entry now discovers platform-native
+  per-user directories, creates protected roots and stable local identities, publishes a canonical
+  public approval registry and strict daemon configuration, resumes immutable-generation setup
+  state, resolves a version-matched packaged `peritusd`, and starts or reuses its local endpoint
+  before entering the TUI. Provider onboarding, workspace trust/registration, the task composer,
+  and native product qualification remain required before this is a complete user experience; and
 - H0: a verified exact-candidate security-readiness policy plus a 42-case fresh-native-subject
   campaign covering R-SEC-001 through R-SEC-007, the nine security-relevant acceptance criteria,
   malicious repositories, native sandboxes, role isolation, evidence invalidation, evolution,
@@ -125,8 +131,9 @@ The implemented foundation and runtime spine now covers:
   inputs, independent final audit, content-addressed evidence, and a fail-closed composition adapter
   that cannot sign, tag, publish, deploy, or manufacture evidence.
 
-All planned architecture slices A0 through H4 now have implemented code, tests, formal-policy
-surfaces, schemas, and operating documentation. G3 deliberately cannot mint C4/B1 authority:
+All original architecture slices A0 through H4 now have implemented code, tests, formal-policy
+surfaces, schemas, and operating documentation. G4 product composition is now an explicit release
+requirement and remains in progress. G3 deliberately cannot mint C4/B1 authority:
 packaged application embedding must supply a current daemon-owned mediator for each exact run,
 workspace, and target. Qualification machinery does not fabricate a production verdict. A release
 still requires running the H0-H4 campaigns against the exact final commit, retaining reviewed

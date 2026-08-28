@@ -23,6 +23,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Begin the G4 single-command product experience with pure Verus-refined resumable bootstrap state,
+  platform-native protected application directories, automatic non-secret installation identity,
+  canonical public approval-registry and strict daemon-config publication, version-matched sibling
+  daemon discovery, bounded singleton startup/reuse/shutdown supervision, and no-argument
+  interactive `peritus` dispatch while retaining the explicit automation CLI (#37)
+- Retain the complete G4 interaction design and research-backed ergonomic acceptance rules for
+  progressive onboarding, visible/cancellable status, provider login, workspace trust, keyboard
+  accessibility, recovery, and the writer-reviewer-fixer run experience (#36)
 - Add retained credentialed Codex and Claude account-route qualification examples that exercise
   the production Peritus adapters and require contiguous events, usage, exact canaries, no native
   tool activity, and successful normalized terminals

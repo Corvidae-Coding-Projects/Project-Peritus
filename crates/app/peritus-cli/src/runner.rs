@@ -1,6 +1,10 @@
 //! Process entry and command dispatch.
 
-use std::{ffi::OsString, io::Write as _, process::ExitCode};
+use std::{
+    ffi::OsString,
+    io::{IsTerminal as _, Write as _},
+    process::ExitCode,
+};
 
 use crate::{
     args::{Cli, Command},
@@ -17,6 +21,9 @@ pub fn run_env() -> ExitCode {
 
 fn run(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
     let arguments = arguments.into_iter().collect::<Vec<_>>();
+    if arguments.len() == 1 {
+        return run_interactive();
+    }
     let requested_json = arguments.iter().any(|argument| argument == "--json");
     let cli = match Cli::parse(arguments) {
         Ok(cli) => cli,
@@ -56,6 +63,32 @@ fn run(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
     match runtime.block_on(execute(cli)) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => report_error(&error, json),
+    }
+}
+
+fn run_interactive() -> ExitCode {
+    if !std::io::stdin().is_terminal() || !std::io::stdout().is_terminal() {
+        return report_error(
+            &CliError::usage(
+                "interactive launch requires a terminal; use an explicit command for automation",
+            ),
+            false,
+        );
+    }
+    let runtime = match tokio::runtime::Builder::new_multi_thread().enable_all().build() {
+        Ok(runtime) => runtime,
+        Err(error) => {
+            return report_error(
+                &CliError::runtime("construct interactive runtime", error.to_string()),
+                false,
+            );
+        }
+    };
+    match runtime.block_on(peritus_launcher::launch_interactive()) {
+        Ok(_) => ExitCode::SUCCESS,
+        Err(error) => {
+            report_error(&CliError::runtime("launch interactive product", error.to_string()), false)
+        }
     }
 }
 

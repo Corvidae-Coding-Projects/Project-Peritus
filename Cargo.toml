@@ -6,6 +6,8 @@ members = [
     "crates/app/peritus-app-protocol",
     "crates/app/peritus-cli",
     "crates/app/peritus-daemon",
+    "crates/app/peritus-launcher",
+    "crates/app/peritus-product-state",
     "crates/app/peritus-tui",
     "crates/app/testing/peritus-benchmarks",
     "crates/app/testing/peritus-conformance",
@@ -90,6 +92,7 @@ criterion = { version = "=0.8.2", default-features = false }
 ed25519-dalek = { version = "=3.0.0", default-features = false }
 fs4 = "=1.1.0"
 futures-core = "=0.3.34"
+getrandom = "=0.4.3"
 half = { version = "=2.4.1", default-features = false, features = ["std"] }
 futures-util = "=0.3.34"
 keyring = { version = "=4.1.6", default-features = false }

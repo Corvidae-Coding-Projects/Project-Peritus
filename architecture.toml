@@ -190,6 +190,20 @@ layer = "app"
 verification_class = "H"
 
 [[packages]]
+name = "peritus-launcher"
+path = "crates/app/peritus-launcher"
+owner = "G4"
+layer = "app"
+verification_class = "C"
+
+[[packages]]
+name = "peritus-product-state"
+path = "crates/app/peritus-product-state"
+owner = "G4"
+layer = "app"
+verification_class = "H"
+
+[[packages]]
 name = "peritus-mcp"
 path = "crates/extensions/peritus-mcp"
 owner = "G3"
