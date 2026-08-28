@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 559,
+  "next_comment_id": 560,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-28T20:22:12.424438801Z",
+      "updated_at": "2026-08-28T20:35:42.458148461Z",
       "labels": [
         "qualification",
         "release"
@@ -1306,6 +1306,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAeT3SgBF/+t6hR6YAG9FpLh7eyVLigh2Zwv1yyruMoA4Lh41N2NK6+tjzMn9S+r2kTtnkaeErI5ziNPMhnBWEAA=="
+        },
+        "190fb49a-4714-421d-8e3a-1238ea4e825a": {
+          "display_id": 559,
+          "author": "6ME5",
+          "content": "HarnessBench task 025 passed every semantic action, exclusion, follow-up, deadline, dependency, bulk-update, and pending-status check. Outcome remains 0.9444 only because the unchanged oracle converts required followup_emails.md to followup_emails but replaces underscores with spaces in the submitted rationale before matching, making an ordinary filename citation unmatchable. Classified HBI-007; process 0.93, security 1.0, combined 0.8783, 741.724s. No benchmark-specific product workaround.",
+          "created_at": "2026-08-28T20:35:42.455541699Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzW4Bz1HkM6D4qCMSB5qsflLzM69I1YahhGcSXGa8DhA02g3WvfIxyVhC+VawQ+mysDj2FKKLqsdk9zp+J8ZcAA=="
         },
         "2440d353-07b9-4dea-bf52-73e6218d77b1": {
           "display_id": 557,
@@ -5783,8 +5792,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-28T20:22:12.424438801Z",
+    "timestamp": "2026-08-28T20:35:42.458148461Z",
     "agent_id": "6ME5",
-    "agent_seq": 736
+    "agent_seq": 737
   }
 }
