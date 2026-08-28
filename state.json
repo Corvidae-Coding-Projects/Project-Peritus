@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 520,
+  "next_comment_id": 521,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -2702,7 +2702,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T23:30:59.824402277Z",
-      "updated_at": "2026-08-28T02:18:44.139447115Z",
+      "updated_at": "2026-08-28T07:11:25.511726780Z",
       "labels": [
         "feature",
         "ux"
@@ -2716,6 +2716,15 @@
           "kind": "result",
           "signed_by": "SHA256:mTwYqorrA4UxSK3se0aIOCOC6y7kyE/sEvoFLwVluf4",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgmuiChqHxrMH8nicBvsKr3z1JEgjcUOEEH/DcxL6kdeEAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7T0+QIt13b0L/YVra6hWgKXtT2v/84qB6S68iXQKImYSnaRC9W8vvLSlRdYDySLQnF7kLNZc5Absw+g4qXLQDA=="
+        },
+        "1c077d54-fcd1-44d9-b442-a8601d45cc02": {
+          "display_id": 520,
+          "author": "6ME5",
+          "content": "First live-user run exposed two required G4 gaps: task 'create a tetris clone in rust' failed because the Codex plan contained an invalid JSON escape, and the Runs UI had no conversational message path to answer questions, redirect work, add context, or continue after failure. Treating resilient plan recovery plus persisted interactive run conversation as required product completion work.",
+          "created_at": "2026-08-28T07:11:25.509209170Z",
+          "kind": "discovery",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9Vl3tKeE6Qc1ul8fQHI4i7ticAUWsyQDrv/bOtMopWCnSMyCukqd2tcSVnaRrXLcstSTDFdd6FQ5X5STHPG0Dw=="
         },
         "e183abc7-9311-4498-a5e8-336b162537a3": {
           "display_id": 499,
@@ -5436,8 +5445,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-28T07:11:11.024089006Z",
+    "timestamp": "2026-08-28T07:11:25.511726780Z",
     "agent_id": "6ME5",
-    "agent_seq": 692
+    "agent_seq": 693
   }
 }
