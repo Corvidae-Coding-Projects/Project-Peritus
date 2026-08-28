@@ -6,12 +6,20 @@ fn workspace_tools_inspect_edit_search_and_execute_without_a_shell() {
     let workspace = tempfile::tempdir().expect("workspace");
     let mut tools = WorkspaceDeveloperTools::new(workspace.path().to_owned());
 
+    let initial = execute(&mut tools, "workspace_list", r#"{"depth":3,"path":""}"#);
+    assert!(!initial.is_error);
+
     let written = execute(
         &mut tools,
         "workspace_write",
         r#"{"content":"pub fn answer() -> u32 { 41 }\n","path":"src/lib.rs"}"#,
     );
     assert!(!written.is_error);
+    let _ = execute(
+        &mut tools,
+        "workspace_read",
+        r#"{"end_line":10,"path":"src/lib.rs","start_line":1}"#,
+    );
     let patched =
         execute(&mut tools, "workspace_patch", r#"{"new":"42","old":"41","path":"src/lib.rs"}"#);
     assert!(!patched.is_error);
@@ -31,7 +39,7 @@ fn workspace_tools_inspect_edit_search_and_execute_without_a_shell() {
     assert!(wire(&listed).contains("src/lib.rs"));
 
     let command =
-        execute(&mut tools, "run_command", r#"{"args":["--version"],"cwd":"","program":"rustc"}"#);
+        execute(&mut tools, "run_command", r#"{"args":["--version"],"cwd":".","program":"rustc"}"#);
     assert!(!command.is_error);
     assert!(wire(&command).contains(r#""success":true"#));
     let failed = execute(
@@ -41,6 +49,40 @@ fn workspace_tools_inspect_edit_search_and_execute_without_a_shell() {
     );
     assert!(failed.is_error);
     assert!(wire(&failed).contains(r#""success":false"#));
+}
+
+#[test]
+fn existing_files_cannot_be_mutated_before_they_are_read() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    fs::write(workspace.path().join("README.md"), "before\n").expect("existing file");
+    fs::write(workspace.path().join("Cargo.toml"), "[workspace]\n").expect("manifest");
+    let mut tools = WorkspaceDeveloperTools::new(workspace.path().to_owned());
+    let _ = execute(&mut tools, "workspace_list", r#"{"depth":2,"path":""}"#);
+    let _ = execute(
+        &mut tools,
+        "workspace_read",
+        r#"{"end_line":20,"path":"Cargo.toml","start_line":1}"#,
+    );
+
+    let refused = execute(
+        &mut tools,
+        "workspace_patch",
+        r#"{"new":"after","old":"before","path":"README.md"}"#,
+    );
+    assert!(refused.is_error);
+    assert!(wire(&refused).contains("read the existing target"));
+
+    let _ = execute(
+        &mut tools,
+        "workspace_read",
+        r#"{"end_line":20,"path":"README.md","start_line":1}"#,
+    );
+    let applied = execute(
+        &mut tools,
+        "workspace_patch",
+        r#"{"new":"after","old":"before","path":"README.md"}"#,
+    );
+    assert!(!applied.is_error);
 }
 
 fn execute(

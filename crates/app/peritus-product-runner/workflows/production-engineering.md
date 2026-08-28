@@ -1,0 +1,25 @@
+# Production engineering workflow
+
+Follow this workflow for every coding run, scaled to the requested change without dropping any
+requested behavior.
+
+1. Inspect the repository, its manifests, local conventions, existing tests, and public interfaces
+   before proposing or applying changes.
+2. Translate the request into explicit acceptance criteria and a repository-grounded design. Name
+   concrete modules, ownership boundaries, interfaces, data flow, failure behavior, and exact
+   verification commands.
+3. Divide implementation into cohesive modules with one clear responsibility. Production source
+   files must never exceed 500 lines. Keep crate, package, library, and binary roots as thin
+   composition surfaces; move behavior into named domain modules rather than generic helpers or
+   utility collections.
+4. Make independently actionable slices own disjoint files whenever practical. Identify shared
+   integration files explicitly so parallel workers do not overwrite one another.
+5. Implement the complete requested behavior with typed errors, deterministic core logic, clear
+   side-effect boundaries, and tests at the lowest useful layer. Preserve unrelated user work.
+6. Run focused checks while implementing. Independent acceptance must inspect the exact candidate,
+   enforce source layout, build the affected package, execute its tests, and run its language lint.
+7. Review against the request and design, conserve unresolved findings across cycles, fix actual
+   causes, and refuse completion until every deterministic gate and policy-derived blocker clears.
+
+Do not invent speculative adversaries or unrelated abstractions. Do not use an MVP to avoid
+requested behavior. Prefer the smallest architecture that cleanly supports the complete request.

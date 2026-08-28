@@ -1,0 +1,157 @@
+//! Exact commands for each supported project family.
+
+use std::path::{Path, PathBuf};
+
+use crate::{GateError, GateErrorKind, GateRecoveryAction};
+
+use super::plan::{AffectedProject, GateCommandSpec, PRODUCT_MAX_SOURCE_LINES, ProjectKind};
+
+pub(super) fn commands_for(
+    workspace_root: &Path,
+    project: &AffectedProject,
+) -> Result<Vec<GateCommandSpec>, GateError> {
+    let mut commands = vec![source_layout(project)];
+    let language_commands = match project.kind() {
+        ProjectKind::Rust => Ok(rust_commands(workspace_root, project)),
+        ProjectKind::Node => node_commands(workspace_root, project),
+        ProjectKind::Python => Ok(python_commands(workspace_root, project)),
+        ProjectKind::Go => Ok(go_commands(project)),
+    }?;
+    commands.extend(language_commands);
+    Ok(commands)
+}
+
+fn source_layout(project: &AffectedProject) -> GateCommandSpec {
+    spec(
+        "Source layout",
+        "peritus-internal",
+        vec![
+            "source-layout".to_owned(),
+            "--max-lines".to_owned(),
+            PRODUCT_MAX_SOURCE_LINES.to_string(),
+        ],
+        project,
+    )
+}
+
+fn rust_commands(workspace_root: &Path, project: &AffectedProject) -> Vec<GateCommandSpec> {
+    let manifest = project.manifest().to_string_lossy().into_owned();
+    let is_workspace = std::fs::read_to_string(workspace_root.join(project.manifest()))
+        .is_ok_and(|text| text.lines().any(|line| line.trim() == "[workspace]"));
+    let common = |verb: &str| {
+        let mut arguments = vec![
+            verb.to_owned(),
+            "--locked".to_owned(),
+            "--all-targets".to_owned(),
+            "--all-features".to_owned(),
+            "--manifest-path".to_owned(),
+            manifest.clone(),
+        ];
+        if is_workspace {
+            arguments.push("--workspace".to_owned());
+        }
+        arguments
+    };
+    let at_workspace_root = |mut command: GateCommandSpec| {
+        command.current_dir = PathBuf::new();
+        command
+    };
+    let format = vec![
+        "fmt".to_owned(),
+        "--manifest-path".to_owned(),
+        manifest.clone(),
+        "--all".to_owned(),
+        "--".to_owned(),
+        "--check".to_owned(),
+    ];
+    let mut commands = vec![
+        at_workspace_root(spec("Rust format", "cargo", format, project)),
+        at_workspace_root(spec("Rust compile", "cargo", common("check"), project)),
+        at_workspace_root(spec("Rust build", "cargo", common("build"), project)),
+        at_workspace_root(spec("Rust tests", "cargo", common("test"), project)),
+    ];
+    let mut clippy = common("clippy");
+    clippy.extend(["--".to_owned(), "-D".to_owned(), "warnings".to_owned()]);
+    commands.push(at_workspace_root(spec("Rust lint", "cargo", clippy, project)));
+    commands
+}
+
+fn node_commands(
+    workspace_root: &Path,
+    project: &AffectedProject,
+) -> Result<Vec<GateCommandSpec>, GateError> {
+    let bytes = std::fs::read(workspace_root.join(project.manifest())).map_err(|_| planning())?;
+    let package: serde_json::Value = serde_json::from_slice(&bytes).map_err(|_| planning())?;
+    let scripts = package.get("scripts").and_then(serde_json::Value::as_object);
+    let mut commands = Vec::new();
+    for (name, label) in [("build", "Node build"), ("test", "Node tests"), ("lint", "Node lint")] {
+        if scripts.is_some_and(|items| items.contains_key(name)) {
+            commands.push(spec(label, "npm", vec!["run".to_owned(), name.to_owned()], project));
+        }
+    }
+    Ok(commands)
+}
+
+fn python_commands(workspace_root: &Path, project: &AffectedProject) -> Vec<GateCommandSpec> {
+    let mut commands = vec![spec(
+        "Python compile",
+        "python",
+        vec!["-m".to_owned(), "compileall".to_owned(), "-q".to_owned(), ".".to_owned()],
+        project,
+    )];
+    let root = workspace_root.join(project.root());
+    let manifest = || std::fs::read_to_string(workspace_root.join(project.manifest()));
+    if root.join("pytest.ini").is_file()
+        || root.join("tests").is_dir()
+        || manifest().is_ok_and(|text| text.contains("pytest"))
+    {
+        commands.push(spec(
+            "Python tests",
+            "python",
+            vec!["-m".to_owned(), "pytest".to_owned()],
+            project,
+        ));
+    }
+    if root.join("ruff.toml").is_file()
+        || root.join(".ruff.toml").is_file()
+        || manifest().is_ok_and(|text| text.contains("[tool.ruff"))
+    {
+        commands.push(spec(
+            "Python lint",
+            "python",
+            vec!["-m".to_owned(), "ruff".to_owned(), "check".to_owned(), ".".to_owned()],
+            project,
+        ));
+    }
+    commands
+}
+
+fn go_commands(project: &AffectedProject) -> Vec<GateCommandSpec> {
+    vec![
+        spec("Go tests", "go", vec!["test".to_owned(), "./...".to_owned()], project),
+        spec("Go lint", "go", vec!["vet".to_owned(), "./...".to_owned()], project),
+    ]
+}
+
+fn spec(
+    label: &str,
+    program: &str,
+    arguments: Vec<String>,
+    project: &AffectedProject,
+) -> GateCommandSpec {
+    GateCommandSpec {
+        label: label.to_owned(),
+        program: program.to_owned(),
+        arguments,
+        current_dir: project.root().to_owned(),
+        project: project.clone(),
+    }
+}
+
+fn planning() -> GateError {
+    GateError::new(
+        GateErrorKind::Workspace,
+        GateRecoveryAction::CorrectInput,
+        "affected project manifest is unreadable",
+    )
+}

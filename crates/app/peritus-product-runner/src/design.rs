@@ -1,0 +1,179 @@
+//! Mandatory repository-grounded design document produced before implementation.
+
+use std::{
+    fs::{self, OpenOptions},
+    io::Write,
+    path::{Path, PathBuf},
+};
+
+use peritus_agent::{DeveloperLoop, DeveloperLoopLimits, DeveloperLoopRequest};
+use peritus_provider_core::ModelProvider;
+
+use crate::developer_tools::{WorkspaceDeveloperTools, read_only_definitions};
+use crate::execution::{ProductRunInput, check_cancelled};
+use crate::trace::FileDeveloperTrace;
+use crate::{ProductRunnerError, ProductRunnerErrorKind};
+
+const MINIMUM_DESIGN_BYTES: usize = 512;
+const MAXIMUM_DESIGN_BYTES: usize = 1024 * 1024;
+const MAX_INVALID_DESIGNS: u8 = 3;
+
+/// Detailed design artifact and conversation revision it covers.
+pub struct DesignDocument {
+    path: PathBuf,
+    markdown: String,
+    conversation_revision: u64,
+}
+
+impl DesignDocument {
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
+    pub fn markdown(&self) -> &str {
+        &self.markdown
+    }
+
+    pub const fn conversation_revision(&self) -> u64 {
+        self.conversation_revision
+    }
+}
+
+/// Inspects the repository with read-only tools, writes the detailed design, and returns it.
+pub async fn create(
+    input: &ProductRunInput,
+    model: &dyn ModelProvider,
+    cycle: u32,
+) -> Result<DesignDocument, ProductRunnerError> {
+    let mut invocation = 0_u32;
+    let mut invalid_designs = 0_u8;
+    loop {
+        check_cancelled(input)?;
+        invocation = invocation.saturating_add(1);
+        let revision = input.conversation.revision();
+        let transcript = input.conversation.render();
+        let mut tools = WorkspaceDeveloperTools::new(input.workspace_root.clone());
+        let mut trace = FileDeveloperTrace::new(input.trace_path.clone());
+        let result = DeveloperLoop::run(
+            model,
+            DeveloperLoopRequest {
+                request_prefix: format!(
+                    "{}-invocation-{invocation}",
+                    crate::turn::request_name(input.run_id, "designer", cycle)
+                ),
+                system: system_prompt(),
+                prompt: user_prompt(&transcript),
+                tools: read_only_definitions()?,
+                limits: DeveloperLoopLimits::new(48, 512)
+                    .map_err(|error| crate::turn::developer_error(&error))?,
+                cancellation: input.provider_cancellation.clone(),
+            },
+            &mut tools,
+            &mut trace,
+        )
+        .await
+        .map_err(|error| crate::turn::developer_error(&error))?;
+        check_cancelled(input)?;
+        if input.conversation.revision() != revision {
+            invalid_designs = 0;
+            continue;
+        }
+        let markdown =
+            tools.grounding().validate().map_err(grounding).and_then(|()| normalize(&result.text));
+        let mut markdown = match markdown {
+            Ok(markdown) => markdown,
+            Err(error) => {
+                invalid_designs = invalid_designs.saturating_add(1);
+                if invalid_designs < MAX_INVALID_DESIGNS {
+                    continue;
+                }
+                return Err(error);
+            }
+        };
+        markdown.push_str(&tools.grounding().markdown());
+        let path = input.trace_path.with_extension("design.md");
+        publish(&path, markdown.as_bytes())?;
+        return Ok(DesignDocument { path, markdown, conversation_revision: revision });
+    }
+}
+
+fn system_prompt() -> String {
+    format!(
+        "You are the design architect in a serious coding harness. Inspect the actual repository with the read-only workspace tools before designing. Return only a detailed Markdown design document, not JSON and not a code fence. Preserve the requested ambition and cover the full requested product rather than proposing an MVP. Ground the document in concrete existing paths, manifests, interfaces, conventions, and constraints; for a greenfield repository, specify the exact structure to create. Include sections for Objective and acceptance criteria, Repository findings, Architecture and interfaces, Data and control flow, File and module plan, Implementation slices, Verification, and Risks or explicit non-goals. Make slices independently actionable where practical. Focus on realistic application behavior and avoid speculative adversarial edge cases. Do not edit files, run commands, implement code, or commit.\n\n{}",
+        crate::engineering_workflow::architect(),
+    )
+}
+
+fn user_prompt(transcript: &str) -> String {
+    format!(
+        "Conversation and requested outcome:\n{transcript}\n\nInspect the managed workspace and write the complete implementation design that the writer will follow."
+    )
+}
+
+fn normalize(value: &str) -> Result<String, ProductRunnerError> {
+    let trimmed = value.trim();
+    let markdown = trimmed
+        .strip_prefix("```markdown")
+        .or_else(|| trimmed.strip_prefix("```md"))
+        .and_then(|inner| inner.strip_suffix("```"))
+        .map_or(trimmed, str::trim);
+    let sections = markdown.lines().filter(|line| line.starts_with("## ")).count();
+    if markdown.len() < MINIMUM_DESIGN_BYTES
+        || markdown.len() > MAXIMUM_DESIGN_BYTES
+        || !markdown.starts_with("# ")
+        || sections < 4
+    {
+        return Err(ProductRunnerError::new(
+            ProductRunnerErrorKind::InvalidModelOutput,
+            "validate implementation design",
+            "designer must return a detailed Markdown document with a title and at least four sections",
+        ));
+    }
+    Ok(format!("{markdown}\n"))
+}
+
+fn publish(path: &Path, bytes: &[u8]) -> Result<(), ProductRunnerError> {
+    let parent = path.parent().ok_or_else(|| filesystem("design path has no parent"))?;
+    fs::create_dir_all(parent).map_err(|error| filesystem(error.to_string()))?;
+    let temporary = path.with_extension("design.md.new");
+    let mut file = OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .open(&temporary)
+        .map_err(|error| filesystem(error.to_string()))?;
+    file.write_all(bytes).map_err(|error| filesystem(error.to_string()))?;
+    file.sync_all().map_err(|error| filesystem(error.to_string()))?;
+    fs::rename(&temporary, path).map_err(|error| filesystem(error.to_string()))
+}
+
+fn filesystem(detail: impl Into<String>) -> ProductRunnerError {
+    ProductRunnerError::new(
+        ProductRunnerErrorKind::Repository,
+        "publish implementation design",
+        detail,
+    )
+}
+
+fn grounding(detail: &'static str) -> ProductRunnerError {
+    ProductRunnerError::new(
+        ProductRunnerErrorKind::InvalidModelOutput,
+        "ground implementation design in repository evidence",
+        detail,
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn design_requires_a_real_markdown_document() {
+        assert!(normalize("not a design").is_err());
+        let detailed = format!(
+            "# Design\n\n## Objective\n{}\n\n## Repository findings\nConcrete.\n\n## Architecture\nConcrete.\n\n## Implementation\nConcrete.\n\n## Verification\nConcrete.",
+            "Complete requested behavior. ".repeat(24)
+        );
+        assert!(normalize(&detailed).is_ok());
+    }
+}

@@ -4,8 +4,9 @@ mod support;
 
 use peritus_git::{
     CandidateRequest, CandidateSnapshotManifest, CandidateTreeManifest, CreateWorktree,
-    ObjectFormat, ReconcileDisposition, ReconcileExpectation, RemovalPolicy, RestoreRequest,
-    SnapshotRequest, StatusKind, WorktreeAccess, WorktreeName, WorktreeRegistrationManifest,
+    ObjectFormat, ReconcileDisposition, ReconcileExpectation, RecoverWorktree, RemovalPolicy,
+    RestoreRequest, SnapshotRequest, StatusKind, WorktreeAccess, WorktreeName,
+    WorktreeRegistrationManifest,
 };
 use peritus_types::{SnapshotId, WorkspaceId};
 
@@ -46,6 +47,45 @@ fn opens_resolves_and_manages_an_exact_detached_worktree() {
         .expect("force exact registration");
     assert!(!destination.exists());
     assert_eq!(checked_git(&fixture.root, &["rev-parse", "HEAD"]), baseline.commit().to_string());
+}
+
+#[test]
+fn recovers_trusted_worktree_at_advanced_detached_head_without_losing_changes() {
+    let fixture = RepositoryFixture::sha1();
+    let repository = fixture.open();
+    let original = repository.resolve_baseline("HEAD").expect("baseline");
+    let destination = fixture.worktree_path("advanced_writer");
+    let worktree = repository
+        .create_worktree(CreateWorktree::new(
+            WorktreeName::new("advanced_writer").expect("name"),
+            &destination,
+            original,
+            WorktreeAccess::Writable,
+        ))
+        .expect("create worktree");
+    std::fs::write(worktree.root().join("tracked.txt"), b"committed by agent\n")
+        .expect("write tracked file");
+    checked_git(worktree.root(), &["add", "--", "tracked.txt"]);
+    checked_git(worktree.root(), &["commit", "--quiet", "-m", "agent result"]);
+    std::fs::write(worktree.root().join("unfinished.txt"), b"preserve me\n")
+        .expect("write unfinished file");
+    let advanced_head = checked_git(worktree.root(), &["rev-parse", "HEAD"]);
+
+    let recovered = repository
+        .recover_current_worktree(RecoverWorktree::new(
+            WorktreeName::new("advanced_writer").expect("name"),
+            &destination,
+            WorktreeAccess::Writable,
+        ))
+        .expect("recover current detached worktree");
+
+    assert_eq!(recovered.baseline().commit().to_string(), advanced_head);
+    assert_ne!(recovered.baseline(), original);
+    assert!(recovered.root().join("unfinished.txt").is_file());
+    assert!(!repository.status(&recovered).expect("status").is_clean());
+    repository
+        .remove_worktree(&recovered, RemovalPolicy::ForceRegistered)
+        .expect("cleanup worktree");
 }
 
 #[test]

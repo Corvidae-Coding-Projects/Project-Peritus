@@ -66,10 +66,14 @@ impl ProductRunService {
     fn observe(&self, run_id: RunId, update: peritus_product_runner::ProductRunUpdate) {
         let Ok(mut records) = self.inner.records.write() else { return };
         let Some(record) = records.get_mut(&run_id) else { return };
+        if record.snapshot.phase() == ProductRunPhase::RecoveryRequired {
+            return;
+        }
         if !update.finding_state.is_empty() {
             record.finding_state = update.finding_state;
         }
         let phase = match update.phase {
+            peritus_product_runner::ProductRunPhase::Designing => ProductRunPhase::Designing,
             peritus_product_runner::ProductRunPhase::Writing => ProductRunPhase::Writing,
             peritus_product_runner::ProductRunPhase::Checking => ProductRunPhase::Checking,
             peritus_product_runner::ProductRunPhase::Reviewing => ProductRunPhase::Reviewing,
@@ -102,6 +106,10 @@ impl ProductRunService {
     ) {
         let Ok(mut records) = self.inner.records.write() else { return };
         let Some(record) = records.get_mut(&run_id) else { return };
+        if record.snapshot.phase() == ProductRunPhase::RecoveryRequired {
+            let _ = persist_record(&self.inner.directory, record);
+            return;
+        }
         match result {
             Ok(ProductRunOutcome::Complete(output)) => {
                 let completion_message = format!("Completed: {}", output.summary);

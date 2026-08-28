@@ -173,7 +173,9 @@ fn simple_path(record: &[u8], kind: StatusKind) -> Result<StatusEntry, GitError>
     if record.len() < 3 || record[1] != b' ' {
         return Err(protocol("simple status record is malformed"));
     }
-    Ok(StatusEntry { path: path(&record[2..])?, kind })
+    let reported = &record[2..];
+    let normalized = reported.strip_suffix(b"/").unwrap_or(reported);
+    Ok(StatusEntry { path: path(normalized)?, kind })
 }
 
 fn fields(record: &[u8], count: usize) -> Result<Vec<&[u8]>, GitError> {
@@ -285,7 +287,7 @@ mod tests {
     #[test]
     fn parses_headers_and_all_simple_record_classes() {
         let input = format!(
-            "# branch.oid {HEAD}\0# branch.head (detached)\01 M. N... 100644 100644 100644 {HEAD} {HEAD} tracked\0? new file\0! ignored\0"
+            "# branch.oid {HEAD}\0# branch.head (detached)\01 M. N... 100644 100644 100644 {HEAD} {HEAD} tracked\0? new file\0! ignored-directory/\0"
         );
         let status = parse(input.as_bytes(), ObjectFormat::Sha1).expect("status");
         assert!(status.detached);
@@ -293,6 +295,7 @@ mod tests {
         assert!(matches!(status.entries[0].kind(), StatusKind::Ordinary { .. }));
         assert!(matches!(status.entries[1].kind(), StatusKind::Untracked));
         assert!(matches!(status.entries[2].kind(), StatusKind::Ignored));
+        assert_eq!(status.entries[2].path(), "ignored-directory");
     }
 
     #[test]

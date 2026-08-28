@@ -1,5 +1,11 @@
 # Changelog
 
+- Repair trusted managed workspaces by re-registering their validated current detached HEAD while
+  preserving agent commits and unfinished files; make every coding run generate and follow a
+  durable evidence-grounded design; and enforce the embedded production-engineering workflow,
+  exact formatting and builds, a 500-line source-file ceiling before acceptance, and productive
+  goal supervision across bounded model turns, malformed replies, stalls, and daemon restarts.
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
@@ -7,6 +13,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Retry recoverable malformed, empty, timeout, and transport provider turns without failing the
+  coding goal; retry malformed design, developer-terminal, and reviewer output contracts; replenish
+  bounded developer segments only after exact candidate content changes; feed rejected ungrounded
+  or malformed terminals their exact corrective context; and automatically resume interrupted
+  goals after daemon restart while stopping repeated no-progress work (#36)
 - Refuse interactive coding-run completion unless every exact changed project is discovered and
   passes its locked native compile/test/lint commands; unrelated root checks can no longer accept a
   broken nested target, and generated dependency/build trees no longer contaminate candidate or
@@ -17,7 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Restart a stale or unavailable packaged daemon after upgrades, wait for its process lock to be
   released before replacement, and show `R restart/reconnect` directly in the offline TUI status
   instead of leaving recovery hidden behind the help screen (#36)
-- Recover once from malformed writer/fixer plan JSON, and turn terminal coding-run failures into
+- Recover from malformed writer/fixer output, and turn terminal coding-run failures into
   actionable conversations that can be corrected and resumed in the same managed worktree (#36)
 - Keep Codex Code Mode disabled without disabling its inert host feature, avoiding the current CLI
   0.149.1 nonfatal host-unavailable event that the account-runtime decoder correctly rejects
@@ -35,6 +46,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Embed reusable architect, developer, and reviewer skills in the ordinary product workflow;
+  require successful repository listing and targeted reads before design or mutation, append exact
+  observed paths to each design artifact, refuse mutation of an unread existing file, enforce a
+  deterministic 500-line source-file ceiling, and record exact Cargo format and build checks beside
+  compile, test, and Clippy evidence (#36)
 - Replace the one-shot complete-file JSON product runner with the production D0/D1/D2/E0
   composition: writers and fixers now inspect, search, read, write, patch, run, test, observe, and
   retry through bounded structured tools with append-only provider/tool traces and an aggregated

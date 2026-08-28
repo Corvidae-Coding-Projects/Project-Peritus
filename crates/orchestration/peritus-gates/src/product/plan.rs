@@ -5,7 +5,12 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::{GateError, GateErrorKind, GateRecoveryAction};
+use crate::GateError;
+
+use super::commands::commands_for;
+
+/// Hard source-file ceiling enforced by the built-in production workflow.
+pub const PRODUCT_MAX_SOURCE_LINES: usize = 500;
 
 /// Supported project families with deterministic production checks.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -51,11 +56,11 @@ impl AffectedProject {
 /// Structured argv gate tied to one affected project.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GateCommandSpec {
-    label: String,
-    program: String,
-    arguments: Vec<String>,
-    current_dir: PathBuf,
-    project: AffectedProject,
+    pub(super) label: String,
+    pub(super) program: String,
+    pub(super) arguments: Vec<String>,
+    pub(super) current_dir: PathBuf,
+    pub(super) project: AffectedProject,
 }
 
 impl GateCommandSpec {
@@ -212,134 +217,64 @@ fn nearest_projects(workspace_root: &Path, changed: &Path) -> Vec<AffectedProjec
     Vec::new()
 }
 
-fn commands_for(
-    workspace_root: &Path,
-    project: &AffectedProject,
-) -> Result<Vec<GateCommandSpec>, GateError> {
-    match project.kind {
-        ProjectKind::Rust => Ok(rust_commands(workspace_root, project)),
-        ProjectKind::Node => node_commands(workspace_root, project),
-        ProjectKind::Python => Ok(python_commands(workspace_root, project)),
-        ProjectKind::Go => Ok(go_commands(project)),
-    }
-}
-
-fn rust_commands(workspace_root: &Path, project: &AffectedProject) -> Vec<GateCommandSpec> {
-    let manifest = project.manifest.to_string_lossy().into_owned();
-    let is_workspace = std::fs::read_to_string(workspace_root.join(&project.manifest))
-        .is_ok_and(|text| text.lines().any(|line| line.trim() == "[workspace]"));
-    let common = |verb: &str| {
-        let mut arguments = vec![
-            verb.to_owned(),
-            "--locked".to_owned(),
-            "--all-targets".to_owned(),
-            "--all-features".to_owned(),
-            "--manifest-path".to_owned(),
-            manifest.clone(),
-        ];
-        if is_workspace {
-            arguments.push("--workspace".to_owned());
-        }
-        arguments
-    };
-    let at_workspace_root = |mut command: GateCommandSpec| {
-        command.current_dir = PathBuf::new();
-        command
-    };
-    let mut commands =
-        vec![at_workspace_root(spec("Rust compile", "cargo", common("check"), project))];
-    commands.push(at_workspace_root(spec("Rust tests", "cargo", common("test"), project)));
-    let mut clippy = common("clippy");
-    clippy.extend(["--".to_owned(), "-D".to_owned(), "warnings".to_owned()]);
-    commands.push(at_workspace_root(spec("Rust lint", "cargo", clippy, project)));
-    commands
-}
-
-fn node_commands(
-    workspace_root: &Path,
-    project: &AffectedProject,
-) -> Result<Vec<GateCommandSpec>, GateError> {
-    let bytes = std::fs::read(workspace_root.join(&project.manifest)).map_err(|_| planning())?;
-    let package: serde_json::Value = serde_json::from_slice(&bytes).map_err(|_| planning())?;
-    let scripts = package.get("scripts").and_then(serde_json::Value::as_object);
-    let mut commands = Vec::new();
-    for (name, label) in [("build", "Node build"), ("test", "Node tests"), ("lint", "Node lint")] {
-        if scripts.is_some_and(|items| items.contains_key(name)) {
-            commands.push(spec(label, "npm", vec!["run".to_owned(), name.to_owned()], project));
-        }
-    }
-    Ok(commands)
-}
-
-fn python_commands(workspace_root: &Path, project: &AffectedProject) -> Vec<GateCommandSpec> {
-    let mut commands = vec![spec(
-        "Python compile",
-        "python",
-        vec!["-m".to_owned(), "compileall".to_owned(), "-q".to_owned(), ".".to_owned()],
-        project,
-    )];
-    let root = workspace_root.join(&project.root);
-    if root.join("pytest.ini").is_file()
-        || root.join("tests").is_dir()
-        || std::fs::read_to_string(workspace_root.join(&project.manifest))
-            .is_ok_and(|text| text.contains("pytest"))
-    {
-        commands.push(spec(
-            "Python tests",
-            "python",
-            vec!["-m".to_owned(), "pytest".to_owned()],
-            project,
-        ));
-    }
-    if root.join("ruff.toml").is_file()
-        || root.join(".ruff.toml").is_file()
-        || std::fs::read_to_string(workspace_root.join(&project.manifest))
-            .is_ok_and(|text| text.contains("[tool.ruff"))
-    {
-        commands.push(spec(
-            "Python lint",
-            "python",
-            vec!["-m".to_owned(), "ruff".to_owned(), "check".to_owned(), ".".to_owned()],
-            project,
-        ));
-    }
-    commands
-}
-
-fn go_commands(project: &AffectedProject) -> Vec<GateCommandSpec> {
-    vec![
-        spec("Go tests", "go", vec!["test".to_owned(), "./...".to_owned()], project),
-        spec("Go lint", "go", vec!["vet".to_owned(), "./...".to_owned()], project),
-    ]
-}
-
-fn spec(
-    label: &str,
-    program: &str,
-    arguments: Vec<String>,
-    project: &AffectedProject,
-) -> GateCommandSpec {
-    GateCommandSpec {
-        label: label.to_owned(),
-        program: program.to_owned(),
-        arguments,
-        current_dir: project.root.clone(),
-        project: project.clone(),
-    }
-}
-
-fn planning() -> GateError {
-    GateError::new(
-        GateErrorKind::Workspace,
-        GateRecoveryAction::CorrectInput,
-        "affected project manifest is unreadable",
-    )
-}
-
 fn quote_argument(value: &str) -> String {
     if value.bytes().all(|byte| byte.is_ascii_alphanumeric() || b"-_./".contains(&byte)) {
         value.to_owned()
     } else {
         format!("'{}'", value.replace('\'', "'\"'\"'"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rust_plan_builds_the_exact_nested_package() {
+        let temporary = tempfile::tempdir().expect("temporary workspace");
+        let project = temporary.path().join("game");
+        std::fs::create_dir_all(project.join("src")).expect("nested package directory");
+        std::fs::write(
+            project.join("Cargo.toml"),
+            "[package]\nname = \"game\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[workspace]\n",
+        )
+        .expect("nested package manifest");
+        std::fs::write(project.join("src/main.rs"), "fn main() { println!(\"game\"); }\n")
+            .expect("nested package source");
+
+        let plan =
+            TargetGatePlan::discover(temporary.path(), vec![PathBuf::from("game/src/main.rs")])
+                .expect("exact target plan");
+
+        let build = plan
+            .commands()
+            .iter()
+            .find(|command| command.label() == "Rust build")
+            .expect("Rust build gate");
+        let format = plan
+            .commands()
+            .iter()
+            .find(|command| command.label() == "Rust format")
+            .expect("Rust format gate");
+        assert_eq!(format.program(), "cargo");
+        assert_eq!(format.current_dir(), Path::new(""));
+        assert_eq!(
+            format.arguments(),
+            ["fmt", "--manifest-path", "game/Cargo.toml", "--all", "--", "--check"]
+        );
+        assert_eq!(build.program(), "cargo");
+        assert_eq!(build.current_dir(), Path::new(""));
+        assert_eq!(
+            build.arguments(),
+            [
+                "build",
+                "--locked",
+                "--all-targets",
+                "--all-features",
+                "--manifest-path",
+                "game/Cargo.toml",
+                "--workspace",
+            ]
+        );
     }
 }

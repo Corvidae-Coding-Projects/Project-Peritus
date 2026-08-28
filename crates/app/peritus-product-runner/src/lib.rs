@@ -9,12 +9,18 @@ pub(crate) mod bundle;
 #[cfg(not(verus_only))]
 mod candidate;
 #[cfg(not(verus_only))]
+mod design;
+#[cfg(not(verus_only))]
 mod developer_tools;
+#[cfg(not(verus_only))]
+mod engineering_workflow;
 mod error;
 #[cfg(not(verus_only))]
 mod execution;
 #[cfg(not(verus_only))]
 pub(crate) mod gates;
+#[cfg(not(verus_only))]
+mod progress;
 #[cfg(not(verus_only))]
 pub(crate) mod provider;
 #[cfg(not(verus_only))]

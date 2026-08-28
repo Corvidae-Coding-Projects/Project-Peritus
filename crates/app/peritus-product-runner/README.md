@@ -1,9 +1,16 @@
 # peritus-product-runner
 
-Daemon-owned production composition for interactive Peritus coding runs. The adapter joins:
+Daemon-owned production composition for interactive Peritus coding runs. Every run begins with a
+read-only, repository-grounded design pass that writes a durable detailed Markdown document and
+supplies it to all implementation turns. Grounding is enforced by observed workspace listings and
+targeted reads, not accepted from model prose. The adapter then joins:
 
-- the `peritus-agent` D0 provider/tool loop for real inspect, search, edit, command, test, and retry;
-- `peritus-gates` changed-path planning and exact per-project compile/test/lint evidence;
+- embedded production-engineering, architect, developer, and reviewer workflow skills;
+- the `peritus-agent` D0 provider/tool loop for real inspect, search, edit, command, test, and retry,
+  with unread existing files protected from mutation and recoverable malformed, transport, and
+  timeout terminals retried as fresh bounded provider attempts;
+- `peritus-gates` changed-path planning, the deterministic 500-line source ceiling, and exact
+  per-project format/compile/build/test/lint evidence;
 - `peritus-review` typed policy-derived findings conserved through fixer and fresh-review cycles;
 - `peritus-orchestrator` fail-closed E0 accept/fix/exhaust decisions; and
 - a durable task candidate, provider/tool trace, task-level summary, and explicit deliverable
@@ -13,6 +20,17 @@ The crate consumes already resolved provider and managed-workspace capabilities.
 progress and deliverable evidence; it does not own UI, provider login, workspace trust, or Git
 commit/export/discard authority. `Complete` is impossible for an empty or uncovered candidate, a
 failed or missing exact-target command, or any unresolved policy blocker.
+
+Run lifetime is deliberately separate from model-turn lifetime. One provider attempt remains
+wall-clock bounded and one developer segment remains bounded to 48 logical turns and 512 tool
+calls. If that segment changed the exact Git candidate, its content checkpoint starts another
+fresh, repository-grounded segment with a compact prompt. Therefore substantial work can continue
+for as many segments as it needs without retaining an ever-growing model context. A segment that
+exhausts its allowance without changing the candidate stops as no-progress, and three consecutive
+malformed or ungrounded task-level terminals receive the exact rejection as corrective context;
+three consecutive failures stop for user correction. Abrupt daemon restarts automatically
+resume interrupted goals from their persisted conversation, finding ledger, trace, and unchanged
+managed worktree.
 
 Provider, filesystem, process, and Git effects remain ordinary Rust host adapters. In
 `verus_only` builds the crate exposes the same daemon-facing boundary as a fail-closed total

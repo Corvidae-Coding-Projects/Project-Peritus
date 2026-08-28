@@ -2,7 +2,8 @@
 
 mod catalog;
 mod executor;
+mod grounding;
 mod path;
 
-pub use catalog::definitions;
+pub use catalog::{definitions, read_only_definitions};
 pub use executor::WorkspaceDeveloperTools;

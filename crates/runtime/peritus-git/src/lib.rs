@@ -42,5 +42,6 @@ pub use status::{
     ChangeCode, EntryModes, StatusEntry, StatusKind, StatusObservation, SubmoduleState,
 };
 pub use worktree::{
-    CreateWorktree, RegisteredWorktree, RemovalPolicy, WorktreeAccess, WorktreeObservation,
+    CreateWorktree, RecoverWorktree, RegisteredWorktree, RemovalPolicy, WorktreeAccess,
+    WorktreeObservation,
 };

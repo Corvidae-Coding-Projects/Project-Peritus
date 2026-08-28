@@ -5,6 +5,8 @@
 pub enum ProductRunPhase {
     /// Accepted and waiting for execution.
     Queued,
+    /// The repository is being inspected and a detailed implementation design is being written.
+    Designing,
     /// The writer is preparing and applying an implementation.
     Writing,
     /// Repository gates are running.
@@ -21,7 +23,7 @@ pub enum ProductRunPhase {
     Failed,
     /// The user cancelled the run.
     Cancelled,
-    /// A daemon restart interrupted work that may be retried.
+    /// A daemon restart interrupted work that is automatically resumed when still admissible.
     RecoveryRequired,
     /// The agent asked a material question and is waiting for a reply.
     WaitingForUser,
@@ -43,6 +45,7 @@ impl ProductRunPhase {
             Self::Cancelled => 9,
             Self::RecoveryRequired => 10,
             Self::WaitingForUser => 11,
+            Self::Designing => 12,
         }
     }
 
@@ -61,6 +64,7 @@ impl ProductRunPhase {
             9 => Some(Self::Cancelled),
             10 => Some(Self::RecoveryRequired),
             11 => Some(Self::WaitingForUser),
+            12 => Some(Self::Designing),
             _ => None,
         }
     }

@@ -238,6 +238,7 @@ fn conversation_text(conversation: Option<&ProductRunConversation>) -> Text<'sta
 const fn phase_symbol(phase: ProductRunPhase) -> &'static str {
     match phase {
         ProductRunPhase::Queued => "○ Queued",
+        ProductRunPhase::Designing => "● Designing",
         ProductRunPhase::Writing => "● Writing",
         ProductRunPhase::Checking => "● Checking",
         ProductRunPhase::Reviewing => "● Reviewing",
@@ -268,7 +269,7 @@ fn phase_style(phase: ProductRunPhase) -> Style {
 
 fn timeline(phase: ProductRunPhase) -> String {
     let active = match phase {
-        ProductRunPhase::Queued => 0,
+        ProductRunPhase::Queued | ProductRunPhase::Designing => 0,
         ProductRunPhase::Writing => 1,
         ProductRunPhase::Checking => 2,
         ProductRunPhase::Reviewing => 3,
@@ -280,7 +281,7 @@ fn timeline(phase: ProductRunPhase) -> String {
         | ProductRunPhase::RecoveryRequired
         | ProductRunPhase::WaitingForUser => 7,
     };
-    ["Understand", "Write", "Check", "Review", "Fix", "Verify", "Complete"]
+    ["Design", "Write", "Check", "Review", "Fix", "Verify", "Complete"]
         .iter()
         .enumerate()
         .map(

@@ -122,6 +122,7 @@ impl DaemonRuntime {
         install_local_principal(&mut journal, &config, &endpoint, store_id)?;
         progress.complete(StartupPhase::Ipc)?;
         progress.complete(StartupPhase::Ready)?;
+        product_runs.resume_interrupted().await;
         let mut lifecycle = progress.into_lifecycle()?;
         let read_only = diagnostic.is_some();
         if let Some(diagnostic) = diagnostic {

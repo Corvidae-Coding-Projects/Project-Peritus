@@ -17,8 +17,9 @@ use peritus_provider_core::{CancellationToken, ModelProvider};
 use peritus_types::RunId;
 
 use support::{
-    FixedConversation, ScriptedProvider, cargo, git, named_tool_response, patch_arguments, profile,
-    text_response, tool_response, write_arguments,
+    FixedConversation, ScriptedProvider, cargo, design_response, git, list_arguments,
+    named_tool_response, patch_arguments, profile, read_arguments, text_response, tool_response,
+    write_arguments,
 };
 
 #[test]
@@ -53,7 +54,9 @@ fn exact_target_tool_edit_and_typed_review_are_required_for_completion() {
 
             let implemented = r"/// Returns the fixture answer.
 #[must_use]
-pub const fn answer() -> u32 { 42 }
+pub const fn answer() -> u32 {
+    42
+}
 
 #[cfg(test)]
 mod tests {
@@ -67,6 +70,12 @@ mod tests {
             let writer: Arc<dyn ModelProvider> = Arc::new(ScriptedProvider {
                 profile: profile([0x81; 16], "writer"),
                 responses: Mutex::new(VecDeque::from([
+                    named_tool_response("workspace_list", list_arguments("", 3)),
+                    named_tool_response("workspace_read", read_arguments("Cargo.toml")),
+                    named_tool_response("workspace_read", read_arguments("src/lib.rs")),
+                    design_response(),
+                    named_tool_response("workspace_list", list_arguments("", 3)),
+                    named_tool_response("workspace_read", read_arguments("src/lib.rs")),
                     tool_response(write_arguments),
                     text_response(
                         br#"{"kind":"complete","run_instructions":"cargo test","summary":"Added the tested answer API."}"#,
@@ -75,9 +84,12 @@ mod tests {
             });
             let reviewer: Arc<dyn ModelProvider> = Arc::new(ScriptedProvider {
                 profile: profile([0x82; 16], "reviewer"),
-                responses: Mutex::new(VecDeque::from([text_response(
-                    br#"{"findings":[],"summary":"The requested API and test are present and exact-target gates passed."}"#,
-                )])),
+                responses: Mutex::new(VecDeque::from([
+                    text_response(b"not a review object"),
+                    text_response(
+                        br#"{"findings":[],"summary":"The requested API and test are present and exact-target gates passed."}"#,
+                    ),
+                ])),
             });
             let phases = Arc::new(Mutex::new(Vec::new()));
             let phase_log = Arc::clone(&phases);
@@ -111,8 +123,14 @@ mod tests {
             };
 
             assert_eq!(output.changed_paths, vec![Path::new("src/lib.rs").to_owned()]);
-            assert_eq!(output.successful_commands.len(), 3);
-            assert!(output.successful_commands.iter().all(|command| {
+            assert_eq!(output.successful_commands.len(), 6);
+            assert!(output.successful_commands.iter().any(|command| {
+                command.contains("peritus-internal source-layout --max-lines 500")
+            }));
+            assert!(output.successful_commands.iter().any(|command| {
+                command == "cargo fmt --manifest-path Cargo.toml --all -- --check"
+            }));
+            assert!(output.successful_commands.iter().filter(|command| command.starts_with("cargo ") && !command.starts_with("cargo fmt ")).all(|command| {
                 command.contains("--manifest-path Cargo.toml")
                     && command.contains("--all-targets")
                     && command.contains("--all-features")
@@ -122,11 +140,23 @@ mod tests {
             assert!(!output.diff.contains('\0'));
             assert!(output.summary.contains("Added the tested answer API"));
             assert_eq!(output.run_instructions, "cargo test");
+            assert!(output.design_path.is_file());
+            assert!(
+                fs::read_to_string(&output.design_path)
+                    .expect("design document")
+                    .contains("## Architecture and interfaces")
+            );
+            assert!(
+                fs::read_to_string(&output.design_path)
+                    .expect("design document")
+                    .contains("## Repository grounding evidence")
+            );
             assert!(trace_path.is_file());
             assert_eq!(
                 phases.lock().expect("phases").as_slice(),
-                [ProductRunPhase::Writing, ProductRunPhase::Checking, ProductRunPhase::Reviewing,
-                 ProductRunPhase::Reviewing]
+                [ProductRunPhase::Designing, ProductRunPhase::Designing,
+                 ProductRunPhase::Writing, ProductRunPhase::Checking,
+                 ProductRunPhase::Reviewing, ProductRunPhase::Reviewing]
             );
         });
 }
@@ -165,7 +195,9 @@ fn fixer_cannot_erase_a_finding_without_fresh_reviewer_confirmation() {
 
             let initial = r"/// Returns the fixture answer.
 #[must_use]
-pub const fn answer() -> u32 { 41 }
+pub const fn answer() -> u32 {
+    41
+}
 
 #[cfg(test)]
 mod tests {
@@ -178,6 +210,12 @@ mod tests {
             let writer: Arc<dyn ModelProvider> = Arc::new(ScriptedProvider {
                 profile: profile([0x91; 16], "writer-with-finding"),
                 responses: Mutex::new(VecDeque::from([
+                    named_tool_response("workspace_list", list_arguments("", 3)),
+                    named_tool_response("workspace_read", read_arguments("Cargo.toml")),
+                    named_tool_response("workspace_read", read_arguments("src/lib.rs")),
+                    design_response(),
+                    named_tool_response("workspace_list", list_arguments("", 3)),
+                    named_tool_response("workspace_read", read_arguments("src/lib.rs")),
                     tool_response(write_arguments("src/lib.rs", initial)),
                     text_response(
                         br#"{"kind":"complete","run_instructions":"cargo test","summary":"Added an answer API and test."}"#,
@@ -187,6 +225,8 @@ mod tests {
             let fixer: Arc<dyn ModelProvider> = Arc::new(ScriptedProvider {
                 profile: profile([0x92; 16], "fixer"),
                 responses: Mutex::new(VecDeque::from([
+                    named_tool_response("workspace_list", list_arguments("", 3)),
+                    named_tool_response("workspace_read", read_arguments("src/lib.rs")),
                     named_tool_response(
                         "workspace_patch",
                         patch_arguments("src/lib.rs", "41", "42", true),

@@ -58,7 +58,7 @@ pub(super) fn decode_failure(
             FailureCategory::MalformedPayload,
             TransportPhase::ReadingBody,
             OutcomeCertainty::MaybeAccepted,
-            Retryability::Never,
+            Retryability::CallerDecision,
             "openai.codex_runtime.malformed",
             None,
             false,

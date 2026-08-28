@@ -8,10 +8,11 @@ use peritus_agent::{
 };
 use peritus_model_protocol::{
     BoundedText, CancellationKind, CanonicalJson, Capability, CapabilityMatrix,
-    CapabilityProvenance, ContentBlock, EventEnvelope, FinishReason, ItemId, ItemKind, JsonBounds,
-    JsonSchema, ModelEvent, ModelLimits, ModelName, ModelRequest, OutputLimitEnforcement,
-    ProtocolLimits, ProviderName, ProviderProfile, ResumeKind, Role, SchemaDialect, StateMode,
-    StreamFragment, ToolCallId, ToolDefinition, ToolName, WireDialect,
+    CapabilityProvenance, ContentBlock, EventEnvelope, FailureCategory, FinishReason, ItemId,
+    ItemKind, JsonBounds, JsonSchema, ModelEvent, ModelFailure, ModelLimits, ModelName,
+    ModelRequest, OutcomeCertainty, OutputLimitEnforcement, ProtocolLimits, ProviderName,
+    ProviderProfile, RedactedDiagnostic, ResumeKind, Retryability, Role, SchemaDialect, StateMode,
+    StreamFragment, ToolCallId, ToolDefinition, ToolName, TransportPhase, WireDialect,
 };
 use peritus_provider_core::{
     BoxFuture, CancellationToken, ModelProvider, ModelStream, OwnedModelStream, ProviderCoreError,
@@ -159,6 +160,42 @@ fn developer_loop_executes_a_tool_and_returns_its_observation_to_the_next_model_
     });
 }
 
+#[test]
+fn developer_loop_retries_a_recoverable_malformed_provider_turn() {
+    block_on(async {
+        let provider = ScriptedProvider {
+            profile: profile(),
+            responses: Mutex::new(VecDeque::from([
+                recoverable_failure_response(),
+                empty_response(),
+                text_response(),
+            ])),
+            requests: Mutex::new(Vec::new()),
+        };
+        let mut tools = RecordingTool::default();
+        let mut trace = RecordingTrace::default();
+        let outcome = DeveloperLoop::run(
+            &provider,
+            DeveloperLoopRequest {
+                request_prefix: "recovery-test".to_owned(),
+                system: "Complete the task.".to_owned(),
+                prompt: "Return the result.".to_owned(),
+                tools: vec![read_tool()],
+                limits: DeveloperLoopLimits::new(4, 4).expect("limits"),
+                cancellation: CancellationToken::new(),
+            },
+            &mut tools,
+            &mut trace,
+        )
+        .await
+        .expect("developer loop recovers");
+
+        assert_eq!(outcome.text, "implementation inspected");
+        assert_eq!(outcome.model_turns, 1);
+        assert_eq!(provider.requests.lock().expect("requests").len(), 3);
+    });
+}
+
 fn profile() -> ProviderProfile {
     ProviderProfile::new(
         ProviderProfileId::new([0x7A; 16]).expect("profile ID"),
@@ -227,6 +264,33 @@ fn text_response() -> VecDeque<EventEnvelope> {
                 .expect("text"),
         },
         ModelEvent::ItemCompleted(item),
+        ModelEvent::Finish(FinishReason::Stop),
+        ModelEvent::ResponseCompleted,
+    ])
+}
+
+fn recoverable_failure_response() -> VecDeque<EventEnvelope> {
+    let failure = ModelFailure::new(
+        ProviderName::new("scripted-provider".to_owned()).expect("provider"),
+        FailureCategory::MalformedPayload,
+        TransportPhase::ReadingBody,
+        OutcomeCertainty::MaybeAccepted,
+        Retryability::SafeNewRequest,
+        None,
+        None,
+        None,
+        RedactedDiagnostic::new("scripted.malformed".to_owned(), None, None, None)
+            .expect("diagnostic"),
+    );
+    response([
+        ModelEvent::ResponseStarted { response_id: None, model: None },
+        ModelEvent::ResponseFailed(failure),
+    ])
+}
+
+fn empty_response() -> VecDeque<EventEnvelope> {
+    response([
+        ModelEvent::ResponseStarted { response_id: None, model: None },
         ModelEvent::Finish(FinishReason::Stop),
         ModelEvent::ResponseCompleted,
     ])

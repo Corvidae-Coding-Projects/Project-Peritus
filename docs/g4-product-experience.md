@@ -40,19 +40,39 @@ The Runs view is the ordinary work surface:
 
 1. Press `n`, describe the desired coding outcome, and press Enter. Shift-Enter adds a line.
 2. Peritus sends the task and the selected writer, reviewer, and fixer providers to the daemon.
-3. The production D0 writer inspects and searches the real managed worktree, makes bounded edits,
+3. Before code is written, a read-only design pass inspects the real repository and publishes a
+   detailed Markdown design beside the durable run trace. It covers acceptance criteria,
+   repository findings, architecture and interfaces, data and control flow, exact files and
+   modules, implementation slices, verification, and realistic risks. The writer and every fixer
+   receive that exact design; a material conversational redirect regenerates it before more code.
+   The harness requires a successful workspace listing and targeted file reads, then appends those
+   observed paths to the artifact as deterministic grounding evidence.
+4. The production D0 writer inspects and searches the real managed worktree, makes bounded edits,
    runs structured commands, observes build/test failures, and retries before reporting readiness.
-4. D1 maps every exact changed file to its nearest Rust, Node, Python, or Go project manifest and
-   runs that project's explicit compile/test/lint commands. Uncovered files, missing commands,
-   failed commands, or an empty candidate all refuse acceptance; an unrelated root project cannot
-   satisfy a nested game or package.
-5. The independent D2 reviewer returns typed findings. Policy derives blocker status, so
+   Its embedded production-engineering workflow and role skills require cohesive modules, thin
+   composition roots, explicit interfaces, separately testable deterministic logic, and disjoint
+   file ownership for parallel slices. An existing file cannot be written or patched until that
+   exact file has been read during the current developer turn.
+   A model turn is not the lifetime of the run: malformed, empty, timeout, and recoverable
+   transport outcomes receive up to three fresh bounded attempts. A 48-turn developer segment that
+   materially changes the exact Git candidate publishes a content checkpoint and continues in a
+   fresh repository-grounded segment. This keeps memory bounded while allowing productive goals to
+   run for as many segments as required. Exhausting a segment without changing the candidate is a
+   genuine no-progress stop rather than an arbitrary total-work limit. A malformed or ungrounded
+   task-level terminal receives its exact harness rejection on the next bounded attempt, so a model
+   can correct the contract rather than blindly repeat the same response.
+5. D1 maps every exact changed file to its nearest Rust, Node, Python, or Go project manifest and
+   runs its source-layout policy and explicit format/compile/build/test/lint commands. Production source
+   files over 500 lines fail deterministically. Uncovered files, missing commands, failed commands,
+   or an empty candidate all refuse acceptance; an unrelated root project cannot satisfy a nested
+   game or package.
+6. The independent D2 reviewer returns typed findings. Policy derives blocker status, so
    correctness, requested-behavior, build-coverage, test-coverage, and security findings block
    regardless of the reviewer's severity wording. Findings remain open across daemon persistence
    until a fixer addresses them and a fresh reviewer confirms their absence.
-6. E0 sends all failed checks and conserved findings to the tool-capable fixer and repeats fresh
+7. E0 sends all failed checks and conserved findings to the tool-capable fixer and repeats fresh
    gates and review within an explicit bounded cycle budget.
-7. The run completes only when exact-target gates pass and no conserved policy blocker remains.
+8. The run completes only when exact-target gates pass and no conserved policy blocker remains.
    Completion retains the original task-level result plus any verified fixer summaries.
 
 Every run is also a durable conversation. Select it and press Enter or `m` to reply, redirect, add
@@ -67,16 +87,19 @@ the same files at once. A completed but uncommitted deliverable also reserves th
 it is committed or discarded, preventing a later task from silently absorbing its files. Other
 configured workspaces remain independently usable.
 
-The daemon persists each visible phase: Queued, Writing, Checking, Reviewing, Fixing, Verifying,
-Waiting for user, Complete, Failed, Cancelled, or Recovery required, together with its bounded
-conversation. The Runs view shows that state as text as well as color, the Diff view shows tracked
-and newly created text files, and the Review view shows the latest review or repository checks.
+The daemon persists each visible phase: Queued, Designing, Writing, Checking, Reviewing, Fixing,
+Verifying, Waiting for user, Complete, Failed, Cancelled, or Recovery required, together with its
+bounded conversation. The Runs view shows that state as text as well as color, the Diff view shows
+tracked and newly created text files, and the Review view shows the latest review or repository
+checks. The run summary names the durable detailed-design path.
 After completion, the handoff shows the managed path, exact changed-file count, exact successful
 commands, and how to run the result. Press `i` to inspect, `a` to accept, `c` to commit only the
 deliverable paths, `p` to export an exact patch, or uppercase `D` to discard only those paths.
-Press `x` to cancel a selected run and `r` to retry a failed, cancelled, or interrupted run. A
-daemon restart marks an unfinished run Recovery required rather than pretending it completed;
-durable typed findings remain conserved on retry.
+Press `x` to cancel a selected run and `r` to retry a failed or cancelled run. After a daemon
+restart, an unfinished run is reconstructed as Recovery required and immediately resumed
+when its provider and workspace are still available; if automatic admission cannot proceed, it
+stays visibly recoverable for manual `r`. Durable conversation, candidate files, traces, and typed
+findings remain conserved.
 
 Provider roles default to the selected provider. In the Runs view, press `w`, `e`, or `f` to cycle
 the writer, reviewer, or fixer independently before starting the next task. Press `?` for the full
@@ -95,7 +118,9 @@ The workspace menu uses plain path labels and text status:
 Forgetting a trusted entry removes it from the recent list but retains the registered managed copy
 for safe daemon recovery and later product cleanup. It never silently discards unfinished changes.
 An interrupted registration publication is recovered from the exact managed worktree rather than
-creating another copy.
+creating another copy. Repairing a previously trusted copy re-registers its actual validated
+detached HEAD, preserving both agent commits and unfinished files instead of demanding that it
+still match a newer source-checkout HEAD.
 
 Focused settings commands are:
 

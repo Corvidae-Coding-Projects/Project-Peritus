@@ -7,7 +7,7 @@ use peritus_model_protocol::{
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
 pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
-    [
+    definitions_from(&[
         (
             "workspace_list",
             "List files and directories below one workspace-relative path.",
@@ -38,10 +38,38 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
             "Run a structured executable and argv in the managed workspace; use it to build, test, lint, inspect Git, and observe failures.",
             r#"{"additionalProperties":false,"properties":{"args":{"items":{"type":"string"},"type":"array"},"cwd":{"type":"string"},"program":{"type":"string"}},"required":["args","program"],"type":"object"}"#,
         ),
-    ]
-    .into_iter()
-    .map(|(name, description, schema)| definition(name, description, schema))
-    .collect()
+    ])
+}
+
+/// Returns the repository-inspection subset used by the mandatory design pass.
+pub fn read_only_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
+    definitions_from(&[
+        (
+            "workspace_list",
+            "List files and directories below one workspace-relative path.",
+            r#"{"additionalProperties":false,"properties":{"depth":{"type":"integer"},"path":{"type":"string"}},"type":"object"}"#,
+        ),
+        (
+            "workspace_search",
+            "Search text files for a literal string and return matching lines.",
+            r#"{"additionalProperties":false,"properties":{"max_results":{"type":"integer"},"path":{"type":"string"},"query":{"type":"string"}},"required":["query"],"type":"object"}"#,
+        ),
+        (
+            "workspace_read",
+            "Read a bounded line range from one workspace-relative text file.",
+            r#"{"additionalProperties":false,"properties":{"end_line":{"type":"integer"},"path":{"type":"string"},"start_line":{"type":"integer"}},"required":["path"],"type":"object"}"#,
+        ),
+    ])
+}
+
+fn definitions_from(
+    definitions: &[(&str, &str, &str)],
+) -> Result<Vec<ToolDefinition>, ProductRunnerError> {
+    definitions
+        .iter()
+        .copied()
+        .map(|(name, description, schema)| definition(name, description, schema))
+        .collect()
 }
 
 fn definition(

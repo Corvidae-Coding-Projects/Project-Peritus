@@ -12,7 +12,10 @@ use peritus_agent::{DeveloperLoopError, DeveloperToolExecutor, DeveloperToolObse
 use peritus_model_protocol::{CanonicalJson, CompletedToolCall, JsonBounds, ProtocolLimits};
 use serde_json::{Map, Value};
 
-use super::path::{checked, tool};
+use super::{
+    grounding::GroundingEvidence,
+    path::{checked, tool},
+};
 
 const MAX_OUTPUT_BYTES: usize = 512 * 1024;
 const MAX_FILE_BYTES: usize = 2 * 1024 * 1024;
@@ -20,13 +23,18 @@ const MAX_FILE_BYTES: usize = 2 * 1024 * 1024;
 /// Concrete tool executor scoped to one managed workspace.
 pub struct WorkspaceDeveloperTools {
     root: PathBuf,
+    grounding: GroundingEvidence,
 }
 
 impl WorkspaceDeveloperTools {
     /// Creates one workspace-scoped executor.
     #[must_use]
-    pub const fn new(root: PathBuf) -> Self {
-        Self { root }
+    pub fn new(root: PathBuf) -> Self {
+        Self { root, grounding: GroundingEvidence::default() }
+    }
+
+    pub const fn grounding(&self) -> &GroundingEvidence {
+        &self.grounding
     }
 }
 
@@ -48,6 +56,7 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
         };
         match result {
             Ok(value) => {
+                self.record_success(call.name().as_str(), &arguments, &value);
                 let is_error = value.get("success").and_then(Value::as_bool) == Some(false);
                 observation(&value, is_error)
             }
@@ -60,6 +69,27 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
 }
 
 impl WorkspaceDeveloperTools {
+    fn record_success(&mut self, name: &str, arguments: &Value, result: &Value) {
+        match name {
+            "workspace_list" => self.grounding.record_list(
+                string(arguments, "path").unwrap_or(""),
+                result.get("entries").and_then(Value::as_array).map_or(0, Vec::len),
+            ),
+            "workspace_search" => self.grounding.record_search(),
+            "workspace_read" => {
+                if let Some(path) = string(arguments, "path") {
+                    self.grounding.record_read(path);
+                }
+            }
+            "workspace_write" | "workspace_patch" => {
+                if let Some(path) = string(arguments, "path") {
+                    self.grounding.record_mutation(path);
+                }
+            }
+            _ => {}
+        }
+    }
+
     fn list(&self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
         let relative = string(arguments, "path").unwrap_or("");
         let depth = bounded_usize(arguments, "depth", 3, 1, 12);
@@ -192,6 +222,7 @@ impl WorkspaceDeveloperTools {
             return Err(tool("write exceeds the per-file byte bound"));
         }
         let path = checked(&self.root, relative, true)?;
+        self.grounding.ensure_mutation_allowed(relative, path.exists()).map_err(tool)?;
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).map_err(|error| tool(error.to_string()))?;
         }
@@ -211,6 +242,7 @@ impl WorkspaceDeveloperTools {
             return Err(tool("patch old text is empty"));
         }
         let path = checked(&self.root, relative, false)?;
+        self.grounding.ensure_mutation_allowed(relative, true).map_err(tool)?;
         let content = fs::read_to_string(&path).map_err(|error| tool(error.to_string()))?;
         let occurrences = content.matches(old).count();
         if occurrences == 0 || (!replace_all && occurrences != 1) {

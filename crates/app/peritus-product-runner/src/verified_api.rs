@@ -17,6 +17,8 @@ use crate::{ProductRunnerError, ProductRunnerErrorKind};
 /// Concrete product-run phase emitted to the daemon.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ProductRunPhase {
+    /// Repository inspection and detailed implementation design.
+    Designing,
     /// Writer model and developer tools.
     Writing,
     /// Exact-target repository checks.
@@ -96,6 +98,8 @@ pub struct ProductRunInput {
 
 /// Exact deliverable evidence from a successful production run.
 pub struct ProductRunOutput {
+    /// Durable detailed implementation design generated before coding.
+    pub design_path: PathBuf,
     /// Aggregated task-level completion summary.
     pub summary: String,
     /// Final bounded diff.

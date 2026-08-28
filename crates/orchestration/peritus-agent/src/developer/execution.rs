@@ -3,12 +3,12 @@
 use peritus_model_protocol::{
     BoundedText, CachePolicy, Capability, ContentBlock, GenerationConfig, Message, ModelRequest,
     ParallelToolPolicy, PersistencePolicy, ProtocolLimits, ReasoningPolicy, ReducedItem, RequestId,
-    RequestOptions, RequestedCapabilities, Role, StructuredOutput, TerminalOutcome, ToolChoice,
-    ToolResult, negotiate,
+    RequestOptions, RequestedCapabilities, Retryability, Role, StructuredOutput, TerminalOutcome,
+    ToolChoice, ToolResult, negotiate,
 };
-use peritus_provider_core::ModelProvider;
+use peritus_provider_core::{ModelProvider, ProviderCoreErrorKind};
 
-use crate::{ModelAdvance, ModelSession};
+use crate::{ModelAdvance, ModelDriveError, ModelSession};
 
 use super::{
     DeveloperLoopError, DeveloperLoopOutcome, DeveloperLoopRequest, DeveloperToolExecutor,
@@ -54,55 +54,17 @@ impl DeveloperLoop {
             if request.cancellation.is_cancelled() {
                 return Err(DeveloperLoopError::Cancelled);
             }
-            let model_request = ModelRequest::new(
+            let session = complete_turn(
+                provider,
+                &request,
+                &messages,
                 profile,
                 negotiated,
-                RequestId::new(format!("{}-{turn}", request.request_prefix))?,
-                messages.clone(),
-                request.tools.clone(),
-                ToolChoice::Auto,
-                ParallelToolPolicy::Disabled,
-                RequestOptions::new(
-                    StructuredOutput::Text,
-                    ReasoningPolicy::Disabled,
-                    GenerationConfig::new(
-                        profile.limits().max_output_tokens().min(32_768),
-                        Vec::new(),
-                        None,
-                        None,
-                        None,
-                    )?,
-                    CachePolicy::Disabled,
-                    PersistencePolicy::LOCAL_FIRST,
-                    None,
-                    Vec::new(),
-                ),
                 protocol_limits,
-            )?;
-            let mut session = ModelSession::start(
-                provider,
-                model_request,
-                protocol_limits,
-                request.cancellation.clone(),
+                turn,
+                trace,
             )
             .await?;
-            loop {
-                match session.pull_one().await? {
-                    ModelAdvance::Closed => break,
-                    ModelAdvance::EnvelopePending { .. } => {
-                        let encoded = session.encode_pending()?;
-                        trace.record(DeveloperTraceEvent::ProviderEnvelope(&encoded))?;
-                        let _ = session.accept_durable_pending()?;
-                    }
-                }
-            }
-            let terminal = session.terminal().ok_or(DeveloperLoopError::EmptyResponse)?;
-            if !matches!(
-                terminal,
-                TerminalOutcome::Succeeded { .. } | TerminalOutcome::RequiresAction { .. }
-            ) {
-                return Err(DeveloperLoopError::EmptyResponse);
-            }
 
             let mut assistant = Vec::new();
             let mut calls = Vec::new();
@@ -165,6 +127,144 @@ impl DeveloperLoop {
         }
         Err(DeveloperLoopError::LimitExceeded)
     }
+}
+
+#[allow(clippy::too_many_arguments, reason = "one logical turn keeps its checked request inputs")]
+async fn complete_turn(
+    provider: &dyn ModelProvider,
+    request: &DeveloperLoopRequest,
+    messages: &[Message],
+    profile: &peritus_model_protocol::ProviderProfile,
+    negotiated: peritus_model_protocol::NegotiatedCapabilities,
+    protocol_limits: ProtocolLimits,
+    turn: u16,
+    trace: &mut dyn DeveloperTrace,
+) -> Result<ModelSession, DeveloperLoopError> {
+    let maximum = request.limits.max_attempts_per_turn();
+    for attempt in 1..=maximum {
+        if request.cancellation.is_cancelled() {
+            return Err(DeveloperLoopError::Cancelled);
+        }
+        let model_request =
+            model_request(request, messages, profile, negotiated, protocol_limits, turn, attempt)?;
+        match drive(provider, model_request, request, protocol_limits, trace).await {
+            Ok(session) if successful(session.terminal()) && usable(&session) => {
+                return Ok(session);
+            }
+            Ok(session)
+                if (successful(session.terminal()) || retryable_terminal(session.terminal()))
+                    && attempt < maximum => {}
+            Ok(_) => return Err(DeveloperLoopError::EmptyResponse),
+            Err(error) if retryable_error(&error) && attempt < maximum => {}
+            Err(error) => return Err(error),
+        }
+        tokio::time::sleep(retry_delay(attempt)).await;
+    }
+    Err(DeveloperLoopError::EmptyResponse)
+}
+
+fn model_request(
+    request: &DeveloperLoopRequest,
+    messages: &[Message],
+    profile: &peritus_model_protocol::ProviderProfile,
+    negotiated: peritus_model_protocol::NegotiatedCapabilities,
+    protocol_limits: ProtocolLimits,
+    turn: u16,
+    attempt: u8,
+) -> Result<ModelRequest, DeveloperLoopError> {
+    Ok(ModelRequest::new(
+        profile,
+        negotiated,
+        RequestId::new(format!("{}-{turn}-attempt-{attempt}", request.request_prefix))?,
+        messages.to_vec(),
+        request.tools.clone(),
+        ToolChoice::Auto,
+        ParallelToolPolicy::Disabled,
+        RequestOptions::new(
+            StructuredOutput::Text,
+            ReasoningPolicy::Disabled,
+            GenerationConfig::new(
+                profile.limits().max_output_tokens().min(32_768),
+                Vec::new(),
+                None,
+                None,
+                None,
+            )?,
+            CachePolicy::Disabled,
+            PersistencePolicy::LOCAL_FIRST,
+            None,
+            Vec::new(),
+        ),
+        protocol_limits,
+    )?)
+}
+
+async fn drive(
+    provider: &dyn ModelProvider,
+    model_request: ModelRequest,
+    request: &DeveloperLoopRequest,
+    protocol_limits: ProtocolLimits,
+    trace: &mut dyn DeveloperTrace,
+) -> Result<ModelSession, DeveloperLoopError> {
+    let mut session =
+        ModelSession::start(provider, model_request, protocol_limits, request.cancellation.clone())
+            .await?;
+    loop {
+        match session.pull_one().await? {
+            ModelAdvance::Closed => return Ok(session),
+            ModelAdvance::EnvelopePending { .. } => {
+                let encoded = session.encode_pending()?;
+                trace.record(DeveloperTraceEvent::ProviderEnvelope(&encoded))?;
+                let _ = session.accept_durable_pending()?;
+            }
+        }
+    }
+}
+
+const fn successful(terminal: Option<&TerminalOutcome>) -> bool {
+    matches!(
+        terminal,
+        Some(TerminalOutcome::Succeeded { .. } | TerminalOutcome::RequiresAction { .. })
+    )
+}
+
+fn usable(session: &ModelSession) -> bool {
+    session.completed_items().iter().any(|item| match item {
+        ReducedItem::Text { text, .. } => !text.expose_for_wire().trim().is_empty(),
+        ReducedItem::ToolCall { .. } => true,
+        ReducedItem::Reasoning { .. }
+        | ReducedItem::Structured { .. }
+        | ReducedItem::Refusal { .. }
+        | ReducedItem::ProviderNative { .. } => false,
+    })
+}
+
+const fn retryable_terminal(terminal: Option<&TerminalOutcome>) -> bool {
+    match terminal {
+        None => true,
+        Some(TerminalOutcome::Failed(failure)) => matches!(
+            failure.retryability(),
+            Retryability::SafeNewRequest | Retryability::CallerDecision
+        ),
+        _ => false,
+    }
+}
+
+const fn retryable_error(error: &DeveloperLoopError) -> bool {
+    matches!(
+        error,
+        DeveloperLoopError::Model(ModelDriveError::Provider(provider))
+            if matches!(
+                provider.kind(),
+                ProviderCoreErrorKind::Connect
+                    | ProviderCoreErrorKind::Transport
+                    | ProviderCoreErrorKind::MalformedStream
+            )
+    )
+}
+
+const fn retry_delay(attempt: u8) -> std::time::Duration {
+    std::time::Duration::from_millis(250_u64.saturating_mul(attempt as u64))
 }
 
 fn message(

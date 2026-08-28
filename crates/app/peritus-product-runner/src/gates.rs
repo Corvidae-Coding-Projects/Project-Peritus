@@ -7,6 +7,8 @@ use std::{
 
 use peritus_gates::{GateExecutionRecord, TargetGatePlan, TargetGateReport};
 
+mod source_layout;
+
 use crate::{ProductRunnerError, ProductRunnerErrorKind, bundle::limit_text};
 
 /// Rendered exact-target gate evidence and typed D1 report.
@@ -25,6 +27,14 @@ pub fn run(root: &Path, changed_paths: Vec<PathBuf>) -> Result<GateReport, Produ
     })?;
     let mut records = Vec::new();
     for specification in plan.commands() {
+        if specification.program() == "peritus-internal" {
+            records.push(source_layout::run(
+                &root.join(specification.current_dir()),
+                specification.project().kind(),
+                specification.display(),
+            ));
+            continue;
+        }
         let mut command = Command::new(specification.program());
         command.args(specification.arguments()).current_dir(root.join(specification.current_dir()));
         if specification.program() == "cargo" {

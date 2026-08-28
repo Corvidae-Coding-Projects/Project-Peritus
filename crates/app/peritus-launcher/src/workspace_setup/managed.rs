@@ -2,7 +2,9 @@
 
 use std::{fs, path::Path};
 
-use peritus_git::{CreateWorktree, RepositoryOptions, WorktreeAccess, WorktreeName};
+use peritus_git::{
+    CreateWorktree, RecoverWorktree, RepositoryOptions, WorktreeAccess, WorktreeName,
+};
 use peritus_product_state::{WorkspaceProfile, WorkspaceTrust};
 use peritus_types::{EnvironmentId, ResourceId, WorkspaceId};
 use peritus_workspace::{WorkspaceBinding, WorkspaceRegistration};
@@ -70,20 +72,38 @@ pub fn trust(
     let leaf = format!("workspace_{}", &profile.workspace_id()[..16]);
     let name = WorktreeName::new(leaf.clone())?;
     let destination = layout.managed_workspaces_root().join(&leaf);
-    let request = CreateWorktree::new(name, &destination, baseline, WorktreeAccess::Writable);
     let worktree = if destination.exists() {
-        repository.repository().recover_existing_worktree(request)?
+        if repair {
+            repository.repository().recover_current_worktree(RecoverWorktree::new(
+                name,
+                &destination,
+                WorktreeAccess::Writable,
+            ))?
+        } else {
+            repository.repository().recover_existing_worktree(CreateWorktree::new(
+                name,
+                &destination,
+                baseline,
+                WorktreeAccess::Writable,
+            ))?
+        }
     } else {
-        repository.repository().create_worktree(request)?
+        repository.repository().create_worktree(CreateWorktree::new(
+            name,
+            &destination,
+            baseline,
+            WorktreeAccess::Writable,
+        ))?
     };
     let transaction_root = layout.prepare_workspace_transaction(profile.workspace_id())?;
+    let managed_baseline = worktree.baseline();
     let binding = WorkspaceBinding::new(
         workspace_id(&profile)?,
         resource_id(&profile)?,
         environment_id(&profile)?,
         worktree.root().to_owned(),
-        baseline.commit(),
-        baseline.tree(),
+        managed_baseline.commit(),
+        managed_baseline.tree(),
     )?;
     let registration = WorkspaceRegistration::new(
         &binding,
@@ -269,6 +289,36 @@ mod tests {
         assert!(forgotten.state().workspaces().recent().is_empty());
         assert_eq!(forgotten.daemon_config().workspaces().len(), 1);
         assert!(forgotten.daemon_config().tools().allowed().is_empty());
+    }
+
+    #[test]
+    fn trusted_repair_adopts_advanced_detached_head_and_preserves_unfinished_files() {
+        let temporary = tempfile::tempdir().expect("temporary root");
+        let source = initialized_repository(temporary.path());
+        let repository = DiscoveredRepository::open(&source).expect("repository");
+        let layout = AppLayout::for_test(&temporary.path().join("application"))
+            .prepare()
+            .expect("application layout");
+        let trusted = trust(&layout, &repository, new_profile(&repository).expect("profile"))
+            .expect("trusted workspace");
+        let managed = PathBuf::from(trusted.managed_root().expect("managed root"));
+        fs::write(managed.join("file.txt"), "agent result\n").expect("modify tracked file");
+        git(&managed, &["add", "--", "file.txt"]);
+        git(&managed, &["commit", "--quiet", "-m", "agent result"]);
+        fs::write(managed.join("unfinished.txt"), "preserve me\n").expect("write unfinished file");
+        assert_eq!(health(&trusted), WorkspaceHealth::NeedsRepair);
+
+        let repaired = trust(&layout, &repository, trusted).expect("repair trusted workspace");
+
+        assert_eq!(health(&repaired), WorkspaceHealth::Dirty);
+        assert_eq!(
+            fs::read_to_string(managed.join("file.txt")).expect("read committed result"),
+            "agent result\n"
+        );
+        assert_eq!(
+            fs::read_to_string(managed.join("unfinished.txt")).expect("read unfinished result"),
+            "preserve me\n"
+        );
     }
 
     #[test]

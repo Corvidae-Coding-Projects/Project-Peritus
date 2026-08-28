@@ -7,7 +7,7 @@ use peritus_types::Sha256Digest;
 use super::{SCHEMA_VERSION, digest, encoded, finish, format_from_tag, format_tag, path_text};
 use crate::{
     Baseline, CommitId, CreateWorktree, ErrorKind, GitError, GitRepository, Operation,
-    RecoveryClass, RegisteredWorktree, TreeId, WorktreeAccess, WorktreeName,
+    RecoverWorktree, RecoveryClass, RegisteredWorktree, TreeId, WorktreeAccess, WorktreeName,
 };
 
 const MAGIC: &str = "peritus-git-worktree-registration";
@@ -193,6 +193,23 @@ impl GitRepository {
         request: CreateWorktree,
     ) -> Result<RegisteredWorktree, GitError> {
         crate::worktree::recover_existing(self, request)
+    }
+
+    /// Re-registers a previously trusted linked worktree at its current detached HEAD.
+    ///
+    /// Existing working-tree changes are retained. The worktree root, Git metadata, repository
+    /// identity, detached topology, commit, and tree are all revalidated before a handle is
+    /// returned.
+    ///
+    /// # Errors
+    ///
+    /// Rejects missing paths, protected locations, mismatched names or repositories, attached
+    /// topology, invalid objects, or concurrent HEAD drift.
+    pub fn recover_current_worktree(
+        &self,
+        request: RecoverWorktree,
+    ) -> Result<RegisteredWorktree, GitError> {
+        crate::worktree::recover_current(self, request)
     }
 }
 

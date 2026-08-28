@@ -13,6 +13,9 @@ pub fn checked(
     allow_missing: bool,
 ) -> Result<PathBuf, DeveloperLoopError> {
     let relative = Path::new(value);
+    if relative == Path::new(".") {
+        return Ok(root.to_path_buf());
+    }
     if relative.is_absolute()
         || relative.components().any(|component| !matches!(component, Component::Normal(_)))
         || relative.starts_with(".git")

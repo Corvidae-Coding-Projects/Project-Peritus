@@ -11,6 +11,8 @@ use peritus_types::RunId;
 /// Concrete product-run phase emitted to the daemon.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ProductRunPhase {
+    /// Repository inspection and detailed implementation design.
+    Designing,
     /// Writer model and developer tools.
     Writing,
     /// Exact-target repository checks.
@@ -92,6 +94,8 @@ pub struct ProductRunInput {
 /// Successful terminal result and exact deliverable evidence.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProductRunOutput {
+    /// Durable detailed implementation design generated before coding.
+    pub design_path: PathBuf,
     /// Aggregated task-level completion summary.
     pub summary: String,
     /// Final bounded diff.

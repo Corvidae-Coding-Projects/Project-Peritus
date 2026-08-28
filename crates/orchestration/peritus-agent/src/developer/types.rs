@@ -8,8 +8,9 @@ use super::DeveloperLoopError;
 /// Explicit bounds for one inspect/edit/run/test loop.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct DeveloperLoopLimits {
-    max_model_turns: u16,
-    max_tool_calls: u32,
+    model_turns: u16,
+    tool_calls: u32,
+    attempts_per_turn: u8,
 }
 
 impl DeveloperLoopLimits {
@@ -28,19 +29,40 @@ impl DeveloperLoopLimits {
         {
             return Err(DeveloperLoopError::LimitExceeded);
         }
-        Ok(Self { max_model_turns, max_tool_calls })
+        Ok(Self { model_turns: max_model_turns, tool_calls: max_tool_calls, attempts_per_turn: 3 })
+    }
+
+    /// Overrides the attempts available to recover one logical model turn.
+    ///
+    /// # Errors
+    /// Rejects zero or an attempt count wide enough to hide a persistent provider failure.
+    pub const fn with_max_attempts_per_turn(
+        mut self,
+        max_attempts_per_turn: u8,
+    ) -> Result<Self, DeveloperLoopError> {
+        if max_attempts_per_turn == 0 || max_attempts_per_turn > 8 {
+            return Err(DeveloperLoopError::LimitExceeded);
+        }
+        self.attempts_per_turn = max_attempts_per_turn;
+        Ok(self)
     }
 
     /// Maximum provider turns.
     #[must_use]
     pub const fn max_model_turns(self) -> u16 {
-        self.max_model_turns
+        self.model_turns
     }
 
     /// Maximum completed tool calls.
     #[must_use]
     pub const fn max_tool_calls(self) -> u32 {
-        self.max_tool_calls
+        self.tool_calls
+    }
+
+    /// Maximum fresh attempts for one logical provider turn.
+    #[must_use]
+    pub const fn max_attempts_per_turn(self) -> u8 {
+        self.attempts_per_turn
     }
 }
 

@@ -121,14 +121,28 @@ The implemented foundation and runtime spine now covers:
   configuration or installed executable changed. Its daemon-owned coding-run service accepts a
   task and explicit provider choice for each role, then composes the production D0 developer loop,
   changed-target D1 gates, typed D2 finding conservation, and E0 writer/reviewer/fixer decisions in
-  the managed worktree. Writers and fixers can inspect, search, edit, run, test, observe failures,
-  and retry through bounded structured tools. Completion is refused unless every exact changed
-  project has explicit passing compile/test/lint evidence and no policy-derived blocker remains.
-  The daemon persists every visible phase, durable finding state, and task-level summary, recovers
-  interrupted records, and supports query, cancellation, retry, and conversational continuation
-  through canonical A3 messages. A completed run carries its managed path, exact changed files,
-  successful commands, run instructions, and inspect/accept/commit/export/discard handoff. The TUI
-  provides an accessible task composer, textual progress timeline, diff and review/check views,
+  the managed worktree. A mandatory read-only design pass first inspects the repository and writes
+  a durable detailed Markdown plan covering acceptance, architecture, concrete files and modules,
+  slices, and verification; deterministic grounding records its successful repository listing and
+  targeted reads. Embedded architect, developer, and reviewer skills require cohesive modules,
+  thin composition roots, explicit interfaces, and collision-aware slices. Writers and fixers can
+  inspect, search, edit, run, test, observe failures, and retry through bounded structured tools,
+  but cannot mutate an existing file before reading it in the current turn. Recoverable malformed,
+  empty, timeout, and transport responses receive fresh bounded attempts; productive 48-turn work
+  segments checkpoint the exact candidate and replenish the run in a compact newly grounded
+  context, while a no-change exhausted segment stops. Rejected ungrounded or malformed task-level
+  terminals receive their exact contract failure on the next bounded attempt instead of repeating
+  the same prompt without useful feedback. Interrupted goals resume automatically on daemon restart
+  from their persisted conversation, findings, trace, and managed worktree. Completion is refused
+  unless every exact changed project satisfies the 500-line source ceiling and has explicit
+  passing compile/build/test/lint evidence with no policy-derived blocker. Trusted-workspace repair now
+  re-registers a validated advanced detached HEAD without discarding agent commits or unfinished
+  files, and status accepts Git's ordinary trailing-slash directory records. The daemon persists
+  every visible phase, durable finding state, and task-level summary, recovers interrupted records,
+  and supports query, cancellation, retry, and conversational continuation through canonical A3
+  messages. A completed run carries its managed path, exact changed files, successful commands,
+  run instructions, design path, and inspect/accept/commit/export/discard handoff. The TUI provides
+  an accessible task composer, textual progress timeline, diff and review/check views,
   role-provider switching, handoff controls, cancellation, retry, and a visible `R
   restart/reconnect` action when the daemon link drops. Host-native package assembly now
   installs the launcher,
