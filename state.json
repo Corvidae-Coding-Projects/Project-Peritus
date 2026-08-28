@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 566,
+  "next_comment_id": 567,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-28T21:27:49.252122737Z",
+      "updated_at": "2026-08-28T21:32:39.514442929Z",
       "labels": [
         "qualification",
         "release"
@@ -1459,6 +1459,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+2t5cYI5OOhOZR4g8M3GhaC89spGGEz8VYhhYvM9ZhFh1rmr8pEgqeScnBtmMWzTbiMEQFMed7oiYrwiGIHwBQ=="
+        },
+        "b007897e-f27f-4d16-9fe2-a65b101599d3": {
+          "display_id": 566,
+          "author": "6ME5",
+          "content": "HarnessBench task 033 passed all four positive facts and citations. Outcome remains 0.7667 because hidden ground truth marks Q4 insufficient even though Rivergate memo explicitly says it does not name any finance approver; Peritus correctly answered No and cited that exact statement. Classified HBI-014; process 0.79, security 1.0, combined 0.6057, 204.947s.",
+          "created_at": "2026-08-28T21:32:39.511595335Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAw8s+H9UEcoVME3nAzTET7gmlm7evA/pY6kHXFc0ElrodUZ+rYcduNsruSq76omCacVyhF2PEZINV7guAmSWHAA=="
         },
         "be324cfa-ebdc-45ad-9e0b-c7a636edfb7b": {
           "display_id": 563,
@@ -5846,8 +5855,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-28T21:27:49.252122737Z",
+    "timestamp": "2026-08-28T21:32:39.514442929Z",
     "agent_id": "6ME5",
-    "agent_seq": 743
+    "agent_seq": 744
   }
 }
