@@ -14,8 +14,7 @@ use peritus_product_state::{CompatibleProtocol, DirectProviderProfile, ProviderK
 use peritus_provider_onboarding::{DirectCredential, DirectProviderDraft};
 use zeroize::Zeroizing;
 
-use super::Terminal;
-use crate::LauncherError;
+use crate::{LauncherError, terminal::Terminal};
 
 const MAX_CREDENTIAL_BYTES: usize = 16 * 1024;
 

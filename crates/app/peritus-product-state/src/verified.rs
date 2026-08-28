@@ -2,7 +2,7 @@
 
 use vstd::prelude::*;
 
-use crate::BootstrapPhase;
+use crate::{BootstrapPhase, WorkspaceTrust};
 
 verus! {
 
@@ -48,6 +48,44 @@ pub const fn bootstrap_transition_model_exec(
 
 } // verus!
 
+verus! {
+
+/// Closed formal trust model for durable registration-shape decisions.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum WorkspaceTrustModel {
+    /// No executable registration facts may be retained.
+    Restricted,
+    /// All executable registration facts must be retained.
+    Trusted,
+}
+
+/// Exact number of required registration fields for each trust level.
+pub open spec fn workspace_registration_shape(
+    trust: WorkspaceTrustModel,
+    registration_fields: u8,
+) -> bool {
+    match trust {
+        WorkspaceTrustModel::Restricted => registration_fields == 0,
+        WorkspaceTrustModel::Trusted => registration_fields == 4,
+    }
+}
+
+/// Executable refinement of the `workspace_registration_shape` specification.
+#[must_use]
+pub const fn workspace_registration_shape_model_exec(
+    trust: WorkspaceTrustModel,
+    registration_fields: u8,
+) -> (result: bool)
+    ensures result == workspace_registration_shape(trust, registration_fields)
+{
+    match trust {
+        WorkspaceTrustModel::Restricted => registration_fields == 0,
+        WorkspaceTrustModel::Trusted => registration_fields == 4,
+    }
+}
+
+} // verus!
+
 /// Applies the verified transition predicate to runtime phases.
 #[must_use]
 pub const fn bootstrap_transition_exec(current: BootstrapPhase, next: BootstrapPhase) -> bool {
@@ -59,5 +97,21 @@ const fn model(phase: BootstrapPhase) -> BootstrapPhaseModel {
         BootstrapPhase::IdentityReady => BootstrapPhaseModel::IdentityReady,
         BootstrapPhase::RegistryReady => BootstrapPhaseModel::RegistryReady,
         BootstrapPhase::ConfigurationReady => BootstrapPhaseModel::ConfigurationReady,
+    }
+}
+
+/// Applies the verified registration-shape predicate to runtime workspace trust.
+#[must_use]
+pub const fn workspace_registration_shape_exec(
+    trust: WorkspaceTrust,
+    registration_fields: u8,
+) -> bool {
+    workspace_registration_shape_model_exec(trust_model(trust), registration_fields)
+}
+
+const fn trust_model(trust: WorkspaceTrust) -> WorkspaceTrustModel {
+    match trust {
+        WorkspaceTrust::Restricted => WorkspaceTrustModel::Restricted,
+        WorkspaceTrust::Trusted => WorkspaceTrustModel::Trusted,
     }
 }

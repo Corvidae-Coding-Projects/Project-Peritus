@@ -1,10 +1,13 @@
 //! Strict immutable daemon configuration generated from durable product state.
 
-use std::path::{Path, PathBuf};
+use std::{
+    fmt::Write as _,
+    path::{Path, PathBuf},
+};
 
 use peritus_daemon::{DaemonConfig, DaemonIdentity, DaemonPaths, LocalEndpointAddress};
 use peritus_product_state::{
-    CompatibleProtocol, DirectProviderProfile, ProductState, ProviderKind,
+    CompatibleProtocol, DirectProviderProfile, ProductState, ProviderKind, WorkspaceTrust,
 };
 
 use crate::{AppLayout, LauncherError, persistence::read_exact_or_publish};
@@ -53,7 +56,41 @@ fn render_configuration(layout: &AppLayout, state: &ProductState) -> Result<Stri
     for provider in state.providers().enabled() {
         text.push_str(&render_provider(*provider, state.providers().direct_profile(*provider))?);
     }
+    render_workspaces(&mut text, state)?;
     Ok(text)
+}
+
+fn render_workspaces(text: &mut String, state: &ProductState) -> Result<(), LauncherError> {
+    for profile in state.workspaces().registered() {
+        writeln!(
+            text,
+            "\n[[projects]]\nproject_id = {}\nworkspace_ids = [{}]\n",
+            toml_string(profile.project_id()),
+            toml_string(profile.workspace_id()),
+        )
+        .expect("writing to String cannot fail");
+        let registration = profile
+            .registration_file()
+            .ok_or_else(|| invalid("trusted workspace is missing its C1 registration file"))?;
+        writeln!(
+            text,
+            "\n[[workspaces]]\nregistration_file = {}\n",
+            toml_path(Path::new(registration))?,
+        )
+        .expect("writing to String cannot fail");
+    }
+    text.push_str("\n[tools]\nallow = [");
+    if state
+        .workspaces()
+        .active()
+        .is_some_and(|profile| profile.trust_level() == WorkspaceTrust::Trusted)
+    {
+        text.push_str(
+            "\"fs.create\", \"fs.discover\", \"fs.metadata\", \"fs.patch\", \"fs.read\", \"fs.remove\", \"fs.replace\", \"fs.search\", \"fs.write\", \"git.candidate\", \"git.diff\", \"git.history\", \"git.rollback\", \"git.snapshot\", \"git.status\", \"quality.discover\", \"quality.run\", \"shell.exec\", \"shell.script\"",
+        );
+    }
+    text.push_str("]\n");
+    Ok(())
 }
 
 fn render_provider(

@@ -31,6 +31,15 @@ pub enum LauncherError {
     /// Provider discovery or login failed.
     #[error("provider setup failed: {0}")]
     Provider(#[from] peritus_provider_onboarding::OnboardingError),
+    /// Structured Git repository or managed-worktree operation failed.
+    #[error("workspace Git operation failed: {0}")]
+    Git(#[from] peritus_git::GitError),
+    /// C1 workspace registration or reopening failed.
+    #[error("workspace registration failed: {0}")]
+    Workspace(#[from] peritus_workspace::WorkspaceError),
+    /// Workspace setup could not create or decode a nominal identity.
+    #[error("workspace setup failed: {0}")]
+    WorkspaceSetup(String),
     /// Pure product state is invalid.
     #[error("local product state is invalid: {0}")]
     ProductState(#[from] peritus_product_state::ProductStateError),

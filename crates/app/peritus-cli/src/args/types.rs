@@ -22,6 +22,8 @@ GLOBAL OPTIONS:
 
 COMMANDS:
   providers                    Open provider settings
+  workspaces                   Switch, add, trust, repair, or forget workspaces
+  open [PATH]                  Launch Peritus for PATH (default: current directory)
   status
   shutdown [--wait]
   command submit --actor <ID> --envelope <FILE> --payload <FILE>
@@ -63,6 +65,8 @@ pub enum Command {
     Version,
     Completions(Shell),
     Providers,
+    Workspaces,
+    Open { path: Option<PathBuf> },
     Status,
     Shutdown { wait: bool },
     Submit(SubmitArgs),

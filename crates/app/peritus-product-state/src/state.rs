@@ -3,7 +3,10 @@
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::{BootstrapPhase, InstallIdentity, ProductStateError, ProviderSelection};
+use crate::{
+    BootstrapPhase, InstallIdentity, ProductStateError, ProviderSelection, WorkspaceProfile,
+    WorkspaceSelection,
+};
 
 /// Product-state schema understood by this executable.
 pub const PRODUCT_STATE_SCHEMA_VERSION: u16 = 1;
@@ -20,6 +23,10 @@ pub struct ProductState {
     providers: ProviderSelection,
     #[serde(default)]
     provider_setup_complete: bool,
+    #[serde(default)]
+    workspaces: WorkspaceSelection,
+    #[serde(default)]
+    workspace_setup_complete: bool,
 }
 
 impl ProductState {
@@ -33,6 +40,8 @@ impl ProductState {
             bootstrap_phase: BootstrapPhase::IdentityReady,
             providers: <ProviderSelection as Default>::default(),
             provider_setup_complete: false,
+            workspaces: <WorkspaceSelection as Default>::default(),
+            workspace_setup_complete: false,
         }
     }
 
@@ -97,6 +106,18 @@ impl ProductState {
         self.provider_setup_complete
     }
 
+    /// Borrows durable recent and active workspace choices.
+    #[must_use]
+    pub const fn workspaces(&self) -> &WorkspaceSelection {
+        &self.workspaces
+    }
+
+    /// Returns whether workspace selection completed at least once.
+    #[must_use]
+    pub const fn workspace_setup_complete(&self) -> bool {
+        self.workspace_setup_complete
+    }
+
     /// Replaces durable provider choices and advances the immutable generation when changed.
     pub fn configure_providers(&mut self, providers: ProviderSelection) -> bool {
         if self.providers == providers && self.provider_setup_complete {
@@ -104,6 +125,50 @@ impl ProductState {
         }
         self.providers = providers;
         self.provider_setup_complete = true;
+        self.generation = self.generation.saturating_add(1);
+        true
+    }
+
+    /// Inserts or updates the active workspace and advances the immutable generation.
+    ///
+    /// # Errors
+    ///
+    /// Rejects invalid or inconsistent workspace facts.
+    pub fn configure_workspace(
+        &mut self,
+        profile: WorkspaceProfile,
+    ) -> Result<bool, ProductStateError> {
+        let mut workspaces = self.workspaces.clone();
+        workspaces.activate(profile)?;
+        if self.workspaces == workspaces && self.workspace_setup_complete {
+            return Ok(false);
+        }
+        self.workspaces = workspaces;
+        self.workspace_setup_complete = true;
+        self.generation = self.generation.saturating_add(1);
+        Ok(true)
+    }
+
+    /// Selects a remembered workspace and advances the immutable generation when changed.
+    ///
+    /// # Errors
+    ///
+    /// Rejects an unknown workspace identity.
+    pub fn select_workspace(&mut self, workspace_id: &str) -> Result<bool, ProductStateError> {
+        if self.workspaces.active().map(WorkspaceProfile::workspace_id) == Some(workspace_id) {
+            return Ok(false);
+        }
+        self.workspaces.select(workspace_id)?;
+        self.workspace_setup_complete = true;
+        self.generation = self.generation.saturating_add(1);
+        Ok(true)
+    }
+
+    /// Forgets one workspace and advances the immutable generation when found.
+    pub fn remove_workspace(&mut self, workspace_id: &str) -> bool {
+        if !self.workspaces.remove(workspace_id) {
+            return false;
+        }
         self.generation = self.generation.saturating_add(1);
         true
     }
@@ -140,7 +205,8 @@ impl ProductState {
             ));
         }
         self.identity.validate()?;
-        self.providers.validate()
+        self.providers.validate()?;
+        self.workspaces.validate()
     }
 }
 
@@ -195,5 +261,25 @@ mod tests {
         assert_eq!(state.generation(), 2);
         assert_eq!(state.providers().enabled().len(), 2);
         assert!(state.provider_setup_complete());
+    }
+
+    #[test]
+    fn workspace_selection_round_trips_and_advances_once() {
+        let mut state = ProductState::new(identity());
+        let profile = WorkspaceProfile::restricted(
+            "/repo".to_owned(),
+            "01".repeat(32),
+            "02".repeat(16),
+            "03".repeat(16),
+            "04".repeat(16),
+            "05".repeat(16),
+        )
+        .expect("workspace");
+        assert!(state.configure_workspace(profile.clone()).expect("configure"));
+        assert!(!state.configure_workspace(profile).expect("idempotent"));
+        let bytes = state.canonical_json().expect("json");
+        let decoded = ProductState::parse_json(&bytes).expect("decode");
+        assert_eq!(decoded.workspaces().active().expect("active").repository_root(), "/repo");
+        assert!(decoded.workspace_setup_complete());
     }
 }

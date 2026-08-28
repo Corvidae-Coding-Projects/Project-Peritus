@@ -9,9 +9,11 @@ mod phase;
 mod provider;
 mod state;
 pub mod verified;
+mod workspace;
 
 pub use error::ProductStateError;
 pub use identity::InstallIdentity;
 pub use phase::{BootstrapPhase, LaunchReadiness};
 pub use provider::{CompatibleProtocol, DirectProviderProfile, ProviderKind, ProviderSelection};
 pub use state::{PRODUCT_STATE_SCHEMA_VERSION, ProductState};
+pub use workspace::{WorkspaceProfile, WorkspaceSelection, WorkspaceTrust};

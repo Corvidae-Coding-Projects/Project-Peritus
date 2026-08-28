@@ -113,8 +113,13 @@ The implemented foundation and runtime spine now covers:
   clients; configures direct OpenAI, Anthropic, Gemini, and compatible routes using hidden input and
   the operating-system credential store; persists switching/default/offline choices; and exposes
   focused repair plus `peritus providers` settings without environment exports or hand-written
-  configuration. Workspace trust/registration, the task composer, and native product qualification
-  remain required before this is a complete user experience; and
+  configuration. It now also discovers the current Git root, accepts `peritus open [PATH]`, keeps a
+  most-recent workspace list, names the exact repository before trust, starts unknown repositories
+  in restricted mode, creates a separate application-managed detached worktree when trusted,
+  publishes and recovers canonical C1 registrations, reports clean/dirty/repair state, switches or
+  forgets entries through `peritus workspaces`, and restarts a running daemon only when generated
+  configuration changed. The task composer and native product qualification remain required before
+  this is a complete user experience; and
 - H0: a verified exact-candidate security-readiness policy plus a 42-case fresh-native-subject
   campaign covering R-SEC-001 through R-SEC-007, the nine security-relevant acceptance criteria,
   malicious repositories, native sandboxes, role isolation, evidence invalidation, evolution,
@@ -150,6 +155,22 @@ Gate A is the current merge authority: ordinary Rust checks, architecture and AP
 supply-chain policy, pinned toolchains, full Verus verification, and verified release builds must
 all pass together. Required GitHub-hosted checks now execute on Ubuntu, macOS, and Windows, with a
 separate locked Foundation matrix covering the same platform, dependency, and Verus boundaries.
+
+## Trying the current development build
+
+G4 packaging is still in progress, so a source checkout needs one build step. After that, ordinary
+use is the single product command; no endpoint, provider export, or hand-written configuration is
+required:
+
+```text
+cargo build --workspace --bins --locked
+target/debug/peritus
+```
+
+Run it from inside a Git repository to use that repository automatically. Use `peritus open
+[PATH]`, `peritus providers`, or `peritus workspaces` for an explicit workspace, provider settings,
+or workspace settings. The [G4 product-experience guide](docs/g4-product-experience.md) explains
+onboarding, trust, managed worktrees, state locations, and recovery.
 
 ## Foundation checks
 

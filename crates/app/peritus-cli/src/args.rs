@@ -88,6 +88,15 @@ fn parse_command(parser: &mut Parser) -> Result<Command, CliError> {
             parser.finish()?;
             Ok(Command::Providers)
         }
+        "workspaces" => {
+            parser.finish()?;
+            Ok(Command::Workspaces)
+        }
+        "open" => {
+            let path = parser.pop().map(PathBuf::from);
+            parser.finish()?;
+            Ok(Command::Open { path })
+        }
         "status" => {
             parser.finish()?;
             Ok(Command::Status)

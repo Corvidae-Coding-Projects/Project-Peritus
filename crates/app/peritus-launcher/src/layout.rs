@@ -34,6 +34,9 @@ impl AppLayout {
         let cache = prepare_root(self.cache)?;
         let prepared = Self { configuration, state, cache };
         prepare_root(prepared.logs_root())?;
+        prepare_root(prepared.managed_workspaces_root())?;
+        prepare_root(prepared.workspace_registrations_root())?;
+        prepare_root(prepared.workspace_transactions_root())?;
         Ok(prepared)
     }
 
@@ -61,6 +64,46 @@ impl AppLayout {
         self.state.join("product-state")
     }
 
+    /// Returns the daemon-owned root containing application-managed Git worktrees.
+    #[must_use]
+    pub fn managed_workspaces_root(&self) -> PathBuf {
+        self.state.join("daemon/workspaces")
+    }
+
+    /// Returns the protected root containing canonical C1 registration files.
+    #[must_use]
+    pub fn workspace_registrations_root(&self) -> PathBuf {
+        self.state.join("workspace-registrations")
+    }
+
+    /// Returns one canonical C1 registration-file path.
+    #[must_use]
+    pub fn workspace_registration_file(&self, workspace_id: &str) -> PathBuf {
+        self.workspace_registrations_root().join(format!("{workspace_id}.bin"))
+    }
+
+    /// Returns the isolated transaction root for one workspace lineage.
+    #[must_use]
+    pub fn workspace_transaction_root(&self, workspace_id: &str) -> PathBuf {
+        self.workspace_transactions_root().join(workspace_id)
+    }
+
+    /// Creates and canonicalizes one protected workspace transaction namespace.
+    ///
+    /// # Errors
+    ///
+    /// Returns an exact filesystem failure if the namespace cannot be prepared.
+    pub fn prepare_workspace_transaction(
+        &self,
+        workspace_id: &str,
+    ) -> Result<PathBuf, LauncherError> {
+        prepare_root(self.workspace_transaction_root(workspace_id))
+    }
+
+    fn workspace_transactions_root(&self) -> PathBuf {
+        self.state.join("daemon/transactions")
+    }
+
     /// Returns one immutable-generation strict daemon configuration path.
     #[must_use]
     pub fn daemon_config(&self, generation: u64) -> PathBuf {
@@ -83,6 +126,12 @@ impl AppLayout {
     #[must_use]
     pub fn daemon_log(&self) -> PathBuf {
         self.logs_root().join("peritusd.log")
+    }
+
+    /// Returns the local marker naming the configuration applied by the running daemon.
+    #[must_use]
+    pub fn daemon_applied_configuration(&self) -> PathBuf {
+        self.state.join("daemon/applied-configuration")
     }
 
     #[cfg(test)]

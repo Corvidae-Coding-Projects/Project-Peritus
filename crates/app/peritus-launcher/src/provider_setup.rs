@@ -10,10 +10,9 @@ use crate::{LauncherError, PreparedProduct, ProductBootstrap};
 
 mod direct;
 mod selection;
-mod terminal;
 
+use crate::terminal::Terminal;
 use selection::{choose_default, choose_provider_set};
-use terminal::Terminal;
 
 const CODEX: ProviderKind = ProviderKind::CodexAccount;
 const CLAUDE: ProviderKind = ProviderKind::ClaudeAccount;

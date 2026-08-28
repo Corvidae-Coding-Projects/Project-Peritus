@@ -23,6 +23,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Add ergonomic G4 workspace onboarding with current-directory and descendant Git discovery,
+  recent/path selection, exact-root trust disclosure, restricted-by-default repository state,
+  application-managed detached writable worktrees, canonical C1 registration publication and
+  interrupted-setup recovery, clean/dirty/repair visibility, durable switching and safe forgetting,
+  exact C4 exposure only for an active trusted workspace, `peritus open [PATH]`, and focused
+  `peritus workspaces` settings without endpoint flags or environment configuration (#39)
+- Restart an already-running local daemon only when the immutable generated configuration changes,
+  so provider and workspace settings take effect on the next ordinary `peritus` launch (#39)
 - Add the G4 provider experience with readiness cards and already-authenticated defaults, official
   Codex browser/device and Claude browser login handoff, direct OpenAI/Anthropic/Gemini/compatible
   setup, hidden paste-friendly key entry, operating-system credential-store write/replace/remove,

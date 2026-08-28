@@ -8,7 +8,7 @@ use std::{
 use peritus_approval::{CredentialRegistrySnapshot, decode_credential_registry};
 use peritus_daemon::{DaemonConfig, LocalEndpointAddress};
 use peritus_product_state::ProviderSelection;
-use peritus_product_state::{BootstrapPhase, ProductState};
+use peritus_product_state::{BootstrapPhase, ProductState, WorkspaceProfile};
 use peritus_types::RevisionNumber;
 
 use crate::{
@@ -59,6 +59,57 @@ impl ProductBootstrap {
         let store = ProductStateStore::open(self.layout.product_state_root())?;
         let mut state = store.load_or_initialize()?;
         if state.configure_providers(providers) {
+            store.commit(&state)?;
+        }
+        finish(self.layout, &store, state)
+    }
+
+    /// Persists one discovered or registered workspace and republishes configuration.
+    ///
+    /// # Errors
+    ///
+    /// Returns an exact state, configuration, locking, or filesystem failure.
+    pub fn configure_workspace(
+        self,
+        profile: WorkspaceProfile,
+    ) -> Result<PreparedProduct, LauncherError> {
+        let lock_path = self.layout.state_root().join("bootstrap.lock");
+        let _lock = BootstrapLock::acquire(&lock_path)?;
+        let store = ProductStateStore::open(self.layout.product_state_root())?;
+        let mut state = store.load_or_initialize()?;
+        if state.configure_workspace(profile)? {
+            store.commit(&state)?;
+        }
+        finish(self.layout, &store, state)
+    }
+
+    /// Selects one remembered workspace and republishes configuration when changed.
+    ///
+    /// # Errors
+    ///
+    /// Returns an unknown-workspace, state, locking, or configuration failure.
+    pub fn select_workspace(self, workspace_id: &str) -> Result<PreparedProduct, LauncherError> {
+        let lock_path = self.layout.state_root().join("bootstrap.lock");
+        let _lock = BootstrapLock::acquire(&lock_path)?;
+        let store = ProductStateStore::open(self.layout.product_state_root())?;
+        let mut state = store.load_or_initialize()?;
+        if state.select_workspace(workspace_id)? {
+            store.commit(&state)?;
+        }
+        finish(self.layout, &store, state)
+    }
+
+    /// Forgets one recent workspace and republishes configuration when found.
+    ///
+    /// # Errors
+    ///
+    /// Returns an exact state, locking, or configuration failure.
+    pub fn remove_workspace(self, workspace_id: &str) -> Result<PreparedProduct, LauncherError> {
+        let lock_path = self.layout.state_root().join("bootstrap.lock");
+        let _lock = BootstrapLock::acquire(&lock_path)?;
+        let store = ProductStateStore::open(self.layout.product_state_root())?;
+        let mut state = store.load_or_initialize()?;
+        if state.remove_workspace(workspace_id) {
             store.commit(&state)?;
         }
         finish(self.layout, &store, state)

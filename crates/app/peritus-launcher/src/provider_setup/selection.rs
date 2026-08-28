@@ -2,8 +2,8 @@
 
 use peritus_product_state::ProviderKind;
 
-use super::{ANTHROPIC_API, CLAUDE, CODEX, COMPATIBLE, GOOGLE_API, OPENAI_API, terminal::Terminal};
-use crate::LauncherError;
+use super::{ANTHROPIC_API, CLAUDE, CODEX, COMPATIBLE, GOOGLE_API, OPENAI_API};
+use crate::{LauncherError, terminal::Terminal};
 
 pub fn choose_provider_set(
     terminal: &mut Terminal<'_>,

@@ -123,6 +123,21 @@ pub fn read_exact_or_publish(path: &Path, bytes: &[u8]) -> Result<Vec<u8>, Launc
     }
 }
 
+/// Replaces one application-owned mutable recovery file and synchronizes it before returning.
+pub fn replace_recovery_file(path: &Path, bytes: &[u8]) -> Result<(), LauncherError> {
+    let mut file = OpenOptions::new()
+        .create(false)
+        .write(true)
+        .truncate(true)
+        .open(path)
+        .map_err(|error| LauncherError::filesystem("open recovery file", path, error))?;
+    protect_file(&file, path)?;
+    file.write_all(bytes)
+        .and_then(|()| file.sync_all())
+        .map_err(|error| LauncherError::filesystem("replace recovery file", path, error))?;
+    sync_parent(path)
+}
+
 fn parse_generation(name: &str) -> Option<u64> {
     name.strip_prefix("state-")?.strip_suffix(".json")?.parse().ok()
 }

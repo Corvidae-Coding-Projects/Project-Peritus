@@ -14,6 +14,18 @@ fn provider_settings_are_a_standalone_product_command() {
 }
 
 #[test]
+fn workspace_product_commands_do_not_require_an_endpoint() {
+    let cli = parse(&["peritus", "workspaces"]).expect("workspace settings");
+    assert!(matches!(cli.command, Command::Workspaces));
+    let cli = parse(&["peritus", "open", "/project"]).expect("explicit workspace");
+    assert!(
+        matches!(cli.command, Command::Open { path: Some(ref path) } if path == std::path::Path::new("/project"))
+    );
+    let cli = parse(&["peritus", "open"]).expect("current workspace");
+    assert!(matches!(cli.command, Command::Open { path: None }));
+}
+
+#[test]
 fn global_options_and_status_are_parsed_strictly() {
     let cli = parse(&[
         "peritus",

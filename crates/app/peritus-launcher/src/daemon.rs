@@ -2,6 +2,7 @@
 
 use std::{
     fs::{self, OpenOptions},
+    io::Write as _,
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
     time::{Duration, Instant},
@@ -134,7 +135,10 @@ impl DaemonSupervisor {
     ) -> Result<DaemonLaunch, LauncherError> {
         let endpoint = product.endpoint_path();
         if endpoint_ready(&endpoint).await {
-            return Ok(DaemonLaunch::Reused);
+            if applied_configuration_matches(product)? {
+                return Ok(DaemonLaunch::Reused);
+            }
+            let _stopped = self.shutdown(product, binaries).await?;
         }
         let log_path = product.layout().daemon_log();
         let mut child = spawn_daemon(binaries, product, &log_path)?;
@@ -142,12 +146,19 @@ impl DaemonSupervisor {
         let started = Instant::now();
         loop {
             if endpoint_ready(&endpoint).await {
+                record_applied_configuration(product)?;
                 return Ok(DaemonLaunch::Started { process_id });
             }
             if let Some(status) =
                 child.try_wait().map_err(|error| LauncherError::DaemonSpawn(error.to_string()))?
             {
                 if endpoint_ready(&endpoint).await {
+                    if !applied_configuration_matches(product)? {
+                        return Err(LauncherError::DaemonSpawn(
+                            "another daemon started with a different product configuration"
+                                .to_owned(),
+                        ));
+                    }
                     return Ok(DaemonLaunch::Reused);
                 }
                 return Err(LauncherError::DaemonExited { status, log: log_path });
@@ -224,6 +235,38 @@ fn spawn_daemon(
         .stderr(Stdio::from(stderr));
     detach_from_terminal(&mut command);
     command.spawn().map_err(|error| LauncherError::DaemonSpawn(error.to_string()))
+}
+
+fn applied_configuration_matches(product: &PreparedProduct) -> Result<bool, LauncherError> {
+    let marker = product.layout().daemon_applied_configuration();
+    let expected = product.daemon_config_path();
+    match fs::read_to_string(&marker) {
+        Ok(actual) => Ok(actual.trim_end() == expected.to_string_lossy()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(LauncherError::filesystem(
+            "read applied daemon configuration marker",
+            marker,
+            error,
+        )),
+    }
+}
+
+fn record_applied_configuration(product: &PreparedProduct) -> Result<(), LauncherError> {
+    let marker = product.layout().daemon_applied_configuration();
+    let mut file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(&marker)
+        .map_err(|error| {
+            LauncherError::filesystem("open applied daemon configuration marker", &marker, error)
+        })?;
+    crate::persistence::protect_file(&file, &marker)?;
+    writeln!(file, "{}", product.daemon_config_path().display())
+        .and_then(|()| file.sync_all())
+        .map_err(|error| {
+            LauncherError::filesystem("write applied daemon configuration marker", marker, error)
+        })
 }
 
 #[cfg(unix)]

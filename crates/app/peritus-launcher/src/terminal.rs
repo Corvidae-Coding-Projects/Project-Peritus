@@ -1,4 +1,4 @@
-//! Small line-oriented terminal boundary for product setup screens.
+//! Small line-oriented terminal boundary shared by product setup screens.
 
 use std::io::{self, BufRead, Write};
 
