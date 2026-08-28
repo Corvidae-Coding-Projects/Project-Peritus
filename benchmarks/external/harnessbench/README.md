@@ -11,21 +11,31 @@ CARGO_BUILD_JOBS=2 cargo build -p peritus-external-benchmarks --bin peritus-benc
 ```
 
 Clone or reset HarnessBench to the pinned commit, then create a local app config from
-`app.example.json`. Point its result and workspace paths at a directory outside Git. From the
-HarnessBench checkout, list tasks with:
+`app.example.json`. Point its result and workspace paths at a directory outside Git. Create a
+dedicated environment outside Git so HarnessBench and task oracles use the same pinned tools:
 
 ```bash
-PYTHONPATH=src python3 -m harnessbench.cli tasks
+python3 -m venv /absolute/path/to/benchmark-state/.venv
+/absolute/path/to/benchmark-state/.venv/bin/python -m pip install \
+  --requirement /absolute/path/to/Project-Peritus/benchmarks/external/harnessbench/oracle-requirements.txt
+```
+
+The separate requirements file includes HarnessBench's PyYAML dependency and pytest, which task 016
+invokes from both the agent workspace and its unchanged oracle. From the HarnessBench checkout, list
+tasks with:
+
+```bash
+PYTHONPATH=src /absolute/path/to/benchmark-state/.venv/bin/python -m harnessbench.cli tasks
 ```
 
 Run the first live task with the checked-in generic adapter configuration:
 
 ```bash
-PATH=/absolute/path/to/Project-Peritus/target/debug:$PATH \
+PATH=/absolute/path/to/benchmark-state/.venv/bin:/absolute/path/to/Project-Peritus/target/debug:$PATH \
 HARNESSBENCH_APP_CONFIG=/absolute/path/to/local-app.json \
 HARNESSBENCH_HARNESS_CONFIG=/absolute/path/to/Project-Peritus/benchmarks/external/harnessbench/harness.json \
 HARNESSBENCH_PUBLIC_URL_TEMPLATE='{local_url}' \
-PYTHONPATH=src python3 -m harnessbench.cli run-task \
+PYTHONPATH=src /absolute/path/to/benchmark-state/.venv/bin/python -m harnessbench.cli run-task \
   --task 001-file \
   --harness peritus-codex-claude \
   --mode live

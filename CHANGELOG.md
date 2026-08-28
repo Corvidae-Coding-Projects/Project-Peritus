@@ -64,6 +64,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Pin the complete local HarnessBench Python and oracle environment, including pytest, so executable
+  task oracles cannot disappear from a full-suite run because of undeclared host tools (#31)
 - Add deterministic workspace image discovery with signature, count, per-file, and total-size
   bounds; private Codex CLI image staging; and multimodal external-rubric parsing and tests (#31)
 - Add the native external-benchmark adapter and normalized trace projection, pin HarnessBench 2.0

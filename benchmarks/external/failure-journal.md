@@ -230,6 +230,26 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Disposition: retain the unchanged score and report the upstream path defect. Do not patch the
   task, copy its ground truth to the mistaken path, or add benchmark-specific behavior.
 
+## HBI-004: task 016's oracle uses an undeclared pytest executable
+
+- Suite and task: HarnessBench 2.0, `016-code-repair-pytest`.
+- Symptom: Peritus completed the correct repair and published a successful invocation report, but
+  HarnessBench advanced to task 017 without writing any result for task 016.
+- Cause: the unchanged oracle starts a bare `pytest` process. HarnessBench's package metadata
+  declares PyYAML but not pytest, and the original benchmark environment had no pytest executable.
+  The resulting `FileNotFoundError` escaped `run_oracle`; `run-suite` swallowed it into its final
+  in-memory summary and continued without printing a per-task error.
+- Change: the Peritus integration now pins HarnessBench's complete local runtime, including pytest,
+  in `oracle-requirements.txt`. The suite runs with that environment first on `PATH`, so both the
+  product's requested command and the unchanged oracle resolve the same executable. No task, test,
+  hook, rubric, or oracle was changed.
+- Before evidence: sandbox
+  `oc-bench-v2-016-code-repair-pytest-gpt-5.6-sol-20260828-130735-eaaf85ab`; adapter success true;
+  exact source repair present; all four equivalent direct assertions passed; no result JSON.
+- After evidence: local report `reports/016-code-repair-pytest-pinned-oracle-env.json`; protected test
+  hash unchanged; all four pytest cases and every source constraint passed; outcome 1.0; process
+  0.9733; security 1.0; combined 0.9733; elapsed 500.736 seconds.
+
 ## HBT-001: exact trace projection overflowed the rubric context
 
 - Suite and task: HarnessBench 2.0, first proved by `006-access-bilibili`.
