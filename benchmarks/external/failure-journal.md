@@ -353,6 +353,23 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Disposition: retain the unchanged score and classify the three label checks as benchmark
   infrastructure failures. Do not inject unpublished labels into general expense audits.
 
+## HBI-011: task 030 requires change rows for unchanged sections
+
+- Suite and task: HarnessBench 2.0, `030-word-revision-plan`.
+- Symptom: the revised draft preserved both protected legal sections exactly, added the exact pilot
+  disclaimer, removed every banned hype term, kept all headings, and mapped every performed edit to
+  the style guide or legal comments. The unchanged oracle still rejected the legal-comment mapping.
+- Cause: the prompt asks the change log to map each required edit. Legal comments LC-3 and LC-4
+  require two already-correct sections to remain unchanged, so Peritus correctly made and logged no
+  edit for them. Hidden ground truth nevertheless requires all four legal-comment IDs, including
+  LC-3 and LC-4, to occur somewhere in the change-log rows.
+- Evidence: local report `reports/030-word-revision-plan-hidden-no-change-rows.json`; outcome 0.875;
+  process 0.88; security 1.0; combined 0.77; elapsed 480.47 seconds. The unchanged oracle separately
+  confirms that all protected/required text is present and all prohibited language is absent.
+- Disposition: retain the unchanged score and classify the required no-change rows as an
+  underspecified benchmark convention. Do not represent preservation as a source edit solely to
+  expose hidden comment IDs.
+
 ## HBF-005: a fixer deleted evaluator-owned evidence
 
 - Suite and task: HarnessBench 2.0, `022-local-rest-api-summary`.

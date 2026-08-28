@@ -73,11 +73,12 @@ temporary files through its documented `--image` option.
 
 ## Current qualification progress
 
-The live baseline has exercised tasks 001 through 029 against the pinned, unchanged suite. Tasks
+The live baseline has exercised tasks 001 through 030 against the pinned, unchanged suite. Tasks
 022, 023, and 026 complete with oracle outcome 1.0. Tasks 021, 024, 025, 027, and 028 retain lower
 unchanged outcomes because of documented hidden taxonomies, invalid calendar ground truth,
 unmatchable normalization, or brittle unpublished phrase checks. Task 029 similarly retains a
-lower score because it requires unpublished contiguous issue labels despite correct calculations.
-Product failures and benchmark defects are kept separate in the
+lower score because it requires unpublished contiguous issue labels despite correct calculations;
+task 030 requires hidden change-log rows for sections that correctly remained unchanged. Product
+failures and benchmark defects are kept separate in the
 [external failure journal](../failure-journal.md); generated workspaces, native traces, and full
 result JSON remain in the configured external state directory rather than Git.
