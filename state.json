@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 516,
+  "next_comment_id": 517,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -4903,12 +4903,21 @@
       "parent_uuid": "59346441-f15a-4950-a0f1-f10b1b9b1f7d",
       "created_by": "6ME5",
       "created_at": "2026-08-27T23:32:49.842696292Z",
-      "updated_at": "2026-08-28T03:48:50.081390166Z",
+      "updated_at": "2026-08-28T03:49:06.021182134Z",
       "labels": [
         "feature",
         "ux"
       ],
       "comments": {
+        "a156781a-949d-448c-9345-97dd0ba29c33": {
+          "display_id": 516,
+          "author": "NWAR",
+          "content": "Delivered commit 4938c131: resource-capped host-native package assembly, per-user install and one-command launch, rollback-safe upgrade, state-preserving uninstall, Linux/macOS/Windows lifecycle workflow, current product documentation, and ignored package outputs. Local native lifecycle smoke and repository gates passed; no compiled artifacts were committed.",
+          "created_at": "2026-08-28T03:49:06.018794699Z",
+          "kind": "result",
+          "signed_by": "SHA256:mTwYqorrA4UxSK3se0aIOCOC6y7kyE/sEvoFLwVluf4",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgmuiChqHxrMH8nicBvsKr3z1JEgjcUOEEH/DcxL6kdeEAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZi+kGL8Fy53pn7YccEaQh08GdC/ZHanbceQozKO5bVC4hudW6VSGZNbj+s987x1IarCAl7E1PJflUe3lwv4uAA=="
+        },
         "b1f3c5ca-4d48-4c23-9c5d-2e6753237879": {
           "display_id": 515,
           "author": "NWAR",
@@ -5399,8 +5408,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-28T03:48:50.081390166Z",
+    "timestamp": "2026-08-28T03:49:06.021182134Z",
     "agent_id": "NWAR",
-    "agent_seq": 33
+    "agent_seq": 34
   }
 }
