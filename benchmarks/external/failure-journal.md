@@ -434,6 +434,23 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Disposition: retain the unchanged score and classify the two misses as brittle benchmark token
   checks. Do not pad short evidence signals with unrelated facts or force hidden phrasing.
 
+## HBI-016: task 035 ignores clear priority-reason synonyms
+
+- Suite and task: HarnessBench 2.0, `035-conflicting-source-resolution`.
+- Symptom: every resolved fact, winning source, grounded quote, scoped field, rejected rumor,
+  uncertainty, conflict-matrix rule, source-reliability entry, and decision-log requirement passed.
+  The priority-reasoning check counted only two facts and capped the otherwise stronger result at
+  0.84 (`good`).
+- Cause: the oracle recognizes priority reasoning only when `rank` or `priority` appears together
+  with one of six literal fragments: `override`, `supersede`, `contradict`, `conflict`, `not`, or
+  `reject`. It does not recognize Peritus's explicit reasons that the highest-priority source
+  supplies the fact, a rank-1 notice “defeats lower-priority claims” or “controls launch-day
+  authorization,” or a signed addendum is “authoritative for contract planning.”
+- Evidence: local report `reports/035-conflicting-source-resolution-priority-synonyms.json`;
+  outcome 0.84 (`good`); process 0.9633; security 1.0; combined 0.8092; elapsed 619.482 seconds.
+- Disposition: retain the unchanged score and classify the check as a benchmark synonym gap. Do not
+  replace clear domain language with a hidden verb allowlist.
+
 ## HBF-005: a fixer deleted evaluator-owned evidence
 
 - Suite and task: HarnessBench 2.0, `022-local-rest-api-summary`.

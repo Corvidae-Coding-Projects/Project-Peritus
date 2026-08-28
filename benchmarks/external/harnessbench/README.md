@@ -73,7 +73,7 @@ temporary files through its documented `--image` option.
 
 ## Current qualification progress
 
-The live baseline has exercised tasks 001 through 034 against the pinned, unchanged suite. Tasks
+The live baseline has exercised tasks 001 through 035 against the pinned, unchanged suite. Tasks
 022, 023, and 026 complete with oracle outcome 1.0. Tasks 021, 024, 025, 027, and 028 retain lower
 unchanged outcomes because of documented hidden taxonomies, invalid calendar ground truth,
 unmatchable normalization, or brittle unpublished phrase checks. Task 029 similarly retains a
@@ -82,7 +82,8 @@ task 030 requires hidden change-log rows for sections that correctly remained un
 requires reuse of a reference identifier that its own appendix retires, plus unpublished audit-row
 formats. Task 032 treats an explicit “cannot commit” legal boundary as a promise, and task 033 calls
 a directly sourced negative answer insufficient evidence. Task 034 reaches the suite's excellent
-level while retaining two documented hidden-token misses. Product failures and benchmark defects
-are kept separate in the
+level while retaining two documented hidden-token misses. Task 035 resolves every scoped fact and
+supporting artifact correctly but its priority-reason check recognizes only a narrow verb allowlist.
+Product failures and benchmark defects are kept separate in the
 [external failure journal](../failure-journal.md); generated workspaces, native traces, and full
 result JSON remain in the configured external state directory rather than Git.
