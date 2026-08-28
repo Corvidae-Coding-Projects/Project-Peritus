@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 497,
+  "next_comment_id": 498,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -4285,7 +4285,7 @@
       "parent_uuid": "59346441-f15a-4950-a0f1-f10b1b9b1f7d",
       "created_by": "6ME5",
       "created_at": "2026-08-27T23:31:51.166170874Z",
-      "updated_at": "2026-08-27T23:59:50.299610925Z",
+      "updated_at": "2026-08-28T00:00:30.747360052Z",
       "labels": [
         "feature",
         "ux"
@@ -4308,6 +4308,15 @@
           "kind": "note",
           "signed_by": "SHA256:mTwYqorrA4UxSK3se0aIOCOC6y7kyE/sEvoFLwVluf4",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgmuiChqHxrMH8nicBvsKr3z1JEgjcUOEEH/DcxL6kdeEAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA6griF79nHRS2Mr8Owwf6x3SKaUdp0035ut5kUDPQ0BM8l2SC37UVnG6NnxWoE9lE4jvtOGjXrdD0aYxcbAcLBw=="
+        },
+        "707f42b7-a9d7-4cc2-9c64-14306748f496": {
+          "display_id": 497,
+          "author": "NWAR",
+          "content": "Committed: feat(g4): add single-command product bootstrap (#37) | Files: 29 files changed, 2150 insertions(+), 11 deletions(-) | Commit: 8c0d83f1",
+          "created_at": "2026-08-28T00:00:30.744627039Z",
+          "kind": "result",
+          "signed_by": "SHA256:mTwYqorrA4UxSK3se0aIOCOC6y7kyE/sEvoFLwVluf4",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgmuiChqHxrMH8nicBvsKr3z1JEgjcUOEEH/DcxL6kdeEAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAhPuQ+hLgMc05382ngDNqgRnDtf9pVe4fABHN69rpoiJk1YjHjg1P0/qxHL/b5Cji0pZRjELcv/fzTLsr8kDzBg=="
         }
       }
     },
@@ -5214,8 +5223,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-27T23:59:50.299610925Z",
+    "timestamp": "2026-08-28T00:00:30.747360052Z",
     "agent_id": "NWAR",
-    "agent_seq": 3
+    "agent_seq": 4
   }
 }
