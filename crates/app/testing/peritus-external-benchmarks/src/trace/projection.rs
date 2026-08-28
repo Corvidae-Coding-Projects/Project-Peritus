@@ -26,11 +26,17 @@ pub(super) struct ToolCall {
 struct ActiveResponse {
     request_messages: Vec<Value>,
     assistant_bytes: Vec<u8>,
-    calls: Vec<ToolCall>,
+    calls: Vec<ActiveToolCall>,
     call_indexes: BTreeMap<String, usize>,
     model: String,
     usage: UsageCounters,
     observed_cache_tokens: Option<u64>,
+}
+
+struct ActiveToolCall {
+    id: String,
+    name: String,
+    argument_bytes: Vec<u8>,
 }
 
 pub(super) fn project(
@@ -90,10 +96,10 @@ fn apply_event(
                 return Err(BenchmarkError::trace(path, "tool call identity was repeated"));
             }
             response.call_indexes.insert(id.clone(), response.calls.len());
-            response.calls.push(ToolCall {
+            response.calls.push(ActiveToolCall {
                 id,
                 name: name.as_str().to_owned(),
-                arguments: String::new(),
+                argument_bytes: Vec::new(),
             });
         }
         ModelEvent::ToolArgumentDelta { call_id, fragment } => {
@@ -102,9 +108,7 @@ fn apply_event(
                 response.call_indexes.get(call_id.expose_for_wire()).copied().ok_or_else(|| {
                     BenchmarkError::trace(path, "tool arguments precede their call")
                 })?;
-            let value = std::str::from_utf8(fragment.expose())
-                .map_err(|_| BenchmarkError::trace(path, "tool arguments are not UTF-8"))?;
-            response.calls[index].arguments.push_str(value);
+            response.calls[index].argument_bytes.extend_from_slice(fragment.expose());
         }
         ModelEvent::Usage(observation) => current(path, active)?.usage = observation.counters(),
         ModelEvent::Cache(observation) => {
@@ -141,16 +145,32 @@ fn complete(
         .ok_or_else(|| BenchmarkError::trace(path, "provider terminal has no active response"))?;
     let assistant_text = String::from_utf8(response.assistant_bytes)
         .map_err(|_| BenchmarkError::trace(path, "assistant response is not UTF-8"))?;
+    let tool_calls = finalize_calls(path, response.calls)?;
     history.push(json!({"role": "assistant", "content": assistant_text}));
     rounds.push(Round {
         request_messages: response.request_messages,
         assistant_text,
-        tool_calls: response.calls,
+        tool_calls,
         model: response.model,
         usage: response.usage,
         observed_cache_tokens: response.observed_cache_tokens,
     });
     Ok(())
+}
+
+fn finalize_calls(
+    path: &Path,
+    calls: Vec<ActiveToolCall>,
+) -> Result<Vec<ToolCall>, BenchmarkError> {
+    calls
+        .into_iter()
+        .map(|call| {
+            let arguments = String::from_utf8(call.argument_bytes).map_err(|_| {
+                BenchmarkError::trace(path, "complete tool arguments are not UTF-8")
+            })?;
+            Ok(ToolCall { id: call.id, name: call.name, arguments })
+        })
+        .collect()
 }
 
 fn apply_observation(
@@ -173,4 +193,27 @@ fn apply_observation(
         .ok_or_else(|| BenchmarkError::trace(path, "tool observation has no output"))?;
     history.push(json!({"role": "tool", "tool_call_id": call_id, "content": output}));
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tool_arguments_decode_after_split_utf8_fragments_are_reassembled() {
+        let bytes = "{\"subject\":\"café\"}".as_bytes();
+        let split = bytes.iter().position(|byte| *byte == 0xC3).expect("multibyte character") + 1;
+        let mut call = ActiveToolCall {
+            id: "call-1".to_owned(),
+            name: "workspace_write".to_owned(),
+            argument_bytes: Vec::new(),
+        };
+        call.argument_bytes.extend_from_slice(&bytes[..split]);
+        assert!(std::str::from_utf8(&call.argument_bytes).is_err());
+        call.argument_bytes.extend_from_slice(&bytes[split..]);
+
+        let calls = finalize_calls(Path::new("trace"), vec![call]).expect("complete UTF-8");
+
+        assert_eq!(calls[0].arguments, "{\"subject\":\"café\"}");
+    }
 }

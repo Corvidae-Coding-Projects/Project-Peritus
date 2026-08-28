@@ -39,6 +39,10 @@ pub struct RunReport {
     pub elapsed_ms: u128,
     /// Original durable D0 trace.
     pub trace_path: PathBuf,
+    /// One-based durable conversation turn represented by this invocation.
+    pub conversation_turn: usize,
+    /// Ordered D0 trace paths for every completed session turn.
+    pub session_trace_paths: Vec<PathBuf>,
     /// `HarnessBench` usage-proxy directory.
     pub usage_proxy: PathBuf,
     /// Number of projected provider response records.

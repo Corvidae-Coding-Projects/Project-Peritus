@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Reassemble streamed tool-call argument bytes before UTF-8 decoding and let completed external
+  benchmark attempts reach their upstream oracle even when Peritus's stricter internal review
+  rejects the candidate, preserving process grades and multi-round task continuity (#31)
 - Teach malformed design retries the exact rejected heading contract and give generic artifact
   workspaces an explicit native gate kind, eliminating a repeated-retry failure and a 600-second
   no-progress timeout found by unchanged HarnessBench task 001 (#31)

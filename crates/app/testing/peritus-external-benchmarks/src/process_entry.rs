@@ -25,12 +25,18 @@ pub fn main_entry() -> ExitCode {
                     return ExitCode::FAILURE;
                 }
             }
-            if report.success { ExitCode::SUCCESS } else { ExitCode::FAILURE }
+            completed_attempt_exit(report.success)
         }
         Err(error) => {
             eprintln!("peritus-benchmark-agent: {error}");
             ExitCode::FAILURE
         }
+    }
+}
+
+const fn completed_attempt_exit(product_accepted: bool) -> ExitCode {
+    match product_accepted {
+        true | false => ExitCode::SUCCESS,
     }
 }
 
@@ -55,5 +61,16 @@ fn rubric(runtime: &tokio::runtime::Runtime) -> ExitCode {
             eprintln!("peritus-benchmark-agent: rubric: {error}");
             ExitCode::FAILURE
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn completed_external_attempt_is_scoreable_even_when_product_rejects_it() {
+        assert_eq!(completed_attempt_exit(true), ExitCode::SUCCESS);
+        assert_eq!(completed_attempt_exit(false), ExitCode::SUCCESS);
     }
 }

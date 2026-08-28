@@ -8,6 +8,7 @@ mod evidence;
 mod process_entry;
 mod providers;
 mod rubric;
+mod session;
 mod trace;
 mod workspace;
 
