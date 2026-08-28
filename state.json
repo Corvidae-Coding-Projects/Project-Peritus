@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 572,
+  "next_comment_id": 573,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-28T22:20:12.870197321Z",
+      "updated_at": "2026-08-28T23:34:18.633331505Z",
       "labels": [
         "qualification",
         "release"
@@ -1504,6 +1504,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAX5kFlpNm4F4tpb9j/Kj0BWKEe4NPdVChE45A4zuZLd2FeMyGLKeEXNrtcVeS59nN7Xf6cSW5pgqDbTlWPp26CQ=="
+        },
+        "d51a655a-e787-42b5-9939-8977c05db67c": {
+          "display_id": 572,
+          "author": "6ME5",
+          "content": "Task 037 checkpoint committed as signed 7d0ab77d. Added finding-level convergence across changing candidates, canonical identifier and controlling-authority rules, and durable final gate/review/diff evidence for external runs. Fresh unchanged task 037 retained all 11 decisions and reason codes, process 0.9467, security 1.0, outcome 0.74/combined 0.7005, and terminated before the 900-second deadline; remaining misses are documented hidden quote and mixed-authority conventions. Verification: 48 focused tests, strict Clippy, formatting, architecture-check over 76 packages/3029 files, and full cargo xtask all green.",
+          "created_at": "2026-08-28T23:34:18.630764350Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA3AuFr3efV585ryyc+fZzQK9HTSX/gV8Z1N5p1rP8hff4+y8SAaZsYvQsEuzPo/BKf2IM4L7hO5FNg2LtYWQVBg=="
         },
         "e0253408-62db-44d7-b82e-d0935c09a541": {
           "display_id": 478,
@@ -5900,8 +5909,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-28T23:34:01.868765758Z",
+    "timestamp": "2026-08-28T23:34:18.633331505Z",
     "agent_id": "6ME5",
-    "agent_seq": 749
+    "agent_seq": 750
   }
 }
