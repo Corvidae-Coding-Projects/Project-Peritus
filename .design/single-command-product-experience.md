@@ -53,8 +53,9 @@ native qualification in this document is complete.
 9. The application owns daemon reuse, startup, readiness, reconnection, diagnostics, and orderly
    shutdown. Internal service commands remain available for operators but are not part of normal
    use.
-10. The main interface can start a coding run from a natural-language task and expose writer,
-    reviewer, fixer, gate, diff, terminal, approval, cancellation, recovery, and completion state.
+10. The main interface can start a coding run from a natural-language task, maintain a durable
+    two-way conversation for follow-up and material questions, and expose writer, reviewer, fixer,
+    gate, diff, terminal, approval, cancellation, recovery, and completion state.
 11. Existing explicit CLI commands remain deterministic and scriptable. Interactive prompts occur
     only when both input and output are terminals.
 12. Setup and routine use work without a network connection whenever the chosen action does not
@@ -209,6 +210,14 @@ language, names the active file/tool where safe, shows elapsed time and resource
 Pause, Cancel, Review diff, Terminal, and Details. A failure distinguishes provider, tool, test,
 policy, approval, infrastructure, and recovery outcomes and gives a next action.
 
+The run is not a one-shot form submission. Its chronological user/agent conversation is persisted
+beside the run state and is independently queryable through additive A3 messages. A user message
+during execution is consumed at the next safe model boundary; a message after failure,
+cancellation, recovery, a material agent question, or completion resumes the same managed
+worktree. The writer may enter Waiting for user only for a material choice that cannot reasonably
+be inferred. Invalid edit-plan JSON receives one bounded model correction turn before becoming an
+actionable conversational failure.
+
 Completion displays the result, changed files, gate status, unresolved findings, commits if any,
 and exact evidence. It never equates model completion with accepted code.
 
@@ -336,6 +345,7 @@ The existing reducer/effect separation remains. It gains:
 - provider and workspace settings;
 - a home/dashboard and task composer;
 - explicit run-start effects over A3;
+- conversation query and continuation effects over A3, with a prominent selected-run transcript;
 - user-language AcTor phase projection;
 - persistent status and diagnostics panels;
 - focus model, accessible palette, mouse-optional navigation, and contextual help.
@@ -494,6 +504,8 @@ milestones by themselves.
 
 - implement the complete information architecture and task composer;
 - bridge run start and control to A3/E0 without granting UI authority;
+- persist and resume bounded per-run conversations, including direct writer questions and
+  malformed-plan correction;
 - render writer/reviewer/fixer/gates/diffs/approvals/terminal/recovery/completion;
 - complete keyboard, focus, narrow-terminal, reduced-color, and terminal-restoration tests.
 
@@ -525,7 +537,7 @@ qualification then run against the exact integrated candidate.
   shutdown;
 - TUI reducer snapshots for every setup and repair phase;
 - keyboard-only traversal, focus visibility state, editor shortcut isolation, cancellation, narrow
-  layout, and terminal restoration;
+  layout, conversational follow-up/resume, and terminal restoration;
 - non-TTY no-prompt behavior and compatibility of every existing CLI command.
 
 ### End-to-end evidence

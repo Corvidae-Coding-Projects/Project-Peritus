@@ -2,10 +2,11 @@
 
 use crate::{
     AppErrorCode, AppProtocolError, ArtifactCancellation, ArtifactChunk, ArtifactCompletion,
-    ArtifactMetadata, CommandBinding, CorrelationId, EventCursor, ProductRunControl,
-    ProductRunQuery, ProductRunRequest, PromptAnswer, PromptCancellation, RequestId,
-    ShutdownRequest, SubscriptionFilter, SubscriptionId, TerminalBinding, TerminalCancellation,
-    TerminalDetach, TerminalInput, TerminalResize, TransferId,
+    ArtifactMetadata, CommandBinding, CorrelationId, EventCursor, ProductRunContinuation,
+    ProductRunControl, ProductRunConversationQuery, ProductRunQuery, ProductRunRequest,
+    PromptAnswer, PromptCancellation, RequestId, ShutdownRequest, SubscriptionFilter,
+    SubscriptionId, TerminalBinding, TerminalCancellation, TerminalDetach, TerminalInput,
+    TerminalResize, TransferId,
 };
 use peritus_types::ArtifactId;
 
@@ -116,6 +117,10 @@ pub enum AppRequestPayload {
     ControlProductRun(ProductRunControl),
     /// Queries recent or exact product-run observations.
     QueryProductRuns(ProductRunQuery),
+    /// Adds user context to an active or resumable product run.
+    ContinueProductRun(ProductRunContinuation),
+    /// Queries the conversation for one exact product run.
+    QueryProductRunConversation(ProductRunConversationQuery),
     /// Answers an approval or user-input prompt.
     AnswerPrompt(PromptAnswer),
     /// Cancels an outstanding prompt.

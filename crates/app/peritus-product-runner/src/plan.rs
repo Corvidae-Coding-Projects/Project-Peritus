@@ -15,12 +15,17 @@ const MAX_PLAN_BYTES: usize = 8 * 1024 * 1024;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct FilePlan {
-    summary: String,
+pub struct FilePlan {
+    #[serde(default)]
+    kind: Option<String>,
+    #[serde(default)]
+    summary: Option<String>,
     #[serde(default)]
     files: Vec<FileReplacement>,
     #[serde(default)]
     deletions: Vec<String>,
+    #[serde(default)]
+    message: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -36,7 +41,12 @@ pub struct AppliedPlan {
     pub changed_files: usize,
 }
 
-pub fn apply(root: &Path, response: &str) -> Result<AppliedPlan, ProductRunnerError> {
+pub enum ParsedPlan {
+    Apply(FilePlan),
+    Question(String),
+}
+
+pub fn parse(response: &str) -> Result<ParsedPlan, ProductRunnerError> {
     let json = extract_json(response)?;
     if json.len() > MAX_PLAN_BYTES {
         return Err(invalid("model file plan exceeds its size bound"));
@@ -48,10 +58,32 @@ pub fn apply(root: &Path, response: &str) -> Result<AppliedPlan, ProductRunnerEr
             error.to_string(),
         )
     })?;
-    if plan.summary.trim().is_empty() || plan.files.len() + plan.deletions.len() > MAX_CHANGED_FILES
+    if plan.kind.as_deref() == Some("question") {
+        let message = plan.message.ok_or_else(|| invalid("model question has no message"))?;
+        if message.trim().is_empty()
+            || plan.summary.is_some()
+            || !plan.files.is_empty()
+            || !plan.deletions.is_empty()
+        {
+            return Err(invalid("model question mixes question and file-plan fields"));
+        }
+        return Ok(ParsedPlan::Question(message));
+    }
+    if !matches!(plan.kind.as_deref(), None | Some("plan"))
+        || plan.message.is_some()
+        || plan.summary.as_deref().is_none_or(|summary| summary.trim().is_empty())
+        || plan.files.len() + plan.deletions.len() > MAX_CHANGED_FILES
     {
         return Err(invalid("model file plan is empty or changes too many files"));
     }
+    Ok(ParsedPlan::Apply(plan))
+}
+
+pub fn apply(root: &Path, parsed: ParsedPlan) -> Result<AppliedPlan, ProductRunnerError> {
+    let ParsedPlan::Apply(plan) = parsed else {
+        return Err(invalid("a model question cannot be applied as a file plan"));
+    };
+    let summary = plan.summary.expect("validated file plan summary");
     let replacements = plan
         .files
         .into_iter()
@@ -70,7 +102,7 @@ pub fn apply(root: &Path, response: &str) -> Result<AppliedPlan, ProductRunnerEr
         rollback(&backups);
         return Err(error);
     }
-    Ok(AppliedPlan { summary: plan.summary, changed_files: replacements.len() + deletions.len() })
+    Ok(AppliedPlan { summary, changed_files: replacements.len() + deletions.len() })
 }
 
 fn apply_all(
@@ -167,7 +199,8 @@ mod tests {
         let temporary = tempfile::tempdir().expect("temporary workspace");
         fs::write(temporary.path().join("old.txt"), "old").expect("fixture");
         let plan = r#"{"summary":"implemented","files":[{"path":"src/new.rs","content":"pub fn answer() -> u8 { 42 }\n"}],"deletions":["old.txt"]}"#;
-        let applied = apply(temporary.path(), plan).expect("apply plan");
+        let applied =
+            apply(temporary.path(), parse(plan).expect("parse plan")).expect("apply plan");
         assert_eq!(applied.summary, "implemented");
         assert_eq!(applied.changed_files, 2);
         assert_eq!(
@@ -185,9 +218,30 @@ mod tests {
                 r#"{{"summary":"bad","files":[{{"path":"{path}","content":"x"}}],"deletions":[]}}"#
             );
             assert_eq!(
-                apply(temporary.path(), &plan).expect_err("unsafe path rejects").kind(),
+                apply(temporary.path(), parse(&plan).expect("parse plan"))
+                    .expect_err("unsafe path rejects")
+                    .kind(),
                 ProductRunnerErrorKind::InvalidModelOutput
             );
+        }
+    }
+
+    #[test]
+    fn tagged_question_is_returned_without_touching_the_workspace() {
+        let parsed = parse(r#"{"kind":"question","message":"Which UI toolkit should I use?"}"#)
+            .expect("parse question");
+        assert!(
+            matches!(parsed, ParsedPlan::Question(message) if message == "Which UI toolkit should I use?")
+        );
+    }
+
+    #[test]
+    fn tagged_and_legacy_plans_are_both_accepted() {
+        for plan in [
+            r#"{"summary":"legacy","files":[],"deletions":[]}"#,
+            r#"{"kind":"plan","summary":"tagged","files":[],"deletions":[]}"#,
+        ] {
+            assert!(matches!(parse(plan), Ok(ParsedPlan::Apply(_))));
         }
     }
 }

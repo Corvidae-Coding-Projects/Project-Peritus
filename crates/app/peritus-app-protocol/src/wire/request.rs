@@ -20,8 +20,9 @@ use super::{
     daemon::{read_shutdown_request, write_shutdown_request},
     primitive::{invalid, read_context, read_id, unknown, write_context, write_id},
     product::{
-        read_run_control, read_run_query, read_run_request, write_run_control, write_run_query,
-        write_run_request,
+        read_conversation_query, read_run_continuation, read_run_control, read_run_query,
+        read_run_request, write_conversation_query, write_run_continuation, write_run_control,
+        write_run_query, write_run_request,
     },
     prompt::{
         read_prompt_answer, read_prompt_cancellation, write_prompt_answer,
@@ -119,6 +120,14 @@ impl CanonicalEncode for AppRequestEnvelope {
                 writer.write_u16(19)?;
                 write_run_query(writer, *value)
             }
+            AppRequestPayload::ContinueProductRun(value) => {
+                writer.write_u16(20)?;
+                write_run_continuation(writer, value)
+            }
+            AppRequestPayload::QueryProductRunConversation(value) => {
+                writer.write_u16(21)?;
+                write_conversation_query(writer, *value)
+            }
         }
     }
 }
@@ -161,6 +170,8 @@ pub(super) fn read_request(
         17 => AppRequestPayload::StartProductRun(read_run_request(reader)?),
         18 => AppRequestPayload::ControlProductRun(read_run_control(reader)?),
         19 => AppRequestPayload::QueryProductRuns(read_run_query(reader)?),
+        20 => AppRequestPayload::ContinueProductRun(read_run_continuation(reader)?),
+        21 => AppRequestPayload::QueryProductRunConversation(read_conversation_query(reader)?),
         _ => return unknown(tag_offset),
     };
     let request =

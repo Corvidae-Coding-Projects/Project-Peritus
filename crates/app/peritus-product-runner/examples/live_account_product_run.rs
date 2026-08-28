@@ -12,7 +12,9 @@ use peritus_model_protocol::{
     CancellationKind, Capability, CapabilityMatrix, CapabilityProvenance, ModelLimits, ModelName,
     OutputLimitEnforcement, ProviderName, ProviderProfile, ResumeKind, StateMode, WireDialect,
 };
-use peritus_product_runner::{ProductRunInput, ProductRunner, RoleProviders, RunObserver};
+use peritus_product_runner::{
+    ConversationView, ProductRunInput, ProductRunOutcome, ProductRunner, RoleProviders, RunObserver,
+};
 use peritus_provider_anthropic::{ClaudeExecutable, ClaudeRuntimeConfig, ClaudeRuntimeProvider};
 use peritus_provider_core::{CancellationToken, ModelProvider, ProcessLimits};
 use peritus_provider_openai::{CodexExecutable, CodexRuntimeConfig, CodexRuntimeProvider};
@@ -37,22 +39,23 @@ async fn run() -> Result<(), Box<dyn Error>> {
     let writer: Arc<dyn ModelProvider> = writer;
     let reviewer: Arc<dyn ModelProvider> = reviewer;
     let observer: RunObserver = Arc::new(|_| {});
+    let task = "Add a documented public function named answer that returns u32 value 42, and add a unit test that proves it. Keep the existing function.".to_owned();
     let output = ProductRunner::run(
         ProductRunInput {
             run_id: RunId::new([0xE4; 16]).expect("nonzero qualification run id"),
             workspace_root: repository.path().to_owned(),
-            task: "Add a documented public function named answer that returns u32 value 42, and add a unit test that proves it. Keep the existing function.".to_owned(),
-            providers: RoleProviders {
-                writer: Arc::clone(&writer),
-                reviewer,
-                fixer: writer,
-            },
+            task: task.clone(),
+            conversation: Arc::new(FixedConversation(task)),
+            providers: RoleProviders { writer: Arc::clone(&writer), reviewer, fixer: writer },
             cancelled: Arc::new(AtomicBool::new(false)),
             provider_cancellation: cancellation,
         },
         observer,
     )
     .await?;
+    let ProductRunOutcome::Complete(output) = output else {
+        return Err(io::Error::other("product run unexpectedly asked for clarification").into());
+    };
     let source = fs::read_to_string(repository.path().join("src/lib.rs"))?;
     if !source.contains("answer") || !source.contains("42") || output.diff.is_empty() {
         return Err(
@@ -61,6 +64,18 @@ async fn run() -> Result<(), Box<dyn Error>> {
     }
     let _ = (output.changed_files, output.fixer_cycles);
     Ok(())
+}
+
+struct FixedConversation(String);
+
+impl ConversationView for FixedConversation {
+    fn revision(&self) -> u64 {
+        1
+    }
+
+    fn render(&self) -> String {
+        format!("User:\n{}", self.0)
+    }
 }
 
 fn codex_provider() -> Result<Arc<CodexRuntimeProvider>, Box<dyn Error>> {

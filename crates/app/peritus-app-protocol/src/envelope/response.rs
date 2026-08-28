@@ -2,7 +2,8 @@
 
 use crate::{
     AppProtocolError, ArtifactMetadata, CommandResult, CorrelationId, EventCursor,
-    ProductRunSnapshot, PromptId, RequestId, ShutdownAccepted, SubscriptionId, TerminalBinding,
+    ProductRunConversation, ProductRunSnapshot, PromptId, RequestId, ShutdownAccepted,
+    SubscriptionId, TerminalBinding,
 };
 
 use super::ProtocolContext;
@@ -86,6 +87,8 @@ pub enum AppResponsePayload {
     ProductRunAccepted(ProductRunSnapshot),
     /// Bounded recent or exact product-run observations.
     ProductRuns(Vec<ProductRunSnapshot>),
+    /// Complete bounded conversation for one exact product run.
+    ProductRunConversation(ProductRunConversation),
 }
 
 /// Complete typed terminal response to one request.

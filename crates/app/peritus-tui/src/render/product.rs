@@ -1,6 +1,8 @@
 //! Dashboard, diff, and review presentation for daemon-owned coding runs.
 
-use peritus_app_protocol::{ProductRunPhase, ProductRunSnapshot};
+use peritus_app_protocol::{
+    ProductConversationRole, ProductRunConversation, ProductRunPhase, ProductRunSnapshot,
+};
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -79,12 +81,27 @@ pub(super) fn dashboard(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         columns[0],
         &mut state,
     );
+    let right = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Percentage(43), Constraint::Percentage(57)])
+        .split(columns[1]);
     let detail = product.selected_run().map_or_else(empty_detail, run_detail);
     frame.render_widget(
         Paragraph::new(detail)
             .block(Block::default().borders(Borders::ALL).title(" Progress · x cancel · r retry "))
             .wrap(Wrap { trim: false }),
-        columns[1],
+        right[0],
+    );
+    frame.render_widget(
+        Paragraph::new(conversation_text(product.selected_conversation()))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(ACCENT))
+                    .title(" Conversation · Enter/m message this run "),
+            )
+            .wrap(Wrap { trim: false }),
+        right[1],
     );
 }
 
@@ -166,6 +183,30 @@ fn empty_detail() -> Text<'static> {
     ])
 }
 
+fn conversation_text(conversation: Option<&ProductRunConversation>) -> Text<'static> {
+    let Some(conversation) = conversation else {
+        return Text::from(vec![
+            Line::styled("Select a run to load its conversation.", Style::default().fg(MUTED)),
+            Line::from("Press Enter or m to send a message."),
+        ]);
+    };
+    let start = conversation.messages().len().saturating_sub(12);
+    let mut lines = Vec::new();
+    for message in &conversation.messages()[start..] {
+        let (speaker, style) = match message.role() {
+            ProductConversationRole::User => ("You", Style::default().fg(Color::White)),
+            ProductConversationRole::Agent => ("Peritus", Style::default().fg(ACCENT)),
+        };
+        lines.push(Line::styled(speaker, style.add_modifier(Modifier::BOLD)));
+        lines.extend(safe(message.content()).lines().map(|line| Line::from(line.to_owned())));
+        lines.push(Line::from(""));
+    }
+    if lines.is_empty() {
+        lines.push(Line::styled("No messages yet.", Style::default().fg(MUTED)));
+    }
+    Text::from(lines)
+}
+
 const fn phase_symbol(phase: ProductRunPhase) -> &'static str {
     match phase {
         ProductRunPhase::Queued => "○ Queued",
@@ -178,6 +219,7 @@ const fn phase_symbol(phase: ProductRunPhase) -> &'static str {
         ProductRunPhase::Failed => "✗ Failed",
         ProductRunPhase::Cancelled => "■ Cancelled",
         ProductRunPhase::RecoveryRequired => "! Recover",
+        ProductRunPhase::WaitingForUser => "? Your reply",
     }
 }
 
@@ -189,7 +231,9 @@ fn phase_style(phase: ProductRunPhase) -> Style {
     match phase {
         ProductRunPhase::Complete => Style::default().fg(GOOD),
         ProductRunPhase::Failed | ProductRunPhase::Cancelled => Style::default().fg(BAD),
-        ProductRunPhase::RecoveryRequired => Style::default().fg(WARN),
+        ProductRunPhase::RecoveryRequired | ProductRunPhase::WaitingForUser => {
+            Style::default().fg(WARN)
+        }
         _ => Style::default().fg(ACCENT),
     }
 }
@@ -205,7 +249,8 @@ fn timeline(phase: ProductRunPhase) -> String {
         ProductRunPhase::Complete => 6,
         ProductRunPhase::Failed
         | ProductRunPhase::Cancelled
-        | ProductRunPhase::RecoveryRequired => 7,
+        | ProductRunPhase::RecoveryRequired
+        | ProductRunPhase::WaitingForUser => 7,
     };
     ["Understand", "Write", "Check", "Review", "Fix", "Verify", "Complete"]
         .iter()

@@ -4,8 +4,10 @@ use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 
 use crate::{
-    MAX_PRODUCT_RUNS, ProductProviderSelection, ProductRunControl, ProductRunControlAction,
-    ProductRunPhase, ProductRunQuery, ProductRunRequest, ProductRunSnapshot,
+    MAX_PRODUCT_MESSAGES, MAX_PRODUCT_RUNS, ProductConversationMessage, ProductConversationRole,
+    ProductProviderSelection, ProductRunContinuation, ProductRunControl, ProductRunControlAction,
+    ProductRunConversation, ProductRunConversationQuery, ProductRunPhase, ProductRunQuery,
+    ProductRunRequest, ProductRunSnapshot,
 };
 
 use super::primitive::{invalid, read_id, write_id};
@@ -72,6 +74,72 @@ pub(super) fn read_run_query(
     } else {
         Ok(ProductRunQuery::recent())
     }
+}
+
+pub(super) fn write_run_continuation(
+    writer: &mut CanonicalWriter,
+    value: &ProductRunContinuation,
+) -> Result<(), CodecError> {
+    write_id(writer, value.run_id().as_bytes())?;
+    writer.write_str(value.message())
+}
+
+pub(super) fn read_run_continuation(
+    reader: &mut CanonicalReader<'_>,
+) -> Result<ProductRunContinuation, CodecError> {
+    let offset = reader.offset();
+    invalid(
+        offset,
+        ProductRunContinuation::new(read_id(reader, RunId::new)?, reader.read_str()?.to_owned()),
+    )
+}
+
+pub(super) fn write_conversation_query(
+    writer: &mut CanonicalWriter,
+    value: ProductRunConversationQuery,
+) -> Result<(), CodecError> {
+    write_id(writer, value.run_id().as_bytes())
+}
+
+pub(super) fn read_conversation_query(
+    reader: &mut CanonicalReader<'_>,
+) -> Result<ProductRunConversationQuery, CodecError> {
+    Ok(ProductRunConversationQuery::new(read_id(reader, RunId::new)?))
+}
+
+pub(super) fn write_conversation(
+    writer: &mut CanonicalWriter,
+    value: &ProductRunConversation,
+) -> Result<(), CodecError> {
+    write_id(writer, value.run_id().as_bytes())?;
+    writer.write_collection_len(value.messages().len())?;
+    for message in value.messages() {
+        writer.write_u16(message.role().tag())?;
+        writer.write_str(message.content())?;
+    }
+    Ok(())
+}
+
+pub(super) fn read_conversation(
+    reader: &mut CanonicalReader<'_>,
+) -> Result<ProductRunConversation, CodecError> {
+    let offset = reader.offset();
+    let run_id = read_id(reader, RunId::new)?;
+    let length = reader.read_collection_len()?;
+    if length > MAX_PRODUCT_MESSAGES {
+        return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
+    }
+    let mut messages = Vec::with_capacity(length);
+    for _ in 0..length {
+        let role_offset = reader.offset();
+        let role = ProductConversationRole::from_tag(reader.read_u16()?)
+            .ok_or_else(|| CodecError::at(CodecErrorKind::UnknownTag, role_offset))?;
+        messages.push(invalid(
+            offset,
+            ProductConversationMessage::new(role, reader.read_str()?.to_owned()),
+        )?);
+    }
+    invalid(offset, ProductRunConversation::new(run_id, messages))
 }
 
 pub(super) fn write_snapshot(

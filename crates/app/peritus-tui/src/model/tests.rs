@@ -135,3 +135,66 @@ fn product_launch_queries_runs_and_task_submission_is_daemon_owned() {
     ))));
     assert!(effects.iter().any(|effect| matches!(effect, Effect::Send(AppMessage::Request(request)) if matches!(request.payload(), AppRequestPayload::StartProductRun(_)))));
 }
+
+#[test]
+fn selected_product_run_accepts_conversational_followup() {
+    use peritus_app_protocol::{ProductProviderSelection, ProductRunPhase, ProductRunSnapshot};
+    use peritus_types::RunId;
+
+    let provider_id = ProviderProfileId::new([61; 16]).expect("provider");
+    let workspace_id = WorkspaceId::new([62; 16]).expect("workspace");
+    let product = ProductLaunchContext::new(
+        workspace_id,
+        "/managed/project".to_owned(),
+        vec![ProductProviderOption::new(provider_id, "Codex")],
+        Some(0),
+    )
+    .expect("product context");
+    let mut model = AppModel::with_product([63; 32], Some(product));
+    let _ = model.update(Action::Connected {
+        context: context(),
+        limits: AppProtocolLimits::PRODUCTION,
+        server: "peritusd/test".to_owned(),
+        downgraded: false,
+    });
+    let run_id = RunId::new([64; 16]).expect("run");
+    model.accept_product_run(
+        ProductRunSnapshot::new(
+            run_id,
+            workspace_id,
+            ProductProviderSelection::new(provider_id, provider_id, provider_id),
+            ProductRunPhase::Failed,
+            1,
+            "build tetris".to_owned(),
+            "plan failed".to_owned(),
+            String::new(),
+            String::new(),
+            String::new(),
+            "invalid JSON".to_owned(),
+        )
+        .expect("snapshot"),
+    );
+    assert!(
+        model
+            .update(Action::TerminalEvent(Event::Key(KeyEvent::new(
+                KeyCode::Enter,
+                KeyModifiers::NONE,
+            ))))
+            .is_empty()
+    );
+    for character in "continue and use ratatui".chars() {
+        let _ = model.update(Action::TerminalEvent(Event::Key(KeyEvent::new(
+            KeyCode::Char(character),
+            KeyModifiers::NONE,
+        ))));
+    }
+    let effects = model.update(Action::TerminalEvent(Event::Key(KeyEvent::new(
+        KeyCode::Enter,
+        KeyModifiers::NONE,
+    ))));
+    assert!(effects.iter().any(|effect| matches!(
+        effect,
+        Effect::Send(AppMessage::Request(request))
+            if matches!(request.payload(), AppRequestPayload::ContinueProductRun(_))
+    )));
+}

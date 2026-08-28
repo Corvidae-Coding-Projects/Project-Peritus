@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Recover once from malformed writer/fixer plan JSON, and turn terminal coding-run failures into
+  actionable conversations that can be corrected and resumed in the same managed worktree (#36)
 - Keep Codex Code Mode disabled without disabling its inert host feature, avoiding the current CLI
   0.149.1 nonfatal host-unavailable event that the account-runtime decoder correctly rejects
 - Give native plugin test fixtures a runner-safe process-startup allowance while preserving the
@@ -23,6 +25,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Add durable two-way coding-run conversations across the A3 protocol, daemon persistence,
+  product runner, and Runs UI. Users can message active work, answer direct material questions,
+  redirect or continue failed/completed runs, and inspect the persisted transcript with Enter or
+  `m`; legacy stored runs migrate without data loss (#36)
 - Complete the G4 coding surface with canonical A3 start/control/query messages and generated wire
   assets; a daemon-owned, persisted product-run registry; managed-worktree and provider resolution;
   progress observation; cancellation, retry, and interrupted-run recovery; and bounded execution

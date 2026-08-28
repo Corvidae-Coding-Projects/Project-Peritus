@@ -1,5 +1,7 @@
 //! Daemon-owned product-run registry, persistence, and execution admission.
 
+mod conversation;
+mod execution;
 mod persistence;
 mod snapshot;
 
@@ -15,10 +17,12 @@ use std::{
 };
 
 use peritus_app_protocol::{
-    ProductProviderSelection, ProductRunControl, ProductRunControlAction, ProductRunPhase,
-    ProductRunQuery, ProductRunRequest, ProductRunSnapshot,
+    ProductConversationMessage, ProductConversationRole, ProductProviderSelection,
+    ProductRunContinuation, ProductRunControl, ProductRunControlAction, ProductRunConversation,
+    ProductRunConversationQuery, ProductRunPhase, ProductRunQuery, ProductRunRequest,
+    ProductRunSnapshot,
 };
-use peritus_product_runner::{ProductRunInput, ProductRunner, RoleProviders, RunObserver};
+use peritus_product_runner::RoleProviders;
 use peritus_provider_core::{CancellationToken, ModelProvider};
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 use tokio::{sync::Mutex, task::JoinHandle};
@@ -28,8 +32,9 @@ use crate::{
     startup::workspace::WorkspaceCatalog,
 };
 
+use conversation::SharedConversation;
 use persistence::{load_records, persist_record};
-use snapshot::{initial_snapshot, replace_snapshot};
+use snapshot::{initial_snapshot, replace_snapshot, workspace_has_active_run};
 
 #[derive(Clone)]
 pub struct ProductRunService {
@@ -49,6 +54,7 @@ struct RunRecord {
     snapshot: ProductRunSnapshot,
     cancelled: Arc<AtomicBool>,
     provider_cancellation: CancellationToken,
+    conversation: Arc<SharedConversation>,
 }
 
 impl ProductRunService {
@@ -94,6 +100,16 @@ impl ProductRunService {
             .cloned()
             .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
         let snapshot = initial_snapshot(&request)?;
+        let conversation = SharedConversation::new(
+            request.run_id(),
+            vec![
+                ProductConversationMessage::new(
+                    ProductConversationRole::User,
+                    request.task().to_owned(),
+                )
+                .map_err(|_| ProductRunServiceError::InvalidMessage)?,
+            ],
+        )?;
         let cancelled = Arc::new(AtomicBool::new(false));
         let provider_cancellation = CancellationToken::new();
         {
@@ -112,6 +128,7 @@ impl ProductRunService {
                     snapshot: snapshot.clone(),
                     cancelled: Arc::clone(&cancelled),
                     provider_cancellation: provider_cancellation.clone(),
+                    conversation: Arc::clone(&conversation),
                 },
             );
             persist_record(
@@ -119,7 +136,15 @@ impl ProductRunService {
                 records.get(&request.run_id()).expect("inserted product run"),
             )?;
         }
-        self.spawn(request, workspace_root, providers, cancelled, provider_cancellation).await;
+        self.spawn(
+            request,
+            workspace_root,
+            providers,
+            cancelled,
+            provider_cancellation,
+            conversation,
+        )
+        .await;
         Ok(snapshot)
     }
 
@@ -152,6 +177,90 @@ impl ProductRunService {
             .collect())
     }
 
+    pub(super) fn query_conversation(
+        &self,
+        query: ProductRunConversationQuery,
+    ) -> Result<ProductRunConversation, ProductRunServiceError> {
+        let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
+        records
+            .get(&query.run_id())
+            .ok_or(ProductRunServiceError::NotFound)?
+            .conversation
+            .snapshot()
+    }
+
+    pub(super) async fn continue_run(
+        &self,
+        continuation: &ProductRunContinuation,
+    ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
+        let mut restart = None;
+        let snapshot = {
+            let mut records =
+                self.inner.records.write().map_err(|_| ProductRunServiceError::Unavailable)?;
+            let workspace_id = records
+                .get(&continuation.run_id())
+                .ok_or(ProductRunServiceError::NotFound)?
+                .request
+                .workspace_id();
+            let was_terminal = records
+                .get(&continuation.run_id())
+                .expect("checked product run exists")
+                .snapshot
+                .phase()
+                .terminal();
+            if was_terminal
+                && workspace_has_active_run(&records, workspace_id, Some(continuation.run_id()))
+            {
+                return Err(ProductRunServiceError::InvalidState);
+            }
+            let record =
+                records.get_mut(&continuation.run_id()).expect("checked product run exists");
+            record
+                .conversation
+                .append(ProductConversationRole::User, continuation.message().to_owned())?;
+            if was_terminal {
+                let providers = self.resolve_providers(record.request.providers())?;
+                let root = self
+                    .inner
+                    .workspaces
+                    .get(&record.request.workspace_id())
+                    .cloned()
+                    .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
+                let cancelled = Arc::new(AtomicBool::new(false));
+                let token = CancellationToken::new();
+                record.cancelled = Arc::clone(&cancelled);
+                record.provider_cancellation = token.clone();
+                record.snapshot = replace_snapshot(
+                    &record.snapshot,
+                    ProductRunPhase::Queued,
+                    "Follow-up queued for the writer",
+                    record.snapshot.summary(),
+                )?;
+                restart = Some((
+                    record.request.clone(),
+                    root,
+                    providers,
+                    cancelled,
+                    token,
+                    Arc::clone(&record.conversation),
+                ));
+            } else {
+                record.snapshot = replace_snapshot(
+                    &record.snapshot,
+                    record.snapshot.phase(),
+                    "Follow-up received; the next model step will incorporate it",
+                    record.snapshot.summary(),
+                )?;
+            }
+            persist_record(&self.inner.directory, record)?;
+            record.snapshot.clone()
+        };
+        if let Some((request, root, providers, cancelled, token, conversation)) = restart {
+            self.spawn(request, root, providers, cancelled, token, conversation).await;
+        }
+        Ok(snapshot)
+    }
+
     pub(super) async fn shutdown(&self, timeout: Duration) {
         if let Ok(records) = self.inner.records.read() {
             for record in records.values() {
@@ -169,6 +278,20 @@ impl ProductRunService {
         let mut records =
             self.inner.records.write().map_err(|_| ProductRunServiceError::Unavailable)?;
         let record = records.get_mut(&run_id).ok_or(ProductRunServiceError::NotFound)?;
+        if record.snapshot.phase() == ProductRunPhase::WaitingForUser {
+            record.snapshot = replace_snapshot(
+                &record.snapshot,
+                ProductRunPhase::Cancelled,
+                "Run cancelled",
+                "Cancelled while waiting for your reply",
+            )?;
+            let _ = record.conversation.append(
+                ProductConversationRole::Agent,
+                "Cancelled while waiting for your reply".to_owned(),
+            );
+            persist_record(&self.inner.directory, record)?;
+            return Ok(record.snapshot.clone());
+        }
         if record.snapshot.phase().terminal() {
             return Err(ProductRunServiceError::InvalidState);
         }
@@ -185,7 +308,7 @@ impl ProductRunService {
     }
 
     async fn retry(&self, run_id: RunId) -> Result<ProductRunSnapshot, ProductRunServiceError> {
-        let (request, root, providers, cancelled, token, snapshot) = {
+        let (request, root, providers, cancelled, token, conversation, snapshot) = {
             let mut records =
                 self.inner.records.write().map_err(|_| ProductRunServiceError::Unavailable)?;
             let workspace_id = records
@@ -213,9 +336,17 @@ impl ProductRunService {
             record.provider_cancellation = token.clone();
             record.snapshot = initial_snapshot(&record.request)?;
             persist_record(&self.inner.directory, record)?;
-            (record.request.clone(), root, providers, cancelled, token, record.snapshot.clone())
+            (
+                record.request.clone(),
+                root,
+                providers,
+                cancelled,
+                token,
+                Arc::clone(&record.conversation),
+                record.snapshot.clone(),
+            )
         };
-        self.spawn(request, root, providers, cancelled, token).await;
+        self.spawn(request, root, providers, cancelled, token, conversation).await;
         Ok(snapshot)
     }
 
@@ -236,127 +367,6 @@ impl ProductRunService {
             fixer: get(selected.fixer())?,
         })
     }
-
-    async fn spawn(
-        &self,
-        request: ProductRunRequest,
-        workspace_root: PathBuf,
-        providers: RoleProviders,
-        cancelled: Arc<AtomicBool>,
-        provider_cancellation: CancellationToken,
-    ) {
-        let service = self.clone();
-        let run_id = request.run_id();
-        let observer: RunObserver = Arc::new(move |update| service.observe(run_id, update));
-        let service = self.clone();
-        let task = tokio::spawn(async move {
-            let result = ProductRunner::run(
-                ProductRunInput {
-                    run_id,
-                    workspace_root,
-                    task: request.task().to_owned(),
-                    providers,
-                    cancelled,
-                    provider_cancellation,
-                },
-                observer,
-            )
-            .await;
-            service.finish(run_id, result);
-        });
-        let mut tasks = self.inner.tasks.lock().await;
-        tasks.retain(|existing| !existing.is_finished());
-        tasks.push(task);
-    }
-
-    fn observe(&self, run_id: RunId, update: peritus_product_runner::ProductRunUpdate) {
-        let Ok(mut records) = self.inner.records.write() else { return };
-        let Some(record) = records.get_mut(&run_id) else { return };
-        let phase = match update.phase {
-            peritus_product_runner::ProductRunPhase::Writing => ProductRunPhase::Writing,
-            peritus_product_runner::ProductRunPhase::Checking => ProductRunPhase::Checking,
-            peritus_product_runner::ProductRunPhase::Reviewing => ProductRunPhase::Reviewing,
-            peritus_product_runner::ProductRunPhase::Fixing => ProductRunPhase::Fixing,
-            peritus_product_runner::ProductRunPhase::Verifying => ProductRunPhase::Verifying,
-            peritus_product_runner::ProductRunPhase::Complete => ProductRunPhase::Complete,
-        };
-        if let Ok(snapshot) = ProductRunSnapshot::new(
-            run_id,
-            record.request.workspace_id(),
-            record.request.providers(),
-            phase,
-            update.cycle,
-            record.request.task().to_owned(),
-            update.status,
-            update.diff,
-            update.gates,
-            update.review,
-            update.summary,
-        ) {
-            record.snapshot = snapshot;
-            let _ = persist_record(&self.inner.directory, record);
-        }
-    }
-
-    fn finish(
-        &self,
-        run_id: RunId,
-        result: Result<
-            peritus_product_runner::ProductRunOutput,
-            peritus_product_runner::ProductRunnerError,
-        >,
-    ) {
-        let Ok(mut records) = self.inner.records.write() else { return };
-        let Some(record) = records.get_mut(&run_id) else { return };
-        match result {
-            Ok(output) => {
-                if let Ok(snapshot) = ProductRunSnapshot::new(
-                    run_id,
-                    record.request.workspace_id(),
-                    record.request.providers(),
-                    ProductRunPhase::Complete,
-                    output.fixer_cycles + 1,
-                    record.request.task().to_owned(),
-                    "Run completed with passing checks".to_owned(),
-                    output.diff,
-                    output.gates,
-                    output.review,
-                    output.summary,
-                ) {
-                    record.snapshot = snapshot;
-                }
-            }
-            Err(error) => {
-                let phase =
-                    if error.kind() == peritus_product_runner::ProductRunnerErrorKind::Cancelled {
-                        ProductRunPhase::Cancelled
-                    } else {
-                        ProductRunPhase::Failed
-                    };
-                if let Ok(snapshot) = replace_snapshot(
-                    &record.snapshot,
-                    phase,
-                    &format!("{} failed", error.operation()),
-                    error.detail(),
-                ) {
-                    record.snapshot = snapshot;
-                }
-            }
-        }
-        let _ = persist_record(&self.inner.directory, record);
-    }
-}
-
-fn workspace_has_active_run(
-    records: &BTreeMap<RunId, RunRecord>,
-    workspace_id: WorkspaceId,
-    except: Option<RunId>,
-) -> bool {
-    records.iter().any(|(run_id, record)| {
-        Some(*run_id) != except
-            && record.request.workspace_id() == workspace_id
-            && !record.snapshot.phase().terminal()
-    })
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

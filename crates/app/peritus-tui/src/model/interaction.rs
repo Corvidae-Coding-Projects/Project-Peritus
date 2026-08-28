@@ -124,6 +124,7 @@ impl AppModel {
         }
         match key.code {
             KeyCode::Char('n') => self.open_task_composer(),
+            KeyCode::Enter | KeyCode::Char('m') => self.open_product_message_composer(),
             KeyCode::Char('x') => {
                 return Some(self.control_selected_product_run(
                     peritus_app_protocol::ProductRunControlAction::Cancel,
@@ -149,7 +150,7 @@ impl AppModel {
         }
         if key.code == KeyCode::Enter && key.modifiers.contains(KeyModifiers::SHIFT) {
             if let Some(editor) = &mut self.editor
-                && editor.kind == EditorKind::ProductTask
+                && matches!(editor.kind, EditorKind::ProductTask | EditorKind::ProductMessage(_))
             {
                 editor.buffer.insert(editor.cursor, '\n');
                 editor.cursor += 1;
@@ -176,6 +177,9 @@ impl AppModel {
             }
             EditorKind::PromptAnswer(prompt_id) => self.submit_user_input(prompt_id, editor.buffer),
             EditorKind::ProductTask => self.submit_product_task(editor.buffer),
+            EditorKind::ProductMessage(run_id) => {
+                self.submit_product_message(run_id, editor.buffer)
+            }
         }
     }
 

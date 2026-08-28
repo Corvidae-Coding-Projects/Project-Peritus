@@ -8,11 +8,9 @@ use std::{
     },
 };
 
+use crate::{ProductRunnerError, ProductRunnerErrorKind, bundle, gates, provider};
 use peritus_provider_core::{CancellationToken, ModelProvider};
 use peritus_types::RunId;
-use serde::Deserialize;
-
-use crate::{ProductRunnerError, ProductRunnerErrorKind, bundle, gates, plan, provider};
 
 const MAX_FIX_CYCLES: u32 = 2;
 
@@ -55,6 +53,14 @@ pub struct ProductRunUpdate {
 /// Observer invoked synchronously after each durable daemon-visible boundary.
 pub type RunObserver = Arc<dyn Fn(ProductRunUpdate) + Send + Sync>;
 
+/// Live daemon-owned conversation supplied to every model turn.
+pub trait ConversationView: Send + Sync {
+    /// Monotonic revision incremented whenever the user adds context.
+    fn revision(&self) -> u64;
+    /// Human-readable chronological transcript for the next model turn.
+    fn render(&self) -> String;
+}
+
 /// Explicit writer, reviewer, and fixer provider instances.
 pub struct RoleProviders {
     /// Writer model adapter.
@@ -73,6 +79,8 @@ pub struct ProductRunInput {
     pub workspace_root: PathBuf,
     /// Natural-language coding task.
     pub task: String,
+    /// Live conversation, including the original task and all follow-ups.
+    pub conversation: Arc<dyn ConversationView>,
     /// Role provider adapters.
     pub providers: RoleProviders,
     /// Shared cancellation state.
@@ -96,6 +104,22 @@ pub struct ProductRunOutput {
     pub changed_files: usize,
     /// Number of fixer cycles used.
     pub fixer_cycles: u32,
+    /// Conversation revision incorporated by the accepted implementation.
+    pub conversation_revision: u64,
+}
+
+/// A completed run or a material question that needs a user reply.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ProductRunOutcome {
+    /// Passing implementation and review evidence.
+    Complete(ProductRunOutput),
+    /// The writer cannot proceed without one material user choice.
+    WaitingForUser {
+        /// Direct question to present in the run conversation.
+        question: String,
+        /// Conversation revision on which the question was based.
+        conversation_revision: u64,
+    },
 }
 
 /// Stateless product-run coordinator.
@@ -111,33 +135,51 @@ impl ProductRunner {
     pub async fn run(
         input: ProductRunInput,
         observe: RunObserver,
-    ) -> Result<ProductRunOutput, ProductRunnerError> {
-        let applied = initial_write(&input, &observe).await?;
+    ) -> Result<ProductRunOutcome, ProductRunnerError> {
+        let applied = match initial_write(&input, &observe).await? {
+            AppliedTurn::Applied(applied) => applied,
+            AppliedTurn::Waiting { question, conversation_revision } => {
+                return Ok(ProductRunOutcome::WaitingForUser { question, conversation_revision });
+            }
+        };
         let mut state = RunState {
             summary: applied.summary,
             changed_files: applied.changed_files,
             fixer_cycles: 0,
+            conversation_revision: applied.conversation_revision,
         };
 
         loop {
+            if input.conversation.revision() != state.conversation_revision {
+                match initial_write(&input, &observe).await? {
+                    AppliedTurn::Applied(applied) => {
+                        state.summary = applied.summary;
+                        state.changed_files =
+                            state.changed_files.saturating_add(applied.changed_files);
+                        state.conversation_revision = applied.conversation_revision;
+                    }
+                    AppliedTurn::Waiting { question, conversation_revision } => {
+                        return Ok(ProductRunOutcome::WaitingForUser {
+                            question,
+                            conversation_revision,
+                        });
+                    }
+                }
+            }
             let inspected = inspect_cycle(&input, &observe, &state).await?;
+            if inspected.conversation_changed {
+                continue;
+            }
             if inspected.passed {
-                emit(
-                    &observe,
-                    ProductRunPhase::Complete,
-                    inspected.cycle,
-                    "Run completed with passing checks",
-                    &inspected.evidence,
-                    &state.summary,
-                );
-                return Ok(ProductRunOutput {
+                return Ok(ProductRunOutcome::Complete(ProductRunOutput {
                     summary: state.summary,
                     diff: inspected.evidence.diff,
                     gates: inspected.evidence.gates,
                     review: inspected.evidence.review,
                     changed_files: state.changed_files,
                     fixer_cycles: state.fixer_cycles,
-                });
+                    conversation_revision: state.conversation_revision,
+                }));
             }
             if state.fixer_cycles >= MAX_FIX_CYCLES {
                 return Err(ProductRunnerError::new(
@@ -146,7 +188,9 @@ impl ProductRunner {
                     "checks or blocking review findings remain after two fixer cycles",
                 ));
             }
-            apply_fix(&input, &observe, &inspected, &mut state).await?;
+            if let Some(waiting) = apply_fix(&input, &observe, &inspected, &mut state).await? {
+                return Ok(waiting);
+            }
         }
     }
 }
@@ -155,6 +199,7 @@ struct RunState {
     summary: String,
     changed_files: usize,
     fixer_cycles: u32,
+    conversation_revision: u64,
 }
 
 #[derive(Default)]
@@ -165,15 +210,26 @@ struct RunEvidence {
 }
 
 struct CycleInspection {
-    cycle: u32,
     passed: bool,
     evidence: RunEvidence,
+    conversation_changed: bool,
+}
+
+pub struct AppliedWrite {
+    pub summary: String,
+    pub changed_files: usize,
+    pub conversation_revision: u64,
+}
+
+pub enum AppliedTurn {
+    Applied(AppliedWrite),
+    Waiting { question: String, conversation_revision: u64 },
 }
 
 async fn initial_write(
     input: &ProductRunInput,
     observe: &RunObserver,
-) -> Result<plan::AppliedPlan, ProductRunnerError> {
+) -> Result<AppliedTurn, ProductRunnerError> {
     check_cancelled(input)?;
     emit(
         observe,
@@ -183,17 +239,7 @@ async fn initial_write(
         &RunEvidence::default(),
         "",
     );
-    let initial = bundle::build(&input.workspace_root, &input.task)?;
-    let response = provider::complete(
-        input.providers.writer.as_ref(),
-        request_name(input.run_id, "writer", 1),
-        writer_system(),
-        writer_user(&input.task, &initial.prompt),
-        input.provider_cancellation.clone(),
-    )
-    .await?;
-    check_cancelled(input)?;
-    plan::apply(&input.workspace_root, &response)
+    crate::turn::complete_plan(input, input.providers.writer.as_ref(), "writer", 1, None).await
 }
 
 async fn inspect_cycle(
@@ -230,17 +276,28 @@ async fn inspect_cycle(
         &evidence,
         &state.summary,
     );
+    if input.conversation.revision() != state.conversation_revision {
+        return Ok(CycleInspection { passed: false, evidence, conversation_changed: true });
+    }
+    let conversation = input.conversation.render();
     evidence.review = provider::complete(
         input.providers.reviewer.as_ref(),
-        request_name(input.run_id, "reviewer", cycle),
-        reviewer_system(),
-        reviewer_user(&input.task, &evidence.diff, &evidence.gates),
+        crate::turn::request_name(input.run_id, "reviewer", cycle),
+        crate::turn::reviewer_system(),
+        crate::turn::reviewer_user(&conversation, &evidence.diff, &evidence.gates),
         input.provider_cancellation.clone(),
     )
     .await?;
-    let review = parse_review(&evidence.review)?;
+    if input.conversation.revision() != state.conversation_revision {
+        return Ok(CycleInspection { passed: false, evidence, conversation_changed: true });
+    }
+    let review = crate::review::parse(&evidence.review)?;
     emit(observe, ProductRunPhase::Reviewing, cycle, "Review completed", &evidence, &state.summary);
-    Ok(CycleInspection { cycle, passed: gate_report.passed && !review.blocking, evidence })
+    Ok(CycleInspection {
+        passed: gate_report.passed && !review.blocking,
+        evidence,
+        conversation_changed: false,
+    })
 }
 
 async fn apply_fix(
@@ -248,7 +305,7 @@ async fn apply_fix(
     observe: &RunObserver,
     inspected: &CycleInspection,
     state: &mut RunState,
-) -> Result<(), ProductRunnerError> {
+) -> Result<Option<ProductRunOutcome>, ProductRunnerError> {
     state.fixer_cycles += 1;
     emit(
         observe,
@@ -259,55 +316,32 @@ async fn apply_fix(
         &state.summary,
     );
     check_cancelled(input)?;
-    let context = bundle::build(&input.workspace_root, &input.task)?;
-    let response = provider::complete(
+    let findings = format!(
+        "Current diff:\n{}\n\nChecks:\n{}\n\nReview:\n{}",
+        inspected.evidence.diff, inspected.evidence.gates, inspected.evidence.review
+    );
+    let turn = crate::turn::complete_plan(
+        input,
         input.providers.fixer.as_ref(),
-        request_name(input.run_id, "fixer", state.fixer_cycles),
-        writer_system(),
-        fixer_user(
-            &input.task,
-            &context.prompt,
-            &inspected.evidence.diff,
-            &inspected.evidence.gates,
-            &inspected.evidence.review,
-        ),
-        input.provider_cancellation.clone(),
+        "fixer",
+        state.fixer_cycles,
+        Some(&findings),
     )
     .await?;
-    let applied = plan::apply(&input.workspace_root, &response)?;
-    state.changed_files = state.changed_files.saturating_add(applied.changed_files);
-    state.summary = applied.summary;
-    Ok(())
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct ReviewResult {
-    summary: String,
-    blocking: bool,
-    #[serde(default)]
-    findings: Vec<String>,
-}
-
-fn parse_review(value: &str) -> Result<ReviewResult, ProductRunnerError> {
-    let start = value.find('{').ok_or_else(|| invalid_review("review contains no JSON object"))?;
-    let end = value
-        .rfind('}')
-        .ok_or_else(|| invalid_review("review contains no complete JSON object"))?;
-    let review: ReviewResult = serde_json::from_str(&value[start..=end]).map_err(|error| {
-        ProductRunnerError::new(
-            ProductRunnerErrorKind::InvalidModelOutput,
-            "parse reviewer result",
-            error.to_string(),
-        )
-    })?;
-    if review.summary.trim().is_empty() || review.findings.len() > 128 {
-        return Err(invalid_review("review summary is empty or has too many findings"));
+    match turn {
+        AppliedTurn::Applied(applied) => {
+            state.changed_files = state.changed_files.saturating_add(applied.changed_files);
+            state.summary = applied.summary;
+            state.conversation_revision = applied.conversation_revision;
+            Ok(None)
+        }
+        AppliedTurn::Waiting { question, conversation_revision } => {
+            Ok(Some(ProductRunOutcome::WaitingForUser { question, conversation_revision }))
+        }
     }
-    Ok(review)
 }
 
-fn check_cancelled(input: &ProductRunInput) -> Result<(), ProductRunnerError> {
+pub fn check_cancelled(input: &ProductRunInput) -> Result<(), ProductRunnerError> {
     if input.cancelled.load(Ordering::Acquire) || input.provider_cancellation.is_cancelled() {
         Err(ProductRunnerError::new(
             ProductRunnerErrorKind::Cancelled,
@@ -336,41 +370,4 @@ fn emit(
         review: evidence.review.clone(),
         summary: summary.to_owned(),
     });
-}
-
-fn request_name(run_id: RunId, role: &str, cycle: u32) -> String {
-    let mut value = String::from("peritus-");
-    for byte in run_id.as_bytes() {
-        use core::fmt::Write as _;
-        let _ = write!(value, "{byte:02x}");
-    }
-    format!("{value}-{role}-{cycle}")
-}
-
-fn writer_system() -> String {
-    "You are the implementation role in a coding harness. Return only one JSON object with this exact shape: {\"summary\":\"...\",\"files\":[{\"path\":\"relative/path\",\"content\":\"complete replacement contents\"}],\"deletions\":[\"relative/path\"]}. Make a substantial, maintainable implementation. Preserve unrelated code. Do not use markdown fences. Do not merely explain the work.".to_owned()
-}
-
-fn reviewer_system() -> String {
-    "You are an independent code reviewer. Return only one JSON object with this exact shape: {\"summary\":\"...\",\"blocking\":false,\"findings\":[\"specific finding\"]}. Mark blocking true only for correctness, requested-behavior, build, or test failures that should prevent accepting the implementation. Do not invent obscure hypothetical threats or demand unrelated redesign. Do not use markdown fences.".to_owned()
-}
-
-fn writer_user(task: &str, bundle: &str) -> String {
-    format!("Task:\n{task}\n\nRepository context:\n{bundle}")
-}
-fn reviewer_user(task: &str, diff: &str, gates: &str) -> String {
-    format!("Task:\n{task}\n\nDiff:\n{diff}\n\nChecks:\n{gates}")
-}
-fn fixer_user(task: &str, bundle: &str, diff: &str, gates: &str, review: &str) -> String {
-    format!(
-        "Task:\n{task}\n\nCurrent repository:\n{bundle}\n\nCurrent diff:\n{diff}\n\nChecks:\n{gates}\n\nReview:\n{review}\n\nReturn the complete replacement file plan that fixes the real failures and blocking findings."
-    )
-}
-
-fn invalid_review(detail: &'static str) -> ProductRunnerError {
-    ProductRunnerError::new(
-        ProductRunnerErrorKind::InvalidModelOutput,
-        "validate reviewer result",
-        detail,
-    )
 }

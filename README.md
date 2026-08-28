@@ -180,7 +180,9 @@ peritus
 Run it from inside a Git repository to use that repository automatically. Use `peritus open
 [PATH]`, `peritus providers`, or `peritus workspaces` for an explicit workspace, provider settings,
 or workspace settings. Press `n` in the Runs view to describe a coding task; `w`, `e`, and `f`
-select the writer, reviewer, and fixer providers. The
+select the writer, reviewer, and fixer providers. Select any run and press Enter or `m` to talk to
+it: add context while it works, answer a question, redirect it, or continue a failed or completed
+run in the same managed worktree. The
 [G4 product-experience guide](docs/g4-product-experience.md) explains onboarding, trust, coding
 runs, native packaging, state locations, and recovery.
 

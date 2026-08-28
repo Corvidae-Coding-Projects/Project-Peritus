@@ -174,6 +174,9 @@ impl AppModel {
             AppResponsePayload::ProductRuns(snapshots) => {
                 self.accept_product_runs(snapshots.clone());
             }
+            AppResponsePayload::ProductRunConversation(conversation) => {
+                self.accept_product_conversation(conversation.clone());
+            }
         }
         Vec::new()
     }

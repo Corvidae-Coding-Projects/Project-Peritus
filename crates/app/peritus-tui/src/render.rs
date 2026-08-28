@@ -294,6 +294,7 @@ fn render_help(frame: &mut Frame<'_>, area: Rect) {
         Line::from("  j/k or ↑/↓    select an event or prompt"),
         Line::from("  ?              this help"),
         Line::from("  n              compose a new coding task (Runs)"),
+        Line::from("  Enter/m        message, redirect, or continue the selected run (Runs)"),
         Line::from("  w/e/f          cycle writer/reviewer/fixer provider (Runs)"),
         Line::from("  x/r            cancel / retry selected coding run (Runs)"),
         Line::from(""),

@@ -131,6 +131,18 @@ where
             Ok(snapshots) => AppResponsePayload::ProductRuns(snapshots),
             Err(error) => product_run_error(error),
         },
+        AppRequestPayload::ContinueProductRun(value) => {
+            match product_runs.continue_run(value).await {
+                Ok(snapshot) => AppResponsePayload::ProductRunAccepted(snapshot),
+                Err(error) => product_run_error(error),
+            }
+        }
+        AppRequestPayload::QueryProductRunConversation(value) => {
+            match product_runs.query_conversation(*value) {
+                Ok(conversation) => AppResponsePayload::ProductRunConversation(conversation),
+                Err(error) => product_run_error(error),
+            }
+        }
         AppRequestPayload::AnswerPrompt(answer) => {
             let prompt_id = answer.correlation().prompt_id();
             let result = match canonical_request_frame(&request, limits) {

@@ -40,13 +40,26 @@ The Runs view is the ordinary work surface:
 5. A fixer receives real check or review failures and can revise the work for up to two cycles.
 6. The run completes only when repository checks pass and the independent review is nonblocking.
 
+Every run is also a durable conversation. Select it and press Enter or `m` to reply, redirect, add
+context, or say continue; Shift-Enter adds a line. Messages sent during active work are incorporated
+at the next safe writer or reviewer boundary. Messages sent to a Failed, Cancelled, Recovery
+required, Waiting for user, or Complete run resume the same managed worktree with the entire
+conversation. When the writer genuinely needs a material choice it asks one direct question and
+enters Waiting for user instead of guessing or abandoning the run.
+
+Malformed edit-plan JSON receives one bounded correction turn from the same provider before the
+run fails. If recovery still fails, Peritus records an actionable agent message in the conversation,
+and the run remains available for correction or continuation rather than becoming a dead status
+record.
+
 Peritus admits one active coding run per managed worktree, preventing two model loops from editing
 the same files at once. Other configured workspaces remain independently usable.
 
 The daemon persists each visible phase: Queued, Writing, Checking, Reviewing, Fixing, Verifying,
-Complete, Failed, Cancelled, or Recovery required. The Runs view shows that state as text as well as
-color, the Diff view shows tracked and newly created text files, and the Review view shows the latest
-review or repository checks. Press `x` to cancel a selected run and `r` to retry a failed,
+Waiting for user, Complete, Failed, Cancelled, or Recovery required, together with its bounded
+conversation. The Runs view shows that state as text as well as color, the Diff view shows tracked
+and newly created text files, and the Review view shows the latest review or repository checks.
+Press `x` to cancel a selected run and `r` to retry a failed,
 cancelled, or interrupted run. A daemon restart marks an unfinished run Recovery required rather
 than pretending it completed.
 

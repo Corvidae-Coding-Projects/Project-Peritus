@@ -8,14 +8,15 @@ use std::{
 };
 
 use peritus_app_protocol::{
-    ProductProviderSelection, ProductRunPhase, ProductRunRequest, ProductRunSnapshot,
+    ProductConversationMessage, ProductConversationRole, ProductProviderSelection, ProductRunPhase,
+    ProductRunRequest, ProductRunSnapshot,
 };
 use peritus_provider_core::CancellationToken;
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 use serde::Deserialize;
 use serde::Serialize;
 
-use super::{ProductRunServiceError, RunRecord, filesystem, invalid};
+use super::{ProductRunServiceError, RunRecord, SharedConversation, filesystem, invalid};
 use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
 
 #[derive(Serialize, Deserialize)]
@@ -33,13 +34,21 @@ struct PersistedRecord {
     gates: String,
     review: String,
     summary: String,
+    #[serde(default)]
+    messages: Vec<PersistedMessage>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct PersistedMessage {
+    role: u16,
+    content: String,
 }
 
 pub(super) fn persist_record(
     directory: &Path,
     record: &RunRecord,
 ) -> Result<(), ProductRunServiceError> {
-    let persisted = PersistedRecord::from_snapshot(&record.snapshot);
+    let persisted = PersistedRecord::from_record(record)?;
     let bytes =
         serde_json::to_vec_pretty(&persisted).map_err(|_| ProductRunServiceError::Unavailable)?;
     let path = directory.join(format!("{}.json", persisted.run_id));
@@ -74,9 +83,19 @@ pub(super) fn load_records(directory: &Path) -> Result<BTreeMap<RunId, RunRecord
 }
 
 impl PersistedRecord {
-    fn from_snapshot(snapshot: &ProductRunSnapshot) -> Self {
+    fn from_record(record: &RunRecord) -> Result<Self, ProductRunServiceError> {
+        let snapshot = &record.snapshot;
         let providers = snapshot.providers();
-        Self {
+        let messages = record
+            .conversation
+            .messages()?
+            .into_iter()
+            .map(|message| PersistedMessage {
+                role: message.role().tag(),
+                content: message.content().to_owned(),
+            })
+            .collect();
+        Ok(Self {
             run_id: hex(snapshot.run_id().as_bytes()),
             workspace_id: hex(snapshot.workspace_id().as_bytes()),
             writer: hex(providers.writer().as_bytes()),
@@ -90,7 +109,8 @@ impl PersistedRecord {
             gates: snapshot.gates().to_owned(),
             review: snapshot.review().to_owned(),
             summary: snapshot.summary().to_owned(),
-        }
+            messages,
+        })
     }
 
     fn into_record(self) -> Result<RunRecord, ProductRunServiceError> {
@@ -115,6 +135,32 @@ impl PersistedRecord {
                 "Daemon restart interrupted this run; retry is available".to_owned(),
             )
         };
+        let mut messages = self
+            .messages
+            .into_iter()
+            .map(|message| {
+                let role = ProductConversationRole::from_tag(message.role)
+                    .ok_or(ProductRunServiceError::InvalidMessage)?;
+                ProductConversationMessage::new(role, message.content)
+                    .map_err(|_| ProductRunServiceError::InvalidMessage)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        if messages.is_empty() {
+            messages.push(
+                ProductConversationMessage::new(ProductConversationRole::User, self.task.clone())
+                    .map_err(|_| ProductRunServiceError::InvalidMessage)?,
+            );
+            if loaded_phase.terminal() && !self.summary.trim().is_empty() {
+                messages.push(
+                    ProductConversationMessage::new(
+                        ProductConversationRole::Agent,
+                        format!("{}: {}", status, self.summary),
+                    )
+                    .map_err(|_| ProductRunServiceError::InvalidMessage)?,
+                );
+            }
+        }
+        let conversation = SharedConversation::new(run_id, messages)?;
         let snapshot = ProductRunSnapshot::new(
             run_id,
             workspace_id,
@@ -134,6 +180,7 @@ impl PersistedRecord {
             snapshot,
             cancelled: Arc::new(AtomicBool::new(false)),
             provider_cancellation: CancellationToken::new(),
+            conversation,
         })
     }
 }
@@ -161,4 +208,36 @@ fn unhex(value: &str) -> Result<[u8; 16], ProductRunServiceError> {
             u8::from_str_radix(text, 16).map_err(|_| ProductRunServiceError::InvalidMessage)?;
     }
     Ok(bytes)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn legacy_run_without_messages_gains_a_resumable_conversation() {
+        let json = r#"{
+            "run_id":"01010101010101010101010101010101",
+            "workspace_id":"02020202020202020202020202020202",
+            "writer":"03030303030303030303030303030303",
+            "reviewer":"04040404040404040404040404040404",
+            "fixer":"05050505050505050505050505050505",
+            "phase":8,
+            "cycle":1,
+            "task":"build tetris",
+            "status":"parse model file plan failed",
+            "diff":"",
+            "gates":"",
+            "review":"",
+            "summary":"invalid escape"
+        }"#;
+        let persisted: PersistedRecord = serde_json::from_str(json).expect("legacy record");
+        let record = persisted.into_record().expect("migrated record");
+        let conversation = record.conversation.snapshot().expect("conversation");
+
+        assert_eq!(record.snapshot.phase(), ProductRunPhase::Failed);
+        assert_eq!(conversation.messages().len(), 2);
+        assert_eq!(conversation.messages()[0].content(), "build tetris");
+        assert!(conversation.messages()[1].content().contains("invalid escape"));
+    }
 }

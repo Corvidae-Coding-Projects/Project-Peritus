@@ -1,8 +1,11 @@
 //! Product-run snapshot construction and state replacement.
 
-use peritus_app_protocol::{ProductRunPhase, ProductRunRequest, ProductRunSnapshot};
+use std::collections::BTreeMap;
 
-use super::ProductRunServiceError;
+use peritus_app_protocol::{ProductRunPhase, ProductRunRequest, ProductRunSnapshot};
+use peritus_types::{RunId, WorkspaceId};
+
+use super::{ProductRunServiceError, RunRecord};
 
 pub(super) fn initial_snapshot(
     request: &ProductRunRequest,
@@ -43,4 +46,22 @@ pub(super) fn replace_snapshot(
         summary.to_owned(),
     )
     .map_err(|_| ProductRunServiceError::InvalidMessage)
+}
+
+pub(super) fn workspace_has_active_run(
+    records: &BTreeMap<RunId, RunRecord>,
+    workspace_id: WorkspaceId,
+    except: Option<RunId>,
+) -> bool {
+    records.iter().any(|(run_id, record)| {
+        Some(*run_id) != except
+            && record.request.workspace_id() == workspace_id
+            && !matches!(
+                record.snapshot.phase(),
+                ProductRunPhase::Complete
+                    | ProductRunPhase::Failed
+                    | ProductRunPhase::Cancelled
+                    | ProductRunPhase::RecoveryRequired
+            )
+    })
 }
