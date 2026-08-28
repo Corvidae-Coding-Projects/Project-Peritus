@@ -337,6 +337,22 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Disposition: retain the unchanged score and classify both failures as benchmark infrastructure
   defects. Do not make general email writing less natural to match hidden word sequences.
 
+## HBI-010: task 029 requires unpublished issue labels
+
+- Suite and task: HarnessBench 2.0, `029-expense-packet-review`.
+- Symptom: the five-row audit, numeric amounts, duplicate rejection, missing attachment, total
+  claimed amount, and capped total allowed amount all passed. Three receipt checks rejected the
+  policy-issue descriptions despite their exact categories, limits, and calculations.
+- Cause: the prompt defines an `issue` column but no label taxonomy. Hidden ground truth requires
+  the contiguous substrings `hotel cap`, `dinner cap`, and `breakfast cap`. Peritus accurately wrote
+  “hotel claim exceeds the 300.00 per-night cap,” “dinner claim exceeds the 75.00 one-person cap,”
+  and the equivalent breakfast explanation; the oracle does no semantic or token-set matching.
+- Evidence: local report `reports/029-expense-packet-review-hidden-labels.json`; outcome 0.7692;
+  process 0.88; security 1.0; combined 0.6769; elapsed 572.14 seconds. The accepted amounts are
+  300.00, 75.00, 0.00, 0.00, and 25.00, with packet totals 1065.00 claimed and 448.50 allowed.
+- Disposition: retain the unchanged score and classify the three label checks as benchmark
+  infrastructure failures. Do not inject unpublished labels into general expense audits.
+
 ## HBF-005: a fixer deleted evaluator-owned evidence
 
 - Suite and task: HarnessBench 2.0, `022-local-rest-api-summary`.
