@@ -11,6 +11,8 @@ mod finding;
 mod limits;
 mod observation;
 mod oscillation;
+#[cfg(not(verus_only))]
+mod product;
 mod projection;
 mod quorum;
 mod reconciliation;
@@ -32,6 +34,11 @@ pub use finding::{Finding, FindingLocation, FindingSource, ReviewSubmission};
 pub use limits::{Confidence, ReviewLimits};
 pub use observation::QualityProjection;
 pub use oscillation::{OscillationKind, OscillationReport};
+#[cfg(not(verus_only))]
+pub use product::{
+    FindingSeverity, ProductFinding, ProductFindingCategory, ProductFindingLedger,
+    ProductFindingState, ProductReviewError, ProductReviewSubmission,
+};
 pub use projection::{ProjectedCycle, ProjectedFinding, ReviewProjection};
 pub use quorum::{QuorumDimension, QuorumReport};
 pub use reducer::{decide, replay, start};

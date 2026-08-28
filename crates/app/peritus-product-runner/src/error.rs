@@ -11,7 +11,7 @@ pub enum ProductRunnerErrorKind {
     Provider,
     /// A model response did not satisfy the edit/review contract.
     InvalidModelOutput,
-    /// Applying a checked file plan failed.
+    /// A concrete developer workspace edit or tool operation failed structurally.
     Apply,
     /// Repository gates could not be executed.
     Gate,

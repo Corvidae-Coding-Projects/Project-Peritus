@@ -1,0 +1,135 @@
+//! Public run contracts and internal completed-turn values.
+
+use std::{
+    path::PathBuf,
+    sync::{Arc, atomic::AtomicBool},
+};
+
+use peritus_provider_core::{CancellationToken, ModelProvider};
+use peritus_types::RunId;
+
+/// Concrete product-run phase emitted to the daemon.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ProductRunPhase {
+    /// Writer model and developer tools.
+    Writing,
+    /// Exact-target repository checks.
+    Checking,
+    /// Independent typed review.
+    Reviewing,
+    /// Finding-conserving fixer loop.
+    Fixing,
+    /// Fresh exact-target checks after a fix.
+    Verifying,
+    /// Passing terminal state.
+    Complete,
+}
+
+/// One progress observation emitted at a completed effect boundary.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProductRunUpdate {
+    /// Current phase.
+    pub phase: ProductRunPhase,
+    /// One-based implementation cycle.
+    pub cycle: u32,
+    /// Current operation in user language.
+    pub status: String,
+    /// Current bounded diff.
+    pub diff: String,
+    /// Latest exact-target gate output.
+    pub gates: String,
+    /// Latest conserved typed review output.
+    pub review: String,
+    /// Interim task-level summary.
+    pub summary: String,
+    /// Durable typed finding ledger at this effect boundary.
+    pub finding_state: String,
+}
+
+/// Observer invoked synchronously after each daemon-visible boundary.
+pub type RunObserver = Arc<dyn Fn(ProductRunUpdate) + Send + Sync>;
+
+/// Live daemon-owned conversation supplied to every model turn.
+pub trait ConversationView: Send + Sync {
+    /// Monotonic revision incremented whenever the user adds context.
+    fn revision(&self) -> u64;
+    /// Human-readable chronological transcript for the next model turn.
+    fn render(&self) -> String;
+}
+
+/// Explicit writer, reviewer, and fixer provider instances.
+pub struct RoleProviders {
+    /// Writer model adapter.
+    pub writer: Arc<dyn ModelProvider>,
+    /// Independent reviewer adapter.
+    pub reviewer: Arc<dyn ModelProvider>,
+    /// Fixer model adapter.
+    pub fixer: Arc<dyn ModelProvider>,
+}
+
+/// Fully resolved input supplied by the daemon authority boundary.
+pub struct ProductRunInput {
+    /// Stable run identity.
+    pub run_id: RunId,
+    /// Canonical managed-worktree root.
+    pub workspace_root: PathBuf,
+    /// Durable D0 trace path owned by the daemon.
+    pub trace_path: PathBuf,
+    /// Durable D2 finding ledger restored by the daemon.
+    pub finding_state: String,
+    /// Natural-language coding task.
+    pub task: String,
+    /// Live conversation, including the original task and all follow-ups.
+    pub conversation: Arc<dyn ConversationView>,
+    /// Role provider adapters.
+    pub providers: RoleProviders,
+    /// Shared cancellation state.
+    pub cancelled: Arc<AtomicBool>,
+    /// Provider cancellation token.
+    pub provider_cancellation: CancellationToken,
+}
+
+/// Successful terminal result and exact deliverable evidence.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProductRunOutput {
+    /// Aggregated task-level completion summary.
+    pub summary: String,
+    /// Final bounded diff.
+    pub diff: String,
+    /// Final passing exact-target gate output.
+    pub gates: String,
+    /// Final conserved review ledger.
+    pub review: String,
+    /// Exact task candidate paths.
+    pub changed_paths: Vec<PathBuf>,
+    /// Exact successful acceptance commands.
+    pub successful_commands: Vec<String>,
+    /// Exact command or concise steps for running the accepted deliverable.
+    pub run_instructions: String,
+    /// Number of fixer cycles used.
+    pub fixer_cycles: u32,
+    /// Conversation revision incorporated by the accepted implementation.
+    pub conversation_revision: u64,
+}
+
+impl ProductRunOutput {
+    /// Number of exact candidate files.
+    #[must_use]
+    pub const fn changed_files(&self) -> usize {
+        self.changed_paths.len()
+    }
+}
+
+/// A completed run or a material question that needs a user reply.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ProductRunOutcome {
+    /// Passing implementation and review evidence.
+    Complete(ProductRunOutput),
+    /// The writer cannot proceed without one material user choice.
+    WaitingForUser {
+        /// Direct question to present in the run conversation.
+        question: String,
+        /// Conversation revision on which the question was based.
+        conversation_revision: u64,
+    },
+}

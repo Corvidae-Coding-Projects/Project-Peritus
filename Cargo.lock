@@ -2194,6 +2194,7 @@ dependencies = [
  "peritus-tool-protocol",
  "peritus-tools-quality",
  "peritus-types",
+ "serde_json",
  "sha2 0.11.0",
  "tempfile",
  "vstd",
@@ -2466,10 +2467,14 @@ dependencies = [
 name = "peritus-product-runner"
 version = "0.0.0"
 dependencies = [
+ "peritus-agent",
+ "peritus-gates",
  "peritus-model-protocol",
+ "peritus-orchestrator",
  "peritus-provider-anthropic",
  "peritus-provider-core",
  "peritus-provider-openai",
+ "peritus-review",
  "peritus-types",
  "serde",
  "serde_json",

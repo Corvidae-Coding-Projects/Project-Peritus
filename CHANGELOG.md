@@ -7,6 +7,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Refuse interactive coding-run completion unless every exact changed project is discovered and
+  passes its locked native compile/test/lint commands; unrelated root checks can no longer accept a
+  broken nested target, and generated dependency/build trees no longer contaminate candidate or
+  reviewer evidence (#36)
+- Derive review blockers from typed category and severity policy and durably conserve every finding
+  through fixer proposal and fresh reviewer confirmation instead of trusting a model-supplied
+  Boolean or losing findings across daemon restart (#36)
 - Restart a stale or unavailable packaged daemon after upgrades, wait for its process lock to be
   released before replacement, and show `R restart/reconnect` directly in the offline TUI status
   instead of leaving recovery hidden behind the help screen (#36)
@@ -28,6 +35,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Replace the one-shot complete-file JSON product runner with the production D0/D1/D2/E0
+  composition: writers and fixers now inspect, search, read, write, patch, run, test, observe, and
+  retry through bounded structured tools with append-only provider/tool traces and an aggregated
+  task-level completion summary (#36)
+- Add a durable completion handoff containing the managed path, exact changed files, exact passing
+  commands, and run instructions, with TUI actions to inspect, accept, commit, export, or discard
+  the exact deliverable. A worktree remains reserved until a pending handoff is committed or
+  discarded (#36)
 - Add durable two-way coding-run conversations across the A3 protocol, daemon persistence,
   product runner, and Runs UI. Users can message active work, answer direct material questions,
   redirect or continue failed/completed runs, and inspect the persisted transcript with Enter or

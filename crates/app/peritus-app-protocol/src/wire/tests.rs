@@ -5,10 +5,11 @@ use crate::{
     AppProtocolLimits, AppRequestEnvelope, AppRequestPayload, AppResponseEnvelope,
     AppResponsePayload, ClientHello, ControlEnvelope, ControlPayload, CorrelationId, EventCursor,
     HeartbeatId, HeartbeatReply, ImplementationMetadata, IncompatibilityReason, NegotiationOutcome,
-    ProductConversationMessage, ProductConversationRole, ProductProviderSelection,
-    ProductRunContinuation, ProductRunConversation, ProductRunConversationQuery, ProductRunPhase,
-    ProductRunRequest, ProductRunSnapshot, ProtocolContext, ProtocolId, ProtocolVersion, RequestId,
-    ServerHello, SubscriptionFilter, SubscriptionId, SubscriptionRequest, VersionRange,
+    ProductConversationMessage, ProductConversationRole, ProductDeliverable,
+    ProductProviderSelection, ProductRunContinuation, ProductRunControl, ProductRunControlAction,
+    ProductRunConversation, ProductRunConversationQuery, ProductRunPhase, ProductRunRequest,
+    ProductRunSnapshot, ProtocolContext, ProtocolId, ProtocolVersion, RequestId, ServerHello,
+    SubscriptionFilter, SubscriptionId, SubscriptionRequest, VersionRange,
 };
 use peritus_codec::{CodecLimits, decode_message, encode_frame, encode_message};
 use peritus_types::{ProviderProfileId, RunId, SessionId, WorkspaceId};
@@ -193,7 +194,20 @@ fn product_run_requests_and_snapshots_round_trip() -> Result<(), Box<dyn std::er
         "tests passed".to_owned(),
         "no blocking findings".to_owned(),
         "implemented".to_owned(),
-    )?;
+    )?
+    .with_deliverable(
+        ProductDeliverable::new(
+            "/managed/worktree".to_owned(),
+            vec!["game/src/main.rs".to_owned()],
+            vec![
+                "cargo test --manifest-path game/Cargo.toml --all-targets --all-features"
+                    .to_owned(),
+            ],
+            "cargo run --manifest-path game/Cargo.toml".to_owned(),
+        )?
+        .mark_accepted()
+        .mark_exported("/state/exports/run.patch".to_owned())?,
+    );
     let response = AppResponseEnvelope::new(
         context,
         RequestId::new([40; 16]).expect("nonzero request id"),
@@ -206,6 +220,42 @@ fn product_run_requests_and_snapshots_round_trip() -> Result<(), Box<dyn std::er
         decode_app_message(&encoded, AppProtocolLimits::PRODUCTION)?,
         AppMessage::Response(response)
     );
+    Ok(())
+}
+
+#[test]
+fn all_product_handoff_controls_round_trip() -> Result<(), Box<dyn std::error::Error>> {
+    let context = ProtocolContext::new(
+        ProtocolId::new([42; 16]).expect("protocol"),
+        ProtocolVersion::new(1, 0)?,
+        SessionId::new([43; 16]).expect("session"),
+    );
+    let run_id = RunId::new([44; 16]).expect("run");
+    for (index, action) in [
+        ProductRunControlAction::Accept,
+        ProductRunControlAction::Commit,
+        ProductRunControlAction::Export,
+        ProductRunControlAction::Discard,
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let request = AppRequestEnvelope::new(
+            context,
+            RequestId::new([u8::try_from(index + 45).expect("request byte"); 16])
+                .expect("request ID"),
+            CorrelationId::new([49; 16]).expect("correlation"),
+            AppRequestPayload::ControlProductRun(ProductRunControl::new(run_id, action)),
+        )?;
+        let encoded = encode_app_message(
+            &AppMessage::Request(request.clone()),
+            AppProtocolLimits::PRODUCTION,
+        )?;
+        assert_eq!(
+            decode_app_message(&encoded, AppProtocolLimits::PRODUCTION)?,
+            AppMessage::Request(request)
+        );
+    }
     Ok(())
 }
 

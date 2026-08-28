@@ -32,7 +32,7 @@ pub(super) fn replace_snapshot(
     status: &str,
     summary: &str,
 ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
-    ProductRunSnapshot::new(
+    let snapshot = ProductRunSnapshot::new(
         current.run_id(),
         current.workspace_id(),
         current.providers(),
@@ -45,7 +45,11 @@ pub(super) fn replace_snapshot(
         current.review().to_owned(),
         summary.to_owned(),
     )
-    .map_err(|_| ProductRunServiceError::InvalidMessage)
+    .map_err(|_| ProductRunServiceError::InvalidMessage)?;
+    Ok(match current.deliverable().cloned() {
+        Some(deliverable) => snapshot.with_deliverable(deliverable),
+        None => snapshot,
+    })
 }
 
 pub(super) fn workspace_has_active_run(
@@ -54,14 +58,20 @@ pub(super) fn workspace_has_active_run(
     except: Option<RunId>,
 ) -> bool {
     records.iter().any(|(run_id, record)| {
-        Some(*run_id) != except
-            && record.request.workspace_id() == workspace_id
-            && !matches!(
-                record.snapshot.phase(),
-                ProductRunPhase::Complete
-                    | ProductRunPhase::Failed
-                    | ProductRunPhase::Cancelled
-                    | ProductRunPhase::RecoveryRequired
-            )
+        if Some(*run_id) == except || record.request.workspace_id() != workspace_id {
+            return false;
+        }
+        let active = !matches!(
+            record.snapshot.phase(),
+            ProductRunPhase::Complete
+                | ProductRunPhase::Failed
+                | ProductRunPhase::Cancelled
+                | ProductRunPhase::RecoveryRequired
+        );
+        let pending_handoff = record.snapshot.phase() == ProductRunPhase::Complete
+            && record.snapshot.deliverable().is_some_and(|deliverable| {
+                deliverable.commit_revision().is_empty() && !deliverable.discarded()
+            });
+        active || pending_handoff
     })
 }

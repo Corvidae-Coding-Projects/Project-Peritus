@@ -11,5 +11,11 @@ permits, every engine is bound to one durable journal `StoreId`, and evidence re
 one authoritative-journal result-publication manifest with one distinct admitted record per
 requirement.
 
+The production-facing `TargetGatePlan` maps every changed path to the nearest Cargo, Node, Python,
+or Go manifest and creates explicit structured compile/test/lint commands for each affected
+project. `TargetGateReport` passes only when candidate coverage is complete, every planned command
+has one observation, and every exit code is zero. Rust commands use locked inputs, all targets, and
+all features; unrelated root commands cannot cover a nested project.
+
 See [`docs/d1-gate-engine.md`](../../../docs/d1-gate-engine.md) for the lifecycle and integration
 contract.

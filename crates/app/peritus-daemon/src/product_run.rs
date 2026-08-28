@@ -1,6 +1,8 @@
 //! Daemon-owned product-run registry, persistence, and execution admission.
 
 mod conversation;
+mod deliverable;
+mod error;
 mod execution;
 mod persistence;
 mod snapshot;
@@ -27,12 +29,11 @@ use peritus_provider_core::{CancellationToken, ModelProvider};
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 use tokio::{sync::Mutex, task::JoinHandle};
 
-use crate::{
-    DaemonComponents, DaemonError, DaemonErrorCode, DaemonRecovery,
-    startup::workspace::WorkspaceCatalog,
-};
+use crate::{DaemonComponents, DaemonError, startup::workspace::WorkspaceCatalog};
 
 use conversation::SharedConversation;
+pub use error::ProductRunServiceError;
+use error::{filesystem, invalid};
 use persistence::{load_records, persist_record};
 use snapshot::{initial_snapshot, replace_snapshot, workspace_has_active_run};
 
@@ -55,6 +56,7 @@ struct RunRecord {
     cancelled: Arc<AtomicBool>,
     provider_cancellation: CancellationToken,
     conversation: Arc<SharedConversation>,
+    finding_state: String,
 }
 
 impl ProductRunService {
@@ -129,6 +131,7 @@ impl ProductRunService {
                     cancelled: Arc::clone(&cancelled),
                     provider_cancellation: provider_cancellation.clone(),
                     conversation: Arc::clone(&conversation),
+                    finding_state: String::new(),
                 },
             );
             persist_record(
@@ -143,6 +146,7 @@ impl ProductRunService {
             cancelled,
             provider_cancellation,
             conversation,
+            String::new(),
         )
         .await;
         Ok(snapshot)
@@ -155,6 +159,12 @@ impl ProductRunService {
         match control.action() {
             ProductRunControlAction::Cancel => self.cancel(control.run_id()),
             ProductRunControlAction::Retry => self.retry(control.run_id()).await,
+            ProductRunControlAction::Accept
+            | ProductRunControlAction::Commit
+            | ProductRunControlAction::Export
+            | ProductRunControlAction::Discard => {
+                self.control_deliverable(control.run_id(), control.action())
+            }
         }
     }
 
@@ -243,6 +253,7 @@ impl ProductRunService {
                     cancelled,
                     token,
                     Arc::clone(&record.conversation),
+                    record.finding_state.clone(),
                 ));
             } else {
                 record.snapshot = replace_snapshot(
@@ -255,8 +266,11 @@ impl ProductRunService {
             persist_record(&self.inner.directory, record)?;
             record.snapshot.clone()
         };
-        if let Some((request, root, providers, cancelled, token, conversation)) = restart {
-            self.spawn(request, root, providers, cancelled, token, conversation).await;
+        if let Some((request, root, providers, cancelled, token, conversation, finding_state)) =
+            restart
+        {
+            self.spawn(request, root, providers, cancelled, token, conversation, finding_state)
+                .await;
         }
         Ok(snapshot)
     }
@@ -308,7 +322,7 @@ impl ProductRunService {
     }
 
     async fn retry(&self, run_id: RunId) -> Result<ProductRunSnapshot, ProductRunServiceError> {
-        let (request, root, providers, cancelled, token, conversation, snapshot) = {
+        let (request, root, providers, cancelled, token, conversation, finding_state, snapshot) = {
             let mut records =
                 self.inner.records.write().map_err(|_| ProductRunServiceError::Unavailable)?;
             let workspace_id = records
@@ -343,10 +357,11 @@ impl ProductRunService {
                 cancelled,
                 token,
                 Arc::clone(&record.conversation),
+                record.finding_state.clone(),
                 record.snapshot.clone(),
             )
         };
-        self.spawn(request, root, providers, cancelled, token, conversation).await;
+        self.spawn(request, root, providers, cancelled, token, conversation, finding_state).await;
         Ok(snapshot)
     }
 
@@ -367,33 +382,4 @@ impl ProductRunService {
             fixer: get(selected.fixer())?,
         })
     }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum ProductRunServiceError {
-    Duplicate,
-    NotFound,
-    ProviderUnavailable,
-    WorkspaceUnavailable,
-    InvalidState,
-    InvalidMessage,
-    Unavailable,
-}
-
-fn filesystem(error: std::io::Error) -> DaemonError {
-    DaemonError::with_source(
-        DaemonErrorCode::Storage,
-        DaemonRecovery::Reconcile,
-        "access product-run state",
-        "product-run state is unavailable",
-        error,
-    )
-}
-fn invalid(detail: &'static str) -> DaemonError {
-    DaemonError::new(
-        DaemonErrorCode::InvalidInput,
-        DaemonRecovery::CorrectRequest,
-        "configure product runs",
-        detail,
-    )
 }

@@ -44,6 +44,8 @@ async fn run() -> Result<(), Box<dyn Error>> {
         ProductRunInput {
             run_id: RunId::new([0xE4; 16]).expect("nonzero qualification run id"),
             workspace_root: repository.path().to_owned(),
+            trace_path: repository.path().join("peritus-run.trace"),
+            finding_state: String::new(),
             task: task.clone(),
             conversation: Arc::new(FixedConversation(task)),
             providers: RoleProviders { writer: Arc::clone(&writer), reviewer, fixer: writer },
@@ -62,7 +64,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
             io::Error::other("product run did not produce the requested tested change").into()
         );
     }
-    let _ = (output.changed_files, output.fixer_cycles);
+    let _ = (output.changed_files(), output.fixer_cycles);
     Ok(())
 }
 

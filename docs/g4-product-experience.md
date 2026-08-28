@@ -40,11 +40,20 @@ The Runs view is the ordinary work surface:
 
 1. Press `n`, describe the desired coding outcome, and press Enter. Shift-Enter adds a line.
 2. Peritus sends the task and the selected writer, reviewer, and fixer providers to the daemon.
-3. The writer returns a checked complete-file edit plan for the managed worktree.
-4. Peritus runs the repository's detected native checks, presents the bounded diff, and asks an
-   independent reviewer for specific blocking findings.
-5. A fixer receives real check or review failures and can revise the work for up to two cycles.
-6. The run completes only when repository checks pass and the independent review is nonblocking.
+3. The production D0 writer inspects and searches the real managed worktree, makes bounded edits,
+   runs structured commands, observes build/test failures, and retries before reporting readiness.
+4. D1 maps every exact changed file to its nearest Rust, Node, Python, or Go project manifest and
+   runs that project's explicit compile/test/lint commands. Uncovered files, missing commands,
+   failed commands, or an empty candidate all refuse acceptance; an unrelated root project cannot
+   satisfy a nested game or package.
+5. The independent D2 reviewer returns typed findings. Policy derives blocker status, so
+   correctness, requested-behavior, build-coverage, test-coverage, and security findings block
+   regardless of the reviewer's severity wording. Findings remain open across daemon persistence
+   until a fixer addresses them and a fresh reviewer confirms their absence.
+6. E0 sends all failed checks and conserved findings to the tool-capable fixer and repeats fresh
+   gates and review within an explicit bounded cycle budget.
+7. The run completes only when exact-target gates pass and no conserved policy blocker remains.
+   Completion retains the original task-level result plus any verified fixer summaries.
 
 Every run is also a durable conversation. Select it and press Enter or `m` to reply, redirect, add
 context, or say continue; Shift-Enter adds a line. Messages sent during active work are incorporated
@@ -53,21 +62,21 @@ required, Waiting for user, or Complete run resume the same managed worktree wit
 conversation. When the writer genuinely needs a material choice it asks one direct question and
 enters Waiting for user instead of guessing or abandoning the run.
 
-Malformed edit-plan JSON receives one bounded correction turn from the same provider before the
-run fails. If recovery still fails, Peritus records an actionable agent message in the conversation,
-and the run remains available for correction or continuation rather than becoming a dead status
-record.
-
 Peritus admits one active coding run per managed worktree, preventing two model loops from editing
-the same files at once. Other configured workspaces remain independently usable.
+the same files at once. A completed but uncommitted deliverable also reserves that worktree until
+it is committed or discarded, preventing a later task from silently absorbing its files. Other
+configured workspaces remain independently usable.
 
 The daemon persists each visible phase: Queued, Writing, Checking, Reviewing, Fixing, Verifying,
 Waiting for user, Complete, Failed, Cancelled, or Recovery required, together with its bounded
 conversation. The Runs view shows that state as text as well as color, the Diff view shows tracked
 and newly created text files, and the Review view shows the latest review or repository checks.
-Press `x` to cancel a selected run and `r` to retry a failed,
-cancelled, or interrupted run. A daemon restart marks an unfinished run Recovery required rather
-than pretending it completed.
+After completion, the handoff shows the managed path, exact changed-file count, exact successful
+commands, and how to run the result. Press `i` to inspect, `a` to accept, `c` to commit only the
+deliverable paths, `p` to export an exact patch, or uppercase `D` to discard only those paths.
+Press `x` to cancel a selected run and `r` to retry a failed, cancelled, or interrupted run. A
+daemon restart marks an unfinished run Recovery required rather than pretending it completed;
+durable typed findings remain conserved on retry.
 
 Provider roles default to the selected provider. In the Runs view, press `w`, `e`, or `f` to cycle
 the writer, reviewer, or fixer independently before starting the next task. Press `?` for the full

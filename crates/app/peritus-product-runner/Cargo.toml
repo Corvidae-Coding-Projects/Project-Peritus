@@ -12,8 +12,12 @@ keywords = ["agents", "developer-tools", "orchestration"]
 categories = ["development-tools"]
 
 [dependencies]
+peritus-agent = { version = "=0.0.0", path = "../../orchestration/peritus-agent" }
+peritus-gates = { version = "=0.0.0", path = "../../orchestration/peritus-gates" }
 peritus-model-protocol = { version = "=0.0.0", path = "../../model/peritus-model-protocol" }
+peritus-orchestrator = { version = "=0.0.0", path = "../../orchestration/peritus-orchestrator" }
 peritus-provider-core = { version = "=0.0.0", path = "../../model/peritus-provider-core" }
+peritus-review = { version = "=0.0.0", path = "../../orchestration/peritus-review" }
 peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
 serde.workspace = true
 serde_json.workspace = true

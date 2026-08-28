@@ -1,0 +1,243 @@
+//! Composed D0/D1/D2/E0 product-run regression.
+
+#[path = "production_composition/support.rs"]
+mod support;
+
+use std::{
+    collections::VecDeque,
+    fs,
+    path::Path,
+    sync::{Arc, Mutex, atomic::AtomicBool},
+};
+
+use peritus_product_runner::{
+    ProductRunInput, ProductRunOutcome, ProductRunPhase, ProductRunner, RoleProviders, RunObserver,
+};
+use peritus_provider_core::{CancellationToken, ModelProvider};
+use peritus_types::RunId;
+
+use support::{
+    FixedConversation, ScriptedProvider, cargo, git, named_tool_response, patch_arguments, profile,
+    text_response, tool_response, write_arguments,
+};
+
+#[test]
+#[allow(clippy::too_many_lines, reason = "one complete production composition fixture")]
+fn exact_target_tool_edit_and_typed_review_are_required_for_completion() {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("runtime")
+        .block_on(async {
+            let repository = tempfile::tempdir().expect("repository");
+            let state = tempfile::tempdir().expect("state directory");
+            let trace_path = state.path().join("product.trace");
+            fs::create_dir_all(repository.path().join("src")).expect("source directory");
+            fs::write(
+                repository.path().join("Cargo.toml"),
+                "[package]\nname = \"composed-fixture\"\nversion = \"0.1.0\"\nedition = \"2024\"\n",
+            )
+            .expect("manifest");
+            fs::write(
+                repository.path().join("src/lib.rs"),
+                "pub const fn before() -> u32 { 1 }\n",
+            )
+            .expect("initial source");
+            git(repository.path(), &["init", "--quiet"]);
+            git(repository.path(), &["config", "user.name", "Peritus Test"]);
+            git(repository.path(), &["config", "user.email", "peritus@example.invalid"]);
+            git(repository.path(), &["config", "commit.gpgsign", "false"]);
+            cargo(repository.path(), &["generate-lockfile"]);
+            git(repository.path(), &["add", "."]);
+            git(repository.path(), &["commit", "--quiet", "-m", "initial"]);
+
+            let implemented = r"/// Returns the fixture answer.
+#[must_use]
+pub const fn answer() -> u32 { 42 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn answer_is_42() {
+        assert_eq!(super::answer(), 42);
+    }
+}
+";
+            let write_arguments = write_arguments("src/lib.rs", implemented);
+            let writer: Arc<dyn ModelProvider> = Arc::new(ScriptedProvider {
+                profile: profile([0x81; 16], "writer"),
+                responses: Mutex::new(VecDeque::from([
+                    tool_response(write_arguments),
+                    text_response(
+                        br#"{"kind":"complete","run_instructions":"cargo test","summary":"Added the tested answer API."}"#,
+                    ),
+                ])),
+            });
+            let reviewer: Arc<dyn ModelProvider> = Arc::new(ScriptedProvider {
+                profile: profile([0x82; 16], "reviewer"),
+                responses: Mutex::new(VecDeque::from([text_response(
+                    br#"{"findings":[],"summary":"The requested API and test are present and exact-target gates passed."}"#,
+                )])),
+            });
+            let phases = Arc::new(Mutex::new(Vec::new()));
+            let phase_log = Arc::clone(&phases);
+            let observer: RunObserver = Arc::new(move |update| {
+                phase_log.lock().expect("phases").push(update.phase);
+            });
+            let task = "Add a tested answer function that returns 42.".to_owned();
+
+            let outcome = ProductRunner::run(
+                ProductRunInput {
+                    run_id: RunId::new([0x83; 16]).expect("run ID"),
+                    workspace_root: repository.path().to_owned(),
+                    trace_path: trace_path.clone(),
+                    finding_state: String::new(),
+                    task: task.clone(),
+                    conversation: Arc::new(FixedConversation(task)),
+                    providers: RoleProviders {
+                        writer: Arc::clone(&writer),
+                        reviewer,
+                        fixer: writer,
+                    },
+                    cancelled: Arc::new(AtomicBool::new(false)),
+                    provider_cancellation: CancellationToken::new(),
+                },
+                observer,
+            )
+            .await
+            .expect("production run");
+            let ProductRunOutcome::Complete(output) = outcome else {
+                panic!("run asked for unexpected user input");
+            };
+
+            assert_eq!(output.changed_paths, vec![Path::new("src/lib.rs").to_owned()]);
+            assert_eq!(output.successful_commands.len(), 3);
+            assert!(output.successful_commands.iter().all(|command| {
+                command.contains("--manifest-path Cargo.toml")
+                    && command.contains("--all-targets")
+                    && command.contains("--all-features")
+            }));
+            assert!(output.gates.contains("Exact-target acceptance: PASS"));
+            assert!(output.review.contains("No findings"));
+            assert!(!output.diff.contains('\0'));
+            assert!(output.summary.contains("Added the tested answer API"));
+            assert_eq!(output.run_instructions, "cargo test");
+            assert!(trace_path.is_file());
+            assert_eq!(
+                phases.lock().expect("phases").as_slice(),
+                [ProductRunPhase::Writing, ProductRunPhase::Checking, ProductRunPhase::Reviewing,
+                 ProductRunPhase::Reviewing]
+            );
+        });
+}
+
+#[test]
+#[allow(clippy::too_many_lines, reason = "one complete finding-conservation fixture")]
+fn fixer_cannot_erase_a_finding_without_fresh_reviewer_confirmation() {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("runtime")
+        .block_on(async {
+            let repository = tempfile::tempdir().expect("repository");
+            let state = tempfile::tempdir().expect("state directory");
+            fs::create_dir_all(repository.path().join("src")).expect("source directory");
+            fs::write(
+                repository.path().join("Cargo.toml"),
+                "[package]\nname = \"fixer-fixture\"\nversion = \"0.1.0\"\nedition = \"2024\"\n",
+            )
+            .expect("manifest");
+            fs::write(
+                repository.path().join("src/lib.rs"),
+                "pub const fn initial() -> bool { true }\n",
+            )
+            .expect("initial source");
+            git(repository.path(), &["init", "--quiet"]);
+            git(repository.path(), &["config", "user.name", "Peritus Test"]);
+            git(
+                repository.path(),
+                &["config", "user.email", "peritus@example.invalid"],
+            );
+            git(repository.path(), &["config", "commit.gpgsign", "false"]);
+            cargo(repository.path(), &["generate-lockfile"]);
+            git(repository.path(), &["add", "."]);
+            git(repository.path(), &["commit", "--quiet", "-m", "initial"]);
+
+            let initial = r"/// Returns the fixture answer.
+#[must_use]
+pub const fn answer() -> u32 { 41 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn answer_matches_implementation() {
+        assert_eq!(super::answer(), 41);
+    }
+}
+";
+            let writer: Arc<dyn ModelProvider> = Arc::new(ScriptedProvider {
+                profile: profile([0x91; 16], "writer-with-finding"),
+                responses: Mutex::new(VecDeque::from([
+                    tool_response(write_arguments("src/lib.rs", initial)),
+                    text_response(
+                        br#"{"kind":"complete","run_instructions":"cargo test","summary":"Added an answer API and test."}"#,
+                    ),
+                ])),
+            });
+            let fixer: Arc<dyn ModelProvider> = Arc::new(ScriptedProvider {
+                profile: profile([0x92; 16], "fixer"),
+                responses: Mutex::new(VecDeque::from([
+                    named_tool_response(
+                        "workspace_patch",
+                        patch_arguments("src/lib.rs", "41", "42", true),
+                    ),
+                    text_response(
+                        br#"{"kind":"complete","run_instructions":"cargo test","summary":"Corrected the answer and its regression test to 42."}"#,
+                    ),
+                ])),
+            });
+            let reviewer: Arc<dyn ModelProvider> = Arc::new(ScriptedProvider {
+                profile: profile([0x93; 16], "reviewer-finding"),
+                responses: Mutex::new(VecDeque::from([
+                    text_response(
+                        br#"{"findings":[{"category":"requested_behavior","description":"The implementation returns 41 although the task requires 42.","location":"src/lib.rs","remediation":"Return and test 42.","reproduction":"Inspect answer and its test.","severity":"advisory","title":"Answer is not 42"}],"summary":"The requested result is incorrect."}"#,
+                    ),
+                    text_response(
+                        br#"{"findings":[],"summary":"The answer and regression test now require 42."}"#,
+                    ),
+                ])),
+            });
+            let task = "Add a tested answer function that returns 42.".to_owned();
+
+            let outcome = ProductRunner::run(
+                ProductRunInput {
+                    run_id: RunId::new([0x94; 16]).expect("run ID"),
+                    workspace_root: repository.path().to_owned(),
+                    trace_path: state.path().join("product.trace"),
+                    finding_state: String::new(),
+                    task: task.clone(),
+                    conversation: Arc::new(FixedConversation(task)),
+                    providers: RoleProviders { writer, reviewer, fixer },
+                    cancelled: Arc::new(AtomicBool::new(false)),
+                    provider_cancellation: CancellationToken::new(),
+                },
+                Arc::new(|_| {}),
+            )
+            .await
+            .expect("production run");
+            let ProductRunOutcome::Complete(output) = outcome else {
+                panic!("run asked for unexpected user input");
+            };
+
+            assert_eq!(output.fixer_cycles, 1);
+            assert!(output.summary.contains("Added an answer API and test"));
+            assert!(output.summary.contains("Corrected the answer"));
+            assert!(output.review.contains("resolution confirmed"));
+            assert!(!output.review.contains("/ open]"));
+            assert!(
+                fs::read_to_string(repository.path().join("src/lib.rs"))
+                    .expect("source")
+                    .contains("42")
+            );
+        });
+}

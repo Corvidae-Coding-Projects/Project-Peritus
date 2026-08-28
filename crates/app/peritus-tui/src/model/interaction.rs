@@ -125,6 +125,27 @@ impl AppModel {
         match key.code {
             KeyCode::Char('n') => self.open_task_composer(),
             KeyCode::Enter | KeyCode::Char('m') => self.open_product_message_composer(),
+            KeyCode::Char('i') => self.view = View::Diff,
+            KeyCode::Char('a') => {
+                return Some(self.control_selected_product_run(
+                    peritus_app_protocol::ProductRunControlAction::Accept,
+                ));
+            }
+            KeyCode::Char('c') => {
+                return Some(self.control_selected_product_run(
+                    peritus_app_protocol::ProductRunControlAction::Commit,
+                ));
+            }
+            KeyCode::Char('p') => {
+                return Some(self.control_selected_product_run(
+                    peritus_app_protocol::ProductRunControlAction::Export,
+                ));
+            }
+            KeyCode::Char('D') => {
+                return Some(self.control_selected_product_run(
+                    peritus_app_protocol::ProductRunControlAction::Discard,
+                ));
+            }
             KeyCode::Char('x') => {
                 return Some(self.control_selected_product_run(
                     peritus_app_protocol::ProductRunControlAction::Cancel,

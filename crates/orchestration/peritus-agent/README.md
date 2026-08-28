@@ -21,6 +21,12 @@ failure, exhaustion, and crash recovery are explicit reducer transitions. A disp
 no recoverable terminal observation becomes indeterminate and is never silently redispatched.
 Durable provider envelopes rebuild the C5 reducer prefix before an exact continuation resumes.
 
+The production-facing `DeveloperLoop` composes the existing C5 session boundary with an explicit
+application tool executor and durable trace port. It serializes model tool calls, records each
+provider envelope before reduction, records each tool observation before returning it to model
+context, and continues until bounded final text is produced. Product adapters supply the concrete
+workspace tools; D0 itself still grants no filesystem or process authority.
+
 Model output is never tool authority, and D0 completion is never run acceptance. B0/B1/C0/C4 own
 the receipts that authorize effects; later D1/D2/E0 components own gates, review, orchestration,
 and acceptance.

@@ -4,7 +4,8 @@ use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 
 use crate::{
-    MAX_PRODUCT_MESSAGES, MAX_PRODUCT_RUNS, ProductConversationMessage, ProductConversationRole,
+    MAX_PRODUCT_DELIVERABLE_COMMANDS, MAX_PRODUCT_DELIVERABLE_PATHS, MAX_PRODUCT_MESSAGES,
+    MAX_PRODUCT_RUNS, ProductConversationMessage, ProductConversationRole, ProductDeliverable,
     ProductProviderSelection, ProductRunContinuation, ProductRunControl, ProductRunControlAction,
     ProductRunConversation, ProductRunConversationQuery, ProductRunPhase, ProductRunQuery,
     ProductRunRequest, ProductRunSnapshot,
@@ -156,6 +157,10 @@ pub(super) fn write_snapshot(
     {
         writer.write_str(text)?;
     }
+    writer.write_option_tag(value.deliverable().is_some())?;
+    if let Some(deliverable) = value.deliverable() {
+        write_deliverable(writer, deliverable)?;
+    }
     Ok(())
 }
 
@@ -176,7 +181,7 @@ pub(super) fn read_snapshot(
     let gates = reader.read_str()?.to_owned();
     let review = reader.read_str()?.to_owned();
     let summary = reader.read_str()?.to_owned();
-    invalid(
+    let snapshot = invalid(
         offset,
         ProductRunSnapshot::new(
             run_id,
@@ -190,6 +195,63 @@ pub(super) fn read_snapshot(
             gates,
             review,
             summary,
+        ),
+    )?;
+    if reader.read_option_tag()? {
+        Ok(snapshot.with_deliverable(read_deliverable(reader)?))
+    } else {
+        Ok(snapshot)
+    }
+}
+
+fn write_deliverable(
+    writer: &mut CanonicalWriter,
+    value: &ProductDeliverable,
+) -> Result<(), CodecError> {
+    writer.write_str(value.workspace_path())?;
+    writer.write_collection_len(value.changed_paths().len())?;
+    for path in value.changed_paths() {
+        writer.write_str(path)?;
+    }
+    writer.write_collection_len(value.successful_commands().len())?;
+    for command in value.successful_commands() {
+        writer.write_str(command)?;
+    }
+    writer.write_str(value.run_instructions())?;
+    writer.write_bool(value.accepted())?;
+    writer.write_str(value.commit_revision())?;
+    writer.write_str(value.export_path())?;
+    writer.write_bool(value.discarded())
+}
+
+fn read_deliverable(reader: &mut CanonicalReader<'_>) -> Result<ProductDeliverable, CodecError> {
+    let offset = reader.offset();
+    let workspace_path = reader.read_str()?.to_owned();
+    let path_count = reader.read_collection_len()?;
+    if path_count > MAX_PRODUCT_DELIVERABLE_PATHS {
+        return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
+    }
+    let changed_paths = (0..path_count)
+        .map(|_| reader.read_str().map(str::to_owned))
+        .collect::<Result<Vec<_>, _>>()?;
+    let command_count = reader.read_collection_len()?;
+    if command_count > MAX_PRODUCT_DELIVERABLE_COMMANDS {
+        return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
+    }
+    let successful_commands = (0..command_count)
+        .map(|_| reader.read_str().map(str::to_owned))
+        .collect::<Result<Vec<_>, _>>()?;
+    invalid(
+        offset,
+        ProductDeliverable::restore(
+            workspace_path,
+            changed_paths,
+            successful_commands,
+            reader.read_str()?.to_owned(),
+            reader.read_bool()?,
+            reader.read_str()?.to_owned(),
+            reader.read_str()?.to_owned(),
+            reader.read_bool()?,
         ),
     )
 }

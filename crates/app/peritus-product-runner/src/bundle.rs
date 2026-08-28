@@ -1,91 +1,11 @@
 //! Bounded deterministic repository context construction.
 
-use std::{
-    cmp::Reverse,
-    fmt::Write as _,
-    fs,
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::{fmt::Write as _, fs, path::Path, process::Command};
 
+use crate::workspace_filter;
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
-const MAX_BUNDLE_BYTES: usize = 768 * 1024;
 const MAX_FILE_BYTES: usize = 192 * 1024;
-
-pub struct RepositoryBundle {
-    pub prompt: String,
-}
-
-pub fn build(root: &Path, task: &str) -> Result<RepositoryBundle, ProductRunnerError> {
-    let output = Command::new("git")
-        .args(["-C", root_text(root)?, "ls-files", "-z"])
-        .output()
-        .map_err(|error| repository("list tracked files", &error))?;
-    if !output.status.success() {
-        return Err(ProductRunnerError::new(
-            ProductRunnerErrorKind::Repository,
-            "list tracked files",
-            "git did not recognize the managed workspace",
-        ));
-    }
-    let mut paths = output
-        .stdout
-        .split(|byte| *byte == 0)
-        .filter(|value| !value.is_empty())
-        .filter_map(|value| std::str::from_utf8(value).ok().map(PathBuf::from))
-        .collect::<Vec<_>>();
-    let keywords = task
-        .split(|character: char| !character.is_alphanumeric())
-        .filter(|word| word.len() >= 3)
-        .map(str::to_ascii_lowercase)
-        .collect::<Vec<_>>();
-    paths.sort_by_key(|path| {
-        let text = path.to_string_lossy().to_ascii_lowercase();
-        let score = keywords.iter().filter(|word| text.contains(word.as_str())).count();
-        (Reverse(score), path.clone())
-    });
-
-    let mut prompt = String::from("<workspace-files>\n");
-    for relative in &paths {
-        if prompt.len() >= MAX_BUNDLE_BYTES {
-            break;
-        }
-        let absolute = root.join(relative);
-        let Ok(metadata) = fs::symlink_metadata(&absolute) else {
-            continue;
-        };
-        if !metadata.file_type().is_file() || metadata.len() > MAX_FILE_BYTES as u64 {
-            continue;
-        }
-        let Ok(bytes) = fs::read(&absolute) else {
-            continue;
-        };
-        if bytes.contains(&0) {
-            continue;
-        }
-        let Ok(text) = String::from_utf8(bytes) else {
-            continue;
-        };
-        let header = format!("\n<file path=\"{}\">\n", xml_escape(&relative.to_string_lossy()));
-        let footer = "\n</file>\n";
-        let remaining = MAX_BUNDLE_BYTES.saturating_sub(prompt.len() + header.len() + footer.len());
-        if remaining == 0 {
-            break;
-        }
-        prompt.push_str(&header);
-        if text.len() <= remaining {
-            prompt.push_str(&text);
-        } else {
-            let boundary = text.floor_char_boundary(remaining);
-            prompt.push_str(&text[..boundary]);
-            prompt.push_str("\n[truncated]\n");
-        }
-        prompt.push_str(footer);
-    }
-    prompt.push_str("</workspace-files>");
-    Ok(RepositoryBundle { prompt })
-}
 
 pub fn diff(root: &Path) -> Result<String, ProductRunnerError> {
     let output = Command::new("git")
@@ -123,6 +43,9 @@ fn append_untracked_files(root: &Path, diff: &mut String) -> Result<(), ProductR
         let Ok(relative) = std::str::from_utf8(encoded) else {
             continue;
         };
+        if workspace_filter::generated(Path::new(relative)) {
+            continue;
+        }
         let absolute = root.join(relative);
         let Ok(metadata) = fs::symlink_metadata(&absolute) else {
             continue;
@@ -163,10 +86,6 @@ fn root_text(root: &Path) -> Result<&str, ProductRunnerError> {
 
 fn repository(operation: &'static str, error: &std::io::Error) -> ProductRunnerError {
     ProductRunnerError::new(ProductRunnerErrorKind::Repository, operation, error.to_string())
-}
-
-fn xml_escape(value: &str) -> String {
-    value.replace('&', "&amp;").replace('"', "&quot;").replace('<', "&lt;").replace('>', "&gt;")
 }
 
 pub fn limit_text(value: &str, maximum: usize) -> String {

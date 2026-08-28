@@ -51,10 +51,14 @@ pub async fn complete(
         reducer.push(event).map_err(|error| protocol_error(&error))?;
     }
     if !matches!(reducer.terminal(), Some(TerminalOutcome::Succeeded { .. })) {
+        let detail = reducer.terminal().map_or_else(
+            || "provider stream ended without a terminal outcome".to_owned(),
+            |terminal| format!("provider terminal was {terminal:?}"),
+        );
         return Err(ProductRunnerError::new(
             ProductRunnerErrorKind::Provider,
             "complete model role",
-            "provider did not return a successful complete response",
+            detail,
         ));
     }
     let mut text = String::new();

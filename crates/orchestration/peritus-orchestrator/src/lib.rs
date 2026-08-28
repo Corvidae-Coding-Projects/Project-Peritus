@@ -17,6 +17,8 @@ mod integration_tests;
 mod limits;
 mod ownership;
 mod phase;
+#[cfg(not(verus_only))]
+mod product;
 mod projection;
 pub(crate) mod reducer;
 mod replay;
@@ -57,6 +59,8 @@ pub use identity::{HandoffId, OrchestratorId};
 pub use limits::OrchestratorLimits;
 pub use ownership::{RoleAssignment, RoleOwnership};
 pub use phase::{ActivePhase, OrchestratorPhase};
+#[cfg(not(verus_only))]
+pub use product::{ProductionDecision, ProductionRunCoordinator};
 pub use projection::OrchestratorProjection;
 pub use reducer::{decide, replay, start};
 pub use replay::OrchestratorReplay;

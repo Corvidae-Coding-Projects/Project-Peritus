@@ -198,3 +198,76 @@ fn selected_product_run_accepts_conversational_followup() {
             if matches!(request.payload(), AppRequestPayload::ContinueProductRun(_))
     )));
 }
+
+#[test]
+fn completed_product_run_exposes_all_four_handoff_controls() {
+    use peritus_app_protocol::{
+        ProductDeliverable, ProductProviderSelection, ProductRunControlAction, ProductRunPhase,
+        ProductRunSnapshot,
+    };
+    use peritus_types::RunId;
+
+    for (key, expected) in [
+        ('a', ProductRunControlAction::Accept),
+        ('c', ProductRunControlAction::Commit),
+        ('p', ProductRunControlAction::Export),
+        ('D', ProductRunControlAction::Discard),
+    ] {
+        let provider_id = ProviderProfileId::new([71; 16]).expect("provider");
+        let workspace_id = WorkspaceId::new([72; 16]).expect("workspace");
+        let product = ProductLaunchContext::new(
+            workspace_id,
+            "/managed/project".to_owned(),
+            vec![ProductProviderOption::new(provider_id, "Codex")],
+            Some(0),
+        )
+        .expect("product context");
+        let mut model = AppModel::with_product([73; 32], Some(product));
+        let _ = model.update(Action::Connected {
+            context: context(),
+            limits: AppProtocolLimits::PRODUCTION,
+            server: "peritusd/test".to_owned(),
+            downgraded: false,
+        });
+        let run_id = RunId::new([74; 16]).expect("run");
+        model.accept_product_run(
+            ProductRunSnapshot::new(
+                run_id,
+                workspace_id,
+                ProductProviderSelection::new(provider_id, provider_id, provider_id),
+                ProductRunPhase::Complete,
+                1,
+                "build tetris".to_owned(),
+                "passing".to_owned(),
+                "diff --git".to_owned(),
+                "cargo test: PASS".to_owned(),
+                "No findings".to_owned(),
+                "completed".to_owned(),
+            )
+            .expect("snapshot")
+            .with_deliverable(
+                ProductDeliverable::new(
+                    "/managed/project".to_owned(),
+                    vec!["game/src/main.rs".to_owned()],
+                    vec!["cargo test --manifest-path game/Cargo.toml".to_owned()],
+                    "cargo run --manifest-path game/Cargo.toml".to_owned(),
+                )
+                .expect("deliverable"),
+            ),
+        );
+
+        let effects = model.update(Action::TerminalEvent(Event::Key(KeyEvent::new(
+            KeyCode::Char(key),
+            KeyModifiers::NONE,
+        ))));
+        assert!(effects.iter().any(|effect| matches!(
+            effect,
+            Effect::Send(AppMessage::Request(request))
+                if matches!(
+                    request.payload(),
+                    AppRequestPayload::ControlProductRun(control)
+                        if control.run_id() == run_id && control.action() == expected
+                )
+        )));
+    }
+}

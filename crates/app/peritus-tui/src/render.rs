@@ -296,6 +296,7 @@ fn render_help(frame: &mut Frame<'_>, area: Rect) {
         Line::from("  n              compose a new coding task (Runs)"),
         Line::from("  Enter/m        message, redirect, or continue the selected run (Runs)"),
         Line::from("  w/e/f          cycle writer/reviewer/fixer provider (Runs)"),
+        Line::from("  i/a/c/p/D      inspect / accept / commit / export / discard (Runs)"),
         Line::from("  x/r            cancel / retry selected coding run (Runs)"),
         Line::from(""),
         Line::styled("Live connection", Style::default().fg(ACCENT).add_modifier(Modifier::BOLD)),

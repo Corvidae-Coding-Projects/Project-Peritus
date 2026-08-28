@@ -119,12 +119,18 @@ The implemented foundation and runtime spine now covers:
   publishes and recovers canonical C1 registrations, reports clean/dirty/repair state, switches or
   forgets entries through `peritus workspaces`, and restarts a running daemon when its generated
   configuration or installed executable changed. Its daemon-owned coding-run service accepts a
-  task and explicit provider choice for each role, executes the writer, repository checks,
-  independent reviewer, and bounded fixer loop in the managed worktree, persists every visible
-  phase, recovers interrupted records, and supports query, cancellation, and retry through
-  canonical A3 messages. The TUI provides an accessible task composer, textual progress timeline,
-  diff and review/check views, role-provider switching, cancellation, retry, and a visible
-  `R restart/reconnect` action when the daemon link drops. Host-native package assembly now
+  task and explicit provider choice for each role, then composes the production D0 developer loop,
+  changed-target D1 gates, typed D2 finding conservation, and E0 writer/reviewer/fixer decisions in
+  the managed worktree. Writers and fixers can inspect, search, edit, run, test, observe failures,
+  and retry through bounded structured tools. Completion is refused unless every exact changed
+  project has explicit passing compile/test/lint evidence and no policy-derived blocker remains.
+  The daemon persists every visible phase, durable finding state, and task-level summary, recovers
+  interrupted records, and supports query, cancellation, retry, and conversational continuation
+  through canonical A3 messages. A completed run carries its managed path, exact changed files,
+  successful commands, run instructions, and inspect/accept/commit/export/discard handoff. The TUI
+  provides an accessible task composer, textual progress timeline, diff and review/check views,
+  role-provider switching, handoff controls, cancellation, retry, and a visible `R
+  restart/reconnect` action when the daemon link drops. Host-native package assembly now
   installs the launcher,
   daemon, TUI, sandbox helper, lifecycle scripts, manifest, and checksums while preserving product
   state across repeat install, upgrade, rollback, and uninstall; and
@@ -184,7 +190,9 @@ Run it from inside a Git repository to use that repository automatically. Use `p
 or workspace settings. Press `n` in the Runs view to describe a coding task; `w`, `e`, and `f`
 select the writer, reviewer, and fixer providers. Select any run and press Enter or `m` to talk to
 it: add context while it works, answer a question, redirect it, or continue a failed or completed
-run in the same managed worktree. The
+run in the same managed worktree. After exact acceptance, use `i` to inspect the diff, `a` to mark
+the deliverable accepted, `c` to commit its exact files, `p` to export a patch, or `D` to discard
+it. The
 [G4 product-experience guide](docs/g4-product-experience.md) explains onboarding, trust, coding
 runs, native packaging, state locations, and recovery.
 

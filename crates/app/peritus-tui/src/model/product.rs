@@ -250,6 +250,20 @@ impl AppModel {
             );
             return Vec::new();
         }
+        if matches!(
+            action,
+            ProductRunControlAction::Accept
+                | ProductRunControlAction::Commit
+                | ProductRunControlAction::Export
+                | ProductRunControlAction::Discard
+        ) && phase != peritus_app_protocol::ProductRunPhase::Complete
+        {
+            self.notice(
+                NoticeLevel::Warning,
+                "deliverable actions are available after exact acceptance completes",
+            );
+            return Vec::new();
+        }
         self.request(
             AppRequestPayload::ControlProductRun(ProductRunControl::new(run_id, action)),
             PendingRequest::ProductControl,

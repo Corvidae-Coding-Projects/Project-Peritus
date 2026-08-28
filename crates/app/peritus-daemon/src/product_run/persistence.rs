@@ -8,8 +8,8 @@ use std::{
 };
 
 use peritus_app_protocol::{
-    ProductConversationMessage, ProductConversationRole, ProductProviderSelection, ProductRunPhase,
-    ProductRunRequest, ProductRunSnapshot,
+    ProductConversationMessage, ProductConversationRole, ProductDeliverable,
+    ProductProviderSelection, ProductRunPhase, ProductRunRequest, ProductRunSnapshot,
 };
 use peritus_provider_core::CancellationToken;
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
@@ -35,6 +35,10 @@ struct PersistedRecord {
     review: String,
     summary: String,
     #[serde(default)]
+    finding_state: String,
+    #[serde(default)]
+    deliverable: Option<PersistedDeliverable>,
+    #[serde(default)]
     messages: Vec<PersistedMessage>,
 }
 
@@ -42,6 +46,18 @@ struct PersistedRecord {
 struct PersistedMessage {
     role: u16,
     content: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct PersistedDeliverable {
+    workspace_path: String,
+    changed_paths: Vec<String>,
+    successful_commands: Vec<String>,
+    run_instructions: String,
+    accepted: bool,
+    commit_revision: String,
+    export_path: String,
+    discarded: bool,
 }
 
 pub(super) fn persist_record(
@@ -109,6 +125,8 @@ impl PersistedRecord {
             gates: snapshot.gates().to_owned(),
             review: snapshot.review().to_owned(),
             summary: snapshot.summary().to_owned(),
+            finding_state: record.finding_state.clone(),
+            deliverable: snapshot.deliverable().map(PersistedDeliverable::from_deliverable),
             messages,
         })
     }
@@ -161,7 +179,7 @@ impl PersistedRecord {
             }
         }
         let conversation = SharedConversation::new(run_id, messages)?;
-        let snapshot = ProductRunSnapshot::new(
+        let mut snapshot = ProductRunSnapshot::new(
             run_id,
             workspace_id,
             providers,
@@ -175,13 +193,59 @@ impl PersistedRecord {
             self.summary,
         )
         .map_err(|_| ProductRunServiceError::InvalidMessage)?;
+        if let Some(deliverable) = self.deliverable {
+            snapshot = snapshot.with_deliverable(deliverable.into_deliverable()?);
+        }
         Ok(RunRecord {
             request,
             snapshot,
             cancelled: Arc::new(AtomicBool::new(false)),
             provider_cancellation: CancellationToken::new(),
             conversation,
+            finding_state: self.finding_state,
         })
+    }
+}
+
+impl PersistedDeliverable {
+    fn from_deliverable(value: &ProductDeliverable) -> Self {
+        Self {
+            workspace_path: value.workspace_path().to_owned(),
+            changed_paths: value.changed_paths().to_vec(),
+            successful_commands: value.successful_commands().to_vec(),
+            run_instructions: value.run_instructions().to_owned(),
+            accepted: value.accepted(),
+            commit_revision: value.commit_revision().to_owned(),
+            export_path: value.export_path().to_owned(),
+            discarded: value.discarded(),
+        }
+    }
+
+    fn into_deliverable(self) -> Result<ProductDeliverable, ProductRunServiceError> {
+        let mut value = ProductDeliverable::new(
+            self.workspace_path,
+            self.changed_paths,
+            self.successful_commands,
+            self.run_instructions,
+        )
+        .map_err(|_| ProductRunServiceError::InvalidMessage)?;
+        if self.accepted {
+            value = value.mark_accepted();
+        }
+        if !self.commit_revision.is_empty() {
+            value = value
+                .mark_committed(self.commit_revision)
+                .map_err(|_| ProductRunServiceError::InvalidMessage)?;
+        }
+        if !self.export_path.is_empty() {
+            value = value
+                .mark_exported(self.export_path)
+                .map_err(|_| ProductRunServiceError::InvalidMessage)?;
+        }
+        if self.discarded {
+            value = value.mark_discarded();
+        }
+        Ok(value)
     }
 }
 
@@ -239,5 +303,31 @@ mod tests {
         assert_eq!(conversation.messages().len(), 2);
         assert_eq!(conversation.messages()[0].content(), "build tetris");
         assert!(conversation.messages()[1].content().contains("invalid escape"));
+    }
+
+    #[test]
+    fn durable_finding_state_survives_record_restoration() {
+        let json = r#"{
+            "run_id":"11111111111111111111111111111111",
+            "workspace_id":"12121212121212121212121212121212",
+            "writer":"13131313131313131313131313131313",
+            "reviewer":"14141414141414141414141414141414",
+            "fixer":"15151515151515151515151515151515",
+            "phase":8,
+            "cycle":2,
+            "task":"build tetris",
+            "status":"review interrupted",
+            "diff":"diff --git",
+            "gates":"cargo test: PASS",
+            "review":"nested target finding",
+            "summary":"implementation retained",
+            "finding_state":"{\"cycle\":1,\"summary\":\"nested target finding\",\"findings\":[]}"
+        }"#;
+        let persisted: PersistedRecord = serde_json::from_str(json).expect("persisted record");
+        let expected = persisted.finding_state.clone();
+
+        let record = persisted.into_record().expect("restored record");
+
+        assert_eq!(record.finding_state, expected);
     }
 }

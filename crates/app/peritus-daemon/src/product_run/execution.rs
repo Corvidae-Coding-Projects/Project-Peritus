@@ -6,7 +6,8 @@ use std::{
 };
 
 use peritus_app_protocol::{
-    ProductConversationRole, ProductRunPhase, ProductRunRequest, ProductRunSnapshot,
+    ProductConversationRole, ProductDeliverable, ProductRunPhase, ProductRunRequest,
+    ProductRunSnapshot,
 };
 use peritus_product_runner::{
     ConversationView, ProductRunInput, ProductRunOutcome, ProductRunner, RoleProviders, RunObserver,
@@ -19,6 +20,10 @@ use super::snapshot::replace_snapshot;
 use super::{ProductRunService, SharedConversation};
 
 impl ProductRunService {
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "daemon execution inputs stay explicit at the task ownership boundary"
+    )]
     pub(super) async fn spawn(
         &self,
         request: ProductRunRequest,
@@ -27,9 +32,11 @@ impl ProductRunService {
         cancelled: Arc<AtomicBool>,
         provider_cancellation: CancellationToken,
         conversation: Arc<SharedConversation>,
+        finding_state: String,
     ) {
         let service = self.clone();
         let run_id = request.run_id();
+        let trace_path = self.inner.directory.join(format!("{}.trace", run_hex(run_id)));
         let observer: RunObserver = Arc::new(move |update| service.observe(run_id, update));
         let service = self.clone();
         let task = tokio::spawn(async move {
@@ -38,6 +45,8 @@ impl ProductRunService {
                 ProductRunInput {
                     run_id,
                     workspace_root,
+                    trace_path,
+                    finding_state,
                     task: request.task().to_owned(),
                     conversation,
                     providers,
@@ -57,6 +66,9 @@ impl ProductRunService {
     fn observe(&self, run_id: RunId, update: peritus_product_runner::ProductRunUpdate) {
         let Ok(mut records) = self.inner.records.write() else { return };
         let Some(record) = records.get_mut(&run_id) else { return };
+        if !update.finding_state.is_empty() {
+            record.finding_state = update.finding_state;
+        }
         let phase = match update.phase {
             peritus_product_runner::ProductRunPhase::Writing => ProductRunPhase::Writing,
             peritus_product_runner::ProductRunPhase::Checking => ProductRunPhase::Checking,
@@ -93,6 +105,25 @@ impl ProductRunService {
         match result {
             Ok(ProductRunOutcome::Complete(output)) => {
                 let completion_message = format!("Completed: {}", output.summary);
+                let deliverable =
+                    self.inner.workspaces.get(&record.request.workspace_id()).and_then(|path| {
+                        ProductDeliverable::new(
+                            path.to_string_lossy().into_owned(),
+                            output
+                                .changed_paths
+                                .iter()
+                                .map(|path| path.to_string_lossy().into_owned())
+                                .collect(),
+                            output.successful_commands.clone(),
+                            output.run_instructions.clone(),
+                        )
+                        .ok()
+                    });
+                let Some(deliverable) = deliverable else {
+                    fail_handoff(record);
+                    let _ = persist_record(&self.inner.directory, record);
+                    return;
+                };
                 if let Ok(snapshot) = ProductRunSnapshot::new(
                     run_id,
                     record.request.workspace_id(),
@@ -106,7 +137,11 @@ impl ProductRunService {
                     output.review,
                     output.summary,
                 ) {
-                    record.snapshot = snapshot;
+                    record.snapshot = snapshot.with_deliverable(deliverable);
+                } else {
+                    fail_handoff(record);
+                    let _ = persist_record(&self.inner.directory, record);
+                    return;
                 }
                 let _ =
                     record.conversation.append(ProductConversationRole::Agent, completion_message);
@@ -150,4 +185,25 @@ impl ProductRunService {
         }
         let _ = persist_record(&self.inner.directory, record);
     }
+}
+
+fn fail_handoff(record: &mut super::RunRecord) {
+    let detail = "Passing checks could not be projected into a durable deliverable handoff";
+    if let Ok(snapshot) = replace_snapshot(
+        &record.snapshot,
+        ProductRunPhase::Failed,
+        "Create durable deliverable handoff failed",
+        detail,
+    ) {
+        record.snapshot = snapshot;
+    }
+    let _ = record.conversation.append(ProductConversationRole::Agent, detail.to_owned());
+}
+
+fn run_hex(run_id: RunId) -> String {
+    run_id.as_bytes().iter().fold(String::new(), |mut value, byte| {
+        use core::fmt::Write as _;
+        let _ = write!(value, "{byte:02x}");
+        value
+    })
 }

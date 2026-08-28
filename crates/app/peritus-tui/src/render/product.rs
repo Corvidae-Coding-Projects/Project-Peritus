@@ -88,7 +88,11 @@ pub(super) fn dashboard(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
     let detail = product.selected_run().map_or_else(empty_detail, run_detail);
     frame.render_widget(
         Paragraph::new(detail)
-            .block(Block::default().borders(Borders::ALL).title(" Progress · x cancel · r retry "))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" Progress · i inspect · a accept · c commit · p export · D discard "),
+            )
             .wrap(Wrap { trim: false }),
         right[0],
     );
@@ -153,7 +157,7 @@ fn render_run_text(
 }
 
 fn run_detail(run: &ProductRunSnapshot) -> Text<'static> {
-    Text::from(vec![
+    let mut lines = vec![
         Line::styled(
             phase_line(run.phase()),
             phase_style(run.phase()).add_modifier(Modifier::BOLD),
@@ -173,7 +177,31 @@ fn run_detail(run: &ProductRunSnapshot) -> Text<'static> {
             },
             Style::default().fg(MUTED),
         ),
-    ])
+    ];
+    if let Some(deliverable) = run.deliverable() {
+        lines.push(Line::from(""));
+        lines.push(Line::styled(
+            "Deliverable handoff",
+            Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+        ));
+        lines.push(field("Managed path", safe(deliverable.workspace_path())));
+        lines.push(field("Changed files", deliverable.changed_paths().len().to_string()));
+        lines.push(field("Run", safe(deliverable.run_instructions())));
+        let state = if deliverable.discarded() {
+            "discarded".to_owned()
+        } else if !deliverable.commit_revision().is_empty() {
+            format!("committed {}", short_text(deliverable.commit_revision(), 12))
+        } else if deliverable.accepted() {
+            "accepted".to_owned()
+        } else {
+            "ready for inspection".to_owned()
+        };
+        lines.push(field("State", state));
+        if !deliverable.export_path().is_empty() {
+            lines.push(field("Export", safe(deliverable.export_path())));
+        }
+    }
+    Text::from(lines)
 }
 
 fn empty_detail() -> Text<'static> {
