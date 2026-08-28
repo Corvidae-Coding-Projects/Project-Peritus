@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 536,
+  "next_comment_id": 537,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -2702,7 +2702,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T23:30:59.824402277Z",
-      "updated_at": "2026-08-28T11:30:18.862008591Z",
+      "updated_at": "2026-08-28T11:34:20.744148784Z",
       "labels": [
         "feature",
         "ux"
@@ -2725,6 +2725,15 @@
           "kind": "discovery",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9Vl3tKeE6Qc1ul8fQHI4i7ticAUWsyQDrv/bOtMopWCnSMyCukqd2tcSVnaRrXLcstSTDFdd6FQ5X5STHPG0Dw=="
+        },
+        "34014cee-4d08-4d3f-94f7-2cc53afba2fb": {
+          "display_id": 536,
+          "author": "6ME5",
+          "content": "[action] Adapted embedded workflow and grounding rendering to the repository formal-boundary macro policy; strict Clippy and the previously failing xtask policy test pass. Running final Gate A.",
+          "created_at": "2026-08-28T11:34:20.740016536Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9Ns9gAg68qhw8svp3BlQ4Y8b5DSNLX9UZ1rzaxi/5FKVzBD3Lokb/s7Qstf2jFGlpgjAM4OIwZrQ6+X/F23mAg=="
         },
         "3d548d32-f4e1-427a-859c-17d74eecc439": {
           "display_id": 530,
@@ -5580,8 +5589,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-28T11:30:18.862008591Z",
+    "timestamp": "2026-08-28T11:34:20.744148784Z",
     "agent_id": "6ME5",
-    "agent_seq": 712
+    "agent_seq": 713
   }
 }
