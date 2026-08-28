@@ -34,8 +34,13 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
             r#"{"additionalProperties":false,"properties":{"new":{"type":"string"},"old":{"type":"string"},"path":{"type":"string"},"replace_all":{"type":"boolean"}},"required":["new","old","path"],"type":"object"}"#,
         ),
         (
+            "workspace_remove",
+            "Remove one exact workspace-relative regular file after reading it. Files that appear during the invocation through commands, services, hooks, or evaluators are external evidence and cannot be removed.",
+            r#"{"additionalProperties":false,"properties":{"path":{"type":"string"}},"required":["path"],"type":"object"}"#,
+        ),
+        (
             "run_command",
-            "Run a structured executable and argv in the managed workspace; use it to build, test, lint, inspect Git, and observe failures.",
+            "Run a non-destructive structured executable and argv in the managed workspace; use it to build, test, lint, inspect Git, and observe failures. Use workspace_remove for intentional file deletion.",
             r#"{"additionalProperties":false,"properties":{"args":{"items":{"type":"string"},"type":"array"},"cwd":{"type":"string"},"program":{"type":"string"}},"required":["args","program"],"type":"object"}"#,
         ),
     ])

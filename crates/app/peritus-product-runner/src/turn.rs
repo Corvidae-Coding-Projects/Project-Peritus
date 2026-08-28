@@ -5,7 +5,7 @@ use peritus_provider_core::ModelProvider;
 use peritus_types::RunId;
 use serde::Deserialize;
 
-use crate::developer_tools::{WorkspaceDeveloperTools, definitions};
+use crate::developer_tools::{WorkspaceDeveloperTools, WorkspaceOwnership, definitions};
 use crate::execution::{AppliedTurn, AppliedWrite, ProductRunInput, check_cancelled};
 use crate::progress::WorkspaceCheckpoint;
 use crate::trace::FileDeveloperTrace;
@@ -20,6 +20,7 @@ pub async fn complete_developer_turn(
     cycle: u32,
     design: &str,
     findings: Option<&str>,
+    ownership: &mut WorkspaceOwnership,
 ) -> Result<AppliedTurn, ProductRunnerError> {
     let mut checkpoint = WorkspaceCheckpoint::capture(&input.workspace_root)?;
     let mut invocation = 0_u32;
@@ -34,7 +35,10 @@ pub async fn complete_developer_turn(
             crate::workspace_media::discover(&input.workspace_root, &transcript, model.profile())?;
         let prompt = writer_user(&transcript, design, findings, correction.as_deref());
         let (prompt, attachments) = media.into_parts(prompt);
-        let mut tools = WorkspaceDeveloperTools::new(input.workspace_root.clone());
+        let mut tools = WorkspaceDeveloperTools::with_ownership(
+            input.workspace_root.clone(),
+            ownership.clone(),
+        );
         let mut trace = FileDeveloperTrace::new(input.trace_path.clone());
         let prefix = request_name(input.run_id, role, cycle);
         let result = DeveloperLoop::run(
@@ -53,6 +57,7 @@ pub async fn complete_developer_turn(
             &mut trace,
         )
         .await;
+        *ownership = tools.ownership().clone();
         check_cancelled(input)?;
         if input.conversation.revision() != revision {
             checkpoint = WorkspaceCheckpoint::capture(&input.workspace_root)?;
@@ -124,7 +129,7 @@ pub fn request_name(run_id: RunId, role: &str, cycle: u32) -> String {
 
 pub fn reviewer_system() -> String {
     format!(
-        "You are the independent D2 reviewer in a coding harness. Inspect the exact diff and exact-target gate evidence. Return only one JSON object with this shape: {{\"summary\":\"...\",\"findings\":[{{\"category\":\"correctness|requested_behavior|build_coverage|test_coverage|security|maintainability|documentation\",\"severity\":\"advisory|low|medium|high|critical\",\"title\":\"stable concise identity\",\"description\":\"specific observed problem\",\"location\":\"path:line or empty\",\"reproduction\":\"exact evidence or command\",\"remediation\":\"specific required fix\"}}]}}. Do not return a blocking Boolean; policy derives blocker status from typed fields. Repeat every still-present finding using the same title and location. Omit a prior finding only after independently confirming its fix in the fresh diff and evidence. Do not invent obscure hypothetical threats or demand unrelated redesign. Do not use markdown fences.\n\n{}",
+        "You are the independent D2 reviewer in a coding harness. Inspect the original conversation, exact diff, and exact-target gate evidence; the design is a proposal, not authority. Verify every explicit requested path, field, value, operation, and scoped rule against the result. Reject self-authored checks that merely prove the implementation agrees with its own interpretation. A non-advisory finding must identify an unmet explicit requirement, a failed deterministic gate, or a concrete contradiction. Treat optional richer traces, duplicated corroboration, and evidence-presentation improvements as advisory, never as reasons for repeated fixer cycles. Accept contemporaneous process metrics unless contradicted; do not rerun stateful external operations merely to reproduce one-shot transient failures. Return only one JSON object with this shape: {{\"summary\":\"...\",\"findings\":[{{\"category\":\"correctness|requested_behavior|build_coverage|test_coverage|security|maintainability|documentation\",\"severity\":\"advisory|low|medium|high|critical\",\"title\":\"stable concise identity\",\"description\":\"specific observed problem\",\"location\":\"path:line or empty\",\"reproduction\":\"exact evidence or command\",\"remediation\":\"specific required fix\"}}]}}. Do not return a blocking Boolean; policy derives blocker status from typed fields. Repeat every still-present finding using the same title and location. Omit a prior finding only after independently confirming its fix in the fresh diff and evidence. Do not invent obscure hypothetical threats or demand unrelated redesign. Do not use markdown fences.\n\n{}",
         crate::engineering_workflow::reviewer(),
     )
 }
@@ -137,7 +142,7 @@ pub fn reviewer_user(transcript: &str, diff: &str, gates: &str, prior: &str) -> 
 
 fn writer_system(role: &str) -> String {
     format!(
-        "You are the {role} developer in a production coding harness. Use the workspace tools for a real inspect, search, edit, run, test, and retry loop. Read the repository before changing it. Make substantial maintainable changes and preserve unrelated work. Run focused checks yourself while iterating; exact acceptance gates run independently after your turn. Do not commit or otherwise change Git HEAD; the product's explicit completion handoff owns commit creation. Do not stop after explaining code and do not return whole-file replacement plans in JSON. When the implementation is ready for independent gates, return only {{\"kind\":\"complete\",\"summary\":\"what this task-level deliverable now does\",\"run_instructions\":\"exact command or concise steps for the user to run it\"}}. Only when a material user choice cannot be sensibly inferred, return only {{\"kind\":\"question\",\"message\":\"one direct question\"}}. Do not invent obscure concerns.\n\n{}",
+        "You are the {role} developer in a production coding harness. Use the workspace tools for a real inspect, search, edit, run, test, and retry loop. Read the repository before changing it. Make substantial maintainable changes and preserve unrelated work. Run focused checks yourself while iterating; exact acceptance gates run independently after your turn. Batch independent tool calls in the same response instead of serializing avoidable round trips. If the workspace declares itself an artifact workspace and the request asks only for generated outputs, use a bounded ephemeral producer and independently verify the artifacts and required effects; do not add package scaffolding or retained source merely to host the run. Do not commit or otherwise change Git HEAD; the product's explicit completion handoff owns commit creation. Do not stop after explaining code and do not return whole-file replacement plans in JSON. When the implementation is ready for independent gates, return only {{\"kind\":\"complete\",\"summary\":\"what this task-level deliverable now does\",\"run_instructions\":\"exact command or concise steps for the user to run it\"}}. Only when a material user choice cannot be sensibly inferred, return only {{\"kind\":\"question\",\"message\":\"one direct question\"}}. Do not invent obscure concerns.\n\n{}",
         crate::engineering_workflow::developer(),
     )
 }
@@ -244,5 +249,24 @@ mod tests {
         assert!(prompt.contains("workspace_read"));
         assert!(prompt.contains("If no code change is needed"));
         assert!(prompt.contains(error.detail()));
+    }
+
+    #[test]
+    fn reviewer_checks_literal_request_independently_of_the_design() {
+        let prompt = reviewer_system();
+        assert!(prompt.contains("design is a proposal, not authority"));
+        assert!(prompt.contains("every explicit requested path, field, value"));
+        assert!(prompt.contains("agrees with its own interpretation"));
+        assert!(prompt.contains("non-advisory finding"));
+        assert!(prompt.contains("one-shot transient failures"));
+        assert!(prompt.contains("never as reasons for repeated fixer cycles"));
+    }
+
+    #[test]
+    fn writer_batches_tools_and_respects_artifact_workspaces() {
+        let prompt = writer_system("writer");
+        assert!(prompt.contains("Batch independent tool calls"));
+        assert!(prompt.contains("bounded ephemeral producer"));
+        assert!(prompt.contains("do not add package scaffolding"));
     }
 }

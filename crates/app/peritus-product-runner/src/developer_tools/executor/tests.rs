@@ -85,6 +85,54 @@ fn existing_files_cannot_be_mutated_before_they_are_read() {
     assert!(!applied.is_error);
 }
 
+#[test]
+fn exact_remove_preserves_late_external_evidence_and_blocks_shell_deletion() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    fs::write(workspace.path().join("baseline.txt"), "baseline\n").expect("baseline");
+    let mut tools = WorkspaceDeveloperTools::new(workspace.path().to_owned());
+    let _ = execute(&mut tools, "workspace_list", r#"{"depth":2,"path":""}"#);
+
+    fs::write(workspace.path().join("api_access.log"), "/projects\n").expect("external log");
+    for path in ["baseline.txt", "api_access.log"] {
+        let _ = execute(
+            &mut tools,
+            "workspace_read",
+            &format!(r#"{{"end_line":20,"path":"{path}","start_line":1}}"#),
+        );
+    }
+
+    let refused = execute(&mut tools, "workspace_remove", r#"{"path":"api_access.log"}"#);
+    assert!(refused.is_error);
+    assert!(wire(&refused).contains("externally produced evidence"));
+    assert!(workspace.path().join("api_access.log").is_file());
+
+    let removed = execute(&mut tools, "workspace_remove", r#"{"path":"baseline.txt"}"#);
+    assert!(!removed.is_error);
+    assert!(!workspace.path().join("baseline.txt").exists());
+
+    let shell_delete = execute(
+        &mut tools,
+        "run_command",
+        r#"{"args":["api_access.log"],"cwd":".","program":"rm"}"#,
+    );
+    assert!(shell_delete.is_error);
+    assert!(wire(&shell_delete).contains("workspace_remove"));
+    assert!(workspace.path().join("api_access.log").is_file());
+
+    let ownership = tools.ownership().clone();
+    let mut fixer = WorkspaceDeveloperTools::with_ownership(workspace.path().to_owned(), ownership);
+    let _ = execute(&mut fixer, "workspace_list", r#"{"depth":1,"path":""}"#);
+    let _ = execute(
+        &mut fixer,
+        "workspace_read",
+        r#"{"end_line":20,"path":"api_access.log","start_line":1}"#,
+    );
+    let cross_invocation = execute(&mut fixer, "workspace_remove", r#"{"path":"api_access.log"}"#);
+    assert!(cross_invocation.is_error);
+    assert!(wire(&cross_invocation).contains("externally produced evidence"));
+    assert!(workspace.path().join("api_access.log").is_file());
+}
+
 fn execute(
     tools: &mut WorkspaceDeveloperTools,
     name: &str,

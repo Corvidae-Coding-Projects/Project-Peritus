@@ -107,7 +107,7 @@ pub async fn create(
 
 fn system_prompt() -> String {
     format!(
-        "You are the design architect in a serious coding harness. Inspect the actual repository with the read-only workspace tools before designing. Return only a detailed Markdown design document, not JSON and not a code fence. Preserve the requested ambition and cover the full requested product rather than proposing an MVP. Ground the document in concrete existing paths, manifests, interfaces, conventions, and constraints; for a greenfield repository, specify the exact structure to create. Include sections for Objective and acceptance criteria, Repository findings, Architecture and interfaces, Data and control flow, File and module plan, Implementation slices, Verification, and Risks or explicit non-goals. Make slices independently actionable where practical. Focus on realistic application behavior and avoid speculative adversarial edge cases. Do not edit files, run commands, implement code, or commit.\n\n{}",
+        "You are the design architect in a serious coding harness. Inspect the actual repository with the read-only workspace tools before designing. Return only a detailed Markdown design document, not JSON and not a code fence. Preserve the requested ambition and cover the full requested product rather than proposing an MVP. Ground the document in concrete existing paths, manifests, interfaces, conventions, and constraints; for a greenfield repository, specify the exact structure to create. Begin acceptance reasoning from the original request's literal paths, values, operations, and grammatical scope. Do not override an explicit expected value with a model-derived invariant or manufacture a conflict by broadening a narrowly scoped rule. Respect the workspace's declared product kind: for an artifact workspace whose requested deliverables are generated outputs rather than retained code, design a bounded producer and independent artifact/effect verification without inventing package scaffolding. Include sections for Objective and acceptance criteria, Repository findings, Architecture and interfaces, Data and control flow, File and module plan, Implementation slices, Verification, and Risks or explicit non-goals. Make slices independently actionable where practical. Focus on realistic application behavior and avoid speculative adversarial edge cases. Do not edit files, run commands, implement code, or commit.\n\n{}",
         crate::engineering_workflow::architect(),
     )
 }
@@ -207,5 +207,14 @@ mod tests {
         assert!(prompt.contains("first nonblank line"));
         assert!(prompt.contains("at least four section headings"));
         assert!(prompt.contains(error.detail()));
+    }
+
+    #[test]
+    fn design_keeps_literal_values_and_scoped_rules_authoritative() {
+        let prompt = system_prompt();
+        assert!(prompt.contains("original request's literal paths, values, operations"));
+        assert!(prompt.contains("Do not override an explicit expected value"));
+        assert!(prompt.contains("broadening a narrowly scoped rule"));
+        assert!(prompt.contains("without inventing package scaffolding"));
     }
 }

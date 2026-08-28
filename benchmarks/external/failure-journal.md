@@ -267,6 +267,55 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Disposition: retain the unchanged score and report the underspecified contract. Do not teach
   Peritus benchmark-specific labels or read hidden ground truth while producing task artifacts.
 
+## HBF-005: a fixer deleted evaluator-owned evidence
+
+- Suite and task: HarnessBench 2.0, `022-local-rest-api-summary`.
+- Symptom: the writer called the required local API and recovered from its transient responses, but
+  a later role interpreted `out/api_access.log` as unrequested clutter and deleted it. The unchanged
+  oracle then had no evidence that the endpoints or retry paths had been exercised.
+- Cause: shell deletion was available as an ordinary command and the product did not distinguish
+  baseline files, files directly created by the agent, and late files created by evaluators,
+  services, or hooks. An initial ownership check covered only one model invocation, so a later fixer
+  could recapture the external log as its own baseline and bypass the protection.
+- Change: destructive shell commands now direct the model to an exact `workspace_remove` tool. One
+  ownership record is captured before design and retained through the complete writer, reviewer,
+  and fixer run. The tool permits baseline files and files explicitly created through
+  `workspace_write`, but refuses deletion of late external evidence. Cross-invocation regression
+  coverage reproduces the original bypass.
+- Before evidence: sandboxes
+  `oc-bench-v2-022-local-rest-api-summary-gpt-5.6-sol-20260828-140846-022bfcc5` and
+  `oc-bench-v2-022-local-rest-api-summary-gpt-5.6-sol-20260828-142658-e71ee403`; both traces contain
+  the required local requests followed by deletion of `out/api_access.log`.
+- After evidence: local report `reports/022-local-rest-api-summary-evidence-owned.json`; the access
+  log survived with every required endpoint and retry observation; all unchanged oracle checks
+  passed; outcome 1.0; process 0.8867; security 1.0; combined 0.8867; elapsed 289.057 seconds.
+
+## HBF-006: artifact review expanded beyond the requested acceptance boundary
+
+- Suite and task: HarnessBench 2.0, `022-local-rest-api-summary`.
+- Symptom: one run produced the correct data through the local API but lost the 600-second caller
+  deadline after building an unrequested package. A later run produced artifacts that score 1.0
+  under the unchanged oracle, then timed out while reviewers demanded richer request-status traces
+  and repeatedly called a stateful API whose one-shot transient failures had already been consumed.
+- Cause: the normal production workflow treated an artifact-only workspace like a persistent code
+  project, and optional provenance improvements could become blocking findings. The design was also
+  allowed to broaden a scoped phrase into a conflicting global invariant.
+- Change: literal requirement ledgers preserve paths, fields, values, operations, and grammatical
+  scope; the original conversation remains authoritative over a design proposal. Artifact-kind
+  workspaces use a bounded ephemeral producer and independent artifact/effect verification without
+  retained package scaffolding. Reviewers block only on an unmet explicit requirement, failed
+  deterministic gate, or concrete contradiction; optional evidence improvements remain advisory,
+  and stateful effects are not rerun merely to reproduce one-shot transients.
+- Before evidence: sandboxes
+  `oc-bench-v2-022-local-rest-api-summary-gpt-5.6-sol-20260828-143515-71e302b2` and
+  `oc-bench-v2-022-local-rest-api-summary-gpt-5.6-sol-20260828-144658-095e65b1`; the latter retained
+  artifacts score 1.0 when evaluated directly by the unchanged oracle despite the timeout.
+- After evidence: local report `reports/022-local-rest-api-summary-evidence-owned.json`; the fresh
+  run completed in 289.057 seconds with the same unchanged 1.0 oracle outcome. The product still
+  spends time on design, live production, and independent review; the change removes irrelevant
+  persistent scaffolding and reviewer-created obligations rather than trading correctness for
+  speed.
+
 ## HBT-001: exact trace projection overflowed the rubric context
 
 - Suite and task: HarnessBench 2.0, first proved by `006-access-bilibili`.

@@ -14,6 +14,7 @@ use serde_json::{Map, Value};
 
 use super::{
     grounding::GroundingEvidence,
+    ownership::WorkspaceOwnership,
     path::{checked, tool},
 };
 
@@ -24,17 +25,27 @@ const MAX_FILE_BYTES: usize = 2 * 1024 * 1024;
 pub struct WorkspaceDeveloperTools {
     root: PathBuf,
     grounding: GroundingEvidence,
+    ownership: WorkspaceOwnership,
 }
 
 impl WorkspaceDeveloperTools {
     /// Creates one workspace-scoped executor.
     #[must_use]
     pub fn new(root: PathBuf) -> Self {
-        Self { root, grounding: GroundingEvidence::default() }
+        let ownership = WorkspaceOwnership::capture(&root);
+        Self { root, grounding: GroundingEvidence::default(), ownership }
+    }
+
+    pub(crate) fn with_ownership(root: PathBuf, ownership: WorkspaceOwnership) -> Self {
+        Self { root, grounding: GroundingEvidence::default(), ownership }
     }
 
     pub const fn grounding(&self) -> &GroundingEvidence {
         &self.grounding
+    }
+
+    pub(crate) const fn ownership(&self) -> &WorkspaceOwnership {
+        &self.ownership
     }
 }
 
@@ -51,6 +62,7 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
             "workspace_read" => self.read(&arguments),
             "workspace_write" => self.write(&arguments),
             "workspace_patch" => self.patch(&arguments),
+            "workspace_remove" => self.remove(&arguments),
             "run_command" => self.run(&arguments),
             _ => return Err(tool("model requested an undeclared developer tool")),
         };
@@ -81,7 +93,7 @@ impl WorkspaceDeveloperTools {
                     self.grounding.record_read(path);
                 }
             }
-            "workspace_write" | "workspace_patch" => {
+            "workspace_write" | "workspace_patch" | "workspace_remove" => {
                 if let Some(path) = string(arguments, "path") {
                     self.grounding.record_mutation(path);
                 }
@@ -215,18 +227,20 @@ impl WorkspaceDeveloperTools {
         ]))
     }
 
-    fn write(&self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
+    fn write(&mut self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
         let relative = required_string(arguments, "path")?;
         let content = required_string(arguments, "content")?;
         if content.len() > MAX_FILE_BYTES {
             return Err(tool("write exceeds the per-file byte bound"));
         }
         let path = checked(&self.root, relative, true)?;
-        self.grounding.ensure_mutation_allowed(relative, path.exists()).map_err(tool)?;
+        let existed_before = path.exists();
+        self.grounding.ensure_mutation_allowed(relative, existed_before).map_err(tool)?;
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).map_err(|error| tool(error.to_string()))?;
         }
         atomic_write(&path, content.as_bytes())?;
+        self.ownership.record_direct_creation(&path, existed_before);
         Ok(object(vec![
             ("path", Value::String(relative.to_owned())),
             ("bytes", Value::from(content.len())),
@@ -260,6 +274,19 @@ impl WorkspaceDeveloperTools {
         ]))
     }
 
+    fn remove(&self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
+        let relative = required_string(arguments, "path")?;
+        let path = checked(&self.root, relative, false)?;
+        let metadata = fs::metadata(&path).map_err(|error| tool(error.to_string()))?;
+        if !metadata.is_file() {
+            return Err(tool("workspace_remove only removes one regular file"));
+        }
+        self.grounding.ensure_mutation_allowed(relative, true).map_err(tool)?;
+        self.ownership.ensure_removable(&path)?;
+        fs::remove_file(&path).map_err(|error| tool(error.to_string()))?;
+        Ok(object(vec![("path", Value::String(relative.to_owned()))]))
+    }
+
     fn run(&self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
         let program = required_string(arguments, "program")?;
         if program.is_empty() || program.contains(['\0', '\n', '\r']) {
@@ -274,6 +301,7 @@ impl WorkspaceDeveloperTools {
                 value.as_str().map(str::to_owned).ok_or_else(|| tool("command arg is not text"))
             })
             .collect::<Result<Vec<_>, _>>()?;
+        reject_destructive_command(program, &args)?;
         let current_dir = match string(arguments, "cwd") {
             Some(value) if !value.is_empty() => checked(&self.root, value, false)?,
             _ => self.root.clone(),
@@ -291,6 +319,20 @@ impl WorkspaceDeveloperTools {
             ("stderr", Value::String(limit(&String::from_utf8_lossy(&output.stderr)))),
         ]))
     }
+}
+
+fn reject_destructive_command(program: &str, args: &[String]) -> Result<(), DeveloperLoopError> {
+    let executable =
+        Path::new(program).file_name().and_then(|name| name.to_str()).unwrap_or(program);
+    let direct_delete = matches!(executable, "rm" | "unlink" | "rmdir");
+    let git_clean = executable == "git" && args.first().is_some_and(|arg| arg == "clean");
+    let find_delete = executable == "find" && args.iter().any(|arg| arg == "-delete");
+    if direct_delete || git_clean || find_delete {
+        return Err(tool(
+            "destructive commands are not available through run_command; inspect the exact target and use workspace_remove for an intentional regular-file deletion",
+        ));
+    }
+    Ok(())
 }
 
 fn object(entries: Vec<(&str, Value)>) -> Value {

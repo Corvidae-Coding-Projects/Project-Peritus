@@ -16,7 +16,8 @@ use peritus_orchestrator::{ProductionDecision, ProductionRunCoordinator};
 use peritus_review::ProductFindingLedger;
 
 use crate::{
-    ProductRunnerError, ProductRunnerErrorKind, candidate::CandidateBaseline, design, review,
+    ProductRunnerError, ProductRunnerErrorKind, candidate::CandidateBaseline, design,
+    developer_tools::WorkspaceOwnership, review,
 };
 use cycle::{apply_fix, create_design, initial_write, inspect_cycle};
 use fix_progress::{FixProgress, FixProgressObservation};
@@ -39,22 +40,25 @@ impl ProductRunner {
         observe: RunObserver,
     ) -> Result<ProductRunOutcome, ProductRunnerError> {
         let baseline = CandidateBaseline::capture(&input.workspace_root)?;
+        let mut workspace_ownership = WorkspaceOwnership::capture(&input.workspace_root);
         let design = create_design(&input, &observe, 1).await?;
         let restored_findings = review::restore_ledger(&input.finding_state)?;
         let prior_findings =
             (restored_findings.cycle() > 0).then(|| review::render(&restored_findings));
-        let applied =
-            match initial_write(&input, &observe, design.markdown(), prior_findings.as_deref())
-                .await?
-            {
-                AppliedTurn::Applied(applied) => applied,
-                AppliedTurn::Waiting { question, conversation_revision } => {
-                    return Ok(ProductRunOutcome::WaitingForUser {
-                        question,
-                        conversation_revision,
-                    });
-                }
-            };
+        let applied = match initial_write(
+            &input,
+            &observe,
+            design.markdown(),
+            prior_findings.as_deref(),
+            &mut workspace_ownership,
+        )
+        .await?
+        {
+            AppliedTurn::Applied(applied) => applied,
+            AppliedTurn::Waiting { question, conversation_revision } => {
+                return Ok(ProductRunOutcome::WaitingForUser { question, conversation_revision });
+            }
+        };
         let mut state = RunState {
             task_summary: applied.summary,
             run_instructions: applied.run_instructions,
@@ -86,6 +90,7 @@ impl ProductRunner {
                     state.coordinator.completed_fixer_cycles() + 2,
                     state.design.markdown(),
                     Some(&prior),
+                    &mut workspace_ownership,
                 )
                 .await?
                 {
@@ -148,8 +153,14 @@ impl ProductRunner {
                     }));
                 }
                 ProductionDecision::Fix => {
-                    if let Some(waiting) =
-                        apply_fix(&input, &observe, &inspected, &mut state).await?
+                    if let Some(waiting) = apply_fix(
+                        &input,
+                        &observe,
+                        &inspected,
+                        &mut state,
+                        &mut workspace_ownership,
+                    )
+                    .await?
                     {
                         return Ok(waiting);
                     }

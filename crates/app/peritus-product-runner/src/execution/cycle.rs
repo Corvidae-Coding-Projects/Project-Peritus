@@ -8,7 +8,7 @@ use super::{
 };
 use crate::{
     ProductRunnerError, ProductRunnerErrorKind, bundle, candidate::CandidateBaseline, design,
-    gates, provider, review,
+    developer_tools::WorkspaceOwnership, gates, provider, review,
 };
 
 #[derive(Default)]
@@ -31,6 +31,7 @@ pub(super) async fn initial_write(
     observe: &RunObserver,
     design: &str,
     findings: Option<&str>,
+    ownership: &mut WorkspaceOwnership,
 ) -> Result<AppliedTurn, ProductRunnerError> {
     check_cancelled(input)?;
     emit(
@@ -49,6 +50,7 @@ pub(super) async fn initial_write(
         1,
         design,
         findings,
+        ownership,
     )
     .await
 }
@@ -181,6 +183,7 @@ pub(super) async fn apply_fix(
     observe: &RunObserver,
     inspected: &CycleInspection,
     state: &mut RunState,
+    ownership: &mut WorkspaceOwnership,
 ) -> Result<Option<ProductRunOutcome>, ProductRunnerError> {
     let fixer_cycle = state.coordinator.completed_fixer_cycles() + 1;
     emit(
@@ -204,6 +207,7 @@ pub(super) async fn apply_fix(
         fixer_cycle,
         state.design.markdown(),
         Some(&findings),
+        ownership,
     )
     .await?;
     match turn {

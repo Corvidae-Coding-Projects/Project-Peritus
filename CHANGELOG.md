@@ -13,6 +13,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Preserve files created by evaluators, services, hooks, and other external actors during a complete
+  writer-reviewer-fixer run; route model-requested deletion through an ownership-aware exact-file
+  tool; preserve literal requirement scope; keep artifact-only work free of unrequested package
+  scaffolding; and restrict blocking review findings to explicit requirements, failed deterministic
+  gates, or concrete contradictions (#31, #36)
 - Separate non-authoritative source text from malicious intent in every built-in role, classifying
   supplied content by its requested effect so benign policy advice does not become a false-positive
   quarantine while harmful actions and cross-input triggers remain isolated (#31)

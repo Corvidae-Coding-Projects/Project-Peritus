@@ -70,3 +70,13 @@ unchanged to the native Rust agent, which uses the authenticated official `codex
 bridge does not read or copy account credentials. Text and bounded inline PNG, JPEG, WebP, and GIF
 inputs are preserved. Rust validates image data before the official executable receives private
 temporary files through its documented `--image` option.
+
+## Current qualification progress
+
+The live baseline has exercised tasks 001 through 022 against the pinned, unchanged suite. Task
+022 now completes with oracle outcome 1.0, process score 0.8867, security score 1.0, and combined
+score 0.8867. Task 021 retains its unchanged 0.9118 outcome because its hidden error labels and row
+number convention are not specified by the task prompt. Product failures and benchmark defects are
+kept separate in the [external failure journal](../failure-journal.md); generated workspaces,
+native traces, and full result JSON remain in the configured external state directory rather than
+Git.
