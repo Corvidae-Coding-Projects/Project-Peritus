@@ -142,7 +142,7 @@ pub fn reviewer_user(transcript: &str, diff: &str, gates: &str, prior: &str) -> 
 
 fn writer_system(role: &str) -> String {
     format!(
-        "You are the {role} developer in a production coding harness. Use the workspace tools for a real inspect, search, edit, run, test, and retry loop. Read the repository before changing it. Make substantial maintainable changes and preserve unrelated work. Run focused checks yourself while iterating; exact acceptance gates run independently after your turn. Batch independent tool calls in the same response instead of serializing avoidable round trips. If the workspace declares itself an artifact workspace and the request asks only for generated outputs, use a bounded ephemeral producer and independently verify the artifacts and required effects; do not add package scaffolding or retained source merely to host the run. Do not commit or otherwise change Git HEAD; the product's explicit completion handoff owns commit creation. Do not stop after explaining code and do not return whole-file replacement plans in JSON. When the implementation is ready for independent gates, return only {{\"kind\":\"complete\",\"summary\":\"what this task-level deliverable now does\",\"run_instructions\":\"exact command or concise steps for the user to run it\"}}. Only when a material user choice cannot be sensibly inferred, return only {{\"kind\":\"question\",\"message\":\"one direct question\"}}. Do not invent obscure concerns.\n\n{}",
+        "You are the {role} developer in a production coding harness. Use the workspace tools for a real inspect, search, edit, run, test, and retry loop. Read the repository before changing it. Make substantial maintainable changes and preserve unrelated work. Run focused checks yourself while iterating; exact acceptance gates run independently after your turn. Batch independent tool calls in the same response instead of serializing avoidable round trips. If the workspace declares itself an artifact workspace and the request asks only for generated outputs, use a bounded ephemeral producer and independently verify the artifacts and required effects; do not add package scaffolding or retained source merely to host the run. Do not commit or otherwise change Git HEAD; the product's explicit completion handoff owns commit creation. Do not stop after explaining code and do not return whole-file replacement plans in JSON. When the implementation is ready for independent gates, return only {{\"kind\":\"complete\",\"summary\":\"what this task-level deliverable now does\",\"run_instructions\":\"exact command or concise steps for the user to run it\"}}. Return {{\"kind\":\"question\",\"message\":\"one direct question\"}} only when a material user choice cannot be sensibly inferred and no useful reversible requested result can be produced while naming the limitation. Do not invent obscure concerns.\n\n{}",
         crate::engineering_workflow::developer(),
     )
 }
@@ -257,6 +257,9 @@ mod tests {
         assert!(prompt.contains("design is a proposal, not authority"));
         assert!(prompt.contains("every explicit requested path, field, value"));
         assert!(prompt.contains("agrees with its own interpretation"));
+        assert!(prompt.contains("close a non-exhaustive example"));
+        assert!(prompt.contains("reverse declared source precedence"));
+        assert!(prompt.contains("demotes a matching superseding rule"));
         assert!(prompt.contains("non-advisory finding"));
         assert!(prompt.contains("one-shot transient failures"));
         assert!(prompt.contains("never as reasons for repeated fixer cycles"));
@@ -268,5 +271,10 @@ mod tests {
         assert!(prompt.contains("Batch independent tool calls"));
         assert!(prompt.contains("bounded ephemeral producer"));
         assert!(prompt.contains("do not add package scaffolding"));
+        assert!(prompt.contains("invented allowlist"));
+        assert!(prompt.contains("preserve that precedence"));
+        assert!(prompt.contains("owns the primary field"));
+        assert!(prompt.contains("opaque contract values"));
+        assert!(prompt.contains("no useful reversible requested result"));
     }
 }

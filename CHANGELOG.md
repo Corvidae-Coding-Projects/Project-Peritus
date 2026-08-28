@@ -13,6 +13,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Keep constructible requested work moving when authoritative inputs expose an awkward canonical
+  identifier: treat registered identifiers as opaque contract values, preserve factual evidence,
+  ask only for genuinely material choices, make matching superseding rules own primary authority
+  fields, and stop a blocker that survives two complete fixer/reviewer attempts even when candidate
+  bytes continue changing (#31)
 - Validate every changed CSV in an artifact workspace with a native exact-target gate before
   acceptance, rejecting ragged rows, invalid quote placement, unterminated quoted fields, invalid
   UTF-8, and oversized inputs even when a model-authored check incorrectly reports success (#31)
@@ -72,6 +77,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Retain the exact last product-run diff, gates, review ledger, summary, and durable finding state
+  beside every external benchmark invocation so a strict internal rejection remains independently
+  diagnosable after the upstream scorer exits (#31)
 - Pin the complete local HarnessBench Python and oracle environment, including pytest, so executable
   task oracles cannot disappear from a full-suite run because of undeclared host tools (#31)
 - Add deterministic workspace image discovery with signature, count, per-file, and total-size

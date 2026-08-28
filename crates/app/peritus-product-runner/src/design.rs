@@ -215,6 +215,11 @@ mod tests {
         assert!(prompt.contains("original request's literal paths, values, operations"));
         assert!(prompt.contains("Do not override an explicit expected value"));
         assert!(prompt.contains("broadening a narrowly scoped rule"));
+        assert!(prompt.contains("non-exhaustive"));
+        assert!(prompt.contains("preserve that precedence"));
+        assert!(prompt.contains("owns the primary field"));
+        assert!(prompt.contains("opaque contract values"));
+        assert!(prompt.contains("reversible requested artifact"));
         assert!(prompt.contains("without inventing package scaffolding"));
     }
 }

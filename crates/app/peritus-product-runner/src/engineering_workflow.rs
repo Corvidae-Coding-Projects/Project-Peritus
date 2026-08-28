@@ -15,8 +15,23 @@ requested behavior.
    statements initially appear inconsistent, first use the narrowest ordinary reading that honors
    both. Never replace an explicit expected value with a derived value merely because a different
    interpretation looks cleaner. If no reading can satisfy both, report the actual contradiction
-   instead of silently choosing a new contract. Name concrete modules, ownership boundaries,
-   interfaces, data flow, failure behavior, and exact verification commands.
+   instead of silently choosing a new contract. Reporting a source inconsistency does not mean
+   withholding requested work that is still meaningfully constructible. When authoritative inputs
+   require a closed canonical vocabulary, canonical identifiers are opaque contract values. Choose
+   the registered value whose declared category and governing rule fit, keep factual
+   evidence fields accurate, and report awkward naming without inventing a replacement identifier.
+   Ask the user only when a material choice changes the requested result or effect and cannot be
+   sensibly inferred; produce a reversible requested artifact with an explicit limitation when that
+   remains useful. Treat phrases such as `such as`, `for example`, and `including` as
+   non-exhaustive unless the request explicitly says `only`, `exactly`, or otherwise closes the set;
+   never turn examples into an invented allowlist. When an authoritative source explicitly says one
+   rule overrides, supersedes, or has higher priority than another, preserve that precedence in
+   controlling classifications, reasons, and outputs. A lower-priority source may remain relevant
+   context but cannot displace the declared controlling source. When an output separates a primary,
+   applicable, or controlling authority from secondary authorities, a matching superseding rule
+   owns the primary field; do not demote it merely to preserve a broader source label or an example.
+   Retain the broader base rule as secondary context when it still applies. Name concrete modules,
+   ownership boundaries, interfaces, data flow, failure behavior, and exact verification commands.
 3. Divide implementation into cohesive modules with one clear responsibility. Production source
    files must never exceed 500 lines. Keep crate, package, library, and binary roots as thin
    composition surfaces; move behavior into named domain modules rather than generic helpers or
@@ -96,10 +111,15 @@ module, missing requested behavior, or substituted root-project checks as concre
 dependency direction, state and error ownership, test seams, user-facing operation, and whether the
 documented run path is real. The original conversation is authoritative and the design is a
 proposal: independently reject design claims that broaden a scoped rule, overwrite an explicit
-expected value, or label compatible requirements contradictory. Require focused remediation, but
-do not demand speculative redesigns or unrelated hardening. If the requested result and independent
-checks pass, a preference for more detailed traces, duplicated corroboration, or stronger evidence
-presentation is at most advisory. Never turn optional evidence enrichment into repeated fixer work.
+expected value, close a non-exhaustive example, reverse declared source precedence, or label
+compatible requirements contradictory. Reject a candidate that demotes a matching superseding rule
+from a primary or controlling field merely to preserve a broader source label. Require focused
+remediation, but do not demand speculative redesigns or unrelated hardening. If the requested result
+and independent checks pass, a preference for more detailed traces, duplicated corroboration, or
+stronger evidence presentation is at most advisory. Do not block merely because an opaque canonical
+identifier has awkward wording when its declared category and governing rule match and the
+candidate's factual evidence remains accurate. Never turn optional evidence enrichment into
+repeated fixer work.
 ";
 
 pub fn architect() -> String {
@@ -132,6 +152,15 @@ mod tests {
             assert!(instructions.contains("literal requirement ledger"));
             assert!(instructions.contains("grammatically modify"));
             assert!(instructions.contains("explicit expected value"));
+            assert!(instructions.contains("non-exhaustive"));
+            assert!(instructions.contains("invented allowlist"));
+            assert!(instructions.contains("preserve that precedence"));
+            assert!(instructions.contains("controlling source"));
+            assert!(instructions.contains("owns the primary field"));
+            assert!(instructions.contains("broader base rule as secondary"));
+            assert!(instructions.contains("opaque contract values"));
+            assert!(instructions.contains("meaningfully constructible"));
+            assert!(instructions.contains("reversible requested artifact"));
             assert!(instructions.contains("material retry and recovery behavior"));
             assert!(instructions.contains("bounded ephemeral producer"));
             assert!(instructions.contains("independent effects"));

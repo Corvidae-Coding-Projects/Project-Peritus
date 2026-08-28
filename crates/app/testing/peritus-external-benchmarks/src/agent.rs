@@ -2,18 +2,23 @@
 
 use std::{
     fs,
-    sync::{Arc, atomic::AtomicBool},
+    path::{Path, PathBuf},
+    sync::{Arc, Mutex, atomic::AtomicBool},
     time::Instant,
 };
 
-use peritus_product_runner::{ProductRunInput, ProductRunOutcome, ProductRunner, RunObserver};
+use peritus_product_runner::{
+    ProductRunInput, ProductRunOutcome, ProductRunUpdate, ProductRunner, RunObserver,
+};
 use peritus_provider_core::CancellationToken;
 use peritus_types::RunId;
 use sha2::{Digest, Sha256};
 
 use crate::{
-    BenchmarkError, args::HarnessBenchInput, evidence::RunReport, providers, session, trace,
-    workspace,
+    BenchmarkError,
+    args::HarnessBenchInput,
+    evidence::{ProductObservation, RunReport},
+    providers, session, trace, workspace,
 };
 
 pub async fn run_harnessbench(input: HarnessBenchInput) -> Result<RunReport, BenchmarkError> {
@@ -40,12 +45,7 @@ pub async fn run_harnessbench(input: HarnessBenchInput) -> Result<RunReport, Ben
     let usage_proxy = sandbox.join("usage-proxy");
     let cancellation = CancellationToken::new();
     let role_providers = providers::authenticated(&cancellation).await?;
-    let observer: RunObserver = Arc::new(|update| {
-        eprintln!(
-            "[peritus-benchmark] {:?} cycle {}: {}",
-            update.phase, update.cycle, update.status
-        );
-    });
+    let (observer, last_observation) = observation_capture();
     let result = ProductRunner::run(
         ProductRunInput {
             run_id: run_id(&input.session_id, &input.task_id)?,
@@ -69,6 +69,7 @@ pub async fn run_harnessbench(input: HarnessBenchInput) -> Result<RunReport, Ben
         &input.session_id,
         &input.model_id,
     )?;
+    let last_observation_path = publish_last_observation(&last_observation, &evidence_dir)?;
     let (success, summary, changed_paths, failure_kind, failure) = match result {
         Ok(ProductRunOutcome::Complete(output)) => {
             (true, Some(output.summary), output.changed_paths, None, None)
@@ -85,7 +86,7 @@ pub async fn run_harnessbench(input: HarnessBenchInput) -> Result<RunReport, Ben
         ),
     };
     let report = RunReport {
-        schema_version: 2,
+        schema_version: 3,
         success,
         task_id: input.task_id,
         session_id: input.session_id,
@@ -102,6 +103,7 @@ pub async fn run_harnessbench(input: HarnessBenchInput) -> Result<RunReport, Ben
         session_trace_paths: trace_inputs.into_iter().map(|(path, _)| path).collect(),
         usage_proxy,
         projected_responses,
+        last_observation_path,
         summary,
         changed_paths,
         failure_kind,
@@ -109,6 +111,36 @@ pub async fn run_harnessbench(input: HarnessBenchInput) -> Result<RunReport, Ben
     };
     report.publish(&evidence_dir)?;
     Ok(report)
+}
+
+type ObservationCapture = Arc<Mutex<Option<ProductRunUpdate>>>;
+
+fn observation_capture() -> (RunObserver, ObservationCapture) {
+    let capture = Arc::new(Mutex::new(None));
+    let sink = Arc::clone(&capture);
+    let observer: RunObserver = Arc::new(move |update| {
+        eprintln!(
+            "[peritus-benchmark] {:?} cycle {}: {}",
+            update.phase, update.cycle, update.status
+        );
+        if let Ok(mut last) = sink.lock() {
+            *last = Some(update);
+        }
+    });
+    (observer, capture)
+}
+
+fn publish_last_observation(
+    capture: &ObservationCapture,
+    directory: &Path,
+) -> Result<Option<PathBuf>, BenchmarkError> {
+    capture
+        .lock()
+        .ok()
+        .and_then(|mut observation| observation.take())
+        .map(ProductObservation::from_update)
+        .map(|observation| observation.publish(directory))
+        .transpose()
 }
 
 fn run_id(session_id: &str, task_id: &str) -> Result<RunId, BenchmarkError> {

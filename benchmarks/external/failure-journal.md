@@ -492,6 +492,63 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   ground-truth conventions. Do not duplicate one rename into missing and orphan claims or emit a
   forbidden merged citation key.
 
+## HBF-008: source contradiction caused premature clarification and fixer churn
+
+- Suite and task: HarnessBench 2.0, `037-policy-clause-retrieval`.
+- Symptom: an initial run produced a usable complete candidate, then repeated writer/reviewer/fixer
+  work until the unchanged 900-second task deadline killed the adapter. A later diagnostic run
+  noticed that AM-1 requires `needs_review` for attached finance approval while the closed registry
+  offers only `domestic_over_cap_approval_missing`; it asked the user before writing either required
+  artifact and scored zero.
+- Cause: the workflow treated an awkward canonical identifier as a factual assertion and treated a
+  reportable source inconsistency as a reason to withhold otherwise constructible output. It also
+  tracked only candidate-byte convergence, so changing drafts could hide the same stable blocking
+  finding. The benchmark adapter retained the native developer trace but discarded the last exact
+  gate and review observation needed to diagnose a strict internal rejection.
+- Change: registered canonical identifiers are now treated as opaque contract values while factual
+  evidence fields remain accurate. Questions are reserved for material choices that prevent a
+  useful reversible result. Matching superseding rules own primary/applicable authority fields,
+  with broader base rules retained as secondary context. The fixer progress tracker independently
+  bounds a blocker that survives two fresh fixer/reviewer attempts even if candidate bytes change.
+  External runs now write their last exact diff, gates, review ledger, summary, and durable finding
+  state to `last-product-observation.json`.
+- Regression evidence: focused tests change the candidate twice while admitting the same blocker
+  through three reviews and prove deterministic exhaustion; a changed blocker identity receives a
+  fresh attempt budget. The product-runner's 34 focused tests and strict Clippy pass.
+- After evidence: local report
+  `reports/037-policy-clause-retrieval-post-authority-convergence.json`; the unchanged task wrote and
+  independently validated all 11 case rulings, all three line rulings, and all 11 CSV rows. It
+  terminated before the external deadline in 794.0 seconds with outcome 0.74, process 0.9467,
+  security 1.0, combined 0.7005, 34 projected provider responses, and 735,818 tokens. The strict
+  native review still ended through the existing two-unchanged-candidate guard because the supplied
+  canonical code remains factually contradictory; the upstream oracle nevertheless grades the
+  retained artifacts. Repeated semantic rereads remain a measured efficiency limitation for the
+  later professional-capability audit, not a reason to change this task's timeout.
+
+## HBI-018: task 037 requires hidden policy quotations and mixed authority conventions
+
+- Suite and task: HarnessBench 2.0, `037-policy-clause-retrieval`.
+- Symptom: every case decision and canonical reason code passes, all required files and rows are
+  present, summary aggregation scores 1.0, and the process rubric scores 0.9467, but the unchanged
+  outcome remains capped at 0.74.
+- Cause: `quote_or_signal` explicitly permits case-grounded signals, while the oracle requires every
+  hidden verbatim policy token for each case; accurate values such as
+  `amount_usd=330; manager_preapproval=true` therefore miss `above USD 310` and `finance review`.
+  For mixed line L1 it additionally requires the unused upper threshold `240`; for L3 it requires
+  the word `project` inside `missing_information` even though `clear assigned-work business purpose`
+  names the requested missing information. The ground truth also omits AM-1 from T107 despite its
+  specific missing-approval branch, but requires AM-1 and AM-3 as primary for matching T110 lines,
+  and requires the case-level secondary list to aggregate underlying line authorities even though
+  the prompt describes that field in terms of exception clauses affecting the ruling.
+- Evidence: local report
+  `reports/037-policy-clause-retrieval-post-authority-convergence.json`; clauses 10/11, decisions
+  11/11, reason codes 11/11, blocking conditions 10/11, summary 1.0, and one of three composite
+  hidden line checks. The produced line rulings correctly make AM-1 and AM-3 primary where their
+  explicit superseding preconditions match.
+- Disposition: retain the unchanged 0.74 score. Do not replace useful case signals with unpublished
+  token strings, add irrelevant threshold prose, or change accurate missing-information fields only
+  to satisfy hidden lexical checks.
+
 ## HBF-005: a fixer deleted evaluator-owned evidence
 
 - Suite and task: HarnessBench 2.0, `022-local-rest-api-summary`.

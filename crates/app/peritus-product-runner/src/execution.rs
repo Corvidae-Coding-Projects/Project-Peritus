@@ -118,6 +118,21 @@ impl ProductRunner {
             if inspected.conversation_changed {
                 continue;
             }
+            if let Some(finding) = state.fix_progress.observe_findings(&state.findings) {
+                let location = if finding.location.trim().is_empty() {
+                    String::new()
+                } else {
+                    format!(" at {}", finding.location)
+                };
+                return Err(ProductRunnerError::new(
+                    ProductRunnerErrorKind::Gate,
+                    "verify coding run",
+                    format!(
+                        "blocking review finding remained after two fresh fixer/reviewer cycles: {}{location}; the latest candidate and review evidence were retained for correction or continuation",
+                        finding.title,
+                    ),
+                ));
+            }
             match state.coordinator.decide(&inspected.gates.report, &state.findings) {
                 ProductionDecision::Accept => {
                     let changed_paths = inspected.gates.report.changed_paths().to_vec();
