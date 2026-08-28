@@ -9,7 +9,7 @@ use peritus_platform_qualification::{
 };
 
 #[test]
-fn production_layouts_keep_configuration_and_state_outside_package_ownership() {
+fn production_layouts_keep_generated_configuration_and_state_outside_package_ownership() {
     for (platform, home) in [
         (Platform::Linux, "/home/alice"),
         (Platform::Macos, "/Users/alice"),
@@ -27,7 +27,7 @@ fn production_layouts_keep_configuration_and_state_outside_package_ownership() {
             .iter()
             .find(|entry| entry.path() == layout.state_root())
             .expect("state entry");
-        assert_eq!(config.ownership(), PathOwnership::Operator);
+        assert_eq!(config.ownership(), PathOwnership::Runtime);
         assert_eq!(state.ownership(), PathOwnership::Runtime);
         assert!(config.preserve_on_uninstall());
         assert!(state.preserve_on_uninstall());

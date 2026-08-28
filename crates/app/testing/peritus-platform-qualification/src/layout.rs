@@ -134,7 +134,7 @@ impl ReleaseLayout {
         &self.helper_directory
     }
 
-    /// Borrows the operator-owned strict daemon configuration path.
+    /// Borrows the launcher-generated strict daemon configuration path.
     #[must_use]
     pub const fn config_file(&self) -> &InstallPath {
         &self.config_file
@@ -152,7 +152,7 @@ impl ReleaseLayout {
         &self.log_root
     }
 
-    /// Borrows the installed supervisor definition path.
+    /// Borrows the installed optional supervisor-template path.
     #[must_use]
     pub const fn service_definition(&self) -> &InstallPath {
         &self.service_definition
@@ -230,7 +230,7 @@ fn linux_paths(home: &InstallPath) -> Result<ProductionPaths, QualificationError
         config_file: home.join(Platform::Linux, ".config/peritus/peritus.toml")?,
         state_root: home.join(Platform::Linux, ".local/state/peritus")?,
         log_root: home.join(Platform::Linux, ".local/state/peritus/log")?,
-        service: home.join(Platform::Linux, ".config/systemd/user/peritus.service")?,
+        service: home.join(Platform::Linux, ".local/share/peritus/peritus.service")?,
     })
 }
 
@@ -243,7 +243,10 @@ fn macos_paths(home: &InstallPath) -> Result<ProductionPaths, QualificationError
             .join(Platform::Macos, "Library/Application Support/Peritus/config/peritus.toml")?,
         state_root: home.join(Platform::Macos, "Library/Application Support/Peritus/state")?,
         log_root: home.join(Platform::Macos, "Library/Logs/Peritus")?,
-        service: home.join(Platform::Macos, "Library/LaunchAgents/com.corvidae.peritus.plist")?,
+        service: home.join(
+            Platform::Macos,
+            "Library/Application Support/Peritus/share/peritus/com.corvidae.peritus.plist.in",
+        )?,
     })
 }
 
@@ -255,7 +258,7 @@ fn windows_paths(home: &InstallPath) -> Result<ProductionPaths, QualificationErr
         state_root: home.join(Platform::Windows, "AppData/Local/Peritus/state")?,
         log_root: home.join(Platform::Windows, "AppData/Local/Peritus/logs")?,
         service: home
-            .join(Platform::Windows, "AppData/Local/Peritus/supervisor/Peritus.Task.xml")?,
+            .join(Platform::Windows, "AppData/Local/Programs/Peritus/share/Peritus.Task.xml.in")?,
     })
 }
 
@@ -331,7 +334,7 @@ fn production_entries(
         LayoutEntry::new(
             paths.config_file.clone(),
             EntryKind::File,
-            PathOwnership::Operator,
+            PathOwnership::Runtime,
             permissions.private_file,
             true,
         ),

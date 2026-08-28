@@ -36,6 +36,7 @@
 # Rust and Verus build output.
 /target/
 /target-verus/
+/dist/
 
 # Compatibility payloads are checked in as reviewable hexadecimal text.
 /compat/app-protocol/**/payload.bin

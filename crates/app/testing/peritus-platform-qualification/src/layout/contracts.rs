@@ -7,7 +7,7 @@ pub enum PathOwnership {
     Package,
     /// Provisioned by the operator and never overwritten or removed by ordinary package actions.
     Operator,
-    /// Created and reconciled by `peritusd`; removed only by explicit purge.
+    /// Created and reconciled by the Peritus application runtime; removed only by explicit purge.
     Runtime,
 }
 

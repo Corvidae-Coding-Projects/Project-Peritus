@@ -25,6 +25,9 @@ Commands:
   reproducibility-check  Validate toolchain pins, lock policy, and immutable CI inputs
   toolchain-check        Probe installed Rust, Verus, vstd metadata, and bundled Z3
   verify-trust           Reject trusted Verus constructs outside approved roots
+  product-package        Build a host-native checked Peritus package in dist/
+  product-install        Build and install Peritus for the current user
+  product-package-smoke  Qualify native install, repeat launch, upgrade, and uninstall
   help                   Print this help
 ";
 
@@ -38,6 +41,9 @@ enum Command {
     Reproducibility,
     Toolchain,
     Trust,
+    ProductPackage,
+    ProductInstall,
+    ProductPackageSmoke,
     Help,
 }
 
@@ -191,9 +197,30 @@ pub(crate) fn execute(
                 &format!("verify-trust passed: {files} source file(s) scanned\n"),
             )?;
         }
+        Command::ProductPackage | Command::ProductInstall | Command::ProductPackageSmoke => {
+            execute_product(command, root, output)?;
+        }
         Command::Help => {}
     }
     Ok(())
+}
+
+fn execute_product(
+    command: Command,
+    root: &Path,
+    output: &mut dyn Write,
+) -> Result<(), XtaskError> {
+    let (package, message) = match command {
+        Command::ProductPackage => (crate::product_package::build(root)?, "product package ready"),
+        Command::ProductInstall => {
+            (crate::product_package::install(root)?, "product installed; start it with `peritus`")
+        }
+        Command::ProductPackageSmoke => {
+            (crate::product_package::smoke(root)?, "native product lifecycle passed")
+        }
+        _ => return Err(XtaskError::invocation("command is not a product packaging operation")),
+    };
+    write_output(output, &format!("{message}: {}\n", package.display()))
 }
 
 fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError> {
@@ -213,6 +240,9 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
         Some("reproducibility-check") => Ok(Command::Reproducibility),
         Some("toolchain-check") => Ok(Command::Toolchain),
         Some("verify-trust") => Ok(Command::Trust),
+        Some("product-package") => Ok(Command::ProductPackage),
+        Some("product-install") => Ok(Command::ProductInstall),
+        Some("product-package-smoke") => Ok(Command::ProductPackageSmoke),
         Some("help" | "-h" | "--help") | None => Ok(Command::Help),
         Some(command) => Err(XtaskError::invocation(format!(
             "unknown command `{command}`; run `cargo xtask help` for the supported interface"

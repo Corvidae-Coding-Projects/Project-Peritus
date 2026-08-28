@@ -104,7 +104,7 @@ The implemented foundation and runtime spine now covers:
   process and Wasmtime-CLI plugin hosting, authority-mediated invocation, lifecycle quotas and
   cancellation, plus a bounded MCP 2025-06-18 JSON-RPC server for authority-filtered tools,
   resources, and prompts, backed by a seven-case runtime-neutral A2 plugin contract; and
-- G4 (in progress): the `peritus` no-argument product entry now discovers platform-native
+- G4: the `peritus` no-argument product entry discovers platform-native
   per-user directories, creates protected roots and stable local identities, publishes a canonical
   public approval registry and strict daemon configuration, resumes immutable-generation setup
   state, resolves a version-matched packaged `peritusd`, and starts or reuses its local endpoint
@@ -118,8 +118,14 @@ The implemented foundation and runtime spine now covers:
   in restricted mode, creates a separate application-managed detached worktree when trusted,
   publishes and recovers canonical C1 registrations, reports clean/dirty/repair state, switches or
   forgets entries through `peritus workspaces`, and restarts a running daemon only when generated
-  configuration changed. The task composer and native product qualification remain required before
-  this is a complete user experience; and
+  configuration changed. Its daemon-owned coding-run service accepts a task and explicit provider
+  choice for each role, executes the writer, repository checks, independent reviewer, and bounded
+  fixer loop in the managed worktree, persists every visible phase, recovers interrupted records,
+  and supports query, cancellation, and retry through canonical A3 messages. The TUI provides an
+  accessible task composer, textual progress timeline, diff and review/check views, role-provider
+  switching, cancellation, and retry. Host-native package assembly now installs the launcher,
+  daemon, TUI, sandbox helper, lifecycle scripts, manifest, and checksums while preserving product
+  state across repeat install, upgrade, rollback, and uninstall; and
 - H0: a verified exact-candidate security-readiness policy plus a 42-case fresh-native-subject
   campaign covering R-SEC-001 through R-SEC-007, the nine security-relevant acceptance criteria,
   malicious repositories, native sandboxes, role isolation, evidence invalidation, evolution,
@@ -141,9 +147,9 @@ The implemented foundation and runtime spine now covers:
   inputs, independent final audit, content-addressed evidence, and a fail-closed composition adapter
   that cannot sign, tag, publish, deploy, or manufacture evidence.
 
-All original architecture slices A0 through H4 now have implemented code, tests, formal-policy
-surfaces, schemas, and operating documentation. G4 product composition is now an explicit release
-requirement and remains in progress. G3 deliberately cannot mint C4/B1 authority:
+All original architecture slices A0 through H4 and the G4 product composition now have implemented
+code, tests, formal-policy surfaces, schemas, and operating documentation. G3 deliberately cannot
+mint C4/B1 authority:
 packaged application embedding must supply a current daemon-owned mediator for each exact run,
 workspace, and target. Qualification machinery does not fabricate a production verdict. A release
 still requires running the H0-H4 campaigns against the exact final commit, retaining reviewed
@@ -156,21 +162,27 @@ supply-chain policy, pinned toolchains, full Verus verification, and verified re
 all pass together. Required GitHub-hosted checks now execute on Ubuntu, macOS, and Windows, with a
 separate locked Foundation matrix covering the same platform, dependency, and Verus boundaries.
 
-## Trying the current development build
+## Install and run the current product build
 
-G4 packaging is still in progress, so a source checkout needs one build step. After that, ordinary
-use is the single product command; no endpoint, provider export, or hand-written configuration is
-required:
+From a source checkout, build the checked host-native package and install it for the current user:
 
 ```text
-cargo build --workspace --bins --locked
-target/debug/peritus
+cargo xtask product-install
+```
+
+After installation, ordinary use is one command. It requires no endpoint, provider export, or
+hand-written configuration:
+
+```text
+peritus
 ```
 
 Run it from inside a Git repository to use that repository automatically. Use `peritus open
 [PATH]`, `peritus providers`, or `peritus workspaces` for an explicit workspace, provider settings,
-or workspace settings. The [G4 product-experience guide](docs/g4-product-experience.md) explains
-onboarding, trust, managed worktrees, state locations, and recovery.
+or workspace settings. Press `n` in the Runs view to describe a coding task; `w`, `e`, and `f`
+select the writer, reviewer, and fixer providers. The
+[G4 product-experience guide](docs/g4-product-experience.md) explains onboarding, trust, coding
+runs, native packaging, state locations, and recovery.
 
 ## Foundation checks
 

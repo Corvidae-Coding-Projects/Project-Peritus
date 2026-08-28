@@ -24,16 +24,19 @@ Every target package contains the three application processes and its C3 helper:
 The helper is an inert C3 implementation artifact until the C2 gateway consumes exact authority
 and invokes the admitted backend. It is never a general process launcher.
 
-G0 has one production invocation:
+G0 has one direct foreground invocation for supervisors and diagnostics:
 
 ```text
 peritusd serve --config <absolute-path-to-peritus.toml>
 ```
 
-systemd, launchd, and Task Scheduler supervise that foreground process directly. No package uses a
-shell wrapper, hidden daemonization flag, remote transport, or service-specific daemon command.
-The G0-only `qualify-pty` and outbox qualification commands remain test administration entry points
-and are not used for normal service startup.
+When an operator explicitly enables a future always-on runner mode, systemd, launchd, or Task
+Scheduler supervises that foreground process directly. The ordinary product package only retains
+the reviewed supervisor definition as an inactive template: `peritus` owns protected first-run
+configuration and bounded daemon startup or reuse. No path uses a shell wrapper, hidden
+daemonization flag, remote transport, or service-specific daemon command. The G0-only
+`qualify-pty` and outbox qualification commands remain test administration entry points and are
+not used for normal product startup.
 
 The packaged `peritus` product entry discovers these paths and its stable endpoint automatically:
 
@@ -61,16 +64,17 @@ concrete home directory.
 | --- | --- |
 | Package | `~/.local/bin/{peritusd,peritus,peritus-tui}` |
 | Package | `~/.local/libexec/peritus/peritus-linux-sandbox-helper` |
-| Package | `~/.config/systemd/user/peritus.service` |
-| Operator | `~/.config/peritus/peritus.toml` |
+| Package | `~/.local/share/peritus/peritus.service` (inactive template) |
+| Runtime | `~/.config/peritus/peritus.toml` |
 | Runtime | `~/.local/state/peritus` |
 | Runtime | `~/.local/state/peritus/log` |
 
-Directories containing protected data are mode `0700`; strict config, service definition, state
-files, and Unix endpoint are mode `0600`; installed executables are mode `0755`. systemd captures
-stdout/stderr in the user journal. The unit uses `UMask=0077`, a five-second failure restart delay,
-a five-attempt/300-second start limit, a 40-second shutdown bound, and `KillMode=mixed` so G0 gets
-the first orderly signal before the supervisor's terminal cleanup bound.
+Directories containing protected data are mode `0700`; strict config, service template, state
+files, and Unix endpoint are mode `0600`; installed executables are mode `0755`. If an operator
+later registers the template, systemd captures stdout/stderr in the user journal. The unit uses
+`UMask=0077`, a five-second failure restart delay, a five-attempt/300-second start limit, a
+40-second shutdown bound, and `KillMode=mixed` so G0 gets the first orderly signal before the
+supervisor's terminal cleanup bound.
 
 ### macOS
 
@@ -78,15 +82,16 @@ the first orderly signal before the supervisor's terminal cleanup bound.
 | --- | --- |
 | Package | `~/Library/Application Support/Peritus/bin/{peritusd,peritus,peritus-tui}` |
 | Package | `~/Library/Application Support/Peritus/libexec/peritus-macos-sandbox-helper` |
-| Package | `~/Library/LaunchAgents/com.corvidae.peritus.plist` |
-| Operator | `~/Library/Application Support/Peritus/config/peritus.toml` |
+| Package | `~/Library/Application Support/Peritus/share/peritus/com.corvidae.peritus.plist.in` (inactive template) |
+| Runtime | `~/Library/Application Support/Peritus/config/peritus.toml` |
 | Runtime | `~/Library/Application Support/Peritus/state` |
 | Runtime | `~/Library/Logs/Peritus` |
 
-The rendered LaunchAgent uses direct `ProgramArguments`, `RunAtLoad`, failure-only `KeepAlive`, a
-five-second throttle, umask `0077`, and separate owner-private stdout/stderr files. launchd has no
-finite retry-count analogue; H2 observes the native throttled failure restart instead of claiming
-the systemd/Task Scheduler attempt ceiling exists on macOS.
+If explicitly rendered and registered for always-on operation, the LaunchAgent uses direct
+`ProgramArguments`, `RunAtLoad`, failure-only `KeepAlive`, a five-second throttle, umask `0077`, and
+separate owner-private stdout/stderr files. launchd has no finite retry-count analogue; H2 observes
+the native throttled failure restart instead of claiming the systemd/Task Scheduler attempt ceiling
+exists on macOS.
 
 ### Windows
 
@@ -94,18 +99,18 @@ the systemd/Task Scheduler attempt ceiling exists on macOS.
 | --- | --- |
 | Package | `%LOCALAPPDATA%\Programs\Peritus\bin\{peritusd,peritus,peritus-tui}.exe` |
 | Package | `%LOCALAPPDATA%\Programs\Peritus\libexec\peritus-windows-sandbox-helper.exe` |
-| Package | `%LOCALAPPDATA%\Peritus\supervisor\Peritus.Task.xml` |
-| Operator | `%LOCALAPPDATA%\Peritus\config\peritus.toml` |
+| Package | `%LOCALAPPDATA%\Programs\Peritus\share\Peritus.Task.xml.in` (inactive template) |
+| Runtime | `%LOCALAPPDATA%\Peritus\config\peritus.toml` |
 | Runtime | `%LOCALAPPDATA%\Peritus\state` |
 | Runtime | `%LOCALAPPDATA%\Peritus\logs` |
 
 The installer removes inherited broad access and grants the current user full control over the
-package and protected data directories. The Task Scheduler definition uses an interactive-token,
-least-privilege principal, the exact current user logon trigger, direct executable plus arguments,
-five retries at five-second intervals, and no execution-time ceiling. Supervisor lifecycle is
-retained in the Task Scheduler Operational event log. Peritus telemetry remains disabled or the
-strict bounded local-file spool selected by G0 configuration; packaging does not invent a second
-application log sink.
+package and protected data directories. If explicitly registered for always-on operation, the Task
+Scheduler definition uses an interactive-token, least-privilege principal, the exact current user
+logon trigger, direct executable plus arguments, five retries at five-second intervals, and no
+execution-time ceiling. Supervisor lifecycle is retained in the Task Scheduler Operational event
+log. Peritus telemetry remains disabled or the strict bounded local-file spool selected by G0
+configuration; packaging does not invent a second application log sink.
 
 ## Configuration and endpoint discovery
 
@@ -149,24 +154,24 @@ digest before a subject trusts it.
 
 ## Install, upgrade, rollback, and uninstall
 
-`LifecyclePlan` separates package, supervisor, and runtime effects.
+`LifecyclePlan` separates package, optional supervisor, and runtime effects.
 
-Fresh install verifies the target and staged manifest, requires operator configuration, publishes
-package files by temporary sibling plus rename, applies exact modes/ACLs, registers autostart,
-starts G0, then requires authenticated G1 readiness on the derived endpoint. Failure compensation
-stops G0, removes supervisor registration, and removes only package-owned entries.
+Fresh product install verifies the target, manifest, and checksums, publishes package files by
+temporary sibling plus rename, applies exact modes or ACLs, and exposes `peritus` on the user's
+ordinary command path. It neither requires pre-existing configuration nor registers autostart. On
+the first invocation, the launcher creates protected configuration, performs provider and workspace
+onboarding, starts G0, and requires authenticated G1 readiness on the derived endpoint.
 
-Upgrade stops and observes the old daemon, snapshots only package-owned files, publishes and
-protects the new package, replaces the supervisor definition, starts G0, and waits for
-authenticated readiness. It then verifies protected config, state, and logs remain outside the
-package mutation set. If any forward step fails, rollback stops the new daemon, restores the prior
-package files and supervisor definition, restarts the prior package, and requires readiness before
-reporting restoration. Diagnostic logs are retained across the attempt.
+Upgrade snapshots only package-owned files, publishes and protects the new package, and leaves
+launcher-owned configuration, state, logs, and provider setup outside the mutation set. If any
+forward publication step fails, rollback restores the prior package files and inactive supervisor
+template. Diagnostic logs are retained across the attempt.
 
-Ordinary uninstall stops G0, unregisters autostart, removes the supervisor definition, helper, and
-application binaries, and verifies that configuration, durable state, logs, and credential stores
-remain. There is no purge path in the reviewed package scripts. Removing durable state requires a
-separate explicit operator action outside H2's ordinary uninstall authority.
+Ordinary uninstall removes the optional supervisor template, helper, and application binaries. It
+also unregisters a legacy supervisor entry when one exists, then verifies that configuration,
+durable state, logs, and credential stores remain. There is no purge path in the reviewed package
+scripts. Removing durable state requires a separate explicit operator action outside H2's ordinary
+uninstall authority.
 
 ## Platform and sandbox prerequisites
 
