@@ -79,7 +79,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 - Retain the exact last product-run diff, gates, review ledger, summary, and durable finding state
   beside every external benchmark invocation so a strict internal rejection remains independently
-  diagnosable after the upstream scorer exits (#31)
+  diagnosable after the upstream scorer exits; unchanged HarnessBench task 038 proves this evidence
+  path on a successful four-artifact synthesis run with a recovered provider timeout (#31)
 - Pin the complete local HarnessBench Python and oracle environment, including pytest, so executable
   task oracles cannot disappear from a full-suite run because of undeclared host tools (#31)
 - Add deterministic workspace image discovery with signature, count, per-file, and total-size

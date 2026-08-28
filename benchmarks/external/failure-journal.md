@@ -549,6 +549,35 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   token strings, add irrelevant threshold prose, or change accurate missing-information fields only
   to satisfy hidden lexical checks.
 
+## HBI-019: task 038 rejects real input paths and requires unpublished row citations
+
+- Suite and task: HarnessBench 2.0, `038-research-brief-synthesis`.
+- Symptom: the native run produced all four requested artifacts, passed deterministic CSV and
+  source-layout gates, and received a fresh independent review with no findings. The unchanged
+  oracle scores it 0.8469 (`good`) but reports zero source-note signal hits and only four of nine
+  evidence-matrix claim hits.
+- Cause: every source-note row names the actual workspace-relative input path, such as
+  `in/reports/operations.md`. The oracle accepts only exact `reports/operations.md` or a bare
+  basename, so its matcher rejects all six rows before checking their detailed source-specific
+  signals. Its matrix matcher also unconditionally requires nonempty `source_rows` for every hidden
+  claim, while the prompt requires rows or fields only “for metrics from `stats.csv`.” Five accurate
+  report-derived cost, survey, late-evening, finance, and maintenance rows therefore miss. The brief
+  covers the financial limitation as `fare-revenue`, but one hidden token requires the space-only
+  spelling `fare revenue`.
+- Evidence: local report `reports/038-research-brief-synthesis.json`; structure 5/5, required brief
+  terms 15/16, safety pass, all six actual source paths present, evidence-matrix score 0.8333,
+  assumptions score 0.95 with five linked entries, outcome 0.8469, process 0.8733, security 1.0,
+  combined 0.7396, and 28 projected provider responses in 718.88 seconds. The native invocation
+  reports success with four exact changed paths. Its retained `last-product-observation.json` shows
+  passing gates and an empty finding ledger.
+- Recovery observation: the first writer attempt reached Peritus's five-minute provider-process
+  bound without producing artifacts. Peritus terminated that attempt, started a fresh authenticated
+  Codex attempt, produced all four artifacts, and completed before the unchanged 900-second task
+  deadline. No recovery change was needed.
+- Disposition: retain the unchanged score and classify the lower checks as benchmark path,
+  unpublished-field, and lexical conventions. Do not remove the real `in/` path prefix, invent row
+  numbers for prose reports, or rewrite ordinary hyphenation solely for hidden matches.
+
 ## HBF-005: a fixer deleted evaluator-owned evidence
 
 - Suite and task: HarnessBench 2.0, `022-local-rest-api-summary`.

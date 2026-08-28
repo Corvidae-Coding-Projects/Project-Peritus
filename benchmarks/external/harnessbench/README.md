@@ -73,7 +73,7 @@ temporary files through its documented `--image` option.
 
 ## Current qualification progress
 
-The live baseline has exercised tasks 001 through 037 against the pinned, unchanged suite. Tasks
+The live baseline has exercised tasks 001 through 038 against the pinned, unchanged suite. Tasks
 022, 023, and 026 complete with oracle outcome 1.0. Tasks 021, 024, 025, 027, and 028 retain lower
 unchanged outcomes because of documented hidden taxonomies, invalid calendar ground truth,
 unmatchable normalization, or brittle unpublished phrase checks. Task 029 similarly retains a
@@ -92,6 +92,10 @@ the complete ruling artifacts, preserves superseding authority in primary clause
 before the unchanged 900-second deadline; its retained 0.74 outcome reflects hidden exact-quote and
 line-item conventions documented in the journal. External invocations also retain their final
 product diff, gate report, review ledger, and finding state in `last-product-observation.json`.
+Task 038 recovered automatically from one five-minute provider timeout, produced and independently
+accepted all four requested research artifacts, and scored 0.8469 (`good`). Its remaining misses
+come from an input-path normalization bug, an unpublished `source_rows` requirement, and one hidden
+hyphen-sensitive token.
 Product failures and benchmark defects are kept separate in the
 [external failure journal](../failure-journal.md); generated workspaces, native traces, and full
 result JSON remain in the configured external state directory rather than Git.
