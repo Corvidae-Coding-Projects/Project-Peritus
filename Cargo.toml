@@ -9,6 +9,7 @@ members = [
     "crates/app/peritus-launcher",
     "crates/app/peritus-provider-onboarding",
     "crates/app/peritus-product-state",
+    "crates/app/peritus-product-runner",
     "crates/app/peritus-tui",
     "crates/app/testing/peritus-benchmarks",
     "crates/app/testing/peritus-conformance",

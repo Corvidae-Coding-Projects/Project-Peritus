@@ -16,4 +16,4 @@ mod terminal;
 
 pub use entry::run_env;
 pub use error::TuiError;
-pub use runtime::{ExitReason, TuiConfig, run};
+pub use runtime::{ExitReason, ProductLaunchContext, ProductProviderOption, TuiConfig, run};

@@ -8,6 +8,7 @@ mod error;
 mod event;
 mod hello;
 mod primitive;
+mod product;
 mod prompt;
 mod request;
 mod response;

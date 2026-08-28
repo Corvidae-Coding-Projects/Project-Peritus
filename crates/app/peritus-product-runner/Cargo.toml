@@ -1,0 +1,41 @@
+[package]
+name = "peritus-product-runner"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Daemon-owned writer-reviewer-fixer product run coordinator for Peritus"
+publish = false
+readme = "README.md"
+keywords = ["agents", "developer-tools", "orchestration"]
+categories = ["development-tools"]
+
+[dependencies]
+peritus-model-protocol = { path = "../../model/peritus-model-protocol" }
+peritus-provider-core = { path = "../../model/peritus-provider-core" }
+peritus-types = { path = "../../foundation/peritus-types" }
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+peritus-provider-anthropic = { version = "=0.0.0", path = "../../model/peritus-provider-anthropic" }
+peritus-provider-openai = { version = "=0.0.0", path = "../../model/peritus-provider-openai" }
+tempfile.workspace = true
+tokio.workspace = true
+
+[[example]]
+name = "live-account-product-run"
+path = "examples/live_account_product_run.rs"
+test = false
+
+[package.metadata.peritus]
+owner = "G4"
+layer = "app"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true
+
+[lints]
+workspace = true

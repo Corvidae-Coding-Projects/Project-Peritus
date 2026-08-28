@@ -59,6 +59,9 @@ const REQUESTS: &[AppPayloadDescriptor] = &[
     AppPayloadDescriptor { tag: 14, name: "begin-artifact-upload" },
     AppPayloadDescriptor { tag: 15, name: "upload-artifact-chunk" },
     AppPayloadDescriptor { tag: 16, name: "complete-artifact-upload" },
+    AppPayloadDescriptor { tag: 17, name: "start-product-run" },
+    AppPayloadDescriptor { tag: 18, name: "control-product-run" },
+    AppPayloadDescriptor { tag: 19, name: "query-product-runs" },
 ];
 
 const RESPONSES: &[AppPayloadDescriptor] = &[
@@ -71,6 +74,8 @@ const RESPONSES: &[AppPayloadDescriptor] = &[
     AppPayloadDescriptor { tag: 7, name: "daemon-status" },
     AppPayloadDescriptor { tag: 8, name: "shutdown-accepted" },
     AppPayloadDescriptor { tag: 9, name: "error" },
+    AppPayloadDescriptor { tag: 10, name: "product-run-accepted" },
+    AppPayloadDescriptor { tag: 11, name: "product-runs" },
 ];
 
 const EVENTS: &[AppPayloadDescriptor] = &[

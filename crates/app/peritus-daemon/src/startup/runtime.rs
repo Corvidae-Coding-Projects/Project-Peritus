@@ -21,6 +21,7 @@ use tokio::{
 use super::{evolution::ProductionCatalog, workspace::WorkspaceCatalog};
 use crate::instance::InstanceGuard;
 use crate::outbox::OutboxRuntime;
+use crate::product_run::ProductRunService;
 use crate::telemetry::TelemetryRuntime;
 use crate::terminal::TerminalRegistry;
 use crate::worker::WorkerSupervisor;
@@ -44,6 +45,7 @@ pub struct DaemonRuntime {
     telemetry: Option<TelemetryRuntime>,
     workers: WorkerSupervisor,
     terminals: TerminalRegistry,
+    product_runs: ProductRunService,
     _components: DaemonComponents,
     _evidence: EvidenceStore,
     processes: ProcessStore,

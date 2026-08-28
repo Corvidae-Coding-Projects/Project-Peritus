@@ -1,8 +1,8 @@
 //! Closed typed application response envelope.
 
 use crate::{
-    AppProtocolError, ArtifactMetadata, CommandResult, CorrelationId, EventCursor, PromptId,
-    RequestId, ShutdownAccepted, SubscriptionId, TerminalBinding,
+    AppProtocolError, ArtifactMetadata, CommandResult, CorrelationId, EventCursor,
+    ProductRunSnapshot, PromptId, RequestId, ShutdownAccepted, SubscriptionId, TerminalBinding,
 };
 
 use super::ProtocolContext;
@@ -82,6 +82,10 @@ pub enum AppResponsePayload {
     ShutdownAccepted(ShutdownAccepted),
     /// Machine-actionable terminal request failure.
     Error(AppProtocolError),
+    /// The run was accepted and its initial state is observable.
+    ProductRunAccepted(ProductRunSnapshot),
+    /// Bounded recent or exact product-run observations.
+    ProductRuns(Vec<ProductRunSnapshot>),
 }
 
 /// Complete typed terminal response to one request.

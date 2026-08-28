@@ -1,5 +1,7 @@
 //! Ratatui rendering for every G2 interaction view.
 
+mod product;
+
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -26,6 +28,9 @@ pub fn draw(frame: &mut Frame<'_>, model: &AppModel) {
         .split(frame.area());
     render_tabs(frame, regions[0], model);
     match model.view {
+        View::Runs if model.product.is_some() => product::dashboard(frame, regions[1], model),
+        View::Diff if model.product.is_some() => product::diff(frame, regions[1], model),
+        View::Review if model.product.is_some() => product::review(frame, regions[1], model),
         View::Runs | View::Diff | View::Review | View::Trace | View::Evolution => {
             render_event_view(frame, regions[1], model);
         }
@@ -288,9 +293,12 @@ fn render_help(frame: &mut Frame<'_>, area: Rect) {
         Line::from("  Tab/Shift-Tab  next/previous view"),
         Line::from("  j/k or ↑/↓    select an event or prompt"),
         Line::from("  ?              this help"),
+        Line::from("  n              compose a new coding task (Runs)"),
+        Line::from("  w/e/f          cycle writer/reviewer/fixer provider (Runs)"),
+        Line::from("  x/r            cancel / retry selected coding run (Runs)"),
         Line::from(""),
         Line::styled("Live connection", Style::default().fg(ACCENT).add_modifier(Modifier::BOLD)),
-        Line::from("  r              reconnect/resume durable session"),
+        Line::from("  R              reconnect/resume durable session"),
         Line::from("  p/u            pause/resume event delivery"),
         Line::from("  Ctrl-Q/Ctrl-C  exit and send bounded detach/cancel cleanup"),
         Line::from(""),

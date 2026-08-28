@@ -158,6 +158,20 @@ impl ProviderRegistry {
         self.entries.get(&key).map(|registration| Arc::clone(&registration.provider))
     }
 
+    /// Resolves the sole configured revision for one product-selected profile identity.
+    ///
+    /// Returns `None` when the profile is absent or its configuration contains multiple
+    /// simultaneously active revisions.
+    #[must_use]
+    pub fn current_provider(
+        &self,
+        profile_id: ProviderProfileId,
+    ) -> Option<Arc<dyn ModelProvider>> {
+        let mut matches = self.entries.iter().filter(|(key, _)| key.profile_id() == profile_id);
+        let (_, registration) = matches.next()?;
+        if matches.next().is_some() { None } else { Some(Arc::clone(&registration.provider)) }
+    }
+
     /// Returns the concrete adapter kind for an exact registered revision.
     #[must_use]
     pub fn adapter_kind(
