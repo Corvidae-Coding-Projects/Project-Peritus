@@ -285,6 +285,22 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Disposition: retain the unchanged score and classify the exact-slot check as benchmark
   infrastructure failure. Do not emit conflicting meetings or expose hidden answers to Peritus.
 
+## HBI-007: task 025 makes one required rationale term unmatchable
+
+- Suite and task: HarnessBench 2.0, `025-meeting-action-tracker`.
+- Symptom: all six expected actions, exclusions, owner follow-ups, deadlines, dependencies, bulk
+  updates, and pending-status checks passed, but the merge-rationale term check reported
+  `followup_emails` missing even though `merge_rationale.md` cites `followup_emails.md` repeatedly.
+- Cause: the unchanged oracle rewrites the ground-truth term `followup_emails.md` to
+  `followup_emails`, then removes `.md` and replaces every underscore with a space in the submitted
+  rationale only. It therefore searches for `followup_emails` inside normalized text containing
+  `followup emails`; an ordinary exact filename citation cannot satisfy the check.
+- Evidence: local report `reports/025-meeting-action-tracker-unmatchable-rationale-term.json`;
+  outcome 0.9444; process 0.93; security 1.0; combined 0.8783; elapsed 741.724 seconds. Directly
+  applying the oracle expression to a `followup_emails.md` citation reproduces the false negative.
+- Disposition: retain the unchanged score and classify the failed term check as benchmark
+  infrastructure failure. Do not add unnatural text intended to exploit the normalization defect.
+
 ## HBF-005: a fixer deleted evaluator-owned evidence
 
 - Suite and task: HarnessBench 2.0, `022-local-rest-api-summary`.
