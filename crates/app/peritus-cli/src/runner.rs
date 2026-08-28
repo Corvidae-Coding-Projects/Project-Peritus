@@ -1,6 +1,10 @@
 //! Process entry and command dispatch.
 
-use std::{ffi::OsString, io::Write as _, process::ExitCode};
+use std::{
+    ffi::OsString,
+    io::{IsTerminal as _, Write as _},
+    process::ExitCode,
+};
 
 use crate::{
     args::{Cli, Command},
@@ -17,6 +21,9 @@ pub fn run_env() -> ExitCode {
 
 fn run(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
     let arguments = arguments.into_iter().collect::<Vec<_>>();
+    if arguments.len() == 1 {
+        return run_interactive();
+    }
     let requested_json = arguments.iter().any(|argument| argument == "--json");
     let cli = match Cli::parse(arguments) {
         Ok(cli) => cli,
@@ -42,6 +49,15 @@ fn run(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
             |()| ExitCode::SUCCESS,
         );
     }
+    if matches!(&cli.command, Command::Providers) {
+        return run_provider_settings();
+    }
+    if matches!(&cli.command, Command::Workspaces) {
+        return run_workspace_settings();
+    }
+    if let Command::Open { path } = &cli.command {
+        return run_interactive_at(path.clone());
+    }
 
     let runtime = match tokio::runtime::Builder::new_current_thread().enable_all().build() {
         Ok(runtime) => runtime,
@@ -56,6 +72,66 @@ fn run(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
     match runtime.block_on(execute(cli)) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => report_error(&error, json),
+    }
+}
+
+fn run_provider_settings() -> ExitCode {
+    if !std::io::stdin().is_terminal() || !std::io::stdout().is_terminal() {
+        return report_error(
+            &CliError::usage("provider settings require an interactive terminal"),
+            false,
+        );
+    }
+    match peritus_launcher::configure_providers_interactive() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            report_error(&CliError::runtime("configure providers", error.to_string()), false)
+        }
+    }
+}
+
+fn run_workspace_settings() -> ExitCode {
+    if !std::io::stdin().is_terminal() || !std::io::stdout().is_terminal() {
+        return report_error(
+            &CliError::usage("workspace settings require an interactive terminal"),
+            false,
+        );
+    }
+    match peritus_launcher::configure_workspaces_interactive() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            report_error(&CliError::runtime("configure workspaces", error.to_string()), false)
+        }
+    }
+}
+
+fn run_interactive() -> ExitCode {
+    run_interactive_at(None)
+}
+
+fn run_interactive_at(repository: Option<std::path::PathBuf>) -> ExitCode {
+    if !std::io::stdin().is_terminal() || !std::io::stdout().is_terminal() {
+        return report_error(
+            &CliError::usage(
+                "interactive launch requires a terminal; use an explicit command for automation",
+            ),
+            false,
+        );
+    }
+    let runtime = match tokio::runtime::Builder::new_multi_thread().enable_all().build() {
+        Ok(runtime) => runtime,
+        Err(error) => {
+            return report_error(
+                &CliError::runtime("construct interactive runtime", error.to_string()),
+                false,
+            );
+        }
+    };
+    match runtime.block_on(peritus_launcher::launch_interactive_at(repository)) {
+        Ok(_) => ExitCode::SUCCESS,
+        Err(error) => {
+            report_error(&CliError::runtime("launch interactive product", error.to_string()), false)
+        }
     }
 }
 
@@ -105,7 +181,12 @@ async fn execute(cli: Cli) -> Result<(), CliError> {
         Command::TerminalCancel(arguments) => {
             terminal::cancel(&endpoint, cli.session, cli.timeout, arguments, &output).await
         }
-        Command::Help { .. } | Command::Version | Command::Completions(_) => Ok(()),
+        Command::Help { .. }
+        | Command::Version
+        | Command::Completions(_)
+        | Command::Providers
+        | Command::Workspaces
+        | Command::Open { .. } => Ok(()),
     }
 }
 

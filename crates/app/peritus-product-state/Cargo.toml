@@ -1,0 +1,28 @@
+[package]
+name = "peritus-product-state"
+description = "Pure resumable product-state model for the Peritus application experience"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["agents", "application-state", "formal-verification"]
+categories = ["data-structures", "development-tools"]
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+vstd.workspace = true
+
+[package.metadata.peritus]
+owner = "G4"
+layer = "app"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true
+
+[lints]
+workspace = true

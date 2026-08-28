@@ -1,6 +1,7 @@
 //! Four-byte big-endian length-delimited JSON framing.
 
-use serde::{Serialize, de::DeserializeOwned};
+use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 use crate::{SdkError, SdkErrorKind};
 

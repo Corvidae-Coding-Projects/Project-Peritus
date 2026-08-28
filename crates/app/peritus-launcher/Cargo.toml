@@ -1,0 +1,40 @@
+[package]
+name = "peritus-launcher"
+description = "Single-command local bootstrap and product composition for Peritus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["agents", "launcher", "developer-tools"]
+categories = ["command-line-utilities", "development-tools"]
+
+[dependencies]
+crossterm.workspace = true
+fs4.workspace = true
+getrandom.workspace = true
+peritus-approval = { version = "=0.0.0", path = "../../state/peritus-approval" }
+peritus-daemon = { version = "=0.0.0", path = "../peritus-daemon" }
+peritus-git = { version = "=0.0.0", path = "../../runtime/peritus-git" }
+peritus-provider-onboarding = { version = "=0.0.0", path = "../peritus-provider-onboarding" }
+peritus-product-state = { version = "=0.0.0", path = "../peritus-product-state" }
+peritus-tui = { version = "=0.0.0", path = "../peritus-tui" }
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+peritus-workspace = { version = "=0.0.0", path = "../../runtime/peritus-workspace" }
+thiserror.workspace = true
+tokio.workspace = true
+toml.workspace = true
+zeroize.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[package.metadata.peritus]
+owner = "G4"
+layer = "app"
+verification-class = "C"
+
+[lints]
+workspace = true

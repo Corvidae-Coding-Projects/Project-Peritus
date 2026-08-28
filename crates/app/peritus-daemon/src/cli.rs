@@ -22,6 +22,8 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
         return ExitCode::from(2);
     };
     match command {
+        CommandLine::Version => write_output(&format!("peritusd {}", env!("CARGO_PKG_VERSION")))
+            .map_or_else(output_failure, |()| ExitCode::SUCCESS),
         CommandLine::Serve(configuration) => run_server(configuration),
         CommandLine::QualifyPty => qualify_pty(),
         CommandLine::StageOutboxCrash(configuration) => stage_outbox(configuration),
@@ -57,6 +59,7 @@ fn run_server(configuration: OsString) -> ExitCode {
 }
 
 enum CommandLine {
+    Version,
     Serve(OsString),
     QualifyPty,
     StageOutboxCrash(OsString),
@@ -66,6 +69,7 @@ enum CommandLine {
 fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<CommandLine> {
     let command = arguments.next()?;
     match command.to_str()? {
+        "--version" if arguments.next().is_none() => Some(CommandLine::Version),
         "serve" => configuration_argument(arguments).map(CommandLine::Serve),
         "qualify-pty" if arguments.next().is_none() => Some(CommandLine::QualifyPty),
         "qualify-outbox-stage" => {
@@ -165,7 +169,7 @@ async fn serve(configuration: OsString) -> Result<ShutdownOutcome, DaemonError> 
 
 fn usage(executable: &OsStr) {
     write_error(&format!(
-        "usage: {} serve --config <config.toml> | qualify-pty | qualify-outbox-stage --config <config.toml> | qualify-outbox-recover --config <config.toml>",
+        "usage: {} --version | serve --config <config.toml> | qualify-pty | qualify-outbox-stage --config <config.toml> | qualify-outbox-recover --config <config.toml>",
         std::path::Path::new(executable).display(),
     ));
 }

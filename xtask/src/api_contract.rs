@@ -120,6 +120,10 @@ mod tests;
 mod integration_tests;
 
 #[cfg(test)]
+#[path = "api_contract/expansion_tests.rs"]
+mod expansion_tests;
+
+#[cfg(test)]
 #[path = "api_contract/signature_tests.rs"]
 mod signature_tests;
 

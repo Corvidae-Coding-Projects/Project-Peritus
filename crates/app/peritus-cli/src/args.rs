@@ -84,6 +84,19 @@ impl Cli {
 fn parse_command(parser: &mut Parser) -> Result<Command, CliError> {
     let command = parser.command("command")?;
     match command.as_str() {
+        "providers" => {
+            parser.finish()?;
+            Ok(Command::Providers)
+        }
+        "workspaces" => {
+            parser.finish()?;
+            Ok(Command::Workspaces)
+        }
+        "open" => {
+            let path = parser.pop().map(PathBuf::from);
+            parser.finish()?;
+            Ok(Command::Open { path })
+        }
         "status" => {
             parser.finish()?;
             Ok(Command::Status)

@@ -4,6 +4,7 @@ use crate::source::reference_lexer::{Token, TokenKind};
 
 const AUDITED_CARGO_ENV: &[&str] = &[
     "CARGO_MANIFEST_DIR",
+    "CARGO_PKG_VERSION",
     "CARGO_BIN_EXE_peritus-anthropic-claude-fake",
     "CARGO_BIN_EXE_peritus-openai-codex-fake",
 ];

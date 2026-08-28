@@ -14,6 +14,7 @@ categories = ["command-line-utilities", "development-tools"]
 base64.workspace = true
 peritus-app-protocol = { version = "=0.0.0", path = "../peritus-app-protocol" }
 peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
+peritus-launcher = { version = "=0.0.0", path = "../peritus-launcher" }
 peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
 serde_json.workspace = true
 sha2.workspace = true

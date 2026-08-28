@@ -23,6 +23,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Add ergonomic G4 workspace onboarding with current-directory and descendant Git discovery,
+  recent/path selection, exact-root trust disclosure, restricted-by-default repository state,
+  application-managed detached writable worktrees, canonical C1 registration publication and
+  interrupted-setup recovery, clean/dirty/repair visibility, durable switching and safe forgetting,
+  exact C4 exposure only for an active trusted workspace, `peritus open [PATH]`, and focused
+  `peritus workspaces` settings without endpoint flags or environment configuration (#39)
+- Restart an already-running local daemon only when the immutable generated configuration changes,
+  so provider and workspace settings take effect on the next ordinary `peritus` launch (#39)
+- Add the G4 provider experience with readiness cards and already-authenticated defaults, official
+  Codex browser/device and Claude browser login handoff, direct OpenAI/Anthropic/Gemini/compatible
+  setup, hidden paste-friendly key entry, operating-system credential-store write/replace/remove,
+  durable provider/default/offline selection, focused sign-in repair, generated C5 routes, and a
+  dedicated `peritus providers` settings command with no environment exports (#38)
+- Verify both logged-in account routes through their production C5 adapters and exact credentialed
+  canaries, and cover every generated direct route through production adapter construction (#38)
+- Begin the G4 single-command product experience with pure Verus-refined resumable bootstrap state,
+  platform-native protected application directories, automatic non-secret installation identity,
+  canonical public approval-registry and strict daemon-config publication, version-matched sibling
+  daemon discovery, bounded singleton startup/reuse/shutdown supervision, and no-argument
+  interactive `peritus` dispatch while retaining the explicit automation CLI (#37)
+- Retain the complete G4 interaction design and research-backed ergonomic acceptance rules for
+  progressive onboarding, visible/cancellable status, provider login, workspace trust, keyboard
+  accessibility, recovery, and the writer-reviewer-fixer run experience (#36)
 - Add retained credentialed Codex and Claude account-route qualification examples that exercise
   the production Peritus adapters and require contiguous events, usage, exact canaries, no native
   tool activity, and successful normalized terminals

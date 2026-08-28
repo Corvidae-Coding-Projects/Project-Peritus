@@ -35,7 +35,14 @@ shell wrapper, hidden daemonization flag, remote transport, or service-specific 
 The G0-only `qualify-pty` and outbox qualification commands remain test administration entry points
 and are not used for normal service startup.
 
-G1 and G2 continue to require an explicit endpoint:
+The packaged `peritus` product entry discovers these paths and its stable endpoint automatically:
+
+```text
+peritus
+```
+
+The G1 and G2 operator surfaces continue to accept an explicit endpoint for diagnostics and
+automation:
 
 ```text
 peritus --endpoint <unix-socket-or-windows-pipe> status
@@ -102,11 +109,13 @@ application log sink.
 
 ## Configuration and endpoint discovery
 
-Installers require an existing regular `peritus.toml`. They do not generate `store_id`, actor,
-public approval registry, projects, workspace registrations, tool allowlists, providers,
-credential references, or telemetry policy. The configured `state_root` and all six component
-roots must match the protected installed/runtime layout and remain absolute, normalized,
-nonoverlapping children as required by G0.
+Legacy supervisor-first installation may retain an existing regular `peritus.toml`. The ordinary
+product path does not require one: the no-argument launcher creates protected platform-local roots,
+generates stable non-secret store and actor identities, publishes the canonical public approval
+registry, renders strict G0 configuration, and starts or reuses the packaged daemon. Later G4
+onboarding phases add provider and trusted-workspace declarations through the same typed product
+state instead of asking the user to edit TOML. The configured `state_root` and all six component
+roots remain absolute, normalized, nonoverlapping children as required by G0.
 
 G0 derives a stable non-secret endpoint name from the exact 16-byte C0 store identity:
 

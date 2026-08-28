@@ -7,6 +7,7 @@ mod lease;
 mod material;
 mod preparation;
 mod recovery;
+mod reference;
 mod refinement;
 mod store;
 mod verified;
@@ -20,6 +21,7 @@ pub use lease::{SecretLease, SecretLeaseId, SecretLeaseState};
 pub use material::SecretMaterial;
 pub use preparation::SecretPreparation;
 pub use recovery::{SecretRecoveryRecord, SecretRecoveryState};
+pub use reference::{format_credential_reference, parse_credential_reference};
 pub use refinement::secret_delivery_exact;
 pub use store::{CredentialStore, PlatformCredentialStore, StoreProbe};
 #[cfg(any(test, feature = "test-memory-store"))]

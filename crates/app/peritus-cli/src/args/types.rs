@@ -6,9 +6,10 @@ use peritus_types::SessionId;
 
 use crate::completion::Shell;
 
-pub const HELP: &str = r"peritus - scriptable client for the local Peritus daemon
+pub const HELP: &str = r"peritus - interactive coding-agent harness and scriptable daemon client
 
 USAGE:
+  peritus                              Launch or resume the interactive product
   peritus [GLOBAL OPTIONS] <COMMAND>
 
 GLOBAL OPTIONS:
@@ -20,6 +21,9 @@ GLOBAL OPTIONS:
   -V, --version              Print version
 
 COMMANDS:
+  providers                    Open provider settings
+  workspaces                   Switch, add, trust, repair, or forget workspaces
+  open [PATH]                  Launch Peritus for PATH (default: current directory)
   status
   shutdown [--wait]
   command submit --actor <ID> --envelope <FILE> --payload <FILE>
@@ -60,6 +64,9 @@ pub enum Command {
     Help { text: String },
     Version,
     Completions(Shell),
+    Providers,
+    Workspaces,
+    Open { path: Option<PathBuf> },
     Status,
     Shutdown { wait: bool },
     Submit(SubmitArgs),

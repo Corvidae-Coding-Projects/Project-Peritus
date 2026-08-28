@@ -30,12 +30,14 @@ const DERIVES: &[&str] = &[
     "Ord",
     "PartialEq",
     "PartialOrd",
+    "Serialize",
 ];
 
 pub(super) fn inspect(
     tokens: &[Token],
     line: usize,
     deserialize_imported: bool,
+    serialize_imported: bool,
     violations: &mut Vec<Violation>,
 ) {
     let name = attribute_name(tokens);
@@ -43,18 +45,27 @@ pub(super) fn inspect(
         || name.as_deref().is_some_and(trust_accounted)
         || audited_repr(tokens)
         || deserialize_imported && audited_serde(tokens)
-        || name.as_deref() == Some("derive") && derive_list(tokens, deserialize_imported);
+        || name.as_deref() == Some("derive")
+            && derive_list(tokens, deserialize_imported, serialize_imported);
     if !allowed {
         violations.push(unsupported(line, name.as_deref().unwrap_or("<malformed>")));
     }
 }
 
 pub(super) fn audited_deserialize_declaration(tokens: &[Token]) -> bool {
+    audited_serde_declaration(tokens, "Deserialize")
+}
+
+pub(super) fn audited_serialize_declaration(tokens: &[Token]) -> bool {
+    audited_serde_declaration(tokens, "Serialize")
+}
+
+fn audited_serde_declaration(tokens: &[Token], derive: &str) -> bool {
     tokens.len() == 4
         && identifier_is(&tokens[0], "serde")
         && punctuation_is(&tokens[1], ':')
         && punctuation_is(&tokens[2], ':')
-        && identifier_is(&tokens[3], "Deserialize")
+        && identifier_is(&tokens[3], derive)
 }
 
 pub(super) fn is_expansion_name(name: &str) -> bool {
@@ -70,7 +81,7 @@ pub(super) fn unsupported(line: usize, name: &str) -> Violation {
     }
 }
 
-fn derive_list(tokens: &[Token], deserialize_imported: bool) -> bool {
+fn derive_list(tokens: &[Token], deserialize_imported: bool, serialize_imported: bool) -> bool {
     if tokens.len() < 4
         || !identifier_is(&tokens[0], "derive")
         || !punctuation_is(&tokens[1], '(')
@@ -83,7 +94,9 @@ fn derive_list(tokens: &[Token], deserialize_imported: bool) -> bool {
         && values.iter().enumerate().all(|(index, token)| {
             if index % 2 == 0 {
                 identifier(token).is_some_and(|name| {
-                    DERIVES.contains(&name) && (name != "Deserialize" || deserialize_imported)
+                    DERIVES.contains(&name)
+                        && (name != "Deserialize" || deserialize_imported)
+                        && (name != "Serialize" || serialize_imported)
                 })
             } else {
                 punctuation_is(token, ',')
@@ -101,19 +114,24 @@ fn audited_repr(tokens: &[Token]) -> bool {
 }
 
 fn audited_serde(tokens: &[Token]) -> bool {
+    let default = tokens.len() == 4
+        && identifier_is(&tokens[0], "serde")
+        && punctuation_is(&tokens[1], '(')
+        && identifier_is(&tokens[2], "default")
+        && punctuation_is(&tokens[3], ')');
     let deny_unknown_fields = tokens.len() == 4
         && identifier_is(&tokens[0], "serde")
         && punctuation_is(&tokens[1], '(')
         && identifier_is(&tokens[2], "deny_unknown_fields")
         && punctuation_is(&tokens[3], ')');
-    let snake_case = tokens.len() == 6
+    let reviewed_case = tokens.len() == 6
         && identifier_is(&tokens[0], "serde")
         && punctuation_is(&tokens[1], '(')
         && identifier_is(&tokens[2], "rename_all")
         && punctuation_is(&tokens[3], '=')
-        && matches!(&tokens[4].kind, TokenKind::StringLiteral(Some(value)) if value == "snake_case")
+        && matches!(&tokens[4].kind, TokenKind::StringLiteral(Some(value)) if matches!(value.as_str(), "snake_case" | "kebab-case"))
         && punctuation_is(&tokens[5], ')');
-    deny_unknown_fields || snake_case
+    default || deny_unknown_fields || reviewed_case
 }
 
 fn attribute_name(tokens: &[Token]) -> Option<String> {

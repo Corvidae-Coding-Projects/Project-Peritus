@@ -1985,6 +1985,7 @@ dependencies = [
  "base64",
  "peritus-app-protocol",
  "peritus-codec",
+ "peritus-launcher",
  "peritus-types",
  "serde_json",
  "sha2 0.11.0",
@@ -2259,6 +2260,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "peritus-launcher"
+version = "0.0.0"
+dependencies = [
+ "crossterm",
+ "fs4",
+ "getrandom 0.4.3",
+ "peritus-approval",
+ "peritus-daemon",
+ "peritus-git",
+ "peritus-product-state",
+ "peritus-provider-onboarding",
+ "peritus-tui",
+ "peritus-types",
+ "peritus-workspace",
+ "tempfile",
+ "thiserror 2.0.20",
+ "tokio",
+ "toml",
+ "zeroize",
+]
+
+[[package]]
 name = "peritus-leases"
 version = "0.0.0"
 dependencies = [
@@ -2437,6 +2460,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "peritus-product-state"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "vstd",
+]
+
+[[package]]
 name = "peritus-projection"
 version = "0.0.0"
 dependencies = [
@@ -2537,6 +2569,20 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "peritus-provider-onboarding"
+version = "0.0.0"
+dependencies = [
+ "getrandom 0.4.3",
+ "peritus-product-state",
+ "peritus-provider-anthropic",
+ "peritus-provider-openai",
+ "peritus-secrets",
+ "peritus-types",
+ "serde_json",
+ "thiserror 2.0.20",
 ]
 
 [[package]]

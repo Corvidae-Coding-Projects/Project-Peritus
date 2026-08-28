@@ -4,6 +4,7 @@
 mod memory;
 
 use peritus_sandbox::SecretReference;
+use peritus_types::ResourceId;
 use zeroize::Zeroize;
 
 use crate::{RecoveryClass, SecretError, SecretErrorKind, SecretMaterial, SecretOperation};
@@ -69,6 +70,46 @@ impl PlatformCredentialStore {
         }
         Ok(Self { service })
     }
+
+    /// Writes or replaces one exact resource and returns its content-bound reference.
+    ///
+    /// Secret bytes are borrowed only for the platform operation and are never formatted.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable locked, denied, unavailable, invalid-input, or platform failure.
+    pub fn store(
+        &self,
+        resource_id: ResourceId,
+        material: &SecretMaterial,
+    ) -> Result<SecretReference, SecretError> {
+        if !self.probe().available() {
+            return Err(unavailable("platform credential store is unavailable"));
+        }
+        let username = hex(resource_id.as_bytes());
+        let entry = keyring::Entry::new(&self.service, &username)
+            .map_err(|error| map_store_error(error, SecretOperation::Store))?;
+        material
+            .expose(|bytes| entry.set_secret(bytes))
+            .map_err(|error| map_store_error(error, SecretOperation::Store))?;
+        let version = material.expose(peritus_codec::sha256);
+        Ok(SecretReference::new(resource_id, version))
+    }
+
+    /// Removes the credential stored for one exact resource identity.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable missing, locked, denied, unavailable, invalid-input, or platform failure.
+    pub fn remove(&self, resource_id: ResourceId) -> Result<(), SecretError> {
+        if !self.probe().available() {
+            return Err(unavailable("platform credential store is unavailable"));
+        }
+        let username = hex(resource_id.as_bytes());
+        let entry = keyring::Entry::new(&self.service, &username)
+            .map_err(|error| map_store_error(error, SecretOperation::Remove))?;
+        entry.delete_credential().map_err(|error| map_store_error(error, SecretOperation::Remove))
+    }
 }
 
 impl CredentialStore for PlatformCredentialStore {
@@ -82,8 +123,9 @@ impl CredentialStore for PlatformCredentialStore {
         }
         let username = hex(reference.resource_id().as_bytes());
         let entry = keyring::Entry::new(&self.service, &username)
-            .map_err(|_| unavailable("credential entry cannot be opened"))?;
-        let bytes = entry.get_secret().map_err(map_store_error)?;
+            .map_err(|error| map_store_error(error, SecretOperation::Lookup))?;
+        let bytes =
+            entry.get_secret().map_err(|error| map_store_error(error, SecretOperation::Lookup))?;
         if peritus_codec::sha256(&bytes) != reference.version() {
             return Err(SecretError::new(
                 SecretErrorKind::StaleVersion,
@@ -96,7 +138,7 @@ impl CredentialStore for PlatformCredentialStore {
     }
 }
 
-fn map_store_error(error: keyring::Error) -> SecretError {
+fn map_store_error(error: keyring::Error, operation: SecretOperation) -> SecretError {
     let (kind, recovery, detail) = match error {
         keyring::Error::NoEntry => (
             SecretErrorKind::Missing,
@@ -133,7 +175,7 @@ fn map_store_error(error: keyring::Error) -> SecretError {
         keyring::Error::TooLong(_, _) | keyring::Error::Invalid(_, _) => (
             SecretErrorKind::InvalidInput,
             RecoveryClass::CorrectRequest,
-            "credential lookup attributes are invalid for the platform store",
+            "credential attributes are invalid for the platform store",
         ),
         keyring::Error::PlatformFailure(_) => (
             SecretErrorKind::Io,
@@ -146,7 +188,7 @@ fn map_store_error(error: keyring::Error) -> SecretError {
             "platform credential store returned an unsupported failure",
         ),
     };
-    SecretError::new(kind, SecretOperation::Lookup, recovery, detail)
+    SecretError::new(kind, operation, recovery, detail)
 }
 
 #[cfg(target_os = "linux")]

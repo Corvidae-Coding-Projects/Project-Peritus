@@ -3,8 +3,9 @@
 use std::fmt;
 
 use serde::Deserialize;
+use serde::Serialize;
 use serde::{
-    Deserializer, Serialize, Serializer,
+    Deserializer, Serializer,
     de::{self, MapAccess, SeqAccess, Visitor},
     ser::SerializeStruct,
 };
