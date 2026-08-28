@@ -316,6 +316,13 @@ layer = "testing"
 verification_class = "C"
 
 [[packages]]
+name = "peritus-external-benchmarks"
+path = "crates/app/testing/peritus-external-benchmarks"
+owner = "H3"
+layer = "testing"
+verification_class = "C"
+
+[[packages]]
 name = "peritus-platform-qualification"
 path = "crates/app/testing/peritus-platform-qualification"
 owner = "H2"

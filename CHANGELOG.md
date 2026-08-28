@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Teach malformed design retries the exact rejected heading contract and give generic artifact
+  workspaces an explicit native gate kind, eliminating a repeated-retry failure and a 600-second
+  no-progress timeout found by unchanged HarnessBench task 001 (#31)
 - Retry recoverable malformed, empty, timeout, and transport provider turns without failing the
   coding goal; retry malformed design, developer-terminal, and reviewer output contracts; replenish
   bounded developer segments only after exact candidate content changes; feed rejected ungrounded
@@ -46,6 +49,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Add the native external-benchmark adapter and normalized trace projection, pin HarnessBench 2.0
+  at its exact upstream commit, retain a reproducible failure journal, and route its text process
+  rubric through the already-authenticated official Codex executable without copying credentials
+  (#31)
 - Embed reusable architect, developer, and reviewer skills in the ordinary product workflow;
   require successful repository listing and targeted reads before design or mutation, append exact
   observed paths to each design artifact, refuse mutation of an unread existing file, enforce a

@@ -20,6 +20,7 @@ peritus-tools-quality = { version = "=0.0.0", path = "../../tools/peritus-tools-
 peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
 sha2.workspace = true
 serde_json.workspace = true
+toml.workspace = true
 vstd.workspace = true
 
 [dev-dependencies]

@@ -105,6 +105,10 @@ fn ignored_directory(name: &std::ffi::OsStr) -> bool {
 fn is_source(path: &Path, kind: ProjectKind) -> bool {
     let extension = path.extension().and_then(std::ffi::OsStr::to_str);
     match kind {
+        ProjectKind::Artifact => extension.is_some_and(|value| {
+            ["c", "cc", "cpp", "go", "h", "hpp", "js", "jsx", "mjs", "py", "rs", "sh", "ts", "tsx"]
+                .contains(&value)
+        }),
         ProjectKind::Rust => extension == Some("rs"),
         ProjectKind::Node => {
             extension.is_some_and(|value| ["js", "jsx", "mjs", "cjs", "ts", "tsx"].contains(&value))

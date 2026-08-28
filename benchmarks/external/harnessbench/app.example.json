@@ -1,0 +1,8 @@
+{
+  "data_dir": "data",
+  "tasks_dir": "tasks",
+  "results_dir": "/absolute/path/to/local/peritus-evidence/harnessbench/results",
+  "work_root": "/absolute/path/to/local/peritus-evidence/harnessbench/workspaces",
+  "default_timeout_sec": 600,
+  "default_rounds": 1
+}

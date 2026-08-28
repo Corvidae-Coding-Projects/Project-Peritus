@@ -12,6 +12,7 @@ pub(super) fn commands_for(
 ) -> Result<Vec<GateCommandSpec>, GateError> {
     let mut commands = vec![source_layout(project)];
     let language_commands = match project.kind() {
+        ProjectKind::Artifact => artifact_commands(workspace_root, project),
         ProjectKind::Rust => Ok(rust_commands(workspace_root, project)),
         ProjectKind::Node => node_commands(workspace_root, project),
         ProjectKind::Python => Ok(python_commands(workspace_root, project)),
@@ -80,8 +81,10 @@ fn node_commands(
     workspace_root: &Path,
     project: &AffectedProject,
 ) -> Result<Vec<GateCommandSpec>, GateError> {
-    let bytes = std::fs::read(workspace_root.join(project.manifest())).map_err(|_| planning())?;
-    let package: serde_json::Value = serde_json::from_slice(&bytes).map_err(|_| planning())?;
+    let bytes = std::fs::read(workspace_root.join(project.manifest()))
+        .map_err(|_| planning("affected Node manifest is unreadable"))?;
+    let package: serde_json::Value = serde_json::from_slice(&bytes)
+        .map_err(|_| planning("affected Node manifest is invalid"))?;
     let scripts = package.get("scripts").and_then(serde_json::Value::as_object);
     let mut commands = Vec::new();
     for (name, label) in [("build", "Node build"), ("test", "Node tests"), ("lint", "Node lint")] {
@@ -133,6 +136,28 @@ fn go_commands(project: &AffectedProject) -> Vec<GateCommandSpec> {
     ]
 }
 
+fn artifact_commands(
+    workspace_root: &Path,
+    project: &AffectedProject,
+) -> Result<Vec<GateCommandSpec>, GateError> {
+    let path = workspace_root.join(project.manifest());
+    let text = std::fs::read_to_string(&path)
+        .map_err(|_| planning("artifact workspace manifest is unreadable"))?;
+    let value = toml::from_str::<toml::Value>(&text)
+        .map_err(|_| planning("artifact workspace manifest is invalid TOML"))?;
+    let table =
+        value.as_table().ok_or_else(|| planning("artifact workspace manifest must be a table"))?;
+    if table.len() != 2
+        || table.get("schema_version").and_then(toml::Value::as_integer) != Some(1)
+        || table.get("kind").and_then(toml::Value::as_str) != Some("artifact")
+    {
+        return Err(planning(
+            "artifact workspace manifest must contain only schema_version = 1 and kind = \"artifact\"",
+        ));
+    }
+    Ok(Vec::new())
+}
+
 fn spec(
     label: &str,
     program: &str,
@@ -148,10 +173,30 @@ fn spec(
     }
 }
 
-fn planning() -> GateError {
-    GateError::new(
-        GateErrorKind::Workspace,
-        GateRecoveryAction::CorrectInput,
-        "affected project manifest is unreadable",
-    )
+fn planning(detail: &'static str) -> GateError {
+    GateError::new(GateErrorKind::Workspace, GateRecoveryAction::CorrectInput, detail)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::TargetGatePlan;
+
+    #[test]
+    fn artifact_manifest_rejects_unknown_or_incompatible_fields() {
+        let root = tempfile::tempdir().expect("temporary workspace");
+        std::fs::create_dir(root.path().join("out")).expect("output directory");
+        std::fs::write(root.path().join("out/result.txt"), "result\n").expect("output artifact");
+        for manifest in [
+            "schema_version = 2\nkind = \"artifact\"\n",
+            "schema_version = 1\nkind = \"artifact\"\nextra = true\n",
+        ] {
+            std::fs::write(root.path().join("peritus-workspace.toml"), manifest)
+                .expect("artifact manifest");
+            assert!(
+                TargetGatePlan::discover(root.path(), vec![PathBuf::from("out/result.txt")])
+                    .is_err()
+            );
+        }
+    }
 }

@@ -47,6 +47,7 @@ pub async fn create(
 ) -> Result<DesignDocument, ProductRunnerError> {
     let mut invocation = 0_u32;
     let mut invalid_designs = 0_u8;
+    let mut correction = None;
     loop {
         check_cancelled(input)?;
         invocation = invocation.saturating_add(1);
@@ -62,7 +63,7 @@ pub async fn create(
                     crate::turn::request_name(input.run_id, "designer", cycle)
                 ),
                 system: system_prompt(),
-                prompt: user_prompt(&transcript),
+                prompt: user_prompt(&transcript, correction.as_deref()),
                 tools: read_only_definitions()?,
                 limits: DeveloperLoopLimits::new(48, 512)
                     .map_err(|error| crate::turn::developer_error(&error))?,
@@ -76,6 +77,7 @@ pub async fn create(
         check_cancelled(input)?;
         if input.conversation.revision() != revision {
             invalid_designs = 0;
+            correction = None;
             continue;
         }
         let markdown =
@@ -85,6 +87,7 @@ pub async fn create(
             Err(error) => {
                 invalid_designs = invalid_designs.saturating_add(1);
                 if invalid_designs < MAX_INVALID_DESIGNS {
+                    correction = Some(correction_prompt(&error));
                     continue;
                 }
                 return Err(error);
@@ -104,9 +107,20 @@ fn system_prompt() -> String {
     )
 }
 
-fn user_prompt(transcript: &str) -> String {
+fn user_prompt(transcript: &str, correction: Option<&str>) -> String {
+    let correction = correction.map_or(String::new(), |value| {
+        format!("\n\nHarness correction from the previous rejected design:\n{value}")
+    });
     format!(
-        "Conversation and requested outcome:\n{transcript}\n\nInspect the managed workspace and write the complete implementation design that the writer will follow."
+        "Conversation and requested outcome:\n{transcript}\n\nInspect the managed workspace and write the complete implementation design that the writer will follow.{correction}"
+    )
+}
+
+fn correction_prompt(error: &ProductRunnerError) -> String {
+    format!(
+        "The previous design was rejected during {}: {}. Return the full design again. Its first nonblank line must be one document title beginning with `# `, and it must contain at least four section headings beginning with `## `. Do not make every section a top-level `#` heading.",
+        error.operation(),
+        error.detail(),
     )
 }
 
@@ -175,5 +189,18 @@ mod tests {
             "Complete requested behavior. ".repeat(24)
         );
         assert!(normalize(&detailed).is_ok());
+    }
+
+    #[test]
+    fn rejected_design_retry_explains_the_exact_heading_contract() {
+        let error = normalize("# Objective\n\n# Architecture\n\n# Verification")
+            .expect_err("invalid heading hierarchy");
+        let correction = correction_prompt(&error);
+        let prompt = user_prompt("task", Some(&correction));
+
+        assert!(prompt.contains("Harness correction from the previous rejected design"));
+        assert!(prompt.contains("first nonblank line"));
+        assert!(prompt.contains("at least four section headings"));
+        assert!(prompt.contains(error.detail()));
     }
 }

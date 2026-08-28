@@ -1,0 +1,40 @@
+[package]
+name = "peritus-external-benchmarks"
+description = "Native HarnessBench and Terminal-Bench qualification boundary for Peritus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["agents", "benchmark", "qualification"]
+categories = ["development-tools::testing"]
+
+[dependencies]
+peritus-model-protocol = { version = "=0.0.0", path = "../../../model/peritus-model-protocol" }
+peritus-product-runner = { version = "=0.0.0", path = "../../peritus-product-runner" }
+peritus-provider-anthropic = { version = "=0.0.0", path = "../../../model/peritus-provider-anthropic" }
+peritus-provider-core = { version = "=0.0.0", path = "../../../model/peritus-provider-core" }
+peritus-provider-openai = { version = "=0.0.0", path = "../../../model/peritus-provider-openai" }
+peritus-types = { version = "=0.0.0", path = "../../../foundation/peritus-types" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[[bin]]
+name = "peritus-benchmark-agent"
+path = "src/bin/peritus-benchmark-agent.rs"
+
+[package.metadata.peritus]
+owner = "H3"
+layer = "testing"
+verification-class = "C"
+
+[lints]
+workspace = true

@@ -15,6 +15,8 @@ pub const PRODUCT_MAX_SOURCE_LINES: usize = 500;
 /// Supported project families with deterministic production checks.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum ProjectKind {
+    /// Explicit general artifact workspace whose semantic oracle is host-owned.
+    Artifact,
     /// Cargo package or workspace.
     Rust,
     /// Node package.
@@ -191,6 +193,7 @@ fn nearest_projects(workspace_root: &Path, changed: &Path) -> Vec<AffectedProjec
     loop {
         let absolute = workspace_root.join(relative);
         let found = [
+            (ProjectKind::Artifact, "peritus-workspace.toml"),
             (ProjectKind::Rust, "Cargo.toml"),
             (ProjectKind::Node, "package.json"),
             (ProjectKind::Python, "pyproject.toml"),
@@ -276,5 +279,28 @@ mod tests {
                 "--workspace",
             ]
         );
+    }
+
+    #[test]
+    fn explicit_artifact_workspace_covers_general_outputs() {
+        let temporary = tempfile::tempdir().expect("temporary workspace");
+        std::fs::write(
+            temporary.path().join("peritus-workspace.toml"),
+            "schema_version = 1\nkind = \"artifact\"\n",
+        )
+        .expect("artifact workspace marker");
+        std::fs::create_dir(temporary.path().join("out")).expect("output directory");
+        std::fs::write(temporary.path().join("out/result.txt"), "result\n")
+            .expect("output artifact");
+
+        let plan =
+            TargetGatePlan::discover(temporary.path(), vec![PathBuf::from("out/result.txt")])
+                .expect("artifact plan");
+
+        assert!(plan.has_complete_coverage());
+        assert!(plan.uncovered_paths().is_empty());
+        assert_eq!(plan.projects()[0].kind(), ProjectKind::Artifact);
+        assert_eq!(plan.commands().len(), 1);
+        assert_eq!(plan.commands()[0].label(), "Source layout");
     }
 }
