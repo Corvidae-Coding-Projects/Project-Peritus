@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 512,
+  "next_comment_id": 513,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1848,7 +1848,7 @@
       "parent_uuid": "59346441-f15a-4950-a0f1-f10b1b9b1f7d",
       "created_by": "6ME5",
       "created_at": "2026-08-27T23:32:35.170356154Z",
-      "updated_at": "2026-08-28T03:46:53.590082348Z",
+      "updated_at": "2026-08-28T03:47:21.557579630Z",
       "labels": [
         "feature",
         "ux"
@@ -1898,6 +1898,15 @@
           "kind": "note",
           "signed_by": "SHA256:mTwYqorrA4UxSK3se0aIOCOC6y7kyE/sEvoFLwVluf4",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgmuiChqHxrMH8nicBvsKr3z1JEgjcUOEEH/DcxL6kdeEAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJRE5D+5yNvjhmAFTSyyO1q0hkN64afR1vWLam0ZegnI8IJgutwkkMm63hVyN8xEFCQvdFIMx9Y0DhSMlhY0GCA=="
+        },
+        "e02d8d89-80a7-4646-82cf-23fba6557dde": {
+          "display_id": 512,
+          "author": "NWAR",
+          "content": "Implemented canonical product-run IPC, daemon-owned persisted run coordination, the H-class writer-reviewer-fixer runner, and the Runs/Diff/Review TUI. Verified with a real logged-in Codex writer and Claude reviewer on a temporary Rust repository; focused changed-crate tests and Clippy pass; strict Verus passes for app protocol, product runner, and daemon; full workspace just check passed before the final serialization fix, followed by focused tests, Clippy, xtask all, and strict Verus.",
+          "created_at": "2026-08-28T03:47:21.554983602Z",
+          "kind": "note",
+          "signed_by": "SHA256:mTwYqorrA4UxSK3se0aIOCOC6y7kyE/sEvoFLwVluf4",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgmuiChqHxrMH8nicBvsKr3z1JEgjcUOEEH/DcxL6kdeEAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA0JbZsOXVsIET6vaUWPSlEztN+B+od5BiV+abMY/Ol+Vwcd7L3RCMPTHr17wmLLwLWxqU3IS+EkVQBk3zc/aeDQ=="
         }
       }
     },
@@ -5360,8 +5369,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-28T03:46:53.590082348Z",
+    "timestamp": "2026-08-28T03:47:21.557579630Z",
     "agent_id": "NWAR",
-    "agent_seq": 26
+    "agent_seq": 27
   }
 }
