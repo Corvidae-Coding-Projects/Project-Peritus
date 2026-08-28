@@ -1,5 +1,6 @@
 //! Projection of the durable D0 trace into external benchmark evidence.
 
+mod bounded;
 mod frames;
 mod harnessbench;
 mod projection;

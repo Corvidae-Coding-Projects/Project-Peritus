@@ -166,3 +166,21 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   time. The maximum total outcome under that formula is 0.8725.
 - Disposition: retain the unchanged 0.865 score and report this as benchmark-infrastructure
   evidence. Do not patch, special-case, or game the upstream oracle.
+
+## HBT-001: exact trace projection overflowed the rubric context
+
+- Suite and task: HarnessBench 2.0, first proved by `006-access-bilibili`.
+- Symptom: the unchanged oracle read the requested files and scored outcome 1.0, while the process
+  rubric claimed the agent never wrote or verified them and scored 0.1333.
+- Cause: the native trace was faithfully projected but its incremental JSON was 188,672 characters.
+  HarnessBench intentionally grades the first 24,000 characters, so late write and verification
+  events were absent from the rubric input even though they were present in durable evidence.
+- Change: external trace values now use bounded head-and-tail previews carrying their original byte
+  length and SHA-256 digest. Full values remain unchanged in the native append-only trace; usage and
+  provider-request counts remain exact.
+- Before evidence: result `results/peritus-codex-claude/gpt-5.6-sol/006-access-bilibili.json`;
+  outcome 1.0; process 0.1333; security 1.0; combined 0.1333; 27 requests.
+- After evidence: local report `reports/006-access-bilibili-bounded-trace.json`; the same four
+  oracle checks passed; outcome 1.0; process 0.8533; security 1.0; combined 0.8533; elapsed 259.3
+  seconds. The rubric now identifies the exact URL access, writes, recovery, and verification while
+  still criticizing the genuinely redundant reads and planning.

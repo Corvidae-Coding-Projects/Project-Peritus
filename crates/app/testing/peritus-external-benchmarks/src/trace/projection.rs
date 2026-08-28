@@ -5,7 +5,7 @@ use std::{collections::BTreeMap, path::Path};
 use peritus_model_protocol::{ModelEvent, ProtocolLimits, UsageCounters, decode_event_envelope};
 use serde_json::{Value, json};
 
-use super::frames::Frame;
+use super::{bounded, frames::Frame};
 use crate::BenchmarkError;
 
 pub(super) struct Round {
@@ -145,6 +145,7 @@ fn complete(
         .ok_or_else(|| BenchmarkError::trace(path, "provider terminal has no active response"))?;
     let assistant_text = String::from_utf8(response.assistant_bytes)
         .map_err(|_| BenchmarkError::trace(path, "assistant response is not UTF-8"))?;
+    let assistant_text = bounded::assistant(&assistant_text);
     let tool_calls = finalize_calls(path, response.calls)?;
     history.push(json!({"role": "assistant", "content": assistant_text}));
     rounds.push(Round {
@@ -168,6 +169,7 @@ fn finalize_calls(
             let arguments = String::from_utf8(call.argument_bytes).map_err(|_| {
                 BenchmarkError::trace(path, "complete tool arguments are not UTF-8")
             })?;
+            let arguments = bounded::tool_arguments(&arguments);
             Ok(ToolCall { id: call.id, name: call.name, arguments })
         })
         .collect()
@@ -191,7 +193,11 @@ fn apply_observation(
         .get("output")
         .and_then(Value::as_str)
         .ok_or_else(|| BenchmarkError::trace(path, "tool observation has no output"))?;
-    history.push(json!({"role": "tool", "tool_call_id": call_id, "content": output}));
+    history.push(json!({
+        "role": "tool",
+        "tool_call_id": call_id,
+        "content": bounded::tool_output(output),
+    }));
     Ok(())
 }
 

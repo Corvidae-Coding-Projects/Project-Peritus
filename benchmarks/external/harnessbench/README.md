@@ -24,6 +24,7 @@ Run the first live task with the checked-in generic adapter configuration:
 PATH=/absolute/path/to/Project-Peritus/target/debug:$PATH \
 HARNESSBENCH_APP_CONFIG=/absolute/path/to/local-app.json \
 HARNESSBENCH_HARNESS_CONFIG=/absolute/path/to/Project-Peritus/benchmarks/external/harnessbench/harness.json \
+HARNESSBENCH_PUBLIC_URL_TEMPLATE='{local_url}' \
 PYTHONPATH=src python3 -m harnessbench.cli run-task \
   --task 001-file \
   --harness peritus-codex-claude \
@@ -34,6 +35,8 @@ HarnessBench owns task setup, timeouts, workspaces, oracles, process rubrics, an
 Peritus adapter initializes a local Git baseline only when the supplied workspace has no Git
 history, runs the real product composition, and projects its durable normalized trace into the
 suite's `usage-proxy` directory. It does not edit tasks, fixtures, hooks, rubrics, or oracles.
+`HARNESSBENCH_PUBLIC_URL_TEMPLATE='{local_url}'` lets tasks 003 and 006 use their local fixture
+servers without installing a public tunnel. It does not replace or bypass the task server.
 
 Do not use `HARNESSBENCH_SKIP_PROCESS_GRADE` for a scored qualification run. If no compatible
 rubric credential is configured, start the local rubric boundary in another terminal:

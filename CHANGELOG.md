@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Project large assistant, tool-argument, and tool-output values into digest-labeled bounded
+  previews for external process grading while retaining every exact byte in the native trace,
+  preventing HarnessBench's rubric context cap from hiding late write and verification events (#31)
 - Stop the production fixer loop after two consecutive cycles make no candidate change while exact
   checks or blocking findings remain, resetting the detector after real edits or new conversation
   input; this turns benchmark deadline kills into bounded, inspectable outcomes (#31)
