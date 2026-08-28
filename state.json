@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 515,
+  "next_comment_id": 516,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -4903,11 +4903,22 @@
       "parent_uuid": "59346441-f15a-4950-a0f1-f10b1b9b1f7d",
       "created_by": "6ME5",
       "created_at": "2026-08-27T23:32:49.842696292Z",
-      "updated_at": "2026-08-27T23:33:01.365823558Z",
+      "updated_at": "2026-08-28T03:48:50.081390166Z",
       "labels": [
         "feature",
         "ux"
-      ]
+      ],
+      "comments": {
+        "b1f3c5ca-4d48-4c23-9c5d-2e6753237879": {
+          "display_id": 515,
+          "author": "NWAR",
+          "content": "Implemented resource-capped native package assembly and per-user install, upgrade rollback, uninstall preservation, ignored dist output, and a Linux/macOS/Windows hosted lifecycle matrix. Local native smoke verified checksum validation, install, installed peritus version, repeat install/upgrade, uninstall, and state preservation. Full workspace just check and xtask all pass; no compiled artifacts are staged.",
+          "created_at": "2026-08-28T03:48:50.078968458Z",
+          "kind": "note",
+          "signed_by": "SHA256:mTwYqorrA4UxSK3se0aIOCOC6y7kyE/sEvoFLwVluf4",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgmuiChqHxrMH8nicBvsKr3z1JEgjcUOEEH/DcxL6kdeEAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWWo5rbiVm4Ng2cslRYAZ6jybMpTgY/dGdu1mAMpDK+LOd4sohBqsRiy6fPTgEw2ORN+PTZ0B8wnPTpXjhUDXDA=="
+        }
+      }
     },
     "dfab9d3d-33b2-4c87-aa21-5e886054ba62": {
       "uuid": "dfab9d3d-33b2-4c87-aa21-5e886054ba62",
@@ -5388,8 +5399,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-28T03:48:06.239529622Z",
+    "timestamp": "2026-08-28T03:48:50.081390166Z",
     "agent_id": "NWAR",
-    "agent_seq": 32
+    "agent_seq": 33
   }
 }
