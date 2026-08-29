@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 739,
+  "next_comment_id": 740,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T20:46:24.361141230Z",
+      "updated_at": "2026-08-29T20:50:12.337072017Z",
       "labels": [
         "qualification",
         "release"
@@ -1504,6 +1504,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzW4Bz1HkM6D4qCMSB5qsflLzM69I1YahhGcSXGa8DhA02g3WvfIxyVhC+VawQ+mysDj2FKKLqsdk9zp+J8ZcAA=="
+        },
+        "1aa2b102-5a71-4be3-bd91-bc50bd74408d": {
+          "display_id": 739,
+          "author": "6ME5",
+          "content": "Signed commit d82f27775b41d8490316a84b75ab7511c25dcbf4 (feat(product): add explicit provider failover (#31)) adds durable default-off consent, backward-compatible state/config, deterministic compatible role failover after same-provider recovery, safety/refusal/cancellation/ambiguity exclusions, durable switch traces and progress, benchmark trace projection, and product-path regression coverage. Verification: rustfmt; strict five-package all-target/all-feature Clippy; five-package tests (including 66 runner unit tests and the complete multi-role failover integration); no-cheating product-state Verus; full cargo xtask all over 77 packages, 3078 source files, and 134 maintained docs; artifact/credential/500-line scans clean.",
+          "created_at": "2026-08-29T20:50:12.334578336Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA1qlER2gi4KmJj+b/H7PluVSNcUeOCtXj5yf1urfnYSlYpwofeVQJ7NBqC05vXm1u6Zo40L6pbJpat8kHXDTkBg=="
         },
         "1abd9b9e-22ec-4287-be4e-f61d6018b456": {
           "display_id": 634,
@@ -7403,8 +7412,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T20:46:24.361141230Z",
+    "timestamp": "2026-08-29T20:50:12.337072017Z",
     "agent_id": "6ME5",
-    "agent_seq": 924
+    "agent_seq": 925
   }
 }
