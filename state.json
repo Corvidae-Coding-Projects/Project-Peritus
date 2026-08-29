@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 745,
+  "next_comment_id": 746,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T21:26:47.651697970Z",
+      "updated_at": "2026-08-29T21:27:57.301903684Z",
       "labels": [
         "qualification",
         "release"
@@ -1486,6 +1486,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAgwSRL11CFxX5HpD4IKV/2KQ4Yp/099tInBRTwBvqxQQ6kiR/Q7zyI+tVxY+159R7v0yE7jGirDynWtF+Bcw8Dg=="
+        },
+        "17f0d6d3-f2f5-4ace-979e-b12e84a1221a": {
+          "display_id": 745,
+          "author": "6ME5",
+          "content": "Signed commit b0fce1bcf907f93f87968bf34c0ce86cc53831c1 (fix(agent): ground temporal and workspace context (#31)) adds general temporal source-state grounding across all roles, splits the independent reviewer instructions below source budgets, resolves each Harbor image's effective workdir instead of assuming /app, and records TBF-010/TBA-001/TBF-011 plus later TBF-009 evidence. Verification: rustfmt; strict all-target/all-feature product-runner Clippy; 70 runner tests; 3 Harbor bridge tests plus Python compilation; architecture-check over 77 packages/3079 source files; docs-check over 134 maintained files; selected diff/artifact/credential scan clean. Final unchanged focused reruns remain pending; frozen baseline continues unchanged.",
+          "created_at": "2026-08-29T21:27:57.299355460Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA2YFoIQfRT6LFRAhMNWpw2wxHLzTH2HjavtSIA6hBiuyMCYH3OtXcdcjmG6cS4+VFSd3K5A6b25SgYi7PD1L1Ag=="
         },
         "1800830d-1822-467b-b540-5105a3248ee8": {
           "display_id": 684,
@@ -7457,8 +7466,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T21:26:47.651697970Z",
+    "timestamp": "2026-08-29T21:27:57.301903684Z",
     "agent_id": "6ME5",
-    "agent_seq": 930
+    "agent_seq": 931
   }
 }
