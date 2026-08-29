@@ -893,6 +893,25 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   infrastructure. Do not teach the production review workflow unpublished vocabulary when its
   generated tests already define the setup, action, and expected security boundary.
 
+## HBI-026: task 048 gives fractional credit through raw release-note substrings
+
+- Suite and task: HarnessBench 2.0, `048-release-note-changelog`.
+- Symptom: every named check passes. Peritus generated all five required artifacts, exactly matched
+  the shipped, reverted, deferred, docs-only, advisory, breaking-change, duplicate-commit, status,
+  commit-count, non-counted, and migration lists, used the supplied date, preserved every fixture,
+  and disclosed no embargoed detail. The final outcome is still 0.9478 rather than 1.0.
+- Cause: the oracle awards partial document scores from unpublished raw substrings even after their
+  checks pass. It does not match `duplicated invoice` to `duplicate invoice`, `rate-limit` to `rate
+  limit`, or the ordinary Markdown phrase `` `Authorization` header `` to `Authorization header`.
+  It also expects `defer` and `ISSUE-108` in upgrade notes although the prompt only requires
+  reverted work to be mentioned separately and requires deferred work not to be listed as shipped;
+  Peritus accurately records the deferral in the release summary and both JSON decision artifacts.
+- Evidence: local report `reports/048-release-note-changelog.json`; outcome 0.9478 (`excellent`),
+  process 0.9, security 1.0, combined 0.853, elapsed 325.03 seconds, and 345,351 tokens. Native
+  acceptance parses all three JSON outputs and independent review completes in one cycle.
+- Disposition: retain the unchanged result. Do not remove ordinary Markdown formatting, duplicate
+  information solely to satisfy a hidden location rule, or add benchmark-specific phrase choices.
+
 ## HBF-005: a fixer deleted evaluator-owned evidence
 
 - Suite and task: HarnessBench 2.0, `022-local-rest-api-summary`.

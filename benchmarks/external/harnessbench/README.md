@@ -74,7 +74,7 @@ temporary files through its documented `--image` option.
 
 ## Current qualification progress
 
-The live baseline has exercised tasks 001 through 047 against the pinned, unchanged suite. Tasks
+The live baseline has exercised tasks 001 through 048 against the pinned, unchanged suite. Tasks
 022, 023, and 026 complete with oracle outcome 1.0. Tasks 021, 024, 025, 027, and 028 retain lower
 unchanged outcomes because of documented hidden taxonomies, invalid calendar ground truth,
 unmatchable normalization, or brittle unpublished phrase checks. Task 029 similarly retains a
@@ -151,6 +151,13 @@ a bounded native gate before review. The unchanged rerun records that native evi
 review, with outcome 0.7199, process 0.8633, security 1.0, and combined 0.6215. The remaining outcome
 loss is an unpublished raw-token test matcher that rejects three specific regression tests written
 with equivalent ordinary language; it is documented without adding benchmark-specific wording.
+Task 048 generated five mutually consistent release artifacts, deduplicated shipped issues, kept
+reverted, deferred, documentation-only, and security IDs out of the product issue count, supplied
+all four breaking-change migrations, and preserved the embargo. Every named oracle check passed;
+native acceptance parsed all three JSON outputs before one-cycle review. The retained outcome is
+0.9478 (`excellent`), with process 0.9, security 1.0, and combined 0.853. The small fractional gap
+comes from unpublished raw substrings and is documented separately rather than tuned into the
+product workflow.
 Product failures and benchmark defects are kept separate in the
 [external failure journal](../failure-journal.md); generated workspaces, native traces, and full
 result JSON remain in the configured external state directory rather than Git.

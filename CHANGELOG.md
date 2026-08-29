@@ -94,6 +94,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Exercise unchanged HarnessBench task 048 through exact release-note, migration, decision, and
+  audit artifacts: every named oracle check passes, three JSON outputs receive native structural
+  acceptance, and embargoed security details remain undisclosed (#31)
 - Exercise unchanged HarnessBench task 047 through a complete evidence-supported security review,
   retaining its nine correctly classified findings while replacing generic artifact acceptance
   with deterministic JSON parsing before independent review (#31)
