@@ -7,7 +7,7 @@ mod projection;
 
 use std::path::{Path, PathBuf};
 
-use crate::BenchmarkError;
+use crate::{BenchmarkError, evidence::TraceUsage};
 
 pub fn publish_harnessbench(
     trace_inputs: &[(PathBuf, String)],
@@ -22,4 +22,29 @@ pub fn publish_harnessbench(
         rounds.extend(projection::project(trace_path, &frames, initial_user_prompt)?);
     }
     harnessbench::publish(proxy_dir, task_id, session_id, model_id, &rounds)
+}
+
+pub fn summarize_usage(
+    trace_path: &Path,
+    initial_user_prompt: &str,
+) -> Result<TraceUsage, BenchmarkError> {
+    let frames = frames::read(trace_path)?;
+    let rounds = projection::project(trace_path, &frames, initial_user_prompt)?;
+    let mut aggregate = TraceUsage { requests: rounds.len(), ..TraceUsage::default() };
+    for round in rounds {
+        let input = round.usage.input_tokens().unwrap_or(0);
+        let output = round.usage.output_tokens().unwrap_or(0);
+        aggregate.input_tokens = aggregate.input_tokens.saturating_add(input);
+        aggregate.cached_input_tokens = aggregate.cached_input_tokens.saturating_add(
+            round.usage.cached_input_tokens().or(round.observed_cache_tokens).unwrap_or(0),
+        );
+        aggregate.output_tokens = aggregate.output_tokens.saturating_add(output);
+        aggregate.total_tokens = aggregate.total_tokens.saturating_add(
+            round.usage.total_tokens().unwrap_or_else(|| input.saturating_add(output)),
+        );
+        aggregate.provider_cost_microunits = aggregate
+            .provider_cost_microunits
+            .saturating_add(round.usage.provider_cost_microunits().unwrap_or(0));
+    }
+    Ok(aggregate)
 }

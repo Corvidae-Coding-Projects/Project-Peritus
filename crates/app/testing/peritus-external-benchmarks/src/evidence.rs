@@ -80,6 +80,78 @@ pub struct RunReport {
     pub failure: Option<String>,
 }
 
+/// Report returned by either supported external benchmark protocol.
+#[derive(Clone, Debug, Serialize)]
+#[serde(untagged)]
+pub enum BenchmarkReport {
+    /// `HarnessBench` invocation evidence.
+    HarnessBench(RunReport),
+    /// Terminal-Bench invocation evidence.
+    TerminalBench(TerminalBenchReport),
+}
+
+/// Aggregate provider accounting reconstructed from the native trace.
+#[derive(Clone, Copy, Debug, Default, Serialize)]
+pub struct TraceUsage {
+    /// Completed model responses represented by the trace.
+    pub requests: usize,
+    /// Provider-reported input tokens.
+    pub input_tokens: u64,
+    /// Provider-reported or observed cached input tokens.
+    pub cached_input_tokens: u64,
+    /// Provider-reported output tokens.
+    pub output_tokens: u64,
+    /// Provider-reported totals, or derived input-plus-output totals.
+    pub total_tokens: u64,
+    /// Provider-reported cost in millionths of the provider currency unit.
+    pub provider_cost_microunits: u64,
+}
+
+/// Machine-readable result from one Peritus run inside a Harbor task environment.
+#[derive(Clone, Debug, Serialize)]
+pub struct TerminalBenchReport {
+    /// Evidence schema version.
+    pub schema_version: u32,
+    /// Whether the native Peritus product composition accepted the candidate.
+    pub success: bool,
+    /// Upstream task identity.
+    pub task_id: String,
+    /// Harbor trial identity.
+    pub session_id: String,
+    /// Model label recorded by Harbor.
+    pub harness_model_id: String,
+    /// Canonical task workspace.
+    pub workspace: PathBuf,
+    /// Exact Git baseline used by Peritus.
+    pub baseline_head: String,
+    /// Whether Peritus initialized the task workspace as a Git repository.
+    pub initialized_repository: bool,
+    /// Whether Peritus created its artifact workspace contract.
+    pub created_artifact_manifest: bool,
+    /// Writer and fixer provider/model identity.
+    pub writer: String,
+    /// Independent reviewer provider/model identity.
+    pub reviewer: String,
+    /// Elapsed wall-clock milliseconds.
+    pub elapsed_ms: u128,
+    /// Durable native provider/tool trace in Harbor's agent logs.
+    pub trace_path: PathBuf,
+    /// One-based conversation turn represented by this invocation.
+    pub conversation_turn: usize,
+    /// Aggregate accounting reconstructed from the native trace.
+    pub usage: TraceUsage,
+    /// Last complete product observation, when one was emitted.
+    pub last_observation_path: Option<PathBuf>,
+    /// Product completion summary when accepted.
+    pub summary: Option<String>,
+    /// Exact changed paths accepted by the product runner.
+    pub changed_paths: Vec<PathBuf>,
+    /// Stable product failure category when not accepted.
+    pub failure_kind: Option<String>,
+    /// Redaction-safe product failure detail when not accepted.
+    pub failure: Option<String>,
+}
+
 /// Last daemon-visible product observation, retained outside the benchmark result payload.
 #[derive(Clone, Debug, Serialize)]
 pub struct ProductObservation {
@@ -115,6 +187,23 @@ impl ProductObservation {
 }
 
 impl RunReport {
+    pub(crate) fn publish(&self, directory: &Path) -> Result<PathBuf, BenchmarkError> {
+        publish_json(directory, "invocation.json", self)
+    }
+}
+
+impl BenchmarkReport {
+    /// Returns the product-level acceptance recorded by either report shape.
+    #[must_use]
+    pub const fn success(&self) -> bool {
+        match self {
+            Self::HarnessBench(report) => report.success,
+            Self::TerminalBench(report) => report.success,
+        }
+    }
+}
+
+impl TerminalBenchReport {
     pub(crate) fn publish(&self, directory: &Path) -> Result<PathBuf, BenchmarkError> {
         publish_json(directory, "invocation.json", self)
     }

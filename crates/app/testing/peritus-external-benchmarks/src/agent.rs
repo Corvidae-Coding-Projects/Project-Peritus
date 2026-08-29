@@ -142,9 +142,9 @@ fn retained_paths(
     Ok((session, relocatable))
 }
 
-type ObservationCapture = Arc<Mutex<Option<ProductRunUpdate>>>;
+pub type ObservationCapture = Arc<Mutex<Option<ProductRunUpdate>>>;
 
-fn observation_capture() -> (RunObserver, ObservationCapture) {
+pub fn observation_capture() -> (RunObserver, ObservationCapture) {
     let capture = Arc::new(Mutex::new(None));
     let sink = Arc::clone(&capture);
     let observer: RunObserver = Arc::new(move |update| {
@@ -159,7 +159,7 @@ fn observation_capture() -> (RunObserver, ObservationCapture) {
     (observer, capture)
 }
 
-fn publish_last_observation(
+pub fn publish_last_observation(
     capture: &ObservationCapture,
     directory: &Path,
 ) -> Result<Option<PathBuf>, BenchmarkError> {
@@ -172,7 +172,7 @@ fn publish_last_observation(
         .transpose()
 }
 
-fn run_id(session_id: &str, task_id: &str) -> Result<RunId, BenchmarkError> {
+pub fn run_id(session_id: &str, task_id: &str) -> Result<RunId, BenchmarkError> {
     let mut hasher = Sha256::new();
     hasher.update(b"peritus.external-benchmark.run.v1\0");
     hasher.update(session_id.as_bytes());

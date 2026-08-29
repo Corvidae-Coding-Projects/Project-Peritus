@@ -2,7 +2,7 @@
 
 use std::ffi::OsString;
 
-use crate::{BenchmarkError, RunReport, agent, args, rubric};
+use crate::{BenchmarkError, BenchmarkReport, agent, args, rubric, terminal_agent};
 
 /// Completes one OpenAI-compatible rubric request through the authenticated official `codex`
 /// executable and returns a Chat Completions-shaped response.
@@ -21,12 +21,17 @@ pub async fn complete_rubric(body: &[u8]) -> Result<serde_json::Value, Benchmark
 ///
 /// Returns a typed failure when the command is invalid or the benchmark boundary cannot prepare,
 /// execute, trace, or record the run.
-pub async fn run<I>(arguments: I) -> Result<RunReport, BenchmarkError>
+pub async fn run<I>(arguments: I) -> Result<BenchmarkReport, BenchmarkError>
 where
     I: IntoIterator<Item = OsString>,
 {
     let command = args::Command::parse(arguments)?;
     match command {
-        args::Command::HarnessBench(input) => agent::run_harnessbench(input).await,
+        args::Command::HarnessBench(input) => {
+            agent::run_harnessbench(input).await.map(BenchmarkReport::HarnessBench)
+        }
+        args::Command::TerminalBench(input) => {
+            terminal_agent::run(input).await.map(BenchmarkReport::TerminalBench)
+        }
     }
 }

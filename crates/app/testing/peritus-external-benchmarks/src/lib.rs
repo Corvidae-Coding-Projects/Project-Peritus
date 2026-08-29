@@ -9,10 +9,11 @@ mod process_entry;
 mod providers;
 mod rubric;
 mod session;
+mod terminal_agent;
 mod trace;
 mod workspace;
 
 pub use dispatch::{complete_rubric, run};
 pub use error::BenchmarkError;
-pub use evidence::RunReport;
+pub use evidence::{BenchmarkReport, RunReport, TerminalBenchReport, TraceUsage};
 pub use process_entry::main_entry;

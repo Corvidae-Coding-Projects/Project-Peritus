@@ -25,7 +25,7 @@ pub fn main_entry() -> ExitCode {
                     return ExitCode::FAILURE;
                 }
             }
-            completed_attempt_exit(report.success)
+            completed_attempt_exit(report.success())
         }
         Err(error) => {
             eprintln!("peritus-benchmark-agent: {error}");

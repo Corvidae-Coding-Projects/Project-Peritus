@@ -38,5 +38,9 @@
 /target-verus/
 /dist/
 
+# Python cache artifacts from benchmark adapters and local tooling.
+__pycache__/
+*.py[cod]
+
 # Compatibility payloads are checked in as reviewable hexadecimal text.
 /compat/app-protocol/**/payload.bin
