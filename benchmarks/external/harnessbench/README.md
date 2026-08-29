@@ -73,7 +73,7 @@ temporary files through its documented `--image` option.
 
 ## Current qualification progress
 
-The live baseline has exercised tasks 001 through 038 against the pinned, unchanged suite. Tasks
+The live baseline has exercised tasks 001 through 039 against the pinned, unchanged suite. Tasks
 022, 023, and 026 complete with oracle outcome 1.0. Tasks 021, 024, 025, 027, and 028 retain lower
 unchanged outcomes because of documented hidden taxonomies, invalid calendar ground truth,
 unmatchable normalization, or brittle unpublished phrase checks. Task 029 similarly retains a
@@ -95,7 +95,11 @@ product diff, gate report, review ledger, and finding state in `last-product-obs
 Task 038 recovered automatically from one five-minute provider timeout, produced and independently
 accepted all four requested research artifacts, and scored 0.8469 (`good`). Its remaining misses
 come from an input-path normalization bug, an unpublished `source_rows` requirement, and one hidden
-hyphen-sensitive token.
+hyphen-sensitive token. Task 039 inspected a repository without changing it, produced all five
+architecture and onboarding artifacts, repaired invalid CSV quoting through the normal review loop,
+and scored 0.9673 (`excellent`). Its small remaining outcome gap comes from hidden substring checks
+that reject the accurate terms `OrderRepository.save` and `retries`; its 0.83 process score records
+redundant reads and a writer completion statement made before independent review found the CSV bug.
 Product failures and benchmark defects are kept separate in the
 [external failure journal](../failure-journal.md); generated workspaces, native traces, and full
 result JSON remain in the configured external state directory rather than Git.

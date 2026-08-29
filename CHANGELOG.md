@@ -77,6 +77,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Exercise the pinned, unchanged HarnessBench suite through task 039, retaining the excellent 0.9673
+  repository-architecture result and documenting its two hidden substring mismatches separately
+  from the real malformed-CSV defect that Peritus found, repaired, and revalidated (#31)
 - Retain the exact last product-run diff, gates, review ledger, summary, and durable finding state
   beside every external benchmark invocation so a strict internal rejection remains independently
   diagnosable after the upstream scorer exits; unchanged HarnessBench task 038 proves this evidence

@@ -578,6 +578,30 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   unpublished-field, and lexical conventions. Do not remove the real `in/` path prefix, invent row
   numbers for prose reports, or rewrite ordinary hyphenation solely for hidden matches.
 
+## HBI-020: task 039 uses exact substrings for equivalent architecture terms
+
+- Suite and task: HarnessBench 2.0, `039-repo-architecture-map`.
+- Symptom: the unchanged oracle rates the five-artifact result `excellent` at 0.9673, with every
+  weighted check passing, but records one of two runtime sequences and two of three documentation
+  discrepancy expectations.
+- Cause: the HTTP runtime flow accurately names `OrderRepository.save`; the hidden sequence accepts
+  only the shorter token `repo.save`. The retry discrepancy says that `create_order` “retries failed
+  SQLite writes twice,” directly preserving the README claim, while the matcher looks for the
+  non-stemmed substring `retry`, which is not contained in `retries`. Neither exact spelling is
+  required by the task.
+- Evidence: local report `reports/039-repo-architecture-map.json`; outcome 0.9673 (`excellent`),
+  process 0.83, security 1.0, combined 0.8029, 36 projected provider responses, and 536.002 seconds.
+  The native invocation reports success with all five exact changed paths. Its retained product
+  observation shows the source-layout and both CSV structure checks passing after review found and
+  the fixer corrected invalid quoting in `risk_register.csv`.
+- Process observation: the rubric correctly records repeated full-file reads, an extended planning
+  interval, and a writer completion statement before the independent review found the CSV defect.
+  The product did not expose that statement as final acceptance: it ran review, repaired the file,
+  reran the deterministic gate, and accepted only the corrected candidate. This is model efficiency
+  evidence rather than a missing recovery or acceptance boundary.
+- Disposition: retain the unchanged score. Do not rename accurate code identifiers or tailor prose
+  to hidden substring implementation details.
+
 ## HBF-005: a fixer deleted evaluator-owned evidence
 
 - Suite and task: HarnessBench 2.0, `022-local-rest-api-summary`.
