@@ -167,6 +167,7 @@ fi
         context: AgentContext,
     ) -> None:
         self._run_number += 1
+        workspace = await _workspace_path(environment)
         prompt_path = _REMOTE_PROMPTS / f"instruction-{self._run_number:04}.md"
         with tempfile.TemporaryDirectory(prefix="peritus-terminalbench-") as raw:
             local_prompt = Path(raw) / prompt_path.name
@@ -182,7 +183,7 @@ fi
                 "peritus-benchmark-agent",
                 "terminalbench",
                 "--workspace",
-                "/app",
+                str(workspace),
                 "--evidence-dir",
                 str(evidence_dir),
                 "--prompt-file",
@@ -197,7 +198,7 @@ fi
         )
         result = await environment.exec(
             command,
-            cwd="/app",
+            cwd=str(workspace),
             env=self._runtime_env(),
         )
         self._retain_process_output(result)
@@ -246,6 +247,22 @@ def _require_success(result: ExecResult, operation: str) -> None:
         return
     detail = (result.stderr or result.stdout or "no diagnostic output").strip()
     raise RuntimeError(f"{operation} failed with exit {result.return_code}: {detail[:4000]}")
+
+
+async def _workspace_path(environment: BaseEnvironment) -> PurePosixPath:
+    result = await environment.exec("pwd -P")
+    _require_success(result, "resolve task working directory")
+    value = (result.stdout or "").strip()
+    path = PurePosixPath(value)
+    if (
+        not value
+        or "\n" in value
+        or not path.is_absolute()
+        or value != str(path)
+        or path == PurePosixPath("/")
+    ):
+        raise RuntimeError(f"task working directory is not a safe absolute path: {value!r}")
+    return path
 
 
 def _parse_report(stdout: str) -> dict[str, Any]:

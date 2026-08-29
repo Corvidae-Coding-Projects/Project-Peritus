@@ -2194,7 +2194,9 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 ## TBF-009: empty provider turns discarded useful and incomplete candidates alike
 
 - Suite and tasks: Terminal-Bench 2.0 frozen baseline, first observed together on
-  `cancel-async-tasks`, `polyglot-rust-c`, `dna-insert`, and `rstan-to-pystan`.
+  `cancel-async-tasks`, `polyglot-rust-c`, `dna-insert`, and `rstan-to-pystan`, then observed on
+  `dna-assembly`, `vulnerable-secret`, `feal-linear-cryptanalysis`, and the final review turn of
+  `mteb-leaderboard`, and finally after a verifier-complete `regex-chess` candidate.
 - Symptom: each run reached a normal provider boundary and then ended with
   `provider returned no tool calls or usable final response`. The outcomes differed substantially:
   the cancellation candidate passed five of six verifier checks, the DNA candidate wrote its
@@ -2212,5 +2214,92 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   `polyglot-rust-c__EWL8xpT`, `dna-insert__KD4hLQo`, and
   `rstan-to-pystan__fMdVnzV` all retain the same typed failure. Their unchanged Harbor rewards were
   zero; the cancellation verifier passed five of six checks and the DNA verifier failed only the
-  reverse-primer temperature check. Focused unchanged reruns against the final binary remain
-  required before this recovery class is counted as a demonstrated score improvement.
+  reverse-primer temperature check. The later trials retain the same frozen generic terminal, but
+  their causes must remain separate until the normalized candidate reruns expose the stable
+  provider category. The retained traces identify malformed Codex runtime turns in `dna-assembly`
+  and `feal-linear-cryptanalysis`; `vulnerable-secret` instead contains the older generic reported
+  terminal and may be a non-retryable provider safety event covered by `TBF-006`, not an empty turn
+  that Peritus should route around. Trial `regex-chess__mp4rEJs` is the clearest useful-progress
+  case: its durable last observation records one 751,437-byte `re.json`, passing native JSON and
+  exact-target gates, and an empty finding ledger. All four unchanged verifier tests passed for
+  reward 1.0, but a later provider terminal still made the frozen product report failure after
+  eight requests and 1,187.731 seconds. Its report-level `changed_paths` remains empty by contract
+  because those paths name accepted output; the exact unaccepted candidate remains present in the
+  retained last observation rather than being discarded. Focused unchanged reruns against the
+  final binary remain required before this recovery class is counted as a demonstrated score
+  improvement.
+
+## TBF-010: current data was mistaken for a historical snapshot
+
+- Suite and task: Terminal-Bench 2.0, `mteb-leaderboard`, first full-suite baseline trial.
+- Symptom: the writer queried the live MTEB backend, filtered rows to models whose release date was
+  no later than August 2025, selected the current highest `Mean (Task)` value from that subset, and
+  wrote `Salesforce/SFR-Embedding-2_R`. The unchanged verifier expected the leader from the actual
+  August 2025 leaderboard snapshot, `GritLM/GritLM-7B`, and awarded reward 0.
+- Cause: an item's release date is not the observation date of a mutable leaderboard. Scores,
+  membership, task sets, and aggregates may be backfilled or recomputed later. Peritus grounded the
+  current API response but did not prove the source state at the request's explicit historical
+  boundary. A later empty reviewer response also occurred, but belongs to the provider-neutral
+  `TBF-009` recovery class and did not make the already-written historical answer correct.
+- Resolution: the shared production workflow now treats `as of`, historical date, version, and
+  revision qualifiers as source-state boundaries. Every role requires a contemporaneous snapshot,
+  source revision, or archived record and explicitly rejects using current mutable data filtered by
+  an item's own date as proof of prior source state. When dated evidence cannot be recovered, the
+  product reports the evidence gap instead of converting current state into a historical claim. No
+  leaderboard name, model answer, task identity, URL, or verifier value appears in production
+  behavior.
+- Before evidence: job `peritus-terminalbench-2-k5-high`; trial
+  `mteb-leaderboard__jXfVzpW`; the retained command output shows the live backend query and
+  release-date cutoff, while `result.txt` and the last product observation retain the selected
+  current value. The run used 18 provider requests, 1,832,815 input tokens, 111,104 cached input
+  tokens, and 8,931 output tokens over 414.649 seconds. The unchanged verifier passed file presence
+  and failed only the historical value.
+- Verification: a shared workflow regression requires the temporal-provenance rule to reach the
+  architect, writer/fixer, and reviewer instruction surfaces. All 70 product-runner tests, strict
+  Clippy, repository formatting, and the 134-document structural check pass. An unchanged focused
+  rerun against the final candidate remains required before this is counted as a demonstrated
+  benchmark improvement. The frozen baseline binary remains untouched.
+
+## TBA-001: productive native work exceeded one external task deadline
+
+- Suite and task: Terminal-Bench 2.0, `caffe-cifar-10`, first full-suite baseline trial.
+- Symptom: Harbor terminated the agent at its unchanged 1,200-second deadline and recorded
+  `AgentTimeoutError`, so no normal Peritus invocation report was published. The unchanged verifier
+  found the requested prototxt but not the trained model and awarded reward 0.
+- Evidence: retained trace `caffe-cifar-10__2WxBnnt` shows Peritus cloning and configuring Caffe
+  1.0 for CPU execution, diagnosing a protobuf API incompatibility, patching and successfully
+  rebuilding the source, downloading and extracting CIFAR-10, and converting the dataset to LMDB.
+  No individual command was stuck; the external deadline arrived before training and model export.
+- Classification: ambiguous pending a final-candidate rerun. This may expose a broad planning and
+  time-allocation limitation, but the frozen evidence does not distinguish that from the genuine
+  duration of compiling, recovering, converting, and training the requested stack under the
+  benchmark's twenty-minute outer limit. Peritus's production run horizon is intentionally much
+  longer and did not expire.
+- Decision: do not raise the benchmark timeout, skip required work, inject a prebuilt task artifact,
+  or add task-name knowledge. Preserve the unchanged result, measure phase time in the candidate
+  rerun, and implement a product change only if the repeated evidence supports a general scheduling
+  or recovery improvement.
+
+## TBF-011: the Harbor bridge assumed every task workspace was `/app`
+
+- Suite and task: Terminal-Bench 2.0, `prove-plus-comm`, first full-suite baseline trial.
+- Symptom: provider execution never began. The container runtime rejected the native agent launch
+  with `chdir to /app: No such file or directory`, and Harbor recorded an agent exception instead
+  of running the task verifier.
+- Cause: the thin Python boundary passed `/app` as both the process working directory and the native
+  `--workspace` value. Terminal-Bench images are heterogeneous; this unchanged task image declares
+  `WORKDIR /workspace` and places `plus_comm.v` there. Harbor already executes commands in the
+  image's effective working directory when no override is supplied, but the adapter discarded that
+  authoritative environment fact.
+- Resolution: the bridge now resolves `pwd -P` through the live Harbor environment, validates one
+  normalized absolute non-root path, and passes that exact path as both process cwd and native
+  workspace. It does not create a substitute directory, move task inputs, inspect a task name, or
+  alter the image, resources, timeout, instruction, or verifier.
+- Before evidence: job `peritus-terminalbench-2-k5-high`; trial
+  `prove-plus-comm__2cXHrFF`; retained adapter stdout contains the OCI status 127 diagnostic before
+  any Peritus report or provider request. The pinned task Dockerfile independently declares
+  `/workspace` and copies the starting proof there.
+- Verification: three focused bridge regressions cover `/workspace`, unsafe root/relative/multiline
+  output, and environment-command failure; Python bytecode compilation passes. The running baseline
+  process retains its originally loaded adapter and remains unchanged. An unchanged focused rerun
+  with the final candidate must demonstrate native execution and verifier completion.

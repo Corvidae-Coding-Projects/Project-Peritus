@@ -44,6 +44,13 @@ requested behavior.
    identities and results, the pending or failed stop boundary, and the stop reason when they exist.
    Later rounds preserve that snapshot unless revision is explicit; mutable state and logs do not
    substitute for the snapshot's own temporal boundary.
+   Treat an explicit past-time (`as of` or `at <time>`), historical-date, version, or revision
+   qualifier as a source-state boundary. Prove the state at that boundary with a contemporaneous
+   snapshot, source revision, or archived record. A current mutable source filtered by an item's
+   release, creation, or effective date does not prove that the source had the same values, ranking,
+   membership, or calculations at that earlier time; later backfills and recomputation remain
+   possible. If no dated state can be recovered, report the evidence gap instead of presenting
+   current state as historical fact.
    When an output schema provides one losing-source collection for conflict provenance, include
    every evaluated source whose result-affecting rule lost because of priority, effective date,
    expiry, scope, or an explicit exception. State why each source lost without claiming it is

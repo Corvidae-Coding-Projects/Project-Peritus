@@ -7,8 +7,9 @@ outside Git.
 
 The adapter does not replace Peritus with a benchmark-specific agent. Harbor supplies an unchanged
 task workspace and instruction to `peritus-benchmark-agent`, which runs the native Peritus design,
-writer, independent reviewer, fixer, and deterministic gates. Harbor then runs the task's unchanged
-verifier against the resulting `/app` workspace.
+writer, independent reviewer, fixer, and deterministic gates. The thin bridge resolves the task
+image's declared working directory through Harbor instead of assuming `/app`; Harbor then runs the
+task's unchanged verifier against that same workspace.
 
 ## Prepare the runner
 

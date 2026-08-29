@@ -37,6 +37,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Fixed
+- Resolve each Harbor task image's authoritative working directory instead of assuming every
+  Terminal-Bench environment uses `/app`; validate the discovered path and pass the same workspace
+  to the native Peritus runner so valid `/workspace` and other image layouts remain portable
+  (`TBF-011`, #31)
+- Require contemporaneous snapshots, source revisions, or archived records for `as of` and other
+  historical source-state requests, instead of treating current mutable data filtered by an item's
+  own date as proof of the source's earlier values, membership, ranking, or calculations
+  (`TBF-010`, #31)
 - Teach external benchmark trace projection to validate compaction, retry, and provider-switch
   metadata in addition to response and tool frames, and use retry/switch evidence to close an
   incomplete projected response instead of reporting a valid recovery trace as corrupt (#31)
