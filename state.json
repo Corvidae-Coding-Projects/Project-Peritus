@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 709,
+  "next_comment_id": 710,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T15:19:31.640312690Z",
+      "updated_at": "2026-08-29T16:02:20.018553384Z",
       "labels": [
         "qualification",
         "release"
@@ -2206,6 +2206,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABASBEH+peHA+w4OaSBAwZKxPinF8n8k7cNYTaWLoAxfvLXEggnTS/hbFLtx8El1jrteO3fsIf0nK4ZrTUnprT7Bw=="
+        },
+        "98d31db9-c418-4f79-b7f4-4dff7208a2e5": {
+          "display_id": 709,
+          "author": "6ME5",
+          "content": "Terminal-Bench unchanged OpenSSL qualification now closes the broad reviewer evidence gap. The first reward-1.0 run was falsely rejected from Git's lossy 100644 mode; the second confirmed live 0600 but could not see the writer's successful checker execution. Product changes now expose authoritative file metadata, treat chmod as candidate progress, retain bounded structured-command observations, and deliver those observations separately to independent review. Final unchanged job terminalbench-qualification-openssl-evidence-handoff / trial openssl-selfsigned-cert__V6CWibG: Peritus accepted=true, Harbor reward=1.0, zero exceptions, 13 provider requests, 328 seconds. Local gates passed: 58 unit tests (56 pass, 2 ignored fixtures), 2 production-composition tests, strict all-target/all-feature Clippy, fmt, static musl build.",
+          "created_at": "2026-08-29T16:02:20.008530025Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABApMyHK/kARk8d6c3jok2ztjxKBe/yy5t30hmtLFFCJ+CkInCwarZOWLK/fYcJVQVa0e++G1E9M6weLedn7X05AQ=="
         },
         "9d7a5004-f893-4e8a-9b4e-a163ab3d3503": {
           "display_id": 692,
@@ -7133,8 +7142,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T15:19:31.640312690Z",
+    "timestamp": "2026-08-29T16:02:20.018553384Z",
     "agent_id": "6ME5",
-    "agent_seq": 892
+    "agent_seq": 893
   }
 }
