@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 624,
+  "next_comment_id": 625,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T09:14:02.972640253Z",
+      "updated_at": "2026-08-29T09:15:10.770236441Z",
       "labels": [
         "qualification",
         "release"
@@ -1747,6 +1747,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAe815NTeuYc7SuRbWzYh44o18it6qy5XNm2UrmHotjqBcFJpz82Wjwm+bY8k3jNMQOXSLWTw7tjrbS+uF3vyICw=="
+        },
+        "ac14d2ac-4cfc-410f-b9b1-c1c290167644": {
+          "display_id": 624,
+          "author": "6ME5",
+          "content": "Tasks 066-070 are documented in signed commit ff9fde9b. Task 069 passed all 17 checks with perfect outcome/process/security/combined; tasks 066-068 and 070 retain evidence-backed results where hidden enum, severity, negation, shortlist, and substring conventions conflict with or exceed published instructions. Full cargo xtask all remains green across 76 packages.",
+          "created_at": "2026-08-29T09:15:10.767660019Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAk0TV2jKNVmjyoyJ59duzb9//YshvuLrJpaGleQ5mf2XSkKAPvdQy3/cLPM1lhFJaLGR5yuOowaZpmTdBGVNHBQ=="
         },
         "ac3553e5-7d2a-49ec-b20c-3bafe191b996": {
           "display_id": 564,
@@ -6368,8 +6377,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T09:14:02.972640253Z",
+    "timestamp": "2026-08-29T09:15:10.770236441Z",
     "agent_id": "6ME5",
-    "agent_seq": 805
+    "agent_seq": 806
   }
 }
