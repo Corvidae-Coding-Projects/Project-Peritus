@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 656,
+  "next_comment_id": 657,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T10:03:32.254166056Z",
+      "updated_at": "2026-08-29T10:08:30.236783967Z",
       "labels": [
         "qualification",
         "release"
@@ -1747,6 +1747,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAkrZfr+mRdrI29aAv1dufk4Y7zHJOf299LCpD1ldpI18i7qn3TLOZiAG/J1uAeJEpNTa8Trf5DRrtD7zO3qHfBQ=="
+        },
+        "796b66cf-3a31-444e-899f-cf28c1fd279d": {
+          "display_id": 656,
+          "author": "6ME5",
+          "content": "[action] Added general requirement-to-test ledger and independent regression-coverage review; focused 49-test product-runner suite passed and benchmark adapter rebuilt. Rerunning unchanged Task 087.",
+          "created_at": "2026-08-29T10:08:30.234214703Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7vvElG10idHGHpJXVHDJi4k3RzxQeIxwMgE7ZxnTx5vm4+JLRnyZz16EfHlfWOZFNHhLgtb5G6IQvoNIC8mmDA=="
         },
         "7a870c80-8d27-424f-80d1-e7fb54dfb3d7": {
           "display_id": 615,
@@ -6656,8 +6665,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T10:03:32.254166056Z",
+    "timestamp": "2026-08-29T10:08:30.236783967Z",
     "agent_id": "6ME5",
-    "agent_seq": 837
+    "agent_seq": 838
   }
 }
