@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 752,
+  "next_comment_id": 753,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T22:19:20.011092142Z",
+      "updated_at": "2026-08-29T22:19:24.779442981Z",
       "labels": [
         "qualification",
         "release"
@@ -1603,6 +1603,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAHwIJo+gtjL5ycxuU04ntivjgAXqabL1rtcrqjedFR4k5wyx40twJRilPmFHczUSl2bAG2dfSrAeNL0FL3mWOAA=="
+        },
+        "28ce7ee1-3e07-43ac-8581-c5e4bc9cb2d0": {
+          "display_id": 752,
+          "author": "6ME5",
+          "content": "[action] Implemented and focused-verified TBF-013 authorized external-effect acceptance without weakening workspace gates; recorded TBF-012 reward 1 and b0 hosted 32/32 green",
+          "created_at": "2026-08-29T22:19:24.776794748Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABARdlXoB5C1QcVKaafYvoah7+MohtLAv701w8hb1O4rz7CmKvR//rY7uCxLsYz4altgPQIPwY3AT2HHN0vDd4GCA=="
         },
         "2ada89be-35f8-4bfd-9bd1-8ea8382ff38b": {
           "display_id": 637,
@@ -7520,8 +7529,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T22:19:20.011092142Z",
+    "timestamp": "2026-08-29T22:19:24.779442981Z",
     "agent_id": "6ME5",
-    "agent_seq": 937
+    "agent_seq": 938
   }
 }
