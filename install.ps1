@@ -34,6 +34,22 @@ function Receive-PeritusFile {
     }
 }
 
+function Get-PeritusSha256Hex {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $algorithm = [Security.Cryptography.SHA256]::Create()
+    try {
+        $stream = [IO.File]::OpenRead($Path)
+        try {
+            return [BitConverter]::ToString($algorithm.ComputeHash($stream)).Replace('-', '')
+        } finally {
+            $stream.Dispose()
+        }
+    } finally {
+        $algorithm.Dispose()
+    }
+}
+
 try {
     Write-Output "Downloading Peritus $version for windows/$architecture..."
     $archive = Join-Path $temporary $asset
@@ -42,7 +58,7 @@ try {
     Receive-PeritusFile -Uri "$archiveUrl.sha256" -Output $checksum
     $expected = (Get-Content -LiteralPath $checksum -Raw).Trim()
     if ($expected -notmatch '^[0-9a-fA-F]{64}$') { throw 'release checksum is malformed' }
-    $actual = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash
+    $actual = Get-PeritusSha256Hex -Path $archive
     if (-not [String]::Equals($actual, $expected, [StringComparison]::OrdinalIgnoreCase)) {
         throw 'release archive checksum did not match'
     }

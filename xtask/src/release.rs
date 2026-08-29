@@ -320,4 +320,12 @@ mod tests {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().expect("workspace");
         assert_eq!(workspace_version(root).expect("version"), "0.0.0");
     }
+
+    #[test]
+    fn windows_bootstrap_hashes_without_optional_command_modules() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().expect("workspace");
+        let script = fs::read_to_string(root.join("install.ps1")).expect("read Windows bootstrap");
+        assert!(script.contains("[Security.Cryptography.SHA256]::Create()"));
+        assert!(!script.contains("Get-FileHash"));
+    }
 }

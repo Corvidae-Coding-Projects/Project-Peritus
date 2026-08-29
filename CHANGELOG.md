@@ -28,7 +28,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Fixed
 - Pass Windows release archive and self-update extraction paths through explicit PowerShell
   environment bindings, so `Compress-Archive` and `Expand-Archive` receive non-empty literal paths
-  on hosted Windows runners instead of losing positional arguments after `-Command` (#31)
+  on hosted Windows runners instead of losing positional arguments after `-Command`; compute the
+  public bootstrap checksum through the built-in .NET SHA-256 implementation so an isolated user
+  profile does not depend on PowerShell's optional module-command cache (#31)
 - Replace the root and HarnessBench chronological status walls with plain-English product,
   qualification, benchmark, and documentation guides while retaining task-level forensic evidence
   in the external failure journal; add focused checks to all 75 crate READMEs (#31)
