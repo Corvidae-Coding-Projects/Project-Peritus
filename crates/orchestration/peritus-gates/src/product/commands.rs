@@ -5,14 +5,19 @@ use std::path::{Path, PathBuf};
 use crate::{GateError, GateErrorKind, GateRecoveryAction};
 
 use super::plan::{
-    AffectedProject, GateCommandSpec, PRODUCT_MAX_SOURCE_LINES, ProjectKind, is_node_test_file,
+    AffectedProject, GateCommandSpec, PRODUCT_MAX_SOURCE_LINES, ProjectKind,
+    directory_has_root_python_tests, is_node_test_file,
 };
 
 pub(super) fn commands_for(
     workspace_root: &Path,
     project: &AffectedProject,
+    changed_paths: &[PathBuf],
 ) -> Result<Vec<GateCommandSpec>, GateError> {
     let mut commands = vec![source_layout(project)];
+    if changed_paths.iter().any(|path| path.starts_with(project.root()) && is_yaml(path)) {
+        commands.push(yaml_structure(project));
+    }
     let language_commands = match project.kind() {
         ProjectKind::Artifact => artifact_commands(workspace_root, project),
         ProjectKind::Rust => rust_commands(workspace_root, project),
@@ -23,6 +28,12 @@ pub(super) fn commands_for(
     }?;
     commands.extend(language_commands);
     Ok(commands)
+}
+
+fn is_yaml(path: &Path) -> bool {
+    path.extension().and_then(std::ffi::OsStr::to_str).is_some_and(|extension| {
+        extension.eq_ignore_ascii_case("yml") || extension.eq_ignore_ascii_case("yaml")
+    })
 }
 
 fn source_layout(project: &AffectedProject) -> GateCommandSpec {
@@ -36,6 +47,10 @@ fn source_layout(project: &AffectedProject) -> GateCommandSpec {
         ],
         project,
     )
+}
+
+fn yaml_structure(project: &AffectedProject) -> GateCommandSpec {
+    spec("YAML structure", "peritus-internal", vec!["yaml-structure".to_owned()], project)
 }
 
 fn rust_commands(
@@ -128,7 +143,7 @@ fn python_commands(workspace_root: &Path, project: &AffectedProject) -> Vec<Gate
     let mut commands = vec![spec(
         "Python compile",
         "python",
-        vec!["-m".to_owned(), "compileall".to_owned(), "-q".to_owned(), ".".to_owned()],
+        vec!["-B".to_owned(), "-c".to_owned(), python_syntax_check()],
         project,
     )];
     let root = workspace_root.join(project.root());
@@ -137,12 +152,19 @@ fn python_commands(workspace_root: &Path, project: &AffectedProject) -> Vec<Gate
     };
     if root.join("pytest.ini").is_file()
         || root.join("tests").is_dir()
+        || directory_has_root_python_tests(&root)
         || manifest().is_some_and(|text| text.contains("pytest"))
     {
         commands.push(spec(
             "Python tests",
             "python",
-            vec!["-m".to_owned(), "pytest".to_owned()],
+            vec![
+                "-B".to_owned(),
+                "-m".to_owned(),
+                "pytest".to_owned(),
+                "-p".to_owned(),
+                "no:cacheprovider".to_owned(),
+            ],
             project,
         ));
     }
@@ -153,11 +175,28 @@ fn python_commands(workspace_root: &Path, project: &AffectedProject) -> Vec<Gate
         commands.push(spec(
             "Python lint",
             "python",
-            vec!["-m".to_owned(), "ruff".to_owned(), "check".to_owned(), ".".to_owned()],
+            vec![
+                "-B".to_owned(),
+                "-m".to_owned(),
+                "ruff".to_owned(),
+                "check".to_owned(),
+                ".".to_owned(),
+            ],
             project,
         ));
     }
     commands
+}
+
+fn python_syntax_check() -> String {
+    [
+        "import ast,pathlib; ",
+        "files=(p for p in pathlib.Path('.').rglob('*.py') ",
+        "if not any(part.startswith('.') or part in {'build','dist','node_modules','target','vendor'} ",
+        "for part in p.parts)); ",
+        "[ast.parse(p.read_text(encoding='utf-8'),filename=str(p)) for p in files]",
+    ]
+    .join("")
 }
 
 fn go_commands(project: &AffectedProject) -> Vec<GateCommandSpec> {

@@ -73,7 +73,7 @@ temporary files through its documented `--image` option.
 
 ## Current qualification progress
 
-The live baseline has exercised tasks 001 through 043 against the pinned, unchanged suite. Tasks
+The live baseline has exercised tasks 001 through 044 against the pinned, unchanged suite. Tasks
 022, 023, and 026 complete with oracle outcome 1.0. Tasks 021, 024, 025, 027, and 028 retain lower
 unchanged outcomes because of documented hidden taxonomies, invalid calendar ground truth,
 unmatchable normalization, or brittle unpublished phrase checks. Task 029 similarly retains a
@@ -120,6 +120,13 @@ deterministic acceptance gate. Conventional `schema.sql` plus `migration.sql` wo
 to a Rust-owned SQLite gate. An unchanged rerun executed the schema, migration twice, postcheck,
 foreign-key checks, and rollback in a disposable in-memory database before review accepted the
 candidate; it retained the 0.995 outcome and scored 0.9433 for process quality.
+Task 044 produced a safe executable GitHub Actions workflow, preserved every protected input, and
+recovered automatically from a five-minute provider stall. It exposed that root-level Python tests
+and changed YAML configuration were falling through to generic artifact checks. Peritus now binds
+root `test_*.py`/`*_test.py` conventions to their project, performs side-effect-free Python syntax
+and pytest gates, and structurally parses changed YAML. The unchanged rerun records all four native
+checks and scored 0.98 (`excellent`); its remaining gap consists of two unpublished prose-token
+spellings documented in the journal.
 Product failures and benchmark defects are kept separate in the
 [external failure journal](../failure-journal.md); generated workspaces, native traces, and full
 result JSON remain in the configured external state directory rather than Git.

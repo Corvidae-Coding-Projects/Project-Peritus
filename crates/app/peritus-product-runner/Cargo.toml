@@ -24,6 +24,7 @@ serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 tokio.workspace = true
+yaml-rust2.workspace = true
 
 [dev-dependencies]
 peritus-provider-anthropic = { version = "=0.0.0", path = "../../model/peritus-provider-anthropic" }

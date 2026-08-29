@@ -149,7 +149,7 @@ impl TargetGatePlan {
         let projects = projects.into_iter().collect::<Vec<_>>();
         let mut commands = Vec::new();
         for project in &projects {
-            commands.extend(commands_for(workspace_root, project)?);
+            commands.extend(commands_for(workspace_root, project, &changed_paths)?);
         }
         Ok(Self { changed_paths, projects, commands, uncovered_paths })
     }
@@ -266,18 +266,30 @@ fn sqlite_candidate_path(path: &Path) -> bool {
 
 fn conventional_python_tests(absolute: &Path, relative: &Path, changed: &Path) -> bool {
     let tests = absolute.join("tests");
-    let belongs_to_python = changed.extension().is_some_and(|extension| extension == "py")
-        || changed.strip_prefix(relative).is_ok_and(|within| {
-            within.components().next().is_some_and(|part| part.as_os_str() == "tests")
+    let has_tests_directory = tests.is_dir()
+        && std::fs::read_dir(tests).is_ok_and(|entries| {
+            entries
+                .filter_map(Result::ok)
+                .any(|entry| entry.path().extension().is_some_and(|extension| extension == "py"))
         });
-    if !tests.is_dir() || !belongs_to_python {
+    let has_root_tests = absolute.file_name().is_none_or(|name| name != "tests")
+        && directory_has_root_python_tests(absolute);
+    changed.strip_prefix(relative).is_ok() && (has_tests_directory || has_root_tests)
+}
+
+pub(super) fn directory_has_root_python_tests(directory: &Path) -> bool {
+    std::fs::read_dir(directory).is_ok_and(|entries| {
+        entries.filter_map(Result::ok).any(|entry| is_root_python_test(&entry.path()))
+    })
+}
+
+fn is_root_python_test(path: &Path) -> bool {
+    if !path.is_file() || path.extension().and_then(|extension| extension.to_str()) != Some("py") {
         return false;
     }
-    std::fs::read_dir(tests).is_ok_and(|entries| {
-        entries
-            .filter_map(Result::ok)
-            .any(|entry| entry.path().extension().is_some_and(|extension| extension == "py"))
-    })
+    path.file_stem()
+        .and_then(|stem| stem.to_str())
+        .is_some_and(|stem| stem.starts_with("test_") || stem.ends_with("_test"))
 }
 
 fn conventional_node_tests(absolute: &Path, changed: &Path) -> bool {

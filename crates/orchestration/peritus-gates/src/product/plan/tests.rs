@@ -182,3 +182,48 @@ fn conventional_sqlite_workspace_runs_migration_verification() {
     assert_eq!(verification.program(), "peritus-internal");
     assert_eq!(verification.arguments(), ["sqlite-migration"]);
 }
+
+#[test]
+fn root_level_python_tests_cover_workflow_and_documentation_changes() {
+    let temporary = tempfile::tempdir().expect("temporary workspace");
+    std::fs::write(
+        temporary.path().join("peritus-workspace.toml"),
+        "schema_version = 1\nkind = \"artifact\"\n",
+    )
+    .expect("artifact workspace marker");
+    let project = temporary.path().join("in/project");
+    std::fs::create_dir_all(project.join(".github/workflows")).expect("workflow directory");
+    std::fs::write(project.join("app.py"), "VALUE = 1\n").expect("source");
+    std::fs::write(project.join("test_app.py"), "def test_value():\n    assert True\n")
+        .expect("root test");
+    std::fs::write(project.join(".github/workflows/ci.yml"), "name: CI\n").expect("workflow");
+    std::fs::write(project.join("ci_design_notes.md"), "# CI\n").expect("notes");
+
+    let plan = TargetGatePlan::discover(
+        temporary.path(),
+        vec![
+            PathBuf::from("in/project/.github/workflows/ci.yml"),
+            PathBuf::from("in/project/ci_design_notes.md"),
+        ],
+    )
+    .expect("manifestless root-test plan");
+
+    assert!(plan.has_complete_coverage());
+    assert_eq!(plan.projects().len(), 1);
+    assert_eq!(plan.projects()[0].kind(), ProjectKind::Python);
+    assert_eq!(plan.projects()[0].root(), Path::new("in/project"));
+    assert!(plan.commands().iter().any(|command| command.label() == "YAML structure"));
+    let compile = plan
+        .commands()
+        .iter()
+        .find(|command| command.label() == "Python compile")
+        .expect("Python syntax command");
+    let tests = plan
+        .commands()
+        .iter()
+        .find(|command| command.label() == "Python tests")
+        .expect("Python test command");
+    assert_eq!(&compile.arguments()[..2], ["-B", "-c"]);
+    assert!(compile.arguments()[2].contains("ast.parse"));
+    assert_eq!(tests.arguments(), ["-B", "-m", "pytest", "-p", "no:cacheprovider"]);
+}

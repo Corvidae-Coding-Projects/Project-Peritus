@@ -732,6 +732,47 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   script. Framework-managed numbered migration histories remain owned by their declared project
   tooling rather than being replayed as though every individual file must be idempotent.
 
+## HBF-013: root-level Python tests and changed YAML lacked native gates
+
+- Suite and task: HarnessBench 2.0, `044-ci-config-repair`.
+- Symptom: the first run produced valid safe workflow YAML, passed both local tests and the exact
+  import smoke command, preserved every protected file, and scored process 0.96. Native acceptance
+  still reported only general source-layout and CSV checks because the changed files were workflow
+  YAML and Markdown rather than Python source beneath a `tests/` directory.
+- Cause: manifestless Python discovery recognized a conventional `tests/` directory but not
+  root-level `test_*.py` or `*_test.py` files. Changed YAML also had no general Rust-owned syntax
+  gate. Discovery therefore continued to the benchmark's artifact marker even though the nearest
+  project had an executable Python test contract.
+- Change: root-level Python test names now establish the nearest manifestless Python project for
+  any changed file within that project, without splitting an ordinary `tests/` directory into a
+  second nested project. Every changed `.yml` or `.yaml` file within an affected project is parsed
+  by a bounded Rust-owned structural gate. Python syntax uses a no-bytecode AST pass, and pytest
+  disables bytecode and its cache provider so acceptance does not dirty the user's workspace.
+  Focused regressions cover workflow plus documentation changes, malformed YAML, project scoping,
+  exact Python gate arguments, and the existing nested-test behavior.
+- Before evidence: local report `reports/044-ci-config-repair-pre-native-config-gates.json`; outcome
+  0.72, process 0.96, security 1.0, combined 0.6912, and 242.072 seconds. Native acceptance records
+  no YAML parse or Python test command.
+- After evidence: local report `reports/044-ci-config-repair-post-native-config-gates.json`;
+  unchanged task outcome 0.98 (`excellent`), process 0.9033, security 1.0, combined 0.8853, and
+  530.39 seconds. Native acceptance parses the changed workflow, checks both Python files, passes
+  both pytest cases, and completes review in one cycle. The run automatically recovered from one
+  five-minute provider stall before any mutation.
+
+## HBI-023: task 044 models path globs and prose with narrower string rules
+
+- Suite and task: HarnessBench 2.0, `044-ci-config-repair`.
+- Symptom: the first correct workflow used `**/test_*.py`; the oracle's path simulation did not
+  match its own root fixture `test_mathutil.py` and capped outcome at 0.72. A fresh run independently
+  chose explicit root and directory patterns, passed path simulation, and scored 0.98 rather than
+  1.0 because its design notes used `Pull-request` and `secret access` instead of the unpublished
+  substrings `pull request` and `secrets`.
+- Cause: the oracle handles a middle `/**/` specially but does not give a leading `**/` its ordinary
+  zero-directory interpretation. Its design-note score is also a raw eight-substring count despite
+  the prompt requiring meaning rather than exact wording.
+- Disposition: retain both unchanged results and the final excellent score. Do not teach production
+  behavior hidden lexical forms; exact observed root paths remain a useful normal design choice.
+
 ## HBF-005: a fixer deleted evaluator-owned evidence
 
 - Suite and task: HarnessBench 2.0, `022-local-rest-api-summary`.
