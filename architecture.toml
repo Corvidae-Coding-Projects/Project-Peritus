@@ -344,6 +344,13 @@ layer = "testing"
 verification_class = "C"
 
 [[packages]]
+name = "peritus-release-operator"
+path = "crates/app/testing/peritus-release-operator"
+owner = "H4"
+layer = "testing"
+verification_class = "C"
+
+[[packages]]
 name = "peritus-release-qualification"
 path = "crates/app/testing/peritus-release-qualification"
 owner = "H4"

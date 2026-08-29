@@ -13,6 +13,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Add a narrow Rust release operator that turns each exact native archive into a candidate-bound
+  artifact inventory, locked Cargo-graph SPDX 2.3 SBOM, and SLSA provenance statement; sign the
+  archive and SBOM through GitHub's keyless Sigstore identity; verify the exact repository,
+  workflow, source commit, tag, predicate, artifact digest, and hosted-runner claim before retaining
+  both bundles and complete evidence checksums; and publish only after every platform job succeeds
+  (#31)
 - Add `cargo xtask docs-check` to inventory 133 maintained Markdown files, validate headings,
   fences, line endings, local links, and crate-focused commands, and include it in the normal
   repository policy gate (#31)

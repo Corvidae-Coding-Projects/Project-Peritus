@@ -51,6 +51,11 @@ The implementation is not the release decision. Production readiness still requi
 The H4 adapter cannot sign, tag, publish, deploy, or manufacture missing evidence. Human release
 authority remains outside the harness.
 
+The tagged release workflow now stages each native archive, generates a candidate-bound inventory,
+SPDX SBOM, and SLSA provenance document in Rust, and retains GitHub keyless Sigstore attestations.
+This supplies the release mechanism; the unfinished exact-candidate campaigns and independent audit
+remain the release blockers.
+
 ## Benchmark qualification
 
 The completed pinned HarnessBench campaign contains all 106 tasks with no missing native adapter

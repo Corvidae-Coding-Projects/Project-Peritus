@@ -1927,6 +1927,30 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   zero exceptions, Peritus product acceptance true, Harbor verifier reward 1.0, 13 provider
   requests, and 182 seconds elapsed. No task, prompt, image, or verifier change was made.
 
+## TBI-004: the Windows control verifier requires an unpublished socket path
+
+- Suite and task: Terminal-Bench 2.0, `install-windows-3-11`, first full-suite baseline trial.
+- Symptom: Peritus booted the supplied image to the Windows 3.11 Program Manager desktop, kept the
+  base image unchanged with QEMU snapshot mode, exposed VNC on 5901 and nginx on 80, and exercised
+  external keyboard control through QMP and the QEMU monitor. The unchanged verifier passed its
+  network, QEMU-configuration, and disk-content checks but assigned reward 0 after its fourth check
+  could not connect to `/tmp/qemu-monitor.sock`.
+- Cause: the published task asks for appropriate interfaces that accept programmatic keyboard input
+  but does not name a protocol or path. Peritus supplied and exercised QMP on TCP port 4444 and HMP
+  on TCP port 4445. The hidden verifier accepts only an HMP Unix socket at one exact unpublished
+  path, even though the supplied interface met the stated requirement and visibly changed the
+  guest. The task package's non-prompt README and reference solution name that path, but neither is
+  part of the agent's authoritative `/app` workspace.
+- Evidence: trial `install-windows-3-11__Qj4xuLV` completed without an agent exception and with
+  native product acceptance true after 77 provider requests and 2,761.075 seconds. The final review
+  retained live process, image-hash, snapshot, VNC, QMP/HMP, screen-dump, and OCR evidence. Verifier
+  output reports three passed checks and one failure solely because
+  `UNIX-CONNECT:/tmp/qemu-monitor.sock` returned `No such file or directory`.
+- Disposition: retain the unchanged reward 0 and report the unpublished verifier convention. Do not
+  add a Terminal-Bench filename rule or require every valid programmatic control interface to
+  duplicate itself at that path. A future upstream prompt or verifier can name the required socket
+  when exact interoperability, rather than functional keyboard control, is the contract.
+
 ## TBF-001: source layout rejected untouched vendored code
 
 - Suite and task: Terminal-Bench 2.0, `make-mips-interpreter`, first full-campaign trial.
@@ -2166,3 +2190,27 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   tokens. The frozen 445-trial baseline remains unchanged; a focused unchanged rerun with the final
   binary must identify and retain the original provider terminal before this benchmark result is
   closed.
+
+## TBF-009: empty provider turns discarded useful and incomplete candidates alike
+
+- Suite and tasks: Terminal-Bench 2.0 frozen baseline, first observed together on
+  `cancel-async-tasks`, `polyglot-rust-c`, `dna-insert`, and `rstan-to-pystan`.
+- Symptom: each run reached a normal provider boundary and then ended with
+  `provider returned no tool calls or usable final response`. The outcomes differed substantially:
+  the cancellation candidate passed five of six verifier checks, the DNA candidate wrote its
+  requested artifact but missed one melting-temperature bound, and the polyglot and PyStan tasks
+  retained no requested final artifacts. Treating all four as the same terminal hid recoverable
+  progress and prevented a fresh reviewer or writer turn from correcting it.
+- Cause: the frozen adapter made one empty provider response terminal at the product boundary. This
+  is the same provider-neutral recovery class found while diagnosing `TBF-007`, not four separate
+  task semantics or a reason to add task-specific behavior.
+- Resolution: the current candidate applies the shared bounded outer retry policy to empty
+  responses from every role, with traced delay, cancellation, and cumulative run accounting. A
+  retry resumes from the exact current workspace, so useful artifacts remain available for review
+  and incomplete work receives another grounded writer turn.
+- Evidence: baseline trials `cancel-async-tasks__aPpRDvK`,
+  `polyglot-rust-c__EWL8xpT`, `dna-insert__KD4hLQo`, and
+  `rstan-to-pystan__fMdVnzV` all retain the same typed failure. Their unchanged Harbor rewards were
+  zero; the cancellation verifier passed five of six checks and the DNA verifier failed only the
+  reverse-primer temperature check. Focused unchanged reruns against the final binary remain
+  required before this recovery class is counted as a demonstrated score improvement.

@@ -4,16 +4,17 @@ use std::{
     env, fs,
     fs::File,
     io::Read as _,
-    path::Path,
+    path::{Path, PathBuf},
     process::{Command, ExitStatus},
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use serde::Serialize;
 use sha2::{Digest as _, Sha256};
 
 use crate::XtaskError;
 
-pub(crate) fn bootstrap_smoke(root: &Path) -> Result<std::path::PathBuf, XtaskError> {
+pub(crate) fn bootstrap_smoke(root: &Path) -> Result<PathBuf, XtaskError> {
     let package = crate::product_package::smoke(root)?;
     let fixture = TemporaryDirectory::new("peritus-public-installer")?;
     let version = format!("v{}", workspace_version(root)?);
@@ -99,8 +100,8 @@ pub(crate) fn create(root: &Path) -> Result<(), XtaskError> {
     Ok(())
 }
 
-pub(crate) fn package_upload(root: &Path) -> Result<(), XtaskError> {
-    let tag = environment("GITHUB_REF_NAME")?;
+pub(crate) fn package_stage(root: &Path) -> Result<(), XtaskError> {
+    let build_started_unix = unix_seconds()?;
     let package = crate::product_package::build(root)?;
     let name = package
         .file_name()
@@ -112,15 +113,41 @@ pub(crate) fn package_upload(root: &Path) -> Result<(), XtaskError> {
     let checksum = archive.with_file_name(format!("{name}.{extension}.sha256"));
     fs::write(&checksum, format!("{}\n", digest(&archive)?))
         .map_err(|error| XtaskError::io("write release archive checksum at", &checksum, error))?;
-    run(
-        Command::new("gh")
-            .current_dir(root)
-            .args(["release", "upload", &tag])
-            .arg(&archive)
-            .arg(&checksum)
-            .arg("--clobber"),
-        "upload native release archive",
-    )
+    let record = NativePackageRecord {
+        schema_version: 1,
+        archive: relative_path(root, &archive)?,
+        checksum: relative_path(root, &checksum)?,
+        build_started_unix,
+        build_finished_unix: unix_seconds()?,
+    };
+    let record_path = root.join("dist/peritus-native-package.json");
+    let bytes = serde_json::to_vec(&record).map_err(|error| {
+        XtaskError::metadata(format!("serialize native package record: {error}"))
+    })?;
+    fs::write(&record_path, bytes)
+        .map_err(|error| XtaskError::io("write native package record at", &record_path, error))
+}
+
+#[derive(Serialize)]
+struct NativePackageRecord {
+    schema_version: u32,
+    archive: PathBuf,
+    checksum: PathBuf,
+    build_started_unix: u64,
+    build_finished_unix: u64,
+}
+
+fn relative_path(root: &Path, path: &Path) -> Result<PathBuf, XtaskError> {
+    path.strip_prefix(root)
+        .map(Path::to_owned)
+        .map_err(|_| XtaskError::metadata("native package path escaped the workspace root"))
+}
+
+fn unix_seconds() -> Result<u64, XtaskError> {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .map_err(|_| XtaskError::metadata("system clock is before the Unix epoch"))
 }
 
 pub(crate) fn publish() -> Result<(), XtaskError> {
@@ -284,7 +311,7 @@ fn require_success(status: ExitStatus, operation: &'static str) -> Result<(), Xt
 }
 
 struct TemporaryDirectory {
-    path: std::path::PathBuf,
+    path: PathBuf,
 }
 
 impl TemporaryDirectory {

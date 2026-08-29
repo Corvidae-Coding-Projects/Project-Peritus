@@ -31,7 +31,7 @@ Commands:
   product-package-smoke  Qualify native install, repeat launch, upgrade, and uninstall
   release-bootstrap-smoke Qualify the public download, checksum, and install entry point
   release-create         Validate a tag and create its retained draft GitHub release
-  release-package-upload Build, archive, checksum, and upload this host's native package
+  release-package-stage Build, archive, checksum, and record this host's native package
   release-publish        Publish a draft only after every native package job passes
   help                   Print this help
 ";
@@ -52,7 +52,7 @@ enum Command {
     ProductPackageSmoke,
     ReleaseBootstrapSmoke,
     ReleaseCreate,
-    ReleasePackageUpload,
+    ReleasePackageStage,
     ReleasePublish,
     Help,
 }
@@ -206,7 +206,7 @@ pub(crate) fn execute(
                 &format!("public release bootstrap passed: {}\n", package.display()),
             )?;
         }
-        Command::ReleasePackageUpload => crate::release::package_upload(root)?,
+        Command::ReleasePackageStage => crate::release::package_stage(root)?,
         Command::ReleasePublish => crate::release::publish()?,
         Command::Help => {}
     }
@@ -274,7 +274,7 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
         Some("product-package-smoke") => Ok(Command::ProductPackageSmoke),
         Some("release-bootstrap-smoke") => Ok(Command::ReleaseBootstrapSmoke),
         Some("release-create") => Ok(Command::ReleaseCreate),
-        Some("release-package-upload") => Ok(Command::ReleasePackageUpload),
+        Some("release-package-stage") => Ok(Command::ReleasePackageStage),
         Some("release-publish") => Ok(Command::ReleasePublish),
         Some("help" | "-h" | "--help") | None => Ok(Command::Help),
         Some(command) => Err(XtaskError::invocation(format!(

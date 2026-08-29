@@ -5,7 +5,7 @@ on:
     tags: ["v*.*.*"]
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   CARGO_BUILD_JOBS: "1"
@@ -16,6 +16,8 @@ jobs:
     name: Create exact draft release
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    permissions:
+      contents: write
     steps:
       - name: Check out tagged source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -33,6 +35,10 @@ jobs:
   package:
     name: Package (${{ matrix.os }})
     needs: create-draft
+    permissions:
+      attestations: write
+      contents: write
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
@@ -50,16 +56,40 @@ jobs:
         run: cargo run --locked --package xtask -- all
       - name: Qualify native package and public installer lifecycle
         run: cargo run --locked --package xtask -- release-bootstrap-smoke
-      - name: Build, archive, checksum, and upload native package
+      - name: Build, archive, checksum, and record native package
+        run: cargo run --locked --package xtask -- release-package-stage
+      - name: Generate candidate-bound inventory, SBOM, and provenance
+        id: evidence
+        run: >-
+          cargo run --locked --package peritus-release-operator --
+          generate dist/peritus-native-package.json
+      - name: Sign build provenance with GitHub's release identity
+        id: build_provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ steps.evidence.outputs.archive }}
+      - name: Sign the SPDX SBOM with GitHub's release identity
+        id: sbom_attestation
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ steps.evidence.outputs.archive }}
+          sbom-path: ${{ steps.evidence.outputs.sbom }}
+      - name: Retain attestations and upload the complete native evidence set
         env:
           GH_TOKEN: ${{ github.token }}
-        run: cargo run --locked --package xtask -- release-package-upload
+        run: >-
+          cargo run --locked --package peritus-release-operator --
+          retain-and-upload dist/peritus-native-package.json
+          "${{ steps.build_provenance.outputs.bundle-path }}"
+          "${{ steps.sbom_attestation.outputs.bundle-path }}"
 
   publish:
     name: Publish complete release
     needs: package
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    permissions:
+      contents: write
     steps:
       - name: Check out tagged source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

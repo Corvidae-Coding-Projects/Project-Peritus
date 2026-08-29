@@ -2675,6 +2675,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "peritus-release-operator"
+version = "0.0.0"
+dependencies = [
+ "peritus-release-artifacts",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "thiserror 2.0.20",
+ "toml",
+]
+
+[[package]]
 name = "peritus-release-policy"
 version = "0.0.0"
 dependencies = [

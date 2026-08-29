@@ -185,3 +185,25 @@ the cryptographically verified observations used to construct both the H4 input 
 policy evidence aggregate. Test fixtures and repository templates are not execution evidence.
 Until the real candidate-bound campaigns, signatures, independent reviews, and final audit have
 been collected, the truthful final state remains not ready.
+
+## Public release evidence pipeline
+
+The tagged GitHub workflow stages each Linux, macOS, and Windows archive before publication. The
+`peritus-release-operator` binary then observes the exact archive and checksum bytes, the pinned
+Rust, Verus, and vstd identities, the checked-out commit, a deterministic digest of its Git source
+archive, the native runner platform, and the locked Cargo dependency graph. It emits a canonical
+artifact inventory, platform-specific SPDX 2.3 SBOM, and SLSA provenance statement through the
+contracts described above.
+
+Signing is intentionally one narrow external effect. The public GitHub Actions release identity
+creates a keyless Sigstore build-provenance attestation and a separate SBOM attestation for the
+archive. Before retention, the operator verifies each bundle against the exact repository, release
+workflow, source commit, tag reference, predicate type, archive digest, and hosted-runner claim. It
+then copies both bundles to deterministic release-asset names, writes a checksum inventory covering
+the archive and all retained evidence, and uploads the complete set to the still-draft release. The
+workflow receives only the minimum content, identity-token, and attestation permissions needed by
+each job. It publishes the draft only after all three native jobs succeed.
+
+These public artifacts make a release inspectable; they do not make it qualified. H4 still requires
+the exact-candidate native campaigns, soak evidence, independent rebuild comparison, completed
+security review, acceptance-evidence map, independent final audit, and a `Ready` policy decision.
