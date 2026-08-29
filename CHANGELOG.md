@@ -13,6 +13,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Cite both requirement and failed-validity clauses for missing or invalid required items, cite
+  governing clauses and use positive scope wording in boundary documents, and preserve scalar
+  identity/name lists when sibling audit artifacts own richer issue and policy metadata (#31)
+- Keep one canonical, self-contained record per decision dimension; preserve included and excluded
+  scope, conditions, and governing gates; distinguish a decided requirement from unresolved
+  satisfaction; cite decisive rejection authorities; and retain `path#record_id` anchors for
+  evidence inside multi-entry source files (#31)
 - Require independently resolvable evidence locations using stable clause IDs, structured record
   coordinates, exact counterexample identities, or literal missing paths; keep those locators in
   their declared location fields, and make every not-reproducible artifact carry a decisive missing

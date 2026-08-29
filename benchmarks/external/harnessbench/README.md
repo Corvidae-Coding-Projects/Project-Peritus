@@ -74,7 +74,7 @@ temporary files through its documented `--image` option.
 
 ## Current qualification progress
 
-The live baseline has exercised tasks 001 through 097 against the pinned, unchanged suite. Tasks
+The live baseline has exercised tasks 001 through 100 against the pinned, unchanged suite. Tasks
 022, 023, and 026 complete with oracle outcome 1.0. Tasks 021, 024, 025, 027, and 028 retain lower
 unchanged outcomes because of documented hidden taxonomies, invalid calendar ground truth,
 unmatchable normalization, or brittle unpublished phrase checks. Task 029 similarly retains a
@@ -414,6 +414,29 @@ in every artifact that records `not_reproducible`, rather than relying on signal
 sibling output. The unchanged final run retained outcome 0.72: exact claim decisions,
 reproducibility gaps, and scope limits passed, while generative location placement and unpublished
 preferred source or phrase choices remained variable.
+
+Task 098 initially made the right source-priority decisions but split exclusions from their
+canonical scope values, cited proposal origins instead of decisive rejection authorities, and lost
+record anchors inside a multi-entry email file. Decision values are now self-contained, one
+canonical row owns each semantic decision dimension, known governing gates remain final rules even
+when their completion is open, and source identities retain `path#record_id`. The unchanged final
+run passed all five expected decisions and winning sources plus all four required actions, improving
+outcome/combined from 0.5851/0.5773 to 0.7164/0.7116. Remaining deductions include an oracle that
+flags the words `mode A` even in the explicit value `mode A excluded`, plus narrow phrase matching.
+
+Task 099 then passed every deterministic privacy and DSAR intake check on its first run: decisions,
+policy bases, eligible systems, retention exceptions, requester sections, redaction coverage,
+non-disclosure boundaries, no deletion promises, and fixture integrity all scored 1.0. Its
+outcome/process/security/combined result is 1.0/0.9733/1.0/0.9733, so no benchmark-derived product
+change was made.
+
+Task 100 initially got every customer and document classification right but omitted requirement
+clauses from several validity rows and repeated a prohibited disposition phrase inside a negated
+boundary. Audit rows now cite both requirement and validity bases, boundary notes cite governing
+clauses and use positive scope wording, and identity lists remain scalar when sibling artifacts own
+detail metadata. The unchanged final run improved outcome/combined from 0.60/0.5860 to
+0.8843/0.8519; every check except the generatively re-enriched JSON name-list representation passed,
+and the exact missing-item CSV remained correct.
 
 HarnessBench chooses a result directory from the last observed provider model and may move a
 multi-provider sandbox after the native adapter exits. Invocation evidence schema 4 therefore

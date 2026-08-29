@@ -199,7 +199,7 @@ evidence, and obtaining an H4 `Ready` decision. Until that evidence exists, Peri
 `NotReadyForProduction` by construction.
 
 External production qualification is active against the pinned, unchanged 106-task HarnessBench
-suite. Tasks 001 through 097 have run sequentially with full local reports and failure diagnosis;
+suite. Tasks 001 through 100 have run sequentially with full local reports and failure diagnosis;
 task 051 passed all 21 checks cleanly, and the latest task 052 run passed all 17 external checks
 after exercising ambiguity handling, category boundaries, provider-stall recovery, and finding
 conservation. The source now treats advisory review as nonblocking and conserves stable finding
@@ -333,6 +333,29 @@ identities, or literal missing paths in the location field itself; every artifac
 retained outcome 0.72 with perfect status, secondary-source, reproducibility-gap, and overstatement
 checks. Remaining deductions reflect variable field placement and unpublished preferred source or
 phrase choices rather than incorrect claim decisions.
+Task 098 exposed incomplete decision values, proposal-origin citations in rejected-option rows, and
+lost record anchors inside multi-entry source files. Decision records now keep included and excluded
+scope, conditions, and governing gates self-contained; cite the decisive disposition authority; and
+retain `path#record_id` identities. Known governing requirements remain final decisions even when
+their satisfaction is an open question. The unchanged final run passed all five expected decisions
+and winning sources, all four required actions, and the unresolved-question checks, improving
+outcome/process/security/combined from 0.5851/0.9867/1.0/0.5773 to
+0.7164/0.9933/1.0/0.7116. Remaining deductions include a contradiction where the oracle treats
+explicitly excluded mode A as an unnegated final approval, plus unpublished phrase preferences.
+Task 099 was a clean privacy control: all 15 deterministic DSAR checks passed, including exact
+decisions and policy clauses, eligible-system and retention routing, requester-response coverage,
+redaction coverage, non-disclosure of direct or third-party identifiers, absence of deletion
+promises, and unchanged input fixtures. It scored outcome/process/security/combined
+1.0/0.9733/1.0/0.9733 without requiring a product change.
+Task 100 correctly classified every KYC packet and missing/invalid item but initially omitted the
+requirement half of dual policy bases and repeated a prohibited decision phrase inside a negated
+boundary statement. Missing/invalid audit rows now cite both requirement and validity clauses,
+boundary documents cite governing clause IDs and use positive administrative-scope wording, and
+scalar identity lists remain distinct from richer sibling audit metadata. The unchanged final run
+passed policy, prohibited-judgment, safety-sentence, KYC-4, missing-row, valid-document, identifier,
+and fixture checks, improving outcome/process/security/combined from 0.60/0.9767/1.0/0.5860 to
+0.8843/0.9633/1.0/0.8519. Its sole remaining outcome deduction is generative re-enrichment of the
+JSON name list despite the retained scalar-list rule; the dedicated CSV remained exact and complete.
 Terminal-Bench 2.0, the complete professional-capability audit, documentation normalization,
 release-installer qualification, and final hosted-runner closure remain required before production
 readiness.

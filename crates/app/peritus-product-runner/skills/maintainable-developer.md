@@ -43,5 +43,21 @@ Do not rely on vague line ranges or a richer sibling artifact. Every artifact th
 path with its literal source spelling. In schemas with separate source, location, signal, and
 rationale fields, put the exact locator in the location field itself; mentioning it only in signal
 or rationale text does not satisfy that field.
+Keep decision values self-contained by naming included and excluded scope, approval conditions, and
+governing incomplete gates instead of leaving material semantics only in evidence or rationale.
+For rejected or classified items, cite the decisive disposition evidence in the primary source
+field rather than only the subject's origin. Preserve a decisive record anchor from a multi-record
+source as `relative/path#record_id` unless the contract defines another representation.
+Emit one canonical record per decision dimension; do not move an exclusion, condition, or
+controlling restriction to a sibling row that leaves the canonical value incomplete. Record a
+source-defined approval gate, review, or condition as a final governing requirement even when its
+completion remains unresolved, and preserve the completion question separately.
+For a missing or invalid required item, cite both its requirement clause and its failed validity
+clause when both exist. Cite governing clause IDs in boundary documents. Describe allowed
+administrative scope positively and preserve exact required disclaimers, but do not repeat forbidden
+decision labels only to negate them unless exact reproduction is required.
+Keep declared identity or name lists scalar when a sibling audit artifact owns issue, reason,
+policy, or evidence metadata. Do not replace scalar entries with objects merely to duplicate richer
+sibling information.
 Preserve an explicit empty/null applicable-authority sentinel for true insufficient evidence; keep a
 partial source that only points to a missing controlling fact in evidence and caveat fields.

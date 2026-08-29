@@ -110,6 +110,34 @@ requested behavior.
    spelling. When a schema separates source, location, signal, and rationale, each field must carry
    its own contract: the location field itself contains the exact locator. A locator mentioned only
    in signal or rationale text does not satisfy an empty or generic location field.
+   Keep decision values self-contained. A scope decision names both included and excluded scope; a
+   conditional approval names its conditions; an incomplete gate decision names the required gates
+   still governing it. Evidence or rationale text may support the value but must not carry material
+   decision semantics that the value omits. For a rejected or classified item, its primary source
+   field cites the decisive evidence for that disposition, not merely the source where the rejected
+   proposal or subject originated. Preserve the subject origin separately when the schema permits.
+   When a source file contains multiple addressable records and one record is decisive, retain the
+   record anchor in the source identity as `relative/path#record_id` unless the contract declares a
+   different representation.
+   Emit one canonical decision record per semantic decision dimension. Do not split an exclusion,
+   condition, or controlling restriction into a sibling record when that would leave the canonical
+   scope or decision value materially incomplete; supplementary rows may add detail but cannot
+   replace the complete canonical value. Distinguish a decided governing requirement from its
+   unresolved satisfaction. A source-defined approval gate, required review, or mandatory condition
+   remains a final governing decision even when evidence of completion is missing; record that rule
+   and separately preserve the open question about whether it has been satisfied.
+   For a missing or invalid required item, cite both the clause that makes the item required and the
+   clause that defines the failed validity condition when both exist. A validity rule alone does not
+   explain why the item belongs in the packet, and a requirement rule alone does not explain why a
+   submitted item failed. Boundary and limitation documents cite the clause IDs governing each
+   named signal or restriction. State their allowed administrative scope positively and include any
+   exact required disclaimer, but do not repeat forbidden decision labels merely to negate them
+   unless the output contract explicitly requires that literal; context-free consumers can mistake
+   the repeated phrase for a prohibited conclusion.
+   Preserve the declared representation of identity and name lists. When one field is a list of
+   item names or identifiers and a sibling audit artifact owns issue, reason, policy, or evidence
+   metadata, keep the identity list scalar and put the metadata only in its declared detail fields.
+   Do not replace scalar entries with objects merely to duplicate richer sibling information.
    When a contract defines empty or null applicable authority as the sentinel for true insufficient
    evidence, preserve that sentinel. A partial source that points to an absent required schedule,
    threshold, approval, or other controlling fact belongs in evidence and caveat fields; it does not
@@ -246,6 +274,22 @@ Do not rely on vague line ranges or a richer sibling artifact. Every artifact th
 path with its literal source spelling. In schemas with separate source, location, signal, and
 rationale fields, put the exact locator in the location field itself; mentioning it only in signal
 or rationale text does not satisfy that field.
+Keep decision values self-contained by naming included and excluded scope, approval conditions, and
+governing incomplete gates instead of leaving material semantics only in evidence or rationale.
+For rejected or classified items, cite the decisive disposition evidence in the primary source
+field rather than only the subject's origin. Preserve a decisive record anchor from a multi-record
+source as `relative/path#record_id` unless the contract defines another representation.
+Emit one canonical record per decision dimension; do not move an exclusion, condition, or
+controlling restriction to a sibling row that leaves the canonical value incomplete. Record a
+source-defined approval gate, review, or condition as a final governing requirement even when its
+completion remains unresolved, and preserve the completion question separately.
+For a missing or invalid required item, cite both its requirement clause and its failed validity
+clause when both exist. Cite governing clause IDs in boundary documents. Describe allowed
+administrative scope positively and preserve exact required disclaimers, but do not repeat forbidden
+decision labels only to negate them unless exact reproduction is required.
+Keep declared identity or name lists scalar when a sibling audit artifact owns issue, reason,
+policy, or evidence metadata. Do not replace scalar entries with objects merely to duplicate richer
+sibling information.
 Preserve an explicit empty/null applicable-authority sentinel for true insufficient evidence; keep a
 partial source that only points to a missing controlling fact in evidence and caveat fields.
 ";
@@ -304,6 +348,22 @@ records `not_reproducible` must itself name a decisive missing input, configurat
 path with its literal source spelling. When source, location, signal, and rationale are separate,
 require the exact locator in the location field itself; text in another field cannot substitute for
 a generic location.
+Reject decision values that omit material included or excluded scope, conditions, or governing
+incomplete gates and rely on evidence or rationale to carry those semantics. For a rejected or
+classified item, require its primary source field to cite the decisive disposition evidence rather
+than merely the subject's origin. When one record in a multi-record file is decisive, require a
+stable `relative/path#record_id` source identity unless the contract defines another representation.
+Reject decision sets that split exclusions, conditions, or controlling restrictions into sibling
+rows while leaving the canonical decision dimension incomplete. A known source-defined approval
+gate, review, or condition remains a final governing requirement even when its completion is
+unresolved; require the rule in final decisions and the satisfaction question separately.
+For each missing or invalid required item, require both the requirement clause and failed validity
+clause when both exist. Require boundary documents to cite governing clause IDs. Reject unnecessary
+repetition of forbidden decision labels inside negations when positive administrative-scope wording
+conveys the boundary and the contract does not require the exact literal.
+Reject scalar identity or name lists whose entries were replaced by richer objects merely because a
+sibling audit artifact carries issue, reason, policy, or evidence metadata. Preserve each field's
+declared representation and keep detail in its owning fields.
 Treat a missing or incompatible
 production dependency, or a test-process
 substitute used in its place, as a blocking compatibility failure when that dependency is being

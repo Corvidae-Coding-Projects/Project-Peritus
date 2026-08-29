@@ -50,6 +50,34 @@ requested behavior.
    spelling. When a schema separates source, location, signal, and rationale, each field must carry
    its own contract: the location field itself contains the exact locator. A locator mentioned only
    in signal or rationale text does not satisfy an empty or generic location field.
+   Keep decision values self-contained. A scope decision names both included and excluded scope; a
+   conditional approval names its conditions; an incomplete gate decision names the required gates
+   still governing it. Evidence or rationale text may support the value but must not carry material
+   decision semantics that the value omits. For a rejected or classified item, its primary source
+   field cites the decisive evidence for that disposition, not merely the source where the rejected
+   proposal or subject originated. Preserve the subject origin separately when the schema permits.
+   When a source file contains multiple addressable records and one record is decisive, retain the
+   record anchor in the source identity as `relative/path#record_id` unless the contract declares a
+   different representation.
+   Emit one canonical decision record per semantic decision dimension. Do not split an exclusion,
+   condition, or controlling restriction into a sibling record when that would leave the canonical
+   scope or decision value materially incomplete; supplementary rows may add detail but cannot
+   replace the complete canonical value. Distinguish a decided governing requirement from its
+   unresolved satisfaction. A source-defined approval gate, required review, or mandatory condition
+   remains a final governing decision even when evidence of completion is missing; record that rule
+   and separately preserve the open question about whether it has been satisfied.
+   For a missing or invalid required item, cite both the clause that makes the item required and the
+   clause that defines the failed validity condition when both exist. A validity rule alone does not
+   explain why the item belongs in the packet, and a requirement rule alone does not explain why a
+   submitted item failed. Boundary and limitation documents cite the clause IDs governing each
+   named signal or restriction. State their allowed administrative scope positively and include any
+   exact required disclaimer, but do not repeat forbidden decision labels merely to negate them
+   unless the output contract explicitly requires that literal; context-free consumers can mistake
+   the repeated phrase for a prohibited conclusion.
+   Preserve the declared representation of identity and name lists. When one field is a list of
+   item names or identifiers and a sibling audit artifact owns issue, reason, policy, or evidence
+   metadata, keep the identity list scalar and put the metadata only in its declared detail fields.
+   Do not replace scalar entries with objects merely to duplicate richer sibling information.
    When a contract defines empty or null applicable authority as the sentinel for true insufficient
    evidence, preserve that sentinel. Keep a partial source that only points to an absent controlling
    fact in evidence and caveat fields rather than treating it as applicable authority.

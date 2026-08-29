@@ -1730,3 +1730,60 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   all 14 claim statuses, secondary-source requirements, reproducibility gaps, and overstatement
   checks pass. No private preferred-source or lexical rule was added. Evidence is retained at
   `reports/097-research-claims-batch-evidence-audit-final.json`.
+
+## HBI-059: task 098 split canonical decisions and cited proposal origins
+
+- Suite and task: HarnessBench 2.0, `098-three-source-decision-record-synthesis`.
+- Symptom: the first result applied source priority correctly but only three of five expected
+  decision dimensions were independently recognizable. Initial launch scope listed included
+  features while moving the legal exclusion to prose or a sibling row; known readiness gates were
+  represented only as unresolved status. Rejected-option `source_file` values cited the displaced
+  proposal rather than the authority that rejected it, and the customer-notice action cited the
+  email container without its decisive record ID.
+- Cause: decision value fields were not required to be self-contained or canonical per semantic
+  dimension. The workflow did not distinguish a decided governing requirement from unresolved
+  evidence of compliance, and source identity rules did not explicitly preserve record anchors in
+  multi-entry files.
+- Resolution: canonical decision values now retain included and excluded scope, conditions, and
+  governing gates; known requirements remain final decisions while satisfaction stays an open
+  question. Rejection rows cite decisive disposition evidence, and multi-record sources use
+  `relative/path#record_id`. The unchanged final run passed all five expected decision and winning
+  source checks, all four required actions, and the unresolved-support checks, improving
+  outcome/process/security/combined from 0.5851/0.9867/1.0/0.5773 to
+  0.7164/0.9933/1.0/0.7116. The oracle still treats `mode A excluded` as an unnegated forbidden
+  final value and requires unpublished rejection/evidence wording, so no contradictory
+  benchmark-specific phrasing was added. Evidence is retained at
+  `reports/098-three-source-decision-record-synthesis-final.json`.
+
+## HBI-060: task 099 clean privacy control
+
+- Suite and task: HarnessBench 2.0, `099-privacy-dsar-intake-review`.
+- Result: all 15 deterministic checks passed on the first run, covering exact DSAR decisions,
+  policy clauses, eligible-system and retention routing, one requester section per request, direct
+  and third-party identifier minimization, absence of deletion commitments, redaction coverage, and
+  unchanged fixtures.
+- Disposition: no product defect was identified and no benchmark-specific change was made. The
+  retained outcome/process/security/combined score is 1.0/0.9733/1.0/0.9733. Evidence is retained at
+  `reports/099-privacy-dsar-intake-review-final.json`.
+
+## HBI-061: task 100 omitted requirement bases and echoed a forbidden boundary phrase
+
+- Suite and task: HarnessBench 2.0, `100-financial-kyc-admin-check`.
+- Symptom: the first run correctly classified all customers, valid documents, missing/invalid
+  documents, completion flags, manual-review signals, and missing-item rows. Several CSV policy bases
+  cited only the failed validity clause, however, and the boundary document omitted the manual-review
+  clause ID. It also repeated `deny account` inside a negation, which a context-free prohibited-phrase
+  scan treated as the forbidden conclusion.
+- Cause: missing/invalid item provenance did not explicitly combine the requirement and validity
+  dimensions. Boundary guidance did not prefer positive administrative-scope language or require
+  clause IDs. A later rerun also enriched a scalar document-name list with objects duplicating the
+  sibling CSV's metadata.
+- Resolution: missing/invalid rows cite both requirement and failed validity clauses when both
+  exist; boundary documents cite governing clauses, preserve exact required disclaimers, and avoid
+  unnecessary negated forbidden labels. Scalar identity/name lists retain their declared shape while
+  sibling detail artifacts own issue and policy metadata. The unchanged final run passed every
+  policy-basis, boundary, prohibited-judgment, missing-row, valid-document, manual-review, sensitive
+  identifier, and fixture check, improving outcome/process/security/combined from
+  0.60/0.9767/1.0/0.5860 to 0.8843/0.9633/1.0/0.8519. Its only remaining outcome deduction is
+  generative re-enrichment of the JSON name list despite the rule; the dedicated CSV remains exact.
+  Evidence is retained at `reports/100-financial-kyc-admin-check-final.json`.

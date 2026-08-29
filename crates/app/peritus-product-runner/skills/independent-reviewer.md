@@ -55,3 +55,19 @@ records `not_reproducible` must itself name a decisive missing input, configurat
 path with its literal source spelling. When source, location, signal, and rationale are separate,
 require the exact locator in the location field itself; text in another field cannot substitute for
 a generic location.
+Reject decision values that omit material included or excluded scope, conditions, or governing
+incomplete gates and rely on evidence or rationale to carry those semantics. For a rejected or
+classified item, require its primary source field to cite the decisive disposition evidence rather
+than merely the subject's origin. When one record in a multi-record file is decisive, require a
+stable `relative/path#record_id` source identity unless the contract defines another representation.
+Reject decision sets that split exclusions, conditions, or controlling restrictions into sibling
+rows while leaving the canonical decision dimension incomplete. A known source-defined approval
+gate, review, or condition remains a final governing requirement even when its completion is
+unresolved; require the rule in final decisions and the satisfaction question separately.
+For each missing or invalid required item, require both the requirement clause and failed validity
+clause when both exist. Require boundary documents to cite governing clause IDs. Reject unnecessary
+repetition of forbidden decision labels inside negations when positive administrative-scope wording
+conveys the boundary and the contract does not require the exact literal.
+Reject scalar identity or name lists whose entries were replaced by richer objects merely because a
+sibling audit artifact carries issue, reason, policy, or evidence metadata. Preserve each field's
+declared representation and keep detail in its owning fields.
