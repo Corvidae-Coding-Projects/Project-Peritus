@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 576,
+  "next_comment_id": 577,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1269,7 +1269,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T00:22:41.945999615Z",
+      "updated_at": "2026-08-29T00:38:35.982681983Z",
       "labels": [
         "qualification",
         "release"
@@ -1508,6 +1508,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAemfC25OxJzg/uCn+UeWXbSX6FRqWCHcz16Gm1sgOx7G/oj+J6FiO+t+33OHz0n8cNynd0QExKOIo8orabUhHBw=="
+        },
+        "c09105f0-13a0-4068-b964-5c1c8301a03d": {
+          "display_id": 576,
+          "author": "6ME5",
+          "content": "HarnessBench task 041 exposed the manifestless Node counterpart of HBF-009: the external oracle passed every cart invariant, but native acceptance lacked deterministic Node evidence and ended success false. Peritus now recognizes changed JS, CJS, and MJS modules beside conventional test or spec files and executes every adjacent test directly in stable order. The unchanged rerun recorded the Node test in exact-target evidence, passed review with no findings, and ended native success true. Final scores: outcome 0.9962 excellent, process 0.9233, security 1.0, combined 0.9198. HBI-021 records the remaining unpublished schemaVersion token. Gate tests and cargo xtask all pass; planner tests were split into their own 145-line module to satisfy the source budget. Signed checkpoint: f6a54395.",
+          "created_at": "2026-08-29T00:38:35.980287068Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABApEwK8qntfWBdeotPYJYh4almiZgCGd8WoVr9nYgLaoftWpoLJuMPyl2CBM3Njupq3I9Vl+YuvSCHphg+IuIEBw=="
         },
         "c154e138-18fa-4830-9833-0e3c1be6cd89": {
           "display_id": 546,
@@ -5931,8 +5940,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T00:22:41.945999615Z",
+    "timestamp": "2026-08-29T00:38:35.982681983Z",
     "agent_id": "6ME5",
-    "agent_seq": 754
+    "agent_seq": 755
   }
 }
