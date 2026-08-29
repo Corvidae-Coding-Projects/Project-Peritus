@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 749,
+  "next_comment_id": 750,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T21:44:27.164121042Z",
+      "updated_at": "2026-08-29T21:55:33.796640924Z",
       "labels": [
         "qualification",
         "release"
@@ -1936,6 +1936,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAQzmw+ufvqfQO7yJV+idPJsciteVRI2dcyFGjY1qcuH3r6GX+pGkzP5fHdDwBkfF4zFczPcAmJt7zaPPevLgVBw=="
+        },
+        "5a21764d-2952-46e5-89ba-87cf86aa53ca": {
+          "display_id": 749,
+          "author": "6ME5",
+          "content": "Terminal-Bench mailman exposed general adapter defect TBF-012: the Harbor bridge replaced the image PATH with /opt/peritus/bin:/usr/local/bin:/usr/bin:/bin, hiding the installed /usr/sbin/useradd from the supplied evaluator. The live image PATH is /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin. Final-candidate bridge now reads and validates the authoritative container PATH, preserves every absolute segment, and prepends /opt/peritus/bin once. Seven focused async regressions and py_compile pass. The currently loaded frozen baseline is unchanged; it recovered by explicitly restoring PATH and continues the task, so final reward is pending.",
+          "created_at": "2026-08-29T21:55:33.794120054Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAL11Qx0dPGYt20r571CUANkdawpZoVJe+zWAs7rthwBUx334MM0ubzDWI4nTdwBb7z94lOfYR6r+f0L7PMib+Cw=="
         },
         "5ae79f9b-3c5a-4a0a-a7a6-25e9cc8da524": {
           "display_id": 659,
@@ -7493,8 +7502,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T21:44:27.164121042Z",
+    "timestamp": "2026-08-29T21:55:33.796640924Z",
     "agent_id": "6ME5",
-    "agent_seq": 934
+    "agent_seq": 935
   }
 }
