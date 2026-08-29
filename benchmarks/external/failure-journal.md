@@ -602,6 +602,31 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Disposition: retain the unchanged score. Do not rename accurate code identifiers or tailor prose
   to hidden substring implementation details.
 
+## HBF-009: manifestless Python tests were treated as general artifacts
+
+- Suite and task: HarnessBench 2.0, `040-test-coverage-fill`.
+- Symptom: the first run produced a correct test suite, passed 23 tests, killed all eight unchanged
+  oracle mutants, and scored outcome 1.0. Peritus nevertheless ended in fixing phase because its
+  deterministic gate report contained only source-layout and CSV checks; the reviewer correctly
+  refused to treat the writer's own pytest statement as independent acceptance evidence.
+- Cause: exact-target discovery recognized Python only through `pyproject.toml` or `pytest.ini`.
+  This fixture is a conventional package with an `ordercalc/` import package and `tests/` directory
+  but no project manifest, so discovery continued upward until the benchmark's general artifact
+  marker claimed the changed test files.
+- Change: affected projects now represent a missing manifest explicitly instead of inventing one.
+  Changed files beneath a conventional Python `tests/` directory bind to that nearest project, so
+  deterministic acceptance runs source layout, Python bytecode compilation, and pytest from the
+  correct project root. A focused regression reproduces the nested package beneath an artifact
+  workspace and covers both Python test code and adjacent test documentation.
+- Before evidence: local report `reports/040-test-coverage-fill-pre-manifestless-python.json`;
+  external outcome 1.0, process 0.88, security 1.0, combined 0.88, but native `success: false` with
+  an open missing-pytest-evidence finding after two review cycles.
+- After evidence: local report `reports/040-test-coverage-fill-post-manifestless-python.json`;
+  unchanged outcome 1.0, process 0.9367, security 1.0, combined 0.9367, and 508.706 seconds. Native
+  acceptance independently compiled the package and passed all 24 tests, then completed one review
+  cycle with no findings and `success: true`. The run also recovered automatically from an initial
+  five-minute provider stall without changing the workspace.
+
 ## HBF-005: a fixer deleted evaluator-owned evidence
 
 - Suite and task: HarnessBench 2.0, `022-local-rest-api-summary`.

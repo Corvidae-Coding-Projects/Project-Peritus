@@ -32,7 +32,7 @@ pub enum ProjectKind {
 pub struct AffectedProject {
     kind: ProjectKind,
     root: PathBuf,
-    manifest: PathBuf,
+    manifest: Option<PathBuf>,
 }
 
 impl AffectedProject {
@@ -48,10 +48,12 @@ impl AffectedProject {
         &self.root
     }
 
-    /// Manifest relative to the managed workspace.
+    /// Manifest relative to the managed workspace, when the project declares one.
+    ///
+    /// Conventional manifestless Python projects are represented without inventing a path.
     #[must_use]
-    pub fn manifest(&self) -> &Path {
-        &self.manifest
+    pub fn manifest(&self) -> Option<&Path> {
+        self.manifest.as_deref()
     }
 }
 
@@ -192,7 +194,7 @@ fn nearest_projects(workspace_root: &Path, changed: &Path) -> Vec<AffectedProjec
     let mut relative = changed.parent().unwrap_or_else(|| Path::new(""));
     loop {
         let absolute = workspace_root.join(relative);
-        let found = [
+        let mut found = [
             (ProjectKind::Artifact, "peritus-workspace.toml"),
             (ProjectKind::Rust, "Cargo.toml"),
             (ProjectKind::Node, "package.json"),
@@ -205,9 +207,18 @@ fn nearest_projects(workspace_root: &Path, changed: &Path) -> Vec<AffectedProjec
         .map(|(kind, marker)| AffectedProject {
             kind,
             root: relative.to_path_buf(),
-            manifest: relative.join(marker),
+            manifest: Some(relative.join(marker)),
         })
         .collect::<Vec<_>>();
+        if !found.iter().any(|project| project.kind == ProjectKind::Python)
+            && conventional_python_tests(&absolute, relative, changed)
+        {
+            found.push(AffectedProject {
+                kind: ProjectKind::Python,
+                root: relative.to_path_buf(),
+                manifest: None,
+            });
+        }
         if !found.is_empty() {
             return found;
         }
@@ -218,6 +229,22 @@ fn nearest_projects(workspace_root: &Path, changed: &Path) -> Vec<AffectedProjec
         relative = parent;
     }
     Vec::new()
+}
+
+fn conventional_python_tests(absolute: &Path, relative: &Path, changed: &Path) -> bool {
+    let tests = absolute.join("tests");
+    if !tests.is_dir()
+        || !changed.strip_prefix(relative).is_ok_and(|within| {
+            within.components().next().is_some_and(|part| part.as_os_str() == "tests")
+        })
+    {
+        return false;
+    }
+    std::fs::read_dir(tests).is_ok_and(|entries| {
+        entries
+            .filter_map(Result::ok)
+            .any(|entry| entry.path().extension().is_some_and(|extension| extension == "py"))
+    })
 }
 
 fn quote_argument(value: &str) -> String {
@@ -303,5 +330,44 @@ mod tests {
         assert_eq!(plan.commands().len(), 2);
         assert_eq!(plan.commands()[0].label(), "Source layout");
         assert_eq!(plan.commands()[1].label(), "Artifact CSV structure");
+    }
+
+    #[test]
+    fn manifestless_python_tests_use_their_nearest_conventional_project() {
+        let temporary = tempfile::tempdir().expect("temporary workspace");
+        std::fs::write(
+            temporary.path().join("peritus-workspace.toml"),
+            "schema_version = 1\nkind = \"artifact\"\n",
+        )
+        .expect("artifact workspace marker");
+        let project = temporary.path().join("in/ordercalc");
+        std::fs::create_dir_all(project.join("ordercalc")).expect("package directory");
+        std::fs::create_dir_all(project.join("tests")).expect("test directory");
+        std::fs::write(project.join("ordercalc/__init__.py"), "").expect("package marker");
+        std::fs::write(project.join("tests/test_pricing.py"), "def test_price():\n    pass\n")
+            .expect("test module");
+        std::fs::write(project.join("tests/TEST_INTENT.md"), "pricing contract\n")
+            .expect("test documentation");
+
+        let plan = TargetGatePlan::discover(
+            temporary.path(),
+            vec![
+                PathBuf::from("in/ordercalc/tests/TEST_INTENT.md"),
+                PathBuf::from("in/ordercalc/tests/test_pricing.py"),
+            ],
+        )
+        .expect("manifestless Python plan");
+
+        assert!(plan.has_complete_coverage());
+        assert_eq!(plan.projects().len(), 1);
+        assert_eq!(plan.projects()[0].kind(), ProjectKind::Python);
+        assert_eq!(plan.projects()[0].root(), Path::new("in/ordercalc"));
+        assert_eq!(plan.projects()[0].manifest(), None);
+        assert!(plan.commands().iter().any(|command| command.label() == "Python compile"));
+        assert!(plan.commands().iter().any(|command| command.label() == "Python tests"));
+        assert!(plan.commands().iter().all(|command| {
+            command.current_dir() == Path::new("in/ordercalc")
+                && command.project().kind() == ProjectKind::Python
+        }));
     }
 }

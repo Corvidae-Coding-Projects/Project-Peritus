@@ -13,7 +13,7 @@ pub(super) fn commands_for(
     let mut commands = vec![source_layout(project)];
     let language_commands = match project.kind() {
         ProjectKind::Artifact => artifact_commands(workspace_root, project),
-        ProjectKind::Rust => Ok(rust_commands(workspace_root, project)),
+        ProjectKind::Rust => rust_commands(workspace_root, project),
         ProjectKind::Node => node_commands(workspace_root, project),
         ProjectKind::Python => Ok(python_commands(workspace_root, project)),
         ProjectKind::Go => Ok(go_commands(project)),
@@ -35,9 +35,13 @@ fn source_layout(project: &AffectedProject) -> GateCommandSpec {
     )
 }
 
-fn rust_commands(workspace_root: &Path, project: &AffectedProject) -> Vec<GateCommandSpec> {
-    let manifest = project.manifest().to_string_lossy().into_owned();
-    let is_workspace = std::fs::read_to_string(workspace_root.join(project.manifest()))
+fn rust_commands(
+    workspace_root: &Path,
+    project: &AffectedProject,
+) -> Result<Vec<GateCommandSpec>, GateError> {
+    let manifest_path = required_manifest(project)?;
+    let manifest = manifest_path.to_string_lossy().into_owned();
+    let is_workspace = std::fs::read_to_string(workspace_root.join(manifest_path))
         .is_ok_and(|text| text.lines().any(|line| line.trim() == "[workspace]"));
     let common = |verb: &str| {
         let mut arguments = vec![
@@ -74,14 +78,14 @@ fn rust_commands(workspace_root: &Path, project: &AffectedProject) -> Vec<GateCo
     let mut clippy = common("clippy");
     clippy.extend(["--".to_owned(), "-D".to_owned(), "warnings".to_owned()]);
     commands.push(at_workspace_root(spec("Rust lint", "cargo", clippy, project)));
-    commands
+    Ok(commands)
 }
 
 fn node_commands(
     workspace_root: &Path,
     project: &AffectedProject,
 ) -> Result<Vec<GateCommandSpec>, GateError> {
-    let bytes = std::fs::read(workspace_root.join(project.manifest()))
+    let bytes = std::fs::read(workspace_root.join(required_manifest(project)?))
         .map_err(|_| planning("affected Node manifest is unreadable"))?;
     let package: serde_json::Value = serde_json::from_slice(&bytes)
         .map_err(|_| planning("affected Node manifest is invalid"))?;
@@ -103,10 +107,12 @@ fn python_commands(workspace_root: &Path, project: &AffectedProject) -> Vec<Gate
         project,
     )];
     let root = workspace_root.join(project.root());
-    let manifest = || std::fs::read_to_string(workspace_root.join(project.manifest()));
+    let manifest = || {
+        project.manifest().and_then(|path| std::fs::read_to_string(workspace_root.join(path)).ok())
+    };
     if root.join("pytest.ini").is_file()
         || root.join("tests").is_dir()
-        || manifest().is_ok_and(|text| text.contains("pytest"))
+        || manifest().is_some_and(|text| text.contains("pytest"))
     {
         commands.push(spec(
             "Python tests",
@@ -117,7 +123,7 @@ fn python_commands(workspace_root: &Path, project: &AffectedProject) -> Vec<Gate
     }
     if root.join("ruff.toml").is_file()
         || root.join(".ruff.toml").is_file()
-        || manifest().is_ok_and(|text| text.contains("[tool.ruff"))
+        || manifest().is_some_and(|text| text.contains("[tool.ruff"))
     {
         commands.push(spec(
             "Python lint",
@@ -140,7 +146,7 @@ fn artifact_commands(
     workspace_root: &Path,
     project: &AffectedProject,
 ) -> Result<Vec<GateCommandSpec>, GateError> {
-    let path = workspace_root.join(project.manifest());
+    let path = workspace_root.join(required_manifest(project)?);
     let text = std::fs::read_to_string(&path)
         .map_err(|_| planning("artifact workspace manifest is unreadable"))?;
     let value = toml::from_str::<toml::Value>(&text)
@@ -180,6 +186,10 @@ fn spec(
 
 fn planning(detail: &'static str) -> GateError {
     GateError::new(GateErrorKind::Workspace, GateRecoveryAction::CorrectInput, detail)
+}
+
+fn required_manifest(project: &AffectedProject) -> Result<&Path, GateError> {
+    project.manifest().ok_or_else(|| planning("affected project manifest is missing"))
 }
 
 #[cfg(test)]

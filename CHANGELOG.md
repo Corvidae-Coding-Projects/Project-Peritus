@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Discover conventional Python test projects even when they have no `pyproject.toml` or
+  `pytest.ini`, represent their absent manifest honestly, and independently compile and test the
+  nearest affected package instead of accepting only general artifact checks (#31)
 - Keep constructible requested work moving when authoritative inputs expose an awkward canonical
   identifier: treat registered identifiers as opaque contract values, preserve factual evidence,
   ask only for genuinely material choices, make matching superseding rules own primary authority
@@ -77,9 +80,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
-- Exercise the pinned, unchanged HarnessBench suite through task 039, retaining the excellent 0.9673
-  repository-architecture result and documenting its two hidden substring mismatches separately
-  from the real malformed-CSV defect that Peritus found, repaired, and revalidated (#31)
+- Exercise the pinned, unchanged HarnessBench suite through task 040, retaining task 039's excellent
+  0.9673 repository-architecture result and task 040's complete 1.0 mutation-tested Python result,
+  with product defects kept separate from hidden benchmark substring mismatches (#31)
 - Retain the exact last product-run diff, gates, review ledger, summary, and durable finding state
   beside every external benchmark invocation so a strict internal rejection remains independently
   diagnosable after the upstream scorer exits; unchanged HarnessBench task 038 proves this evidence
