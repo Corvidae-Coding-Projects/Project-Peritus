@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 753,
+  "next_comment_id": 754,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T22:19:24.779442981Z",
+      "updated_at": "2026-08-29T22:22:58.440373562Z",
       "labels": [
         "qualification",
         "release"
@@ -2800,6 +2800,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALX+yEdc0EmCs7zbD8YUaJkbYP5j28/cfFlJLfVj5FCf+ujNjazDpn4YO/Xh5SojCD1K2DTNFDqwjH4vXnXVSBg=="
+        },
+        "d59bc613-289c-41ed-a4fd-90757a577eaf": {
+          "display_id": 753,
+          "author": "6ME5",
+          "content": "Result e268268b: preserved Harbor container PATH instead of replacing image-owned administrative directories; added explicit default-off external-effect delivery with ordered effect/verification evidence and independent review; retained TBI-001 honest benchmark-underspecification evidence. Full cargo xtask all and focused Rust/Python gates passed before commit.",
+          "created_at": "2026-08-29T22:22:58.437459638Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAwNLF9PBVtjV+scdj9nH7SS8Nwj+P3Xg0V4Ox7qJbC41Hty7x+3A3LRgB9vZrde+5DhLu8IzMF8af0SbpoUO2CA=="
         },
         "d710c41f-aa44-4fcb-9833-7962bdec1673": {
           "display_id": 650,
@@ -7529,8 +7538,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T22:19:24.779442981Z",
+    "timestamp": "2026-08-29T22:22:58.440373562Z",
     "agent_id": "6ME5",
-    "agent_seq": 938
+    "agent_seq": 939
   }
 }
