@@ -4,16 +4,21 @@ use peritus_model_protocol::{
     CachePolicy, CancellationKind, Capability, CapabilityMatrix, CapabilityProvenance,
     ContentBlock, GenerationConfig, JsonBounds, JsonSchema, MediaInput, MediaKind, MediaType,
     Message, ModelRequest, OutputLimitEnforcement, ParallelToolPolicy, PersistencePolicy,
-    ProtocolLimits, ProviderName, ProviderProfile, ReasoningPolicy, RequestId, RequestOptions,
-    RequestedCapabilities, ResumeKind, Role, StateMode, StructuredOutput, ToolChoice,
-    ToolDefinition, ToolName, WireDialect, negotiate,
+    ProtocolLimits, ProviderName, ProviderProfile, ReasoningEffort, ReasoningPolicy, RequestId,
+    RequestOptions, RequestedCapabilities, ResumeKind, Role, StateMode, StructuredOutput,
+    SummaryPolicy, ToolChoice, ToolDefinition, ToolName, WireDialect, negotiate,
 };
 use peritus_types::ProviderProfileId;
 
 use super::support::model_limits;
 pub fn codex_profile(model: &str, tools: bool) -> ProviderProfile {
     let supported = if tools {
-        vec![Capability::ToolCalls, Capability::ParallelToolCalls, Capability::UsageDetail]
+        vec![
+            Capability::ToolCalls,
+            Capability::ParallelToolCalls,
+            Capability::ReasoningControls,
+            Capability::UsageDetail,
+        ]
     } else {
         vec![Capability::UsageDetail]
     };
@@ -57,7 +62,12 @@ pub fn codex_tool_request(profile: &ProviderProfile, request_id: &str) -> ModelR
     let negotiated = negotiate(
         profile,
         RequestedCapabilities::new(
-            &[Capability::ToolCalls, Capability::ParallelToolCalls, Capability::UsageDetail],
+            &[
+                Capability::ToolCalls,
+                Capability::ParallelToolCalls,
+                Capability::ReasoningControls,
+                Capability::UsageDetail,
+            ],
             &[],
             model_limits(),
         )
@@ -80,7 +90,10 @@ pub fn codex_tool_request(profile: &ProviderProfile, request_id: &str) -> ModelR
         vec![tool],
         ToolChoice::Auto,
         ParallelToolPolicy::Allowed(2),
-        runtime_options(),
+        runtime_options(ReasoningPolicy::Effort {
+            effort: ReasoningEffort::High,
+            summary: SummaryPolicy::None,
+        }),
         ProtocolLimits::PRODUCTION,
     )
     .expect("Codex tool request")
@@ -111,16 +124,16 @@ pub fn codex_image_request(profile: &ProviderProfile, request_id: &str) -> Model
         Vec::new(),
         ToolChoice::None,
         ParallelToolPolicy::Disabled,
-        runtime_options(),
+        runtime_options(ReasoningPolicy::Disabled),
         ProtocolLimits::PRODUCTION,
     )
     .expect("Codex image request")
 }
 
-fn runtime_options() -> RequestOptions {
+fn runtime_options(reasoning: ReasoningPolicy) -> RequestOptions {
     RequestOptions::new(
         StructuredOutput::Text,
-        ReasoningPolicy::Disabled,
+        reasoning,
         GenerationConfig::new(64, Vec::new(), None, None, None).expect("generation"),
         CachePolicy::Disabled,
         PersistencePolicy::LOCAL_FIRST,

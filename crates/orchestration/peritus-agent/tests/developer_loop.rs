@@ -15,7 +15,7 @@ use peritus_agent::{
 };
 use peritus_model_protocol::{
     CanonicalJson, ContentBlock, EventEnvelope, JsonBounds, ModelRequest, ParallelToolPolicy,
-    ProtocolLimits, ProviderProfile, Role,
+    ProtocolLimits, ProviderProfile, ReasoningEffort, ReasoningPolicy, Role, SummaryPolicy,
 };
 use peritus_provider_core::{
     BoxFuture, CancellationToken, ModelProvider, ModelStream, OwnedModelStream, ProviderCoreError,
@@ -227,6 +227,10 @@ fn developer_loop_uses_the_negotiated_parallel_tool_width() {
         let requests = provider.requests.lock().expect("requests");
         assert_eq!(requests.len(), 2);
         assert_eq!(requests[0].parallel_tool_policy(), ParallelToolPolicy::Allowed(4));
+        assert_eq!(
+            requests[0].options().reasoning(),
+            ReasoningPolicy::Effort { effort: ReasoningEffort::High, summary: SummaryPolicy::None },
+        );
         let observations = requests[1]
             .messages()
             .iter()

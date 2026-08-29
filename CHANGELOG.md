@@ -184,6 +184,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Bound every model-issued structured command, concurrently retain capped stdout and stderr, and
   kill the owned process tree on deadline so a long-running program becomes a recoverable tool
   observation instead of freezing the writer-reviewer-fixer run (#31)
+- Request portable high reasoning effort throughout the developer loop whenever the selected
+  provider advertises that control, and make both official account routers honor the negotiated
+  effort instead of silently fixing every turn at low (#31)
 - Derive review blockers from typed category and severity policy and durably conserve every finding
   through fixer proposal and fresh reviewer confirmation instead of trusting a model-supplied
   Boolean or losing findings across daemon restart (#36)

@@ -106,7 +106,9 @@ fn render_provider(
         }
         _ => return render_direct_provider(provider, direct),
     };
-    Ok(provider_configuration(kind, profile_id, model, 200_000, 64_000, false, image_input))
+    let mut text = format!("\n[[providers]]\nkind = {}\n", toml_string(kind));
+    text.push_str(&profile_block(profile_id, model, 200_000, 64_000, false, image_input, true));
+    Ok(text)
 }
 
 fn render_direct_provider(
@@ -118,7 +120,7 @@ fn render_direct_provider(
             "enabled direct provider is missing its profile".to_owned(),
         )
     })?;
-    let (kind, profile_id, input, output, image_input) = direct_route(provider, direct)?;
+    let (kind, profile_id, input, output, image_input, reasoning) = direct_route(provider, direct)?;
     let mut text = format!(
         "\n[[providers]]\nkind = {}\ncredential_reference = {}\n",
         toml_string(kind),
@@ -126,26 +128,35 @@ fn render_direct_provider(
     );
     append_optional(&mut text, "endpoint", direct.endpoint());
     append_optional(&mut text, "credential_header", direct.credential_header());
-    text.push_str(&profile_block(profile_id, direct.model(), input, output, true, image_input));
+    text.push_str(&profile_block(
+        profile_id,
+        direct.model(),
+        input,
+        output,
+        true,
+        image_input,
+        reasoning,
+    ));
     Ok(text)
 }
 
 fn direct_route(
     provider: ProviderKind,
     direct: &DirectProviderProfile,
-) -> Result<(&'static str, &'static str, u64, u64, bool), LauncherError> {
+) -> Result<(&'static str, &'static str, u64, u64, bool, bool), LauncherError> {
     match provider {
         ProviderKind::OpenAiApi => {
-            Ok(("open-ai", "a3000000000000000000000000000003", 200_000, 64_000, true))
+            Ok(("open-ai", "a3000000000000000000000000000003", 200_000, 64_000, true, true))
         }
         ProviderKind::AnthropicApi => {
-            Ok(("anthropic", "a4000000000000000000000000000004", 200_000, 32_000, true))
+            Ok(("anthropic", "a4000000000000000000000000000004", 200_000, 32_000, true, true))
         }
         ProviderKind::GoogleGeminiApi => Ok((
             "google-generate-content",
             "a5000000000000000000000000000005",
             1_000_000,
             65_536,
+            true,
             true,
         )),
         ProviderKind::CompatibleEndpoint => match direct.compatible_protocol() {
@@ -155,12 +166,14 @@ fn direct_route(
                 200_000,
                 32_000,
                 false,
+                false,
             )),
             Some(CompatibleProtocol::ChatCompletions) => Ok((
                 "compatible-chat-completions",
                 "a6000000000000000000000000000006",
                 200_000,
                 32_000,
+                false,
                 false,
             )),
             None => Err(invalid("compatible provider is missing its wire protocol")),
@@ -178,20 +191,6 @@ fn append_optional(text: &mut String, field: &str, value: Option<&str>) {
     }
 }
 
-fn provider_configuration(
-    kind: &str,
-    profile_id: &str,
-    model: &str,
-    input: u64,
-    output: u64,
-    streaming: bool,
-    image_input: bool,
-) -> String {
-    let mut text = format!("\n[[providers]]\nkind = {}\n", toml_string(kind));
-    text.push_str(&profile_block(profile_id, model, input, output, streaming, image_input));
-    text
-}
-
 fn profile_block(
     profile_id: &str,
     model: &str,
@@ -199,19 +198,22 @@ fn profile_block(
     output: u64,
     streaming: bool,
     image_input: bool,
+    reasoning: bool,
 ) -> String {
-    let capabilities = match (streaming, image_input) {
-        (true, true) => {
-            "[\"image-input\", \"parallel-tool-calls\", \"streaming\", \"tool-calls\", \"usage-detail\"]"
-        }
-        (true, false) => {
-            "[\"parallel-tool-calls\", \"streaming\", \"tool-calls\", \"usage-detail\"]"
-        }
-        (false, true) => {
-            "[\"image-input\", \"parallel-tool-calls\", \"tool-calls\", \"usage-detail\"]"
-        }
-        (false, false) => "[\"parallel-tool-calls\", \"tool-calls\", \"usage-detail\"]",
-    };
+    let mut capabilities = vec!["parallel-tool-calls", "tool-calls", "usage-detail"];
+    if streaming {
+        capabilities.push("streaming");
+    }
+    if image_input {
+        capabilities.push("image-input");
+    }
+    if reasoning {
+        capabilities.push("reasoning-controls");
+    }
+    capabilities.sort_unstable();
+    let capabilities = toml::Value::Array(
+        capabilities.into_iter().map(|value| toml::Value::String(value.to_owned())).collect(),
+    );
     let inline_media_bytes = if image_input { 32 * 1024 * 1024 } else { 1 };
     format!(
         "\n[providers.profile]\nprofile_id = {}\nrevision = 1\nmodel = {}\ncapabilities = {capabilities}\nmax_input_tokens = {input}\nmax_output_tokens = {output}\nmax_tools = 64\nmax_parallel_tool_calls = 8\nmax_inline_media_bytes = {inline_media_bytes}\n",

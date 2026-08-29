@@ -76,8 +76,12 @@ fn profile(
     model: &str,
     dialect: WireDialect,
 ) -> Result<ProviderProfile, BenchmarkError> {
-    let mut supported =
-        vec![Capability::ToolCalls, Capability::ParallelToolCalls, Capability::UsageDetail];
+    let mut supported = vec![
+        Capability::ToolCalls,
+        Capability::ParallelToolCalls,
+        Capability::ReasoningControls,
+        Capability::UsageDetail,
+    ];
     let inline_media_bytes = if dialect == WireDialect::OpenAiCodexRuntime {
         supported.push(Capability::ImageInput);
         32 * 1024 * 1024

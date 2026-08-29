@@ -70,7 +70,7 @@ pub(super) async fn run_turn(
     let image_paths = write_images(directory.path(), runtime.images())?;
     let process = ProcessRequest::new(
         config.executable().process_executable().clone(),
-        arguments(request.model().as_str(), schema_path, &image_paths),
+        arguments(request.model().as_str(), runtime.reasoning_effort(), schema_path, &image_paths),
         runtime.prompt.clone(),
         Some(directory.path().to_path_buf()),
         isolated_environment()?,
@@ -79,7 +79,12 @@ pub(super) async fn run_turn(
     transport.run(process, cancellation).await
 }
 
-fn arguments(model: &str, schema_path: String, image_paths: &[String]) -> Vec<String> {
+fn arguments(
+    model: &str,
+    reasoning_effort: &str,
+    schema_path: String,
+    image_paths: &[String],
+) -> Vec<String> {
     let mut values = vec![
         "exec".to_owned(),
         "--json".to_owned(),
@@ -94,7 +99,7 @@ fn arguments(model: &str, schema_path: String, image_paths: &[String]) -> Vec<St
         "--model".to_owned(),
         model.to_owned(),
         "--config".to_owned(),
-        "model_reasoning_effort=\"low\"".to_owned(),
+        format!("model_reasoning_effort=\"{reasoning_effort}\""),
     ];
     for feature in DISABLED_NATIVE_FEATURES {
         values.push("--disable".to_owned());

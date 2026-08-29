@@ -2,9 +2,9 @@
 
 use peritus_model_protocol::{
     BoundedText, CachePolicy, Capability, ContentBlock, GenerationConfig, Message, ModelRequest,
-    ParallelToolPolicy, PersistencePolicy, ProtocolLimits, ReasoningPolicy, ReducedItem, RequestId,
-    RequestOptions, RequestedCapabilities, Retryability, Role, StructuredOutput, TerminalOutcome,
-    ToolChoice, ToolResult, negotiate,
+    ParallelToolPolicy, PersistencePolicy, ProtocolLimits, ReasoningEffort, ReasoningPolicy,
+    ReducedItem, RequestId, RequestOptions, RequestedCapabilities, Retryability, Role,
+    StructuredOutput, SummaryPolicy, TerminalOutcome, ToolChoice, ToolResult, negotiate,
 };
 use peritus_provider_core::{ModelProvider, ProviderCoreErrorKind};
 
@@ -44,7 +44,7 @@ impl DeveloperLoop {
         }
         let requested = RequestedCapabilities::new(
             &required_capabilities,
-            &[Capability::Streaming, Capability::ParallelToolCalls],
+            &[Capability::Streaming, Capability::ParallelToolCalls, Capability::ReasoningControls],
             profile.limits(),
         )?;
         let negotiated = negotiate(profile, requested)?;
@@ -192,6 +192,11 @@ fn model_request(
     } else {
         ParallelToolPolicy::Disabled
     };
+    let reasoning = if negotiated.includes(Capability::ReasoningControls) {
+        ReasoningPolicy::Effort { effort: ReasoningEffort::High, summary: SummaryPolicy::None }
+    } else {
+        ReasoningPolicy::Disabled
+    };
     Ok(ModelRequest::new(
         profile,
         negotiated,
@@ -202,7 +207,7 @@ fn model_request(
         parallel_tools,
         RequestOptions::new(
             StructuredOutput::Text,
-            ReasoningPolicy::Disabled,
+            reasoning,
             GenerationConfig::new(
                 profile.limits().max_output_tokens().min(request.limits.max_output_tokens()),
                 Vec::new(),

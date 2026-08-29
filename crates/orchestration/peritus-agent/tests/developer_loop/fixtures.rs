@@ -35,8 +35,11 @@ pub fn parallel_profile() -> ProviderProfile {
         ProviderName::new("parallel-provider".to_owned()).expect("provider"),
         ModelName::new("parallel-model".to_owned()).expect("model"),
         WireDialect::CompatibleResponses,
-        CapabilityMatrix::new(&[Capability::ToolCalls, Capability::ParallelToolCalls], &[])
-            .expect("capabilities"),
+        CapabilityMatrix::new(
+            &[Capability::ToolCalls, Capability::ParallelToolCalls, Capability::ReasoningControls],
+            &[],
+        )
+        .expect("capabilities"),
         CapabilityProvenance::Probed,
         ModelLimits::new(32_768, 4_096, 16, 4, 256 * 1024).expect("limits"),
         OutputLimitEnforcement::ProviderEnforced,

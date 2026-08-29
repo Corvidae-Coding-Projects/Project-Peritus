@@ -164,6 +164,7 @@ fn constrained_turn_disables_runtime_authority_and_normalizes_inert_output() {
         assert!(turn.arguments.iter().any(|argument| argument == required), "missing {required}");
     }
     assert!(argument_pair(&turn.arguments, "--tools", ""));
+    assert!(argument_pair(&turn.arguments, "--effort", "high"));
     assert!(argument_pair(&turn.arguments, "--mcp-config", r#"{"mcpServers":{}}"#));
     assert!(argument_pair(&turn.arguments, "--disallowedTools", "mcp__*"));
     let schema = argument_after(&turn.arguments, "--json-schema").expect("schema argument");

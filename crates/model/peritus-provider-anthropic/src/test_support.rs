@@ -9,9 +9,9 @@ use peritus_model_protocol::{
     BoundedText, CachePolicy, CancellationKind, Capability, CapabilityMatrix, CapabilityProvenance,
     ContentBlock, GenerationConfig, JsonBounds, JsonSchema, Message, ModelLimits, ModelName,
     ModelRequest, OutputLimitEnforcement, ParallelToolPolicy, PersistencePolicy, ProtocolLimits,
-    ProviderName, ProviderProfile, ReasoningPolicy, RequestId, RequestOptions,
+    ProviderName, ProviderProfile, ReasoningEffort, ReasoningPolicy, RequestId, RequestOptions,
     RequestedCapabilities, ResumeKind, Role, SchemaDialect, StateMode, StructuredOutput,
-    ToolChoice, ToolDefinition, ToolName, WireDialect, negotiate,
+    SummaryPolicy, ToolChoice, ToolDefinition, ToolName, WireDialect, negotiate,
 };
 use peritus_provider_core::{
     BoxFuture, CancellationToken, Credential, CredentialReference, CredentialSource, Endpoint,
@@ -71,7 +71,12 @@ pub fn profile() -> ProviderProfile {
 }
 
 pub fn runtime_profile() -> ProviderProfile {
-    let supported = [Capability::ToolCalls, Capability::ParallelToolCalls, Capability::UsageDetail];
+    let supported = [
+        Capability::ToolCalls,
+        Capability::ParallelToolCalls,
+        Capability::ReasoningControls,
+        Capability::UsageDetail,
+    ];
     ProviderProfile::new(
         ProviderProfileId::new([0xC1; 16]).expect("profile ID"),
         1,
@@ -90,14 +95,13 @@ pub fn runtime_profile() -> ProviderProfile {
 }
 
 pub fn runtime_request(profile: &ProviderProfile, with_tools: bool) -> ModelRequest {
-    let required = if with_tools {
-        &[Capability::ToolCalls, Capability::ParallelToolCalls, Capability::UsageDetail][..]
-    } else {
-        &[Capability::UsageDetail][..]
-    };
+    let mut required = vec![Capability::ReasoningControls, Capability::UsageDetail];
+    if with_tools {
+        required.extend([Capability::ToolCalls, Capability::ParallelToolCalls]);
+    }
     let negotiated = negotiate(
         profile,
-        RequestedCapabilities::new(required, &[], profile.limits()).expect("requested features"),
+        RequestedCapabilities::new(&required, &[], profile.limits()).expect("requested features"),
     )
     .expect("negotiation");
     let system = Message::new(
@@ -144,7 +148,7 @@ pub fn runtime_request(profile: &ProviderProfile, with_tools: bool) -> ModelRequ
         if with_tools { ParallelToolPolicy::Allowed(2) } else { ParallelToolPolicy::Disabled },
         RequestOptions::new(
             StructuredOutput::Text,
-            ReasoningPolicy::Disabled,
+            ReasoningPolicy::Effort { effort: ReasoningEffort::High, summary: SummaryPolicy::None },
             GenerationConfig::new(128, Vec::new(), None, None, None).expect("generation"),
             CachePolicy::Disabled,
             PersistencePolicy::LOCAL_FIRST,

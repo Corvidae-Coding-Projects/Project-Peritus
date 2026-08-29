@@ -3,8 +3,8 @@
 use std::collections::BTreeSet;
 
 use peritus_model_protocol::{
-    CachePolicy, ContentBlock, ModelRequest, ParallelToolPolicy, ReasoningPolicy, Role,
-    StructuredOutput, ToolChoice,
+    CachePolicy, ContentBlock, ModelRequest, ParallelToolPolicy, ReasoningEffort, ReasoningPolicy,
+    Role, StructuredOutput, SummaryPolicy, ToolChoice,
 };
 use peritus_provider_core::ProviderCoreError;
 use serde_json::{Map, Value};
@@ -18,10 +18,11 @@ pub(super) struct RuntimeRequest {
     pub schema: String,
     pub allowed_tools: BTreeSet<String>,
     pub max_calls: usize,
+    pub effort: &'static str,
 }
 
 pub(super) fn encode(request: &ModelRequest) -> Result<RuntimeRequest, ProviderCoreError> {
-    validate_controls(request)?;
+    let effort = validate_controls(request)?;
     let (schema, allowed_tools, max_calls) = result_schema(request)?;
     let mut system = String::from(SYSTEM_PREFIX);
     let mut messages = Vec::new();
@@ -53,7 +54,14 @@ pub(super) fn encode(request: &ModelRequest) -> Result<RuntimeRequest, ProviderC
         &serde_json::to_vec(&payload)
             .map_err(|_| invalid("Claude runtime transcript serialization failed"))?,
     );
-    Ok(RuntimeRequest { system: system.into_bytes(), prompt, schema, allowed_tools, max_calls })
+    Ok(RuntimeRequest {
+        system: system.into_bytes(),
+        prompt,
+        schema,
+        allowed_tools,
+        max_calls,
+        effort,
+    })
 }
 
 fn tool_protocol(request: &ModelRequest, max_calls: usize) -> Result<Value, ProviderCoreError> {
@@ -89,10 +97,10 @@ fn tool_selection(choice: &ToolChoice) -> String {
     }
 }
 
-fn validate_controls(request: &ModelRequest) -> Result<(), ProviderCoreError> {
+fn validate_controls(request: &ModelRequest) -> Result<&'static str, ProviderCoreError> {
     let generation = request.options().generation();
+    let effort = reasoning_effort(request.options().reasoning())?;
     if !matches!(request.options().output(), StructuredOutput::Text)
-        || request.options().reasoning() != ReasoningPolicy::Disabled
         || !matches!(request.options().cache(), CachePolicy::Disabled)
         || request.options().persistence().store()
         || request.options().persistence().background()
@@ -104,10 +112,24 @@ fn validate_controls(request: &ModelRequest) -> Result<(), ProviderCoreError> {
         || generation.top_p_millionths().is_some()
     {
         return Err(invalid(
-            "Claude runtime supports text output, advisory length, disabled reasoning/cache, and local replay only",
+            "Claude runtime supports text output, advisory length, bounded effort, disabled cache, and local replay only",
         ));
     }
-    Ok(())
+    Ok(effort)
+}
+
+const fn reasoning_effort(policy: ReasoningPolicy) -> Result<&'static str, ProviderCoreError> {
+    match policy {
+        ReasoningPolicy::Disabled => Ok("high"),
+        ReasoningPolicy::Effort { effort, summary: SummaryPolicy::None } => Ok(match effort {
+            ReasoningEffort::Minimal | ReasoningEffort::Low => "low",
+            ReasoningEffort::Medium => "medium",
+            ReasoningEffort::High => "high",
+        }),
+        ReasoningPolicy::Adaptive { .. } | ReasoningPolicy::Effort { .. } => Err(invalid(
+            "Claude runtime requires a concrete reasoning effort without a visible summary",
+        )),
+    }
 }
 
 fn append_system(

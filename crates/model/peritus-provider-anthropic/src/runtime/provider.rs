@@ -167,7 +167,7 @@ impl ClaudeRuntimeProvider {
             "--model".to_owned(),
             request.model().as_str().to_owned(),
             "--effort".to_owned(),
-            "low".to_owned(),
+            runtime.effort.to_owned(),
             "--safe-mode".to_owned(),
             "--tools".to_owned(),
             String::new(),

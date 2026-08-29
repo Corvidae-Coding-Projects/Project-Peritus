@@ -52,9 +52,11 @@ refreshes, or exports an account login.
 The exact runtime profile names provider `openai`, uses `WireDialect::OpenAiCodexRuntime`, declares
 an advisory output limit, stateless local replay, unsupported resume, and best-effort local
 cancellation. It supports bounded inline images, inert host tool proposals, bounded parallel host
-tool proposals, and usage detail. Cache, audio, documents, remote media,
-remote persistence/background execution, continuation, reasoning replay, sampling controls, and
-caller-defined strict structured output are rejected before authentication or process submission.
+tool proposals, portable reasoning-effort selection, and usage detail. High effort is the product
+default; a concrete minimal/low, medium, or high request is projected to the official executable.
+Cache, audio, documents, remote media, remote persistence/background execution, continuation,
+reasoning replay or summaries, sampling controls, and caller-defined strict structured output are
+rejected before authentication or process submission.
 
 Each turn uses an isolated temporary working directory and output schema. The process is invoked in
 JSONL, ephemeral, read-only mode while ignoring user config/rules and Git state; native tools and

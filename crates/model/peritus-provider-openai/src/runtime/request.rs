@@ -3,8 +3,8 @@
 mod schema;
 
 use peritus_model_protocol::{
-    CachePolicy, ContentBlock, MediaInput, MediaKind, ModelRequest, ReasoningPolicy, Role,
-    StructuredOutput, ToolChoice,
+    CachePolicy, ContentBlock, MediaInput, MediaKind, ModelRequest, ReasoningEffort,
+    ReasoningPolicy, Role, StructuredOutput, SummaryPolicy, ToolChoice,
 };
 use peritus_provider_core::ProviderCoreError;
 use serde_json::{Map, Value};
@@ -17,6 +17,7 @@ pub struct RuntimeRequest {
     pub allowed_tools: std::collections::BTreeSet<String>,
     pub max_calls: usize,
     images: Vec<RuntimeImage>,
+    effort: &'static str,
 }
 
 pub(super) struct RuntimeImage {
@@ -28,10 +29,14 @@ impl RuntimeRequest {
     pub(super) fn images(&self) -> &[RuntimeImage] {
         &self.images
     }
+
+    pub(crate) const fn reasoning_effort(&self) -> &'static str {
+        self.effort
+    }
 }
 
 pub fn encode(request: &ModelRequest) -> Result<RuntimeRequest, ProviderCoreError> {
-    validate_controls(request)?;
+    let effort = validate_controls(request)?;
     let mut images = Vec::new();
     let messages = request
         .messages()
@@ -60,13 +65,14 @@ pub fn encode(request: &ModelRequest) -> Result<RuntimeRequest, ProviderCoreErro
         allowed_tools: contract.allowed_tools,
         max_calls: contract.max_calls,
         images,
+        effort,
     })
 }
 
-fn validate_controls(request: &ModelRequest) -> Result<(), ProviderCoreError> {
+fn validate_controls(request: &ModelRequest) -> Result<&'static str, ProviderCoreError> {
     let generation = request.options().generation();
+    let effort = reasoning_effort(request.options().reasoning())?;
     if !matches!(request.options().output(), StructuredOutput::Text)
-        || request.options().reasoning() != ReasoningPolicy::Disabled
         || !matches!(request.options().cache(), CachePolicy::Disabled)
         || request.options().persistence().store()
         || request.options().persistence().background()
@@ -78,10 +84,24 @@ fn validate_controls(request: &ModelRequest) -> Result<(), ProviderCoreError> {
         || generation.top_p_millionths().is_some()
     {
         return Err(invalid(
-            "Codex runtime supports text output, advisory length, disabled reasoning/cache, and local replay only",
+            "Codex runtime supports text output, advisory length, bounded effort, disabled cache, and local replay only",
         ));
     }
-    Ok(())
+    Ok(effort)
+}
+
+const fn reasoning_effort(policy: ReasoningPolicy) -> Result<&'static str, ProviderCoreError> {
+    match policy {
+        ReasoningPolicy::Disabled => Ok("high"),
+        ReasoningPolicy::Effort { effort, summary: SummaryPolicy::None } => Ok(match effort {
+            ReasoningEffort::Minimal | ReasoningEffort::Low => "low",
+            ReasoningEffort::Medium => "medium",
+            ReasoningEffort::High => "high",
+        }),
+        ReasoningPolicy::Adaptive { .. } | ReasoningPolicy::Effort { .. } => Err(invalid(
+            "Codex runtime requires a concrete reasoning effort without a visible summary",
+        )),
+    }
 }
 
 fn message(

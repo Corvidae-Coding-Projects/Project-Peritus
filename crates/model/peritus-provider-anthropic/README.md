@@ -40,8 +40,8 @@ keychain state, and it provides no login UI. Authentication is checked with exac
 `claude auth status --json`; an unauthenticated result tells the user to run `claude auth login`
 outside Peritus.
 
-One turn invokes the executable with `-p --output-format json`, the exact profile model,
-`--effort low`, `--safe-mode`, `--tools ""`, `--disallowedTools "mcp__*"`,
+One turn invokes the executable with `-p --output-format json`, the exact profile model, Peritus's
+bounded `--effort` selection (high by default), `--safe-mode`, `--tools ""`, `--disallowedTools "mcp__*"`,
 `--disable-slash-commands`, `--no-chrome`, `--no-session-persistence`, `--strict-mcp-config`, an
 empty `--mcp-config`, a private `--system-prompt-file`, and a required `--json-schema`. It runs in a
 fresh private directory and removes `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, and
@@ -54,7 +54,7 @@ part of this adapter.
 
 The runtime accepts only text and inert host-tool history and normalizes one final structured result
 into deterministic text/tool/usage events. Its honest profile advertises tool calls, bounded
-parallel tool calls, and detailed usage only. It is stateless, has no exact resume or remote
+parallel tool calls, portable reasoning-effort selection, and detailed usage. It is stateless, has no exact resume or remote
 cancellation, does not advertise streaming, and marks output-token limits advisory because the
 official executable exposes no exact `max_output_tokens` turn flag. Missing structured output is an
 incomplete terminal; malformed JSON/schema fails as malformed; nonzero exit after partial stdout is
