@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 755,
+  "next_comment_id": 756,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1269,7 +1269,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T22:30:20.042920705Z",
+      "updated_at": "2026-08-29T22:36:11.713230648Z",
       "labels": [
         "qualification",
         "release"
@@ -2786,6 +2786,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAvOrGNkddgCAuEv/uWGmu4wogo0J+ucousGt30W7hzdWUkMep5aUDAlKGowxfIzxkMa7XezKozjF8Qg7FMtJfAA=="
+        },
+        "d463935b-554f-4b32-8bdf-93b1716412e5": {
+          "display_id": 755,
+          "author": "6ME5",
+          "content": "Baseline report audit found ten additional Harbor reward-1 trials with native provider failure after accepted candidate evidence, plus compile-compcert reward 1/native gate failure for a correct external build product. Grouped these under the existing general TBF-009 recovery and TBF-013 external-effect acceptance classes; no task-specific behavior or inferred success was added. Final-candidate reruns must make native completion true as well as preserve verifier reward.",
+          "created_at": "2026-08-29T22:36:11.707465672Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAsytXj8gl7q7+df55W5NuNqOo75qMYzDnqmR27Y2xZNGjAphDXzjMxUFRm1JJ6aGk/xZqwXOkzQAO+P75Ocb4BA=="
         },
         "d51a655a-e787-42b5-9939-8977c05db67c": {
           "display_id": 572,
@@ -7542,8 +7551,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T22:30:20.042920705Z",
+    "timestamp": "2026-08-29T22:36:11.713230648Z",
     "agent_id": "6ME5",
-    "agent_seq": 941
+    "agent_seq": 942
   }
 }
