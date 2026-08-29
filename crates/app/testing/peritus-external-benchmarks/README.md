@@ -14,6 +14,12 @@ product observation, generated design, conversation state, provider identities, 
 aggregated token/cache accounting. A product rejection is still a completed benchmark attempt, so
 Harbor's independent verifier—not the adapter—owns the external score.
 
+Every live invocation requires `PERITUS_SOURCE_REVISION` at compile time. The report binds that
+full Git object ID to the Cargo package version and the SHA-256 of the executable that actually ran.
+Harbor independently hashes the uploaded binary and rejects a mismatched native report. Ordinary
+workspace builds can compile the crate without this variable, but such a binary refuses to run an
+external benchmark rather than publishing unattributable evidence.
+
 Trace projection validates response, tool, compaction, retry, and provider-switch frames. Retry or
 switch metadata closes an incomplete projected response while remaining separate from the
 conversation transcript, so diagnostics stay readable without fabricating a successful model

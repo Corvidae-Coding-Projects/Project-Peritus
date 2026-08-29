@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shlex
@@ -44,6 +45,7 @@ class PeritusAgent(BaseAgent):
             _PORTABLE_PERITUS,
             "Peritus benchmark binary",
         )
+        self._peritus_digest = _file_sha256(self._peritus_binary)
         self._codex_binary = _required_file(
             codex_binary or os.environ.get("PERITUS_CODEX_BINARY") or shutil.which("codex"),
             None,
@@ -78,7 +80,7 @@ class PeritusAgent(BaseAgent):
 
     @override
     def version(self) -> str:
-        return "0.0.0"
+        return f"0.0.0+sha.{self._peritus_digest[:12]}"
 
     @override
     async def setup(self, environment: BaseEnvironment) -> None:
@@ -206,6 +208,7 @@ fi
         self._retain_process_output(result)
         _require_success(result, "run native Peritus product composition")
         report = _parse_report(result.stdout or "")
+        identity = _report_identity(report, self._peritus_digest)
         usage = report.get("usage") if isinstance(report.get("usage"), dict) else {}
         context.n_input_tokens = _integer(usage.get("input_tokens"))
         context.n_cache_tokens = _integer(usage.get("cached_input_tokens"))
@@ -217,6 +220,8 @@ fi
             "peritus_product_accepted": report.get("success") is True,
             "peritus_failure_kind": report.get("failure_kind"),
             "peritus_requests": _integer(usage.get("requests")) or 0,
+            "peritus_source_revision": identity["source_revision"],
+            "peritus_binary_sha256": identity["binary_sha256"],
         }
 
     async def _runtime_env(self, environment: BaseEnvironment) -> dict[str, str]:
@@ -242,6 +247,14 @@ def _required_file(value: str | None, default: Path | None, label: str) -> Path:
     if path is None or not path.is_file():
         raise ValueError(f"{label} is unavailable; set its Peritus adapter path explicitly")
     return path.resolve()
+
+
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(64 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _require_success(result: ExecResult, operation: str) -> None:
@@ -293,10 +306,33 @@ def _parse_report(stdout: str) -> dict[str, Any]:
         except json.JSONDecodeError as error:
             malformed = error
             continue
-        if not isinstance(report, dict) or report.get("schema_version") != 1:
+        if not isinstance(report, dict) or report.get("schema_version") != 2:
             raise RuntimeError("Peritus returned an unsupported Terminal-Bench report")
         return report
     raise RuntimeError("Peritus returned a malformed invocation report") from malformed
+
+
+def _report_identity(report: dict[str, Any], expected_digest: str) -> dict[str, str]:
+    identity = report.get("agent_identity")
+    if not isinstance(identity, dict):
+        raise RuntimeError("Peritus report has no native agent identity")
+    package_version = identity.get("package_version")
+    source_revision = identity.get("source_revision")
+    binary_sha256 = identity.get("binary_sha256")
+    if not isinstance(package_version, str) or not package_version:
+        raise RuntimeError("Peritus report has no package version")
+    if not isinstance(source_revision, str) or (
+        len(source_revision) not in (40, 64)
+        or any(character not in "0123456789abcdef" for character in source_revision)
+    ):
+        raise RuntimeError("Peritus report has no full source revision")
+    if binary_sha256 != expected_digest:
+        raise RuntimeError("Peritus report executable digest does not match the uploaded binary")
+    return {
+        "package_version": package_version,
+        "source_revision": source_revision,
+        "binary_sha256": binary_sha256,
+    }
 
 
 def _integer(value: object) -> int | None:

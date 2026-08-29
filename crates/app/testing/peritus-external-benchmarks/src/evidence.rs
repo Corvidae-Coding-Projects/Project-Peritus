@@ -9,7 +9,7 @@ use std::{
 use peritus_product_runner::{ProductRunPhase, ProductRunUpdate};
 use serde::Serialize;
 
-use crate::BenchmarkError;
+use crate::{BenchmarkAgentIdentity, BenchmarkError};
 
 /// Sandbox-relative evidence locations that remain valid if a benchmark runner relocates the
 /// completed sandbox after inspecting provider metadata.
@@ -34,6 +34,8 @@ pub struct RelocatablePaths {
 pub struct RunReport {
     /// Evidence schema version.
     pub schema_version: u32,
+    /// Exact source, package, and executable identity for this native invocation.
+    pub agent_identity: BenchmarkAgentIdentity,
     /// Whether the real Peritus product composition completed successfully.
     pub success: bool,
     /// Upstream benchmark task identity.
@@ -112,6 +114,8 @@ pub struct TraceUsage {
 pub struct TerminalBenchReport {
     /// Evidence schema version.
     pub schema_version: u32,
+    /// Exact source, package, and executable identity for this native invocation.
+    pub agent_identity: BenchmarkAgentIdentity,
     /// Whether the native Peritus product composition accepted the candidate.
     pub success: bool,
     /// Upstream task identity.

@@ -44,12 +44,13 @@ exact accepted revision.
 
 The implementation is not the release decision. Production readiness still requires:
 
-1. completing the serialized Terminal-Bench 2.0 campaign;
+1. completing the serialized Terminal-Bench 2.0 diagnostic campaign;
 2. applying only broadly useful fixes found by that campaign and rerunning affected unchanged tasks;
-3. running H0-H4 against the exact final commit on Linux, macOS, and Windows;
-4. retaining the eight-hour soak, signature, provenance, reproducibility, migration, and recovery evidence;
-5. receiving an independent final audit and an H4 `Ready` result; and
-6. publishing the first signed GitHub release only after every required hosted check is green.
+3. rerunning both complete benchmark suites with one exact, revision-bound final binary;
+4. running H0-H4 against the exact final commit on Linux, macOS, and Windows;
+5. retaining the eight-hour soak, signature, provenance, reproducibility, migration, and recovery evidence;
+6. receiving an independent final audit and an H4 `Ready` result; and
+7. publishing the first signed GitHub release only after every required hosted check is green.
 
 The H4 adapter cannot sign, tag, publish, deploy, or manufacture missing evidence. Human release
 authority remains outside the harness.
@@ -61,8 +62,8 @@ remain the release blockers.
 
 ## Benchmark qualification
 
-The completed pinned HarnessBench campaign contains all 106 tasks with no missing native adapter
-run. Its retained means are:
+The completed pinned HarnessBench diagnostic campaign contains all 106 tasks with no missing native
+adapter run. Its retained means are:
 
 | Measure | Result |
 | --- | ---: |
@@ -75,6 +76,10 @@ Forty tasks have perfect outcome and 64 score at least 0.9. The retained runs to
 hours and 31,286,948 model tokens. Failures produced general improvements to recovery, grounding,
 verification, evidence handoff, multi-turn state, tool use, and artifact consistency. Peritus did
 not add task-specific answers or weaken the upstream oracles.
+
+Because general fixes were intentionally made as failures were diagnosed, those 106 reports bind
+successive development checkpoints. They are the retained diagnostic baseline. The final report
+will compare them with a second complete run made by one frozen, revision-bound release candidate.
 
 The official 89-task Terminal-Bench 2.0 campaign runs five attempts per task at concurrency one to
 protect system memory. It is still in progress against a frozen adapter binary. Setup, commands,

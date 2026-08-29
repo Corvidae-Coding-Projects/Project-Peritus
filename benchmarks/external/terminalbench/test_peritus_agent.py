@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from harbor.environments.base import ExecResult
 
 from benchmarks.external.terminalbench.peritus_agent import (
+    _file_sha256,
+    _parse_report,
+    _report_identity,
     _runtime_path,
     _workspace_path,
 )
@@ -86,6 +91,44 @@ class RuntimePathTests(unittest.IsolatedAsyncioTestCase):
 
         with self.assertRaisesRegex(RuntimeError, "resolve task executable path failed"):
             await _runtime_path(environment)  # type: ignore[arg-type]
+
+
+class ReportIdentityTests(unittest.TestCase):
+    def test_parses_schema_two_after_progress_output(self) -> None:
+        report = _parse_report('progress\n{"schema_version":2,"success":true}\n')
+
+        self.assertTrue(report["success"])
+
+    def test_rejects_legacy_terminal_report(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "unsupported Terminal-Bench report"):
+            _parse_report('{"schema_version":1,"success":true}\n')
+
+    def test_hashes_and_matches_the_uploaded_binary_identity(self) -> None:
+        with TemporaryDirectory() as raw:
+            binary = Path(raw) / "agent"
+            binary.write_bytes(b"native-agent")
+            digest = _file_sha256(binary)
+        report = {
+            "agent_identity": {
+                "package_version": "0.0.0",
+                "source_revision": "0123456789abcdef0123456789abcdef01234567",
+                "binary_sha256": digest,
+            }
+        }
+
+        self.assertEqual(_report_identity(report, digest)["binary_sha256"], digest)
+
+    def test_rejects_a_report_from_different_executable_bytes(self) -> None:
+        report = {
+            "agent_identity": {
+                "package_version": "0.0.0",
+                "source_revision": "0123456789abcdef0123456789abcdef01234567",
+                "binary_sha256": "0" * 64,
+            }
+        }
+
+        with self.assertRaisesRegex(RuntimeError, "does not match the uploaded binary"):
+            _report_identity(report, "1" * 64)
 
 
 if __name__ == "__main__":

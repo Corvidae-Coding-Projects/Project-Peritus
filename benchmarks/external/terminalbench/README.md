@@ -36,12 +36,19 @@ other distributions may package it differently.
 
 ```bash
 rustup target add x86_64-unknown-linux-musl
-CARGO_BUILD_JOBS=2 cargo build \
+git diff --quiet HEAD --
+PERITUS_SOURCE_REVISION="$(git rev-parse --verify HEAD)" \
+  CARGO_BUILD_JOBS=2 cargo build \
   --release \
   --target x86_64-unknown-linux-musl \
   -p peritus-external-benchmarks \
   --bin peritus-benchmark-agent
 ```
+
+The first command refuses tracked source changes. The native schema-version-2 report retains that
+full source revision, the Cargo package version, and the executable SHA-256. The Harbor bridge
+independently hashes the uploaded executable, rejects a digest mismatch, and copies both identities
+into trial metadata.
 
 Run `codex login` and `claude login` on the host before starting the suite. The adapter copies the
 portable Peritus binary, the exact discovered Codex executable and its matching

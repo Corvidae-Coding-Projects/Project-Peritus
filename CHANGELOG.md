@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Bind every new external-benchmark invocation to the exact clean Peritus source revision, Cargo
+  package version, and SHA-256 of the native executable; make Harbor verify the uploaded binary
+  against the native report and retain both identities in its trial metadata (#31)
 - Add durable, default-off automatic provider failover for designer, writer, reviewer, and fixer
   roles when at least two routes are selected; preserve ordinary same-provider recovery first,
   require compatible tool or media capability, exclude safety, refusal, cancellation, and

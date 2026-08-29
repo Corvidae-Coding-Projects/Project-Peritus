@@ -13,10 +13,15 @@ workspaces, credentials, traces, and full results stay outside this repository.
 Build the native adapter with a bounded Cargo job count:
 
 ```sh
-CARGO_BUILD_JOBS=2 cargo build --locked \
+git diff --quiet HEAD --
+PERITUS_SOURCE_REVISION="$(git rev-parse --verify HEAD)" \
+  CARGO_BUILD_JOBS=2 cargo build --locked \
   --package peritus-external-benchmarks \
   --bin peritus-benchmark-agent
 ```
+
+The first command refuses tracked source changes. The compiled revision and the executable's
+runtime SHA-256 are retained in every schema-version-5 invocation report.
 
 Clone or reset HarnessBench to the pinned commit. Create a virtual environment outside the
 repository so the suite and its unchanged task oracles use the same dependencies:
@@ -73,7 +78,7 @@ HarnessBench owns task setup, deadlines, workspaces, oracles, process rubrics, a
 may initialize Git in a supplied workspace that has no history, but it must not edit task fixtures,
 hooks, rubrics, or oracles. Do not set `HARNESSBENCH_SKIP_PROCESS_GRADE` during a scored run.
 
-## Final retained result
+## Completed diagnostic baseline
 
 The completed baseline contains all 106 tasks with no missing or failed native adapter run:
 
@@ -92,6 +97,11 @@ The campaign led to broad product improvements in recovery, durable multi-turn s
 format gates, independent review, evidence handoff, exact-identifier preservation, bounded tool
 parallelism, constraint grounding, pagination, polling, and artifact reconciliation. It did not add
 task-specific answers or weaken validation to raise the score.
+
+This aggregate was collected while those general fixes were being implemented, so its task reports
+bind different development checkpoints. It is the honest diagnostic baseline, not the frozen final
+candidate result. A second complete run with one schema-version-5 binary built from the exact final
+commit remains required for the final comparison.
 
 Every reproduced product defect, upstream defect, retained mismatch, before/after run, and general
 fix is recorded in the [external failure journal](../failure-journal.md). That journal is the place

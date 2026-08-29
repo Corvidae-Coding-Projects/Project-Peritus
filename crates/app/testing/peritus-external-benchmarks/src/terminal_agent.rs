@@ -16,11 +16,13 @@ use crate::{
     agent::{observation_capture, publish_last_observation, run_id},
     args::TerminalBenchInput,
     evidence::TerminalBenchReport,
+    identity::BenchmarkAgentIdentity,
     providers, session, trace, workspace,
 };
 
 pub async fn run(input: TerminalBenchInput) -> Result<TerminalBenchReport, BenchmarkError> {
     let started = Instant::now();
+    let agent_identity = BenchmarkAgentIdentity::current()?;
     let baseline = workspace::prepare(&input.workspace)?;
     fs::create_dir_all(&input.evidence_dir).map_err(|error| {
         BenchmarkError::filesystem(
@@ -85,7 +87,8 @@ pub async fn run(input: TerminalBenchInput) -> Result<TerminalBenchReport, Bench
         ),
     };
     let report = TerminalBenchReport {
-        schema_version: 1,
+        schema_version: 2,
+        agent_identity,
         success,
         task_id: input.task_id,
         session_id: input.session_id,

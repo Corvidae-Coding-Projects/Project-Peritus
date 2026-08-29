@@ -2243,7 +2243,19 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   accepted diffs or artifacts, passing exact-target gates, and no blocking review findings before
   the terminal provider event. This is broad evidence for role-level recovery and durable candidate
   preservation, not permission to infer success from Harbor's later score. Final-candidate reruns
-  must make native completion true as well as preserve the external reward. Trial
+  must make native completion true as well as preserve the external reward. Trials
+  `multi-source-data-merger__EnoFUos` and `merge-diff-arc-agi-task__fsoZd6p` add two more exact
+  examples. The first produced the required Parquet and conflict report and passed all three
+  unchanged verifier tests for reward 1 after six provider requests and 330.417 seconds. The
+  second fetched and merged both supplied bundles, resolved the algorithm, and passed all five
+  unchanged verifier tests for reward 1 after sixteen provider requests and 262.267 seconds. Both
+  last observations retain a grounded completion summary and show independent review in progress;
+  a later provider terminal still made native acceptance false. Trial
+  `git-multibranch__PA6uwxo` provides the same evidence for an authorized system-effect task: its
+  live password-authenticated clone, two branch pushes, HTTPS content checks, and 210/204 ms
+  deployment measurements were retained while review was in progress; the unchanged end-to-end
+  verifier awarded reward 1, but a later provider terminal made native acceptance false after
+  fourteen requests and 452.811 seconds. Trial
   `gcode-to-text__e5ePRiB` shows the no-progress form: the writer correctly listed the artifact
   workspace, read the 1,661,422-byte `text.gcode`, and searched real object and layer markers, but
   the continuations after those useful tool calls ended in malformed Codex runtime responses.
@@ -2252,6 +2264,29 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   This is evidence for a fresh provider invocation, not for hard-coding the hidden flag or reading
   the verifier. The composed regression now exhausts one invocation in each designer, writer, and
   reviewer role, then proves fresh grounding and normal product completion.
+
+## TBM-001: a writer mirrored the response field into the request schema
+
+- Suite and task: Terminal-Bench 2.0, `kv-store-grpc`, first full-suite baseline trial.
+- Symptom: Peritus installed the exact requested gRPC packages, created and generated the service,
+  implemented and started a real dictionary-backed server on port 5328, and passed its own
+  end-to-end `SetVal`/`GetVal` probe. Five of seven unchanged verifier tests passed. The two live RPC
+  tests could not construct `SetValRequest(key=..., value=...)` because the writer named the
+  request field `val`.
+- Classification: legitimate model contract miss combined with unfinished native review. The
+  published prompt explicitly names the `SetValRequest` parameter `value` and separately names the
+  response field `val`; no hidden convention or contradictory benchmark behavior is involved. The
+  generated design preserved that exact wording, but the writer mirrored the response name into
+  both messages. A later provider terminal covered by `TBF-009` ended the run while independent
+  review was in progress.
+- Evidence: trial `kv-store-grpc__r9sYjKe`; reward 0; five verifier passes and two request-schema
+  failures; ten provider requests; 203,718 input, 71,424 cached input, and 4,038 output tokens;
+  203.856 seconds. Native acceptance was false with `failure_kind: provider`.
+- Disposition: retain the honest reward 0 and do not call this a benchmark gotcha. The production
+  design and reviewer workflows already require literal checking of every named field. The final
+  candidate's fresh role recovery must be tested on the unchanged task to determine whether normal
+  independent review catches and repairs the miss; no task name, field-name hint, or verifier
+  knowledge will be added to Peritus.
 
 ## TBF-010: current data was mistaken for a historical snapshot
 
@@ -2380,8 +2415,8 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 
 ## TBF-013: workspace-only acceptance rejected verified system effects
 
-- Suite and tasks: Terminal-Bench 2.0, `mailman` and `compile-compcert`, first full-suite baseline
-  trials.
+- Suite and tasks: Terminal-Bench 2.0, `mailman`, `compile-compcert`, and `git-multibranch`, first
+  full-suite baseline trials.
 - Symptom: the writer completed the requested operating-system configuration, retained fresh
   command evidence, and passed all three unchanged external verifier checks, but native Peritus
   reported failure because the task correctly produced no Git workspace changes. The exact-target
@@ -2404,7 +2439,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   `compile-compcert__3f3Zq6N` independently built and installed the requested compiler under
   `/tmp/CompCert`, passed Harbor for reward 1, and retained detailed successful build and execution
   evidence, but ended with native `failure_kind: gate` after 48 provider requests because its
-  correct external build product produced no `/app` candidate files.
+  correct external build product produced no `/app` candidate files. Trial
+  `git-multibranch__PA6uwxo` independently exercised its installed SSH, Git-hook, TLS, and web
+  deployment path and passed the unchanged end-to-end verifier for reward 1. Its last native
+  observation still shows `Exact candidate files (0): [none: acceptance is refused]`, even though
+  it retains the successful effect and later live verification evidence. A provider terminal while
+  review was in progress is separately covered by `TBF-009`.
 - Verification: focused policy tests prove incomplete or out-of-order command evidence is refused
   and that identical complete evidence cannot bypass the default workspace scope. A complete
   product composition test exercises the authorized zero-diff path through writer commands,
@@ -2445,6 +2485,32 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   provider requests; 121,069 input, 47,616 cached input, and 6,476 output tokens; 306.505 seconds of
   native execution. The retained `last-product-observation.json` records a 5,092,600-byte
   `model.pt`, passing native gates, the exact MSE measurements, and the unchanged checkpoint digest.
+
+## TBI-006: invocation reports did not bind the native Peritus build
+
+- Suite and task: both external suites; completion-evidence audit after the first full HarnessBench
+  diagnostic campaign and the running Terminal-Bench baseline.
+- Symptom: reports retained upstream revisions, task and session IDs, provider/model identities,
+  traces, token use, and results, but their schema did not contain the exact Peritus source revision
+  or executable digest. The Terminal-Bench bridge also reported the generic agent version `0.0.0`.
+  A report could therefore be associated with a checkpoint only through surrounding operator notes
+  instead of proving which native bytes produced it.
+- Cause: the initial evidence schema concentrated on product execution and upstream provenance but
+  treated the adapter executable as ambient runner state. That is insufficient for a frozen
+  baseline/final comparison and for reproducing a mixed diagnostic campaign honestly.
+- Resolution: new HarnessBench schema version 5 and Terminal-Bench schema version 2 reports require
+  a full lowercase Git object ID supplied at compile time, retain the Cargo package version, and
+  hash the current executable at invocation. The Harbor bridge independently hashes the host binary,
+  publishes its digest prefix as the agent version, rejects a native digest mismatch, and retains
+  the full source revision and digest in trial metadata. A binary built without an exact source
+  revision refuses to start an external benchmark rather than emitting unattributable evidence.
+- Disposition: preserve all earlier reports as honest diagnostic evidence and state that their
+  exact checkpoint association relies on the signed commit journal. Do not rewrite or backfill
+  those immutable results. Both final campaigns must use one clean revision-bound binary and report
+  its exact digest in every invocation.
+- Verification: focused Rust and Python identity, schema, and digest-mismatch regressions are part
+  of the current checkpoint. The frozen Terminal-Bench baseline remains byte-identical and is not
+  retroactively relabeled; final unchanged reruns remain required.
 
 ## TBF-014: nested repository changes collapsed to one directory marker
 

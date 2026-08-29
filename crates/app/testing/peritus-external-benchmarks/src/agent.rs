@@ -19,11 +19,13 @@ use crate::{
     BenchmarkError,
     args::HarnessBenchInput,
     evidence::{ProductObservation, RelocatablePaths, RunReport},
+    identity::BenchmarkAgentIdentity,
     providers, session, trace, workspace,
 };
 
 pub async fn run_harnessbench(input: HarnessBenchInput) -> Result<RunReport, BenchmarkError> {
     let started = Instant::now();
+    let agent_identity = BenchmarkAgentIdentity::current()?;
     let baseline = workspace::prepare(&input.workspace)?;
     let sandbox = input.sandbox.canonicalize().map_err(|error| {
         BenchmarkError::filesystem("canonicalize sandbox", &input.sandbox, error)
@@ -82,7 +84,8 @@ pub async fn run_harnessbench(input: HarnessBenchInput) -> Result<RunReport, Ben
     )?;
     let (success, summary, changed_paths, failure_kind, failure) = outcome_fields(result);
     let report = RunReport {
-        schema_version: 4,
+        schema_version: 5,
+        agent_identity,
         success,
         task_id: input.task_id,
         session_id: input.session_id,

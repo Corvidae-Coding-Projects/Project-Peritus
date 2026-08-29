@@ -24,6 +24,9 @@ pub enum BenchmarkError {
     /// Provider discovery or authentication failed.
     #[error("benchmark provider setup failed: {0}")]
     Provider(String),
+    /// The executable cannot prove the source and binary identity required for retained evidence.
+    #[error("benchmark agent identity is invalid: {0}")]
+    Identity(String),
     /// The durable provider/tool trace was malformed or unavailable.
     #[error("benchmark trace failed at {}: {detail}", path.display())]
     Trace {
