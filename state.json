@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 748,
+  "next_comment_id": 749,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T21:44:22.500519281Z",
+      "updated_at": "2026-08-29T21:44:27.164121042Z",
       "labels": [
         "qualification",
         "release"
@@ -2494,6 +2494,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAe815NTeuYc7SuRbWzYh44o18it6qy5XNm2UrmHotjqBcFJpz82Wjwm+bY8k3jNMQOXSLWTw7tjrbS+uF3vyICw=="
+        },
+        "a6cb6e88-8fe4-4a4c-ba4e-72501a98b27b": {
+          "display_id": 748,
+          "author": "6ME5",
+          "content": "[action] Classified pytorch-model-recovery as TBI-001 hidden-interface underspecification; retained honest reward 0 and documented why benchmark-specific winning would require cheating; frozen baseline advanced to mailman",
+          "created_at": "2026-08-29T21:44:27.161706816Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAFIMVoFfPuGgb95fGyVXW54ZP/tOCdrsLZ4W+Xa7IkCJuG/4KGrp2KjVZ9bJDV2aJx1a3xxMDC4m2q/U51bGKAw=="
         },
         "a77cb518-c9ae-4f6e-a129-1ed47bbd7ad5": {
           "display_id": 741,
@@ -7484,8 +7493,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T21:44:22.500519281Z",
+    "timestamp": "2026-08-29T21:44:27.164121042Z",
     "agent_id": "6ME5",
-    "agent_seq": 933
+    "agent_seq": 934
   }
 }
