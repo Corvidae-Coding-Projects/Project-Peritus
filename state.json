@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 596,
+  "next_comment_id": 597,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T04:20:03.293272440Z",
+      "updated_at": "2026-08-29T05:39:29.815098188Z",
       "labels": [
         "qualification",
         "release"
@@ -1477,6 +1477,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABARshxTRq5jTb/nNsM5xdrfkrvu+23d26IXjGB46YejvgfIWG8FHnxuDUl37AQb9ZK60ZOIPavnZRKyU88TpYtBQ=="
+        },
+        "62ca94e8-4313-4342-8e28-95b2ebbe21bc": {
+          "display_id": 596,
+          "author": "6ME5",
+          "content": "HarnessBench task 052 diagnostic checkpoint: external 17/17 outcome 1.0 retained after provider-stall recovery. Native pre-v2 run remained false because advisory findings blocked and one stable title forked when reviewer location wording changed. Source now makes advisory severity nonblocking, conserves reasonable compound readings, requires explicit named-category membership, uses category+stable-title finding identity v2, and coalesces pre-v2 location duplicates fail-closed during restore. Focused tests and full CARGO_BUILD_JOBS=2 cargo xtask all are green; unchanged native v2 rerun remains next.",
+          "created_at": "2026-08-29T05:39:29.812373800Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAhDeo5dT47ripl07G83M3rOO4J1QiXLmxEqtFK0xqNCyFu4wkXKb0tQJBUc/9ZhQsvx0mu6DcaEJWm2xNvjo9Aw=="
         },
         "6546336e-5b96-4f9f-b7f0-3d21db026cf2": {
           "display_id": 547,
@@ -6116,8 +6125,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T04:20:03.293272440Z",
+    "timestamp": "2026-08-29T05:39:29.815098188Z",
     "agent_id": "6ME5",
-    "agent_seq": 775
+    "agent_seq": 776
   }
 }
