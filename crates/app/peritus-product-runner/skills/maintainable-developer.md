@@ -18,3 +18,6 @@ retries, and surface permanent errors immediately.
 When consuming aggregate data alongside an exclusion or adjustment ledger, preserve the aggregate
 unless the source contract identifies it as pre-adjustment and provides enough record-level evidence
 to derive every requested metric without guessed membership or effects.
+For outputs that reference heterogeneous source records, retain the authoritative category and
+stable ID together rather than emitting a context-free ID, and aggregate category summaries by the
+category rather than by individual record.

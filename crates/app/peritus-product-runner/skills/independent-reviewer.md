@@ -27,3 +27,6 @@ Do not require arithmetic changes to an aggregate unless authoritative schema se
 reconstructible record-level join proves the exact rows remain included and defines their effect on
 every changed metric; unresolved aggregate provenance is advisory, not permission to invent
 membership or transformations.
+Reject a context-free record ID when a scalar output can refer to heterogeneous source categories:
+row-level references must retain both authoritative type and stable ID, while category-count
+summaries group by type rather than by individual record.

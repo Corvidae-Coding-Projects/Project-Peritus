@@ -353,6 +353,14 @@ effect, while unresolved provenance remains advisory. The unchanged rerun passed
 checks in one review cycle and improved outcome/process/security/combined from
 0.9524/0.8633/1.0/0.8222 to 1.0/0.9933/1.0/0.9933.
 
+Task 090 initially found every anomaly and applied thresholds, severity, overlap priority, impact,
+and low-volume suppression correctly, but bare event IDs lost their source category and summary
+counts grouped by individual record. The workflow and role skills now preserve typed identities for
+references spanning heterogeneous sources and group semantic category summaries by category. The
+unchanged rerun passed all 16 outcome checks in one review cycle and improved
+outcome/process/security/combined from 0.5424/0.96/1.0/0.5207 to
+1.0/0.9633/1.0/0.9633.
+
 HarnessBench chooses a result directory from the last observed provider model and may move a
 multi-provider sandbox after the native adapter exits. Invocation evidence schema 4 therefore
 includes `relocatable_paths`, all rooted at the final sandbox printed by HarnessBench. Those paths

@@ -1581,3 +1581,21 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   Evidence is retained at
   `reports/089-ab-test-caveat-analysis-pre-aggregate-provenance.json` and
   `reports/089-ab-test-caveat-analysis-final.json`.
+
+## HBI-051: task 090 lost type information in attribution references
+
+- Suite and task: HarnessBench 2.0, `090-timeseries-anomaly-attribution`.
+- Symptom: anomaly selection, thresholds, severity, overlap priority, impact, suppression, and notes
+  were correct, but bare event IDs failed the exact attribution rows and ID-keyed counts failed the
+  cause-category summary, reducing outcome to 0.5424.
+- Cause: the workflow preserved stable IDs but did not require a scalar reference spanning
+  heterogeneous source tables to retain its type discriminator. The output therefore lost whether
+  `D-441`, `I-19`, and `M-07` meant deployment, third-party, or marketing causes once detached from
+  their source tables.
+- Resolution: the production workflow, developer skill, and reviewer now use typed identities for
+  heterogeneous references and aggregate semantic category counts by category rather than record.
+  The unchanged rerun passed all 16 outcome checks in one review cycle and improved
+  outcome/process/combined from 0.5424/0.96/0.5207 to 1.0/0.9633/0.9633 with security 1.0.
+  Evidence is retained at
+  `reports/090-timeseries-anomaly-attribution-pre-typed-reference.json` and
+  `reports/090-timeseries-anomaly-attribution-final.json`.

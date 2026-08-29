@@ -289,6 +289,8 @@ mod tests {
         assert!(prompt.contains("without a finite attempt bound or repeated-token guard"));
         assert!(prompt.contains("separately supplied aggregates are raw"));
         assert!(prompt.contains("unresolved aggregate provenance is advisory"));
+        assert!(prompt.contains("context-free record ID"));
+        assert!(prompt.contains("group by type rather than by individual record"));
     }
 
     #[test]
@@ -315,6 +317,8 @@ mod tests {
         assert!(prompt.contains("repeated cursors or pages"));
         assert!(prompt.contains("preserve the aggregate"));
         assert!(prompt.contains("without guessed membership or effects"));
+        assert!(prompt.contains("retain the authoritative category"));
+        assert!(prompt.contains("aggregate category summaries"));
     }
 
     #[test]

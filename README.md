@@ -285,6 +285,11 @@ affected eligibility, conversions, refunds, and revenue. Aggregate transformatio
 authoritative schema semantics or a reconstructible record-level join. The unchanged rerun passed
 all 18 outcome checks in one review cycle and improved outcome/process/security/combined from
 0.9524/0.8633/1.0/0.8222 to 1.0/0.9933/1.0/0.9933.
+Task 090 then showed that stable IDs alone are insufficient when a scalar can reference multiple
+source categories. Typed references now retain both authoritative category and record ID, while
+category summaries aggregate by category rather than individual record. The unchanged rerun passed
+all 16 outcome checks and improved outcome/process/security/combined from
+0.5424/0.96/1.0/0.5207 to 1.0/0.9633/1.0/0.9633.
 Terminal-Bench 2.0, the complete professional-capability audit, documentation normalization,
 release-installer qualification, and final hosted-runner closure remain required before production
 readiness.

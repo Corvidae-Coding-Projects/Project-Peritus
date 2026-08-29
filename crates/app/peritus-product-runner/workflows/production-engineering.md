@@ -14,6 +14,11 @@ requested behavior.
    remain reasonable, keep the source aggregate unchanged and report the ambiguity instead of
    inventing a transformation. Name concrete modules, ownership boundaries, interfaces, data flow,
    failure behavior, and exact verification commands.
+   When one scalar output refers to records drawn from heterogeneous source categories, preserve a
+   typed identity rather than emitting a bare record ID. Unless an exact representation is declared,
+   combine the authoritative category or type label and stable ID as `category:id`. Aggregate fields
+   such as cause counts group by the semantic category they name, while row-level outputs retain the
+   typed record identity.
 3. Divide implementation into cohesive modules with one clear responsibility. Production source
    files must never exceed 500 lines. Keep crate, package, library, and binary roots as thin
    composition surfaces; move behavior into named domain modules rather than generic helpers or

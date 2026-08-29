@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Preserve typed identity when flat outputs reference records from heterogeneous source categories,
+  and aggregate semantic cause summaries by category rather than individual record; unchanged
+  HarnessBench task 090 now passes all 16 anomaly-attribution checks (#31)
 - Preserve declared aggregate semantics when a separate exclusion or adjustment ledger lacks
   record-level membership and metric effects; the workflow, developer, and reviewer now require an
   authoritative schema or reconstructible join before arithmetic changes and treat unresolved
@@ -154,6 +157,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Exercise unchanged HarnessBench task 090 across thresholded anomaly detection, priority
+  attribution, typed cause lineage, impact summaries, low-volume suppression, and uncertainty notes,
+  improving outcome/process/security/combined from 0.5424/0.96/1.0/0.5207 to
+  1.0/0.9633/1.0/0.9633 after a general reference-semantics fix (#31)
 - Exercise unchanged HarnessBench task 089 across aggregate A/B metrics, exact exclusions,
   statistical testing, and caveat reporting, improving outcome/process/security/combined from
   0.9524/0.8633/1.0/0.8222 to 1.0/0.9933/1.0/0.9933 after a general provenance-grounding fix (#31)

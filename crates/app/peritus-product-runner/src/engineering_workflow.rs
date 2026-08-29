@@ -38,6 +38,11 @@ requested behavior.
    values, field names, filenames, paths, and commands must remain byte-for-byte unchanged in every
    output that records them. Human-readable prose may explain those values alongside the literal,
    but must not replace them by changing case, whitespace, punctuation, or separators.
+   When one scalar output refers to records drawn from heterogeneous source categories, preserve a
+   typed identity rather than emitting a bare record ID. Unless an exact representation is declared,
+   combine the authoritative category or type label and stable ID as `category:id`; this keeps the
+   reference interpretable outside its source table. Aggregate fields such as cause counts
+   group by the semantic category they name, while row-level outputs retain the typed record identity.
    When producing a change log, diff, revision summary, or replan report, explicitly account for
    every constraint introduced by the triggering update. Record changed, added, removed, and
    already-satisfied constraints with their literal values so readers can distinguish deliberate
@@ -177,6 +182,9 @@ progress, reject repeated cursors or pages, bound retries, and surface permanent
 When consuming aggregate data alongside an exclusion or adjustment ledger, preserve the aggregate
 unless the source contract identifies it as pre-adjustment and provides enough record-level evidence
 to derive every requested metric without guessed membership or effects.
+For outputs that reference heterogeneous source records, retain the authoritative category and
+stable ID together rather than emitting a context-free ID, and aggregate category summaries by the
+category rather than by individual record.
 ";
 
 const REVIEWER_SKILL: &str = r"# Independent reviewer
@@ -207,7 +215,10 @@ ledger is not proof that separately supplied aggregates are raw. Do not require 
 to an aggregate unless authoritative schema
 semantics or a reconstructible record-level join proves the exact rows remain included and defines
 their effect on every changed metric; unresolved aggregate provenance is advisory, not permission
-to invent membership or transformations. Treat a missing or incompatible
+to invent membership or transformations. Reject a context-free record ID when a scalar output can
+refer to heterogeneous source categories: row-level references must retain both authoritative type
+and stable ID, while category-count summaries group by type rather than by individual record. Treat
+a missing or incompatible
 production dependency, or a test-process
 substitute used in its place, as a blocking compatibility failure when that dependency is being
 added or upgraded. Legitimate mocks for unrelated boundaries remain allowed, but they cannot prove
@@ -272,6 +283,10 @@ mod tests {
             assert!(instructions.contains("opaque contract values"));
             assert!(instructions.contains("cross-artifact contract"));
             assert!(instructions.contains("byte-for-byte unchanged"));
+            assert!(instructions.contains("heterogeneous source categories"));
+            assert!(instructions.contains("typed identity"));
+            assert!(instructions.contains("category:id"));
+            assert!(instructions.contains("group by the semantic category"));
             assert!(instructions.contains("adjacent unrequested inputs"));
             assert!(instructions.contains("later round"));
             assert!(instructions.contains("every constraint introduced"));
