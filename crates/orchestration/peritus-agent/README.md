@@ -24,8 +24,10 @@ Durable provider envelopes rebuild the C5 reducer prefix before an exact continu
 The production-facing `DeveloperLoop` composes the existing C5 session boundary with an explicit
 application tool executor and durable trace port. It serializes model tool calls, records each
 provider envelope before reduction, records each tool observation before returning it to model
-context, and continues until bounded final text is produced. Product adapters supply the concrete
-workspace tools; D0 itself still grants no filesystem or process authority.
+context, and continues until bounded final text is produced. Each role can narrow the common
+production output-token ceiling so planning and review remain proportional without changing the
+provider profile or weakening the wider writer loop. Product adapters supply the concrete workspace
+tools; D0 itself still grants no filesystem or process authority.
 
 Model output is never tool authority, and D0 completion is never run acceptance. B0/B1/C0/C4 own
 the receipts that authorize effects; later D1/D2/E0 components own gates, review, orchestration,

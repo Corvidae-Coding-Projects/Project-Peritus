@@ -46,6 +46,10 @@ requested behavior.
    for category membership. Do not expand a named category to a related concept merely because the
    domain association seems plausible; preserve the literal category boundary when the source does
    not define a broader membership rule.
+   Treat separately named output fields and categories as separate predicates. Unless the source
+   explicitly requires overlap, do not place one item in multiple category fields merely because a
+   broader prose label could describe it; derive membership independently from each field's stated
+   rule and keep dedicated exception categories from leaking into one another.
    Ask the user only when a material choice changes the requested result or effect and cannot be
    sensibly inferred; produce a reversible requested artifact with an explicit limitation when that
    remains useful. Treat phrases such as `such as`, `for example`, and `including` as
@@ -106,6 +110,11 @@ requested behavior.
    Use the tool protocol efficiently: issue independent reads, writes, and checks together in one
    model response when the calls have no data dependency. Do not serialize independent effects and
    spend a caller's deadline on avoidable round trips.
+   When a request requires periodic polling over a minimum interval, take at least three
+   observations including the initial and final observations, spaced across the interval. One long
+   sleep followed by one final scan is waiting, not periodic polling. If no decision depends on an
+   intermediate result, batch the ordered wait-and-observe calls in one response so the required
+   cadence does not consume avoidable model round trips.
 8. Review against the request and design, conserve unresolved findings across cycles, fix actual
    causes, and refuse completion until every deterministic gate and policy-derived blocker clears.
    A blocking finding must identify an unmet explicit requirement, a failed deterministic gate, or
@@ -212,6 +221,8 @@ mod tests {
             assert!(instructions.contains("nearest-item grammatical attachments"));
             assert!(instructions.contains("authoritative label, taxonomy, or definition"));
             assert!(instructions.contains("literal category boundary"));
+            assert!(instructions.contains("separately named output fields"));
+            assert!(instructions.contains("derive membership independently"));
             assert!(instructions.contains("non-exhaustive"));
             assert!(instructions.contains("invented allowlist"));
             assert!(instructions.contains("preserve that precedence"));
@@ -230,6 +241,8 @@ mod tests {
             assert!(instructions.contains("material retry and recovery behavior"));
             assert!(instructions.contains("bounded ephemeral producer"));
             assert!(instructions.contains("independent effects"));
+            assert!(instructions.contains("at least three"));
+            assert!(instructions.contains("waiting, not periodic polling"));
             assert!(instructions.contains("Optional richer provenance"));
             assert!(instructions.contains("one-shot transient event"));
             assert!(instructions.contains("repeated fixer work"));

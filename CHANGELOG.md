@@ -13,6 +13,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Keep mandatory design proportional to the declared workspace: render explicit generated-artifact
+  designs deterministically in Rust from the exact conversation and bounded sorted inventory while
+  retaining model-authored, read-grounded architecture for source repositories; add per-role model
+  output ceilings, independent category predicates, and genuine multi-observation periodic polling
+  guidance (#31)
 - Let the structured workspace removal tool delete one explicitly listed empty directory
   non-recursively, while rejecting the workspace root and nonempty directories and preserving the
   existing ownership boundary for regular files (#31)
@@ -130,6 +135,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Exercise unchanged HarnessBench task 061 through timed status polling, replacing two design-bound
+  deadline failures and one category/cadence miss with a 26-second multi-observation run that passes
+  all seven checks and scores outcome/process/security/combined 1.0/0.9867/1.0/0.9867 (#31)
 - Exercise unchanged HarnessBench task 058 through three durable project-state rounds: replace a
   1,200-second Day 3 timeout with negotiated batched writes, preserve `conditional_go` across the
   JSON and CSV artifacts, complete natively, and score outcome/process/security/combined

@@ -13,6 +13,7 @@ pub struct DeveloperLoopLimits {
     model_turns: u16,
     tool_calls: u32,
     attempts_per_turn: u8,
+    max_output_tokens: u64,
 }
 
 impl DeveloperLoopLimits {
@@ -31,7 +32,12 @@ impl DeveloperLoopLimits {
         {
             return Err(DeveloperLoopError::LimitExceeded);
         }
-        Ok(Self { model_turns: max_model_turns, tool_calls: max_tool_calls, attempts_per_turn: 3 })
+        Ok(Self {
+            model_turns: max_model_turns,
+            tool_calls: max_tool_calls,
+            attempts_per_turn: 3,
+            max_output_tokens: 32_768,
+        })
     }
 
     /// Overrides the attempts available to recover one logical model turn.
@@ -46,6 +52,21 @@ impl DeveloperLoopLimits {
             return Err(DeveloperLoopError::LimitExceeded);
         }
         self.attempts_per_turn = max_attempts_per_turn;
+        Ok(self)
+    }
+
+    /// Applies a smaller generation ceiling to each provider turn in this loop.
+    ///
+    /// # Errors
+    /// Rejects zero or a value wider than the production developer-loop ceiling.
+    pub const fn with_max_output_tokens(
+        mut self,
+        max_output_tokens: u64,
+    ) -> Result<Self, DeveloperLoopError> {
+        if max_output_tokens == 0 || max_output_tokens > 32_768 {
+            return Err(DeveloperLoopError::LimitExceeded);
+        }
+        self.max_output_tokens = max_output_tokens;
         Ok(self)
     }
 
@@ -65,6 +86,12 @@ impl DeveloperLoopLimits {
     #[must_use]
     pub const fn max_attempts_per_turn(self) -> u8 {
         self.attempts_per_turn
+    }
+
+    /// Maximum requested output tokens for each provider turn.
+    #[must_use]
+    pub const fn max_output_tokens(self) -> u64 {
+        self.max_output_tokens
     }
 }
 

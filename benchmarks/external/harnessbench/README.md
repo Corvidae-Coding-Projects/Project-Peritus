@@ -241,6 +241,19 @@ unchanged rerun removed both the draft and directory through successful structur
 seven oracle checks, and scored outcome 1.0, process 0.9367, security 1.0, and combined 0.9367 in
 314.423 seconds using 25 provider requests and 355,717 tokens.
 
+Task 061 initially exhausted its 180-second deadline because its mandatory generative design used
+most of the run before the writer could perform a timed polling task. A token ceiling made the
+document shorter but did not remove the provider's reasoning latency. Explicit artifact workspaces
+now receive a detailed deterministic Rust design from the exact durable conversation and a bounded,
+sorted inventory, while ordinary source repositories retain the generative architecture pass. The
+first completed run then exposed two general semantics issues: a duplicate identifier leaked into
+the separately defined ignored category, and one long sleep plus a final scan was treated as
+periodic polling. The workflow now derives separately named categories independently and requires
+at least three observations across a requested interval. The final unchanged run performed a
+26-second multi-observation poll, preserved first-seen duplicate handling, passed all seven checks,
+and scored outcome 1.0, process 0.9867, security 1.0, and combined 0.9867 in 167.85 seconds using
+17 provider requests and 176,238 tokens.
+
 HarnessBench chooses a result directory from the last observed provider model and may move a
 multi-provider sandbox after the native adapter exits. Invocation evidence schema 4 therefore
 includes `relocatable_paths`, all rooted at the final sandbox printed by HarnessBench. Those paths

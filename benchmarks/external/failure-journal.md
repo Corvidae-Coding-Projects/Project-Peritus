@@ -1281,3 +1281,31 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   cancellation evidence, and passed all seven checks with outcome/process/security/combined
   1.0/0.9367/1.0/0.9367 in 314.423 seconds. Eleven focused developer-tool tests and strict affected-
   crate Clippy pass.
+
+## HBF-027: generative design starved a time-bound artifact run
+
+- Suite and task: HarnessBench 2.0, `061-periodic-status-rollup`.
+- Symptom: the first two attempts exhausted the unchanged 180-second deadline before publishing
+  outputs. The mandatory architect turn used roughly 104 to 118 seconds even after its output was
+  reduced, leaving insufficient time for a writer to poll for at least 25 seconds and finish the
+  artifacts. After correcting that imbalance, the first completed run put a duplicate identifier
+  in both `duplicate_ids` and the separately defined `ignored_ids`, and used only an initial scan
+  plus one final scan rather than a genuinely periodic observation cadence.
+- Cause: one generative architecture path served both retained source repositories and explicit
+  generated-artifact workspaces, even though the latter already declare that no producer is being
+  retained. Provider reasoning latency did not scale with the smaller output limit. The embedded
+  workflow also did not state that separately named category fields require independent membership
+  predicates or define a minimum observable polling cadence.
+- Change: explicit artifact workspaces now get a mandatory detailed design rendered in Rust from
+  the exact durable conversation and a bounded sorted inventory. Source repositories keep the full
+  generative architect. Developer loops expose a per-role output-token ceiling, independent
+  categories are derived separately, and periodic polling requires at least three observations
+  across the requested interval.
+- Before evidence: two local timed-out workspaces plus
+  `reports/061-periodic-status-rollup-pre-category-and-cadence-fidelity.json`; that first completed
+  run scored outcome 0.8636, process 0.89, security 1.0, and combined 0.7686.
+- After evidence: local report `reports/061-periodic-status-rollup-final.json`; the unchanged rerun
+  polled repeatedly across 26 seconds, passed all seven oracle checks, and scored
+  outcome/process/security/combined 1.0/0.9867/1.0/0.9867 in 167.85 seconds with 17 requests and
+  176,238 tokens. Focused design, workflow, developer-loop tests and strict affected-crate Clippy
+  pass.

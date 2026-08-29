@@ -1,5 +1,7 @@
 //! Mandatory repository-grounded design document produced before implementation.
 
+mod artifact;
+
 use std::{
     fs::{self, OpenOptions},
     io::Write,
@@ -17,6 +19,11 @@ use crate::{ProductRunnerError, ProductRunnerErrorKind};
 const MINIMUM_DESIGN_BYTES: usize = 512;
 const MAXIMUM_DESIGN_BYTES: usize = 1024 * 1024;
 const MAX_INVALID_DESIGNS: u8 = 3;
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum DesignScope {
+    Artifact,
+    Source,
+}
 
 /// Detailed design artifact and conversation revision it covers.
 pub struct DesignDocument {
@@ -45,6 +52,10 @@ pub async fn create(
     model: &dyn ModelProvider,
     cycle: u32,
 ) -> Result<DesignDocument, ProductRunnerError> {
+    let scope = design_scope(&input.workspace_root);
+    if scope == DesignScope::Artifact {
+        return artifact::create(input);
+    }
     let mut invocation = 0_u32;
     let mut invalid_designs = 0_u8;
     let mut correction = None;
@@ -106,10 +117,31 @@ pub async fn create(
 }
 
 fn system_prompt() -> String {
+    let proportionality = "Scale the design to the actual change. Keep small changes concise while giving multi-module source work all detail needed for independent implementation. Do not repeat the same requirement across sections merely to make the document longer.";
     format!(
-        "You are the design architect in a serious coding harness. Inspect the actual repository with the read-only workspace tools before designing. Return only a detailed Markdown design document, not JSON and not a code fence. Preserve the requested ambition and cover the full requested product rather than proposing an MVP. Ground the document in concrete existing paths, manifests, interfaces, conventions, and constraints; for a greenfield repository, specify the exact structure to create. Begin acceptance reasoning from the original request's literal paths, values, operations, and grammatical scope. Do not override an explicit expected value with a model-derived invariant or manufacture a conflict by broadening a narrowly scoped rule. Respect the workspace's declared product kind: for an artifact workspace whose requested deliverables are generated outputs rather than retained code, design a bounded producer and independent artifact/effect verification without inventing package scaffolding. Include sections for Objective and acceptance criteria, Repository findings, Architecture and interfaces, Data and control flow, File and module plan, Implementation slices, Verification, and Risks or explicit non-goals. Make slices independently actionable where practical. Focus on realistic application behavior and avoid speculative adversarial edge cases. Do not edit files, run commands, implement code, or commit.\n\n{}",
+        "You are the design architect in a serious coding harness. Inspect the actual repository with the read-only workspace tools before designing. Return only a detailed Markdown design document, not JSON and not a code fence. Preserve the requested ambition and cover the full requested product rather than proposing an MVP. Ground the document in concrete existing paths, manifests, interfaces, conventions, and constraints; for a greenfield repository, specify the exact structure to create. Begin acceptance reasoning from the original request's literal paths, values, operations, and grammatical scope. Do not override an explicit expected value with a model-derived invariant or manufacture a conflict by broadening a narrowly scoped rule. Respect the workspace's declared product kind: for an artifact workspace whose requested deliverables are generated outputs rather than retained code, design a bounded producer and independent artifact/effect verification without inventing package scaffolding. Include sections for Objective and acceptance criteria, Repository findings, Architecture and interfaces, Data and control flow, File and module plan, Implementation slices, Verification, and Risks or explicit non-goals. Make slices independently actionable where practical. Focus on realistic application behavior and avoid speculative adversarial edge cases. Do not edit files, run commands, implement code, or commit.\n\n{}\n\n{proportionality}",
         crate::engineering_workflow::architect(),
     )
+}
+
+fn design_scope(workspace_root: &Path) -> DesignScope {
+    let Ok(text) = fs::read_to_string(workspace_root.join("peritus-workspace.toml")) else {
+        return DesignScope::Source;
+    };
+    let Ok(value) = toml::from_str::<toml::Value>(&text) else {
+        return DesignScope::Source;
+    };
+    let Some(table) = value.as_table() else {
+        return DesignScope::Source;
+    };
+    if table.len() == 2
+        && table.get("schema_version").and_then(toml::Value::as_integer) == Some(1)
+        && table.get("kind").and_then(toml::Value::as_str) == Some("artifact")
+    {
+        DesignScope::Artifact
+    } else {
+        DesignScope::Source
+    }
 }
 
 fn user_prompt(transcript: &str, correction: Option<&str>) -> String {
@@ -221,5 +253,18 @@ mod tests {
         assert!(prompt.contains("opaque contract values"));
         assert!(prompt.contains("reversible requested artifact"));
         assert!(prompt.contains("without inventing package scaffolding"));
+    }
+
+    #[test]
+    fn artifact_workspace_marker_selects_the_deterministic_design_path() {
+        let workspace = tempfile::tempdir().expect("workspace");
+        fs::write(
+            workspace.path().join("peritus-workspace.toml"),
+            "schema_version = 1\nkind = \"artifact\"\n",
+        )
+        .expect("manifest");
+
+        let scope = design_scope(workspace.path());
+        assert_eq!(scope, DesignScope::Artifact);
     }
 }

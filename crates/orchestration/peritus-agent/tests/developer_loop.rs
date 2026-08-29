@@ -135,7 +135,9 @@ fn developer_loop_executes_a_tool_and_returns_its_observation_to_the_next_model_
                 prompt: "Read src/lib.rs and report.".to_owned(),
                 attachments: Vec::new(),
                 tools: vec![read_tool()],
-                limits: DeveloperLoopLimits::new(4, 4).expect("limits"),
+                limits: DeveloperLoopLimits::new(4, 4)
+                    .and_then(|limits| limits.with_max_output_tokens(1_024))
+                    .expect("limits"),
                 cancellation: CancellationToken::new(),
             },
             &mut tools,
@@ -153,6 +155,8 @@ fn developer_loop_executes_a_tool_and_returns_its_observation_to_the_next_model_
         let requests = provider.requests.lock().expect("requests");
         assert_eq!(requests.len(), 2);
         assert_eq!(requests[0].parallel_tool_policy(), ParallelToolPolicy::Disabled);
+        assert_eq!(requests[0].options().generation().max_output_tokens(), 1_024);
+        assert_eq!(requests[1].options().generation().max_output_tokens(), 1_024);
         assert!(requests[1].messages().iter().any(|message| {
             message.role() == Role::Tool
                 && message

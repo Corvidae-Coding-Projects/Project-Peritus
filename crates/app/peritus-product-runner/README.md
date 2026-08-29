@@ -2,8 +2,13 @@
 
 Daemon-owned production composition for interactive Peritus coding runs. Every run begins with a
 read-only, repository-grounded design pass that writes a durable detailed Markdown document and
-supplies it to all implementation turns. Grounding is enforced by observed workspace listings and
-targeted reads, not accepted from model prose. The adapter then joins:
+supplies it to all implementation turns. Source repositories use an architect model whose
+grounding is enforced by observed workspace listings and targeted reads, not accepted from model
+prose. Explicit `kind = "artifact"` workspaces use a proportional deterministic Rust design built
+from the exact durable conversation and a bounded sorted filesystem inventory, so a small
+time-bound artifact task does not spend most of its deadline generating repetitive planning prose.
+Both paths cover acceptance, findings, architecture, data flow, file plan, implementation slices,
+verification, and explicit risks or non-goals. The adapter then joins:
 
 - embedded production-engineering, architect, developer, and reviewer workflow skills;
 - the `peritus-agent` D0 provider/tool loop for real inspect, search, edit, command, test, and retry,

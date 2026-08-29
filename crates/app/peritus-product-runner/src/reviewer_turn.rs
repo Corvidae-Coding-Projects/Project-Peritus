@@ -46,6 +46,7 @@ pub async fn complete(
                 attachments,
                 tools: read_only_definitions()?,
                 limits: DeveloperLoopLimits::new(MAX_REVIEWER_TURNS, MAX_REVIEWER_TOOL_CALLS)
+                    .and_then(|limits| limits.with_max_output_tokens(4_096))
                     .map_err(|error| turn::developer_error(&error))?,
                 cancellation: input.provider_cancellation.clone(),
             },

@@ -124,10 +124,13 @@ The implemented foundation and runtime spine now covers:
   configuration or installed executable changed. Its daemon-owned coding-run service accepts a
   task and explicit provider choice for each role, then composes the production D0 developer loop,
   changed-target D1 gates, typed D2 finding conservation, and E0 writer/reviewer/fixer decisions in
-  the managed worktree. A mandatory read-only design pass first inspects the repository and writes
-  a durable detailed Markdown plan covering acceptance, architecture, concrete files and modules,
-  slices, and verification; deterministic grounding records its successful repository listing and
-  targeted reads. Embedded architect, developer, and reviewer skills require cohesive modules,
+  the managed worktree. A mandatory read-only design pass first writes a durable detailed Markdown
+  plan covering acceptance, architecture, concrete files and modules, slices, and verification.
+  Source repositories receive a model-authored design grounded by successful repository listings
+  and targeted reads. Explicit generated-artifact workspaces receive a proportional Rust-rendered
+  design grounded in the exact durable conversation and bounded filesystem inventory, preserving
+  the implementation deadline for the actual artifact work. Embedded architect, developer, and
+  reviewer skills require cohesive modules,
   thin composition roots, explicit interfaces, and collision-aware slices. Writers and fixers can
   inspect, search, edit, run, test, observe failures, and retry through bounded structured tools,
   but cannot mutate an existing file before reading it in the current turn. Provider-negotiated
@@ -196,7 +199,7 @@ evidence, and obtaining an H4 `Ready` decision. Until that evidence exists, Peri
 `NotReadyForProduction` by construction.
 
 External production qualification is active against the pinned, unchanged 106-task HarnessBench
-suite. Tasks 001 through 060 have run sequentially with full local reports and failure diagnosis;
+suite. Tasks 001 through 061 have run sequentially with full local reports and failure diagnosis;
 task 051 passed all 21 checks cleanly, and the latest task 052 run passed all 17 external checks
 after exercising ambiguity handling, category boundaries, provider-stall recovery, and finding
 conservation. The source now treats advisory review as nonblocking and conserves stable finding
@@ -223,6 +226,15 @@ workspace tool can now remove an explicitly listed empty directory non-recursive
 its owned files, while still rejecting workspace-root, nonempty-directory, and external-evidence
 deletion. The corrected run removed its complete temporary tree and scored
 1.0/0.9367/1.0/0.9367.
+Task 061 exposed a deadline imbalance: a small time-bound reporting workspace spent most of its
+budget in a long generative design turn, leaving too little time for required polling and output.
+Explicit artifact workspaces now receive the same mandatory design sections through a fast,
+deterministic Rust renderer grounded in the exact conversation and sorted bounded inventory;
+source repositories retain the full generative architecture pass. Per-role output ceilings keep
+review turns proportional, while the workflow treats independent output categories as independent
+predicates and distinguishes periodic polling from one long wait. The final unchanged run observed
+the workspace repeatedly across 26 seconds, passed all seven checks, and scored
+1.0/0.9867/1.0/0.9867.
 Terminal-Bench 2.0, the complete professional-capability audit, documentation normalization,
 release-installer qualification, and final hosted-runner closure remain required before production
 readiness.

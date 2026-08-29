@@ -193,7 +193,7 @@ fn model_request(
             StructuredOutput::Text,
             ReasoningPolicy::Disabled,
             GenerationConfig::new(
-                profile.limits().max_output_tokens().min(32_768),
+                profile.limits().max_output_tokens().min(request.limits.max_output_tokens()),
                 Vec::new(),
                 None,
                 None,
