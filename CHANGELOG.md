@@ -37,6 +37,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Fixed
+- Expand dirty tracked and untracked files inside cloned nested Git repositories into the managed
+  candidate set and reviewer diff, while retaining generated-tree filtering and imported-source
+  ownership boundaries (`TBF-014`, #31)
 - Add an explicit, default-off external-effects delivery scope for authorized administration and
   recovery tasks whose accepted result lives outside Git: require retained successful effect
   evidence, a later fresh verification command, and independent blocker-free review while keeping
@@ -46,7 +49,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   validate unsafe path lists and retain deterministic precedence (`TBF-012`, #31)
 - Record Terminal-Bench's unpublished PyTorch forward-interface expectation separately from product
   defects, retain the honest lower score instead of leaking verifier or solution details into
-  Peritus behavior, and document the focused thin-bridge regression command (`TBI-001`, #31)
+  Peritus behavior, and document the focused thin-bridge regression command (`TBI-005`, #31)
 - Resolve each Harbor task image's authoritative working directory instead of assuming every
   Terminal-Bench environment uses `/app`; validate the discovered path and pass the same workspace
   to the native Peritus runner so valid `/workspace` and other image layouts remain portable

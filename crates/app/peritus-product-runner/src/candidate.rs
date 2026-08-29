@@ -72,8 +72,77 @@ impl CandidateBaseline {
             ));
         }
         append_paths(&untracked.stdout, &mut paths)?;
+        append_nested_repository_changes(root, &mut paths)?;
         Ok(paths.into_iter().collect())
     }
+}
+
+fn append_nested_repository_changes(
+    root: &Path,
+    paths: &mut BTreeSet<PathBuf>,
+) -> Result<(), ProductRunnerError> {
+    let nested_roots = paths
+        .iter()
+        .filter(|relative| {
+            root.join(relative).is_dir() && root.join(relative).join(".git").exists()
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+    for relative in nested_roots {
+        let nested = root.join(&relative);
+        let head = Command::new("git")
+            .args(["rev-parse", "--verify", "HEAD"])
+            .current_dir(&nested)
+            .output()
+            .map_err(|error| {
+                repository("inspect nested candidate repository", error.to_string())
+            })?;
+        if !head.status.success() {
+            continue;
+        }
+        let changed = Command::new("git")
+            .args(["diff", "--name-only", "-z", "HEAD", "--"])
+            .current_dir(&nested)
+            .output()
+            .map_err(|error| repository("list nested candidate changes", error.to_string()))?;
+        if !changed.status.success() {
+            return Err(repository(
+                "list nested candidate changes",
+                "git could not compare the nested repository with its HEAD",
+            ));
+        }
+        append_prefixed_paths(&relative, &changed.stdout, paths)?;
+        let untracked = Command::new("git")
+            .args(["ls-files", "--others", "--exclude-standard", "-z"])
+            .current_dir(&nested)
+            .output()
+            .map_err(|error| repository("list nested untracked paths", error.to_string()))?;
+        if !untracked.status.success() {
+            return Err(repository(
+                "list nested untracked paths",
+                "git could not enumerate nested untracked files",
+            ));
+        }
+        append_prefixed_paths(&relative, &untracked.stdout, paths)?;
+    }
+    Ok(())
+}
+
+fn append_prefixed_paths(
+    prefix: &Path,
+    encoded: &[u8],
+    paths: &mut BTreeSet<PathBuf>,
+) -> Result<(), ProductRunnerError> {
+    for value in encoded.split(|byte| *byte == 0).filter(|path| !path.is_empty()) {
+        let relative = std::str::from_utf8(value).map(PathBuf::from).map_err(|_| {
+            repository("decode nested candidate path", "workspace path is not UTF-8")
+        })?;
+        let path = prefix.join(relative);
+        if !workspace_filter::generated(&path) {
+            paths.insert(path);
+        }
+    }
+    Ok(())
 }
 
 fn append_paths(encoded: &[u8], paths: &mut BTreeSet<PathBuf>) -> Result<(), ProductRunnerError> {
@@ -121,6 +190,35 @@ mod tests {
         ];
         assert_eq!(first.changed_paths(root.path()).expect("changes"), expected);
         assert_eq!(second.changed_paths(root.path()).expect("changes"), expected);
+    }
+
+    #[test]
+    fn candidate_expands_dirty_files_inside_an_untracked_nested_repository() {
+        let root = tempfile::tempdir().expect("root");
+        run(root.path(), &["init", "--quiet"]);
+        run(root.path(), &["config", "user.email", "peritus@example.invalid"]);
+        run(root.path(), &["config", "user.name", "Peritus Test"]);
+        run(root.path(), &["commit", "--quiet", "--allow-empty", "-m", "fixture"]);
+        let nested = root.path().join("imported");
+        fs::create_dir(&nested).expect("nested root");
+        run(&nested, &["init", "--quiet"]);
+        run(&nested, &["config", "user.email", "peritus@example.invalid"]);
+        run(&nested, &["config", "user.name", "Peritus Test"]);
+        fs::write(nested.join("changed.rs"), "pub const VALUE: u8 = 1;\n").expect("source");
+        run(&nested, &["add", "."]);
+        run(&nested, &["commit", "--quiet", "-m", "nested fixture"]);
+        fs::write(nested.join("changed.rs"), "pub const VALUE: u8 = 2;\n").expect("modify");
+        fs::write(nested.join("new.rs"), "pub const NEW: u8 = 3;\n").expect("untracked");
+        fs::create_dir(nested.join("target")).expect("generated directory");
+        fs::write(nested.join("target/ignored.rs"), "generated\n").expect("generated");
+
+        let baseline = CandidateBaseline::capture(root.path()).expect("baseline");
+        let expected = vec![
+            PathBuf::from("imported"),
+            PathBuf::from("imported/changed.rs"),
+            PathBuf::from("imported/new.rs"),
+        ];
+        assert_eq!(baseline.changed_paths(root.path()).expect("changes"), expected);
     }
 
     fn run(root: &Path, arguments: &[&str]) {

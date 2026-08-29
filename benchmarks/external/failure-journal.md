@@ -2227,7 +2227,19 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   because those paths name accepted output; the exact unaccepted candidate remains present in the
   retained last observation rather than being discarded. Focused unchanged reruns against the
   final binary remain required before this recovery class is counted as a demonstrated score
-  improvement.
+  improvement. `chess-best-move__y8S5jD4` adds another verifier-complete example: Harbor's one
+  move check passed for reward 1, while native Peritus reported the same empty-response failure
+  after seven requests, 127,455 input tokens, 47,616 cached input tokens, 6,612 output tokens, and
+  488.275 seconds. This strengthens the existing provider-neutral diagnosis; it does not justify a
+  chess-specific behavior change. A report-level audit found ten more reward-1 trials whose valid
+  artifacts survived but whose frozen native result was still `failure_kind: provider`:
+  `build-cython-ext`, `constraints-scheduling`, `custom-memory-heap-crash`, `db-wal-recovery`,
+  `extract-elf`, `fix-git`, `git-leak-recovery`, `headless-terminal`,
+  `log-summary-date-ranges`, and `winning-avg-corewars`. Their retained last observations show
+  accepted diffs or artifacts, passing exact-target gates, and no blocking review findings before
+  the terminal provider event. This is broad evidence for role-level recovery and durable candidate
+  preservation, not permission to infer success from Harbor's later score. Final-candidate reruns
+  must make native completion true as well as preserve the external reward.
 
 ## TBF-010: current data was mistaken for a historical snapshot
 
@@ -2275,10 +2287,29 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   duration of compiling, recovering, converting, and training the requested stack under the
   benchmark's twenty-minute outer limit. Peritus's production run horizon is intentionally much
   longer and did not expire.
+- Second observation: `write-compressor__7cYF9nQ` reached its unchanged 900-second agent deadline
+  after ten grounded tool calls. Its final successful command generated a 2,475-byte `data.comp`
+  and independently confirmed exact decompression against `data.txt`; Harbor's unchanged verifier
+  then awarded reward 1 despite recording `AgentTimeoutError`. This narrows the concern: some hard
+  tasks can produce the accepted artifact before Peritus finishes its terminal handoff and review.
+  Harbor's public custom-agent `run(instruction, environment, context)` boundary does not supply the
+  already-computed outer deadline to the agent, so Peritus cannot reserve review time from that
+  value without a new upstream interface or suite-specific deadline discovery.
+- Third observation: `extract-moves-from-video__t7VnGw4` reached its unchanged 1,800-second agent
+  deadline for reward 0. The frozen run recovered a 12,165,146-byte source video despite the image
+  lacking ordinary download and media tools, assembled FFmpeg and Tesseract from distribution
+  packages without changing the image, and completed a coarse OCR pass that exposed real commands.
+  It then began a 760-frame high-frequency OCR pass too late; Harbor cancelled the buffered command
+  before Peritus could write `solution.txt`. This is a genuine planning failure, not a completed
+  artifact with delayed handoff like `write-compressor`. It also demonstrates why nested work must
+  receive the evaluator deadline explicitly: without that value, the eight-hour product horizon
+  cannot know when to stop exploration, reserve verification time, or reject one more long command.
 - Decision: do not raise the benchmark timeout, skip required work, inject a prebuilt task artifact,
-  or add task-name knowledge. Preserve the unchanged result, measure phase time in the candidate
-  rerun, and implement a product change only if the repeated evidence supports a general scheduling
-  or recovery improvement.
+  add task-name knowledge, or hard-code Terminal-Bench's common deadline as a hidden product budget.
+  Preserve the unchanged results, measure phase time in candidate reruns, and implement a product
+  change only if repeated evidence supports a general scheduling or recovery improvement. The final
+  report must distinguish correct verifier output with a timed-out native handoff from a completed
+  Peritus run rather than counting either representation alone.
 
 ## TBF-011: the Harbor bridge assumed every task workspace was `/app`
 
@@ -2337,7 +2368,8 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 
 ## TBF-013: workspace-only acceptance rejected verified system effects
 
-- Suite and task: Terminal-Bench 2.0, `mailman`, first full-suite baseline trial.
+- Suite and tasks: Terminal-Bench 2.0, `mailman` and `compile-compcert`, first full-suite baseline
+  trials.
 - Symptom: the writer completed the requested operating-system configuration, retained fresh
   command evidence, and passed all three unchanged external verifier checks, but native Peritus
   reported failure because the task correctly produced no Git workspace changes. The exact-target
@@ -2356,7 +2388,11 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Before evidence: job `peritus-terminalbench-2-k5-high`; trial `mailman__ZpR6gRM`; Harbor reward 1;
   native success false; 1,482,416 input tokens, 111,104 cached input tokens, 21,564 output tokens,
   and 1,064,720 milliseconds of native execution. The unchanged verifier passed direct delivery,
-  list existence, and join/announce/leave confirmation end to end.
+  list existence, and join/announce/leave confirmation end to end. Trial
+  `compile-compcert__3f3Zq6N` independently built and installed the requested compiler under
+  `/tmp/CompCert`, passed Harbor for reward 1, and retained detailed successful build and execution
+  evidence, but ended with native `failure_kind: gate` after 48 provider requests because its
+  correct external build product produced no `/app` candidate files.
 - Verification: focused policy tests prove incomplete or out-of-order command evidence is refused
   and that identical complete evidence cannot bypass the default workspace scope. A complete
   product composition test exercises the authorized zero-diff path through writer commands,
@@ -2365,7 +2401,7 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   check, Rust formatting, and seven Terminal-Bench bridge tests pass. An unchanged final-candidate
   `mailman` rerun must still demonstrate the correction against the external verifier.
 
-## TBI-001: a hidden model call signature cannot be recovered from a state dictionary
+## TBI-005: a hidden model call signature cannot be recovered from a state dictionary
 
 - Suite and task: Terminal-Bench 2.0, `pytorch-model-recovery`, first full-suite baseline trial.
 - Symptom: Peritus produced a loadable TorchScript model, preserved the supplied checkpoint, changed
@@ -2397,3 +2433,33 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   provider requests; 121,069 input, 47,616 cached input, and 6,476 output tokens; 306.505 seconds of
   native execution. The retained `last-product-observation.json` records a 5,092,600-byte
   `model.pt`, passing native gates, the exact MSE measurements, and the unchanged checkpoint digest.
+
+## TBF-014: nested repository changes collapsed to one directory marker
+
+- Suite and task: Terminal-Bench 2.0, `build-cython-ext`, first full-suite baseline trial.
+- Symptom: the writer cloned `pyknotid` under the managed workspace and patched source inside that
+  nested Git repository. The frozen outer candidate report named only `pyknotid/`, source-layout
+  acceptance reported zero changed source files, and the reviewer received no nested patch even
+  though the retained tool trace contained the real edits. Harbor later passed all eleven unchanged
+  verifier tests for reward 1, while native Peritus ended with a separate provider terminal covered
+  by `TBF-009`.
+- Cause: outer `git ls-files --others` represents an untracked nested repository as one directory.
+  Candidate enumeration and diff projection trusted that abbreviated outer representation and never
+  asked the nested repository for its dirty tracked and untracked paths.
+- Resolution: candidate discovery now detects untracked nested Git repositories with a valid HEAD,
+  expands their dirty tracked and nonignored untracked files under the outer relative prefix, and
+  keeps generated trees excluded. Reviewer context projects the nested Git patch with outer paths
+  and includes bounded text diffs for nested untracked files. The existing ownership rule remains:
+  imported source is visible and reviewable but does not become first-party architecture merely
+  because a command cloned it.
+- Evidence: baseline trial `build-cython-ext__n7YKgSt`; retained last observation lists only the
+  210-byte `pyknotid/` directory and says `Scanned 0 changed source file(s)`, while its trace records
+  the nested source patch and successful direct extension tests. The unchanged external verifier
+  passed repository presence, three compiled extensions, direct helpers, Python/Cython equivalence,
+  example use, and the repository test suite.
+- Verification: two candidate tests prove stable ordinary enumeration and nested dirty-file
+  expansion, including generated-tree exclusion. Three diff-bundle tests prove ordinary untracked
+  projection, exact permissions, and prefixed nested tracked/untracked patches. All 77
+  product-runner unit and integration tests pass, as does strict all-target/all-feature Clippy. A
+  focused unchanged final-candidate rerun remains required before this is counted as an external
+  comparison result.
