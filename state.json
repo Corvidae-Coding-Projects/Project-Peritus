@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 729,
+  "next_comment_id": 730,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1269,7 +1269,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T18:47:45.574917417Z",
+      "updated_at": "2026-08-29T19:24:02.139023Z",
       "labels": [
         "qualification",
         "release"
@@ -2552,6 +2552,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAqpndzFm0fZA/NA+L3X+wPijNlyDuou/JxfcEa6E9iJK7nLcJnQ4grfTNJYWttIQdqjh7GktRmG9u3FxrovL3AA=="
+        },
+        "c60ee943-b148-40e8-be8e-63885bf864db": {
+          "display_id": 729,
+          "author": "6ME5",
+          "content": "Hosted runner closure on signed head 53f9037f: Gate A passed, Foundation verification passed, and Native product package passed. The native workflow completed Linux, macOS, and Windows product lifecycle plus public bootstrap smoke; the Windows reruns directly confirmed archive path transport and module-independent SHA-256 download verification. Draft PR #39 remains the save point.",
+          "created_at": "2026-08-29T19:24:02.135406641Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAQ2D9ezsJZ8cHhF9nGj3NK5r0jT4JG7GYOZX2393bgj52lKzJswLqy9pQvSzvGxwpPFBXyXa6jGWfPg0g3B2aBQ=="
         },
         "c6832fa1-48f7-4d6c-9b4e-3d6ba18de7ad": {
           "display_id": 706,
@@ -7308,8 +7317,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T18:47:45.574917417Z",
+    "timestamp": "2026-08-29T19:24:02.139023Z",
     "agent_id": "6ME5",
-    "agent_seq": 913
+    "agent_seq": 914
   }
 }
