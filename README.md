@@ -199,7 +199,7 @@ evidence, and obtaining an H4 `Ready` decision. Until that evidence exists, Peri
 `NotReadyForProduction` by construction.
 
 External production qualification is active against the pinned, unchanged 106-task HarnessBench
-suite. Tasks 001 through 070 have run sequentially with full local reports and failure diagnosis;
+suite. Tasks 001 through 075 have run sequentially with full local reports and failure diagnosis;
 task 051 passed all 21 checks cleanly, and the latest task 052 run passed all 17 external checks
 after exercising ambiguity handling, category boundaries, provider-stall recovery, and finding
 conservation. The source now treats advisory review as nonblocking and conserves stable finding
@@ -254,6 +254,13 @@ Task 069 passed all 17 legal-compliance workflow checks with perfect process and
 Task 070 applied the explicit three-skill shortlist rule and avoided protected attributes; its
 retained 0.70 outcome reflects hidden ground truth that contradicts that threshold and a raw `age`
 substring match inside the job-related word `managers`.
+Tasks 071 and 072 then produced correct support-routing and logistics actions with safe customer
+messages; their deductions require unpublished reply and compensation identifiers. Task 073
+honestly rejected reproducibility from a deposit whose pinned upstream fixture omits the very script
+the oracle expects to inspect. Task 074 applied the published evidence rubric literally, while hidden
+ground truth assigned the one-detail score to a submission containing at least two accurate details.
+Task 075 passed every moderation decision, policy, action, explanation, and redaction check; its only
+deduction selects one side of an overlapping confidence-calibration rule.
 Terminal-Bench 2.0, the complete professional-capability audit, documentation normalization,
 release-installer qualification, and final hosted-runner closure remain required before production
 readiness.

@@ -138,6 +138,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Exercise unchanged HarnessBench tasks 071 through 075 across support routing, logistics response,
+  research reproducibility, rubric grading, and policy-amendment appeal review; preserve correct
+  grounded outputs where private identifiers, an absent fixture, a rubric contradiction, and an
+  overlapping confidence rule prevent exact hidden-ground-truth agreement (#31)
 - Exercise unchanged HarnessBench tasks 066 through 070 across rollback readiness, canary metrics,
   launch operations, policy-governed copy remediation, and fair resume screening; task 069 passes
   every outcome and process check, while unpublished enums, negation-blind matching, and a shortlist

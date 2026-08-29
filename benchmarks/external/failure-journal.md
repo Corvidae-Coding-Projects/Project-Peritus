@@ -1399,3 +1399,62 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Disposition: retain the prompt-compliant shortlist and fairness record. Process and security both
   scored 1.0; the 0.70 outcome is evaluator error, not a reason to discriminate or avoid normal
   vocabulary. Evidence is retained at `reports/070-hr-resume-screening-final.json`.
+
+## HBI-037: task 071 requires unpublished reply keys and a hidden primary clause
+
+- Suite and task: HarnessBench 2.0, `071-ecommerce-support-routing`.
+- Symptom: every routing action, order ID, priority, escalation team, template heading, and safety
+  rule passed, but outcome was 0.83.
+- Cause: the prompt requires one stable snake-case reply key per ticket but never supplies exact
+  values; hidden ground truth requires ten private `tpl_*` strings. T-1006 directly matches the
+  delivered-status dispute rule `DISPUTE-1`, while hidden ground truth chooses `CONFLICT-1` as the
+  primary token without publishing that precedence.
+- Disposition: retain the stable descriptive keys and grounded clause. Process and security both
+  scored 1.0. Evidence is retained at `reports/071-ecommerce-support-routing-final.json`.
+
+## HBI-038: task 072 requires an unpublished compensation token
+
+- Suite and task: HarnessBench 2.0, `072-logistics-delay-response`.
+- Symptom: every shipment, delay status, tier, action, and safe customer message was correct, but
+  the compensation check failed.
+- Cause: the prompt does not define compensation enum values. Peritus wrote the concrete `$25
+  account credit`; hidden ground truth searches for the machine token `shipping_credit`.
+- Disposition: retain the customer-readable compensation and 0.88 outcome. Evidence is retained at
+  `reports/072-logistics-delay-response-final.json`.
+
+## HBI-039: task 073 omits the script its oracle expects to audit
+
+- Suite and task: HarnessBench 2.0, `073-research-repro-package`.
+- Symptom: Peritus mapped every claim and blocking gap honestly, but the oracle and process rubric
+  deducted for not directly inspecting the supposedly syntax-corrupted analysis driver.
+- Cause: the pinned upstream commit contains no `fixtures/in/scripts` directory or
+  `analyze_main.py`; the initialized workspace correctly lists only README, claims, and results.
+  The oracle nevertheless requires syntax/broken wording and the unpublished decimal spelling
+  `0.038`, while Peritus accurately reports the driver as absent/non-functional and the paper value
+  as 3.8 percentage points.
+- Disposition: retain the 0.82 outcome and 0.8133 process score. A harness cannot inspect a fixture
+  the benchmark does not ship, and inventing source contents would violate grounding. Evidence is
+  retained at `reports/073-research-repro-package-final.json`.
+
+## HBI-040: task 074 ground truth contradicts its evidence rubric
+
+- Suite and task: HarnessBench 2.0, `074-education-grading-feedback`.
+- Symptom: all files, totals, and feedback passed, but the exact score check rejected submission 3's
+  evidence score of 3.
+- Cause: the rubric awards 3 for at least two accurate details. Submission 3 correctly names
+  sunlight and carbon dioxide as inputs and food as an output, so it satisfies that rule. Hidden
+  ground truth assigns 2, which the rubric defines as one accurate detail.
+- Disposition: retain the rubric-faithful 7/10 grade and 0.66 outcome. Process and security both
+  scored 1.0. Evidence is retained at `reports/074-education-grading-feedback-final.json`.
+
+## HBI-041: task 075 overlaps its confidence-calibration categories
+
+- Suite and task: HarnessBench 2.0, `075-platform-appeal-review`.
+- Symptom: every substantive decision, clause, action, explanation, privacy, and redaction check
+  passed; only A-06 confidence differed.
+- Cause: A-06 is explicit counterspeech, which the prompt calibrates as `high`, and also contains an
+  advisory-automation conflict, which the prompt says is typically `medium`. No precedence resolves
+  the overlap. Peritus selected and explained `high`; hidden ground truth selects `medium`.
+- Disposition: retain the reasoned confidence and outcome/process/security/combined score of
+  0.95/0.99/1.0/0.9405. Evidence is retained at
+  `reports/075-platform-appeal-review-final.json`.

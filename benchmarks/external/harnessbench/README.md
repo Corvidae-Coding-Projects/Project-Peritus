@@ -288,6 +288,21 @@ ranked candidates by job evidence and applied the supplied threshold exactly. It
 outcome reflects hidden ground truth that rejects a candidate with three evidenced must-have skills,
 contrary to the prompt, plus a raw `age` substring match inside `managers`.
 
+Task 071 correctly routed all ten support tickets, including conservative fraud, dispute, conflict,
+and VIP evidence handling, and scored process/security 1.0/1.0. Its 0.83 outcome retains ten
+unpublished stable reply-key values and one hidden primary-clause preference. Task 072 correctly
+joined every shipment, tier, delay, action, and customer message; its only miss searches for the
+unpublished compensation token `shipping_credit` where the output states `$25 account credit`.
+
+Task 073 mapped all four research claims and all four reproducibility gaps without claiming a rerun.
+The pinned upstream tree contains no `in/scripts` directory or `analyze_main.py`, despite the prompt
+and oracle describing a syntax-corrupted driver; its 0.82 outcome and process deduction are retained
+as a fixture defect. Task 074 produced complete grading math and specific feedback with perfect
+process/security; hidden ground truth contradicts the rubric's “at least two accurate details” rule
+for submission 3. Task 075 passed every substantive moderation and privacy check and scored outcome
+0.95/process 0.99/security 1.0; its sole miss is an overlapping calibration case that is both clear
+counterspeech (`high`) and an advisory-automation conflict (typically `medium`).
+
 HarnessBench chooses a result directory from the last observed provider model and may move a
 multi-provider sandbox after the native adapter exits. Invocation evidence schema 4 therefore
 includes `relocatable_paths`, all rooted at the final sandbox printed by HarnessBench. Those paths
