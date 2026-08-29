@@ -8,6 +8,8 @@ use std::{
 use peritus_provider_core::{CancellationToken, ModelProvider};
 use peritus_types::RunId;
 
+use crate::ProductRunProgress;
+
 /// Concrete product-run phase emitted to the daemon.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ProductRunPhase {
@@ -46,6 +48,8 @@ pub struct ProductRunUpdate {
     pub summary: String,
     /// Durable typed finding ledger at this effect boundary.
     pub finding_state: String,
+    /// Cumulative resource accounting at this completed effect boundary.
+    pub progress: ProductRunProgress,
 }
 
 /// Observer invoked synchronously after each daemon-visible boundary.

@@ -91,7 +91,13 @@ The daemon persists each visible phase: Queued, Designing, Writing, Checking, Re
 Verifying, Waiting for user, Complete, Failed, Cancelled, or Recovery required, together with its
 bounded conversation. The Runs view shows that state as text as well as color, the Diff view shows
 tracked and newly created text files, and the Review view shows the latest review or repository
-checks. The run summary names the durable detailed-design path.
+checks. While a run is active, its status reports elapsed time, time since the last completed
+durable effect, the remaining eight-hour uninterrupted run horizon, provider requests, tool calls,
+retries, compactions, and normalized token/cache/cost counters when the provider supplies them. A
+long quiet provider call therefore remains visibly alive without inventing progress. The generous
+cumulative ceilings stop runaway execution across the entire designer-writer-reviewer-fixer run;
+they do not shorten productive segments or replace the existing progress-based continuation rule.
+The run summary names the durable detailed-design path.
 After completion, the handoff shows the managed path, exact changed-file count, exact successful
 commands, and how to run the result. Press `i` to inspect, `a` to accept, `c` to commit only the
 deliverable paths, `p` to export an exact patch, or uppercase `D` to discard only those paths.

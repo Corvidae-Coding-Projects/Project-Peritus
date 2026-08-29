@@ -12,7 +12,7 @@ use peritus_app_protocol::{ProductConversationRole, ProductRunPhase, ProductRunS
 use peritus_provider_core::CancellationToken;
 use peritus_types::RunId;
 
-use super::{ProductRunService, ProductRunServiceError};
+use super::{ProductRunService, ProductRunServiceError, RunProgress};
 use super::{persistence::persist_record, snapshot::initial_snapshot};
 use super::{snapshot::replace_snapshot, snapshot::workspace_has_active_run};
 
@@ -139,6 +139,7 @@ impl ProductRunService {
             record.cancelled = Arc::clone(&cancelled);
             record.provider_cancellation = token.clone();
             record.snapshot = initial_snapshot(&record.request)?;
+            record.progress = RunProgress::default();
             persist_record(&self.inner.directory, record)?;
             (
                 record.request.clone(),

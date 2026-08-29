@@ -16,6 +16,7 @@ use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 use serde::Deserialize;
 use serde::Serialize;
 
+use super::progress::RunProgress;
 use super::{ProductRunServiceError, RunRecord, SharedConversation, filesystem, invalid};
 use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
 
@@ -40,6 +41,24 @@ struct PersistedRecord {
     deliverable: Option<PersistedDeliverable>,
     #[serde(default)]
     messages: Vec<PersistedMessage>,
+    #[serde(default)]
+    progress: PersistedProgress,
+}
+
+#[derive(Default, Serialize, Deserialize)]
+struct PersistedProgress {
+    started_unix_millis: u64,
+    last_effect_unix_millis: u64,
+    model_requests: u32,
+    tool_calls: u32,
+    retries: u32,
+    compactions: u32,
+    input_tokens: u64,
+    cached_input_tokens: u64,
+    output_tokens: u64,
+    total_tokens: u64,
+    provider_cost_microunits: u64,
+    usage_observations: u32,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -128,6 +147,7 @@ impl PersistedRecord {
             finding_state: record.finding_state.clone(),
             deliverable: snapshot.deliverable().map(PersistedDeliverable::from_deliverable),
             messages,
+            progress: PersistedProgress::from_run(&record.progress),
         })
     }
 
@@ -203,7 +223,47 @@ impl PersistedRecord {
             provider_cancellation: CancellationToken::new(),
             conversation,
             finding_state: self.finding_state,
+            progress: self.progress.into_run(),
         })
+    }
+}
+
+impl PersistedProgress {
+    const fn from_run(value: &RunProgress) -> Self {
+        Self {
+            started_unix_millis: value.started_unix_millis,
+            last_effect_unix_millis: value.last_effect_unix_millis,
+            model_requests: value.model_requests,
+            tool_calls: value.tool_calls,
+            retries: value.retries,
+            compactions: value.compactions,
+            input_tokens: value.input_tokens,
+            cached_input_tokens: value.cached_input_tokens,
+            output_tokens: value.output_tokens,
+            total_tokens: value.total_tokens,
+            provider_cost_microunits: value.provider_cost_microunits,
+            usage_observations: value.usage_observations,
+        }
+    }
+
+    fn into_run(self) -> RunProgress {
+        if self.started_unix_millis == 0 || self.last_effect_unix_millis == 0 {
+            return RunProgress::default();
+        }
+        RunProgress {
+            started_unix_millis: self.started_unix_millis,
+            last_effect_unix_millis: self.last_effect_unix_millis,
+            model_requests: self.model_requests,
+            tool_calls: self.tool_calls,
+            retries: self.retries,
+            compactions: self.compactions,
+            input_tokens: self.input_tokens,
+            cached_input_tokens: self.cached_input_tokens,
+            output_tokens: self.output_tokens,
+            total_tokens: self.total_tokens,
+            provider_cost_microunits: self.provider_cost_microunits,
+            usage_observations: self.usage_observations,
+        }
     }
 }
 

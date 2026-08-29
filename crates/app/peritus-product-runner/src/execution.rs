@@ -16,8 +16,8 @@ use peritus_orchestrator::{ProductionDecision, ProductionRunCoordinator};
 use peritus_review::ProductFindingLedger;
 
 use crate::{
-    ProductRunnerError, ProductRunnerErrorKind, candidate::CandidateBaseline, design,
-    developer_tools::WorkspaceOwnership, review,
+    ProductRunnerError, ProductRunnerErrorKind, budget::RunAccounting,
+    candidate::CandidateBaseline, design, developer_tools::WorkspaceOwnership, review,
 };
 use cycle::{apply_fix, create_design, initial_write, inspect_cycle};
 use fix_progress::{FixProgress, FixProgressObservation};
@@ -39,9 +39,11 @@ impl ProductRunner {
         input: ProductRunInput,
         observe: RunObserver,
     ) -> Result<ProductRunOutcome, ProductRunnerError> {
+        let mut accounting = RunAccounting::new();
+        accounting.check()?;
         let baseline = CandidateBaseline::capture(&input.workspace_root)?;
         let mut workspace_ownership = WorkspaceOwnership::capture(&input.workspace_root);
-        let design = create_design(&input, &observe, 1).await?;
+        let design = create_design(&input, &observe, 1, &mut accounting).await?;
         let restored_findings = review::restore_ledger(&input.finding_state)?;
         let prior_findings =
             (restored_findings.cycle() > 0).then(|| review::render(&restored_findings));
@@ -51,6 +53,7 @@ impl ProductRunner {
             design.markdown(),
             prior_findings.as_deref(),
             &mut workspace_ownership,
+            &mut accounting,
         )
         .await?
         {
@@ -80,9 +83,13 @@ impl ProductRunner {
 
         loop {
             if input.conversation.revision() != state.conversation_revision {
-                state.design =
-                    create_design(&input, &observe, state.coordinator.completed_fixer_cycles() + 2)
-                        .await?;
+                state.design = create_design(
+                    &input,
+                    &observe,
+                    state.coordinator.completed_fixer_cycles() + 2,
+                    &mut accounting,
+                )
+                .await?;
                 let prior = review::render(&state.findings);
                 match crate::turn::complete_developer_turn(
                     &input,
@@ -92,6 +99,7 @@ impl ProductRunner {
                     state.design.markdown(),
                     Some(&prior),
                     &mut workspace_ownership,
+                    &mut accounting,
                 )
                 .await?
                 {
@@ -119,9 +127,15 @@ impl ProductRunner {
                     }
                 }
             }
-            let inspected =
-                inspect_cycle(&input, &observe, &baseline, &mut state, &workspace_ownership)
-                    .await?;
+            let inspected = inspect_cycle(
+                &input,
+                &observe,
+                &baseline,
+                &mut state,
+                &workspace_ownership,
+                &mut accounting,
+            )
+            .await?;
             if inspected.conversation_changed {
                 continue;
             }
@@ -181,6 +195,7 @@ impl ProductRunner {
                         &inspected,
                         &mut state,
                         &mut workspace_ownership,
+                        &mut accounting,
                     )
                     .await?
                     {

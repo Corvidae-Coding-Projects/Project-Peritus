@@ -9,6 +9,12 @@ requested behavior.
    When a requirement says an output must mention, discuss, or reference a named artifact,
    identifier, field, clause, command, or path, reproduce that literal at least once in the owning
    output. Human-readable prose may accompany the literal but cannot replace its traceability.
+   When the request says a value, sequence, record, or payload must match a named authoritative
+   source, the complete selected source value defines that component unless the request explicitly
+   permits another transformation. Apply only named transformations. Do not delete a prefix,
+   suffix, field, residue, row, or subsection merely because outside domain knowledge calls it a
+   tag, wrapper, metadata, artifact, boilerplate, or non-native content; that semantic relabeling
+   cannot override the explicit source-matching contract.
    Preserve the declared semantics of source aggregates. A separate row-level exclusion,
    exception, or adjustment ledger does not prove that an aggregate is pre-adjustment. Do not
    subtract its row count, alter its denominator, or infer event membership unless an authoritative

@@ -14,7 +14,7 @@ use super::context::prepare_messages;
 use super::retry::DeveloperRetryPlanner;
 use super::{
     DeveloperLoopError, DeveloperLoopOutcome, DeveloperLoopRequest, DeveloperToolExecutor,
-    DeveloperTrace, DeveloperTraceEvent,
+    DeveloperTrace, DeveloperTraceEvent, DeveloperUsage,
 };
 
 /// Production D0 composition that repeatedly lets a model inspect, edit, execute, and observe.
@@ -62,6 +62,7 @@ impl DeveloperLoop {
         let mut tool_calls = 0_u32;
         let mut compactions = 0_u16;
         let mut retries = 0_u16;
+        let mut usage = DeveloperUsage::default();
 
         for turn in 1..=request.limits.max_model_turns() {
             if request.cancellation.is_cancelled() {
@@ -82,7 +83,7 @@ impl DeveloperLoop {
                     u16::try_from(records.len()).map_err(|_| DeveloperLoopError::LimitExceeded)?,
                 )
                 .ok_or(DeveloperLoopError::LimitExceeded)?;
-            let (session, turn_retries) = complete_turn(
+            let (session, turn_retries, turn_usage) = complete_turn(
                 provider,
                 &request,
                 &messages,
@@ -94,6 +95,7 @@ impl DeveloperLoop {
             )
             .await?;
             retries = retries.checked_add(turn_retries).ok_or(DeveloperLoopError::LimitExceeded)?;
+            usage.merge(turn_usage)?;
 
             let mut assistant = Vec::new();
             let mut calls = Vec::new();
@@ -135,6 +137,7 @@ impl DeveloperLoop {
                     tool_calls,
                     compactions,
                     retries,
+                    usage,
                     messages,
                 });
             }
@@ -181,11 +184,12 @@ async fn complete_turn(
     protocol_limits: ProtocolLimits,
     turn: u16,
     trace: &mut dyn DeveloperTrace,
-) -> Result<(ModelSession, u16), DeveloperLoopError> {
+) -> Result<(ModelSession, u16, DeveloperUsage), DeveloperLoopError> {
     let maximum = request.limits.max_attempts_per_turn();
     let planner =
         DeveloperRetryPlanner::new(&request.request_prefix, turn, maximum, &request.cancellation);
     let mut retries = 0_u16;
+    let mut usage = DeveloperUsage::default();
     for attempt in 1..=maximum {
         if request.cancellation.is_cancelled() {
             return Err(DeveloperLoopError::Cancelled);
@@ -194,9 +198,11 @@ async fn complete_turn(
             model_request(request, messages, profile, negotiated, protocol_limits, turn, attempt)?;
         match drive(provider, model_request, request, protocol_limits, trace).await {
             Ok(session) if successful(session.terminal()) && usable(&session) => {
-                return Ok((session, retries));
+                usage.observe(session.usage_high_water())?;
+                return Ok((session, retries, usage));
             }
             Ok(session) => {
+                usage.observe(session.usage_high_water())?;
                 let Some(record) =
                     planner.terminal(attempt, session.terminal(), usable(&session))?
                 else {

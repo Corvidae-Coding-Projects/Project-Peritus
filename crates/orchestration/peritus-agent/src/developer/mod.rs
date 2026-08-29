@@ -5,6 +5,7 @@ mod error;
 mod execution;
 mod retry;
 mod types;
+mod usage;
 
 pub use error::DeveloperLoopError;
 pub use execution::DeveloperLoop;
@@ -13,3 +14,4 @@ pub use types::{
     DeveloperRetryReason, DeveloperRetryRecord, DeveloperToolExecutor, DeveloperToolObservation,
     DeveloperTrace, DeveloperTraceEvent,
 };
+pub use usage::DeveloperUsage;

@@ -257,8 +257,7 @@ to derive every requested metric without guessed membership or effects.
 For outputs that reference heterogeneous source records, retain the authoritative category and
 stable ID together rather than emitting a context-free ID, and aggregate category summaries by the
 category rather than by individual record.
-When an output must mention, discuss, or reference a named artifact, identifier, field, clause,
-command, or path, preserve that exact literal at least once in the owning output.
+When an output must mention, discuss, or reference a named artifact, identifier, field, clause, command, or path, preserve that exact literal at least once in the owning output. When a request says a value, sequence, record, or payload must match a named authoritative source, preserve the complete selected source value and apply only explicitly named transformations; outside semantic labels do not authorize deleting part of it.
 For reconciliation outputs, route each item to its contract-defined primary or reject representation
 without unrequested duplication, keep material exception states in status values, choose the most
 specific evidenced reason, and reconcile summary exception counts across every output artifact.

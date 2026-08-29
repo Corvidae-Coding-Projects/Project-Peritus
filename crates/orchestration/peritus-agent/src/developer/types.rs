@@ -6,7 +6,7 @@ use peritus_model_protocol::{
 use peritus_provider_core::CancellationToken;
 use peritus_types::Sha256Digest;
 
-use super::DeveloperLoopError;
+use super::{DeveloperLoopError, DeveloperUsage};
 
 /// Explicit bounds for one inspect/edit/run/test loop.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -350,6 +350,8 @@ pub struct DeveloperLoopOutcome {
     pub compactions: u16,
     /// Number of bounded provider retries completed during the role.
     pub retries: u16,
+    /// Aggregate normalized usage across every completed provider response.
+    pub usage: DeveloperUsage,
     /// Complete replay messages, useful to a same-role continuation.
     pub messages: Vec<Message>,
 }

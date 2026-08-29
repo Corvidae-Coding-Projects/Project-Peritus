@@ -39,6 +39,9 @@ fn reviewer_checks_literal_request_independently_of_the_design() {
     assert!(prompt.contains("Do not rely on the writer's account"));
     assert!(prompt.contains("design is a proposal, not authority"));
     assert!(prompt.contains("every explicit requested path, field, value"));
+    assert!(prompt.contains("complete selected source value"));
+    assert!(prompt.contains("only transformations the request names"));
+    assert!(prompt.contains("is not authority to delete it"));
     assert!(prompt.contains("agrees with its own interpretation"));
     assert!(prompt.contains("close a non-exhaustive example"));
     assert!(prompt.contains("reverse declared source precedence"));
@@ -138,6 +141,8 @@ fn writer_batches_tools_and_respects_artifact_workspaces() {
     assert!(prompt.contains("losses caused by date, expiry, scope"));
     assert!(prompt.contains("empty/null applicable-authority sentinel"));
     assert!(prompt.contains("missing controlling fact"));
+    assert!(prompt.contains("preserve the complete selected source value"));
+    assert!(prompt.contains("apply only explicitly named transformations"));
 }
 
 #[test]

@@ -15,6 +15,8 @@ pub enum ProductRunnerErrorKind {
     Apply,
     /// Repository gates could not be executed.
     Gate,
+    /// A cumulative product-run resource ceiling was exhausted.
+    Budget,
     /// The user cancelled the run.
     Cancelled,
 }

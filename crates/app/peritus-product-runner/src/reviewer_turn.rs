@@ -3,6 +3,7 @@
 use peritus_agent::{DeveloperLoop, DeveloperLoopLimits, DeveloperLoopRequest};
 use peritus_review::ProductReviewSubmission;
 
+use crate::budget::RunAccounting;
 use crate::developer_tools::{WorkspaceDeveloperTools, read_only_definitions};
 use crate::execution::{ProductRunInput, check_cancelled};
 use crate::trace::FileDeveloperTrace;
@@ -26,6 +27,7 @@ pub async fn complete(
     cycle: u32,
     review_cycle: u32,
     evidence: ReviewEvidence<'_>,
+    accounting: &mut RunAccounting,
 ) -> Result<ProductReviewSubmission, ProductRunnerError> {
     let mut correction = None;
     for attempt in 1..=MAX_INVALID_REVIEWS {
@@ -67,6 +69,7 @@ pub async fn complete(
         )
         .await
         .map_err(|error| turn::developer_error(&error))?;
+        accounting.record(&result)?;
         check_cancelled(input)?;
         let submission = tools
             .grounding()

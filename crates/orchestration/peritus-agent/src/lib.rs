@@ -33,7 +33,7 @@ pub use completion::{CompletionProposal, CompletionRequest, EvidenceReference, T
 pub use developer::{
     DeveloperLoop, DeveloperLoopError, DeveloperLoopLimits, DeveloperLoopOutcome,
     DeveloperLoopRequest, DeveloperRetryReason, DeveloperRetryRecord, DeveloperToolExecutor,
-    DeveloperToolObservation, DeveloperTrace, DeveloperTraceEvent,
+    DeveloperToolObservation, DeveloperTrace, DeveloperTraceEvent, DeveloperUsage,
 };
 pub use error::{AgentErrorCode, AgentOperation, AgentRecovery, AgentRejection};
 pub use event::{AgentEvent, AgentEventKind};

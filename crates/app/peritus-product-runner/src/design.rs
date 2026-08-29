@@ -11,6 +11,7 @@ use std::{
 use peritus_agent::{DeveloperLoop, DeveloperLoopLimits, DeveloperLoopRequest};
 use peritus_provider_core::ModelProvider;
 
+use crate::budget::RunAccounting;
 use crate::developer_tools::{WorkspaceDeveloperTools, read_only_definitions};
 use crate::execution::{ProductRunInput, check_cancelled};
 use crate::trace::FileDeveloperTrace;
@@ -51,6 +52,7 @@ pub async fn create(
     input: &ProductRunInput,
     model: &dyn ModelProvider,
     cycle: u32,
+    accounting: &mut RunAccounting,
 ) -> Result<DesignDocument, ProductRunnerError> {
     let scope = design_scope(&input.workspace_root);
     if scope == DesignScope::Artifact {
@@ -90,6 +92,7 @@ pub async fn create(
         )
         .await
         .map_err(|error| crate::turn::developer_error(&error))?;
+        accounting.record(&result)?;
         check_cancelled(input)?;
         if input.conversation.revision() != revision {
             invalid_designs = 0;

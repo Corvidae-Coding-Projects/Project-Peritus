@@ -13,6 +13,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Preserve the complete selected source value whenever a request requires an output component to
+  match a named authoritative source, applying only explicitly named transformations instead of
+  letting outside domain labels such as tag, wrapper, metadata, artifact, or non-native content
+  trigger speculative deletion during writer, reviewer, or fixer turns (`TBF-007`, #31)
+- Account for provider requests, retries, context compactions, application tool calls, normalized
+  token and cache usage, provider-estimated cost, and elapsed time across the complete
+  designer-writer-reviewer-fixer run; enforce generous eight-hour and cumulative runaway ceilings;
+  persist the latest counters; and show live elapsed time, last durable progress, and remaining run
+  horizon in the polled TUI status instead of making a healthy slow provider call look dead (#31)
 - Classify stable Codex account-runtime authentication, safety, rate-limit, quota, and context-limit
   terminals without retaining untrusted provider text, and preserve non-retryable provider category
   and diagnostic identity through the product error instead of collapsing it to an empty response

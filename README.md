@@ -145,6 +145,11 @@ The implemented foundation and runtime spine now covers:
   read-only executor before its typed verdict can enter D2. Recoverable malformed, empty, timeout,
   and transport responses use checked exponential backoff, bounded stable jitter, provider
   `Retry-After`, and cancellation-aware waits whose exact reason and delay are durably traced.
+  Across the complete designer-writer-reviewer-fixer attempt, G4 now aggregates provider requests,
+  retries, compactions, tool calls, normalized token/cache usage, provider-estimated cost, and
+  elapsed time under generous runaway ceilings. The TUI's polled status shows elapsed time, time
+  since the last durable effect, and the remaining eight-hour run horizon, so a slow provider call
+  stays visibly alive without fabricated progress.
   Productive 48-turn work segments checkpoint the exact candidate and replenish the run in a
   compact newly grounded context, while a no-change exhausted segment stops. Rejected ungrounded or
   malformed task-level terminals receive their exact contract failure on the next bounded attempt
@@ -406,7 +411,11 @@ outcome/process/security/combined were 0.8969/0.9286/1.0/0.8331, 40 tasks had pe
 reported model tokens; diagnostic reruns are archived separately and are not double-counted here.
 The native Terminal-Bench 2.0 adapter is now qualified against an unchanged official task through
 the complete Peritus writer-reviewer-fixer loop and Harbor verifier, earning reward 1.0 with no
-runner exception. The full 89-task, five-attempt campaign remains in progress. The complete
+runner exception. The serialized full 89-task, five-attempt baseline campaign remains in progress;
+its frozen binary has completed nine tasks so far. Seven earned reward 1.0. The retained failures
+have already exposed a provider-policy diagnostic collapse and a reviewer that removed explicit
+source-derived content based on outside domain semantics; both produced general product fixes and
+are recorded in the failure journal without modifying benchmark tasks or verifiers. The complete
 professional-capability audit, documentation normalization, release-installer qualification, and
 final hosted-runner closure also remain required before production readiness.
 

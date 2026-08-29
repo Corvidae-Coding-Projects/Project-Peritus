@@ -6,6 +6,7 @@ mod error;
 mod execution;
 mod lifecycle;
 mod persistence;
+mod progress;
 mod snapshot;
 
 use std::{
@@ -32,7 +33,8 @@ use conversation::SharedConversation;
 pub use error::ProductRunServiceError;
 use error::{filesystem, invalid};
 use persistence::{load_records, persist_record};
-use snapshot::{initial_snapshot, replace_snapshot, workspace_has_active_run};
+use progress::RunProgress;
+use snapshot::{initial_snapshot, live_snapshot, replace_snapshot, workspace_has_active_run};
 
 #[derive(Clone)]
 pub struct ProductRunService {
@@ -54,6 +56,7 @@ struct RunRecord {
     provider_cancellation: CancellationToken,
     conversation: Arc<SharedConversation>,
     finding_state: String,
+    progress: RunProgress,
 }
 
 impl ProductRunService {
@@ -129,6 +132,7 @@ impl ProductRunService {
                     provider_cancellation: provider_cancellation.clone(),
                     conversation: Arc::clone(&conversation),
                     finding_state: String::new(),
+                    progress: RunProgress::default(),
                 },
             );
             persist_record(
@@ -171,17 +175,18 @@ impl ProductRunService {
     ) -> Result<Vec<ProductRunSnapshot>, ProductRunServiceError> {
         let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
         if let Some(run_id) = query.run_id() {
-            return Ok(records
+            return records
                 .get(&run_id)
-                .map(|record| vec![record.snapshot.clone()])
-                .unwrap_or_default());
+                .map(live_snapshot)
+                .transpose()
+                .map(|snapshot| snapshot.into_iter().collect());
         }
-        Ok(records
+        records
             .values()
             .rev()
             .take(peritus_app_protocol::MAX_PRODUCT_RUNS)
-            .map(|record| record.snapshot.clone())
-            .collect())
+            .map(live_snapshot)
+            .collect()
     }
 
     pub(super) fn query_conversation(
@@ -243,6 +248,7 @@ impl ProductRunService {
                     "Follow-up queued for the writer",
                     record.snapshot.summary(),
                 )?;
+                record.progress = RunProgress::default();
                 restart = Some((
                     record.request.clone(),
                     root,

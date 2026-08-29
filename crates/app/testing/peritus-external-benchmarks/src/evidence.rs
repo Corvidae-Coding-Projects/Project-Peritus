@@ -294,6 +294,7 @@ mod tests {
             review: "Canonical reason remains contradictory".to_owned(),
             summary: "candidate retained".to_owned(),
             finding_state: "{\"cycle\":3}".to_owned(),
+            progress: peritus_product_runner::ProductRunProgress::default(),
         });
 
         let path = observation.publish(directory.path()).expect("publish observation");

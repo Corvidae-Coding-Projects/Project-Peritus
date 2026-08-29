@@ -72,6 +72,7 @@ impl ProductRunService {
         if !update.finding_state.is_empty() {
             record.finding_state = update.finding_state;
         }
+        record.progress.observe(update.progress);
         let phase = match update.phase {
             peritus_product_runner::ProductRunPhase::Designing => ProductRunPhase::Designing,
             peritus_product_runner::ProductRunPhase::Writing => ProductRunPhase::Writing,

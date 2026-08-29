@@ -7,12 +7,87 @@
 use std::{
     path::PathBuf,
     sync::{Arc, atomic::AtomicBool},
+    time::Duration,
 };
 
 use peritus_provider_core::{CancellationToken, ModelProvider};
 use peritus_types::RunId;
 
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
+
+/// Maximum wall-clock duration of one uninterrupted product-run attempt.
+pub const PRODUCT_RUN_MAX_ELAPSED: Duration = Duration::from_hours(8);
+/// Maximum provider requests across all product roles.
+pub const PRODUCT_RUN_MAX_MODEL_REQUESTS: u32 = 4_096;
+/// Maximum application tool calls across all product roles.
+pub const PRODUCT_RUN_MAX_TOOL_CALLS: u32 = 20_000;
+/// Maximum aggregate provider tokens across all product roles.
+pub const PRODUCT_RUN_MAX_TOTAL_TOKENS: u64 = 100_000_000;
+/// Maximum provider-estimated cost in integer microunits.
+pub const PRODUCT_RUN_MAX_COST_MICROUNITS: u64 = 500_000_000;
+
+/// Monotonic aggregate progress for one complete product-run attempt.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct ProductRunProgress {
+    model_requests: u32,
+    tool_calls: u32,
+    retries: u32,
+    compactions: u32,
+    input_tokens: u64,
+    cached_input_tokens: u64,
+    output_tokens: u64,
+    total_tokens: u64,
+    provider_cost_microunits: u64,
+    usage_observations: u32,
+    elapsed_millis: u64,
+}
+
+impl ProductRunProgress {
+    /// Provider requests completed or terminally observed.
+    pub const fn model_requests(self) -> u32 {
+        self.model_requests
+    }
+    /// Application tool calls completed.
+    pub const fn tool_calls(self) -> u32 {
+        self.tool_calls
+    }
+    /// Checked provider retries completed.
+    pub const fn retries(self) -> u32 {
+        self.retries
+    }
+    /// Deterministic context compactions applied.
+    pub const fn compactions(self) -> u32 {
+        self.compactions
+    }
+    /// Provider-reported input tokens.
+    pub const fn input_tokens(self) -> u64 {
+        self.input_tokens
+    }
+    /// Provider-reported cache-read input tokens.
+    pub const fn cached_input_tokens(self) -> u64 {
+        self.cached_input_tokens
+    }
+    /// Provider-reported output tokens.
+    pub const fn output_tokens(self) -> u64 {
+        self.output_tokens
+    }
+    /// Explicit or conservatively derived aggregate tokens.
+    pub const fn total_tokens(self) -> u64 {
+        self.total_tokens
+    }
+    /// Provider-estimated cost in integer microunits.
+    pub const fn provider_cost_microunits(self) -> u64 {
+        self.provider_cost_microunits
+    }
+    /// Responses that supplied normalized usage.
+    pub const fn usage_observations(self) -> u32 {
+        self.usage_observations
+    }
+    /// Elapsed milliseconds at the latest effect boundary.
+    pub const fn elapsed_millis(self) -> u64 {
+        self.elapsed_millis
+    }
+}
 
 /// Concrete product-run phase emitted to the daemon.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -51,6 +126,8 @@ pub struct ProductRunUpdate {
     pub summary: String,
     /// Durable typed finding ledger at this effect boundary.
     pub finding_state: String,
+    /// Cumulative resource accounting at this completed effect boundary.
+    pub progress: ProductRunProgress,
 }
 
 /// Synchronous observer for a completed effect boundary.

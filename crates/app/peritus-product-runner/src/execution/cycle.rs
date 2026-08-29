@@ -7,8 +7,9 @@ use super::{
     RunObserver, RunState, check_cancelled,
 };
 use crate::{
-    ProductRunnerError, ProductRunnerErrorKind, bundle, candidate::CandidateBaseline, design,
-    developer_tools::WorkspaceOwnership, gates, review, reviewer_turn,
+    ProductRunnerError, ProductRunnerErrorKind, budget::RunAccounting, bundle,
+    candidate::CandidateBaseline, design, developer_tools::WorkspaceOwnership, gates, review,
+    reviewer_turn,
 };
 
 #[derive(Default)]
@@ -31,6 +32,7 @@ pub(super) async fn initial_write(
     design: &str,
     findings: Option<&str>,
     ownership: &mut WorkspaceOwnership,
+    accounting: &mut RunAccounting,
 ) -> Result<AppliedTurn, ProductRunnerError> {
     check_cancelled(input)?;
     emit(
@@ -41,6 +43,7 @@ pub(super) async fn initial_write(
         &RunEvidence::default(),
         "",
         None,
+        accounting,
     )?;
     crate::turn::complete_developer_turn(
         input,
@@ -50,6 +53,7 @@ pub(super) async fn initial_write(
         design,
         findings,
         ownership,
+        accounting,
     )
     .await
 }
@@ -58,6 +62,7 @@ pub(super) async fn create_design(
     input: &ProductRunInput,
     observe: &RunObserver,
     cycle: u32,
+    accounting: &mut RunAccounting,
 ) -> Result<design::DesignDocument, ProductRunnerError> {
     check_cancelled(input)?;
     emit(
@@ -68,8 +73,10 @@ pub(super) async fn create_design(
         &RunEvidence::default(),
         "The writer will implement against this design after it is published.",
         None,
+        accounting,
     )?;
-    let document = design::create(input, input.providers.writer.as_ref(), cycle).await?;
+    let document =
+        design::create(input, input.providers.writer.as_ref(), cycle, accounting).await?;
     let status = format!("Detailed design ready at {}", document.path().display());
     let summary = format!(
         "Design covers conversation revision {} and is ready for implementation.",
@@ -83,6 +90,7 @@ pub(super) async fn create_design(
         &RunEvidence::default(),
         &summary,
         None,
+        accounting,
     )?;
     Ok(document)
 }
@@ -93,6 +101,7 @@ pub(super) async fn inspect_cycle(
     baseline: &CandidateBaseline,
     state: &mut RunState,
     ownership: &WorkspaceOwnership,
+    accounting: &mut RunAccounting,
 ) -> Result<CycleInspection, ProductRunnerError> {
     let phase = if state.coordinator.completed_fixer_cycles() == 0 {
         ProductRunPhase::Checking
@@ -108,6 +117,7 @@ pub(super) async fn inspect_cycle(
         &RunEvidence::default(),
         &state.task_summary,
         Some(&state.findings),
+        accounting,
     )?;
     check_cancelled(input)?;
     let changed_paths = baseline.changed_paths(&input.workspace_root)?;
@@ -126,6 +136,7 @@ pub(super) async fn inspect_cycle(
         &evidence,
         &state.task_summary,
         Some(&state.findings),
+        accounting,
     )?;
     if input.conversation.revision() != state.conversation_revision {
         return Ok(CycleInspection { gates: gate_report, evidence, conversation_changed: true });
@@ -143,6 +154,7 @@ pub(super) async fn inspect_cycle(
             developer_commands: &evidence.developer_commands,
             prior: &evidence.review,
         },
+        accounting,
     )
     .await?;
     if input.conversation.revision() != state.conversation_revision {
@@ -164,6 +176,7 @@ pub(super) async fn inspect_cycle(
         &evidence,
         &state.task_summary,
         Some(&state.findings),
+        accounting,
     )?;
     Ok(CycleInspection { gates: gate_report, evidence, conversation_changed: false })
 }
@@ -174,6 +187,7 @@ pub(super) async fn apply_fix(
     inspected: &CycleInspection,
     state: &mut RunState,
     ownership: &mut WorkspaceOwnership,
+    accounting: &mut RunAccounting,
 ) -> Result<Option<ProductRunOutcome>, ProductRunnerError> {
     let fixer_cycle = state.coordinator.completed_fixer_cycles() + 1;
     emit(
@@ -184,6 +198,7 @@ pub(super) async fn apply_fix(
         &inspected.evidence,
         &state.task_summary,
         Some(&state.findings),
+        accounting,
     )?;
     check_cancelled(input)?;
     let findings = format!(
@@ -198,6 +213,7 @@ pub(super) async fn apply_fix(
         state.design.markdown(),
         Some(&findings),
         ownership,
+        accounting,
     )
     .await?;
     match turn {
@@ -220,6 +236,7 @@ pub(super) async fn apply_fix(
                 &inspected.evidence,
                 &state.task_summary,
                 Some(&state.findings),
+                accounting,
             )?;
             Ok(None)
         }
@@ -229,6 +246,7 @@ pub(super) async fn apply_fix(
     }
 }
 
+#[allow(clippy::too_many_arguments, reason = "one effect boundary retains its complete projection")]
 fn emit(
     observer: &RunObserver,
     phase: ProductRunPhase,
@@ -237,6 +255,7 @@ fn emit(
     evidence: &RunEvidence,
     summary: &str,
     findings: Option<&ProductFindingLedger>,
+    accounting: &mut RunAccounting,
 ) -> Result<(), ProductRunnerError> {
     let finding_state = findings.map(review::encode_ledger).transpose()?.unwrap_or_default();
     observer(ProductRunUpdate {
@@ -248,6 +267,7 @@ fn emit(
         review: evidence.review.clone(),
         summary: summary.to_owned(),
         finding_state,
+        progress: accounting.snapshot()?,
     });
     Ok(())
 }

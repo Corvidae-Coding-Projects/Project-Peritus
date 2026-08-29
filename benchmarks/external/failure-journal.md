@@ -2106,3 +2106,36 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - After evidence: the baseline binary remains frozen. An unchanged focused rerun with the final
   candidate must confirm the exact normalized category. A provider policy refusal, if confirmed,
   remains a provider limitation rather than a task-specific behavior Peritus will evade.
+
+## TBF-007: outside domain semantics overrode an explicit source-matching contract
+
+- Suite and task: Terminal-Bench 2.0, `protein-assembly`, first full-suite baseline trial.
+- Symptom: the writer produced a 2,646-nucleotide fusion sequence and all native structural gates
+  passed. The reviewer then called a 21-amino-acid prefix in the required PDB donor sequence an
+  extraneous purification/cleavage artifact. The fixer removed its 63 nucleotides, producing a
+  2,583-nucleotide candidate. The fresh reviewer call then returned no usable response, so Peritus
+  stopped with a provider failure; Harbor's unchanged verifier awarded reward 0 because the donor
+  sequence it required was no longer present.
+- Cause: the request explicitly required the donor to match the FASTA returned for its selected PDB
+  ID and explicitly named removal of only the N-terminal methionine. The reviewer used outside
+  biological interpretation to redefine the full selected FASTA sequence's component boundary and
+  treated the prefix as forbidden, even though the source-matching rule made that prefix part of the
+  donor for this task. This was exactly the kind of plausible-sounding extra cleanup that can make a
+  correct source-derived artifact worse. Separately, the frozen baseline reduced the empty fresh
+  reviewer response to a terminal provider error rather than recovering it.
+- Resolution: the shared production workflow and every writer/fixer/reviewer prompt now state that
+  when a request requires a value, sequence, record, or payload to match a named authoritative
+  source, the complete selected source value defines the component and only explicitly named
+  transformations may be applied. Outside labels such as tag, wrapper, metadata, artifact,
+  boilerplate, or non-native content do not authorize deletion. The provider-neutral outer retry
+  policy independently retries bounded empty responses with traced delay and cancellation.
+- Before evidence: job `peritus-terminalbench-2-k5-high`; trial
+  `protein-assembly__yToET7c`; 25 provider requests, 910,751 input tokens, 1,248,300 cached input
+  tokens, and 74,194 output tokens from `2026-08-29T16:51:22Z` through `17:18:24Z`. The retained
+  first review identifies the exact 63-nucleotide removal, the final observation records the
+  2,583-byte candidate, and the unchanged verifier requires the corresponding full PDB-derived
+  donor prefix and reports its absence.
+- Verification: prompt regressions require both the writer/fixer workflow and independent reviewer
+  to preserve complete explicitly sourced values and apply only named transformations. The shared
+  product-runner and production-composition suites remain green. The final unchanged campaign must
+  demonstrate the behavior with the corrected binary before this is claimed as a benchmark gain.

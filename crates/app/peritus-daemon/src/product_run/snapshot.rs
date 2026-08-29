@@ -7,6 +7,20 @@ use peritus_types::{RunId, WorkspaceId};
 
 use super::{ProductRunServiceError, RunRecord};
 
+pub(super) fn live_snapshot(
+    record: &RunRecord,
+) -> Result<ProductRunSnapshot, ProductRunServiceError> {
+    if record.snapshot.phase().terminal() {
+        return Ok(record.snapshot.clone());
+    }
+    replace_snapshot(
+        &record.snapshot,
+        record.snapshot.phase(),
+        &record.progress.live_status(record.snapshot.status()),
+        record.snapshot.summary(),
+    )
+}
+
 pub(super) fn initial_snapshot(
     request: &ProductRunRequest,
 ) -> Result<ProductRunSnapshot, ProductRunServiceError> {

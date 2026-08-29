@@ -5,6 +5,8 @@
 //! already-resolved provider and workspace capabilities.
 
 #[cfg(not(verus_only))]
+mod budget;
+#[cfg(not(verus_only))]
 pub(crate) mod bundle;
 #[cfg(not(verus_only))]
 mod candidate;
@@ -38,6 +40,11 @@ mod workspace_filter;
 #[cfg(not(verus_only))]
 mod workspace_media;
 
+#[cfg(not(verus_only))]
+pub use budget::{
+    PRODUCT_RUN_MAX_COST_MICROUNITS, PRODUCT_RUN_MAX_ELAPSED, PRODUCT_RUN_MAX_MODEL_REQUESTS,
+    PRODUCT_RUN_MAX_TOOL_CALLS, PRODUCT_RUN_MAX_TOTAL_TOKENS, ProductRunProgress,
+};
 pub use error::{ProductRunnerError, ProductRunnerErrorKind};
 #[cfg(not(verus_only))]
 pub use execution::{
@@ -46,6 +53,8 @@ pub use execution::{
 };
 #[cfg(verus_only)]
 pub use verified_api::{
-    ConversationView, ProductRunInput, ProductRunOutcome, ProductRunOutput, ProductRunPhase,
+    ConversationView, PRODUCT_RUN_MAX_COST_MICROUNITS, PRODUCT_RUN_MAX_ELAPSED,
+    PRODUCT_RUN_MAX_MODEL_REQUESTS, PRODUCT_RUN_MAX_TOOL_CALLS, PRODUCT_RUN_MAX_TOTAL_TOKENS,
+    ProductRunInput, ProductRunOutcome, ProductRunOutput, ProductRunPhase, ProductRunProgress,
     ProductRunUpdate, ProductRunner, RoleProviders, RunObserver,
 };
