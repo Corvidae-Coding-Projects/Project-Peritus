@@ -30,3 +30,9 @@ membership or transformations.
 Reject a context-free record ID when a scalar output can refer to heterogeneous source categories:
 row-level references must retain both authoritative type and stable ID, while category-count
 summaries group by type rather than by individual record.
+A reconciliation item duplicated into primary and reject outputs without an explicit dual-record
+rule is a concrete finding. Verify that status values retain material conditions, reason codes state
+the most specific evidenced cause, and summary exception counts reconcile unresolved primary and
+rejected identities across every requested artifact.
+An absent referenced record labeled only as invalid is a concrete reason-taxonomy defect; `invalid`
+is for a present record that fails validation.

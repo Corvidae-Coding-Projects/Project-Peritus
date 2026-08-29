@@ -1599,3 +1599,23 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   Evidence is retained at
   `reports/090-timeseries-anomaly-attribution-pre-typed-reference.json` and
   `reports/090-timeseries-anomaly-attribution-final.json`.
+
+## HBI-052: task 091 flattened and duplicated reconciliation exceptions
+
+- Suite and task: HarnessBench 2.0, `091-financial-close-reconciliation`.
+- Symptom: all FX conversions, refunds, fees, cash values, and totals were exact, but the initial
+  outputs flattened a refund-bearing match, duplicated synthetic and void rows into the reject
+  ledger, used a broad invalid-reference reason, and omitted rejected unresolved items from the
+  summary count.
+- Cause: the workflow did not make routing between primary, synthetic, and reject representations
+  explicit enough, nor require material status preservation and a summary union across artifacts.
+  It also lacked a deterministic missing-versus-invalid lookup distinction.
+- Resolution: reconciliation guidance now routes each identity once unless dual recording is
+  explicit, preserves material status, uses the most specific evidenced reason, reserves `missing`
+  for absent records and `invalid` for present records that fail validation, and reconciles summary
+  exception identities across all outputs. The unchanged final run passed all 20 outcome checks and
+  improved outcome/process/combined from 0.7705/0.9767/0.7525 to 1.0/0.9633/0.9633 with security
+  1.0. Evidence is retained at
+  `reports/091-financial-close-reconciliation-pre-ledger-semantics.json`,
+  `reports/091-financial-close-reconciliation-post-ledger-pre-missing-reason.json`, and
+  `reports/091-financial-close-reconciliation-final.json`.

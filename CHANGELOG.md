@@ -13,6 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Route reconciliation identities once across primary, synthetic, and reject outputs unless dual
+  recording is explicit; preserve material status, distinguish absent references from present
+  invalid records, and reconcile exception summaries across every artifact, letting unchanged
+  HarnessBench task 091 pass all 20 outcome checks (#31)
 - Preserve typed identity when flat outputs reference records from heterogeneous source categories,
   and aggregate semantic cause summaries by category rather than individual record; unchanged
   HarnessBench task 090 now passes all 16 anomaly-attribution checks (#31)
@@ -157,6 +161,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Exercise unchanged HarnessBench task 091 across FX conversion, refunds, bank fees, void and
+  missing-invoice cash, rejection routing, summary reconciliation, and close notes, improving
+  outcome/process/security/combined from 0.7705/0.9767/1.0/0.7525 to
+  1.0/0.9633/1.0/0.9633 after general ledger-semantics fixes (#31)
 - Exercise unchanged HarnessBench task 090 across thresholded anomaly detection, priority
   attribution, typed cause lineage, impact summaries, low-volume suppression, and uncertainty notes,
   improving outcome/process/security/combined from 0.5424/0.96/1.0/0.5207 to

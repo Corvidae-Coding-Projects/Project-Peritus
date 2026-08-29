@@ -55,6 +55,16 @@ requested behavior.
    explicitly requires overlap, do not place one item in multiple category fields merely because a
    broader prose label could describe it; derive membership independently from each field's stated
    rule and keep dedicated exception categories from leaking into one another.
+   For reconciliation tables, exception ledgers, and their summaries, preserve explicit routing and
+   material state. A requested synthetic or exception row is the item's primary representation and
+   does not also belong in a reject ledger unless the contract explicitly requires both. Reject rows
+   are for items that cannot enter the primary representation under its rules. Use the most specific
+   evidence-supported reason. A reference lookup with no matching source record is a missing-reference
+   condition, not a generic invalid-reference condition; reserve `invalid` for a present record that
+   fails validation. Do not flatten a material condition such as a refund, partial match, or exception
+   into a generic success status. Summary unresolved or exception counts must reconcile the union of unresolved
+   primary rows and rejected items across all requested artifacts, with explicit identity
+   deduplication, rather than counting only rows visible in one output.
    Treat hard eligibility, compatibility, and placement constraints as evidence-positive. A missing
    source field does not prove that an option satisfies a required constraint, and must not be
    replaced with a permissive default unless an authoritative input explicitly defines that default.
@@ -185,6 +195,11 @@ to derive every requested metric without guessed membership or effects.
 For outputs that reference heterogeneous source records, retain the authoritative category and
 stable ID together rather than emitting a context-free ID, and aggregate category summaries by the
 category rather than by individual record.
+For reconciliation outputs, route each item to its contract-defined primary or reject representation
+without unrequested duplication, keep material exception states in status values, choose the most
+specific evidenced reason, and reconcile summary exception counts across every output artifact.
+A failed reference lookup must use a missing-reference reason; reserve invalid-reference reasons for
+records that are present and fail validation.
 ";
 
 const REVIEWER_SKILL: &str = r"# Independent reviewer
@@ -218,6 +233,12 @@ their effect on every changed metric; unresolved aggregate provenance is advisor
 to invent membership or transformations. Reject a context-free record ID when a scalar output can
 refer to heterogeneous source categories: row-level references must retain both authoritative type
 and stable ID, while category-count summaries group by type rather than by individual record. Treat
+a reconciliation item duplicated into primary and reject outputs without an explicit dual-record
+rule as a concrete finding. Verify that status values retain material conditions, reason codes state
+the most specific evidenced cause, and summary exception counts reconcile unresolved primary and
+rejected identities across every requested artifact. Treat an absent referenced record labeled only
+as invalid as a concrete reason-taxonomy defect; `invalid` is for a present record that fails
+validation. Treat
 a missing or incompatible
 production dependency, or a test-process
 substitute used in its place, as a blocking compatibility failure when that dependency is being
@@ -267,6 +288,14 @@ mod tests {
             assert!(instructions.contains("literal category boundary"));
             assert!(instructions.contains("separately named output fields"));
             assert!(instructions.contains("derive membership independently"));
+            assert!(instructions.contains("preserve explicit routing"));
+            assert!(instructions.contains("does not also belong in a reject ledger"));
+            assert!(instructions.contains("most specific"));
+            assert!(instructions.contains("no matching source record"));
+            assert!(instructions.contains("reserve `invalid`"));
+            assert!(instructions.contains("material condition"));
+            assert!(instructions.contains("union of unresolved"));
+            assert!(instructions.contains("explicit identity"));
             assert!(instructions.contains("constraints as evidence-positive"));
             assert!(instructions.contains("source field does not prove"));
             assert!(instructions.contains("Exclude an unproven option"));

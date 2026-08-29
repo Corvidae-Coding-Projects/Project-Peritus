@@ -361,6 +361,15 @@ unchanged rerun passed all 16 outcome checks in one review cycle and improved
 outcome/process/security/combined from 0.5424/0.96/1.0/0.5207 to
 1.0/0.9633/1.0/0.9633.
 
+Task 091 computed every FX conversion, refund, bank fee, synthetic cash row, and summary amount
+exactly, but initially flattened material statuses, duplicated dedicated exception rows into the
+reject ledger, used an overly broad invalid-reference reason, and counted unresolved rows from only
+one artifact. Reconciliation guidance now routes identities once unless overlap is explicit,
+preserves material state, distinguishes absent from present-but-invalid references, and reconciles
+summary exceptions across all outputs. The unchanged final run passed all 20 outcome checks and
+improved outcome/process/security/combined from 0.7705/0.9767/1.0/0.7525 to
+1.0/0.9633/1.0/0.9633.
+
 HarnessBench chooses a result directory from the last observed provider model and may move a
 multi-provider sandbox after the native adapter exits. Invocation evidence schema 4 therefore
 includes `relocatable_paths`, all rooted at the final sandbox printed by HarnessBench. Those paths

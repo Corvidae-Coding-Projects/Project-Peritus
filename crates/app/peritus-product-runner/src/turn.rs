@@ -291,6 +291,12 @@ mod tests {
         assert!(prompt.contains("unresolved aggregate provenance is advisory"));
         assert!(prompt.contains("context-free record ID"));
         assert!(prompt.contains("group by type rather than by individual record"));
+        assert!(prompt.contains("duplicated into primary and reject outputs"));
+        assert!(prompt.contains("status values retain material conditions"));
+        assert!(prompt.contains("summary exception counts reconcile"));
+        assert!(prompt.contains("absent referenced record labeled only"));
+        assert!(prompt.contains("concrete reason-taxonomy defect"));
+        assert!(prompt.contains("present record that fails"));
     }
 
     #[test]
@@ -319,6 +325,11 @@ mod tests {
         assert!(prompt.contains("without guessed membership or effects"));
         assert!(prompt.contains("retain the authoritative category"));
         assert!(prompt.contains("aggregate category summaries"));
+        assert!(prompt.contains("without unrequested duplication"));
+        assert!(prompt.contains("specific evidenced reason"));
+        assert!(prompt.contains("across every output artifact"));
+        assert!(prompt.contains("failed reference lookup"));
+        assert!(prompt.contains("reserve invalid-reference reasons"));
     }
 
     #[test]

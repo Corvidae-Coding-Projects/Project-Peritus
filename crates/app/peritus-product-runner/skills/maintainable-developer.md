@@ -21,3 +21,8 @@ to derive every requested metric without guessed membership or effects.
 For outputs that reference heterogeneous source records, retain the authoritative category and
 stable ID together rather than emitting a context-free ID, and aggregate category summaries by the
 category rather than by individual record.
+For reconciliation outputs, route each item to its contract-defined primary or reject representation
+without unrequested duplication, keep material exception states in status values, choose the most
+specific evidenced reason, and reconcile summary exception counts across every output artifact.
+A failed reference lookup must use a missing-reference reason; reserve invalid-reference reasons for
+records that are present and fail validation.

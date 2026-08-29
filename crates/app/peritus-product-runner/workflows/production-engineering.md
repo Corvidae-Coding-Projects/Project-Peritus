@@ -19,6 +19,13 @@ requested behavior.
    combine the authoritative category or type label and stable ID as `category:id`. Aggregate fields
    such as cause counts group by the semantic category they name, while row-level outputs retain the
    typed record identity.
+   For reconciliation tables, exception ledgers, and their summaries, preserve explicit routing and
+   material state. A requested synthetic or exception row is the item's primary representation and
+   does not also belong in a reject ledger unless the contract explicitly requires both. Use the most
+   specific evidence-supported reason. A lookup with no matching source record is a missing-reference
+   condition; reserve `invalid` for a present record that fails validation. Keep material conditions
+   in status values and reconcile summary exception counts across unresolved primary and rejected
+   identities with deduplication.
 3. Divide implementation into cohesive modules with one clear responsibility. Production source
    files must never exceed 500 lines. Keep crate, package, library, and binary roots as thin
    composition surfaces; move behavior into named domain modules rather than generic helpers or

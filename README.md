@@ -290,6 +290,12 @@ source categories. Typed references now retain both authoritative category and r
 category summaries aggregate by category rather than individual record. The unchanged rerun passed
 all 16 outcome checks and improved outcome/process/security/combined from
 0.5424/0.96/1.0/0.5207 to 1.0/0.9633/1.0/0.9633.
+Task 091 hardened reconciliation semantics: dedicated synthetic rows no longer leak into reject
+ledgers, material refund/exception state remains visible, missing and invalid references are
+distinguished by lookup evidence, and summary exception counts reconcile every output artifact.
+The unchanged final run passed all 20 outcome checks and improved
+outcome/process/security/combined from 0.7705/0.9767/1.0/0.7525 to
+1.0/0.9633/1.0/0.9633.
 Terminal-Bench 2.0, the complete professional-capability audit, documentation normalization,
 release-installer qualification, and final hosted-runner closure remain required before production
 readiness.
