@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 713,
+  "next_comment_id": 714,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T16:03:07.589377766Z",
+      "updated_at": "2026-08-29T16:12:56.813452094Z",
       "labels": [
         "qualification",
         "release"
@@ -1630,6 +1630,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjlat81YzAWg4LUEMd8IkFrMiXYb0uBjdydg0t92NVO+dcg7l/ZC+S8n5VPto+L9aAl/kESMEaFNXxQegUH1ACg=="
+        },
+        "39bc81b6-f5fb-4901-bc8a-bc0382bd0e68": {
+          "display_id": 713,
+          "author": "6ME5",
+          "content": "Hosted candidate policy on 4d687767 exposed two source files above the repository's 400-line soft budget and formal-boundary fixture constructs rejected by ordinary-api-check. Fixed at the cause in signed commit f7f292ea: extracted developer-tool wire encoding and turn prompt regressions into cohesive modules; replaced unsupported boundary macros/ignored fixtures with ordinary-safe equivalents. Local evidence: xtask all passes 76 packages / 3044 source files / 2595 formal-boundary files; 58 unit tests pass; 2 production-composition tests pass; strict all-target/all-feature Clippy and fmt pass. Pushed to draft PR #39.",
+          "created_at": "2026-08-29T16:12:56.810904814Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALIT8JQjQL/dXGinnhsW0bZVd3waOIo8UsvPtoPVr5zeSZ+7yG59h7wKtGAkfEShCtDnbhaBbb0Z2gvYax3SQBg=="
         },
         "39d67e2c-38cb-4c7e-ae24-a16451503bef": {
           "display_id": 613,
@@ -7169,8 +7178,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T16:03:07.589377766Z",
+    "timestamp": "2026-08-29T16:12:56.813452094Z",
     "agent_id": "6ME5",
-    "agent_seq": 896
+    "agent_seq": 897
   }
 }
