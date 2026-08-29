@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 740,
+  "next_comment_id": 741,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T20:50:12.337072017Z",
+      "updated_at": "2026-08-29T20:50:17.188449500Z",
       "labels": [
         "qualification",
         "release"
@@ -1630,6 +1630,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA5HauSGb5VJzPCxZg/rjemhRkhWmmDx8eERz6Cbm2rSTnuh6NhcSwIZy80le3Ujfgh9FF/vffrSxuyidciWdTBQ=="
+        },
+        "2df058dd-81ef-4b1e-a644-a58070e60eb1": {
+          "display_id": 740,
+          "author": "6ME5",
+          "content": "[action] Committed signed provider-failover checkpoint d82f27775b41d8490316a84b75ab7511c25dcbf4; full local gate green; pushing PR #39 and monitoring hosted Linux/macOS/Windows checks while the frozen Terminal-Bench k=5 baseline continues",
+          "created_at": "2026-08-29T20:50:17.185974595Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAoT3GJnb6YRvwgrpjQBYKjZrs9mAKYK5piT1KZXaIQMHlvB6inj2Bt41mlCcOKpz8wtrhTndIJ9dx5e3BjVeNBA=="
         },
         "2f163576-293e-4055-90d8-764d60032f06": {
           "display_id": 565,
@@ -7412,8 +7421,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T20:50:12.337072017Z",
+    "timestamp": "2026-08-29T20:50:17.188449500Z",
     "agent_id": "6ME5",
-    "agent_seq": 925
+    "agent_seq": 926
   }
 }
