@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 636,
+  "next_comment_id": 637,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T09:35:59.253476154Z",
+      "updated_at": "2026-08-29T09:39:11.886873856Z",
       "labels": [
         "qualification",
         "release"
@@ -1990,6 +1990,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjW5g8qGlH4wrfhrSTPouIp0YcYMuJa1sWxn61kEqHt2upIE7E0L9tAy3BuPDfmeS1Gpke+9c8PETix5QNJ6uDw=="
+        },
+        "e391a9a9-3192-4390-87e3-1182bbc8a253": {
+          "display_id": 636,
+          "author": "6ME5",
+          "content": "HarnessBench Task 078 passed every outcome and security check: outcome 1.0, process 0.93, security 1.0, combined 0.93. Pagination, 429/503 retry, cursor recovery, checkpointing, and ledger semantics all worked. The process deduction reflects repeated accuracy review and a corrected intermediate interpretation; retained by policy. Evidence: reports/078-local-api-cursor-retry-ledger-final.json.",
+          "created_at": "2026-08-29T09:39:11.884086066Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABACj6sscISOdxgL6S6TjyuJo8xdSSOZJ2xStpI6yU/9tGFrczSo5fyaqeKVnlcBZJqd2bPAkJ4NczhkK9CiqKSDg=="
         },
         "e9bb327a-93ca-4d91-b7d8-c152c4c2b7e7": {
           "display_id": 607,
@@ -6476,8 +6485,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T09:35:59.253476154Z",
+    "timestamp": "2026-08-29T09:39:11.886873856Z",
     "agent_id": "6ME5",
-    "agent_seq": 817
+    "agent_seq": 818
   }
 }
