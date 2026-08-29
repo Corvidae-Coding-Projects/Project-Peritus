@@ -6,6 +6,7 @@ use std::{collections::BTreeSet, fmt::Write as _, path::PathBuf};
 pub struct GroundingEvidence {
     list_calls: u32,
     search_calls: u32,
+    listed_paths: BTreeSet<PathBuf>,
     read_paths: BTreeSet<PathBuf>,
     mutation_paths: BTreeSet<PathBuf>,
     root_observed_empty: bool,
@@ -23,6 +24,10 @@ impl GroundingEvidence {
         self.search_calls = self.search_calls.saturating_add(1);
     }
 
+    pub fn record_listed_path(&mut self, path: &str) {
+        self.listed_paths.insert(PathBuf::from(path));
+    }
+
     pub fn record_read(&mut self, path: &str) {
         self.read_paths.insert(PathBuf::from(path));
     }
@@ -35,6 +40,14 @@ impl GroundingEvidence {
         self.validate().map_err(str::to_owned)?;
         if exists && !self.read_paths.contains(&PathBuf::from(path)) {
             return Err(format!("read the existing target before mutating it: {path}"));
+        }
+        Ok(())
+    }
+
+    pub fn ensure_empty_directory_removal_allowed(&self, path: &str) -> Result<(), String> {
+        self.validate().map_err(str::to_owned)?;
+        if !self.listed_paths.contains(&PathBuf::from(path)) {
+            return Err(format!("list the empty directory before removing it: {path}"));
         }
         Ok(())
     }
@@ -90,5 +103,15 @@ mod tests {
         let mut evidence = GroundingEvidence::default();
         evidence.record_list("", 0);
         assert!(evidence.ensure_mutation_allowed("src/main.rs", false).is_ok());
+    }
+
+    #[test]
+    fn empty_directory_removal_requires_exact_listing_evidence() {
+        let mut evidence = GroundingEvidence::default();
+        evidence.record_list("", 2);
+        evidence.record_read("Cargo.toml");
+        assert!(evidence.ensure_empty_directory_removal_allowed("out/tmp").is_err());
+        evidence.record_listed_path("out/tmp");
+        assert!(evidence.ensure_empty_directory_removal_allowed("out/tmp").is_ok());
     }
 }

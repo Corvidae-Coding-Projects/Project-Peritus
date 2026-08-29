@@ -6,6 +6,7 @@ mod executor;
 mod grounding;
 mod ownership;
 mod path;
+mod removal;
 
 pub use catalog::{definitions, read_only_definitions};
 pub use executor::WorkspaceDeveloperTools;

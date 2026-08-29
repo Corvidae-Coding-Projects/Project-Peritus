@@ -19,7 +19,7 @@ pub(super) fn reject_destructive_command(
     let find_delete = executable == "find" && args.iter().any(|arg| arg == "-delete");
     if direct_delete || git_clean || find_delete {
         return Err(tool(
-            "destructive commands are not available through run_command; inspect the exact target and use workspace_remove for an intentional regular-file deletion",
+            "destructive commands are not available through run_command; inspect the exact target and use workspace_remove for an intentional regular-file or empty-directory deletion",
         ));
     }
     Ok(())

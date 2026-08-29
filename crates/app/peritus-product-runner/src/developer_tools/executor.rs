@@ -1,11 +1,6 @@
 //! Concrete bounded filesystem and structured-command developer tools.
 
-use std::{
-    collections::VecDeque,
-    fs,
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::{collections::VecDeque, fs, path::PathBuf, process::Command};
 
 use peritus_agent::{DeveloperLoopError, DeveloperToolExecutor, DeveloperToolObservation};
 use peritus_model_protocol::{CanonicalJson, CompletedToolCall, JsonBounds, ProtocolLimits};
@@ -15,7 +10,8 @@ use super::{
     effect::{atomic_write, atomic_write_if_changed, limit, reject_destructive_command},
     grounding::GroundingEvidence,
     ownership::WorkspaceOwnership,
-    path::{checked, tool},
+    path::{checked, ignored, tool},
+    removal,
 };
 
 const MAX_FILE_BYTES: usize = 2 * 1024 * 1024;
@@ -121,6 +117,17 @@ impl WorkspaceDeveloperTools {
                 }
             }
             _ => {}
+        }
+        if name == "workspace_list" {
+            for path in result
+                .get("entries")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .filter_map(|entry| entry.get("path").and_then(Value::as_str))
+            {
+                self.grounding.record_listed_path(path);
+            }
         }
     }
 
@@ -298,16 +305,7 @@ impl WorkspaceDeveloperTools {
     }
 
     fn remove(&self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
-        let relative = required_string(arguments, "path")?;
-        let path = checked(&self.root, relative, false)?;
-        let metadata = fs::metadata(&path).map_err(|error| tool(error.to_string()))?;
-        if !metadata.is_file() {
-            return Err(tool("workspace_remove only removes one regular file"));
-        }
-        self.grounding.ensure_mutation_allowed(relative, true).map_err(tool)?;
-        self.ownership.ensure_removable(&path)?;
-        fs::remove_file(&path).map_err(|error| tool(error.to_string()))?;
-        Ok(object(vec![("path", Value::String(relative.to_owned()))]))
+        removal::remove(&self.root, &self.grounding, &self.ownership, arguments)
     }
 
     fn run(&self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
@@ -384,15 +382,6 @@ fn bounded_usize(
         .and_then(|number| usize::try_from(number).ok())
         .unwrap_or(default)
         .clamp(minimum, maximum)
-}
-
-fn ignored(path: &Path) -> bool {
-    path.components().any(|component| {
-        matches!(
-            component.as_os_str().to_str(),
-            Some(".git" | "target" | "node_modules" | ".venv" | "__pycache__")
-        )
-    })
 }
 
 #[cfg(test)]

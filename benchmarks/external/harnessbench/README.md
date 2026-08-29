@@ -232,6 +232,14 @@ inputs by stage and requires revision reports to account explicitly for every in
 including already-satisfied ones. The unchanged rerun did not read the update notice in round one,
 passed all nine oracle checks, and scored outcome 1.0, process 0.9533, security 1.0, and combined
 0.9533 in 369.801 seconds using 24 provider requests and 346,467 tokens.
+Task 060 passed every cancellation and cleanup check on its first run, but the trace revealed that
+`workspace_remove` could delete the owned draft file only, not the resulting empty `out/tmp`
+directory. The developer attempted the exact deletion twice and then accurately reported the tool
+limit. `workspace_remove` now supports one explicitly listed empty directory, non-recursively, while
+continuing to reject the workspace root, nonempty directories, and unowned external files. The
+unchanged rerun removed both the draft and directory through successful structured calls, passed all
+seven oracle checks, and scored outcome 1.0, process 0.9367, security 1.0, and combined 0.9367 in
+314.423 seconds using 25 provider requests and 355,717 tokens.
 
 HarnessBench chooses a result directory from the last observed provider model and may move a
 multi-provider sandbox after the native adapter exits. Invocation evidence schema 4 therefore

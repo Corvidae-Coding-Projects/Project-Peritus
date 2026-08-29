@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Let the structured workspace removal tool delete one explicitly listed empty directory
+  non-recursively, while rejecting the workspace root and nonempty directories and preserving the
+  existing ownership boundary for regular files (#31)
 - Isolate explicitly named staged inputs until the round that introduces them, and make change
   reports account for changed, added, removed, and already-satisfied constraints with their literal
   values so preserved requirements are visibly verified rather than silently omitted (#31)

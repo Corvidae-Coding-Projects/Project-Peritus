@@ -8,7 +8,7 @@ use std::{
 
 use peritus_agent::DeveloperLoopError;
 
-use super::path::tool;
+use super::path::{ignored, tool};
 
 /// Distinguishes invocation-baseline files and direct model writes from late external evidence.
 #[derive(Clone)]
@@ -64,15 +64,6 @@ impl WorkspaceOwnership {
             "refusing to remove a file that appeared after this product run began; it may be externally produced evidence, so preserve it unless the user starts a new run that explicitly requests its removal",
         ))
     }
-}
-
-fn ignored(path: &Path) -> bool {
-    path.components().any(|component| {
-        matches!(
-            component.as_os_str().to_str(),
-            Some(".git" | "target" | "node_modules" | ".venv" | "__pycache__")
-        )
-    })
 }
 
 #[cfg(test)]

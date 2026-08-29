@@ -196,7 +196,7 @@ evidence, and obtaining an H4 `Ready` decision. Until that evidence exists, Peri
 `NotReadyForProduction` by construction.
 
 External production qualification is active against the pinned, unchanged 106-task HarnessBench
-suite. Tasks 001 through 059 have run sequentially with full local reports and failure diagnosis;
+suite. Tasks 001 through 060 have run sequentially with full local reports and failure diagnosis;
 task 051 passed all 21 checks cleanly, and the latest task 052 run passed all 17 external checks
 after exercising ambiguity handling, category boundaries, provider-stall recovery, and finding
 conservation. The source now treats advisory review as nonblocking and conserves stable finding
@@ -218,6 +218,11 @@ Task 059 then exercised a genuine two-round event replan. Peritus now keeps expl
 inputs isolated until their round introduces them and makes change reports account for changed,
 added, removed, and already-satisfied constraints with literal values. The unchanged rerun passed
 every oracle check with outcome 1.0, process 0.9533, security 1.0, and combined 0.9533.
+Task 060 passed its cancellation oracle on both runs and exposed one real cleanup limitation. The
+workspace tool can now remove an explicitly listed empty directory non-recursively after removing
+its owned files, while still rejecting workspace-root, nonempty-directory, and external-evidence
+deletion. The corrected run removed its complete temporary tree and scored
+1.0/0.9367/1.0/0.9367.
 Terminal-Bench 2.0, the complete professional-capability audit, documentation normalization,
 release-installer qualification, and final hosted-runner closure remain required before production
 readiness.

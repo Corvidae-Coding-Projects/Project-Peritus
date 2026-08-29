@@ -35,7 +35,7 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
         ),
         (
             "workspace_remove",
-            "Remove one exact workspace-relative regular file after reading it. Files that appear during the invocation through commands, services, hooks, or evaluators are external evidence and cannot be removed.",
+            "Remove one exact workspace-relative regular file after reading it, or one empty directory after listing it. Directory removal is non-recursive. Files that appear during the invocation through commands, services, hooks, or evaluators are external evidence and cannot be removed.",
             r#"{"additionalProperties":false,"properties":{"path":{"type":"string"}},"required":["path"],"type":"object"}"#,
         ),
         (
@@ -119,6 +119,8 @@ mod tests {
         assert!(description("workspace_list").contains("Call this first"));
         assert!(description("workspace_read").contains("exact current target"));
         assert!(description("workspace_patch").contains("in the current turn"));
+        assert!(description("workspace_remove").contains("empty directory"));
+        assert!(description("workspace_remove").contains("non-recursive"));
         assert!(description("run_command").contains("peritus-internal"));
     }
 }

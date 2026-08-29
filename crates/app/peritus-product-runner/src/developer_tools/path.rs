@@ -43,3 +43,12 @@ pub fn checked(
 pub fn tool(detail: impl Into<String>) -> DeveloperLoopError {
     DeveloperLoopError::Tool(detail.into())
 }
+
+pub fn ignored(path: &Path) -> bool {
+    path.components().any(|component| {
+        matches!(
+            component.as_os_str().to_str(),
+            Some(".git" | "target" | "node_modules" | ".venv" | "__pycache__")
+        )
+    })
+}

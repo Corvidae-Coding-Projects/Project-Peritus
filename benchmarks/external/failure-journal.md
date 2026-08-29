@@ -1263,3 +1263,21 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   but did not open the update notice in round one, passed all nine oracle checks, and scored outcome
   1.0, process 0.9533, security 1.0, and combined 0.9533 in 369.801 seconds with 24 requests and
   346,467 tokens. The focused embedded-workflow regression passes.
+
+## HBF-026: workspace tools could not finish an explicitly requested empty-directory cleanup
+
+- Suite and task: HarnessBench 2.0, `060-task-cancellation-cleanup`.
+- Symptom: the first run passed every oracle check after removing the temporary draft, because the
+  oracle accepts an empty `out/tmp` directory. The process trace nevertheless showed two failed
+  attempts to remove that directory and a final question reporting the tool limitation, even though
+  the prompt explicitly required temporary files and directories to be removed.
+- Cause: `workspace_remove` accepted only regular files. The structured command boundary correctly
+  rejected `rmdir`, leaving no supported path for completing an intentional empty-directory cleanup.
+- Change: `workspace_remove` now accepts one exact empty directory observed by the current turn's
+  workspace listing. Removal is non-recursive and refuses the workspace root or any nonempty
+  directory; existing file ownership and external-evidence protections are unchanged.
+- Evidence: local report `reports/060-task-cancellation-cleanup-final.json`; the unchanged rerun
+  removed the draft as `kind: file`, removed `out/tmp` as `kind: directory`, retained the audit and
+  cancellation evidence, and passed all seven checks with outcome/process/security/combined
+  1.0/0.9367/1.0/0.9367 in 314.423 seconds. Eleven focused developer-tool tests and strict affected-
+  crate Clippy pass.

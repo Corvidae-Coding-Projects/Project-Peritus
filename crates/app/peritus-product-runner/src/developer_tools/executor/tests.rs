@@ -1,5 +1,6 @@
 use super::*;
 use peritus_model_protocol::{ToolCallId, ToolName};
+use std::path::Path;
 
 #[test]
 fn workspace_tools_inspect_edit_search_and_execute_without_a_shell() {
@@ -185,6 +186,37 @@ fn exact_remove_preserves_late_external_evidence_and_blocks_shell_deletion() {
     assert!(cross_invocation.is_error);
     assert!(wire(&cross_invocation).contains("externally produced evidence"));
     assert!(workspace.path().join("api_access.log").is_file());
+}
+
+#[test]
+fn workspace_remove_deletes_only_an_observed_empty_directory() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    fs::write(workspace.path().join("README.md"), "grounding\n").expect("grounding file");
+    fs::create_dir_all(workspace.path().join("out/tmp")).expect("empty directory");
+    fs::create_dir_all(workspace.path().join("out/nonempty")).expect("nonempty directory");
+    fs::write(workspace.path().join("out/nonempty/evidence.log"), "retain\n")
+        .expect("retained file");
+    let mut tools = writable_tools(workspace.path());
+    let _ = execute(&mut tools, "workspace_list", r#"{"depth":4,"path":""}"#);
+    let _ = execute(
+        &mut tools,
+        "workspace_read",
+        r#"{"end_line":20,"path":"README.md","start_line":1}"#,
+    );
+
+    let removed = execute(&mut tools, "workspace_remove", r#"{"path":"out/tmp"}"#);
+    assert!(!removed.is_error);
+    assert!(wire(&removed).contains(r#""kind":"directory""#));
+    assert!(!workspace.path().join("out/tmp").exists());
+
+    let nonempty = execute(&mut tools, "workspace_remove", r#"{"path":"out/nonempty"}"#);
+    assert!(nonempty.is_error);
+    assert!(wire(&nonempty).contains("only removes an empty directory"));
+    assert!(workspace.path().join("out/nonempty/evidence.log").is_file());
+
+    let root = execute(&mut tools, "workspace_remove", r#"{"path":"."}"#);
+    assert!(root.is_error);
+    assert!(wire(&root).contains("cannot remove the workspace root"));
 }
 
 fn execute(
