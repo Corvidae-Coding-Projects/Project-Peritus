@@ -12,7 +12,7 @@ keywords = ["release", "sbom", "provenance", "sigstore"]
 categories = ["development-tools::testing"]
 
 [dependencies]
-peritus-release-artifacts = { path = "../peritus-release-artifacts" }
+peritus-release-artifacts = { path = "../peritus-release-artifacts", version = "=0.0.0" }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
