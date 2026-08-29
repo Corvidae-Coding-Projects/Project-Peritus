@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 618,
+  "next_comment_id": 619,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T08:55:08.422552598Z",
+      "updated_at": "2026-08-29T09:02:41.824439038Z",
       "labels": [
         "qualification",
         "release"
@@ -1603,6 +1603,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAvjSlU66Tvr3c3KasolYp1BusG77PWp6X7GDhxCRudClUvnmUMMjoJwul9mH0blbHexR3NK/gUeue0N1uQtldAA=="
+        },
+        "7e001023-ded6-4033-a5b0-f13629ee51b5": {
+          "display_id": 618,
+          "author": "6ME5",
+          "content": "HarnessBench task 065 exposed and confirmed a general evidence-grounding fix in signed commit 0489b72c. Hard eligibility, compatibility, and placement constraints now require affirmative source evidence unless an authoritative input declares a default. The unchanged rerun moved from outcome/process/security/combined 0.6617/0.95/1.0/0.6286 in 165.591s to 0.9873/1.0/1.0/0.9873 in 116.95s, with the capacity plan itself scoring 1.0. Tasks 062-064 and their retained evaluator conventions are documented. CARGO_BUILD_JOBS=2 cargo xtask all passes all 76 packages.",
+          "created_at": "2026-08-29T09:02:41.822096926Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAR/5Wj/xkROT80WGB1or/uqbwwW5bZpj1zLNjTZOn3z2x0qjZKoIOQz8skrS4G7kQ54yxGPSkmKVE6B/lIj1XAg=="
         },
         "841a380b-780a-4066-9128-da891f9d4b81": {
           "display_id": 617,
@@ -6314,8 +6323,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T08:55:08.422552598Z",
+    "timestamp": "2026-08-29T09:02:41.824439038Z",
     "agent_id": "6ME5",
-    "agent_seq": 799
+    "agent_seq": 800
   }
 }
