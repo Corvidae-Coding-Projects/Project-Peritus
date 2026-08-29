@@ -1,6 +1,6 @@
 //! Concrete bounded filesystem and structured-command developer tools.
 
-use std::{collections::VecDeque, fs, path::PathBuf, process::Command};
+use std::{collections::VecDeque, fs, path::PathBuf, process::Command, time::Duration};
 
 use peritus_agent::{DeveloperLoopError, DeveloperToolExecutor, DeveloperToolObservation};
 use peritus_model_protocol::{CanonicalJson, CompletedToolCall, JsonBounds, ProtocolLimits};
@@ -11,10 +11,12 @@ use super::{
     grounding::GroundingEvidence,
     ownership::WorkspaceOwnership,
     path::{checked, ignored, tool},
-    removal,
+    process, removal,
 };
 
 const MAX_FILE_BYTES: usize = 2 * 1024 * 1024;
+const DEFAULT_COMMAND_TIMEOUT_SECONDS: u64 = 120;
+const MAX_COMMAND_TIMEOUT_SECONDS: u64 = 600;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum WorkspaceToolMode {
@@ -336,12 +338,21 @@ impl WorkspaceDeveloperTools {
         if program == "cargo" {
             command.env("CARGO_BUILD_JOBS", "2");
         }
-        let output = command.output().map_err(|error| tool(error.to_string()))?;
+        let timeout_seconds = bounded_u64(
+            arguments,
+            "timeout_seconds",
+            DEFAULT_COMMAND_TIMEOUT_SECONDS,
+            1,
+            MAX_COMMAND_TIMEOUT_SECONDS,
+        );
+        let output = process::run(command, Duration::from_secs(timeout_seconds))?;
         Ok(object(vec![
-            ("success", Value::Bool(output.status.success())),
+            ("success", Value::Bool(output.status.success() && !output.timed_out)),
             ("exit_code", output.status.code().map_or(Value::Null, Value::from)),
-            ("stdout", Value::String(limit(&String::from_utf8_lossy(&output.stdout)))),
-            ("stderr", Value::String(limit(&String::from_utf8_lossy(&output.stderr)))),
+            ("stdout", Value::String(output.stdout)),
+            ("stderr", Value::String(output.stderr)),
+            ("timed_out", Value::Bool(output.timed_out)),
+            ("timeout_seconds", Value::from(timeout_seconds)),
         ]))
     }
 }
@@ -386,6 +397,10 @@ fn bounded_usize(
         .and_then(|number| usize::try_from(number).ok())
         .unwrap_or(default)
         .clamp(minimum, maximum)
+}
+
+fn bounded_u64(value: &Value, name: &str, default: u64, minimum: u64, maximum: u64) -> u64 {
+    value.get(name).and_then(Value::as_u64).unwrap_or(default).clamp(minimum, maximum)
 }
 
 #[cfg(test)]

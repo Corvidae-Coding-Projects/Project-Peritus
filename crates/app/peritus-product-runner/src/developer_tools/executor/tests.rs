@@ -1,6 +1,10 @@
 use super::*;
 use peritus_model_protocol::{ToolCallId, ToolName};
-use std::path::Path;
+use std::{
+    io::Write as _,
+    path::Path,
+    time::{Duration, Instant},
+};
 
 #[test]
 fn workspace_tools_inspect_edit_search_and_execute_without_a_shell() {
@@ -48,6 +52,7 @@ fn workspace_tools_inspect_edit_search_and_execute_without_a_shell() {
         execute(&mut tools, "run_command", r#"{"args":["--version"],"cwd":".","program":"rustc"}"#);
     assert!(!command.is_error);
     assert!(wire(&command).contains(r#""success":true"#));
+    assert!(wire(&command).contains(r#""timed_out":false"#));
     let failed = execute(
         &mut tools,
         "run_command",
@@ -55,6 +60,68 @@ fn workspace_tools_inspect_edit_search_and_execute_without_a_shell() {
     );
     assert!(failed.is_error);
     assert!(wire(&failed).contains(r#""success":false"#));
+}
+
+#[test]
+fn structured_commands_time_out_without_freezing_the_agent() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let mut tools = writable_tools(workspace.path());
+    let _ = execute(&mut tools, "workspace_list", r#"{"depth":1,"path":""}"#);
+    let executable = std::env::current_exe().expect("current test executable");
+    let arguments = serde_json::to_string(&serde_json::json!({
+        "args": ["--ignored", "--nocapture", "command_timeout_fixture"],
+        "cwd": ".",
+        "program": executable,
+        "timeout_seconds": 1,
+    }))
+    .expect("command arguments");
+
+    let started = Instant::now();
+    let command = execute(&mut tools, "run_command", &arguments);
+
+    assert!(command.is_error);
+    assert!(started.elapsed() < Duration::from_secs(10));
+    let result: Value = serde_json::from_str(&wire(&command)).expect("command result JSON");
+    assert_eq!(result["success"].as_bool(), Some(false));
+    assert_eq!(result["timed_out"].as_bool(), Some(true));
+    assert_eq!(result["timeout_seconds"].as_u64(), Some(1));
+}
+
+#[test]
+fn structured_commands_drain_and_bound_both_output_streams() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let mut tools = writable_tools(workspace.path());
+    let _ = execute(&mut tools, "workspace_list", r#"{"depth":1,"path":""}"#);
+    let executable = std::env::current_exe().expect("current test executable");
+    let arguments = serde_json::to_string(&serde_json::json!({
+        "args": ["--ignored", "--nocapture", "command_output_fixture"],
+        "cwd": ".",
+        "program": executable,
+        "timeout_seconds": 10,
+    }))
+    .expect("command arguments");
+
+    let command = execute(&mut tools, "run_command", &arguments);
+
+    assert!(!command.is_error);
+    let result: Value = serde_json::from_str(&wire(&command)).expect("command result JSON");
+    assert_eq!(result["timed_out"].as_bool(), Some(false));
+    assert!(result["stdout"].as_str().is_some_and(|value| value.contains("[output truncated]")));
+    assert!(result["stderr"].as_str().is_some_and(|value| value.contains("[output truncated]")));
+}
+
+#[test]
+#[ignore = "launched by the structured-command timeout regression"]
+fn command_timeout_fixture() {
+    std::thread::sleep(Duration::from_secs(30));
+}
+
+#[test]
+#[ignore = "launched by the structured-command output regression"]
+fn command_output_fixture() {
+    let output = vec![b'x'; 600 * 1024];
+    std::io::stdout().write_all(&output).expect("fixture stdout");
+    std::io::stderr().write_all(&output).expect("fixture stderr");
 }
 
 #[test]

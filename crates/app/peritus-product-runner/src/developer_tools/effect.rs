@@ -1,6 +1,10 @@
 //! Shared bounded process and filesystem effect mechanics.
 
-use std::{fs, io::Write as _, path::Path};
+use std::{
+    fs,
+    io::{Read, Write as _},
+    path::Path,
+};
 
 use peritus_agent::DeveloperLoopError;
 
@@ -54,4 +58,25 @@ pub(super) fn limit(value: &str) -> String {
     } else {
         format!("{}\n[output truncated]", &value[..value.floor_char_boundary(MAX_OUTPUT_BYTES)])
     }
+}
+
+pub(super) fn drain_bounded(mut reader: impl Read) -> std::io::Result<String> {
+    let mut retained = Vec::with_capacity(MAX_OUTPUT_BYTES);
+    let mut buffer = [0_u8; 8 * 1024];
+    let mut truncated = false;
+    loop {
+        let bytes = reader.read(&mut buffer)?;
+        if bytes == 0 {
+            break;
+        }
+        let remaining = MAX_OUTPUT_BYTES.saturating_sub(retained.len());
+        let retained_bytes = remaining.min(bytes);
+        retained.extend_from_slice(&buffer[..retained_bytes]);
+        truncated |= retained_bytes < bytes;
+    }
+    let mut output = limit(&String::from_utf8_lossy(&retained));
+    if truncated && !output.ends_with("\n[output truncated]") {
+        output.push_str("\n[output truncated]");
+    }
+    Ok(output)
 }

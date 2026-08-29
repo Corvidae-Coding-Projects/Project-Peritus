@@ -181,6 +181,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   passes its locked native compile/test/lint commands; unrelated root checks can no longer accept a
   broken nested target, and generated dependency/build trees no longer contaminate candidate or
   reviewer evidence (#36)
+- Bound every model-issued structured command, concurrently retain capped stdout and stderr, and
+  kill the owned process tree on deadline so a long-running program becomes a recoverable tool
+  observation instead of freezing the writer-reviewer-fixer run (#31)
 - Derive review blockers from typed category and severity policy and durably conserve every finding
   through fixer proposal and fresh reviewer confirmation instead of trusting a model-supplied
   Boolean or losing findings across daemon restart (#36)

@@ -1972,3 +1972,28 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   question, proves the harness re-grounds a fresh invocation, and completes the requested write.
 - Next evidence: rebuild the static adapter and rerun the same unchanged task before restarting the
   445-trial campaign.
+
+## TBF-003: an unbounded structured command froze the developer loop
+
+- Suite and task: Terminal-Bench 2.0, `make-mips-interpreter`, unchanged post-question-recovery
+  qualification.
+- Symptom: the writer recovered from its previous false blocker, made substantial implementation
+  changes, and reached a verification command. Its final `run_command` invoked `node vm.js`; that
+  process stayed alive and Peritus produced no further tool observation or provider request. The
+  trial was manually stopped after 25 minutes rather than pretending the stalled run had completed.
+- Cause: the product developer-tool boundary used blocking `Command::output()` with no deadline.
+  One long-running program could therefore suspend the entire writer-reviewer-fixer coordinator
+  forever. Captured output was also accumulated without a memory bound until the child exited.
+- Resolution: structured commands now run in an owned process session on Unix or job object on
+  Windows, drain stdout and stderr concurrently into bounded captures, close stdin, and enforce a
+  declared deadline. The default is 120 seconds and a model may request 1 through 600 seconds for a
+  known longer build or test. Deadline expiry kills and reaps the process tree and returns the
+  captured streams plus `timed_out=true`, allowing the same agent run to inspect and recover.
+- Before evidence: job `terminalbench-qualification-make-mips-post-question`; trial
+  `608e82ecd67ce469824a34181b580cbd__nRdprXB`; the durable trace contains the final structured call
+  `{"args":["vm.js"],"cwd":".","program":"node"}` after 14 patch calls and 71 command
+  markers. The retained interrupted Harbor job exits with status 130 and is not counted as a score.
+- Verification: regressions execute the current test binary as both a non-terminating child and a
+  dual-stream high-output child, proving prompt timeout recovery and bounded concurrent capture.
+- Next evidence: rebuild the static adapter and rerun the same unchanged task before restarting the
+  445-trial campaign.

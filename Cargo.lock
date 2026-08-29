@@ -2496,6 +2496,7 @@ dependencies = [
  "peritus-provider-openai",
  "peritus-review",
  "peritus-types",
+ "process-wrap",
  "rusqlite",
  "serde",
  "serde_json",
