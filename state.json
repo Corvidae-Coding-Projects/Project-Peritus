@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 750,
+  "next_comment_id": 751,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T21:55:33.796640924Z",
+      "updated_at": "2026-08-29T21:55:38.671642504Z",
       "labels": [
         "qualification",
         "release"
@@ -1774,6 +1774,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAX9FtilRFyKedMbQQyckUQbGw3iCSMvkbXUdV03f+boAksn6ptHpaHw3TJqnh1MGtRe1i3kJ2qzZxy3rJWjpFCw=="
+        },
+        "40406b44-337e-43c2-b58f-68dd55e6cd2b": {
+          "display_id": 750,
+          "author": "6ME5",
+          "content": "[action] Implemented general Harbor PATH preservation fix TBF-012 with seven focused bridge tests; frozen mailman baseline continues unchanged after writer-local recovery",
+          "created_at": "2026-08-29T21:55:38.668720205Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAUF4tJOltFno+wI5D2gGa4XFoLrxGPPZiYcDhvm9Bw6pe6qv312ZIXMW61wa8caOgoz6OvxqTbM6gw8BursjEAA=="
         },
         "41e823b3-c420-4805-a82f-de5d6b9a9952": {
           "display_id": 710,
@@ -7502,8 +7511,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T21:55:33.796640924Z",
+    "timestamp": "2026-08-29T21:55:38.671642504Z",
     "agent_id": "6ME5",
-    "agent_seq": 935
+    "agent_seq": 936
   }
 }
