@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 733,
+  "next_comment_id": 734,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T20:01:24.646870890Z",
+      "updated_at": "2026-08-29T20:01:36.336659231Z",
       "labels": [
         "qualification",
         "release"
@@ -2755,6 +2755,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABADwGgFViJbRN6G29vF90hmcJKn19qzsdNkA/vp45GEqxTEH/XJbp5cYENytR/YXqbkmp4skFxzUil1qy19hzGAA=="
+        },
+        "e6e37e18-c09b-4626-8fc9-512b2b946bff": {
+          "display_id": 733,
+          "author": "6ME5",
+          "content": "Correction: the exact signed release-evidence commit is dccf0914bc795c060b0d62350c7389d17e772091 (the prior comment contained an incorrect expanded suffix).",
+          "created_at": "2026-08-29T20:01:36.334154238Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA0Sc92UKWlT0wwIZFIEHiEUUfUQhJWOpMnWfRLwYYLwODeZTIkj5EMwgmOOFyoF0Z8D3ok2htZeDxuPiyxuC9Bw=="
         },
         "e71ca62c-d7c6-48b1-b075-c7c9a2b1566d": {
           "display_id": 679,
@@ -7349,8 +7358,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T20:01:24.646870890Z",
+    "timestamp": "2026-08-29T20:01:36.336659231Z",
     "agent_id": "6ME5",
-    "agent_seq": 918
+    "agent_seq": 919
   }
 }
