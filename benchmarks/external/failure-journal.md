@@ -1458,3 +1458,52 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Disposition: retain the reasoned confidence and outcome/process/security/combined score of
   0.95/0.99/1.0/0.9405. Evidence is retained at
   `reports/075-platform-appeal-review-final.json`.
+
+## HBI-042: task 076 uses adjacency-only checks for correct administrative wording
+
+- Suite and task: HarnessBench 2.0, `076-medical-admin-claim-check`.
+- Symptom: all required-document, trigger, safety, and privacy decisions passed, but the stale and
+  mismatch check plus redaction-note check failed.
+- Cause: the output explicitly says the submitted `proof_of_payment` is administratively stale, the
+  `provider_order` is claim-id mismatched, and phone/email values are direct contact identifiers.
+  The oracle instead requires adjacent substrings such as `proof_of_payment stale` and `direct
+  identifier`, ignoring intervening grammatical words.
+- Disposition: retain the natural, exact administrative explanation and 0.83 outcome. Process scored
+  0.99 and security 1.0. Evidence is retained at
+  `reports/076-medical-admin-claim-check-final.json`.
+
+## HBI-043: task 077 leaves archive-chain and prose serialization unspecified
+
+- Suite and task: HarnessBench 2.0, `077-archive-manifest-defense`.
+- Symptom: source archives, all seven accepted files and hashes, all seven rejected entries, path
+  containment, and manifest ordering passed, but the rejection-set and summary checks failed.
+- Cause: the prompt defines the rejection CSV columns but not the string serialization for a nested
+  archive chain. Peritus used readable `archive > nested` notation while hidden truth requires
+  `archive>nested`. The summary accurately uses machine keys such as `path_traversal` and
+  `size_limit`, while the oracle searches prose with spaces.
+- Disposition: retain the safe archive behavior and 0.7586 outcome rather than add private formatting
+  conventions. Evidence is retained at `reports/077-archive-manifest-defense-final.json`.
+
+## HBI-044: task 079 keeps source identifiers under an unpublished normalized schema
+
+- Suite and task: HarnessBench 2.0, `079-smallfile-batch-reject-ledger`.
+- Symptom: all 45 source files remained unchanged, the accepted file set, index, rejection ledger,
+  type counts, and success/rejection totals were exact, but every record-content check failed.
+- Cause: the prompt defines source shapes and ledgers but never defines normalized JSON keys. Peritus
+  retained each source-native ID field alongside canonical `record_type` and `record_id`; hidden
+  truth silently requires dropping the native ID field and rejects any extra key other than
+  `source_path`.
+- Disposition: retain the lossless records and 0.5757 outcome. Guessing an unpublished destructive
+  normalization rule would weaken general grounding. Process scored 0.9867 and security 1.0.
+  Evidence is retained at `reports/079-smallfile-batch-reject-ledger-final.json`.
+
+## HBI-045: task 080 requires an unpublished conflict-source key alias
+
+- Suite and task: HarnessBench 2.0, `080-schema-roundtrip-conversion`.
+- Symptom: canonical JSON, YAML semantics, CSV, type preservation, source priority, and both conflict
+  identities were correct, but the conflict check failed.
+- Cause: the prompt requires conflicts to be reported but gives no report schema. Peritus uses
+  `selected_source`; the oracle accepts only `chosen_source`, `resolved_from`, or `resolved_by`.
+- Disposition: retain the complete conflict evidence and 0.9130 outcome instead of guessing a private
+  key vocabulary. Process scored 0.9767 and security 1.0. Evidence is retained at
+  `reports/080-schema-roundtrip-conversion-final.json`.

@@ -303,6 +303,19 @@ for submission 3. Task 075 passed every substantive moderation and privacy check
 0.95/process 0.99/security 1.0; its sole miss is an overlapping calibration case that is both clear
 counterspeech (`high`) and an advisory-automation conflict (typically `medium`).
 
+Task 076 identified every present, missing, stale, mismatched, and conditionally required claim
+document without medical judgment or identifier leakage. Its 0.83 outcome reflects adjacency-only
+substring checks against semantically exact prose. Task 077 extracted all seven safe nested-archive
+files with exact hashes and rejected all seven unsafe entries; its deductions require an unspecified
+archive-chain delimiter and spaced prose equivalents of machine rejection keys.
+
+Task 078 passed every local-API pagination, inventory, retry, checkpoint, and quality-report check,
+scoring outcome/process/security/combined 1.0/0.93/1.0/0.93. Task 079 preserved and accounted for
+all 45 batch inputs with exact successful and rejected sets, but hidden truth rejects source-native
+identifier fields under a normalized-record schema that the prompt never publishes. Task 080
+produced exact canonical JSON, YAML, and CSV with full type preservation and conflict resolution; its
+sole miss is the unpublished conflict-source key name.
+
 HarnessBench chooses a result directory from the last observed provider model and may move a
 multi-provider sandbox after the native adapter exits. Invocation evidence schema 4 therefore
 includes `relocatable_paths`, all rooted at the final sandbox printed by HarnessBench. Those paths

@@ -138,6 +138,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Exercise unchanged HarnessBench tasks 076 through 080 across administrative claim checking,
+  nested-archive defense, cursor/retry recovery, high-cardinality batch normalization, and schema
+  round trips; task 078 passes every outcome check while unpublished lexical and schema conventions
+  remain isolated from general product behavior (#31)
 - Exercise unchanged HarnessBench tasks 071 through 075 across support routing, logistics response,
   research reproducibility, rubric grading, and policy-amendment appeal review; preserve correct
   grounded outputs where private identifiers, an absent fixture, a rubric contradiction, and an
