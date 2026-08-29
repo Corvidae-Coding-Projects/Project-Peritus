@@ -199,7 +199,7 @@ evidence, and obtaining an H4 `Ready` decision. Until that evidence exists, Peri
 `NotReadyForProduction` by construction.
 
 External production qualification is active against the pinned, unchanged 106-task HarnessBench
-suite. Tasks 001 through 065 have run sequentially with full local reports and failure diagnosis;
+suite. Tasks 001 through 070 have run sequentially with full local reports and failure diagnosis;
 task 051 passed all 21 checks cleanly, and the latest task 052 run passed all 17 external checks
 after exercising ambiguity handling, category boundaries, provider-stall recovery, and finding
 conservation. The source now treats advisory review as nonblocking and conserves stable finding
@@ -246,6 +246,14 @@ were treated as region-compatible. Hard eligibility and placement constraints no
 affirmative evidence unless an authoritative source declares a default. The unchanged rerun chose
 only proven `us-east` plans and improved outcome/process/security/combined from
 0.6617/0.95/1.0/0.6286 to 0.9873/1.0/1.0/0.9873.
+Tasks 066 and 067 then produced correct rollback-readiness and canary decisions with complete
+evidence and safe unexecuted next actions; their deductions come from unpublished severity,
+keyword, and normal-status conventions. Task 068 satisfied every launch-plan requirement but an
+oracle substring check treated explicit “do not promise” language as the forbidden promise itself.
+Task 069 passed all 17 legal-compliance workflow checks with perfect process and security scores.
+Task 070 applied the explicit three-skill shortlist rule and avoided protected attributes; its
+retained 0.70 outcome reflects hidden ground truth that contradicts that threshold and a raw `age`
+substring match inside the job-related word `managers`.
 Terminal-Bench 2.0, the complete professional-capability audit, documentation normalization,
 release-installer qualification, and final hosted-runner closure remain required before production
 readiness.

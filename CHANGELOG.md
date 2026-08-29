@@ -138,6 +138,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Exercise unchanged HarnessBench tasks 066 through 070 across rollback readiness, canary metrics,
+  launch operations, policy-governed copy remediation, and fair resume screening; task 069 passes
+  every outcome and process check, while unpublished enums, negation-blind matching, and a shortlist
+  contradiction remain recorded rather than driving benchmark-specific behavior (#31)
 - Exercise unchanged HarnessBench tasks 062 through 065 across Kubernetes audit, topology-aware
   alert reduction, multi-source incident triage, and capacity optimization; retain two unpublished
   evaluator conventions while a general evidence-positive constraint fix improves task 065 from

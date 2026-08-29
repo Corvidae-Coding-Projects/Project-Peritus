@@ -272,6 +272,22 @@ input. The unchanged rerun selected the only type with affirmative `us-east` sup
 capacity plan at 1.0, and improved outcome/process/security/combined from
 0.6617/0.95/1.0/0.6286 to 0.9873/1.0/1.0/0.9873 while reducing runtime from 165.591 to 116.95 seconds.
 
+Task 066 found all five real rollback blockers, issued the correct blocked recommendation, preserved
+the incident-commander and database-owner approval boundaries, and made no execution claim. It
+scored outcome/process/security/combined 0.8242/1.0/1.0/0.8242; the outcome deductions are an
+unpublished severity taxonomy and exact keyword checks. Task 067 averaged every metric, applied both
+delta directions correctly, handled missing and low-sample evidence, and chose rollback safely. Its
+0.9263 outcome retains the unspecified normal `evidence_status`: Peritus used `sufficient`, while
+hidden ground truth requires `ok`.
+
+Task 068 passed every substantive product-launch planning check with perfect process/security. Its
+single 0.08 oracle miss is a negation bug: explicit requirements not to promise mobile integration
+contain the raw prohibited substring `promise mobile app`. Task 069 then passed all 17 legal-
+compliance checks and scored 1.0 across outcome, process, security, and combined scoring. Task 070
+ranked candidates by job evidence and applied the supplied threshold exactly. Its retained 0.70
+outcome reflects hidden ground truth that rejects a candidate with three evidenced must-have skills,
+contrary to the prompt, plus a raw `age` substring match inside `managers`.
+
 HarnessBench chooses a result directory from the last observed provider model and may move a
 multi-provider sandbox after the native adapter exits. Invocation evidence schema 4 therefore
 includes `relocatable_paths`, all rooted at the final sandbox printed by HarnessBench. Those paths
