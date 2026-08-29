@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 584,
+  "next_comment_id": 585,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T02:29:32.511546517Z",
+      "updated_at": "2026-08-29T02:47:03.958193686Z",
       "labels": [
         "qualification",
         "release"
@@ -1423,6 +1423,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAuapZymQjUVvonLwlmmGdGeBObpSHw41obwFmjZhHgQ06lMdCoAZSS6hWARChcD+xqV+gW99EjSjfnGZrYLYHCw=="
+        },
+        "5b69e508-fc96-45de-98af-df90547a122f": {
+          "display_id": 584,
+          "author": "6ME5",
+          "content": "HarnessBench task 047 checkpoint delivered in signed commit 4ac1faeb. HBF-017 adds a bounded Rust-owned JSON structural gate for every changed JSON deliverable; the unchanged rerun records out/review_findings.json as a parsed object before one-cycle review. Final scores: outcome 0.7199, process 0.8633, security 1.0, combined 0.6215, elapsed 274.468s. HBI-025 retains three unpublished raw-token test matcher misses without production tuning. Focused 69 tests, strict Clippy, adapter build, formatting, and full cargo xtask all pass; before/after reports remain in external benchmark state.",
+          "created_at": "2026-08-29T02:47:03.955800422Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+/PXc8B51h20Ja0ZXTTalrSllty/2CnAdrojJTa5FFvXuTTAZer/HOe0bfMh/ll+DCArVfU4vC1MIQAt4quZCA=="
         },
         "61f00b3d-30d3-4e20-bb07-9d58f3f1c3b4": {
           "display_id": 567,
@@ -6008,8 +6017,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T02:29:32.511546517Z",
+    "timestamp": "2026-08-29T02:47:03.958193686Z",
     "agent_id": "6ME5",
-    "agent_seq": 763
+    "agent_seq": 764
   }
 }
