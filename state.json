@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 644,
+  "next_comment_id": 645,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T09:47:08.680651093Z",
+      "updated_at": "2026-08-29T09:49:24.327975895Z",
       "labels": [
         "qualification",
         "release"
@@ -1387,6 +1387,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABANb0D5en2KtuBWbkIf7TiylCwWtphl+m9h/9YbQlpqaUxUq9MSgdPcExiRh7NxMdLrW3t+CEuPNrXzqjmCmbADg=="
+        },
+        "1b0caa79-ef8a-4496-8e1e-0247daa191fb": {
+          "display_id": 644,
+          "author": "6ME5",
+          "content": "HarnessBench Task 081 completed unchanged: outcome 0.95, process 0.9933, security 1.0, combined 0.9437. DOM extraction was exact and all dynamic routes were exercised. The sole miss requires an HTTP GET to root despite the authoritative root DOM being supplied and read locally; no redundant network behavior was added. Evidence: reports/081-local-html-dom-form-extract-final.json.",
+          "created_at": "2026-08-29T09:49:24.325435102Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAl1sj7Q0ThbZdLuJN3qHvgX0/HtxUNkKRq/gg4bzxr+RnZwtVhIJLu1Zh8inbwHcHIPm2XL5NR0s/L4Y/9p/bBg=="
         },
         "2440d353-07b9-4dea-bf52-73e6218d77b1": {
           "display_id": 557,
@@ -6548,8 +6557,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T09:47:08.680651093Z",
+    "timestamp": "2026-08-29T09:49:24.327975895Z",
     "agent_id": "6ME5",
-    "agent_seq": 825
+    "agent_seq": 826
   }
 }
