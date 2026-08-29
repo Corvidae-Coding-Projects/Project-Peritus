@@ -337,6 +337,14 @@ missing ascending/descending numeric test, passed all nine tests and hidden beha
 outcome/process/security/combined from 0.8821/0.9767/1.0/0.8615 to
 0.9107/0.9967/1.0/0.9077.
 
+Task 088 initially normalized both API versions correctly and handled declared 429 and 400 responses,
+but an endpoint-shaped base URL caused the server to repeat the same cursor and the client to loop
+until the hidden check timed out. The production workflow and role skills now require external
+pagination to prove bounded forward progress, reject repeated tokens, bound retry attempts, and
+surface permanent errors immediately. The unchanged rerun used general v1 page and v2 cursor sets,
+passed every visible and hidden check, and improved outcome/process/security/combined from
+0.60/0.9867/1.0/0.5920 to 1.0/0.9667/1.0/0.9667.
+
 HarnessBench chooses a result directory from the last observed provider model and may move a
 multi-provider sandbox after the native adapter exits. Invocation evidence schema 4 therefore
 includes `relocatable_paths`, all rooted at the final sandbox printed by HarnessBench. Those paths

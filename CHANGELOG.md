@@ -13,6 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Require external pagination and retry loops to prove bounded forward progress, reject repeated
+  page or cursor tokens, retry only declared transient failures, and surface permanent client errors
+  immediately; unchanged HarnessBench task 088 now passes hidden compatibility instead of timing
+  out in a repeated-cursor loop (#31)
 - Derive nested Cargo manifest expectations with host-native path semantics in the gate-planner
   regression test, keeping the same structured command behavior while allowing the Windows Gate A
   and Foundation Rust suites to validate their native backslash argument (#31)
@@ -145,6 +149,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Exercise unchanged HarnessBench task 088 against both generations of a live local API contract,
+  replacing an unbounded repeated-cursor timeout with exact normalized results, bounded 429 retries,
+  immediate 400 errors, and a perfect outcome score (#31)
 - Exercise unchanged HarnessBench tasks 081 through 087 across local DOM/form interaction, Compose
   repair, monorepo interfaces, JavaScript state, flaky-test determinism, SQL migration/rollback, and
   CLI parsing; tasks 083 and 085 pass every outcome check while task 087 validates a general

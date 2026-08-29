@@ -46,6 +46,9 @@ requested behavior.
    an isolated read-only comparison. Profile when the bottleneck is not already demonstrated, and
    keep a repository-provided benchmark or threshold authoritative over a supplemental
    microbenchmark.
+   External pagination and retry loops must define forward progress and a finite bound. Reject a
+   repeated page or cursor token instead of looping forever, bound attempts, and retry only the
+   transient conditions declared by the contract; permanent client errors must surface immediately.
 8. Review against the request and design, conserve unresolved findings across cycles, fix actual
    causes, and refuse completion until every deterministic gate and policy-derived blocker clears.
 

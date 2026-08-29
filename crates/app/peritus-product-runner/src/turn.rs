@@ -286,6 +286,7 @@ mod tests {
         assert!(prompt.contains("blocking compatibility failure"));
         assert!(prompt.contains("Legitimate mocks for unrelated boundaries"));
         assert!(prompt.contains("successful implementation behavior alone is not test coverage"));
+        assert!(prompt.contains("without a finite attempt bound or repeated-token guard"));
     }
 
     #[test]
@@ -308,6 +309,8 @@ mod tests {
         assert!(prompt.contains("same-workload baseline"));
         assert!(prompt.contains("use profiling when the cause is not already evident"));
         assert!(prompt.contains("map every named bug or behavior"));
+        assert!(prompt.contains("For API clients"));
+        assert!(prompt.contains("repeated cursors or pages"));
     }
 
     #[test]

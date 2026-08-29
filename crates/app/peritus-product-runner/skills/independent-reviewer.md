@@ -20,3 +20,5 @@ added or upgraded. Legitimate mocks for unrelated boundaries remain allowed, but
 the changed dependency works in production. When regression tests are explicitly requested, map
 each named behavior to a direct assertion in the repository tests and report missing named coverage
 as a `test_coverage` finding; successful implementation behavior alone is not test coverage.
+Treat an external pagination or retry loop without a finite attempt bound or repeated-token guard as
+a concrete reliability finding; do not accept a happy-path mock run as proof that the loop advances.

@@ -1548,3 +1548,19 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   0.8821/0.9767/0.8615 to 0.9107/0.9967/0.9077 with security 1.0. Evidence is retained at
   `reports/087-cli-parser-bug-tests-pre-requirement-to-test-ledger.json` and
   `reports/087-cli-parser-bug-tests-final.json`.
+
+## HBI-049: task 088 allowed a repeated cursor to consume the deadline
+
+- Suite and task: HarnessBench 2.0, `088-api-contract-mock-client-compat`.
+- Symptom: the initial client passed unit tests and live ordinary v1/v2 validation, but hidden API
+  compatibility timed out after 20 seconds and capped outcome at 0.60.
+- Cause: an endpoint-shaped base URL made the mock return the same `nextCursor` repeatedly. The
+  client followed cursor values without tracking progress, so a malformed base or faulty server
+  could create an infinite pagination loop even though HTTP retry attempts were bounded.
+- Resolution: the embedded workflow, developer skill, and reviewer now require finite forward
+  progress for pagination and retries, repeated page/cursor rejection, transient-only retries, and
+  immediate permanent errors. The unchanged rerun generated general seen-page and seen-cursor guards,
+  passed every visible and hidden check, and improved outcome/process/combined from
+  0.60/0.9867/0.5920 to 1.0/0.9667/0.9667 with security 1.0. Evidence is retained at
+  `reports/088-api-contract-mock-client-compat-pre-pagination-progress-guard.json` and
+  `reports/088-api-contract-mock-client-compat-final.json`.

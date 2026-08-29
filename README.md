@@ -199,7 +199,7 @@ evidence, and obtaining an H4 `Ready` decision. Until that evidence exists, Peri
 `NotReadyForProduction` by construction.
 
 External production qualification is active against the pinned, unchanged 106-task HarnessBench
-suite. Tasks 001 through 087 have run sequentially with full local reports and failure diagnosis;
+suite. Tasks 001 through 088 have run sequentially with full local reports and failure diagnosis;
 task 051 passed all 21 checks cleanly, and the latest task 052 run passed all 17 external checks
 after exercising ambiguity handling, category boundaries, provider-stall recovery, and finding
 conservation. The source now treats advisory review as nonblocking and conserves stable finding
@@ -274,6 +274,11 @@ outcome check. Task 086's sound idempotent migration was capped by one unpublish
 substring. Task 087 exposed a real missing regression case: the workflow now maps every explicitly
 named behavior to a direct test, and the unchanged rerun added descending numeric-sort coverage,
 kept all hidden behavior green, and improved from good to excellent.
+Task 088 then exposed an unbounded cursor-progress loop in a generated API client. The production
+workflow now requires finite pagination/retry progress, repeated-token rejection, bounded transient
+retries, and immediate permanent errors. Its unchanged rerun passed every visible and hidden API
+contract check, improving outcome/process/security/combined from 0.60/0.9867/1.0/0.5920 to
+1.0/0.9667/1.0/0.9667.
 Terminal-Bench 2.0, the complete professional-capability audit, documentation normalization,
 release-installer qualification, and final hosted-runner closure remain required before production
 readiness.

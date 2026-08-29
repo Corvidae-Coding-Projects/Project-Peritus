@@ -116,6 +116,9 @@ requested behavior.
    local services or APIs, preserve and inspect available access evidence and confirm every required
    endpoint and exercised recovery path. When the request includes a quality or operations report,
    summarize material retry and recovery behavior unless the user explicitly excludes it.
+   External pagination and retry loops must define forward progress and a finite bound. Reject a
+   repeated page or cursor token instead of looping forever, bound attempts, and retry only the
+   transient conditions declared by the contract; permanent client errors must surface immediately.
    Use the tool protocol efficiently: issue independent reads, writes, and checks together in one
    model response when the calls have no data dependency. Do not serialize independent effects and
    spend a caller's deadline on avoidable round trips.
@@ -163,7 +166,8 @@ performance change, record a same-workload baseline and candidate measurement be
 improvement; use profiling when the cause is not already evident. For an
 artifact-only request with no requested retained source, execute
 the bounded producer directly and verify the resulting artifacts and effects rather than creating
-an application package solely to host one run.
+an application package solely to host one run. For API clients, make pagination prove forward
+progress, reject repeated cursors or pages, bound retries, and surface permanent errors immediately.
 ";
 
 const REVIEWER_SKILL: &str = r"# Independent reviewer
@@ -196,6 +200,8 @@ added or upgraded. Legitimate mocks for unrelated boundaries remain allowed, but
 the changed dependency works in production. When regression tests are explicitly requested, map
 each named behavior to a direct assertion in the repository tests and report missing named coverage
 as a `test_coverage` finding; successful implementation behavior alone is not test coverage.
+Treat an external pagination or retry loop without a finite attempt bound or repeated-token guard as
+a concrete reliability finding; do not accept a happy-path mock run as proof that the loop advances.
 ";
 
 pub fn architect() -> String {
@@ -269,6 +275,9 @@ mod tests {
             assert!(instructions.contains("requirement-to-test ledger"));
             assert!(instructions.contains("direct repository test"));
             assert!(instructions.contains("hidden/external gates"));
+            assert!(instructions.contains("define forward progress"));
+            assert!(instructions.contains("repeated page or cursor token"));
+            assert!(instructions.contains("permanent client errors"));
         }
     }
 }
