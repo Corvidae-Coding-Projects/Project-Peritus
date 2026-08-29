@@ -38,7 +38,8 @@ The implemented foundation and runtime spine now covers:
   account-backed Codex/Claude routes through their credential-owning official executables, with
   immutable wire fixtures and fresh-subject A2 conformance. The Claude account route keeps native
   Claude tools disabled and projects the same typed Peritus tool catalog into a structured inert
-  call protocol, so Peritus remains the only tool executor; and
+  call protocol, normalizes the observed schema-valid nested form through the same fail-closed
+  declared-tool validator, and leaves Peritus as the only tool executor; and
 - C6: canonical role-specific context views, provenance and authority-aware context DAGs,
   deterministic dependency-complete selection and token accounting, validated compaction lineage,
   typed provider-neutral render plans, scoped evidence-backed memory lifecycle and tombstones,

@@ -1047,6 +1047,37 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   listing, three authoritative reads, and one typed final review; native schema version 4 reports
   success with no failure category.
 
+## HBF-021: Claude embedded a valid host call inside structured assistant content
+
+- Suite and task: HarnessBench 2.0, `050-multitable-join-analysis`.
+- Symptom: the first unchanged run produced the exact four requested artifacts and passed all 26
+  oracle checks, but native Peritus ended `invalidmodeloutput`. During independent review, Sonnet
+  returned an outer schema-valid result whose `tool_calls` array was empty while its `content`
+  string was itself a JSON object containing a declared `workspace_read` call. The adapter treated
+  the turn as terminal, so a fresh review attempt discarded the earlier read history and exhausted
+  grounding after only listing the workspace.
+- Cause: the Claude account decoder validated only the outer structured-result envelope. It did
+  not normalize the observed double-encoded form produced when the model combined Peritus's host
+  call protocol with an application-level typed JSON response. The reviewer parser also allowed a
+  missing `findings` array, making a progress-only summary too close to a terminal review.
+- Change: when and only when the validated outer call list is empty, the Claude runtime now
+  recognizes an exact JSON object in `content` with the reserved `tool_calls` member, removes that
+  protocol member from the application content, and validates embedded names, arguments, and call
+  limits through the same fail-closed decoder as ordinary calls. Undeclared embedded calls remain
+  malformed. Typed review admission now requires the explicit `findings` array from its documented
+  contract, so an interim summary cannot be accepted as a no-finding verdict. Ordinary
+  feature-disabled `cargo test` also keeps the Claude conformance target documented.
+- Before evidence: local report
+  `reports/050-multitable-join-analysis-pre-embedded-tool-recovery.json`; native success `false`,
+  oracle outcome 1.0, process 0.7433, security 1.0, combined 0.7433, 36 requests, 447,001 tokens,
+  and 376.804 seconds.
+- After evidence: local report
+  `reports/050-multitable-join-analysis-post-embedded-tool-recovery.json`; native success `true`,
+  all 26 unchanged oracle checks pass, outcome 1.0, process 0.9267, security 1.0, combined 0.9267,
+  31 requests, 448,744 tokens, and 388.938 seconds. The final native observation records a fresh
+  typed review with no findings after independent source inspection. Unit, product-runner,
+  strict-Clippy, and real owned-process Claude conformance checks pass.
+
 ## HBI-027: HarnessBench relocates mixed-model sandboxes without rewriting earlier paths
 
 - Suite and task: HarnessBench 2.0, first visible after tool-capable review in

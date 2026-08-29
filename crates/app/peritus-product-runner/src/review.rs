@@ -13,7 +13,6 @@ use crate::{ProductRunnerError, ProductRunnerErrorKind};
 #[serde(deny_unknown_fields)]
 struct ReviewWire {
     summary: String,
-    #[serde(default)]
     findings: Vec<FindingWire>,
 }
 
@@ -256,6 +255,7 @@ mod tests {
     #[test]
     fn reviewer_boolean_is_rejected_and_build_coverage_blocks_by_policy() {
         assert!(parse(r#"{"summary":"looks fine","blocking":false,"findings":[]}"#, 1).is_err());
+        assert!(parse(r#"{"summary":"still inspecting"}"#, 1).is_err());
         let submission = parse(
             r#"{"summary":"target was missed","findings":[{"category":"build_coverage","severity":"advisory","title":"Nested target not built","description":"Only root tests ran","location":"game/Cargo.toml","reproduction":"cargo check --manifest-path game/Cargo.toml","remediation":"Run exact target gates"}]}"#,
             1,

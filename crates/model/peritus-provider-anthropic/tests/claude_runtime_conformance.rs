@@ -1,5 +1,5 @@
-#![cfg(feature = "test-runtime-fake")]
 //! A2 qualification of the production Claude executable boundary.
+#![cfg(feature = "test-runtime-fake")]
 
 mod claude_runtime_conformance {
     mod observations;

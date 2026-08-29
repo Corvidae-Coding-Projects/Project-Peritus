@@ -13,6 +13,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Recover declared Peritus host calls when the Claude account runtime returns its schema-valid
+  outer call array empty but embeds the reserved call envelope inside application JSON; validate
+  the recovered names, arguments, and limits through the same fail-closed path, require an explicit
+  reviewer findings array before terminal admission, and keep the feature-disabled conformance
+  test target documented under ordinary `cargo test` (#31)
 - Run independent review through a fresh repository-grounded D0 loop with an executor-enforced
   read-only tool surface, require listing before targeted reads, reject undeclared reviewer
   mutation/process calls, and retry malformed or ungrounded typed reviews with their exact failure
@@ -104,6 +109,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Exercise unchanged HarnessBench task 050 through six-table financial reconciliation: all 26
+  oracle checks pass and the native before/after recovery comparison moves from failure with
+  outcome/process/security/combined 1.0/0.7433/1.0/0.7433 to success at
+  1.0/0.9267/1.0/0.9267 while reducing provider requests from 36 to 31 (#31)
 - Exercise unchanged HarnessBench task 049 through exact local data cleaning and independent
   source reconciliation: all 22 oracle checks pass, native review begins with `workspace_list` and
   reads all three authoritative fixtures, and final outcome/process/security/combined scores are

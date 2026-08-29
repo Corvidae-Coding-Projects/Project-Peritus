@@ -166,6 +166,15 @@ host-tool catalog in its prompt and returns inert calls for Peritus to execute w
 tools stay disabled. The final unchanged run began review with `workspace_list`, read all three
 authoritative fixtures, reconciled all 25 rows, and completed natively with outcome 1.0, process
 0.9867, security 1.0, and combined 0.9867 in 444.113 seconds.
+Task 050 joined six financial tables into exact customer, region, audit, and reconciliation
+artifacts. The first run passed all 26 unchanged oracle checks but exposed a live Claude response
+shape in which a declared host call was embedded inside structured assistant content instead of
+the outer call array. The account adapter now normalizes that reserved double envelope through the
+same name, argument, and limit validator, while undeclared calls still fail closed; typed reviews
+also require their explicit findings array. The unchanged rerun completed natively with outcome
+1.0, process 0.9267, security 1.0, and combined 0.9267 in 388.938 seconds, reducing the request
+count from 36 to 31. Both reports remain outside Git as
+`reports/050-multitable-join-analysis-{pre,post}-embedded-tool-recovery.json`.
 
 HarnessBench chooses a result directory from the last observed provider model and may move a
 multi-provider sandbox after the native adapter exits. Invocation evidence schema 4 therefore
