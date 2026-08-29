@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 747,
+  "next_comment_id": 748,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T21:28:02.369250303Z",
+      "updated_at": "2026-08-29T21:44:22.500519281Z",
       "labels": [
         "qualification",
         "release"
@@ -1459,6 +1459,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAfm9jN3uVKQQgBpp/vw1zrgtypxHcvJbF0LK8f01v77/zDJvrmGwUcmwu7Of855HRRwOPWOBmSMny7A9S+hWFCg=="
+        },
+        "15107f96-a103-413c-bf01-d898efafb294": {
+          "display_id": 747,
+          "author": "6ME5",
+          "content": "Terminal-Bench TBI-001 is a retained benchmark gotcha, not a Peritus fix: pytorch-model-recovery passed 4/5 verifier checks after strict checkpoint loading, output-layer-only fitting, and MSE improvement 1.54338502884 -> 0.675955712795. The published task does not specify the TorchScript forward signature, head count, batch orientation, or decoder-input convention, and a state dictionary cannot encode them. The hidden verifier calls model(src,tgt) while the valid artifact exposes model(src). Reward 0 stays unchanged; reliably winning would require verifier/solution leakage or task-specific hidden architecture knowledge, which Peritus refuses. Journal entry TBI-001 records the evidence and will feed the final gotcha table.",
+          "created_at": "2026-08-29T21:44:22.497695981Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA1YPNURBmypTvtpnsDNaitHVej+g+EtqtzRMCMK2BenVx0JJiNnc8bxWEzng+kG4xeRkubxFhVHw/PFk+NAFJCQ=="
         },
         "16b757a6-1f96-4c24-993a-bb313c7ec94c": {
           "display_id": 693,
@@ -7475,8 +7484,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T21:28:02.369250303Z",
+    "timestamp": "2026-08-29T21:44:22.500519281Z",
     "agent_id": "6ME5",
-    "agent_seq": 932
+    "agent_seq": 933
   }
 }
