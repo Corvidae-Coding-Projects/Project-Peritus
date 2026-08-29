@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 728,
+  "next_comment_id": 729,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1269,7 +1269,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T18:37:10.162150847Z",
+      "updated_at": "2026-08-29T18:47:45.574917417Z",
       "labels": [
         "qualification",
         "release"
@@ -2048,6 +2048,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAu/OXKOXIzyoqBnMtNyX/H0DN8cTukCSgHJlqlqITnQPb2mF9PoM+6gT6NoKyWUHbNJOpkGR+/u6yrBsWk0MjBg=="
+        },
+        "6e417de6-0727-4321-9e44-eed41ff714fc": {
+          "display_id": 728,
+          "author": "6ME5",
+          "content": "Second hosted Windows lifecycle defect reproduced after archive creation succeeded: the isolated LOCALAPPDATA profile had no module-analysis cache, so the public bootstrap could not auto-discover Get-FileHash. The bootstrap now uses the same built-in .NET SHA-256 stream implementation as the native Windows installer, with a regression forbidding the optional cmdlet dependency. Verification: 257 xtask unit tests, 3 CLI tests, strict Clippy, rustfmt, docs-check, diff check, and Windows cross-target xtask check passed.",
+          "created_at": "2026-08-29T18:47:45.571566966Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIv0LzmcudCQ0Qrzb9ZlHScnNc6udG/xJAofqm6G7VInmdDnIpdw0h8/GWp0D7W7RSgm0EkmW9IDBgBJleJvDBA=="
         },
         "70cea9e1-709a-4c3d-997e-61d0c9ffa425": {
           "display_id": 621,
@@ -7299,8 +7308,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T18:37:10.162150847Z",
+    "timestamp": "2026-08-29T18:47:45.574917417Z",
     "agent_id": "6ME5",
-    "agent_seq": 912
+    "agent_seq": 913
   }
 }
