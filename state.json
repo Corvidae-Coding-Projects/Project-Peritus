@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 738,
+  "next_comment_id": 739,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T20:40:21.502604234Z",
+      "updated_at": "2026-08-29T20:46:24.361141230Z",
       "labels": [
         "qualification",
         "release"
@@ -2548,6 +2548,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAemfC25OxJzg/uCn+UeWXbSX6FRqWCHcz16Gm1sgOx7G/oj+J6FiO+t+33OHz0n8cNynd0QExKOIo8orabUhHBw=="
+        },
+        "bf4b26c7-cff4-4c79-90c8-affbafdf4613": {
+          "display_id": 738,
+          "author": "6ME5",
+          "content": "Final report requirement from Laurelai: include a dedicated benchmark-gotchas table separating real Peritus defects from hidden, contradictory, or defective oracle expectations. For each gotcha retain the published contract, observed valid behavior, exact hidden/defective expectation, the benchmark-specific hack that would be needed to score it, and the explicit decision not to cheat; preserve the honest lower score.",
+          "created_at": "2026-08-29T20:46:24.350435294Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAQzW6rLOUbJLZDog17EbK1su+Y/J3TXxj6v/dsMawgam6QwwznkX1iqMS03eW2NB7uUEqFYwX25xw52/aGZVlCw=="
         },
         "bf852dc8-04a8-4e72-8929-d2b33e6f5c2c": {
           "display_id": 580,
@@ -7394,8 +7403,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T20:40:21.502604234Z",
+    "timestamp": "2026-08-29T20:46:24.361141230Z",
     "agent_id": "6ME5",
-    "agent_seq": 923
+    "agent_seq": 924
   }
 }
