@@ -4,7 +4,7 @@ use peritus_model_protocol::{ToolCallId, ToolName};
 #[test]
 fn workspace_tools_inspect_edit_search_and_execute_without_a_shell() {
     let workspace = tempfile::tempdir().expect("workspace");
-    let mut tools = WorkspaceDeveloperTools::new(workspace.path().to_owned());
+    let mut tools = writable_tools(workspace.path());
 
     let initial = execute(&mut tools, "workspace_list", r#"{"depth":3,"path":""}"#);
     assert!(!initial.is_error);
@@ -56,7 +56,7 @@ fn existing_files_cannot_be_mutated_before_they_are_read() {
     let workspace = tempfile::tempdir().expect("workspace");
     fs::write(workspace.path().join("README.md"), "before\n").expect("existing file");
     fs::write(workspace.path().join("Cargo.toml"), "[workspace]\n").expect("manifest");
-    let mut tools = WorkspaceDeveloperTools::new(workspace.path().to_owned());
+    let mut tools = writable_tools(workspace.path());
     let _ = execute(&mut tools, "workspace_list", r#"{"depth":2,"path":""}"#);
     let _ = execute(
         &mut tools,
@@ -86,10 +86,41 @@ fn existing_files_cannot_be_mutated_before_they_are_read() {
 }
 
 #[test]
+fn read_only_tools_reject_undeclared_mutation_and_process_calls() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    fs::write(workspace.path().join("README.md"), "before\n").expect("existing file");
+    let mut tools = WorkspaceDeveloperTools::read_only(workspace.path().to_owned());
+
+    let listed = execute(&mut tools, "workspace_list", r#"{"depth":2,"path":""}"#);
+    let read = execute(
+        &mut tools,
+        "workspace_read",
+        r#"{"end_line":20,"path":"README.md","start_line":1}"#,
+    );
+    assert!(!listed.is_error);
+    assert!(!read.is_error);
+
+    for (name, arguments) in [
+        ("workspace_write", r#"{"content":"after\n","path":"README.md"}"#),
+        ("workspace_patch", r#"{"new":"after","old":"before","path":"README.md"}"#),
+        ("workspace_remove", r#"{"path":"README.md"}"#),
+        ("run_command", r#"{"args":["status"],"program":"git"}"#),
+    ] {
+        let refused = execute(&mut tools, name, arguments);
+        assert!(refused.is_error, "{name} must be refused");
+        assert!(wire(&refused).contains("read-only workspace access"));
+    }
+    assert_eq!(
+        fs::read_to_string(workspace.path().join("README.md")).expect("unchanged file"),
+        "before\n",
+    );
+}
+
+#[test]
 fn exact_remove_preserves_late_external_evidence_and_blocks_shell_deletion() {
     let workspace = tempfile::tempdir().expect("workspace");
     fs::write(workspace.path().join("baseline.txt"), "baseline\n").expect("baseline");
-    let mut tools = WorkspaceDeveloperTools::new(workspace.path().to_owned());
+    let mut tools = writable_tools(workspace.path());
     let _ = execute(&mut tools, "workspace_list", r#"{"depth":2,"path":""}"#);
 
     fs::write(workspace.path().join("api_access.log"), "/projects\n").expect("external log");
@@ -150,4 +181,8 @@ fn execute(
 
 fn wire(observation: &DeveloperToolObservation) -> String {
     String::from_utf8(observation.output.canonical_bytes().to_vec()).expect("JSON")
+}
+
+fn writable_tools(root: &Path) -> WorkspaceDeveloperTools {
+    WorkspaceDeveloperTools::with_ownership(root.to_owned(), WorkspaceOwnership::capture(root))
 }

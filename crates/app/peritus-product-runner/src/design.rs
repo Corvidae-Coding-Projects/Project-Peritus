@@ -57,7 +57,7 @@ pub async fn create(
             crate::workspace_media::discover(&input.workspace_root, &transcript, model.profile())?;
         let (prompt, attachments) =
             media.into_parts(user_prompt(&transcript, correction.as_deref()));
-        let mut tools = WorkspaceDeveloperTools::new(input.workspace_root.clone());
+        let mut tools = WorkspaceDeveloperTools::read_only(input.workspace_root.clone());
         let mut trace = FileDeveloperTrace::new(input.trace_path.clone());
         let result = DeveloperLoop::run(
             model,

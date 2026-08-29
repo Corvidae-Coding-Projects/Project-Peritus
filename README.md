@@ -36,7 +36,9 @@ The implemented foundation and runtime spine now covers:
   HTTP/process transport boundary, production OpenAI Responses, Anthropic Messages, stable-v1
   Google Interactions/Generate Content, explicitly profiled compatible endpoints, and separate
   account-backed Codex/Claude routes through their credential-owning official executables, with
-  immutable wire fixtures and fresh-subject A2 conformance; and
+  immutable wire fixtures and fresh-subject A2 conformance. The Claude account route keeps native
+  Claude tools disabled and projects the same typed Peritus tool catalog into a structured inert
+  call protocol, so Peritus remains the only tool executor; and
 - C6: canonical role-specific context views, provenance and authority-aware context DAGs,
   deterministic dependency-complete selection and token accounting, validated compaction lineage,
   typed provider-neutral render plans, scoped evidence-backed memory lifecycle and tombstones,
@@ -127,8 +129,10 @@ The implemented foundation and runtime spine now covers:
   targeted reads. Embedded architect, developer, and reviewer skills require cohesive modules,
   thin composition roots, explicit interfaces, and collision-aware slices. Writers and fixers can
   inspect, search, edit, run, test, observe failures, and retry through bounded structured tools,
-  but cannot mutate an existing file before reading it in the current turn. Recoverable malformed,
-  empty, timeout, and transport responses receive fresh bounded attempts; productive 48-turn work
+  but cannot mutate an existing file before reading it in the current turn. Independent review is
+  also a fresh D0 loop: it must list and read the real workspace through a separately enforced
+  read-only executor before its typed verdict can enter D2. Recoverable malformed, empty, timeout,
+  and transport responses receive fresh bounded attempts; productive 48-turn work
   segments checkpoint the exact candidate and replenish the run in a compact newly grounded
   context, while a no-change exhausted segment stops. Rejected ungrounded or malformed task-level
   terminals receive their exact contract failure on the next bounded attempt instead of repeating

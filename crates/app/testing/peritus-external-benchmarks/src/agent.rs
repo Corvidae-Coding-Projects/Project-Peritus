@@ -17,7 +17,7 @@ use sha2::{Digest, Sha256};
 use crate::{
     BenchmarkError,
     args::HarnessBenchInput,
-    evidence::{ProductObservation, RunReport},
+    evidence::{ProductObservation, RelocatablePaths, RunReport},
     providers, session, trace, workspace,
 };
 
@@ -70,6 +70,14 @@ pub async fn run_harnessbench(input: HarnessBenchInput) -> Result<RunReport, Ben
         &input.model_id,
     )?;
     let last_observation_path = publish_last_observation(&last_observation, &evidence_dir)?;
+    let (session_trace_paths, relocatable_paths) = retained_paths(
+        &sandbox,
+        &baseline.root,
+        &trace_path,
+        &trace_inputs,
+        &usage_proxy,
+        last_observation_path.as_deref(),
+    )?;
     let (success, summary, changed_paths, failure_kind, failure) = match result {
         Ok(ProductRunOutcome::Complete(output)) => {
             (true, Some(output.summary), output.changed_paths, None, None)
@@ -86,7 +94,7 @@ pub async fn run_harnessbench(input: HarnessBenchInput) -> Result<RunReport, Ben
         ),
     };
     let report = RunReport {
-        schema_version: 3,
+        schema_version: 4,
         success,
         task_id: input.task_id,
         session_id: input.session_id,
@@ -100,10 +108,11 @@ pub async fn run_harnessbench(input: HarnessBenchInput) -> Result<RunReport, Ben
         elapsed_ms: started.elapsed().as_millis(),
         trace_path,
         conversation_turn: conversation.turn_number(),
-        session_trace_paths: trace_inputs.into_iter().map(|(path, _)| path).collect(),
+        session_trace_paths,
         usage_proxy,
         projected_responses,
         last_observation_path,
+        relocatable_paths,
         summary,
         changed_paths,
         failure_kind,
@@ -111,6 +120,26 @@ pub async fn run_harnessbench(input: HarnessBenchInput) -> Result<RunReport, Ben
     };
     report.publish(&evidence_dir)?;
     Ok(report)
+}
+
+fn retained_paths(
+    sandbox: &Path,
+    workspace: &Path,
+    trace_path: &Path,
+    trace_inputs: &[(PathBuf, String)],
+    usage_proxy: &Path,
+    last_observation_path: Option<&Path>,
+) -> Result<(Vec<PathBuf>, RelocatablePaths), BenchmarkError> {
+    let session = trace_inputs.iter().map(|(path, _)| path.clone()).collect::<Vec<_>>();
+    let relocatable = RelocatablePaths::new(
+        sandbox,
+        workspace,
+        trace_path,
+        &session,
+        usage_proxy,
+        last_observation_path,
+    )?;
+    Ok((session, relocatable))
 }
 
 type ObservationCapture = Arc<Mutex<Option<ProductRunUpdate>>>;

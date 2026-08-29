@@ -22,9 +22,9 @@ pub(crate) mod gates;
 #[cfg(not(verus_only))]
 mod progress;
 #[cfg(not(verus_only))]
-pub(crate) mod provider;
-#[cfg(not(verus_only))]
 mod review;
+#[cfg(not(verus_only))]
+mod reviewer_turn;
 #[cfg(not(verus_only))]
 mod trace;
 #[cfg(not(verus_only))]

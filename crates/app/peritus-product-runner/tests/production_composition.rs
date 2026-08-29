@@ -86,6 +86,8 @@ mod tests {
                 profile: profile([0x82; 16], "reviewer"),
                 responses: Mutex::new(VecDeque::from([
                     text_response(b"not a review object"),
+                    named_tool_response("workspace_list", list_arguments("", 3)),
+                    named_tool_response("workspace_read", read_arguments("Cargo.toml")),
                     text_response(
                         br#"{"findings":[],"summary":"The requested API and test are present and exact-target gates passed."}"#,
                     ),
@@ -239,9 +241,13 @@ mod tests {
             let reviewer: Arc<dyn ModelProvider> = Arc::new(ScriptedProvider {
                 profile: profile([0x93; 16], "reviewer-finding"),
                 responses: Mutex::new(VecDeque::from([
+                    named_tool_response("workspace_list", list_arguments("", 3)),
+                    named_tool_response("workspace_read", read_arguments("src/lib.rs")),
                     text_response(
                         br#"{"findings":[{"category":"requested_behavior","description":"The implementation returns 41 although the task requires 42.","location":"src/lib.rs","remediation":"Return and test 42.","reproduction":"Inspect answer and its test.","severity":"advisory","title":"Answer is not 42"}],"summary":"The requested result is incorrect."}"#,
                     ),
+                    named_tool_response("workspace_list", list_arguments("", 3)),
+                    named_tool_response("workspace_read", read_arguments("src/lib.rs")),
                     text_response(
                         br#"{"findings":[],"summary":"The answer and regression test now require 42."}"#,
                     ),

@@ -978,3 +978,92 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   oracle checks passed; outcome 1.0; process 0.8533; security 1.0; combined 0.8533; elapsed 259.3
   seconds. The rubric now identifies the exact URL access, writes, recovery, and verification while
   still criticizing the genuinely redundant reads and planning.
+
+## HBF-018: independent review could not inspect authoritative workspace inputs
+
+- Suite and task: HarnessBench 2.0, first made acceptance-relevant by
+  `049-excel-like-cleaning`.
+- Symptom: the first unchanged run produced all four exact artifacts and passed all 22 oracle
+  checks, but the reviewer explicitly said it could not independently inspect the source inputs.
+  Earlier artifact tasks showed the same limitation: review received the conversation, diff,
+  gates, and prior findings through one model completion, but no workspace tool loop.
+- Cause: the product writer and fixer used D0 while reviewer composition still called a one-shot
+  provider helper. Typed output parsing proved the response shape, not that the reviewer had
+  observed the repository it was judging.
+- Change: independent review now runs as a fresh bounded D0 loop with only `workspace_list`,
+  `workspace_search`, and `workspace_read`. Admission requires a successful listing and targeted
+  read. The executor separately refuses write, patch, remove, and process tools even if a provider
+  emits an undeclared call, and malformed or ungrounded reviews receive their exact rejection on a
+  fresh attempt. The design pass uses the same executor-level read-only boundary.
+- Before evidence: local report `reports/049-excel-like-cleaning-pre-reviewer-grounding.json`;
+  outcome 1.0, process 0.91, security 1.0, combined 0.91, elapsed 320.141 seconds, 15 requests, and
+  287,422 tokens. The product was correct, but review was not independently grounded.
+- After evidence: local report `reports/049-excel-like-cleaning-post-reviewer-grounding.json`;
+  outcome 1.0, process 0.9867, security 1.0, combined 0.9867, elapsed 444.113 seconds, 22 requests,
+  and 349,579 tokens. The first reviewer response requests `workspace_list`; later responses read
+  all three authoritative fixtures before a one-cycle no-finding verdict.
+
+## HBF-019: the Claude account route did not explain inert Peritus tool calls
+
+- Suite and task: HarnessBench 2.0, `049-excel-like-cleaning` reviewer qualification.
+- Symptom: the first tool-capable reviewer implementation failed natively after three review
+  attempts. Sonnet reported that `workspace_list`, `workspace_search`, and `workspace_read` were
+  unavailable and returned no Peritus tool calls even though its provider profile advertised them.
+- Cause: the Claude executable correctly ran with native tools disabled, but Peritus exposed the
+  host-tool variants only inside the final `--json-schema`. The prompt said tools had moved into
+  that schema without carrying a visible catalog or clearly explaining that a structured
+  `tool_calls` value asks Peritus to execute the operation on the next turn. The synthetic runtime
+  fixture tested decoding a supplied call, not whether the real model understood this protocol.
+- Change: every Claude account request now includes a deterministic `peritus_tool_protocol`
+  catalog derived from the same typed names, descriptions, argument schemas, selection rule, and
+  call limit as the output validator. The system contract tells the model to request those inert
+  host operations through `tool_calls`, wait for replayed `tool_result` data, and never attempt or
+  discuss provider-native tools. Native Claude tools, MCP, plugins, hooks, and session state remain
+  disabled.
+- Before evidence: local report
+  `reports/049-excel-like-cleaning-pre-claude-tool-routing.json`; the outer unchanged oracle still
+  scored outcome 1.0, but native Peritus ended `invalidmodeloutput` because reviewer grounding had
+  no successful listing. Process was 0.8967, security 1.0, and combined 0.8967 in 380.132 seconds.
+- After evidence: the final retained report above. The normalized trace begins its Sonnet section
+  with a real `workspace_list` call executed by Peritus, followed by three reads and a typed final
+  review. Provider unit tests and real owned-process conformance also pass with native authority
+  still disabled.
+
+## HBF-020: reviewer instructions did not state the grounding validator's order
+
+- Suite and task: HarnessBench 2.0, `049-excel-like-cleaning` follow-up qualification.
+- Symptom: after host-tool routing worked, one run began review by directly reading an input file
+  and then returned a typed verdict. Peritus correctly rejected it because deterministic grounding
+  requires an observed repository listing before targeted reads; the fresh retry listed and read
+  the repository successfully.
+- Cause: the validator's list-before-read invariant was explicit in Rust but the initial reviewer
+  prompt merely asked for workspace inspection. Only the correction prompt named a fresh listing,
+  so the ordinary path and rejection path described different protocols.
+- Change: the initial system and user contracts now require every reviewer to begin with
+  `workspace_list`, wait for its result, and then request the needed searches and reads. The final
+  unchanged run followed that order on its first review attempt and required no corrective retry.
+- Evidence: the final report and sandbox
+  `oc-bench-v2-049-excel-like-cleaning-sonnet-20260828-224055-205c2937`. Sonnet responses are one
+  listing, three authoritative reads, and one typed final review; native schema version 4 reports
+  success with no failure category.
+
+## HBI-027: HarnessBench relocates mixed-model sandboxes without rewriting earlier paths
+
+- Suite and task: HarnessBench 2.0, first visible after tool-capable review in
+  `049-excel-like-cleaning`.
+- Symptom: the runner creates the sandbox under the configured `gpt-5.6-sol` directory. After
+  scoring, it derives the result slug from the last proxy response, sees the Sonnet reviewer, and
+  renames the whole sandbox beneath `sonnet`. Absolute workspace, trace, observation, and proxy-log
+  paths written before that rename then point at the former location even though all files were
+  retained at the new one.
+- Cause: pinned upstream `runner.py` collects usage and adapter evidence before
+  `derive_api_result_slug`, then renames the sandbox without rewriting those already serialized
+  paths. This is a general mixed-provider reporting limitation, not a task or Peritus runtime
+  failure.
+- Change: Peritus invocation evidence schema 4 retains a `relocatable_paths` object rooted at the
+  final sandbox printed by HarnessBench. Workspace, current/all traces, usage proxy, and last
+  observation are sandbox-relative and mechanically resolve after the upstream move. Absolute
+  fields remain as exact at-run provenance for compatibility.
+- Disposition: do not patch the pinned benchmark checkout. Use the final result's `sandbox` plus
+  native `relocatable_paths` for retained evidence. The upstream `usage_summary.log_file` field may
+  still name its pre-move location; the native relative proxy path is the authoritative locator.

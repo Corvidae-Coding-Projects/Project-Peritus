@@ -46,8 +46,11 @@ One turn invokes the executable with `-p --output-format json`, the exact profil
 empty `--mcp-config`, a private `--system-prompt-file`, and a required `--json-schema`. It runs in a
 fresh private directory and removes `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, and
 `CLAUDE_CODE_OAUTH_TOKEN` from both status and turn processes. Peritus owns the complete transcript,
-tool catalog, policy, tool execution, and cancellation lifecycle; Claude native tools, plugins,
-MCP, slash commands, browser integration, and session persistence are not part of this adapter.
+tool catalog, policy, tool execution, and cancellation lifecycle. Every prompt contains the typed
+`peritus_tool_protocol` catalog and tells the model to return inert host requests through the
+validated `tool_calls` field; Peritus executes them and replays each result on the next turn. Claude
+native tools, plugins, MCP, slash commands, browser integration, and session persistence are not
+part of this adapter.
 
 The runtime accepts only text and inert host-tool history and normalizes one final structured result
 into deterministic text/tool/usage events. Its honest profile advertises tool calls, bounded

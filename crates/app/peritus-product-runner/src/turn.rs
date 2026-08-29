@@ -129,14 +129,23 @@ pub fn request_name(run_id: RunId, role: &str, cycle: u32) -> String {
 
 pub fn reviewer_system() -> String {
     format!(
-        "You are the independent D2 reviewer in a coding harness. Inspect the original conversation, exact diff, and exact-target gate evidence; the design is a proposal, not authority. Verify every explicit requested path, field, value, operation, and scoped rule against the result. Reject self-authored checks that merely prove the implementation agrees with its own interpretation. A non-advisory finding must identify an unmet explicit requirement, a failed deterministic gate, or a concrete contradiction. Treat optional richer traces, duplicated corroboration, and evidence-presentation improvements as advisory, never as reasons for repeated fixer cycles. Accept contemporaneous process metrics unless contradicted; do not rerun stateful external operations merely to reproduce one-shot transient failures. Return only one JSON object with this shape: {{\"summary\":\"...\",\"findings\":[{{\"category\":\"correctness|requested_behavior|build_coverage|test_coverage|security|maintainability|documentation\",\"severity\":\"advisory|low|medium|high|critical\",\"title\":\"stable concise identity\",\"description\":\"specific observed problem\",\"location\":\"path:line or empty\",\"reproduction\":\"exact evidence or command\",\"remediation\":\"specific required fix\"}}]}}. Do not return a blocking Boolean; policy derives blocker status from typed fields. Repeat every still-present finding using the same title and location. Omit a prior finding only after independently confirming its fix in the fresh diff and evidence. Do not invent obscure hypothetical threats or demand unrelated redesign. Do not use markdown fences.\n\n{}",
+        "You are the independent D2 reviewer in a coding harness. Begin every review by requesting the declared read-only `workspace_list` host function through the model tool-call interface. After receiving that listing, request `workspace_search` and `workspace_read` as needed before reaching a verdict. Peritus executes these requests and returns their results on later turns; they are not provider-native tools. Use them to inspect the authoritative source inputs, exact changed files, and relevant surrounding repository context. Do not rely on the writer's account of files you can inspect. Inspect the original conversation, exact diff, and exact-target gate evidence; the design is a proposal, not authority. Verify every explicit requested path, field, value, operation, and scoped rule against the result. Reject self-authored checks that merely prove the implementation agrees with its own interpretation. A non-advisory finding must identify an unmet explicit requirement, a failed deterministic gate, or a concrete contradiction. Treat optional richer traces, duplicated corroboration, and evidence-presentation improvements as advisory, never as reasons for repeated fixer cycles. Accept contemporaneous process metrics unless contradicted; do not rerun stateful external operations merely to reproduce one-shot transient failures. Return only one JSON object with this shape: {{\"summary\":\"...\",\"findings\":[{{\"category\":\"correctness|requested_behavior|build_coverage|test_coverage|security|maintainability|documentation\",\"severity\":\"advisory|low|medium|high|critical\",\"title\":\"stable concise identity\",\"description\":\"specific observed problem\",\"location\":\"path:line or empty\",\"reproduction\":\"exact evidence or command\",\"remediation\":\"specific required fix\"}}]}}. Do not return a blocking Boolean; policy derives blocker status from typed fields. Repeat every still-present finding using the same title and location. Omit a prior finding only after independently confirming its fix in the fresh diff and evidence. Do not invent obscure hypothetical threats or demand unrelated redesign. Do not use markdown fences.\n\n{}",
         crate::engineering_workflow::reviewer(),
     )
 }
 
-pub fn reviewer_user(transcript: &str, diff: &str, gates: &str, prior: &str) -> String {
+pub fn reviewer_user(
+    transcript: &str,
+    diff: &str,
+    gates: &str,
+    prior: &str,
+    correction: Option<&str>,
+) -> String {
+    let correction = correction.map_or(String::new(), |value| {
+        format!("\n\nHarness correction from the previous rejected review:\n{value}")
+    });
     format!(
-        "Conversation:\n{transcript}\n\nCurrent diff:\n{diff}\n\nExact-target checks:\n{gates}\n\nConserved finding history:\n{prior}"
+        "Conversation:\n{transcript}\n\nCurrent diff:\n{diff}\n\nExact-target checks:\n{gates}\n\nConserved finding history:\n{prior}\n\nBegin with a workspace_list host-function call, then independently inspect the authoritative workspace inputs and exact changed files through further read-only tool calls before returning the typed review.{correction}"
     )
 }
 
@@ -254,6 +263,11 @@ mod tests {
     #[test]
     fn reviewer_checks_literal_request_independently_of_the_design() {
         let prompt = reviewer_system();
+        assert!(prompt.contains("Begin every review by requesting"));
+        assert!(prompt.contains("model tool-call interface"));
+        assert!(prompt.contains("they are not provider-native tools"));
+        assert!(prompt.contains("authoritative source inputs"));
+        assert!(prompt.contains("Do not rely on the writer's account"));
         assert!(prompt.contains("design is a proposal, not authority"));
         assert!(prompt.contains("every explicit requested path, field, value"));
         assert!(prompt.contains("agrees with its own interpretation"));

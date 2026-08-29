@@ -158,6 +158,20 @@ native acceptance parsed all three JSON outputs before one-cycle review. The ret
 0.9478 (`excellent`), with process 0.9, security 1.0, and combined 0.853. The small fractional gap
 comes from unpublished raw substrings and is documented separately rather than tuned into the
 product workflow.
+Task 049 passed all 22 unchanged data-cleaning checks and exposed that independent review was still
+a one-shot model completion without workspace tools. Review now runs through a fresh bounded D0
+loop whose executor is read-only, requires a listing before targeted reads, and rejects undeclared
+mutation or process calls. The Claude account route now carries the complete typed Peritus
+host-tool catalog in its prompt and returns inert calls for Peritus to execute while Claude native
+tools stay disabled. The final unchanged run began review with `workspace_list`, read all three
+authoritative fixtures, reconciled all 25 rows, and completed natively with outcome 1.0, process
+0.9867, security 1.0, and combined 0.9867 in 444.113 seconds.
+
+HarnessBench chooses a result directory from the last observed provider model and may move a
+multi-provider sandbox after the native adapter exits. Invocation evidence schema 4 therefore
+includes `relocatable_paths`, all rooted at the final sandbox printed by HarnessBench. Those paths
+continue to resolve after the move even though the upstream report's earlier absolute
+`usage_summary.log_file` value still names its pre-move location.
 Product failures and benchmark defects are kept separate in the
 [external failure journal](../failure-journal.md); generated workspaces, native traces, and full
 result JSON remain in the configured external state directory rather than Git.

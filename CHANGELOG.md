@@ -13,6 +13,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Run independent review through a fresh repository-grounded D0 loop with an executor-enforced
+  read-only tool surface, require listing before targeted reads, reject undeclared reviewer
+  mutation/process calls, and retry malformed or ungrounded typed reviews with their exact failure
+  instead of accepting a one-shot account of files the reviewer could not inspect (#31)
+- Project the complete typed Peritus host-tool catalog and selection policy into Claude account
+  requests, so the official executable returns inert structured calls for Peritus to execute while
+  Claude native tools, MCP, plugins, hooks, and session state remain disabled (#31)
+- Retain sandbox-relative workspace, trace, usage-proxy, and observation locations in external
+  invocation evidence schema 4, keeping native evidence resolvable when HarnessBench moves a
+  mixed-provider sandbox under the last observed model after execution (#31)
 - Parse every changed JSON deliverable with a bounded native exact-target gate before review, so a
   model-authored validation command cannot be the only evidence that the generated artifact is
   structurally valid (#31)
@@ -94,6 +104,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Exercise unchanged HarnessBench task 049 through exact local data cleaning and independent
+  source reconciliation: all 22 oracle checks pass, native review begins with `workspace_list` and
+  reads all three authoritative fixtures, and final outcome/process/security/combined scores are
+  1.0/0.9867/1.0/0.9867 (#31)
 - Exercise unchanged HarnessBench task 048 through exact release-note, migration, decision, and
   audit artifacts: every named oracle check passes, three JSON outputs receive native structural
   acceptance, and embargoed security details remain undisclosed (#31)

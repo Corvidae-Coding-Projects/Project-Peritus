@@ -11,6 +11,24 @@ use serde::Serialize;
 
 use crate::BenchmarkError;
 
+/// Sandbox-relative evidence locations that remain valid if a benchmark runner relocates the
+/// completed sandbox after inspecting provider metadata.
+#[derive(Clone, Debug, Serialize)]
+pub struct RelocatablePaths {
+    /// Base directory against which every path in this object resolves.
+    pub base: &'static str,
+    /// Benchmark workspace below the sandbox.
+    pub workspace: PathBuf,
+    /// Current durable D0 trace below the sandbox.
+    pub trace_path: PathBuf,
+    /// Ordered D0 traces below the sandbox.
+    pub session_trace_paths: Vec<PathBuf>,
+    /// `HarnessBench` usage-proxy directory below the sandbox.
+    pub usage_proxy: PathBuf,
+    /// Last product observation below the sandbox, when present.
+    pub last_observation_path: Option<PathBuf>,
+}
+
 /// Machine-readable result from one native benchmark-agent invocation.
 #[derive(Clone, Debug, Serialize)]
 pub struct RunReport {
@@ -50,6 +68,8 @@ pub struct RunReport {
     pub projected_responses: usize,
     /// Durable exact last product observation when the runner emitted one.
     pub last_observation_path: Option<PathBuf>,
+    /// Relocation-safe paths rooted at the final sandbox reported by the benchmark runner.
+    pub relocatable_paths: RelocatablePaths,
     /// Product-level completion summary when successful.
     pub summary: Option<String>,
     /// Exact changed paths accepted by the product runner.
@@ -98,6 +118,39 @@ impl RunReport {
     pub(crate) fn publish(&self, directory: &Path) -> Result<PathBuf, BenchmarkError> {
         publish_json(directory, "invocation.json", self)
     }
+}
+
+impl RelocatablePaths {
+    pub(crate) fn new(
+        sandbox: &Path,
+        workspace: &Path,
+        trace_path: &Path,
+        session_trace_paths: &[PathBuf],
+        usage_proxy: &Path,
+        last_observation_path: Option<&Path>,
+    ) -> Result<Self, BenchmarkError> {
+        Ok(Self {
+            base: "sandbox",
+            workspace: below(sandbox, workspace)?,
+            trace_path: below(sandbox, trace_path)?,
+            session_trace_paths: session_trace_paths
+                .iter()
+                .map(|path| below(sandbox, path))
+                .collect::<Result<Vec<_>, _>>()?,
+            usage_proxy: below(sandbox, usage_proxy)?,
+            last_observation_path: last_observation_path
+                .map(|path| below(sandbox, path))
+                .transpose()?,
+        })
+    }
+}
+
+fn below(sandbox: &Path, path: &Path) -> Result<PathBuf, BenchmarkError> {
+    path.strip_prefix(sandbox).map(Path::to_path_buf).map_err(|_| {
+        BenchmarkError::Workspace(
+            "retained benchmark evidence path is outside its owned sandbox".to_owned(),
+        )
+    })
 }
 
 fn publish_json(
@@ -165,5 +218,32 @@ mod tests {
         assert_eq!(value["gates"], "Exact-target acceptance: PASS");
         assert_eq!(value["review"], "Canonical reason remains contradictory");
         assert_eq!(value["finding_state"], "{\"cycle\":3}");
+    }
+
+    #[test]
+    fn relocatable_paths_survive_a_sandbox_directory_move() {
+        let sandbox = Path::new("/state/workspaces/model/task-before");
+        let trace = sandbox.join("peritus-benchmark/developer-round-0001.trace");
+        let observation = sandbox.join("peritus-benchmark/last-product-observation.json");
+        let paths = RelocatablePaths::new(
+            sandbox,
+            &sandbox.join("workspace"),
+            &trace,
+            std::slice::from_ref(&trace),
+            &sandbox.join("usage-proxy"),
+            Some(&observation),
+        )
+        .expect("sandbox-relative paths");
+
+        assert_eq!(paths.base, "sandbox");
+        assert_eq!(paths.workspace, Path::new("workspace"));
+        assert_eq!(paths.trace_path, Path::new("peritus-benchmark/developer-round-0001.trace"));
+        assert_eq!(paths.usage_proxy, Path::new("usage-proxy"));
+        assert_eq!(
+            Path::new("/state/workspaces/model/task-after").join(&paths.trace_path),
+            Path::new(
+                "/state/workspaces/model/task-after/peritus-benchmark/developer-round-0001.trace"
+            )
+        );
     }
 }

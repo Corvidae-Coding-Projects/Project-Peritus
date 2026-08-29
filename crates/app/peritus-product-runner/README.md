@@ -17,6 +17,13 @@ targeted reads, not accepted from model prose. The adapter then joins:
 - a durable task candidate, provider/tool trace, task-level summary, and explicit deliverable
   handoff consumed by the daemon.
 
+Independent review is a fresh D0 developer loop rather than a one-shot completion. It begins with
+an observed workspace listing, reads the authoritative inputs and changed files through a
+read-only tool executor, and only then admits the typed review. The executor rejects write, patch,
+remove, and process calls even if a provider emits an undeclared tool name, so reviewer grounding
+does not grant mutation authority. Malformed or ungrounded reviews receive their exact rejection
+on a fresh bounded attempt.
+
 The crate consumes already resolved provider and managed-workspace capabilities. It emits bounded
 progress and deliverable evidence; it does not own UI, provider login, workspace trust, or Git
 commit/export/discard authority. `Complete` is impossible for an empty or uncovered candidate, a

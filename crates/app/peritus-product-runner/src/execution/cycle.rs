@@ -8,7 +8,7 @@ use super::{
 };
 use crate::{
     ProductRunnerError, ProductRunnerErrorKind, bundle, candidate::CandidateBaseline, design,
-    developer_tools::WorkspaceOwnership, gates, provider, review,
+    developer_tools::WorkspaceOwnership, gates, review, reviewer_turn,
 };
 
 #[derive(Default)]
@@ -23,8 +23,6 @@ pub(super) struct CycleInspection {
     pub(super) evidence: RunEvidence,
     pub(super) conversation_changed: bool,
 }
-
-const MAX_INVALID_REVIEWS: u8 = 3;
 
 pub(super) async fn initial_write(
     input: &ProductRunInput,
@@ -130,34 +128,20 @@ pub(super) async fn inspect_cycle(
         return Ok(CycleInspection { gates: gate_report, evidence, conversation_changed: true });
     }
     let conversation = input.conversation.render();
-    let mut output_attempt = 0_u8;
-    let submission = loop {
-        output_attempt = output_attempt.saturating_add(1);
-        let request = crate::turn::request_name(input.run_id, "reviewer", cycle);
-        let raw_review = provider::complete(
-            input.providers.reviewer.as_ref(),
-            format!("{request}-output-{output_attempt}"),
-            crate::turn::reviewer_system(),
-            crate::turn::reviewer_user(
-                &conversation,
-                &evidence.diff,
-                &evidence.gates,
-                &evidence.review,
-            ),
-            input.provider_cancellation.clone(),
-        )
-        .await?;
-        let review_cycle = state.findings.cycle().saturating_add(1);
-        match review::parse(&raw_review, review_cycle) {
-            Ok(submission) => break submission,
-            Err(_) if output_attempt < MAX_INVALID_REVIEWS => {}
-            Err(error) => return Err(error),
-        }
-    };
+    let review_cycle = state.findings.cycle().saturating_add(1);
+    let submission = reviewer_turn::complete(
+        input,
+        cycle,
+        review_cycle,
+        &conversation,
+        &evidence.diff,
+        &evidence.gates,
+        &evidence.review,
+    )
+    .await?;
     if input.conversation.revision() != state.conversation_revision {
         return Ok(CycleInspection { gates: gate_report, evidence, conversation_changed: true });
     }
-    let review_cycle = state.findings.cycle().saturating_add(1);
     state.findings.admit_review(review_cycle, submission).map_err(|error| {
         ProductRunnerError::new(
             ProductRunnerErrorKind::InvalidModelOutput,

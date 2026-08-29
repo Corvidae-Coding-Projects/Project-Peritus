@@ -20,23 +20,41 @@ use super::{
 
 const MAX_FILE_BYTES: usize = 2 * 1024 * 1024;
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum WorkspaceToolMode {
+    ReadWrite,
+    ReadOnly,
+}
+
 /// Concrete tool executor scoped to one managed workspace.
 pub struct WorkspaceDeveloperTools {
     root: PathBuf,
     grounding: GroundingEvidence,
     ownership: WorkspaceOwnership,
+    mode: WorkspaceToolMode,
 }
 
 impl WorkspaceDeveloperTools {
-    /// Creates one workspace-scoped executor.
+    /// Creates an executor that rejects every mutating or process tool even if a provider emits an
+    /// undeclared call.
     #[must_use]
-    pub fn new(root: PathBuf) -> Self {
+    pub fn read_only(root: PathBuf) -> Self {
         let ownership = WorkspaceOwnership::capture(&root);
-        Self { root, grounding: GroundingEvidence::default(), ownership }
+        Self {
+            root,
+            grounding: GroundingEvidence::default(),
+            ownership,
+            mode: WorkspaceToolMode::ReadOnly,
+        }
     }
 
     pub(crate) fn with_ownership(root: PathBuf, ownership: WorkspaceOwnership) -> Self {
-        Self { root, grounding: GroundingEvidence::default(), ownership }
+        Self {
+            root,
+            grounding: GroundingEvidence::default(),
+            ownership,
+            mode: WorkspaceToolMode::ReadWrite,
+        }
     }
 
     pub const fn grounding(&self) -> &GroundingEvidence {
@@ -59,6 +77,11 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
             "workspace_list" => self.list(&arguments),
             "workspace_search" => self.search(&arguments),
             "workspace_read" => self.read(&arguments),
+            "workspace_write" | "workspace_patch" | "workspace_remove" | "run_command"
+                if self.mode == WorkspaceToolMode::ReadOnly =>
+            {
+                Err(tool("this role has read-only workspace access"))
+            }
             "workspace_write" => self.write(&arguments),
             "workspace_patch" => self.patch(&arguments),
             "workspace_remove" => self.remove(&arguments),

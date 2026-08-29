@@ -9,8 +9,8 @@ use peritus_model_protocol::{
 use peritus_provider_core::ProviderCoreError;
 use serde_json::{Map, Value};
 
-const SYSTEM_PREFIX: &str = "You are the inference backend inside Peritus. Peritus is the sole agent harness and authority for tools, policy, approvals, and conversation state. Claude Code native tools, plugins, hooks, MCP servers, and session state are not the Peritus tool interface. Return only the next assistant turn through the required structured output. A non-empty tool_calls array requests inert host operations; never execute them yourself.\n\n";
-const INPUT_PREFIX: &str = "The following JSON is the complete ordered conversation state owned by Peritus. Tool definitions were moved into the required structured-output schema. The max_output_tokens value is advisory because this runtime exposes no exact output-token control. Return only the next assistant turn.\n\n";
+const SYSTEM_PREFIX: &str = "You are the inference backend inside Peritus. Peritus is the sole agent harness and authority for tools, policy, approvals, and conversation state. Claude Code native tools, plugins, hooks, MCP servers, and session state are not the Peritus tool interface. Each request contains a peritus_tool_protocol catalog. When a declared Peritus tool is needed, do not attempt a Claude Code tool or discuss whether native tools are available. Return the exact declared name and JSON arguments in the required tool_calls array. Peritus will execute the inert request and replay its tool_result on the next inference turn. If no tool call is needed or allowed, return an empty tool_calls array and put the assistant response in content. Never execute host operations yourself.\n\n";
+const INPUT_PREFIX: &str = "The following JSON is the complete ordered conversation state and tool protocol owned by Peritus. The max_output_tokens value is advisory because this runtime exposes no exact output-token control. Return only the next assistant turn through the required structured output.\n\n";
 
 pub(super) struct RuntimeRequest {
     pub system: Vec<u8>,
@@ -22,6 +22,7 @@ pub(super) struct RuntimeRequest {
 
 pub(super) fn encode(request: &ModelRequest) -> Result<RuntimeRequest, ProviderCoreError> {
     validate_controls(request)?;
+    let (schema, allowed_tools, max_calls) = result_schema(request)?;
     let mut system = String::from(SYSTEM_PREFIX);
     let mut messages = Vec::new();
     for message in request.messages() {
@@ -45,14 +46,47 @@ pub(super) fn encode(request: &ModelRequest) -> Result<RuntimeRequest, ProviderC
         ("model", Value::String(request.model().as_str().to_owned())),
         ("max_output_tokens", Value::from(request.options().generation().max_output_tokens())),
         ("messages", Value::Array(messages)),
+        ("peritus_tool_protocol", tool_protocol(request, max_calls)?),
     ]);
     let mut prompt = INPUT_PREFIX.as_bytes().to_vec();
     prompt.extend_from_slice(
         &serde_json::to_vec(&payload)
             .map_err(|_| invalid("Claude runtime transcript serialization failed"))?,
     );
-    let (schema, allowed_tools, max_calls) = result_schema(request)?;
     Ok(RuntimeRequest { system: system.into_bytes(), prompt, schema, allowed_tools, max_calls })
+}
+
+fn tool_protocol(request: &ModelRequest, max_calls: usize) -> Result<Value, ProviderCoreError> {
+    let tools = request
+        .tools()
+        .iter()
+        .map(|tool| {
+            Ok(object([
+                ("name", Value::String(tool.name().as_str().to_owned())),
+                (
+                    "description",
+                    tool.description().map_or(Value::Null, |description| {
+                        Value::String(description.expose_for_wire().to_owned())
+                    }),
+                ),
+                ("arguments_schema", json_value(tool.parameters().canonical_bytes())?),
+            ]))
+        })
+        .collect::<Result<Vec<_>, ProviderCoreError>>()?;
+    Ok(object([
+        ("selection", Value::String(tool_selection(request.tool_choice()))),
+        ("maximum_calls_this_turn", number(max_calls)?),
+        ("tools", Value::Array(tools)),
+    ]))
+}
+
+fn tool_selection(choice: &ToolChoice) -> String {
+    match choice {
+        ToolChoice::Auto => "auto".to_owned(),
+        ToolChoice::None => "none".to_owned(),
+        ToolChoice::Required => "required".to_owned(),
+        ToolChoice::Specific(name) => format!("specific:{}", name.as_str()),
+    }
 }
 
 fn validate_controls(request: &ModelRequest) -> Result<(), ProviderCoreError> {
