@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 723,
+  "next_comment_id": 724,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1269,7 +1269,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T17:59:26.868419652Z",
+      "updated_at": "2026-08-29T18:19:29.360368510Z",
       "labels": [
         "qualification",
         "release"
@@ -1625,6 +1625,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAMosYnXOAPeVGlwGlD0xO8VSTlcHitpsrCaaqlHf+miLhiO2X/revGClKV6iU2qhRwpKf/xDYkY3H/8PXMw/lDg=="
+        },
+        "33c5dca8-79e8-44ff-bc81-6de6392da256": {
+          "display_id": 723,
+          "author": "6ME5",
+          "content": "Implemented and locally qualified the public release boundary: root POSIX and PowerShell bootstraps; checksum-verified native GitHub assets; cached offline-tolerant startup checks; explicit peritus update; bounded streaming downloads; transactional Unix and finish-after-exit Windows upgrades; retained-draft three-platform release workflow; and executable bootstrap smoke including checksum rejection. Verification: release-bootstrap-smoke passed on Linux; focused peritus-launcher/peritus-cli/xtask tests passed; strict affected Clippy passed; Windows cross-target check passed; cargo xtask all passed over 76 packages and 3061 source files; shellcheck, actionlint, rustfmt, and diff checks passed. macOS local cross-check was environment-blocked by the absent Apple C compiler and remains covered by the native hosted runner.",
+          "created_at": "2026-08-29T18:19:29.349852637Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAsC1QV91MOOz0iW2RFzm73vPFFTuEznGqaSoZSptcqAbWqmQ6d/wdapgNVYzHygY5RPNDOB0vNDv0221uC33lDw=="
         },
         "3510adaf-6fff-414a-b85d-a8f3f644e75f": {
           "display_id": 603,
@@ -7254,8 +7263,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T17:59:26.868419652Z",
+    "timestamp": "2026-08-29T18:19:29.360368510Z",
     "agent_id": "6ME5",
-    "agent_seq": 907
+    "agent_seq": 908
   }
 }
