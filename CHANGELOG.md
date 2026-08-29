@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Isolate explicitly named staged inputs until the round that introduces them, and make change
+  reports account for changed, added, removed, and already-satisfied constraints with their literal
+  values so preserved requirements are visibly verified rather than silently omitted (#31)
 - Honor the negotiated provider parallel-tool width in the production developer loop, execute
   batched calls in stable proposal order, report identical full-file writes as unchanged no-ops,
   and preserve exact identifiers, enum-like values, paths, fields, and commands byte-for-byte

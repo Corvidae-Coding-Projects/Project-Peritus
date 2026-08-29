@@ -1245,3 +1245,21 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Disposition: retain the 10/11 result. The general literal-fidelity correction preserves explicit
   identifiers such as `conditional_go` across artifacts, but Peritus does not inject an unpublished
   synonym into one hidden-check location merely to maximize this task.
+
+## HBF-025: staged replanning exposed future input and underreported an unchanged constraint
+
+- Suite and task: HarnessBench 2.0, `059-event-update-replan`.
+- Symptom: the first native run produced correct original and revised schedules and satisfied every
+  scheduling constraint, but round one opened `update_notice.json` before the update was introduced.
+  Its final diff also omitted the literal `11:00` threshold because the original rehearsal already
+  satisfied that constraint, causing the otherwise complete change-report check to fail.
+- Cause: repository grounding did not distinguish explicitly named current-round inputs from
+  adjacent files reserved for later stages. The cross-artifact fidelity rule preserved literals it
+  emitted, but did not require a revision report to account for constraints that caused no mutation.
+- Change: staged workflows now read exact named inputs only when their round introduces them and
+  reconcile them with retained prior artifacts. Change logs, diffs, revision summaries, and replans
+  must record changed, added, removed, and already-satisfied constraints with literal values.
+- Evidence: local report `reports/059-event-update-replan-final.json`; the unchanged rerun discovered
+  but did not open the update notice in round one, passed all nine oracle checks, and scored outcome
+  1.0, process 0.9533, security 1.0, and combined 0.9533 in 369.801 seconds with 24 requests and
+  346,467 tokens. The focused embedded-workflow regression passes.

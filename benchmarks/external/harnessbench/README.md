@@ -225,6 +225,13 @@ one cycle per day with 10/11 checks, outcome 0.9375, process 0.9233, security 1.
 34 requests, 493,235 tokens, and 694.419 seconds. The remaining oracle miss requires the literal
 word `stakeholder` inside `final_plan.json` even though that file records the sales/privacy conflict
 and `project_log.md` explicitly calls it a stakeholder conflict; no task-specific wording was added.
+Task 059 completed both event-planning rounds natively. Its first run satisfied every scheduling
+constraint but opened a future-round input early and omitted the literal `11:00` threshold from a
+diff that described the unchanged rehearsal. The production workflow now isolates exact named
+inputs by stage and requires revision reports to account explicitly for every introduced constraint,
+including already-satisfied ones. The unchanged rerun did not read the update notice in round one,
+passed all nine oracle checks, and scored outcome 1.0, process 0.9533, security 1.0, and combined
+0.9533 in 369.801 seconds using 24 provider requests and 346,467 tokens.
 
 HarnessBench chooses a result directory from the last observed provider model and may move a
 multi-provider sandbox after the native adapter exits. Invocation evidence schema 4 therefore

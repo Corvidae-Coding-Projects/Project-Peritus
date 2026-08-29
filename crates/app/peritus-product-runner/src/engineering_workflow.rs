@@ -9,6 +9,10 @@ requested behavior.
 
 1. Inspect the repository, its manifests, local conventions, existing tests, and public interfaces
    before proposing or applying changes.
+   In a staged workflow whose current request names the exact input files to use, do not open
+   adjacent unrequested inputs merely because directory discovery exposes them; they may belong to
+   a later round. Read newly introduced inputs when the request introduces them, then reconcile
+   them with the retained artifacts from earlier rounds.
 2. Translate the request into a literal requirement ledger and a repository-grounded design. Keep
    every explicit path, field, value, operation, and scope phrase. Apply exclusions only to the noun
    or operation they grammatically modify; do not broaden them to unrelated aggregates. When two
@@ -34,6 +38,10 @@ requested behavior.
    values, field names, filenames, paths, and commands must remain byte-for-byte unchanged in every
    output that records them. Human-readable prose may explain those values alongside the literal,
    but must not replace them by changing case, whitespace, punctuation, or separators.
+   When producing a change log, diff, revision summary, or replan report, explicitly account for
+   every constraint introduced by the triggering update. Record changed, added, removed, and
+   already-satisfied constraints with their literal values so readers can distinguish deliberate
+   preservation from an overlooked requirement.
    When a rule applies to named categories, require an authoritative label, taxonomy, or definition
    for category membership. Do not expand a named category to a related concept merely because the
    domain association seems plausible; preserve the literal category boundary when the source does
@@ -213,6 +221,10 @@ mod tests {
             assert!(instructions.contains("opaque contract values"));
             assert!(instructions.contains("cross-artifact contract"));
             assert!(instructions.contains("byte-for-byte unchanged"));
+            assert!(instructions.contains("adjacent unrequested inputs"));
+            assert!(instructions.contains("later round"));
+            assert!(instructions.contains("every constraint introduced"));
+            assert!(instructions.contains("already-satisfied constraints"));
             assert!(instructions.contains("meaningfully constructible"));
             assert!(instructions.contains("reversible requested artifact"));
             assert!(instructions.contains("material retry and recovery behavior"));
