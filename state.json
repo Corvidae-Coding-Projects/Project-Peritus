@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 625,
+  "next_comment_id": 626,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T09:15:10.770236441Z",
+      "updated_at": "2026-08-29T09:17:34.368159895Z",
       "labels": [
         "qualification",
         "release"
@@ -1639,6 +1639,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAR/5Wj/xkROT80WGB1or/uqbwwW5bZpj1zLNjTZOn3z2x0qjZKoIOQz8skrS4G7kQ54yxGPSkmKVE6B/lIj1XAg=="
+        },
+        "82d77893-0b34-4a42-b47f-fef117969a72": {
+          "display_id": 625,
+          "author": "6ME5",
+          "content": "HarnessBench task 071 completed unchanged in 98.306s with all actions/order IDs/priorities/escalation teams/template safety correct and process/security 1.0. Outcome 0.83 is retained: customer_reply_key values are required to be stable snake_case but their exact hidden strings are never published, and T-1006 directly matches delivered-status DISPUTE-1 while hidden ground truth demands CONFLICT-1 as primary. Local report: reports/071-ecommerce-support-routing-final.json.",
+          "created_at": "2026-08-29T09:17:34.365658897Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA3pQSfeL3/dLzA8eABCu7wa6y7CAUV5n571XaD1NHPtkw2g3GF1sYsfd6uhkdUZ24bZirmYyxGZl9kV4bGaYKDA=="
         },
         "841a380b-780a-4066-9128-da891f9d4b81": {
           "display_id": 617,
@@ -6377,8 +6386,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T09:15:10.770236441Z",
+    "timestamp": "2026-08-29T09:17:34.368159895Z",
     "agent_id": "6ME5",
-    "agent_seq": 806
+    "agent_seq": 807
   }
 }
