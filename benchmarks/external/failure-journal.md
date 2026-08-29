@@ -627,6 +627,40 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   cycle with no findings and `success: true`. The run also recovered automatically from an initial
   five-minute provider stall without changing the workspace.
 
+## HBF-010: manifestless Node tests were absent from exact-target evidence
+
+- Suite and task: HarnessBench 2.0, `041-frontend-state-bug`.
+- Symptom: the first run changed only `cartState.js`, passed the supplied Node test and all hidden
+  state invariants, preserved the test file, and scored outcome 1.0. Native acceptance still ended
+  `success: false` because its deterministic report contained only general artifact checks; the
+  reviewer kept the missing Node test evidence open through both allowed fix cycles.
+- Cause: exact-target discovery recognized Node projects only through `package.json`. This fixture
+  intentionally consists of a CommonJS module and its adjacent executable `cartState.test.js`, so
+  discovery walked upward until the benchmark's artifact marker claimed the source file.
+- Change: changed JavaScript, CommonJS, or module-JavaScript files now bind to their nearest
+  directory containing conventional adjacent `*.test.*` or `*.spec.*` files when no Node manifest
+  exists. Deterministic acceptance executes every such test directly with Node in stable filename
+  order. The regression reproduces the nested source directory beneath an artifact workspace.
+- Before evidence: local report `reports/041-frontend-state-bug-pre-manifestless-node.json`;
+  outcome 1.0, process 0.78, security 1.0, combined 0.78, but native `success: false` with an open
+  high-severity missing-test-evidence finding after two review cycles.
+- After evidence: local report `reports/041-frontend-state-bug-post-manifestless-node.json`;
+  outcome 0.9962 (`excellent`), process 0.9233, security 1.0, combined 0.9198, and 275.036 seconds.
+  The native report runs `(cd in/cart-ui/src && node cartState.test.js)`, records the passing output,
+  and completes one review cycle with no findings and `success: true`.
+
+## HBI-021: task 041 rewards one unpublished schema-version field spelling
+
+- Suite and task: HarnessBench 2.0, `041-frontend-state-bug`.
+- Symptom: the unchanged oracle passes the supplied tests, every hidden state invariant,
+  implementation quality, and test integrity, but the aggregate outcome is 0.9962 rather than 1.0.
+- Cause: implementation quality searches for the exact source token `schemaVersion`. The prompt
+  requires persisted carts to carry a schema version but does not prescribe that identifier. The
+  accepted implementation uses `version: 2`, restores that current shape, migrates legacy v1
+  payloads, and rejects unsupported versions.
+- Disposition: retain the unchanged excellent score. Do not rename a correct public persistence
+  field solely to match an unpublished source substring.
+
 ## HBF-005: a fixer deleted evaluator-owned evidence
 
 - Suite and task: HarnessBench 2.0, `022-local-rest-api-summary`.

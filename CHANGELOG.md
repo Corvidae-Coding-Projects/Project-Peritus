@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Discover manifestless CommonJS and JavaScript modules through adjacent conventional test files
+  and execute those tests directly in stable order, so exact-target acceptance does not fall back
+  to general artifact checks merely because `package.json` is absent (#31)
 - Discover conventional Python test projects even when they have no `pyproject.toml` or
   `pytest.ini`, represent their absent manifest honestly, and independently compile and test the
   nearest affected package instead of accepting only general artifact checks (#31)
@@ -80,9 +83,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
-- Exercise the pinned, unchanged HarnessBench suite through task 040, retaining task 039's excellent
-  0.9673 repository-architecture result and task 040's complete 1.0 mutation-tested Python result,
-  with product defects kept separate from hidden benchmark substring mismatches (#31)
+- Exercise the pinned, unchanged HarnessBench suite through task 041, retaining task 039's excellent
+  0.9673 architecture result, task 040's complete 1.0 mutation-tested Python result, and task 041's
+  0.9962 immutable-state result, with product defects kept separate from hidden lexical checks (#31)
 - Retain the exact last product-run diff, gates, review ledger, summary, and durable finding state
   beside every external benchmark invocation so a strict internal rejection remains independently
   diagnosable after the upstream scorer exits; unchanged HarnessBench task 038 proves this evidence

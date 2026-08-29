@@ -4,7 +4,9 @@ use std::path::{Path, PathBuf};
 
 use crate::{GateError, GateErrorKind, GateRecoveryAction};
 
-use super::plan::{AffectedProject, GateCommandSpec, PRODUCT_MAX_SOURCE_LINES, ProjectKind};
+use super::plan::{
+    AffectedProject, GateCommandSpec, PRODUCT_MAX_SOURCE_LINES, ProjectKind, is_node_test_file,
+};
 
 pub(super) fn commands_for(
     workspace_root: &Path,
@@ -85,7 +87,10 @@ fn node_commands(
     workspace_root: &Path,
     project: &AffectedProject,
 ) -> Result<Vec<GateCommandSpec>, GateError> {
-    let bytes = std::fs::read(workspace_root.join(required_manifest(project)?))
+    let Some(manifest) = project.manifest() else {
+        return conventional_node_commands(workspace_root, project);
+    };
+    let bytes = std::fs::read(workspace_root.join(manifest))
         .map_err(|_| planning("affected Node manifest is unreadable"))?;
     let package: serde_json::Value = serde_json::from_slice(&bytes)
         .map_err(|_| planning("affected Node manifest is invalid"))?;
@@ -97,6 +102,25 @@ fn node_commands(
         }
     }
     Ok(commands)
+}
+
+fn conventional_node_commands(
+    workspace_root: &Path,
+    project: &AffectedProject,
+) -> Result<Vec<GateCommandSpec>, GateError> {
+    let entries = std::fs::read_dir(workspace_root.join(project.root()))
+        .map_err(|_| planning("manifestless Node project root is unreadable"))?;
+    let mut tests = entries
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| is_node_test_file(path))
+        .filter_map(|path| path.file_name().and_then(|value| value.to_str()).map(str::to_owned))
+        .collect::<Vec<_>>();
+    tests.sort();
+    if tests.is_empty() {
+        return Err(planning("manifestless Node project has no adjacent test file"));
+    }
+    Ok(tests.into_iter().map(|test| spec("Node tests", "node", vec![test], project)).collect())
 }
 
 fn python_commands(workspace_root: &Path, project: &AffectedProject) -> Vec<GateCommandSpec> {

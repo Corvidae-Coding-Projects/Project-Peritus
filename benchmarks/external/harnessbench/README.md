@@ -73,7 +73,7 @@ temporary files through its documented `--image` option.
 
 ## Current qualification progress
 
-The live baseline has exercised tasks 001 through 040 against the pinned, unchanged suite. Tasks
+The live baseline has exercised tasks 001 through 041 against the pinned, unchanged suite. Tasks
 022, 023, and 026 complete with oracle outcome 1.0. Tasks 021, 024, 025, 027, and 028 retain lower
 unchanged outcomes because of documented hidden taxonomies, invalid calendar ground truth,
 unmatchable normalization, or brittle unpublished phrase checks. Task 029 similarly retains a
@@ -104,7 +104,11 @@ Task 040 initially produced a perfect external result while native acceptance co
 trust writer-run tests that were absent from deterministic gate evidence. Gate discovery now
 recognizes conventional Python `tests/` projects without requiring an invented manifest path. An
 unchanged rerun independently compiled the package, passed all 24 tests, completed review with no
-findings, and retained outcome 1.0 with process and combined score 0.9367.
+findings, and retained outcome 1.0 with process and combined score 0.9367. Task 041 found the same
+verification gap for a manifestless CommonJS module. Adjacent `*.test.js` and `*.spec.js` files now
+form a deterministic Node test contract without `package.json`; the unchanged rerun passed its
+native Node gate and review in one cycle. Its 0.9962 (`excellent`) outcome misses only a hidden
+`schemaVersion` spelling while correctly persisting the required version as `version: 2`.
 Product failures and benchmark defects are kept separate in the
 [external failure journal](../failure-journal.md); generated workspaces, native traces, and full
 result JSON remain in the configured external state directory rather than Git.
