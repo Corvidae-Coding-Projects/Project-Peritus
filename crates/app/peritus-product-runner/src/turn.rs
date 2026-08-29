@@ -145,13 +145,13 @@ pub fn reviewer_user(
         format!("\n\nHarness correction from the previous rejected review:\n{value}")
     });
     format!(
-        "Conversation:\n{transcript}\n\nCurrent diff:\n{diff}\n\nExact-target checks:\n{gates}\n\nConserved finding history:\n{prior}\n\nBegin with a workspace_list host-function call, then independently inspect the authoritative workspace inputs and exact changed files through further read-only tool calls before returning the typed review.{correction}"
+        "Conversation:\n{transcript}\n\nCurrent diff:\n{diff}\n\nExact-target checks:\n{gates}\n\nConserved finding history:\n{prior}\n\nBegin with a workspace_list host-function call, then independently inspect the authoritative workspace inputs and exact changed files through further read-only tool calls before returning the typed review. For every conserved finding, read each cited current workspace file before repeating the finding; prior diff and finding text can predate fixer writes and do not prove that a defect remains.{correction}"
     )
 }
 
 fn writer_system(role: &str) -> String {
     format!(
-        "You are the {role} developer in a production coding harness. Use the workspace tools for a real inspect, search, edit, run, test, and retry loop. Read the repository before changing it. Make substantial maintainable changes and preserve unrelated work. Run focused checks yourself while iterating; exact acceptance gates run independently after your turn. Batch independent tool calls in the same response instead of serializing avoidable round trips. If the workspace declares itself an artifact workspace and the request asks only for generated outputs, use a bounded ephemeral producer and independently verify the artifacts and required effects; do not add package scaffolding or retained source merely to host the run. Do not commit or otherwise change Git HEAD; the product's explicit completion handoff owns commit creation. Do not stop after explaining code and do not return whole-file replacement plans in JSON. When the implementation is ready for independent gates, return only {{\"kind\":\"complete\",\"summary\":\"what this task-level deliverable now does\",\"run_instructions\":\"exact command or concise steps for the user to run it\"}}. Return {{\"kind\":\"question\",\"message\":\"one direct question\"}} only when a material user choice cannot be sensibly inferred and no useful reversible requested result can be produced while naming the limitation. Do not invent obscure concerns.\n\n{}",
+        "You are the {role} developer in a production coding harness. Use the workspace tools for a real inspect, search, edit, run, test, and retry loop. Every fresh writer or fixer invocation starts with no repository-grounding credit: first call workspace_list, then workspace_read on at least one observed file, and read each existing target before changing it. Design text, prior-cycle reads, findings, and diff text do not replace these current-turn tool observations. Do not call workspace_write, workspace_patch, workspace_remove, or run_command before that sequence. Harness-owned peritus-internal gates are unavailable as workspace commands and run independently after your turn. Make substantial maintainable changes and preserve unrelated work. Run focused checks yourself while iterating; exact acceptance gates run independently after your turn. Batch independent tool calls in the same response instead of serializing avoidable round trips. If the workspace declares itself an artifact workspace and the request asks only for generated outputs, use a bounded ephemeral producer and independently verify the artifacts and required effects; do not add package scaffolding or retained source merely to host the run. Do not commit or otherwise change Git HEAD; the product's explicit completion handoff owns commit creation. Do not stop after explaining code and do not return whole-file replacement plans in JSON. When the implementation is ready for independent gates, return only {{\"kind\":\"complete\",\"summary\":\"what this task-level deliverable now does\",\"run_instructions\":\"exact command or concise steps for the user to run it\"}}. Return {{\"kind\":\"question\",\"message\":\"one direct question\"}} only when a material user choice cannot be sensibly inferred and no useful reversible requested result can be produced while naming the limitation. Do not invent obscure concerns.\n\n{}",
         crate::engineering_workflow::developer(),
     )
 }
@@ -291,6 +291,10 @@ mod tests {
     fn writer_batches_tools_and_respects_artifact_workspaces() {
         let prompt = writer_system("writer");
         assert!(prompt.contains("Batch independent tool calls"));
+        assert!(prompt.contains("Every fresh writer or fixer invocation"));
+        assert!(prompt.contains("read each existing target"));
+        assert!(prompt.contains("prior-cycle reads"));
+        assert!(prompt.contains("peritus-internal gates are unavailable"));
         assert!(prompt.contains("bounded ephemeral producer"));
         assert!(prompt.contains("do not add package scaffolding"));
         assert!(prompt.contains("invented allowlist"));
@@ -302,5 +306,14 @@ mod tests {
         assert!(prompt.contains("Never make tests pass by injecting a substitute"));
         assert!(prompt.contains("same-workload baseline"));
         assert!(prompt.contains("use profiling when the cause is not already evident"));
+    }
+
+    #[test]
+    fn reviewer_rechecks_conserved_finding_locations_after_fixes() {
+        let prompt = reviewer_user("task", "diff", "gates", "finding", None);
+
+        assert!(prompt.contains("For every conserved finding"));
+        assert!(prompt.contains("read each cited current workspace file"));
+        assert!(prompt.contains("can predate fixer writes"));
     }
 }

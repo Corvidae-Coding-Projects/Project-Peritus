@@ -13,6 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- State the enforced current-turn grounding sequence in writer/fixer prompts and provider-facing
+  tool descriptions, identify harness-owned internal gates as unavailable workspace commands, and
+  require reviewers to reread every conserved finding location before repeating it after a fix
+  (#31)
 - Keep advisory findings visible without starting fixer cycles, reject circular resolution of
   ambiguous trailing modifiers and unsupported expansion of named categories, and conserve one
   stable review finding when later reviewers refine its free-form location evidence, including
@@ -113,6 +117,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Exercise unchanged HarnessBench task 055 before and after the grounding-protocol correction,
+  preserving 24/24 output checks while moving from three cycles, 48 requests, 808,266 tokens, and
+  process 0.76 to one cycle, 17 requests, 306,944 tokens, and process 0.9867 (#31)
 - Exercise unchanged HarnessBench tasks 053 and 054 through native first-cycle transaction-anomaly
   and budget-variance runs, passing all 29 and 34 oracle checks respectively while retaining process
   efficiency deductions for later longitudinal analysis instead of adding task-specific behavior

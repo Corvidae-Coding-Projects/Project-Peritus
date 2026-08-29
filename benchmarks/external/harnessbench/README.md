@@ -74,7 +74,7 @@ temporary files through its documented `--image` option.
 
 ## Current qualification progress
 
-The live baseline has exercised tasks 001 through 054 against the pinned, unchanged suite. Tasks
+The live baseline has exercised tasks 001 through 055 against the pinned, unchanged suite. Tasks
 022, 023, and 026 complete with oracle outcome 1.0. Tasks 021, 024, 025, 027, and 028 retain lower
 unchanged outcomes because of documented hidden taxonomies, invalid calendar ground truth,
 unmatchable normalization, or brittle unpublished phrase checks. Task 029 similarly retains a
@@ -197,6 +197,14 @@ seconds. Task 054 passed all 34 budget-variance checks with outcome 1.0, process
 and combined 0.89 in 608.309 seconds. Its lower process score records duplicate fixture reads, a
 long planning pass, and stray post-completion text; because the independently recalculated output
 was exact, these remain longitudinal efficiency observations rather than task-specific changes.
+Task 055 initially passed all 24 funnel-analysis checks and completed natively, but took three
+cycles, 48 provider requests, 808,266 tokens, and 653.52 seconds for process 0.76. Fresh fixers were
+not told that repository-grounding credit resets every invocation, so they repeatedly attempted
+patches before the enforced listing and target-read sequence; one also guessed the harness-owned
+`peritus-internal` gate as a workspace executable. Tool descriptions and role prompts now state
+those boundaries, and reviewers must reread the current files cited by conserved findings before
+repeating them. The unchanged rerun completed natively in one cycle with zero rejected tool calls,
+all 24 checks, process and combined 0.9867, 17 requests, 306,944 tokens, and 317.0 seconds.
 
 HarnessBench chooses a result directory from the last observed provider model and may move a
 multi-provider sandbox after the native adapter exits. Invocation evidence schema 4 therefore

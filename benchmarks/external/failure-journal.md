@@ -1116,6 +1116,38 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   admission, retained material blockers, location-insensitive identity, location evidence updates,
   finding conservation, and production fixer confirmation. Strict affected-crate Clippy passes.
 
+## HBF-023: fresh fixers were not told the enforced grounding sequence
+
+- Suite and task: HarnessBench 2.0, `055-funnel-dropoff-analysis`.
+- Symptom: independent review correctly found one cohort calculation error, but each fresh fixer
+  first attempted a patch before satisfying the host's listing and targeted-read requirements. A
+  later fixer also tried to invoke the harness-owned `peritus-internal` exact gate as though it were
+  a workspace executable. One review repeated a conserved finding without rereading its cited
+  output files after the previous fixer changed them. The run still completed natively with all 24
+  oracle checks, but required three cycles, 48 requests, 808,266 tokens, and 653.52 seconds, with a
+  process score of 0.76 and eight rejected tool calls.
+- Cause: deterministic grounding enforcement was correct, but provider-facing tool descriptions
+  and the developer prompt only said to read before changing. They did not say that every fresh
+  writer/fixer invocation starts without grounding credit, or name the exact listing, repository
+  read, and existing-target read sequence. Reviewer instructions allowed prior diff and finding
+  text to substitute for rereading a conserved finding's current cited files. The command tool did
+  not identify `peritus-internal` as a harness-owned gate unavailable inside the workspace.
+- Change: writer/fixer prompts and tool descriptions now state the complete current-turn grounding
+  sequence while leaving executor enforcement unchanged. Existing targets must still be read
+  before mutation. The command description identifies harness-owned internal gates as unavailable,
+  and reviewers must read every current cited file before repeating a conserved finding after a
+  fixer turn.
+- Before evidence: local report `reports/055-funnel-dropoff-analysis-final.json`; native success
+  `true`, 24/24 checks, outcome 1.0, process 0.76, security 1.0, combined 0.76, three review cycles,
+  48 requests, 808,266 tokens, and 653.52 seconds.
+- After evidence: local report
+  `reports/055-funnel-dropoff-analysis-post-grounding-protocol.json`; native success `true`, 24/24
+  checks, outcome 1.0, process 0.9867, security 1.0, combined 0.9867, one review cycle, zero rejected
+  tool calls, 17 requests, 306,944 tokens, and 317.0 seconds.
+- Regression evidence: 44 focused product-runner unit and integration tests pass, including the
+  provider-facing grounding protocol and conserved-location reread requirements. Strict affected-
+  crate Clippy passes.
+
 ## HBI-027: HarnessBench relocates mixed-model sandboxes without rewriting earlier paths
 
 - Suite and task: HarnessBench 2.0, first visible after tool-capable review in

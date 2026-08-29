@@ -10,7 +10,7 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
     definitions_from(&[
         (
             "workspace_list",
-            "List files and directories below one workspace-relative path.",
+            "List files and directories below one workspace-relative path. Call this first in every fresh writer or fixer turn; mutation and process tools remain locked until a successful listing and a targeted file read.",
             r#"{"additionalProperties":false,"properties":{"depth":{"type":"integer"},"path":{"type":"string"}},"type":"object"}"#,
         ),
         (
@@ -20,17 +20,17 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
         ),
         (
             "workspace_read",
-            "Read a bounded line range from one workspace-relative text file.",
+            "Read a bounded line range from one workspace-relative text file. Call this after workspace_list and read the exact current target before changing an existing file.",
             r#"{"additionalProperties":false,"properties":{"end_line":{"type":"integer"},"path":{"type":"string"},"start_line":{"type":"integer"}},"required":["path"],"type":"object"}"#,
         ),
         (
             "workspace_write",
-            "Create or completely replace one workspace-relative text file.",
+            "Create or completely replace one workspace-relative text file after current-turn workspace_list and workspace_read grounding. An existing target must itself have been read first.",
             r#"{"additionalProperties":false,"properties":{"content":{"type":"string"},"path":{"type":"string"}},"required":["content","path"],"type":"object"}"#,
         ),
         (
             "workspace_patch",
-            "Replace an exact text fragment in one workspace-relative file. By default the old fragment must occur exactly once.",
+            "Replace an exact text fragment in one workspace-relative file after listing the workspace and reading this exact target in the current turn. By default the old fragment must occur exactly once.",
             r#"{"additionalProperties":false,"properties":{"new":{"type":"string"},"old":{"type":"string"},"path":{"type":"string"},"replace_all":{"type":"boolean"}},"required":["new","old","path"],"type":"object"}"#,
         ),
         (
@@ -40,7 +40,7 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
         ),
         (
             "run_command",
-            "Run a non-destructive structured executable and argv in the managed workspace; use it to build, test, lint, inspect Git, and observe failures. Use workspace_remove for intentional file deletion.",
+            "Run a non-destructive structured executable and argv after current-turn workspace_list and workspace_read grounding; use it to build, test, lint, inspect Git, and observe failures. Harness-owned peritus-internal gates are unavailable here and run independently after the turn. Use workspace_remove for intentional file deletion.",
             r#"{"additionalProperties":false,"properties":{"args":{"items":{"type":"string"},"type":"array"},"cwd":{"type":"string"},"program":{"type":"string"}},"required":["args","program"],"type":"object"}"#,
         ),
     ])
@@ -98,4 +98,27 @@ fn protocol(error: &peritus_model_protocol::ProtocolError) -> ProductRunnerError
         "construct developer tool catalog",
         error.to_string(),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mutating_catalog_declares_fresh_grounding_protocol() {
+        let tools = definitions().expect("tool definitions");
+        let description = |name: &str| {
+            tools
+                .iter()
+                .find(|tool| tool.name().as_str() == name)
+                .and_then(ToolDefinition::description)
+                .map(BoundedText::expose_for_wire)
+                .expect("tool description")
+        };
+
+        assert!(description("workspace_list").contains("Call this first"));
+        assert!(description("workspace_read").contains("exact current target"));
+        assert!(description("workspace_patch").contains("in the current turn"));
+        assert!(description("run_command").contains("peritus-internal"));
+    }
 }

@@ -193,16 +193,18 @@ evidence, and obtaining an H4 `Ready` decision. Until that evidence exists, Peri
 `NotReadyForProduction` by construction.
 
 External production qualification is active against the pinned, unchanged 106-task HarnessBench
-suite. Tasks 001 through 054 have run sequentially with full local reports and failure diagnosis;
+suite. Tasks 001 through 055 have run sequentially with full local reports and failure diagnosis;
 task 051 passed all 21 checks cleanly, and the latest task 052 run passed all 17 external checks
 after exercising ambiguity handling, category boundaries, provider-stall recovery, and finding
 conservation. The source now treats advisory review as nonblocking and conserves stable finding
 titles across updated location evidence. The final unchanged task 052 rerun completed natively
 against finding identity version 2 with outcome 1.0, process 0.93, security 1.0, and combined 0.93.
 Tasks 053 and 054 then completed natively on their first cycles with every transaction-analysis
-and budget-variance oracle check passing. Terminal-Bench 2.0, the complete professional-capability
-audit, documentation normalization, release-installer qualification, and final hosted-runner
-closure remain required before production readiness.
+and budget-variance oracle check passing. Task 055 exposed avoidable fresh-fixer grounding
+rejections; after making that protocol explicit without weakening enforcement, its unchanged rerun
+passed all 24 checks natively in one cycle with process 0.9867. Terminal-Bench 2.0, the complete
+professional-capability audit, documentation normalization, release-installer qualification, and
+final hosted-runner closure remain required before production readiness.
 
 Gate A is the current merge authority: ordinary Rust checks, architecture and API policy,
 supply-chain policy, pinned toolchains, full Verus verification, and verified release builds must
