@@ -82,6 +82,8 @@ fn manifestless_python_tests_use_their_nearest_conventional_project() {
     std::fs::create_dir_all(project.join("ordercalc")).expect("package directory");
     std::fs::create_dir_all(project.join("tests")).expect("test directory");
     std::fs::write(project.join("ordercalc/__init__.py"), "").expect("package marker");
+    std::fs::write(project.join("client.py"), "def convert():\n    pass\n")
+        .expect("production module");
     std::fs::write(project.join("tests/test_pricing.py"), "def test_price():\n    pass\n")
         .expect("test module");
     std::fs::write(project.join("tests/TEST_INTENT.md"), "pricing contract\n")
@@ -90,6 +92,7 @@ fn manifestless_python_tests_use_their_nearest_conventional_project() {
     let plan = TargetGatePlan::discover(
         temporary.path(),
         vec![
+            PathBuf::from("in/ordercalc/client.py"),
             PathBuf::from("in/ordercalc/tests/TEST_INTENT.md"),
             PathBuf::from("in/ordercalc/tests/test_pricing.py"),
         ],

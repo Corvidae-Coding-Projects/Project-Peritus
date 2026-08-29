@@ -242,11 +242,11 @@ fn nearest_projects(workspace_root: &Path, changed: &Path) -> Vec<AffectedProjec
 
 fn conventional_python_tests(absolute: &Path, relative: &Path, changed: &Path) -> bool {
     let tests = absolute.join("tests");
-    if !tests.is_dir()
-        || !changed.strip_prefix(relative).is_ok_and(|within| {
+    let belongs_to_python = changed.extension().is_some_and(|extension| extension == "py")
+        || changed.strip_prefix(relative).is_ok_and(|within| {
             within.components().next().is_some_and(|part| part.as_os_str() == "tests")
-        })
-    {
+        });
+    if !tests.is_dir() || !belongs_to_python {
         return false;
     }
     std::fs::read_dir(tests).is_ok_and(|entries| {

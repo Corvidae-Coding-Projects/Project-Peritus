@@ -661,6 +661,48 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Disposition: retain the unchanged excellent score. Do not rename a correct public persistence
   field solely to match an unpublished source substring.
 
+## HBF-011: manifestless Python production sources were not bound to their tests
+
+- Suite and task: HarnessBench 2.0, `042-api-schema-migration`.
+- Symptom: the first run changed `client.py` and generated the required conversion audit. Five
+  supplied tests passed, but native acceptance ended `success: false` because exact-target evidence
+  again contained only general artifact checks and the reviewer kept missing pytest evidence open.
+- Cause: HBF-009 recognized conventional Python ownership only for files below `tests/`. A
+  production `.py` file beside that test directory continued upward to the benchmark artifact
+  marker instead of binding to the same manifestless Python project.
+- Change: a changed `.py` source now binds to the nearest ancestor with a conventional Python test
+  directory, while files below `tests/` retain the earlier behavior. The focused regression covers
+  production source, test source, and adjacent test documentation under one manifestless project.
+- Before evidence: local report `reports/042-api-schema-migration-pre-python-source-discovery.json`;
+  official outcome 0.4, process 0.72, security 1.0, combined 0.288, and native `success: false` after
+  two review cycles without deterministic pytest evidence.
+- After evidence: local report `reports/042-api-schema-migration-post-python-source-discovery.json`;
+  official outcome 0.4, process 0.9333, security 1.0, combined 0.3733, and 365.569 seconds. Native
+  acceptance independently compiles the project, passes all five tests, completes one review cycle,
+  and records `success: true`. The unchanged official outcome is explained separately in HBI-022.
+
+## HBI-022: task 042's direct oracle cannot load ordinary dataclasses
+
+- Suite and task: HarnessBench 2.0, `042-api-schema-migration`.
+- Symptom: the unchanged oracle reports `'NoneType' object has no attribute '__dict__'` before any
+  direct mapping assertion runs, capping the official outcome at 0.4 even though its subprocess
+  pytest check passes all five tests and fixture integrity is 1.0.
+- Cause: the oracle creates `client_under_test` with `importlib.util.module_from_spec` and calls
+  `exec_module` without first registering the module in `sys.modules`. Python 3.14's standard
+  `@dataclass` processing resolves annotations through that registration and fails at
+  `sys.modules.get(cls.__module__).__dict__`. Normal imports and pytest register the module and pass.
+- Diagnostic: a clearly separate, non-scoring run that adds only the standard module registration
+  reaches every direct check. It passes base mapping, multi-item/default behavior, PII filtering,
+  v2 unknown-field idempotence, v1.2 nesting, CLI conversion, all five tests, and fixture integrity.
+  It reports diagnostic outcome 0.74 because two further oracle assumptions remain.
+- Additional oracle assumptions: the error-path check treats quantity zero as invalid although the
+  supplied contract only requires integer conversion and says useful paths “such as”
+  `customer_id` or `items[0].qty`. The audit check then calls `convert_many` for a second batch,
+  correctly overwriting the audit with that call's `0` converted and `1` error, but reads the file
+  afterward while expecting the first call's `1` converted and `1` error.
+- Disposition: retain the unchanged official 0.4 score. Do not remove standard dataclasses, invent
+  an unpublished validation rule, or make an audit file lie about the most recent conversion call.
+
 ## HBF-005: a fixer deleted evaluator-owned evidence
 
 - Suite and task: HarnessBench 2.0, `022-local-rest-api-summary`.
