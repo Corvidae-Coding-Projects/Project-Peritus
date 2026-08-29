@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 769,
+  "next_comment_id": 770,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T23:44:00.334312890Z",
+      "updated_at": "2026-08-29T23:48:07.282062324Z",
       "labels": [
         "qualification",
         "release"
@@ -2836,6 +2836,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAVGMMkgx1EhlCNB8XbFzd1Revi6Pw6zv/wdELtMExJ5GBH3mH1mBgs+UZ3dbMPLMgDeX7k+E0YlCsZArJJP8zCA=="
+        },
+        "ccbc4f60-b08c-4837-b393-4e9d4e149648": {
+          "display_id": 769,
+          "author": "6ME5",
+          "content": "[action] Final report must include benchmark integrity appendix: retained gotcha results, published-vs-hidden expectation, why score-only winning would require cheating, refused shortcuts, and separate real Peritus defects from model/provider/benchmark limitations",
+          "created_at": "2026-08-29T23:48:07.279332068Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAF1XvsYz7sX5JS4IoH2pEalE60awYVaD9EWFbhhY9IA1s1fd6yBxYZUtuWMRpOpshifcjU9zDa4uGwYR6gzWrAQ=="
         },
         "cdbcdb79-eb14-4d11-a1d8-8b0f9cd8f308": {
           "display_id": 622,
@@ -7673,8 +7682,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T23:44:00.334312890Z",
+    "timestamp": "2026-08-29T23:48:07.282062324Z",
     "agent_id": "6ME5",
-    "agent_seq": 956
+    "agent_seq": 957
   }
 }
