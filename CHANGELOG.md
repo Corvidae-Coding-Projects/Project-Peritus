@@ -13,13 +13,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Preserve declared aggregate semantics when a separate exclusion or adjustment ledger lacks
+  record-level membership and metric effects; the workflow, developer, and reviewer now require an
+  authoritative schema or reconstructible join before arithmetic changes and treat unresolved
+  provenance as advisory, letting unchanged HarnessBench task 089 pass all 18 checks (#31)
 - Require external pagination and retry loops to prove bounded forward progress, reject repeated
   page or cursor tokens, retry only declared transient failures, and surface permanent client errors
   immediately; unchanged HarnessBench task 088 now passes hidden compatibility instead of timing
   out in a repeated-cursor loop (#31)
-- Derive nested Cargo manifest expectations with host-native path semantics in the gate-planner
-  regression test, keeping the same structured command behavior while allowing the Windows Gate A
-  and Foundation Rust suites to validate their native backslash argument (#31)
+- Derive nested Cargo manifest expectations with host-native path semantics and compare structured
+  list/search JSON plus image manifests without Unix-only separator assumptions, keeping production
+  behavior unchanged while allowing Windows Gate A and Foundation suites to validate native paths
+  (#31)
 - Map every explicitly requested regression behavior to a direct repository test and assertion in
   the production workflow, writer skill, and independent reviewer; unchanged HarnessBench task 087
   now adds the previously missing descending-sort regression and improves from good to excellent
@@ -149,6 +154,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Exercise unchanged HarnessBench task 089 across aggregate A/B metrics, exact exclusions,
+  statistical testing, and caveat reporting, improving outcome/process/security/combined from
+  0.9524/0.8633/1.0/0.8222 to 1.0/0.9933/1.0/0.9933 after a general provenance-grounding fix (#31)
 - Exercise unchanged HarnessBench task 088 against both generations of a live local API contract,
   replacing an unbounded repeated-cursor timeout with exact normalized results, bounded 429 retries,
   immediate 400 errors, and a perfect outcome score (#31)

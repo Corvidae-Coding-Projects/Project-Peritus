@@ -279,6 +279,12 @@ workflow now requires finite pagination/retry progress, repeated-token rejection
 retries, and immediate permanent errors. Its unchanged rerun passed every visible and hidden API
 contract check, improving outcome/process/security/combined from 0.60/0.9867/1.0/0.5920 to
 1.0/0.9667/1.0/0.9667.
+Task 089 exposed a harmful reviewer inference: it subtracted a row-level exclusion ledger from
+separately supplied aggregates without data proving that those rows remained included or how each
+affected eligibility, conversions, refunds, and revenue. Aggregate transformations now require
+authoritative schema semantics or a reconstructible record-level join. The unchanged rerun passed
+all 18 outcome checks in one review cycle and improved outcome/process/security/combined from
+0.9524/0.8633/1.0/0.8222 to 1.0/0.9933/1.0/0.9933.
 Terminal-Bench 2.0, the complete professional-capability audit, documentation normalization,
 release-installer qualification, and final hosted-runner closure remain required before production
 readiness.

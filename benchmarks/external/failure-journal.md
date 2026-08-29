@@ -1564,3 +1564,20 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   0.60/0.9867/0.5920 to 1.0/0.9667/0.9667 with security 1.0. Evidence is retained at
   `reports/088-api-contract-mock-client-compat-pre-pagination-progress-guard.json` and
   `reports/088-api-contract-mock-client-compat-final.json`.
+
+## HBI-050: task 089 reviewer invented aggregate exclusion arithmetic
+
+- Suite and task: HarnessBench 2.0, `089-ab-test-caveat-analysis`.
+- Symptom: the initial developer used the supplied aggregate counts exactly, but independent review
+  ordered a fixer to subtract exclusion-ledger rows and reduced outcome to 0.9524.
+- Cause: the inputs provide variant aggregates and a separate row-level exclusion ledger, but no
+  user-level eligibility, conversion, refund, or revenue join. The reviewer assumed the aggregates
+  were raw and guessed that some reasons changed denominators while others changed conversions.
+- Resolution: the production workflow, developer skill, and reviewer now preserve source aggregate
+  semantics unless an authoritative schema or reconstructible record-level join proves both
+  membership and metric effects. Unresolved provenance remains advisory. The unchanged rerun kept
+  the supplied counts, passed all 18 outcome checks in one review cycle, and improved
+  outcome/process/combined from 0.9524/0.8633/0.8222 to 1.0/0.9933/0.9933 with security 1.0.
+  Evidence is retained at
+  `reports/089-ab-test-caveat-analysis-pre-aggregate-provenance.json` and
+  `reports/089-ab-test-caveat-analysis-final.json`.

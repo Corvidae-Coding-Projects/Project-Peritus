@@ -287,6 +287,8 @@ mod tests {
         assert!(prompt.contains("Legitimate mocks for unrelated boundaries"));
         assert!(prompt.contains("successful implementation behavior alone is not test coverage"));
         assert!(prompt.contains("without a finite attempt bound or repeated-token guard"));
+        assert!(prompt.contains("separately supplied aggregates are raw"));
+        assert!(prompt.contains("unresolved aggregate provenance is advisory"));
     }
 
     #[test]
@@ -311,6 +313,8 @@ mod tests {
         assert!(prompt.contains("map every named bug or behavior"));
         assert!(prompt.contains("For API clients"));
         assert!(prompt.contains("repeated cursors or pages"));
+        assert!(prompt.contains("preserve the aggregate"));
+        assert!(prompt.contains("without guessed membership or effects"));
     }
 
     #[test]

@@ -35,9 +35,14 @@ fn workspace_tools_inspect_edit_search_and_execute_without_a_shell() {
         "workspace_search",
         r#"{"max_results":10,"path":"src","query":"answer"}"#,
     );
-    assert!(wire(&search).contains("src/lib.rs"));
+    let expected_path = Path::new("src").join("lib.rs").to_string_lossy().into_owned();
+    let search_value: Value = serde_json::from_str(&wire(&search)).expect("search result JSON");
+    assert_eq!(search_value["matches"][0]["path"].as_str(), Some(expected_path.as_str()));
     let listed = execute(&mut tools, "workspace_list", r#"{"depth":3,"path":""}"#);
-    assert!(wire(&listed).contains("src/lib.rs"));
+    let list_value: Value = serde_json::from_str(&wire(&listed)).expect("list result JSON");
+    assert!(list_value["entries"].as_array().is_some_and(|entries| {
+        entries.iter().any(|entry| entry["path"].as_str() == Some(expected_path.as_str()))
+    }));
 
     let command =
         execute(&mut tools, "run_command", r#"{"args":["--version"],"cwd":".","program":"rustc"}"#);

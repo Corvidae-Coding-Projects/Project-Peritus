@@ -175,9 +175,13 @@ mod tests {
             vec![PathBuf::from("game/Cargo.toml"), PathBuf::from("game/src/main.rs")],
         )
         .expect("gate report");
+        let nested_manifest =
+            PathBuf::from("game").join("Cargo.toml").to_string_lossy().into_owned();
+        let root_manifest =
+            PathBuf::from("root-crate").join("Cargo.toml").to_string_lossy().into_owned();
 
         assert!(!report.report.passed());
-        assert!(report.output.contains("--manifest-path game/Cargo.toml"));
-        assert!(!report.output.contains("root-crate/Cargo.toml"));
+        assert!(report.output.contains(&format!("--manifest-path {nested_manifest}")));
+        assert!(!report.output.contains(&root_manifest));
     }
 }

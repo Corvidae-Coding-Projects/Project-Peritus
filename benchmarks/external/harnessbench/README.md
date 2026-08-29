@@ -345,6 +345,14 @@ surface permanent errors immediately. The unchanged rerun used general v1 page a
 passed every visible and hidden check, and improved outcome/process/security/combined from
 0.60/0.9867/1.0/0.5920 to 1.0/0.9667/1.0/0.9667.
 
+Task 089's developer initially preserved the supplied experiment aggregates, but review guessed that
+the separate exclusion ledger still had to be subtracted despite the absence of user-level metric
+membership. The production workflow and role skills now forbid invented aggregate transformations:
+schema semantics or a reconstructible record-level join must prove both inclusion and each metric
+effect, while unresolved provenance remains advisory. The unchanged rerun passed all 18 outcome
+checks in one review cycle and improved outcome/process/security/combined from
+0.9524/0.8633/1.0/0.8222 to 1.0/0.9933/1.0/0.9933.
+
 HarnessBench chooses a result directory from the last observed provider model and may move a
 multi-provider sandbox after the native adapter exits. Invocation evidence schema 4 therefore
 includes `relocatable_paths`, all rooted at the final sandbox printed by HarnessBench. Those paths

@@ -54,6 +54,12 @@ requested behavior.
    source field does not prove that an option satisfies a required constraint, and must not be
    replaced with a permissive default unless an authoritative input explicitly defines that default.
    Exclude an unproven option from the feasible set or report that the evidence is insufficient.
+   Preserve the declared semantics of source aggregates. A separate row-level exclusion, exception,
+   or adjustment ledger does not prove that an aggregate is pre-adjustment. Do not subtract its row
+   count, alter its denominator, or infer event membership unless an authoritative schema or
+   reconstructible record-level join proves that those exact rows are still included and defines how
+   each row affects each metric. If both pre-adjusted and already-adjusted readings remain reasonable,
+   keep the source aggregate unchanged and report the ambiguity instead of inventing a transformation.
    Ask the user only when a material choice changes the requested result or effect and cannot be
    sensibly inferred; produce a reversible requested artifact with an explicit limitation when that
    remains useful. Treat phrases such as `such as`, `for example`, and `including` as
@@ -168,6 +174,9 @@ artifact-only request with no requested retained source, execute
 the bounded producer directly and verify the resulting artifacts and effects rather than creating
 an application package solely to host one run. For API clients, make pagination prove forward
 progress, reject repeated cursors or pages, bound retries, and surface permanent errors immediately.
+When consuming aggregate data alongside an exclusion or adjustment ledger, preserve the aggregate
+unless the source contract identifies it as pre-adjustment and provides enough record-level evidence
+to derive every requested metric without guessed membership or effects.
 ";
 
 const REVIEWER_SKILL: &str = r"# Independent reviewer
@@ -193,7 +202,12 @@ stronger evidence presentation is at most advisory. Do not block merely because 
 identifier has awkward wording when its declared category and governing rule match and the
 candidate's factual evidence remains accurate. Never turn optional evidence enrichment into
 repeated fixer work. Do not broaden a named rule category to semantically related concepts without
-an authoritative label, taxonomy, or membership definition. Treat a missing or incompatible
+an authoritative label, taxonomy, or membership definition. A row-level exclusion or adjustment
+ledger is not proof that separately supplied aggregates are raw. Do not require arithmetic changes
+to an aggregate unless authoritative schema
+semantics or a reconstructible record-level join proves the exact rows remain included and defines
+their effect on every changed metric; unresolved aggregate provenance is advisory, not permission
+to invent membership or transformations. Treat a missing or incompatible
 production dependency, or a test-process
 substitute used in its place, as a blocking compatibility failure when that dependency is being
 added or upgraded. Legitimate mocks for unrelated boundaries remain allowed, but they cannot prove
@@ -245,6 +259,10 @@ mod tests {
             assert!(instructions.contains("constraints as evidence-positive"));
             assert!(instructions.contains("source field does not prove"));
             assert!(instructions.contains("Exclude an unproven option"));
+            assert!(instructions.contains("source aggregates"));
+            assert!(instructions.contains("does not prove that an aggregate is pre-adjustment"));
+            assert!(instructions.contains("record-level join"));
+            assert!(instructions.contains("inventing a transformation"));
             assert!(instructions.contains("non-exhaustive"));
             assert!(instructions.contains("invented allowlist"));
             assert!(instructions.contains("preserve that precedence"));

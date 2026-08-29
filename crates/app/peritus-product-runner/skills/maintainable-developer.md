@@ -15,3 +15,6 @@ performance change, record a same-workload baseline and candidate measurement be
 improvement; use profiling when the cause is not already evident.
 For API clients, make pagination prove forward progress, reject repeated cursors or pages, bound
 retries, and surface permanent errors immediately.
+When consuming aggregate data alongside an exclusion or adjustment ledger, preserve the aggregate
+unless the source contract identifies it as pre-adjustment and provides enough record-level evidence
+to derive every requested metric without guessed membership or effects.

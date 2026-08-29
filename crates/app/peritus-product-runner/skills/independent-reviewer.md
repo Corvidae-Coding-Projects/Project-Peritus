@@ -22,3 +22,8 @@ each named behavior to a direct assertion in the repository tests and report mis
 as a `test_coverage` finding; successful implementation behavior alone is not test coverage.
 Treat an external pagination or retry loop without a finite attempt bound or repeated-token guard as
 a concrete reliability finding; do not accept a happy-path mock run as proof that the loop advances.
+A row-level exclusion or adjustment ledger is not proof that separately supplied aggregates are raw.
+Do not require arithmetic changes to an aggregate unless authoritative schema semantics or a
+reconstructible record-level join proves the exact rows remain included and defines their effect on
+every changed metric; unresolved aggregate provenance is advisory, not permission to invent
+membership or transformations.

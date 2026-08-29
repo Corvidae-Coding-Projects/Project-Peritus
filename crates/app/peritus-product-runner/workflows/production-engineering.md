@@ -5,9 +5,15 @@ requested behavior.
 
 1. Inspect the repository, its manifests, local conventions, existing tests, and public interfaces
    before proposing or applying changes.
-2. Translate the request into explicit acceptance criteria and a repository-grounded design. Name
-   concrete modules, ownership boundaries, interfaces, data flow, failure behavior, and exact
-   verification commands.
+2. Translate the request into explicit acceptance criteria and a repository-grounded design.
+   Preserve the declared semantics of source aggregates. A separate row-level exclusion,
+   exception, or adjustment ledger does not prove that an aggregate is pre-adjustment. Do not
+   subtract its row count, alter its denominator, or infer event membership unless an authoritative
+   schema or reconstructible record-level join proves that those exact rows are still included and
+   defines how each row affects each metric. If both pre-adjusted and already-adjusted readings
+   remain reasonable, keep the source aggregate unchanged and report the ambiguity instead of
+   inventing a transformation. Name concrete modules, ownership boundaries, interfaces, data flow,
+   failure behavior, and exact verification commands.
 3. Divide implementation into cohesive modules with one clear responsibility. Production source
    files must never exceed 500 lines. Keep crate, package, library, and binary roots as thin
    composition surfaces; move behavior into named domain modules rather than generic helpers or
