@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 591,
+  "next_comment_id": 592,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T03:53:12.667251590Z",
+      "updated_at": "2026-08-29T04:15:00.381064455Z",
       "labels": [
         "qualification",
         "release"
@@ -1504,6 +1504,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAsmuxFDL/XS+iQQuXA9hB/dztWL5dPqiWm32P3e3ve1oXP1ghjuaj4gSu2e/QljIHU/eZ0+3GfEqSqp+I0zfKBA=="
+        },
+        "930bc3f1-f9d1-4785-ab24-b85134ff6cd6": {
+          "display_id": 591,
+          "author": "6ME5",
+          "content": "HarnessBench task 050 exposed HBF-021: Claude returned a declared workspace_read inside structured assistant content while the outer tool_calls array was empty. The first unchanged run still passed all 26 oracle checks but native Peritus failed reviewer grounding (process/combined 0.7433; 36 requests). The Claude adapter now recovers only the reserved embedded envelope when the outer call list is empty, reuses the same fail-closed declared-name/argument/limit validator, and typed review requires explicit findings. The unchanged rerun completed natively with 26/26 checks, outcome 1.0, process/combined 0.9267, security 1.0, and 31 requests. Affected unit/product/real-process conformance and strict Clippy pass; CARGO_BUILD_JOBS=2 cargo xtask all passes all 76 packages. Before/after reports are retained externally under reports/050-multitable-join-analysis-{pre,post}-embedded-tool-recovery.json.",
+          "created_at": "2026-08-29T04:15:00.376406284Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAtLs+oAP6f+gKjmmnAcQ7zRBJRUCIGLdHCdfzWnTexBsgeB1GeiY8/t4kCN7Zzgg6bOGeKmPW05ve4i/MB8bEAg=="
         },
         "937a5b59-62eb-4297-b6c6-8a612f1351e7": {
           "display_id": 482,
@@ -6071,8 +6080,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T03:53:12.667251590Z",
+    "timestamp": "2026-08-29T04:15:00.381064455Z",
     "agent_id": "6ME5",
-    "agent_seq": 770
+    "agent_seq": 771
   }
 }
