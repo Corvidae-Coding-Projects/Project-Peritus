@@ -12,3 +12,11 @@ non-release evidence and cannot produce an H3 `Ready` verdict.
 Generated measurements and reports belong in an operator-selected directory outside the
 repository. The four eight-hour soak workloads execute concurrently under one combined resource
 envelope, so the production soak campaign takes eight hours rather than thirty-two.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-performance-qualification
+```
