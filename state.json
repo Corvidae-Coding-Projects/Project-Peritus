@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 720,
+  "next_comment_id": 721,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1269,7 +1269,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T17:08:29.183809883Z",
+      "updated_at": "2026-08-29T17:35:05.938217403Z",
       "labels": [
         "qualification",
         "release"
@@ -2048,6 +2048,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAbx++psTKyX5kpDdz2Nm4w2m0rqR5y40+bhxTo+VwoSoU62KTncoziAa659bag5Rg4nR/l4oqOlSCF9iOz3piAQ=="
+        },
+        "768e3704-0759-45c5-924c-2472ce26cf5e": {
+          "display_id": 720,
+          "author": "6ME5",
+          "content": "Checkpoint: added cumulative eight-hour product-run accounting across designer/writer/reviewer/fixer roles, durable live liveness/resource status in the daemon, and a general authoritative-source preservation rule derived from Terminal-Bench TBF-007. Updated the failure journal, product/capability docs, changelog, and README baseline snapshot (9 tasks complete, 7 passing). Verification: cargo xtask all passed; focused peritus-agent/product-runner/daemon/external-benchmark tests passed; strict Clippy with warnings denied passed; cargo fmt --check and git diff --check passed.",
+          "created_at": "2026-08-29T17:35:05.935683882Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAN1UTFJGPyGhoLT3v22a5cCgwQYzkB3scJM+MQOKXtReyu6dQfMyFsmM6wENe+xge2yvYxwwSeZRAJqmtUmiFBA=="
         },
         "784d91e1-8ddf-4d8d-98aa-dc636b243f73": {
           "display_id": 694,
@@ -7227,8 +7236,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T17:33:15.635463207Z",
+    "timestamp": "2026-08-29T17:35:05.938217403Z",
     "agent_id": "6ME5",
-    "agent_seq": 904
+    "agent_seq": 905
   }
 }
