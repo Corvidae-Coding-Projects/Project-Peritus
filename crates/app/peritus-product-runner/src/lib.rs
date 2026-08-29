@@ -13,7 +13,7 @@ mod candidate;
 #[cfg(not(verus_only))]
 mod design;
 #[cfg(not(verus_only))]
-mod developer_tools;
+pub(crate) mod developer_tools;
 #[cfg(not(verus_only))]
 mod engineering_workflow;
 mod error;
@@ -50,13 +50,13 @@ pub use budget::{
 pub use error::{ProductRunnerError, ProductRunnerErrorKind};
 #[cfg(not(verus_only))]
 pub use execution::{
-    ConversationView, ProductRunInput, ProductRunOutcome, ProductRunOutput, ProductRunPhase,
-    ProductRunUpdate, ProductRunner, RoleProviders, RunObserver,
+    ConversationView, ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunOutput,
+    ProductRunPhase, ProductRunUpdate, ProductRunner, RoleProviders, RunObserver,
 };
 #[cfg(verus_only)]
 pub use verified_api::{
     ConversationView, PRODUCT_RUN_MAX_COST_MICROUNITS, PRODUCT_RUN_MAX_ELAPSED,
     PRODUCT_RUN_MAX_MODEL_REQUESTS, PRODUCT_RUN_MAX_TOOL_CALLS, PRODUCT_RUN_MAX_TOTAL_TOKENS,
-    ProductRunInput, ProductRunOutcome, ProductRunOutput, ProductRunPhase, ProductRunProgress,
-    ProductRunUpdate, ProductRunner, RoleProviders, RunObserver,
+    ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunOutput, ProductRunPhase,
+    ProductRunProgress, ProductRunUpdate, ProductRunner, RoleProviders, RunObserver,
 };

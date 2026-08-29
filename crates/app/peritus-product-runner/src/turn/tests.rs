@@ -1,4 +1,5 @@
 use super::*;
+use crate::execution::ProductDeliveryScope;
 
 #[test]
 fn rejected_terminal_correction_requires_fresh_repository_grounding() {
@@ -106,7 +107,7 @@ fn reviewer_checks_literal_request_independently_of_the_design() {
 
 #[test]
 fn writer_batches_tools_and_respects_artifact_workspaces() {
-    let prompt = writer_system("writer");
+    let prompt = writer_system("writer", ProductDeliveryScope::WorkspaceChanges);
     assert!(prompt.contains("Batch independent tool calls"));
     assert!(prompt.contains("Every fresh writer or fixer invocation"));
     assert!(prompt.contains("read each existing target"));
@@ -153,12 +154,13 @@ fn reviewer_rechecks_conserved_finding_locations_after_fixes() {
         "gates",
         "request: python check.py\nresult: success",
         "finding",
+        ProductDeliveryScope::WorkspaceChanges,
         None,
     );
 
     assert!(prompt.contains("Developer command observations"));
     assert!(prompt.contains("python check.py"));
-    assert!(prompt.contains("not deterministic harness gates"));
+    assert!(prompt.contains("confirm that each claimed acceptance command"));
     assert!(prompt.contains("For every conserved finding"));
     assert!(prompt.contains("read each cited current workspace file"));
     assert!(prompt.contains("can predate fixer writes"));

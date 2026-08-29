@@ -127,10 +127,22 @@ pub(super) async fn inspect_cycle(
     )?;
     check_cancelled(input)?;
     let changed_paths = baseline.changed_paths(&input.workspace_root)?;
-    let gate_report = gates::run_with_ownership(&input.workspace_root, changed_paths, ownership)?;
+    let gate_report = gates::run_with_ownership(
+        &input.workspace_root,
+        changed_paths,
+        ownership,
+        input.delivery_scope,
+    )?;
+    let mut gate_output = gate_report.output.clone();
+    if input.delivery_scope.allows_external_effects()
+        && gate_report.report.changed_paths().is_empty()
+    {
+        super::acceptance::ExternalEffectEvidence::from_commands(&state.successful_commands)
+            .append_report(&mut gate_output);
+    }
     let mut evidence = RunEvidence {
         diff: bundle::diff(&input.workspace_root)?,
-        gates: gate_report.output.clone(),
+        gates: gate_output,
         review: review::render(&state.findings),
         developer_commands: state.developer_evidence.clone(),
     };
@@ -233,6 +245,10 @@ pub(super) async fn apply_fix(
             crate::developer_tools::merge_rendered(
                 &mut state.developer_evidence,
                 &applied.verification_evidence,
+            );
+            crate::developer_tools::merge_successful(
+                &mut state.successful_commands,
+                &applied.successful_commands,
             );
             emit(
                 observe,

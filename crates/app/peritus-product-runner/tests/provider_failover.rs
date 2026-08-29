@@ -12,7 +12,8 @@ use std::{
 
 use peritus_model_protocol::{ModelRequest, ProviderProfile};
 use peritus_product_runner::{
-    ProductRunInput, ProductRunOutcome, ProductRunner, RoleProviders, RunObserver,
+    ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunner, RoleProviders,
+    RunObserver,
 };
 use peritus_provider_core::{
     BoxFuture, CancellationToken, ModelProvider, OwnedModelStream, ProviderCoreError,
@@ -121,6 +122,7 @@ mod tests {
                     trace_path: trace_path.clone(),
                     finding_state: String::new(),
                     task: task.clone(),
+                    delivery_scope: ProductDeliveryScope::WorkspaceChanges,
                     conversation: Arc::new(FixedConversation(task)),
                     providers: RoleProviders {
                         writer: Arc::clone(&unavailable),

@@ -50,6 +50,25 @@ impl ProductionRunCoordinator {
         }
     }
 
+    /// Selects the next step for caller-authorized external effects.
+    ///
+    /// This path does not reinterpret an empty workspace gate as passing. The caller must instead
+    /// supply a complete, independently reviewable external-effect evidence decision.
+    #[must_use]
+    pub fn decide_external_effects(
+        &self,
+        evidence_complete: bool,
+        findings: &ProductFindingLedger,
+    ) -> ProductionDecision {
+        if evidence_complete && !findings.has_blockers() {
+            ProductionDecision::Accept
+        } else if self.completed_fixer_cycles < self.max_fixer_cycles {
+            ProductionDecision::Fix
+        } else {
+            ProductionDecision::Exhausted
+        }
+    }
+
     /// Records one completed fixer effect. It grants no acceptance and closes no finding.
     pub const fn record_fixer_completed(&mut self) {
         self.completed_fixer_cycles = self.completed_fixer_cycles.saturating_add(1);
@@ -82,6 +101,18 @@ mod tests {
         assert_eq!(
             coordinator.decide(&report, &ProductFindingLedger::new()),
             ProductionDecision::Fix,
+        );
+    }
+
+    #[test]
+    fn external_effects_require_explicit_complete_evidence() {
+        let coordinator = ProductionRunCoordinator::new(2).expect("coordinator");
+        let findings = ProductFindingLedger::new();
+
+        assert_eq!(coordinator.decide_external_effects(false, &findings), ProductionDecision::Fix,);
+        assert_eq!(
+            coordinator.decide_external_effects(true, &findings),
+            ProductionDecision::Accept,
         );
     }
 }

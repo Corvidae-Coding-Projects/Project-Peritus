@@ -8,7 +8,8 @@ use std::{
 };
 
 use peritus_product_runner::{
-    ProductRunInput, ProductRunOutcome, ProductRunUpdate, ProductRunner, RunObserver,
+    ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunUpdate, ProductRunner,
+    RunObserver,
 };
 use peritus_provider_core::CancellationToken;
 use peritus_types::RunId;
@@ -53,6 +54,7 @@ pub async fn run_harnessbench(input: HarnessBenchInput) -> Result<RunReport, Ben
             trace_path: trace_path.clone(),
             finding_state: String::new(),
             task: prompt.clone(),
+            delivery_scope: ProductDeliveryScope::WorkspaceChanges,
             conversation: Arc::new(conversation.clone()),
             providers: role_providers,
             cancelled: Arc::new(AtomicBool::new(false)),
@@ -78,21 +80,7 @@ pub async fn run_harnessbench(input: HarnessBenchInput) -> Result<RunReport, Ben
         &usage_proxy,
         last_observation_path.as_deref(),
     )?;
-    let (success, summary, changed_paths, failure_kind, failure) = match result {
-        Ok(ProductRunOutcome::Complete(output)) => {
-            (true, Some(output.summary), output.changed_paths, None, None)
-        }
-        Ok(ProductRunOutcome::WaitingForUser { question, .. }) => {
-            (false, None, Vec::new(), Some("waiting_for_user".to_owned()), Some(question))
-        }
-        Err(error) => (
-            false,
-            None,
-            Vec::new(),
-            Some(format!("{:?}", error.kind()).to_lowercase()),
-            Some(error.to_string()),
-        ),
-    };
+    let (success, summary, changed_paths, failure_kind, failure) = outcome_fields(result);
     let report = RunReport {
         schema_version: 4,
         success,
@@ -120,6 +108,28 @@ pub async fn run_harnessbench(input: HarnessBenchInput) -> Result<RunReport, Ben
     };
     report.publish(&evidence_dir)?;
     Ok(report)
+}
+
+type OutcomeFields = (bool, Option<String>, Vec<PathBuf>, Option<String>, Option<String>);
+
+fn outcome_fields(
+    result: Result<ProductRunOutcome, peritus_product_runner::ProductRunnerError>,
+) -> OutcomeFields {
+    match result {
+        Ok(ProductRunOutcome::Complete(output)) => {
+            (true, Some(output.summary), output.changed_paths, None, None)
+        }
+        Ok(ProductRunOutcome::WaitingForUser { question, .. }) => {
+            (false, None, Vec::new(), Some("waiting_for_user".to_owned()), Some(question))
+        }
+        Err(error) => (
+            false,
+            None,
+            Vec::new(),
+            Some(format!("{:?}", error.kind()).to_lowercase()),
+            Some(error.to_string()),
+        ),
+    }
 }
 
 fn retained_paths(

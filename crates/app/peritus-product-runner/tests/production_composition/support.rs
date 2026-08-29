@@ -124,9 +124,17 @@ fn encoded_object(entries: Vec<(&str, Value)>) -> Vec<u8> {
 }
 
 pub fn named_tool_response(name: &str, arguments: Vec<u8>) -> VecDeque<EventEnvelope> {
+    named_tool_response_with_id(name, name, arguments)
+}
+
+pub fn named_tool_response_with_id(
+    name: &str,
+    id: &str,
+    arguments: Vec<u8>,
+) -> VecDeque<EventEnvelope> {
     let limits = ProtocolLimits::PRODUCTION;
-    let item = ItemId::new(format!("{name}-item")).expect("item");
-    let call = ToolCallId::new(format!("{name}-call")).expect("call");
+    let item = ItemId::new(format!("{name}-{id}-item")).expect("item");
+    let call = ToolCallId::new(format!("{name}-{id}-call")).expect("call");
     response([
         ModelEvent::ResponseStarted { response_id: None, model: None },
         ModelEvent::ItemStarted { item_id: item.clone(), index: 0, kind: ItemKind::ToolCall },

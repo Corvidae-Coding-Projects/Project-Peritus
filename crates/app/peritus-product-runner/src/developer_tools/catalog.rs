@@ -40,8 +40,8 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
         ),
         (
             "run_command",
-            "Run a non-destructive structured executable and argv after current-turn workspace_list and workspace_read grounding; use it to build, test, lint, inspect Git, and observe failures. Commands default to a 120-second deadline; request 1 through 600 seconds for a known longer build or test. A timeout kills the owned process tree and returns captured output so the run can recover. Harness-owned peritus-internal gates are unavailable here and run independently after the turn. Use workspace_remove for intentional file deletion.",
-            r#"{"additionalProperties":false,"properties":{"args":{"items":{"type":"string"},"type":"array"},"cwd":{"type":"string"},"program":{"type":"string"},"timeout_seconds":{"default":120,"maximum":600,"minimum":1,"type":"integer"}},"required":["args","program"],"type":"object"}"#,
+            "Run a non-destructive structured executable and argv after current-turn workspace_list and workspace_read grounding; use it to build, test, lint, inspect Git, apply caller-authorized external effects, and observe failures. Label each command as external_effect when it performs the requested external action or verification when it freshly inspects the completed outcome. Commands default to a 120-second deadline; request 1 through 600 seconds for a known longer build or test. A timeout kills the owned process tree and returns captured output so the run can recover. Harness-owned peritus-internal gates are unavailable here and run independently after the turn. Use workspace_remove for intentional file deletion.",
+            r#"{"additionalProperties":false,"properties":{"args":{"items":{"type":"string"},"type":"array"},"cwd":{"type":"string"},"program":{"type":"string"},"purpose":{"enum":["external_effect","verification"],"type":"string"},"timeout_seconds":{"default":120,"maximum":600,"minimum":1,"type":"integer"}},"required":["args","program","purpose"],"type":"object"}"#,
         ),
     ])
 }
@@ -123,5 +123,7 @@ mod tests {
         assert!(description("workspace_remove").contains("non-recursive"));
         assert!(description("run_command").contains("peritus-internal"));
         assert!(description("run_command").contains("120-second deadline"));
+        assert!(description("run_command").contains("external_effect"));
+        assert!(description("run_command").contains("verification"));
     }
 }

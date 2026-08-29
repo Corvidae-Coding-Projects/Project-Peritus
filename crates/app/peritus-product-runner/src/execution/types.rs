@@ -75,6 +75,23 @@ pub struct RoleProviders {
     pub fallbacks: Vec<Arc<dyn ModelProvider>>,
 }
 
+/// Authorized form of deliverable evidence for one product run.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ProductDeliveryScope {
+    /// Normal coding work must produce exact changed workspace paths and pass their gates.
+    WorkspaceChanges,
+    /// The caller authorizes a deliverable implemented as durable effects outside the workspace.
+    AuthorizedExternalEffects,
+}
+
+impl ProductDeliveryScope {
+    /// Whether an empty workspace candidate may be evaluated from external-effect evidence.
+    #[must_use]
+    pub const fn allows_external_effects(self) -> bool {
+        matches!(self, Self::AuthorizedExternalEffects)
+    }
+}
+
 /// Fully resolved input supplied by the daemon authority boundary.
 pub struct ProductRunInput {
     /// Stable run identity.
@@ -87,6 +104,8 @@ pub struct ProductRunInput {
     pub finding_state: String,
     /// Natural-language coding task.
     pub task: String,
+    /// Caller-authorized deliverable boundary. Ordinary product runs use workspace changes.
+    pub delivery_scope: ProductDeliveryScope,
     /// Live conversation, including the original task and all follow-ups.
     pub conversation: Arc<dyn ConversationView>,
     /// Role provider adapters.

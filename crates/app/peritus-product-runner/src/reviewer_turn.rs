@@ -43,6 +43,7 @@ pub async fn complete(
             evidence.gates,
             evidence.developer_commands,
             evidence.prior,
+            input.delivery_scope,
             correction.as_deref(),
         );
         let media = match crate::workspace_media::discover(

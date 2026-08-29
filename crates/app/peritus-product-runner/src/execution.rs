@@ -1,13 +1,14 @@
 //! E0 production writer-gates-review-fixer composition.
 
+mod acceptance;
 mod cycle;
 mod fix_progress;
 mod summary;
 mod types;
 
 pub use types::{
-    ConversationView, ProductRunInput, ProductRunOutcome, ProductRunOutput, ProductRunPhase,
-    ProductRunUpdate, RoleProviders, RunObserver,
+    ConversationView, ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunOutput,
+    ProductRunPhase, ProductRunUpdate, RoleProviders, RunObserver,
 };
 
 use std::sync::atomic::Ordering;
@@ -80,6 +81,7 @@ impl ProductRunner {
                 )
             })?,
             developer_evidence: applied.verification_evidence,
+            successful_commands: applied.successful_commands,
         };
 
         loop {
@@ -118,6 +120,10 @@ impl ProductRunner {
                             &mut state.developer_evidence,
                             &applied.verification_evidence,
                         );
+                        crate::developer_tools::merge_successful(
+                            &mut state.successful_commands,
+                            &applied.successful_commands,
+                        );
                         state.fix_progress.reset(&input.workspace_root)?;
                     }
                     AppliedTurn::Waiting { question, conversation_revision } => {
@@ -155,22 +161,27 @@ impl ProductRunner {
                     ),
                 ));
             }
-            match state.coordinator.decide(&inspected.gates.report, &state.findings) {
+            match acceptance::decide(
+                input.delivery_scope,
+                &state.coordinator,
+                &inspected.gates,
+                &state.findings,
+                &state.successful_commands,
+            ) {
                 ProductionDecision::Accept => {
                     let changed_paths = inspected.gates.report.changed_paths().to_vec();
-                    let successful_commands = inspected
-                        .gates
-                        .report
-                        .records()
-                        .iter()
-                        .map(|record| record.command.clone())
-                        .collect::<Vec<_>>();
+                    let successful_commands = acceptance::successful_command_lines(
+                        input.delivery_scope,
+                        &inspected.gates,
+                        &state.successful_commands,
+                    );
                     let completion = completion_summary(
                         &input.task,
                         &state.task_summary,
                         &state.fix_summaries,
                         &changed_paths,
                         successful_commands.len(),
+                        input.delivery_scope,
                     );
                     let summary = format!(
                         "{completion}\n\nDetailed design: {}",
@@ -235,6 +246,7 @@ struct RunState {
     fix_progress: FixProgress,
     coordinator: ProductionRunCoordinator,
     developer_evidence: String,
+    successful_commands: Vec<crate::developer_tools::SuccessfulCommand>,
 }
 
 pub struct AppliedWrite {
@@ -248,6 +260,8 @@ pub struct AppliedWrite {
     pub conversation_revision: u64,
     /// Bounded structured command requests and observations from this developer turn.
     pub verification_evidence: String,
+    /// Successful, explicitly classified developer commands retained for delivery evidence.
+    pub(crate) successful_commands: Vec<crate::developer_tools::SuccessfulCommand>,
 }
 
 pub enum AppliedTurn {

@@ -13,7 +13,8 @@ use peritus_model_protocol::{
     OutputLimitEnforcement, ProviderName, ProviderProfile, ResumeKind, StateMode, WireDialect,
 };
 use peritus_product_runner::{
-    ConversationView, ProductRunInput, ProductRunOutcome, ProductRunner, RoleProviders, RunObserver,
+    ConversationView, ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunner,
+    RoleProviders, RunObserver,
 };
 use peritus_provider_anthropic::{ClaudeExecutable, ClaudeRuntimeConfig, ClaudeRuntimeProvider};
 use peritus_provider_core::{CancellationToken, ModelProvider, ProcessLimits};
@@ -47,6 +48,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
             trace_path: repository.path().join("peritus-run.trace"),
             finding_state: String::new(),
             task: task.clone(),
+            delivery_scope: ProductDeliveryScope::WorkspaceChanges,
             conversation: Arc::new(FixedConversation(task)),
             providers: RoleProviders {
                 writer: Arc::clone(&writer),

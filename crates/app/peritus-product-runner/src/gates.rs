@@ -15,7 +15,7 @@ mod yaml_structure;
 
 use crate::{
     ProductRunnerError, ProductRunnerErrorKind, bundle::limit_text,
-    developer_tools::WorkspaceOwnership,
+    developer_tools::WorkspaceOwnership, execution::ProductDeliveryScope,
 };
 
 /// Rendered exact-target gate evidence and typed D1 report.
@@ -28,14 +28,16 @@ pub fn run_with_ownership(
     root: &Path,
     changed_paths: Vec<PathBuf>,
     ownership: &WorkspaceOwnership,
+    delivery_scope: ProductDeliveryScope,
 ) -> Result<GateReport, ProductRunnerError> {
-    run_scoped(root, changed_paths, Some(ownership))
+    run_scoped(root, changed_paths, Some(ownership), delivery_scope)
 }
 
 fn run_scoped(
     root: &Path,
     changed_paths: Vec<PathBuf>,
     ownership: Option<&WorkspaceOwnership>,
+    delivery_scope: ProductDeliveryScope,
 ) -> Result<GateReport, ProductRunnerError> {
     let plan = TargetGatePlan::discover(root, changed_paths).map_err(|error| {
         ProductRunnerError::new(
@@ -117,7 +119,7 @@ fn run_scoped(
         records.push(record);
     }
     let report = TargetGateReport::from_execution(&plan, records);
-    let output = render(&report);
+    let output = render(&report, delivery_scope);
     Ok(GateReport { report, output })
 }
 
@@ -125,11 +127,17 @@ fn run_scoped(
     clippy::format_push_string,
     reason = "formal-boundary policy models format! but not writeln!"
 )]
-fn render(report: &TargetGateReport) -> String {
+fn render(report: &TargetGateReport, delivery_scope: ProductDeliveryScope) -> String {
     let mut text = String::new();
     text.push_str(&format!("Exact candidate files ({}):\n", report.changed_paths().len()));
     if report.changed_paths().is_empty() {
-        text.push_str("  [none: acceptance is refused]\n");
+        if delivery_scope.allows_external_effects() {
+            text.push_str(
+                "  [none: caller-authorized external effects are evaluated separately]\n",
+            );
+        } else {
+            text.push_str("  [none: acceptance is refused]\n");
+        }
     } else {
         for path in report.changed_paths() {
             text.push_str(&format!("  {}\n", path.display()));
@@ -150,10 +158,15 @@ fn render(report: &TargetGateReport) -> String {
             record.exit_code.map_or_else(|| "not started".to_owned(), |code| code.to_string()),
         ));
     }
-    text.push_str(&format!(
-        "\nExact-target acceptance: {}\n",
-        if report.passed() { "PASS" } else { "FAIL" },
-    ));
+    let exact_target_status =
+        if report.changed_paths().is_empty() && delivery_scope.allows_external_effects() {
+            "NOT APPLICABLE"
+        } else if report.passed() {
+            "PASS"
+        } else {
+            "FAIL"
+        };
+    text.push_str(&format!("\nExact-target acceptance: {exact_target_status}\n"));
     limit_text(&text, 1024 * 1024)
 }
 
@@ -180,6 +193,7 @@ mod tests {
             root.path(),
             vec![PathBuf::from("third_party"), PathBuf::from("vm.js")],
             None,
+            ProductDeliveryScope::WorkspaceChanges,
         )
         .expect("gate report");
 
@@ -217,6 +231,7 @@ mod tests {
             root.path(),
             vec![PathBuf::from("game/Cargo.toml"), PathBuf::from("game/src/main.rs")],
             None,
+            ProductDeliveryScope::WorkspaceChanges,
         )
         .expect("gate report");
         let nested_manifest =

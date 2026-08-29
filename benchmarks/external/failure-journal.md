@@ -2303,3 +2303,97 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   output, and environment-command failure; Python bytecode compilation passes. The running baseline
   process retains its originally loaded adapter and remains unchanged. An unchanged focused rerun
   with the final candidate must demonstrate native execution and verifier completion.
+
+## TBF-012: the Harbor bridge hid installed administrative tools
+
+- Suite and task: Terminal-Bench 2.0, `mailman`, first full-suite baseline trial.
+- Symptom: Peritus installed and started Mailman and Postfix, created the requested list and routing
+  maps, and reached the supplied `eval.py`. The evaluator then stopped before mail delivery with
+  `FileNotFoundError: useradd`. The executable was present at `/usr/sbin/useradd`, but the native
+  agent process could not resolve it.
+- Cause: the thin Harbor bridge replaced the task image's executable search path with
+  `/opt/peritus/bin:/usr/local/bin:/usr/bin:/bin`. That correctly exposed the uploaded provider
+  routers but silently discarded image-owned directories such as `/usr/local/sbin`, `/usr/sbin`,
+  and `/sbin`. This can break any real system-administration task whose installed tools live outside
+  the bridge's guessed path.
+- Resolution: the bridge now reads the live container's authoritative `PATH`, validates it as a
+  colon-separated list of absolute directories, preserves its order and content, and prepends
+  `/opt/peritus/bin` exactly once. It fails with a clear setup error if the environment does not
+  provide a safe path instead of substituting another guessed platform path.
+- Before evidence: job `peritus-terminalbench-2-k5-high`; trial `mailman__ZpR6gRM`; the retained
+  trace records the unchanged evaluator failure, the fixed injected path, and the executable at
+  both `/usr/sbin/useradd` and `/sbin/useradd`. The frozen writer recovered within the task by
+  explicitly supplying the standard administrative directories to the next evaluator invocation.
+  Harbor then awarded reward 1: direct local delivery, list existence, and the complete
+  join/announce/leave confirmation flow all passed the unchanged verifier. The native Peritus
+  report remained false after 1,064,720 milliseconds and 28 provider requests because a later
+  reviewer returned an empty response and the workspace-only acceptance gate rejected a successful
+  system task with no repository diff; that separate product gap is tracked below.
+- Verification: seven focused bridge regressions pass, including preservation of the complete
+  container path, deterministic Peritus-path precedence, deduplication, unsafe-path rejection, and
+  environment-query failure. Python bytecode compilation and `git diff --check` pass. The running
+  baseline retains its already-loaded bridge; an unchanged final-candidate task must demonstrate
+  that administrative tools are available without writer-authored PATH repair.
+
+## TBF-013: workspace-only acceptance rejected verified system effects
+
+- Suite and task: Terminal-Bench 2.0, `mailman`, first full-suite baseline trial.
+- Symptom: the writer completed the requested operating-system configuration, retained fresh
+  command evidence, and passed all three unchanged external verifier checks, but native Peritus
+  reported failure because the task correctly produced no Git workspace changes. The exact-target
+  gate rendered `Exact candidate files (0): [none: acceptance is refused]` and sent the fixer back
+  into an already-correct system.
+- Cause: product acceptance had one implicit delivery scope: changed repository files. That is the
+  correct default for coding tasks, but it cannot represent explicitly authorized administration,
+  recovery, or environment tasks whose deliverable is durable external state rather than a patch.
+- Resolution: product runs now carry an explicit `ProductDeliveryScope`. The daemon, HarnessBench,
+  examples, and ordinary tests select `WorkspaceChanges`; only the disposable Terminal-Bench
+  caller selects `AuthorizedExternalEffects`. A zero-diff external run is eligible only after a
+  successful command explicitly classified as the requested external effect, a later successful
+  command explicitly classified as fresh verification, and an independent blocker-free review.
+  The successful structured requests remain in the completion handoff. The original changed-target
+  decision path remains untouched for every run that changes a workspace or lacks that authority.
+- Before evidence: job `peritus-terminalbench-2-k5-high`; trial `mailman__ZpR6gRM`; Harbor reward 1;
+  native success false; 1,482,416 input tokens, 111,104 cached input tokens, 21,564 output tokens,
+  and 1,064,720 milliseconds of native execution. The unchanged verifier passed direct delivery,
+  list existence, and join/announce/leave confirmation end to end.
+- Verification: focused policy tests prove incomplete or out-of-order command evidence is refused
+  and that identical complete evidence cannot bypass the default workspace scope. A complete
+  product composition test exercises the authorized zero-diff path through writer commands,
+  independent review, final evidence, and a clean Git status. The product-runner and orchestrator
+  tests, strict Clippy for affected application crates, formal ordinary-API check, source-layout
+  check, Rust formatting, and seven Terminal-Bench bridge tests pass. An unchanged final-candidate
+  `mailman` rerun must still demonstrate the correction against the external verifier.
+
+## TBI-001: a hidden model call signature cannot be recovered from a state dictionary
+
+- Suite and task: Terminal-Bench 2.0, `pytorch-model-recovery`, first full-suite baseline trial.
+- Symptom: Peritus produced a loadable TorchScript model, preserved the supplied checkpoint, changed
+  only `output_layer.weight` and `output_layer.bias`, and reduced its measured MSE from
+  1.54338502884 to 0.675955712795. Four of the unchanged verifier's five tests passed. The remaining
+  test called the saved model as `model(src_sequences, tgt_sequences)`, while the artifact exposed
+  the reasonable input/output-pair interface `model(src_sequences)`, so Harbor retained reward 0.
+- Published contract: the task says to reconstruct the structure implied by `weights.pt`, train only
+  the output layer on a dataset of input/output pairs, and save `model.pt`. It does not declare the
+  TorchScript forward signature, attention-head count, batch orientation, or decoder-input
+  convention. Those behavioral choices are not encoded in a PyTorch state dictionary; multiple
+  implementations accept the same exact keys and tensor shapes.
+- Valid Peritus behavior: the writer inspected every state key and both dataset tensors, stated that
+  the head count was not recoverable, selected a conventional compatible Transformer, loaded the
+  checkpoint strictly, froze every non-output parameter, fitted only the output layer, executed the
+  before/after loss comparison, reloaded the original weights, and verified the input checkpoint's
+  SHA-256. Native structural and exact-target gates passed with an empty finding ledger.
+- Hidden expectation: the verifier contains a separate unpublished `RecoveredModel` whose forward
+  method takes both source and target tensors. Its implementation also chooses four attention heads
+  and sequence-first Transformer defaults. The saved state dictionary cannot distinguish those
+  choices from the compatible choices Peritus made.
+- Disposition: classify the reward loss as benchmark underspecification and retain it unchanged. A
+  reliable benchmark-specific win would require reading the verifier or solution, leaking its
+  private call signature into the task, or hard-coding this task's hidden architecture choices.
+  Peritus will do none of those. The later empty reviewer response remains a real provider-recovery
+  example under `TBF-009`, but a successful retry still must not invent an unpublished interface.
+- Evidence: job `peritus-terminalbench-2-k5-high`; trial
+  `pytorch-model-recovery__BbgLWyJ`; reward 0; four verifier passes and one signature failure; six
+  provider requests; 121,069 input, 47,616 cached input, and 6,476 output tokens; 306.505 seconds of
+  native execution. The retained `last-product-observation.json` records a 5,092,600-byte
+  `model.pt`, passing native gates, the exact MSE measurements, and the unchanged checkpoint digest.

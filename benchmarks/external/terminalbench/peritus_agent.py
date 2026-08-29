@@ -156,7 +156,8 @@ fi
                 "claude auth status --json >/dev/null 2>&1",
             )
         )
-        result = await environment.exec(command, env=self._runtime_env(), timeout_sec=60)
+        runtime_env = await self._runtime_env(environment)
+        result = await environment.exec(command, env=runtime_env, timeout_sec=60)
         _require_success(result, "qualify authenticated provider routers")
 
     @override
@@ -196,10 +197,11 @@ fi
                 self.model_name or "peritus-native",
             )
         )
+        runtime_env = await self._runtime_env(environment)
         result = await environment.exec(
             command,
             cwd=str(workspace),
-            env=self._runtime_env(),
+            env=runtime_env,
         )
         self._retain_process_output(result)
         _require_success(result, "run native Peritus product composition")
@@ -217,10 +219,10 @@ fi
             "peritus_requests": _integer(usage.get("requests")) or 0,
         }
 
-    def _runtime_env(self) -> dict[str, str]:
+    async def _runtime_env(self, environment: BaseEnvironment) -> dict[str, str]:
         return {
             "HOME": str(_REMOTE_HOME),
-            "PATH": f"{_REMOTE_BIN}:/usr/local/bin:/usr/bin:/bin",
+            "PATH": await _runtime_path(environment),
             "CARGO_BUILD_JOBS": "2",
         }
 
@@ -263,6 +265,22 @@ async def _workspace_path(environment: BaseEnvironment) -> PurePosixPath:
     ):
         raise RuntimeError(f"task working directory is not a safe absolute path: {value!r}")
     return path
+
+
+async def _runtime_path(environment: BaseEnvironment) -> str:
+    result = await environment.exec("printf '%s\\n' \"$PATH\"")
+    _require_success(result, "resolve task executable path")
+    value = (result.stdout or "").strip()
+    segments = value.split(":")
+    if (
+        not value
+        or "\n" in value
+        or "\r" in value
+        or any(not segment or not PurePosixPath(segment).is_absolute() for segment in segments)
+    ):
+        raise RuntimeError(f"task executable path is not a safe absolute path list: {value!r}")
+    remote_bin = str(_REMOTE_BIN)
+    return ":".join((remote_bin, *(segment for segment in segments if segment != remote_bin)))
 
 
 def _parse_report(stdout: str) -> dict[str, Any]:

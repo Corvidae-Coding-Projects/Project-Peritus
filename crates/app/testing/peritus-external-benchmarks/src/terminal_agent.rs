@@ -6,7 +6,9 @@ use std::{
     time::Instant,
 };
 
-use peritus_product_runner::{ConversationView, ProductRunInput, ProductRunOutcome, ProductRunner};
+use peritus_product_runner::{
+    ConversationView, ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunner,
+};
 use peritus_provider_core::CancellationToken;
 
 use crate::{
@@ -56,6 +58,7 @@ pub async fn run(input: TerminalBenchInput) -> Result<TerminalBenchReport, Bench
             trace_path: trace_path.clone(),
             finding_state: String::new(),
             task,
+            delivery_scope: ProductDeliveryScope::AuthorizedExternalEffects,
             conversation: Arc::new(conversation.clone()),
             providers: role_providers,
             cancelled: Arc::new(AtomicBool::new(false)),

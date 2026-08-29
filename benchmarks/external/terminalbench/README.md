@@ -23,6 +23,14 @@ python3.12 -m venv /absolute/path/to/terminalbench-state/.venv
 /absolute/path/to/terminalbench-state/.venv/bin/python -m pip install podman-compose==1.6.0
 ```
 
+Check the thin Harbor boundary before a live task:
+
+```bash
+PYTHONPATH=/absolute/path/to/Project-Peritus \
+/absolute/path/to/terminalbench-state/.venv/bin/python -m unittest \
+  benchmarks.external.terminalbench.test_peritus_agent
+```
+
 Build a portable static Linux adapter. The musl compiler package is named `musl-gcc` on Fedora;
 other distributions may package it differently.
 

@@ -24,7 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   workflow, source commit, tag, predicate, artifact digest, and hosted-runner claim before retaining
   both bundles and complete evidence checksums; and publish only after every platform job succeeds
   (#31)
-- Add `cargo xtask docs-check` to inventory 133 maintained Markdown files, validate headings,
+- Add `cargo xtask docs-check` to inventory 134 maintained Markdown files, validate headings,
   fences, line endings, local links, and crate-focused commands, and include it in the normal
   repository policy gate (#31)
 - Add one-command POSIX and PowerShell installers backed by host-native GitHub release archives,
@@ -37,6 +37,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Fixed
+- Add an explicit, default-off external-effects delivery scope for authorized administration and
+  recovery tasks whose accepted result lives outside Git: require retained successful effect
+  evidence, a later fresh verification command, and independent blocker-free review while keeping
+  ordinary workspace runs' exact changed-target requirement unchanged (`TBF-013`, #31)
+- Preserve each Harbor task image's authoritative executable search path and prepend Peritus's
+  uploaded routers instead of replacing installed administrative directories such as `/usr/sbin`;
+  validate unsafe path lists and retain deterministic precedence (`TBF-012`, #31)
+- Record Terminal-Bench's unpublished PyTorch forward-interface expectation separately from product
+  defects, retain the honest lower score instead of leaking verifier or solution details into
+  Peritus behavior, and document the focused thin-bridge regression command (`TBI-001`, #31)
 - Resolve each Harbor task image's authoritative working directory instead of assuming every
   Terminal-Bench environment uses `/app`; validate the discovered path and pass the same workspace
   to the native Peritus runner so valid `/workspace` and other image layouts remain portable

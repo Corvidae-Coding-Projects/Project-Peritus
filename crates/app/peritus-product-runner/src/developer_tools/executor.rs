@@ -81,6 +81,10 @@ impl WorkspaceDeveloperTools {
     pub(crate) fn verification_evidence(&self) -> String {
         self.command_evidence.render()
     }
+
+    pub(crate) fn successful_commands(&self) -> Vec<super::SuccessfulCommand> {
+        self.command_evidence.successful()
+    }
 }
 
 impl DeveloperToolExecutor for WorkspaceDeveloperTools {
