@@ -1947,3 +1947,28 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   `peritus-product-runner`; strict Clippy passes; a regression proves a changed artifact source is
   checked while a 700-line untouched vendor source and directory marker are ignored.
 - Next evidence: rerun the same unchanged task before restarting the 445-trial campaign.
+
+## TBF-002: writer fabricated a read-only workspace blocker
+
+- Suite and task: Terminal-Bench 2.0, `make-mips-interpreter`, unchanged post-layout
+  qualification.
+- Symptom: the corrected source-layout gate was no longer reached. After grounded repository and
+  ELF inspection, the writer made no candidate change and asked the user to provide a writable
+  managed workspace. Peritus accepted that terminal question even though its writer executor was
+  already read-write and advertised all mutation tools.
+- Cause: a syntactically valid `question` terminal bypassed the existing malformed-response and
+  unproductive-terminal recovery. The harness treated a provider assertion about its capabilities
+  as authority instead of comparing it with deterministic runtime state.
+- Resolution: when a writer or fixer asks a question without changing the workspace, Peritus now
+  challenges it once with the confirmed host-managed mutation and command capabilities. A real
+  material choice can survive by returning the same question unchanged after fresh repository
+  grounding; a false capability blocker is directed back into the implementation loop. Questions
+  after useful workspace changes remain immediately visible to the user.
+- Before evidence: job `terminalbench-qualification-make-mips-post-layout`; trial
+  `608e82ecd67ce469824a34181b580cbd__mRuG5Zv`; product failure kind `waiting_for_user`; five
+  provider requests; no changed paths; zero runner exceptions; Harbor reward 0.0 because
+  `/tmp/frame.bmp` was never created.
+- Verification: the production-composition regression now scripts the same false writable-workspace
+  question, proves the harness re-grounds a fresh invocation, and completes the requested write.
+- Next evidence: rebuild the static adapter and rerun the same unchanged task before restarting the
+  445-trial campaign.

@@ -76,6 +76,11 @@ mod tests {
                     design_response(),
                     named_tool_response("workspace_list", list_arguments("", 3)),
                     named_tool_response("workspace_read", read_arguments("src/lib.rs")),
+                    text_response(
+                        br#"{"kind":"question","message":"Please provide a writable managed workspace."}"#,
+                    ),
+                    named_tool_response("workspace_list", list_arguments("", 3)),
+                    named_tool_response("workspace_read", read_arguments("src/lib.rs")),
                     tool_response(write_arguments),
                     text_response(
                         br#"{"kind":"complete","run_instructions":"cargo test","summary":"Added the tested answer API."}"#,

@@ -1,6 +1,9 @@
 //! Tool-capable writer/fixer turns and independent reviewer prompts.
 
-use peritus_agent::{DeveloperLoop, DeveloperLoopLimits, DeveloperLoopRequest};
+use peritus_agent::{
+    DeveloperLoop, DeveloperLoopError, DeveloperLoopLimits, DeveloperLoopOutcome,
+    DeveloperLoopRequest,
+};
 use peritus_provider_core::ModelProvider;
 use peritus_types::RunId;
 use serde::Deserialize;
@@ -25,44 +28,28 @@ pub async fn complete_developer_turn(
     let mut checkpoint = WorkspaceCheckpoint::capture(&input.workspace_root)?;
     let mut invocation = 0_u32;
     let mut unproductive_terminals = 0_u8;
-    let mut correction = None;
+    let (mut correction, mut pending_question) = (None, None);
     loop {
         check_cancelled(input)?;
         invocation = invocation.saturating_add(1);
         let revision = input.conversation.revision();
-        let transcript = input.conversation.render();
-        let media =
-            crate::workspace_media::discover(&input.workspace_root, &transcript, model.profile())?;
-        let prompt = writer_user(&transcript, design, findings, correction.as_deref());
-        let (prompt, attachments) = media.into_parts(prompt);
-        let mut tools = WorkspaceDeveloperTools::with_ownership(
-            input.workspace_root.clone(),
-            ownership.clone(),
-        );
-        let mut trace = FileDeveloperTrace::new(input.trace_path.clone());
-        let prefix = request_name(input.run_id, role, cycle);
-        let result = DeveloperLoop::run(
+        let identity = DeveloperInvocation { role, cycle, invocation };
+        let (result, tools) = run_developer_invocation(
+            input,
             model,
-            DeveloperLoopRequest {
-                request_prefix: format!("{prefix}-invocation-{invocation}"),
-                system: writer_system(role),
-                prompt,
-                attachments,
-                tools: definitions()?,
-                limits: DeveloperLoopLimits::new(48, 512)
-                    .map_err(|error| developer_error(&error))?,
-                cancellation: input.provider_cancellation.clone(),
-            },
-            &mut tools,
-            &mut trace,
+            identity,
+            design,
+            findings,
+            correction.as_deref(),
+            ownership,
         )
-        .await;
+        .await?;
         *ownership = tools.ownership().clone();
         check_cancelled(input)?;
         if input.conversation.revision() != revision {
             checkpoint = WorkspaceCheckpoint::capture(&input.workspace_root)?;
             unproductive_terminals = 0;
-            correction = None;
+            (correction, pending_question) = (None, None);
             continue;
         }
         let result = match result {
@@ -72,7 +59,7 @@ pub async fn complete_developer_turn(
                 if current != checkpoint {
                     checkpoint = current;
                     unproductive_terminals = 0;
-                    correction = None;
+                    (correction, pending_question) = (None, None);
                     continue;
                 }
                 return Err(developer_error(&error));
@@ -93,7 +80,7 @@ pub async fn complete_developer_turn(
                 if current != checkpoint {
                     checkpoint = current;
                     unproductive_terminals = 0;
-                    correction = None;
+                    (correction, pending_question) = (None, None);
                     continue;
                 }
                 unproductive_terminals = unproductive_terminals.saturating_add(1);
@@ -112,10 +99,67 @@ pub async fn complete_developer_turn(
                 conversation_revision: revision,
             })),
             TerminalTurn::Question(question) => {
+                let current = WorkspaceCheckpoint::capture(&input.workspace_root)?;
+                if retry_unverified_question(
+                    &question,
+                    current == checkpoint,
+                    pending_question.as_deref(),
+                    &mut unproductive_terminals,
+                ) {
+                    correction = Some(question_confirmation_prompt(&question));
+                    pending_question = Some(question);
+                    continue;
+                }
                 Ok(AppliedTurn::Waiting { question, conversation_revision: revision })
             }
         };
     }
+}
+
+#[derive(Clone, Copy)]
+struct DeveloperInvocation<'a> {
+    role: &'a str,
+    cycle: u32,
+    invocation: u32,
+}
+
+async fn run_developer_invocation(
+    input: &ProductRunInput,
+    model: &dyn ModelProvider,
+    identity: DeveloperInvocation<'_>,
+    design: &str,
+    findings: Option<&str>,
+    correction: Option<&str>,
+    ownership: &WorkspaceOwnership,
+) -> Result<
+    (Result<DeveloperLoopOutcome, DeveloperLoopError>, WorkspaceDeveloperTools),
+    ProductRunnerError,
+> {
+    let transcript = input.conversation.render();
+    let media =
+        crate::workspace_media::discover(&input.workspace_root, &transcript, model.profile())?;
+    let prompt = writer_user(&transcript, design, findings, correction);
+    let (prompt, attachments) = media.into_parts(prompt);
+    let mut tools =
+        WorkspaceDeveloperTools::with_ownership(input.workspace_root.clone(), ownership.clone());
+    let mut trace = FileDeveloperTrace::new(input.trace_path.clone());
+    let prefix = request_name(input.run_id, identity.role, identity.cycle);
+    let result = DeveloperLoop::run(
+        model,
+        DeveloperLoopRequest {
+            request_prefix: format!("{prefix}-invocation-{}", identity.invocation),
+            system: writer_system(identity.role),
+            prompt,
+            attachments,
+            tools: definitions()?,
+            limits: DeveloperLoopLimits::new(48, 512).map_err(|error| developer_error(&error))?,
+            cancellation: input.provider_cancellation.clone(),
+        },
+        &mut tools,
+        &mut trace,
+    )
+    .await;
+    Ok((result, tools))
 }
 
 pub fn request_name(run_id: RunId, role: &str, cycle: u32) -> String {
@@ -181,6 +225,25 @@ fn correction_prompt(error: &ProductRunnerError) -> String {
     )
 }
 
+fn question_confirmation_prompt(question: &str) -> String {
+    format!(
+        "The previous turn stopped without changing the workspace and asked: {question}\n\nThe harness independently confirms that this managed workspace is writable and that `workspace_write`, `workspace_patch`, `workspace_remove`, and `run_command` are available host functions even when the provider has no native filesystem tools. Re-ground with `workspace_list` and targeted `workspace_read`, then continue implementing with those host functions. If a material user choice still remains after using the available capabilities, return the same direct question unchanged; otherwise complete the requested work."
+    )
+}
+
+fn retry_unverified_question(
+    question: &str,
+    workspace_unchanged: bool,
+    pending_question: Option<&str>,
+    unproductive_terminals: &mut u8,
+) -> bool {
+    if !workspace_unchanged || pending_question == Some(question) {
+        return false;
+    }
+    *unproductive_terminals = unproductive_terminals.saturating_add(1);
+    *unproductive_terminals < MAX_UNPRODUCTIVE_TERMINALS
+}
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct TerminalWire {
@@ -221,11 +284,11 @@ fn parse_terminal(value: &str) -> Result<TerminalTurn, ProductRunnerError> {
     }
 }
 
-pub fn developer_error(error: &peritus_agent::DeveloperLoopError) -> ProductRunnerError {
+pub fn developer_error(error: &DeveloperLoopError) -> ProductRunnerError {
     let kind = match error {
-        peritus_agent::DeveloperLoopError::Cancelled => ProductRunnerErrorKind::Cancelled,
-        peritus_agent::DeveloperLoopError::Trace(_) => ProductRunnerErrorKind::Repository,
-        peritus_agent::DeveloperLoopError::Tool(_) => ProductRunnerErrorKind::Apply,
+        DeveloperLoopError::Cancelled => ProductRunnerErrorKind::Cancelled,
+        DeveloperLoopError::Trace(_) => ProductRunnerErrorKind::Repository,
+        DeveloperLoopError::Tool(_) => ProductRunnerErrorKind::Apply,
         _ => ProductRunnerErrorKind::Provider,
     };
     ProductRunnerError::new(kind, "execute D0 developer loop", error.to_string())
@@ -258,6 +321,18 @@ mod tests {
         assert!(prompt.contains("workspace_read"));
         assert!(prompt.contains("If no code change is needed"));
         assert!(prompt.contains(error.detail()));
+    }
+
+    #[test]
+    fn unchanged_question_is_challenged_with_confirmed_workspace_capabilities() {
+        let correction = question_confirmation_prompt("Please provide a writable workspace.");
+        let prompt = writer_user("task", "design", None, Some(&correction));
+
+        assert!(prompt.contains("stopped without changing the workspace"));
+        assert!(prompt.contains("independently confirms"));
+        assert!(prompt.contains("workspace_write"));
+        assert!(prompt.contains("provider has no native filesystem tools"));
+        assert!(prompt.contains("return the same direct question unchanged"));
     }
 
     #[test]

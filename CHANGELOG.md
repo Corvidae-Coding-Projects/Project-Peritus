@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Challenge an unchanged writer or fixer request for user input against the harness's confirmed
+  writable workspace capabilities before pausing, so missing provider-native filesystem tools
+  cannot be mistaken for a read-only managed workspace (#31)
 - Enforce the 500-line source ceiling on exact changed source files within each affected project,
   so new and modified code remains modular without rejecting untouched vendored, generated,
   submodule, or legacy source inherited from the baseline (#31)
