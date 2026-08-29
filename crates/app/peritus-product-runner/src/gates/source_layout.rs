@@ -114,6 +114,7 @@ fn is_source(path: &Path, kind: ProjectKind) -> bool {
             extension.is_some_and(|value| ["js", "jsx", "mjs", "cjs", "ts", "tsx"].contains(&value))
         }
         ProjectKind::Python => extension == Some("py"),
+        ProjectKind::Sqlite => extension == Some("sql"),
         ProjectKind::Go => extension == Some("go"),
     }
 }

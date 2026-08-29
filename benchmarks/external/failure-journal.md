@@ -703,6 +703,35 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Disposition: retain the unchanged official 0.4 score. Do not remove standard dataclasses, invent
   an unpublished validation rule, or make an audit file lie about the most recent conversion call.
 
+## HBF-012: SQLite migration execution was not part of native acceptance
+
+- Suite and task: HarnessBench 2.0, `043-db-migration-safety`.
+- Symptom: the first run produced all five required files, manually exercised the schema,
+  migration twice, postcheck, and rollback in a temporary SQLite database, and scored outcome
+  0.995. Native acceptance nevertheless reported only source-layout and CSV-structure checks. The
+  writer trace contained valid database evidence, but the deterministic gate did not independently
+  reproduce it before the reviewer accepted the candidate.
+- Cause: exact-target discovery had no conventional database project kind. The benchmark's general
+  artifact marker therefore claimed changed SQL and migration-documentation files, whose only
+  semantic built-in check was for changed CSV structure.
+- Change: a directory containing `schema.sql` and `migration.sql` now forms a conventional SQLite
+  project for changed SQL and named migration companion files. The Rust-owned product boundary
+  executes the schema and forward migration in a disposable in-memory database, reruns the forward
+  migration to prove second-run safety, checks foreign-key integrity, executes an optional
+  `postcheck.sql`, and executes an optional `rollback.sql`. Focused tests cover complete lifecycle
+  success and rejection of a migration that fails on its second run.
+- Before evidence: local report `reports/043-db-migration-safety-pre-sqlite-gate.json`; outcome
+  0.995, process 0.9833, security 1.0, combined 0.9784, and 404.485 seconds. The retained native gate
+  report contains no SQLite command even though the writer's trace records successful manual
+  execution.
+- After evidence: local report `reports/043-db-migration-safety-post-sqlite-gate.json`; unchanged
+  outcome 0.995, process 0.9433, security 1.0, combined 0.9386, and 338.423 seconds. The native gate
+  explicitly records passing schema execution, first and second migration runs, postcheck,
+  rollback, and foreign-key validation before one-cycle review acceptance.
+- Remaining limitation: this convention covers a self-contained `migration.sql` reconciliation
+  script. Framework-managed numbered migration histories remain owned by their declared project
+  tooling rather than being replayed as though every individual file must be idempotent.
+
 ## HBF-005: a fixer deleted evaluator-owned evidence
 
 - Suite and task: HarnessBench 2.0, `022-local-rest-api-summary`.

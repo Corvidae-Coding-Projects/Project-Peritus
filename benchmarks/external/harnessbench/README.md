@@ -73,7 +73,7 @@ temporary files through its documented `--image` option.
 
 ## Current qualification progress
 
-The live baseline has exercised tasks 001 through 042 against the pinned, unchanged suite. Tasks
+The live baseline has exercised tasks 001 through 043 against the pinned, unchanged suite. Tasks
 022, 023, and 026 complete with oracle outcome 1.0. Tasks 021, 024, 025, 027, and 028 retain lower
 unchanged outcomes because of documented hidden taxonomies, invalid calendar ground truth,
 unmatchable normalization, or brittle unpublished phrase checks. Task 029 similarly retains a
@@ -114,6 +114,12 @@ native compile, pytest, and review acceptance. Its official 0.4 outcome is retai
 oracle crashes while dynamically loading ordinary dataclasses without registering their module.
 A separately labeled diagnostic also records an internally stale audit-count expectation and an
 unpublished zero-quantity rule; these are not used as the official score.
+Task 043 produced a complete, executable SQLite migration and scored 0.995 (`excellent`), but its
+first native report exposed that database execution lived only in the writer trace rather than the
+deterministic acceptance gate. Conventional `schema.sql` plus `migration.sql` workspaces now bind
+to a Rust-owned SQLite gate. An unchanged rerun executed the schema, migration twice, postcheck,
+foreign-key checks, and rollback in a disposable in-memory database before review accepted the
+candidate; it retained the 0.995 outcome and scored 0.9433 for process quality.
 Product failures and benchmark defects are kept separate in the
 [external failure journal](../failure-journal.md); generated workspaces, native traces, and full
 result JSON remain in the configured external state directory rather than Git.

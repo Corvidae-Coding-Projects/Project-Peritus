@@ -9,6 +9,7 @@ use peritus_gates::{GateExecutionRecord, TargetGatePlan, TargetGateReport};
 
 mod artifact_csv;
 mod source_layout;
+mod sqlite_migration;
 
 use crate::{ProductRunnerError, ProductRunnerErrorKind, bundle::limit_text};
 
@@ -39,6 +40,10 @@ pub fn run(root: &Path, changed_paths: Vec<PathBuf>) -> Result<GateReport, Produ
                     root,
                     specification.project().root(),
                     plan.changed_paths(),
+                    specification.display(),
+                ),
+                Some("sqlite-migration") => sqlite_migration::run(
+                    &root.join(specification.current_dir()),
                     specification.display(),
                 ),
                 _ => GateExecutionRecord {

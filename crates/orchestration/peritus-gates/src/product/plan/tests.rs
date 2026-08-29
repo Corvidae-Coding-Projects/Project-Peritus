@@ -146,3 +146,39 @@ fn manifestless_node_module_runs_adjacent_test_files() {
     assert_eq!(test.arguments(), ["cartState.test.js"]);
     assert_eq!(test.current_dir(), Path::new("in/cart-ui/src"));
 }
+
+#[test]
+fn conventional_sqlite_workspace_runs_migration_verification() {
+    let temporary = tempfile::tempdir().expect("temporary workspace");
+    std::fs::write(
+        temporary.path().join("peritus-workspace.toml"),
+        "schema_version = 1\nkind = \"artifact\"\n",
+    )
+    .expect("artifact workspace marker");
+    let database = temporary.path().join("in/db");
+    std::fs::create_dir_all(&database).expect("database directory");
+    std::fs::write(database.join("schema.sql"), "CREATE TABLE item(id INTEGER);\n")
+        .expect("schema");
+    std::fs::write(database.join("migration.sql"), "ALTER TABLE item ADD COLUMN name TEXT;\n")
+        .expect("migration");
+    std::fs::write(database.join("migration_report.md"), "# Migration\n").expect("report");
+
+    let plan = TargetGatePlan::discover(
+        temporary.path(),
+        vec![PathBuf::from("in/db/migration.sql"), PathBuf::from("in/db/migration_report.md")],
+    )
+    .expect("SQLite plan");
+
+    assert!(plan.has_complete_coverage());
+    assert_eq!(plan.projects().len(), 1);
+    assert_eq!(plan.projects()[0].kind(), ProjectKind::Sqlite);
+    assert_eq!(plan.projects()[0].root(), Path::new("in/db"));
+    assert_eq!(plan.projects()[0].manifest(), Some(Path::new("in/db/schema.sql")));
+    let verification = plan
+        .commands()
+        .iter()
+        .find(|command| command.label() == "SQLite migration verification")
+        .expect("SQLite verification command");
+    assert_eq!(verification.program(), "peritus-internal");
+    assert_eq!(verification.arguments(), ["sqlite-migration"]);
+}

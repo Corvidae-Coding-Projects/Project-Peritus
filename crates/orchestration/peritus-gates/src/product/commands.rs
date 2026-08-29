@@ -18,6 +18,7 @@ pub(super) fn commands_for(
         ProjectKind::Rust => rust_commands(workspace_root, project),
         ProjectKind::Node => node_commands(workspace_root, project),
         ProjectKind::Python => Ok(python_commands(workspace_root, project)),
+        ProjectKind::Sqlite => Ok(sqlite_commands(project)),
         ProjectKind::Go => Ok(go_commands(project)),
     }?;
     commands.extend(language_commands);
@@ -164,6 +165,15 @@ fn go_commands(project: &AffectedProject) -> Vec<GateCommandSpec> {
         spec("Go tests", "go", vec!["test".to_owned(), "./...".to_owned()], project),
         spec("Go lint", "go", vec!["vet".to_owned(), "./...".to_owned()], project),
     ]
+}
+
+fn sqlite_commands(project: &AffectedProject) -> Vec<GateCommandSpec> {
+    vec![spec(
+        "SQLite migration verification",
+        "peritus-internal",
+        vec!["sqlite-migration".to_owned()],
+        project,
+    )]
 }
 
 fn artifact_commands(

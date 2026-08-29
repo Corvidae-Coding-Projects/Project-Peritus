@@ -23,6 +23,8 @@ pub enum ProjectKind {
     Node,
     /// Python project.
     Python,
+    /// Conventional `SQLite` schema and migration workspace.
+    Sqlite,
     /// Go module.
     Go,
 }
@@ -48,9 +50,9 @@ impl AffectedProject {
         &self.root
     }
 
-    /// Manifest relative to the managed workspace, when the project declares one.
+    /// Manifest or conventional project anchor relative to the managed workspace.
     ///
-    /// Conventional manifestless Python projects are represented without inventing a path.
+    /// Manifestless Python and Node projects are represented without inventing a path.
     #[must_use]
     pub fn manifest(&self) -> Option<&Path> {
         self.manifest.as_deref()
@@ -228,6 +230,13 @@ fn nearest_projects(workspace_root: &Path, changed: &Path) -> Vec<AffectedProjec
                 manifest: None,
             });
         }
+        if conventional_sqlite_migration(&absolute, changed) {
+            found.push(AffectedProject {
+                kind: ProjectKind::Sqlite,
+                root: relative.to_path_buf(),
+                manifest: Some(relative.join("schema.sql")),
+            });
+        }
         if !found.is_empty() {
             return found;
         }
@@ -238,6 +247,21 @@ fn nearest_projects(workspace_root: &Path, changed: &Path) -> Vec<AffectedProjec
         relative = parent;
     }
     Vec::new()
+}
+
+fn conventional_sqlite_migration(root: &Path, changed: &Path) -> bool {
+    root.join("schema.sql").is_file()
+        && root.join("migration.sql").is_file()
+        && sqlite_candidate_path(changed)
+}
+
+fn sqlite_candidate_path(path: &Path) -> bool {
+    path.extension().is_some_and(|extension| extension == "sql")
+        || path.file_stem().and_then(|stem| stem.to_str()).is_some_and(|stem| {
+            ["migration", "postcheck", "preflight", "rollback"]
+                .iter()
+                .any(|term| stem.contains(term))
+        })
 }
 
 fn conventional_python_tests(absolute: &Path, relative: &Path, changed: &Path) -> bool {

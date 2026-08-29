@@ -85,10 +85,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
-- Exercise the pinned, unchanged HarnessBench suite through task 042, retaining task 039's excellent
+- Exercise the pinned, unchanged HarnessBench suite through task 043, retaining task 039's excellent
   0.9673 architecture result, task 040's complete 1.0 mutation-tested Python result, task 041's
-  0.9962 immutable-state result, and task 042's official 0.4 oracle-crash result without hiding the
-  regression or conflating benchmark infrastructure defects with Peritus defects (#31)
+  0.9962 immutable-state result, task 042's official 0.4 oracle-crash result, and task 043's 0.995
+  transactional SQLite result without hiding regressions or conflating benchmark infrastructure
+  defects with Peritus defects (#31)
+- Discover conventional SQLite migration workspaces and independently execute their schema,
+  forward migration twice, foreign-key checks, postcheck, and rollback in a disposable Rust-owned
+  database before exact-target acceptance (#31)
 - Retain the exact last product-run diff, gates, review ledger, summary, and durable finding state
   beside every external benchmark invocation so a strict internal rejection remains independently
   diagnosable after the upstream scorer exits; unchanged HarnessBench task 038 proves this evidence
