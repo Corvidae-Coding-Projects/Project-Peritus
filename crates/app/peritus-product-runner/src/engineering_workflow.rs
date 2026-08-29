@@ -50,6 +50,10 @@ requested behavior.
    explicitly requires overlap, do not place one item in multiple category fields merely because a
    broader prose label could describe it; derive membership independently from each field's stated
    rule and keep dedicated exception categories from leaking into one another.
+   Treat hard eligibility, compatibility, and placement constraints as evidence-positive. A missing
+   source field does not prove that an option satisfies a required constraint, and must not be
+   replaced with a permissive default unless an authoritative input explicitly defines that default.
+   Exclude an unproven option from the feasible set or report that the evidence is insufficient.
    Ask the user only when a material choice changes the requested result or effect and cannot be
    sensibly inferred; produce a reversible requested artifact with an explicit limitation when that
    remains useful. Treat phrases such as `such as`, `for example`, and `including` as
@@ -223,6 +227,9 @@ mod tests {
             assert!(instructions.contains("literal category boundary"));
             assert!(instructions.contains("separately named output fields"));
             assert!(instructions.contains("derive membership independently"));
+            assert!(instructions.contains("constraints as evidence-positive"));
+            assert!(instructions.contains("source field does not prove"));
+            assert!(instructions.contains("Exclude an unproven option"));
             assert!(instructions.contains("non-exhaustive"));
             assert!(instructions.contains("invented allowlist"));
             assert!(instructions.contains("preserve that precedence"));

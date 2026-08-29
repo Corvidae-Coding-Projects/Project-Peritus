@@ -254,6 +254,24 @@ at least three observations across a requested interval. The final unchanged run
 and scored outcome 1.0, process 0.9867, security 1.0, and combined 0.9867 in 167.85 seconds using
 17 provider requests and 176,238 tokens.
 
+Task 062 audited Kubernetes deployment, service, and policy fixtures in one native cycle, emitted
+all eight required findings, preserved the inputs, and scored process/security 1.0/1.0. Its 0.9054
+outcome reflects three severity labels from an unpublished taxonomy and two exact `missing` keyword
+checks where the evidence says `has no`; no task-specific wording was added. Task 063 then separated
+two topology-rooted production incidents from maintenance, heartbeat, and staging noise, passed all
+checks, and scored outcome/process/security/combined 1.0/0.9233/1.0/0.9233.
+
+Task 064 correctly identified `auth-gateway` change `AUTH-2026-0318`, the complete user-impact path,
+five evidence sources, both misleading signals, and grounded mitigation and verification. Its
+process score was 0.9967; the 0.8222 outcome retains an exact incident identifier that appears only
+in hidden ground truth and one synonym check. Task 065 then exposed a real constraint-grounding
+defect: the first plan assumed instance types without a `regions` field were available in the
+required region. The embedded workflow now treats hard eligibility, compatibility, and placement
+constraints as evidence-positive and refuses permissive defaults not declared by an authoritative
+input. The unchanged rerun selected the only type with affirmative `us-east` support, passed the
+capacity plan at 1.0, and improved outcome/process/security/combined from
+0.6617/0.95/1.0/0.6286 to 0.9873/1.0/1.0/0.9873 while reducing runtime from 165.591 to 116.95 seconds.
+
 HarnessBench chooses a result directory from the last observed provider model and may move a
 multi-provider sandbox after the native adapter exits. Invocation evidence schema 4 therefore
 includes `relocatable_paths`, all rooted at the final sandbox printed by HarnessBench. Those paths

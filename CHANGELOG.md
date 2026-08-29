@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Require affirmative source evidence for hard eligibility, compatibility, and placement
+  constraints instead of treating a missing field as a permissive default, keeping optimization
+  inside the proven feasible set unless an authoritative input declares fallback semantics (#31)
 - Keep mandatory design proportional to the declared workspace: render explicit generated-artifact
   designs deterministically in Rust from the exact conversation and bounded sorted inventory while
   retaining model-authored, read-grounded architecture for source repositories; add per-role model
@@ -135,6 +138,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Exercise unchanged HarnessBench tasks 062 through 065 across Kubernetes audit, topology-aware
+  alert reduction, multi-source incident triage, and capacity optimization; retain two unpublished
+  evaluator conventions while a general evidence-positive constraint fix improves task 065 from
+  failing 0.6617 outcome to excellent 0.9873 with perfect process/security scores (#31)
 - Exercise unchanged HarnessBench task 061 through timed status polling, replacing two design-bound
   deadline failures and one category/cadence miss with a 26-second multi-observation run that passes
   all seven checks and scores outcome/process/security/combined 1.0/0.9867/1.0/0.9867 (#31)

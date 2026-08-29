@@ -1309,3 +1309,48 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   outcome/process/security/combined 1.0/0.9867/1.0/0.9867 in 167.85 seconds with 17 requests and
   176,238 tokens. Focused design, workflow, developer-loop tests and strict affected-crate Clippy
   pass.
+
+## HBI-031: task 062 grades an unpublished severity taxonomy and exact synonym
+
+- Suite and task: HarnessBench 2.0, `062-k8s-config-audit`.
+- Symptom: Peritus emitted all eight required Kubernetes findings with correct status, evidence,
+  recommendation, and preserved inputs, but the outcome was 0.9054 rather than excellent.
+- Cause: the prompt requires a `severity` field without defining its scale or classification rules.
+  Hidden ground truth assigns `medium` to liveness, mutable-image, and NodePort violations where
+  Peritus reasonably used `high`. It also searches for the literal word `missing` where evidence
+  states that the two probes are absent using `has no`.
+- Disposition: retain the result. The run contains every substantive violation and scored
+  process/security 1.0/1.0; injecting unpublished severities or synonyms would be benchmark tuning.
+  Evidence is retained at `reports/062-k8s-config-audit-final.json`.
+
+## HBI-032: task 064 requires an incident identifier absent from all inputs
+
+- Suite and task: HarnessBench 2.0, `064-service-dependency-triage`.
+- Symptom: Peritus correctly identified the root service and change, affected dependency path, five
+  evidence sources, both red herrings, mitigation, and verification, but outcome was 0.8222.
+- Cause: the required output schema names `incident_id` without supplying its value or format.
+  Hidden ground truth awards 0.22 only for `INC-2026-03-22-CHECKOUT-AUTH`; no fixture contains that
+  identifier. A smaller notes deduction searches for `rollback` where the notes use `revert`.
+- Disposition: retain the evidence-grounded derived ID and score rather than guess an unpublished
+  identifier. The run scored process 0.9967 and security 1.0. Evidence is retained at
+  `reports/064-service-dependency-triage-final.json`.
+
+## HBF-028: missing compatibility metadata was treated as permissive
+
+- Suite and task: HarnessBench 2.0, `065-capacity-planning`.
+- Symptom: the first plan's arithmetic and cost comparison were internally correct, but it selected
+  `c7g.xlarge` and `m7i.large` by assuming instance types without a `regions` field were available
+  in `us-east`. The request explicitly required every plan to meet its region constraint.
+- Cause: the embedded reasoning workflow did not distinguish absence of incompatibility evidence
+  from affirmative satisfaction of a hard eligibility constraint. It invented a permissive default
+  instead of restricting optimization to the proven feasible set.
+- Change: hard eligibility, compatibility, and placement constraints are now evidence-positive. A
+  missing source field cannot satisfy a required constraint unless an authoritative input defines
+  that default; unproven options are excluded or reported as insufficient evidence.
+- Before evidence: local report
+  `reports/065-capacity-planning-pre-evidence-positive-constraints.json`; outcome 0.6617, process
+  0.95, security 1.0, combined 0.6286, and 165.591 seconds.
+- After evidence: local report `reports/065-capacity-planning-final.json`; the unchanged rerun used
+  only `c7g.large`, the sole type with affirmative `us-east` support, passed the capacity-plan check
+  at 1.0, and scored outcome/process/security/combined 0.9873/1.0/1.0/0.9873 in 116.95 seconds.
+  The focused workflow test and strict affected-crate Clippy pass.

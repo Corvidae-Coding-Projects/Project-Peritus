@@ -199,7 +199,7 @@ evidence, and obtaining an H4 `Ready` decision. Until that evidence exists, Peri
 `NotReadyForProduction` by construction.
 
 External production qualification is active against the pinned, unchanged 106-task HarnessBench
-suite. Tasks 001 through 061 have run sequentially with full local reports and failure diagnosis;
+suite. Tasks 001 through 065 have run sequentially with full local reports and failure diagnosis;
 task 051 passed all 21 checks cleanly, and the latest task 052 run passed all 17 external checks
 after exercising ambiguity handling, category boundaries, provider-stall recovery, and finding
 conservation. The source now treats advisory review as nonblocking and conserves stable finding
@@ -235,6 +235,17 @@ review turns proportional, while the workflow treats independent output categori
 predicates and distinguishes periodic polling from one long wait. The final unchanged run observed
 the workspace repeatedly across 26 seconds, passed all seven checks, and scored
 1.0/0.9867/1.0/0.9867.
+Task 062 found all eight Kubernetes policy violations with perfect process and security scores; its
+remaining outcome deduction is an unpublished severity taxonomy and lexical synonym check. Task 063
+then grouped both topology-rooted incidents, retained downstream symptoms as evidence, and filtered
+only true noise for a perfect outcome. Task 064 produced the correct cross-file root-cause chain,
+change, impact, red-herring exclusions, mitigation, and verification with process 0.9967; its exact
+incident-ID deduction is retained because no ID or format appears in the supplied evidence. Task
+065 exposed a genuine permissive-default defect in constraint solving: options without region data
+were treated as region-compatible. Hard eligibility and placement constraints now require
+affirmative evidence unless an authoritative source declares a default. The unchanged rerun chose
+only proven `us-east` plans and improved outcome/process/security/combined from
+0.6617/0.95/1.0/0.6286 to 0.9873/1.0/1.0/0.9873.
 Terminal-Bench 2.0, the complete professional-capability audit, documentation normalization,
 release-installer qualification, and final hosted-runner closure remain required before production
 readiness.
