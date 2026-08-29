@@ -13,6 +13,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Continue premature writer, reviewer, and fixer terminal responses inside the same tool session
+  until the executor's deterministic completion evidence is satisfied, preserving partial grounding
+  across correction instead of exhausting fresh retries before a known gate failure can be fixed
+  (#31)
+- Treat detail ledgers named for one closed classification as projections of that class unless the
+  contract explicitly allows overlap, preventing review and informational rows from leaking into
+  regression-only outputs (#31)
 - Route reconciliation identities once across primary, synthetic, and reject outputs unless dual
   recording is explicit; preserve material status, distinguish absent references from present
   invalid records, and reconcile exception summaries across every artifact, letting unchanged
@@ -161,6 +168,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Exercise unchanged HarnessBench task 093 across JSONL parsing, identity stitching, ordered
+  sessionization, exact inactivity boundaries, bot exclusion, deduplication, rejects, and summaries;
+  isolate unpublished campaign carryover, dual-routing, and lexical conventions from product rules
+  (#31)
+- Exercise unchanged HarnessBench task 092 across daily schema drift, row-level rejection, summary
+  reconciliation, and changelog contradiction reporting; retain complete evidence while isolating
+  unpublished severities, multi-defect priority, summary shape, and a rubric-oracle category conflict
+  from general product behavior (#31)
 - Exercise unchanged HarnessBench task 091 across FX conversion, refunds, bank fees, void and
   missing-invoice cash, rejection routing, summary reconciliation, and close notes, improving
   outcome/process/security/combined from 0.7705/0.9767/1.0/0.7525 to

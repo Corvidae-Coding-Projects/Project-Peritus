@@ -26,3 +26,5 @@ without unrequested duplication, keep material exception states in status values
 specific evidenced reason, and reconcile summary exception counts across every output artifact.
 A failed reference lookup must use a missing-reference reason; reserve invalid-reference reasons for
 records that are present and fail validation.
+Treat a ledger named for one closed classification as a projection of only that class; do not include
+neighboring review or informational classes without an explicit overlap rule.

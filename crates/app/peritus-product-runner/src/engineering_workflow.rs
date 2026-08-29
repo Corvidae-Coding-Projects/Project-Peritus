@@ -55,6 +55,9 @@ requested behavior.
    explicitly requires overlap, do not place one item in multiple category fields merely because a
    broader prose label could describe it; derive membership independently from each field's stated
    rule and keep dedicated exception categories from leaking into one another.
+   When a detail ledger is named for one member of a closed classification, treat it as a projection
+   of that class only. Do not copy neighboring review, pending, informational, or other nonmatching
+   classes into the ledger unless the contract explicitly declares overlapping membership.
    For reconciliation tables, exception ledgers, and their summaries, preserve explicit routing and
    material state. A requested synthetic or exception row is the item's primary representation and
    does not also belong in a reject ledger unless the contract explicitly requires both. Reject rows
@@ -200,6 +203,8 @@ without unrequested duplication, keep material exception states in status values
 specific evidenced reason, and reconcile summary exception counts across every output artifact.
 A failed reference lookup must use a missing-reference reason; reserve invalid-reference reasons for
 records that are present and fail validation.
+Treat a ledger named for one closed classification as a projection of only that class; do not include
+neighboring review or informational classes without an explicit overlap rule.
 ";
 
 const REVIEWER_SKILL: &str = r"# Independent reviewer
@@ -238,7 +243,8 @@ rule as a concrete finding. Verify that status values retain material conditions
 the most specific evidenced cause, and summary exception counts reconcile unresolved primary and
 rejected identities across every requested artifact. Treat an absent referenced record labeled only
 as invalid as a concrete reason-taxonomy defect; `invalid` is for a present record that fails
-validation. Treat
+validation. Reject entries whose classification does not match the closed class named by their
+ledger unless explicit overlap requires them. Treat
 a missing or incompatible
 production dependency, or a test-process
 substitute used in its place, as a blocking compatibility failure when that dependency is being
@@ -288,6 +294,11 @@ mod tests {
             assert!(instructions.contains("literal category boundary"));
             assert!(instructions.contains("separately named output fields"));
             assert!(instructions.contains("derive membership independently"));
+            assert!(instructions.contains("detail ledger is named for one member"));
+            assert!(instructions.contains("as a projection"));
+            assert!(instructions.contains("of that class only"));
+            assert!(instructions.contains("other nonmatching"));
+            assert!(instructions.contains("classes into the ledger"));
             assert!(instructions.contains("preserve explicit routing"));
             assert!(instructions.contains("does not also belong in a reject ledger"));
             assert!(instructions.contains("most specific"));

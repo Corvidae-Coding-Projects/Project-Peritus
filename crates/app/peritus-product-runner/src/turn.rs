@@ -297,6 +297,9 @@ mod tests {
         assert!(prompt.contains("absent referenced record labeled only"));
         assert!(prompt.contains("concrete reason-taxonomy defect"));
         assert!(prompt.contains("present record that fails"));
+        assert!(prompt.contains("classification does not match"));
+        assert!(prompt.contains("closed class named by their"));
+        assert!(prompt.contains("ledger unless explicit overlap"));
     }
 
     #[test]
@@ -330,6 +333,8 @@ mod tests {
         assert!(prompt.contains("across every output artifact"));
         assert!(prompt.contains("failed reference lookup"));
         assert!(prompt.contains("reserve invalid-reference reasons"));
+        assert!(prompt.contains("ledger named for one closed classification"));
+        assert!(prompt.contains("neighboring review or informational classes"));
     }
 
     #[test]

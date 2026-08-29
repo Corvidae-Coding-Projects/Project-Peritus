@@ -1619,3 +1619,56 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   `reports/091-financial-close-reconciliation-pre-ledger-semantics.json`,
   `reports/091-financial-close-reconciliation-post-ledger-pre-missing-reason.json`, and
   `reports/091-financial-close-reconciliation-final.json`.
+
+## HBI-053: task 092 leaves severity, reject priority, and summary shape unpublished
+
+- Suite and task: HarnessBench 2.0, `092-schema-drift-audit`.
+- Symptom: all six drift identities and details, all five rejected rows and notes, per-date counts,
+  changelog contradiction, and schema-versus-row explanation were present, but two severities, one
+  multi-defect row reason, and the mismatch-summary serialization failed.
+- Cause: the prompt supplies closed drift and reject vocabularies but no severity mapping, no
+  precedence when one row has both a missing header field and an invalid value, and no schema for
+  `changelog_mismatches`. Peritus reported both E008 defects under one allowed reason and retained
+  the mismatch as a structured object; hidden truth chooses the other reason and a flat string. The
+  process rubric also criticizes value failures appearing as drift while the deterministic oracle
+  explicitly requires all four value-level drift categories.
+- Disposition: retain the evidence-complete audit and outcome/process/security/combined score of
+  0.74/0.8967/1.0/0.6635 rather than add a private taxonomy or contradictory category rule. Evidence
+  is retained at `reports/092-schema-drift-audit-final.json`.
+
+## HBI-054: task 093 assumes cross-session campaign carryover and duplicate bot routing
+
+- Suite and task: HarnessBench 2.0, `093-jsonl-sessionization-analysis`.
+- Symptom: identity stitching, ordering, the exact 30-minute boundary, deduplication, sessions,
+  summary, and four required reject identities were correct, but one later session had blank campaign
+  attribution, the excluded bot was not duplicated into the reject ledger, and a note keyword failed.
+- Cause: the rules define session boundaries and campaign mapping but never require campaign state to
+  carry across sessions; Peritus scoped first-touch attribution to each session. Bot exclusion is
+  already recorded in the required summary, while only malformed JSON is explicitly required in the
+  reject ledger. The notes explain the exact boundary as “30 minutes,” while the oracle requires the
+  raw hyphenated substring `30-minute`.
+- Disposition: retain the boundary-respecting, nonduplicated result and
+  outcome/process/security/combined score of 0.5429/0.9933/1.0/0.5393. No private attribution or
+  dual-routing rule was added. Evidence is retained at
+  `reports/093-jsonl-sessionization-analysis-final.json`.
+
+## HBI-055: task 094 exposed ledger leakage and discarded grounding progress
+
+- Suite and task: HarnessBench 2.0, `094-metric-definition-migration-diff`.
+- Symptom: the first result put a `requires_review` metric in a regression-only ledger. After that
+  category rule was corrected, another run produced a malformed CSV row; the native gate and
+  reviewer identified the exact missing field, but fresh reviewer retries discarded partial
+  list/read grounding and the fixer never ran.
+- Cause: detail-ledger membership was not explicitly defined as a projection of the closed class in
+  its name. Separately, the generic developer loop accepted a text terminal before the role-owned
+  workspace executor's grounding precondition was complete, forcing product code to restart the
+  reviewer with an empty evidence state.
+- Resolution: the workflow and both role skills exclude neighboring classifications from a closed
+  detail ledger unless overlap is explicit. Tool executors can now report a completion blocker, and
+  the developer loop feeds it back inside the same conversation while retaining the executor and
+  its partial evidence. The unchanged final run completed successfully with all native gates,
+  process 0.9967, and security 1.0. Its 0.78 oracle outcome retains unpublished direction defaults,
+  caveat substring checks, and one stochastic category-row recurrence rather than rerolling or
+  adding private output rules. Evidence is retained at
+  `reports/094-metric-definition-migration-diff-pre-ledger-projection.json` and
+  `reports/094-metric-definition-migration-diff-final.json`.

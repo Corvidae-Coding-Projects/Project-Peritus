@@ -96,6 +96,10 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
             }
         }
     }
+
+    fn completion_blocker(&self) -> Option<String> {
+        self.grounding.validate().err().map(str::to_owned)
+    }
 }
 
 impl WorkspaceDeveloperTools {

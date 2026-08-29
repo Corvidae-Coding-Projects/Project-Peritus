@@ -132,6 +132,15 @@ pub trait DeveloperToolExecutor: Send {
         &mut self,
         call: &CompletedToolCall,
     ) -> Result<DeveloperToolObservation, DeveloperLoopError>;
+
+    /// Explains why a text-only model response cannot yet complete this tool session.
+    ///
+    /// The developer loop feeds this reason back into the same conversation and keeps the
+    /// executor alive, preserving partial inspection evidence across the correction. Executors
+    /// without a completion precondition use the default ready state.
+    fn completion_blocker(&self) -> Option<String> {
+        None
+    }
 }
 
 /// Exact trace event committed before D0 advances past an external observation.

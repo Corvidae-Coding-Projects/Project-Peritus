@@ -81,6 +81,32 @@ struct RecordingTool {
     calls: u32,
 }
 
+#[derive(Default)]
+struct GroundingTool {
+    calls: u32,
+}
+
+impl DeveloperToolExecutor for GroundingTool {
+    fn execute(
+        &mut self,
+        call: &peritus_model_protocol::CompletedToolCall,
+    ) -> Result<DeveloperToolObservation, peritus_agent::DeveloperLoopError> {
+        assert_eq!(call.name().as_str(), "workspace_read");
+        self.calls += 1;
+        Ok(DeveloperToolObservation {
+            output: CanonicalJson::parse(
+                r#"{"content":"grounded"}"#,
+                JsonBounds::value(ProtocolLimits::PRODUCTION),
+            )?,
+            is_error: false,
+        })
+    }
+
+    fn completion_blocker(&self) -> Option<String> {
+        (self.calls == 0).then(|| "read one observed workspace file".to_owned())
+    }
+}
+
 impl DeveloperToolExecutor for RecordingTool {
     fn execute(
         &mut self,
@@ -246,5 +272,52 @@ fn developer_loop_retries_a_recoverable_malformed_provider_turn() {
         assert_eq!(outcome.text, "implementation inspected");
         assert_eq!(outcome.model_turns, 1);
         assert_eq!(provider.requests.lock().expect("requests").len(), 3);
+    });
+}
+
+#[test]
+fn developer_loop_continues_an_early_terminal_in_the_same_grounding_session() {
+    block_on(async {
+        let provider = ScriptedProvider {
+            profile: profile(),
+            responses: Mutex::new(VecDeque::from([
+                text_response(),
+                tool_response(),
+                text_response(),
+            ])),
+            requests: Mutex::new(Vec::new()),
+        };
+        let mut tools = GroundingTool::default();
+        let mut trace = RecordingTrace::default();
+        let outcome = DeveloperLoop::run(
+            &provider,
+            DeveloperLoopRequest {
+                request_prefix: "grounding-recovery-test".to_owned(),
+                system: "Inspect before completing.".to_owned(),
+                prompt: "Read src/lib.rs and report.".to_owned(),
+                attachments: Vec::new(),
+                tools: vec![read_tool()],
+                limits: DeveloperLoopLimits::new(4, 4).expect("limits"),
+                cancellation: CancellationToken::new(),
+            },
+            &mut tools,
+            &mut trace,
+        )
+        .await
+        .expect("early terminal recovers");
+
+        assert_eq!(outcome.text, "implementation inspected");
+        assert_eq!(outcome.model_turns, 3);
+        assert_eq!(outcome.tool_calls, 1);
+        assert_eq!(tools.calls, 1);
+        let requests = provider.requests.lock().expect("requests");
+        assert_eq!(requests.len(), 3);
+        assert!(requests[1].messages().iter().any(|message| {
+            message.role() == Role::User
+                && message.content().iter().any(|block| {
+                    matches!(block, ContentBlock::Text(text) if text.expose_for_wire().contains("cannot accept that terminal response yet"))
+                })
+        }));
+        drop(requests);
     });
 }

@@ -19,6 +19,9 @@ requested behavior.
    combine the authoritative category or type label and stable ID as `category:id`. Aggregate fields
    such as cause counts group by the semantic category they name, while row-level outputs retain the
    typed record identity.
+   When a detail ledger is named for one member of a closed classification, treat it as a projection
+   of that class only. Do not copy neighboring review, pending, informational, or other nonmatching
+   classes into the ledger unless the contract explicitly declares overlapping membership.
    For reconciliation tables, exception ledgers, and their summaries, preserve explicit routing and
    material state. A requested synthetic or exception row is the item's primary representation and
    does not also belong in a reject ledger unless the contract explicitly requires both. Use the most

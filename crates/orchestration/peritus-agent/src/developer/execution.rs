@@ -93,6 +93,17 @@ impl DeveloperLoop {
                 if final_text.trim().is_empty() {
                     return Err(DeveloperLoopError::EmptyResponse);
                 }
+                if let Some(blocker) = tools.completion_blocker() {
+                    messages.push(Message::new(Role::Assistant, assistant, protocol_limits)?);
+                    messages.push(message(
+                        Role::User,
+                        format!(
+                            "The harness cannot accept that terminal response yet: {blocker}. Continue in this same session, use the declared host tools to satisfy the missing evidence, and then return the complete requested terminal response."
+                        ),
+                        protocol_limits,
+                    )?);
+                    continue;
+                }
                 return Ok(DeveloperLoopOutcome {
                     text: final_text,
                     model_turns: turn,

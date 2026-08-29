@@ -36,3 +36,5 @@ the most specific evidenced cause, and summary exception counts reconcile unreso
 rejected identities across every requested artifact.
 An absent referenced record labeled only as invalid is a concrete reason-taxonomy defect; `invalid`
 is for a present record that fails validation.
+Reject entries whose classification does not match the closed class named by their ledger unless
+explicit overlap requires them.

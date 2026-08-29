@@ -370,6 +370,27 @@ summary exceptions across all outputs. The unchanged final run passed all 20 out
 improved outcome/process/security/combined from 0.7705/0.9767/1.0/0.7525 to
 1.0/0.9633/1.0/0.9633.
 
+Task 092 reported all six required drift identities and all five rejected rows with complete
+evidence. Its retained 0.74 outcome reflects an unpublished severity map, unpublished precedence for
+a row with two valid defects, and an unspecified mismatch-summary shape. The process rubric also
+penalizes value failures appearing in the drift report even though the deterministic oracle requires
+those exact value-level drift categories, so no contradictory benchmark-specific rule was added.
+
+Task 093 correctly stitched identities, sorted events, enforced the exact 30-minute boundary,
+deduplicated event IDs, excluded bots, and produced the exact summary. Its retained 0.5429 outcome
+comes from unpublished cross-session campaign carryover, unpublished duplication of an excluded bot
+into both summary and reject ledger, and a raw hyphenated keyword check against equivalent prose.
+
+Task 094 initially mixed a `requires_review` metric into a regression-only ledger. The workflow and
+role skills now treat a detail ledger as a projection of its named closed class unless overlap is
+explicit. A subsequent run exposed a separate real harness defect: after the native CSV gate found a
+ragged row, the reviewer produced the right finding but exhausted fresh grounding retries before the
+fixer ran. The developer loop now continues an early terminal inside the same tool session and
+preserves partial grounding evidence. The unchanged final run completed with every native gate
+passing and process/security 0.9967/1.0. Its retained 0.78 outcome reflects unpublished direction
+defaults, caveat substring checks, and output variability that reintroduced the review row; the
+general category and recovery rules remain in force.
+
 HarnessBench chooses a result directory from the last observed provider model and may move a
 multi-provider sandbox after the native adapter exits. Invocation evidence schema 4 therefore
 includes `relocatable_paths`, all rooted at the final sandbox printed by HarnessBench. Those paths

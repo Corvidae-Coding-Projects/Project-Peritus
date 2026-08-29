@@ -199,7 +199,7 @@ evidence, and obtaining an H4 `Ready` decision. Until that evidence exists, Peri
 `NotReadyForProduction` by construction.
 
 External production qualification is active against the pinned, unchanged 106-task HarnessBench
-suite. Tasks 001 through 088 have run sequentially with full local reports and failure diagnosis;
+suite. Tasks 001 through 094 have run sequentially with full local reports and failure diagnosis;
 task 051 passed all 21 checks cleanly, and the latest task 052 run passed all 17 external checks
 after exercising ambiguity handling, category boundaries, provider-stall recovery, and finding
 conservation. The source now treats advisory review as nonblocking and conserves stable finding
@@ -296,6 +296,20 @@ distinguished by lookup evidence, and summary exception counts reconcile every o
 The unchanged final run passed all 20 outcome checks and improved
 outcome/process/security/combined from 0.7705/0.9767/1.0/0.7525 to
 1.0/0.9633/1.0/0.9633.
+Task 092 then found every schema drift and rejected row. Its remaining deductions are isolated to an
+unpublished severity map, an unpublished multi-defect reason priority, an unspecified summary value
+shape, and a process rubric that contradicts the deterministic oracle's required categories; these
+did not cause benchmark-specific product behavior.
+Task 093 then handled identity stitching, ordered sessionization, bot exclusion, deduplication, and
+the exact 30-minute boundary correctly. Remaining deductions require unpublished cross-session
+campaign carryover, duplicate bot routing, and a hyphen-specific prose match; no private state rule
+was added.
+Task 094 exposed both category leakage and a recovery failure after a deterministic CSV gate. Detail
+ledgers are now treated as projections of their named closed class, and an early role terminal is
+continued in the same tool session until required grounding evidence exists. The unchanged final run
+completed successfully with every native gate passing and process/security scores of 0.9967/1.0;
+remaining oracle deductions are unpublished direction defaults, caveat keyword matching, and one
+stochastic reappearance of the neighboring review row rather than a native acceptance failure.
 Terminal-Bench 2.0, the complete professional-capability audit, documentation normalization,
 release-installer qualification, and final hosted-runner closure remain required before production
 readiness.
