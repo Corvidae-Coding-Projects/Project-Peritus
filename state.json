@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 760,
+  "next_comment_id": 761,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T23:15:10.762794764Z",
+      "updated_at": "2026-08-29T23:20:18.636419557Z",
       "labels": [
         "qualification",
         "release"
@@ -1288,6 +1288,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzBHvxPu1cgP12fjIRXHcO8gvXKoH48EWG+ZoyVXqvTY0xd98xxi/Ga2gcW3P23X9tJDxcJ2JpqmB3+ACw6NdAQ=="
+        },
+        "0092272c-1029-47ae-a522-d913432e3f5c": {
+          "display_id": 760,
+          "author": "6ME5",
+          "content": "[action] Record benchmark-integrity requirement: final report must document gotchas, retain honest scores, and identify cheating shortcuts Peritus refused",
+          "created_at": "2026-08-29T23:20:18.633945997Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7UojgRUw9V/yDRfAdDALYnA9dRegpJbrZWqjDzDwXqIoHA3IpfmB0WVmmPNkdq52+Z+zCulBfBxDDM8IgfzsBw=="
         },
         "02256617-2f65-498a-a59b-266697a18d45": {
           "display_id": 648,
@@ -7592,8 +7601,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T23:20:12.694363679Z",
+    "timestamp": "2026-08-29T23:20:18.636419557Z",
     "agent_id": "6ME5",
-    "agent_seq": 947
+    "agent_seq": 948
   }
 }
