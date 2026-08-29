@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 732,
+  "next_comment_id": 733,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T19:32:46.266893624Z",
+      "updated_at": "2026-08-29T20:01:24.646870890Z",
       "labels": [
         "qualification",
         "release"
@@ -2728,6 +2728,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABACj6sscISOdxgL6S6TjyuJo8xdSSOZJ2xStpI6yU/9tGFrczSo5fyaqeKVnlcBZJqd2bPAkJ4NczhkK9CiqKSDg=="
+        },
+        "e42dc5e5-1bdf-40e7-8176-d884aef80868": {
+          "display_id": 732,
+          "author": "6ME5",
+          "content": "Signed commit dccf09146d8b7a2a9685d32d0ef0880c4a00ef1c adds the H4 native release operator and the tagged release evidence pipeline. Each platform now stages an archive, emits candidate-bound inventory/SPDX/SLSA documents in Rust, creates and verifies keyless GitHub Sigstore provenance and SBOM attestations against the exact repository/workflow/commit/tag/predicate/artifact/hosted-runner claims, retains bundles and evidence checksums, then uploads to a draft release. Also records TBI-004 and TBF-009 benchmark evidence and updates root/H4/changelog documentation. Verification: 11 release-artifact tests, 6 operator tests, 260 xtask tests, strict all-target/all-feature Clippy for all affected packages, local generation smoke, and xtask all over 77 packages/3073 source files/134 docs/27 pinned actions.",
+          "created_at": "2026-08-29T20:01:24.642567110Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzyx5lLn/kPCuXA1UrS5s4KNBkgurlaDxCjeMDVPxBAAXR/9tY7mYiaC9sQa0GZ5VSEL83y+jw1Gdpq+bc3zJDw=="
         },
         "e56e611e-f0b6-4710-9549-6bbcc3a4f9c7": {
           "display_id": 711,
@@ -7340,8 +7349,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T19:32:46.266893624Z",
+    "timestamp": "2026-08-29T20:01:24.646870890Z",
     "agent_id": "6ME5",
-    "agent_seq": 917
+    "agent_seq": 918
   }
 }
