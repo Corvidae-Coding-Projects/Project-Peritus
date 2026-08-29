@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 759,
+  "next_comment_id": 760,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1269,7 +1269,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T23:01:23.807563762Z",
+      "updated_at": "2026-08-29T23:15:10.762794764Z",
       "labels": [
         "qualification",
         "release"
@@ -2768,6 +2768,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABuJp9+qQ2lYGKDFYIWUsKQ5MPfYXqRD6Kh/jbYMARDAtUHrR7ZB3ToDKXswJXFFXcbyXlxaCwKvEY1OnupfBAw=="
+        },
+        "cf1795c3-ace9-4d86-b3dc-4c20e17befba": {
+          "display_id": 759,
+          "author": "6ME5",
+          "content": "Signed checkpoint f8c928da4d4fae3f5b6a4d4bc810cf6a2c75ff2c closes the exhausted-invocation edge of TBF-009. Designer, writer/fixer, and reviewer now receive up to two fresh repository-grounded same-provider invocations after empty, pre-submission connection, or malformed-stream exhaustion; the third failure remains terminal, non-retryable policy terminals are preserved, and configured failover remains after ordinary recovery. The gcode-to-text baseline failure is retained honestly without verifier or flag leakage. Verification: 80 product-runner tests, strict all-target/all-feature Clippy, rustfmt, source-layout-check over 3083 files, ordinary-api-check over 2616 formal-boundary files and 12241 ordinary-safe entry points, docs-check over 134 files, and git diff check. Local bootstrap metadata remained unstaged.",
+          "created_at": "2026-08-29T23:15:10.759686355Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAwYPCGwl1wJH+VnrLfQSNO7zknEEFjrRw+d+J0Nye8w6MTZxpm1xANIUnp0ywJmCArcd6tUySCkJqXVYqF3x5Dg=="
         },
         "cfcb1dd7-6e44-4f7e-972c-506f49740606": {
           "display_id": 754,
@@ -7578,8 +7587,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T23:01:23.807563762Z",
+    "timestamp": "2026-08-29T23:15:10.762794764Z",
     "agent_id": "6ME5",
-    "agent_seq": 945
+    "agent_seq": 946
   }
 }
