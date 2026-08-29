@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 719,
+  "next_comment_id": 720,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T16:49:22.272441456Z",
+      "updated_at": "2026-08-29T17:08:29.183809883Z",
       "labels": [
         "qualification",
         "release"
@@ -1711,6 +1711,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABANXAPnfjIiptEOaZkOu2ZbNCTFhZBMWU7ZCnMWwCmgulWZ2dfN9g+ZTpnDn5EZH9M8eTjYWvMSQ6vFvu5DeBvAA=="
+        },
+        "423f7f48-2503-4d6b-b8cc-2360ef9f890c": {
+          "display_id": 719,
+          "author": "6ME5",
+          "content": "Completed the professional outer-retry gap: G4 now uses the shared checked exponential planner with stable bounded jitter, bounded Retry-After, cancellation-first waits, and durable reason/delay evidence. Terminal-Bench TBF-006 exposed a separate observability loss: Codex runtime turn.failed categories collapsed to generic and then EmptyResponse. The adapter now classifies stable authentication/safety/rate/quota/context families without retaining provider text, and D0 preserves non-retryable provider/category/diagnostic terminals. It does not retry or route around safety policy. Retry, cancellation, provider, product-runner, strict Clippy, formatting, and xtask all pass.",
+          "created_at": "2026-08-29T17:08:29.181285986Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAz2pMqmdzQoCFdooEP9zu40+Ni0X6wayju6FRj/DpO0yJJw7rkMwirtgSvD4sVCTn+4SAV1lH9kAJh/sVTBzmAw=="
         },
         "42befeff-2e5c-48c1-916f-f29022b8f0dc": {
           "display_id": 674,
@@ -7223,8 +7232,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T16:49:22.272441456Z",
+    "timestamp": "2026-08-29T17:08:29.183809883Z",
     "agent_id": "6ME5",
-    "agent_seq": 902
+    "agent_seq": 903
   }
 }
