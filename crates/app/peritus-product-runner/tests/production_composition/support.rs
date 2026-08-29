@@ -169,6 +169,15 @@ pub fn text_response(text: &[u8]) -> VecDeque<EventEnvelope> {
     ])
 }
 
+#[allow(dead_code, reason = "shared integration support is compiled once per test binary")]
+pub fn empty_response() -> VecDeque<EventEnvelope> {
+    response([
+        ModelEvent::ResponseStarted { response_id: None, model: None },
+        ModelEvent::Finish(FinishReason::Stop),
+        ModelEvent::ResponseCompleted,
+    ])
+}
+
 pub fn design_response() -> VecDeque<EventEnvelope> {
     text_response(br"# Tested answer implementation design
 

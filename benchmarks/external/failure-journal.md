@@ -2196,20 +2196,24 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Suite and tasks: Terminal-Bench 2.0 frozen baseline, first observed together on
   `cancel-async-tasks`, `polyglot-rust-c`, `dna-insert`, and `rstan-to-pystan`, then observed on
   `dna-assembly`, `vulnerable-secret`, `feal-linear-cryptanalysis`, and the final review turn of
-  `mteb-leaderboard`, and finally after a verifier-complete `regex-chess` candidate.
+  `mteb-leaderboard`, after a verifier-complete `regex-chess` candidate, and while inspecting the
+  G-code input for `gcode-to-text`.
 - Symptom: each run reached a normal provider boundary and then ended with
   `provider returned no tool calls or usable final response`. The outcomes differed substantially:
   the cancellation candidate passed five of six verifier checks, the DNA candidate wrote its
   requested artifact but missed one melting-temperature bound, and the polyglot and PyStan tasks
   retained no requested final artifacts. Treating all four as the same terminal hid recoverable
   progress and prevented a fresh reviewer or writer turn from correcting it.
-- Cause: the frozen adapter made one empty provider response terminal at the product boundary. This
-  is the same provider-neutral recovery class found while diagnosing `TBF-007`, not four separate
-  task semantics or a reason to add task-specific behavior.
-- Resolution: the current candidate applies the shared bounded outer retry policy to empty
-  responses from every role, with traced delay, cancellation, and cumulative run accounting. A
-  retry resumes from the exact current workspace, so useful artifacts remain available for review
-  and incomplete work receives another grounded writer turn.
+- Cause: in-turn provider recovery was finite, but exhausting it made the complete product role
+  terminal even when a fresh grounded invocation could safely continue from the same workspace.
+  This is one provider-neutral recovery class, not separate task semantics or a reason to add
+  task-specific behavior.
+- Resolution: the current candidate keeps the checked in-turn retry planner, then permits up to two
+  fresh repository-grounded invocations for designer, writer, fixer, and reviewer after empty,
+  pre-submission connection, or malformed-stream exhaustion. Each fresh invocation re-lists and
+  reads the current workspace, preserving useful artifacts without trusting stale model context.
+  The third failed invocation remains terminal; safety, refusal, cancellation, ambiguous
+  transport, and other normalized non-retryable terminals never enter this same-provider path.
 - Evidence: baseline trials `cancel-async-tasks__aPpRDvK`,
   `polyglot-rust-c__EWL8xpT`, `dna-insert__KD4hLQo`, and
   `rstan-to-pystan__fMdVnzV` all retain the same typed failure. Their unchanged Harbor rewards were
@@ -2239,7 +2243,15 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   accepted diffs or artifacts, passing exact-target gates, and no blocking review findings before
   the terminal provider event. This is broad evidence for role-level recovery and durable candidate
   preservation, not permission to infer success from Harbor's later score. Final-candidate reruns
-  must make native completion true as well as preserve the external reward.
+  must make native completion true as well as preserve the external reward. Trial
+  `gcode-to-text__e5ePRiB` shows the no-progress form: the writer correctly listed the artifact
+  workspace, read the 1,661,422-byte `text.gcode`, and searched real object and layer markers, but
+  the continuations after those useful tool calls ended in malformed Codex runtime responses.
+  Native Peritus stopped after four requests and 201.664 seconds with 81,321 input tokens, 7,936
+  cached input tokens, no changed paths, and no `out.txt`; Harbor therefore retained reward 0.
+  This is evidence for a fresh provider invocation, not for hard-coding the hidden flag or reading
+  the verifier. The composed regression now exhausts one invocation in each designer, writer, and
+  reviewer role, then proves fresh grounding and normal product completion.
 
 ## TBF-010: current data was mistaken for a historical snapshot
 

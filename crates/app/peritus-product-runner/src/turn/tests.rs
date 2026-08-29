@@ -31,6 +31,17 @@ fn unchanged_question_is_challenged_with_confirmed_workspace_capabilities() {
 }
 
 #[test]
+fn fresh_provider_recovery_requires_new_repository_grounding() {
+    let correction = crate::failover::RoleRecovery::correction("malformed_stream");
+
+    assert!(correction.contains("recoverable `malformed_stream`"));
+    assert!(correction.contains("bounded in-turn retries"));
+    assert!(correction.contains("workspace_list"));
+    assert!(correction.contains("authoritative inputs"));
+    assert!(correction.contains("preserve any useful existing work"));
+}
+
+#[test]
 fn reviewer_checks_literal_request_independently_of_the_design() {
     let prompt = reviewer_system();
     assert!(prompt.contains("Begin every review by requesting"));

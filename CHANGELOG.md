@@ -37,6 +37,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Fixed
+- Start a bounded fresh repository-grounded invocation when designer, writer, fixer, or reviewer
+  exhausts one invocation's empty, connection, or malformed-stream retries; preserve useful
+  workspace progress, refuse safety and other non-retryable terminals, and stop after three total
+  same-provider role invocations (`TBF-009`, #31)
 - Expand dirty tracked and untracked files inside cloned nested Git repositories into the managed
   candidate set and reviewer diff, while retaining generated-tree filtering and imported-source
   ownership boundaries (`TBF-014`, #31)

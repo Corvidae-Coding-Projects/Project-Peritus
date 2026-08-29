@@ -18,13 +18,18 @@ use crate::progress::WorkspaceCheckpoint;
 use crate::trace::FileDeveloperTrace;
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
+mod provider;
 mod terminal;
 
 use terminal::TerminalTurn;
 
 const MAX_UNPRODUCTIVE_TERMINALS: u8 = 3;
 
-#[allow(clippy::too_many_arguments, reason = "one role invocation keeps its run inputs explicit")]
+#[allow(
+    clippy::too_many_arguments,
+    clippy::too_many_lines,
+    reason = "the ordered role invocation and repository-progress state machine remain explicit"
+)]
 pub async fn complete_developer_turn(
     input: &ProductRunInput,
     primary: &Arc<dyn ModelProvider>,
@@ -39,6 +44,7 @@ pub async fn complete_developer_turn(
     let mut checkpoint = WorkspaceCheckpoint::capture(&input.workspace_root)?;
     let mut invocation = 0_u32;
     let mut unproductive_terminals = 0_u8;
+    let mut provider_recovery = crate::failover::RoleRecovery::default();
     let mut verification_evidence = String::new();
     let mut successful_commands = Vec::new();
     let (mut correction, mut pending_question) = (None, None);
@@ -58,11 +64,7 @@ pub async fn complete_developer_turn(
         else {
             continue;
         };
-        if let Ok(outcome) = &result {
-            accounting.record(outcome)?;
-        } else {
-            accounting.check()?;
-        }
+        provider::record_accounting(&result, accounting)?;
         *ownership = tools.ownership().clone();
         merge_rendered(&mut verification_evidence, &tools.verification_evidence());
         crate::developer_tools::merge_successful(
@@ -72,21 +74,26 @@ pub async fn complete_developer_turn(
         check_cancelled(input)?;
         if input.conversation.revision() != revision {
             checkpoint = WorkspaceCheckpoint::capture(&input.workspace_root)?;
+            provider_recovery.reset();
             unproductive_terminals = 0;
             (correction, pending_question) = (None, None);
             continue;
         }
-        let Some(result) = resolve_provider_result(
+        let resolution = provider::resolve(
             input,
             &mut providers,
             identity,
             result,
             &mut checkpoint,
+            &mut provider_recovery,
             accounting,
-        )?
-        else {
-            unproductive_terminals = 0;
-            (correction, pending_question) = (None, None);
+        )?;
+        let Some(result) = provider::apply(
+            resolution,
+            &mut correction,
+            &mut pending_question,
+            &mut unproductive_terminals,
+        ) else {
             continue;
         };
         let terminal = match parse_grounded_terminal(&tools, &result) {
@@ -196,30 +203,6 @@ async fn run_selected_invocation(
         }
         Err(error) => Err(error),
     }
-}
-
-fn resolve_provider_result(
-    input: &ProductRunInput,
-    providers: &mut crate::failover::ProviderCursor<'_>,
-    identity: DeveloperInvocation<'_>,
-    result: Result<DeveloperLoopOutcome, DeveloperLoopError>,
-    checkpoint: &mut WorkspaceCheckpoint,
-    accounting: &mut RunAccounting,
-) -> Result<Option<DeveloperLoopOutcome>, ProductRunnerError> {
-    let error = match result {
-        Ok(outcome) => return Ok(Some(outcome)),
-        Err(error) => error,
-    };
-    let current = WorkspaceCheckpoint::capture(&input.workspace_root)?;
-    if current != *checkpoint {
-        *checkpoint = current;
-        return Ok(None);
-    }
-    if let Some(switch) = providers.advance(&error) {
-        crate::failover::record_switch(input, identity.role, identity.cycle, accounting, switch)?;
-        return Ok(None);
-    }
-    Err(developer_error(&error))
 }
 
 async fn run_developer_invocation(

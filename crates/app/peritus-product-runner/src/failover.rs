@@ -9,6 +9,35 @@ use peritus_types::ProviderProfileId;
 
 use crate::{ProductRunnerError, budget::RunAccounting, execution::ProductRunInput};
 
+const MAX_SAME_PROVIDER_ROLE_INVOCATIONS: u8 = 3;
+
+/// Bounded fresh-invocation recovery after one role exhausts its in-turn provider retries.
+#[derive(Default)]
+pub struct RoleRecovery {
+    failed_invocations: u8,
+}
+
+impl RoleRecovery {
+    /// Returns a stable reason when the role may start another grounded invocation.
+    pub fn retry(&mut self, error: &DeveloperLoopError) -> Option<&'static str> {
+        let reason = same_provider_retry_reason(error)?;
+        self.failed_invocations = self.failed_invocations.saturating_add(1);
+        (self.failed_invocations < MAX_SAME_PROVIDER_ROLE_INVOCATIONS).then_some(reason)
+    }
+
+    /// Starts a fresh recovery budget after progress or a usable provider response.
+    pub const fn reset(&mut self) {
+        self.failed_invocations = 0;
+    }
+
+    /// Builds the correction that starts a fresh repository-grounded invocation.
+    pub fn correction(reason: &str) -> String {
+        format!(
+            "The preceding provider invocation ended with recoverable `{reason}` after its bounded in-turn retries. Start a fresh invocation from the exact current workspace: call `workspace_list`, read the authoritative inputs and current targets, preserve any useful existing work, and continue to the required terminal result."
+        )
+    }
+}
+
 pub struct ProviderCursor<'a> {
     candidates: Vec<&'a dyn ModelProvider>,
     index: usize,
@@ -101,6 +130,18 @@ const fn failover_reason(error: &DeveloperLoopError) -> Option<&'static str> {
     }
 }
 
+const fn same_provider_retry_reason(error: &DeveloperLoopError) -> Option<&'static str> {
+    match error {
+        DeveloperLoopError::EmptyResponse => Some("empty_response"),
+        DeveloperLoopError::Model(ModelDriveError::Provider(error)) => match error.kind() {
+            ProviderCoreErrorKind::Connect => Some("connection"),
+            ProviderCoreErrorKind::MalformedStream => Some("malformed_stream"),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
 pub fn record_switch(
     input: &ProductRunInput,
     role: &str,
@@ -148,6 +189,32 @@ mod tests {
                     "submission outcome is unknown",
                 ),
             ))),
+            None
+        );
+    }
+
+    #[test]
+    fn same_provider_role_recovery_is_transient_and_finite() {
+        let mut recovery = RoleRecovery::default();
+        assert_eq!(recovery.retry(&DeveloperLoopError::EmptyResponse), Some("empty_response"));
+        assert_eq!(recovery.retry(&DeveloperLoopError::EmptyResponse), Some("empty_response"));
+        assert_eq!(recovery.retry(&DeveloperLoopError::EmptyResponse), None);
+
+        recovery.reset();
+        assert_eq!(
+            recovery.retry(&DeveloperLoopError::ProviderTerminal {
+                provider: "fixture".to_owned(),
+                category: FailureCategory::Safety,
+                diagnostic_code: "fixture.safety".to_owned(),
+            }),
+            None
+        );
+        assert_eq!(
+            recovery.retry(&DeveloperLoopError::ProviderTerminal {
+                provider: "fixture".to_owned(),
+                category: FailureCategory::Timeout,
+                diagnostic_code: "fixture.nonretryable-timeout".to_owned(),
+            }),
             None
         );
     }

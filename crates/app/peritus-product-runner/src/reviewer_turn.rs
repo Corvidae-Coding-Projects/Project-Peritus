@@ -33,6 +33,7 @@ pub async fn complete(
         crate::failover::ProviderCursor::new(&input.providers.reviewer, &input.providers.fallbacks);
     let mut correction = None;
     let mut invalid_reviews = 0_u8;
+    let mut provider_recovery = crate::failover::RoleRecovery::default();
     let mut invocation = 0_u32;
     loop {
         check_cancelled(input)?;
@@ -84,13 +85,20 @@ pub async fn complete(
         let result = match result {
             Ok(result) => result,
             Err(error) => {
+                if let Some(reason) = provider_recovery.retry(&error) {
+                    correction = Some(crate::failover::RoleRecovery::correction(reason));
+                    continue;
+                }
                 if let Some(switch) = providers.advance(&error) {
                     crate::failover::record_switch(input, "reviewer", cycle, accounting, switch)?;
+                    provider_recovery.reset();
+                    correction = None;
                     continue;
                 }
                 return Err(turn::developer_error(&error));
             }
         };
+        provider_recovery.reset();
         accounting.record(&result)?;
         check_cancelled(input)?;
         let submission = tools
