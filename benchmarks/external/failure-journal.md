@@ -1168,3 +1168,39 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Disposition: do not patch the pinned benchmark checkout. Use the final result's `sandbox` plus
   native `relocatable_paths` for retained evidence. The upstream `usage_summary.log_file` field may
   still name its pre-move location; the native relative proxy path is the authoritative locator.
+
+## HBI-028: task 056 ground truth contradicts its low-stock boundary rule
+
+- Suite and task: HarnessBench 2.0, `056-inventory-forecast`.
+- Symptom: native Peritus passed 24 of 25 checks. Every reorder row, number format, risk class,
+  named boundary case, rounding case, note, and other exception field passed. The sole failure was
+  the combined hidden comparison for `more_than_one_pack_low_skus`.
+- Cause: the prompt requires that array to include only SKUs whose current stock is more than one
+  pack above target, and warns not to include a low-risk SKU unless it satisfies that boundary.
+  SKU-B has current stock 50, target stock 21, and pack size 5, so `50 > 21 + 5`; SKU-G has current
+  stock 26, target stock 20, and pack size 5, so `26 > 20 + 5`. Peritus correctly included both.
+  Hidden ground truth includes only SKU-G, contradicting the stated predicate without publishing a
+  narrower near-boundary rule.
+- Evidence: local report `reports/056-inventory-forecast-final.json`; native success `true`, 24/25
+  checks, outcome 0.69, process 0.9533, security 1.0, combined 0.6578, 20 requests, 303,851 tokens,
+  and 293.045 seconds.
+- Disposition: retain the unchanged score and literal output. Do not add task-specific logic that
+  omits a qualifying SKU to match hidden ground truth.
+
+## HBI-029: task 057 oracle requires unpublished state and log encodings
+
+- Suite and task: HarnessBench 2.0, `057-interruption-resume`.
+- Symptom: native Peritus completed both rounds, preserved C-101 through C-103, processed only
+  C-104 and C-105 in round two, applied each valid patch once, ignored the duplicate and unknown
+  patches, and produced the correct final aggregate and audits. Two oracle checks still failed.
+- Cause: the prompt requires `per_item_results` for the completed items but does not specify an
+  object or array shape. Peritus emitted a valid ordered array containing all five exact scores;
+  the oracle silently accepts only an object keyed by case ID. The prompt also requires the log to
+  distinguish reused or skipped preexisting work. Peritus emitted `step: round2_reused` with
+  `status: skipped_preexisting` for each preserved case, while the oracle silently recognizes only
+  a small step-name allowlist that excludes `round2_reused` even when the status is exact.
+- Evidence: local report `reports/057-interruption-resume-final.json`; native success `true`, 9/11
+  checks, outcome 0.8077, process 0.92, security 1.0, combined 0.7431, 37 requests, 567,287 tokens,
+  and 467.998 seconds. The final result and Markdown audit checks pass.
+- Disposition: retain the unchanged score and semantically correct state. Do not guess unpublished
+  JSON shapes or enum labels merely to maximize this benchmark.

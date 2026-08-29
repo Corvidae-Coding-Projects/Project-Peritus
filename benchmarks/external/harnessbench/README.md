@@ -74,7 +74,7 @@ temporary files through its documented `--image` option.
 
 ## Current qualification progress
 
-The live baseline has exercised tasks 001 through 055 against the pinned, unchanged suite. Tasks
+The live baseline has exercised tasks 001 through 057 against the pinned, unchanged suite. Tasks
 022, 023, and 026 complete with oracle outcome 1.0. Tasks 021, 024, 025, 027, and 028 retain lower
 unchanged outcomes because of documented hidden taxonomies, invalid calendar ground truth,
 unmatchable normalization, or brittle unpublished phrase checks. Task 029 similarly retains a
@@ -205,6 +205,15 @@ patches before the enforced listing and target-read sequence; one also guessed t
 those boundaries, and reviewers must reread the current files cited by conserved findings before
 repeating them. The unchanged rerun completed natively in one cycle with zero rejected tool calls,
 all 24 checks, process and combined 0.9867, 17 requests, 306,944 tokens, and 317.0 seconds.
+Task 056 completed natively in one cycle with 24 of 25 checks and process 0.9533. Its sole oracle
+failure contradicts the stated `more_than_one_pack_low_skus` rule: SKU-B's current stock is 50,
+target is 21, and pack size is 5, so it is more than one pack above target, but hidden ground truth
+requires omitting it. Task 057 preserved round-one state, processed only the two pending cases,
+applied and audited patches, and completed natively across both rounds with process 0.92. Its two
+oracle misses require an unpublished object shape for `per_item_results` and a hidden processing-
+log step allowlist; the delivered array contains every correct score, and explicit
+`round2_reused`/`skipped_preexisting` entries identify all three reused cases. Neither mismatch
+caused benchmark-specific product behavior.
 
 HarnessBench chooses a result directory from the last observed provider model and may move a
 multi-provider sandbox after the native adapter exits. Invocation evidence schema 4 therefore

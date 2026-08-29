@@ -117,6 +117,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Exercise unchanged HarnessBench tasks 056 and 057 through native inventory and two-round resume
+  workflows, retaining their 0.69 and 0.8077 outcomes where hidden ground truth requires an
+  explicitly contradictory SKU omission and unpublished JSON/log shapes despite correct requested
+  calculations and state reuse (#31)
 - Exercise unchanged HarnessBench task 055 before and after the grounding-protocol correction,
   preserving 24/24 output checks while moving from three cycles, 48 requests, 808,266 tokens, and
   process 0.76 to one cycle, 17 requests, 306,944 tokens, and process 0.9867 (#31)
