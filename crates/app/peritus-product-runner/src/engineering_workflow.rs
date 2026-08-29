@@ -30,14 +30,16 @@ requested behavior.
    coordinated list items by first assuming that distribution and then citing an earlier item's
    lack of the modifier's property; that is circular. Independently consider both distributive and
    nearest-item grammatical attachments before claiming that every reasonable reading fails.
-   When authoritative inputs
-   require a closed canonical vocabulary, canonical identifiers are opaque contract values. Choose
+   When authoritative inputs require a closed canonical vocabulary, canonical identifiers are opaque contract values. Choose
    the registered value whose declared category and governing rule fit, keep factual
    evidence fields accurate, and report awkward naming without inventing a replacement identifier.
    Treat exact syntax as a cross-artifact contract: quoted values, stable identifiers, enum-like
    values, field names, filenames, paths, and commands must remain byte-for-byte unchanged in every
    output that records them. Human-readable prose may explain those values alongside the literal,
    but must not replace them by changing case, whitespace, punctuation, or separators.
+   When a requirement says an output must mention, discuss, or reference a named artifact,
+   identifier, field, clause, command, or path, reproduce that literal at least once in the owning
+   output. Human-readable prose may accompany the literal but cannot replace its traceability.
    When one scalar output refers to records drawn from heterogeneous source categories, preserve a
    typed identity rather than emitting a bare record ID. Unless an exact representation is declared,
    combine the authoritative category or type label and stable ID as `category:id`; this keeps the
@@ -66,8 +68,12 @@ requested behavior.
    condition, not a generic invalid-reference condition; reserve `invalid` for a present record that
    fails validation. Do not flatten a material condition such as a refund, partial match, or exception
    into a generic success status. Summary unresolved or exception counts must reconcile the union of unresolved
-   primary rows and rejected items across all requested artifacts, with explicit identity
-   deduplication, rather than counting only rows visible in one output.
+   primary rows and rejected items across all requested artifacts, with explicit identity deduplication, rather than counting only rows visible in one output.
+   For time-window state, exclude ignored or out-of-window IDs from the accepted/seen set. A duplicate list may repeat a retained first-seen ID because it records a later observation.
+   Make every partial or checkpoint result self-contained for its captured round: record completed
+   identities and results, the pending or failed stop boundary, and the stop reason when they exist.
+   Later rounds preserve that snapshot unless revision is explicit; mutable state and logs do not
+   substitute for the snapshot's own temporal boundary.
    Treat hard eligibility, compatibility, and placement constraints as evidence-positive. A missing
    source field does not prove that an option satisfies a required constraint, and must not be
    replaced with a permissive default unless an authoritative input explicitly defines that default.
@@ -142,8 +148,7 @@ requested behavior.
    evidence, preserve that sentinel. A partial source that points to an absent required schedule,
    threshold, approval, or other controlling fact belongs in evidence and caveat fields; it does not
    become the applicable authority for a decision the available evidence cannot resolve.
-   Name concrete modules,
-   ownership boundaries, interfaces, data flow, failure behavior, and exact verification commands.
+   Name concrete modules, ownership boundaries, interfaces, data flow, failure behavior, and exact verification commands.
 3. Divide implementation into cohesive modules with one clear responsibility. Production source
    files must never exceed 500 lines. Keep crate, package, library, and binary roots as thin
    composition surfaces; move behavior into named domain modules rather than generic helpers or
@@ -252,6 +257,8 @@ to derive every requested metric without guessed membership or effects.
 For outputs that reference heterogeneous source records, retain the authoritative category and
 stable ID together rather than emitting a context-free ID, and aggregate category summaries by the
 category rather than by individual record.
+When an output must mention, discuss, or reference a named artifact, identifier, field, clause,
+command, or path, preserve that exact literal at least once in the owning output.
 For reconciliation outputs, route each item to its contract-defined primary or reject representation
 without unrequested duplication, keep material exception states in status values, choose the most
 specific evidenced reason, and reconcile summary exception counts across every output artifact.
@@ -325,7 +332,9 @@ their effect on every changed metric; unresolved aggregate provenance is advisor
 to invent membership or transformations. Reject a context-free record ID when a scalar output can
 refer to heterogeneous source categories: row-level references must retain both authoritative type
 and stable ID, while category-count summaries group by type rather than by individual record. Treat
-a reconciliation item duplicated into primary and reject outputs without an explicit dual-record
+an explicitly required artifact, identifier, field, clause, command, or path as missing when the
+owning output replaces its exact literal with a prose paraphrase. Treat a reconciliation item
+duplicated into primary and reject outputs without an explicit dual-record
 rule as a concrete finding. Verify that status values retain material conditions, reason codes state
 the most specific evidenced cause, and summary exception counts reconcile unresolved primary and
 rejected identities across every requested artifact. Treat an absent referenced record labeled only

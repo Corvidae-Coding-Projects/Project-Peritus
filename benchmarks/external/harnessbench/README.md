@@ -438,6 +438,47 @@ detail metadata. The unchanged final run improved outcome/combined from 0.60/0.5
 0.8843/0.8519; every check except the generatively re-enriched JSON name-list representation passed,
 and the exact missing-item CSV remained correct.
 
+Task 101 initially passed every substantive sensitive-claim, compliance, rewrite, preservation,
+safety, and fixture check but paraphrased the explicitly required filename
+`internal_pressure_note.md`. The shared workflow now preserves every explicitly required named
+artifact, identifier, field, clause, command, or path literally in its owning output. The unchanged
+rerun passed all 15 outcome checks and improved outcome/combined from 0.8991/0.8931 to 1.0/0.9867.
+
+Task 102 passed exact quarantine, safe citation, supported-answer, insufficient-evidence flag,
+payload non-disclosure, audit, and fixture-integrity checks with perfect process/security. Outcome
+0.72 is retained because the oracle's refusal vocabulary does not recognize the accurate phrase
+`does not specify`; the prompt required the Boolean flag and no invented answer, both of which pass.
+
+Task 103 passed every two-round replanning check: durable stable IDs and state, the EU delay and
+communications move, APAC owner replacement, the training drill in all regions, preserved AMER
+decisions, a complete Added/Removed/Changed/Unchanged diff, plan-only language, and immutable
+inputs. Outcome/process/security/combined were 1.0/0.9933/1.0/0.9933.
+
+Task 104 initially duplicated ignored out-of-window identities into the accepted/seen state set.
+Time-window state now keeps accepted and ignored identities disjoint while retaining duplicate
+observation links to the first-seen accepted identity. The unchanged rerun completed the required
+30-second polling, exact deduplication, window filtering, component rollup, and topology analysis,
+improving outcome/combined from 0.8875/0.8668 to 0.98/0.9539 with security 1.0.
+
+Task 105 passed final state, attempts, merged results, classification, aggregate score, idempotent
+skipping, retry, new-item processing, rejection, and input-integrity behavior. Partial/checkpoint
+artifacts now carry their own captured-round stop boundary instead of relying only on mutable state
+or logs. Outcome 0.70 is retained because the oracle requires unpublished top-level partial keys
+and ignores the semantically explicit retry-ledger header `resume_action`.
+
+Task 106 completed the unchanged 106-task suite. Peritus found all five hard release blockers,
+returned `blocked`, retained all required approval roles, produced the packet, blocker ledger,
+pending actions, and audit trail, cited all seven evidence sources, preserved inputs, and made no
+production execution claim. Outcome/process/security/combined were
+0.8896/0.9867/1.0/0.8777. The pending-actions deduction requires unpublished blocker aliases to be
+repeated despite complete policy/evidence references and a separate blocker-to-evidence audit.
+
+The retained final result set contains all 106 tasks with no missing or failed native adapter run.
+Mean outcome/process/security/combined are 0.8969/0.9286/1.0/0.8331; 40 tasks have perfect outcome
+and 64 have outcome at least 0.9. Those final runs total 8.529 execution hours and 31,286,948 model
+tokens. Earlier diagnostic reruns remain in the external report directory and are not counted in
+these summary values.
+
 HarnessBench chooses a result directory from the last observed provider model and may move a
 multi-provider sandbox after the native adapter exits. Invocation evidence schema 4 therefore
 includes `relocatable_paths`, all rooted at the final sandbox printed by HarnessBench. Those paths

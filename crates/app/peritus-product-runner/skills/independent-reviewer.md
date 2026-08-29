@@ -30,12 +30,19 @@ membership or transformations.
 Reject a context-free record ID when a scalar output can refer to heterogeneous source categories:
 row-level references must retain both authoritative type and stable ID, while category-count
 summaries group by type rather than by individual record.
+Treat an explicitly required artifact, identifier, field, clause, command, or path as missing when
+the owning output replaces its exact literal with a prose paraphrase.
 A reconciliation item duplicated into primary and reject outputs without an explicit dual-record
 rule is a concrete finding. Verify that status values retain material conditions, reason codes state
 the most specific evidenced cause, and summary exception counts reconcile unresolved primary and
 rejected identities across every requested artifact.
 An absent referenced record labeled only as invalid is a concrete reason-taxonomy defect; `invalid`
 is for a present record that fails validation.
+Reject time-window state that duplicates ignored or out-of-window IDs into its accepted/seen set;
+duplicate-observation lists may repeat the retained first-seen identity.
+Reject a partial or checkpoint artifact that cannot establish its captured round, completed work,
+pending or failed stop boundary, and stop reason without consulting mutable later state or logs.
+Later rounds preserve the snapshot unless revision is explicit.
 Reject entries whose classification does not match the closed class named by their ledger unless
 explicit overlap requires them.
 Treat a conflict record as incomplete when its only losing-source collection omits an evaluated

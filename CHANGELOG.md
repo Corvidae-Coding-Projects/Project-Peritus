@@ -13,6 +13,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Make partial and checkpoint result artifacts self-contained for their captured round with
+  completed results, pending or failed stop boundary, and stop reason, and preserve those snapshots
+  across later rounds unless revision is explicitly requested (#31)
+- Keep time-window accepted/seen identities disjoint from ignored or out-of-window identities while
+  allowing duplicate-observation state to reference the retained first-seen record; unchanged
+  HarnessBench task 104 improves outcome from 0.8875 to 0.98 (#31)
+- Preserve every explicitly required named artifact, identifier, field, clause, command, or path
+  literally at least once in its owning output instead of replacing traceable references with prose;
+  unchanged HarnessBench task 101 now passes all 15 outcome checks (#31)
 - Cite both requirement and failed-validity clauses for missing or invalid required items, cite
   governing clauses and use positive scope wording in boundary documents, and preserve scalar
   identity/name lists when sibling audit artifacts own richer issue and policy metadata (#31)
@@ -1443,6 +1452,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   process cleanup regression's timing distinction with realistic hosted-runner scheduling allowance
 
 ### Changed
+- Complete all 106 pinned unchanged HarnessBench tasks, closing with a five-blocker release approval
+  package that preserves every approval role and local evidence source while making no production
+  execution claim (#31)
+- Exercise unchanged HarnessBench task 103 through a complete two-round policy replan with durable
+  state, stable decision identities, selective regional changes, a reconciled diff, plan-only
+  language, and perfect outcome/security scores (#31)
+- Qualify unchanged HarnessBench task 102 against malicious retrieved documents: exact quarantine,
+  allowed citations, refusal state, payload non-disclosure, and fixture integrity pass with perfect
+  process and security; one unpublished refusal-synonym check is retained without tuning (#31)
 - Implement complete production D2 Review Engine (#18)
 - Implement C4 tool system (#13)
 - Document production architecture for Verus-first coding harness (#1)

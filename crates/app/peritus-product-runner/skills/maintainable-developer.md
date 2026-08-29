@@ -21,11 +21,18 @@ to derive every requested metric without guessed membership or effects.
 For outputs that reference heterogeneous source records, retain the authoritative category and
 stable ID together rather than emitting a context-free ID, and aggregate category summaries by the
 category rather than by individual record.
+When an output must mention, discuss, or reference a named artifact, identifier, field, clause,
+command, or path, preserve that exact literal at least once in the owning output.
 For reconciliation outputs, route each item to its contract-defined primary or reject representation
 without unrequested duplication, keep material exception states in status values, choose the most
 specific evidenced reason, and reconcile summary exception counts across every output artifact.
 A failed reference lookup must use a missing-reference reason; reserve invalid-reference reasons for
 records that are present and fail validation.
+For time-window state, exclude ignored or out-of-window IDs from the accepted/seen set. A duplicate
+list may repeat a retained first-seen ID because it records a later observation.
+Make partial and checkpoint result artifacts self-contained for their captured round with completed
+results, the pending or failed stop boundary, and stop reason. Preserve them in later rounds unless
+revision is explicit; mutable current state and logs do not replace the snapshot.
 Treat a ledger named for one closed classification as a projection of only that class; do not include
 neighboring review or informational classes without an explicit overlap rule.
 When one conflict-provenance collection is available, retain every evaluated losing source whose

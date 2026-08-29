@@ -6,6 +6,9 @@ requested behavior.
 1. Inspect the repository, its manifests, local conventions, existing tests, and public interfaces
    before proposing or applying changes.
 2. Translate the request into explicit acceptance criteria and a repository-grounded design.
+   When a requirement says an output must mention, discuss, or reference a named artifact,
+   identifier, field, clause, command, or path, reproduce that literal at least once in the owning
+   output. Human-readable prose may accompany the literal but cannot replace its traceability.
    Preserve the declared semantics of source aggregates. A separate row-level exclusion,
    exception, or adjustment ledger does not prove that an aggregate is pre-adjustment. Do not
    subtract its row count, alter its denominator, or infer event membership unless an authoritative
@@ -29,6 +32,12 @@ requested behavior.
    condition; reserve `invalid` for a present record that fails validation. Keep material conditions
    in status values and reconcile summary exception counts across unresolved primary and rejected
    identities with deduplication.
+   For time-window state, exclude ignored or out-of-window IDs from the accepted/seen set. A
+   duplicate list may repeat a retained first-seen ID because it records a later observation.
+   Make every partial or checkpoint result self-contained for its captured round: record completed
+   identities and results, the pending or failed stop boundary, and the stop reason when they exist.
+   Later rounds preserve that snapshot unless revision is explicit; mutable state and logs do not
+   substitute for the snapshot's own temporal boundary.
    When an output schema provides one losing-source collection for conflict provenance, include
    every evaluated source whose result-affecting rule lost because of priority, effective date,
    expiry, scope, or an explicit exception. State why each source lost without claiming it is
