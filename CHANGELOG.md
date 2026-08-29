@@ -181,6 +181,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   passes its locked native compile/test/lint commands; unrelated root checks can no longer accept a
   broken nested target, and generated dependency/build trees no longer contaminate candidate or
   reviewer evidence (#36)
+- Give independent review authoritative current file permissions and a bounded ledger of developer
+  command requests and observations, count permission-only edits as real candidate progress, and
+  distinguish model-run evidence from deterministic harness gates so valid behavior can be
+  verified without trusting unsupported claims (#31)
 - Bound every model-issued structured command, concurrently retain capped stdout and stderr, and
   kill the owned process tree on deadline so a long-running program becomes a recoverable tool
   observation instead of freezing the writer-reviewer-fixer run (#31)

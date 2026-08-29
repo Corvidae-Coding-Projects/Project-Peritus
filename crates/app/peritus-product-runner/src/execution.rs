@@ -75,6 +75,7 @@ impl ProductRunner {
                     detail,
                 )
             })?,
+            developer_evidence: applied.verification_evidence,
         };
 
         loop {
@@ -104,6 +105,10 @@ impl ProductRunner {
                         state.run_instructions = applied.run_instructions;
                         state.tool_calls = state.tool_calls.saturating_add(applied.tool_calls);
                         state.conversation_revision = applied.conversation_revision;
+                        crate::developer_tools::merge_rendered(
+                            &mut state.developer_evidence,
+                            &applied.verification_evidence,
+                        );
                         state.fix_progress.reset(&input.workspace_root)?;
                     }
                     AppliedTurn::Waiting { question, conversation_revision } => {
@@ -211,6 +216,7 @@ struct RunState {
     findings: ProductFindingLedger,
     fix_progress: FixProgress,
     coordinator: ProductionRunCoordinator,
+    developer_evidence: String,
 }
 
 pub struct AppliedWrite {
@@ -222,6 +228,8 @@ pub struct AppliedWrite {
     pub tool_calls: u32,
     /// Conversation revision incorporated by the turn.
     pub conversation_revision: u64,
+    /// Bounded structured command requests and observations from this developer turn.
+    pub verification_evidence: String,
 }
 
 pub enum AppliedTurn {

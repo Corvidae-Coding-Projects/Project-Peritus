@@ -18,6 +18,8 @@ mod error;
 #[cfg(not(verus_only))]
 mod execution;
 #[cfg(not(verus_only))]
+mod file_metadata;
+#[cfg(not(verus_only))]
 pub(crate) mod gates;
 #[cfg(not(verus_only))]
 mod progress;

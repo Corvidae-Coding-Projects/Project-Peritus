@@ -10,7 +10,7 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
     definitions_from(&[
         (
             "workspace_list",
-            "List files and directories below one workspace-relative path. Call this first in every fresh writer or fixer turn; mutation and process tools remain locked until a successful listing and a targeted file read.",
+            "List files and directories below one workspace-relative path with current byte size and permission metadata. Call this first in every fresh writer or fixer turn; mutation and process tools remain locked until a successful listing and a targeted file read.",
             r#"{"additionalProperties":false,"properties":{"depth":{"type":"integer"},"path":{"type":"string"}},"type":"object"}"#,
         ),
         (
@@ -20,7 +20,7 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
         ),
         (
             "workspace_read",
-            "Read a bounded line range from one workspace-relative text file. Call this after workspace_list and read the exact current target before changing an existing file.",
+            "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file. Call this after workspace_list and read the exact current target before changing an existing file.",
             r#"{"additionalProperties":false,"properties":{"end_line":{"type":"integer"},"path":{"type":"string"},"start_line":{"type":"integer"}},"required":["path"],"type":"object"}"#,
         ),
         (
@@ -51,7 +51,7 @@ pub fn read_only_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError
     definitions_from(&[
         (
             "workspace_list",
-            "List files and directories below one workspace-relative path.",
+            "List files and directories below one workspace-relative path with current byte size and permission metadata.",
             r#"{"additionalProperties":false,"properties":{"depth":{"type":"integer"},"path":{"type":"string"}},"type":"object"}"#,
         ),
         (
@@ -61,7 +61,7 @@ pub fn read_only_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError
         ),
         (
             "workspace_read",
-            "Read a bounded line range from one workspace-relative text file.",
+            "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file.",
             r#"{"additionalProperties":false,"properties":{"end_line":{"type":"integer"},"path":{"type":"string"},"start_line":{"type":"integer"}},"required":["path"],"type":"object"}"#,
         ),
     ])

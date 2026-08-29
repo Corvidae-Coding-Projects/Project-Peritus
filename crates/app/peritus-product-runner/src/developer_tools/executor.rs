@@ -8,11 +8,13 @@ use serde_json::{Map, Value};
 
 use super::{
     effect::{atomic_write, atomic_write_if_changed, limit, reject_destructive_command},
+    evidence::CommandEvidence,
     grounding::GroundingEvidence,
     ownership::WorkspaceOwnership,
     path::{checked, ignored, tool},
     process, removal,
 };
+use crate::file_metadata;
 
 const MAX_FILE_BYTES: usize = 2 * 1024 * 1024;
 const DEFAULT_COMMAND_TIMEOUT_SECONDS: u64 = 120;
@@ -30,6 +32,7 @@ pub struct WorkspaceDeveloperTools {
     grounding: GroundingEvidence,
     ownership: WorkspaceOwnership,
     mode: WorkspaceToolMode,
+    command_evidence: CommandEvidence,
 }
 
 impl WorkspaceDeveloperTools {
@@ -43,6 +46,7 @@ impl WorkspaceDeveloperTools {
             grounding: GroundingEvidence::default(),
             ownership,
             mode: WorkspaceToolMode::ReadOnly,
+            command_evidence: CommandEvidence::default(),
         }
     }
 
@@ -52,6 +56,7 @@ impl WorkspaceDeveloperTools {
             grounding: GroundingEvidence::default(),
             ownership,
             mode: WorkspaceToolMode::ReadWrite,
+            command_evidence: CommandEvidence::default(),
         }
     }
 
@@ -61,6 +66,10 @@ impl WorkspaceDeveloperTools {
 
     pub(crate) const fn ownership(&self) -> &WorkspaceOwnership {
         &self.ownership
+    }
+
+    pub(crate) fn verification_evidence(&self) -> String {
+        self.command_evidence.render()
     }
 }
 
@@ -162,12 +171,15 @@ impl WorkspaceDeveloperTools {
                     continue;
                 }
                 let kind = child.file_type().map_err(|error| tool(error.to_string()))?;
+                let metadata = child.metadata().map_err(|error| tool(error.to_string()))?;
                 entries.push(object(vec![
                     ("path", Value::String(relative.to_string_lossy().into_owned())),
                     (
                         "kind",
                         Value::String(if kind.is_dir() { "directory" } else { "file" }.to_owned()),
                     ),
+                    ("bytes", Value::from(metadata.len())),
+                    ("permissions", Value::String(file_metadata::permissions(&metadata))),
                 ]));
                 if entries.len() >= 2_000 {
                     return Ok(collection("entries", entries, true));
@@ -259,6 +271,8 @@ impl WorkspaceDeveloperTools {
             ("content", Value::String(limit(&lines))),
             ("start_line", Value::from(start)),
             ("end_line", Value::from(end)),
+            ("bytes", Value::from(metadata.len())),
+            ("permissions", Value::String(file_metadata::permissions(&metadata))),
         ]))
     }
 
@@ -314,7 +328,7 @@ impl WorkspaceDeveloperTools {
         removal::remove(&self.root, &self.grounding, &self.ownership, arguments)
     }
 
-    fn run(&self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
+    fn run(&mut self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
         let program = required_string(arguments, "program")?;
         if program.is_empty() || program.contains(['\0', '\n', '\r']) {
             return Err(tool("command program is invalid"));
@@ -346,14 +360,16 @@ impl WorkspaceDeveloperTools {
             MAX_COMMAND_TIMEOUT_SECONDS,
         );
         let output = process::run(command, Duration::from_secs(timeout_seconds))?;
-        Ok(object(vec![
+        let result = object(vec![
             ("success", Value::Bool(output.status.success() && !output.timed_out)),
             ("exit_code", output.status.code().map_or(Value::Null, Value::from)),
             ("stdout", Value::String(output.stdout)),
             ("stderr", Value::String(output.stderr)),
             ("timed_out", Value::Bool(output.timed_out)),
             ("timeout_seconds", Value::from(timeout_seconds)),
-        ]))
+        ]);
+        self.command_evidence.record(arguments, &result);
+        Ok(result)
     }
 }
 

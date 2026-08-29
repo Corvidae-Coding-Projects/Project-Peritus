@@ -134,6 +134,27 @@ mod tests {
         );
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn candidate_permission_change_counts_as_fixer_progress() {
+        use std::os::unix::fs::PermissionsExt as _;
+
+        let root = repository();
+        let candidate = root.path().join("private.key");
+        fs::write(&candidate, "secret").expect("write candidate");
+        fs::set_permissions(&candidate, fs::Permissions::from_mode(0o644))
+            .expect("initial permissions");
+        let mut progress = FixProgress::capture(root.path()).expect("initial progress");
+
+        fs::set_permissions(&candidate, fs::Permissions::from_mode(0o600))
+            .expect("fixed permissions");
+
+        assert_eq!(
+            progress.observe(root.path()).expect("permission observation"),
+            FixProgressObservation::Changed
+        );
+    }
+
     #[test]
     fn changing_candidate_does_not_hide_a_persistent_blocker() {
         let root = repository();

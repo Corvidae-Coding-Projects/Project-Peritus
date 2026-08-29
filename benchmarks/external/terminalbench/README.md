@@ -68,10 +68,13 @@ harbor run \
   --jobs-dir /absolute/path/to/terminalbench-state/jobs
 ```
 
-The qualification on 2026-08-29 completed without an exception and received reward `1.0` from the
-unchanged `openssl-selfsigned-cert` verifier. Peritus accepted the candidate after 13 provider
-requests. Harbor recorded 182,848 input tokens, 90,299 cached input tokens, and 5,405 output tokens
-in 182 seconds.
+The final qualification on 2026-08-29 completed without an exception and received reward `1.0`
+from the unchanged `openssl-selfsigned-cert` verifier. Peritus also accepted the candidate after 13
+provider requests because its independent reviewer could inspect authoritative live file modes and
+the bounded observations from developer commands. Harbor recorded 150,639 input tokens, 319,204
+cached input tokens, and 13,995 output tokens in 328 seconds. The prior unchanged runs exposed and
+then isolated those two general evidence-handoff gaps; their before/after records are retained as
+`TBF-004` in `../failure-journal.md`.
 
 An unchanged `make-mips-interpreter` qualification also received reward `1.0` after all three
 verifier checks passed: VM execution, frame creation, and visual similarity. This run exercised a

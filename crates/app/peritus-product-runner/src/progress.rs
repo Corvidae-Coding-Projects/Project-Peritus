@@ -8,7 +8,9 @@ use std::{
 
 use sha2::{Digest as _, Sha256};
 
-use crate::{ProductRunnerError, ProductRunnerErrorKind, candidate::CandidateBaseline};
+use crate::{
+    ProductRunnerError, ProductRunnerErrorKind, candidate::CandidateBaseline, file_metadata,
+};
 
 /// Exact content identity of the candidate relative to its stable Git HEAD.
 #[derive(Eq, PartialEq)]
@@ -20,6 +22,7 @@ pub struct WorkspaceCheckpoint {
 struct CheckpointEntry {
     path: PathBuf,
     digest: Option<[u8; 32]>,
+    permissions: Option<u32>,
 }
 
 impl WorkspaceCheckpoint {
@@ -37,13 +40,18 @@ impl WorkspaceCheckpoint {
 
 fn checkpoint_entry(root: &Path, path: PathBuf) -> Result<CheckpointEntry, ProductRunnerError> {
     let absolute = root.join(&path);
-    let digest = match fs::symlink_metadata(&absolute) {
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+    let (digest, permissions) = match fs::symlink_metadata(&absolute) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => (None, None),
         Err(error) => return Err(repository(error.to_string())),
-        Ok(metadata) if metadata.is_file() => Some(digest_file(&absolute)?),
-        Ok(_) => Some(Sha256::digest(b"non-file").into()),
+        Ok(metadata) if metadata.is_file() => {
+            (Some(digest_file(&absolute)?), Some(file_metadata::permission_fingerprint(&metadata)))
+        }
+        Ok(metadata) => (
+            Some(Sha256::digest(b"non-file").into()),
+            Some(file_metadata::permission_fingerprint(&metadata)),
+        ),
     };
-    Ok(CheckpointEntry { path, digest })
+    Ok(CheckpointEntry { path, digest, permissions })
 }
 
 fn digest_file(path: &Path) -> Result<[u8; 32], ProductRunnerError> {
@@ -94,6 +102,31 @@ mod tests {
         fs::write(root.path().join("new.txt"), "untracked").expect("write untracked");
         let untracked = WorkspaceCheckpoint::capture(root.path()).expect("untracked");
         assert!(changed != untracked);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn checkpoint_changes_when_candidate_permissions_change() {
+        use std::os::unix::fs::PermissionsExt as _;
+
+        let root = tempfile::tempdir().expect("root");
+        run(root.path(), &["init", "--quiet"]);
+        run(root.path(), &["config", "user.email", "peritus@example.invalid"]);
+        run(root.path(), &["config", "user.name", "Peritus Test"]);
+        fs::write(root.path().join("baseline.txt"), "baseline").expect("write baseline");
+        run(root.path(), &["add", "."]);
+        run(root.path(), &["commit", "--quiet", "-m", "fixture"]);
+        let candidate = root.path().join("private.key");
+        fs::write(&candidate, "secret").expect("write candidate");
+        fs::set_permissions(&candidate, fs::Permissions::from_mode(0o644))
+            .expect("initial permissions");
+        let before = WorkspaceCheckpoint::capture(root.path()).expect("before permissions");
+
+        fs::set_permissions(&candidate, fs::Permissions::from_mode(0o600))
+            .expect("fixed permissions");
+        let after = WorkspaceCheckpoint::capture(root.path()).expect("after permissions");
+
+        assert!(before != after);
     }
 
     fn run(root: &Path, arguments: &[&str]) {

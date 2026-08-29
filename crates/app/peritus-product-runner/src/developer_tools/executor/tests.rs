@@ -45,7 +45,11 @@ fn workspace_tools_inspect_edit_search_and_execute_without_a_shell() {
     let listed = execute(&mut tools, "workspace_list", r#"{"depth":3,"path":""}"#);
     let list_value: Value = serde_json::from_str(&wire(&listed)).expect("list result JSON");
     assert!(list_value["entries"].as_array().is_some_and(|entries| {
-        entries.iter().any(|entry| entry["path"].as_str() == Some(expected_path.as_str()))
+        entries.iter().any(|entry| {
+            entry["path"].as_str() == Some(expected_path.as_str())
+                && entry["bytes"].as_u64().is_some()
+                && entry["permissions"].as_str().is_some()
+        })
     }));
 
     let command =
@@ -53,6 +57,10 @@ fn workspace_tools_inspect_edit_search_and_execute_without_a_shell() {
     assert!(!command.is_error);
     assert!(wire(&command).contains(r#""success":true"#));
     assert!(wire(&command).contains(r#""timed_out":false"#));
+    let evidence = tools.verification_evidence();
+    assert!(evidence.contains("[Developer command 1]"));
+    assert!(evidence.contains(r#""program":"rustc""#));
+    assert!(evidence.contains(r#""success":true"#));
     let failed = execute(
         &mut tools,
         "run_command",
@@ -60,6 +68,35 @@ fn workspace_tools_inspect_edit_search_and_execute_without_a_shell() {
     );
     assert!(failed.is_error);
     assert!(wire(&failed).contains(r#""success":false"#));
+}
+
+#[cfg(unix)]
+#[test]
+fn workspace_reads_report_exact_posix_permissions() {
+    use std::os::unix::fs::PermissionsExt as _;
+
+    let workspace = tempfile::tempdir().expect("workspace");
+    let path = workspace.path().join("private.key");
+    fs::write(&path, "secret\n").expect("private key");
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).expect("private permissions");
+    let mut tools = writable_tools(workspace.path());
+
+    let listed = execute(&mut tools, "workspace_list", r#"{"depth":1,"path":""}"#);
+    let list: Value = serde_json::from_str(&wire(&listed)).expect("list JSON");
+    let key = list["entries"]
+        .as_array()
+        .and_then(|entries| entries.iter().find(|entry| entry["path"] == "private.key"))
+        .expect("listed key");
+    assert_eq!(key["permissions"], "0600");
+
+    let read = execute(
+        &mut tools,
+        "workspace_read",
+        r#"{"end_line":10,"path":"private.key","start_line":1}"#,
+    );
+    let value: Value = serde_json::from_str(&wire(&read)).expect("read JSON");
+    assert_eq!(value["permissions"], "0600");
+    assert_eq!(value["bytes"], 7);
 }
 
 #[test]

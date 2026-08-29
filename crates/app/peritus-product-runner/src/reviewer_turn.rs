@@ -12,23 +12,35 @@ const MAX_INVALID_REVIEWS: u8 = 3;
 const MAX_REVIEWER_TURNS: u16 = 32;
 const MAX_REVIEWER_TOOL_CALLS: u32 = 256;
 
+pub struct ReviewEvidence<'a> {
+    pub conversation: &'a str,
+    pub diff: &'a str,
+    pub gates: &'a str,
+    pub developer_commands: &'a str,
+    pub prior: &'a str,
+}
+
 /// Runs a fresh reviewer with bounded read-only workspace tools and parses its typed submission.
 pub async fn complete(
     input: &ProductRunInput,
     cycle: u32,
     review_cycle: u32,
-    conversation: &str,
-    diff: &str,
-    gates: &str,
-    prior: &str,
+    evidence: ReviewEvidence<'_>,
 ) -> Result<ProductReviewSubmission, ProductRunnerError> {
     let mut correction = None;
     for attempt in 1..=MAX_INVALID_REVIEWS {
         check_cancelled(input)?;
-        let prompt = turn::reviewer_user(conversation, diff, gates, prior, correction.as_deref());
+        let prompt = turn::reviewer_user(
+            evidence.conversation,
+            evidence.diff,
+            evidence.gates,
+            evidence.developer_commands,
+            evidence.prior,
+            correction.as_deref(),
+        );
         let media = crate::workspace_media::discover(
             &input.workspace_root,
-            conversation,
+            evidence.conversation,
             input.providers.reviewer.profile(),
         )?;
         let (prompt, attachments) = media.into_parts(prompt);

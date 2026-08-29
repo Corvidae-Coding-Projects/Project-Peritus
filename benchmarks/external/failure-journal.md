@@ -2008,3 +2008,38 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   and returned control to the independent reviewer. Harbor completed with zero exceptions and
   reward 1.0 after VM execution, frame existence, and frame-similarity checks all passed. Product
   execution took 602 seconds and 28 provider requests.
+
+## TBF-004: independent review could not see exact permissions or developer command evidence
+
+- Suite and task: Terminal-Bench 2.0, `openssl-selfsigned-cert`, unchanged qualification after the
+  high-reasoning account-router policy.
+- Symptom: Harbor's unchanged verifier awarded reward 1.0, but Peritus rejected two otherwise valid
+  candidates. The first review read Git's synthetic `new file mode 100644` as exact filesystem
+  permissions and falsely reported the private key as world-readable. After that was corrected, a
+  second review correctly confirmed mode `0600` but demanded execution evidence for
+  `check_cert.py` even though the writer had already run it successfully.
+- Cause: Git's file mode records only the executable bit, while the review packet presented no
+  authoritative live permission metadata. Structured developer command observations were also
+  returned to the writer but discarded before independent review, forcing the reviewer to choose
+  between trusting an unsupported claim and rejecting proven behavior it could not observe.
+- Resolution: workspace list/read observations and synthetic diffs now include bounded,
+  authoritative current file metadata, and candidate progress fingerprints include permission
+  changes. The developer loop retains a bounded recent ledger of structured command requests,
+  status, timeout, stdout, and stderr observations and sends it to the independent reviewer in a
+  distinct evidence channel. Reviewer policy treats those as real execution observations while
+  still distinguishing them from deterministic harness gates and rejecting circular or irrelevant
+  command success.
+- Before evidence: unchanged job `terminalbench-qualification-openssl-high-reasoning` received
+  Harbor reward 1.0 in 675 seconds but Peritus rejected the candidate because of the false `0644`
+  key-mode finding. Unchanged job `terminalbench-qualification-openssl-permission-grounding`
+  received reward 1.0 in 762 seconds and confirmed the real `0600` mode, but Peritus rejected it
+  because the prior successful checker execution was absent from review evidence.
+- Verification: 58 `peritus-product-runner` unit tests (56 passed, two fixture tests ignored), two
+  production-composition tests, strict all-target/all-feature Clippy, formatting, and the static
+  musl release build pass. Regressions cover exact permission rendering, permission-only candidate
+  progress, bounded command-evidence retention, and reviewer packet delivery.
+- After evidence: unchanged job `terminalbench-qualification-openssl-evidence-handoff`; trial
+  `openssl-selfsigned-cert__V6CWibG`; Peritus product acceptance true after 13 provider requests;
+  Harbor reward 1.0 with zero exceptions in 328 seconds. The reviewer cited live `0600` key
+  metadata and the captured execution of `check_cert.py`, tied each observation to the explicit
+  requirements, and retained only a non-blocking portability advisory.

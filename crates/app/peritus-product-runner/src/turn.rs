@@ -8,7 +8,9 @@ use peritus_provider_core::ModelProvider;
 use peritus_types::RunId;
 use serde::Deserialize;
 
-use crate::developer_tools::{WorkspaceDeveloperTools, WorkspaceOwnership, definitions};
+use crate::developer_tools::{
+    WorkspaceDeveloperTools, WorkspaceOwnership, definitions, merge_rendered,
+};
 use crate::execution::{AppliedTurn, AppliedWrite, ProductRunInput, check_cancelled};
 use crate::progress::WorkspaceCheckpoint;
 use crate::trace::FileDeveloperTrace;
@@ -28,6 +30,7 @@ pub async fn complete_developer_turn(
     let mut checkpoint = WorkspaceCheckpoint::capture(&input.workspace_root)?;
     let mut invocation = 0_u32;
     let mut unproductive_terminals = 0_u8;
+    let mut verification_evidence = String::new();
     let (mut correction, mut pending_question) = (None, None);
     loop {
         check_cancelled(input)?;
@@ -45,6 +48,7 @@ pub async fn complete_developer_turn(
         )
         .await?;
         *ownership = tools.ownership().clone();
+        merge_rendered(&mut verification_evidence, &tools.verification_evidence());
         check_cancelled(input)?;
         if input.conversation.revision() != revision {
             checkpoint = WorkspaceCheckpoint::capture(&input.workspace_root)?;
@@ -97,6 +101,7 @@ pub async fn complete_developer_turn(
                 run_instructions: summary.1,
                 tool_calls: result.tool_calls,
                 conversation_revision: revision,
+                verification_evidence,
             })),
             TerminalTurn::Question(question) => {
                 let current = WorkspaceCheckpoint::capture(&input.workspace_root)?;
@@ -173,7 +178,7 @@ pub fn request_name(run_id: RunId, role: &str, cycle: u32) -> String {
 
 pub fn reviewer_system() -> String {
     format!(
-        "You are the independent D2 reviewer in a coding harness. Begin every review by requesting the declared read-only `workspace_list` host function through the model tool-call interface. After receiving that listing, request `workspace_search` and `workspace_read` as needed before reaching a verdict. Peritus executes these requests and returns their results on later turns; they are not provider-native tools. Use them to inspect the authoritative source inputs, exact changed files, and relevant surrounding repository context. Do not rely on the writer's account of files you can inspect. Inspect the original conversation, exact diff, and exact-target gate evidence; the design is a proposal, not authority. Verify every explicit requested path, field, value, operation, and scoped rule against the result. Reject self-authored checks that merely prove the implementation agrees with its own interpretation. A non-advisory finding must identify an unmet explicit requirement, a failed deterministic gate, or a concrete contradiction. Do not replace one reasonable reading of a grammatically ambiguous compound phrase with another merely because you prefer a narrower scope. Unless another authoritative source or deterministic gate resolves that scope, preserve a candidate that satisfies a reasonable reading and report the ambiguity only as advisory; a blocking interpretation finding must show the candidate violates every reasonable reading. Do not settle whether a trailing modifier distributes over coordinated list items by assuming that distribution and then citing an earlier item's lack of the modifier's property; independently consider distributive and nearest-item attachments. Do not broaden a named rule category to semantically related concepts without an authoritative label, taxonomy, or membership definition. Treat optional richer traces, duplicated corroboration, and evidence-presentation improvements as advisory, never as reasons for repeated fixer cycles. Accept contemporaneous process metrics unless contradicted; do not rerun stateful external operations merely to reproduce one-shot transient failures. Return only one JSON object with this shape: {{\"summary\":\"...\",\"findings\":[{{\"category\":\"correctness|requested_behavior|build_coverage|test_coverage|security|maintainability|documentation\",\"severity\":\"advisory|low|medium|high|critical\",\"title\":\"stable concise identity\",\"description\":\"specific observed problem\",\"location\":\"path:line or empty\",\"reproduction\":\"exact evidence or command\",\"remediation\":\"specific required fix\"}}]}}. Do not return a blocking Boolean; policy derives blocker status from typed fields. Repeat every still-present finding using the same title and location. Omit a prior finding only after independently confirming its fix in the fresh diff and evidence. Do not invent obscure hypothetical threats or demand unrelated redesign. Do not use markdown fences.\n\n{}",
+        "You are the independent D2 reviewer in a coding harness. Begin every review by requesting the declared read-only `workspace_list` host function through the model tool-call interface. After receiving that listing, request `workspace_search` and `workspace_read` as needed before reaching a verdict. Peritus executes these requests and returns their results on later turns; they are not provider-native tools. Use them to inspect the authoritative source inputs, exact changed files, current permission metadata, and relevant surrounding repository context. Do not rely on the writer's account of files you can inspect. Inspect the original conversation, exact diff, and exact-target gate evidence; the design is a proposal, not authority. Git diff modes distinguish executable from non-executable files and do not encode exact POSIX permissions such as 0600; use Peritus workspace metadata when exact permissions matter. Verify every explicit requested path, field, value, operation, and scoped rule against the result. Reject self-authored checks that merely prove the implementation agrees with its own interpretation. A non-advisory finding must identify an unmet explicit requirement, a failed deterministic gate, or a concrete contradiction. Do not replace one reasonable reading of a grammatically ambiguous compound phrase with another merely because you prefer a narrower scope. Unless another authoritative source or deterministic gate resolves that scope, preserve a candidate that satisfies a reasonable reading and report the ambiguity only as advisory; a blocking interpretation finding must show the candidate violates every reasonable reading. Do not settle whether a trailing modifier distributes over coordinated list items by assuming that distribution and then citing an earlier item's lack of the modifier's property; independently consider distributive and nearest-item attachments. Do not broaden a named rule category to semantically related concepts without an authoritative label, taxonomy, or membership definition. Treat optional richer traces, duplicated corroboration, and evidence-presentation improvements as advisory, never as reasons for repeated fixer cycles. Accept contemporaneous process metrics unless contradicted; do not rerun stateful external operations merely to reproduce one-shot transient failures. Return only one JSON object with this shape: {{\"summary\":\"...\",\"findings\":[{{\"category\":\"correctness|requested_behavior|build_coverage|test_coverage|security|maintainability|documentation\",\"severity\":\"advisory|low|medium|high|critical\",\"title\":\"stable concise identity\",\"description\":\"specific observed problem\",\"location\":\"path:line or empty\",\"reproduction\":\"exact evidence or command\",\"remediation\":\"specific required fix\"}}]}}. Do not return a blocking Boolean; policy derives blocker status from typed fields. Repeat every still-present finding using the same title and location. Omit a prior finding only after independently confirming its fix in the fresh diff and evidence. Do not invent obscure hypothetical threats or demand unrelated redesign. Do not use markdown fences.\n\n{}",
         crate::engineering_workflow::reviewer(),
     )
 }
@@ -182,6 +187,7 @@ pub fn reviewer_user(
     transcript: &str,
     diff: &str,
     gates: &str,
+    developer_evidence: &str,
     prior: &str,
     correction: Option<&str>,
 ) -> String {
@@ -189,7 +195,7 @@ pub fn reviewer_user(
         format!("\n\nHarness correction from the previous rejected review:\n{value}")
     });
     format!(
-        "Conversation:\n{transcript}\n\nCurrent diff:\n{diff}\n\nExact-target checks:\n{gates}\n\nConserved finding history:\n{prior}\n\nBegin with a workspace_list host-function call, then independently inspect the authoritative workspace inputs and exact changed files through further read-only tool calls before returning the typed review. For every conserved finding, read each cited current workspace file before repeating the finding; prior diff and finding text can predate fixer writes and do not prove that a defect remains.{correction}"
+        "Conversation:\n{transcript}\n\nCurrent diff:\n{diff}\n\nExact-target checks:\n{gates}\n\nDeveloper command observations:\n{developer_evidence}\n\nConserved finding history:\n{prior}\n\nBegin with a workspace_list host-function call, then independently inspect the authoritative workspace inputs and exact changed files through further read-only tool calls before returning the typed review. Developer command observations are real bounded process results, but not deterministic harness gates: confirm that a command exercises the explicit requested behavior and reject circular mocks or irrelevant success. For every conserved finding, read each cited current workspace file before repeating the finding; prior diff and finding text can predate fixer writes and do not prove that a defect remains.{correction}"
     )
 }
 
@@ -448,8 +454,18 @@ mod tests {
 
     #[test]
     fn reviewer_rechecks_conserved_finding_locations_after_fixes() {
-        let prompt = reviewer_user("task", "diff", "gates", "finding", None);
+        let prompt = reviewer_user(
+            "task",
+            "diff",
+            "gates",
+            "request: python check.py\nresult: success",
+            "finding",
+            None,
+        );
 
+        assert!(prompt.contains("Developer command observations"));
+        assert!(prompt.contains("python check.py"));
+        assert!(prompt.contains("not deterministic harness gates"));
         assert!(prompt.contains("For every conserved finding"));
         assert!(prompt.contains("read each cited current workspace file"));
         assert!(prompt.contains("can predate fixer writes"));

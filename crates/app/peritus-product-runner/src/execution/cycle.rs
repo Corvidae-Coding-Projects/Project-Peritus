@@ -16,6 +16,7 @@ pub(super) struct RunEvidence {
     pub(super) diff: String,
     pub(super) gates: String,
     pub(super) review: String,
+    pub(super) developer_commands: String,
 }
 
 pub(super) struct CycleInspection {
@@ -114,6 +115,7 @@ pub(super) async fn inspect_cycle(
         diff: bundle::diff(&input.workspace_root)?,
         gates: gate_report.output.clone(),
         review: review::render(&state.findings),
+        developer_commands: state.developer_evidence.clone(),
     };
     emit(
         observe,
@@ -133,10 +135,13 @@ pub(super) async fn inspect_cycle(
         input,
         cycle,
         review_cycle,
-        &conversation,
-        &evidence.diff,
-        &evidence.gates,
-        &evidence.review,
+        reviewer_turn::ReviewEvidence {
+            conversation: &conversation,
+            diff: &evidence.diff,
+            gates: &evidence.gates,
+            developer_commands: &evidence.developer_commands,
+            prior: &evidence.review,
+        },
     )
     .await?;
     if input.conversation.revision() != state.conversation_revision {
@@ -202,6 +207,10 @@ pub(super) async fn apply_fix(
             state.run_instructions = applied.run_instructions;
             state.tool_calls = state.tool_calls.saturating_add(applied.tool_calls);
             state.conversation_revision = applied.conversation_revision;
+            crate::developer_tools::merge_rendered(
+                &mut state.developer_evidence,
+                &applied.verification_evidence,
+            );
             emit(
                 observe,
                 ProductRunPhase::Fixing,
