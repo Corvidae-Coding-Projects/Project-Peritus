@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 652,
+  "next_comment_id": 653,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T09:57:11.384063381Z",
+      "updated_at": "2026-08-29T09:59:20.196086953Z",
       "labels": [
         "qualification",
         "release"
@@ -1576,6 +1576,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjc0uVPyMqgsBWamQWm2zS2FS/ueixskg796gOAR63A6TiHQ+jVuh7z2ym1bgl9hhNv7q9rHoayhcHsHjkbvWCQ=="
+        },
+        "4fd417b0-d611-4dec-94cf-45f40b4e22fe": {
+          "display_id": 652,
+          "author": "6ME5",
+          "content": "HarnessBench Task 085 passed every outcome check: outcome 1.0, process 0.96, security 1.0, combined 0.96. Eight repeated pytest runs, hidden determinism, test integrity, implementation quality, and the root-cause report all passed without sleeps or weakened tests. Evidence: reports/085-flaky-test-root-cause-final.json.",
+          "created_at": "2026-08-29T09:59:20.193462823Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA4FSKsawkfr5r2BIk4dfzBSMx9sT3wXfR1Gr3nI+r99Xv1h5OltRkkM/FZyk1UnaTxCMJtBvL8weJRJim53ERBg=="
         },
         "53784640-eaed-46d9-ad4f-b98dd0d7336a": {
           "display_id": 628,
@@ -6620,8 +6629,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T09:57:11.384063381Z",
+    "timestamp": "2026-08-29T09:59:20.196086953Z",
     "agent_id": "6ME5",
-    "agent_seq": 833
+    "agent_seq": 834
   }
 }
