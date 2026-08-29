@@ -113,6 +113,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Exercise unchanged HarnessBench tasks 053 and 054 through native first-cycle transaction-anomaly
+  and budget-variance runs, passing all 29 and 34 oracle checks respectively while retaining process
+  efficiency deductions for later longitudinal analysis instead of adding task-specific behavior
+  (#31)
 - Exercise unchanged HarnessBench task 051 through exact offline SQLite reporting with 21/21
   checks and task 052 through a diagnostic review-convergence series whose final identity-v2 run
   completes natively with all 17 checks and outcome/process/security/combined scores of

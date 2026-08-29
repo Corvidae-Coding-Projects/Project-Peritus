@@ -74,7 +74,7 @@ temporary files through its documented `--image` option.
 
 ## Current qualification progress
 
-The live baseline has exercised tasks 001 through 052 against the pinned, unchanged suite. Tasks
+The live baseline has exercised tasks 001 through 054 against the pinned, unchanged suite. Tasks
 022, 023, and 026 complete with oracle outcome 1.0. Tasks 021, 024, 025, 027, and 028 retain lower
 unchanged outcomes because of documented hidden taxonomies, invalid calendar ground truth,
 unmatchable normalization, or brittle unpublished phrase checks. Task 029 similarly retains a
@@ -191,6 +191,12 @@ final finding-identity correction and still reports native failure. A final unch
 identity version 2 then completed natively with all 17 checks, outcome 1.0, process 0.93, security
 1.0, and combined 0.93 in 272.484 seconds. It used 18 provider requests and 217,196 tokens. All
 diagnostic reports remain outside Git under the external state directory's `reports/` folder.
+Tasks 053 and 054 both completed natively on their first cycles. Task 053 passed all 29 anomalous-
+transaction checks with outcome 1.0, process 0.96, security 1.0, and combined 0.96 in 554.279
+seconds. Task 054 passed all 34 budget-variance checks with outcome 1.0, process 0.89, security 1.0,
+and combined 0.89 in 608.309 seconds. Its lower process score records duplicate fixture reads, a
+long planning pass, and stray post-completion text; because the independently recalculated output
+was exact, these remain longitudinal efficiency observations rather than task-specific changes.
 
 HarnessBench chooses a result directory from the last observed provider model and may move a
 multi-provider sandbox after the native adapter exits. Invocation evidence schema 4 therefore
