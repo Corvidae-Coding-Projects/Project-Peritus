@@ -13,6 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Preserve an explicit empty/null applicable-authority sentinel for true insufficient evidence,
+  retain every evaluated result-affecting losing source across priority, date, expiry, scope, and
+  exceptions, and keep exact source IDs, paths, keys, and names separate from explanatory reason
+  text so downstream matching, joins, and deduplication remain reliable (#31)
 - Continue premature writer, reviewer, and fixer terminal responses inside the same tool session
   until the executor's deterministic completion evidence is satisfied, preserving partial grounding
   across correction instead of exhausting fresh retries before a known gate failure can be fixed

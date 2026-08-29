@@ -1672,3 +1672,24 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   adding private output rules. Evidence is retained at
   `reports/094-metric-definition-migration-diff-pre-ledger-projection.json` and
   `reports/094-metric-definition-migration-diff-final.json`.
+
+## HBI-056: task 095 mixed source identities with prose and fabricated applicable authority
+
+- Suite and task: HarnessBench 2.0, `095-policy-version-conflict-resolution`.
+- Symptom: all 11 policy decisions were correct, but the first run filled `applicable_policy` for a
+  true insufficient-evidence case and failed to retain all evaluated losing sources. After adding
+  losing-source coverage, the model found the right sources but appended explanations directly to
+  their paths, breaking exact source-reference membership.
+- Cause: the workflow did not explicitly preserve an empty/null applicable-authority sentinel when
+  a partial source only pointed to a missing controlling fact. It also asked for loss reasons
+  without clearly separating exact source identities from a sibling reason field.
+- Resolution: true insufficient-evidence decisions now leave applicable authority empty/null and
+  keep partial pointers in evidence or caveats. Conflict provenance includes result-affecting losses
+  across priority, date, expiry, scope, and explicit exceptions; exact IDs, paths, keys, and names
+  remain unannotated when the schema provides a separate reason field. The unchanged final run made
+  decisions, governing sources, evidence, insufficient handling, and forbidden outcomes correct;
+  conflict provenance and audit checks passed with outcome/process/security/combined
+  0.74/1.0/1.0/0.74. The remaining scope deduction uses unpublished lexical tokens, so no
+  benchmark-specific synonyms were added. Evidence is retained at
+  `reports/095-policy-version-conflict-resolution-pre-conflict-provenance.json` and
+  `reports/095-policy-version-conflict-resolution-final.json`.

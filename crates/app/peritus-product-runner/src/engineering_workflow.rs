@@ -88,7 +88,19 @@ requested behavior.
    context but cannot displace the declared controlling source. When an output separates a primary,
    applicable, or controlling authority from secondary authorities, a matching superseding rule
    owns the primary field; do not demote it merely to preserve a broader source label or an example.
-   Retain the broader base rule as secondary context when it still applies. Name concrete modules,
+   Retain the broader base rule as secondary context when it still applies.
+   When an output schema provides one losing-source collection for conflict provenance, include
+   every evaluated source whose result-affecting rule lost because of priority, effective date,
+   expiry, scope, or an explicit exception. State why each source lost without claiming it is
+   globally obsolete merely because it does not govern this case. When the schema separates a
+   source-reference collection from a reason field, keep every collection element as the exact
+   source identity and put the explanation only in the reason field. Appending prose to an ID,
+   path, key, or name breaks exact matching, joins, and deduplication.
+   When a contract defines empty or null applicable authority as the sentinel for true insufficient
+   evidence, preserve that sentinel. A partial source that points to an absent required schedule,
+   threshold, approval, or other controlling fact belongs in evidence and caveat fields; it does not
+   become the applicable authority for a decision the available evidence cannot resolve.
+   Name concrete modules,
    ownership boundaries, interfaces, data flow, failure behavior, and exact verification commands.
 3. Divide implementation into cohesive modules with one clear responsibility. Production source
    files must never exceed 500 lines. Keep crate, package, library, and binary roots as thin
@@ -205,6 +217,13 @@ A failed reference lookup must use a missing-reference reason; reserve invalid-r
 records that are present and fail validation.
 Treat a ledger named for one closed classification as a projection of only that class; do not include
 neighboring review or informational classes without an explicit overlap rule.
+When one conflict-provenance collection is available, retain every evaluated losing source whose
+rule would change the result, including losses caused by date, expiry, scope, or explicit exception,
+and state the exact loss reason. Keep source-reference collection elements as exact source
+identities when the schema provides a separate reason field; never append explanatory prose to an
+ID, path, key, or name.
+Preserve an explicit empty/null applicable-authority sentinel for true insufficient evidence; keep a
+partial source that only points to a missing controlling fact in evidence and caveat fields.
 ";
 
 const REVIEWER_SKILL: &str = r"# Independent reviewer
@@ -244,7 +263,13 @@ the most specific evidenced cause, and summary exception counts reconcile unreso
 rejected identities across every requested artifact. Treat an absent referenced record labeled only
 as invalid as a concrete reason-taxonomy defect; `invalid` is for a present record that fails
 validation. Reject entries whose classification does not match the closed class named by their
-ledger unless explicit overlap requires them. Treat
+ledger unless explicit overlap requires them. Treat a conflict record as incomplete when its only
+losing-source collection omits an evaluated source whose rule would change the result but lost by
+priority, date, expiry, scope, or explicit exception. When the schema provides a separate reason
+field, reject source-reference elements that append prose to the exact source ID, path, key, or name
+because that breaks matching, joins, and deduplication. Reject a true insufficient-evidence result
+that fills an applicable-authority field whose contract explicitly requires an empty or null
+sentinel; a partial pointer belongs in evidence or caveat. Treat
 a missing or incompatible
 production dependency, or a test-process
 substitute used in its place, as a blocking compatibility failure when that dependency is being
@@ -320,6 +345,17 @@ mod tests {
             assert!(instructions.contains("controlling source"));
             assert!(instructions.contains("owns the primary field"));
             assert!(instructions.contains("broader base rule as secondary"));
+            assert!(instructions.contains("one losing-source collection"));
+            assert!(instructions.contains("priority, effective date"));
+            assert!(instructions.contains("globally obsolete"));
+            assert!(instructions.contains("source-reference collection"));
+            assert!(instructions.contains("every collection element as the exact"));
+            assert!(instructions.contains("source identity and put"));
+            assert!(instructions.contains("breaks exact matching, joins, and deduplication"));
+            assert!(instructions.contains("sentinel for true insufficient"));
+            assert!(instructions.contains("absent required schedule"));
+            assert!(instructions.contains("it does not"));
+            assert!(instructions.contains("become the applicable authority"));
             assert!(instructions.contains("opaque contract values"));
             assert!(instructions.contains("cross-artifact contract"));
             assert!(instructions.contains("byte-for-byte unchanged"));

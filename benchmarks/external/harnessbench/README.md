@@ -74,7 +74,7 @@ temporary files through its documented `--image` option.
 
 ## Current qualification progress
 
-The live baseline has exercised tasks 001 through 058 against the pinned, unchanged suite. Tasks
+The live baseline has exercised tasks 001 through 095 against the pinned, unchanged suite. Tasks
 022, 023, and 026 complete with oracle outcome 1.0. Tasks 021, 024, 025, 027, and 028 retain lower
 unchanged outcomes because of documented hidden taxonomies, invalid calendar ground truth,
 unmatchable normalization, or brittle unpublished phrase checks. Task 029 similarly retains a
@@ -390,6 +390,15 @@ preserves partial grounding evidence. The unchanged final run completed with eve
 passing and process/security 0.9967/1.0. Its retained 0.78 outcome reflects unpublished direction
 defaults, caveat substring checks, and output variability that reintroduced the review row; the
 general category and recovery rules remain in force.
+
+Task 095 initially named a partial policy as applicable authority for a true
+`insufficient_evidence` result and omitted several evaluated losing sources. The workflow now
+preserves explicit empty/null authority sentinels, accounts for losing rules across priority, date,
+expiry, scope, and exceptions, and keeps exact source identities separate from explanatory reason
+text. The unchanged final run made all 11 decisions, governing sources, evidence signals,
+insufficient-evidence cases, and forbidden outcomes correct; conflict provenance and the conflict
+audit passed, process/security were 1.0/1.0, and the retained 0.74 outcome reflects unpublished
+scope-token spellings rather than a missing policy decision.
 
 HarnessBench chooses a result directory from the last observed provider model and may move a
 multi-provider sandbox after the native adapter exits. Invocation evidence schema 4 therefore

@@ -199,7 +199,7 @@ evidence, and obtaining an H4 `Ready` decision. Until that evidence exists, Peri
 `NotReadyForProduction` by construction.
 
 External production qualification is active against the pinned, unchanged 106-task HarnessBench
-suite. Tasks 001 through 094 have run sequentially with full local reports and failure diagnosis;
+suite. Tasks 001 through 095 have run sequentially with full local reports and failure diagnosis;
 task 051 passed all 21 checks cleanly, and the latest task 052 run passed all 17 external checks
 after exercising ambiguity handling, category boundaries, provider-stall recovery, and finding
 conservation. The source now treats advisory review as nonblocking and conserves stable finding
@@ -310,6 +310,14 @@ continued in the same tool session until required grounding evidence exists. The
 completed successfully with every native gate passing and process/security scores of 0.9967/1.0;
 remaining oracle deductions are unpublished direction defaults, caveat keyword matching, and one
 stochastic reappearance of the neighboring review row rather than a native acceptance failure.
+Task 095 exposed two broadly harmful representation errors in otherwise correct policy decisions:
+an unresolved decision named a partial policy as applicable authority, and source-reference arrays
+mixed stable paths with explanatory prose. True insufficient-evidence results now preserve their
+declared empty/null authority sentinel, while exact IDs, paths, keys, and names remain separate from
+reason text. The unchanged final run made all 11 decisions, governing sources, evidence signals,
+insufficient-evidence cases, and forbidden outcomes correct, passed conflict provenance and audit
+checks, and scored outcome/process/security/combined 0.74/1.0/1.0/0.74. Its remaining scope
+deduction is limited to unpublished lexical tokens rather than missing policy semantics.
 Terminal-Bench 2.0, the complete professional-capability audit, documentation normalization,
 release-installer qualification, and final hosted-runner closure remain required before production
 readiness.

@@ -29,6 +29,16 @@ requested behavior.
    condition; reserve `invalid` for a present record that fails validation. Keep material conditions
    in status values and reconcile summary exception counts across unresolved primary and rejected
    identities with deduplication.
+   When an output schema provides one losing-source collection for conflict provenance, include
+   every evaluated source whose result-affecting rule lost because of priority, effective date,
+   expiry, scope, or an explicit exception. State why each source lost without claiming it is
+   globally obsolete merely because it does not govern this case. When the schema separates a
+   source-reference collection from a reason field, keep every collection element as the exact
+   source identity and put the explanation only in the reason field. Appending prose to an ID,
+   path, key, or name breaks exact matching, joins, and deduplication.
+   When a contract defines empty or null applicable authority as the sentinel for true insufficient
+   evidence, preserve that sentinel. Keep a partial source that only points to an absent controlling
+   fact in evidence and caveat fields rather than treating it as applicable authority.
 3. Divide implementation into cohesive modules with one clear responsibility. Production source
    files must never exceed 500 lines. Keep crate, package, library, and binary roots as thin
    composition surfaces; move behavior into named domain modules rather than generic helpers or

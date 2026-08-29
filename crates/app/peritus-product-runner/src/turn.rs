@@ -300,6 +300,14 @@ mod tests {
         assert!(prompt.contains("classification does not match"));
         assert!(prompt.contains("closed class named by their"));
         assert!(prompt.contains("ledger unless explicit overlap"));
+        assert!(prompt.contains("only"));
+        assert!(prompt.contains("losing-source collection"));
+        assert!(prompt.contains("priority, date, expiry, scope"));
+        assert!(prompt.contains("source-reference elements"));
+        assert!(prompt.contains("breaks matching, joins, and deduplication"));
+        assert!(prompt.contains("true insufficient-evidence result"));
+        assert!(prompt.contains("requires an empty or null"));
+        assert!(prompt.contains("sentinel; a partial pointer"));
     }
 
     #[test]
@@ -335,6 +343,10 @@ mod tests {
         assert!(prompt.contains("reserve invalid-reference reasons"));
         assert!(prompt.contains("ledger named for one closed classification"));
         assert!(prompt.contains("neighboring review or informational classes"));
+        assert!(prompt.contains("one conflict-provenance collection"));
+        assert!(prompt.contains("losses caused by date, expiry, scope"));
+        assert!(prompt.contains("empty/null applicable-authority sentinel"));
+        assert!(prompt.contains("missing controlling fact"));
     }
 
     #[test]

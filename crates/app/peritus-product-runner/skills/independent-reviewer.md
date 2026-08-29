@@ -38,3 +38,10 @@ An absent referenced record labeled only as invalid is a concrete reason-taxonom
 is for a present record that fails validation.
 Reject entries whose classification does not match the closed class named by their ledger unless
 explicit overlap requires them.
+Treat a conflict record as incomplete when its only losing-source collection omits an evaluated
+source whose rule would change the result but lost by priority, date, expiry, scope, or explicit
+exception. When the schema provides a separate reason field, reject source-reference elements that
+append prose to the exact source ID, path, key, or name because that breaks matching, joins, and
+deduplication. Reject a true insufficient-evidence result that fills an applicable-authority field whose
+contract explicitly requires an empty or null sentinel; a partial pointer belongs in evidence or
+caveat.

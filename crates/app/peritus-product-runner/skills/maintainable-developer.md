@@ -28,3 +28,10 @@ A failed reference lookup must use a missing-reference reason; reserve invalid-r
 records that are present and fail validation.
 Treat a ledger named for one closed classification as a projection of only that class; do not include
 neighboring review or informational classes without an explicit overlap rule.
+When one conflict-provenance collection is available, retain every evaluated losing source whose
+rule would change the result, including losses caused by date, expiry, scope, or explicit exception,
+and state the exact loss reason. Keep source-reference collection elements as exact source
+identities when the schema provides a separate reason field; never append explanatory prose to an
+ID, path, key, or name.
+Preserve an explicit empty/null applicable-authority sentinel for true insufficient evidence; keep a
+partial source that only points to a missing controlling fact in evidence and caveat fields.
