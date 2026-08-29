@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 703,
+  "next_comment_id": 704,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T14:23:54.456241335Z",
+      "updated_at": "2026-08-29T14:56:36.061503743Z",
       "labels": [
         "qualification",
         "release"
@@ -2548,6 +2548,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAebtfi+UrLuY+LYBk99RZjESH5+Were/rK/C71WTjNX7b1rBVZ2cG7JhoaATC21VCF7pN0F7N7ol4OKRU9SboAg=="
+        },
+        "ea92cb6e-cca7-40eb-ac91-f2bb44471245": {
+          "display_id": 703,
+          "author": "6ME5",
+          "content": "Checkpoint 0fcb14d0 fixes TBF-003 broadly: model-issued structured commands now have a 120s default / 1-600s requested deadline, owned Unix session or Windows job-object cleanup, closed stdin, concurrent 512 KiB-per-stream capture, and recoverable timed_out observations. Verification: peritus-product-runner 51 unit + 2 composition tests pass; strict all-target Clippy passes; x86_64-musl adapter rebuilt as static PIE SHA-256 1ac7bca4b492dda99fb306f3a80630871311a55c1436085f900c00d14bb1cf36. Failure journal and changelog updated. Next: unchanged make-mips-interpreter rerun.",
+          "created_at": "2026-08-29T14:56:36.058852465Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAq2a3tRU0xKl7KlMji70ueL3J8Wk6UXOeb5mXA52bDWswFMOkJkACFdRkasn22qEHTZsfi0RfBxul7/zLAR8qBw=="
         },
         "ee64b1ff-d642-4051-b6c2-9204b8831085": {
           "display_id": 631,
@@ -7079,8 +7088,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T14:23:54.456241335Z",
+    "timestamp": "2026-08-29T14:56:36.061503743Z",
     "agent_id": "6ME5",
-    "agent_seq": 886
+    "agent_seq": 887
   }
 }
