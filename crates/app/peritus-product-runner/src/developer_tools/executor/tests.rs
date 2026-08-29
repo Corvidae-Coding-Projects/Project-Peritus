@@ -1,5 +1,5 @@
 use super::*;
-use peritus_model_protocol::{ToolCallId, ToolName};
+use peritus_model_protocol::{CanonicalJson, JsonBounds, ProtocolLimits, ToolCallId, ToolName};
 use std::{
     io::Write as _,
     path::Path,
@@ -104,14 +104,12 @@ fn structured_commands_time_out_without_freezing_the_agent() {
     let workspace = tempfile::tempdir().expect("workspace");
     let mut tools = writable_tools(workspace.path());
     let _ = execute(&mut tools, "workspace_list", r#"{"depth":1,"path":""}"#);
+    fs::write(workspace.path().join(".peritus-timeout-fixture"), "run").expect("fixture marker");
     let executable = std::env::current_exe().expect("current test executable");
-    let arguments = serde_json::to_string(&serde_json::json!({
-        "args": ["--ignored", "--nocapture", "command_timeout_fixture"],
-        "cwd": ".",
-        "program": executable,
-        "timeout_seconds": 1,
-    }))
-    .expect("command arguments");
+    let program = serde_json::to_string(&executable).expect("program path");
+    let arguments = format!(
+        r#"{{"args":["--exact","developer_tools::executor::tests::command_timeout_fixture","--nocapture"],"cwd":".","program":{program},"timeout_seconds":1}}"#
+    );
 
     let started = Instant::now();
     let command = execute(&mut tools, "run_command", &arguments);
@@ -129,14 +127,12 @@ fn structured_commands_drain_and_bound_both_output_streams() {
     let workspace = tempfile::tempdir().expect("workspace");
     let mut tools = writable_tools(workspace.path());
     let _ = execute(&mut tools, "workspace_list", r#"{"depth":1,"path":""}"#);
+    fs::write(workspace.path().join(".peritus-output-fixture"), "run").expect("fixture marker");
     let executable = std::env::current_exe().expect("current test executable");
-    let arguments = serde_json::to_string(&serde_json::json!({
-        "args": ["--ignored", "--nocapture", "command_output_fixture"],
-        "cwd": ".",
-        "program": executable,
-        "timeout_seconds": 10,
-    }))
-    .expect("command arguments");
+    let program = serde_json::to_string(&executable).expect("program path");
+    let arguments = format!(
+        r#"{{"args":["--exact","developer_tools::executor::tests::command_output_fixture","--nocapture"],"cwd":".","program":{program},"timeout_seconds":10}}"#
+    );
 
     let command = execute(&mut tools, "run_command", &arguments);
 
@@ -148,14 +144,18 @@ fn structured_commands_drain_and_bound_both_output_streams() {
 }
 
 #[test]
-#[ignore = "launched by the structured-command timeout regression"]
 fn command_timeout_fixture() {
+    if !Path::new(".peritus-timeout-fixture").is_file() {
+        return;
+    }
     std::thread::sleep(Duration::from_secs(30));
 }
 
 #[test]
-#[ignore = "launched by the structured-command output regression"]
 fn command_output_fixture() {
+    if !Path::new(".peritus-output-fixture").is_file() {
+        return;
+    }
     let output = vec![b'x'; 600 * 1024];
     std::io::stdout().write_all(&output).expect("fixture stdout");
     std::io::stderr().write_all(&output).expect("fixture stderr");

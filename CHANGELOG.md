@@ -13,6 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Keep developer-tool wire encoding and product-runner prompt regressions in cohesive submodules
+  below the repository's reviewed source budgets, and express command-test fixtures through the
+  ordinary formal-boundary subset so candidate policy validates the same code exercised locally
+  (#31)
 - Challenge an unchanged writer or fixer request for user input against the harness's confirmed
   writable workspace capabilities before pausing, so missing provider-native filesystem tools
   cannot be mistaken for a read-only managed workspace (#31)

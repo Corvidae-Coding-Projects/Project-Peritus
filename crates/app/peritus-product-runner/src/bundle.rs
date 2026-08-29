@@ -41,16 +41,18 @@ fn metadata_manifest(
         match fs::symlink_metadata(&absolute) {
             Ok(metadata) => {
                 let kind = if metadata.is_dir() { "directory" } else { "file" };
-                let _ = writeln!(
+                let _ = write!(
                     manifest,
                     "{}: kind={kind}, bytes={}, permissions={}",
                     relative.display(),
                     metadata.len(),
                     file_metadata::permissions(&metadata),
                 );
+                manifest.push('\n');
             }
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                let _ = writeln!(manifest, "{}: missing", relative.display());
+                let _ = write!(manifest, "{}: missing", relative.display());
+                manifest.push('\n');
             }
             Err(error) => return Err(repository("read workspace metadata", &error)),
         }

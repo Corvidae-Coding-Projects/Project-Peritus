@@ -3,8 +3,8 @@
 use std::{collections::VecDeque, fs, path::PathBuf, process::Command, time::Duration};
 
 use peritus_agent::{DeveloperLoopError, DeveloperToolExecutor, DeveloperToolObservation};
-use peritus_model_protocol::{CanonicalJson, CompletedToolCall, JsonBounds, ProtocolLimits};
-use serde_json::{Map, Value};
+use peritus_model_protocol::CompletedToolCall;
+use serde_json::Value;
 
 use super::{
     effect::{atomic_write, atomic_write_if_changed, limit, reject_destructive_command},
@@ -13,6 +13,7 @@ use super::{
     ownership::WorkspaceOwnership,
     path::{checked, ignored, tool},
     process, removal,
+    wire::{bounded_u64, bounded_usize, collection, object, observation, required_string, string},
 };
 use crate::file_metadata;
 
@@ -371,52 +372,6 @@ impl WorkspaceDeveloperTools {
         self.command_evidence.record(arguments, &result);
         Ok(result)
     }
-}
-
-fn object(entries: Vec<(&str, Value)>) -> Value {
-    Value::Object(
-        entries.into_iter().map(|(key, value)| (key.to_owned(), value)).collect::<Map<_, _>>(),
-    )
-}
-
-fn collection(name: &str, values: Vec<Value>, truncated: bool) -> Value {
-    object(vec![(name, Value::Array(values)), ("truncated", Value::Bool(truncated))])
-}
-
-fn observation(
-    value: &Value,
-    is_error: bool,
-) -> Result<DeveloperToolObservation, DeveloperLoopError> {
-    let encoded = serde_json::to_string(&value).map_err(|error| tool(error.to_string()))?;
-    let output = CanonicalJson::parse(&encoded, JsonBounds::value(ProtocolLimits::PRODUCTION))?;
-    Ok(DeveloperToolObservation { output, is_error })
-}
-
-fn required_string<'a>(value: &'a Value, name: &str) -> Result<&'a str, DeveloperLoopError> {
-    string(value, name).ok_or_else(|| tool(format!("{name} must be text")))
-}
-
-fn string<'a>(value: &'a Value, name: &str) -> Option<&'a str> {
-    value.get(name).and_then(Value::as_str)
-}
-
-fn bounded_usize(
-    value: &Value,
-    name: &str,
-    default: usize,
-    minimum: usize,
-    maximum: usize,
-) -> usize {
-    value
-        .get(name)
-        .and_then(Value::as_u64)
-        .and_then(|number| usize::try_from(number).ok())
-        .unwrap_or(default)
-        .clamp(minimum, maximum)
-}
-
-fn bounded_u64(value: &Value, name: &str, default: u64, minimum: u64, maximum: u64) -> u64 {
-    value.get(name).and_then(Value::as_u64).unwrap_or(default).clamp(minimum, maximum)
 }
 
 #[cfg(test)]

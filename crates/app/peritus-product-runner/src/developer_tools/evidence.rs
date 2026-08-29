@@ -74,11 +74,14 @@ mod tests {
     #[test]
     fn evidence_retains_recent_bounded_command_observations() {
         let mut evidence = CommandEvidence::default();
+        let result: Value =
+            serde_json::from_str(r#"{"success":true,"stdout":"verified"}"#).expect("result");
         for index in 0..40 {
-            evidence.record(
-                &serde_json::json!({"program":"python","args":[format!("check-{index}.py")]}),
-                &serde_json::json!({"success":true,"stdout":"verified"}),
-            );
+            let request: Value = serde_json::from_str(&format!(
+                r#"{{"program":"python","args":["check-{index}.py"]}}"#
+            ))
+            .expect("request");
+            evidence.record(&request, &result);
         }
 
         let rendered = evidence.render();

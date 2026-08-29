@@ -9,6 +9,7 @@ mod ownership;
 mod path;
 mod process;
 mod removal;
+mod wire;
 
 pub use catalog::{definitions, read_only_definitions};
 pub use executor::WorkspaceDeveloperTools;
