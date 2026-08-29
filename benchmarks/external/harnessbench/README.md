@@ -21,8 +21,9 @@ python3 -m venv /absolute/path/to/benchmark-state/.venv
 ```
 
 The separate requirements file includes HarnessBench's PyYAML dependency and pytest, which task 016
-invokes from both the agent workspace and its unchanged oracle. From the HarnessBench checkout, list
-tasks with:
+invokes from both the agent workspace and its unchanged oracle. It also pins the real
+`python-slugify` 8.x runtime and transitive `text-unidecode` package used by task 045, so dependency
+compatibility is executed rather than simulated. From the HarnessBench checkout, list tasks with:
 
 ```bash
 PYTHONPATH=src /absolute/path/to/benchmark-state/.venv/bin/python -m harnessbench.cli tasks
@@ -73,7 +74,7 @@ temporary files through its documented `--image` option.
 
 ## Current qualification progress
 
-The live baseline has exercised tasks 001 through 044 against the pinned, unchanged suite. Tasks
+The live baseline has exercised tasks 001 through 045 against the pinned, unchanged suite. Tasks
 022, 023, and 026 complete with oracle outcome 1.0. Tasks 021, 024, 025, 027, and 028 retain lower
 unchanged outcomes because of documented hidden taxonomies, invalid calendar ground truth,
 unmatchable normalization, or brittle unpublished phrase checks. Task 029 similarly retains a
@@ -127,6 +128,14 @@ root `test_*.py`/`*_test.py` conventions to their project, performs side-effect-
 and pytest gates, and structurally parses changed YAML. The unchanged rerun records all four native
 checks and scored 0.98 (`excellent`); its remaining gap consists of two unpublished prose-token
 spellings documented in the journal.
+Task 045 initially exposed a false compatibility proof: the fixture dependency was absent, a fixer
+injected a substitute module into the test process, and review treated real dependency execution as
+optional. Peritus now verifies conventional `requirements.txt` files with an offline, read-only pip
+resolution pass and makes the changed real dependency a blocking acceptance prerequisite. The
+benchmark environment pins `python-slugify` 8.0.4 and `text-unidecode` 1.3. An unchanged rerun kept
+the original tests intact, independently verified the installed dependency, passed every direct
+behavior check, and scored outcome 0.98 (`excellent`), process 0.9467, security 1.0, and combined
+0.9277 in 351.72 seconds.
 Product failures and benchmark defects are kept separate in the
 [external failure journal](../failure-journal.md); generated workspaces, native traces, and full
 result JSON remain in the configured external state directory rather than Git.

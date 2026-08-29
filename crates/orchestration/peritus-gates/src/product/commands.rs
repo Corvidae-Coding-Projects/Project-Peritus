@@ -140,13 +140,32 @@ fn conventional_node_commands(
 }
 
 fn python_commands(workspace_root: &Path, project: &AffectedProject) -> Vec<GateCommandSpec> {
-    let mut commands = vec![spec(
+    let root = workspace_root.join(project.root());
+    let mut commands = Vec::new();
+    if root.join("requirements.txt").is_file() {
+        commands.push(spec(
+            "Python dependencies",
+            "python",
+            vec![
+                "-B".to_owned(),
+                "-m".to_owned(),
+                "pip".to_owned(),
+                "install".to_owned(),
+                "--dry-run".to_owned(),
+                "--no-index".to_owned(),
+                "--disable-pip-version-check".to_owned(),
+                "--requirement".to_owned(),
+                "requirements.txt".to_owned(),
+            ],
+            project,
+        ));
+    }
+    commands.push(spec(
         "Python compile",
         "python",
         vec!["-B".to_owned(), "-c".to_owned(), python_syntax_check()],
         project,
-    )];
-    let root = workspace_root.join(project.root());
+    ));
     let manifest = || {
         project.manifest().and_then(|path| std::fs::read_to_string(workspace_root.join(path)).ok())
     };

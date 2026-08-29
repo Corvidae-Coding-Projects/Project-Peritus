@@ -29,6 +29,12 @@ requested behavior.
    material uncertainty.
 7. Run focused checks while implementing. Independent acceptance must inspect the exact candidate,
    enforce source layout, build the affected package, execute its tests, and run its language lint.
+   When a task adds or changes a production dependency, execute compatibility checks against an
+   installed version that satisfies the exact declared dependency. A missing or incompatible
+   dependency is failed acceptance evidence, not permission to inject a substitute into the test
+   process, vendor an undeclared replacement, restore a fallback implementation, or downgrade the
+   failure to advice. Test doubles may still isolate unrelated collaborators, but cannot stand in
+   for the dependency whose production compatibility the change claims to prove.
 8. Review against the request and design, conserve unresolved findings across cycles, fix actual
    causes, and refuse completion until every deterministic gate and policy-derived blocker clears.
 

@@ -137,8 +137,10 @@ The implemented foundation and runtime spine now covers:
   unless every exact changed project satisfies the 500-line source ceiling and has explicit
   passing compile/build/test/lint evidence with no policy-derived blocker. Conventional
   manifestless Python and Node projects bind to their nearest tests, including root-level Python
-  test conventions; changed YAML receives bounded structural parsing; Python checks avoid cache
-  side effects; and SQLite migration workspaces execute the schema, forward migration twice,
+  test conventions; changed YAML receives bounded structural parsing; conventional Python
+  requirements receive an offline read-only satisfaction check so a missing production dependency
+  cannot be hidden by a test substitute; Python checks avoid cache side effects; and SQLite
+  migration workspaces execute the schema, forward migration twice,
   postcheck, and rollback in a disposable Rust-owned database. Trusted-workspace repair now
   re-registers a validated advanced detached HEAD without discarding agent commits or unfinished
   files, and status accepts Git's ordinary trailing-slash directory records. The daemon persists

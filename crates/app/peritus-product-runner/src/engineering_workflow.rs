@@ -61,6 +61,12 @@ requested behavior.
    material uncertainty.
 7. Run focused checks while implementing. Independent acceptance must inspect the exact candidate,
    enforce source layout, build the affected package, execute its tests, and run its language lint.
+   When a task adds or changes a production dependency, execute compatibility checks against an
+   installed version that satisfies the exact declared dependency. A missing or incompatible
+   dependency is failed acceptance evidence, not permission to inject a substitute into the test
+   process, vendor an undeclared replacement, restore a fallback implementation, or downgrade the
+   failure to advice. Test doubles may still isolate unrelated collaborators, but cannot stand in
+   for the dependency whose production compatibility the change claims to prove.
    Validate requested effects independently rather than proving only self-authored invariants. For
    local services or APIs, preserve and inspect available access evidence and confirm every required
    endpoint and exercised recovery path. When the request includes a quality or operations report,
@@ -98,7 +104,10 @@ compressed formatting. Keep entry points and package roots focused on compositio
 types and explicit interfaces over shared mutable state, generic manager objects, or catch-all
 utility modules. Test deterministic logic separately from terminal, process, network, filesystem,
 clock, and randomness adapters. Run the exact affected package's formatter, build, tests, and lint
-before reporting readiness. For an artifact-only request with no requested retained source, execute
+before reporting readiness. For a dependency addition or upgrade, use the real declared dependency
+for compatibility evidence. Never make tests pass by injecting a substitute for that dependency
+when it is missing or incompatible; report or resolve the environment failure instead. For an
+artifact-only request with no requested retained source, execute
 the bounded producer directly and verify the resulting artifacts and effects rather than creating
 an application package solely to host one run.
 ";
@@ -119,7 +128,10 @@ and independent checks pass, a preference for more detailed traces, duplicated c
 stronger evidence presentation is at most advisory. Do not block merely because an opaque canonical
 identifier has awkward wording when its declared category and governing rule match and the
 candidate's factual evidence remains accurate. Never turn optional evidence enrichment into
-repeated fixer work.
+repeated fixer work. Treat a missing or incompatible production dependency, or a test-process
+substitute used in its place, as a blocking compatibility failure when that dependency is being
+added or upgraded. Legitimate mocks for unrelated boundaries remain allowed, but they cannot prove
+the changed dependency works in production.
 ";
 
 pub fn architect() -> String {
@@ -167,6 +179,8 @@ mod tests {
             assert!(instructions.contains("Optional richer provenance"));
             assert!(instructions.contains("one-shot transient event"));
             assert!(instructions.contains("repeated fixer work"));
+            assert!(instructions.contains("cannot stand in"));
+            assert!(instructions.contains("failed acceptance evidence"));
         }
     }
 }

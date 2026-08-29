@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Require changed conventional Python dependencies to be satisfied by the real installed package
+  through a read-only offline gate, and reject test-process substitutes as compatibility evidence
+  for the dependency being added or upgraded, while retaining legitimate unrelated mocks (#31)
 - Bind changed Python production sources to their nearest conventional manifestless test project,
   extending exact compile and pytest evidence beyond files physically located below `tests/` (#31)
 - Discover manifestless CommonJS and JavaScript modules through adjacent conventional test files
@@ -85,7 +88,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
-- Exercise the pinned, unchanged HarnessBench suite through task 044, retaining task 039's excellent
+- Exercise unchanged HarnessBench task 045 against pinned `python-slugify` 8.0.4, improving its
+  false-substitute baseline from outcome 0.838/process 0.8267/combined 0.6927 to a real-dependency
+  outcome 0.98/process 0.9467/combined 0.9277 with security 1.0 (#31)
+- Exercise the pinned, unchanged HarnessBench suite through task 045, retaining task 039's excellent
   0.9673 architecture result, task 040's complete 1.0 mutation-tested Python result, task 041's
   0.9962 immutable-state result, task 042's official 0.4 oracle-crash result, and task 043's 0.995
   transactional SQLite result without hiding regressions or conflating benchmark infrastructure

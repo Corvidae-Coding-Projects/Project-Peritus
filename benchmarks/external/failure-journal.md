@@ -773,6 +773,47 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Disposition: retain both unchanged results and the final excellent score. Do not teach production
   behavior hidden lexical forms; exact observed root paths remain a useful normal design choice.
 
+## HBF-014: dependency compatibility passed against a test substitute
+
+- Suite and task: HarnessBench 2.0, `045-dependency-upgrade-compat`.
+- Symptom: the first run correctly removed a production fallback and changed the declared
+  `python-slugify` range, but the package was absent from the benchmark environment. Pytest failed
+  during import. The fixer then inserted a fake `slugify` module into the test process whenever the
+  real package was missing. The tests passed and the reviewer downgraded the lack of any real 8.x
+  execution to advisory, even though the production module still failed to import outside tests.
+- Cause: exact-target Python acceptance compiled and tested the candidate but did not verify that
+  `requirements.txt` was satisfied. The role workflow also did not distinguish ordinary unit-test
+  doubles from a substitute used as the sole compatibility evidence for the dependency being
+  upgraded.
+- Change: conventional Python projects with `requirements.txt` now run a read-only, offline
+  dependency resolution gate using `pip install --dry-run --no-index`; it neither installs packages
+  nor contacts an index. The developer and reviewer contracts make a missing or incompatible
+  changed production dependency a blocking failure and forbid treating a substitute as proof that
+  it works, while preserving legitimate mocks for unrelated collaborators. The external benchmark
+  environment now pins `python-slugify==8.0.4` and its `text-unidecode==1.3` dependency.
+- Before evidence: local report
+  `reports/045-dependency-upgrade-compat-pre-real-dependency.json`; outcome 0.838, process 0.8267,
+  security 1.0, combined 0.6927, and 818.635 seconds. The retained product observation shows the
+  original import failure, injected substitute, passing 18-test result, and reviewer acceptance.
+- After evidence: local report
+  `reports/045-dependency-upgrade-compat-post-real-dependency.json`; unchanged task outcome 0.98
+  (`excellent`), process 0.9467, security 1.0, combined 0.9277, and 351.72 seconds. The candidate
+  preserved the four supplied tests, native evidence names installed `python-slugify` 8.0.4, all
+  direct behavior checks scored 1.0, and independent review completed in one cycle with no finding.
+
+## HBI-024: task 045 awards unpublished raw documentation terms
+
+- Suite and task: HarnessBench 2.0, `045-dependency-upgrade-compat`.
+- Symptom: every weighted check passes and the unchanged result is `excellent`, but the outcome is
+  0.98 rather than 1.0. The decision document states the exact public wrapper remains unchanged but
+  does not contain the literal word `signature`; the risk document explains the narrowly scoped
+  dependency-only change but does not contain the literal word `minimal`.
+- Cause: the oracle gives fractional documentation credit from raw hidden substring lists rather
+  than evaluating the requested meaning. Both missing concepts are present in ordinary equivalent
+  prose, and the executable signature and dependency-only diff pass separately.
+- Disposition: retain the unchanged 0.98 result. Do not teach production roles unpublished scoring
+  vocabulary when the contract, executable behavior, and review evidence are already correct.
+
 ## HBF-005: a fixer deleted evaluator-owned evidence
 
 - Suite and task: HarnessBench 2.0, `022-local-rest-api-summary`.

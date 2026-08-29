@@ -263,6 +263,8 @@ mod tests {
         assert!(prompt.contains("non-advisory finding"));
         assert!(prompt.contains("one-shot transient failures"));
         assert!(prompt.contains("never as reasons for repeated fixer cycles"));
+        assert!(prompt.contains("blocking compatibility failure"));
+        assert!(prompt.contains("Legitimate mocks for unrelated boundaries"));
     }
 
     #[test]
@@ -276,5 +278,7 @@ mod tests {
         assert!(prompt.contains("owns the primary field"));
         assert!(prompt.contains("opaque contract values"));
         assert!(prompt.contains("no useful reversible requested result"));
+        assert!(prompt.contains("real declared dependency"));
+        assert!(prompt.contains("Never make tests pass by injecting a substitute"));
     }
 }

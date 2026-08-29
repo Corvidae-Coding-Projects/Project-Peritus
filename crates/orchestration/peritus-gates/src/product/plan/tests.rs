@@ -227,3 +227,43 @@ fn root_level_python_tests_cover_workflow_and_documentation_changes() {
     assert!(compile.arguments()[2].contains("ast.parse"));
     assert_eq!(tests.arguments(), ["-B", "-m", "pytest", "-p", "no:cacheprovider"]);
 }
+
+#[test]
+fn python_requirements_are_verified_without_installing_or_network_access() {
+    let temporary = tempfile::tempdir().expect("temporary workspace");
+    let project = temporary.path().join("in/depsvc");
+    std::fs::create_dir_all(project.join("tests")).expect("test directory");
+    std::fs::write(project.join("requirements.txt"), "some-package>=8,<9\n").expect("requirements");
+    std::fs::write(project.join("slugger.py"), "def make_slug(value):\n    return value\n")
+        .expect("source");
+    std::fs::write(project.join("tests/test_slugger.py"), "def test_slug():\n    pass\n")
+        .expect("test");
+
+    let plan = TargetGatePlan::discover(
+        temporary.path(),
+        vec![PathBuf::from("in/depsvc/requirements.txt")],
+    )
+    .expect("Python dependency plan");
+
+    let dependencies = plan
+        .commands()
+        .iter()
+        .find(|command| command.label() == "Python dependencies")
+        .expect("Python dependency gate");
+    assert_eq!(dependencies.program(), "python");
+    assert_eq!(dependencies.current_dir(), Path::new("in/depsvc"));
+    assert_eq!(
+        dependencies.arguments(),
+        [
+            "-B",
+            "-m",
+            "pip",
+            "install",
+            "--dry-run",
+            "--no-index",
+            "--disable-pip-version-check",
+            "--requirement",
+            "requirements.txt",
+        ]
+    );
+}
