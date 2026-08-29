@@ -316,6 +316,27 @@ identifier fields under a normalized-record schema that the prompt never publish
 produced exact canonical JSON, YAML, and CSV with full type preservation and conflict resolution; its
 sole miss is the unpublished conflict-source key name.
 
+Task 081 produced the exact requested DOM extraction, excluded hidden template bait, and exercised
+the detail, search, and confirmation routes with process/security 0.9933/1.0. Its only deduction
+requires an HTTP request to `/` even though the benchmark supplies the exact index DOM as a local
+authoritative input and Peritus read it before using the dynamic routes. Task 082 passed every
+Compose contract and validation check with a 0.99 outcome. Task 083 passed all monorepo interface,
+hidden behavior, test-integrity, quality, and report checks for outcome 1.0.
+
+Task 084 passed JavaScript tests, hidden state behavior, and test integrity with perfect process and
+security and a 0.9938 outcome. Task 085 removed the flaky race at its cause and passed eight repeated
+test runs, hidden determinism, test integrity, implementation quality, and reporting for outcome
+1.0. Task 086's migration, constraints, second execution, rollback, and postchecks all functioned;
+its 0.70 cap comes from a hidden reason-string predicate that treats `invoice not found` as different
+from `missing invoice` in both data and idempotence checks.
+
+Task 087 initially passed all implementation and hidden CLI checks but omitted a direct descending-
+sort regression. The production workflow, developer skill, and independent reviewer now map every
+explicitly named regression behavior to a direct repository assertion. The unchanged rerun added the
+missing ascending/descending numeric test, passed all nine tests and hidden behavior, and improved
+outcome/process/security/combined from 0.8821/0.9767/1.0/0.8615 to
+0.9107/0.9967/1.0/0.9077.
+
 HarnessBench chooses a result directory from the last observed provider model and may move a
 multi-provider sandbox after the native adapter exits. Invocation evidence schema 4 therefore
 includes `relocatable_paths`, all rooted at the final sandbox printed by HarnessBench. Those paths

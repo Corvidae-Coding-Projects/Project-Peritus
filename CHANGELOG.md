@@ -13,6 +13,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Derive nested Cargo manifest expectations with host-native path semantics in the gate-planner
+  regression test, keeping the same structured command behavior while allowing the Windows Gate A
+  and Foundation Rust suites to validate their native backslash argument (#31)
+- Map every explicitly requested regression behavior to a direct repository test and assertion in
+  the production workflow, writer skill, and independent reviewer; unchanged HarnessBench task 087
+  now adds the previously missing descending-sort regression and improves from good to excellent
+  while preserving perfect hidden CLI behavior (#31)
 - Require affirmative source evidence for hard eligibility, compatibility, and placement
   constraints instead of treating a missing field as a permissive default, keeping optimization
   inside the proven feasible set unless an authoritative input declares fallback semantics (#31)
@@ -138,6 +145,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Exercise unchanged HarnessBench tasks 081 through 087 across local DOM/form interaction, Compose
+  repair, monorepo interfaces, JavaScript state, flaky-test determinism, SQL migration/rollback, and
+  CLI parsing; tasks 083 and 085 pass every outcome check while task 087 validates a general
+  requirement-to-test traceability fix (#31)
 - Exercise unchanged HarnessBench tasks 076 through 080 across administrative claim checking,
   nested-archive defense, cursor/retry recovery, high-cardinality batch normalization, and schema
   round trips; task 078 passes every outcome check while unpublished lexical and schema conventions

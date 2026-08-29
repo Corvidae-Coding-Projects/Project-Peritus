@@ -95,6 +95,11 @@ requested behavior.
    material uncertainty.
 7. Run focused checks while implementing. Independent acceptance must inspect the exact candidate,
    enforce source layout, build the affected package, execute its tests, and run its language lint.
+   When the user explicitly asks for regression tests or lists behaviors that tests must cover,
+   maintain a requirement-to-test ledger. Give every independently observable named behavior a
+   direct repository test and assertion unless an existing test already proves that exact behavior.
+   Passing implementation checks or hidden/external gates does not substitute for requested
+   regression coverage.
    When a task adds or changes a production dependency, execute compatibility checks against an
    installed version that satisfies the exact declared dependency. A missing or incompatible
    dependency is failed acceptance evidence, not permission to inject a substitute into the test
@@ -148,7 +153,9 @@ Create cohesive named modules before any source file crosses 500 lines; do not e
 compressed formatting. Keep entry points and package roots focused on composition. Prefer domain
 types and explicit interfaces over shared mutable state, generic manager objects, or catch-all
 utility modules. Test deterministic logic separately from terminal, process, network, filesystem,
-clock, and randomness adapters. Run the exact affected package's formatter, build, tests, and lint
+clock, and randomness adapters. For requested regression coverage, map every named bug or behavior
+to a direct existing or new test before reporting completion; do not infer coverage only because the
+implementation works. Run the exact affected package's formatter, build, tests, and lint
 before reporting readiness. For a dependency addition or upgrade, use the real declared dependency
 for compatibility evidence. Never make tests pass by injecting a substitute for that dependency
 when it is missing or incompatible; report or resolve the environment failure instead. For a
@@ -186,7 +193,9 @@ an authoritative label, taxonomy, or membership definition. Treat a missing or i
 production dependency, or a test-process
 substitute used in its place, as a blocking compatibility failure when that dependency is being
 added or upgraded. Legitimate mocks for unrelated boundaries remain allowed, but they cannot prove
-the changed dependency works in production.
+the changed dependency works in production. When regression tests are explicitly requested, map
+each named behavior to a direct assertion in the repository tests and report missing named coverage
+as a `test_coverage` finding; successful implementation behavior alone is not test coverage.
 ";
 
 pub fn architect() -> String {
@@ -257,6 +266,9 @@ mod tests {
             assert!(instructions.contains("failed acceptance evidence"));
             assert!(instructions.contains("measure the unchanged"));
             assert!(instructions.contains("same representative workload"));
+            assert!(instructions.contains("requirement-to-test ledger"));
+            assert!(instructions.contains("direct repository test"));
+            assert!(instructions.contains("hidden/external gates"));
         }
     }
 }

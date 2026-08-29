@@ -17,4 +17,6 @@ taxonomy, or membership definition. Treat a missing or incompatible production d
 test-process
 substitute used in its place, as a blocking compatibility failure when that dependency is being
 added or upgraded. Legitimate mocks for unrelated boundaries remain allowed, but they cannot prove
-the changed dependency works in production.
+the changed dependency works in production. When regression tests are explicitly requested, map
+each named behavior to a direct assertion in the repository tests and report missing named coverage
+as a `test_coverage` finding; successful implementation behavior alone is not test coverage.

@@ -15,6 +15,7 @@ fn rust_plan_builds_the_exact_nested_package() {
 
     let plan = TargetGatePlan::discover(temporary.path(), vec![PathBuf::from("game/src/main.rs")])
         .expect("exact target plan");
+    let manifest = PathBuf::from("game").join("Cargo.toml").to_string_lossy().into_owned();
 
     let build = plan
         .commands()
@@ -30,7 +31,7 @@ fn rust_plan_builds_the_exact_nested_package() {
     assert_eq!(format.current_dir(), Path::new(""));
     assert_eq!(
         format.arguments(),
-        ["fmt", "--manifest-path", "game/Cargo.toml", "--all", "--", "--check"]
+        ["fmt", "--manifest-path", manifest.as_str(), "--all", "--", "--check"]
     );
     assert_eq!(build.program(), "cargo");
     assert_eq!(build.current_dir(), Path::new(""));
@@ -42,7 +43,7 @@ fn rust_plan_builds_the_exact_nested_package() {
             "--all-targets",
             "--all-features",
             "--manifest-path",
-            "game/Cargo.toml",
+            manifest.as_str(),
             "--workspace",
         ]
     );

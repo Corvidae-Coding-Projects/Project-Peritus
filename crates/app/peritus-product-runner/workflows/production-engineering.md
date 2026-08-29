@@ -29,6 +29,11 @@ requested behavior.
    material uncertainty.
 7. Run focused checks while implementing. Independent acceptance must inspect the exact candidate,
    enforce source layout, build the affected package, execute its tests, and run its language lint.
+   When the user explicitly asks for regression tests or lists behaviors that tests must cover,
+   maintain a requirement-to-test ledger. Give every independently observable named behavior a
+   direct repository test and assertion unless an existing test already proves that exact behavior.
+   Passing implementation checks or hidden/external gates does not substitute for requested
+   regression coverage.
    When a task adds or changes a production dependency, execute compatibility checks against an
    installed version that satisfies the exact declared dependency. A missing or incompatible
    dependency is failed acceptance evidence, not permission to inject a substitute into the test

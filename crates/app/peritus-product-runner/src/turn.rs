@@ -285,6 +285,7 @@ mod tests {
         assert!(prompt.contains("never as reasons for repeated fixer cycles"));
         assert!(prompt.contains("blocking compatibility failure"));
         assert!(prompt.contains("Legitimate mocks for unrelated boundaries"));
+        assert!(prompt.contains("successful implementation behavior alone is not test coverage"));
     }
 
     #[test]
@@ -306,6 +307,7 @@ mod tests {
         assert!(prompt.contains("Never make tests pass by injecting a substitute"));
         assert!(prompt.contains("same-workload baseline"));
         assert!(prompt.contains("use profiling when the cause is not already evident"));
+        assert!(prompt.contains("map every named bug or behavior"));
     }
 
     #[test]

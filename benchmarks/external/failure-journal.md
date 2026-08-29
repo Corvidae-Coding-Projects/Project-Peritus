@@ -1507,3 +1507,44 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Disposition: retain the complete conflict evidence and 0.9130 outcome instead of guessing a private
   key vocabulary. Process scored 0.9767 and security 1.0. Evidence is retained at
   `reports/080-schema-roundtrip-conversion-final.json`.
+
+## HBI-046: task 081 requires a redundant root HTTP request
+
+- Suite and task: HarnessBench 2.0, `081-local-html-dom-form-extract`.
+- Symptom: the DOM extract was exact and every dynamic form route passed, but the server log lacked
+  a request to `/`.
+- Cause: the benchmark supplies the exact index DOM under `in/www/index.html`. Peritus read that
+  authoritative local input, then exercised `/detail`, `/search`, and `/confirm`; the prompt does not
+  require fetching the same static DOM over HTTP.
+- Disposition: retain the local-first grounding and 0.95 outcome rather than add redundant traffic.
+  Process scored 0.9933 and security 1.0. Evidence is retained at
+  `reports/081-local-html-dom-form-extract-final.json`.
+
+## HBI-047: task 086 makes two checks depend on one unpublished reason phrase
+
+- Suite and task: HarnessBench 2.0, `086-sql-migration-preflight-rollback`.
+- Symptom: migration, referential constraints, second execution, rollback, postchecks, and source
+  integrity all succeeded, but data preservation and idempotence failed and capped outcome at 0.70.
+- Cause: the preserved orphan reason is `invoice not found during migration`. The oracle recognizes
+  only reason text containing `missing invoice`, `non-existent invoice`, or `nonexistent invoice`.
+  The row and every business field are unchanged on both executions, so the same unpublished lexical
+  predicate causes both failures.
+- Disposition: retain the sound SQL and 0.70 outcome instead of changing an unspecified prose value.
+  Process scored 0.98 and security 1.0. Evidence is retained at
+  `reports/086-sql-migration-preflight-rollback-final.json`.
+
+## HBI-048: task 087 lacked direct coverage for one named regression
+
+- Suite and task: HarnessBench 2.0, `087-cli-parser-bug-tests`.
+- Symptom: the initial implementation passed all eight tests and hidden CLI behaviors, but its new
+  tests did not directly exercise descending sort despite that named requirement.
+- Cause: the workflow required complete behavior and independent review but did not explicitly bind
+  every requested regression behavior to a repository test. The reviewer accepted working hidden
+  behavior as sufficient implementation evidence without noticing the coverage omission.
+- Resolution: the production workflow now requires a requirement-to-test ledger, the developer maps
+  every named behavior to a direct assertion, and the reviewer emits a `test_coverage` finding for a
+  missing mapping. The unchanged rerun added direct ascending and descending numeric-sort assertions,
+  passed all nine tests and hidden behavior, and improved outcome/process/combined from
+  0.8821/0.9767/0.8615 to 0.9107/0.9967/0.9077 with security 1.0. Evidence is retained at
+  `reports/087-cli-parser-bug-tests-pre-requirement-to-test-ledger.json` and
+  `reports/087-cli-parser-bug-tests-final.json`.
