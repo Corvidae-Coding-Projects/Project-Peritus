@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 734,
+  "next_comment_id": 735,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T20:01:36.336659231Z",
+      "updated_at": "2026-08-29T20:07:55.738761809Z",
       "labels": [
         "qualification",
         "release"
@@ -1837,6 +1837,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA4FSKsawkfr5r2BIk4dfzBSMx9sT3wXfR1Gr3nI+r99Xv1h5OltRkkM/FZyk1UnaTxCMJtBvL8weJRJim53ERBg=="
+        },
+        "52c068ec-587c-4725-990b-1ce3be3cd8fc": {
+          "display_id": 734,
+          "author": "6ME5",
+          "content": "Hosted dependency-policy failure fixed at signed commit 31e2f163ec4b249e7d3a7a066bc655fe81ef3548. The new internal release-evidence path dependency is now exact-pinned to version =\"=0.0.0\"; local cargo deny --locked check passes all four categories, and PR #39 is rerunning the full hosted matrix on the corrected head.",
+          "created_at": "2026-08-29T20:07:55.736157167Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA5H33OAQU6dOh+/mWNRmOseei5/ixy8y2fXKSQg6bp2FPWA7XNQ7lifwbpHUMTzqECAk2MD17e+VEJNkrr5PcCA=="
         },
         "53784640-eaed-46d9-ad4f-b98dd0d7336a": {
           "display_id": 628,
@@ -7358,8 +7367,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T20:01:36.336659231Z",
+    "timestamp": "2026-08-29T20:07:55.738761809Z",
     "agent_id": "6ME5",
-    "agent_seq": 919
+    "agent_seq": 920
   }
 }
