@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 693,
+  "next_comment_id": 694,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1269,7 +1269,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T13:06:43.626577873Z",
+      "updated_at": "2026-08-29T13:12:25.529623880Z",
       "labels": [
         "qualification",
         "release"
@@ -1418,6 +1418,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAfm9jN3uVKQQgBpp/vw1zrgtypxHcvJbF0LK8f01v77/zDJvrmGwUcmwu7Of855HRRwOPWOBmSMny7A9S+hWFCg=="
+        },
+        "16b757a6-1f96-4c24-993a-bb313c7ec94c": {
+          "display_id": 693,
+          "author": "6ME5",
+          "content": "All 106 pinned unchanged HarnessBench tasks are complete. Retained final set: 106/106 native adapter completions; mean outcome/process/security/combined 0.8969/0.9286/1.0/0.8331; 40 perfect outcomes; 64 outcomes >=0.9; 8.529 retained execution hours; 31,286,948 retained model tokens. Tasks 101 and 104 validated general named-source and streaming-state fixes; Task 105 added self-contained checkpoint semantics; evaluator-only conventions remain documented without benchmaxxing. Full cargo xtask all passed. Signed commit b324f6a3 pushed to draft PR #39; prior head matrix was fully green and fresh checks started.",
+          "created_at": "2026-08-29T13:12:25.527193789Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAFwrj+iedQsinHLBdvESJaOhbsHaJ0Vhkw+aLmv/t+32p/k4LVmKuTECOMKxGT9BtIUk1BGp3d/Qc6jR9haijDw=="
         },
         "17690539-5a08-4b97-a155-55975f665eef": {
           "display_id": 573,
@@ -6984,8 +6993,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T13:06:43.626577873Z",
+    "timestamp": "2026-08-29T13:12:25.529623880Z",
     "agent_id": "6ME5",
-    "agent_seq": 875
+    "agent_seq": 876
   }
 }
