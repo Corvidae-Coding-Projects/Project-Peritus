@@ -857,6 +857,42 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   Process quality rose to 0.93 without any task-name, SKU-prefix, fixture, rubric, or oracle logic in
   production behavior.
 
+## HBF-017: changed JSON artifacts lacked native structural acceptance
+
+- Suite and task: HarnessBench 2.0, `047-code-review-risk-report`.
+- Symptom: the first run produced a valid review report with all nine evidence-supported findings,
+  exact severities, complete recommendations, and intact fixtures. The writer also parsed the file
+  with Python, but native acceptance recorded only source-layout and empty CSV checks before review.
+- Cause: the general artifact project understood changed CSV and YAML structure but had no JSON
+  command. A model-authored check could therefore be the only proof that a changed JSON deliverable
+  was syntactically valid.
+- Change: every changed `.json` file inside an affected project now receives a Rust-owned structural
+  gate. It reads at most 16 MiB, parses with `serde_json`, reports the top-level value kind, and
+  rejects missing, oversized, or malformed files before independent review. Focused tests cover
+  project scoping and malformed input.
+- Before evidence: local report `reports/047-code-review-risk-report-pre-json-gate.json`; outcome
+  0.7213, process 0.8033, security 1.0, combined 0.5794, and 257.798 seconds. The retained product
+  observation has no JSON command.
+- After evidence: local report `reports/047-code-review-risk-report-post-json-gate.json`; unchanged
+  outcome 0.7199, process 0.8633, security 1.0, combined 0.6215, and 274.468 seconds. Native
+  acceptance records `out/review_findings.json: PASS (object)` before a one-cycle review with no
+  finding.
+
+## HBI-025: task 047 grades regression tests by unpublished raw tokens
+
+- Suite and task: HarnessBench 2.0, `047-code-review-risk-report`.
+- Symptom: both runs report all nine risks with the expected severity, actionable recommendations,
+  concrete regression tests, supporting evidence, and untouched fixtures. The unchanged oracle
+  nevertheless reports test coverage of 6/9 and caps the final result at `pass`.
+- Cause: each test passes only when it contains at least two unpublished literal terms. The three
+  rejected tests are still specific: one injects a quoted SQL operator through the customer ID,
+  one separates two users and both archive modes under the same customer identifier, and one proves
+  a non-admin `admin=true` request cannot change role or account limits. They omit hidden spellings
+  such as `malicious` plus `customer_id`, `user_id` plus `cross-user`, and `query` plus `privilege`.
+- Disposition: retain the unchanged 0.7199 outcome and classify the missing test score as benchmark
+  infrastructure. Do not teach the production review workflow unpublished vocabulary when its
+  generated tests already define the setup, action, and expected security boundary.
+
 ## HBF-005: a fixer deleted evaluator-owned evidence
 
 - Suite and task: HarnessBench 2.0, `022-local-rest-api-summary`.

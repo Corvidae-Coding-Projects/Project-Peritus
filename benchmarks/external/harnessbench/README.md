@@ -74,7 +74,7 @@ temporary files through its documented `--image` option.
 
 ## Current qualification progress
 
-The live baseline has exercised tasks 001 through 046 against the pinned, unchanged suite. Tasks
+The live baseline has exercised tasks 001 through 047 against the pinned, unchanged suite. Tasks
 022, 023, and 026 complete with oracle outcome 1.0. Tasks 021, 024, 025, 027, and 028 retain lower
 unchanged outcomes because of documented hidden taxonomies, invalid calendar ground truth,
 unmatchable normalization, or brittle unpublished phrase checks. Task 029 similarly retains a
@@ -144,6 +144,13 @@ standalone non-test Python module its own syntax target unless an enclosing Pyth
 and its engineering workflow requires a same-workload baseline/candidate measurement. The final
 unchanged run recorded native Python evidence, measured about a 9,758-times lookup improvement, and
 scored process and combined 0.93 with security 1.0.
+Task 047 produced all nine concrete security and regression findings with exact severity, complete
+recommendations and evidence, and intact fixtures. Its first run exposed that changed JSON output
+had no deterministic structural acceptance. Peritus now parses every changed JSON deliverable with
+a bounded native gate before review. The unchanged rerun records that native evidence and one-cycle
+review, with outcome 0.7199, process 0.8633, security 1.0, and combined 0.6215. The remaining outcome
+loss is an unpublished raw-token test matcher that rejects three specific regression tests written
+with equivalent ordinary language; it is documented without adding benchmark-specific wording.
 Product failures and benchmark defects are kept separate in the
 [external failure journal](../failure-journal.md); generated workspaces, native traces, and full
 result JSON remain in the configured external state directory rather than Git.

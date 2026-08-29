@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Parse every changed JSON deliverable with a bounded native exact-target gate before review, so a
+  model-authored validation command cannot be the only evidence that the generated artifact is
+  structurally valid (#31)
 - Recognize standalone changed Python production modules even without a manifest or supplied tests,
   and require same-workload baseline/candidate measurements for performance-change claims instead
   of inferring improvement solely from the candidate implementation (#31)
@@ -91,6 +94,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Exercise unchanged HarnessBench task 047 through a complete evidence-supported security review,
+  retaining its nine correctly classified findings while replacing generic artifact acceptance
+  with deterministic JSON parsing before independent review (#31)
 - Preserve HarnessBench task 046's perfect correctness and performance outcome while replacing
   generic artifact acceptance with native Python syntax evidence and raising process/combined
   quality from 0.8867 to 0.93 through comparative performance verification (#31)

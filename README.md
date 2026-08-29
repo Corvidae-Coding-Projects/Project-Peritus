@@ -137,7 +137,7 @@ The implemented foundation and runtime spine now covers:
   unless every exact changed project satisfies the 500-line source ceiling and has explicit
   passing compile/build/test/lint evidence with no policy-derived blocker. Conventional
   manifestless Python and Node projects bind to their nearest tests, including root-level Python
-  test conventions; changed YAML receives bounded structural parsing; conventional Python
+  test conventions; changed YAML and JSON receive bounded structural parsing; conventional Python
   requirements receive an offline read-only satisfaction check so a missing production dependency
   cannot be hidden by a test substitute; standalone changed Python modules receive syntax evidence
   even without a manifest or supplied tests; performance claims require a same-workload unchanged

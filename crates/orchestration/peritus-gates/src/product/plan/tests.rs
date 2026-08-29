@@ -71,6 +71,25 @@ fn explicit_artifact_workspace_covers_general_outputs() {
 }
 
 #[test]
+fn changed_json_artifact_gets_structural_acceptance() {
+    let temporary = tempfile::tempdir().expect("temporary workspace");
+    std::fs::write(
+        temporary.path().join("peritus-workspace.toml"),
+        "schema_version = 1\nkind = \"artifact\"\n",
+    )
+    .expect("artifact workspace marker");
+    std::fs::create_dir(temporary.path().join("out")).expect("output directory");
+    std::fs::write(temporary.path().join("out/result.json"), "{\"ok\":true}\n")
+        .expect("JSON artifact");
+
+    let plan = TargetGatePlan::discover(temporary.path(), vec![PathBuf::from("out/result.json")])
+        .expect("artifact plan");
+
+    assert!(plan.has_complete_coverage());
+    assert!(plan.commands().iter().any(|command| command.label() == "JSON structure"));
+}
+
+#[test]
 fn manifestless_python_tests_use_their_nearest_conventional_project() {
     let temporary = tempfile::tempdir().expect("temporary workspace");
     std::fs::write(

@@ -9,8 +9,9 @@ targeted reads, not accepted from model prose. The adapter then joins:
 - the `peritus-agent` D0 provider/tool loop for real inspect, search, edit, command, test, and retry,
   with unread existing files protected from mutation and recoverable malformed, transport, and
   timeout terminals retried as fresh bounded provider attempts;
-- `peritus-gates` changed-path planning, the deterministic 500-line source ceiling, and exact
-  per-project format/compile/build/test/lint evidence;
+- `peritus-gates` changed-path planning, the deterministic 500-line source ceiling, exact
+  per-project format/compile/build/test/lint evidence, and native structural checks for changed
+  CSV, JSON, YAML, and conventional SQLite migration artifacts;
 - `peritus-review` typed policy-derived findings conserved through fixer and fresh-review cycles;
 - `peritus-orchestrator` fail-closed E0 accept/fix/exhaust decisions; and
 - a durable task candidate, provider/tool trace, task-level summary, and explicit deliverable

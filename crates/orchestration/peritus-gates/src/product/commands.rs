@@ -18,6 +18,9 @@ pub(super) fn commands_for(
     if changed_paths.iter().any(|path| path.starts_with(project.root()) && is_yaml(path)) {
         commands.push(yaml_structure(project));
     }
+    if changed_paths.iter().any(|path| path.starts_with(project.root()) && is_json(path)) {
+        commands.push(json_structure(project));
+    }
     let language_commands = match project.kind() {
         ProjectKind::Artifact => artifact_commands(workspace_root, project),
         ProjectKind::Rust => rust_commands(workspace_root, project),
@@ -36,6 +39,12 @@ fn is_yaml(path: &Path) -> bool {
     })
 }
 
+fn is_json(path: &Path) -> bool {
+    path.extension()
+        .and_then(std::ffi::OsStr::to_str)
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("json"))
+}
+
 fn source_layout(project: &AffectedProject) -> GateCommandSpec {
     spec(
         "Source layout",
@@ -51,6 +60,10 @@ fn source_layout(project: &AffectedProject) -> GateCommandSpec {
 
 fn yaml_structure(project: &AffectedProject) -> GateCommandSpec {
     spec("YAML structure", "peritus-internal", vec!["yaml-structure".to_owned()], project)
+}
+
+fn json_structure(project: &AffectedProject) -> GateCommandSpec {
+    spec("JSON structure", "peritus-internal", vec!["json-structure".to_owned()], project)
 }
 
 fn rust_commands(

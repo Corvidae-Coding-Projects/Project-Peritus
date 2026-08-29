@@ -8,6 +8,7 @@ use std::{
 use peritus_gates::{GateExecutionRecord, TargetGatePlan, TargetGateReport};
 
 mod artifact_csv;
+mod json_structure;
 mod source_layout;
 mod sqlite_migration;
 mod yaml_structure;
@@ -38,6 +39,12 @@ pub fn run(root: &Path, changed_paths: Vec<PathBuf>) -> Result<GateReport, Produ
                     specification.display(),
                 ),
                 Some("artifact-csv-structure") => artifact_csv::run(
+                    root,
+                    specification.project().root(),
+                    plan.changed_paths(),
+                    specification.display(),
+                ),
+                Some("json-structure") => json_structure::run(
                     root,
                     specification.project().root(),
                     plan.changed_paths(),
