@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 575,
+  "next_comment_id": 576,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1269,7 +1269,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T00:02:58.105929529Z",
+      "updated_at": "2026-08-29T00:22:41.945999615Z",
       "labels": [
         "qualification",
         "release"
@@ -1337,6 +1337,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAdkrUH4PcY4O0pDxrRQC2pvX0h+0Noxa391nYP3VzfCyMa6Na+3f+BAfov19hmUTYv9QHvTJ1XVt5CjX2HgoUBQ=="
+        },
+        "2cf05327-e11d-4ba4-8712-c8a09ba2ec84": {
+          "display_id": 575,
+          "author": "6ME5",
+          "content": "HarnessBench task 040 exposed a real exact-target verification gap: a correct manifestless Python package scored outcome 1.0 externally, but native acceptance lacked pytest evidence and ended success false. Peritus now represents manifestless projects honestly and binds conventional tests directories to their nearest Python root. Focused gate tests, strict Clippy, product-runner tests, and cargo xtask all pass. The unchanged rerun independently compiled the package, passed 24 tests, completed review with no findings, and recorded native success true. Final scores: outcome 1.0, process 0.9367, security 1.0, combined 0.9367. Before and after reports are retained in external benchmark state. Signed checkpoint: 18211e99.",
+          "created_at": "2026-08-29T00:22:41.943600717Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAmWrpWx3qK41KRnfMkBbRJNPaWswPqc5NPdqWyJGi/ZyXVmtUbIzsnfBC/uo4SvZlQ9FmdD/LVjsjXgENToKRDQ=="
         },
         "2d5c5b1b-37c1-4647-ba4d-976376e5887e": {
           "display_id": 548,
@@ -5922,8 +5931,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T00:02:58.105929529Z",
+    "timestamp": "2026-08-29T00:22:41.945999615Z",
     "agent_id": "6ME5",
-    "agent_seq": 753
+    "agent_seq": 754
   }
 }
