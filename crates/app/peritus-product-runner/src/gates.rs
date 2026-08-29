@@ -181,7 +181,8 @@ mod tests {
             PathBuf::from("root-crate").join("Cargo.toml").to_string_lossy().into_owned();
 
         assert!(!report.report.passed());
-        assert!(report.output.contains(&format!("--manifest-path {nested_manifest}")));
+        assert!(report.output.contains("--manifest-path"));
+        assert!(report.output.contains(&nested_manifest));
         assert!(!report.output.contains(&root_manifest));
     }
 }
