@@ -26,17 +26,17 @@ pub fn permissions(metadata: &Metadata) -> String {
 }
 
 /// Returns the executable-bit representation supported by Git tree entries.
+#[cfg(unix)]
 #[must_use]
 pub fn git_file_mode(metadata: &Metadata) -> &'static str {
-    #[cfg(unix)]
-    {
-        if permission_bits(metadata) & 0o111 == 0 { "100644" } else { "100755" }
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = metadata;
-        "100644"
-    }
+    if permission_bits(metadata) & 0o111 == 0 { "100644" } else { "100755" }
+}
+
+/// Returns Git's regular-file mode on platforms without Unix executable bits.
+#[cfg(not(unix))]
+#[must_use]
+pub const fn git_file_mode(_metadata: &Metadata) -> &'static str {
+    "100644"
 }
 
 #[cfg(unix)]
