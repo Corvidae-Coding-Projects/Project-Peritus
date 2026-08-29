@@ -197,10 +197,11 @@ suite. Tasks 001 through 052 have run sequentially with full local reports and f
 task 051 passed all 21 checks cleanly, and the latest task 052 run passed all 17 external checks
 after exercising ambiguity handling, category boundaries, provider-stall recovery, and finding
 conservation. The source now treats advisory review as nonblocking and conserves stable finding
-titles across updated location evidence. Task 052 still needs one unchanged native confirmation
-against that final identity correction before the suite advances. Terminal-Bench 2.0, the complete
-professional-capability audit, documentation normalization, release-installer qualification, and
-final hosted-runner closure remain required before production readiness.
+titles across updated location evidence. The final unchanged task 052 rerun completed natively
+against finding identity version 2 with outcome 1.0, process 0.93, security 1.0, and combined 0.93.
+Terminal-Bench 2.0, the complete professional-capability audit, documentation normalization,
+release-installer qualification, and final hosted-runner closure remain required before production
+readiness.
 
 Gate A is the current merge authority: ordinary Rust checks, architecture and API policy,
 supply-chain policy, pinned toolchains, full Verus verification, and verified release builds must

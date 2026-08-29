@@ -114,9 +114,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 - Exercise unchanged HarnessBench task 051 through exact offline SQLite reporting with 21/21
-  checks and task 052 through a diagnostic review-convergence series whose latest run passes all
-  17 external checks; retain every regression, provider stall, native failure, and final
-  identity-v2 confirmation requirement without benchmark-specific special cases (#31)
+  checks and task 052 through a diagnostic review-convergence series whose final identity-v2 run
+  completes natively with all 17 checks and outcome/process/security/combined scores of
+  1.0/0.93/1.0/0.93; retain every regression, provider stall, and native failure without
+  benchmark-specific special cases (#31)
 - Exercise unchanged HarnessBench task 050 through six-table financial reconciliation: all 26
   oracle checks pass and the native before/after recovery comparison moves from failure with
   outcome/process/security/combined 1.0/0.7433/1.0/0.7433 to success at

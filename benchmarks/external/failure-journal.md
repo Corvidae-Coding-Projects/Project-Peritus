@@ -1106,10 +1106,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   `reports/052-metric-definition-audit-post-ambiguity-conservation-pre-advisory-admission.json`,
   `reports/052-metric-definition-audit-post-advisory-admission-pre-scope-circularity.json`,
   `reports/052-metric-definition-audit-post-scope-circularity-pre-category-boundary.json`, and
-  `reports/052-metric-definition-audit-final.json`. The last completed unchanged run passes all 17
-  oracle checks with outcome 1.0, process 0.8667, security 1.0, and 54 recorded requests after
-  recovering several provider stalls. It predates stable finding identity v2 and therefore still
-  records native success `false`; an unchanged native confirmation against v2 remains required.
+  `reports/052-metric-definition-audit-final.json`. That final pre-v2 run passes all 17 oracle
+  checks with outcome 1.0, process 0.8667, security 1.0, and 54 recorded requests after recovering
+  several provider stalls, but records native success `false`. The unchanged confirmation report
+  `reports/052-metric-definition-audit-post-stable-identity-v2.json` completes natively against
+  identity v2 with all 17 checks, outcome 1.0, process 0.93, security 1.0, combined 0.93, 18
+  requests, 217,196 tokens, and 272.484 seconds.
 - Regression evidence: affected review, orchestrator, and product-runner suites cover advisory
   admission, retained material blockers, location-insensitive identity, location evidence updates,
   finding conservation, and production fixer confirmation. Strict affected-crate Clippy passes.

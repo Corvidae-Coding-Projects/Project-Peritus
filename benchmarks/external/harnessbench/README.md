@@ -187,9 +187,10 @@ are conserved unless authority settles them, named-category membership requires 
 and finding identity uses normalized category plus stable title while refreshing location evidence.
 The latest completed unchanged run passes all 17 oracle checks with outcome 1.0, process 0.8667,
 security 1.0, and combined 0.8667 after recovering several provider stalls. That run predates the
-final finding-identity correction and still reports native failure; its unchanged native
-confirmation remains the next benchmark action. All diagnostic reports remain outside Git under
-the external state directory's `reports/` folder.
+final finding-identity correction and still reports native failure. A final unchanged rerun against
+identity version 2 then completed natively with all 17 checks, outcome 1.0, process 0.93, security
+1.0, and combined 0.93 in 272.484 seconds. It used 18 provider requests and 217,196 tokens. All
+diagnostic reports remain outside Git under the external state directory's `reports/` folder.
 
 HarnessBench chooses a result directory from the last observed provider model and may move a
 multi-provider sandbox after the native adapter exits. Invocation evidence schema 4 therefore
