@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 680,
+  "next_comment_id": 681,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T11:39:50.819630694Z",
+      "updated_at": "2026-08-29T12:00:44.415399488Z",
       "labels": [
         "qualification",
         "release"
@@ -1324,6 +1324,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABARgEQh1FDEW1olrTIRPO6aP1wQuKAmjqIhAHmKCnUoAmGPpEzIBi8vO5s8YP25wQK5bcTGzq+goDylit/0hA+DA=="
+        },
+        "05652b8f-fcd5-495b-acbb-536993a6e295": {
+          "display_id": 680,
+          "author": "6ME5",
+          "content": "Checkpoint 2232bcf9 adds stale-literal minimization and independently resolvable evidence-location contracts from Tasks 096-097, isolates the workflow test ledger to keep production source at 331 lines, and passes cargo xtask all. Task 096 improved to excellent 0.9586; Task 097 retained honest 0.72 with all statuses and reproducibility gaps correct. Pushed to draft PR #39.",
+          "created_at": "2026-08-29T12:00:44.412830022Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABATkBGz6otE34X3VJc+1Vqc3B7lTOoacxUewXHG+NGMKhrScx3RwAITX36casSU8q4WvakJp88lAmgUYaYBp0kBQ=="
         },
         "05e9a347-66e7-4121-87ad-0d3cd9debe6e": {
           "display_id": 549,
@@ -6872,8 +6881,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T11:39:50.819630694Z",
+    "timestamp": "2026-08-29T12:00:44.415399488Z",
     "agent_id": "6ME5",
-    "agent_seq": 861
+    "agent_seq": 862
   }
 }
