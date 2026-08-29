@@ -210,6 +210,108 @@ impl DeveloperContextCompaction {
     }
 }
 
+/// Stable reason for scheduling another bounded provider attempt.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DeveloperRetryReason {
+    /// The provider completed successfully but returned no usable text or tool call.
+    EmptyResponse,
+    /// A normalized provider failure explicitly permits a fresh request.
+    RetryableProviderResponse,
+    /// Connection establishment failed before request submission.
+    Connection,
+    /// The provider transport was interrupted.
+    Transport,
+    /// The provider stream was malformed or incomplete.
+    MalformedStream,
+}
+
+impl DeveloperRetryReason {
+    /// Stable machine-readable reason stored in product traces.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::EmptyResponse => "empty_response",
+            Self::RetryableProviderResponse => "retryable_provider_response",
+            Self::Connection => "connection",
+            Self::Transport => "transport",
+            Self::MalformedStream => "malformed_stream",
+        }
+    }
+}
+
+/// Durable checked decision to wait before another provider attempt.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct DeveloperRetryRecord {
+    turn: u16,
+    attempt: u8,
+    max_attempts: u8,
+    elapsed_millis: u64,
+    delay_millis: u64,
+    retry_after_millis: Option<u64>,
+    reason: DeveloperRetryReason,
+}
+
+impl DeveloperRetryRecord {
+    pub(crate) const fn new(
+        position: (u16, u8, u8, u64, u64),
+        retry_after_millis: Option<u64>,
+        reason: DeveloperRetryReason,
+    ) -> Self {
+        let (turn, attempt, max_attempts, elapsed_millis, delay_millis) = position;
+        Self {
+            turn,
+            attempt,
+            max_attempts,
+            elapsed_millis,
+            delay_millis,
+            retry_after_millis,
+            reason,
+        }
+    }
+
+    /// Logical model turn whose attempt will be retried.
+    #[must_use]
+    pub const fn turn(self) -> u16 {
+        self.turn
+    }
+
+    /// Completed attempt after which the wait was selected.
+    #[must_use]
+    pub const fn attempt(self) -> u8 {
+        self.attempt
+    }
+
+    /// Maximum attempts available to the logical turn.
+    #[must_use]
+    pub const fn max_attempts(self) -> u8 {
+        self.max_attempts
+    }
+
+    /// Elapsed time when retry planning ran.
+    #[must_use]
+    pub const fn elapsed_millis(self) -> u64 {
+        self.elapsed_millis
+    }
+
+    /// Checked bounded wait selected by retry policy.
+    #[must_use]
+    pub const fn delay_millis(self) -> u64 {
+        self.delay_millis
+    }
+
+    /// Provider-supplied minimum wait, when available.
+    #[must_use]
+    pub const fn retry_after_millis(self) -> Option<u64> {
+        self.retry_after_millis
+    }
+
+    /// Stable reason for the new attempt.
+    #[must_use]
+    pub const fn reason(self) -> DeveloperRetryReason {
+        self.reason
+    }
+}
+
 /// Exact trace event committed before D0 advances past an external observation.
 pub enum DeveloperTraceEvent<'a> {
     /// Canonical normalized provider envelope.
@@ -223,6 +325,8 @@ pub enum DeveloperTraceEvent<'a> {
     },
     /// A checked deterministic compaction replaced complete prior tool exchanges.
     ContextCompaction(&'a DeveloperContextCompaction),
+    /// Checked retry policy scheduled another provider attempt after a bounded wait.
+    RetryScheduled(&'a DeveloperRetryRecord),
 }
 
 /// Durable trace boundary owned by the production host.
@@ -244,6 +348,8 @@ pub struct DeveloperLoopOutcome {
     pub tool_calls: u32,
     /// Number of deterministic transcript compactions applied during the role.
     pub compactions: u16,
+    /// Number of bounded provider retries completed during the role.
+    pub retries: u16,
     /// Complete replay messages, useful to a same-role continuation.
     pub messages: Vec<Message>,
 }

@@ -96,6 +96,40 @@ fn decoder_rejects_corruption_incompletion_and_native_execution() {
 }
 
 #[test]
+fn decoder_classifies_common_runtime_failures_without_retaining_provider_text() {
+    let allowed = BTreeSet::new();
+    let cases = [
+        (
+            br#"{"type":"turn.failed","error":{"message":"cyber policy: request rejected"}}
+"#
+            .as_slice(),
+            DecodeFailure::Safety,
+        ),
+        (
+            br#"{"type":"turn.failed","error":{"message":"rate limit reached"}}
+"#
+            .as_slice(),
+            DecodeFailure::RateLimited,
+        ),
+        (
+            br#"{"type":"turn.failed","error":{"message":"current quota exceeded"}}
+"#
+            .as_slice(),
+            DecodeFailure::QuotaExhausted,
+        ),
+        (
+            br#"{"type":"turn.failed","error":{"message":"input exceeds context window"}}
+"#
+            .as_slice(),
+            DecodeFailure::ContextLimit,
+        ),
+    ];
+    for (transcript, expected) in cases {
+        assert!(matches!(decode(transcript, &allowed, 0), Err(actual) if actual == expected));
+    }
+}
+
+#[test]
 fn unsupported_capability_is_rejected_without_a_process() {
     let profile = codex_profile("runtime-capability", false);
     let requested =

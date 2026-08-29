@@ -3,14 +3,15 @@
 use peritus_model_protocol::{
     BoundedText, CachePolicy, Capability, ContentBlock, GenerationConfig, Message, ModelRequest,
     ParallelToolPolicy, PersistencePolicy, ProtocolLimits, ReasoningEffort, ReasoningPolicy,
-    ReducedItem, RequestId, RequestOptions, RequestedCapabilities, Retryability, Role,
-    StructuredOutput, SummaryPolicy, TerminalOutcome, ToolChoice, ToolResult, negotiate,
+    ReducedItem, RequestId, RequestOptions, RequestedCapabilities, Role, StructuredOutput,
+    SummaryPolicy, TerminalOutcome, ToolChoice, ToolResult, negotiate,
 };
-use peritus_provider_core::{ModelProvider, ProviderCoreErrorKind};
+use peritus_provider_core::ModelProvider;
 
-use crate::{ModelAdvance, ModelDriveError, ModelSession};
+use crate::{ModelAdvance, ModelSession};
 
 use super::context::prepare_messages;
+use super::retry::DeveloperRetryPlanner;
 use super::{
     DeveloperLoopError, DeveloperLoopOutcome, DeveloperLoopRequest, DeveloperToolExecutor,
     DeveloperTrace, DeveloperTraceEvent,
@@ -60,6 +61,7 @@ impl DeveloperLoop {
         ];
         let mut tool_calls = 0_u32;
         let mut compactions = 0_u16;
+        let mut retries = 0_u16;
 
         for turn in 1..=request.limits.max_model_turns() {
             if request.cancellation.is_cancelled() {
@@ -80,7 +82,7 @@ impl DeveloperLoop {
                     u16::try_from(records.len()).map_err(|_| DeveloperLoopError::LimitExceeded)?,
                 )
                 .ok_or(DeveloperLoopError::LimitExceeded)?;
-            let session = complete_turn(
+            let (session, turn_retries) = complete_turn(
                 provider,
                 &request,
                 &messages,
@@ -91,6 +93,7 @@ impl DeveloperLoop {
                 trace,
             )
             .await?;
+            retries = retries.checked_add(turn_retries).ok_or(DeveloperLoopError::LimitExceeded)?;
 
             let mut assistant = Vec::new();
             let mut calls = Vec::new();
@@ -131,6 +134,7 @@ impl DeveloperLoop {
                     model_turns: turn,
                     tool_calls,
                     compactions,
+                    retries,
                     messages,
                 });
             }
@@ -177,8 +181,11 @@ async fn complete_turn(
     protocol_limits: ProtocolLimits,
     turn: u16,
     trace: &mut dyn DeveloperTrace,
-) -> Result<ModelSession, DeveloperLoopError> {
+) -> Result<(ModelSession, u16), DeveloperLoopError> {
     let maximum = request.limits.max_attempts_per_turn();
+    let planner =
+        DeveloperRetryPlanner::new(&request.request_prefix, turn, maximum, &request.cancellation);
+    let mut retries = 0_u16;
     for attempt in 1..=maximum {
         if request.cancellation.is_cancelled() {
             return Err(DeveloperLoopError::Cancelled);
@@ -187,16 +194,25 @@ async fn complete_turn(
             model_request(request, messages, profile, negotiated, protocol_limits, turn, attempt)?;
         match drive(provider, model_request, request, protocol_limits, trace).await {
             Ok(session) if successful(session.terminal()) && usable(&session) => {
-                return Ok(session);
+                return Ok((session, retries));
             }
-            Ok(session)
-                if (successful(session.terminal()) || retryable_terminal(session.terminal()))
-                    && attempt < maximum => {}
-            Ok(_) => return Err(DeveloperLoopError::EmptyResponse),
-            Err(error) if retryable_error(&error) && attempt < maximum => {}
-            Err(error) => return Err(error),
+            Ok(session) => {
+                let Some(record) =
+                    planner.terminal(attempt, session.terminal(), usable(&session))?
+                else {
+                    return Err(terminal_error(session.terminal()));
+                };
+                planner.record_and_wait(&record, trace).await?;
+                retries = retries.checked_add(1).ok_or(DeveloperLoopError::LimitExceeded)?;
+            }
+            Err(error) => {
+                let Some(record) = planner.error(attempt, &error)? else {
+                    return Err(error);
+                };
+                planner.record_and_wait(&record, trace).await?;
+                retries = retries.checked_add(1).ok_or(DeveloperLoopError::LimitExceeded)?;
+            }
         }
-        tokio::time::sleep(retry_delay(attempt)).await;
     }
     Err(DeveloperLoopError::EmptyResponse)
 }
@@ -283,40 +299,29 @@ const fn successful(terminal: Option<&TerminalOutcome>) -> bool {
 fn usable(session: &ModelSession) -> bool {
     session.completed_items().iter().any(|item| match item {
         ReducedItem::Text { text, .. } => !text.expose_for_wire().trim().is_empty(),
-        ReducedItem::ToolCall { .. } => true,
+        ReducedItem::ToolCall { .. } | ReducedItem::Refusal { .. } => true,
         ReducedItem::Reasoning { .. }
         | ReducedItem::Structured { .. }
-        | ReducedItem::Refusal { .. }
         | ReducedItem::ProviderNative { .. } => false,
     })
 }
 
-const fn retryable_terminal(terminal: Option<&TerminalOutcome>) -> bool {
+fn terminal_error(terminal: Option<&TerminalOutcome>) -> DeveloperLoopError {
     match terminal {
-        None => true,
-        Some(TerminalOutcome::Failed(failure)) => matches!(
-            failure.retryability(),
-            Retryability::SafeNewRequest | Retryability::CallerDecision
-        ),
-        _ => false,
+        Some(TerminalOutcome::Failed(failure)) => DeveloperLoopError::ProviderTerminal {
+            provider: failure.provider().as_str().to_owned(),
+            category: failure.category(),
+            diagnostic_code: failure.diagnostic().code().to_owned(),
+        },
+        Some(TerminalOutcome::Refused { .. }) => DeveloperLoopError::Refused,
+        Some(TerminalOutcome::Cancelled) => DeveloperLoopError::Cancelled,
+        Some(
+            TerminalOutcome::Succeeded { .. }
+            | TerminalOutcome::RequiresAction { .. }
+            | TerminalOutcome::Incomplete { .. },
+        )
+        | None => DeveloperLoopError::EmptyResponse,
     }
-}
-
-const fn retryable_error(error: &DeveloperLoopError) -> bool {
-    matches!(
-        error,
-        DeveloperLoopError::Model(ModelDriveError::Provider(provider))
-            if matches!(
-                provider.kind(),
-                ProviderCoreErrorKind::Connect
-                    | ProviderCoreErrorKind::Transport
-                    | ProviderCoreErrorKind::MalformedStream
-            )
-    )
-}
-
-const fn retry_delay(attempt: u8) -> std::time::Duration {
-    std::time::Duration::from_millis(250_u64.saturating_mul(attempt as u64))
 }
 
 fn message(

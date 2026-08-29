@@ -174,8 +174,27 @@ pub fn recoverable_failure_response() -> VecDeque<EventEnvelope> {
         Retryability::SafeNewRequest,
         None,
         None,
-        None,
+        Some(350),
         RedactedDiagnostic::new("scripted.malformed".to_owned(), None, None, None)
+            .expect("diagnostic"),
+    );
+    response([
+        ModelEvent::ResponseStarted { response_id: None, model: None },
+        ModelEvent::ResponseFailed(failure),
+    ])
+}
+
+pub fn nonretryable_safety_failure_response() -> VecDeque<EventEnvelope> {
+    let failure = ModelFailure::new(
+        ProviderName::new("scripted-provider".to_owned()).expect("provider"),
+        FailureCategory::Safety,
+        TransportPhase::Completed,
+        OutcomeCertainty::Terminal,
+        Retryability::Never,
+        None,
+        None,
+        None,
+        RedactedDiagnostic::new("scripted.safety".to_owned(), None, None, None)
             .expect("diagnostic"),
     );
     response([

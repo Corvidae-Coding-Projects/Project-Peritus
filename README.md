@@ -143,12 +143,14 @@ The implemented foundation and runtime spine now covers:
   every generated artifact that records them. Independent review is
   also a fresh D0 loop: it must list and read the real workspace through a separately enforced
   read-only executor before its typed verdict can enter D2. Recoverable malformed, empty, timeout,
-  and transport responses receive fresh bounded attempts; productive 48-turn work
-  segments checkpoint the exact candidate and replenish the run in a compact newly grounded
-  context, while a no-change exhausted segment stops. Rejected ungrounded or malformed task-level
-  terminals receive their exact contract failure on the next bounded attempt instead of repeating
-  the same prompt without useful feedback. Interrupted goals resume automatically on daemon restart
-  from their persisted conversation, findings, trace, and managed worktree. Completion is refused
+  and transport responses use checked exponential backoff, bounded stable jitter, provider
+  `Retry-After`, and cancellation-aware waits whose exact reason and delay are durably traced.
+  Productive 48-turn work segments checkpoint the exact candidate and replenish the run in a
+  compact newly grounded context, while a no-change exhausted segment stops. Rejected ungrounded or
+  malformed task-level terminals receive their exact contract failure on the next bounded attempt
+  instead of repeating the same prompt without useful feedback. Interrupted goals resume
+  automatically on daemon restart from their persisted conversation, findings, trace, and managed
+  worktree. Completion is refused
   unless every exact changed project satisfies the 500-line source ceiling and has explicit
   passing compile/build/test/lint evidence with no policy-derived blocker. Conventional
   manifestless Python and Node projects bind to their nearest tests, including root-level Python

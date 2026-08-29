@@ -24,7 +24,7 @@ mod transport;
 
 pub use adapter::{ModelProvider, ResponseCancellationOutcome, validate_request_profile};
 pub use backoff::wait_for_backoff;
-pub use cancellation::{CancellationFuture, CancellationToken};
+pub use cancellation::{CancelFirst, CancellationFuture, CancellationToken, first as cancel_first};
 pub use continuation::{ContinuationRestoreOutcome, PersistedContinuation};
 pub use credential::{Credential, CredentialReference, CredentialSource};
 pub use diagnostic::{Diagnostic, DiagnosticValue, TransportPhase};

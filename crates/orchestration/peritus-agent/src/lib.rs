@@ -32,8 +32,8 @@ pub use completion::{CompletionProposal, CompletionRequest, EvidenceReference, T
 #[cfg(not(verus_only))]
 pub use developer::{
     DeveloperLoop, DeveloperLoopError, DeveloperLoopLimits, DeveloperLoopOutcome,
-    DeveloperLoopRequest, DeveloperToolExecutor, DeveloperToolObservation, DeveloperTrace,
-    DeveloperTraceEvent,
+    DeveloperLoopRequest, DeveloperRetryReason, DeveloperRetryRecord, DeveloperToolExecutor,
+    DeveloperToolObservation, DeveloperTrace, DeveloperTraceEvent,
 };
 pub use error::{AgentErrorCode, AgentOperation, AgentRecovery, AgentRejection};
 pub use event::{AgentEvent, AgentEventKind};

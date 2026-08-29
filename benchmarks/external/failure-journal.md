@@ -2075,3 +2075,34 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - After evidence: the 445-trial baseline uses one frozen binary and is not mutated mid-campaign.
   The final unchanged full-suite campaign will supply the corrected-product comparison and remains
   required before this finding is closed as a demonstrated benchmark improvement.
+
+## TBF-006: a provider policy terminal became an unexplained empty response
+
+- Suite and task: Terminal-Bench 2.0, `break-filter-js-from-html`, first full-suite baseline trial.
+- Symptom: Peritus listed the workspace and read the filter, verifier, and workspace declaration,
+  then stopped without creating `out.html`. It reported only `provider returned no tool calls or
+  usable final response`; Harbor's unchanged verifier awarded reward 0 because the requested file
+  did not exist.
+- Cause: the Codex account runtime emitted `turn.failed` after the security-oriented inputs were
+  read. Peritus reduced every non-authentication runtime terminal to the generic diagnostic
+  `openai.codex_runtime.reported`, then the developer loop discarded even that normalized terminal
+  and returned `EmptyResponse`. The retained baseline therefore cannot prove the exact upstream
+  reason. The timing and official Codex error shape are consistent with a cyber-policy terminal,
+  but that remains an evidence-marked inference rather than a confirmed label.
+- Resolution: the Codex runtime now maps only stable structured codes and current official message
+  families for authentication, safety policy, rate limits, quota, and context limits while
+  discarding the untrusted provider text. Unknown reports remain generic. The developer loop now
+  propagates the normalized provider, category, and redaction-safe diagnostic code for every
+  non-retryable terminal. It does not retry or silently route around a safety terminal.
+- Before evidence: job `peritus-terminalbench-2-k5-high`; trial
+  `break-filter-js-from-html__PULZzFa`; two provider requests, 35,206 input tokens, no cached input,
+  and 257 output tokens from `2026-08-29T16:49:54Z` through `16:51:21Z`. The trace contains one
+  successful workspace-list turn and a second turn that successfully read all three starting files
+  before `openai.codex_runtime.reported`; changed paths were empty.
+- Verification: OpenAI runtime regressions cover safety, rate-limit, quota, and context-limit
+  message families without retaining their text. Developer-loop regressions prove a non-retryable
+  safety category and diagnostic survive to the product error with no extra attempt. The affected
+  OpenAI and developer-loop suites pass.
+- After evidence: the baseline binary remains frozen. An unchanged focused rerun with the final
+  candidate must confirm the exact normalized category. A provider policy refusal, if confirmed,
+  remains a provider limitation rather than a task-specific behavior Peritus will evade.

@@ -3,11 +3,13 @@
 mod context;
 mod error;
 mod execution;
+mod retry;
 mod types;
 
 pub use error::DeveloperLoopError;
 pub use execution::DeveloperLoop;
 pub use types::{
     DeveloperContextCompaction, DeveloperLoopLimits, DeveloperLoopOutcome, DeveloperLoopRequest,
-    DeveloperToolExecutor, DeveloperToolObservation, DeveloperTrace, DeveloperTraceEvent,
+    DeveloperRetryReason, DeveloperRetryRecord, DeveloperToolExecutor, DeveloperToolObservation,
+    DeveloperTrace, DeveloperTraceEvent,
 };

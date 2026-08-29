@@ -12,6 +12,15 @@ pub enum DeveloperLoopError {
     Protocol(peritus_model_protocol::ProtocolError),
     /// The provider session failed or produced an invalid event stream.
     Model(ModelDriveError),
+    /// The provider produced a normalized non-retryable terminal failure.
+    ProviderTerminal {
+        /// Stable provider family name.
+        provider: String,
+        /// Normalized failure category.
+        category: peritus_model_protocol::FailureCategory,
+        /// Redaction-safe provider diagnostic code.
+        diagnostic_code: String,
+    },
     /// A durable trace boundary rejected an event.
     Trace(String),
     /// Checked context accounting or compaction could not produce a bounded request.
@@ -33,6 +42,11 @@ impl fmt::Display for DeveloperLoopError {
         match self {
             Self::Protocol(error) => fmt::Display::fmt(error, formatter),
             Self::Model(error) => fmt::Display::fmt(error, formatter),
+            Self::ProviderTerminal { provider, category, diagnostic_code } => write!(
+                formatter,
+                "provider {provider} ended the request ({category}; {diagnostic_code})",
+                category = failure_category(*category),
+            ),
             Self::Trace(detail) => write!(formatter, "persist developer trace: {detail}"),
             Self::Context(detail) => write!(formatter, "prepare developer context: {detail}"),
             Self::Tool(detail) => write!(formatter, "execute developer tool: {detail}"),
@@ -51,7 +65,8 @@ impl std::error::Error for DeveloperLoopError {
         match self {
             Self::Protocol(error) => Some(error),
             Self::Model(error) => Some(error),
-            Self::Trace(_)
+            Self::ProviderTerminal { .. }
+            | Self::Trace(_)
             | Self::Context(_)
             | Self::Tool(_)
             | Self::Refused
@@ -59,6 +74,29 @@ impl std::error::Error for DeveloperLoopError {
             | Self::Cancelled
             | Self::EmptyResponse => None,
         }
+    }
+}
+
+const fn failure_category(category: peritus_model_protocol::FailureCategory) -> &'static str {
+    use peritus_model_protocol::FailureCategory as Category;
+
+    match category {
+        Category::InvalidRequest => "invalid_request",
+        Category::Authentication => "authentication",
+        Category::Permission => "permission",
+        Category::NotFound => "not_found",
+        Category::RateLimited => "rate_limited",
+        Category::QuotaExhausted => "quota_exhausted",
+        Category::TransientProvider => "transient_provider",
+        Category::Transport => "transport",
+        Category::AmbiguousAcceptance => "ambiguous_acceptance",
+        Category::MalformedPayload => "malformed_payload",
+        Category::IncompleteStream => "incomplete_stream",
+        Category::Timeout => "timeout",
+        Category::Refusal => "refusal",
+        Category::Safety => "safety",
+        Category::Cancellation => "cancellation",
+        _ => "provider",
     }
 }
 

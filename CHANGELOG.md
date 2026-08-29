@@ -13,6 +13,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Classify stable Codex account-runtime authentication, safety, rate-limit, quota, and context-limit
+  terminals without retaining untrusted provider text, and preserve non-retryable provider category
+  and diagnostic identity through the product error instead of collapsing it to an empty response
+  (#31)
+- Replace the product developer loop's fixed linear retry sleep with the shared checked
+  exponential planner, stable bounded jitter, provider `Retry-After`, cancellation-aware waiting,
+  and durable reason, attempt, elapsed-time, and delay evidence for account and direct routes (#31)
 - Resolve visual inputs from explicitly named workspace paths or direct image-inspection requests
   instead of unrelated media mentioned only as an external verifier reference, and apply the
   mandatory 500-line source ceiling to baseline and directly authored code without claiming

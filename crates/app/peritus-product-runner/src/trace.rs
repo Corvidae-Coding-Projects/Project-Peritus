@@ -67,6 +67,24 @@ impl DeveloperTrace for FileDeveloperTrace {
                         .map_err(|error| DeveloperLoopError::Trace(error.to_string()))?;
                 (3, payload)
             }
+            DeveloperTraceEvent::RetryScheduled(record) => {
+                let fields = [
+                    ("turn".to_owned(), Value::from(u64::from(record.turn()))),
+                    ("attempt".to_owned(), Value::from(u64::from(record.attempt()))),
+                    ("max_attempts".to_owned(), Value::from(u64::from(record.max_attempts()))),
+                    ("elapsed_millis".to_owned(), Value::from(record.elapsed_millis())),
+                    ("delay_millis".to_owned(), Value::from(record.delay_millis())),
+                    (
+                        "retry_after_millis".to_owned(),
+                        record.retry_after_millis().map_or(Value::Null, Value::from),
+                    ),
+                    ("reason".to_owned(), Value::String(record.reason().as_str().to_owned())),
+                ];
+                let payload =
+                    serde_json::to_vec(&Value::Object(fields.into_iter().collect::<Map<_, _>>()))
+                        .map_err(|error| DeveloperLoopError::Trace(error.to_string()))?;
+                (4, payload)
+            }
         };
         let length = u64::try_from(payload.len())
             .map_err(|_| DeveloperLoopError::Trace("trace event is too large".to_owned()))?;

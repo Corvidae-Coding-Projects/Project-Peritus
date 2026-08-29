@@ -4,12 +4,13 @@
 mod context_tests;
 #[path = "developer_loop/fixtures.rs"]
 mod fixtures;
+#[path = "developer_loop/retry_tests.rs"]
+mod retry_tests;
 
 use std::{collections::VecDeque, future::Future, sync::Mutex};
 
 use fixtures::{
-    batch_tool_response, empty_response, parallel_profile, profile, read_tool,
-    recoverable_failure_response, text_response, tool_response,
+    batch_tool_response, parallel_profile, profile, read_tool, text_response, tool_response,
 };
 use peritus_agent::{
     DeveloperLoop, DeveloperLoopLimits, DeveloperLoopRequest, DeveloperToolExecutor,
@@ -131,6 +132,7 @@ struct RecordingTrace {
     envelopes: u32,
     observations: u32,
     compactions: u32,
+    retries: Vec<peritus_agent::DeveloperRetryRecord>,
 }
 
 impl DeveloperTrace for RecordingTrace {
@@ -142,6 +144,7 @@ impl DeveloperTrace for RecordingTrace {
             DeveloperTraceEvent::ProviderEnvelope(_) => self.envelopes += 1,
             DeveloperTraceEvent::ToolObservation { .. } => self.observations += 1,
             DeveloperTraceEvent::ContextCompaction(_) => self.compactions += 1,
+            DeveloperTraceEvent::RetryScheduled(record) => self.retries.push(*record),
         }
         Ok(())
     }
@@ -243,43 +246,6 @@ fn developer_loop_uses_the_negotiated_parallel_tool_width() {
             .count();
         assert_eq!(observations, 2);
         drop(requests);
-    });
-}
-
-#[test]
-fn developer_loop_retries_a_recoverable_malformed_provider_turn() {
-    block_on(async {
-        let provider = ScriptedProvider {
-            profile: profile(),
-            responses: Mutex::new(VecDeque::from([
-                recoverable_failure_response(),
-                empty_response(),
-                text_response(),
-            ])),
-            requests: Mutex::new(Vec::new()),
-        };
-        let mut tools = RecordingTool::default();
-        let mut trace = RecordingTrace::default();
-        let outcome = DeveloperLoop::run(
-            &provider,
-            DeveloperLoopRequest {
-                request_prefix: "recovery-test".to_owned(),
-                system: "Complete the task.".to_owned(),
-                prompt: "Return the result.".to_owned(),
-                attachments: Vec::new(),
-                tools: vec![read_tool()],
-                limits: DeveloperLoopLimits::new(4, 4).expect("limits"),
-                cancellation: CancellationToken::new(),
-            },
-            &mut tools,
-            &mut trace,
-        )
-        .await
-        .expect("developer loop recovers");
-
-        assert_eq!(outcome.text, "implementation inspected");
-        assert_eq!(outcome.model_turns, 1);
-        assert_eq!(provider.requests.lock().expect("requests").len(), 3);
     });
 }
 

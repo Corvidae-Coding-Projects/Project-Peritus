@@ -26,8 +26,8 @@ useful behavior only when it fits its own local-first and evidence-driven design
 | Capability | Product-path status | Current evidence | Delivery decision |
 | --- | --- | --- | --- |
 | Durable objective beyond one model call | Working | `peritus-daemon/product_run` persists the task, conversation, phase, findings, and deliverable; the product runner divides work into bounded design, writer, review, and fixer turns. | Preserve. Add total run budgets and clearer attempt accounting. |
-| Recovery from empty, malformed, interrupted, timeout, and transport responses | Working | `peritus-agent/developer/execution.rs` retries recoverable model turns; product-level parsers return exact correction text; daemon restart marks unfinished work recoverable. HarnessBench exercised malformed and interrupted turns. | Preserve and make retry timing professional. |
-| Exponential backoff, bounded jitter, and `Retry-After` | Partial | First-party HTTP providers use `peritus-provider-core::RetryPolicy`, including bounded jitter and `Retry-After`. The G4 D0 developer loop still uses a fixed `250 ms * attempt` delay for outer recovery, including account-backed CLI routes. | Route outer turn recovery through one checked policy and surface the selected delay/reason. |
+| Recovery from empty, malformed, interrupted, timeout, and transport responses | Working | `peritus-agent/developer` retries recoverable model turns through the checked provider-neutral planner; product-level parsers return exact correction text; daemon restart marks unfinished work recoverable. HarnessBench exercised malformed and interrupted turns. | Preserve and compare recovery rates in the final campaign. |
+| Exponential backoff, bounded jitter, and `Retry-After` | Working | Direct HTTP providers and the outer G4 developer loop use checked exponential policy. The product path applies stable bounded jitter, honors bounded provider `Retry-After`, cancels during waits, and traces reason, attempt, elapsed time, and selected delay before sleeping. | Feed the durable retry record into the product heartbeat/status work next. |
 | Progress-aware retry and no-progress stopping | Working | Workspace checkpoints, finding identity, permission-aware progress, bounded segments, and two unchanged fixer cycles stop unproductive work. Terminal-Bench `TBF-002` and `TBF-003` exercised recovery and bounded stopping. | Preserve. Add provider-level circuit state rather than conflating provider failure with candidate progress. |
 | Crash-safe replay and daemon restart | Working with a boundary | Product snapshots and conversations are atomically persisted; unfinished runs reopen as `RecoveryRequired` and can be retried against the managed worktree. Compaction records and developer commands are durably traced, but exact in-flight provider state is not resumed byte-for-byte. | Add effect receipts needed for exact safe continuation; do not claim exact provider-stream resumption where a provider lacks it. |
 | Context-window accounting | Working | Before every real developer turn, G4 binds C6's checked `TokenBudget` to the selected provider profile, reserves output and protocol capacity, and accounts for the complete message/tool request with a conservative deterministic estimate. | Compare estimates with observed provider usage during the final campaign and revise only from evidence. |
@@ -58,8 +58,8 @@ experience. They are ordered to avoid invalidating benchmark evidence more often
    preservation rules, digest-bound trace records, and focused regression coverage.
 3. Completed on the draft qualification branch: negotiated automatic prompt caching while
    preserving local-first provider storage policy and disabled fallback.
-4. Replace the developer loop's linear delay with the shared checked exponential retry policy,
-   bounded jitter, provider `Retry-After`, cancellation, and visible retry reasons.
+4. Completed on the draft qualification branch: checked exponential outer retries, bounded stable
+   jitter, provider `Retry-After`, cancellation-aware waiting, and durable visible retry reasons.
 5. Add cumulative run budgets, periodic stall/heartbeat status, and a durable effect-receipt ledger.
 6. Add explicit compatible role failover and queue health only after the failure taxonomy shows
    which provider transitions are safe and useful.

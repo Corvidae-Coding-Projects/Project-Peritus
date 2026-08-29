@@ -34,6 +34,10 @@ assistant/tool exchanges with a deterministic non-authoritative record, retainin
 system policy, active user task, recent messages, tool identities, bounded previews, and exact
 policy/source/replacement SHA-256 lineage in the durable trace. Profiles that advertise prompt
 caching receive `CachePolicy::Automatic`; unsupported profiles remain explicitly disabled.
+Recoverable empty, malformed, interrupted, and transport turns use the shared checked exponential
+retry planner. Each wait has stable bounded jitter, honors a bounded provider `Retry-After`, remains
+promptly cancellable, and records its reason, attempt, elapsed time, and selected delay before
+sleeping.
 
 Model output is never tool authority, and D0 completion is never run acceptance. B0/B1/C0/C4 own
 the receipts that authorize effects; later D1/D2/E0 components own gates, review, orchestration,

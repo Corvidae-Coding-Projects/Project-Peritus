@@ -78,8 +78,11 @@ Subprocess stdin/stdout/stderr, timeout, cancellation, kill, and reap are bounde
 `ProcessLimits` and the shared process transport. A normal completed turn is buffered and validated
 before normalized events are exposed. Cancellation is local best effort. A crash after submission
 is partial or ambiguous according to observed JSONL, and the adapter never automatically replays a
-turn. Codex CLI error text is redacted and generic; the runtime does not speculate that undocumented
-CLI error codes provide rate-limit or transient classifications.
+turn. Codex CLI error text is never retained. The runtime recognizes only stable structured codes
+or current official message families for authentication, safety policy, rate limits, quota, and
+context limits, projects those to redaction-safe normalized categories, and treats every other
+reported error generically. A non-retryable terminal keeps that category and its stable diagnostic
+identity through the product result rather than becoming an unexplained empty response.
 
 ### Live account qualification
 
