@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 751,
+  "next_comment_id": 752,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T21:55:38.671642504Z",
+      "updated_at": "2026-08-29T22:19:20.011092142Z",
       "labels": [
         "qualification",
         "release"
@@ -2629,6 +2629,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABOmIJzX4U3PBWKcFiubE0FCvbFM1cge3pZy6AMKd1dD0N3kjhy/dWoX1ir3zu6/0GQLGxSHejPSfXlGwFD8dBQ=="
+        },
+        "bdd7b7c5-877e-4c5d-9958-3003cdcf2dc1": {
+          "display_id": 751,
+          "author": "6ME5",
+          "content": "TBF-012 is now fully evidenced: Terminal-Bench mailman earned unchanged Harbor reward 1 with all three verifier checks passing after the frozen writer repaired PATH locally. The bridge fix preserves the live container PATH and prepends /opt/peritus/bin; seven focused Python tests pass. TBF-013 is implemented as a general default-off ProductDeliveryScope::AuthorizedExternalEffects path: zero-diff tasks require a retained successful external_effect command, a later successful verification command, and independent blocker-free review. WorkspaceChanges remains strict. Focused Rust tests, strict Clippy, ordinary-api-check, source-layout-check, Python tests, and formatting pass. Previous pushed head b0fce1b is 32/32 hosted checks green.",
+          "created_at": "2026-08-29T22:19:20.007977937Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAL9DVJPnDifcoqV9z6AYM2QKWFTuJPCMTGJ/DXJtl/WKi/++rZ7y+SOr5raSdcMSDBg5BB5YQGAsKMkQXhRx3Ag=="
         },
         "be324cfa-ebdc-45ad-9e0b-c7a636edfb7b": {
           "display_id": 563,
@@ -7511,8 +7520,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T21:55:38.671642504Z",
+    "timestamp": "2026-08-29T22:19:20.011092142Z",
     "agent_id": "6ME5",
-    "agent_seq": 936
+    "agent_seq": 937
   }
 }
