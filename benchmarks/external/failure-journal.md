@@ -2043,3 +2043,35 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   Harbor reward 1.0 with zero exceptions in 328 seconds. The reviewer cited live `0600` key
   metadata and the captured execution of `check_cert.py`, tied each observation to the explicit
   requirements, and retained only a non-blocking portability advisory.
+
+## TBF-005: verifier prose and imported sources were mistaken for owned inputs
+
+- Suite and task: Terminal-Bench 2.0, `build-pov-ray`, first full-suite baseline trial.
+- Symptom: the writer successfully built POV-Ray and Harbor's unchanged verifier awarded reward
+  1.0, but Peritus reported product acceptance false. Its next model request failed while trying to
+  attach workspace images to a text-only Claude account route.
+- Cause: the task said that an external verifier would compare the rendered output with a reference
+  image. A broad keyword heuristic treated that prose as a request for the model to inspect pixels
+  and selected unrelated GIFs from the imported POV-Ray source tree. Separately, the deterministic
+  source-layout gate classified every file added after the empty task baseline as Peritus-authored,
+  so an upstream source import was judged as new first-party architecture and produced hundreds of
+  irrelevant 500-line findings, including one legacy non-UTF-8 C file.
+- Resolution: workspace media discovery now resolves explicitly named image paths first and scans
+  general workspace media only for a direct visual-inspection imperative. Workspace ownership now
+  distinguishes baseline files and structured-write authorship from files materialized by commands,
+  generators, or archive extraction. The mandatory source ceiling still applies to all starting
+  source files Peritus changes and all source it authors directly; it does not claim that imported
+  upstream layouts were designed by Peritus.
+- Before evidence: job `peritus-terminalbench-2-k5-high`; trial `build-pov-ray__ZbbBfkk`; 23
+  provider requests, 1,239,909 input tokens, 103,168 cached input tokens, and 12,132 output tokens
+  from `2026-08-29T16:24:37Z` through `16:32:38Z`. Peritus recorded failure kind `provider` with
+  `selected provider cannot inspect image inputs`; Harbor completed without an exception and
+  awarded reward 1.0.
+- Verification: regressions prove that an external-verifier reference does not attach unrelated
+  media, directly named paths still resolve, oversized baseline and directly authored source still
+  fail, and late command-imported source is reported as outside the first-party ceiling. The
+  affected developer-loop, product-runner, launcher, OpenAI, and Anthropic suites, strict Clippy,
+  formatting, and the complete `xtask all` repository gate pass.
+- After evidence: the 445-trial baseline uses one frozen binary and is not mutated mid-campaign.
+  The final unchanged full-suite campaign will supply the corrected-product comparison and remains
+  required before this finding is closed as a demonstrated benchmark improvement.

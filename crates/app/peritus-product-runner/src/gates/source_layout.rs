@@ -1,8 +1,10 @@
 //! Deterministic source-file size enforcement for product candidates.
 
-use std::{fs, path::Path};
+use std::{fmt::Write as _, fs, path::Path};
 
 use peritus_gates::{GateExecutionRecord, PRODUCT_MAX_SOURCE_LINES, ProjectKind};
+
+use crate::developer_tools::WorkspaceOwnership;
 
 pub fn run(
     workspace_root: &Path,
@@ -10,13 +12,23 @@ pub fn run(
     changed_paths: &[std::path::PathBuf],
     kind: ProjectKind,
     command: String,
+    ownership: Option<&WorkspaceOwnership>,
 ) -> GateExecutionRecord {
-    let mut files = changed_paths
+    let mut source_files = changed_paths
         .iter()
         .filter(|path| path.starts_with(project_root) && is_source(path, kind))
         .filter(|path| {
             fs::symlink_metadata(workspace_root.join(path))
                 .is_ok_and(|metadata| metadata.file_type().is_file())
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+    source_files.sort();
+    source_files.dedup();
+    let mut files = source_files
+        .iter()
+        .filter(|path| {
+            ownership.is_none_or(|scope| scope.source_layout_applies(&workspace_root.join(path)))
         })
         .cloned()
         .collect::<Vec<_>>();
@@ -47,6 +59,14 @@ pub fn run(
         "Scanned {} changed source file(s); hard limit: {PRODUCT_MAX_SOURCE_LINES} lines.\n",
         files.len(),
     );
+    let skipped = source_files.len().saturating_sub(files.len());
+    if skipped > 0 {
+        let _ = write!(
+            output,
+            "Skipped {skipped} imported or command-generated source file(s) that were not part of the starting workspace and were not created through the explicit write tool."
+        );
+        output.push('\n');
+    }
     for violation in &violations {
         output.push_str("VIOLATION: ");
         output.push_str(violation);
@@ -106,6 +126,7 @@ mod tests {
             &[std::path::PathBuf::from("large.rs")],
             ProjectKind::Rust,
             "source-layout".to_owned(),
+            None,
         );
 
         assert_eq!(record.exit_code, Some(1));
@@ -129,11 +150,46 @@ mod tests {
             &[std::path::PathBuf::from("src/lib.rs"), std::path::PathBuf::from("target")],
             ProjectKind::Rust,
             "source-layout".to_owned(),
+            None,
         );
 
         assert_eq!(record.exit_code, Some(0));
         assert!(record.output.contains("Scanned 1 changed source file"));
         assert!(!record.output.contains("legacy.rs"));
         assert!(!record.output.contains("large.rs"));
+    }
+
+    #[test]
+    fn product_scope_keeps_first_party_files_strict_and_skips_late_imports() {
+        let root = tempfile::tempdir().expect("source root");
+        let baseline = root.path().join("legacy.c");
+        fs::write(&baseline, "line\n".repeat(700)).expect("baseline source");
+        let mut ownership = WorkspaceOwnership::capture(root.path());
+
+        let imported = root.path().join("upstream.c");
+        fs::write(&imported, "line\n".repeat(700)).expect("imported source");
+        let direct = root.path().join("authored.c");
+        fs::write(&direct, "line\n".repeat(700)).expect("direct source");
+        ownership.record_direct_creation(&direct, false);
+        let changed = [
+            std::path::PathBuf::from("legacy.c"),
+            std::path::PathBuf::from("upstream.c"),
+            std::path::PathBuf::from("authored.c"),
+        ];
+
+        let record = run(
+            root.path(),
+            Path::new(""),
+            &changed,
+            ProjectKind::Artifact,
+            "source-layout".to_owned(),
+            Some(&ownership),
+        );
+
+        assert_eq!(record.exit_code, Some(1));
+        assert!(record.output.contains("legacy.c: 700 lines"));
+        assert!(record.output.contains("authored.c: 700 lines"));
+        assert!(!record.output.contains("upstream.c: 700 lines"));
+        assert!(record.output.contains("Skipped 1 imported or command-generated"));
     }
 }

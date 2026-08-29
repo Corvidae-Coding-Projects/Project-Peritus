@@ -13,6 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Resolve visual inputs from explicitly named workspace paths or direct image-inspection requests
+  instead of unrelated media mentioned only as an external verifier reference, and apply the
+  mandatory 500-line source ceiling to baseline and directly authored code without claiming
+  ownership of upstream source trees imported by commands (#31)
 - Keep developer-tool wire encoding and product-runner prompt regressions in cohesive submodules
   below the repository's reviewed source budgets, and express command-test fixtures through the
   ordinary formal-boundary subset so candidate policy validates the same code exercised locally
@@ -219,6 +223,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Bind every production developer turn to the selected provider's C6-checked input budget;
+  deterministically compact only complete old tool exchanges with durable policy, source, and
+  replacement digests; and negotiate automatic prompt caching only for profiles that advertise it,
+  including the no-flag account-backed Codex and Claude routers (#31)
 - Add the native Harbor custom-agent boundary for Terminal-Bench 2.0, including unchanged-workspace
   product execution, durable design/trace/observation evidence, provider and cache accounting,
   resource-aware Podman commands, and a passing unchanged single-task qualification (#31)

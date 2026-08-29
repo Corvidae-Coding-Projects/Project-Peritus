@@ -107,7 +107,13 @@ fn render_provider(
         _ => return render_direct_provider(provider, direct),
     };
     let mut text = format!("\n[[providers]]\nkind = {}\n", toml_string(kind));
-    text.push_str(&profile_block(profile_id, model, 200_000, 64_000, false, image_input, true));
+    text.push_str(&profile_block(
+        profile_id,
+        model,
+        200_000,
+        64_000,
+        ProfileFeatures::account(image_input),
+    ));
     Ok(text)
 }
 
@@ -133,9 +139,7 @@ fn render_direct_provider(
         direct.model(),
         input,
         output,
-        true,
-        image_input,
-        reasoning,
+        ProfileFeatures::direct(provider, image_input, reasoning),
     ));
     Ok(text)
 }
@@ -191,30 +195,63 @@ fn append_optional(text: &mut String, field: &str, value: Option<&str>) {
     }
 }
 
+struct ProfileFeatures {
+    capabilities: Vec<&'static str>,
+    inline_media_bytes: u64,
+}
+
+impl ProfileFeatures {
+    fn account(image_input: bool) -> Self {
+        let mut capabilities = vec![
+            "parallel-tool-calls",
+            "prompt-caching",
+            "reasoning-controls",
+            "tool-calls",
+            "usage-detail",
+        ];
+        if image_input {
+            capabilities.push("image-input");
+        }
+        Self::new(capabilities, image_input)
+    }
+
+    fn direct(provider: ProviderKind, image_input: bool, reasoning: bool) -> Self {
+        let mut capabilities =
+            vec!["parallel-tool-calls", "streaming", "tool-calls", "usage-detail"];
+        if provider != ProviderKind::CompatibleEndpoint {
+            capabilities.push("prompt-caching");
+        }
+        if image_input {
+            capabilities.push("image-input");
+        }
+        if reasoning {
+            capabilities.push("reasoning-controls");
+        }
+        Self::new(capabilities, image_input)
+    }
+
+    fn new(mut capabilities: Vec<&'static str>, image_input: bool) -> Self {
+        capabilities.sort_unstable();
+        let inline_media_bytes = if image_input { 32 * 1024 * 1024 } else { 1 };
+        Self { capabilities, inline_media_bytes }
+    }
+}
+
 fn profile_block(
     profile_id: &str,
     model: &str,
     input: u64,
     output: u64,
-    streaming: bool,
-    image_input: bool,
-    reasoning: bool,
+    features: ProfileFeatures,
 ) -> String {
-    let mut capabilities = vec!["parallel-tool-calls", "tool-calls", "usage-detail"];
-    if streaming {
-        capabilities.push("streaming");
-    }
-    if image_input {
-        capabilities.push("image-input");
-    }
-    if reasoning {
-        capabilities.push("reasoning-controls");
-    }
-    capabilities.sort_unstable();
     let capabilities = toml::Value::Array(
-        capabilities.into_iter().map(|value| toml::Value::String(value.to_owned())).collect(),
+        features
+            .capabilities
+            .into_iter()
+            .map(|value| toml::Value::String(value.to_owned()))
+            .collect(),
     );
-    let inline_media_bytes = if image_input { 32 * 1024 * 1024 } else { 1 };
+    let inline_media_bytes = features.inline_media_bytes;
     format!(
         "\n[providers.profile]\nprofile_id = {}\nrevision = 1\nmodel = {}\ncapabilities = {capabilities}\nmax_input_tokens = {input}\nmax_output_tokens = {output}\nmax_tools = 64\nmax_parallel_tool_calls = 8\nmax_inline_media_bytes = {inline_media_bytes}\n",
         toml_string(profile_id),

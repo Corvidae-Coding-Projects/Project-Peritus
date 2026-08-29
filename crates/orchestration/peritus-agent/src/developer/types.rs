@@ -4,6 +4,7 @@ use peritus_model_protocol::{
     CanonicalJson, CompletedToolCall, MediaInput, Message, ToolDefinition,
 };
 use peritus_provider_core::CancellationToken;
+use peritus_types::Sha256Digest;
 
 use super::DeveloperLoopError;
 
@@ -143,6 +144,72 @@ pub trait DeveloperToolExecutor: Send {
     }
 }
 
+/// Durable evidence for one deterministic transcript compaction.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct DeveloperContextCompaction {
+    policy_digest: Sha256Digest,
+    source_digest: Sha256Digest,
+    replacement_digest: Sha256Digest,
+    source_messages: u16,
+    replaced_tokens: u64,
+    replacement_tokens: u64,
+}
+
+impl DeveloperContextCompaction {
+    pub(crate) const fn new(
+        digests: [Sha256Digest; 3],
+        source_messages: u16,
+        replaced_tokens: u64,
+        replacement_tokens: u64,
+    ) -> Self {
+        let [policy_digest, source_digest, replacement_digest] = digests;
+        Self {
+            policy_digest,
+            source_digest,
+            replacement_digest,
+            source_messages,
+            replaced_tokens,
+            replacement_tokens,
+        }
+    }
+
+    /// Exact revision of the deterministic compaction policy.
+    #[must_use]
+    pub const fn policy_digest(self) -> Sha256Digest {
+        self.policy_digest
+    }
+
+    /// Digest of every exact source message replaced by this record.
+    #[must_use]
+    pub const fn source_digest(self) -> Sha256Digest {
+        self.source_digest
+    }
+
+    /// Digest of the installed model-visible replacement.
+    #[must_use]
+    pub const fn replacement_digest(self) -> Sha256Digest {
+        self.replacement_digest
+    }
+
+    /// Number of complete source messages replaced atomically.
+    #[must_use]
+    pub const fn source_messages(self) -> u16 {
+        self.source_messages
+    }
+
+    /// Conservative source token estimate removed from the active transcript.
+    #[must_use]
+    pub const fn replaced_tokens(self) -> u64 {
+        self.replaced_tokens
+    }
+
+    /// Conservative replacement token estimate installed in the transcript.
+    #[must_use]
+    pub const fn replacement_tokens(self) -> u64 {
+        self.replacement_tokens
+    }
+}
+
 /// Exact trace event committed before D0 advances past an external observation.
 pub enum DeveloperTraceEvent<'a> {
     /// Canonical normalized provider envelope.
@@ -154,6 +221,8 @@ pub enum DeveloperTraceEvent<'a> {
         /// Canonical application result.
         observation: &'a DeveloperToolObservation,
     },
+    /// A checked deterministic compaction replaced complete prior tool exchanges.
+    ContextCompaction(&'a DeveloperContextCompaction),
 }
 
 /// Durable trace boundary owned by the production host.
@@ -173,6 +242,8 @@ pub struct DeveloperLoopOutcome {
     pub model_turns: u16,
     /// Number of application tool calls observed.
     pub tool_calls: u32,
+    /// Number of deterministic transcript compactions applied during the role.
+    pub compactions: u16,
     /// Complete replay messages, useful to a same-role continuation.
     pub messages: Vec<Message>,
 }

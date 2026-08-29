@@ -73,7 +73,7 @@ fn validate_controls(request: &ModelRequest) -> Result<&'static str, ProviderCor
     let generation = request.options().generation();
     let effort = reasoning_effort(request.options().reasoning())?;
     if !matches!(request.options().output(), StructuredOutput::Text)
-        || !matches!(request.options().cache(), CachePolicy::Disabled)
+        || !matches!(request.options().cache(), CachePolicy::Disabled | CachePolicy::Automatic)
         || request.options().persistence().store()
         || request.options().persistence().background()
         || request.options().continuation().is_some()
@@ -84,7 +84,7 @@ fn validate_controls(request: &ModelRequest) -> Result<&'static str, ProviderCor
         || generation.top_p_millionths().is_some()
     {
         return Err(invalid(
-            "Codex runtime supports text output, advisory length, bounded effort, disabled cache, and local replay only",
+            "Codex runtime supports text output, advisory length, bounded effort, automatic or disabled cache, and local replay only",
         ));
     }
     Ok(effort)

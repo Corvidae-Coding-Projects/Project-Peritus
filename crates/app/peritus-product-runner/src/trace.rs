@@ -41,6 +41,32 @@ impl DeveloperTrace for FileDeveloperTrace {
                         .map_err(|error| DeveloperLoopError::Trace(error.to_string()))?;
                 (2, payload)
             }
+            DeveloperTraceEvent::ContextCompaction(record) => {
+                let fields = [
+                    (
+                        "policy_sha256".to_owned(),
+                        Value::String(digest_hex(record.policy_digest().as_bytes())),
+                    ),
+                    (
+                        "source_sha256".to_owned(),
+                        Value::String(digest_hex(record.source_digest().as_bytes())),
+                    ),
+                    (
+                        "replacement_sha256".to_owned(),
+                        Value::String(digest_hex(record.replacement_digest().as_bytes())),
+                    ),
+                    (
+                        "source_messages".to_owned(),
+                        Value::from(u64::from(record.source_messages())),
+                    ),
+                    ("replaced_tokens".to_owned(), Value::from(record.replaced_tokens())),
+                    ("replacement_tokens".to_owned(), Value::from(record.replacement_tokens())),
+                ];
+                let payload =
+                    serde_json::to_vec(&Value::Object(fields.into_iter().collect::<Map<_, _>>()))
+                        .map_err(|error| DeveloperLoopError::Trace(error.to_string()))?;
+                (3, payload)
+            }
         };
         let length = u64::try_from(payload.len())
             .map_err(|_| DeveloperLoopError::Trace("trace event is too large".to_owned()))?;
@@ -54,6 +80,16 @@ impl DeveloperTrace for FileDeveloperTrace {
         file.write_all(&payload).map_err(|error| trace(&error))?;
         file.sync_data().map_err(|error| trace(&error))
     }
+}
+
+fn digest_hex(bytes: &[u8; 32]) -> String {
+    use core::fmt::Write as _;
+
+    let mut output = String::with_capacity(64);
+    for byte in bytes {
+        let _ = write!(output, "{byte:02x}");
+    }
+    output
 }
 
 fn trace(error: &std::io::Error) -> DeveloperLoopError {

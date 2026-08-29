@@ -119,7 +119,9 @@ impl ProductRunner {
                     }
                 }
             }
-            let inspected = inspect_cycle(&input, &observe, &baseline, &mut state).await?;
+            let inspected =
+                inspect_cycle(&input, &observe, &baseline, &mut state, &workspace_ownership)
+                    .await?;
             if inspected.conversation_changed {
                 continue;
             }

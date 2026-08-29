@@ -12,6 +12,7 @@ use peritus_model_protocol::{
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
 const MAX_IMAGES: usize = 4;
+const MAX_DISCOVERED_IMAGES: usize = 1_024;
 const MAX_IMAGE_BYTES: u64 = 4 * 1024 * 1024;
 const MAX_TOTAL_BYTES: u64 = 12 * 1024 * 1024;
 const MAX_DEPTH: usize = 16;
@@ -46,10 +47,16 @@ pub fn discover(
     task: &str,
     profile: &ProviderProfile,
 ) -> Result<WorkspaceImages, ProductRunnerError> {
-    if !mentions_images(task) {
-        return Ok(empty());
+    let discovered = discover_paths(root)?;
+    let mut paths = discovered
+        .iter()
+        .filter(|path| task_mentions_path(task, root, path))
+        .cloned()
+        .collect::<Vec<_>>();
+    if paths.is_empty() && requests_visual_inspection(task) {
+        paths = discovered;
     }
-    let paths = discover_paths(root)?;
+    paths.truncate(MAX_IMAGES);
     if paths.is_empty() {
         return Ok(empty());
     }
@@ -108,7 +115,7 @@ fn discover_paths(root: &Path) -> Result<Vec<PathBuf>, ProductRunnerError> {
     let mut pending = vec![(root.to_path_buf(), 0_usize)];
     let mut images = Vec::new();
     while let Some((directory, depth)) = pending.pop() {
-        if images.len() >= MAX_IMAGES || depth > MAX_DEPTH {
+        if images.len() >= MAX_DISCOVERED_IMAGES || depth > MAX_DEPTH {
             break;
         }
         let mut entries = fs::read_dir(&directory)
@@ -126,7 +133,7 @@ fn discover_paths(root: &Path) -> Result<Vec<PathBuf>, ProductRunnerError> {
                 pending.push((path, depth.saturating_add(1)));
             } else if file_type.is_file() && supported_extension(&path) {
                 images.push(path);
-                if images.len() >= MAX_IMAGES {
+                if images.len() >= MAX_DISCOVERED_IMAGES {
                     break;
                 }
             }
@@ -136,11 +143,37 @@ fn discover_paths(root: &Path) -> Result<Vec<PathBuf>, ProductRunnerError> {
     Ok(images)
 }
 
-fn mentions_images(task: &str) -> bool {
+fn requests_visual_inspection(task: &str) -> bool {
     let task = task.to_ascii_lowercase();
-    ["image", "photo", "picture", "screenshot", ".png", ".jpg", ".jpeg", ".webp", ".gif"]
-        .iter()
-        .any(|needle| task.contains(needle))
+    [
+        "describe the image",
+        "describe the photo",
+        "describe the picture",
+        "describe the screenshot",
+        "inspect the image",
+        "inspect the photo",
+        "inspect the picture",
+        "inspect the screenshot",
+        "edit the image",
+        "edit the photo",
+        "edit the picture",
+        "edit the screenshot",
+    ]
+    .iter()
+    .any(|needle| task.contains(needle))
+}
+
+fn task_mentions_path(task: &str, root: &Path, path: &Path) -> bool {
+    let task = task.to_ascii_lowercase().replace('\\', "/");
+    let relative = path
+        .strip_prefix(root)
+        .unwrap_or(path)
+        .to_string_lossy()
+        .to_ascii_lowercase()
+        .replace('\\', "/");
+    let filename =
+        path.file_name().and_then(std::ffi::OsStr::to_str).unwrap_or_default().to_ascii_lowercase();
+    task.contains(&relative) || !filename.is_empty() && task.contains(&filename)
 }
 
 fn ignored_directory(name: &std::ffi::OsStr) -> bool {
@@ -239,6 +272,23 @@ mod tests {
 
         assert_eq!(error.kind(), ProductRunnerErrorKind::Provider);
         assert!(error.detail().contains("image-capable provider"));
+    }
+
+    #[test]
+    fn verifier_reference_image_does_not_attach_unrelated_workspace_media() {
+        let root = tempfile::tempdir().expect("workspace");
+        fs::create_dir(root.path().join("upstream")).expect("upstream directory");
+        fs::write(root.path().join("upstream/texture.gif"), b"GIF89apixels").expect("image");
+
+        let images = discover(
+            root.path(),
+            "Build the renderer. We will compare its output against a reference image.",
+            &profile(false),
+        )
+        .expect("unrelated image is not required");
+        let (_, attachments) = images.into_parts("task".to_owned());
+
+        assert!(attachments.is_empty());
     }
 
     fn profile(images: bool) -> ProviderProfile {

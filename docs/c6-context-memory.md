@@ -8,8 +8,8 @@ for retrieval. It is implemented in three orchestration-layer crates:
 - `peritus-context` validates provenance graphs and produces bounded context/render plans; and
 - `peritus-memory` validates derived-memory records and produces bounded retrieval/index plans.
 
-The crates perform no I/O and hold no ambient authority. D0 will persist their inputs and outputs
-through C0/B3, map render segments into C5 model requests, and mediate tools through C4.
+The crates perform no I/O and hold no ambient authority. D0 persists their inputs and outputs
+through C0/B3, maps render segments into C5 model requests, and mediates tools through C4.
 
 ## Authority boundary
 
@@ -65,8 +65,9 @@ overhead, usable input, selected input, and remaining input. All arithmetic is c
 returned only when required closure and accounting are complete; there is no partial-success path
 that silently drops policy or specification material.
 
-The planner accepts caller-supplied token estimates. D0 will obtain estimates from the selected C5
-provider/tokenizer profile, but C6 remains deterministic and provider-neutral.
+The planner accepts caller-supplied token estimates. The production developer loop binds its budget
+to the selected C5 profile and uses a conservative provider-neutral byte estimate. C6 remains
+deterministic and does not depend on a provider tokenizer.
 
 ## Compaction and rendering
 
@@ -84,6 +85,12 @@ true.
 A render plan is an ordered list of typed segments carrying source identity, message role,
 provenance, authority, trust, context class, digest, and bounded content. Provider-specific message
 encoding is deliberately deferred to D0's adapter into `peritus-model-protocol`.
+
+The production developer loop also applies this boundary to its growing tool transcript. It never
+compacts system policy, the active user request, incomplete tool batches, or the recent working
+set. Complete older assistant/tool exchanges may be replaced by a versioned non-authoritative
+record containing tool identities, bounded previews, and exact policy, source, and replacement
+digests. Each replacement is committed to the durable developer trace before another provider turn.
 
 ## Derived memory
 
@@ -156,9 +163,8 @@ The complete merge authority remains `just gate-a` plus required hosted Ubuntu, 
 checks. Source-layout policy keeps crate roots below 80 lines and rejects source files above the
 hard 700-line limit.
 
-## Next boundary
+## Product boundary
 
-C6 does not run an agent. Once C6 is merged, D0 can build the durable model/tool loop by combining
-B0 lifecycle transitions, B1 authority, B3/C0 durability, C4 tools, C5 providers, and C6 plans.
-Review finding lifecycle and quorum adjudication remain D2; context merely supplies the fresh,
-bounded evidence view they require.
+C6 still does not run an agent or grant authority. D0 composes it with B0 lifecycle transitions,
+B1 authority, B3/C0 durability, C4 tools, and C5 providers. Review finding lifecycle and quorum
+adjudication remain D2; context supplies only the fresh, bounded evidence view they require.

@@ -135,7 +135,11 @@ The implemented foundation and runtime spine now covers:
   inspect, search, edit, run, test, observe failures, and retry through bounded structured tools,
   but cannot mutate an existing file before reading it in the current turn. Provider-negotiated
   tool batches execute in proposal order, and unchanged full-file writes report that no bytes
-  changed instead of rewriting the target. Exact identifiers and syntax remain literal across
+  changed instead of rewriting the target. Every provider turn uses a C6-checked input budget;
+  complete old tool exchanges are compacted only when necessary into digest-bound durable records,
+  while system policy, the active task, and recent work stay exact. Prompt caching is negotiated
+  automatically for supporting profiles and remains disabled everywhere else. Exact identifiers
+  and syntax remain literal across
   every generated artifact that records them. Independent review is
   also a fresh D0 loop: it must list and read the real workspace through a separately enforced
   read-only executor before its typed verdict can enter D2. Recoverable malformed, empty, timeout,

@@ -74,6 +74,7 @@ pub fn runtime_profile() -> ProviderProfile {
     let supported = [
         Capability::ToolCalls,
         Capability::ParallelToolCalls,
+        Capability::PromptCaching,
         Capability::ReasoningControls,
         Capability::UsageDetail,
     ];
@@ -95,7 +96,8 @@ pub fn runtime_profile() -> ProviderProfile {
 }
 
 pub fn runtime_request(profile: &ProviderProfile, with_tools: bool) -> ModelRequest {
-    let mut required = vec![Capability::ReasoningControls, Capability::UsageDetail];
+    let mut required =
+        vec![Capability::PromptCaching, Capability::ReasoningControls, Capability::UsageDetail];
     if with_tools {
         required.extend([Capability::ToolCalls, Capability::ParallelToolCalls]);
     }
@@ -150,7 +152,7 @@ pub fn runtime_request(profile: &ProviderProfile, with_tools: bool) -> ModelRequ
             StructuredOutput::Text,
             ReasoningPolicy::Effort { effort: ReasoningEffort::High, summary: SummaryPolicy::None },
             GenerationConfig::new(128, Vec::new(), None, None, None).expect("generation"),
-            CachePolicy::Disabled,
+            CachePolicy::Automatic,
             PersistencePolicy::LOCAL_FIRST,
             None,
             Vec::new(),

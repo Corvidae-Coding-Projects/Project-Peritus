@@ -16,11 +16,12 @@ pub fn codex_profile(model: &str, tools: bool) -> ProviderProfile {
         vec![
             Capability::ToolCalls,
             Capability::ParallelToolCalls,
+            Capability::PromptCaching,
             Capability::ReasoningControls,
             Capability::UsageDetail,
         ]
     } else {
-        vec![Capability::UsageDetail]
+        vec![Capability::PromptCaching, Capability::UsageDetail]
     };
     ProviderProfile::new(
         ProviderProfileId::new([11; 16]).expect("profile id"),
@@ -46,8 +47,11 @@ pub fn codex_image_profile(model: &str) -> ProviderProfile {
         ProviderName::new("openai".to_owned()).expect("provider"),
         peritus_model_protocol::ModelName::new(model.to_owned()).expect("model"),
         WireDialect::OpenAiCodexRuntime,
-        CapabilityMatrix::new(&[Capability::ImageInput, Capability::UsageDetail], &[])
-            .expect("capabilities"),
+        CapabilityMatrix::new(
+            &[Capability::ImageInput, Capability::PromptCaching, Capability::UsageDetail],
+            &[],
+        )
+        .expect("capabilities"),
         CapabilityProvenance::Profiled,
         model_limits(),
         OutputLimitEnforcement::Advisory,
@@ -65,6 +69,7 @@ pub fn codex_tool_request(profile: &ProviderProfile, request_id: &str) -> ModelR
             &[
                 Capability::ToolCalls,
                 Capability::ParallelToolCalls,
+                Capability::PromptCaching,
                 Capability::ReasoningControls,
                 Capability::UsageDetail,
             ],
@@ -102,8 +107,12 @@ pub fn codex_tool_request(profile: &ProviderProfile, request_id: &str) -> ModelR
 pub fn codex_image_request(profile: &ProviderProfile, request_id: &str) -> ModelRequest {
     let negotiated = negotiate(
         profile,
-        RequestedCapabilities::new(&[Capability::ImageInput], &[], model_limits())
-            .expect("requested"),
+        RequestedCapabilities::new(
+            &[Capability::ImageInput, Capability::PromptCaching],
+            &[],
+            model_limits(),
+        )
+        .expect("requested"),
     )
     .expect("negotiated");
     let media = MediaInput::inline(
@@ -135,7 +144,7 @@ fn runtime_options(reasoning: ReasoningPolicy) -> RequestOptions {
         StructuredOutput::Text,
         reasoning,
         GenerationConfig::new(64, Vec::new(), None, None, None).expect("generation"),
-        CachePolicy::Disabled,
+        CachePolicy::Automatic,
         PersistencePolicy::LOCAL_FIRST,
         None,
         Vec::new(),

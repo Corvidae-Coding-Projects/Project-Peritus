@@ -10,6 +10,7 @@ use peritus_provider_core::{ModelProvider, ProviderCoreErrorKind};
 
 use crate::{ModelAdvance, ModelDriveError, ModelSession};
 
+use super::context::prepare_messages;
 use super::{
     DeveloperLoopError, DeveloperLoopOutcome, DeveloperLoopRequest, DeveloperToolExecutor,
     DeveloperTrace, DeveloperTraceEvent,
@@ -44,7 +45,12 @@ impl DeveloperLoop {
         }
         let requested = RequestedCapabilities::new(
             &required_capabilities,
-            &[Capability::Streaming, Capability::ParallelToolCalls, Capability::ReasoningControls],
+            &[
+                Capability::Streaming,
+                Capability::ParallelToolCalls,
+                Capability::ReasoningControls,
+                Capability::PromptCaching,
+            ],
             profile.limits(),
         )?;
         let negotiated = negotiate(profile, requested)?;
@@ -53,11 +59,27 @@ impl DeveloperLoop {
             user_message(request.prompt.clone(), request.attachments.clone(), protocol_limits)?,
         ];
         let mut tool_calls = 0_u32;
+        let mut compactions = 0_u16;
 
         for turn in 1..=request.limits.max_model_turns() {
             if request.cancellation.is_cancelled() {
                 return Err(DeveloperLoopError::Cancelled);
             }
+            let records = prepare_messages(
+                &mut messages,
+                &request.tools,
+                profile,
+                request.limits.max_output_tokens(),
+                protocol_limits,
+            )?;
+            for record in &records {
+                trace.record(DeveloperTraceEvent::ContextCompaction(record))?;
+            }
+            compactions = compactions
+                .checked_add(
+                    u16::try_from(records.len()).map_err(|_| DeveloperLoopError::LimitExceeded)?,
+                )
+                .ok_or(DeveloperLoopError::LimitExceeded)?;
             let session = complete_turn(
                 provider,
                 &request,
@@ -108,6 +130,7 @@ impl DeveloperLoop {
                     text: final_text,
                     model_turns: turn,
                     tool_calls,
+                    compactions,
                     messages,
                 });
             }
@@ -215,7 +238,11 @@ fn model_request(
                 None,
                 None,
             )?,
-            CachePolicy::Disabled,
+            if negotiated.includes(Capability::PromptCaching) {
+                CachePolicy::Automatic
+            } else {
+                CachePolicy::Disabled
+            },
             PersistencePolicy::LOCAL_FIRST,
             None,
             Vec::new(),

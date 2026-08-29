@@ -72,6 +72,7 @@ fn validate(profile: &ProviderProfile) -> Result<(), ProviderCoreError> {
                     capability,
                     Capability::ToolCalls
                         | Capability::ParallelToolCalls
+                        | Capability::PromptCaching
                         | Capability::ReasoningControls
                         | Capability::UsageDetail
                 ))

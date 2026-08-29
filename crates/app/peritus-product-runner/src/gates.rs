@@ -13,7 +13,10 @@ mod source_layout;
 mod sqlite_migration;
 mod yaml_structure;
 
-use crate::{ProductRunnerError, ProductRunnerErrorKind, bundle::limit_text};
+use crate::{
+    ProductRunnerError, ProductRunnerErrorKind, bundle::limit_text,
+    developer_tools::WorkspaceOwnership,
+};
 
 /// Rendered exact-target gate evidence and typed D1 report.
 pub struct GateReport {
@@ -21,7 +24,19 @@ pub struct GateReport {
     pub output: String,
 }
 
-pub fn run(root: &Path, changed_paths: Vec<PathBuf>) -> Result<GateReport, ProductRunnerError> {
+pub fn run_with_ownership(
+    root: &Path,
+    changed_paths: Vec<PathBuf>,
+    ownership: &WorkspaceOwnership,
+) -> Result<GateReport, ProductRunnerError> {
+    run_scoped(root, changed_paths, Some(ownership))
+}
+
+fn run_scoped(
+    root: &Path,
+    changed_paths: Vec<PathBuf>,
+    ownership: Option<&WorkspaceOwnership>,
+) -> Result<GateReport, ProductRunnerError> {
     let plan = TargetGatePlan::discover(root, changed_paths).map_err(|error| {
         ProductRunnerError::new(
             ProductRunnerErrorKind::Gate,
@@ -39,6 +54,7 @@ pub fn run(root: &Path, changed_paths: Vec<PathBuf>) -> Result<GateReport, Produ
                     plan.changed_paths(),
                     specification.project().kind(),
                     specification.display(),
+                    ownership,
                 ),
                 Some("artifact-csv-structure") => artifact_csv::run(
                     root,
@@ -160,8 +176,12 @@ mod tests {
             .expect("legacy source");
         fs::write(root.path().join("vm.js"), "const ready = true;\n").expect("candidate source");
 
-        let report = run(root.path(), vec![PathBuf::from("third_party"), PathBuf::from("vm.js")])
-            .expect("gate report");
+        let report = run_scoped(
+            root.path(),
+            vec![PathBuf::from("third_party"), PathBuf::from("vm.js")],
+            None,
+        )
+        .expect("gate report");
 
         assert!(report.report.passed(), "{}", report.output);
         assert!(report.output.contains("Scanned 1 changed source file"));
@@ -193,9 +213,10 @@ mod tests {
         fs::write(root.path().join("game/src/main.rs"), "fn main() { assert!(true); }\n")
             .expect("game source");
 
-        let report = run(
+        let report = run_scoped(
             root.path(),
             vec![PathBuf::from("game/Cargo.toml"), PathBuf::from("game/src/main.rs")],
+            None,
         )
         .expect("gate report");
         let nested_manifest =

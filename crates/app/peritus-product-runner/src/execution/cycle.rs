@@ -92,6 +92,7 @@ pub(super) async fn inspect_cycle(
     observe: &RunObserver,
     baseline: &CandidateBaseline,
     state: &mut RunState,
+    ownership: &WorkspaceOwnership,
 ) -> Result<CycleInspection, ProductRunnerError> {
     let phase = if state.coordinator.completed_fixer_cycles() == 0 {
         ProductRunPhase::Checking
@@ -110,7 +111,7 @@ pub(super) async fn inspect_cycle(
     )?;
     check_cancelled(input)?;
     let changed_paths = baseline.changed_paths(&input.workspace_root)?;
-    let gate_report = gates::run(&input.workspace_root, changed_paths)?;
+    let gate_report = gates::run_with_ownership(&input.workspace_root, changed_paths, ownership)?;
     let mut evidence = RunEvidence {
         diff: bundle::diff(&input.workspace_root)?,
         gates: gate_report.output.clone(),

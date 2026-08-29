@@ -61,6 +61,10 @@ incomplete terminal; malformed JSON/schema fails as malformed; nonzero exit afte
 an interrupted incomplete terminal; an empty post-submit exit remains ambiguous. Cancellation kills
 and reaps the owned process before emitting one cancelled terminal.
 
+The runtime accepts automatic provider-managed prompt caching as a no-flag routing policy. It does
+not accept explicit cache identities or TTL breakpoints, and Peritus retains the complete stateless
+transcript locally.
+
 The documented final-result envelope does not expose a trustworthy typed rate-limit or Retry-After
 contract. Generic `is_error` results are therefore non-retryable provider terminals in production,
 and the runtime profile leaves rate-limit detail unsupported. A2 separately qualifies Peritus's

@@ -82,6 +82,17 @@ real long-running program: `node vm.js` rendered 53 frames, reached Peritus's 12
 command deadline, was killed and reaped, and returned control to the independent reviewer. Peritus
 accepted the candidate after 28 provider requests and 602 seconds; Harbor recorded zero exceptions.
 
+The first full-suite `build-pov-ray` trial received reward `1.0`, but Peritus reported product
+acceptance false. The task referred to Harbor comparing the output with a reference image, and the
+old media resolver mistook unrelated GIF files in the imported source tree for model inputs. The
+same imported upstream POV-Ray sources then reached a first-party source-layout gate. Peritus now
+resolves exact named image paths before treating a request as visual, and tracks whether source was
+present at the baseline or directly authored through its write tool before applying the mandatory
+500-line ceiling. The ceiling remains strict for code Peritus authors and for files it modifies
+from the starting workspace. The retained diagnosis and regressions are `TBF-005` in
+`../failure-journal.md`; the running baseline remains frozen, and the final campaign will exercise
+the corrected product binary.
+
 ## Run the full suite
 
 The production campaign is five attempts for each of 89 tasks: 445 trials. Keep it serialized on

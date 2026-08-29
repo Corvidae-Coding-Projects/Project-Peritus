@@ -55,6 +55,17 @@ impl WorkspaceOwnership {
         }
     }
 
+    /// Returns whether source layout belongs to the starting workspace or was authored directly.
+    ///
+    /// Files produced later by compilers, generators, archive extraction, or other observed
+    /// commands retain their upstream/generated structure instead of being misclassified as new
+    /// first-party architecture. A file created through the explicit text-write tool remains
+    /// first-party and cannot bypass source-layout policy.
+    #[must_use]
+    pub fn source_layout_applies(&self, path: &Path) -> bool {
+        self.baseline_files.contains(path) || self.directly_created_files.contains(path)
+    }
+
     /// Allows exact-file removal only when this product run has a defensible ownership claim.
     pub fn ensure_removable(&self, path: &Path) -> Result<(), DeveloperLoopError> {
         if self.baseline_files.contains(path) || self.directly_created_files.contains(path) {
@@ -85,5 +96,8 @@ mod tests {
         let direct = workspace.path().join("draft.txt");
         ownership.record_direct_creation(&direct, false);
         assert!(ownership.ensure_removable(&direct).is_ok());
+        assert!(ownership.source_layout_applies(&baseline));
+        assert!(ownership.source_layout_applies(&direct));
+        assert!(!ownership.source_layout_applies(&external));
     }
 }

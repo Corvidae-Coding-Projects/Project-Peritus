@@ -50,6 +50,25 @@ pub fn parallel_profile() -> ProviderProfile {
     .expect("profile")
 }
 
+pub fn caching_profile() -> ProviderProfile {
+    ProviderProfile::new(
+        ProviderProfileId::new([0x7C; 16]).expect("profile ID"),
+        1,
+        ProviderName::new("caching-provider".to_owned()).expect("provider"),
+        ModelName::new("caching-model".to_owned()).expect("model"),
+        WireDialect::CompatibleResponses,
+        CapabilityMatrix::new(&[Capability::ToolCalls, Capability::PromptCaching], &[])
+            .expect("capabilities"),
+        CapabilityProvenance::Probed,
+        ModelLimits::new(32_768, 4_096, 16, 1, 256 * 1024).expect("limits"),
+        OutputLimitEnforcement::ProviderEnforced,
+        StateMode::StatelessReplay,
+        ResumeKind::Unsupported,
+        CancellationKind::BestEffortLocalAbort,
+    )
+    .expect("profile")
+}
+
 pub fn read_tool() -> ToolDefinition {
     let limits = ProtocolLimits::PRODUCTION;
     ToolDefinition::new(

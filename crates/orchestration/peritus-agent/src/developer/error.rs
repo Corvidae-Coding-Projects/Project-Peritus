@@ -14,6 +14,8 @@ pub enum DeveloperLoopError {
     Model(ModelDriveError),
     /// A durable trace boundary rejected an event.
     Trace(String),
+    /// Checked context accounting or compaction could not produce a bounded request.
+    Context(String),
     /// The model requested an undeclared or invalid tool operation.
     Tool(String),
     /// The provider refused the developer role.
@@ -32,6 +34,7 @@ impl fmt::Display for DeveloperLoopError {
             Self::Protocol(error) => fmt::Display::fmt(error, formatter),
             Self::Model(error) => fmt::Display::fmt(error, formatter),
             Self::Trace(detail) => write!(formatter, "persist developer trace: {detail}"),
+            Self::Context(detail) => write!(formatter, "prepare developer context: {detail}"),
             Self::Tool(detail) => write!(formatter, "execute developer tool: {detail}"),
             Self::Refused => formatter.write_str("provider refused the developer request"),
             Self::LimitExceeded => formatter.write_str("developer loop limit was exhausted"),
@@ -49,6 +52,7 @@ impl std::error::Error for DeveloperLoopError {
             Self::Protocol(error) => Some(error),
             Self::Model(error) => Some(error),
             Self::Trace(_)
+            | Self::Context(_)
             | Self::Tool(_)
             | Self::Refused
             | Self::LimitExceeded

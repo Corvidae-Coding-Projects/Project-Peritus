@@ -1,5 +1,7 @@
 //! Production D0 developer-loop integration with a scripted provider and concrete tool port.
 
+#[path = "developer_loop/context_tests.rs"]
+mod context_tests;
 #[path = "developer_loop/fixtures.rs"]
 mod fixtures;
 
@@ -128,6 +130,7 @@ impl DeveloperToolExecutor for RecordingTool {
 struct RecordingTrace {
     envelopes: u32,
     observations: u32,
+    compactions: u32,
 }
 
 impl DeveloperTrace for RecordingTrace {
@@ -138,6 +141,7 @@ impl DeveloperTrace for RecordingTrace {
         match event {
             DeveloperTraceEvent::ProviderEnvelope(_) => self.envelopes += 1,
             DeveloperTraceEvent::ToolObservation { .. } => self.observations += 1,
+            DeveloperTraceEvent::ContextCompaction(_) => self.compactions += 1,
         }
         Ok(())
     }
