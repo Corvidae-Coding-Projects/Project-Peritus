@@ -32,7 +32,8 @@ impl ProductFindingLedger {
     /// Restores a durable product finding ledger without dropping open history.
     ///
     /// # Errors
-    /// Rejects duplicate finding identities or cycles newer than the ledger head.
+    /// Rejects cycles newer than the ledger head. Pre-v2 location-derived duplicate identities are
+    /// coalesced by stable title while preserving their newest fail-closed state.
     pub fn restore(
         cycle: u32,
         summary: String,
@@ -43,16 +44,18 @@ impl ProductFindingLedger {
         {
             return Err(ProductReviewError::new("restored review ledger cycle is invalid"));
         }
-        let finding_count = findings.len();
-        let findings =
-            findings.into_iter().map(|finding| (finding.id(), finding)).collect::<BTreeMap<_, _>>();
-        if findings.len() != finding_count {
-            return Err(ProductReviewError::new("restored review ledger duplicates a finding"));
+        let mut restored = BTreeMap::<Sha256Digest, ProductFinding>::new();
+        for finding in findings {
+            if let Some(existing) = restored.get_mut(&finding.id()) {
+                existing.merge_restored(finding);
+            } else {
+                restored.insert(finding.id(), finding);
+            }
         }
         if cycle > 0 && summary.trim().is_empty() {
             return Err(ProductReviewError::new("restored review ledger summary is empty"));
         }
-        Ok(Self { cycle, summary, findings })
+        Ok(Self { cycle, summary, findings: restored })
     }
 
     /// Admits one fresh reviewer submission and reconciles it against conserved history.
@@ -141,10 +144,10 @@ mod tests {
     use super::*;
     use crate::product::{FindingSeverity, ProductFindingCategory};
 
-    fn finding(cycle: u32) -> ProductFinding {
+    fn finding(cycle: u32, severity: FindingSeverity) -> ProductFinding {
         ProductFinding::new(
             ProductFindingCategory::BuildCoverage,
-            FindingSeverity::Advisory,
+            severity,
             "Nested target was not built".to_owned(),
             "Root tests did not include the candidate".to_owned(),
             "game/Cargo.toml".to_owned(),
@@ -161,8 +164,11 @@ mod tests {
         ledger
             .admit_review(
                 1,
-                ProductReviewSubmission::new("initial".to_owned(), vec![finding(1)])
-                    .expect("submission"),
+                ProductReviewSubmission::new(
+                    "initial".to_owned(),
+                    vec![finding(1, FindingSeverity::Low)],
+                )
+                .expect("submission"),
             )
             .expect("review");
         ledger
@@ -182,5 +188,110 @@ mod tests {
             )
             .expect("review");
         assert!(!ledger.has_blockers());
+    }
+
+    #[test]
+    fn conserved_advisory_does_not_block_acceptance() {
+        let mut ledger = ProductFindingLedger::new();
+        ledger
+            .admit_review(
+                1,
+                ProductReviewSubmission::new(
+                    "advisory only".to_owned(),
+                    vec![finding(1, FindingSeverity::Advisory)],
+                )
+                .expect("submission"),
+            )
+            .expect("review");
+
+        assert_eq!(ledger.open_findings().count(), 1);
+        assert!(!ledger.has_blockers());
+    }
+
+    #[test]
+    fn repeated_finding_updates_location_without_forking_identity() {
+        let mut ledger = ProductFindingLedger::new();
+        let first = ProductFinding::new(
+            ProductFindingCategory::RequestedBehavior,
+            FindingSeverity::Medium,
+            "Wrong category".to_owned(),
+            "The value uses an unrelated category".to_owned(),
+            "out/report.csv:8".to_owned(),
+            "Inspect the source category".to_owned(),
+            "Use the declared category".to_owned(),
+            1,
+        )
+        .expect("first finding");
+        ledger
+            .admit_review(
+                1,
+                ProductReviewSubmission::new("first review".to_owned(), vec![first])
+                    .expect("submission"),
+            )
+            .expect("review");
+        ledger.record_fixer_proposal(1);
+        let repeated = ProductFinding::new(
+            ProductFindingCategory::RequestedBehavior,
+            FindingSeverity::Medium,
+            "Wrong category".to_owned(),
+            "The value still uses an unrelated category".to_owned(),
+            "out/report.csv:8; out/report.json category".to_owned(),
+            "Inspect both outputs".to_owned(),
+            "Use the declared category in both outputs".to_owned(),
+            2,
+        )
+        .expect("repeated finding");
+        ledger
+            .admit_review(
+                2,
+                ProductReviewSubmission::new("second review".to_owned(), vec![repeated])
+                    .expect("submission"),
+            )
+            .expect("review");
+
+        let findings = ledger.findings().collect::<Vec<_>>();
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].location(), "out/report.csv:8; out/report.json category");
+        assert!(ledger.has_blockers());
+    }
+
+    #[test]
+    fn restore_coalesces_pre_v2_location_duplicates_fail_closed() {
+        let resolved = ProductFinding::restore(
+            ProductFindingCategory::RequestedBehavior,
+            FindingSeverity::Medium,
+            "Wrong category".to_owned(),
+            "First location form".to_owned(),
+            "out/report.csv:8 (row)".to_owned(),
+            "Inspect the CSV".to_owned(),
+            "Use the declared category".to_owned(),
+            ProductFindingState::ResolutionConfirmed { cycle: 2 },
+            1,
+            2,
+        )
+        .expect("resolved finding");
+        let open = ProductFinding::restore(
+            ProductFindingCategory::RequestedBehavior,
+            FindingSeverity::Medium,
+            "Wrong category".to_owned(),
+            "Updated location form".to_owned(),
+            "out/report.csv:8; out/report.json category".to_owned(),
+            "Inspect both outputs".to_owned(),
+            "Use the declared category in both outputs".to_owned(),
+            ProductFindingState::FixProposed { cycle: 3 },
+            2,
+            3,
+        )
+        .expect("open finding");
+
+        let ledger =
+            ProductFindingLedger::restore(3, "restored review".to_owned(), vec![resolved, open])
+                .expect("coalesced ledger");
+        let findings = ledger.findings().collect::<Vec<_>>();
+        assert_eq!(findings.len(), 1);
+        assert_eq!(findings[0].first_cycle(), 1);
+        assert_eq!(findings[0].last_cycle(), 3);
+        assert_eq!(findings[0].location(), "out/report.csv:8; out/report.json category");
+        assert!(ledger.has_blockers());
     }
 }

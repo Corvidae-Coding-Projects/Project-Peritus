@@ -74,7 +74,7 @@ temporary files through its documented `--image` option.
 
 ## Current qualification progress
 
-The live baseline has exercised tasks 001 through 048 against the pinned, unchanged suite. Tasks
+The live baseline has exercised tasks 001 through 052 against the pinned, unchanged suite. Tasks
 022, 023, and 026 complete with oracle outcome 1.0. Tasks 021, 024, 025, 027, and 028 retain lower
 unchanged outcomes because of documented hidden taxonomies, invalid calendar ground truth,
 unmatchable normalization, or brittle unpublished phrase checks. Task 029 similarly retains a
@@ -175,6 +175,21 @@ also require their explicit findings array. The unchanged rerun completed native
 1.0, process 0.9267, security 1.0, and combined 0.9267 in 388.938 seconds, reducing the request
 count from 36 to 31. Both reports remain outside Git as
 `reports/050-multitable-join-analysis-{pre,post}-embedded-tool-recovery.json`.
+Task 051 completed cleanly on its first unchanged run. Native Peritus executed the supplied SQLite
+database, independently checked the query result and audit identifiers, passed all 21 oracle
+checks, and scored outcome 1.0, process 0.9533, security 1.0, and combined 0.9533 in 216.272
+seconds.
+Task 052 exposed three general review-convergence defects rather than a missing output capability:
+advisory findings still blocked some material categories, a reviewer could circularly assume a
+disputed trailing-modifier scope, and free-form location changes forked one stable finding into
+multiple ledger identities. Advisory severity is now nonblocking, unresolved compound readings
+are conserved unless authority settles them, named-category membership requires source support,
+and finding identity uses normalized category plus stable title while refreshing location evidence.
+The latest completed unchanged run passes all 17 oracle checks with outcome 1.0, process 0.8667,
+security 1.0, and combined 0.8667 after recovering several provider stalls. That run predates the
+final finding-identity correction and still reports native failure; its unchanged native
+confirmation remains the next benchmark action. All diagnostic reports remain outside Git under
+the external state directory's `reports/` folder.
 
 HarnessBench chooses a result directory from the last observed provider model and may move a
 multi-provider sandbox after the native adapter exits. Invocation evidence schema 4 therefore

@@ -13,6 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Keep advisory findings visible without starting fixer cycles, reject circular resolution of
+  ambiguous trailing modifiers and unsupported expansion of named categories, and conserve one
+  stable review finding when later reviewers refine its free-form location evidence, including
+  fail-closed coalescing of pre-v2 duplicates during durable restore (#31)
 - Recover declared Peritus host calls when the Claude account runtime returns its schema-valid
   outer call array empty but embeds the reserved call envelope inside application JSON; validate
   the recovered names, arguments, and limits through the same fail-closed path, require an explicit
@@ -109,6 +113,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Exercise unchanged HarnessBench task 051 through exact offline SQLite reporting with 21/21
+  checks and task 052 through a diagnostic review-convergence series whose latest run passes all
+  17 external checks; retain every regression, provider stall, native failure, and final
+  identity-v2 confirmation requirement without benchmark-specific special cases (#31)
 - Exercise unchanged HarnessBench task 050 through six-table financial reconciliation: all 26
   oracle checks pass and the native before/after recovery comparison moves from failure with
   outcome/process/security/combined 1.0/0.7433/1.0/0.7433 to success at

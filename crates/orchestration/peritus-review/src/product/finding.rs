@@ -55,9 +55,9 @@ impl ProductFindingCategory {
         }
     }
 
-    /// Categories whose presence blocks acceptance regardless of reviewer severity wording.
+    /// Categories whose non-advisory findings require remediation below the global high threshold.
     #[must_use]
-    pub const fn always_blocks(self) -> bool {
+    pub const fn blocks_when_non_advisory(self) -> bool {
         matches!(
             self,
             Self::Correctness
@@ -127,7 +127,7 @@ impl ProductFinding {
         {
             return Err(ProductReviewError::new("review finding exceeds its text bound"));
         }
-        let id = finding_id(category, &title, &location);
+        let id = finding_id(category, &title);
         Ok(Self {
             id,
             category,
@@ -207,7 +207,9 @@ impl ProductFinding {
     /// Policy-derived blocking status.
     #[must_use]
     pub const fn blocking(&self) -> bool {
-        self.category.always_blocks() || severity_at_least(self.severity, FindingSeverity::High)
+        !matches!(self.severity, FindingSeverity::Advisory)
+            && (self.category.blocks_when_non_advisory()
+                || severity_at_least(self.severity, FindingSeverity::High))
     }
 
     /// Short finding name.
@@ -261,6 +263,7 @@ impl ProductFinding {
     pub(super) fn observe_again(&mut self, finding: &Self, cycle: u32) {
         self.severity = finding.severity;
         self.description.clone_from(&finding.description);
+        self.location.clone_from(&finding.location);
         self.reproduction.clone_from(&finding.reproduction);
         self.remediation.clone_from(&finding.remediation);
         self.state = ProductFindingState::Open;
@@ -274,6 +277,24 @@ impl ProductFinding {
     pub(super) const fn confirm_resolution(&mut self, cycle: u32) {
         self.state = ProductFindingState::ResolutionConfirmed { cycle };
         self.last_cycle = cycle;
+    }
+
+    /// Coalesces a pre-v2 location-derived duplicate while preserving the newest fail-closed state.
+    pub(super) fn merge_restored(&mut self, finding: Self) {
+        self.first_cycle = self.first_cycle.min(finding.first_cycle);
+        let replace = finding.last_cycle > self.last_cycle
+            || (finding.last_cycle == self.last_cycle
+                && restored_state_rank(finding.state) > restored_state_rank(self.state));
+        if replace {
+            self.severity = finding.severity;
+            self.title = finding.title;
+            self.description = finding.description;
+            self.location = finding.location;
+            self.reproduction = finding.reproduction;
+            self.remediation = finding.remediation;
+            self.state = finding.state;
+            self.last_cycle = finding.last_cycle;
+        }
     }
 }
 
@@ -334,12 +355,22 @@ const fn severity_rank(value: FindingSeverity) -> u8 {
     }
 }
 
-fn finding_id(category: ProductFindingCategory, title: &str, location: &str) -> Sha256Digest {
-    let mut bytes = b"peritus.product-finding.v1\0".to_vec();
+const fn restored_state_rank(value: ProductFindingState) -> u8 {
+    match value {
+        ProductFindingState::ResolutionConfirmed { .. } => 1,
+        ProductFindingState::Open => 2,
+        ProductFindingState::FixProposed { .. } => 3,
+    }
+}
+
+fn finding_id(category: ProductFindingCategory, title: &str) -> Sha256Digest {
+    let mut bytes = b"peritus.product-finding.v2\0".to_vec();
     bytes.extend_from_slice(category.as_str().as_bytes());
     bytes.push(0);
     bytes.extend(title.trim().chars().flat_map(char::to_lowercase).collect::<String>().as_bytes());
-    bytes.push(0);
-    bytes.extend(location.trim().as_bytes());
     sha256(&bytes)
 }
+
+#[cfg(test)]
+#[path = "finding_tests.rs"]
+mod tests;

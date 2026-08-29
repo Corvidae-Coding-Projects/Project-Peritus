@@ -1078,6 +1078,42 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   typed review with no findings after independent source inspection. Unit, product-runner,
   strict-Clippy, and real owned-process Claude conformance checks pass.
 
+## HBF-022: advisory review and unstable locations created regressive fixer work
+
+- Suite and task: HarnessBench 2.0, `052-metric-definition-audit`.
+- Symptom: one unchanged run produced the oracle-perfect severity interpretation, but native
+  Peritus treated a review explicitly marked advisory as blocking and exhausted two no-change
+  fixer cycles. A later run admitted the advisory but let a reviewer settle an ambiguous trailing
+  modifier by assuming the disputed distribution, causing a correct candidate to regress. After
+  that scope issue was removed, the writer broadened one named category to a related concept. The
+  reviewer corrected it, but changed the finding's location formatting between cycles; the same
+  title became two identities and native completion again stopped after no-change fixer work.
+- Cause: product blocker policy made correctness, requested-behavior, coverage, and security
+  categories block even at advisory severity. Reviewer instructions did not reject circular
+  modifier-scope reasoning or unsupported expansion of named categories. Product finding identity
+  included the complete free-form location string even though the contract calls the title the
+  stable identity and location is updateable evidence.
+- Change: advisory severity is now nonblocking in every category, while low-or-higher material
+  categories and high-or-higher policy findings still block. The shared engineering workflow and
+  reviewer contract preserve any reasonable unresolved compound reading, reject circular
+  modifier-attachment arguments, and require authoritative category membership instead of domain
+  association. Product finding identity version 2 uses normalized category and stable title;
+  repeated findings update their location and evidence without forking ledger history. Restore
+  coalesces pre-v2 location-derived duplicates into the newest fail-closed state so existing runs
+  remain resumable after the identity correction.
+- Evidence: local reports
+  `reports/052-metric-definition-audit-pre-ambiguity-conservation.json`,
+  `reports/052-metric-definition-audit-post-ambiguity-conservation-pre-advisory-admission.json`,
+  `reports/052-metric-definition-audit-post-advisory-admission-pre-scope-circularity.json`,
+  `reports/052-metric-definition-audit-post-scope-circularity-pre-category-boundary.json`, and
+  `reports/052-metric-definition-audit-final.json`. The last completed unchanged run passes all 17
+  oracle checks with outcome 1.0, process 0.8667, security 1.0, and 54 recorded requests after
+  recovering several provider stalls. It predates stable finding identity v2 and therefore still
+  records native success `false`; an unchanged native confirmation against v2 remains required.
+- Regression evidence: affected review, orchestrator, and product-runner suites cover advisory
+  admission, retained material blockers, location-insensitive identity, location evidence updates,
+  finding conservation, and production fixer confirmation. Strict affected-crate Clippy passes.
+
 ## HBI-027: HarnessBench relocates mixed-model sandboxes without rewriting earlier paths
 
 - Suite and task: HarnessBench 2.0, first visible after tool-capable review in

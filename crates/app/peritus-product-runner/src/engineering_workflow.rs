@@ -17,9 +17,23 @@ requested behavior.
    interpretation looks cleaner. If no reading can satisfy both, report the actual contradiction
    instead of silently choosing a new contract. Reporting a source inconsistency does not mean
    withholding requested work that is still meaningfully constructible. When authoritative inputs
+   contain one grammatically ambiguous compound rule, `narrowest` is not permission to attach a
+   trailing modifier to every earlier list item or to replace another reasonable ordinary reading.
+   Preserve a candidate that satisfies a reasonable reading unless another authoritative source or
+   deterministic gate resolves the scope. Record the unresolved ambiguity as advisory; a blocking
+   finding must show that the candidate violates every reasonable reading, not merely that the
+   reviewer prefers a different parse. Do not settle whether a trailing modifier distributes over
+   coordinated list items by first assuming that distribution and then citing an earlier item's
+   lack of the modifier's property; that is circular. Independently consider both distributive and
+   nearest-item grammatical attachments before claiming that every reasonable reading fails.
+   When authoritative inputs
    require a closed canonical vocabulary, canonical identifiers are opaque contract values. Choose
    the registered value whose declared category and governing rule fit, keep factual
    evidence fields accurate, and report awkward naming without inventing a replacement identifier.
+   When a rule applies to named categories, require an authoritative label, taxonomy, or definition
+   for category membership. Do not expand a named category to a related concept merely because the
+   domain association seems plausible; preserve the literal category boundary when the source does
+   not define a broader membership rule.
    Ask the user only when a material choice changes the requested result or effect and cannot be
    sensibly inferred; produce a reversible requested artifact with an explicit limitation when that
    remains useful. Treat phrases such as `such as`, `for example`, and `including` as
@@ -131,12 +145,20 @@ proposal: independently reject design claims that broaden a scoped rule, overwri
 expected value, close a non-exhaustive example, reverse declared source precedence, or label
 compatible requirements contradictory. Reject a candidate that demotes a matching superseding rule
 from a primary or controlling field merely to preserve a broader source label. Require focused
-remediation, but do not demand speculative redesigns or unrelated hardening. If the requested result
-and independent checks pass, a preference for more detailed traces, duplicated corroboration, or
+remediation, but do not demand speculative redesigns or unrelated hardening. Do not turn a
+grammatically ambiguous compound phrase into reviewer-created policy: if the candidate follows a
+reasonable reading and no other authority or deterministic gate settles the scope, preserve the
+candidate and make the ambiguity advisory. A blocking interpretation finding must demonstrate that
+the candidate violates every reasonable reading; `narrowest` alone is not authority. Do not prove
+modifier scope by assuming the disputed distribution and then citing properties implied only by
+that assumption. Check both distributive and nearest-item attachments independently. If the
+requested result and independent checks pass, a preference for more detailed traces, duplicated corroboration, or
 stronger evidence presentation is at most advisory. Do not block merely because an opaque canonical
 identifier has awkward wording when its declared category and governing rule match and the
 candidate's factual evidence remains accurate. Never turn optional evidence enrichment into
-repeated fixer work. Treat a missing or incompatible production dependency, or a test-process
+repeated fixer work. Do not broaden a named rule category to semantically related concepts without
+an authoritative label, taxonomy, or membership definition. Treat a missing or incompatible
+production dependency, or a test-process
 substitute used in its place, as a blocking compatibility failure when that dependency is being
 added or upgraded. Legitimate mocks for unrelated boundaries remain allowed, but they cannot prove
 the changed dependency works in production.
@@ -172,6 +194,12 @@ mod tests {
             assert!(instructions.contains("literal requirement ledger"));
             assert!(instructions.contains("grammatically modify"));
             assert!(instructions.contains("explicit expected value"));
+            assert!(instructions.contains("grammatically ambiguous compound rule"));
+            assert!(instructions.contains("violates every reasonable reading"));
+            assert!(instructions.contains("that is circular"));
+            assert!(instructions.contains("nearest-item grammatical attachments"));
+            assert!(instructions.contains("authoritative label, taxonomy, or definition"));
+            assert!(instructions.contains("literal category boundary"));
             assert!(instructions.contains("non-exhaustive"));
             assert!(instructions.contains("invented allowlist"));
             assert!(instructions.contains("preserve that precedence"));

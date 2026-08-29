@@ -253,7 +253,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn reviewer_boolean_is_rejected_and_build_coverage_blocks_by_policy() {
+    fn reviewer_boolean_is_rejected_and_advisory_remains_nonblocking() {
         assert!(parse(r#"{"summary":"looks fine","blocking":false,"findings":[]}"#, 1).is_err());
         assert!(parse(r#"{"summary":"still inspecting"}"#, 1).is_err());
         let submission = parse(
@@ -263,6 +263,14 @@ mod tests {
         .expect("typed review");
         let mut ledger = ProductFindingLedger::new();
         ledger.admit_review(1, submission).expect("admit");
+        assert!(!ledger.has_blockers());
+
+        let submission = parse(
+            r#"{"summary":"target remains uncovered","findings":[{"category":"build_coverage","severity":"low","title":"Nested target not built","description":"Only root tests ran","location":"game/Cargo.toml","reproduction":"cargo check --manifest-path game/Cargo.toml","remediation":"Run exact target gates"}]}"#,
+            2,
+        )
+        .expect("typed review");
+        ledger.admit_review(2, submission).expect("admit");
         assert!(ledger.has_blockers());
     }
 
