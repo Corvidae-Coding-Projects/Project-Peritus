@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 701,
+  "next_comment_id": 702,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T14:08:59.229298343Z",
+      "updated_at": "2026-08-29T14:13:24.979483103Z",
       "labels": [
         "qualification",
         "release"
@@ -1549,6 +1549,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAn5W/OjXSCtFMpHHxTvAR8jzwxMTflmKzBvpII9M5vRGgmcdNUzNSVlNTzRLB32poN9trjhiavNFm3n0+IItAAw=="
+        },
+        "2cdc60ed-3885-4565-88b5-73af0cd8e435": {
+          "display_id": 701,
+          "author": "6ME5",
+          "content": "Checkpoint published: signed commit 67b9c784348acd274865c34a86a46884a0ffe607 on feature/g4-conversational-runs, draft PR #39. The source-layout gate now evaluates exact changed candidate source files rather than recursively rejecting untouched vendor/legacy trees. Verified cargo fmt, full peritus-product-runner tests (48 unit + 2 composition), strict crate clippy, and rebuilt the static musl benchmark agent.",
+          "created_at": "2026-08-29T14:13:24.976936544Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAFK0KEgxXwxbtvfXncehxpS9/LsOGIea8inRBTCj9jGUEMc9GVbJ3klzJaJuLzmV2IIJj6K+I6pp5EluefkmTBA=="
         },
         "2cf05327-e11d-4ba4-8712-c8a09ba2ec84": {
           "display_id": 575,
@@ -7061,8 +7070,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T14:08:59.229298343Z",
+    "timestamp": "2026-08-29T14:13:24.979483103Z",
     "agent_id": "6ME5",
-    "agent_seq": 884
+    "agent_seq": 885
   }
 }
