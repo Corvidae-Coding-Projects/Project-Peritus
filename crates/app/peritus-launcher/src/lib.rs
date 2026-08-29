@@ -17,8 +17,8 @@ mod update;
 mod workspace_setup;
 
 pub use app::{
-    configure_providers_interactive, configure_workspaces_interactive, launch_interactive,
-    launch_interactive_at, update_interactive,
+    configure_providers_interactive, configure_update_checks, configure_workspaces_interactive,
+    launch_interactive, launch_interactive_at, update_interactive,
 };
 pub use bootstrap::{PreparedProduct, ProductBootstrap};
 pub use daemon::{DaemonLaunch, DaemonShutdown, DaemonSupervisor, SiblingBinaries};

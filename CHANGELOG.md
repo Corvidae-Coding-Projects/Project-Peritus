@@ -19,7 +19,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   qualification that proves both successful installation and checksum rejection (#31)
 - Add a six-hour cached, offline-tolerant startup release check and `peritus update`, with exact
   semantic-version comparison, bounded streaming downloads, verified native upgrades, installed-
-  version confirmation on Unix, and finish-after-exit Windows replacement (#31)
+  version confirmation on Unix, finish-after-exit Windows replacement, and persistent explicit
+  enable/disable commands for automatic checks (#31)
 
 ### Fixed
 - Persist a bounded effect-receipt ledger for every writable G4 developer-tool invocation, binding

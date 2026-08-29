@@ -40,7 +40,7 @@ const BASH: &str = r#"_peritus() {
     prompt) COMPREPLY=( $(compgen -W "answer cancel" -- "$cur") ) ;;
     terminal) COMPREPLY=( $(compgen -W "attach input resize detach cancel" -- "$cur") ) ;;
     completions) COMPREPLY=( $(compgen -W "bash zsh fish powershell" -- "$cur") ) ;;
-    *) COMPREPLY=( $(compgen -W "--endpoint --session --timeout-seconds --json --help --version --wait --actor --envelope --payload --idempotency-key --no-expected-revision --topic --after --window --count --snapshot-acceptable --artifact --transfer --output --force --input --media-type --chunk-size --binding --signed-decision --text --selection --confirm --secret-reference --rationale --attachment --process --originating-request --columns --rows --no-follow" -- "$cur") ) ;;
+    *) COMPREPLY=( $(compgen -W "--endpoint --session --timeout-seconds --json --help --version --enable-checks --disable-checks --wait --actor --envelope --payload --idempotency-key --no-expected-revision --topic --after --window --count --snapshot-acceptable --artifact --transfer --output --force --input --media-type --chunk-size --binding --signed-decision --text --selection --confirm --secret-reference --rationale --attachment --process --originating-request --columns --rows --no-follow" -- "$cur") ) ;;
   esac
 }
 complete -F _peritus peritus
@@ -64,6 +64,8 @@ complete -c peritus -l timeout-seconds -r
 complete -c peritus -l json
 complete -c peritus -l help -s h
 complete -c peritus -l version -s V
+complete -c peritus -l enable-checks
+complete -c peritus -l disable-checks
 ";
 
 const POWERSHELL: &str = r#"Register-ArgumentCompleter -Native -CommandName peritus -ScriptBlock {

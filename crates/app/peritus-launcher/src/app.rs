@@ -65,6 +65,16 @@ pub async fn update_interactive() -> Result<(), LauncherError> {
     update::run_explicit(&layout).await
 }
 
+/// Persists whether ordinary interactive startup performs a cached release check.
+///
+/// # Errors
+///
+/// Returns an actionable filesystem or terminal failure when the setting cannot be saved or shown.
+pub fn configure_update_checks(enabled: bool) -> Result<(), LauncherError> {
+    let layout = AppLayout::discover()?.prepare()?;
+    update::configure_checks(&layout, enabled)
+}
+
 fn product_context(
     prepared: &crate::PreparedProduct,
 ) -> Result<ProductLaunchContext, LauncherError> {

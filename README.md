@@ -472,6 +472,10 @@ it. The
 [G4 product-experience guide](docs/g4-product-experience.md) explains onboarding, trust, coding
 runs, native packaging, state locations, and recovery.
 
+Automatic startup update checks are cached for six hours and never block offline use. Disable them
+with `peritus update --disable-checks`, re-enable them with `peritus update --enable-checks`, and
+use plain `peritus update` for a manual check at any time.
+
 ## Foundation checks
 
 Rust `1.97.1`, Verus `0.2026.08.09.92f466f`, and vstd revision

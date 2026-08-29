@@ -140,6 +140,10 @@ Focused settings commands are:
 ```text
 peritus open [PATH]     Open an explicit repository, defaulting to the current directory
 peritus update          Check for and install the latest public release
+peritus update --disable-checks
+                        Disable automatic startup checks; manual checks still work
+peritus update --enable-checks
+                        Re-enable automatic startup checks
 peritus providers       Add, remove, repair, or select providers
 peritus workspaces      Switch, add, trust, repair, or forget workspaces
 ```
@@ -175,7 +179,8 @@ the update with a useful default; `peritus update` performs the same check immed
 downloads stream to the protected cache with a 1 GiB bound and are checksum-verified before native
 installation. Unix upgrades finish transactionally before exit. Windows launches a detached helper
 that waits for the running executable to exit, applies the transactional upgrade, and verifies the
-new installed version.
+new installed version. Automatic checks default on; the update command's `--disable-checks` and
+`--enable-checks` options persist the user's choice without affecting manual checks.
 
 Hosted Linux, macOS, and Windows gates assemble native packages from already checked build outputs,
 exercise install, repeat command launch, upgrade, uninstall, the public bootstrap, and checksum

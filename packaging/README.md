@@ -25,7 +25,8 @@ irm https://raw.githubusercontent.com/Corvidae-Coding-Projects/Project-Peritus/m
 Both bootstraps resolve the latest GitHub release, select the host archive, verify its published
 SHA-256 digest, and call the same native install or upgrade adapter described below. `peritus`
 checks for updates at most once every six hours without blocking offline startup; `peritus update`
-runs the check immediately.
+runs the check immediately. `peritus update --disable-checks` persists an opt-out, and
+`peritus update --enable-checks` turns automatic checks back on.
 
 Installation is deliberately per-user because G0 authenticates local peers as the protected state
 root owner. The installer verifies all package checksums, atomically publishes the launcher,

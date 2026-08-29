@@ -12,7 +12,7 @@ use release::Release;
 const CHECK_INTERVAL: Duration = Duration::from_hours(6);
 
 pub async fn offer_on_startup(layout: &AppLayout) -> Result<bool, LauncherError> {
-    if check_is_fresh(layout) {
+    if !automatic_checks_enabled(layout) || check_is_fresh(layout) {
         return Ok(false);
     }
     let Ok(release) = release::latest().await else {
@@ -38,6 +38,16 @@ pub async fn offer_on_startup(layout: &AppLayout) -> Result<bool, LauncherError>
     apply(layout, &release).await?;
     announce_completion(&release)?;
     Ok(true)
+}
+
+pub fn configure_checks(layout: &AppLayout, enabled: bool) -> Result<(), LauncherError> {
+    let value = if enabled { b"enabled\n".as_slice() } else { b"disabled\n".as_slice() };
+    persist_check_setting(layout, value)?;
+    announce(if enabled {
+        "Automatic startup update checks are enabled."
+    } else {
+        "Automatic startup update checks are disabled. Run `peritus update` to check manually."
+    })
 }
 
 pub async fn run_explicit(layout: &AppLayout) -> Result<(), LauncherError> {
@@ -87,6 +97,20 @@ fn check_is_fresh(layout: &AppLayout) -> bool {
         .is_ok_and(|elapsed| elapsed < CHECK_INTERVAL)
 }
 
+fn automatic_checks_enabled(layout: &AppLayout) -> bool {
+    fs::read(layout.config_root().join("update-checks"))
+        .map_or(true, |value| value != b"disabled\n")
+}
+
+fn persist_check_setting(layout: &AppLayout, value: &[u8]) -> Result<(), LauncherError> {
+    let path = layout.config_root().join("update-checks");
+    let current = crate::persistence::read_exact_or_publish(&path, value)?;
+    if current != value {
+        crate::persistence::replace_recovery_file(&path, value)?;
+    }
+    Ok(())
+}
+
 fn record_check(layout: &AppLayout) -> Result<(), LauncherError> {
     let path = layout.cache_root().join("update-check");
     fs::write(&path, format!("{}\n", env!("CARGO_PKG_VERSION")))
@@ -104,5 +128,14 @@ mod tests {
         assert!(!check_is_fresh(&layout));
         record_check(&layout).expect("record");
         assert!(check_is_fresh(&layout));
+    }
+
+    #[test]
+    fn automatic_checks_default_on_and_persist_off() {
+        let temporary = tempfile::tempdir().expect("temporary root");
+        let layout = AppLayout::for_test(temporary.path()).prepare().expect("layout");
+        assert!(automatic_checks_enabled(&layout));
+        persist_check_setting(&layout, b"disabled\n").expect("disable");
+        assert!(!automatic_checks_enabled(&layout));
     }
 }

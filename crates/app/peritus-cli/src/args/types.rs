@@ -21,7 +21,8 @@ GLOBAL OPTIONS:
   -V, --version              Print version
 
 COMMANDS:
-  update                       Check for and install the latest Peritus release
+  update [--enable-checks | --disable-checks]
+                               Update now, or configure automatic startup checks
   providers                    Open provider settings
   workspaces                   Switch, add, trust, repair, or forget workspaces
   open [PATH]                  Launch Peritus for PATH (default: current directory)
@@ -65,7 +66,7 @@ pub enum Command {
     Help { text: String },
     Version,
     Completions(Shell),
-    Update,
+    Update(UpdateArgs),
     Providers,
     Workspaces,
     Open { path: Option<PathBuf> },
@@ -83,6 +84,10 @@ pub enum Command {
     TerminalResize(TerminalResizeArgs),
     TerminalDetach(TerminalBindingArgs),
     TerminalCancel(TerminalBindingArgs),
+}
+
+pub struct UpdateArgs {
+    pub(crate) automatic_checks: Option<bool>,
 }
 
 pub struct SubmitArgs {

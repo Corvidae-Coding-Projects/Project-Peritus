@@ -16,8 +16,16 @@ fn provider_settings_are_a_standalone_product_command() {
 #[test]
 fn update_is_a_standalone_product_command() {
     let cli = parse(&["peritus", "update"]).expect("update command");
-    assert!(matches!(cli.command, Command::Update));
+    assert!(
+        matches!(cli.command, Command::Update(ref update) if update.automatic_checks.is_none())
+    );
     assert!(cli.endpoint.is_none());
+
+    let cli = parse(&["peritus", "update", "--disable-checks"]).expect("disable checks");
+    assert!(
+        matches!(cli.command, Command::Update(ref update) if update.automatic_checks == Some(false))
+    );
+    assert!(parse(&["peritus", "update", "--enable-checks", "--disable-checks"]).is_err());
 }
 
 #[test]
