@@ -67,6 +67,12 @@ requested behavior.
    process, vendor an undeclared replacement, restore a fallback implementation, or downgrade the
    failure to advice. Test doubles may still isolate unrelated collaborators, but cannot stand in
    for the dependency whose production compatibility the change claims to prove.
+   When the request claims a performance improvement or regression repair, measure the unchanged
+   baseline before mutation and the candidate with the same representative workload, warm-up,
+   clock, and correctness assertions. If mutation already occurred, use the repository baseline in
+   an isolated read-only comparison. Profile when the bottleneck is not already demonstrated, and
+   keep a repository-provided benchmark or threshold authoritative over a supplemental
+   microbenchmark.
    Validate requested effects independently rather than proving only self-authored invariants. For
    local services or APIs, preserve and inspect available access evidence and confirm every required
    endpoint and exercised recovery path. When the request includes a quality or operations report,
@@ -106,7 +112,9 @@ utility modules. Test deterministic logic separately from terminal, process, net
 clock, and randomness adapters. Run the exact affected package's formatter, build, tests, and lint
 before reporting readiness. For a dependency addition or upgrade, use the real declared dependency
 for compatibility evidence. Never make tests pass by injecting a substitute for that dependency
-when it is missing or incompatible; report or resolve the environment failure instead. For an
+when it is missing or incompatible; report or resolve the environment failure instead. For a
+performance change, record a same-workload baseline and candidate measurement before claiming an
+improvement; use profiling when the cause is not already evident. For an
 artifact-only request with no requested retained source, execute
 the bounded producer directly and verify the resulting artifacts and effects rather than creating
 an application package solely to host one run.
@@ -181,6 +189,8 @@ mod tests {
             assert!(instructions.contains("repeated fixer work"));
             assert!(instructions.contains("cannot stand in"));
             assert!(instructions.contains("failed acceptance evidence"));
+            assert!(instructions.contains("measure the unchanged"));
+            assert!(instructions.contains("same representative workload"));
         }
     }
 }

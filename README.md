@@ -139,8 +139,10 @@ The implemented foundation and runtime spine now covers:
   manifestless Python and Node projects bind to their nearest tests, including root-level Python
   test conventions; changed YAML receives bounded structural parsing; conventional Python
   requirements receive an offline read-only satisfaction check so a missing production dependency
-  cannot be hidden by a test substitute; Python checks avoid cache side effects; and SQLite
-  migration workspaces execute the schema, forward migration twice,
+  cannot be hidden by a test substitute; standalone changed Python modules receive syntax evidence
+  even without a manifest or supplied tests; performance claims require a same-workload unchanged
+  baseline and candidate measurement; Python checks avoid cache side effects; and SQLite migration
+  workspaces execute the schema, forward migration twice,
   postcheck, and rollback in a disposable Rust-owned database. Trusted-workspace repair now
   re-registers a validated advanced detached HEAD without discarding agent commits or unfinished
   files, and status accepts Git's ordinary trailing-slash directory records. The daemon persists

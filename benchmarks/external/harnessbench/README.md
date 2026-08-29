@@ -74,7 +74,7 @@ temporary files through its documented `--image` option.
 
 ## Current qualification progress
 
-The live baseline has exercised tasks 001 through 045 against the pinned, unchanged suite. Tasks
+The live baseline has exercised tasks 001 through 046 against the pinned, unchanged suite. Tasks
 022, 023, and 026 complete with oracle outcome 1.0. Tasks 021, 024, 025, 027, and 028 retain lower
 unchanged outcomes because of documented hidden taxonomies, invalid calendar ground truth,
 unmatchable normalization, or brittle unpublished phrase checks. Task 029 similarly retains a
@@ -136,6 +136,14 @@ benchmark environment pins `python-slugify` 8.0.4 and `text-unidecode` 1.3. An u
 the original tests intact, independently verified the installed dependency, passed every direct
 behavior check, and scored outcome 0.98 (`excellent`), process 0.9467, security 1.0, and combined
 0.9277 in 351.72 seconds.
+Task 046 produced a correct exact-SKU index and passed every generated correctness, edge-semantics,
+implementation-shape, fixture-integrity, and performance check with outcome 1.0. It exposed two
+general evidence gaps: standalone changed Python source had only generic artifact acceptance, and
+performance work did not consistently compare the baseline with the candidate. Peritus now gives a
+standalone non-test Python module its own syntax target unless an enclosing Python project owns it,
+and its engineering workflow requires a same-workload baseline/candidate measurement. The final
+unchanged run recorded native Python evidence, measured about a 9,758-times lookup improvement, and
+scored process and combined 0.93 with security 1.0.
 Product failures and benchmark defects are kept separate in the
 [external failure journal](../failure-journal.md); generated workspaces, native traces, and full
 result JSON remain in the configured external state directory rather than Git.

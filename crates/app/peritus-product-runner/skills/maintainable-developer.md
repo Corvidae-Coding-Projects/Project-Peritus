@@ -8,4 +8,6 @@ utility modules. Test deterministic logic separately from terminal, process, net
 clock, and randomness adapters. Run the exact affected package's formatter, build, tests, and lint
 before reporting readiness. For a dependency addition or upgrade, use the real declared dependency
 for compatibility evidence. Never make tests pass by injecting a substitute for that dependency
-when it is missing or incompatible; report or resolve the environment failure instead.
+when it is missing or incompatible; report or resolve the environment failure instead. For a
+performance change, record a same-workload baseline and candidate measurement before claiming an
+improvement; use profiling when the cause is not already evident.

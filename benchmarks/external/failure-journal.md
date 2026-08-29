@@ -814,6 +814,49 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Disposition: retain the unchanged 0.98 result. Do not teach production roles unpublished scoring
   vocabulary when the contract, executable behavior, and review evidence are already correct.
 
+## HBF-015: standalone Python source had only generic artifact acceptance
+
+- Suite and task: HarnessBench 2.0, `046-performance-regression`.
+- Symptom: the first run produced a correct indexed implementation, passed every unchanged oracle
+  check with outcome 1.0, and manually compiled and exercised the exact source. Native acceptance
+  nevertheless reported only general source-layout and empty CSV-structure checks for the changed
+  `slow.py` file.
+- Cause: manifestless Python discovery required a conventional test file. A standalone changed
+  production module with no supplied tests therefore ascended to the benchmark workspace's generic
+  artifact marker and lost even deterministic syntax evidence.
+- Change: a changed non-test `.py` file now forms a standalone manifestless Python target when no
+  enclosing Python project already owns it. Enclosing Python projects with tests retain precedence;
+  standalone test and `conftest.py` files still ascend to their real project. A focused planner
+  regression proves the standalone target receives source-layout and side-effect-free Python syntax
+  gates rather than generic artifact acceptance.
+- Before evidence: local report `reports/046-performance-regression-pre-standalone-python.json`;
+  outcome 1.0, process 0.8867, security 1.0, combined 0.8867, and 147.581 seconds. Native evidence
+  contains no Python gate.
+- After evidence: local report
+  `reports/046-performance-regression-post-language-and-performance-evidence.json`; unchanged
+  outcome 1.0, process 0.93, security 1.0, combined 0.93, and 231.345 seconds. Native acceptance
+  identifies `in/perfcase` as Python and records a successful exact-source syntax gate.
+
+## HBF-016: performance claims lacked comparative evidence
+
+- Suite and task: HarnessBench 2.0, `046-performance-regression`.
+- Symptom: the first correct run measured only the optimized candidate at 0.0228 seconds. Another
+  correct run exercised generated behavior but performed no timing measurement. Both implementations
+  were algorithmically sound and passed the external threshold, but their development traces did
+  not establish the claimed improvement against the unchanged implementation under one workload.
+- Cause: the embedded engineering workflow required focused verification but had no explicit
+  performance-change discipline. A writer could infer improvement from complexity alone or report
+  only a candidate microbenchmark.
+- Change: performance improvements and regression repairs now require an unchanged baseline and the
+  candidate to be measured with the same representative workload, warm-up, clock, and correctness
+  assertions. If mutation already occurred, the workflow uses the repository baseline through an
+  isolated read-only comparison. Profiling is required when the bottleneck is not already
+  demonstrated, and repository-provided benchmarks remain authoritative over supplemental timings.
+- After evidence: the final unchanged run retained the perfect 1.0 oracle outcome and recorded an
+  exact same-workload comparison from 6.731318 seconds to 0.000690 seconds, about 9,758 times faster.
+  Process quality rose to 0.93 without any task-name, SKU-prefix, fixture, rubric, or oracle logic in
+  production behavior.
+
 ## HBF-005: a fixer deleted evaluator-owned evidence
 
 - Suite and task: HarnessBench 2.0, `022-local-rest-api-summary`.

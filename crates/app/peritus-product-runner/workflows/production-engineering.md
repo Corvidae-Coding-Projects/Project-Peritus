@@ -35,6 +35,12 @@ requested behavior.
    process, vendor an undeclared replacement, restore a fallback implementation, or downgrade the
    failure to advice. Test doubles may still isolate unrelated collaborators, but cannot stand in
    for the dependency whose production compatibility the change claims to prove.
+   When the request claims a performance improvement or regression repair, measure the unchanged
+   baseline before mutation and the candidate with the same representative workload, warm-up,
+   clock, and correctness assertions. If mutation already occurred, use the repository baseline in
+   an isolated read-only comparison. Profile when the bottleneck is not already demonstrated, and
+   keep a repository-provided benchmark or threshold authoritative over a supplemental
+   microbenchmark.
 8. Review against the request and design, conserve unresolved findings across cycles, fix actual
    causes, and refuse completion until every deterministic gate and policy-derived blocker clears.
 

@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Recognize standalone changed Python production modules even without a manifest or supplied tests,
+  and require same-workload baseline/candidate measurements for performance-change claims instead
+  of inferring improvement solely from the candidate implementation (#31)
 - Require changed conventional Python dependencies to be satisfied by the real installed package
   through a read-only offline gate, and reject test-process substitutes as compatibility evidence
   for the dependency being added or upgraded, while retaining legitimate unrelated mocks (#31)
@@ -88,10 +91,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Preserve HarnessBench task 046's perfect correctness and performance outcome while replacing
+  generic artifact acceptance with native Python syntax evidence and raising process/combined
+  quality from 0.8867 to 0.93 through comparative performance verification (#31)
 - Exercise unchanged HarnessBench task 045 against pinned `python-slugify` 8.0.4, improving its
   false-substitute baseline from outcome 0.838/process 0.8267/combined 0.6927 to a real-dependency
   outcome 0.98/process 0.9467/combined 0.9277 with security 1.0 (#31)
-- Exercise the pinned, unchanged HarnessBench suite through task 045, retaining task 039's excellent
+- Exercise the pinned, unchanged HarnessBench suite through task 046, retaining task 039's excellent
   0.9673 architecture result, task 040's complete 1.0 mutation-tested Python result, task 041's
   0.9962 immutable-state result, task 042's official 0.4 oracle-crash result, and task 043's 0.995
   transactional SQLite result without hiding regressions or conflating benchmark infrastructure

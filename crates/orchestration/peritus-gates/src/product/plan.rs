@@ -193,6 +193,7 @@ impl TargetGatePlan {
 }
 
 fn nearest_projects(workspace_root: &Path, changed: &Path) -> Vec<AffectedProject> {
+    let standalone_python = standalone_python_project(changed);
     let mut relative = changed.parent().unwrap_or_else(|| Path::new(""));
     loop {
         let absolute = workspace_root.join(relative);
@@ -238,6 +239,14 @@ fn nearest_projects(workspace_root: &Path, changed: &Path) -> Vec<AffectedProjec
             });
         }
         if !found.is_empty() {
+            if let Some(python) = &standalone_python
+                && !found.iter().any(|project| project.kind == ProjectKind::Python)
+            {
+                if found.iter().all(|project| project.kind == ProjectKind::Artifact) {
+                    return vec![python.clone()];
+                }
+                found.push(python.clone());
+            }
             return found;
         }
         let Some(parent) = relative.parent() else { break };
@@ -246,7 +255,22 @@ fn nearest_projects(workspace_root: &Path, changed: &Path) -> Vec<AffectedProjec
         }
         relative = parent;
     }
-    Vec::new()
+    standalone_python.into_iter().collect()
+}
+
+fn standalone_python_project(changed: &Path) -> Option<AffectedProject> {
+    let parent = changed.parent()?;
+    let is_test_support = changed.components().any(|component| component.as_os_str() == "tests")
+        || changed.file_name().is_some_and(|name| name == "conftest.py")
+        || python_test_name(changed);
+    if changed.extension().is_some_and(|extension| extension == "py") && !is_test_support {
+        return Some(AffectedProject {
+            kind: ProjectKind::Python,
+            root: parent.to_path_buf(),
+            manifest: None,
+        });
+    }
+    None
 }
 
 fn conventional_sqlite_migration(root: &Path, changed: &Path) -> bool {
@@ -287,6 +311,10 @@ fn is_root_python_test(path: &Path) -> bool {
     if !path.is_file() || path.extension().and_then(|extension| extension.to_str()) != Some("py") {
         return false;
     }
+    python_test_name(path)
+}
+
+fn python_test_name(path: &Path) -> bool {
     path.file_stem()
         .and_then(|stem| stem.to_str())
         .is_some_and(|stem| stem.starts_with("test_") || stem.ends_with("_test"))

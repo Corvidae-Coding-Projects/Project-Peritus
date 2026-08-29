@@ -267,3 +267,31 @@ fn python_requirements_are_verified_without_installing_or_network_access() {
         ]
     );
 }
+
+#[test]
+fn standalone_changed_python_source_gets_syntax_acceptance() {
+    let temporary = tempfile::tempdir().expect("temporary workspace");
+    std::fs::write(
+        temporary.path().join("peritus-workspace.toml"),
+        "schema_version = 1\nkind = \"artifact\"\n",
+    )
+    .expect("artifact workspace marker");
+    let project = temporary.path().join("in/scripts");
+    std::fs::create_dir_all(&project).expect("project directory");
+    std::fs::write(project.join("catalog.py"), "def lookup(value):\n    return value\n")
+        .expect("standalone source");
+
+    let plan =
+        TargetGatePlan::discover(temporary.path(), vec![PathBuf::from("in/scripts/catalog.py")])
+            .expect("standalone Python plan");
+
+    assert!(plan.has_complete_coverage());
+    assert_eq!(plan.projects().len(), 1);
+    assert_eq!(plan.projects()[0].kind(), ProjectKind::Python);
+    assert_eq!(plan.projects()[0].root(), Path::new("in/scripts"));
+    assert_eq!(plan.projects()[0].manifest(), None);
+    assert_eq!(
+        plan.commands().iter().map(GateCommandSpec::label).collect::<Vec<_>>(),
+        ["Source layout", "Python compile"]
+    );
+}

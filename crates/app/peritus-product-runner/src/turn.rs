@@ -280,5 +280,7 @@ mod tests {
         assert!(prompt.contains("no useful reversible requested result"));
         assert!(prompt.contains("real declared dependency"));
         assert!(prompt.contains("Never make tests pass by injecting a substitute"));
+        assert!(prompt.contains("same-workload baseline"));
+        assert!(prompt.contains("use profiling when the cause is not already evident"));
     }
 }
