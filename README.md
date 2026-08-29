@@ -149,7 +149,10 @@ The implemented foundation and runtime spine now covers:
   retries, compactions, tool calls, normalized token/cache usage, provider-estimated cost, and
   elapsed time under generous runaway ceilings. The TUI's polled status shows elapsed time, time
   since the last durable effect, and the remaining eight-hour run horizon, so a slow provider call
-  stays visibly alive without fabricated progress.
+  stays visibly alive without fabricated progress. Writable developer-tool calls are also wrapped
+  in a synced bounded receipt ledger containing deterministic effect identity, provider call ID,
+  canonical request digest, start/finish state, and result. Completed calls replay without a second
+  effect; a command interrupted across restart is reported as ambiguous and is not run again.
   Productive 48-turn work segments checkpoint the exact candidate and replenish the run in a
   compact newly grounded context, while a no-change exhausted segment stops. Rejected ungrounded or
   malformed task-level terminals receive their exact contract failure on the next bounded attempt

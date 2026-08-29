@@ -2,9 +2,12 @@ use super::*;
 use peritus_model_protocol::{CanonicalJson, JsonBounds, ProtocolLimits, ToolCallId, ToolName};
 use std::{
     io::Write as _,
-    path::Path,
+    path::{Path, PathBuf},
+    sync::atomic::{AtomicU64, Ordering},
     time::{Duration, Instant},
 };
+
+static NEXT_CALL_ID: AtomicU64 = AtomicU64::new(1);
 
 #[test]
 fn workspace_tools_inspect_edit_search_and_execute_without_a_shell() {
@@ -284,7 +287,12 @@ fn exact_remove_preserves_late_external_evidence_and_blocks_shell_deletion() {
     assert!(workspace.path().join("api_access.log").is_file());
 
     let ownership = tools.ownership().clone();
-    let mut fixer = WorkspaceDeveloperTools::with_ownership(workspace.path().to_owned(), ownership);
+    let mut fixer = WorkspaceDeveloperTools::with_ownership(
+        workspace.path().to_owned(),
+        ownership,
+        receipt_path(workspace.path()),
+        "fixer-test".to_owned(),
+    );
     let _ = execute(&mut fixer, "workspace_list", r#"{"depth":1,"path":""}"#);
     let _ = execute(
         &mut fixer,
@@ -333,14 +341,22 @@ fn execute(
     name: &str,
     arguments: &str,
 ) -> DeveloperToolObservation {
-    let call = CompletedToolCall::new(
-        ToolCallId::new(format!("{name}-call")).expect("call ID"),
+    let call = completed_call(
+        &format!("{name}-call-{}", NEXT_CALL_ID.fetch_add(1, Ordering::Relaxed)),
+        name,
+        arguments,
+    );
+    tools.execute(&call).expect("tool dispatch")
+}
+
+fn completed_call(id: &str, name: &str, arguments: &str) -> CompletedToolCall {
+    CompletedToolCall::new(
+        ToolCallId::new(id.to_owned()).expect("call ID"),
         ToolName::new(name.to_owned()).expect("tool name"),
         CanonicalJson::parse(arguments, JsonBounds::value(ProtocolLimits::PRODUCTION))
             .expect("arguments"),
     )
-    .expect("completed call");
-    tools.execute(&call).expect("tool dispatch")
+    .expect("completed call")
 }
 
 fn wire(observation: &DeveloperToolObservation) -> String {
@@ -348,5 +364,14 @@ fn wire(observation: &DeveloperToolObservation) -> String {
 }
 
 fn writable_tools(root: &Path) -> WorkspaceDeveloperTools {
-    WorkspaceDeveloperTools::with_ownership(root.to_owned(), WorkspaceOwnership::capture(root))
+    WorkspaceDeveloperTools::with_ownership(
+        root.to_owned(),
+        WorkspaceOwnership::capture(root),
+        receipt_path(root),
+        "writer-test".to_owned(),
+    )
+}
+
+fn receipt_path(root: &Path) -> PathBuf {
+    root.join(".git/peritus-test-effects.bin")
 }

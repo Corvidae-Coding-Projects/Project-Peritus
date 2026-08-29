@@ -97,6 +97,12 @@ retries, compactions, and normalized token/cache/cost counters when the provider
 long quiet provider call therefore remains visibly alive without inventing progress. The generous
 cumulative ceilings stop runaway execution across the entire designer-writer-reviewer-fixer run;
 they do not shorten productive segments or replace the existing progress-based continuation rule.
+Before a writable filesystem or command tool starts, the runner syncs a bounded receipt containing
+the deterministic role/invocation/effect identity, provider call ID, tool name, and canonical
+request digest. It syncs the bounded result after completion. An exact completed call replays its
+recorded result without repeating the effect. An interrupted filesystem operation may retry through
+its exact preconditions and no-op behavior, while an interrupted external command becomes an
+explicit ambiguous result and is never relaunched automatically.
 The run summary names the durable detailed-design path.
 After completion, the handoff shows the managed path, exact changed-file count, exact successful
 commands, and how to run the result. Press `i` to inspect, `a` to accept, `c` to commit only the

@@ -19,8 +19,13 @@ verification, and explicit risks or non-goals. The adapter then joins:
   CSV, JSON, YAML, and conventional SQLite migration artifacts;
 - `peritus-review` typed policy-derived findings conserved through fixer and fresh-review cycles;
 - `peritus-orchestrator` fail-closed E0 accept/fix/exhaust decisions; and
-- a durable task candidate, provider/tool trace, task-level summary, and explicit deliverable
-  handoff consumed by the daemon.
+- a durable task candidate, provider/tool trace, synced effect-receipt ledger, task-level summary,
+  and explicit deliverable handoff consumed by the daemon.
+
+Writable tool receipts bind deterministic role/invocation/effect identity, provider call ID, and
+canonical request digest to `Started`, `Completed`, or `Ambiguous` state. Exact completed calls
+replay their bounded result. A command left in `Started` across restart is never launched again;
+Peritus returns an explicit ambiguous observation so the agent or user can reconcile its effects.
 
 Independent review is a fresh D0 developer loop rather than a one-shot completion. It begins with
 an observed workspace listing, reads the authoritative inputs and changed files through a

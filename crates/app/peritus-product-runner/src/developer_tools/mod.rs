@@ -5,9 +5,11 @@ mod effect;
 mod evidence;
 mod executor;
 mod grounding;
+mod inspection;
 mod ownership;
 mod path;
 mod process;
+mod receipt;
 mod removal;
 mod wire;
 

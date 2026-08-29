@@ -13,6 +13,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Persist a bounded effect-receipt ledger for every writable G4 developer-tool invocation, binding
+  deterministic role/invocation/effect identity to the provider call ID and canonical request
+  digest before execution and to the exact result afterward; replay completed calls without a
+  second effect, refuse conflicting recovered actions, and classify an interrupted external
+  command as explicitly ambiguous instead of launching it again (#31)
 - Preserve the complete selected source value whenever a request requires an output component to
   match a named authoritative source, applying only explicitly named transformations instead of
   letting outside domain labels such as tag, wrapper, metadata, artifact, or non-native content

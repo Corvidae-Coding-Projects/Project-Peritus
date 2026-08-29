@@ -153,14 +153,19 @@ async fn run_developer_invocation(
         crate::workspace_media::discover(&input.workspace_root, &transcript, model.profile())?;
     let prompt = writer_user(&transcript, design, findings, correction);
     let (prompt, attachments) = media.into_parts(prompt);
-    let mut tools =
-        WorkspaceDeveloperTools::with_ownership(input.workspace_root.clone(), ownership.clone());
-    let mut trace = FileDeveloperTrace::new(input.trace_path.clone());
     let prefix = request_name(input.run_id, identity.role, identity.cycle);
+    let request_prefix = format!("{prefix}-invocation-{}", identity.invocation);
+    let mut tools = WorkspaceDeveloperTools::with_ownership(
+        input.workspace_root.clone(),
+        ownership.clone(),
+        input.trace_path.with_extension("effects.bin"),
+        request_prefix.clone(),
+    );
+    let mut trace = FileDeveloperTrace::new(input.trace_path.clone());
     let result = DeveloperLoop::run(
         model,
         DeveloperLoopRequest {
-            request_prefix: format!("{prefix}-invocation-{}", identity.invocation),
+            request_prefix,
             system: writer_system(identity.role),
             prompt,
             attachments,

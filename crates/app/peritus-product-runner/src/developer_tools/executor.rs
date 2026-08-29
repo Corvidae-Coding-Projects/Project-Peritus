@@ -1,22 +1,23 @@
 //! Concrete bounded filesystem and structured-command developer tools.
 
-use std::{collections::VecDeque, fs, path::PathBuf, process::Command, time::Duration};
+use std::{fs, path::PathBuf, process::Command, time::Duration};
 
 use peritus_agent::{DeveloperLoopError, DeveloperToolExecutor, DeveloperToolObservation};
 use peritus_model_protocol::CompletedToolCall;
 use serde_json::Value;
 
 use super::{
-    effect::{atomic_write, atomic_write_if_changed, limit, reject_destructive_command},
+    effect::{atomic_write, atomic_write_if_changed, reject_destructive_command},
     evidence::CommandEvidence,
     grounding::GroundingEvidence,
+    inspection,
     ownership::WorkspaceOwnership,
-    path::{checked, ignored, tool},
-    process, removal,
-    wire::{bounded_u64, bounded_usize, collection, object, observation, required_string, string},
+    path::{checked, tool},
+    process,
+    receipt::{EffectReceiptLedger, ReceiptDecision},
+    removal,
+    wire::{bounded_u64, object, observation, required_string, string},
 };
-use crate::file_metadata;
-
 const MAX_FILE_BYTES: usize = 2 * 1024 * 1024;
 const DEFAULT_COMMAND_TIMEOUT_SECONDS: u64 = 120;
 const MAX_COMMAND_TIMEOUT_SECONDS: u64 = 600;
@@ -34,6 +35,7 @@ pub struct WorkspaceDeveloperTools {
     ownership: WorkspaceOwnership,
     mode: WorkspaceToolMode,
     command_evidence: CommandEvidence,
+    receipts: Option<EffectReceiptLedger>,
 }
 
 impl WorkspaceDeveloperTools {
@@ -48,16 +50,23 @@ impl WorkspaceDeveloperTools {
             ownership,
             mode: WorkspaceToolMode::ReadOnly,
             command_evidence: CommandEvidence::default(),
+            receipts: None,
         }
     }
 
-    pub(crate) fn with_ownership(root: PathBuf, ownership: WorkspaceOwnership) -> Self {
+    pub(crate) fn with_ownership(
+        root: PathBuf,
+        ownership: WorkspaceOwnership,
+        receipt_path: PathBuf,
+        receipt_scope: String,
+    ) -> Self {
         Self {
             root,
             grounding: GroundingEvidence::default(),
             ownership,
             mode: WorkspaceToolMode::ReadWrite,
             command_evidence: CommandEvidence::default(),
+            receipts: Some(EffectReceiptLedger::new(receipt_path, receipt_scope)),
         }
     }
 
@@ -81,10 +90,39 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
     ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
         let arguments: Value = serde_json::from_slice(call.arguments().canonical_bytes())
             .map_err(|error| tool(error.to_string()))?;
+        let effect = matches!(
+            call.name().as_str(),
+            "workspace_write" | "workspace_patch" | "workspace_remove" | "run_command"
+        ) && self.mode == WorkspaceToolMode::ReadWrite;
+        if effect {
+            let decision = self
+                .receipts
+                .as_mut()
+                .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
+                .begin(call)?;
+            match decision {
+                ReceiptDecision::Execute => {}
+                ReceiptDecision::Replay { value, is_error } => {
+                    if value.get("error").is_none() {
+                        self.record_success(call.name().as_str(), &arguments, &value);
+                    }
+                    return observation(&value, is_error);
+                }
+                ReceiptDecision::Refuse { detail, ambiguous } => {
+                    return observation(
+                        &object(vec![
+                            ("error", Value::String(detail)),
+                            ("ambiguous", Value::Bool(ambiguous)),
+                        ]),
+                        true,
+                    );
+                }
+            }
+        }
         let result = match call.name().as_str() {
-            "workspace_list" => self.list(&arguments),
-            "workspace_search" => self.search(&arguments),
-            "workspace_read" => self.read(&arguments),
+            "workspace_list" => inspection::list(&self.root, &arguments),
+            "workspace_search" => inspection::search(&self.root, &arguments),
+            "workspace_read" => inspection::read(&self.root, &arguments),
             "workspace_write" | "workspace_patch" | "workspace_remove" | "run_command"
                 if self.mode == WorkspaceToolMode::ReadOnly =>
             {
@@ -96,17 +134,26 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
             "run_command" => self.run(&arguments),
             _ => return Err(tool("model requested an undeclared developer tool")),
         };
-        match result {
+        let (value, is_error, accepted) = match result {
             Ok(value) => {
-                self.record_success(call.name().as_str(), &arguments, &value);
                 let is_error = value.get("success").and_then(Value::as_bool) == Some(false);
-                observation(&value, is_error)
+                (value, is_error, true)
             }
             Err(error) => {
                 let value = object(vec![("error", Value::String(error.to_string()))]);
-                observation(&value, true)
+                (value, true, false)
             }
+        };
+        if effect {
+            self.receipts
+                .as_mut()
+                .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
+                .complete(&value, is_error)?;
         }
+        if accepted {
+            self.record_success(call.name().as_str(), &arguments, &value);
+        }
+        observation(&value, is_error)
     }
 
     fn completion_blocker(&self) -> Option<String> {
@@ -132,6 +179,7 @@ impl WorkspaceDeveloperTools {
                     self.grounding.record_mutation(path);
                 }
             }
+            "run_command" => self.command_evidence.record(arguments, result),
             _ => {}
         }
         if name == "workspace_list" {
@@ -145,136 +193,6 @@ impl WorkspaceDeveloperTools {
                 self.grounding.record_listed_path(path);
             }
         }
-    }
-
-    fn list(&self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
-        let relative = string(arguments, "path").unwrap_or("");
-        let depth = bounded_usize(arguments, "depth", 3, 1, 12);
-        let start = if relative.is_empty() {
-            self.root.clone()
-        } else {
-            checked(&self.root, relative, false)?
-        };
-        let mut queue = VecDeque::from([(start, 0_usize)]);
-        let mut entries = Vec::new();
-        while let Some((directory, level)) = queue.pop_front() {
-            let mut children = fs::read_dir(&directory)
-                .map_err(|error| tool(error.to_string()))?
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|error| tool(error.to_string()))?;
-            children.sort_by_key(fs::DirEntry::file_name);
-            for child in children {
-                let path = child.path();
-                let Some(relative) = path.strip_prefix(&self.root).ok() else {
-                    continue;
-                };
-                if ignored(relative) {
-                    continue;
-                }
-                let kind = child.file_type().map_err(|error| tool(error.to_string()))?;
-                let metadata = child.metadata().map_err(|error| tool(error.to_string()))?;
-                entries.push(object(vec![
-                    ("path", Value::String(relative.to_string_lossy().into_owned())),
-                    (
-                        "kind",
-                        Value::String(if kind.is_dir() { "directory" } else { "file" }.to_owned()),
-                    ),
-                    ("bytes", Value::from(metadata.len())),
-                    ("permissions", Value::String(file_metadata::permissions(&metadata))),
-                ]));
-                if entries.len() >= 2_000 {
-                    return Ok(collection("entries", entries, true));
-                }
-                if kind.is_dir() && level + 1 < depth {
-                    queue.push_back((path, level + 1));
-                }
-            }
-        }
-        Ok(collection("entries", entries, false))
-    }
-
-    fn search(&self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
-        let query = required_string(arguments, "query")?;
-        if query.is_empty() {
-            return Err(tool("search query is empty"));
-        }
-        let start = match string(arguments, "path") {
-            Some(value) if !value.is_empty() => checked(&self.root, value, false)?,
-            _ => self.root.clone(),
-        };
-        let maximum = bounded_usize(arguments, "max_results", 200, 1, 1_000);
-        let mut queue = VecDeque::from([start]);
-        let mut matches = Vec::new();
-        while let Some(path) = queue.pop_front() {
-            let metadata = fs::symlink_metadata(&path).map_err(|error| tool(error.to_string()))?;
-            if metadata.is_dir() {
-                let mut children = fs::read_dir(path)
-                    .map_err(|error| tool(error.to_string()))?
-                    .collect::<Result<Vec<_>, _>>()
-                    .map_err(|error| tool(error.to_string()))?;
-                children.sort_by_key(fs::DirEntry::file_name);
-                for child in children {
-                    if child.path().strip_prefix(&self.root).is_ok_and(ignored) {
-                        continue;
-                    }
-                    queue.push_back(child.path());
-                }
-                continue;
-            }
-            if !metadata.is_file() || metadata.len() > MAX_FILE_BYTES as u64 {
-                continue;
-            }
-            let Ok(content) = fs::read_to_string(&path) else {
-                continue;
-            };
-            for (index, line) in content.lines().enumerate() {
-                if line.contains(query) {
-                    matches.push(object(vec![
-                        (
-                            "path",
-                            Value::String(
-                                path.strip_prefix(&self.root)
-                                    .unwrap_or(&path)
-                                    .to_string_lossy()
-                                    .into_owned(),
-                            ),
-                        ),
-                        ("line", Value::from(index + 1)),
-                        ("text", Value::String(line.to_owned())),
-                    ]));
-                    if matches.len() >= maximum {
-                        return Ok(collection("matches", matches, true));
-                    }
-                }
-            }
-        }
-        Ok(collection("matches", matches, false))
-    }
-
-    fn read(&self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
-        let path = checked(&self.root, required_string(arguments, "path")?, false)?;
-        let metadata = fs::metadata(&path).map_err(|error| tool(error.to_string()))?;
-        if !metadata.is_file() || metadata.len() > MAX_FILE_BYTES as u64 {
-            return Err(tool("file is not a bounded regular text file"));
-        }
-        let content = fs::read_to_string(&path).map_err(|error| tool(error.to_string()))?;
-        let start = bounded_usize(arguments, "start_line", 1, 1, usize::MAX);
-        let default_end = start.saturating_add(499);
-        let end = bounded_usize(arguments, "end_line", default_end, start, usize::MAX);
-        let lines = content
-            .lines()
-            .enumerate()
-            .filter(|(index, _)| *index >= start.saturating_sub(1) && *index < end)
-            .map(|(index, line)| format!("{}: {line}", index + 1))
-            .collect::<Vec<_>>()
-            .join("\n");
-        Ok(object(vec![
-            ("content", Value::String(limit(&lines))),
-            ("start_line", Value::from(start)),
-            ("end_line", Value::from(end)),
-            ("bytes", Value::from(metadata.len())),
-            ("permissions", Value::String(file_metadata::permissions(&metadata))),
-        ]))
     }
 
     fn write(&mut self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
@@ -329,7 +247,7 @@ impl WorkspaceDeveloperTools {
         removal::remove(&self.root, &self.grounding, &self.ownership, arguments)
     }
 
-    fn run(&mut self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
+    fn run(&self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
         let program = required_string(arguments, "program")?;
         if program.is_empty() || program.contains(['\0', '\n', '\r']) {
             return Err(tool("command program is invalid"));
@@ -369,10 +287,11 @@ impl WorkspaceDeveloperTools {
             ("timed_out", Value::Bool(output.timed_out)),
             ("timeout_seconds", Value::from(timeout_seconds)),
         ]);
-        self.command_evidence.record(arguments, &result);
         Ok(result)
     }
 }
 
+#[cfg(test)]
+mod receipt_tests;
 #[cfg(test)]
 mod tests;
