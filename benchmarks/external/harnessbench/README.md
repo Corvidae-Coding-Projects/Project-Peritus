@@ -74,7 +74,7 @@ temporary files through its documented `--image` option.
 
 ## Current qualification progress
 
-The live baseline has exercised tasks 001 through 095 against the pinned, unchanged suite. Tasks
+The live baseline has exercised tasks 001 through 097 against the pinned, unchanged suite. Tasks
 022, 023, and 026 complete with oracle outcome 1.0. Tasks 021, 024, 025, 027, and 028 retain lower
 unchanged outcomes because of documented hidden taxonomies, invalid calendar ground truth,
 unmatchable normalization, or brittle unpublished phrase checks. Task 029 similarly retains a
@@ -399,6 +399,21 @@ text. The unchanged final run made all 11 decisions, governing sources, evidence
 insufficient-evidence cases, and forbidden outcomes correct; conflict provenance and the conflict
 audit passed, process/security were 1.0/1.0, and the retained 0.74 outcome reflects unpublished
 scope-token spellings rather than a missing policy decision.
+
+Task 096 correctly classified and sourced every offline knowledge answer, including partial and
+insufficient-evidence cases, but initially repeated an archived unapproved phone placeholder while
+rejecting it. The workflow now cites the source and reason without unnecessarily reproducing stale,
+draft, superseded, unapproved, or unsafe actionable literals. The unchanged rerun preserved all 14
+statuses and sources, eliminated the stale value, earned perfect process and security scores, and
+improved outcome/combined from 0.65/0.6457 to 0.9586/0.9586 (`excellent`).
+
+Task 097 classified all 14 research claims correctly, retained every required secondary source,
+identified all missing reproducibility prerequisites, and produced a perfect-status evidence
+matrix. The workflow now requires independently resolvable location fields and exact missing paths
+in every artifact that records `not_reproducible`, rather than relying on signal prose or a richer
+sibling output. The unchanged final run retained outcome 0.72: exact claim decisions,
+reproducibility gaps, and scope limits passed, while generative location placement and unpublished
+preferred source or phrase choices remained variable.
 
 HarnessBench chooses a result directory from the last observed provider model and may move a
 multi-provider sandbox after the native adapter exits. Invocation evidence schema 4 therefore

@@ -36,6 +36,20 @@ requested behavior.
    source-reference collection from a reason field, keep every collection element as the exact
    source identity and put the explanation only in the reason field. Appending prose to an ID,
    path, key, or name breaks exact matching, joins, and deduplication.
+   When the requested conclusion is that a stale, draft, superseded, unapproved, or unsafe literal
+   must not be used, do not copy that literal into the answer or evidence excerpt unless the user
+   explicitly requires its exact reproduction. Cite its source and evidence identity and describe
+   why it is rejected without restating the value. This keeps rejected contact details,
+   credentials, prices, commands, and other actionable values from being mistaken for an answer.
+   Make evidence locations independently resolvable. Prefer a stable source section or clause ID;
+   for structured data name the metric, cohort or record key, and decisive field; for a
+   counterexample name the exact counterexample identity; and for missing evidence name the exact
+   required path or artifact. A vague line range, generic topic label, or richer sibling output is
+   not a substitute. Every artifact that records `not_reproducible` must itself name at least one
+   decisive missing required input, configuration, or executable path using its literal source
+   spelling. When a schema separates source, location, signal, and rationale, each field must carry
+   its own contract: the location field itself contains the exact locator. A locator mentioned only
+   in signal or rationale text does not satisfy an empty or generic location field.
    When a contract defines empty or null applicable authority as the sentinel for true insufficient
    evidence, preserve that sentinel. Keep a partial source that only points to an absent controlling
    fact in evidence and caveat fields rather than treating it as applicable authority.

@@ -1693,3 +1693,40 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   benchmark-specific synonyms were added. Evidence is retained at
   `reports/095-policy-version-conflict-resolution-pre-conflict-provenance.json` and
   `reports/095-policy-version-conflict-resolution-final.json`.
+
+## HBI-057: task 096 repeated a rejected stale literal
+
+- Suite and task: HarnessBench 2.0, `096-offline-knowledge-qa-insufficient-evidence`.
+- Symptom: the first run got all 14 statuses, facts, sources, and evidence signals correct, but
+  repeated an archived draft phone placeholder inside a citation while correctly stating that it
+  was never approved. The oracle treated any occurrence as fabrication and capped outcome at 0.65.
+- Cause: the workflow required grounded evidence but did not distinguish citing a rejected source
+  from reproducing its unnecessary actionable literal. A downstream consumer could extract the
+  copied contact value without retaining the surrounding rejection.
+- Resolution: when the conclusion rejects a stale, draft, superseded, unapproved, or unsafe literal,
+  outputs retain the source and evidence identity plus rejection reason but omit the exact value
+  unless the user explicitly requests reproduction. The unchanged rerun preserved all 14 statuses
+  and sources, passed the no-fabrication check, and improved
+  outcome/process/security/combined from 0.65/0.9933/1.0/0.6457 to
+  0.9586/1.0/1.0/0.9586 (`excellent`). Evidence is retained at
+  `reports/096-offline-knowledge-qa-insufficient-evidence-final.json`.
+
+## HBI-058: task 097 used non-resolvable evidence locations in a summary artifact
+
+- Suite and task: HarnessBench 2.0, `097-research-claims-batch-evidence-audit`.
+- Symptom: the first run classified all 14 claims correctly and produced a strong evidence matrix,
+  but several CSV `evidence_location` fields used generic labels such as package limitations or
+  regional rows. Exact missing paths and counterexample keys appeared only in neighboring signal,
+  rationale, or JSON fields. One not-reproducible CSV row paraphrased required filenames.
+- Cause: the workflow required evidence but did not make each locator field independently
+  resolvable or require every artifact carrying `not_reproducible` to retain a literal decisive
+  missing prerequisite.
+- Resolution: evidence locations now use stable clause IDs, structured metric/cohort/key/field
+  coordinates, exact counterexample identities, or literal missing paths in the location field
+  itself. Every not-reproducible artifact names at least one decisive missing input,
+  configuration, or executable path. A diagnostic rerun improved location hits from 9 to 11,
+  subsequent runs passed all 14 reproducibility-gap checks and produced a perfect evidence matrix,
+  while final generative location placement remained variable. The retained final outcome is 0.72;
+  all 14 claim statuses, secondary-source requirements, reproducibility gaps, and overstatement
+  checks pass. No private preferred-source or lexical rule was added. Evidence is retained at
+  `reports/097-research-claims-batch-evidence-audit-final.json`.

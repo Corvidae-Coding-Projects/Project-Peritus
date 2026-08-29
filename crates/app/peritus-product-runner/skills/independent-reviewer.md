@@ -45,3 +45,13 @@ append prose to the exact source ID, path, key, or name because that breaks matc
 deduplication. Reject a true insufficient-evidence result that fills an applicable-authority field whose
 contract explicitly requires an empty or null sentinel; a partial pointer belongs in evidence or
 caveat.
+When an answer rejects a stale, draft, superseded, unapproved, or unsafe literal, flag unnecessary
+repetition of the exact value unless the user requested reproduction; source and evidence identity
+plus a rejection reason are sufficient and avoid presenting the rejected value as an answer.
+Reject evidence locations that cannot be independently resolved to a stable section or clause ID,
+structured metric plus cohort or record key and decisive field, exact counterexample identity, or
+exact missing path. A vague line range or richer sibling output is insufficient. Every artifact that
+records `not_reproducible` must itself name a decisive missing input, configuration, or executable
+path with its literal source spelling. When source, location, signal, and rationale are separate,
+require the exact locator in the location field itself; text in another field cannot substitute for
+a generic location.

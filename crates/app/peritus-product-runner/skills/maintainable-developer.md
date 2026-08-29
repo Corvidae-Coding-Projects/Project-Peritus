@@ -33,5 +33,15 @@ rule would change the result, including losses caused by date, expiry, scope, or
 and state the exact loss reason. Keep source-reference collection elements as exact source
 identities when the schema provides a separate reason field; never append explanatory prose to an
 ID, path, key, or name.
+When rejecting a stale, draft, superseded, unapproved, or unsafe literal, cite its source and
+evidence identity but do not repeat the exact value unless the user explicitly requests it; describe
+why it is rejected so the value cannot be mistaken for the answer.
+Use independently resolvable evidence locations: a stable section or clause ID, structured metric
+plus cohort or record key and decisive field, exact counterexample identity, or exact missing path.
+Do not rely on vague line ranges or a richer sibling artifact. Every artifact that records
+`not_reproducible` must itself name at least one decisive missing input, configuration, or executable
+path with its literal source spelling. In schemas with separate source, location, signal, and
+rationale fields, put the exact locator in the location field itself; mentioning it only in signal
+or rationale text does not satisfy that field.
 Preserve an explicit empty/null applicable-authority sentinel for true insufficient evidence; keep a
 partial source that only points to a missing controlling fact in evidence and caveat fields.

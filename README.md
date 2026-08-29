@@ -199,7 +199,7 @@ evidence, and obtaining an H4 `Ready` decision. Until that evidence exists, Peri
 `NotReadyForProduction` by construction.
 
 External production qualification is active against the pinned, unchanged 106-task HarnessBench
-suite. Tasks 001 through 095 have run sequentially with full local reports and failure diagnosis;
+suite. Tasks 001 through 097 have run sequentially with full local reports and failure diagnosis;
 task 051 passed all 21 checks cleanly, and the latest task 052 run passed all 17 external checks
 after exercising ambiguity handling, category boundaries, provider-stall recovery, and finding
 conservation. The source now treats advisory review as nonblocking and conserves stable finding
@@ -318,6 +318,21 @@ reason text. The unchanged final run made all 11 decisions, governing sources, e
 insufficient-evidence cases, and forbidden outcomes correct, passed conflict provenance and audit
 checks, and scored outcome/process/security/combined 0.74/1.0/1.0/0.74. Its remaining scope
 deduction is limited to unpublished lexical tokens rather than missing policy semantics.
+Task 096 answered or explicitly bounded all 14 offline knowledge questions with correct statuses,
+sources, and missing-evidence treatment. Its first result repeated an archived, never-approved phone
+placeholder while explaining why it was invalid; although semantically safe, that value could be
+mistaken for an answer downstream. Rejected stale, draft, superseded, unapproved, or unsafe literals
+are now cited by source and evidence identity without unnecessary reproduction. The unchanged rerun
+removed the actionable stale value and improved outcome/process/security/combined from
+0.65/0.9933/1.0/0.6457 to 0.9586/1.0/1.0/0.9586 (`excellent`).
+Task 097 correctly classified all 14 research claims, preserved every required secondary source,
+identified all decisive reproducibility gaps, and produced a complete evidence matrix. Evidence
+locations now require stable section IDs, structured record keys and fields, exact counterexample
+identities, or literal missing paths in the location field itself; every artifact that records
+`not_reproducible` must carry a decisive missing prerequisite independently. The final unchanged run
+retained outcome 0.72 with perfect status, secondary-source, reproducibility-gap, and overstatement
+checks. Remaining deductions reflect variable field placement and unpublished preferred source or
+phrase choices rather than incorrect claim decisions.
 Terminal-Bench 2.0, the complete professional-capability audit, documentation normalization,
 release-installer qualification, and final hosted-runner closure remain required before production
 readiness.

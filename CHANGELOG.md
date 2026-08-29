@@ -13,6 +13,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Require independently resolvable evidence locations using stable clause IDs, structured record
+  coordinates, exact counterexample identities, or literal missing paths; keep those locators in
+  their declared location fields, and make every not-reproducible artifact carry a decisive missing
+  prerequisite without relying on richer sibling outputs (#31)
+- Cite stale, draft, superseded, unapproved, or unsafe evidence without unnecessarily reproducing
+  the rejected actionable literal, preventing invalid contact details, credentials, prices, and
+  commands from being mistaken for an answer while retaining provenance and rejection reasons (#31)
 - Preserve an explicit empty/null applicable-authority sentinel for true insufficient evidence,
   retain every evaluated result-affecting losing source across priority, date, expiry, scope, and
   exceptions, and keep exact source IDs, paths, keys, and names separate from explanatory reason

@@ -96,6 +96,20 @@ requested behavior.
    source-reference collection from a reason field, keep every collection element as the exact
    source identity and put the explanation only in the reason field. Appending prose to an ID,
    path, key, or name breaks exact matching, joins, and deduplication.
+   When the requested conclusion is that a stale, draft, superseded, unapproved, or unsafe literal
+   must not be used, do not copy that literal into the answer or evidence excerpt unless the user
+   explicitly requires its exact reproduction. Cite its source and evidence identity and describe
+   why it is rejected without restating the value. This keeps rejected contact details,
+   credentials, prices, commands, and other actionable values from being mistaken for an answer.
+   Make evidence locations independently resolvable. Prefer a stable source section or clause ID;
+   for structured data name the metric, cohort or record key, and decisive field; for a
+   counterexample name the exact counterexample identity; and for missing evidence name the exact
+   required path or artifact. A vague line range, generic topic label, or richer sibling output is
+   not a substitute. Every artifact that records `not_reproducible` must itself name at least one
+   decisive missing required input, configuration, or executable path using its literal source
+   spelling. When a schema separates source, location, signal, and rationale, each field must carry
+   its own contract: the location field itself contains the exact locator. A locator mentioned only
+   in signal or rationale text does not satisfy an empty or generic location field.
    When a contract defines empty or null applicable authority as the sentinel for true insufficient
    evidence, preserve that sentinel. A partial source that points to an absent required schedule,
    threshold, approval, or other controlling fact belongs in evidence and caveat fields; it does not
@@ -222,6 +236,16 @@ rule would change the result, including losses caused by date, expiry, scope, or
 and state the exact loss reason. Keep source-reference collection elements as exact source
 identities when the schema provides a separate reason field; never append explanatory prose to an
 ID, path, key, or name.
+When rejecting a stale, draft, superseded, unapproved, or unsafe literal, cite its source and
+evidence identity but do not repeat the exact value unless the user explicitly requests it; describe
+why it is rejected so the value cannot be mistaken for the answer.
+Use independently resolvable evidence locations: a stable section or clause ID, structured metric
+plus cohort or record key and decisive field, exact counterexample identity, or exact missing path.
+Do not rely on vague line ranges or a richer sibling artifact. Every artifact that records
+`not_reproducible` must itself name at least one decisive missing input, configuration, or executable
+path with its literal source spelling. In schemas with separate source, location, signal, and
+rationale fields, put the exact locator in the location field itself; mentioning it only in signal
+or rationale text does not satisfy that field.
 Preserve an explicit empty/null applicable-authority sentinel for true insufficient evidence; keep a
 partial source that only points to a missing controlling fact in evidence and caveat fields.
 ";
@@ -269,8 +293,18 @@ priority, date, expiry, scope, or explicit exception. When the schema provides a
 field, reject source-reference elements that append prose to the exact source ID, path, key, or name
 because that breaks matching, joins, and deduplication. Reject a true insufficient-evidence result
 that fills an applicable-authority field whose contract explicitly requires an empty or null
-sentinel; a partial pointer belongs in evidence or caveat. Treat
-a missing or incompatible
+sentinel; a partial pointer belongs in evidence or caveat.
+When an answer rejects a stale, draft, superseded, unapproved, or unsafe literal, flag unnecessary
+repetition of the exact value unless the user requested reproduction; source and evidence identity
+plus a rejection reason are sufficient and avoid presenting the rejected value as an answer.
+Reject evidence locations that cannot be independently resolved to a stable section or clause ID,
+structured metric plus cohort or record key and decisive field, exact counterexample identity, or
+exact missing path. A vague line range or richer sibling output is insufficient. Every artifact that
+records `not_reproducible` must itself name a decisive missing input, configuration, or executable
+path with its literal source spelling. When source, location, signal, and rationale are separate,
+require the exact locator in the location field itself; text in another field cannot substitute for
+a generic location.
+Treat a missing or incompatible
 production dependency, or a test-process
 substitute used in its place, as a blocking compatibility failure when that dependency is being
 added or upgraded. Legitimate mocks for unrelated boundaries remain allowed, but they cannot prove
@@ -294,99 +328,4 @@ pub fn reviewer() -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn embedded_workflow_carries_the_hard_source_limit_for_every_role() {
-        for instructions in [architect(), developer(), reviewer()] {
-            assert!(instructions.contains("500 lines"));
-            assert!(instructions.contains("module"));
-            assert!(instructions.contains("distinguish ignored authority"));
-            assert!(instructions.contains("Judge the requested outcome"));
-            assert!(instructions.contains("Benign advice"));
-            assert!(instructions.contains("Trigger words"));
-            assert!(instructions.contains("acceptance evidence"));
-            assert!(instructions.contains("never delete a file"));
-            assert!(instructions.contains("literal requirement ledger"));
-            assert!(instructions.contains("grammatically modify"));
-            assert!(instructions.contains("explicit expected value"));
-            assert!(instructions.contains("grammatically ambiguous compound rule"));
-            assert!(instructions.contains("violates every reasonable reading"));
-            assert!(instructions.contains("that is circular"));
-            assert!(instructions.contains("nearest-item grammatical attachments"));
-            assert!(instructions.contains("authoritative label, taxonomy, or definition"));
-            assert!(instructions.contains("literal category boundary"));
-            assert!(instructions.contains("separately named output fields"));
-            assert!(instructions.contains("derive membership independently"));
-            assert!(instructions.contains("detail ledger is named for one member"));
-            assert!(instructions.contains("as a projection"));
-            assert!(instructions.contains("of that class only"));
-            assert!(instructions.contains("other nonmatching"));
-            assert!(instructions.contains("classes into the ledger"));
-            assert!(instructions.contains("preserve explicit routing"));
-            assert!(instructions.contains("does not also belong in a reject ledger"));
-            assert!(instructions.contains("most specific"));
-            assert!(instructions.contains("no matching source record"));
-            assert!(instructions.contains("reserve `invalid`"));
-            assert!(instructions.contains("material condition"));
-            assert!(instructions.contains("union of unresolved"));
-            assert!(instructions.contains("explicit identity"));
-            assert!(instructions.contains("constraints as evidence-positive"));
-            assert!(instructions.contains("source field does not prove"));
-            assert!(instructions.contains("Exclude an unproven option"));
-            assert!(instructions.contains("source aggregates"));
-            assert!(instructions.contains("does not prove that an aggregate is pre-adjustment"));
-            assert!(instructions.contains("record-level join"));
-            assert!(instructions.contains("inventing a transformation"));
-            assert!(instructions.contains("non-exhaustive"));
-            assert!(instructions.contains("invented allowlist"));
-            assert!(instructions.contains("preserve that precedence"));
-            assert!(instructions.contains("controlling source"));
-            assert!(instructions.contains("owns the primary field"));
-            assert!(instructions.contains("broader base rule as secondary"));
-            assert!(instructions.contains("one losing-source collection"));
-            assert!(instructions.contains("priority, effective date"));
-            assert!(instructions.contains("globally obsolete"));
-            assert!(instructions.contains("source-reference collection"));
-            assert!(instructions.contains("every collection element as the exact"));
-            assert!(instructions.contains("source identity and put"));
-            assert!(instructions.contains("breaks exact matching, joins, and deduplication"));
-            assert!(instructions.contains("sentinel for true insufficient"));
-            assert!(instructions.contains("absent required schedule"));
-            assert!(instructions.contains("it does not"));
-            assert!(instructions.contains("become the applicable authority"));
-            assert!(instructions.contains("opaque contract values"));
-            assert!(instructions.contains("cross-artifact contract"));
-            assert!(instructions.contains("byte-for-byte unchanged"));
-            assert!(instructions.contains("heterogeneous source categories"));
-            assert!(instructions.contains("typed identity"));
-            assert!(instructions.contains("category:id"));
-            assert!(instructions.contains("group by the semantic category"));
-            assert!(instructions.contains("adjacent unrequested inputs"));
-            assert!(instructions.contains("later round"));
-            assert!(instructions.contains("every constraint introduced"));
-            assert!(instructions.contains("already-satisfied constraints"));
-            assert!(instructions.contains("meaningfully constructible"));
-            assert!(instructions.contains("reversible requested artifact"));
-            assert!(instructions.contains("material retry and recovery behavior"));
-            assert!(instructions.contains("bounded ephemeral producer"));
-            assert!(instructions.contains("independent effects"));
-            assert!(instructions.contains("at least three"));
-            assert!(instructions.contains("waiting, not periodic polling"));
-            assert!(instructions.contains("Optional richer provenance"));
-            assert!(instructions.contains("one-shot transient event"));
-            assert!(instructions.contains("repeated fixer work"));
-            assert!(instructions.contains("cannot stand in"));
-            assert!(instructions.contains("failed acceptance evidence"));
-            assert!(instructions.contains("measure the unchanged"));
-            assert!(instructions.contains("same representative workload"));
-            assert!(instructions.contains("requirement-to-test ledger"));
-            assert!(instructions.contains("direct repository test"));
-            assert!(instructions.contains("hidden/external gates"));
-            assert!(instructions.contains("define forward progress"));
-            assert!(instructions.contains("repeated page or cursor token"));
-            assert!(instructions.contains("permanent client errors"));
-        }
-    }
-}
+mod tests;

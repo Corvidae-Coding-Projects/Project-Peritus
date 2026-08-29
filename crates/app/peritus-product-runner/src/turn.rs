@@ -305,6 +305,15 @@ mod tests {
         assert!(prompt.contains("priority, date, expiry, scope"));
         assert!(prompt.contains("source-reference elements"));
         assert!(prompt.contains("breaks matching, joins, and deduplication"));
+        assert!(prompt.contains("flag unnecessary"));
+        assert!(prompt.contains("avoid presenting the rejected value as an answer"));
+        assert!(prompt.contains("independently resolved"));
+        assert!(prompt.contains("exact counterexample identity"));
+        assert!(prompt.contains("richer sibling output"));
+        assert!(prompt.contains("Every artifact that"));
+        assert!(prompt.contains("records `not_reproducible`"));
+        assert!(prompt.contains("location field itself"));
+        assert!(prompt.contains("another field cannot substitute"));
         assert!(prompt.contains("true insufficient-evidence result"));
         assert!(prompt.contains("requires an empty or null"));
         assert!(prompt.contains("sentinel; a partial pointer"));
