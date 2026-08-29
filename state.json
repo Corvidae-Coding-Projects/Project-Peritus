@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 741,
+  "next_comment_id": 742,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T20:50:17.188449500Z",
+      "updated_at": "2026-08-29T20:58:28.307007953Z",
       "labels": [
         "qualification",
         "release"
@@ -2458,6 +2458,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAe815NTeuYc7SuRbWzYh44o18it6qy5XNm2UrmHotjqBcFJpz82Wjwm+bY8k3jNMQOXSLWTw7tjrbS+uF3vyICw=="
+        },
+        "a77cb518-c9ae-4f6e-a129-1ed47bbd7ad5": {
+          "display_id": 741,
+          "author": "6ME5",
+          "content": "Terminal-Bench TBF-010 is a general temporal-grounding defect, not a task hack: the frozen mteb-leaderboard trial used a current mutable leaderboard filtered by model release dates as if that proved the source's August 2025 state. Production workflow now requires contemporaneous snapshots, source revisions, or archived records for every historical/date/version boundary across architect, writer/fixer, and reviewer roles. Focused evidence is green: 70 product-runner tests, strict Clippy, cargo fmt, and docs-check over 134 documents. The frozen baseline binary remains byte-identical and the unchanged candidate rerun is pending. Also classified caffe-cifar-10 as TBA-001: productive compile/recovery/data conversion reached Harbor's 1200-second outer deadline; no benchmark timeout or task-specific shortcut will be added without repeated evidence of a general scheduler defect.",
+          "created_at": "2026-08-29T20:58:28.304367038Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA0W3nVjPpmjDJ+I3Ji32u+t+uFILINvqvGw0HzL6U9QpOrD8rWWyRX+eWZ6Sjel4ienyuB5lUZ3bmW0gbkN9sDA=="
         },
         "ac14d2ac-4cfc-410f-b9b1-c1c290167644": {
           "display_id": 624,
@@ -7421,8 +7430,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T20:50:17.188449500Z",
+    "timestamp": "2026-08-29T20:58:28.307007953Z",
     "agent_id": "6ME5",
-    "agent_seq": 926
+    "agent_seq": 927
   }
 }
