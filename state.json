@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 770,
+  "next_comment_id": 771,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T23:48:07.282062324Z",
+      "updated_at": "2026-08-29T23:48:11.901646606Z",
       "labels": [
         "qualification",
         "release"
@@ -2566,6 +2566,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA0/0D/XBgMEnvton4J4DUyrz3fbZsdXURWmV83KgBKjncJjh30s+E6MNPjmtCTpTO0xR7+pzDKXVqcPRKsWAwCQ=="
+        },
+        "a1ee1189-9f34-4072-8f27-196a53eef444": {
+          "display_id": 770,
+          "author": "6ME5",
+          "content": "Final-report acceptance criterion added: include an evidence-linked benchmark integrity appendix for every retained gotcha. For each case report the published contract, hidden or contradictory scoring expectation, retained result, why a score-only workaround would amount to leakage/task-specific cheating or contract breakage, and the shortcut explicitly refused. Keep genuine Peritus defects, ordinary model misses, provider/infrastructure failures, and benchmark underspecification in separate classifications; do not improve aggregate scores by deleting or rewriting failures.",
+          "created_at": "2026-08-29T23:48:11.898647584Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA3M9AJ6SLhjBu/fHfle85t+leCkD2u03Cc7CPPndzapE8c5RuZE2TwD6djmSZthJmqZEYlxqvUngT3huqFwJwDA=="
         },
         "a2fa8cfa-107b-40e0-87eb-507b8e167357": {
           "display_id": 764,
@@ -7682,8 +7691,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T23:48:07.282062324Z",
+    "timestamp": "2026-08-29T23:48:11.901646606Z",
     "agent_id": "6ME5",
-    "agent_seq": 957
+    "agent_seq": 958
   }
 }
