@@ -1946,7 +1946,9 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Verification: 48 unit tests and two production-composition tests pass for
   `peritus-product-runner`; strict Clippy passes; a regression proves a changed artifact source is
   checked while a 700-line untouched vendor source and directory marker are ignored.
-- Next evidence: rerun the same unchanged task before restarting the 445-trial campaign.
+- After evidence: unchanged trial `make-mips-interpreter__bzpJw83` reached and passed native source
+  layout with the dirty `doomgeneric` submodule marker and its untouched vendored sources present.
+  Peritus accepted the two-path candidate, and Harbor's three unchanged checks returned reward 1.0.
 
 ## TBF-002: writer fabricated a read-only workspace blocker
 
@@ -1970,8 +1972,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   `/tmp/frame.bmp` was never created.
 - Verification: the production-composition regression now scripts the same false writable-workspace
   question, proves the harness re-grounds a fresh invocation, and completes the requested write.
-- Next evidence: rebuild the static adapter and rerun the same unchanged task before restarting the
-  445-trial campaign.
+- After evidence: unchanged job `terminalbench-qualification-make-mips-post-timeout`; trial
+  `make-mips-interpreter__bzpJw83`; Peritus product acceptance true; 28 provider requests; 1,329,697
+  input, 1,105,072 cached input, and 28,573 output tokens; 602 seconds of product execution. The
+  real `node vm.js` command ran to the 120-second boundary, produced 53 sequential BMP frames, was
+  killed and reaped, and returned control to the independent review. Harbor completed with zero
+  exceptions and reward 1.0 after all unchanged checks passed: VM execution, frame existence, and
+  visual similarity to the reference.
 
 ## TBF-003: an unbounded structured command froze the developer loop
 
@@ -1995,5 +2002,9 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   markers. The retained interrupted Harbor job exits with status 130 and is not counted as a score.
 - Verification: regressions execute the current test binary as both a non-terminating child and a
   dual-stream high-output child, proving prompt timeout recovery and bounded concurrent capture.
-- Next evidence: rebuild the static adapter and rerun the same unchanged task before restarting the
-  445-trial campaign.
+- After evidence: unchanged job `terminalbench-qualification-make-mips-post-timeout`; trial
+  `make-mips-interpreter__bzpJw83`; Peritus product acceptance true. The real `node vm.js` command
+  reached its 120-second deadline after producing 53 sequential BMP frames, was killed and reaped,
+  and returned control to the independent reviewer. Harbor completed with zero exceptions and
+  reward 1.0 after VM execution, frame existence, and frame-similarity checks all passed. Product
+  execution took 602 seconds and 28 provider requests.

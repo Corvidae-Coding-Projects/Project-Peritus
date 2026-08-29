@@ -73,6 +73,12 @@ unchanged `openssl-selfsigned-cert` verifier. Peritus accepted the candidate aft
 requests. Harbor recorded 182,848 input tokens, 90,299 cached input tokens, and 5,405 output tokens
 in 182 seconds.
 
+An unchanged `make-mips-interpreter` qualification also received reward `1.0` after all three
+verifier checks passed: VM execution, frame creation, and visual similarity. This run exercised a
+real long-running program: `node vm.js` rendered 53 frames, reached Peritus's 120-second structured
+command deadline, was killed and reaped, and returned control to the independent reviewer. Peritus
+accepted the candidate after 28 provider requests and 602 seconds; Harbor recorded zero exceptions.
+
 ## Run the full suite
 
 The production campaign is five attempts for each of 89 tasks: 445 trials. Keep it serialized on
