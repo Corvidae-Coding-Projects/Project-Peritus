@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 698,
+  "next_comment_id": 699,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T13:37:58.129773190Z",
+      "updated_at": "2026-08-29T13:54:44.587274218Z",
       "labels": [
         "qualification",
         "release"
@@ -1306,6 +1306,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAtpbUXawwXMgaojfwkWGju0fldLdsjCyJWhPKmL2gUrBsDDtzUKbB57hz8HioOp98UNBE90SKyNkYZWjKqVm/AQ=="
+        },
+        "031ef95a-5945-4b20-afb8-94013265c011": {
+          "display_id": 698,
+          "author": "6ME5",
+          "content": "Signed checkpoint 60f6bcf1 qualifies the portable Terminal-Bench runner. The unchanged openssl-selfsigned-cert task completed through native Peritus and Harbor verifier with reward 1.0, zero exceptions, 13 provider requests, 182848 input / 90299 cached / 5405 output tokens, and 182 seconds. The commit adds static-musl selection, matching Codex companion routing, PTY-safe report framing, deterministic rootless Podman registry resolution, exact pins, commands, and failure-journal evidence; pushed to draft PR #39.",
+          "created_at": "2026-08-29T13:54:44.584672306Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAaCBEvLwV/kdJE7K/3mIJECLlpLB6aPm2DDhXEaAhwTE3piCDSvdrrbqpaxB1hCUKY+rAAQGaNAy10tUB9zcbDg=="
         },
         "03766697-0e0f-4895-8c26-6b7090884cd6": {
           "display_id": 629,
@@ -7034,8 +7043,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T13:37:58.129773190Z",
+    "timestamp": "2026-08-29T13:54:44.587274218Z",
     "agent_id": "6ME5",
-    "agent_seq": 881
+    "agent_seq": 882
   }
 }
