@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 764,
+  "next_comment_id": 765,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T23:37:37.428616065Z",
+      "updated_at": "2026-08-29T23:37:46.093153563Z",
       "labels": [
         "qualification",
         "release"
@@ -2539,6 +2539,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA0/0D/XBgMEnvton4J4DUyrz3fbZsdXURWmV83KgBKjncJjh30s+E6MNPjmtCTpTO0xR7+pzDKXVqcPRKsWAwCQ=="
+        },
+        "a2fa8cfa-107b-40e0-87eb-507b8e167357": {
+          "display_id": 764,
+          "author": "6ME5",
+          "content": "[action] Final report must document benchmark gotchas and refused score-only cheats; retain all scores and keep ordinary failures classified honestly",
+          "created_at": "2026-08-29T23:37:46.089541549Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAdafDbUJeo8ZKSYKzeGzBXae/Zvz76OBBRALgh+UszpXbj8cFjm68Pt72QMX8hj+dEXrhD9HAwDx6Da2qpsClAw=="
         },
         "a38b5098-cc2c-4b22-b572-396425816592": {
           "display_id": 609,
@@ -7628,8 +7637,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T23:37:37.428616065Z",
+    "timestamp": "2026-08-29T23:37:46.093153563Z",
     "agent_id": "6ME5",
-    "agent_seq": 951
+    "agent_seq": 952
   }
 }
