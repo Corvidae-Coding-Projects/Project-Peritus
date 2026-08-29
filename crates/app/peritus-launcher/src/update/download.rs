@@ -143,10 +143,10 @@ fn extract(archive: &std::path::Path, root: &std::path::Path) -> Result<(), Laun
         .args([
             "-NoProfile",
             "-Command",
-            "Expand-Archive -LiteralPath $args[0] -DestinationPath $args[1] -Force",
+            "$ErrorActionPreference='Stop'; Expand-Archive -LiteralPath $env:PERITUS_ARCHIVE_SOURCE -DestinationPath $env:PERITUS_ARCHIVE_DESTINATION -Force",
         ])
-        .arg(archive)
-        .arg(root)
+        .env("PERITUS_ARCHIVE_SOURCE", archive)
+        .env("PERITUS_ARCHIVE_DESTINATION", root)
         .status()
         .map_err(|error| LauncherError::Update(format!("start release extraction: {error}")))?;
     success(status.success(), "release extraction failed")

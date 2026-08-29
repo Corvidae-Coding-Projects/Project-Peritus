@@ -26,6 +26,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Fixed
+- Pass Windows release archive and self-update extraction paths through explicit PowerShell
+  environment bindings, so `Compress-Archive` and `Expand-Archive` receive non-empty literal paths
+  on hosted Windows runners instead of losing positional arguments after `-Command` (#31)
 - Replace the root and HarnessBench chronological status walls with plain-English product,
   qualification, benchmark, and documentation guides while retaining task-level forensic evidence
   in the external failure journal; add focused checks to all 75 crate READMEs (#31)

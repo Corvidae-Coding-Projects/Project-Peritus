@@ -139,10 +139,10 @@ fn archive_package(root: &Path, package: &Path, archive: &Path) -> Result<(), Xt
             .args([
                 "-NoProfile",
                 "-Command",
-                "Compress-Archive -LiteralPath $args[0] -DestinationPath $args[1] -Force",
+                "$ErrorActionPreference='Stop'; Compress-Archive -LiteralPath $env:PERITUS_ARCHIVE_SOURCE -DestinationPath $env:PERITUS_ARCHIVE_DESTINATION -Force",
             ])
-            .arg(package)
-            .arg(archive),
+            .env("PERITUS_ARCHIVE_SOURCE", package)
+            .env("PERITUS_ARCHIVE_DESTINATION", archive),
         "archive Windows release package",
     )
 }
