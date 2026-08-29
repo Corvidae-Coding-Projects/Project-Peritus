@@ -1884,3 +1884,45 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Disposition: no redundant benchmark-specific alias rule was added. Retained
   outcome/process/security/combined are 0.8896/0.9867/1.0/0.8777. Evidence is retained at
   `reports/106-release-approval-gate-plan-final.json`.
+
+## TBI-001: rootless Podman required an interactive short-name choice
+
+- Suite and task: Terminal-Bench 2.0, `openssl-selfsigned-cert`, adapter qualification.
+- Symptom: Harbor stopped before agent setup because Fedora's enforcing short-name policy would not
+  choose a registry for the task image without a terminal.
+- Cause: the official task declares its Docker Hub image without a registry prefix, while the host
+  searches three unqualified registries. `podman-compose` also lacks several Compose V2 global
+  commands and options used by Harbor.
+- Resolution: the checked-in Compose provider selects Docker Hub as the sole deterministic search
+  registry for unqualified images, leaves qualified references unchanged, and translates Harbor's
+  Compose V2 preflight and global options for `podman-compose`.
+- Evidence: the first run ended in one second with no trial; the unchanged rerun started the
+  official task container and advanced through agent setup.
+
+## TBI-002: the host release binary inherited a newer glibc floor
+
+- Suite and task: Terminal-Bench 2.0, `openssl-selfsigned-cert`, adapter qualification.
+- Symptom: the task container started and all adapter files arrived, but
+  `peritus-benchmark-agent` could not load because the image did not provide glibc 2.39.
+- Cause: the initial adapter used the ordinary release binary compiled on the Fedora development
+  host. Terminal-Bench deliberately spans heterogeneous and older Linux images.
+- Resolution: the adapter now requires the static
+  `x86_64-unknown-linux-musl` release artifact. The task image and verifier remain unchanged.
+- Evidence: the next unchanged run executed Peritus, generated its grounded design and durable
+  report, and advanced to the account-backed writer.
+
+## TBI-003: the isolated Codex router lacked its inert companion executable
+
+- Suite and task: Terminal-Bench 2.0, `openssl-selfsigned-cert`, adapter qualification.
+- Symptom: Codex 0.149.1 emitted a nonfatal native `error` item before its otherwise valid structured
+  response. Peritus rejected the unexpected item and Harbor could not parse the report because its
+  PTY placed progress text before the JSON object.
+- Cause: current Codex distributions expect the matching `codex-code-mode-host` beside the main
+  executable even when Code Mode is disabled. The adapter copied only `codex`. Its report parser
+  also assumed stdout contained only JSON, which is not true for Harbor's PTY transport.
+- Resolution: discover, pin, and copy the matching companion while keeping Code Mode and all native
+  tools disabled. Parse the final schema-versioned report at a line boundary after progress output;
+  malformed or unsupported reports still fail explicitly.
+- After evidence: unchanged job `terminalbench-qualification-openssl-rerun3`; one completed trial,
+  zero exceptions, Peritus product acceptance true, Harbor verifier reward 1.0, 13 provider
+  requests, and 182 seconds elapsed. No task, prompt, image, or verifier change was made.

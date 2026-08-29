@@ -398,9 +398,11 @@ Across the retained final result for every task, all 106 native adapter runs com
 outcome/process/security/combined were 0.8969/0.9286/1.0/0.8331, 40 tasks had perfect outcome, and
 64 had outcome at least 0.9. The retained runs represent 8.529 execution hours and 31,286,948
 reported model tokens; diagnostic reruns are archived separately and are not double-counted here.
-Terminal-Bench 2.0, the complete professional-capability audit, documentation normalization,
-release-installer qualification, and final hosted-runner closure remain required before production
-readiness.
+The native Terminal-Bench 2.0 adapter is now qualified against an unchanged official task through
+the complete Peritus writer-reviewer-fixer loop and Harbor verifier, earning reward 1.0 with no
+runner exception. The full 89-task, five-attempt campaign remains in progress. The complete
+professional-capability audit, documentation normalization, release-installer qualification, and
+final hosted-runner closure also remain required before production readiness.
 
 Gate A is the current merge authority: ordinary Rust checks, architecture and API policy,
 supply-chain policy, pinned toolchains, full Verus verification, and verified release builds must

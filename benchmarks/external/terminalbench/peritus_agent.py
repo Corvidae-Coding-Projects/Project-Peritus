@@ -15,6 +15,10 @@ from harbor.environments.base import BaseEnvironment, ExecResult
 from harbor.models.agent.context import AgentContext
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
+_PORTABLE_PERITUS = (
+    _REPO_ROOT
+    / "target/x86_64-unknown-linux-musl/release/peritus-benchmark-agent"
+)
 _REMOTE_BIN = PurePosixPath("/opt/peritus/bin")
 _REMOTE_HOME = PurePosixPath("/tmp/peritus-home")
 _REMOTE_PROMPTS = PurePosixPath("/tmp/peritus-prompts")
@@ -28,6 +32,7 @@ class PeritusAgent(BaseAgent):
         *args: Any,
         peritus_binary: str | None = None,
         codex_binary: str | None = None,
+        codex_code_mode_host: str | None = None,
         claude_binary: str | None = None,
         codex_auth: str | None = None,
         claude_credentials: str | None = None,
@@ -36,13 +41,18 @@ class PeritusAgent(BaseAgent):
         super().__init__(*args, **kwargs)
         self._peritus_binary = _required_file(
             peritus_binary or os.environ.get("PERITUS_BENCHMARK_AGENT"),
-            _REPO_ROOT / "target/release/peritus-benchmark-agent",
+            _PORTABLE_PERITUS,
             "Peritus benchmark binary",
         )
         self._codex_binary = _required_file(
             codex_binary or os.environ.get("PERITUS_CODEX_BINARY") or shutil.which("codex"),
             None,
             "Codex executable",
+        )
+        self._codex_code_mode_host = _required_file(
+            codex_code_mode_host or os.environ.get("PERITUS_CODEX_CODE_MODE_HOST"),
+            self._codex_binary.with_name("codex-code-mode-host"),
+            "Codex code-mode host companion",
         )
         self._claude_binary = _required_file(
             claude_binary or os.environ.get("PERITUS_CLAUDE_BINARY") or shutil.which("claude"),
@@ -95,6 +105,7 @@ class PeritusAgent(BaseAgent):
         uploads = (
             (self._peritus_binary, _REMOTE_BIN / "peritus-benchmark-agent"),
             (self._codex_binary, _REMOTE_BIN / "codex"),
+            (self._codex_code_mode_host, _REMOTE_BIN / "codex-code-mode-host"),
             (self._claude_binary, _REMOTE_BIN / "claude"),
             (self._codex_auth, _REMOTE_HOME / ".codex/auth.json"),
             (self._claude_credentials, _REMOTE_HOME / ".claude/.credentials.json"),
@@ -238,13 +249,19 @@ def _require_success(result: ExecResult, operation: str) -> None:
 
 
 def _parse_report(stdout: str) -> dict[str, Any]:
-    try:
-        report = json.loads(stdout)
-    except json.JSONDecodeError as error:
-        raise RuntimeError("Peritus returned a malformed invocation report") from error
-    if not isinstance(report, dict) or report.get("schema_version") != 1:
-        raise RuntimeError("Peritus returned an unsupported Terminal-Bench report")
-    return report
+    malformed: json.JSONDecodeError | None = None
+    for offset in range(len(stdout) - 1, -1, -1):
+        if stdout[offset] != "{" or (offset > 0 and stdout[offset - 1] not in "\r\n"):
+            continue
+        try:
+            report = json.loads(stdout[offset:])
+        except json.JSONDecodeError as error:
+            malformed = error
+            continue
+        if not isinstance(report, dict) or report.get("schema_version") != 1:
+            raise RuntimeError("Peritus returned an unsupported Terminal-Bench report")
+        return report
+    raise RuntimeError("Peritus returned a malformed invocation report") from malformed
 
 
 def _integer(value: object) -> int | None:

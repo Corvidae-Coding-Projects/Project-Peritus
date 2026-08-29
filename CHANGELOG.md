@@ -13,6 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Run external Linux task environments with a static-musl Peritus adapter, carry Codex's matching
+  inert code-mode host companion beside the credential-owning executable, parse machine reports
+  after PTY progress output, and make rootless Podman resolve Docker Hub short names without an
+  interactive prompt (#31)
 - Make partial and checkpoint result artifacts self-contained for their captured round with
   completed results, pending or failed stop boundary, and stop reason, and preserve those snapshots
   across later rounds unless revision is explicitly requested (#31)
@@ -195,6 +199,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Add the native Harbor custom-agent boundary for Terminal-Bench 2.0, including unchanged-workspace
+  product execution, durable design/trace/observation evidence, provider and cache accounting,
+  resource-aware Podman commands, and a passing unchanged single-task qualification (#31)
 - Exercise unchanged HarnessBench task 093 across JSONL parsing, identity stitching, ordered
   sessionization, exact inactivity boundaries, bot exclusion, deduplication, rejects, and summaries;
   isolate unpublished campaign carryover, dual-routing, and lexical conventions from product rules

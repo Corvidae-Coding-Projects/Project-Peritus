@@ -14,6 +14,8 @@ def main() -> None:
     provider = shutil.which("podman-compose")
     if provider is None:
         raise SystemExit("podman-compose is not available on PATH")
+    registries = os.path.join(os.path.dirname(__file__), "registries.conf")
+    os.environ.setdefault("CONTAINERS_REGISTRIES_CONF", registries)
     arguments, project_directory = _podman_compose_arguments(sys.argv[1:])
     if project_directory is not None:
         os.chdir(project_directory)
