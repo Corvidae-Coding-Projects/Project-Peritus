@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 771,
+  "next_comment_id": 772,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -5337,7 +5337,7 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T22:24:16.640107633Z",
-      "updated_at": "2026-08-29T23:43:55.312522590Z",
+      "updated_at": "2026-08-29T23:49:40.419191629Z",
       "labels": [
         "performance",
         "qualification"
@@ -5369,6 +5369,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzcsANZVF1gPeSHVi0NjRXIVWH0KHKWNsHZ1qqRt8TOoW30FTmGUq2voLHkqdl8VqEAA5lPzOr6cBrOeuXhT/DQ=="
+        },
+        "6fe590ac-deb6-4281-8c5d-220b214f3a7a": {
+          "display_id": 771,
+          "author": "6ME5",
+          "content": "Fixed the current Gate A candidate-policy failure at its documented cause: the newly integrated peritus-performance-qualification crate README lacked the repository-mandated Focused checks section. Added the locked package-specific command; cargo xtask docs-check now passes 135 documentation files and git diff --check passes. Commit: 1f95f5ad.",
+          "created_at": "2026-08-29T23:49:40.416291655Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA15rCIuMhVMe5/rsGnj8qKatJR7ZBNuYqJUaTnsWOdbI98N3hIBrf29eXq/BHjOqKpZbEGakqFAxFwWMcEXC4CQ=="
         },
         "f4ac994e-df19-45e8-98e7-6f73f30bc8d0": {
           "display_id": 490,
@@ -7691,8 +7700,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T23:48:11.901646606Z",
+    "timestamp": "2026-08-29T23:49:40.419191629Z",
     "agent_id": "6ME5",
-    "agent_seq": 958
+    "agent_seq": 959
   }
 }
