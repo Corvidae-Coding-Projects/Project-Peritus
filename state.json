@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 669,
+  "next_comment_id": 670,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T10:45:38.818007046Z",
+      "updated_at": "2026-08-29T10:57:31.832788341Z",
       "labels": [
         "qualification",
         "release"
@@ -1891,6 +1891,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAYzxNY9z6cuHGETj8dAYoU1NKQQfMATFP3UMbfCoY59LQx2xpuWwHhJrOE4cUAk0Iyf6eJcIWGqE6nbDCjh7jAA=="
+        },
+        "8793820c-d3d5-4ece-acc3-b975260a4ccc": {
+          "display_id": 669,
+          "author": "6ME5",
+          "content": "HarnessBench Task 091 exposed general reconciliation routing defects: material statuses were flattened, dedicated synthetic rows leaked into rejects, absent records received broad invalid reasons, and summaries counted only one artifact. Workflow and role skills now route identities once unless dual recording is explicit, preserve material state, distinguish missing lookup from present-but-invalid records, and reconcile unresolved identities across outputs. The unchanged final run passed all 20 oracle checks and improved outcome/process/security/combined from 0.7705/0.9767/1.0/0.7525 to 1.0/0.9633/1.0/0.9633.",
+          "created_at": "2026-08-29T10:57:31.830121257Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAB8ioz6Bwi+zNdfpL6uiIeveYAUtJrLo4H9Stzt5l1ILyXWt0URkJ4JEIt+g8sV0F2j4DkHQDS7aZufpHRfhpCw=="
         },
         "881db97c-ef64-4fc4-a7fa-7ba34cf99d3e": {
           "display_id": 558,
@@ -6773,8 +6782,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T10:45:38.818007046Z",
+    "timestamp": "2026-08-29T10:57:31.832788341Z",
     "agent_id": "6ME5",
-    "agent_seq": 850
+    "agent_seq": 851
   }
 }
