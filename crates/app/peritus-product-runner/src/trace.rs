@@ -1,13 +1,15 @@
 //! Durable per-run D0 provider/tool trace.
 
 use std::{
-    fs::{self, OpenOptions},
-    io::Write as _,
-    path::PathBuf,
+    fs::{self, File, OpenOptions},
+    io::{self, Write as _},
+    path::{Path, PathBuf},
 };
 
 use peritus_agent::{DeveloperLoopError, DeveloperTrace, DeveloperTraceEvent};
 use serde_json::{Map, Value};
+
+use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
 /// Length-framed append-only trace stored beside the daemon's product-run record.
 pub struct FileDeveloperTrace {
@@ -21,11 +23,19 @@ impl FileDeveloperTrace {
     }
 }
 
+/// Creates the durable trace before the first provider request without truncating prior events.
+pub fn prepare(path: &Path) -> Result<(), ProductRunnerError> {
+    open(path).map(drop).map_err(|error| {
+        ProductRunnerError::new(
+            ProductRunnerErrorKind::Repository,
+            "prepare durable developer trace",
+            error.to_string(),
+        )
+    })
+}
+
 impl DeveloperTrace for FileDeveloperTrace {
     fn record(&mut self, event: DeveloperTraceEvent<'_>) -> Result<(), DeveloperLoopError> {
-        if let Some(parent) = self.path.parent() {
-            fs::create_dir_all(parent).map_err(|error| trace(&error))?;
-        }
         let (tag, payload) = match event {
             DeveloperTraceEvent::ProviderEnvelope(bytes) => (1_u8, bytes.to_vec()),
             DeveloperTraceEvent::ToolObservation { call, observation } => {
@@ -88,16 +98,19 @@ impl DeveloperTrace for FileDeveloperTrace {
         };
         let length = u64::try_from(payload.len())
             .map_err(|_| DeveloperLoopError::Trace("trace event is too large".to_owned()))?;
-        let mut file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&self.path)
-            .map_err(|error| trace(&error))?;
+        let mut file = open(&self.path).map_err(|error| trace(&error))?;
         file.write_all(&[tag]).map_err(|error| trace(&error))?;
         file.write_all(&length.to_le_bytes()).map_err(|error| trace(&error))?;
         file.write_all(&payload).map_err(|error| trace(&error))?;
         file.sync_data().map_err(|error| trace(&error))
     }
+}
+
+fn open(path: &Path) -> io::Result<File> {
+    if let Some(parent) = path.parent().filter(|parent| !parent.as_os_str().is_empty()) {
+        fs::create_dir_all(parent)?;
+    }
+    OpenOptions::new().create(true).append(true).open(path)
 }
 
 fn digest_hex(bytes: &[u8; 32]) -> String {
@@ -110,6 +123,6 @@ fn digest_hex(bytes: &[u8; 32]) -> String {
     output
 }
 
-fn trace(error: &std::io::Error) -> DeveloperLoopError {
+fn trace(error: &io::Error) -> DeveloperLoopError {
     DeveloperLoopError::Trace(error.to_string())
 }

@@ -48,3 +48,26 @@ pub fn summarize_usage(
     }
     Ok(aggregate)
 }
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use super::*;
+
+    #[test]
+    fn empty_prepared_trace_has_zero_usage() {
+        let directory = tempfile::tempdir().expect("trace directory");
+        let path = directory.path().join("empty.trace");
+        fs::write(&path, []).expect("empty trace");
+
+        let usage = summarize_usage(&path, "task").expect("summarize empty trace");
+
+        assert_eq!(usage.requests, 0);
+        assert_eq!(usage.input_tokens, 0);
+        assert_eq!(usage.cached_input_tokens, 0);
+        assert_eq!(usage.output_tokens, 0);
+        assert_eq!(usage.total_tokens, 0);
+        assert_eq!(usage.provider_cost_microunits, 0);
+    }
+}

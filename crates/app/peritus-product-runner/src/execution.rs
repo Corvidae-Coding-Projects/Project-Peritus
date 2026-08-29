@@ -42,6 +42,7 @@ impl ProductRunner {
         let mut accounting = RunAccounting::new();
         accounting.check()?;
         let baseline = CandidateBaseline::capture(&input.workspace_root)?;
+        crate::trace::prepare(&input.trace_path)?;
         let mut workspace_ownership = WorkspaceOwnership::capture(&input.workspace_root);
         let design = create_design(&input, &observe, 1, &mut accounting).await?;
         let restored_findings = review::restore_ledger(&input.finding_state)?;

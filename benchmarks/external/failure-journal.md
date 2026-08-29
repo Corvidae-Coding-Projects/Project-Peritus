@@ -2139,3 +2139,30 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   to preserve complete explicitly sourced values and apply only named transformations. The shared
   product-runner and production-composition suites remain green. The final unchanged campaign must
   demonstrate the behavior with the corrected binary before this is claimed as a benchmark gain.
+
+## TBF-008: an absent first trace event masked the real provider failure
+
+- Suite and task: Terminal-Bench 2.0, `crack-7z-hash`, first full-suite baseline trial.
+- Symptom: Peritus reached the first design provider attempt, then Harbor recorded a runner
+  exception instead of a native product report. The visible error said that
+  `/logs/agent/peritus/developer-round-0001.trace` did not exist, so the verifier never ran and the
+  underlying provider failure was lost.
+- Cause: the append-only developer trace was created lazily when the first provider or tool event
+  was recorded. A provider terminal before its first event correctly returned a typed product
+  failure, but the benchmark adapter attempted to summarize the missing trace before it inspected
+  that result. The retained `conversation.json` proves the evidence directory itself existed; the
+  failure was an unstarted trace, not disappearing storage.
+- Resolution: every product run now creates its durable trace after repository-baseline capture and
+  before the first provider request, preserving existing events when a run resumes. A pre-response
+  provider failure therefore leaves a valid empty trace, which projects to zero requests and lets
+  the adapter publish the original typed failure and last product observation.
+- Before evidence: job `peritus-terminalbench-2-k5-high`; trial
+  `crack-7z-hash__gqdRV7a`; agent execution ended after 1.189 seconds with no verifier result. The
+  retained trial contains `agent/peritus/conversation.json`, no developer trace, and the masked
+  filesystem diagnostic in `exception.txt` and `result.json`.
+- Verification: a production-composition regression forces the provider to fail before returning
+  any response and proves the original provider category survives while a nested zero-byte trace
+  exists. A benchmark-projection regression proves the empty trace reports zero requests and zero
+  tokens. The frozen 445-trial baseline remains unchanged; a focused unchanged rerun with the final
+  binary must identify and retain the original provider terminal before this benchmark result is
+  closed.

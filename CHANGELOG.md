@@ -26,6 +26,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Fixed
+- Create each durable developer trace before the first provider request, without truncating prior
+  events, so a provider failure before its first response remains the reported cause instead of
+  being masked by a missing-trace filesystem error; empty traces now retain accurate zero-request
+  benchmark accounting (`TBF-008`, #31)
 - Pass Windows release archive and self-update extraction paths through explicit PowerShell
   environment bindings, so `Compress-Archive` and `Expand-Archive` receive non-empty literal paths
   on hosted Windows runners instead of losing positional arguments after `-Command`; compute the
