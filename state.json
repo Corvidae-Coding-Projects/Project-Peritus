@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 721,
+  "next_comment_id": 722,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1269,7 +1269,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T17:35:05.938217403Z",
+      "updated_at": "2026-08-29T17:50:53.232251017Z",
       "labels": [
         "qualification",
         "release"
@@ -1634,6 +1634,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjlat81YzAWg4LUEMd8IkFrMiXYb0uBjdydg0t92NVO+dcg7l/ZC+S8n5VPto+L9aAl/kESMEaFNXxQegUH1ACg=="
+        },
+        "363abb9d-1ee6-420c-83bc-1d72a9c0c46f": {
+          "display_id": 721,
+          "author": "6ME5",
+          "content": "Checkpoint: added the G4 durable effect-receipt ledger. Every writable tool call syncs deterministic role/invocation/effect identity, provider call ID, canonical request digest, Started state, and bounded terminal result outside the managed workspace. Exact completed calls replay without a second effect; conflicts fail closed; an interrupted command becomes durable Ambiguous and is never automatically relaunched. Split read-only inspection, receipt state, and explicit receipt JSON codec into focused modules. Updated product and capability documentation. Verification: cargo xtask all passed; 64 product-runner unit tests and 2 production-composition tests passed; strict Clippy, formatting, and diff checks passed.",
+          "created_at": "2026-08-29T17:50:53.228923688Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJrnZz/ZVs07NBj1HmWOk5PN5yRq35VEnhAcawX4287UBCxtCthbkJzgJVg+4m+OB6yRkLuOre1R7QEnQbCO9AA=="
         },
         "39bc81b6-f5fb-4901-bc8a-bc0382bd0e68": {
           "display_id": 713,
@@ -7236,8 +7245,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T17:35:05.938217403Z",
+    "timestamp": "2026-08-29T17:50:53.232251017Z",
     "agent_id": "6ME5",
-    "agent_seq": 905
+    "agent_seq": 906
   }
 }
