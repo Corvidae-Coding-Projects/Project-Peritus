@@ -115,6 +115,11 @@ exact cursor for the same response. Otherwise the ambiguity remains visible to t
 not silently spend twice. Cancellation is idempotent and interrupts connection, body read, framing,
 and backoff work. Dropping an owned stream signals cancellation and does not detach background work.
 
+C5 never chooses another provider. The G4 product runner may consume C5's normalized terminal
+category after the selected provider's retry policy ends, but only when the user enabled automatic
+failover and a compatible route remains. Raw ambiguous transport, normalized ambiguous acceptance,
+safety, refusal, and cancellation are deliberately ineligible for that outer switch.
+
 Account-backed routes use the providers' official executables as credential-owning, stateless
 routers. Peritus does not read, store, refresh, or reproduce their account tokens. It supplies one
 isolated request, disables native executable tools and ambient integration surfaces, accepts only

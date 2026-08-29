@@ -28,7 +28,7 @@ pub(super) fn read(path: &Path) -> Result<Vec<Frame>, BenchmarkError> {
             Ok(_) => unreachable!("one-byte read returned more than one byte"),
             Err(error) => return Err(BenchmarkError::filesystem("read trace tag", path, error)),
         }
-        if !matches!(tag[0], 1 | 2) {
+        if !matches!(tag[0], 1..=5) {
             return Err(BenchmarkError::trace(path, "trace contains an unknown frame tag"));
         }
         let mut length = [0_u8; 8];

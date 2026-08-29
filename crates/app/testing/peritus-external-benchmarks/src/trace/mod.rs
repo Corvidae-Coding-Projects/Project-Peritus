@@ -3,6 +3,7 @@
 mod bounded;
 mod frames;
 mod harnessbench;
+mod metadata;
 mod projection;
 
 use std::path::{Path, PathBuf};

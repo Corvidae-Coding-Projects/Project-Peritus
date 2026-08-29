@@ -104,8 +104,12 @@ impl DaemonRuntime {
         progress.complete(StartupPhase::AuthorityEpoch)?;
         let workspaces = install_and_reconcile(&mut journal, &config)?;
         let production = recover_production(&journal, &config, &workspaces)?;
-        let product_runs =
-            ProductRunService::open(config.paths().state_root(), &components, &workspaces)?;
+        let product_runs = ProductRunService::open(
+            config.paths().state_root(),
+            &components,
+            &workspaces,
+            config.product().automatic_provider_failover(),
+        )?;
         progress.complete(StartupPhase::DomainRecovery)?;
         let diagnostic = reconcile_processes(&processes)?;
         progress.complete(StartupPhase::EffectRecovery)?;

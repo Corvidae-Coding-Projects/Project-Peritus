@@ -36,7 +36,7 @@ useful behavior only when it fits its own local-first and evidence-driven design
 | Provider-aware prompt caching | Working | G4 optionally negotiates `PromptCaching`, selects `Automatic` only when supported, and leaves it disabled otherwise. Generated first-party account/API profiles advertise the capability; account executables remain no-flag dumb routers, and normalized usage retains cache details. | Validate observed cache accounting across both live account routes after the baseline freezes. |
 | Token, cost, time, process, memory, disk, and concurrency budgets | Partial | The ordinary G4 path now aggregates provider requests, retries, compactions, application tool calls, normalized tokens/cache usage, provider-estimated cost, and elapsed time across every role. It enforces deliberately generous eight-hour, 4,096-request, 20,000-tool, 100-million-token, and reported-cost runaway ceilings with a distinct budget failure. Command process deadlines/output and serialized external runs remain bounded. Per-run memory and disk-growth ceilings are not yet unified into this projection. | Preserve the long-run defaults. Add memory or disk dimensions only with portable measurements and a useful operator override. |
 | Heartbeats, stall visibility, cancellation, and reconnect | Working | The daemon protocol retains connection heartbeat and cancellation; the TUI polls active product runs and now receives status derived from the run start, last completed durable effect, current time, cumulative counters, and the eight-hour horizon. A slow call is reported as quiet rather than falsely called failed, while restart/reconnect remains explicit. | Preserve and verify the counter/horizon text during the final live soak. |
-| Rate limits, queue backpressure, provider availability, and failover | Partial | Direct providers classify rate limits and use bounded retry policy; D3 and application protocols model backpressure. G4 lets users select providers but has no health-aware queue or explicit failover chain for an active role. | Add opt-in role failover with compatibility checks and a durable provider-change event. Never silently switch models. |
+| Rate limits, queue backpressure, provider availability, and failover | Working with a boundary | Direct providers classify rate limits and use bounded retry policy; D3 and application protocols model backpressure. G4 offers durable, default-off automatic-failover consent when at least two providers are configured. After ordinary recovery ends, each designer, writer, reviewer, or fixer role may advance through deterministic tool-compatible providers. Capability mismatch, authentication, quota, rate, timeout, malformed, and safe provider failures are eligible; safety, refusal, cancellation, raw ambiguous transport, and normalized ambiguous acceptance are not. Every switch is durably traced and counted in persisted live status. | Preserve the explicit consent and terminal taxonomy. A predictive fleet-health queue remains out of scope until real multi-user or high-concurrency evidence requires it. |
 | Idempotent tool execution and duplicate-effect protection | Working | C4 and the application protocol have idempotency identities. G4 now syncs deterministic role/invocation/effect identity, provider call ID, canonical request digest, start/terminal state, and a bounded result around every writable call. Exact completed calls replay without a second effect; conflicting recovery is refused; interrupted filesystem calls use exact/no-op semantics; interrupted commands become durable ambiguous results and are not relaunched. | Preserve and exercise both completed replay and interrupted-command recovery in product qualification. |
 | Bounded tool output and long-running command control | Working | Structured commands cap both streams, close stdin, own the process tree, accept 1-600 second deadlines, and kill/reap on expiry. Terminal-Bench `TBF-003` reproduced the freeze and proved the corrected behavior. | Preserve and include observations in cumulative run budgets. |
 | Large-repository navigation and exact grounding | Working | Every fresh role must list then read; search/read/list are bounded; ignored/generated trees are filtered; exact changed paths drive gates; changed sources have a hard 500-line acceptance limit. HarnessBench and Terminal-Bench exercise this path. | Preserve. Improve semantic navigation only if measured tasks show literal search is inadequate. |
@@ -63,8 +63,10 @@ experience. They are ordered to avoid invalidating benchmark evidence more often
 5. Completed on the draft qualification branch: cumulative model/time/tool/cost accounting, live
    stall status, and the durable effect-receipt ledger with duplicate and ambiguous-command
    recovery.
-6. Add explicit compatible role failover and queue health only after the failure taxonomy shows
-   which provider transitions are safe and useful.
+6. Completed on the draft qualification branch: default-off compatible role failover after
+   same-provider recovery, durable switch evidence, persisted counters, and an explicit exclusion
+   for safety, refusal, cancellation, and ambiguous acceptance. Predictive queue health remains
+   evidence-gated rather than speculative.
 7. Run a final Terminal-Bench k=5 campaign with the final binary so baseline and final scores refer
    to distinct, exact commits.
 8. Completed on the draft qualification branch: public POSIX and PowerShell installers, cached
@@ -74,7 +76,8 @@ experience. They are ordered to avoid invalidating benchmark evidence more often
 ## Non-goals
 
 - No task-name branches, oracle leakage, benchmark fixture edits, or verifier changes.
-- No silent provider switch or unverified executable replacement.
+- No provider switch without durable user consent and durable switch evidence; no unverified
+  executable replacement.
 - No model-authored compacted summary accepted without source binding and freshness checks.
 - No claim that substrate code is a product feature until the ordinary launcher/daemon path uses it.
 - No speculative hardening that displaces observed product failures or common long-run behavior.

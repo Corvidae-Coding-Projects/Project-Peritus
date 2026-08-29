@@ -52,6 +52,8 @@ struct PersistedProgress {
     model_requests: u32,
     tool_calls: u32,
     retries: u32,
+    #[serde(default)]
+    provider_failovers: u32,
     compactions: u32,
     input_tokens: u64,
     cached_input_tokens: u64,
@@ -236,6 +238,7 @@ impl PersistedProgress {
             model_requests: value.model_requests,
             tool_calls: value.tool_calls,
             retries: value.retries,
+            provider_failovers: value.provider_failovers,
             compactions: value.compactions,
             input_tokens: value.input_tokens,
             cached_input_tokens: value.cached_input_tokens,
@@ -256,6 +259,7 @@ impl PersistedProgress {
             model_requests: self.model_requests,
             tool_calls: self.tool_calls,
             retries: self.retries,
+            provider_failovers: self.provider_failovers,
             compactions: self.compactions,
             input_tokens: self.input_tokens,
             cached_input_tokens: self.cached_input_tokens,
@@ -360,6 +364,7 @@ mod tests {
         let conversation = record.conversation.snapshot().expect("conversation");
 
         assert_eq!(record.snapshot.phase(), ProductRunPhase::Failed);
+        assert_eq!(record.progress.provider_failovers, 0);
         assert_eq!(conversation.messages().len(), 2);
         assert_eq!(conversation.messages()[0].content(), "build tetris");
         assert!(conversation.messages()[1].content().contains("invalid escape"));

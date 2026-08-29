@@ -41,7 +41,7 @@ fn render_configuration(layout: &AppLayout, state: &ProductState) -> Result<Stri
         daemon_root.join("backups"),
     )?;
     let mut text = format!(
-        "version = 1\nstore_id = {:?}\n\n[paths]\nstate_root = {}\nartifact_root = {}\nevidence_root = {}\nworkspace_root = {}\nprocess_root = {}\ntransaction_root = {}\nbackup_root = {}\n\n[approval_registry]\npayload_file = {}\ngeneration = 1\n\n[human]\nactor_id = {:?}\n\n[telemetry]\nmode = \"disabled\"\n",
+        "version = 1\nstore_id = {:?}\n\n[paths]\nstate_root = {}\nartifact_root = {}\nevidence_root = {}\nworkspace_root = {}\nprocess_root = {}\ntransaction_root = {}\nbackup_root = {}\n\n[approval_registry]\npayload_file = {}\ngeneration = 1\n\n[human]\nactor_id = {:?}\n\n[product]\nautomatic_provider_failover = {}\n\n[telemetry]\nmode = \"disabled\"\n",
         state.identity().store_id(),
         toml_path(paths.state_root())?,
         toml_path(paths.artifact_root())?,
@@ -52,6 +52,7 @@ fn render_configuration(layout: &AppLayout, state: &ProductState) -> Result<Stri
         toml_path(paths.backup_root())?,
         toml_path(&layout.approval_registry())?,
         state.identity().actor_id(),
+        state.providers().automatic_failover(),
     );
     for provider in state.providers().enabled() {
         text.push_str(&render_provider(*provider, state.providers().direct_profile(*provider))?);

@@ -14,12 +14,10 @@ product observation, generated design, conversation state, provider identities, 
 aggregated token/cache accounting. A product rejection is still a completed benchmark attempt, so
 Harbor's independent verifier—not the adapter—owns the external score.
 
-Focused checks:
-
-```bash
-CARGO_BUILD_JOBS=2 cargo test -p peritus-external-benchmarks --all-features
-CARGO_BUILD_JOBS=2 cargo clippy -p peritus-external-benchmarks --all-targets --all-features -- -D warnings
-```
+Trace projection validates response, tool, compaction, retry, and provider-switch frames. Retry or
+switch metadata closes an incomplete projected response while remaining separate from the
+conversation transcript, so diagnostics stay readable without fabricating a successful model
+round.
 
 Generated traces and benchmark workspaces belong in local state outside Git. See
 `benchmarks/external/README.md` for pinned upstream revisions and run commands.
@@ -29,5 +27,7 @@ Generated traces and benchmark workspaces belong in local state outside Git. See
 From the repository root:
 
 ```sh
-CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-external-benchmarks
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-external-benchmarks --all-features
+CARGO_BUILD_JOBS=2 cargo clippy --locked --package peritus-external-benchmarks \
+  --all-targets --all-features -- -D warnings
 ```

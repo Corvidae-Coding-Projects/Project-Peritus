@@ -9,6 +9,7 @@ use std::{
 use peritus_agent::{DeveloperLoopError, DeveloperTrace, DeveloperTraceEvent};
 use serde_json::{Map, Value};
 
+use crate::failover::ProviderSwitch;
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
 /// Length-framed append-only trace stored beside the daemon's product-run record.
@@ -32,6 +33,24 @@ pub fn prepare(path: &Path) -> Result<(), ProductRunnerError> {
             error.to_string(),
         )
     })
+}
+
+pub fn record_provider_switch(
+    path: &Path,
+    role: &str,
+    cycle: u32,
+    switch: ProviderSwitch,
+) -> Result<(), ProductRunnerError> {
+    let fields = [
+        ("role".to_owned(), Value::String(role.to_owned())),
+        ("cycle".to_owned(), Value::from(u64::from(cycle))),
+        ("previous_profile".to_owned(), Value::String(profile_hex(switch.previous()))),
+        ("next_profile".to_owned(), Value::String(profile_hex(switch.next()))),
+        ("reason".to_owned(), Value::String(switch.reason().to_owned())),
+    ];
+    let payload = serde_json::to_vec(&Value::Object(fields.into_iter().collect::<Map<_, _>>()))
+        .map_err(|error| repository(error.to_string()))?;
+    append(path, 5, &payload).map_err(|error| repository(error.to_string()))
 }
 
 impl DeveloperTrace for FileDeveloperTrace {
@@ -96,14 +115,18 @@ impl DeveloperTrace for FileDeveloperTrace {
                 (4, payload)
             }
         };
-        let length = u64::try_from(payload.len())
-            .map_err(|_| DeveloperLoopError::Trace("trace event is too large".to_owned()))?;
-        let mut file = open(&self.path).map_err(|error| trace(&error))?;
-        file.write_all(&[tag]).map_err(|error| trace(&error))?;
-        file.write_all(&length.to_le_bytes()).map_err(|error| trace(&error))?;
-        file.write_all(&payload).map_err(|error| trace(&error))?;
-        file.sync_data().map_err(|error| trace(&error))
+        append(&self.path, tag, &payload).map_err(|error| trace(&error))
     }
+}
+
+fn append(path: &Path, tag: u8, payload: &[u8]) -> io::Result<()> {
+    let length =
+        u64::try_from(payload.len()).map_err(|_| io::Error::other("trace event is too large"))?;
+    let mut file = open(path)?;
+    file.write_all(&[tag])?;
+    file.write_all(&length.to_le_bytes())?;
+    file.write_all(payload)?;
+    file.sync_data()
 }
 
 fn open(path: &Path) -> io::Result<File> {
@@ -121,6 +144,18 @@ fn digest_hex(bytes: &[u8; 32]) -> String {
         let _ = write!(output, "{byte:02x}");
     }
     output
+}
+
+fn profile_hex(id: peritus_types::ProviderProfileId) -> String {
+    id.as_bytes().iter().fold(String::new(), |mut output, byte| {
+        use core::fmt::Write as _;
+        let _ = write!(output, "{byte:02x}");
+        output
+    })
+}
+
+fn repository(detail: String) -> ProductRunnerError {
+    ProductRunnerError::new(ProductRunnerErrorKind::Repository, "record provider failover", detail)
 }
 
 fn trace(error: &io::Error) -> DeveloperLoopError {

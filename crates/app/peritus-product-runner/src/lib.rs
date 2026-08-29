@@ -20,6 +20,8 @@ mod error;
 #[cfg(not(verus_only))]
 mod execution;
 #[cfg(not(verus_only))]
+pub(crate) mod failover;
+#[cfg(not(verus_only))]
 mod file_metadata;
 #[cfg(not(verus_only))]
 pub(crate) mod gates;
@@ -30,7 +32,7 @@ mod review;
 #[cfg(not(verus_only))]
 mod reviewer_turn;
 #[cfg(not(verus_only))]
-mod trace;
+pub(crate) mod trace;
 #[cfg(not(verus_only))]
 mod turn;
 #[cfg(verus_only)]

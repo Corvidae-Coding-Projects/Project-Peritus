@@ -12,7 +12,7 @@ mod direct;
 mod selection;
 
 use crate::terminal::Terminal;
-use selection::{choose_default, choose_provider_set};
+use selection::{choose_default, choose_failover, choose_provider_set};
 
 const CODEX: ProviderKind = ProviderKind::CodexAccount;
 const CLAUDE: ProviderKind = ProviderKind::ClaudeAccount;
@@ -50,10 +50,12 @@ fn first_run(
 
     let activated = activate_requested(&mut terminal, observations, requested, None)?;
     let default = choose_default(&mut terminal, &activated.enabled)?;
-    let selection = ProviderSelection::with_direct_profiles(
+    let automatic_failover = choose_failover(&mut terminal, &activated.enabled, false)?;
+    let selection = ProviderSelection::with_direct_profiles_and_failover(
         activated.enabled,
         default,
         activated.direct_profiles,
+        automatic_failover,
     )?;
     persist(prepared, selection)
 }
@@ -72,10 +74,13 @@ pub fn configure(prepared: &PreparedProduct) -> Result<PreparedProduct, Launcher
         choose_provider_set(&mut terminal, current.enabled().to_vec(), "current selection")?;
     let activated = activate_requested(&mut terminal, &observations, requested, Some(&current))?;
     let default = choose_default(&mut terminal, &activated.enabled)?;
-    let selection = ProviderSelection::with_direct_profiles(
+    let automatic_failover =
+        choose_failover(&mut terminal, &activated.enabled, current.automatic_failover())?;
+    let selection = ProviderSelection::with_direct_profiles_and_failover(
         activated.enabled,
         default,
         activated.direct_profiles.clone(),
+        automatic_failover,
     )?;
     let configured = persist(prepared, selection)?;
     remove_replaced_credentials(&mut terminal, &current, &activated.direct_profiles)?;
@@ -132,7 +137,14 @@ fn repair_if_needed(
         .filter(|profile| retained.contains(&profile.kind()))
         .cloned()
         .collect();
-    let selection = ProviderSelection::with_direct_profiles(retained, default, direct_profiles)?;
+    let automatic_failover =
+        prepared.state().providers().automatic_failover() && retained.len() > 1;
+    let selection = ProviderSelection::with_direct_profiles_and_failover(
+        retained,
+        default,
+        direct_profiles,
+        automatic_failover,
+    )?;
     persist(&prepared, selection)
 }
 

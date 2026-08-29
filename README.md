@@ -29,7 +29,10 @@ until the exact release candidate passes every required native-host and release 
 The product supports direct OpenAI, Anthropic, Gemini, and compatible API routes. It also supports
 ChatGPT and Claude subscription accounts through the official `codex` and `claude` executables.
 Those executables own login and model transport; Peritus retains conversation, tool, workspace,
-review, and policy authority.
+review, and policy authority. When two or more providers are selected, provider settings offer
+explicit automatic-failover consent. A role switches only after its selected provider exhausts
+ordinary recovery, never for safety, refusal, cancellation, or ambiguous-acceptance outcomes, and
+records the exact switch in durable trace and live progress evidence.
 
 Long-running coding tasks persist their conversation, design, candidate changes, findings, trace,
 and handoff state. Productive work can continue across bounded segments and daemon restarts.

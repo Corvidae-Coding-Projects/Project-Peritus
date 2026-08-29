@@ -71,6 +71,8 @@ pub struct RoleProviders {
     pub reviewer: Arc<dyn ModelProvider>,
     /// Fixer model adapter.
     pub fixer: Arc<dyn ModelProvider>,
+    /// User-authorized fallback adapters considered after a selected provider exhausts recovery.
+    pub fallbacks: Vec<Arc<dyn ModelProvider>>,
 }
 
 /// Fully resolved input supplied by the daemon authority boundary.

@@ -29,9 +29,14 @@ pub async fn complete(
     evidence: ReviewEvidence<'_>,
     accounting: &mut RunAccounting,
 ) -> Result<ProductReviewSubmission, ProductRunnerError> {
+    let mut providers =
+        crate::failover::ProviderCursor::new(&input.providers.reviewer, &input.providers.fallbacks);
     let mut correction = None;
-    for attempt in 1..=MAX_INVALID_REVIEWS {
+    let mut invalid_reviews = 0_u8;
+    let mut invocation = 0_u32;
+    loop {
         check_cancelled(input)?;
+        invocation = invocation.saturating_add(1);
         let prompt = turn::reviewer_user(
             evidence.conversation,
             evidence.diff,
@@ -40,19 +45,26 @@ pub async fn complete(
             evidence.prior,
             correction.as_deref(),
         );
-        let media = crate::workspace_media::discover(
+        let media = match crate::workspace_media::discover(
             &input.workspace_root,
             evidence.conversation,
-            input.providers.reviewer.profile(),
-        )?;
+            providers.current().profile(),
+        ) {
+            Ok(media) => media,
+            Err(error) if let Some(switch) = providers.advance_for_capability(&error) => {
+                crate::failover::record_switch(input, "reviewer", cycle, accounting, switch)?;
+                continue;
+            }
+            Err(error) => return Err(error),
+        };
         let (prompt, attachments) = media.into_parts(prompt);
         let mut tools = WorkspaceDeveloperTools::read_only(input.workspace_root.clone());
         let mut trace = FileDeveloperTrace::new(input.trace_path.clone());
         let result = DeveloperLoop::run(
-            input.providers.reviewer.as_ref(),
+            providers.current(),
             DeveloperLoopRequest {
                 request_prefix: format!(
-                    "{}-invocation-{attempt}",
+                    "{}-invocation-{invocation}",
                     turn::request_name(input.run_id, "reviewer", cycle),
                 ),
                 system: turn::reviewer_system(),
@@ -67,8 +79,17 @@ pub async fn complete(
             &mut tools,
             &mut trace,
         )
-        .await
-        .map_err(|error| turn::developer_error(&error))?;
+        .await;
+        let result = match result {
+            Ok(result) => result,
+            Err(error) => {
+                if let Some(switch) = providers.advance(&error) {
+                    crate::failover::record_switch(input, "reviewer", cycle, accounting, switch)?;
+                    continue;
+                }
+                return Err(turn::developer_error(&error));
+            }
+        };
         accounting.record(&result)?;
         check_cancelled(input)?;
         let submission = tools
@@ -78,17 +99,15 @@ pub async fn complete(
             .and_then(|()| review::parse(&result.text, review_cycle));
         match submission {
             Ok(submission) => return Ok(submission),
-            Err(error) if attempt < MAX_INVALID_REVIEWS => {
+            Err(error) => {
+                invalid_reviews = invalid_reviews.saturating_add(1);
+                if invalid_reviews >= MAX_INVALID_REVIEWS {
+                    return Err(error);
+                }
                 correction = Some(correction_prompt(&error));
             }
-            Err(error) => return Err(error),
         }
     }
-    Err(ProductRunnerError::new(
-        ProductRunnerErrorKind::InvalidModelOutput,
-        "complete independent review",
-        "reviewer attempts were exhausted",
-    ))
 }
 
 fn correction_prompt(error: &ProductRunnerError) -> String {

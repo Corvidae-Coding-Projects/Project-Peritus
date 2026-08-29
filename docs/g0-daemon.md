@@ -75,6 +75,9 @@ generation = 1
 [human]
 actor_id = "22222222222222222222222222222222"
 
+[product]
+automatic_provider_failover = false
+
 [telemetry]
 mode = "disabled"
 ```
@@ -90,6 +93,11 @@ stable profile ID and revision to one exact adapter. Direct HTTP routes use opaq
 references. Account-backed OpenAI and Anthropic routes use the official `codex` and `claude`
 executables as credential-owning routers, either discovered on `PATH` or selected by an absolute
 configured path.
+
+The optional `[product]` table carries user-selected run behavior rather than provider secrets or
+live health claims. `automatic_provider_failover` defaults to `false` for older configuration. When
+enabled, the daemon supplies the configured provider inventory to the product runner as a
+deterministic fallback chain; the runner still applies capability and failure-category checks.
 
 Telemetry is either `disabled` or a bounded `local-file` spool beneath a protected absolute path.
 There is no implicit network exporter.

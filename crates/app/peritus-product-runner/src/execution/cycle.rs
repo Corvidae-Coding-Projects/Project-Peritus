@@ -47,7 +47,7 @@ pub(super) async fn initial_write(
     )?;
     crate::turn::complete_developer_turn(
         input,
-        input.providers.writer.as_ref(),
+        &input.providers.writer,
         "writer",
         1,
         design,
@@ -75,8 +75,14 @@ pub(super) async fn create_design(
         None,
         accounting,
     )?;
-    let document =
-        design::create(input, input.providers.writer.as_ref(), cycle, accounting).await?;
+    let document = design::create(
+        input,
+        &input.providers.writer,
+        &input.providers.fallbacks,
+        cycle,
+        accounting,
+    )
+    .await?;
     let status = format!("Detailed design ready at {}", document.path().display());
     let summary = format!(
         "Design covers conversation revision {} and is ready for implementation.",
@@ -207,7 +213,7 @@ pub(super) async fn apply_fix(
     );
     let turn = crate::turn::complete_developer_turn(
         input,
-        input.providers.fixer.as_ref(),
+        &input.providers.fixer,
         "fixer",
         fixer_cycle,
         state.design.markdown(),

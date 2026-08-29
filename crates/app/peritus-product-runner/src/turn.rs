@@ -1,12 +1,13 @@
 //! Tool-capable writer/fixer turns and independent reviewer prompts.
 
+use std::sync::Arc;
+
 use peritus_agent::{
     DeveloperLoop, DeveloperLoopError, DeveloperLoopLimits, DeveloperLoopOutcome,
     DeveloperLoopRequest,
 };
 use peritus_provider_core::ModelProvider;
 use peritus_types::RunId;
-use serde::Deserialize;
 
 use crate::budget::RunAccounting;
 use crate::developer_tools::{
@@ -17,12 +18,16 @@ use crate::progress::WorkspaceCheckpoint;
 use crate::trace::FileDeveloperTrace;
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
+mod terminal;
+
+use terminal::TerminalTurn;
+
 const MAX_UNPRODUCTIVE_TERMINALS: u8 = 3;
 
 #[allow(clippy::too_many_arguments, reason = "one role invocation keeps its run inputs explicit")]
 pub async fn complete_developer_turn(
     input: &ProductRunInput,
-    model: &dyn ModelProvider,
+    primary: &Arc<dyn ModelProvider>,
     role: &str,
     cycle: u32,
     design: &str,
@@ -30,6 +35,7 @@ pub async fn complete_developer_turn(
     ownership: &mut WorkspaceOwnership,
     accounting: &mut RunAccounting,
 ) -> Result<AppliedTurn, ProductRunnerError> {
+    let mut providers = crate::failover::ProviderCursor::new(primary, &input.providers.fallbacks);
     let mut checkpoint = WorkspaceCheckpoint::capture(&input.workspace_root)?;
     let mut invocation = 0_u32;
     let mut unproductive_terminals = 0_u8;
@@ -40,16 +46,17 @@ pub async fn complete_developer_turn(
         invocation = invocation.saturating_add(1);
         let revision = input.conversation.revision();
         let identity = DeveloperInvocation { role, cycle, invocation };
-        let (result, tools) = run_developer_invocation(
+        let Some((result, tools)) = run_selected_invocation(
             input,
-            model,
+            &mut providers,
             identity,
-            design,
-            findings,
-            correction.as_deref(),
-            ownership,
+            InvocationContext { design, findings, correction: correction.as_deref(), ownership },
+            accounting,
         )
-        .await?;
+        .await?
+        else {
+            continue;
+        };
         if let Ok(outcome) = &result {
             accounting.record(outcome)?;
         } else {
@@ -64,28 +71,20 @@ pub async fn complete_developer_turn(
             (correction, pending_question) = (None, None);
             continue;
         }
-        let result = match result {
-            Ok(result) => result,
-            Err(error) => {
-                let current = WorkspaceCheckpoint::capture(&input.workspace_root)?;
-                if current != checkpoint {
-                    checkpoint = current;
-                    unproductive_terminals = 0;
-                    (correction, pending_question) = (None, None);
-                    continue;
-                }
-                return Err(developer_error(&error));
-            }
+        let Some(result) = resolve_provider_result(
+            input,
+            &mut providers,
+            identity,
+            result,
+            &mut checkpoint,
+            accounting,
+        )?
+        else {
+            unproductive_terminals = 0;
+            (correction, pending_question) = (None, None);
+            continue;
         };
-        let grounded = tools.grounding().validate().map_err(|detail| {
-            ProductRunnerError::new(
-                ProductRunnerErrorKind::InvalidModelOutput,
-                "ground developer turn in repository evidence",
-                detail,
-            )
-        });
-        let terminal = grounded.and_then(|()| parse_terminal(&result.text));
-        let terminal = match terminal {
+        let terminal = match parse_grounded_terminal(&tools, &result) {
             Ok(terminal) => terminal,
             Err(error) => {
                 let current = WorkspaceCheckpoint::capture(&input.workspace_root)?;
@@ -129,11 +128,92 @@ pub async fn complete_developer_turn(
     }
 }
 
+fn parse_grounded_terminal(
+    tools: &WorkspaceDeveloperTools,
+    result: &DeveloperLoopOutcome,
+) -> Result<TerminalTurn, ProductRunnerError> {
+    tools.grounding().validate().map_err(|detail| {
+        ProductRunnerError::new(
+            ProductRunnerErrorKind::InvalidModelOutput,
+            "ground developer turn in repository evidence",
+            detail,
+        )
+    })?;
+    terminal::parse(&result.text)
+}
+
 #[derive(Clone, Copy)]
 struct DeveloperInvocation<'a> {
     role: &'a str,
     cycle: u32,
     invocation: u32,
+}
+
+struct InvocationContext<'a> {
+    design: &'a str,
+    findings: Option<&'a str>,
+    correction: Option<&'a str>,
+    ownership: &'a WorkspaceOwnership,
+}
+
+async fn run_selected_invocation(
+    input: &ProductRunInput,
+    providers: &mut crate::failover::ProviderCursor<'_>,
+    identity: DeveloperInvocation<'_>,
+    context: InvocationContext<'_>,
+    accounting: &mut RunAccounting,
+) -> Result<
+    Option<(Result<DeveloperLoopOutcome, DeveloperLoopError>, WorkspaceDeveloperTools)>,
+    ProductRunnerError,
+> {
+    let result = run_developer_invocation(
+        input,
+        providers.current(),
+        identity,
+        context.design,
+        context.findings,
+        context.correction,
+        context.ownership,
+    )
+    .await;
+    match result {
+        Ok(result) => Ok(Some(result)),
+        Err(error) if let Some(switch) = providers.advance_for_capability(&error) => {
+            crate::failover::record_switch(
+                input,
+                identity.role,
+                identity.cycle,
+                accounting,
+                switch,
+            )?;
+            Ok(None)
+        }
+        Err(error) => Err(error),
+    }
+}
+
+fn resolve_provider_result(
+    input: &ProductRunInput,
+    providers: &mut crate::failover::ProviderCursor<'_>,
+    identity: DeveloperInvocation<'_>,
+    result: Result<DeveloperLoopOutcome, DeveloperLoopError>,
+    checkpoint: &mut WorkspaceCheckpoint,
+    accounting: &mut RunAccounting,
+) -> Result<Option<DeveloperLoopOutcome>, ProductRunnerError> {
+    let error = match result {
+        Ok(outcome) => return Ok(Some(outcome)),
+        Err(error) => error,
+    };
+    let current = WorkspaceCheckpoint::capture(&input.workspace_root)?;
+    if current != *checkpoint {
+        *checkpoint = current;
+        return Ok(None);
+    }
+    if let Some(switch) = providers.advance(&error) {
+        crate::failover::record_switch(input, identity.role, identity.cycle, accounting, switch)?;
+        return Ok(None);
+    }
+    Err(developer_error(&error))
 }
 
 async fn run_developer_invocation(
@@ -263,46 +343,6 @@ fn retry_unverified_question(
     *unproductive_terminals < MAX_UNPRODUCTIVE_TERMINALS
 }
 
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct TerminalWire {
-    kind: String,
-    #[serde(default)]
-    summary: Option<String>,
-    #[serde(default)]
-    run_instructions: Option<String>,
-    #[serde(default)]
-    message: Option<String>,
-}
-
-enum TerminalTurn {
-    Complete((String, String)),
-    Question(String),
-}
-
-fn parse_terminal(value: &str) -> Result<TerminalTurn, ProductRunnerError> {
-    let start = value.find('{').ok_or_else(|| invalid("developer response contains no JSON"))?;
-    let end = value.rfind('}').ok_or_else(|| invalid("developer response has incomplete JSON"))?;
-    let wire: TerminalWire = serde_json::from_str(&value[start..=end]).map_err(|error| {
-        ProductRunnerError::new(
-            ProductRunnerErrorKind::InvalidModelOutput,
-            "parse developer terminal",
-            error.to_string(),
-        )
-    })?;
-    match (wire.kind.as_str(), wire.summary, wire.run_instructions, wire.message) {
-        ("complete", Some(summary), Some(run_instructions), None)
-            if !summary.trim().is_empty() && !run_instructions.trim().is_empty() =>
-        {
-            Ok(TerminalTurn::Complete((summary, run_instructions)))
-        }
-        ("question", None, None, Some(message)) if !message.trim().is_empty() => {
-            Ok(TerminalTurn::Question(message))
-        }
-        _ => Err(invalid("developer terminal fields do not match its kind")),
-    }
-}
-
 pub fn developer_error(error: &DeveloperLoopError) -> ProductRunnerError {
     let kind = match error {
         DeveloperLoopError::Cancelled => ProductRunnerErrorKind::Cancelled,
@@ -311,14 +351,6 @@ pub fn developer_error(error: &DeveloperLoopError) -> ProductRunnerError {
         _ => ProductRunnerErrorKind::Provider,
     };
     ProductRunnerError::new(kind, "execute D0 developer loop", error.to_string())
-}
-
-fn invalid(detail: &'static str) -> ProductRunnerError {
-    ProductRunnerError::new(
-        ProductRunnerErrorKind::InvalidModelOutput,
-        "validate developer terminal",
-        detail,
-    )
 }
 
 #[cfg(test)]

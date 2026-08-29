@@ -20,7 +20,14 @@ verification, and explicit risks or non-goals. The adapter then joins:
 - `peritus-review` typed policy-derived findings conserved through fixer and fresh-review cycles;
 - `peritus-orchestrator` fail-closed E0 accept/fix/exhaust decisions; and
 - a durable task candidate, provider/tool trace, synced effect-receipt ledger, task-level summary,
-  and explicit deliverable handoff consumed by the daemon.
+and explicit deliverable handoff consumed by the daemon.
+
+When the launcher supplied explicit automatic-failover consent, every designer, writer, reviewer,
+and fixer invocation owns a deterministic provider cursor. The selected provider keeps its normal
+bounded recovery first. Only then may the role advance to another configured tool-capable route;
+media capability is checked against the current task. Safety, refusal, cancellation, raw ambiguous
+transport, and normalized ambiguous acceptance never trigger a switch. Each accepted transition is
+written to the append-only trace before its progress counter advances.
 
 Writable tool receipts bind deterministic role/invocation/effect identity, provider call ID, and
 canonical request digest to `Started`, `Completed`, or `Ambiguous` state. Exact completed calls

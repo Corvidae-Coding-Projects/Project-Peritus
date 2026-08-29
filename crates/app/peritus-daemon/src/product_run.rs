@@ -45,6 +45,7 @@ struct Inner {
     directory: PathBuf,
     records: RwLock<BTreeMap<RunId, RunRecord>>,
     providers: BTreeMap<ProviderProfileId, Arc<dyn ModelProvider>>,
+    automatic_provider_failover: bool,
     workspaces: BTreeMap<WorkspaceId, PathBuf>,
     tasks: Mutex<Vec<JoinHandle<()>>>,
 }
@@ -64,6 +65,7 @@ impl ProductRunService {
         state_root: &Path,
         components: &DaemonComponents,
         workspaces: &WorkspaceCatalog,
+        automatic_provider_failover: bool,
     ) -> Result<Self, DaemonError> {
         let directory = state_root.join("product-runs");
         fs::create_dir_all(&directory).map_err(filesystem)?;
@@ -84,6 +86,7 @@ impl ProductRunService {
                 directory,
                 records: RwLock::new(records),
                 providers,
+                automatic_provider_failover,
                 workspaces: workspaces.roots(),
                 tasks: Mutex::new(Vec::new()),
             }),
@@ -293,6 +296,11 @@ impl ProductRunService {
             writer: get(selected.writer())?,
             reviewer: get(selected.reviewer())?,
             fixer: get(selected.fixer())?,
+            fallbacks: if self.inner.automatic_provider_failover {
+                self.inner.providers.values().cloned().collect()
+            } else {
+                Vec::new()
+            },
         })
     }
 }

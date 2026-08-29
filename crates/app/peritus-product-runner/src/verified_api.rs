@@ -32,6 +32,7 @@ pub struct ProductRunProgress {
     model_requests: u32,
     tool_calls: u32,
     retries: u32,
+    provider_failovers: u32,
     compactions: u32,
     input_tokens: u64,
     cached_input_tokens: u64,
@@ -54,6 +55,10 @@ impl ProductRunProgress {
     /// Checked provider retries completed.
     pub const fn retries(self) -> u32 {
         self.retries
+    }
+    /// Explicit switches to another configured provider.
+    pub const fn provider_failovers(self) -> u32 {
+        self.provider_failovers
     }
     /// Deterministic context compactions applied.
     pub const fn compactions(self) -> u32 {
@@ -149,6 +154,8 @@ pub struct RoleProviders {
     pub reviewer: Arc<dyn ModelProvider>,
     /// Fixer model adapter.
     pub fixer: Arc<dyn ModelProvider>,
+    /// User-authorized fallback adapters considered after a selected provider exhausts recovery.
+    pub fallbacks: Vec<Arc<dyn ModelProvider>>,
 }
 
 /// Fully resolved daemon input for one product run.

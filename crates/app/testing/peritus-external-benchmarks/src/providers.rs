@@ -32,7 +32,12 @@ pub async fn authenticated(
         .map_err(|error| BenchmarkError::Provider(error.to_string()))?;
     let writer: Arc<dyn ModelProvider> = writer;
     let reviewer: Arc<dyn ModelProvider> = reviewer;
-    Ok(RoleProviders { writer: Arc::clone(&writer), reviewer, fixer: writer })
+    Ok(RoleProviders {
+        writer: Arc::clone(&writer),
+        reviewer,
+        fixer: writer,
+        fallbacks: Vec::new(),
+    })
 }
 
 pub async fn codex_authenticated(

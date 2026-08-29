@@ -5,7 +5,7 @@ use std::{collections::BTreeMap, path::Path};
 use peritus_model_protocol::{ModelEvent, ProtocolLimits, UsageCounters, decode_event_envelope};
 use serde_json::{Value, json};
 
-use super::{bounded, frames::Frame};
+use super::{bounded, frames::Frame, metadata};
 use crate::BenchmarkError;
 
 pub(super) struct Round {
@@ -55,6 +55,11 @@ pub(super) fn project(
                 apply_event(path, envelope.event(), &mut history, &mut rounds, &mut active)?;
             }
             2 => apply_observation(path, &frame.payload, &mut history)?,
+            3 => metadata::validate(path, frame.tag, &frame.payload)?,
+            4 | 5 => {
+                metadata::validate(path, frame.tag, &frame.payload)?;
+                active = None;
+            }
             _ => return Err(BenchmarkError::trace(path, "trace frame tag was not validated")),
         }
     }

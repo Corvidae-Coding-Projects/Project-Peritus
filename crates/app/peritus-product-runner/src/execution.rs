@@ -94,7 +94,7 @@ impl ProductRunner {
                 let prior = review::render(&state.findings);
                 match crate::turn::complete_developer_turn(
                     &input,
-                    input.providers.writer.as_ref(),
+                    &input.providers.writer,
                     "writer-follow-up",
                     state.coordinator.completed_fixer_cycles() + 2,
                     state.design.markdown(),

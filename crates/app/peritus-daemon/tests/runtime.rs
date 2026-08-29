@@ -48,6 +48,7 @@ fn strict_configuration_rejects_unknown_and_plaintext_authority_fields() {
     let root = temporary.path();
     let valid = support::configuration(root);
     assert_eq!(valid.version(), 1);
+    assert!(!valid.product().automatic_provider_failover());
     assert_eq!(valid.human().actor_identity().expect("actor").into_bytes(), [0x22; 16]);
 
     let invalid = format!(

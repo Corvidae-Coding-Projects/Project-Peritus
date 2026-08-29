@@ -10,6 +10,7 @@ pub(super) struct RunProgress {
     pub(super) model_requests: u32,
     pub(super) tool_calls: u32,
     pub(super) retries: u32,
+    pub(super) provider_failovers: u32,
     pub(super) compactions: u32,
     pub(super) input_tokens: u64,
     pub(super) cached_input_tokens: u64,
@@ -28,6 +29,7 @@ impl Default for RunProgress {
             model_requests: 0,
             tool_calls: 0,
             retries: 0,
+            provider_failovers: 0,
             compactions: 0,
             input_tokens: 0,
             cached_input_tokens: 0,
@@ -45,6 +47,7 @@ impl RunProgress {
         self.model_requests = progress.model_requests();
         self.tool_calls = progress.tool_calls();
         self.retries = progress.retries();
+        self.provider_failovers = progress.provider_failovers();
         self.compactions = progress.compactions();
         self.input_tokens = progress.input_tokens();
         self.cached_input_tokens = progress.cached_input_tokens();
@@ -70,6 +73,9 @@ impl RunProgress {
         ];
         if self.retries > 0 {
             fields.push(format!("{} retries", self.retries));
+        }
+        if self.provider_failovers > 0 {
+            fields.push(format!("{} provider switches", self.provider_failovers));
         }
         if self.compactions > 0 {
             fields.push(format!("{} context compactions", self.compactions));
@@ -130,6 +136,7 @@ mod tests {
             model_requests: 4,
             tool_calls: 7,
             retries: 1,
+            provider_failovers: 2,
             ..RunProgress::default()
         };
         let status = progress.live_status("Writer is working");
@@ -137,5 +144,6 @@ mod tests {
         assert!(status.contains("last durable progress 20s ago"));
         assert!(status.contains("4 provider requests"));
         assert!(status.contains("1 retries"));
+        assert!(status.contains("2 provider switches"));
     }
 }

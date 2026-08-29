@@ -23,7 +23,10 @@ Provider onboarding shows every available route and readiness state. Account-bac
 Claude routes delegate login and requests to the official `codex` and `claude` executables, which
 remain the credential owners. Direct OpenAI, Anthropic, Gemini, and compatible routes use hidden
 credential input and the operating-system credential store. Peritus stores only provider settings
-and opaque credential references. Offline mode remains available for inspection.
+and opaque credential references. When at least two routes are selected, setup asks whether a role
+may automatically try another selected provider after its current provider is unavailable. The
+choice defaults off, is stored with provider settings, and returns to off if fewer than two routes
+remain. Offline mode remains available for inspection.
 
 Completed setup is resumable. Repeat launch skips healthy decisions, repairs only the provider or
 workspace that needs attention, regenerates immutable daemon configuration when settings change,
@@ -95,9 +98,10 @@ tracked and newly created text files, and the Review view shows the latest revie
 checks. While a run is active, its status reports elapsed time, time since the last completed
 durable effect, the remaining eight-hour uninterrupted run horizon, provider requests, tool calls,
 retries, compactions, and normalized token/cache/cost counters when the provider supplies them. A
-long quiet provider call therefore remains visibly alive without inventing progress. The generous
-cumulative ceilings stop runaway execution across the entire designer-writer-reviewer-fixer run;
-they do not shorten productive segments or replace the existing progress-based continuation rule.
+provider-switch counter appears after an opted-in fallback. A long quiet provider call therefore
+remains visibly alive without inventing progress. The generous cumulative ceilings stop runaway
+execution across the entire designer-writer-reviewer-fixer run; they do not shorten productive
+segments or replace the existing progress-based continuation rule.
 Before a writable filesystem or command tool starts, the runner syncs a bounded receipt containing
 the deterministic role/invocation/effect identity, provider call ID, tool name, and canonical
 request digest. It syncs the bounded result after completion. An exact completed call replays its
@@ -115,8 +119,14 @@ stays visibly recoverable for manual `r`. Durable conversation, candidate files,
 findings remain conserved.
 
 Provider roles default to the selected provider. In the Runs view, press `w`, `e`, or `f` to cycle
-the writer, reviewer, or fixer independently before starting the next task. Press `?` for the full
-keyboard reference. Existing G2 trace, evolution, approval, and terminal views remain available.
+the writer, reviewer, or fixer independently before starting the next task. If automatic failover
+was enabled in provider settings, each role first exhausts the selected provider's bounded retry
+policy, then considers the other configured tool-capable routes in stable order. A route that lacks
+required image capability is skipped through the same recorded boundary. Safety, refusal,
+cancellation, and ambiguous-acceptance outcomes stop without switching. The trace retains role,
+cycle, previous and next profile identities, and the stable reason for every switch. Press `?` for
+the full keyboard reference. Existing G2 trace, evolution, approval, and terminal views remain
+available.
 
 ## Workspace status and settings
 

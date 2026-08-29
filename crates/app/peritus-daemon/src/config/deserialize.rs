@@ -7,7 +7,8 @@ use serde::Deserializer;
 
 use super::{
     ApprovalRegistryDeclaration, DaemonConfig, DaemonLimits, DaemonPaths, LocalHumanPrincipal,
-    ProjectDeclaration, ProviderRoute, TelemetryExport, ToolPolicy, WorkspaceDeclaration,
+    ProductRunPolicy, ProjectDeclaration, ProviderRoute, TelemetryExport, ToolPolicy,
+    WorkspaceDeclaration,
 };
 
 impl<'de> Deserialize<'de> for TelemetryExport {
@@ -65,6 +66,7 @@ impl<'de> Deserialize<'de> for DaemonConfig {
             workspaces: Option<Vec<WorkspaceDeclaration>>,
             tools: Option<ToolPolicy>,
             providers: Option<Vec<ProviderRoute>>,
+            product: Option<ProductRunPolicy>,
             telemetry: TelemetryExport,
         }
 
@@ -80,6 +82,7 @@ impl<'de> Deserialize<'de> for DaemonConfig {
             workspaces: representation.workspaces.unwrap_or_default(),
             tools: representation.tools.unwrap_or_default(),
             providers: representation.providers.unwrap_or_default(),
+            product: representation.product.unwrap_or_default(),
             telemetry: representation.telemetry,
         })
     }

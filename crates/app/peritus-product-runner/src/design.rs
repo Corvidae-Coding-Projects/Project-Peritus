@@ -6,6 +6,7 @@ use std::{
     fs::{self, OpenOptions},
     io::Write,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use peritus_agent::{DeveloperLoop, DeveloperLoopLimits, DeveloperLoopRequest};
@@ -50,7 +51,8 @@ impl DesignDocument {
 /// Inspects the repository with read-only tools, writes the detailed design, and returns it.
 pub async fn create(
     input: &ProductRunInput,
-    model: &dyn ModelProvider,
+    primary: &Arc<dyn ModelProvider>,
+    fallbacks: &[Arc<dyn ModelProvider>],
     cycle: u32,
     accounting: &mut RunAccounting,
 ) -> Result<DesignDocument, ProductRunnerError> {
@@ -58,6 +60,7 @@ pub async fn create(
     if scope == DesignScope::Artifact {
         return artifact::create(input);
     }
+    let mut providers = crate::failover::ProviderCursor::new(primary, fallbacks);
     let mut invocation = 0_u32;
     let mut invalid_designs = 0_u8;
     let mut correction = None;
@@ -66,14 +69,24 @@ pub async fn create(
         invocation = invocation.saturating_add(1);
         let revision = input.conversation.revision();
         let transcript = input.conversation.render();
-        let media =
-            crate::workspace_media::discover(&input.workspace_root, &transcript, model.profile())?;
+        let media = match crate::workspace_media::discover(
+            &input.workspace_root,
+            &transcript,
+            providers.current().profile(),
+        ) {
+            Ok(media) => media,
+            Err(error) if let Some(switch) = providers.advance_for_capability(&error) => {
+                crate::failover::record_switch(input, "designer", cycle, accounting, switch)?;
+                continue;
+            }
+            Err(error) => return Err(error),
+        };
         let (prompt, attachments) =
             media.into_parts(user_prompt(&transcript, correction.as_deref()));
         let mut tools = WorkspaceDeveloperTools::read_only(input.workspace_root.clone());
         let mut trace = FileDeveloperTrace::new(input.trace_path.clone());
         let result = DeveloperLoop::run(
-            model,
+            providers.current(),
             DeveloperLoopRequest {
                 request_prefix: format!(
                     "{}-invocation-{invocation}",
@@ -90,8 +103,17 @@ pub async fn create(
             &mut tools,
             &mut trace,
         )
-        .await
-        .map_err(|error| crate::turn::developer_error(&error))?;
+        .await;
+        let result = match result {
+            Ok(result) => result,
+            Err(error) => {
+                if let Some(switch) = providers.advance(&error) {
+                    crate::failover::record_switch(input, "designer", cycle, accounting, switch)?;
+                    continue;
+                }
+                return Err(crate::turn::developer_error(&error));
+            }
+        };
         accounting.record(&result)?;
         check_cancelled(input)?;
         if input.conversation.revision() != revision {

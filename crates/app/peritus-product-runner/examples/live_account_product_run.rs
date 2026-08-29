@@ -48,7 +48,12 @@ async fn run() -> Result<(), Box<dyn Error>> {
             finding_state: String::new(),
             task: task.clone(),
             conversation: Arc::new(FixedConversation(task)),
-            providers: RoleProviders { writer: Arc::clone(&writer), reviewer, fixer: writer },
+            providers: RoleProviders {
+                writer: Arc::clone(&writer),
+                reviewer,
+                fixer: writer,
+                fallbacks: Vec::new(),
+            },
             cancelled: Arc::new(AtomicBool::new(false)),
             provider_cancellation: cancellation,
         },

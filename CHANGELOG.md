@@ -13,6 +13,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Add durable, default-off automatic provider failover for designer, writer, reviewer, and fixer
+  roles when at least two routes are selected; preserve ordinary same-provider recovery first,
+  require compatible tool or media capability, exclude safety, refusal, cancellation, and
+  ambiguous-acceptance outcomes, and retain every switch in trace, persisted progress, and live
+  status evidence (#31)
 - Add a narrow Rust release operator that turns each exact native archive into a candidate-bound
   artifact inventory, locked Cargo-graph SPDX 2.3 SBOM, and SLSA provenance statement; sign the
   archive and SBOM through GitHub's keyless Sigstore identity; verify the exact repository,
@@ -32,6 +37,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Fixed
+- Teach external benchmark trace projection to validate compaction, retry, and provider-switch
+  metadata in addition to response and tool frames, and use retry/switch evidence to close an
+  incomplete projected response instead of reporting a valid recovery trace as corrupt (#31)
 - Create each durable developer trace before the first provider request, without truncating prior
   events, so a provider failure before its first response remains the reported cause instead of
   being masked by a missing-trace filesystem error; empty traces now retain accurate zero-request

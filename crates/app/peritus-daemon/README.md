@@ -7,7 +7,9 @@ Its independent A2 adapter exercises all 28 daemon cases through the public `per
 including a real host PTY and a real C0 outbox crash after an external effect but before settlement.
 
 The crate does not expose writable storage handles or reusable authority tokens. Embedders receive
-configuration, lifecycle status, and a bounded authority client.
+configuration, lifecycle status, and a bounded authority client. Product-run configuration carries
+default-off provider-failover consent into the runner. Provider switches are counted in durable run
+progress and shown in live status without changing the A3 role-selection protocol.
 
 The [G0 daemon guide](../../../docs/g0-daemon.md) documents strict configuration, startup and
 recovery order, protected A3 IPC, durable service composition, outbox delivery, worker ownership,

@@ -23,6 +23,7 @@ pub struct ProductRunProgress {
     model_requests: u32,
     tool_calls: u32,
     retries: u32,
+    provider_failovers: u32,
     compactions: u32,
     input_tokens: u64,
     cached_input_tokens: u64,
@@ -50,6 +51,12 @@ impl ProductRunProgress {
     #[must_use]
     pub const fn retries(self) -> u32 {
         self.retries
+    }
+
+    /// Explicit switches to another configured provider after ordinary recovery was exhausted.
+    #[must_use]
+    pub const fn provider_failovers(self) -> u32 {
+        self.provider_failovers
     }
 
     /// Deterministic context compactions applied.
@@ -134,6 +141,11 @@ impl RunAccounting {
         self.check()
     }
 
+    pub fn record_provider_failover(&mut self) -> Result<(), ProductRunnerError> {
+        self.progress.provider_failovers = add_u32(self.progress.provider_failovers, 1)?;
+        self.check()
+    }
+
     pub fn check(&mut self) -> Result<(), ProductRunnerError> {
         self.progress.elapsed_millis = millis(self.started.elapsed());
         let violation = if self.started.elapsed() > PRODUCT_RUN_MAX_ELAPSED {
@@ -198,5 +210,14 @@ mod tests {
         assert_eq!(progress.tool_calls(), 512);
         assert_eq!(progress.retries(), 3);
         assert_eq!(progress.compactions(), 2);
+    }
+
+    #[test]
+    fn provider_failovers_are_counted_separately_from_same_provider_retries() {
+        let mut accounting = RunAccounting::new();
+        accounting.record_provider_failover().expect("record failover");
+        let progress = accounting.snapshot().expect("bounded progress");
+        assert_eq!(progress.provider_failovers(), 1);
+        assert_eq!(progress.retries(), 0);
     }
 }
