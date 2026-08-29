@@ -34,7 +34,9 @@ pub fn run(root: &Path, changed_paths: Vec<PathBuf>) -> Result<GateReport, Produ
         if specification.program() == "peritus-internal" {
             let record = match specification.arguments().first().map(String::as_str) {
                 Some("source-layout") => source_layout::run(
-                    &root.join(specification.current_dir()),
+                    root,
+                    specification.project().root(),
+                    plan.changed_paths(),
                     specification.project().kind(),
                     specification.display(),
                 ),
@@ -144,6 +146,27 @@ mod tests {
     use std::fs;
 
     use super::*;
+
+    #[test]
+    fn artifact_layout_checks_candidate_sources_without_rejecting_untouched_vendor_code() {
+        let root = tempfile::tempdir().expect("root");
+        fs::write(
+            root.path().join("peritus-workspace.toml"),
+            "schema_version = 1\nkind = \"artifact\"\n",
+        )
+        .expect("artifact marker");
+        fs::create_dir_all(root.path().join("third_party")).expect("vendor directory");
+        fs::write(root.path().join("third_party/legacy.c"), "line\n".repeat(700))
+            .expect("legacy source");
+        fs::write(root.path().join("vm.js"), "const ready = true;\n").expect("candidate source");
+
+        let report = run(root.path(), vec![PathBuf::from("third_party"), PathBuf::from("vm.js")])
+            .expect("gate report");
+
+        assert!(report.report.passed(), "{}", report.output);
+        assert!(report.output.contains("Scanned 1 changed source file"));
+        assert!(!report.output.contains("legacy.c"));
+    }
 
     #[test]
     fn nested_rust_target_cannot_be_satisfied_by_unrelated_root_tests() {

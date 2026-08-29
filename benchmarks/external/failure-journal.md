@@ -1926,3 +1926,24 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - After evidence: unchanged job `terminalbench-qualification-openssl-rerun3`; one completed trial,
   zero exceptions, Peritus product acceptance true, Harbor verifier reward 1.0, 13 provider
   requests, and 182 seconds elapsed. No task, prompt, image, or verifier change was made.
+
+## TBF-001: source layout rejected untouched vendored code
+
+- Suite and task: Terminal-Bench 2.0, `make-mips-interpreter`, first full-campaign trial.
+- Symptom: the writer produced a scoped 426-line `vm.js` and output frames, but native acceptance
+  failed after two unchanged fixer cycles. The deterministic source-layout gate reported 45 files
+  over 500 lines inside the untouched `doomgeneric` third-party tree.
+- Cause: the 500-line policy recursively scanned every source file below an affected artifact root.
+  That made a narrow change inherit all pre-existing vendor and legacy debt, even though the exact
+  candidate path ledger already identified which files Peritus added or modified.
+- Resolution: source layout now reads only exact changed regular source files inside the affected
+  project. New repositories still check every created source file, and modifying an existing large
+  source file still fails. Unchanged files, generated directories, deleted paths, and dirty
+  submodule directory markers are not recursively reclassified as candidate-owned code.
+- Before evidence: trial `make-mips-interpreter__huEUcRW`; Peritus failure kind `gate`; 41 provider
+  requests; Harbor reward 0.0 after all three verifier checks timed out or lacked `/tmp/frame.bmp`.
+  The full campaign was stopped after this retained result so later trials would not mix binaries.
+- Verification: 48 unit tests and two production-composition tests pass for
+  `peritus-product-runner`; strict Clippy passes; a regression proves a changed artifact source is
+  checked while a 700-line untouched vendor source and directory marker are ignored.
+- Next evidence: rerun the same unchanged task before restarting the 445-trial campaign.

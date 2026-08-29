@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Enforce the 500-line source ceiling on exact changed source files within each affected project,
+  so new and modified code remains modular without rejecting untouched vendored, generated,
+  submodule, or legacy source inherited from the baseline (#31)
 - Run external Linux task environments with a static-musl Peritus adapter, carry Codex's matching
   inert code-mode host companion beside the credential-owning executable, parse machine reports
   after PTY progress output, and make rootless Podman resolve Docker Hub short names without an
