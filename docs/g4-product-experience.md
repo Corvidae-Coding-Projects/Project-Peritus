@@ -8,8 +8,9 @@ peritus
 ```
 
 No normal flow requires an IPC endpoint, an environment export, an internal identifier, or a
-hand-written TOML file. From a source checkout, `cargo xtask product-install` creates and installs
-the checked native package first.
+hand-written TOML file. Published releases install through the root POSIX or PowerShell bootstrap;
+from a source checkout, `cargo xtask product-install` creates and installs the same checked native
+package.
 
 ## First launch
 
@@ -138,6 +139,7 @@ Focused settings commands are:
 
 ```text
 peritus open [PATH]     Open an explicit repository, defaulting to the current directory
+peritus update          Check for and install the latest public release
 peritus providers       Add, remove, repair, or select providers
 peritus workspaces      Switch, add, trust, repair, or forget workspaces
 ```
@@ -161,9 +163,24 @@ daemon, TUI, helper, optional supervisor template, and legacy supervisor registr
 preserving provider credentials, configuration generations, managed worktrees, run state, logs,
 and diagnostics.
 
+The public `install.sh` and `install.ps1` bootstraps resolve the latest GitHub release, select the
+native platform and architecture archive, verify its separately published SHA-256 value, and invoke
+the package's own install or upgrade adapter. A tagged release first creates a retained draft,
+builds and qualifies Linux, macOS, and Windows packages independently, uploads all native archives
+and checksums, and publishes only after every package job succeeds.
+
+Interactive startup performs a cached release check at most once every six hours. Network failure
+does not block offline use. When a newer exact `vMAJOR.MINOR.PATCH` release exists, Peritus offers
+the update with a useful default; `peritus update` performs the same check immediately. Archive
+downloads stream to the protected cache with a 1 GiB bound and are checksum-verified before native
+installation. Unix upgrades finish transactionally before exit. Windows launches a detached helper
+that waits for the running executable to exit, applies the transactional upgrade, and verifies the
+new installed version.
+
 Hosted Linux, macOS, and Windows gates assemble native packages from already checked build outputs,
-exercise install, repeat command launch, upgrade, and uninstall, and assert protected-state
-preservation. The production package command separately builds optimized locked artifacts.
+exercise install, repeat command launch, upgrade, uninstall, the public bootstrap, and checksum
+rejection, and assert protected-state preservation. The production package command separately
+builds optimized locked artifacts.
 
 ## Local state
 

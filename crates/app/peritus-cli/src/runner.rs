@@ -49,6 +49,9 @@ fn run(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
             |()| ExitCode::SUCCESS,
         );
     }
+    if matches!(&cli.command, Command::Update) {
+        return run_update();
+    }
     if matches!(&cli.command, Command::Providers) {
         return run_provider_settings();
     }
@@ -72,6 +75,28 @@ fn run(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
     match runtime.block_on(execute(cli)) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => report_error(&error, json),
+    }
+}
+
+fn run_update() -> ExitCode {
+    if !std::io::stdout().is_terminal() {
+        return report_error(
+            &CliError::usage("product update requires an interactive terminal"),
+            false,
+        );
+    }
+    let runtime = match tokio::runtime::Builder::new_current_thread().enable_all().build() {
+        Ok(runtime) => runtime,
+        Err(error) => {
+            return report_error(
+                &CliError::runtime("construct update runtime", error.to_string()),
+                false,
+            );
+        }
+    };
+    match runtime.block_on(peritus_launcher::update_interactive()) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => report_error(&CliError::runtime("update product", error.to_string()), false),
     }
 }
 
@@ -184,6 +209,7 @@ async fn execute(cli: Cli) -> Result<(), CliError> {
         Command::Help { .. }
         | Command::Version
         | Command::Completions(_)
+        | Command::Update
         | Command::Providers
         | Command::Workspaces
         | Command::Open { .. } => Ok(()),

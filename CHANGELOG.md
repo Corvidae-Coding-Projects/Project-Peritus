@@ -12,6 +12,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- Add one-command POSIX and PowerShell installers backed by host-native GitHub release archives,
+  exact detached SHA-256 verification, and the existing transactional install/upgrade adapters;
+  add a retained-draft, three-platform tagged release workflow and executable bootstrap
+  qualification that proves both successful installation and checksum rejection (#31)
+- Add a six-hour cached, offline-tolerant startup release check and `peritus update`, with exact
+  semantic-version comparison, bounded streaming downloads, verified native upgrades, installed-
+  version confirmation on Unix, and finish-after-exit Windows replacement (#31)
+
 ### Fixed
 - Persist a bounded effect-receipt ledger for every writable G4 developer-tool invocation, binding
   deterministic role/invocation/effect identity to the provider call ID and canonical request

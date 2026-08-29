@@ -10,6 +10,23 @@ resource-capped release build and writes `dist/peritus-<platform>-<architecture>
 the target's per-user installer. Build outputs and assembled packages remain ignored and must never
 be committed.
 
+Published users install through one command:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Corvidae-Coding-Projects/Project-Peritus/main/install.sh | sh
+```
+
+Windows PowerShell uses:
+
+```powershell
+irm https://raw.githubusercontent.com/Corvidae-Coding-Projects/Project-Peritus/main/install.ps1 | iex
+```
+
+Both bootstraps resolve the latest GitHub release, select the host archive, verify its published
+SHA-256 digest, and call the same native install or upgrade adapter described below. `peritus`
+checks for updates at most once every six hours without blocking offline startup; `peritus update`
+runs the check immediately.
+
 Installation is deliberately per-user because G0 authenticates local peers as the protected state
 root owner. The installer verifies all package checksums, atomically publishes the launcher,
 daemon, TUI, helper, and optional supervisor template, and makes `peritus` the ordinary command.
@@ -25,3 +42,8 @@ these assets.
 
 The service templates are retained for a future explicitly configured always-on runner mode. They
 are not installed as active services and are not part of the ordinary single-command product path.
+
+`cargo xtask release-bootstrap-smoke` qualifies the native lifecycle plus the public file-download
+path and proves that a mismatched archive checksum is rejected. Tagged release automation keeps the
+GitHub release as a draft until the Linux, macOS, and Windows policy, lifecycle, packaging, and
+upload jobs all succeed.

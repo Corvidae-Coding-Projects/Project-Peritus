@@ -44,8 +44,8 @@ useful behavior only when it fits its own local-first and evidence-driven design
 | Durable conversations and correction during work | Working | User and agent messages are persisted, revisioned, accepted during an active run, and used to trigger a fresh design/write pass. Waiting, failure, retry, and continuation are visible in the TUI. | Preserve; compaction must never alter the canonical human conversation. |
 | Trace inspection, failure analysis, and harness evolution | Working at subsystem level | C7 traces, E2 debugger, E3 evaluation, F0 evolution, HarnessBench reports, and the failure journal provide durable causal evidence. Automatic promotion remains intentionally gated by H4 evidence and authority. | Add product-facing trace summaries and benchmark comparisons; keep promotion fail-closed. |
 | Interactive and noninteractive operation | Working | `peritus` provides the single-command TUI; `peritus-benchmark-agent` provides the real noninteractive Rust-owned path used by both external suites. | Preserve and document ordinary CI invocation after the benchmark campaign stabilizes. |
-| Configuration migration, compatibility, diagnostics, and rollback | Partial | C0/G0/H2/H4 provide versioned state, recovery, package layout, migration, diagnostics, and rollback contracts. The public release installer and startup update flow do not yet exist. | Finish and qualify the public install/update boundary before calling the product releasable. |
-| One-command install and safe startup updates | Missing | No root `install.sh`, supported PowerShell installer, release-download client, cached startup update check, or verified self-update action exists. | Implement after the benchmark-informed product-loop gaps, then exercise install, repeat install, upgrade, interruption, rollback, checksum failure, offline startup, and uninstall. |
+| Configuration migration, compatibility, diagnostics, and rollback | Working with final-campaign evidence pending | C0/G0/H2/H4 provide versioned state, recovery, package layout, migration, diagnostics, and rollback contracts. The public bootstraps use those same native transactional adapters, whose repeat install, upgrade, rollback, state preservation, and uninstall paths are exercised on all hosted platforms. | Re-run the complete lifecycle against the exact release candidate and retain the H2/H4 evidence. |
+| One-command install and safe startup updates | Working with first-release evidence pending | Root POSIX and PowerShell bootstraps resolve native GitHub release assets and reject checksum mismatch. G4 performs a nonblocking six-hour cached startup check, offers an update, and exposes `peritus update`; downloads are streamed within a 1 GiB bound, verified, and installed through native rollback adapters. Windows finishes after the running executable exits. The release workflow retains a draft until all three native jobs pass. | Publish and exercise the first exact release, including hosted offline-startup and interrupted-update cases, before a production-ready claim. |
 
 ## Material implementation queue
 
@@ -67,8 +67,9 @@ experience. They are ordered to avoid invalidating benchmark evidence more often
    which provider transitions are safe and useful.
 7. Run a final Terminal-Bench k=5 campaign with the final binary so baseline and final scores refer
    to distinct, exact commits.
-8. Implement and qualify the public installers, startup update check, verified atomic update,
-   rollback, and release workflow.
+8. Completed on the draft qualification branch: public POSIX and PowerShell installers, cached
+   startup checks, explicit self-update, checksum verification, native rollback adapters, a
+   retained-draft three-platform release workflow, and an executable local bootstrap smoke.
 
 ## Non-goals
 

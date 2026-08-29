@@ -2288,6 +2288,7 @@ version = "0.0.0"
 dependencies = [
  "crossterm",
  "fs4",
+ "futures-util",
  "getrandom 0.4.3",
  "peritus-approval",
  "peritus-daemon",
@@ -2297,6 +2298,8 @@ dependencies = [
  "peritus-tui",
  "peritus-types",
  "peritus-workspace",
+ "reqwest",
+ "serde_json",
  "sha2 0.11.0",
  "tempfile",
  "thiserror 2.0.20",

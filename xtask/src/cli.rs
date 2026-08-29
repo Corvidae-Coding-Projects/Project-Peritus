@@ -28,6 +28,10 @@ Commands:
   product-package        Build a host-native checked Peritus package in dist/
   product-install        Build and install Peritus for the current user
   product-package-smoke  Qualify native install, repeat launch, upgrade, and uninstall
+  release-bootstrap-smoke Qualify the public download, checksum, and install entry point
+  release-create         Validate a tag and create its retained draft GitHub release
+  release-package-upload Build, archive, checksum, and upload this host's native package
+  release-publish        Publish a draft only after every native package job passes
   help                   Print this help
 ";
 
@@ -44,6 +48,10 @@ enum Command {
     ProductPackage,
     ProductInstall,
     ProductPackageSmoke,
+    ReleaseBootstrapSmoke,
+    ReleaseCreate,
+    ReleasePackageUpload,
+    ReleasePublish,
     Help,
 }
 
@@ -200,6 +208,16 @@ pub(crate) fn execute(
         Command::ProductPackage | Command::ProductInstall | Command::ProductPackageSmoke => {
             execute_product(command, root, output)?;
         }
+        Command::ReleaseCreate => crate::release::create(root)?,
+        Command::ReleaseBootstrapSmoke => {
+            let package = crate::release::bootstrap_smoke(root)?;
+            write_output(
+                output,
+                &format!("public release bootstrap passed: {}\n", package.display()),
+            )?;
+        }
+        Command::ReleasePackageUpload => crate::release::package_upload(root)?,
+        Command::ReleasePublish => crate::release::publish()?,
         Command::Help => {}
     }
     Ok(())
@@ -243,6 +261,10 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
         Some("product-package") => Ok(Command::ProductPackage),
         Some("product-install") => Ok(Command::ProductInstall),
         Some("product-package-smoke") => Ok(Command::ProductPackageSmoke),
+        Some("release-bootstrap-smoke") => Ok(Command::ReleaseBootstrapSmoke),
+        Some("release-create") => Ok(Command::ReleaseCreate),
+        Some("release-package-upload") => Ok(Command::ReleasePackageUpload),
+        Some("release-publish") => Ok(Command::ReleasePublish),
         Some("help" | "-h" | "--help") | None => Ok(Command::Help),
         Some(command) => Err(XtaskError::invocation(format!(
             "unknown command `{command}`; run `cargo xtask help` for the supported interface"

@@ -14,6 +14,13 @@ fn provider_settings_are_a_standalone_product_command() {
 }
 
 #[test]
+fn update_is_a_standalone_product_command() {
+    let cli = parse(&["peritus", "update"]).expect("update command");
+    assert!(matches!(cli.command, Command::Update));
+    assert!(cli.endpoint.is_none());
+}
+
+#[test]
 fn workspace_product_commands_do_not_require_an_endpoint() {
     let cli = parse(&["peritus", "workspaces"]).expect("workspace settings");
     assert!(matches!(cli.command, Command::Workspaces));

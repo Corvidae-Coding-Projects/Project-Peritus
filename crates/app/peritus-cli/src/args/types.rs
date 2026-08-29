@@ -21,6 +21,7 @@ GLOBAL OPTIONS:
   -V, --version              Print version
 
 COMMANDS:
+  update                       Check for and install the latest Peritus release
   providers                    Open provider settings
   workspaces                   Switch, add, trust, repair, or forget workspaces
   open [PATH]                  Launch Peritus for PATH (default: current directory)
@@ -64,6 +65,7 @@ pub enum Command {
     Help { text: String },
     Version,
     Completions(Shell),
+    Update,
     Providers,
     Workspaces,
     Open { path: Option<PathBuf> },

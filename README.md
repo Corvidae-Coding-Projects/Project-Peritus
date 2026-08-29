@@ -177,10 +177,13 @@ The implemented foundation and runtime spine now covers:
   run instructions, design path, and inspect/accept/commit/export/discard handoff. The TUI provides
   an accessible task composer, textual progress timeline, diff and review/check views,
   role-provider switching, handoff controls, cancellation, retry, and a visible `R
-  restart/reconnect` action when the daemon link drops. Host-native package assembly now
-  installs the launcher,
-  daemon, TUI, sandbox helper, lifecycle scripts, manifest, and checksums while preserving product
-  state across repeat install, upgrade, rollback, and uninstall; and
+  restart/reconnect` action when the daemon link drops. Host-native package assembly now installs
+  the launcher, daemon, TUI, sandbox helper, lifecycle scripts, manifest, and checksums while
+  preserving product state across repeat install, upgrade, rollback, and uninstall. Public POSIX
+  and PowerShell bootstraps select the native GitHub release, verify its detached SHA-256 checksum,
+  and use the same transactional lifecycle adapters. Interactive startup checks the latest release
+  at most once every six hours without blocking offline use, offers an update when one exists, and
+  exposes the same path directly as `peritus update`; and
 - H0: a verified exact-candidate security-readiness policy plus a 42-case fresh-native-subject
   campaign covering R-SEC-001 through R-SEC-007, the nine security-relevant acceptance criteria,
   malicious repositories, native sandboxes, role isolation, evidence invalidation, evolution,
@@ -415,12 +418,13 @@ reported model tokens; diagnostic reruns are archived separately and are not dou
 The native Terminal-Bench 2.0 adapter is now qualified against an unchanged official task through
 the complete Peritus writer-reviewer-fixer loop and Harbor verifier, earning reward 1.0 with no
 runner exception. The serialized full 89-task, five-attempt baseline campaign remains in progress;
-its frozen binary has completed nine tasks so far. Seven earned reward 1.0. The retained failures
+its frozen binary has completed eleven tasks so far. Eight earned reward 1.0. The retained failures
 have already exposed a provider-policy diagnostic collapse and a reviewer that removed explicit
 source-derived content based on outside domain semantics; both produced general product fixes and
-are recorded in the failure journal without modifying benchmark tasks or verifiers. The complete
-professional-capability audit, documentation normalization, release-installer qualification, and
-final hosted-runner closure also remain required before production readiness.
+are recorded in the failure journal without modifying benchmark tasks or verifiers. The public
+installer and self-update boundary now has executable native lifecycle and checksum-rejection
+evidence. Documentation normalization, the complete benchmark campaign, final exact-candidate
+rerun, and hosted-runner closure remain required before production readiness.
 
 Gate A is the current merge authority: ordinary Rust checks, architecture and API policy,
 supply-chain policy, pinned toolchains, full Verus verification, and verified release builds must
@@ -429,9 +433,23 @@ separate locked Foundation matrix covering the same platform, dependency, and Ve
 
 ## Install and run the current product build
 
-From a source checkout, build the checked host-native package and install it for the current user:
+On Linux or macOS, install the latest published release for the current user:
 
-```text
+```sh
+curl -fsSL https://raw.githubusercontent.com/Corvidae-Coding-Projects/Project-Peritus/main/install.sh | sh
+```
+
+On Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/Corvidae-Coding-Projects/Project-Peritus/main/install.ps1 | iex
+```
+
+Release assets are selected for the current operating system and CPU, checked against their
+published SHA-256 digest, and installed per user. From a source checkout, developers can build and
+install the same native package directly:
+
+```sh
 cargo xtask product-install
 ```
 
@@ -442,9 +460,10 @@ hand-written configuration:
 peritus
 ```
 
-Run it from inside a Git repository to use that repository automatically. Use `peritus open
-[PATH]`, `peritus providers`, or `peritus workspaces` for an explicit workspace, provider settings,
-or workspace settings. Press `n` in the Runs view to describe a coding task; `w`, `e`, and `f`
+Run it from inside a Git repository to use that repository automatically. Use `peritus update`,
+`peritus open [PATH]`, `peritus providers`, or `peritus workspaces` for an immediate update check,
+an explicit workspace, provider settings, or workspace settings. Press `n` in the Runs view to
+describe a coding task; `w`, `e`, and `f`
 select the writer, reviewer, and fixer providers. Select any run and press Enter or `m` to talk to
 it: add context while it works, answer a question, redirect it, or continue a failed or completed
 run in the same managed worktree. After exact acceptance, use `i` to inspect the diff, `a` to mark
