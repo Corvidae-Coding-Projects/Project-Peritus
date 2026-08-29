@@ -13,6 +13,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- Honor the negotiated provider parallel-tool width in the production developer loop, execute
+  batched calls in stable proposal order, report identical full-file writes as unchanged no-ops,
+  and preserve exact identifiers, enum-like values, paths, fields, and commands byte-for-byte
+  across generated artifacts instead of paraphrasing contract syntax (#31)
+- Isolate the daemon deliverable Git fixture from host `core.autocrlf` settings and compare discard
+  results with its captured baseline bytes, keeping the exact-path export/discard test portable on
+  Windows hosted runners (#31)
 - State the enforced current-turn grounding sequence in writer/fixer prompts and provider-facing
   tool descriptions, identify harness-owned internal gates as unavailable workspace commands, and
   require reviewers to reread every conserved finding location before repeating it after a fix
@@ -117,6 +124,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Exercise unchanged HarnessBench task 058 through three durable project-state rounds: replace a
+  1,200-second Day 3 timeout with negotiated batched writes, preserve `conditional_go` across the
+  JSON and CSV artifacts, complete natively, and score outcome/process/security/combined
+  0.9375/0.9233/1.0/0.8656 while retaining one unpublished lexical oracle miss (#31)
 - Exercise unchanged HarnessBench tasks 056 and 057 through native inventory and two-round resume
   workflows, retaining their 0.69 and 0.8077 outcomes where hidden ground truth requires an
   explicitly contradictory SKU omission and unpublished JSON/log shapes despite correct requested

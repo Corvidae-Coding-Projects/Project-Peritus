@@ -25,7 +25,7 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
         ),
         (
             "workspace_write",
-            "Create or completely replace one workspace-relative text file after current-turn workspace_list and workspace_read grounding. An existing target must itself have been read first.",
+            "Create or completely replace one workspace-relative text file after current-turn workspace_list and workspace_read grounding. An existing target must itself have been read first. The result reports changed=false when the requested content already matches; move on instead of repeating that write.",
             r#"{"additionalProperties":false,"properties":{"content":{"type":"string"},"path":{"type":"string"}},"required":["content","path"],"type":"object"}"#,
         ),
         (

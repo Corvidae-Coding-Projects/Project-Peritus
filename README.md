@@ -130,7 +130,10 @@ The implemented foundation and runtime spine now covers:
   targeted reads. Embedded architect, developer, and reviewer skills require cohesive modules,
   thin composition roots, explicit interfaces, and collision-aware slices. Writers and fixers can
   inspect, search, edit, run, test, observe failures, and retry through bounded structured tools,
-  but cannot mutate an existing file before reading it in the current turn. Independent review is
+  but cannot mutate an existing file before reading it in the current turn. Provider-negotiated
+  tool batches execute in proposal order, and unchanged full-file writes report that no bytes
+  changed instead of rewriting the target. Exact identifiers and syntax remain literal across
+  every generated artifact that records them. Independent review is
   also a fresh D0 loop: it must list and read the real workspace through a separately enforced
   read-only executor before its typed verdict can enter D2. Recoverable malformed, empty, timeout,
   and transport responses receive fresh bounded attempts; productive 48-turn work
@@ -193,7 +196,7 @@ evidence, and obtaining an H4 `Ready` decision. Until that evidence exists, Peri
 `NotReadyForProduction` by construction.
 
 External production qualification is active against the pinned, unchanged 106-task HarnessBench
-suite. Tasks 001 through 057 have run sequentially with full local reports and failure diagnosis;
+suite. Tasks 001 through 058 have run sequentially with full local reports and failure diagnosis;
 task 051 passed all 21 checks cleanly, and the latest task 052 run passed all 17 external checks
 after exercising ambiguity handling, category boundaries, provider-stall recovery, and finding
 conservation. The source now treats advisory review as nonblocking and conserves stable finding
@@ -205,6 +208,12 @@ rejections; after making that protocol explicit without weakening enforcement, i
 passed all 24 checks natively in one cycle with process 0.9867. Tasks 056 and 057 completed natively
 with correct inventory calculations and preserved two-round resume state; their remaining oracle
 deductions require contradictory or unpublished output conventions and are retained honestly.
+Task 058 exposed a genuine mismatch between instructions that required batched writes and a
+developer-loop request that disabled them. The provider-neutral loop now uses the negotiated batch
+width, unchanged writes are explicit no-ops, and exact identifiers remain literal across artifacts.
+The unchanged three-day state task now completes natively, writes all three final artifacts in one
+batch, passes 10 of 11 oracle checks, and scores outcome/process/security/combined
+0.9375/0.9233/1.0/0.8656. Its remaining hidden lexical check is retained rather than bench-tuned.
 Terminal-Bench 2.0, the complete professional-capability audit, documentation normalization,
 release-installer qualification, and final hosted-runner closure remain required before production
 readiness.

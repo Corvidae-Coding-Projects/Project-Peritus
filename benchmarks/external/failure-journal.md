@@ -1204,3 +1204,44 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   and 467.998 seconds. The final result and Markdown audit checks pass.
 - Disposition: retain the unchanged score and semantically correct state. Do not guess unpublished
   JSON shapes or enum labels merely to maximize this benchmark.
+
+## HBF-024: disabled tool batching contradicted the production workflow
+
+- Suite and task: HarnessBench 2.0, `058-multiday-project-state`.
+- Symptom: Day 1 and Day 2 completed, but Day 3 repeatedly rewrote only `project_log.md` and timed
+  out after 1,200 seconds without updating `final_plan.json` or creating `decision_register.csv`.
+  The task explicitly required all three writes in one combined response.
+- Cause: the production workflow told writers to batch independent calls and capability negotiation
+  requested `parallel_tool_calls`, but the developer loop hard-coded `ParallelToolPolicy::Disabled`
+  into every request. The generated account-runtime schema therefore set `maxItems` to one. A
+  successful identical `workspace_write` also returned no signal that the file already matched,
+  which made unproductive repetition harder for the model to recognize.
+- Change: the developer loop now selects the negotiated maximum batch width when the provider
+  advertises parallel tool calls and retains one-call mode otherwise. Returned calls still execute
+  deterministically in proposal order. `workspace_write` now avoids replacing identical content
+  and returns `changed: false`; the tool and role instructions say to move on after that result.
+- Evidence: the failed workspace retained fourteen successful rewrites of only `project_log.md` and
+  no final decision register. In both corrected reruns, the live request schema advertised eight
+  calls; Day 1 and Day 2 each wrote two files in one batch, and Day 3 wrote all three final files in
+  one batch. The final local report is
+  `reports/058-multiday-project-state-post-batched-tools-and-literal-fidelity.json`; native review
+  completed, 10/11 oracle checks passed, and outcome/process/security/combined scores were
+  0.9375/0.9233/1.0/0.8656 in 694.419 seconds.
+- Regression evidence: focused developer-loop tests prove negotiated batches execute and return
+  both observations while a provider without the capability remains serialized. Product-runner
+  tests prove an identical write reports unchanged and preserves the target bytes and modification
+  time. Strict affected-crate Clippy passes.
+
+## HBI-030: task 058 conflict check requires one unpublished location-specific word
+
+- Suite and task: HarnessBench 2.0, `058-multiday-project-state`.
+- Symptom: the final run records the Day 2 sales/privacy conflict and its Day 3 resolution in both
+  final artifacts, but the oracle's `conflict_handling` check fails.
+- Cause: the oracle searches only serialized `final_plan.json` for all four hidden terms
+  `stakeholder`, `sales`, `privacy`, and `conflict`. The JSON contains the actual sales/privacy
+  conflict and its history but omits only the generic word `stakeholder`; `project_log.md` contains
+  the exact phrase `stakeholder conflict`. The prompt requires the conflict to be recorded in both
+  outputs but does not require that exact word in that exact file.
+- Disposition: retain the 10/11 result. The general literal-fidelity correction preserves explicit
+  identifiers such as `conditional_go` across artifacts, but Peritus does not inject an unpublished
+  synonym into one hidden-check location merely to maximize this task.

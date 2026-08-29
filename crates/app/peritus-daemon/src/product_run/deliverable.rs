@@ -251,7 +251,9 @@ mod tests {
     #[test]
     fn export_and_discard_are_limited_to_exact_deliverable_paths() {
         let repository = repository();
-        fs::write(repository.path().join("chosen.txt"), "changed\n").expect("chosen change");
+        let chosen_path = repository.path().join("chosen.txt");
+        let chosen_baseline = fs::read(&chosen_path).expect("chosen baseline");
+        fs::write(&chosen_path, "changed\n").expect("chosen change");
         fs::write(repository.path().join("unrelated.txt"), "unrelated change\n")
             .expect("unrelated change");
         fs::write(repository.path().join("new.txt"), "new file\n").expect("new file");
@@ -272,10 +274,7 @@ mod tests {
         assert!(!patch.contains("unrelated.txt"));
 
         discard_deliverable(&deliverable).expect("discard");
-        assert_eq!(
-            fs::read_to_string(repository.path().join("chosen.txt")).expect("chosen"),
-            "base\n"
-        );
+        assert_eq!(fs::read(chosen_path).expect("chosen"), chosen_baseline);
         assert!(!repository.path().join("new.txt").exists());
         assert_eq!(
             fs::read_to_string(repository.path().join("unrelated.txt")).expect("unrelated"),
@@ -314,6 +313,7 @@ mod tests {
         git(repository.path(), &["config", "user.name", "Peritus Test"]);
         git(repository.path(), &["config", "user.email", "peritus@example.invalid"]);
         git(repository.path(), &["config", "commit.gpgsign", "false"]);
+        git(repository.path(), &["config", "core.autocrlf", "false"]);
         fs::write(repository.path().join("chosen.txt"), "base\n").expect("chosen base");
         fs::write(repository.path().join("unrelated.txt"), "base\n").expect("unrelated base");
         git(repository.path(), &["add", "--", "chosen.txt", "unrelated.txt"]);

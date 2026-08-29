@@ -1,23 +1,25 @@
 //! Production D0 developer-loop integration with a scripted provider and concrete tool port.
 
+#[path = "developer_loop/fixtures.rs"]
+mod fixtures;
+
 use std::{collections::VecDeque, future::Future, sync::Mutex};
 
+use fixtures::{
+    batch_tool_response, empty_response, parallel_profile, profile, read_tool,
+    recoverable_failure_response, text_response, tool_response,
+};
 use peritus_agent::{
     DeveloperLoop, DeveloperLoopLimits, DeveloperLoopRequest, DeveloperToolExecutor,
     DeveloperToolObservation, DeveloperTrace, DeveloperTraceEvent,
 };
 use peritus_model_protocol::{
-    BoundedText, CancellationKind, CanonicalJson, Capability, CapabilityMatrix,
-    CapabilityProvenance, ContentBlock, EventEnvelope, FailureCategory, FinishReason, ItemId,
-    ItemKind, JsonBounds, JsonSchema, ModelEvent, ModelFailure, ModelLimits, ModelName,
-    ModelRequest, OutcomeCertainty, OutputLimitEnforcement, ProtocolLimits, ProviderName,
-    ProviderProfile, RedactedDiagnostic, ResumeKind, Retryability, Role, SchemaDialect, StateMode,
-    StreamFragment, ToolCallId, ToolDefinition, ToolName, TransportPhase, WireDialect,
+    CanonicalJson, ContentBlock, EventEnvelope, JsonBounds, ModelRequest, ParallelToolPolicy,
+    ProtocolLimits, ProviderProfile, Role,
 };
 use peritus_provider_core::{
     BoxFuture, CancellationToken, ModelProvider, ModelStream, OwnedModelStream, ProviderCoreError,
 };
-use peritus_types::{ProviderProfileId, Sha256Digest};
 
 fn block_on<F: Future>(future: F) -> F::Output {
     tokio::runtime::Builder::new_current_thread()
@@ -150,6 +152,7 @@ fn developer_loop_executes_a_tool_and_returns_its_observation_to_the_next_model_
         assert!(trace.envelopes > 0);
         let requests = provider.requests.lock().expect("requests");
         assert_eq!(requests.len(), 2);
+        assert_eq!(requests[0].parallel_tool_policy(), ParallelToolPolicy::Disabled);
         assert!(requests[1].messages().iter().any(|message| {
             message.role() == Role::Tool
                 && message
@@ -157,6 +160,50 @@ fn developer_loop_executes_a_tool_and_returns_its_observation_to_the_next_model_
                     .iter()
                     .any(|block| matches!(block, ContentBlock::ToolResult(_)))
         }));
+        drop(requests);
+    });
+}
+
+#[test]
+fn developer_loop_uses_the_negotiated_parallel_tool_width() {
+    block_on(async {
+        let provider = ScriptedProvider {
+            profile: parallel_profile(),
+            responses: Mutex::new(VecDeque::from([batch_tool_response(), text_response()])),
+            requests: Mutex::new(Vec::new()),
+        };
+        let mut tools = RecordingTool::default();
+        let mut trace = RecordingTrace::default();
+        let outcome = DeveloperLoop::run(
+            &provider,
+            DeveloperLoopRequest {
+                request_prefix: "parallel-test".to_owned(),
+                system: "Inspect both files before completing.".to_owned(),
+                prompt: "Read src/lib.rs and src/main.rs.".to_owned(),
+                attachments: Vec::new(),
+                tools: vec![read_tool()],
+                limits: DeveloperLoopLimits::new(4, 4).expect("limits"),
+                cancellation: CancellationToken::new(),
+            },
+            &mut tools,
+            &mut trace,
+        )
+        .await
+        .expect("developer loop");
+
+        assert_eq!(outcome.tool_calls, 2);
+        assert_eq!(tools.calls, 2);
+        assert_eq!(trace.observations, 2);
+        let requests = provider.requests.lock().expect("requests");
+        assert_eq!(requests.len(), 2);
+        assert_eq!(requests[0].parallel_tool_policy(), ParallelToolPolicy::Allowed(4));
+        let observations = requests[1]
+            .messages()
+            .iter()
+            .flat_map(peritus_model_protocol::Message::content)
+            .filter(|block| matches!(block, ContentBlock::ToolResult(_)))
+            .count();
+        assert_eq!(observations, 2);
         drop(requests);
     });
 }
@@ -196,122 +243,4 @@ fn developer_loop_retries_a_recoverable_malformed_provider_turn() {
         assert_eq!(outcome.model_turns, 1);
         assert_eq!(provider.requests.lock().expect("requests").len(), 3);
     });
-}
-
-fn profile() -> ProviderProfile {
-    ProviderProfile::new(
-        ProviderProfileId::new([0x7A; 16]).expect("profile ID"),
-        1,
-        ProviderName::new("scripted-provider".to_owned()).expect("provider"),
-        ModelName::new("scripted-model".to_owned()).expect("model"),
-        WireDialect::CompatibleResponses,
-        CapabilityMatrix::new(&[Capability::ToolCalls], &[]).expect("capabilities"),
-        CapabilityProvenance::Probed,
-        ModelLimits::new(32_768, 4_096, 16, 1, 256 * 1024).expect("limits"),
-        OutputLimitEnforcement::ProviderEnforced,
-        StateMode::StatelessReplay,
-        ResumeKind::Unsupported,
-        CancellationKind::BestEffortLocalAbort,
-    )
-    .expect("profile")
-}
-
-fn read_tool() -> ToolDefinition {
-    let limits = ProtocolLimits::PRODUCTION;
-    ToolDefinition::new(
-        ToolName::new("workspace_read".to_owned()).expect("tool name"),
-        Some(BoundedText::new("Read a workspace file".to_owned(), limits).expect("description")),
-        JsonSchema::parse(
-            r#"{"additionalProperties":false,"properties":{"path":{"type":"string"}},"required":["path"],"type":"object"}"#,
-            SchemaDialect::Draft202012,
-            JsonBounds::schema(limits),
-        )
-        .expect("schema"),
-        true,
-    )
-}
-
-fn tool_response() -> VecDeque<EventEnvelope> {
-    let limits = ProtocolLimits::PRODUCTION;
-    let item = ItemId::new("tool-item".to_owned()).expect("item");
-    let call = ToolCallId::new("read-call".to_owned()).expect("call");
-    response([
-        ModelEvent::ResponseStarted { response_id: None, model: None },
-        ModelEvent::ItemStarted { item_id: item.clone(), index: 0, kind: ItemKind::ToolCall },
-        ModelEvent::ToolCallStarted {
-            item_id: item.clone(),
-            call_id: call.clone(),
-            name: ToolName::new("workspace_read".to_owned()).expect("tool"),
-        },
-        ModelEvent::ToolArgumentDelta {
-            call_id: call,
-            fragment: StreamFragment::new(br#"{"path":"src/lib.rs"}"#.to_vec(), limits)
-                .expect("arguments"),
-        },
-        ModelEvent::ItemCompleted(item),
-        ModelEvent::Finish(FinishReason::ToolCalls),
-        ModelEvent::ResponseCompleted,
-    ])
-}
-
-fn text_response() -> VecDeque<EventEnvelope> {
-    let limits = ProtocolLimits::PRODUCTION;
-    let item = ItemId::new("message-item".to_owned()).expect("item");
-    response([
-        ModelEvent::ResponseStarted { response_id: None, model: None },
-        ModelEvent::ItemStarted { item_id: item.clone(), index: 0, kind: ItemKind::Message },
-        ModelEvent::TextDelta {
-            item_id: item.clone(),
-            fragment: StreamFragment::new(b"implementation inspected".to_vec(), limits)
-                .expect("text"),
-        },
-        ModelEvent::ItemCompleted(item),
-        ModelEvent::Finish(FinishReason::Stop),
-        ModelEvent::ResponseCompleted,
-    ])
-}
-
-fn recoverable_failure_response() -> VecDeque<EventEnvelope> {
-    let failure = ModelFailure::new(
-        ProviderName::new("scripted-provider".to_owned()).expect("provider"),
-        FailureCategory::MalformedPayload,
-        TransportPhase::ReadingBody,
-        OutcomeCertainty::MaybeAccepted,
-        Retryability::SafeNewRequest,
-        None,
-        None,
-        None,
-        RedactedDiagnostic::new("scripted.malformed".to_owned(), None, None, None)
-            .expect("diagnostic"),
-    );
-    response([
-        ModelEvent::ResponseStarted { response_id: None, model: None },
-        ModelEvent::ResponseFailed(failure),
-    ])
-}
-
-fn empty_response() -> VecDeque<EventEnvelope> {
-    response([
-        ModelEvent::ResponseStarted { response_id: None, model: None },
-        ModelEvent::Finish(FinishReason::Stop),
-        ModelEvent::ResponseCompleted,
-    ])
-}
-
-fn response<const N: usize>(events: [ModelEvent; N]) -> VecDeque<EventEnvelope> {
-    events
-        .into_iter()
-        .enumerate()
-        .map(|(index, event)| {
-            let sequence = u64::try_from(index + 1).expect("sequence");
-            EventEnvelope::new(
-                sequence,
-                None,
-                None,
-                Sha256Digest::new([u8::try_from(index + 1).expect("digest byte"); 32]),
-                event,
-            )
-            .expect("envelope")
-        })
-        .collect()
 }

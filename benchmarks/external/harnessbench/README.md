@@ -74,7 +74,7 @@ temporary files through its documented `--image` option.
 
 ## Current qualification progress
 
-The live baseline has exercised tasks 001 through 057 against the pinned, unchanged suite. Tasks
+The live baseline has exercised tasks 001 through 058 against the pinned, unchanged suite. Tasks
 022, 023, and 026 complete with oracle outcome 1.0. Tasks 021, 024, 025, 027, and 028 retain lower
 unchanged outcomes because of documented hidden taxonomies, invalid calendar ground truth,
 unmatchable normalization, or brittle unpublished phrase checks. Task 029 similarly retains a
@@ -214,6 +214,17 @@ oracle misses require an unpublished object shape for `per_item_results` and a h
 log step allowlist; the delivered array contains every correct score, and explicit
 `round2_reused`/`skipped_preexisting` entries identify all three reused cases. Neither mismatch
 caused benchmark-specific product behavior.
+Task 058 initially timed out in Day 3 because its prompt required three file writes in one response
+while the developer loop advertised a maximum batch size of one. The loop now projects the
+provider's negotiated parallel-tool width, executes every returned call in stable proposal order,
+and reports `changed: false` without rewriting when a full-file write already matches. Day 1 and
+Day 2 each wrote their two artifacts in one batch; Day 3 wrote `project_log.md`, `final_plan.json`,
+and `decision_register.csv` together. A further general cross-artifact fidelity rule preserved the
+exact `conditional_go` identifier in the CSV audit. The final unchanged run completed natively in
+one cycle per day with 10/11 checks, outcome 0.9375, process 0.9233, security 1.0, combined 0.8656,
+34 requests, 493,235 tokens, and 694.419 seconds. The remaining oracle miss requires the literal
+word `stakeholder` inside `final_plan.json` even though that file records the sales/privacy conflict
+and `project_log.md` explicitly calls it a stakeholder conflict; no task-specific wording was added.
 
 HarnessBench chooses a result directory from the last observed provider model and may move a
 multi-provider sandbox after the native adapter exits. Invocation evidence schema 4 therefore

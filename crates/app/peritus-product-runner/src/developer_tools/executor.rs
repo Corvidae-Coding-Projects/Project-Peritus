@@ -12,7 +12,7 @@ use peritus_model_protocol::{CanonicalJson, CompletedToolCall, JsonBounds, Proto
 use serde_json::{Map, Value};
 
 use super::{
-    effect::{atomic_write, limit, reject_destructive_command},
+    effect::{atomic_write, atomic_write_if_changed, limit, reject_destructive_command},
     grounding::GroundingEvidence,
     ownership::WorkspaceOwnership,
     path::{checked, tool},
@@ -261,11 +261,12 @@ impl WorkspaceDeveloperTools {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).map_err(|error| tool(error.to_string()))?;
         }
-        atomic_write(&path, content.as_bytes())?;
+        let changed = atomic_write_if_changed(&path, content.as_bytes())?;
         self.ownership.record_direct_creation(&path, existed_before);
         Ok(object(vec![
             ("path", Value::String(relative.to_owned())),
             ("bytes", Value::from(content.len())),
+            ("changed", Value::Bool(changed)),
         ]))
     }
 

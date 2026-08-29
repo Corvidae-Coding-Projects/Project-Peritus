@@ -176,6 +176,11 @@ fn model_request(
     turn: u16,
     attempt: u8,
 ) -> Result<ModelRequest, DeveloperLoopError> {
+    let parallel_tools = if negotiated.includes(Capability::ParallelToolCalls) {
+        ParallelToolPolicy::Allowed(negotiated.limits().max_parallel_tool_calls())
+    } else {
+        ParallelToolPolicy::Disabled
+    };
     Ok(ModelRequest::new(
         profile,
         negotiated,
@@ -183,7 +188,7 @@ fn model_request(
         messages.to_vec(),
         request.tools.clone(),
         ToolChoice::Auto,
-        ParallelToolPolicy::Disabled,
+        parallel_tools,
         RequestOptions::new(
             StructuredOutput::Text,
             ReasoningPolicy::Disabled,

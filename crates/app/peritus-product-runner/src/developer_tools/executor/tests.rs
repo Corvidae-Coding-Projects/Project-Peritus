@@ -52,6 +52,29 @@ fn workspace_tools_inspect_edit_search_and_execute_without_a_shell() {
 }
 
 #[test]
+fn workspace_write_reports_and_preserves_an_unchanged_file() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let path = workspace.path().join("artifact.txt");
+    fs::write(&path, "stable\n").expect("existing file");
+    let mut tools = writable_tools(workspace.path());
+    let _ = execute(&mut tools, "workspace_list", r#"{"depth":2,"path":""}"#);
+    let _ = execute(
+        &mut tools,
+        "workspace_read",
+        r#"{"end_line":20,"path":"artifact.txt","start_line":1}"#,
+    );
+    let before = fs::metadata(&path).expect("metadata").modified().expect("modified");
+
+    let unchanged =
+        execute(&mut tools, "workspace_write", r#"{"content":"stable\n","path":"artifact.txt"}"#);
+
+    assert!(!unchanged.is_error);
+    assert!(wire(&unchanged).contains(r#""changed":false"#));
+    assert_eq!(fs::read_to_string(&path).expect("file"), "stable\n");
+    assert_eq!(fs::metadata(&path).expect("metadata").modified().expect("modified"), before);
+}
+
+#[test]
 fn existing_files_cannot_be_mutated_before_they_are_read() {
     let workspace = tempfile::tempdir().expect("workspace");
     fs::write(workspace.path().join("README.md"), "before\n").expect("existing file");

@@ -30,6 +30,10 @@ requested behavior.
    require a closed canonical vocabulary, canonical identifiers are opaque contract values. Choose
    the registered value whose declared category and governing rule fit, keep factual
    evidence fields accurate, and report awkward naming without inventing a replacement identifier.
+   Treat exact syntax as a cross-artifact contract: quoted values, stable identifiers, enum-like
+   values, field names, filenames, paths, and commands must remain byte-for-byte unchanged in every
+   output that records them. Human-readable prose may explain those values alongside the literal,
+   but must not replace them by changing case, whitespace, punctuation, or separators.
    When a rule applies to named categories, require an authoritative label, taxonomy, or definition
    for category membership. Do not expand a named category to a related concept merely because the
    domain association seems plausible; preserve the literal category boundary when the source does
@@ -207,6 +211,8 @@ mod tests {
             assert!(instructions.contains("owns the primary field"));
             assert!(instructions.contains("broader base rule as secondary"));
             assert!(instructions.contains("opaque contract values"));
+            assert!(instructions.contains("cross-artifact contract"));
+            assert!(instructions.contains("byte-for-byte unchanged"));
             assert!(instructions.contains("meaningfully constructible"));
             assert!(instructions.contains("reversible requested artifact"));
             assert!(instructions.contains("material retry and recovery behavior"));
