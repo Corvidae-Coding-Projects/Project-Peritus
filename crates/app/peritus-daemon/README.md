@@ -14,3 +14,11 @@ recovery order, protected A3 IPC, durable service composition, outbox delivery, 
 shutdown, and the resource-aware verification commands. Operational procedures live in the
 [recovery](../../../docs/g0-recovery-runbook.md) and
 [shutdown](../../../docs/g0-shutdown-runbook.md) runbooks.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-daemon
+```

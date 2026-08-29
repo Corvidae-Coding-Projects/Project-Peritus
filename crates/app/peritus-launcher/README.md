@@ -14,3 +14,11 @@ The launcher owns host effects but no durable domain authority. It does not inte
 provider traffic, workspace mutations, approvals, or TUI presentation state. All generated
 configuration is parsed through the production G0 validator before use, and existing identity-bound
 configuration is preserved only when its protected core matches the installation.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-launcher
+```

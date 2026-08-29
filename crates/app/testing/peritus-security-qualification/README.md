@@ -26,3 +26,11 @@ non-success.
 with SHA-256. Evidence values are structured facts, counts, digests, or bounded canonical codes;
 arbitrary stdout, terminal text, model output, and secrets are retained only by digest outside the
 manifest.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-security-qualification
+```

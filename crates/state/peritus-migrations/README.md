@@ -52,3 +52,11 @@ decision after preserving the failed database and recovery evidence.
 
 See [C0 durable state](../../../docs/c0-durable-state.md) for startup ordering, backup/restore
 details, and exact validation commands.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-migrations
+```

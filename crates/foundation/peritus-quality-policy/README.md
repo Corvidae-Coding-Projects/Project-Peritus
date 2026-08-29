@@ -30,3 +30,11 @@ orchestration, persistence, authorization, and lifecycle transitions live in lat
 
 Production dependencies are limited to `peritus-spec`, `peritus-types`, and `vstd`. This crate may
 not depend on orchestration, persistence, process, workspace, provider, or application crates.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-quality-policy
+```

@@ -31,3 +31,11 @@ actions are reconciled when the store is reopened.
 
 See [C0 durable state](../../../docs/c0-durable-state.md) for lifecycle details, operator recovery,
 and exact validation commands.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-artifact-store
+```

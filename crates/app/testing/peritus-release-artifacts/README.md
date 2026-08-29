@@ -11,3 +11,11 @@ construction means only that the evidence is internally consistent and content-a
 
 Canonical JSON is compact UTF-8 emitted from fixed-field structs and path/key-sorted vectors. No
 ambient time, host, Git state, environment variable, or network lookup participates in generation.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-release-artifacts
+```

@@ -11,3 +11,11 @@ execution requests to C2/C3 and returns exact observations. E3 cannot mutate or 
 accept a run, waive a finding, or grant authority.
 
 The complete frozen contract is in [the E3 design](../../../.design/e3-evaluation.md).
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-eval
+```

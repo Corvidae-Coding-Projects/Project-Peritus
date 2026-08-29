@@ -18,3 +18,11 @@ commit a production activation.
 
 See [`docs/f0-evolution.md`](../../../docs/f0-evolution.md) for aggregate ownership, promotion and
 rollback workflows, recovery guidance, protocol families, and serialized verification commands.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-evolution
+```

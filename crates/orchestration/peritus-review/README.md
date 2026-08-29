@@ -54,3 +54,11 @@ CARGO_BUILD_JOBS=1 cargo verus verify --locked --package peritus-review --all-fe
 ```
 
 See [`docs/d2-review-engine.md`](../../../docs/d2-review-engine.md) for the operating contract.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-review
+```

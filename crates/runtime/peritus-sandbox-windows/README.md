@@ -26,3 +26,11 @@ Platform-neutral manifest, projection, lifecycle, recovery, and refinement tests
 host. Windows-native enforcement tests are ordinary `cfg(windows)` tests and run on a Windows
 runner; cross-compilation proves the GNU Windows build path locally but is not a substitute for H2
 packaged-host qualification.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-sandbox-windows
+```

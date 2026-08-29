@@ -15,3 +15,11 @@ The `VerifiedReleasePolicyAdapter` links the authenticated H4 input to the separ
 `peritus-release-policy` evidence aggregate, rejects binding or digest drift, and translates only
 the policy's deterministic terminal decision into `PolicyDecision`. It does not duplicate release
 rules or manufacture policy evidence.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-release-qualification
+```

@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Add `cargo xtask docs-check` to inventory 133 maintained Markdown files, validate headings,
+  fences, line endings, local links, and crate-focused commands, and include it in the normal
+  repository policy gate (#31)
 - Add one-command POSIX and PowerShell installers backed by host-native GitHub release archives,
   exact detached SHA-256 verification, and the existing transactional install/upgrade adapters;
   add a retained-draft, three-platform tagged release workflow and executable bootstrap
@@ -23,6 +26,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Fixed
+- Replace the root and HarnessBench chronological status walls with plain-English product,
+  qualification, benchmark, and documentation guides while retaining task-level forensic evidence
+  in the external failure journal; add focused checks to all 75 crate READMEs (#31)
 - Persist a bounded effect-receipt ledger for every writable G4 developer-tool invocation, binding
   deterministic role/invocation/effect identity to the provider call ID and canonical request
   digest before execution and to the exact result afterward; replay completed calls without a

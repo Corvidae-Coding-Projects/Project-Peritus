@@ -23,3 +23,11 @@ CARGO_BUILD_JOBS=2 cargo clippy -p peritus-external-benchmarks --all-targets --a
 
 Generated traces and benchmark workspaces belong in local state outside Git. See
 `benchmarks/external/README.md` for pinned upstream revisions and run commands.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-external-benchmarks
+```

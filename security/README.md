@@ -1,8 +1,8 @@
-# H0 security qualification assets
+# Security qualification assets
 
-This directory is the versioned declarative input to H0. These files describe the threat model,
-control/probe traceability, unsafe and trusted-computing-base inventory contracts, and interchange
-schemas. They are not proof that a release passed qualification.
+This directory contains the versioned inputs for H0 security qualification: the threat model,
+control-to-probe map, unsafe-code and trusted-computing-base inventory rules, and evidence schemas.
+They describe what the campaign must check. They do not prove that a release passed.
 
 Every H0 campaign binds their aggregate digest through the integrated candidate's immutable
 qualification-plan digest. Native adapters must reconcile the inventories against the exact source
@@ -12,3 +12,6 @@ artifact and cannot be produced by the qualification crate.
 Canonical generated evidence uses `security/schemas/evidence-manifest-v1.schema.json`. Raw process,
 terminal, model, and secret-bearing output stays outside the manifest in a controlled artifact store;
 the manifest retains only SHA-256 and byte counts.
+
+See the [H0 security guide](../docs/h0-security-qualification.md) for the campaign, boundaries, and
+release verdict.

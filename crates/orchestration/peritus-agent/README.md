@@ -53,3 +53,11 @@ CARGO_BUILD_JOBS=2 RUSTDOCFLAGS='-D warnings' cargo doc -p peritus-agent --all-f
 
 See [`docs/d0-agent-loop.md`](../../../docs/d0-agent-loop.md) for lifecycle, recovery, operating,
 and verification details.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-agent
+```

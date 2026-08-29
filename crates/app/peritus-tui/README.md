@@ -8,3 +8,11 @@ The crate owns terminal-mode restoration, input mapping, reconnect and resumable
 bounded transcript sanitization, and orderly connection shutdown. It depends on the A3 application
 protocol and foundation contracts plus Crossterm and Ratatui for presentation. All authorization,
 durable state, and acceptance decisions remain in G0 and the verified lower layers.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-tui
+```

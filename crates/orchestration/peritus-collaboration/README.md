@@ -11,3 +11,11 @@ canonical family 74 events and checked against the family 75 state checkpoint.
 
 Canonical schema-v1 families are 73 (commands), 74 (events), and 75 (state). The C0 checkpoint
 namespace is `0xD302` and the aggregate kind is `Collaboration`.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-collaboration
+```

@@ -22,3 +22,11 @@ all targets, and all features; unrelated root commands cannot cover a nested pro
 
 See [`docs/d1-gate-engine.md`](../../../docs/d1-gate-engine.md) for the lifecycle and integration
 contract.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-gates
+```

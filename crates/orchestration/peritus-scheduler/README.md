@@ -13,3 +13,11 @@ idempotency identities for safe restart/redelivery.
 Resource and scheduling decisions are pure and time-independent: configured capacities, queue
 ordinals, priority, and bounded bypass counters completely determine every reservation.
 Worker loss, cancellation, and retry never infer success from an absent or late observation.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-scheduler
+```

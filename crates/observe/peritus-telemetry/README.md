@@ -8,3 +8,11 @@ unsupported. The family-60 observation protocol remains independently versioned 
 
 The crate sees only redaction-safe C7 values. It cannot run work or mutate Peritus authority.
 See `docs/c7-trace-telemetry.md` for operational integration guidance.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-telemetry
+```

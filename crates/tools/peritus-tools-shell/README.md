@@ -8,3 +8,11 @@ Both tools require a precompiled restricted `ExecutionPlan`, matching C2 authori
 sandbox plan and admission, and a concrete native backend. There is no unrestricted execution
 fallback. Running processes remain owned by C2 while this crate maps their ordered observations,
 controls, artifacts, terminal states, and recovery into C4 envelopes.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-tools-shell
+```

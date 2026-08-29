@@ -17,3 +17,11 @@ they do not add an unimplemented daemonization or service command. Configuration
 remain operator/runtime owned and are preserved during upgrade, rollback, and ordinary uninstall.
 
 This crate is an H2 qualification foundation, not evidence that any package or host has passed.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-platform-qualification
+```

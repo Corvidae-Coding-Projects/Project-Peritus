@@ -8,3 +8,11 @@ acceptance.
 The proxy is deny-by-default, has bounded workers and observations, and joins owned work during
 shutdown. Tests use controlled loopback servers; production code does not require public Internet
 access.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-network
+```

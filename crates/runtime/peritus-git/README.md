@@ -30,3 +30,11 @@ manifest, `recover_existing_worktree` accepts the original checked `CreateWorktr
 reconstructs a handle only after the existing destination, repository ownership, detached HEAD,
 baseline, name, and external-filter policy all revalidate exactly. It is distinct from
 manifest-based reopening and never adopts an arbitrary directory.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-git
+```

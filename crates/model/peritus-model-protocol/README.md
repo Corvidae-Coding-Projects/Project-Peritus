@@ -29,3 +29,11 @@ pins the digest of the decoded binary bytes represented by each hexadecimal fixt
 The accepted corpus includes both account-runtime dialect tags. Those tags are part of canonical v1
 request identity even though credentials, executable paths, and provider lifecycle facts remain
 outside canonical bytes.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-model-protocol
+```

@@ -13,6 +13,8 @@ pub enum ErrorCode {
     Policy,
     /// Workspace formatting could not be checked.
     Formatting,
+    /// Maintained Markdown documentation violates its checked structure or links.
+    Documentation,
     /// Cargo metadata could not be obtained or decoded.
     Metadata,
     /// The crate graph violates architecture policy.
@@ -36,6 +38,7 @@ impl ErrorCode {
             Self::Io => "PERITUS-XTASK-IO-001",
             Self::Policy => "PERITUS-XTASK-POLICY-001",
             Self::Formatting => "PERITUS-XTASK-FMT-001",
+            Self::Documentation => "PERITUS-XTASK-DOCS-001",
             Self::Metadata => "PERITUS-XTASK-METADATA-001",
             Self::Architecture => "PERITUS-XTASK-ARCH-001",
             Self::SourceLayout => "PERITUS-XTASK-SOURCE-001",

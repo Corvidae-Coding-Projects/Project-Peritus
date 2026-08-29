@@ -22,3 +22,11 @@ resource observations, and per-stream artifact-publication progress. `wait_and_p
 publication error carrying the latest durable terminal result, while
 `ProcessStore::retry_artifact_publication` resumes only missing streams and is idempotent across
 restart.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-process
+```

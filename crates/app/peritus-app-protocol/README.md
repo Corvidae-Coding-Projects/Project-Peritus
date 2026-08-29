@@ -11,3 +11,11 @@ processes, or grant domain authority. Those effects belong to G0 and its B0/B1/C
 
 The complete contract and verification plan is in
 [`../../../.design/a3-app-protocol.md`](../../../.design/a3-app-protocol.md).
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-app-protocol
+```

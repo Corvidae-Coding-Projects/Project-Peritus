@@ -41,3 +41,11 @@ This crate does not inject production faults itself. Adapters translate its type
 the integrated daemon's failpoint, process, storage, provider, tool, and reboot controls. Production
 H1 evidence therefore requires a real release-candidate adapter; an in-memory fake can test the
 harness but cannot qualify a release.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-resilience
+```

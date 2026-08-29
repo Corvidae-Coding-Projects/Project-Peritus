@@ -10,7 +10,7 @@ resource-capped release build and writes `dist/peritus-<platform>-<architecture>
 the target's per-user installer. Build outputs and assembled packages remain ignored and must never
 be committed.
 
-Published users install through one command:
+After the first public release, users will install through one command:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/Corvidae-Coding-Projects/Project-Peritus/main/install.sh | sh
@@ -48,3 +48,6 @@ are not installed as active services and are not part of the ordinary single-com
 path and proves that a mismatched archive checksum is rejected. Tagged release automation keeps the
 GitHub release as a draft until the Linux, macOS, and Windows policy, lifecycle, packaging, and
 upload jobs all succeed.
+
+There is no public release yet. Until the exact candidate completes production qualification, use
+`cargo xtask product-install` from a source checkout.

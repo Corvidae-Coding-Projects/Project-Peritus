@@ -54,3 +54,11 @@ audit from pinned Verus's experimental whole-import API pass is documented in
 The workspace-wide trust checker is responsible for reconciling source occurrences against the
 versioned manifests. An empty list means exactly zero registered records; it is never proof that an
 untracked obligation was discharged.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-tcb
+```

@@ -61,3 +61,11 @@ Focused qualification:
 CARGO_BUILD_JOBS=2 cargo test -p peritus-product-runner --all-targets --all-features --locked
 CARGO_BUILD_JOBS=2 cargo clippy -p peritus-product-runner --all-targets --all-features --locked -- -D warnings
 ```
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-product-runner
+```

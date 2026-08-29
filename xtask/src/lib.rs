@@ -7,6 +7,7 @@
 pub(crate) mod api_contract;
 pub(crate) mod architecture;
 pub(crate) mod cli;
+pub(crate) mod documentation;
 pub(crate) mod error;
 pub(crate) mod formatting;
 pub(crate) mod metadata;

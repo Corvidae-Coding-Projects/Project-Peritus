@@ -31,3 +31,11 @@ collection; an embedding application must drive each configured projection.
 
 See [C0 durable state](../../../docs/c0-durable-state.md) for operator ordering, failure recovery,
 and exact validation commands.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-projection
+```

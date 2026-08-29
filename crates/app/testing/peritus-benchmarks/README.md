@@ -43,3 +43,11 @@ microbenchmarks qualify harness overhead only; application SLO evidence must com
 subject adapter using the stable workload catalog.
 
 See `docs/h3-performance-qualification.md` for the runner, evidence, baseline, and verdict protocol.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-benchmarks
+```

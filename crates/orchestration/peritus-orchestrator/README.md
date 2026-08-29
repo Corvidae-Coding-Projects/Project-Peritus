@@ -15,3 +15,11 @@ observations pass and no policy blocker remains; fixer completion alone never gr
 
 See [the E0 design](../../../.design/e0-actor-orchestrator.md) for the frozen contract and
 `docs/e0-actor-orchestrator.md` for operational use.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-orchestrator
+```

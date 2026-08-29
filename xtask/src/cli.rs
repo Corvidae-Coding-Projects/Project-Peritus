@@ -19,6 +19,7 @@ Usage: cargo xtask <command>
 Commands:
   all                    Run all locally executable repository policy checks
   architecture-check     Validate packages, layers, ownership, and source layout
+  docs-check             Validate maintained Markdown structure and local links
   format-check           Check every workspace package without one oversized command line
   ordinary-api-check     Validate formal APIs callable from ordinary safe Rust
   source-layout-check    Validate module names, crate roots, and source budgets
@@ -39,6 +40,7 @@ Commands:
 enum Command {
     All,
     Architecture,
+    Documentation,
     Formatting,
     OrdinaryApi,
     SourceLayout,
@@ -130,23 +132,7 @@ pub(crate) fn execute(
     }
 
     match command {
-        Command::All => {
-            let policy = metadata::architecture_policy(root)?;
-            let (packages, files) = architecture::check(root, &policy)?;
-            let api = api_contract::check(root, &policy)?;
-            let trust_files = trust::check_local(root, &policy)?;
-            let tools = metadata::toolchain_policy(root)?;
-            let actions = reproducibility::check(root, &tools)?;
-            write_output(
-                output,
-                &format!(
-                    "all checks passed: {packages} package(s), {files} source file(s), \
-                     {} formal-boundary file(s), {} ordinary-safe executable entry point(s), \
-                     {trust_files} trust-scanned file(s), {actions} pinned action(s)\n",
-                    api.files, api.executable_entry_points
-                ),
-            )?;
-        }
+        Command::All => execute_all(root, output)?,
         Command::Architecture => {
             let policy = metadata::architecture_policy(root)?;
             let (packages, files) = architecture::check(root, &policy)?;
@@ -156,6 +142,10 @@ pub(crate) fn execute(
                     "architecture-check passed: {packages} package(s), {files} source file(s)\n"
                 ),
             )?;
+        }
+        Command::Documentation => {
+            let files = crate::documentation::check(root)?;
+            write_output(output, &format!("docs-check passed: {files} documentation file(s)\n"))?;
         }
         Command::Formatting => {
             let packages = crate::formatting::check(root)?;
@@ -223,6 +213,26 @@ pub(crate) fn execute(
     Ok(())
 }
 
+fn execute_all(root: &Path, output: &mut dyn Write) -> Result<(), XtaskError> {
+    let policy = metadata::architecture_policy(root)?;
+    let (packages, files) = architecture::check(root, &policy)?;
+    let api = api_contract::check(root, &policy)?;
+    let documentation = crate::documentation::check(root)?;
+    let trust_files = trust::check_local(root, &policy)?;
+    let tools = metadata::toolchain_policy(root)?;
+    let actions = reproducibility::check(root, &tools)?;
+    write_output(
+        output,
+        &format!(
+            "all checks passed: {packages} package(s), {files} source file(s), \
+             {} formal-boundary file(s), {} ordinary-safe executable entry point(s), \
+             {trust_files} trust-scanned file(s), {documentation} documentation file(s), \
+             {actions} pinned action(s)\n",
+            api.files, api.executable_entry_points
+        ),
+    )
+}
+
 fn execute_product(
     command: Command,
     root: &Path,
@@ -252,6 +262,7 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
     match first.as_deref().and_then(|value| value.to_str()) {
         Some("all") => Ok(Command::All),
         Some("architecture-check") => Ok(Command::Architecture),
+        Some("docs-check") => Ok(Command::Documentation),
         Some("format-check") => Ok(Command::Formatting),
         Some("ordinary-api-check") => Ok(Command::OrdinaryApi),
         Some("source-layout-check") => Ok(Command::SourceLayout),
