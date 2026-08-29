@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 757,
+  "next_comment_id": 758,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1269,7 +1269,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T22:47:26.299238925Z",
+      "updated_at": "2026-08-29T22:59:40.964743329Z",
       "labels": [
         "qualification",
         "release"
@@ -2534,6 +2534,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAFIMVoFfPuGgb95fGyVXW54ZP/tOCdrsLZ4W+Xa7IkCJuG/4KGrp2KjVZ9bJDV2aJx1a3xxMDC4m2q/U51bGKAw=="
+        },
+        "a6d969bc-cf4d-4336-8fba-58728a23d138": {
+          "display_id": 757,
+          "author": "6ME5",
+          "content": "Signed checkpoint e2bae0d5 fixes TBF-014 by expanding dirty tracked/untracked files inside cloned nested Git repositories into exact candidate and reviewer diff evidence. It also records grouped TBF-009/TBF-013 evidence, TBI-005 benchmark-integrity handling, and the extract-moves timeout under TBA-001. Verification: 77 product-runner tests, strict all-target/all-feature Clippy, rustfmt, source-layout-check, ordinary-api-check, docs-check over 134 files, selected diff/artifact/credential review. Bootstrap metadata remained unstaged.",
+          "created_at": "2026-08-29T22:59:40.961464187Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAyfXOANuPtKuG4tSOnyJOqf5LejYmwE7M5pIgrjTTrqjwp1/Zm3gnk5oyVmjKU0uITlKQDirvp17ixdxA4NrYAQ=="
         },
         "a77cb518-c9ae-4f6e-a129-1ed47bbd7ad5": {
           "display_id": 741,
@@ -7560,8 +7569,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T22:47:26.299238925Z",
+    "timestamp": "2026-08-29T22:59:40.964743329Z",
     "agent_id": "6ME5",
-    "agent_seq": 943
+    "agent_seq": 944
   }
 }
