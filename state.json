@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 743,
+  "next_comment_id": 744,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T20:58:33.457498438Z",
+      "updated_at": "2026-08-29T21:26:43.076005166Z",
       "labels": [
         "qualification",
         "release"
@@ -2125,6 +2125,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAfesCdnrlbpsMx6GXNvUgF+ULmoWE7xdwk8EbY7D4mkmw0p0hkuIt/Wm+wh3XI9LpsEVWV2QElwsC2ifmyhETAg=="
+        },
+        "71d30731-0d74-4c7c-a352-402df21a1baf": {
+          "display_id": 743,
+          "author": "6ME5",
+          "content": "Hosted confirmation for signed provider-failover head d82f27775b41d8490316a84b75ab7511c25dcbf4: all 33 PR checks pass, including Linux/macOS/Windows Rust and native product lifecycle, locked and ordinary Verus, dependency/license policy, supply chain, workflow lint, candidate policy, and bootstrap.",
+          "created_at": "2026-08-29T21:26:43.073478985Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAS+4UvhlMnZH/XJ/1/tZ2PRawNes04CmeaYhshd7UKFiEDtTVi9mSGPpOs7KEgrS9DWhCEHt4N6As292k9YPACw=="
         },
         "71da6b75-ae87-4216-8d7b-0217ea7dd398": {
           "display_id": 671,
@@ -7439,8 +7448,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T20:58:33.457498438Z",
+    "timestamp": "2026-08-29T21:26:43.076005166Z",
     "agent_id": "6ME5",
-    "agent_seq": 928
+    "agent_seq": 929
   }
 }
