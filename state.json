@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 767,
+  "next_comment_id": 768,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -5310,7 +5310,7 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T22:24:16.640107633Z",
-      "updated_at": "2026-08-27T23:04:44.034807232Z",
+      "updated_at": "2026-08-29T23:43:55.312522590Z",
       "labels": [
         "performance",
         "qualification"
@@ -5333,6 +5333,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAMeUSiPUKQNAwH9QlmeZLd9s8wQk3whV8bMsaT65EfAO994XztxXzvVJ4Aax4VgiOi4DWRJzv/W/uAZPlE2/dBA=="
+        },
+        "30f6dc7d-ec9f-4c2a-8be7-d3607bb6a54f": {
+          "display_id": 767,
+          "author": "6ME5",
+          "content": "Integrated the existing signed H3 runner foundation into the active production-hardening branch as signed commit ab308def. It adds the C-class peritus-performance-qualification crate, monotonic paced execution, shared cancellation, exact completed/cancelled receipts, and fail-closed reference-machine assessment. Verification on the integrated tree: 5 tests, doc tests, strict all-target/all-feature Clippy, rustfmt, architecture-check over 78 packages/3089 files, diff check. Remaining H3 work is still the real disposable G0 subject, campaign coordinator, retained evidence writer, smoke execution, baseline comparison, and eight-hour run; no readiness claim.",
+          "created_at": "2026-08-29T23:43:55.309970612Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzcsANZVF1gPeSHVi0NjRXIVWH0KHKWNsHZ1qqRt8TOoW30FTmGUq2voLHkqdl8VqEAA5lPzOr6cBrOeuXhT/DQ=="
         },
         "f4ac994e-df19-45e8-98e7-6f73f30bc8d0": {
           "display_id": 490,
@@ -7655,8 +7664,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-29T23:41:26.233911330Z",
+    "timestamp": "2026-08-29T23:43:55.312522590Z",
     "agent_id": "6ME5",
-    "agent_seq": 954
+    "agent_seq": 955
   }
 }
