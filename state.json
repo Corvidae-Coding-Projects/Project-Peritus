@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 817,
+  "next_comment_id": 818,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T05:01:25.476457402Z",
+      "updated_at": "2026-08-30T05:17:40.058909838Z",
       "labels": [
         "qualification",
         "release"
@@ -1616,6 +1616,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAFmDWAQjh5rw5yaAWCeUw/xys+NTGQlrQ9Oc87+wDgPixjiBmSrQ+L01KUyPXuT73tiH1mS+ELGKgpuDGpkXfDA=="
+        },
+        "27056f48-2c9e-45f7-8aec-3b4963ae3d9a": {
+          "display_id": 817,
+          "author": "6ME5",
+          "content": "Committed a0b5d8fb (signed): TBF-024 adds a general mid-invocation no-progress correction. Writable roles that perform twelve tool calls without a workspace mutation or successful declared external effect are told, in the same session, to take the shortest concrete delivery step and use an authorized package/runtime manager before hand-writing a standard substitute. Progress clears pending feedback, read-only roles are unaffected, and each invocation is capped at two nudges. Peritus-agent and product-runner suites plus cargo xtask all pass.",
+          "created_at": "2026-08-30T05:17:40.055961660Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAGszWRx+Tqgb7A5Ur7qHgEvygbuF5rpD9Oq6GLStaJBKbn5BmKJxA10Vr3UOzPeIbFbLe1mzZY1tG10XwNgNHDg=="
         },
         "28c38d09-b63b-4027-8d66-e538ca4a5354": {
           "display_id": 666,
@@ -8109,8 +8118,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T05:01:25.476457402Z",
+    "timestamp": "2026-08-30T05:17:40.058909838Z",
     "agent_id": "6ME5",
-    "agent_seq": 1007
+    "agent_seq": 1008
   }
 }
