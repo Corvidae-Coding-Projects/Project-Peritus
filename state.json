@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1004,
+  "next_comment_id": 1005,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T21:20:38.970117074Z",
+      "updated_at": "2026-08-30T21:36:16.950963060Z",
       "labels": [
         "qualification",
         "release"
@@ -4694,6 +4694,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAq2a3tRU0xKl7KlMji70ueL3J8Wk6UXOeb5mXA52bDWswFMOkJkACFdRkasn22qEHTZsfi0RfBxul7/zLAR8qBw=="
+        },
+        "eae8494c-7960-419f-b129-67be16f78fcd": {
+          "display_id": 1004,
+          "author": "6ME5",
+          "content": "[action] Fixed exact-head Windows H2 transient-notice qualification failure in signed ef62841f, retained benchmark recurrences in signed 33388299, pushed both, and started fresh hosted proof while frozen Terminal-Bench continues.",
+          "created_at": "2026-08-30T21:36:16.948156539Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA122FA6wG6sDdEJ5ZyYdkxzaB4tzqAhu4csSdMZS3aBDrXSMPscAGG0FTpdJitQg2TkQa6nuCzIu601gtVHhKBw=="
         },
         "eafd4565-cb7e-4d84-8ce4-cf18362f09e5": {
           "display_id": 964,
@@ -9792,8 +9801,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T21:20:38.970117074Z",
+    "timestamp": "2026-08-30T21:36:16.950963060Z",
     "agent_id": "6ME5",
-    "agent_seq": 1200
+    "agent_seq": 1201
   }
 }
