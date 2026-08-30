@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 872,
+  "next_comment_id": 873,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T12:14:34.206829833Z",
+      "updated_at": "2026-08-30T12:42:35.543291878Z",
       "labels": [
         "qualification",
         "release"
@@ -2921,6 +2921,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA087I2bIYyRLt9Sfx4EVv2E/LTYc5lv7Kadx6OCmlatzzi7pnfmx9oKRBsR8oDa0LHNQXBtR0WtCJ+gtdurG6Ag=="
+        },
+        "9603d94f-4b5d-43e3-819e-59271729926a": {
+          "display_id": 872,
+          "author": "6ME5",
+          "content": "[action] Replaced H2's indirect TUI help check with a real native PTY lifecycle; diagnosed bare-PTY cursor query timeout, added bounded standard terminal response, reached local 18/18 Ready, and made failed hosted H2 evidence/report reasons durable.",
+          "created_at": "2026-08-30T12:42:35.540561832Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAGU4p4OvJILJNU6M7O9/oCX7IIcepNuUd5xMlZjTwWR2d9oZwpb5f0mL0k1xDh0Hgyy5AcPWjdGlFxt/5NKcqAA=="
         },
         "978d765d-833c-43ed-aad3-2cf7252ffc2a": {
           "display_id": 543,
@@ -8604,8 +8613,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T12:14:34.206829833Z",
+    "timestamp": "2026-08-30T12:42:35.543291878Z",
     "agent_id": "6ME5",
-    "agent_seq": 1064
+    "agent_seq": 1065
   }
 }
