@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 795,
+  "next_comment_id": 796,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T02:00:56.645599543Z",
+      "updated_at": "2026-08-30T02:06:02.205211825Z",
       "labels": [
         "qualification",
         "release"
@@ -2903,6 +2903,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAQ2D9ezsJZ8cHhF9nGj3NK5r0jT4JG7GYOZX2393bgj52lKzJswLqy9pQvSzvGxwpPFBXyXa6jGWfPg0g3B2aBQ=="
+        },
+        "c61d974d-1f2a-4f4f-99d4-d8d60014a7ac": {
+          "display_id": 795,
+          "author": "6ME5",
+          "content": "Frozen trial count-dataset-tokens__HcDa4N9 legitimately installed ordinary Python dependencies in its disposable subject, downloaded public data and a tokenizer, computed and rechecked the answer, and received reward 1.0 from the unchanged verifier. Native Peritus still ended on the known empty-provider review terminal after producing the correct artifact. Signed checkpoint records both facts without task-specific behavior.",
+          "created_at": "2026-08-30T02:06:02.202641398Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAtUDMt4pOi5wbpBubPGnl4oK8L8WnIH3BjC4WSU12e7ceaA/5SFNBu3Zf8asCxAMs8fQpGCxf7xY21fHZTkeLAA=="
         },
         "c6832fa1-48f7-4d6c-9b4e-3d6ba18de7ad": {
           "display_id": 706,
@@ -7911,8 +7920,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T02:01:01.320141524Z",
+    "timestamp": "2026-08-30T02:06:02.205211825Z",
     "agent_id": "6ME5",
-    "agent_seq": 983
+    "agent_seq": 984
   }
 }
