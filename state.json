@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 826,
+  "next_comment_id": 827,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T06:32:09.466946116Z",
+      "updated_at": "2026-08-30T06:33:17.314547692Z",
       "labels": [
         "qualification",
         "release"
@@ -3281,6 +3281,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA6nUCOkhXTbkh5Ra493WF2v5AyEbJlz9p/lJiN7VGxnHjUUOy3ZFmEWEAVm5oaNA9IS0luHLTKx8TgDVd59JRCQ=="
+        },
+        "dae312d6-d0db-4c40-910a-90ef599051af": {
+          "display_id": 826,
+          "author": "6ME5",
+          "content": "[action] TBF-025 general mixed-delivery correction is signed and pushed at 409361d4: explicit live or promised-runtime requests require a successful authorized effect plus later fresh verification even with helper-file diffs; ordinary Python/Make/R/compiler/package installation in disposable task environments remains legitimate. Product suite, focused composition regression, strict Clippy, external-adapter tests, docs-check, rustfmt, and cargo xtask all pass; frozen binary digest remains a53ca55a. Baseline is 90/445 complete (52 pass, 32 fail, 6 unscored); make-mips-interpreter adds a retained TBF-024 recurrence. Fresh hosted checks are running on PR #39.",
+          "created_at": "2026-08-30T06:33:17.311310478Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALTmIvxfguxgZG94t6J0C0uf2BMFOv0mnum69+GkrDDo7q3J/QF+yHl3If4wobmeNW7VMK9tsA1bJQwgKXgrfCA=="
         },
         "daf721fe-67e3-4b42-8740-34425467ee5b": {
           "display_id": 825,
@@ -8190,8 +8199,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T06:32:09.466946116Z",
+    "timestamp": "2026-08-30T06:33:17.314547692Z",
     "agent_id": "6ME5",
-    "agent_seq": 1016
+    "agent_seq": 1017
   }
 }
