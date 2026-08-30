@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 831,
+  "next_comment_id": 832,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T06:56:38.178257954Z",
+      "updated_at": "2026-08-30T07:04:04.432053017Z",
       "labels": [
         "qualification",
         "release"
@@ -3542,6 +3542,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzZvTWD9DN1wSl4Vvgbrw9QbW/0j/8FjQ/E4c3k+S38HBVR3qvmtUwrdf/DCWGXrUKyor4GLgrn8AnJIxiZ0HAg=="
+        },
+        "f13a2876-5717-4fb0-9fbf-26567519fd80": {
+          "display_id": 831,
+          "author": "6ME5",
+          "content": "Committed exact frozen-trial evidence audit: every current nonpass/unscored result and every reward-1/native-failure result is now named by exact trial ID in the failure journal. The audit changes no classifications or product behavior. docs-check passes all 136 maintained documents; Terminal-Bench remains frozen at 96/445 while protein-assembly runs.",
+          "created_at": "2026-08-30T07:04:04.429497095Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAF3BoihUV/vznPt9RNw7IYUd6NAz43tz6iepnCyD6uVs6r1a1rgqA+oAOlCx6j7cHb/5yhizB0Gh1FPrrAQWXCA=="
         },
         "f1fd6376-6575-4706-ad12-48e9581aa270": {
           "display_id": 651,
@@ -8235,8 +8244,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T06:56:38.178257954Z",
+    "timestamp": "2026-08-30T07:04:04.432053017Z",
     "agent_id": "6ME5",
-    "agent_seq": 1021
+    "agent_seq": 1022
   }
 }
