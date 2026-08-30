@@ -135,6 +135,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   version confirmation on Unix, finish-after-exit Windows replacement, and persistent explicit
   enable/disable commands for automatic checks (#31)
 
+### Changed
+
+- Correct the C0 operator guide to describe the production daemon's implemented migration,
+  recovery, projection, authority, outbox, and readiness startup composition instead of retaining
+  the obsolete pre-daemon limitation (#31).
+
 ### Fixed
 
 - Pass conventional Windows paths to PowerShell from canonical native H2 subjects so hosted
@@ -142,9 +148,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   verbatim path prefix; retain the required Windows process-launch variables across the cleared
   controller boundary (#31)
 - Preserve the complete allowlisted MSVC build environment when H0 launches its candidate-bound
-  controller, preventing Git's unrelated `link.exe` from replacing the Visual C++ linker, and run
-  the TCB inventory against the repository's documented local trust aggregate while leaving the
-  separately authorized protected-base proof-impact review outside the native shard (#32)
+  controller, including the Visual Studio discovery roots needed after environment clearing, so
+  Rust can locate Visual C++ instead of Git's unrelated `link.exe`; run the TCB inventory against
+  the repository's documented local trust aggregate while leaving the separately authorized
+  protected-base proof-impact review outside the native shard (#32)
 - Pass explicit private Windows install and data roots through the real package lifecycle scripts,
   retaining the ordinary `LOCALAPPDATA` default for users while making native H2 qualification
   independent of PowerShell environment propagation on hosted runners (#31)

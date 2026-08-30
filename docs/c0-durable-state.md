@@ -6,9 +6,9 @@ SQLite database, and admits revision-bound evidence. It does not run tools, work
 processes, or any other external effect.
 
 This document describes the library APIs and recovery behavior implemented in the five C0 crates.
-There is not yet a daemon, operator CLI, or automated startup supervisor that composes these steps.
-Applications embedding C0 must preserve the ordering below and must supply deployment-specific
-paths, identities, retention policy, and outage coordination.
+The production `peritus-daemon` composes them through its checked startup supervisor. Other
+applications embedding C0 must preserve the same ordering and supply deployment-specific paths,
+identities, retention policy, and outage coordination.
 
 ## Durable ownership
 
@@ -339,8 +339,9 @@ indeterminate journal and migration commits have identity-based resolution paths
 
 ## Operator startup and recovery ordering
 
-The following is the safe composition contract for an embedding daemon. It is not yet packaged as
-an executable command.
+The following is the safe composition contract for an embedding daemon. `peritus-daemon` implements
+this sequence in its startup modules and reports the exact failed phase before it enables later
+workers or command intake.
 
 1. Quiesce every writer and preserve the configured database, artifact root, store identity,
    migration operation identities, and backup directory. A fresh deployment must create the empty
