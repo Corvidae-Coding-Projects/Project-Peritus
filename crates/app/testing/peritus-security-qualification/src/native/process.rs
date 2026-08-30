@@ -65,6 +65,8 @@ pub(super) fn execute(
         .stderr(Stdio::piped())
         .env_clear();
     preserve_runtime_environment(&mut command);
+    #[cfg(windows)]
+    configure_windows_msvc(&mut command)?;
     ProcessTree::configure(&mut command);
     let started = Instant::now();
     let mut child = OwnedChild::spawn(&mut command, limits.max_processes())?;
@@ -276,6 +278,76 @@ fn preserve_runtime_environment(command: &mut Command) {
         if let Some(value) = std::env::var_os(name) {
             command.env(name, value);
         }
+    }
+}
+
+#[cfg(windows)]
+fn configure_windows_msvc(command: &mut Command) -> Result<(), QualificationError> {
+    let (architecture, linker_variable) = msvc_target(std::env::consts::ARCH).ok_or_else(|| {
+        native_error(
+            "configure native H0 build environment",
+            "the Windows host architecture has no supported MSVC target",
+        )
+    })?;
+    let tool = discover_msvc_linker(architecture).ok_or_else(|| {
+        native_error(
+            "configure native H0 build environment",
+            "an absolute Visual Studio MSVC linker could not be discovered",
+        )
+    })?;
+    if !tool.path().is_absolute() || !tool.path().is_file() {
+        return Err(native_error(
+            "configure native H0 build environment",
+            "the discovered Visual Studio MSVC linker is not an absolute regular file",
+        ));
+    }
+    command.env(linker_variable, tool.path());
+    for (name, value) in tool.env() {
+        command.env(name, value);
+    }
+    Ok(())
+}
+
+#[cfg(windows)]
+fn discover_msvc_linker(architecture: &str) -> Option<find_msvc_tools::Tool> {
+    find_msvc_tools::find_tool_with_env(architecture, "link.exe", &RegistryMsvcEnvironment)
+}
+
+#[cfg(windows)]
+struct RegistryMsvcEnvironment;
+
+#[cfg(windows)]
+impl find_msvc_tools::EnvGetter for RegistryMsvcEnvironment {
+    fn get_env(&self, name: &'static str) -> Option<find_msvc_tools::Env> {
+        if matches!(name, "VCINSTALLDIR" | "VSTEL_MSBuildProjectFullPath") {
+            None
+        } else {
+            std::env::var_os(name).map(find_msvc_tools::Env::Owned)
+        }
+    }
+}
+
+#[cfg(windows)]
+const fn msvc_target(architecture: &str) -> Option<(&'static str, &'static str)> {
+    match architecture.as_bytes() {
+        b"x86_64" => Some(("x86_64", "CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER")),
+        b"aarch64" => Some(("aarch64", "CARGO_TARGET_AARCH64_PC_WINDOWS_MSVC_LINKER")),
+        _ => None,
+    }
+}
+
+#[cfg(all(test, windows))]
+mod windows_tests {
+    use super::{discover_msvc_linker, msvc_target};
+
+    #[test]
+    fn registry_discovery_selects_an_absolute_visual_studio_linker() {
+        let (architecture, _) = msvc_target(std::env::consts::ARCH).expect("supported MSVC target");
+        let tool = discover_msvc_linker(architecture).expect("installed Visual Studio linker");
+        assert!(tool.path().is_absolute());
+        assert!(tool.path().is_file());
+        assert_eq!(tool.path().file_name().and_then(std::ffi::OsStr::to_str), Some("link.exe"));
+        assert!(!tool.path().to_string_lossy().contains(r"\Git\"));
     }
 }
 

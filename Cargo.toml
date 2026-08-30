@@ -95,6 +95,7 @@ bytes = "=1.12.1"
 crossterm = { version = "=0.29.0", default-features = false, features = ["bracketed-paste", "events"] }
 criterion = { version = "=0.8.2", default-features = false }
 ed25519-dalek = { version = "=3.0.0", default-features = false }
+find-msvc-tools = "=0.1.11"
 fs4 = "=1.1.0"
 futures-core = "=0.3.34"
 getrandom = "=0.4.3"

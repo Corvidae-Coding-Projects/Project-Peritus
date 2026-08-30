@@ -2884,6 +2884,7 @@ dependencies = [
 name = "peritus-security-qualification"
 version = "0.0.0"
 dependencies = [
+ "find-msvc-tools",
  "nix 0.31.3",
  "peritus-security-policy",
  "peritus-types",
