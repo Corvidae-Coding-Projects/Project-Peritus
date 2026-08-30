@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 816,
+  "next_comment_id": 817,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T05:01:19.061702743Z",
+      "updated_at": "2026-08-30T05:01:25.476457402Z",
       "labels": [
         "qualification",
         "release"
@@ -2363,6 +2363,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8AM/71cMFoUgKSZWYLDwpo1XnjvY52Jcnglvhnh0PrXuzwW4ymlOO8CRMdG2QrOpq8GSoAbhZZkjiQ4aaKNIDA=="
+        },
+        "7435fbfd-1351-4a12-91ce-4da6cf3ce340": {
+          "display_id": 816,
+          "author": "6ME5",
+          "content": "[action] Frozen Terminal-Bench now has 80 completed trials: 46 reward-1, 28 reward-0, 6 unscored, one active, 364 pending; digest a53ca55a unchanged. mcmc-sampling-stan installed real R and attempted exact rstan, then prefix-only 512 KiB capture hid the terminal dependency-build error. General head-and-tail capture fix 254877e7 is tested, committed, and pushed; financial-document-processor is active.",
+          "created_at": "2026-08-30T05:01:25.474038651Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABASbQdZk3FdUvlXkf3XXkMMorRM4Qy2Bm4gTga7R9rLXS7N3O5y5z0kENjddRDH33qTmIxZSGsRJ8FYrQAiLtKCg=="
         },
         "74e94003-da37-451e-9206-8db647deb64b": {
           "display_id": 667,
@@ -8100,8 +8109,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T05:01:19.061702743Z",
+    "timestamp": "2026-08-30T05:01:25.476457402Z",
     "agent_id": "6ME5",
-    "agent_seq": 1006
+    "agent_seq": 1007
   }
 }
