@@ -2,62 +2,11 @@
 
 #![cfg(unix)]
 
-use std::fs::File;
-use std::io::Read as _;
-use std::path::{Path, PathBuf};
+use std::ffi::OsString;
+use std::path::PathBuf;
 
-use peritus_benchmarks::{
-    DatasetLimits, QualificationDataset, RunnerDescriptor, Sha256Digest, StableId,
-};
-use peritus_performance_qualification::{
-    CampaignCoordinator, CampaignEvidenceWriter, CampaignMode, CampaignRequest, MachineObservation,
-};
-use sha2::{Digest as _, Sha256};
-
-const PROFILE: &str = r#"{
-  "schema_version": 1,
-  "id": "smoke-profile",
-  "description": "One-operation evidence smoke",
-  "reference_machine": {
-    "operating_system": "smoke-os",
-    "architecture": "smoke-arch",
-    "cpu_model": "smoke cpu",
-    "logical_cores": 1,
-    "memory_bytes": 1048576,
-    "storage_class": "smoke-storage"
-  },
-  "resource_envelope": {
-    "max_active_runs": 1,
-    "max_active_processes": 1,
-    "max_provider_requests": 1,
-    "max_memory_bytes": 1048576,
-    "max_disk_bytes": 1048576,
-    "max_tokens": 1024,
-    "command_queue_capacity": 4,
-    "terminal_queue_capacity": 4,
-    "exporter_queue_capacity": 4,
-    "provider_queue_capacity": 4
-  },
-  "regression_policy": {
-    "warning_basis_points": 500,
-    "blocking_basis_points": 1000,
-    "minimum_absolute_delta": 1,
-    "baseline_required": false
-  },
-  "max_measurements": 64,
-  "required_workloads": ["smoke-event"],
-  "objectives": [
-    {
-      "id": "smoke-event-latency",
-      "workload_id": "smoke-event",
-      "metric": "event_append_latency",
-      "statistic": "maximum",
-      "bound": "at_most",
-      "threshold": 10000000,
-      "minimum_samples": 1
-    }
-  ]
-}"#;
+use peritus_benchmarks::StableId;
+use peritus_performance_qualification::{MachineProbe, OperatorOptions};
 
 const WORKLOADS: &str = r#"{
   "schema_version": 1,
@@ -81,49 +30,32 @@ const WORKLOADS: &str = r#"{
 
 #[test]
 #[ignore = "set PERITUS_H3_DAEMON to a built peritusd and invoke explicitly"]
-fn real_campaign_publishes_a_complete_atomic_bundle() {
-    let daemon = daemon_executable();
-    let runner_executable = std::env::current_exe().expect("test runner executable");
-    let runner = RunnerDescriptor::new(
-        id("peritus-h3-evidence-smoke"),
-        env!("CARGO_PKG_VERSION"),
-        digest_file(&runner_executable),
-    )
-    .expect("runner descriptor");
-    let dataset =
-        QualificationDataset::from_json(PROFILE, WORKLOADS, DatasetLimits::production_defaults())
-            .expect("smoke dataset");
-    let machine = MachineObservation::new(
-        id("smoke-os"),
-        id("smoke-arch"),
-        "smoke cpu",
-        1,
-        1_048_576,
-        id("smoke-storage"),
-    )
-    .expect("machine");
-    let outcome = CampaignCoordinator::run(CampaignRequest::new(
-        dataset,
-        daemon,
-        "operator-smoke",
-        id("smoke-evidence-run"),
-        runner,
-        machine,
-        CampaignMode::Load,
-    ))
-    .expect("campaign");
-
+fn real_operator_publishes_a_complete_atomic_bundle() {
     let temporary = tempfile::tempdir().expect("evidence parent");
+    let profile = profile_document();
+    let profile_path = temporary.path().join("profile.json");
+    let workload_path = temporary.path().join("workloads.json");
+    std::fs::write(&profile_path, &profile).expect("profile input");
+    std::fs::write(&workload_path, WORKLOADS).expect("workload input");
     let output = temporary.path().join("bundle");
-    let published = CampaignEvidenceWriter::publish(
-        &output,
-        PROFILE,
-        WORKLOADS,
-        None,
-        &runner_executable,
-        &outcome,
-    )
-    .expect("evidence bundle");
+    let published = OperatorOptions::parse(vec![
+        OsString::from("load"),
+        OsString::from("--daemon"),
+        daemon_executable().into_os_string(),
+        OsString::from("--profile"),
+        profile_path.into_os_string(),
+        OsString::from("--workloads"),
+        workload_path.into_os_string(),
+        OsString::from("--evidence"),
+        output.clone().into_os_string(),
+        OsString::from("--storage-class"),
+        OsString::from("smoke-storage"),
+        OsString::from("--revision"),
+        OsString::from("operator-smoke"),
+    ])
+    .expect("operator options")
+    .execute()
+    .expect("operator execution");
 
     assert_eq!(published.root(), output);
     assert_eq!(published.manifest().artifacts().len(), 8);
@@ -133,7 +65,7 @@ fn real_campaign_publishes_a_complete_atomic_bundle() {
     );
     assert_eq!(
         std::fs::read_to_string(output.join("inputs/profile.json")).expect("profile"),
-        PROFILE
+        profile
     );
     for relative in [
         "identity/peritusd",
@@ -149,24 +81,52 @@ fn real_campaign_publishes_a_complete_atomic_bundle() {
     }
 }
 
-fn digest_file(path: &Path) -> Sha256Digest {
-    let mut file = File::open(path).expect("open executable");
-    let mut hasher = Sha256::new();
-    let mut buffer = vec![0_u8; 64 * 1024].into_boxed_slice();
-    loop {
-        let count = file.read(&mut buffer).expect("read executable");
-        if count == 0 {
-            break;
-        }
-        hasher.update(&buffer[..count]);
-    }
-    let bytes = hasher.finalize();
-    let mut encoded = String::with_capacity(64);
-    for byte in bytes {
-        use std::fmt::Write as _;
-        write!(encoded, "{byte:02x}").expect("write digest");
-    }
-    Sha256Digest::parse(encoded).expect("digest")
+fn profile_document() -> String {
+    let machine = MachineProbe::observe(id("smoke-storage")).expect("machine probe");
+    let class = machine.reference_machine();
+    serde_json::to_string_pretty(&serde_json::json!({
+        "schema_version": 1,
+        "id": "smoke-profile",
+        "description": "One-operation operator and evidence smoke",
+        "reference_machine": {
+            "operating_system": class.operating_system().as_str(),
+            "architecture": class.architecture().as_str(),
+            "cpu_model": class.cpu_model(),
+            "logical_cores": class.logical_cores(),
+            "memory_bytes": class.memory_bytes(),
+            "storage_class": class.storage_class().as_str()
+        },
+        "resource_envelope": {
+            "max_active_runs": 1,
+            "max_active_processes": 1,
+            "max_provider_requests": 1,
+            "max_memory_bytes": 1_048_576,
+            "max_disk_bytes": 1_048_576,
+            "max_tokens": 1_024,
+            "command_queue_capacity": 4,
+            "terminal_queue_capacity": 4,
+            "exporter_queue_capacity": 4,
+            "provider_queue_capacity": 4
+        },
+        "regression_policy": {
+            "warning_basis_points": 500,
+            "blocking_basis_points": 1_000,
+            "minimum_absolute_delta": 1,
+            "baseline_required": false
+        },
+        "max_measurements": 64,
+        "required_workloads": ["smoke-event"],
+        "objectives": [{
+            "id": "smoke-event-latency",
+            "workload_id": "smoke-event",
+            "metric": "event_append_latency",
+            "statistic": "maximum",
+            "bound": "at_most",
+            "threshold": 10_000_000,
+            "minimum_samples": 1
+        }]
+    }))
+    .expect("profile JSON")
 }
 
 fn daemon_executable() -> PathBuf {

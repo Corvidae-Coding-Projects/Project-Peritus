@@ -90,8 +90,17 @@ recomputing their campaign-bound digests, writes measurements, receipts, account
 facts, then atomically publishes the primary-artifact manifest and its bound report without
 overwriting earlier evidence. The real-daemon evidence smoke exercises this complete path.
 
-The automatic host probe, operator command and accepted-baseline workflow, and actual eight-hour
-reference-machine execution evidence remain required before H3 can report readiness.
+`peritus-h3 load` and `peritus-h3 full` are the operator entry points. They load bounded source
+documents, probe the host without consulting expected profile values, identify their own runner
+binary, execute the coordinator, and publish the evidence bundle in one invocation. Linux reads CPU
+and memory facts from procfs; macOS uses `sysctl`. The probe retains raw CPU and memory values while
+normalizing the common AMD `N-Core Processor` suffix and usable memory to its installed power-of-two
+GiB hardware class. Storage generation is an explicit reviewed argument because common
+unprivileged interfaces do not expose it consistently. Exact profile mismatch stops before daemon
+launch and reports every mismatched field.
+
+The accepted-baseline review workflow and actual eight-hour reference-machine execution evidence
+remain required before H3 can report readiness.
 
 ## Bounded accounting and backpressure
 

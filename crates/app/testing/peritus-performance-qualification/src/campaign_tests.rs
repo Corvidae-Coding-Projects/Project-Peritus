@@ -56,7 +56,7 @@ fn machine_mismatch_is_rejected_before_daemon_launch() {
 
     assert!(matches!(
         CampaignCoordinator::run(request),
-        Err(CampaignError::ReferenceMachineMismatch)
+        Err(CampaignError::ReferenceMachineMismatch { .. })
     ));
 }
 

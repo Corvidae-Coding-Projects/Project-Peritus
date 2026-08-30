@@ -1,8 +1,6 @@
 //! Disposable `peritusd` lifecycle used by integrated qualification campaigns.
 
-use std::fmt::Write as _;
 use std::fs::{self, OpenOptions};
-use std::io::Read;
 use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
@@ -12,10 +10,9 @@ use std::time::{Duration, Instant, SystemTime};
 use peritus_approval::CredentialRegistrySnapshot;
 use peritus_benchmarks::Sha256Digest;
 use peritus_types::RevisionNumber;
-use sha2::{Digest, Sha256};
 use tempfile::{Builder, TempDir};
 
-use crate::SubjectError;
+use crate::{SubjectError, sha256_file};
 
 const STARTUP_BOUND: Duration = Duration::from_secs(30);
 const EXIT_BOUND: Duration = Duration::from_secs(10);
@@ -72,7 +69,7 @@ impl DisposableDaemon {
     }
 
     pub fn executable_digest(&self) -> Result<Sha256Digest, SubjectError> {
-        digest_file(&self.executable)
+        Ok(sha256_file(&self.executable)?)
     }
 
     pub fn endpoint(&self) -> &Path {
@@ -222,25 +219,6 @@ fn endpoint_identity(path: &Path) -> std::io::Result<EndpointIdentity> {
 
 fn short_tempdir() -> std::io::Result<TempDir> {
     Builder::new().prefix("peritus-h3-").tempdir_in(fs::canonicalize("/tmp")?)
-}
-
-fn digest_file(path: &Path) -> Result<Sha256Digest, SubjectError> {
-    let mut file = fs::File::open(path)?;
-    let mut hash = Sha256::new();
-    let mut buffer = [0_u8; 16 * 1024];
-    loop {
-        let count = file.read(&mut buffer)?;
-        if count == 0 {
-            break;
-        }
-        hash.update(&buffer[..count]);
-    }
-    let bytes = hash.finalize();
-    let mut hex = String::with_capacity(64);
-    for byte in bytes {
-        write!(&mut hex, "{byte:02x}").expect("writing to String cannot fail");
-    }
-    Sha256Digest::parse(hex).map_err(SubjectError::Qualification)
 }
 
 fn bounded_log(path: &Path) -> String {

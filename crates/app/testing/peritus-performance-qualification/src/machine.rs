@@ -1,11 +1,53 @@
 //! Fail-closed reference-machine qualification.
 
 use peritus_benchmarks::{QualificationError, ReferenceMachine, StableId};
+use serde::Serialize;
 
 /// Measured host facts retained beside one H3 campaign.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct MachineObservation {
     measured: ReferenceMachine,
+    raw: RawMachineFacts,
+}
+
+/// Unnormalized operating-system facts retained beside a normalized machine class.
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+pub struct RawMachineFacts {
+    cpu_model: String,
+    memory_bytes: u64,
+}
+
+impl RawMachineFacts {
+    /// Validates raw probe facts before they become evidence.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`QualificationError`] for empty or oversized CPU text or zero memory.
+    pub fn new(
+        cpu_model: impl Into<String>,
+        memory_bytes: u64,
+    ) -> Result<Self, QualificationError> {
+        let cpu_model = cpu_model.into();
+        if cpu_model.trim().is_empty() || cpu_model.len() > 512 || memory_bytes == 0 {
+            return Err(QualificationError::InvalidValue {
+                field: "machine_probe.raw_facts",
+                reason: "raw CPU text must contain 1 through 512 bytes and memory must be nonzero",
+            });
+        }
+        Ok(Self { cpu_model, memory_bytes })
+    }
+
+    /// Returns the exact CPU text reported by the operating system.
+    #[must_use]
+    pub fn cpu_model(&self) -> &str {
+        &self.cpu_model
+    }
+
+    /// Returns the byte count reported by the operating system.
+    #[must_use]
+    pub const fn memory_bytes(&self) -> u64 {
+        self.memory_bytes
+    }
 }
 
 impl MachineObservation {
@@ -23,15 +65,44 @@ impl MachineObservation {
         memory_bytes: u64,
         storage_class: StableId,
     ) -> Result<Self, QualificationError> {
+        let cpu_model = cpu_model.into();
         ReferenceMachine::new(
             operating_system,
             architecture,
-            cpu_model,
+            cpu_model.clone(),
             logical_cores,
             memory_bytes,
             storage_class,
         )
-        .map(|measured| Self { measured })
+        .and_then(|measured| {
+            RawMachineFacts::new(cpu_model, memory_bytes).map(|raw| Self { measured, raw })
+        })
+    }
+
+    /// Constructs an observation whose normalized machine class differs from its retained raw
+    /// hardware facts.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`QualificationError`] when either CPU string or the normalized capacity is invalid.
+    pub fn from_probe(
+        operating_system: StableId,
+        architecture: StableId,
+        normalized_cpu_model: impl Into<String>,
+        logical_cores: u16,
+        normalized_memory_bytes: u64,
+        storage_class: StableId,
+        raw: RawMachineFacts,
+    ) -> Result<Self, QualificationError> {
+        ReferenceMachine::new(
+            operating_system,
+            architecture,
+            normalized_cpu_model,
+            logical_cores,
+            normalized_memory_bytes,
+            storage_class,
+        )
+        .map(|measured| Self { measured, raw })
     }
 
     /// Compares every measured fact with the reviewed profile contract.
@@ -75,6 +146,18 @@ impl MachineObservation {
     #[must_use]
     pub const fn reference_machine(&self) -> &ReferenceMachine {
         &self.measured
+    }
+
+    /// Returns the unnormalized CPU text reported by the operating system.
+    #[must_use]
+    pub fn raw_cpu_model(&self) -> &str {
+        self.raw.cpu_model()
+    }
+
+    /// Returns the usable or installed byte count reported by the operating system.
+    #[must_use]
+    pub const fn raw_memory_bytes(&self) -> u64 {
+        self.raw.memory_bytes()
     }
 }
 

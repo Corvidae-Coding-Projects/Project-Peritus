@@ -147,7 +147,7 @@ fn write_primary_artifacts(
     artifacts.push(write_artifact(root, MEASUREMENTS_PATH, "application/x-ndjson", &measurements)?);
     artifacts.push(write_json_artifact(root, RECEIPTS_PATH, outcome.receipts())?);
     artifacts.push(write_json_artifact(root, ACCOUNTING_PATH, outcome.accounting())?);
-    artifacts.push(write_json_artifact(root, MACHINE_PATH, outcome.machine().reference_machine())?);
+    artifacts.push(write_json_artifact(root, MACHINE_PATH, outcome.machine())?);
     Ok(artifacts)
 }
 

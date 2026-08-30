@@ -171,8 +171,11 @@ impl CampaignCoordinator {
     /// workers, subject identity drift, sample-bound violations, and evaluator contract failures.
     pub fn run(request: CampaignRequest) -> Result<CampaignOutcome, CampaignError> {
         let profile = request.dataset.profile();
-        if !request.machine.assess(profile.reference_machine()).matches() {
-            return Err(CampaignError::ReferenceMachineMismatch);
+        let machine_assessment = request.machine.assess(profile.reference_machine());
+        if !machine_assessment.matches() {
+            return Err(CampaignError::ReferenceMachineMismatch {
+                mismatches: machine_assessment.mismatches().to_vec(),
+            });
         }
         let (loads, soaks) = classify_workloads(request.dataset.workloads());
         let selected = match request.mode {

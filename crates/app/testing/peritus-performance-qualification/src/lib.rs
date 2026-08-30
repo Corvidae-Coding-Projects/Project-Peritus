@@ -18,8 +18,14 @@ mod error;
 #[cfg(unix)]
 mod evidence;
 #[cfg(unix)]
+mod file_digest;
+#[cfg(unix)]
 mod identity;
 mod machine;
+#[cfg(unix)]
+mod operator;
+#[cfg(unix)]
+mod probe;
 #[cfg(unix)]
 mod process;
 mod runner;
@@ -35,10 +41,18 @@ mod subject;
 #[cfg(unix)]
 pub use campaign::{CampaignCoordinator, CampaignMode, CampaignOutcome, CampaignRequest};
 pub use cancellation::CancellationFlag;
-pub use error::{CampaignError, EvidenceError, RunnerError, SubjectError};
+pub use error::{
+    CampaignError, EvidenceError, MachineProbeError, OperatorError, RunnerError, SubjectError,
+};
 #[cfg(unix)]
 pub use evidence::{CampaignEvidenceWriter, PublishedEvidence};
-pub use machine::{MachineAssessment, MachineMismatch, MachineObservation};
+#[cfg(unix)]
+pub use file_digest::sha256_file;
+pub use machine::{MachineAssessment, MachineMismatch, MachineObservation, RawMachineFacts};
+#[cfg(unix)]
+pub use operator::{OPERATOR_USAGE, OperatorOptions};
+#[cfg(unix)]
+pub use probe::MachineProbe;
 pub use runner::PacedRunner;
 #[cfg(unix)]
 pub use subject::{AuthorizedSubject, IntegratedSubject, SubjectAuthorization};

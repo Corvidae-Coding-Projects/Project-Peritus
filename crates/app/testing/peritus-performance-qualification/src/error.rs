@@ -5,6 +5,8 @@ use std::path::{Path, PathBuf};
 
 use peritus_benchmarks::QualificationError;
 
+use crate::MachineMismatch;
+
 /// Failure to launch, communicate with, or exercise one disposable integrated subject.
 #[derive(Debug, thiserror::Error)]
 pub enum SubjectError {
@@ -65,8 +67,11 @@ pub enum CampaignError {
     #[error("qualification campaign subjects did not share one exact executable identity")]
     SubjectIdentityMismatch,
     /// The measured host did not match the production profile.
-    #[error("qualification host does not match the reference-machine profile")]
-    ReferenceMachineMismatch,
+    #[error("qualification host does not match reference-machine fields: {mismatches:?}")]
+    ReferenceMachineMismatch {
+        /// Every mismatched field in stable contract order.
+        mismatches: Vec<MachineMismatch>,
+    },
     /// No workloads matched the selected campaign mode.
     #[error("qualification campaign selected no workloads")]
     NoWorkloads,
@@ -117,6 +122,81 @@ pub enum EvidenceError {
 }
 
 impl EvidenceError {
+    pub(crate) fn io(operation: &'static str, path: &Path, source: io::Error) -> Self {
+        Self::Io { operation, path: path.to_path_buf(), source }
+    }
+}
+
+/// Failure to observe the current host for H3 reference-machine admission.
+#[derive(Debug, thiserror::Error)]
+pub enum MachineProbeError {
+    /// A local operating-system query failed.
+    #[error("could not {operation} while probing the H3 host")]
+    Io {
+        /// Stable query description.
+        operation: &'static str,
+        /// Operating-system error.
+        #[source]
+        source: io::Error,
+    },
+    /// A required fact was absent from otherwise readable host metadata.
+    #[error("H3 host probe did not report {0}")]
+    Missing(&'static str),
+    /// A host fact could not be represented by the stable H3 schema.
+    #[error("H3 host probe reported invalid {0}")]
+    Invalid(&'static str),
+    /// The current Unix family has no reviewed probe implementation.
+    #[error("H3 host probe is unsupported on this operating system")]
+    Unsupported,
+    /// Stable machine construction rejected the observed facts.
+    #[error("H3 host probe did not satisfy the machine schema")]
+    Qualification(#[from] QualificationError),
+}
+
+impl MachineProbeError {
+    pub(crate) const fn io(operation: &'static str, source: io::Error) -> Self {
+        Self::Io { operation, source }
+    }
+}
+
+/// Failure to parse or execute the `peritus-h3` operator command.
+#[derive(Debug, thiserror::Error)]
+pub enum OperatorError {
+    /// The user requested command help.
+    #[error("help requested")]
+    HelpRequested,
+    /// Command arguments were missing, duplicated, or unknown.
+    #[error("invalid peritus-h3 arguments: {0}")]
+    Usage(String),
+    /// A bounded input or executable filesystem operation failed.
+    #[error("could not {operation} at {}", path.display())]
+    Io {
+        /// Stable operation description.
+        operation: &'static str,
+        /// Path acted on.
+        path: PathBuf,
+        /// Operating-system error.
+        #[source]
+        source: io::Error,
+    },
+    /// A JSON input, identifier, or runner descriptor was invalid.
+    #[error("H3 operator input contract failed")]
+    Qualification(#[from] QualificationError),
+    /// Current-host observation failed.
+    #[error("H3 operator host probe failed")]
+    Probe(#[from] MachineProbeError),
+    /// Campaign execution or evaluation failed.
+    #[error("H3 operator campaign failed")]
+    Campaign(#[from] CampaignError),
+    /// Atomic evidence publication failed.
+    #[error("H3 operator evidence publication failed")]
+    Evidence(#[from] EvidenceError),
+    /// The system clock cannot supply a portable run identifier.
+    #[error("H3 operator clock was before the Unix epoch")]
+    Clock(#[from] std::time::SystemTimeError),
+}
+
+impl OperatorError {
     pub(crate) fn io(operation: &'static str, path: &Path, source: io::Error) -> Self {
         Self::Io { operation, path: path.to_path_buf(), source }
     }

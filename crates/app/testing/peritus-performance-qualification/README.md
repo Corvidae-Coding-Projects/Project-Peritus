@@ -34,6 +34,33 @@ streams copies of `peritusd` and the qualification runner while recomputing thei
 identities, then retains measurements, receipts, accounting, machine facts, the content-addressed
 manifest, and its bound report. A failure never creates the requested final bundle path.
 
+## Operator command
+
+Build `peritusd` and the H3 operator, then run one command:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo build --locked --bin peritusd --bin peritus-h3
+target/debug/peritus-h3 full \
+  --daemon target/debug/peritusd \
+  --profile benchmarks/profiles/qualification-candidate-v1.json \
+  --workloads benchmarks/workloads/production-v1.json \
+  --baseline /path/to/reviewed/accepted-baseline.json \
+  --evidence /path/to/new/peritus-h3-evidence \
+  --storage-class nvme-gen4 \
+  --revision "$(git rev-parse HEAD)"
+```
+
+`load` runs the sub-hour catalog. `full` runs that catalog and then the four concurrent eight-hour
+workloads. The command probes the operating system, architecture, CPU, logical cores, and memory;
+the storage generation remains explicit because unprivileged operating-system interfaces do not
+report it consistently. Both raw CPU/memory facts and their normalized hardware class are retained.
+The command fails before launching `peritusd` if that class does not exactly match the profile.
+
+An accepted baseline is optional at the syntax level so the command can retain first-run evidence,
+but the checked-in production profile requires it for `Ready`. A completed `NotReady` campaign
+publishes its honest report and exits with status 3. Input or runtime failure exits with status 1;
+invalid command syntax exits with status 2.
+
 ## Focused checks
 
 From the repository root:
@@ -50,7 +77,8 @@ PERITUS_H3_DAEMON="$PWD/target/debug/peritusd" \
   --test integrated_smoke -- --ignored
 ```
 
-To run a one-operation real campaign and verify its complete atomic evidence bundle:
+To run the one-command operator over a one-operation real campaign and verify its complete atomic
+evidence bundle:
 
 ```sh
 PERITUS_H3_DAEMON="$PWD/target/debug/peritusd" \

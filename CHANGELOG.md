@@ -22,6 +22,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   accepted-baseline documents; streams and verifies the subject and runner executables against
   their campaign identities; retains private measurements, receipts, accounting, and machine
   facts; and binds them into a content-addressed manifest and qualification report (#35)
+- Add the `peritus-h3` operator command with strict load/full modes, bounded profile/workload/
+  baseline inputs, duplicate-free arguments, automatic CPU/core/memory observation, an explicit
+  reviewed storage class, exact runner identity, fail-fast reference-machine diagnostics, atomic
+  evidence publication, and a distinct exit status for a completed `NotReady` qualification (#35)
 - Bind every new external-benchmark invocation to the exact clean Peritus source revision, Cargo
   package version, and SHA-256 of the native executable; make Harbor verify the uploaded binary
   against the native report and retain both identities in its trial metadata (#31)
