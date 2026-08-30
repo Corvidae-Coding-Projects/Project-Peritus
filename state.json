@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 884,
+  "next_comment_id": 885,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -8323,7 +8323,7 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:01:08.433031832Z",
-      "updated_at": "2026-08-30T13:29:37.127391765Z",
+      "updated_at": "2026-08-30T13:45:51.401257400Z",
       "labels": [
         "qualification",
         "security"
@@ -8337,6 +8337,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9bYKy7+P2L+yNVnSP3idOtqfF3Ms5LJ7UxMtyIlMLWaSoEeiM0AbRP5t2J7qRv9TzpolJORE7eBYTJfzkjuYAw=="
+        },
+        "3dce24e3-8260-494e-bed7-727d0ce7e753": {
+          "display_id": 884,
+          "author": "6ME5",
+          "content": "Signed H0 checkpoint adds the no-overwrite peritus-h0 native shard operator and standalone candidate interchange/schema. It reads bounded exact-candidate and host-fact documents, runs only the canonical platform subset through the reviewed process adapter, retains both passing and failed diagnostic shards, and exits success only for a passing shard. Two black-box operator tests cover a parseable 40-case Linux shard, no-overwrite publication, and failed-report retention. Strict Clippy, rustfmt/diff checks, and full cargo xtask all pass across 78 packages and 3189 sources. The commit is intentionally held locally while the freshly pushed H2 native run executes.",
+          "created_at": "2026-08-30T13:45:51.398952879Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9sM/oYxCNpAfzLTvqXXou2fgEJMrUBkCUjbuXfJxpor/uQPOY9andKYC6P8vgOKDBffCiqoAkppGAdZPXThMCw=="
         },
         "846adca6-5816-46dd-a2dd-d74d1c5a4d64": {
           "display_id": 479,
@@ -8712,8 +8721,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T13:43:12.761214893Z",
+    "timestamp": "2026-08-30T13:45:51.401257400Z",
     "agent_id": "6ME5",
-    "agent_seq": 1078
+    "agent_seq": 1079
   }
 }
