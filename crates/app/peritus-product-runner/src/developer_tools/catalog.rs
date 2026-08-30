@@ -40,7 +40,7 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
         ),
         (
             "run_command",
-            "Run a non-destructive structured executable and argv after current-turn workspace_list and workspace_read grounding; use it to build, test, lint, inspect Git, apply caller-authorized external effects, and observe failures. Before inspecting a large binary, log, database, or generated file, prefer purpose-built filters, bounded ranges, or summary modes so only decision-relevant output enters model context; the hard output cap is a fallback, not a target. Label each command as external_effect when it performs the requested external action or verification when it freshly inspects the completed outcome. Commands default to a 120-second deadline; request 1 through 600 seconds for a known longer build or test. A timeout kills the owned process tree and returns captured output so the run can recover. Harness-owned peritus-internal gates are unavailable here and run independently after the turn. Use workspace_remove for intentional file deletion.",
+            "Run a non-destructive structured executable and argv after current-turn workspace_list and workspace_read grounding; use it to build, test, lint, inspect Git, apply caller-authorized external effects, and observe failures. If a required executable is absent, verify its path and inspect available package or runtime managers; in an authorized disposable software or system task, install the ordinary prerequisite and retry the real command instead of fabricating a stand-in deliverable. Before inspecting a large binary, log, database, or generated file, prefer purpose-built filters, bounded ranges, or summary modes so only decision-relevant output enters model context; the hard output cap is a fallback, not a target. Label each command as external_effect when it performs the requested external action or verification when it freshly inspects the completed outcome. Commands default to a 120-second deadline; request 1 through 600 seconds for a known longer build or test. A timeout kills the owned process tree and returns captured output so the run can recover. Harness-owned peritus-internal gates are unavailable here and run independently after the turn. Use workspace_remove for intentional file deletion.",
             r#"{"additionalProperties":false,"properties":{"args":{"items":{"type":"string"},"type":"array"},"cwd":{"type":"string"},"program":{"type":"string"},"purpose":{"enum":["external_effect","verification"],"type":"string"},"timeout_seconds":{"default":120,"maximum":600,"minimum":1,"type":"integer"}},"required":["args","program","purpose"],"type":"object"}"#,
         ),
     ])
@@ -127,6 +127,8 @@ mod tests {
         assert!(description("run_command").contains("120-second deadline"));
         assert!(description("run_command").contains("decision-relevant output"));
         assert!(description("run_command").contains("hard output cap is a fallback"));
+        assert!(description("run_command").contains("install the ordinary prerequisite"));
+        assert!(description("run_command").contains("instead of fabricating a stand-in"));
         assert!(description("run_command").contains("external_effect"));
         assert!(description("run_command").contains("verification"));
     }

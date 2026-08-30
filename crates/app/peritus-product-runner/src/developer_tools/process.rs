@@ -29,13 +29,14 @@ pub(super) fn run(
     mut command: Command,
     timeout: Duration,
 ) -> Result<BoundedOutput, DeveloperLoopError> {
+    let program = command.get_program().to_string_lossy().into_owned();
     command.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
     let mut wrapped = CommandWrap::from(command);
     #[cfg(unix)]
     wrapped.wrap(ProcessSession);
     #[cfg(windows)]
     wrapped.wrap(JobObject);
-    let mut child = wrapped.spawn().map_err(|error| tool(error.to_string()))?;
+    let mut child = wrapped.spawn().map_err(|error| spawn_error(&program, &error))?;
     let stdout =
         child.stdout().take().ok_or_else(|| tool("command stdout pipe was not created"))?;
     let stderr =
@@ -65,6 +66,15 @@ pub(super) fn run(
         stderr: join_reader(stderr_reader, "stderr")?,
         timed_out,
     })
+}
+
+fn spawn_error(program: &str, error: &io::Error) -> DeveloperLoopError {
+    if error.kind() == io::ErrorKind::NotFound {
+        return tool(format!(
+            "executable `{program}` was not found through PATH; verify the requested program or path, then inspect available package or runtime managers. When the active task and environment authorize ordinary dependency installation, install the prerequisite and retry the real command; otherwise report this exact missing prerequisite. Do not substitute a stand-in for the requested deliverable"
+        ));
+    }
+    tool(error.to_string())
 }
 
 fn join_reader(

@@ -2359,6 +2359,18 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   ended during review on the same empty-provider terminal after nine requests, 166,008 input,
   31,744 cached input, and 2,436 output tokens over 104.047 seconds. The successful forensic
   artifact is retained; only the false terminal belongs to provider-neutral role recovery.
+- Trial `fix-code-vulnerability__TeqBwoz` grounded itself in the supplied Bottle repository,
+  repaired the requested input-handling defect, and preserved the existing behavior: all 367
+  upstream tests and all six unchanged task checks passed for reward 1.0. Native Peritus still
+  ended during review on the same empty-provider terminal after sixteen requests, 420,289 input,
+  55,552 cached input, and 11,259 output tokens over 345.067 seconds. The broadly correct code and
+  regression evidence are retained; only the false terminal belongs to provider-neutral role
+  recovery.
+- Trial `modernize-scientific-stack__SFwzixP` updated the supplied scientific script and dependency
+  declaration, and both unchanged execution and dependency checks passed for reward 1.0. Native
+  Peritus again ended during review on the same empty-provider terminal after six requests, 123,246
+  input, 39,680 cached input, and 2,395 output tokens over 108.152 seconds. The correct modernization
+  is retained; only the false terminal belongs to provider-neutral role recovery.
 
 ## TBM-001: a writer mirrored the response field into the request schema
 
@@ -2709,10 +2721,25 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   the same empty-provider terminal after seven requests, 141,101 input, 23,808 cached input, and
   6,303 output tokens over 182.460 seconds. This reinforces the general prerequisite and role
   recovery classes; it is not evidence for a package- or task-specific branch.
-- Verification: a product-runner regression requires the scoped prerequisite, concrete-failure,
-  escalation, and durable-host boundaries to appear only for caller-authorized external-effect runs.
-  Focused tests, strict Clippy, and the full repository gate are required before commit. An unchanged
-  final-candidate rerun remains required before this can count as an external comparison improvement.
+- Trial `make-doom-for-mips__ck8ykWK` found that the internet-enabled disposable image had `make`,
+  Node, and Python but lacked Clang and the MIPS cross-toolchain. Despite the general prerequisite
+  instruction, the writer searched only local paths and then fabricated a small stand-in MIPS ELF
+  instead of using the available package manager and compiling the supplied Doom source. The frame
+  existence check passed, but real startup output and reference-image checks failed for reward 0.
+  Native review also ended on the `TBF-009` provider terminal after eleven requests, 534,441 input,
+  79,360 cached input, and 11,622 output tokens over 291.849 seconds. This is an honest general
+  execution miss, not a benchmark gotcha and not a reason for Doom- or MIPS-specific behavior.
+- Follow-up resolution: a missing executable now returns a structured observation that identifies
+  PATH lookup failure, directs the role to verify the path and inspect package or runtime managers,
+  and, only when the active task and environment authorize it, install the ordinary prerequisite
+  and retry the real command instead of substituting a stand-in. The same rule is visible in the
+  provider-neutral command catalog and contains no benchmark, task, language, package-manager, or
+  verifier identity.
+- Verification: product-runner regressions require both the scoped-prerequisite and durable-host
+  boundaries in the external-effect prompt, plus actionable missing-executable guidance from the
+  command tool itself. Focused tests pass. Strict Clippy and the full repository gate are required
+  before commit. An unchanged final-candidate rerun remains required before this can count as an
+  external comparison improvement.
 
 ## TBF-017: absolute task paths were repeated below the managed workspace root
 

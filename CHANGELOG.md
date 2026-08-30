@@ -79,7 +79,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   beneath a duplicated root directory (`TBF-017`, #31)
 - Make caller-authorized external-effect runs attempt ordinary scoped prerequisites, including
   build or runtime dependency installation in disposable task environments, before asking the user
-  to supply tools that the environment can install itself (`TBF-016`, #31)
+  to supply tools that the environment can install itself; turn missing-executable failures into
+  actionable, authority-bounded guidance to install the prerequisite and retry the real command
+  instead of fabricating a stand-in deliverable (`TBF-016`, #31)
 - Prepare each external benchmark's durable developer trace before product execution so a
   pre-stream product failure retains an honest zero-usage invocation report and its original
   diagnosis instead of being replaced by a missing-trace adapter error (#31)
