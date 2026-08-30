@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 981,
+  "next_comment_id": 982,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T19:46:09.198552681Z",
+      "updated_at": "2026-08-30T19:47:19.183549070Z",
       "labels": [
         "qualification",
         "release"
@@ -3542,6 +3542,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAe815NTeuYc7SuRbWzYh44o18it6qy5XNm2UrmHotjqBcFJpz82Wjwm+bY8k3jNMQOXSLWTw7tjrbS+uF3vyICw=="
+        },
+        "a5226eba-8dca-48ae-a8d6-8759dfd399c1": {
+          "display_id": 981,
+          "author": "6ME5",
+          "content": "Frozen Terminal-Bench added two verifier-success/provider-terminal recurrences to TBF-009: large-scale-text-editing__AprDm2B and code-from-image__4Wr2ZHH both earned unchanged verifier reward 1 after producing correct artifacts, then native review ended on the known provider-terminal recovery class. No task-specific product change is warranted; exact tokens and elapsed evidence are retained in the journal. docs-check remains green.",
+          "created_at": "2026-08-30T19:47:19.180999941Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAv3zttsxc2InR2HwGpcveZRfuIwbOFjZ6QwIS7O74+TpwlvVTJUHrOMLig+4y6x5W2V1AwpswxYc8UtjTKX/NAQ=="
         },
         "a55e3536-a653-4ceb-8c76-bfdbea8e66f4": {
           "display_id": 839,
@@ -9585,8 +9594,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T19:46:09.198552681Z",
+    "timestamp": "2026-08-30T19:47:19.183549070Z",
     "agent_id": "6ME5",
-    "agent_seq": 1177
+    "agent_seq": 1178
   }
 }
