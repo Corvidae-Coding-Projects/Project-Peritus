@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 911,
+  "next_comment_id": 912,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T16:18:27.165259593Z",
+      "updated_at": "2026-08-30T16:39:19.210070161Z",
       "labels": [
         "qualification",
         "release"
@@ -1724,6 +1724,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA4lyWIvcqvM9oe6XCuNp+RYyqPkcTzRfs9ugFeCjl9oiNlbD9lOWYAQcxpjuvELo8ZjEx53RmMWSNLwnugDD9BQ=="
+        },
+        "24c78597-1c01-41af-b20d-52a835f42e19": {
+          "display_id": 911,
+          "author": "6ME5",
+          "content": "Committed d844087fa83b2acfc8e71bfff879c888b0ebf134: H1 cleanup now drains the joined stdout reader before rejecting a successful terminal cleanup response; failed exits and missing frames remain fail-closed. The macOS regression passed 8/8 exact repetitions. Native high-fanout integration cases are serialized within their test binary after a concurrent package run reproduced host-process interference; the full peritus-resilience package and strict Clippy are green.",
+          "created_at": "2026-08-30T16:39:19.206120347Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjGkZwCKWoaE2167kJTGJhp+abs9leLI23YuNxSyrvdsSMf4w6WEDX6S2+4e841Dx+r6J72GLvdMUxYCygU6rBQ=="
         },
         "24e2cb30-e736-4daa-8b75-6b53d74a5f83": {
           "display_id": 736,
@@ -8955,8 +8964,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T16:18:27.165259593Z",
+    "timestamp": "2026-08-30T16:39:19.210070161Z",
     "agent_id": "6ME5",
-    "agent_seq": 1105
+    "agent_seq": 1106
   }
 }
