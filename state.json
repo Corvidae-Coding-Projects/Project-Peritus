@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 902,
+  "next_comment_id": 903,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -8413,7 +8413,7 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:01:08.433031832Z",
-      "updated_at": "2026-08-30T15:52:57.314667941Z",
+      "updated_at": "2026-08-30T15:55:27.969180460Z",
       "labels": [
         "qualification",
         "security"
@@ -8436,6 +8436,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABArCESSL8seuCqLMPKkoDOe6m6nKPPnR3LPdlgqbrM2fL6w9gM749TqSCgeI8jecjkcEKHwxzjFpJUvGjxhP4nCg=="
+        },
+        "1b5702d8-0738-4fa3-a26d-b4003374e423": {
+          "display_id": 902,
+          "author": "6ME5",
+          "content": "Native H0/H2 root-cause fixes are in pushed checkpoint 14d27fdd: candidate-local TCB verification uses the intended local policy boundary; Windows native subjects retain MSVC/SDK process environment; PowerShell receives conventional paths rather than Rust verbatim paths.",
+          "created_at": "2026-08-30T15:55:27.966651924Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAXseQ0BDI+mXwUEVO6SYPs9YUITFqLqQgMrOXZByBarrnoLfG02mGO1LILQNutDfwYBHmWAKdWp266BlXAEa+Bg=="
         },
         "3298dd63-4793-4f35-8ed0-0e89963619e9": {
           "display_id": 880,
@@ -8874,8 +8883,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T15:55:22.471103794Z",
+    "timestamp": "2026-08-30T15:55:27.969180460Z",
     "agent_id": "6ME5",
-    "agent_seq": 1096
+    "agent_seq": 1097
   }
 }
