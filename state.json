@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1026,
+  "next_comment_id": 1027,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T22:56:38.736621695Z",
+      "updated_at": "2026-08-30T22:57:56.265277968Z",
       "labels": [
         "qualification",
         "release"
@@ -4919,6 +4919,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIm0fGXZFegNkNqlEmZOJjZOZnW3/qum9D/q5ub/UmJuxJhAnJc1kbiObjgI6vhXQYsOZO1hUsjQU0ZeUsoQMCQ=="
+        },
+        "ef5e6ab8-a204-4d2a-88a9-6c13801fe5b1": {
+          "display_id": 1026,
+          "author": "6ME5",
+          "content": "Exact pushed head 98cf7171c38942da50b8285fc67d8f29a74f6f93 completed its hosted qualification wave fully green: H0 run 33338533064, H2 run 33338533059, Gate A run 33338533070, and Foundation run 33338533066 all concluded success. H0/H2 retained artifacts and report digests were recorded previously. This does not qualify the subsequent uncommitted recovery change; that will receive its own pushed runner wave.",
+          "created_at": "2026-08-30T22:57:56.259148531Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABADfoWmqM6mLC28ACVdI8AlskpMZg6dPgm/YHqfK+QqY5lU/F4NMyglsBThjHSjoKcEHymp1rIb6ai1wwjbmbdAQ=="
         },
         "ef9a6d25-4601-4c98-b0ef-15da887f4477": {
           "display_id": 627,
@@ -9990,8 +9999,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T22:56:38.736621695Z",
+    "timestamp": "2026-08-30T22:57:56.265277968Z",
     "agent_id": "6ME5",
-    "agent_seq": 1220
+    "agent_seq": 1221
   }
 }
