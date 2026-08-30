@@ -80,6 +80,7 @@ The controller is invoked as follows; values following each option are supplied 
 
 ```text
 CONTROLLER --serve \
+  --candidate-executable FILE \
   --subject-root ROOT \
   --artifact-root ROOT \
   --instance-id ID \
@@ -118,6 +119,24 @@ post-boot recovery observation. The controller never reboots the developer or CI
 not substitute a process or container restart for a host reboot. If the reviewed VM driver or its
 required image is unavailable, the production campaign is honestly not ready rather than silently
 downgrading those cases.
+
+### Current implementation state
+
+The checked-in Rust `peritus-h1-controller` now implements one genuine production route:
+`h1.crash.journal.after-before-ack`. It prepares a fresh daemon configuration, confirms the staged
+candidate identity, starts `peritusd qualify-outbox-stage`, and waits for the production code to
+publish its durable effect-before-ack checkpoint. The controller then kills that candidate process,
+starts the same staged bytes through `qualify-outbox-recover`, and requires the exact external effect
+to be reconciled before the new live fence is acknowledged. It independently checks that the
+journal is a nonempty regular file, the effect digest is unchanged, no duplicate effect exists, and
+no claim remains pending.
+
+The focused native diagnostic retained a one-case passing report and six raw evidence files under
+`/home/doll/.local/state/peritus/qualification/h1/journal-after-ack.S4yqQu`. Its report deliberately
+uses the `custom` profile and `not-ready-custom-catalog` verdict. The other 42 catalog routes fail
+closed until their real component failpoints, controlled quota/storage effects, process controls,
+or disposable-VM reboot driver are connected. Therefore the full H1 production qualification is
+still pending.
 
 The release integration owner must:
 

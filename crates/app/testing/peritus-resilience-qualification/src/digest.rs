@@ -19,3 +19,12 @@ pub fn file(path: &Path) -> Result<EvidenceDigest, std::io::Error> {
         hasher.update(&buffer[..bytes]);
     }
 }
+
+pub fn hex(digest: EvidenceDigest) -> String {
+    let mut output = String::with_capacity(64);
+    for byte in digest.as_bytes() {
+        use std::fmt::Write as _;
+        write!(&mut output, "{byte:02x}").expect("writing to String cannot fail");
+    }
+    output
+}

@@ -15,6 +15,8 @@ use crate::{digest, publication};
 pub enum H1OperatorStatus {
     /// Every production scenario passed against the exact candidate with complete cleanup.
     Ready,
+    /// The explicitly selected diagnostic case passed without claiming production readiness.
+    DiagnosticPassed,
     /// The report was retained honestly, but one or more H1 obligations failed.
     NotReady,
 }
@@ -49,8 +51,30 @@ async fn run(
         config,
         NativeControllerLimits::default(),
     )?;
-    let catalog = ScenarioCatalog::h1_production()?;
+    let catalog = selected_catalog(options.scenario_id.as_deref())?;
     let report = QualificationRunner::run(config, &catalog, &factory).await;
     publication::publish(&options.report, &render_report_json(&report)?)?;
-    Ok(if report.is_ready() { H1OperatorStatus::Ready } else { H1OperatorStatus::NotReady })
+    Ok(if report.is_ready() {
+        H1OperatorStatus::Ready
+    } else if options.scenario_id.is_some() && report.summary().passed() == 1 {
+        H1OperatorStatus::DiagnosticPassed
+    } else {
+        H1OperatorStatus::NotReady
+    })
+}
+
+fn selected_catalog(
+    scenario_id: Option<&str>,
+) -> Result<ScenarioCatalog, Box<dyn std::error::Error>> {
+    let production = ScenarioCatalog::h1_production()?;
+    let Some(scenario_id) = scenario_id else {
+        return Ok(production);
+    };
+    let scenario = production
+        .scenarios()
+        .iter()
+        .find(|scenario| scenario.id().as_str() == scenario_id)
+        .cloned()
+        .ok_or_else(|| format!("unknown production H1 diagnostic scenario: {scenario_id}"))?;
+    Ok(ScenarioCatalog::custom(vec![scenario])?)
 }
