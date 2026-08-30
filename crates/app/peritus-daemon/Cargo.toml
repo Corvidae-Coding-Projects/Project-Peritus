@@ -72,6 +72,7 @@ windows-sys = { workspace = true, features = [
 ] }
 
 [dev-dependencies]
+futures-util.workspace = true
 peritus-conformance = { version = "=0.0.0", path = "../testing/peritus-conformance" }
 peritus-kernel = { version = "=0.0.0", path = "../../foundation/peritus-kernel" }
 peritus-protocol = { version = "=0.0.0", path = "../../foundation/peritus-protocol" }

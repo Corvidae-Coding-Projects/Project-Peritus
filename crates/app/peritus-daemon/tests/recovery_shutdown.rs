@@ -74,9 +74,13 @@ async fn authenticated_shutdown_retains_the_exact_request_and_finishes_cleanly_a
         .expect("daemon observes the authenticated shutdown within the bound")
         .expect("shutdown request remains observable");
     assert_eq!(runtime.accepted_shutdown_request(), Some(shutdown));
-    let (outcome, (progress_count, wire_complete)) = tokio::time::timeout(LIFECYCLE_BOUND, async {
-        tokio::join!(runtime.shutdown(), read_shutdown_completion(&mut frames, shutdown))
-    })
+    let (outcome, (progress_count, wire_complete)) = tokio::time::timeout(
+        LIFECYCLE_BOUND,
+        futures_util::future::join(
+            runtime.shutdown(),
+            read_shutdown_completion(&mut frames, shutdown),
+        ),
+    )
     .await
     .expect("shutdown completes within the configured test bound");
     let outcome = outcome.expect("shutdown coordinator completes");

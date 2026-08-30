@@ -2037,6 +2037,7 @@ name = "peritus-daemon"
 version = "0.0.0"
 dependencies = [
  "fs4",
+ "futures-util",
  "libc",
  "peritus-app-protocol",
  "peritus-approval",
