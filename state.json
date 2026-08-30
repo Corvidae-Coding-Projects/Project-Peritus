@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 965,
+  "next_comment_id": 966,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T19:00:36.440981491Z",
+      "updated_at": "2026-08-30T19:01:38.569957201Z",
       "labels": [
         "qualification",
         "release"
@@ -3110,6 +3110,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAmsYeBIdEO5vKe1Lg0OdXvRxLywVWUJHhRsJO3hNHJ9Svvj2nyUGMqcrxU0gmQCdJzzOLb93d4BT5pKQ0TcqvAw=="
+        },
+        "9034b564-86b6-403b-a6f5-6b4e2f487b0a": {
+          "display_id": 965,
+          "author": "6ME5",
+          "content": "Exact-head H2 macOS is Ready at signed 6b9fbc2a6a647c90f0a7bc8036adc5178d1178a1. Run 33329435656 artifact h2-macos-15 ID 9737262202: 18/18 scenarios passed, 18/18 cleanup-complete with zero remaining resources. Report SHA-256 f3f8c9871fa006767b4a26b9e235fe7f9ac3357c72b6031cc94dfe839b03f85f; manifest SHA-256 dc6e960a8f9ed27e93ae78b26508a314f14cce17b9d62463bff99ecc1dd7c779; verdict evidence SHA-256 2321cb01d32b6cd6c00b15949ecc563af398c6a21506783463ae677f5beb3a98. Linux and Windows remain active.",
+          "created_at": "2026-08-30T19:01:38.567332909Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAwhmOqd+gMRfeMsJ8e4OuCTN/gIKNmqqIPKEp0Q8hV/upK/inRrpIGFU5pRgimaxcJs4xTu8c+KMgjS23swErAQ=="
         },
         "906e7ce0-aec1-49fa-91e9-7dc39ce5688a": {
           "display_id": 800,
@@ -9441,8 +9450,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T19:00:36.440981491Z",
+    "timestamp": "2026-08-30T19:01:38.569957201Z",
     "agent_id": "6ME5",
-    "agent_seq": 1161
+    "agent_seq": 1162
   }
 }
