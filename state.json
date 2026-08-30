@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 777,
+  "next_comment_id": 778,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -5350,12 +5350,21 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T22:24:16.640107633Z",
-      "updated_at": "2026-08-30T00:56:48.135260020Z",
+      "updated_at": "2026-08-30T01:09:11.214860615Z",
       "labels": [
         "performance",
         "qualification"
       ],
       "comments": {
+        "0cd7d776-4bcf-4d67-bbf9-13c0ec839998": {
+          "display_id": 777,
+          "author": "6ME5",
+          "content": "Implemented explicit baseline acceptance in signed commit 57545480. Every complete campaign now emits an inert evidence-bound baseline-candidate.json; later use requires both the selected file and its exact SHA-256, checked before host probing or daemon launch. Fixed BaselineManifest serialization to emit schema_version and added the round-trip regression. Split evidence file I/O into a focused module to satisfy source-layout policy. Verification: package tests green (10 benchmark core, 20 H3 unit plus integrations), real two-run daemon/operator smoke green before final review, strict all-target/all-feature Clippy green, cargo xtask all green across 78 packages/3111 sources, and git diff --check green.",
+          "created_at": "2026-08-30T01:09:11.212081369Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIs2mBCUK0AwDRqC6IyGcvXQDsBnypGNV+CJh6LsrRg1mKmx83aVgk48ZCSFSygUJ9xtyXuU6MAVw48lFHY59Bg=="
+        },
         "0f2abd17-c73c-4330-bd62-eecb514a0ce0": {
           "display_id": 491,
           "author": "6ME5",
@@ -7749,8 +7758,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T00:56:48.135260020Z",
+    "timestamp": "2026-08-30T01:09:11.214860615Z",
     "agent_id": "6ME5",
-    "agent_seq": 965
+    "agent_seq": 966
   }
 }
