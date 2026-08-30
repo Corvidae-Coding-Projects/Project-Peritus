@@ -11,6 +11,7 @@ mod providers;
 mod rubric;
 mod session;
 mod terminal_agent;
+pub mod terminal_results;
 mod trace;
 mod workspace;
 

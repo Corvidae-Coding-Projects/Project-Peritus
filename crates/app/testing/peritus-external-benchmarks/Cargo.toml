@@ -32,6 +32,10 @@ tempfile.workspace = true
 name = "peritus-benchmark-agent"
 path = "src/bin/peritus-benchmark-agent.rs"
 
+[[bin]]
+name = "peritus-terminalbench-report"
+path = "src/bin/peritus-terminalbench-report.rs"
+
 [package.metadata.peritus]
 owner = "H3"
 layer = "testing"

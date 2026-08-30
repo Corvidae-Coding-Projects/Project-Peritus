@@ -13,6 +13,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Add a Rust-owned Terminal-Bench campaign reporter that reconciles Harbor's aggregate state with
+  directly visible child results, distinguishes in-progress snapshots from immutable final
+  reports, retains per-trial evidence paths and token/cache totals, binds the benchmark pin and
+  frozen agent identities, and publishes versioned JSON atomically without overwriting evidence
+  (#31)
 - Add a benchmark-integrity appendix that separates real product and model failures from genuine
   evaluator gotchas, links each retained result, and records the score-only shortcut Peritus
   refuses (#31)

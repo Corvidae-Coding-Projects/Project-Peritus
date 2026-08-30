@@ -28,6 +28,13 @@ round.
 Generated traces and benchmark workspaces belong in local state outside Git. See
 `benchmarks/external/README.md` for pinned upstream revisions and run commands.
 
+`peritus-terminalbench-report` turns one retained Harbor job into a versioned campaign report. It
+counts only direct child trial results, checks that count against Harbor's root job state, keeps
+the nested verifier reward as the score, and records each native and verifier evidence path. Use
+`snapshot` while a campaign is running and `final` only after all expected trials are visible and
+Harbor has marked the job finished. Publication is atomic and refuses to replace an existing
+report.
+
 ## Focused checks
 
 From the repository root:

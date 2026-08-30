@@ -10,6 +10,11 @@ The files in this directory pin upstream source and describe the native adapter.
 workspaces and results are deliberately stored outside Git. Run heavy suites one at a time with
 `CARGO_BUILD_JOBS=2`.
 
+Terminal-Bench campaign evidence is normalized by the Rust-owned
+`peritus-terminalbench-report` command. Its versioned output follows
+`../schemas/terminalbench-campaign-report-v1.schema.json`; it rejects a transient Harbor state in
+which the root aggregate has advanced before the matching child result is visible.
+
 See `harnessbench/README.md` and `terminalbench/README.md` for pinned inputs, adapter boundaries,
 resource-aware commands, and current qualification evidence.
 

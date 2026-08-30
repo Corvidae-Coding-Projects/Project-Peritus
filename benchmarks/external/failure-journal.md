@@ -2286,6 +2286,16 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   This is evidence for a fresh provider invocation, not for hard-coding the hidden flag or reading
   the verifier. The composed regression now exhausts one invocation in each designer, writer, and
   reviewer role, then proves fresh grounding and normal product completion.
+- Trial `compile-compcert__Xn3cf6z` adds a normal toolchain-installation case. The writer acquired
+  the supplied CompCert source under `/tmp/CompCert`, inspected its configure targets and declared
+  Coq, OCaml, Menhir, Zarith, and Make requirements, and checked the available Ubuntu packages.
+  Three subsequent Codex account-runtime turns were retained as malformed, after which the frozen
+  role ended before dependency installation or compilation. No `/tmp/CompCert/ccomp` existed, so
+  all three unchanged verifier checks failed for reward 0. The run used eight provider requests,
+  155,764 input, 63,488 cached input, and 3,545 output tokens over 149.806 seconds. Installing these
+  ordinary build prerequisites inside the authorized disposable task is legitimate execution,
+  not benchmark cooking; the failure is another task-neutral fresh-role recovery case and does not
+  justify CompCert- or verifier-specific behavior.
 - Trial `torch-tensor-parallelism__QzhvGPy` adds a useful-but-incorrect candidate: the writer created
   a complete tensor-parallel module and read it back, then received executable-not-found results
   for both `python` and `python3` before an empty provider terminal ended the run after seven
@@ -3159,6 +3169,15 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   retained. This is a second task-neutral validation target for the finite delivery correction;
   the adjacent explicit runtime-result wording also motivates `TBF-025`'s general requirement to
   execute and freshly verify promised live behavior rather than accepting source alone.
+- Failed recurrence: `path-tracing__JmyaeU9` grounded itself in the supplied 48,262,737-byte image
+  and reference executable, then spent its writable role on strings, symbol tables, read-only data,
+  and multiple function disassemblies without writing `image.c`. Several outputs were themselves
+  long disassembly listings. The frozen writer ended on malformed provider turns after seven
+  requests, 225,922 input, 97,536 cached input, and 3,295 output tokens over 340.837 seconds. All
+  five unchanged existence, build, isolation, execution, and similarity checks failed for reward
+  0. This is direct recurrence evidence for the general delivery-progress correction, the bounded
+  inspection-output rule in `TBF-020`, and fresh role recovery in `TBF-009`; it does not justify
+  renderer, binary, or task-specific behavior.
 - Integrity decision: retain the zero and the model's unsuccessful artifact. Do not copy hidden
   document labels, use their hashes as classifications, alter the inputs, or add OCR-specific
   behavior. The correction is justified by ordinary long coding and artifact runs that inspect
@@ -3166,8 +3185,9 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Verification: a developer-loop regression proves executor feedback reaches the same model
   session after the tool results. A product-runner regression performs twelve grounded but
   non-delivering calls, receives the concrete package-manager correction exactly once, and confirms
-  it is consumed. Focused tests pass; strict repository gates and an unchanged final-candidate
-  rerun remain required.
+  it is consumed. All 95 product-runner tests, strict all-target/all-feature Clippy, rustfmt,
+  documentation checks, and `cargo xtask all` pass. An unchanged final-candidate rerun remains
+  required.
 
 ## TBI-010: the embedding rank depends on an unpublished MTEB task prompt
 

@@ -147,3 +147,40 @@ Do not add task-specific prompts, change task images, edit verifiers, disable ve
 reinterpret a product rejection as a pass. Record each reproduced failure in
 `../failure-journal.md`, make only broadly useful product or runner fixes, and rerun the unchanged
 task before continuing.
+
+## Publish a campaign report
+
+Keep generated reports beside the Harbor state rather than in Git. A snapshot is useful during a
+long campaign, but is deliberately marked incomplete. Supply the clean source revision embedded
+when the frozen agent was built and the independently measured digest of that exact executable:
+
+```bash
+CARGO_BUILD_JOBS=2 cargo run --locked \
+  --package peritus-external-benchmarks \
+  --bin peritus-terminalbench-report -- \
+  --job-dir /absolute/path/to/terminalbench-state/jobs/peritus-terminalbench-2-k5 \
+  --output /absolute/path/to/terminalbench-state/reports/baseline.snapshot.json \
+  --pin-file benchmarks/external/terminalbench/pin.toml \
+  --expected-trials 445 \
+  --mode snapshot \
+  --campaign-label frozen-baseline \
+  --agent-source-revision 0123456789abcdef0123456789abcdef01234567 \
+  --agent-sha256 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+```
+
+Use a new output path and change `--mode` to `final` after Harbor finishes. Final mode requires all
+445 direct child `result.json` files, no running, pending, or cancelled trials, and a finished root
+job. Both modes require Harbor's completed count to equal the child results currently visible, so
+the report command asks the operator to retry instead of publishing through Harbor's brief
+aggregate-before-child publication race. Existing output is never replaced.
+
+The report records two rates without conflating them:
+
+- `scored_accuracy` divides verifier reward by trials that produced a score.
+- `completed_success_rate` divides verifier reward by every completed trial, including unscored
+  infrastructure or provider failures.
+
+It also retains the pin file and its SHA-256, the declared frozen source and executable identities,
+Harbor agent/model identity, native acceptance, token/cache totals, exceptions, and relative paths
+to each trial's Harbor result, native invocation, trace, last observation, and verifier output.
+The schema is `../../schemas/terminalbench-campaign-report-v1.schema.json`.
