@@ -69,6 +69,13 @@ impl QualificationText {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    pub(crate) fn from_sanitized(value: String) -> Self {
+        debug_assert!(!value.trim().is_empty());
+        debug_assert!(value.len() <= MAX_QUALIFICATION_TEXT_BYTES);
+        debug_assert!(!value.chars().any(char::is_control));
+        Self(value)
+    }
 }
 
 impl fmt::Display for QualificationText {

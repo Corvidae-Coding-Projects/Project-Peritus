@@ -14,7 +14,22 @@ layer = "testing"
 verification-class = "C"
 
 [dependencies]
+serde.workspace = true
+serde_json.workspace = true
 sha2.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+nix.workspace = true
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { workspace = true, features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_JobObjects",
+    "Win32_System_Threading",
+] }
 
 [lints]
 workspace = true

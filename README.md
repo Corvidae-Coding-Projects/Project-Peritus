@@ -58,6 +58,13 @@ The implementation is not the release decision. Production readiness still requi
 The H4 adapter cannot sign, tag, publish, deploy, or manufacture missing evidence. Human release
 authority remains outside the harness.
 
+H0 and H1 now have standard native process boundaries instead of requiring each release operator
+to reinvent one. H0 runs one reviewed probe per case. H1 keeps one reviewed controller alive across
+prepare, fault injection, recovery, and cleanup, binds every response to the exact release
+candidate, verifies retained raw artifacts, and owns the complete process tree. The remaining H0
+and H1 work is the independently reviewed platform executables and their real-host evidence, not an
+in-memory substitute.
+
 The tagged release workflow now stages each native archive, generates a candidate-bound inventory,
 SPDX SBOM, and SLSA provenance document in Rust, and retains GitHub keyless Sigstore attestations.
 This supplies the release mechanism; the unfinished exact-candidate campaigns and independent audit

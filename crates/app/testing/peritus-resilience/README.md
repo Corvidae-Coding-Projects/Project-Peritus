@@ -37,10 +37,20 @@ authoritative corruption, unaccounted or orphaned work, retry/resource overruns,
 evidence anchors, noncanonical milestones, and incomplete cleanup. An execution error, panic, or
 teardown error is infrastructure failure and never success.
 
-This crate does not inject production faults itself. Adapters translate its typed scenarios into
-the integrated daemon's failpoint, process, storage, provider, tool, and reboot controls. Production
-H1 evidence therefore requires a real release-candidate adapter; an in-memory fake can test the
-harness but cannot qualify a release.
+The crate includes `NativeResilienceFactory`, the standard process boundary for production H1
+controllers. It stages one reviewed controller executable into every fresh private subject root,
+keeps that controller alive across prepare, inject, recover, and cleanup, and owns its entire Unix
+process group or Windows Job Object. Every line-delimited JSON response is bound to the exact
+request, scenario, candidate build, staged controller, and fresh instance. Recovery evidence is
+retained outside the disposable root and independently checked for path containment, file type,
+byte count, and SHA-256 before it enters the deterministic report.
+
+The native adapter does not pretend to inject a production fault. The controller executable must
+translate the typed request into real daemon, failpoint, storage, provider, tool, process, quota,
+VM, and reboot controls. The checked-in protocol is documented in
+[`resilience/schemas`](../../../../resilience/schemas). An in-memory fake or fixture controller can
+test this harness, but only a reviewed controller running the exact release candidate on the real
+qualification host can produce release evidence.
 
 ## Focused checks
 
@@ -48,4 +58,5 @@ From the repository root:
 
 ```sh
 CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-resilience
+CARGO_BUILD_JOBS=2 cargo clippy --locked --package peritus-resilience --all-targets --all-features -- -D warnings
 ```

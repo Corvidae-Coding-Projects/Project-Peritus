@@ -13,6 +13,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Add the standard H1 persistent native-controller adapter: stage and re-digest one reviewed
+  executable inside each fresh private subject, bind all four line-delimited protocol stages to the
+  exact scenario/build/controller/instance, own Unix process groups and Windows kill-on-close Job
+  Objects, enforce cancellation/time/output limits, retain and verify raw evidence artifacts, and
+  prove all 43 translations plus false-digest and descendant-cleanup behavior without fabricating
+  real reboot or fault evidence (#31)
 - Add the standard H0 fresh-native-subject process adapter: stage and digest one reviewed executor
   per private case root, bind versioned requests and structured responses to the exact candidate,
   enforce time/output/cancellation limits, own Unix process groups and Windows kill-on-close Job

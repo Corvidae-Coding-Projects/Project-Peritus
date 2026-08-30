@@ -37,8 +37,10 @@ corruption detection, mutation admission, ownership reconciliation, orphan scan,
 resource counters, temporary-object count, and a canonical six-step lifecycle chronology.
 
 Six content-addressed evidence classes are mandatory per case: fault control, journal integrity,
-recovery, ownership/orphan scan, resource accounting, and final authoritative state. Raw evidence
-remains in the integrated system; the report retains typed IDs and digests.
+recovery, ownership/orphan scan, resource accounting, and final authoritative state. The standard
+native adapter retains each raw evidence file under a private, subject-addressable artifact root
+and verifies its relative path, regular-file type, byte count, and SHA-256 before the deterministic
+report retains its typed ID and digest.
 
 ## Non-bypassable verdict
 
@@ -66,10 +68,40 @@ unobserved terminal result is infrastructure failure and therefore `NotReadyForP
 
 ## Release adapter responsibilities
 
+`NativeResilienceFactory` supplies the reviewed process boundary. It copies and re-digests the
+controller executable inside every fresh subject, launches it with cleared environment state,
+owns the complete process tree, applies stage duration and output limits, and cancels synchronously
+when the runner future is dropped. One controller remains alive for all four stages so that its
+external host or VM control session can survive the fault it invokes. Cleanup is complete only
+after the controller exits, all descendants are gone, the private root is removed, and the raw
+artifact root remains available for H4.
+
+The controller is invoked as follows; values following each option are supplied by the adapter:
+
+```text
+CONTROLLER --serve \
+  --subject-root ROOT \
+  --artifact-root ROOT \
+  --instance-id ID \
+  --subject-id ID \
+  --build-sha256 SHA256 \
+  --executor-sha256 SHA256
+```
+
+It reads one compact JSON request per line from standard input and writes exactly one JSON response
+line to standard output. Progress and diagnostics belong on standard error. Requests and responses
+follow [`native-controller-request-v1.schema.json`](../resilience/schemas/native-controller-request-v1.schema.json)
+and [`native-controller-response-v1.schema.json`](../resilience/schemas/native-controller-response-v1.schema.json).
+Each response repeats the stage, sequence, fresh instance, scenario, and exact inner-request digest.
+The four stages are `prepare`, `inject`, `recover`, and `cleanup`; the controller exits after its
+cleanup response. Unknown fields, stale identities, malformed values, excessive output, timeouts,
+unexpected exit, missing evidence, false digests, and surviving descendants fail closed.
+
 The release integration owner must:
 
-1. add `crates/app/testing/peritus-resilience` to the root workspace and architecture registry;
-2. implement a black-box adapter that provisions a disposable project and state root per case;
+1. build and independently review the platform controller executable used by the standard native
+   adapter;
+2. provision its disposable project, state, quota, and external host or VM resources per case;
 3. connect catalog faults to deterministic C0/C1/D1/F0 failpoints and supervised G0 lifecycle
    controls without bypassing the production interfaces being qualified;
 4. use controlled quota or faulting storage for disk cases and a supervised host/VM boundary for
@@ -80,6 +112,8 @@ The release integration owner must:
 7. archive the report, canonical digest, build digest, platform identity, and raw evidence bundle
    under the H4 release record.
 
-The crate intentionally does not claim that source compilation or these tests have passed. H1 is
-complete only after the integrated adapter is wired and the full release-candidate run produces a
-`Ready` report with retained evidence.
+The repository tests prove the persistent protocol, all 43 fresh-subject translations, retained
+artifact verification, cancellation, descendant ownership, and cleanup. They do not prove that an
+external platform controller performed a real host reboot or storage fault. H1 is complete only
+after that reviewed controller runs the full catalog against the exact release candidate and
+produces a `Ready` report with retained evidence.

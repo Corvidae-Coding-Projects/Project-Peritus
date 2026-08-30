@@ -72,6 +72,7 @@ controlled_source_roots = [
     { path = "protocol/generated", owner = "B3", kind = "generated-schema", rationale = "B3 deterministically generates the reviewed protocol schema and TypeScript client declarations." },
     { path = "protocol/fixtures/v1", owner = "B3", kind = "generated", rationale = "B3 deterministically generates the immutable version-one binary compatibility corpus and digest inventory." },
     { path = "release", owner = "H4", kind = "schema", rationale = "H4 owns the reviewed release evidence schemas, incomplete-safe operator templates, and candidate artifact-layout guidance." },
+    { path = "resilience/schemas", owner = "H1", kind = "schema", rationale = "H1 owns the versioned native-controller request and response contracts used to qualify real release candidates." },
     { path = "security", owner = "H0", kind = "schema", rationale = "H0 owns the reviewed threat, control, unsafe, TCB, external-review, evidence, and qualification schema contracts." },
 ]
 
