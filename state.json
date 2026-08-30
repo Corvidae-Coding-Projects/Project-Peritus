@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 967,
+  "next_comment_id": 968,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T19:08:56.434556310Z",
+      "updated_at": "2026-08-30T19:21:34.441939274Z",
       "labels": [
         "qualification",
         "release"
@@ -3983,6 +3983,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABANU6LxzUgiNF7Wt899AC2WsbDKKRDzsr5RHpVbmNA6lvBqsNbC3tJXHnmL5X9ctu4UCFdqp7OSn5JYYkPAMv0Cw=="
+        },
+        "d29e1bee-b17c-492b-8fb1-7b8f9032d9da": {
+          "display_id": 967,
+          "author": "6ME5",
+          "content": "H1 completion audit found the executable qualification operator was missing and the existing native adapter bound only a declared build digest, not actual candidate bytes. Added an H1-owned peritus-resilience-qualification crate with strict peritus-h1 operator, exact candidate SHA-256 binding, fresh-subject candidate staging, full JSON report projection, and atomic no-clobber publication. Focused tests and strict Clippy pass; architecture-check now covers 79 packages/3240 sources. Real fault/VM controller remains the next H1 implementation boundary. Exact 6b9fbc2a hosted runners remain actively monitored with no failures yet.",
+          "created_at": "2026-08-30T19:21:34.439273983Z",
+          "kind": "progress",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAmOAYQfk+SmORpcnmioubvLrYPzC7MjFfLBscz2bOfichElanpGWsBEHvQh3jHt3wgOMpoxaSBB6bldTCavcXAg=="
         },
         "d2b3116c-592e-417b-a4dc-19c8bca7bf6e": {
           "display_id": 744,
@@ -9459,8 +9468,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T19:08:56.434556310Z",
+    "timestamp": "2026-08-30T19:21:34.441939274Z",
     "agent_id": "6ME5",
-    "agent_seq": 1163
+    "agent_seq": 1164
   }
 }
