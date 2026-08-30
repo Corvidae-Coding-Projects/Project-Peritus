@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 813,
+  "next_comment_id": 814,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T04:51:33.358806151Z",
+      "updated_at": "2026-08-30T04:51:38.392572070Z",
       "labels": [
         "qualification",
         "release"
@@ -2273,6 +2273,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAiP8Ap2SfbYQzO5GHIaHIz6kDOHUXrpbu5Bt70UQOBEcGhdYOz4gmauB561cvL8G1TKhjqfIlwTtuAjJeSQeZDg=="
+        },
+        "6a168361-63d0-44b3-8da1-2226dbf2b4a5": {
+          "display_id": 813,
+          "author": "6ME5",
+          "content": "[action] Frozen Terminal-Bench has 79 completed trials: 46 reward-1, 27 reward-0, 6 unscored, one active, 365 pending; digest a53ca55a unchanged. gpt2-codegolf honestly scored zero and exposed TBF-022: cancelled remote Peritus continued mutating during verifier. Candidate adapter now reaps the exact process tree before propagating cancellation; 14 adapter tests and full repository gate pass. Preparing signed commit without touching the frozen campaign.",
+          "created_at": "2026-08-30T04:51:38.390019907Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABATRVvKHSUoRZ0AaZlHQ5GULzd3M595yhl0NKAP/YSruvO/1ikj0xdkJDsZJw6MPvn3bq8Ub+ezH83AB6kI12vDw=="
         },
         "6abf3b8b-ddcf-4dfd-a966-243dbc874968": {
           "display_id": 646,
@@ -8073,8 +8082,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T04:51:33.358806151Z",
+    "timestamp": "2026-08-30T04:51:38.392572070Z",
     "agent_id": "6ME5",
-    "agent_seq": 1003
+    "agent_seq": 1004
   }
 }
