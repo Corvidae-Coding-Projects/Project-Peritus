@@ -5,6 +5,10 @@
 
 #[cfg(unix)]
 mod a3;
+#[cfg(unix)]
+mod campaign;
+#[cfg(all(test, unix))]
+mod campaign_tests;
 mod cancellation;
 #[cfg(unix)]
 mod daemon;
@@ -17,13 +21,17 @@ mod machine;
 #[cfg(unix)]
 mod process;
 mod runner;
+mod sampling;
 #[cfg(unix)]
 mod scheduler;
+mod shared_accounting;
 #[cfg(unix)]
 mod subject;
 
+#[cfg(unix)]
+pub use campaign::{CampaignCoordinator, CampaignMode, CampaignOutcome, CampaignRequest};
 pub use cancellation::CancellationFlag;
-pub use error::{RunnerError, SubjectError};
+pub use error::{CampaignError, RunnerError, SubjectError};
 pub use machine::{MachineAssessment, MachineMismatch, MachineObservation};
 pub use runner::PacedRunner;
 #[cfg(unix)]

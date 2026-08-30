@@ -2,7 +2,7 @@
 
 `peritus-performance-qualification` owns the executable H3 integration boundary. It applies the
 stable plans from `peritus-benchmarks` to disposable G0/F0 subjects with monotonic wall-clock
-pacing, cooperative cancellation, bounded accounting, and externally retained evidence.
+pacing, cooperative cancellation, bounded accounting, and evidence-ready results.
 
 The crate never uses paid provider accounts for load or soak traffic. Provider-pressure scenarios
 use a deterministic local adapter. Production-profile results fail closed unless the measured host
@@ -16,8 +16,16 @@ the provider adapter is deterministic and never reads provider credentials. Each
 is created with its disposable instance and cannot authorize another instance.
 
 Generated measurements and reports belong in an operator-selected directory outside the
-repository. The four eight-hour soak workloads execute concurrently under one combined resource
-envelope, so the production soak campaign takes eight hours rather than thirty-two.
+repository. The campaign coordinator first runs short load workloads sequentially. In full mode it
+then runs the four eight-hour workloads concurrently under one combined resource envelope, so the
+production soak takes eight hours rather than thirty-two. Every subject must report the same exact
+daemon executable identity.
+
+Long campaigns use deterministic reservoir sampling per workload and metric. Objective metrics
+retain twice their required sample count and diagnostics retain a bounded representative set, then
+the coordinator merges everything into one monotonic campaign sequence. Queue workloads end with
+an exact drain when their operation count stops partway through a saturation cycle, so successful
+plans return the shared ledger to a balanced terminal state.
 
 ## Focused checks
 

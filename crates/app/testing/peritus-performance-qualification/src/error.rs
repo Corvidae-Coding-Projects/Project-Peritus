@@ -43,6 +43,35 @@ pub enum SubjectError {
     UnsupportedPlatform,
 }
 
+/// Failure to coordinate or evaluate one multi-workload H3 campaign.
+#[derive(Debug, thiserror::Error)]
+pub enum CampaignError {
+    /// A stable dataset, sample merge, or evaluation contract failed.
+    #[error("qualification campaign contract failed")]
+    Qualification(#[from] QualificationError),
+    /// One workload runner could not produce a terminal receipt.
+    #[error("qualification campaign runner failed")]
+    Runner(#[from] RunnerError<SubjectError>),
+    /// A disposable subject could not launch or negotiate its public boundary.
+    #[error("qualification campaign subject failed")]
+    Subject(#[from] SubjectError),
+    /// A worker thread panicked instead of returning typed evidence.
+    #[error("qualification campaign worker panicked")]
+    WorkerPanicked,
+    /// Different disposable subjects reported different executable identities.
+    #[error("qualification campaign subjects did not share one exact executable identity")]
+    SubjectIdentityMismatch,
+    /// The measured host did not match the production profile.
+    #[error("qualification host does not match the reference-machine profile")]
+    ReferenceMachineMismatch,
+    /// No workloads matched the selected campaign mode.
+    #[error("qualification campaign selected no workloads")]
+    NoWorkloads,
+    /// System time could not be represented relative to the Unix epoch.
+    #[error("qualification campaign clock was before the Unix epoch")]
+    Clock(#[from] std::time::SystemTimeError),
+}
+
 /// Failure to execute or account one qualification plan.
 #[derive(Debug, thiserror::Error)]
 pub enum RunnerError<E>

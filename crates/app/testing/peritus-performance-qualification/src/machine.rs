@@ -70,6 +70,12 @@ impl MachineObservation {
         );
         MachineAssessment { matches: mismatches.is_empty(), mismatches }
     }
+
+    /// Returns the exact measured-host facts retained by this observation.
+    #[must_use]
+    pub const fn reference_machine(&self) -> &ReferenceMachine {
+        &self.measured
+    }
 }
 
 /// Reference-machine field that differs from the measured host.

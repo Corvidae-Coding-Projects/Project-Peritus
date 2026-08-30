@@ -13,6 +13,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Add the H3 production campaign coordinator: execute short load plans sequentially and four
+  eight-hour plans concurrently against disposable public-A3 daemon subjects, enforce an exact
+  reference-machine match before launch, share one combined resource ledger, retain deterministic
+  bounded samples across the full horizon, and return one fail-closed evaluation and receipt set
+  (#35)
 - Bind every new external-benchmark invocation to the exact clean Peritus source revision, Cargo
   package version, and SHA-256 of the native executable; make Harbor verify the uploaded binary
   against the native report and retain both identities in its trial metadata (#31)
@@ -40,6 +45,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Fixed
+- Finish partial queue-saturation cycles with an exact planned drain so every production catalog
+  workload returns its command, exporter, or provider queue to a balanced terminal state instead of
+  failing readiness solely because its operation count ends between complete saturation cycles
+  (#35)
 - Start a bounded fresh repository-grounded invocation when designer, writer, fixer, or reviewer
   exhausts one invocation's empty, connection, or malformed-stream retries; preserve useful
   workspace progress, refuse safety and other non-retryable terminals, and stop after three total

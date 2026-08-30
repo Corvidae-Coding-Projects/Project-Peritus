@@ -5,7 +5,8 @@ use std::thread;
 use std::time::Instant;
 
 use peritus_benchmarks::{
-    AccountingSink, MeasurementSink, Metric, PlanStep, PlannedOperation, ResourceEvent, RunContext,
+    AccountingSink, MeasurementSink, Metric, PlanStep, PlannedOperation, QueueKind, ResourceEvent,
+    RunContext,
 };
 
 use super::IntegratedSubject;
@@ -62,33 +63,16 @@ impl IntegratedSubject {
                 self.restart_daemon(context, measurements)?;
             }
             PlannedOperation::Enqueue { queue, count } => {
-                let depth = self.queue_depths.entry(*queue).or_default();
-                *depth = depth.checked_add(*count).ok_or(SubjectError::IdentityExhausted)?;
-                let observed_depth = *depth;
-                accounting.apply(ResourceEvent::QueuePushed { queue: *queue, count: *count })?;
-                self.measure(
-                    context,
-                    queue_metric(*queue),
-                    u64::from(observed_depth),
-                    measurements,
-                )?;
+                self.enqueue(*queue, *count, context, measurements, accounting)?;
             }
             PlannedOperation::Dequeue { queue, count } => {
-                let depth = self.queue_depths.entry(*queue).or_default();
-                *depth = depth.checked_sub(*count).ok_or_else(|| {
-                    SubjectError::UnexpectedResponse("queue plan underflowed".to_owned())
-                })?;
-                accounting.apply(ResourceEvent::QueuePopped { queue: *queue, count: *count })?;
+                self.dequeue(*queue, *count, accounting)?;
+            }
+            PlannedOperation::DrainQueue { queue, count } => {
+                self.drain_queue(*queue, *count, accounting)?;
             }
             PlannedOperation::ObserveBackpressure { queue } => {
-                let started = Instant::now();
-                thread::yield_now();
-                let waited = micros(started.elapsed());
-                accounting.apply(ResourceEvent::BackpressureObserved {
-                    queue: *queue,
-                    wait_micros: waited,
-                })?;
-                self.measure(context, backpressure_metric(*queue), waited, measurements)?;
+                self.observe_backpressure(*queue, context, measurements, accounting)?;
             }
             PlannedOperation::StartProviderRequest { request } => {
                 self.start_provider(*request, context, measurements, accounting)?;
@@ -115,6 +99,68 @@ impl IntegratedSubject {
             }
         }
         Ok(())
+    }
+
+    fn enqueue(
+        &mut self,
+        queue: QueueKind,
+        count: u32,
+        context: &RunContext,
+        measurements: &mut dyn MeasurementSink,
+        accounting: &mut dyn AccountingSink,
+    ) -> Result<(), SubjectError> {
+        let depth = self.queue_depths.entry(queue).or_default();
+        *depth = depth.checked_add(count).ok_or(SubjectError::IdentityExhausted)?;
+        let observed_depth = *depth;
+        accounting.apply(ResourceEvent::QueuePushed { queue, count })?;
+        self.measure(context, queue_metric(queue), u64::from(observed_depth), measurements)
+    }
+
+    fn dequeue(
+        &mut self,
+        queue: QueueKind,
+        count: u32,
+        accounting: &mut dyn AccountingSink,
+    ) -> Result<(), SubjectError> {
+        let depth = self.queue_depths.entry(queue).or_default();
+        *depth = depth
+            .checked_sub(count)
+            .ok_or_else(|| SubjectError::UnexpectedResponse("queue plan underflowed".to_owned()))?;
+        accounting.apply(ResourceEvent::QueuePopped { queue, count })?;
+        Ok(())
+    }
+
+    fn drain_queue(
+        &mut self,
+        queue: QueueKind,
+        count: u32,
+        accounting: &mut dyn AccountingSink,
+    ) -> Result<(), SubjectError> {
+        let depth = self.queue_depths.entry(queue).or_default();
+        if *depth != count {
+            return Err(SubjectError::UnexpectedResponse(format!(
+                "queue drain expected {count} retained items but observed {depth}"
+            )));
+        }
+        if count != 0 {
+            accounting.apply(ResourceEvent::QueuePopped { queue, count })?;
+        }
+        *depth = 0;
+        Ok(())
+    }
+
+    fn observe_backpressure(
+        &mut self,
+        queue: QueueKind,
+        context: &RunContext,
+        measurements: &mut dyn MeasurementSink,
+        accounting: &mut dyn AccountingSink,
+    ) -> Result<(), SubjectError> {
+        let started = Instant::now();
+        thread::yield_now();
+        let waited = micros(started.elapsed());
+        accounting.apply(ResourceEvent::BackpressureObserved { queue, wait_micros: waited })?;
+        self.measure(context, backpressure_metric(queue), waited, measurements)
     }
 
     fn start_process(

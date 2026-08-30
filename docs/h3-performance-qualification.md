@@ -73,11 +73,19 @@ restart, and performs owned terminal, cancellation, artifact, queue, and determi
 provider-pressure effects. `RunContext` carries an explicit workload binding so every measurement
 is attributable when one campaign sink receives several plans.
 
-The retained operator smoke runs a complete scheduler start, event, drain, and finalize lifecycle
-against a real daemon and proves terminal resource balance. That smoke is integration evidence, not
-an H3 production verdict. The campaign coordinator, reference-machine probe, retained evidence
-writer, accepted-baseline workflow, concurrent four-plan soak, and eight-hour execution evidence
-remain required before H3 can report readiness.
+The retained operator smokes run a complete scheduler start, event, drain, and finalize lifecycle
+and a separate crash, restart, and successor-event flow against real disposable daemons. These
+smokes are integration evidence, not an H3 production verdict.
+
+The production campaign coordinator rejects a reference-machine mismatch before launch, runs load
+workloads sequentially, runs the four long-horizon workloads concurrently, shares one resource
+ledger across their subjects, and rejects subject executable-identity drift. Deterministic bounded
+reservoirs preserve representative samples without exceeding the profile's global record limit;
+the final merge assigns one contiguous, monotonic campaign sequence. A final partial queue cycle
+uses an exact drain operation so completed workloads do not retain queue ownership.
+
+The automatic host probe, retained evidence writer, accepted-baseline operator workflow, and actual
+eight-hour reference-machine execution evidence remain required before H3 can report readiness.
 
 ## Bounded accounting and backpressure
 
