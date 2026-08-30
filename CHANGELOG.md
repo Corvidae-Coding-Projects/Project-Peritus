@@ -149,6 +149,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Create the Windows restricted primary token with the zeroed restricting-SID attributes required
+  by `CreateRestrictedToken`, and require native qualification tests to observe both the restricted
+  token and its low-integrity label instead of allowing the sandbox probe to degrade silently (#31)
 - Resolve the nested Windows H0 Cargo linker to an absolute Visual Studio MSVC tool and propagate
   its discovered SDK environment, preventing Git's unrelated GNU `link.exe` from being selected
   after the native qualification boundary clears ambient process state (#32)

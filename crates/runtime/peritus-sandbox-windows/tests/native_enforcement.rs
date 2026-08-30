@@ -14,6 +14,8 @@ fn native_probe_reports_real_helper_platform_and_architecture() {
     assert!(probe.evidence().helper);
     assert!(probe.evidence().helper_digest.is_some());
     assert!(probe.evidence().os_build.is_some());
+    assert!(probe.evidence().restricted_token);
+    assert!(probe.evidence().low_integrity);
     assert!(!probe.evidence().managed_network);
 }
 
@@ -34,5 +36,7 @@ fn native_probe_derives_and_verifies_an_exact_app_container_identity() {
     let probe = WindowsProbe::run(&request).unwrap();
     assert!(probe.evidence().app_container);
     assert!(probe.evidence().app_container_sid_exact);
+    assert!(probe.evidence().restricted_token);
+    assert!(probe.evidence().low_integrity);
     assert!(probe.evidence().deny_network);
 }

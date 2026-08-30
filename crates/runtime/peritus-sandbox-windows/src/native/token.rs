@@ -20,7 +20,6 @@ use crate::{
     WindowsRecovery,
 };
 
-const SE_GROUP_ENABLED: u32 = 4;
 const SE_GROUP_INTEGRITY: u32 = 0x20;
 const MAX_SID_TEXT_UNITS: usize = 256;
 
@@ -66,8 +65,9 @@ impl RestrictedToken {
             return Err(token_error("current process token cannot be opened"));
         }
         let current = OwnedHandle(current);
-        let restricting =
-            SID_AND_ATTRIBUTES { Sid: restriction.as_ptr(), Attributes: SE_GROUP_ENABLED };
+        // CreateRestrictedToken requires every restricting-SID attribute field to be zero.
+        // Restricting SIDs are enabled by the kernel during the second access check.
+        let restricting = SID_AND_ATTRIBUTES { Sid: restriction.as_ptr(), Attributes: 0 };
         let mut restricted = ptr::null_mut();
         // SAFETY: current and SID remain live, all optional arrays use zero/null pairs.
         if unsafe {
