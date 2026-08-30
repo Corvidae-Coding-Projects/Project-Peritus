@@ -28,7 +28,15 @@ fn native_executor_runs_every_case_in_a_fresh_cleaned_subject() {
     let run = QualificationRunner
         .run(&mut factory, candidate, QualificationLimits::production(), &CancellationToken::new())
         .expect("canonical H0 run");
-    assert!(run.all_passed());
+    assert!(
+        run.all_passed(),
+        "native cases failed: {:?}",
+        run.cases()
+            .iter()
+            .filter(|case| case.outcome() != peritus_security_qualification::CaseOutcome::Passed)
+            .map(|case| (case.spec().id(), case.failures()))
+            .collect::<Vec<_>>()
+    );
     assert_eq!(run.cases().len(), 42);
     assert!(run.cases().iter().all(|case| {
         case.observation().is_some_and(|observation| {
@@ -77,17 +85,23 @@ fn response_with_a_false_artifact_digest_is_rejected_and_retained() {
         )
         .expect("canonical failing run");
     assert!(!run.all_passed());
-    assert!(run.cases().iter().all(|case| {
-        case.failures().iter().any(|failure| {
-            matches!(
-                failure,
-                peritus_security_qualification::CaseFailure::NativeExecution(error)
-                    if error.detail().contains("artifact digest")
-            )
-        }) && case
-            .cleanup()
-            .is_some_and(peritus_security_qualification::CleanupObservation::complete)
-    }));
+    let unexpected = run
+        .cases()
+        .iter()
+        .filter(|case| {
+            !case.failures().iter().any(|failure| {
+                matches!(
+                    failure,
+                    peritus_security_qualification::CaseFailure::NativeExecution(error)
+                        if error.detail().contains("artifact digest")
+                )
+            }) || !case
+                .cleanup()
+                .is_some_and(peritus_security_qualification::CleanupObservation::complete)
+        })
+        .map(|case| (case.spec().id(), case.failures()))
+        .collect::<Vec<_>>();
+    assert!(unexpected.is_empty(), "unexpected native results: {unexpected:?}");
     assert_retained_artifacts(&fixture.artifacts, 42, b"abc");
 }
 

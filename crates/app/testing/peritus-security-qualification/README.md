@@ -49,6 +49,13 @@ terminate descendants before the runner records cleanup.
 
 `ReadinessVerdict::Ready` is an H0 qualification result only. It is not H4 release authority.
 
+Production execution is partitioned into three candidate-bound native shards. Linux owns the 39
+portable tier-one probes plus the Linux backend probe; macOS and Windows each own only their native
+backend probe. Aggregation accepts exactly one shard from every platform, requires identical
+candidate and resource-limit bindings, rejects duplicate subject or probe evidence, and restores
+the original 42-case catalog order before policy evaluation. No host can stand in for another
+operating system.
+
 ## Evidence
 
 `EvidenceManifest` produces deterministic JSON in stable probe order and hashes those exact bytes

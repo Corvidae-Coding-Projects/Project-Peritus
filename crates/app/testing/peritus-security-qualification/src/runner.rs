@@ -11,6 +11,7 @@ use crate::{
     CancellationToken, CaseFailure, CaseReport, CleanupObservation, ProbeObservation, ProbeOutcome,
     ProbeSpec, QualificationError, QualificationLimits, QualificationRun,
     observation::checked_subject_id,
+    shard::{QualificationPlatform, QualificationShard},
 };
 
 /// Exact immutable request supplied to one fresh native subject.
@@ -112,13 +113,64 @@ impl QualificationRunner {
         limits: QualificationLimits,
         cancellation: &CancellationToken,
     ) -> Result<QualificationRun, QualificationError> {
-        let mut cases = Vec::with_capacity(ProbeSpec::h0_production().len());
-        let mut subjects = BTreeSet::<String>::new();
-        for spec in ProbeSpec::h0_production() {
-            cases.push(run_case(factory, candidate, *spec, limits, cancellation, &mut subjects));
-        }
+        let cases = run_specs(
+            factory,
+            candidate,
+            limits,
+            cancellation,
+            ProbeSpec::h0_production().iter().copied(),
+        );
         QualificationRun::new(candidate, limits, cases)
     }
+
+    /// Runs only the probes canonically assigned to one native platform.
+    ///
+    /// Portable tier-one probes run once on Linux. macOS and Windows shards contain only their
+    /// native backend probe, so no host can manufacture evidence for another operating system.
+    ///
+    /// # Errors
+    ///
+    /// Returns when the resulting shard does not have its exact canonical shape.
+    pub fn run_shard(
+        &self,
+        factory: &mut dyn FreshSubjectFactory,
+        candidate: IntegratedCandidate,
+        limits: QualificationLimits,
+        cancellation: &CancellationToken,
+        platform: QualificationPlatform,
+    ) -> Result<QualificationShard, QualificationError> {
+        let specs =
+            ProbeSpec::h0_production().iter().copied().filter(|spec| platform.owns(spec.target()));
+        let cases = run_specs(factory, candidate, limits, cancellation, specs);
+        QualificationShard::new(candidate, limits, platform, cases)
+    }
+
+    /// Combines exactly one canonical shard from every native platform.
+    ///
+    /// # Errors
+    ///
+    /// Rejects missing, duplicate, stale, differently limited, or malformed shards.
+    pub fn aggregate(
+        &self,
+        shards: Vec<QualificationShard>,
+    ) -> Result<QualificationRun, QualificationError> {
+        crate::shard::aggregate(shards)
+    }
+}
+
+fn run_specs(
+    factory: &mut dyn FreshSubjectFactory,
+    candidate: IntegratedCandidate,
+    limits: QualificationLimits,
+    cancellation: &CancellationToken,
+    specs: impl IntoIterator<Item = ProbeSpec>,
+) -> Vec<CaseReport> {
+    let mut cases = Vec::new();
+    let mut subjects = BTreeSet::<String>::new();
+    for spec in specs {
+        cases.push(run_case(factory, candidate, spec, limits, cancellation, &mut subjects));
+    }
+    cases
 }
 
 fn run_case(

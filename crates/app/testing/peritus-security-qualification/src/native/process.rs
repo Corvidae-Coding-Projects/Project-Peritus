@@ -18,6 +18,7 @@ use super::native_error;
 use super::process_tree::ProcessTree;
 
 const POLL_INTERVAL: Duration = Duration::from_millis(20);
+const EXECUTABLE_BUSY_RETRIES: u8 = 4;
 
 pub(super) struct ProcessOutcome {
     pub(super) status: ExitStatus,
@@ -131,9 +132,22 @@ struct OwnedChild {
 
 impl OwnedChild {
     fn spawn(command: &mut Command, maximum_processes: u32) -> Result<Self, QualificationError> {
-        let child = command.spawn().map_err(|error| {
-            native_error("launch native H0 probe", format!("spawn executor: {error}"))
-        })?;
+        let mut retries = 0_u8;
+        let child = loop {
+            match command.spawn() {
+                Ok(child) => break child,
+                Err(error) if executable_is_busy(&error) && retries < EXECUTABLE_BUSY_RETRIES => {
+                    retries += 1;
+                    thread::sleep(Duration::from_millis(u64::from(retries) * 5));
+                }
+                Err(error) => {
+                    return Err(native_error(
+                        "launch native H0 probe",
+                        format!("spawn executor: {error}"),
+                    ));
+                }
+            }
+        };
         let tree = ProcessTree::attach(&child, maximum_processes)?;
         Ok(Self { child, tree, reaped: false })
     }
@@ -179,6 +193,16 @@ impl OwnedChild {
         self.reaped = true;
         Ok(())
     }
+}
+
+#[cfg(unix)]
+fn executable_is_busy(error: &io::Error) -> bool {
+    error.raw_os_error() == Some(nix::libc::ETXTBSY)
+}
+
+#[cfg(not(unix))]
+const fn executable_is_busy(_error: &io::Error) -> bool {
+    false
 }
 
 impl Drop for OwnedChild {

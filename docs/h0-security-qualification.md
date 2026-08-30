@@ -63,6 +63,13 @@ and Windows hosts where required. `QualificationSubject::execute` receives the e
 case, cooperative cancellation signal, and hard limits for monotonic duration, processes, peak
 memory, output, and artifacts.
 
+The production runner has a fixed three-host partition. The Linux shard executes the portable
+tier-one catalog and the Linux backend probe; macOS and Windows execute only their corresponding
+native backend probes. The aggregator requires one shard from every platform, identical candidate
+and limit bindings, globally unique fresh subjects, and exactly one report for every canonical
+probe. It then restores the original 42-case order. Missing or duplicate platform evidence cannot
+be interpreted as portable success.
+
 The adapter returns a `NativeExecutionReceipt` containing executor, host, and exact-command
 digests, exit status, native-sandbox observation, resource accounting, and nonempty structured
 evidence. There is no simulated or assumed-success receipt variant. Host adapters are nevertheless a
@@ -74,6 +81,11 @@ adapter error, cancellation, and panic. Cleanup accounts for remaining processes
 and endpoints and supplies a direct evidence digest. Reused subjects, missing cleanup, subject
 mismatch, or any remaining resource fails the case. Cancellation and limit overrun never become a
 pass.
+
+Some Unix workspace and overlay filesystems can briefly return `ETXTBSY` immediately after a fresh
+executor is staged. The native boundary retries only that exact operating-system condition four
+times with a short bounded delay. Any persistent busy state or different launch error remains a
+typed native failure.
 
 ## External review and findings
 

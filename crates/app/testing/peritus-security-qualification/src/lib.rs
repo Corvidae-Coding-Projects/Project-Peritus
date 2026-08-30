@@ -15,6 +15,7 @@ mod observation;
 mod policy_bridge;
 mod report;
 mod runner;
+mod shard;
 
 pub use assets::{BundledSecurityAsset, bundled_security_assets};
 pub use catalog::{H0_PRODUCTION_PROBE_COUNT, ProbeId, ProbeSpec, ProbeTarget};
@@ -38,3 +39,4 @@ pub use peritus_security_policy::{
 };
 pub use report::{NotReadyReason, QualificationReport, ReadinessEvidence, ReadinessVerdict};
 pub use runner::{FreshSubjectFactory, ProbeRequest, QualificationRunner, QualificationSubject};
+pub use shard::{QualificationPlatform, QualificationShard};

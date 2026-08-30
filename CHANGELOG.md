@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Add candidate-bound H0 native-platform shards with a fixed Linux 40, macOS 1, and Windows 1
+  partition plus fail-closed three-host aggregation, preventing one host from manufacturing native
+  security evidence for another operating system (#32)
 - Exercise the installed TUI itself in H2 through the host PTY or ConPTY: answer the bounded
   standards-defined cursor-position handshake, require a real daemon connection and rendered
   frame, send the documented Ctrl-Q action, require a successful exit, and verify alternate-screen,
@@ -112,6 +115,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Retry a freshly staged native H0 executor only for the bounded Unix `ETXTBSY` launch race seen on
+  parallel workspace filesystems; persistent executable-busy errors and every other spawn failure
+  still fail the probe normally (#32)
 - Make native H2 lifecycle children receive the fresh subject's private home, local application
   data, configuration, state, data, and temporary roots explicitly after environment clearing, so
   Windows PowerShell installers cannot lose `LOCALAPPDATA`; accept the macOS helper's reserved
