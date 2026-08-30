@@ -31,6 +31,7 @@ pub(super) struct ProcessRequest<'a> {
     pub(super) root: &'a Path,
     pub(super) request_path: &'a Path,
     pub(super) response_path: &'a Path,
+    pub(super) artifact_root: &'a Path,
     pub(super) subject_id: &'a str,
     pub(super) request_sha256: &'a str,
 }
@@ -48,6 +49,8 @@ pub(super) fn execute(
         .arg(request.response_path)
         .arg("--subject-root")
         .arg(request.root)
+        .arg("--artifact-root")
+        .arg(request.artifact_root)
         .arg("--subject-id")
         .arg(request.subject_id)
         .arg("--request-sha256")
@@ -217,14 +220,13 @@ fn preserve_runtime_environment(command: &mut Command) {
 }
 
 pub(super) fn sha256_file(path: &Path) -> Result<peritus_types::Sha256Digest, QualificationError> {
-    let mut file = File::open(path).map_err(|error| {
-        native_error("digest native H0 executor", format!("open executor: {error}"))
-    })?;
+    let mut file = File::open(path)
+        .map_err(|error| native_error("digest native H0 file", format!("open file: {error}")))?;
     let mut hasher = Sha256::new();
     let mut buffer = vec![0_u8; 64 * 1024].into_boxed_slice();
     loop {
         let count = file.read(&mut buffer).map_err(|error| {
-            native_error("digest native H0 executor", format!("read executor: {error}"))
+            native_error("digest native H0 file", format!("read file: {error}"))
         })?;
         if count == 0 {
             break;

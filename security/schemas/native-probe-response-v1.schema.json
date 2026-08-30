@@ -37,6 +37,12 @@
       "maxLength": 128,
       "pattern": "^[a-z0-9._-]+$"
     },
+    "artifact_path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"
+    },
     "usage": {
       "type": "object",
       "additionalProperties": false,
@@ -80,10 +86,11 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "label", "sha256", "bytes"],
+          "required": ["kind", "label", "path", "sha256", "bytes"],
           "properties": {
             "kind": {"const": "digest"},
             "label": {"$ref": "#/$defs/safe_code"},
+            "path": {"$ref": "#/$defs/artifact_path"},
             "sha256": {"$ref": "#/$defs/sha256"},
             "bytes": {"type": "integer", "minimum": 0}
           }

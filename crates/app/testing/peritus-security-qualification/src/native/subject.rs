@@ -24,37 +24,37 @@ pub struct NativeProbeFactory {
     executor: PathBuf,
     executor_digest: peritus_types::Sha256Digest,
     scratch_parent: PathBuf,
+    artifact_parent: PathBuf,
     host: HostFingerprint,
     next_subject: u64,
 }
 
 impl NativeProbeFactory {
-    /// Validates the reviewed executor and private scratch parent.
+    /// Validates the reviewed executor, private scratch parent, and retained-artifact parent.
     ///
     /// # Errors
     ///
-    /// Rejects a non-file executor, a non-directory scratch parent, or paths that cannot be
-    /// canonicalized before the campaign begins.
+    /// Rejects a non-file executor, a non-directory parent, or paths that cannot be canonicalized
+    /// before the campaign begins.
     pub fn new(
         executor: impl AsRef<Path>,
         scratch_parent: impl AsRef<Path>,
+        artifact_parent: impl AsRef<Path>,
         host: HostFingerprint,
     ) -> Result<Self, QualificationError> {
         let executor = canonical_file(executor.as_ref(), "native H0 executor")?;
-        let scratch_parent = fs::canonicalize(scratch_parent.as_ref()).map_err(|error| {
-            native_error(
-                "configure native H0 subject",
-                format!("canonicalize scratch parent: {error}"),
-            )
-        })?;
-        if !fs::metadata(&scratch_parent).is_ok_and(|metadata| metadata.is_dir()) {
-            return Err(native_error(
-                "configure native H0 subject",
-                "scratch parent is not an existing directory",
-            ));
-        }
+        let scratch_parent = canonical_directory(scratch_parent.as_ref(), "scratch parent")?;
+        let artifact_parent =
+            canonical_directory(artifact_parent.as_ref(), "retained-artifact parent")?;
         let executor_digest = sha256_file(&executor)?;
-        Ok(Self { executor, executor_digest, scratch_parent, host, next_subject: 1 })
+        Ok(Self {
+            executor,
+            executor_digest,
+            scratch_parent,
+            artifact_parent,
+            host,
+            next_subject: 1,
+        })
     }
 }
 
@@ -106,12 +106,14 @@ impl FreshSubjectFactory for NativeProbeFactory {
             })?
             .as_nanos();
         let subject_id = format!("h0-{}-{sequence}-{nonce}", std::process::id());
+        let artifact_root = create_retained_artifact_root(&self.artifact_parent, &subject_id)?;
         Ok(Box::new(NativeProbeSubject {
             subject_id,
             executor: staged_executor,
             executor_digest: staged_digest,
             host: self.host,
             root,
+            artifact_root,
             temporary: Some(temporary),
         }))
     }
@@ -123,6 +125,7 @@ struct NativeProbeSubject {
     executor_digest: peritus_types::Sha256Digest,
     host: HostFingerprint,
     root: PathBuf,
+    artifact_root: PathBuf,
     temporary: Option<TempDir>,
 }
 
@@ -148,6 +151,7 @@ impl QualificationSubject for NativeProbeSubject {
                 root: &self.root,
                 request_path: &request_path,
                 response_path: &response_path,
+                artifact_root: &self.artifact_root,
                 subject_id: &self.subject_id,
                 request_sha256: &request_sha256,
             },
@@ -160,6 +164,7 @@ impl QualificationSubject for NativeProbeSubject {
             &request_bytes,
             request,
             &self.subject_id,
+            &self.artifact_root,
         )?;
         if response.outcome == crate::ProbeOutcome::Passed && !process.status.success() {
             return Err(native_error(
@@ -176,8 +181,13 @@ impl QualificationSubject for NativeProbeSubject {
             response.usage.artifact_count(),
         );
         let exit_code = process.status.code().unwrap_or(-1);
-        let command_digest =
-            command_digest(&self.executor, self.executor_digest, &request_bytes, &self.subject_id);
+        let command_digest = command_digest(
+            &self.executor,
+            self.executor_digest,
+            &request_bytes,
+            &self.subject_id,
+            &self.artifact_root,
+        );
         let receipt = NativeExecutionReceipt::from_native_observation(
             self.executor_digest,
             self.host.digest(),
@@ -208,9 +218,16 @@ impl QualificationSubject for NativeProbeSubject {
                 "private subject root remained after cleanup",
             ));
         }
+        if !fs::metadata(&self.artifact_root).is_ok_and(|metadata| metadata.is_dir()) {
+            return Err(cleanup_error(
+                "clean native H0 subject",
+                "retained-artifact root was not preserved",
+            ));
+        }
         let mut evidence = b"peritus/h0/native-cleanup/v1\0".to_vec();
         evidence.extend_from_slice(self.subject_id.as_bytes());
         evidence.extend_from_slice(self.executor_digest.as_bytes());
+        evidence.extend_from_slice(self.artifact_root.to_string_lossy().as_bytes());
         CleanupObservation::new(self.subject_id.clone(), 0, 0, 0, 0, digest_bytes(&evidence))
     }
 }
@@ -228,17 +245,60 @@ fn canonical_file(path: &Path, label: &str) -> Result<PathBuf, QualificationErro
     Ok(canonical)
 }
 
+fn canonical_directory(path: &Path, label: &str) -> Result<PathBuf, QualificationError> {
+    let canonical = fs::canonicalize(path).map_err(|error| {
+        native_error("configure native H0 subject", format!("canonicalize {label}: {error}"))
+    })?;
+    if !fs::metadata(&canonical).is_ok_and(|metadata| metadata.is_dir()) {
+        return Err(native_error(
+            "configure native H0 subject",
+            format!("{label} is not an existing directory"),
+        ));
+    }
+    Ok(canonical)
+}
+
+fn create_retained_artifact_root(
+    parent: &Path,
+    subject_id: &str,
+) -> Result<PathBuf, QualificationError> {
+    let path = parent.join(subject_id);
+    let builder = fs::DirBuilder::new();
+    #[cfg(unix)]
+    let builder = {
+        use std::os::unix::fs::DirBuilderExt as _;
+        let mut builder = builder;
+        builder.mode(0o700);
+        builder
+    };
+    builder.create(&path).map_err(|error| {
+        native_error(
+            "provision native H0 subject",
+            format!("create retained-artifact root: {error}"),
+        )
+    })?;
+    fs::canonicalize(&path).map_err(|error| {
+        native_error(
+            "provision native H0 subject",
+            format!("canonicalize retained-artifact root: {error}"),
+        )
+    })
+}
+
 fn command_digest(
     executor: &Path,
     executor_digest: peritus_types::Sha256Digest,
     request: &[u8],
     subject_id: &str,
+    artifact_root: &Path,
 ) -> peritus_types::Sha256Digest {
-    let mut bytes = b"peritus/h0/native-command/v1\0".to_vec();
+    let mut bytes = b"peritus/h0/native-command/v2\0".to_vec();
     bytes.extend_from_slice(executor_digest.as_bytes());
     bytes.extend_from_slice(executor.to_string_lossy().as_bytes());
     bytes.push(0);
     bytes.extend_from_slice(subject_id.as_bytes());
+    bytes.push(0);
+    bytes.extend_from_slice(artifact_root.to_string_lossy().as_bytes());
     bytes.push(0);
     bytes.extend_from_slice(request);
     digest_bytes(&bytes)

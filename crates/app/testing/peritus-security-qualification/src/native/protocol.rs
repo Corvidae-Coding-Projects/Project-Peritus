@@ -1,5 +1,9 @@
 //! Bounded JSON protocol between the H0 host adapter and one native probe executor.
 
+use std::collections::BTreeSet;
+use std::fs;
+use std::path::{Component, Path};
+
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -8,8 +12,10 @@ use crate::{
 };
 
 use super::native_error;
+use super::process::sha256_file;
 
 pub(super) const MAX_RESPONSE_BYTES: u64 = 256 * 1024;
+const MAX_ARTIFACT_PATH_BYTES: usize = 1_024;
 
 #[derive(Serialize)]
 pub(super) struct NativeProbeRequestDocument<'a> {
@@ -122,7 +128,7 @@ struct UsageDocument {
 enum EvidenceDocument {
     Fact { label: String, value: bool },
     Count { label: String, value: u64 },
-    Digest { label: String, sha256: String, bytes: u64 },
+    Digest { label: String, path: String, sha256: String, bytes: u64 },
     Code { label: String, value: String },
 }
 
@@ -139,6 +145,7 @@ impl NativeProbeResponseDocument {
         request_bytes: &[u8],
         request: ProbeRequest<'_>,
         subject_id: &str,
+        artifact_root: &Path,
     ) -> Result<ValidatedResponse, QualificationError> {
         let document: Self = serde_json::from_slice(bytes).map_err(|error| {
             native_error("decode native H0 response", format!("invalid response JSON: {error}"))
@@ -186,7 +193,8 @@ impl NativeProbeResponseDocument {
             document.usage.output_bytes,
             document.usage.artifact_count,
         );
-        let evidence = evidence_set(document.evidence)?;
+        let evidence =
+            evidence_set(document.evidence, artifact_root, document.usage.artifact_count)?;
         Ok(ValidatedResponse {
             outcome,
             native_sandbox_observed: document.native_sandbox_observed,
@@ -196,14 +204,27 @@ impl NativeProbeResponseDocument {
     }
 }
 
-fn evidence_set(entries: Vec<EvidenceDocument>) -> Result<EvidenceSet, QualificationError> {
+fn evidence_set(
+    entries: Vec<EvidenceDocument>,
+    artifact_root: &Path,
+    declared_artifact_count: u32,
+) -> Result<EvidenceSet, QualificationError> {
     let mut set = EvidenceSet::new();
+    let mut artifact_paths = BTreeSet::new();
     for entry in entries {
         let (label, value) = match entry {
             EvidenceDocument::Fact { label, value } => (label, EvidenceValue::Fact(value)),
             EvidenceDocument::Count { label, value } => (label, EvidenceValue::Count(value)),
-            EvidenceDocument::Digest { label, sha256, bytes } => {
-                (label, EvidenceValue::Digest { sha256: parse_sha256(&sha256)?, bytes })
+            EvidenceDocument::Digest { label, path, sha256, bytes } => {
+                if !artifact_paths.insert(path.clone()) {
+                    return Err(native_error(
+                        "validate native H0 response",
+                        "more than one digest names the same retained artifact",
+                    ));
+                }
+                let sha256 = parse_sha256(&sha256)?;
+                validate_artifact(artifact_root, &path, sha256, bytes)?;
+                (label, EvidenceValue::Digest { sha256, bytes })
             }
             EvidenceDocument::Code { label, value } => {
                 (label, EvidenceValue::Code(SafeEvidenceCode::new(value)?))
@@ -211,7 +232,81 @@ fn evidence_set(entries: Vec<EvidenceDocument>) -> Result<EvidenceSet, Qualifica
         };
         set.insert(EvidenceEntry::new(SafeEvidenceCode::new(label)?, value))?;
     }
+    let artifact_count = u32::try_from(artifact_paths.len()).map_err(|_| {
+        native_error("validate native H0 response", "retained-artifact count exceeds u32")
+    })?;
+    if artifact_count != declared_artifact_count {
+        return Err(native_error(
+            "validate native H0 response",
+            "resource usage does not match the retained digest artifact count",
+        ));
+    }
     Ok(set)
+}
+
+fn validate_artifact(
+    artifact_root: &Path,
+    relative_path: &str,
+    expected_sha256: peritus_types::Sha256Digest,
+    expected_bytes: u64,
+) -> Result<(), QualificationError> {
+    validate_artifact_path(relative_path)?;
+    let path = artifact_root.join(relative_path);
+    let metadata = fs::symlink_metadata(&path).map_err(|error| {
+        native_error(
+            "validate native H0 artifact",
+            format!("read retained-artifact metadata: {error}"),
+        )
+    })?;
+    if !metadata.file_type().is_file() {
+        return Err(native_error(
+            "validate native H0 artifact",
+            "retained artifact is not a regular file",
+        ));
+    }
+    let canonical = fs::canonicalize(&path).map_err(|error| {
+        native_error(
+            "validate native H0 artifact",
+            format!("canonicalize retained artifact: {error}"),
+        )
+    })?;
+    if !canonical.starts_with(artifact_root) {
+        return Err(native_error(
+            "validate native H0 artifact",
+            "retained artifact resolves outside its assigned root",
+        ));
+    }
+    if metadata.len() != expected_bytes {
+        return Err(native_error(
+            "validate native H0 artifact",
+            "retained artifact byte count does not match its response",
+        ));
+    }
+    if sha256_file(&canonical)? != expected_sha256 {
+        return Err(native_error(
+            "validate native H0 artifact",
+            "retained artifact digest does not match its response",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_artifact_path(value: &str) -> Result<(), QualificationError> {
+    let bytes = value.as_bytes();
+    if bytes.is_empty()
+        || bytes.len() > MAX_ARTIFACT_PATH_BYTES
+        || bytes
+            .iter()
+            .any(|byte| !byte.is_ascii_alphanumeric() && !matches!(byte, b'.' | b'_' | b'-' | b'/'))
+        || value.split('/').any(|segment| segment.is_empty() || matches!(segment, "." | ".."))
+        || Path::new(value).components().any(|component| !matches!(component, Component::Normal(_)))
+    {
+        return Err(native_error(
+            "validate native H0 artifact",
+            "retained-artifact path is not a portable normal relative path",
+        ));
+    }
+    Ok(())
 }
 
 fn hex_identifier(bytes: &[u8; 16]) -> String {

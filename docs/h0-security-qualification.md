@@ -124,10 +124,12 @@ retention, and an independently obtained review record. CI/release integration m
 
 `NativeProbeFactory` is the standard fresh-process adapter. It stages one reviewed executor into a
 new private root for each probe, sends the versioned candidate-bound request, owns the complete
-process tree, validates the bounded response, and removes the root before returning cleanup. Linux
-and macOS use a dedicated process group; Windows uses a kill-on-close Job Object. Platform probe
-executables still own the actual assertions and raw artifact retention. A structurally valid
-response cannot replace those effects or the independent review.
+process tree, validates the bounded response, and removes the root before returning cleanup. It
+also assigns a retained-artifact root named by the fresh subject ID and verifies every digest entry
+against the named regular file's actual length and SHA-256. Linux and macOS use a dedicated process
+group; Windows uses a kill-on-close Job Object. Platform probe executables still own the actual
+assertions and must write their raw evidence under that assigned root. A structurally valid response
+cannot replace those effects or the independent review.
 
 1. validate the checked-in schemas and reconcile the Rust and TOML catalogs;
 2. run platform-specific cases on native tier-one hosts rather than cross-compiled binaries;
