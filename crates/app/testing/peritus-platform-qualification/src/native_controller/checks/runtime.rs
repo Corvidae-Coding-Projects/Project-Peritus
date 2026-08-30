@@ -49,7 +49,18 @@ fn dispatch(
         "terminal-ownership" => qualify_pty(layout, "native PTY or ConPTY lifecycle was conserved"),
         "cancellation-tree-reap" => cancellation_tree_reap(layout),
         "sandbox-denial" => sandbox_denial(layout),
-        "sandbox-execution" => sandbox_execution(layout),
+        "sandbox-execution" => {
+            #[cfg(target_os = "linux")]
+            {
+                linux_sandbox_probe(layout)
+            }
+            #[cfg(not(target_os = "linux"))]
+            {
+                Ok(Observation::unsupported(
+                    "native admitted sandbox probe is not yet wired for this controller platform",
+                ))
+            }
+        }
         _ => Err("runtime scenario dispatch is incomplete".into()),
     }
 }
@@ -68,7 +79,16 @@ fn service_restart(layout: &HostLayout) -> Result<Observation, Box<dyn std::erro
 
 fn local_transport(layout: &HostLayout) -> Result<Observation, Box<dyn std::error::Error>> {
     let session = DaemonSession::start(layout)?;
-    let native = native_endpoint(session.endpoint_path())?;
+    let native = {
+        #[cfg(unix)]
+        {
+            native_endpoint(session.endpoint_path())?
+        }
+        #[cfg(windows)]
+        {
+            native_endpoint(session.endpoint_path())
+        }
+    };
     session.shutdown()?;
     if !native {
         return Ok(Observation::failed("daemon readiness did not use the native local endpoint"));
@@ -81,7 +101,16 @@ fn local_transport(layout: &HostLayout) -> Result<Observation, Box<dyn std::erro
 fn peer_authentication(layout: &HostLayout) -> Result<Observation, Box<dyn std::error::Error>> {
     let session = DaemonSession::start(layout)?;
     session.status()?;
-    let protected = endpoint_is_owner_private(session.endpoint_path())?;
+    let protected = {
+        #[cfg(unix)]
+        {
+            endpoint_is_owner_private(session.endpoint_path())?
+        }
+        #[cfg(windows)]
+        {
+            endpoint_is_owner_private(session.endpoint_path())
+        }
+    };
     session.shutdown()?;
     if !protected {
         return Ok(Observation::failed("native endpoint was not owner private"));
@@ -178,15 +207,6 @@ fn sandbox_denial(layout: &HostLayout) -> Result<Observation, Box<dyn std::error
         .fact("native.pre-activation-denial", true))
 }
 
-fn sandbox_execution(layout: &HostLayout) -> Result<Observation, Box<dyn std::error::Error>> {
-    if cfg!(target_os = "linux") {
-        return linux_sandbox_probe(layout);
-    }
-    Ok(Observation::unsupported(
-        "native admitted sandbox probe is not yet wired for this controller platform",
-    ))
-}
-
 #[cfg(target_os = "linux")]
 fn linux_sandbox_probe(layout: &HostLayout) -> Result<Observation, Box<dyn std::error::Error>> {
     use peritus_sandbox_linux::{LinuxProbe, ProbeRequest};
@@ -210,11 +230,6 @@ fn linux_sandbox_probe(layout: &HostLayout) -> Result<Observation, Box<dyn std::
         .fact("native.namespaces-complete", probe.namespaces().complete())
         .fact("native.seccomp", probe.seccomp())
         .fact("native.pty", probe.pty()))
-}
-
-#[cfg(not(target_os = "linux"))]
-fn linux_sandbox_probe(_layout: &HostLayout) -> Result<Observation, Box<dyn std::error::Error>> {
-    Ok(Observation::unsupported("Linux sandbox probe is unavailable on this host"))
 }
 
 fn require_pty_observation(
@@ -255,13 +270,11 @@ fn native_endpoint(path: Option<&std::path::Path>) -> Result<bool, Box<dyn std::
 }
 
 #[cfg(windows)]
-fn native_endpoint(path: Option<&std::path::Path>) -> Result<bool, Box<dyn std::error::Error>> {
-    Ok(path.is_none())
+const fn native_endpoint(path: Option<&std::path::Path>) -> bool {
+    path.is_none()
 }
 
 #[cfg(windows)]
-fn endpoint_is_owner_private(
-    path: Option<&std::path::Path>,
-) -> Result<bool, Box<dyn std::error::Error>> {
-    Ok(path.is_none())
+const fn endpoint_is_owner_private(path: Option<&std::path::Path>) -> bool {
+    path.is_none()
 }

@@ -108,6 +108,7 @@ impl<'a> DaemonSession<'a> {
                 OsString::from("--timeout-seconds"),
                 OsString::from("5"),
                 OsString::from("shutdown"),
+                OsString::from("--wait"),
             ],
         )?;
         require_success(&output, "shut down packaged daemon")?;

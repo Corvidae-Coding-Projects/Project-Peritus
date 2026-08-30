@@ -7,7 +7,6 @@ use std::{
     task::Poll,
 };
 
-use peritus_app_protocol::ShutdownRequest;
 use tokio::{
     sync::{Semaphore, mpsc, watch},
     task::JoinSet,
@@ -15,8 +14,10 @@ use tokio::{
 
 use super::{AuthenticatedConnection, LocalEndpoint};
 use crate::{
-    AuthorityHandle, DaemonError, DaemonErrorCode, DaemonRecovery, product_run::ProductRunService,
-    session::run_connection, terminal::TerminalRegistry,
+    AuthorityHandle, DaemonError, DaemonErrorCode, DaemonRecovery,
+    product_run::ProductRunService,
+    session::{ShutdownCommand, run_connection},
+    terminal::TerminalRegistry,
 };
 
 pub async fn serve(
@@ -25,7 +26,7 @@ pub async fn serve(
     terminals: TerminalRegistry,
     product_runs: ProductRunService,
     maximum_connections: usize,
-    shutdown_request: mpsc::Sender<ShutdownRequest>,
+    shutdown_request: mpsc::Sender<ShutdownCommand>,
     mut stop: watch::Receiver<bool>,
 ) -> Result<(), DaemonError> {
     let permits = Arc::new(Semaphore::new(maximum_connections));

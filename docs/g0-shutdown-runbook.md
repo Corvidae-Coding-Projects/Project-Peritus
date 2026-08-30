@@ -12,18 +12,25 @@ shutdown is in progress.
 
 The runtime performs these stages:
 
-1. close new worker admission and stop accepting connection work;
-2. join the local endpoint and its owned connection tasks;
+1. close new worker admission and tell ordinary connections to drain;
+2. keep the authenticated shutdown requester open as the bounded reporting connection;
 3. stop the outbox pump without acknowledging unsettled claims;
 4. put the authority owner into draining readiness;
 5. request cooperative worker cancellation, then bounded joining;
 6. reconcile native C2 process records;
 7. checkpoint the configured telemetry exporter;
 8. stop and join the sole authority owner;
-9. release process-owned endpoint and singleton resources.
+9. after streaming six stage observations, send the exact clean or unclean completion;
+10. join the reporting connection and local endpoint, then release process-owned singleton
+    resources.
 
 An individual cleanup failure is retained while later stages continue. This prevents an early
 connection or worker failure from skipping process, telemetry, authority, or lock cleanup.
+
+Use `peritus --endpoint <address> shutdown --wait` when an authenticated CLI is available. The
+command keeps the connection open, prints bounded progress, and returns only after it receives the
+correlated completion. A client that disconnects does not prevent daemon cleanup; it only gives up
+the completion report.
 
 ## Interpreting completion
 

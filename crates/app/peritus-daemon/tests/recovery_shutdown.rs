@@ -11,10 +11,10 @@ mod support;
 use std::{future::Future, time::Duration};
 
 use peritus_app_protocol::{
-    AppMessage, AppProtocolLimits, AppRequestEnvelope, AppRequestPayload, AppResponsePayload,
-    ClientHello, CommandBinding, CommandDisposition, CommandSubmissionFrames, CorrelationId,
-    IdempotencyKey, NegotiationOutcome, ProtocolContext, ProtocolId, RequestId,
-    ShutdownCompletionDisposition, ShutdownRequest, VersionRange,
+    AppEventPayload, AppMessage, AppProtocolLimits, AppRequestEnvelope, AppRequestPayload,
+    AppResponsePayload, ClientHello, CommandBinding, CommandDisposition, CommandSubmissionFrames,
+    CorrelationId, IdempotencyKey, NegotiationOutcome, ProtocolContext, ProtocolId, RequestId,
+    ShutdownComplete, ShutdownCompletionDisposition, ShutdownRequest, VersionRange,
 };
 use peritus_codec::{CodecLimits, encode_message};
 use peritus_daemon::{AppFrameStream, DaemonRuntime, LocalEndpointAddress};
@@ -74,12 +74,16 @@ async fn authenticated_shutdown_retains_the_exact_request_and_finishes_cleanly_a
         .expect("daemon observes the authenticated shutdown within the bound")
         .expect("shutdown request remains observable");
     assert_eq!(runtime.accepted_shutdown_request(), Some(shutdown));
-    drop(frames);
-
-    let outcome = tokio::time::timeout(LIFECYCLE_BOUND, runtime.shutdown())
-        .await
-        .expect("shutdown completes within the configured test bound")
-        .expect("shutdown coordinator completes");
+    let (outcome, (progress_count, wire_complete)) = tokio::time::timeout(LIFECYCLE_BOUND, async {
+        tokio::join!(runtime.shutdown(), read_shutdown_completion(&mut frames, shutdown))
+    })
+    .await
+    .expect("shutdown completes within the configured test bound");
+    let outcome = outcome.expect("shutdown coordinator completes");
+    assert_eq!(progress_count, 6);
+    assert_eq!(wire_complete.request(), shutdown);
+    assert_eq!(wire_complete.disposition(), ShutdownCompletionDisposition::Clean);
+    assert!(wire_complete.remaining().is_empty());
     assert_eq!(outcome.disposition(), ShutdownCompletionDisposition::Clean);
     assert!(outcome.remaining().is_empty());
     assert!(outcome.failures().is_empty());
@@ -87,6 +91,28 @@ async fn authenticated_shutdown_retains_the_exact_request_and_finishes_cleanly_a
     assert_eq!(complete.request(), shutdown);
     assert_eq!(complete.disposition(), ShutdownCompletionDisposition::Clean);
     assert!(complete.remaining().is_empty());
+}
+
+async fn read_shutdown_completion(
+    frames: &mut AppFrameStream<UnixStream>,
+    shutdown: ShutdownRequest,
+) -> (usize, ShutdownComplete) {
+    let mut progress_count = 0;
+    loop {
+        let AppMessage::Event(event) = read_frame(frames).await else {
+            panic!("shutdown stream returned a non-event frame");
+        };
+        match event.payload() {
+            AppEventPayload::ShutdownProgress(progress) => {
+                assert_eq!(progress.request(), shutdown);
+                progress_count += 1;
+            }
+            AppEventPayload::ShutdownComplete(complete) => {
+                return (progress_count, complete.clone());
+            }
+            payload => panic!("shutdown stream returned an unrelated event: {payload:?}"),
+        }
+    }
 }
 
 #[test]

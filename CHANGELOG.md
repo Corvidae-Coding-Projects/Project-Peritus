@@ -103,6 +103,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Keep the authenticated A3 shutdown requester alive as a bounded reporting connection, release
+  its connection-owned transfers and terminal attachments before authority teardown, stream all
+  six correlated progress observations plus the truthful final disposition, and join the IPC
+  server only after delivery so `peritus shutdown --wait` no longer fails with an early EOF (#31)
 - Require parameterized deliverables derived from a supplied example to exercise an independent
   input and prove or vary example-derived constants before the harness accepts a general interface
   (`TBF-027`, #31)

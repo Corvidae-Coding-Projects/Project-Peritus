@@ -3,9 +3,11 @@
 use peritus_app_protocol::{
     AppErrorCode, AppMessage, AppProtocolError, AppProtocolLimits, AppRequestEnvelope,
     AppRequestPayload, AppResponseEnvelope, AppResponsePayload, OperationAcknowledgement,
-    ShutdownAccepted, ShutdownRequest, encode_app_message,
+    ShutdownAccepted, encode_app_message,
 };
 use tokio::sync::mpsc;
+
+use super::{ShutdownCommand, ShutdownEventReceiver};
 
 use crate::{
     AuthorityHandle, DaemonError, DaemonErrorCode, DaemonRecovery,
@@ -23,7 +25,7 @@ use crate::{
 pub(super) async fn handle_request<S>(
     frames: &mut crate::AppFrameStream<S>,
     authority: &AuthorityHandle,
-    shutdown: &mpsc::Sender<ShutdownRequest>,
+    shutdown: &mpsc::Sender<ShutdownCommand>,
     subscriptions: &mut SubscriptionRegistry,
     artifacts: &mut ArtifactClient,
     terminals: &TerminalRegistry,
@@ -32,7 +34,7 @@ pub(super) async fn handle_request<S>(
     actor_id: peritus_types::ActorId,
     limits: AppProtocolLimits,
     request: AppRequestEnvelope,
-) -> Result<(), DaemonError>
+) -> Result<Option<ShutdownEventReceiver>, DaemonError>
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
 {
@@ -239,9 +241,12 @@ where
             AppResponsePayload::ShutdownAccepted(ShutdownAccepted::new(*value))
         }
     };
-    let shutdown_request = match request.payload() {
-        AppRequestPayload::Shutdown(value) => Some(*value),
-        _ => None,
+    let (shutdown_command, shutdown_events) = match request.payload() {
+        AppRequestPayload::Shutdown(value) => {
+            let (command, events) = ShutdownCommand::new(*value);
+            (Some(command), Some(events))
+        }
+        _ => (None, None),
     };
     let response = AppResponseEnvelope::new(
         request.context(),
@@ -250,8 +255,8 @@ where
         payload,
     );
     frames.write(&AppMessage::Response(response)).await?;
-    if let Some(shutdown_request) = shutdown_request {
-        shutdown.try_send(shutdown_request).map_err(|error| {
+    if let Some(shutdown_command) = shutdown_command {
+        shutdown.try_send(shutdown_command).map_err(|error| {
             DaemonError::with_source(
                 DaemonErrorCode::ResourceLimit,
                 DaemonRecovery::Retry,
@@ -261,7 +266,7 @@ where
             )
         })?;
     }
-    Ok(())
+    Ok(shutdown_events)
 }
 
 const fn product_run_error(error: ProductRunServiceError) -> AppResponsePayload {

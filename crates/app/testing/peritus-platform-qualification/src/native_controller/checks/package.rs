@@ -66,7 +66,17 @@ fn release_layout(
                 )));
             }
         }
-        if !installed_modes_are_private(&layout)? {
+        let modes_are_private = {
+            #[cfg(unix)]
+            {
+                installed_modes_are_private(&layout)?
+            }
+            #[cfg(windows)]
+            {
+                installed_modes_are_private(&layout)
+            }
+        };
+        if !modes_are_private {
             return Ok(Observation::failed(
                 "installed package permissions differ from the native layout contract",
             ));
@@ -177,6 +187,6 @@ fn installed_modes_are_private(layout: &HostLayout) -> Result<bool, Box<dyn std:
 }
 
 #[cfg(windows)]
-fn installed_modes_are_private(layout: &HostLayout) -> Result<bool, Box<dyn std::error::Error>> {
-    Ok(layout.package_files().iter().all(|path| path.is_file()))
+fn installed_modes_are_private(layout: &HostLayout) -> bool {
+    layout.package_files().iter().all(|path| path.is_file())
 }

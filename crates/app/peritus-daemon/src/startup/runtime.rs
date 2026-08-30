@@ -9,7 +9,6 @@ use std::{
     task::Poll,
 };
 
-use peritus_app_protocol::ShutdownRequest;
 use peritus_evidence::EvidenceStore;
 use peritus_process::ProcessStore;
 use peritus_projection::ProjectionStore;
@@ -22,6 +21,7 @@ use super::{evolution::ProductionCatalog, workspace::WorkspaceCatalog};
 use crate::instance::InstanceGuard;
 use crate::outbox::OutboxRuntime;
 use crate::product_run::ProductRunService;
+use crate::session::ShutdownCommand;
 use crate::telemetry::TelemetryRuntime;
 use crate::terminal::TerminalRegistry;
 use crate::worker::WorkerSupervisor;
@@ -39,8 +39,8 @@ pub struct DaemonRuntime {
     endpoint_address: LocalEndpointAddress,
     server_stop: watch::Sender<bool>,
     server_task: Option<JoinHandle<Result<(), DaemonError>>>,
-    shutdown_requests: mpsc::Receiver<ShutdownRequest>,
-    accepted_shutdown: Option<ShutdownRequest>,
+    shutdown_requests: mpsc::Receiver<ShutdownCommand>,
+    accepted_shutdown: Option<ShutdownCommand>,
     outbox: Option<OutboxRuntime>,
     telemetry: Option<TelemetryRuntime>,
     workers: WorkerSupervisor,
@@ -76,8 +76,11 @@ impl DaemonRuntime {
 
     /// Returns the exact accepted A3 shutdown request, when shutdown originated from a client.
     #[must_use]
-    pub const fn accepted_shutdown_request(&self) -> Option<ShutdownRequest> {
-        self.accepted_shutdown
+    pub const fn accepted_shutdown_request(&self) -> Option<peritus_app_protocol::ShutdownRequest> {
+        match &self.accepted_shutdown {
+            Some(command) => Some(command.request()),
+            None => None,
+        }
     }
 
     /// Waits for an operating-system or authenticated A3 shutdown request.
@@ -173,7 +176,7 @@ impl DaemonRuntime {
 enum ShutdownAction {
     Interrupt(Result<(), std::io::Error>),
     Terminate,
-    Request(Option<ShutdownRequest>),
+    Request(Option<ShutdownCommand>),
     Server(Result<Result<(), DaemonError>, tokio::task::JoinError>),
 }
 
