@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 910,
+  "next_comment_id": 911,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T16:10:22.794705240Z",
+      "updated_at": "2026-08-30T16:18:27.165259593Z",
       "labels": [
         "qualification",
         "release"
@@ -3290,6 +3290,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAc3VZ8t3TFQP4jnKwGuhXm5vLrd1SNno/lxgNqPP5Ql25GWVKzqpz9smK3uom/FauWaxZvLn/vI18gitzOnWXDg=="
+        },
+        "ac041eb9-9dae-4751-b38e-0d915dffe4e4": {
+          "display_id": 910,
+          "author": "6ME5",
+          "content": "Retained H2 Linux artifact from run 33320982446 is Ready: all 18 exact package/product scenarios passed with no failed case. Evidence digest: 853050a2b33558347f4a164d81ac0a92044da7d7819fdb7d89e82a6ee3b0d58a. macOS is likewise Ready; Windows remains in the full scenario controller.",
+          "created_at": "2026-08-30T16:18:27.162406591Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIU4JUK7ht6l28ZBOTuFmYekDr8fHFwjbINP1j7HWq6tjD1vzkTJg29qBqxYCQxFf07/K9H9cpmtSUV5tUtdhBw=="
         },
         "ac14d2ac-4cfc-410f-b9b1-c1c290167644": {
           "display_id": 624,
@@ -8946,8 +8955,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T16:13:44.745929018Z",
+    "timestamp": "2026-08-30T16:18:27.165259593Z",
     "agent_id": "6ME5",
-    "agent_seq": 1104
+    "agent_seq": 1105
   }
 }
