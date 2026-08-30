@@ -2396,6 +2396,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   checks for reward 1.0. Native Peritus still ended during review on the same provider terminal
   after ten requests, 699,804 input, 31,744 cached input, and 10,081 output tokens. The successful
   shape-aware optimization is retained; only the false terminal belongs to role recovery.
+- Trial `qemu-startup__VzYVR7U` discovered the installed emulator, launched the supplied Alpine
+  image as a persistent background QEMU process, and used an ordinary Python socket probe to block
+  until the telnet login prompt was live on `127.0.0.1:6665`. The unchanged end-to-end verifier
+  connected successfully and awarded reward 1.0. Native Peritus still ended during review on the
+  same provider terminal after eight requests, 146,282 input, 63,488 cached input, and 5,293 output
+  tokens. The real external effect and readiness proof are retained; only the false terminal
+  belongs to role recovery.
 
 ## TBM-001: a writer mirrored the response field into the request schema
 
