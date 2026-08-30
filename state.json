@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 939,
+  "next_comment_id": 940,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T18:03:26.296315519Z",
+      "updated_at": "2026-08-30T18:13:33.013978308Z",
       "labels": [
         "qualification",
         "release"
@@ -2053,6 +2053,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAB/nzkvFmu+qTkOxx2BZlnRTDSSCrtLfUzNeXFSPfFtwma2rlT3aT7HRPXsqZxpVVmh95bvpbpc1RiBCj4Sq1Cw=="
+        },
+        "3f759a42-8195-4748-909f-acbb31d666be": {
+          "display_id": 939,
+          "author": "6ME5",
+          "content": "Checkpoint 1fa6e7f5 also adds the exact serialized five-task Harbor Oracle preflight command and evidence expectations. It is documentation/integration preparation only; the Oracle smoke remains queued behind the active Terminal-Bench k=5 campaign and has not been claimed as run.",
+          "created_at": "2026-08-30T18:13:33.011488238Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA4xFXmkTGU6Bc/ryZ+15QgByz2MqpZ1pNH47offc8mKZYYlTXdRkRuxt7cteOzqjqhTR2vhInGKk62fzfIH2ZBg=="
         },
         "3f847d91-0bc7-4732-8663-c8b5fe191581": {
           "display_id": 610,
@@ -9203,8 +9212,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T18:13:28.135123932Z",
+    "timestamp": "2026-08-30T18:13:33.013978308Z",
     "agent_id": "6ME5",
-    "agent_seq": 1134
+    "agent_seq": 1135
   }
 }
