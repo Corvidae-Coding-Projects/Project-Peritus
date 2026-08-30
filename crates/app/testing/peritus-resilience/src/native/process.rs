@@ -5,7 +5,7 @@ use std::path::Path;
 use std::process::{Child, ChildStdin, Command, ExitStatus, Stdio};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, TryRecvError};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
@@ -152,6 +152,18 @@ impl OwnedController {
             if let Some(status) = self.try_wait()? {
                 self.finish_tree()?;
                 self.join_output()?;
+                if cleanup {
+                    if !status.success() {
+                        return Err(supervision(
+                            format!("controller cleanup exited with status {status}"),
+                            false,
+                        ));
+                    }
+                    match self.responses.try_recv() {
+                        Ok(result) => break result?,
+                        Err(TryRecvError::Empty | TryRecvError::Disconnected) => {}
+                    }
+                }
                 return Err(supervision(
                     format!("controller exited before responding with status {status}"),
                     true,

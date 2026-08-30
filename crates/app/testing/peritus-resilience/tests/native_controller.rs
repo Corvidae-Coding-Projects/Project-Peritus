@@ -6,7 +6,7 @@ use std::fs;
 use std::future::Future;
 use std::os::unix::fs::PermissionsExt as _;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::task::{Context, Poll, Wake, Waker};
 use std::thread;
 use std::time::Duration;
@@ -21,9 +21,11 @@ use peritus_resilience::{
 };
 
 const ABC_SHA256: &str = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+static NATIVE_TEST_GUARD: Mutex<()> = Mutex::new(());
 
 #[test]
 fn persistent_controller_qualifies_all_43_fresh_subjects_and_retains_evidence() {
+    let _native_test = native_test_guard();
     let fixture = NativeFixture::new(&valid_controller(ABC_SHA256, true));
     let factory = fixture.factory();
     let catalog = ScenarioCatalog::h1_production().expect("built-in H1 catalog");
@@ -47,6 +49,7 @@ fn persistent_controller_qualifies_all_43_fresh_subjects_and_retains_evidence() 
 
 #[test]
 fn false_retained_digest_fails_recovery_but_each_controller_still_cleans_up() {
+    let _native_test = native_test_guard();
     let fixture = NativeFixture::new(&valid_controller(&"0".repeat(64), true));
     let factory = fixture.factory();
     let catalog = ScenarioCatalog::h1_production().expect("built-in H1 catalog");
@@ -69,6 +72,7 @@ fn false_retained_digest_fails_recovery_but_each_controller_still_cleans_up() {
 
 #[test]
 fn stale_prepare_response_is_rejected_and_the_subject_still_cleans_up() {
+    let _native_test = native_test_guard();
     let fixture = NativeFixture::new(&valid_controller(ABC_SHA256, false));
     let factory = fixture.factory();
     let catalog = ScenarioCatalog::h1_production().expect("built-in H1 catalog");
@@ -89,6 +93,7 @@ fn stale_prepare_response_is_rejected_and_the_subject_still_cleans_up() {
 
 #[test]
 fn dropping_a_pending_run_kills_the_controller_and_its_descendant() {
+    let _native_test = native_test_guard();
     let fixture = NativeFixture::new(&descendant_controller());
     let factory = fixture.factory();
     let catalog = ScenarioCatalog::h1_production().expect("built-in H1 catalog");
@@ -296,6 +301,10 @@ fn assert_process_exited(pid: i32) {
 }
 
 struct ThreadWake(thread::Thread);
+
+fn native_test_guard() -> MutexGuard<'static, ()> {
+    NATIVE_TEST_GUARD.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+}
 
 impl Wake for ThreadWake {
     fn wake(self: Arc<Self>) {

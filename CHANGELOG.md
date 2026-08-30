@@ -146,6 +146,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Drain and join the persistent H1 controller's response reader after a successful cleanup exit
+  before deciding that its terminal response is missing, removing a macOS scheduling race without
+  accepting failed exits or absent response frames (#31)
+- Serialize the high-fanout native H1 integration cases within their test binary so concurrent
+  qualification fixtures cannot exhaust host process capacity and create unrelated runner flakes
+  (#31)
 - Pass conventional Windows paths to PowerShell from canonical native H2 subjects so hosted
   qualification can use explicit private install/data roots without `Join-Path` rejecting Rust's
   verbatim path prefix; retain the required Windows process-launch variables across the cleared
