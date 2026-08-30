@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 885,
+  "next_comment_id": 886,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -8323,7 +8323,7 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:01:08.433031832Z",
-      "updated_at": "2026-08-30T13:45:51.401257400Z",
+      "updated_at": "2026-08-30T13:57:06.499841964Z",
       "labels": [
         "qualification",
         "security"
@@ -8337,6 +8337,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9bYKy7+P2L+yNVnSP3idOtqfF3Ms5LJ7UxMtyIlMLWaSoEeiM0AbRP5t2J7qRv9TzpolJORE7eBYTJfzkjuYAw=="
+        },
+        "3a12dc78-3f9f-48ce-a5bc-f0fc8ee66d41": {
+          "display_id": 885,
+          "author": "6ME5",
+          "content": "Signed local H0 checkpoint adds strict external-review admission and peritus-h0-aggregate. It admits exactly one passing Linux/macOS/Windows shard, reconstructs all 42 cases, evaluates the separately supplied review through verified policy, and publishes one no-overwrite final-report-v1 document embedding the exact canonical manifest plus digest and stable NotReady codes. Black-box tests cover Ready, incomplete-review NotReady, and no-overwrite behavior; review tests cover identity contradiction and finding lifecycle evidence. Native and Windows-target strict Clippy, 21 H0 tests, JSON schemas, docs, and full cargo xtask all are green across 78 packages and 3196 sources. Commit remains local until the active H2 hosted run completes.",
+          "created_at": "2026-08-30T13:57:06.497390769Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+dsxw6OPNX3DxW8WF++JvM6rQYf6L4J5lcAfYO/prMXLGEx2QOZ3OZprKAk6j/7fQ7Z21pnieXQ0GBao5XjHBQ=="
         },
         "3dce24e3-8260-494e-bed7-727d0ce7e753": {
           "display_id": 884,
@@ -8721,8 +8730,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T13:45:51.401257400Z",
+    "timestamp": "2026-08-30T13:57:06.499841964Z",
     "agent_id": "6ME5",
-    "agent_seq": 1079
+    "agent_seq": 1080
   }
 }
