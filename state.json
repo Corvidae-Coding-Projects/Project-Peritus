@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 852,
+  "next_comment_id": 853,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T09:23:33.684633315Z",
+      "updated_at": "2026-08-30T09:52:53.431594494Z",
       "labels": [
         "qualification",
         "release"
@@ -1643,6 +1643,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAdkrUH4PcY4O0pDxrRQC2pvX0h+0Noxa391nYP3VzfCyMa6Na+3f+BAfov19hmUTYv9QHvTJ1XVt5CjX2HgoUBQ=="
+        },
+        "24c5b055-f9e6-484c-af07-1e5772d60f4a": {
+          "display_id": 852,
+          "author": "6ME5",
+          "content": "[action] H2 native controller/operator and hosted benchmark-path portability repair are full-gate green; staging only intentional #31 source, schemas, docs, and lockfile",
+          "created_at": "2026-08-30T09:52:53.428983118Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA4lyWIvcqvM9oe6XCuNp+RYyqPkcTzRfs9ugFeCjl9oiNlbD9lOWYAQcxpjuvELo8ZjEx53RmMWSNLwnugDD9BQ=="
         },
         "24e2cb30-e736-4daa-8b75-6b53d74a5f83": {
           "display_id": 736,
@@ -8424,8 +8433,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T09:23:33.684633315Z",
+    "timestamp": "2026-08-30T09:52:53.431594494Z",
     "agent_id": "6ME5",
-    "agent_seq": 1044
+    "agent_seq": 1045
   }
 }
