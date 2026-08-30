@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 964,
+  "next_comment_id": 965,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T18:55:18.230148985Z",
+      "updated_at": "2026-08-30T19:00:36.440981491Z",
       "labels": [
         "qualification",
         "release"
@@ -4370,6 +4370,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAq2a3tRU0xKl7KlMji70ueL3J8Wk6UXOeb5mXA52bDWswFMOkJkACFdRkasn22qEHTZsfi0RfBxul7/zLAR8qBw=="
+        },
+        "eafd4565-cb7e-4d84-8ce4-cf18362f09e5": {
+          "display_id": 964,
+          "author": "6ME5",
+          "content": "Published Rust-validated frozen Terminal-Bench snapshot at the consistent 169/445 boundary: /home/doll/.local/state/peritus/benchmarks/terminalbench/reports/frozen-baseline-169.snapshot.json, SHA-256 74d9a26c2111d96c2cd0e4fa88e0abb8ea0bff88cf0b0153b1c45ee9a1d7afab. Aggregate: 158 scored, 93 reward-1, 65 reward-0, 11 unscored; scored accuracy 58.8608%, completed success 55.0296%; 74,201,759 input, 23,606,909 cached input, and 1,942,230 output tokens. The journal retains gpt2-codegolf__AG8DbWx as a frozen recurrence of pre-supervisor post-timeout mutation despite reward 1, and mcmc-sampling-stan__JrPLENv as a zero recurrence of the pre-head-tail noisy-build diagnostic defect. No task-specific product behavior was added.",
+          "created_at": "2026-08-30T19:00:36.438465900Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAC80UfPaa3R5bsJJsfwZqi5WngbUuqwP0h6yXEVEvZYcKRjjPn8hE/G2kARf6IT9JLGtSPdL2LhnUUhgVdDuiAw=="
         },
         "ed39f572-cdb0-4351-b367-7ed96e6cd68f": {
           "display_id": 829,
@@ -9432,8 +9441,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T18:55:18.230148985Z",
+    "timestamp": "2026-08-30T19:00:36.440981491Z",
     "agent_id": "6ME5",
-    "agent_seq": 1160
+    "agent_seq": 1161
   }
 }
