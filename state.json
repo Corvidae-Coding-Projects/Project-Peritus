@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 773,
+  "next_comment_id": 774,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-29T23:48:11.901646606Z",
+      "updated_at": "2026-08-30T00:15:49.157695002Z",
       "labels": [
         "qualification",
         "release"
@@ -1990,6 +1990,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAcq2F3iaftKLyKLCKVq6wMZqD73U8DEwxjgPGv/MGOnHzQyLaf8ZlcMRKiF/6DXw07UjLKscas3qL3Eu1LiBbCg=="
+        },
+        "5491d07c-610c-42ab-93ba-30a9cb3a57d2": {
+          "display_id": 773,
+          "author": "6ME5",
+          "content": "H3 real-subject checkpoint is signed at 809e6b96. It uses the public A3 boundary and credential-free deterministic pressure effects; two real-daemon smokes pass, including crash/restart/reconciliation. This is not an H3 readiness claim; campaign/evidence/baseline/soak work remains.",
+          "created_at": "2026-08-30T00:15:49.154954755Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAxjEiJH0XN6YtfY1y5ktAJGU3aOa8XrR1rFfHeL2Zmu+8MeOGvJq+GAG97pqYqPt5WJmt3Ly03rOeBzJq3T/3Bg=="
         },
         "57a62555-cd4d-4414-bfca-9ed14413e8b8": {
           "display_id": 586,
@@ -7709,8 +7718,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T00:15:43.899103322Z",
+    "timestamp": "2026-08-30T00:15:49.157695002Z",
     "agent_id": "6ME5",
-    "agent_seq": 960
+    "agent_seq": 961
   }
 }
