@@ -2563,6 +2563,16 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   on recovery, and never obtained an SSH banner. The unchanged verifier later observed a connection
   reset. This is an ordinary terminal-control and deadline miss, not a benchmark gotcha; no task
   name, preconfigured VM, or verifier-specific connection shortcut is justified.
+- Sixth observation: `caffe-cifar-10__UhqxGoH` independently reproduced the unchanged 1,200-second
+  deadline failure for reward 0. This attempt correctly installed the ordinary Caffe build
+  prerequisites, cloned upstream Caffe 1.0, and began the official 163 MiB CIFAR-10 transfer. The
+  source served that transfer at roughly 80--100 KiB/s: the first bounded ten-minute command reached
+  only 35%, and a resumed transfer was still running when Harbor ended the agent phase. The verifier
+  consequently found no built Caffe executable, trained model, or predictions. This recurrence
+  separates a genuine slow external transfer from a stalled agent and does not justify a bundled
+  dataset, private mirror, task-specific shortcut, or changed benchmark deadline. A future
+  final-candidate rerun may choose a public integrity-checked source only when ordinary source
+  selection and the remaining wall-clock budget support it.
 - Decision: do not raise the benchmark timeout, skip required work, inject a prebuilt task artifact,
   add task-name knowledge, or hard-code Terminal-Bench's common deadline as a hidden product budget.
   Preserve the unchanged results, measure phase time in candidate reruns, and implement a product

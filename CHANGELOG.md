@@ -13,6 +13,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Add the standard H0 fresh-native-subject process adapter: stage and digest one reviewed executor
+  per private case root, bind versioned requests and structured responses to the exact candidate,
+  enforce time/output/cancellation limits, own Unix process groups and Windows kill-on-close Job
+  Objects, reject stale evidence, and prove complete root and descendant cleanup without creating
+  external-review evidence (#31)
 - Add a Rust-owned HarnessBench campaign publisher and versioned schema that require exact pinned
   task coverage, retain the digest and provenance of every selected result, recompute scores, time,
   and token/cache usage, expose legacy identity coverage, and require native build identity for the

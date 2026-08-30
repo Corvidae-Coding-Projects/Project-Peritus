@@ -122,6 +122,13 @@ consumed as H0 evidence by H4; it cannot itself sign, tag, publish, promote, or 
 Application integration must provide native adapters, exact candidate identities, artifact-store
 retention, and an independently obtained review record. CI/release integration must additionally:
 
+`NativeProbeFactory` is the standard fresh-process adapter. It stages one reviewed executor into a
+new private root for each probe, sends the versioned candidate-bound request, owns the complete
+process tree, validates the bounded response, and removes the root before returning cleanup. Linux
+and macOS use a dedicated process group; Windows uses a kill-on-close Job Object. Platform probe
+executables still own the actual assertions and raw artifact retention. A structurally valid
+response cannot replace those effects or the independent review.
+
 1. validate the checked-in schemas and reconcile the Rust and TOML catalogs;
 2. run platform-specific cases on native tier-one hosts rather than cross-compiled binaries;
 3. retain raw artifacts by the digests named in canonical JSON;

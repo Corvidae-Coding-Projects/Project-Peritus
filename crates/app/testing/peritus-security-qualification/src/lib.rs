@@ -10,6 +10,7 @@ mod error;
 mod evidence;
 mod limits;
 mod manifest;
+mod native;
 mod observation;
 mod policy_bridge;
 mod report;
@@ -25,6 +26,7 @@ pub use evidence::{
 };
 pub use limits::{CancellationToken, QualificationLimits, ResourceUsage};
 pub use manifest::EvidenceManifest;
+pub use native::{HostFingerprint, NativeProbeFactory};
 pub use observation::{
     CaseFailure, CaseOutcome, CaseReport, CleanupObservation, ProbeObservation, ProbeOutcome,
     QualificationRun,

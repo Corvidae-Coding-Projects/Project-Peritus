@@ -2866,12 +2866,15 @@ dependencies = [
 name = "peritus-security-qualification"
 version = "0.0.0"
 dependencies = [
+ "nix 0.31.3",
  "peritus-security-policy",
  "peritus-types",
  "serde",
  "serde_json",
  "sha2 0.11.0",
+ "tempfile",
  "thiserror 2.0.20",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

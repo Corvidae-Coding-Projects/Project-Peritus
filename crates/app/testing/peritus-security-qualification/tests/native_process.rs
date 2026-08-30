@@ -1,0 +1,186 @@
+//! Native H0 process-boundary, response-binding, and cleanup checks.
+
+#![cfg(unix)]
+
+use std::fs;
+use std::os::unix::fs::PermissionsExt as _;
+use std::thread;
+use std::time::{Duration, Instant};
+
+use nix::errno::Errno;
+use nix::sys::signal::kill;
+use nix::unistd::Pid;
+use peritus_security_qualification::{
+    CancellationToken, HostFingerprint, IntegratedCandidate, NativeProbeFactory,
+    QualificationLimits, QualificationRunner,
+};
+use peritus_types::{
+    AcceptanceSpecId, Generation, HarnessId, PolicyId, ProviderProfileId, RevisionNumber,
+    RevisionTuple, Sha256Digest, WorkspaceId,
+};
+
+#[test]
+fn native_executor_runs_every_case_in_a_fresh_cleaned_subject() {
+    let scratch = tempfile::tempdir().expect("scratch parent");
+    let executor = write_executor(scratch.path(), valid_executor());
+    let mut factory = NativeProbeFactory::new(
+        &executor,
+        scratch.path(),
+        HostFingerprint::from_document(b"reviewed-linux-host-v1"),
+    )
+    .expect("native factory");
+    let candidate = candidate(1);
+    let run = QualificationRunner
+        .run(&mut factory, candidate, QualificationLimits::production(), &CancellationToken::new())
+        .expect("canonical H0 run");
+    assert!(run.all_passed());
+    assert_eq!(run.cases().len(), 42);
+    assert!(run.cases().iter().all(|case| {
+        case.observation().is_some_and(|observation| {
+            observation.receipt().executor_digest() == digest_file(&executor)
+        }) && case
+            .cleanup()
+            .is_some_and(peritus_security_qualification::CleanupObservation::complete)
+    }));
+    assert_eq!(fs::read_dir(scratch.path()).expect("scratch contents").count(), 1);
+}
+
+#[test]
+fn response_for_another_request_is_rejected_and_subject_still_cleans() {
+    let scratch = tempfile::tempdir().expect("scratch parent");
+    let executor = write_executor(scratch.path(), mismatched_executor());
+    let mut factory = NativeProbeFactory::new(
+        &executor,
+        scratch.path(),
+        HostFingerprint::from_document(b"reviewed-linux-host-v1"),
+    )
+    .expect("native factory");
+    let candidate = candidate(2);
+    let cancellation = CancellationToken::new();
+    let run = QualificationRunner
+        .run(&mut factory, candidate, QualificationLimits::production(), &cancellation)
+        .expect("canonical failing run");
+    assert!(!run.all_passed());
+    assert!(run.cases().iter().all(|case| {
+        case.failures().iter().any(|failure| {
+            matches!(
+                failure,
+                peritus_security_qualification::CaseFailure::NativeExecution(error)
+                    if error.detail().contains("exact request document")
+            )
+        }) && case
+            .cleanup()
+            .is_some_and(peritus_security_qualification::CleanupObservation::complete)
+    }));
+}
+
+#[test]
+fn cancellation_kills_the_complete_native_process_group() {
+    let scratch = tempfile::tempdir().expect("scratch parent");
+    let executor = write_executor(scratch.path(), descendant_executor());
+    let pid_path = scratch.path().join("descendant.pid");
+    let mut factory = NativeProbeFactory::new(
+        &executor,
+        scratch.path(),
+        HostFingerprint::from_document(b"reviewed-linux-host-v1"),
+    )
+    .expect("native factory");
+    let cancellation = CancellationToken::new();
+    let cancellation_request = cancellation.clone();
+    let observed_pid = pid_path.clone();
+    let canceller = thread::spawn(move || {
+        for _ in 0..200 {
+            if observed_pid.exists() {
+                cancellation_request.cancel();
+                return;
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
+        cancellation_request.cancel();
+    });
+    let started = Instant::now();
+    let run = QualificationRunner
+        .run(&mut factory, candidate(3), QualificationLimits::production(), &cancellation)
+        .expect("cancelled canonical run");
+    canceller.join().expect("canceller");
+    assert!(started.elapsed() < Duration::from_secs(5));
+    assert!(!run.all_passed());
+    assert!(
+        run.cases()[0]
+            .cleanup()
+            .is_some_and(peritus_security_qualification::CleanupObservation::complete)
+    );
+    let pid = fs::read_to_string(&pid_path)
+        .expect("descendant PID")
+        .parse::<i32>()
+        .expect("numeric descendant PID");
+    assert_process_exited(pid);
+}
+
+fn write_executor(parent: &std::path::Path, source: &str) -> std::path::PathBuf {
+    let path = parent.join("native-probe.sh");
+    fs::write(&path, source).expect("write native executor");
+    let mut permissions = fs::metadata(&path).expect("executor metadata").permissions();
+    permissions.set_mode(0o700);
+    fs::set_permissions(&path, permissions).expect("executor permissions");
+    path
+}
+
+const fn valid_executor() -> &'static str {
+    r#"#!/bin/sh
+set -eu
+response=$4
+subject=$8
+request_digest=${10}
+printf '{"schema_version":1,"subject_id":"%s","request_sha256":"%s","probe_id":"%s","outcome":"passed","native_sandbox_observed":true,"usage":{"elapsed_millis":1,"process_count":1,"peak_memory_bytes":4096,"output_bytes":0,"artifact_count":1},"evidence":[{"kind":"fact","label":"assertion.observed","value":true}]}' "$subject" "$request_digest" "$(sed -n 's/.*"probe_id": "\([^"]*\)".*/\1/p' "$2")" > "$response"
+"#
+}
+
+const fn mismatched_executor() -> &'static str {
+    r#"#!/bin/sh
+set -eu
+probe=$(sed -n 's/.*"probe_id": "\([^"]*\)".*/\1/p' "$2")
+printf '{"schema_version":1,"subject_id":"%s","request_sha256":"%064d","probe_id":"%s","outcome":"passed","native_sandbox_observed":true,"usage":{"elapsed_millis":1,"process_count":1,"peak_memory_bytes":4096,"output_bytes":0,"artifact_count":1},"evidence":[{"kind":"fact","label":"assertion.observed","value":true}]}' "$8" 0 "$probe" > "$4"
+"#
+}
+
+const fn descendant_executor() -> &'static str {
+    r#"#!/bin/sh
+set -eu
+sleep 30 &
+child=$!
+printf '%s' "$child" > "$(dirname "$(dirname "$0")")/descendant.pid"
+wait "$child"
+"#
+}
+
+fn assert_process_exited(pid: i32) {
+    for _ in 0..100 {
+        if matches!(kill(Pid::from_raw(pid), None), Err(Errno::ESRCH)) {
+            return;
+        }
+        thread::sleep(Duration::from_millis(10));
+    }
+    panic!("native probe descendant {pid} remained after cancellation");
+}
+
+fn candidate(seed: u8) -> IntegratedCandidate {
+    IntegratedCandidate::new(
+        RevisionTuple::new(
+            AcceptanceSpecId::new([seed; 16]).expect("acceptance"),
+            HarnessId::new([seed.wrapping_add(1); 16]).expect("harness"),
+            WorkspaceId::new([seed.wrapping_add(2); 16]).expect("workspace"),
+            Generation::first(),
+            RevisionNumber::first(),
+            PolicyId::new([seed.wrapping_add(3); 16]).expect("policy"),
+            ProviderProfileId::new([seed.wrapping_add(4); 16]).expect("provider"),
+        ),
+        Sha256Digest::new([seed; 32]),
+        Sha256Digest::new([seed.wrapping_add(10); 32]),
+        Sha256Digest::new([seed.wrapping_add(20); 32]),
+    )
+}
+
+fn digest_file(path: &std::path::Path) -> Sha256Digest {
+    peritus_security_qualification::digest_bytes(&fs::read(path).expect("executor bytes"))
+}

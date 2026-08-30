@@ -13,5 +13,10 @@ Canonical generated evidence uses `security/schemas/evidence-manifest-v1.schema.
 terminal, model, and secret-bearing output stays outside the manifest in a controlled artifact store;
 the manifest retains only SHA-256 and byte counts.
 
+The native process boundary uses `native-probe-request-v1.schema.json` and
+`native-probe-response-v1.schema.json`. Each response must echo the SHA-256 of its exact request and
+carry only bounded structured evidence. These schemas define the transport between the H0 runner
+and a reviewed platform probe executable; they are not passing probe evidence by themselves.
+
 See the [H0 security guide](../docs/h0-security-qualification.md) for the campaign, boundaries, and
 release verdict.
