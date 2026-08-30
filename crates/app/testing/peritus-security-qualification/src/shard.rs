@@ -32,6 +32,20 @@ impl QualificationPlatform {
         }
     }
 
+    /// Returns the supported platform on which this binary is executing.
+    #[must_use]
+    pub const fn current() -> Option<Self> {
+        if cfg!(target_os = "linux") {
+            Some(Self::Linux)
+        } else if cfg!(target_os = "macos") {
+            Some(Self::Macos)
+        } else if cfg!(target_os = "windows") {
+            Some(Self::Windows)
+        } else {
+            None
+        }
+    }
+
     pub(crate) const fn owns(self, target: ProbeTarget) -> bool {
         match self {
             Self::Linux => matches!(target, ProbeTarget::TierOneHost | ProbeTarget::Linux),

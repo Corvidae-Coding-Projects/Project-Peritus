@@ -77,6 +77,22 @@ and atomically publishes one no-overwrite shard report. The production controlle
 source archive digest before asserting any probe. Exit success means every assigned case passed;
 the report is retained either way.
 
+`peritus-h0-prepare` creates those inputs from a clean committed checkout. It derives each
+`RevisionTuple` identity from its named committed source boundary, computes the complete source
+digest from `git archive HEAD`, binds the release and H0 plan subsets separately, records the
+native Rust and hosted-runner facts, and hashes the exact controller executable. It publishes
+`candidate.json`, `host-facts.json`, and fresh scratch and artifact directories together without
+overwriting an earlier campaign:
+
+```text
+peritus-h0-prepare --candidate-root DIR --controller FILE --output DIR \
+  --platform linux|macos|windows
+```
+
+The preparer rejects dirty source and a platform claim that does not match the executing host.
+The `security-qualification.yml` workflow runs this boundary and the shard operator on native
+Linux, macOS, and Windows runners, then retains each complete workspace as a workflow artifact.
+
 After all three native hosts finish, the final operator admits the separately produced external
 review, reconstructs the exact 42-case run, executes the verified policy, and publishes one
 no-overwrite report containing the exact canonical evidence-manifest JSON and its digest:

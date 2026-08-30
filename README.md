@@ -74,6 +74,12 @@ systems and retains each report plus raw evidence. Its macOS and Windows sandbox
 actual Seatbelt and AppContainer/Job Object host probes; hosted results remain evidence only after
 the corresponding revision finishes successfully.
 
+H0 also has a Rust-owned exact-candidate preparer and a three-host native workflow. The preparer
+derives the common candidate identity from committed source, binds the controller and native host
+facts, and refuses dirty or cross-platform inputs. Each hosted shard retains its canonical report
+and raw evidence. Cross-host aggregation and a separately supplied independent review remain
+mandatory; the workflow cannot manufacture either one.
+
 The tagged release workflow now stages each native archive, generates a candidate-bound inventory,
 SPDX SBOM, and SLSA provenance document in Rust, and retains GitHub keyless Sigstore attestations.
 This supplies the release mechanism; the unfinished exact-candidate campaigns and independent audit

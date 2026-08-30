@@ -84,6 +84,30 @@ platform's canonical subset and publishes the
 shard even when cases fail. A successful exit means the shard passed; it is not a complete H0
 verdict and does not replace cross-host aggregation or independent review.
 
+`peritus-h0-prepare` is the reviewed input builder used before each native shard. It requires a
+clean checkout, the compiled controller, the current native platform, and a new output directory.
+It computes the source identity from the exact `git archive HEAD` bytes. The acceptance, harness,
+policy, provider, release-manifest, and qualification-plan identities are independently derived
+from documented committed path sets, while the workspace lineage comes from the repository field
+in the root manifest. The resulting candidate document is identical on all three hosts; host facts
+remain platform-specific and bind the exact controller binary, Rust compiler, runner image facts,
+candidate commit, and source digest. It refuses cross-platform claims and never overwrites an
+earlier output directory.
+
+The v1 component boundaries are explicit:
+
+- acceptance binds the production architecture, B2 design, architecture registry, specification,
+  and quality-policy sources;
+- harness binds the agent, harness, and orchestrator crates;
+- policy binds the architecture registry, policy crates, and `security/` assets;
+- provider profile binds the complete `crates/model/` provider boundary;
+- release manifest binds the workspace and toolchain manifests, installers, release assets and
+  workflow, native product composition, and packaging/release tooling; and
+- qualification plan binds this H0 crate, verified security policy, H0 guide, and security assets.
+
+Changing a tracked file in one of these sets changes that component identity. Any tracked change
+also changes the complete source digest, so a component list cannot hide candidate drift.
+
 `peritus-h0-aggregate` is the final evidence reducer. It requires one admitted passing shard from
 Linux, macOS, and Windows plus the separately produced external-review document. It reconstructs
 the canonical 42-case run, evaluates `QualificationReport` through the verified policy, and
@@ -170,3 +194,8 @@ cannot replace those effects or the independent review.
 4. publish both canonical manifest bytes and their SHA-256;
 5. require the V-class verification target before accepting the H0 report; and
 6. pass Ready evidence to the separate H4 release-authority transition.
+
+The checked-in `security-qualification.yml` workflow performs the native execution and retention
+steps on Linux, macOS, and Windows. It does not invent an independent review: the three passing
+artifacts must be inspected separately and supplied with that review to `peritus-h0-aggregate`
+before H0 can become Ready.

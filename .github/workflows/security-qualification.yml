@@ -1,0 +1,82 @@
+name: Native security qualification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_BUILD_JOBS: "2"
+  RUST_VERSION: 1.97.1
+
+jobs:
+  native-security:
+    name: H0 native shard (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux
+            executable_suffix: ""
+          - os: macos-15
+            platform: macos
+            executable_suffix: ""
+          - os: windows-2025
+            platform: windows
+            executable_suffix: .exe
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    steps:
+      - name: Check out exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - name: Install Linux native sandbox prerequisite
+        if: ${{ runner.os == 'Linux' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends apparmor-profiles bubblewrap
+          sudo apparmor_parser --replace /usr/share/apparmor/extra-profiles/bwrap-userns-restrict
+          bwrap --version
+      - name: Build reviewed native controller
+        run: >-
+          cargo build --locked --package peritus-security-qualification
+          --bin peritus-h0-controller
+      - name: Prepare exact candidate and host facts
+        run: >-
+          cargo run --locked --package peritus-security-qualification
+          --bin peritus-h0-prepare --
+          --candidate-root .
+          --controller target/debug/peritus-h0-controller${{ matrix.executable_suffix }}
+          --output target/peritus-qualification/h0
+          --platform ${{ matrix.platform }}
+      - name: Execute candidate-bound native shard
+        run: >-
+          cargo run --locked --package peritus-security-qualification
+          --bin peritus-h0 --
+          --controller target/debug/peritus-h0-controller${{ matrix.executable_suffix }}
+          --candidate target/peritus-qualification/h0/candidate.json
+          --candidate-root .
+          --host-facts target/peritus-qualification/h0/host-facts.json
+          --scratch target/peritus-qualification/h0/scratch
+          --artifacts target/peritus-qualification/h0/artifacts
+          --report target/peritus-qualification/h0/${{ matrix.platform }}-shard.json
+          --platform ${{ matrix.platform }}
+      - name: Retain native H0 report and raw evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: h0-${{ matrix.platform }}
+          path: target/peritus-qualification/h0/**
+          if-no-files-found: warn
+          retention-days: 14

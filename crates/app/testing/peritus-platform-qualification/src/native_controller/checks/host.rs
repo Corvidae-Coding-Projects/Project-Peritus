@@ -110,6 +110,10 @@ pub(super) fn lifecycle(
         if !matches!(action, LifecycleAction::Uninstall) {
             command.arg("-BundleRoot").arg(package);
         }
+        command.arg("-InstallRoot").arg(subject_root.join("local-app-data/Programs/Peritus"));
+        if matches!(action, LifecycleAction::Uninstall) {
+            command.arg("-DataRoot").arg(subject_root.join("local-app-data/Peritus"));
+        }
         command
     } else {
         let mut command = Command::new("sh");

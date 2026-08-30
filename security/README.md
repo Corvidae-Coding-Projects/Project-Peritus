@@ -28,6 +28,11 @@ digest, and qualification-plan digest shared by every host. It is an identity in
 the named source or artifacts are authentic; release orchestration must produce and authenticate
 those bindings separately.
 
+`native-host-facts-v1.schema.json` records the executing platform and architecture, exact candidate
+commit and source digest, pinned Rust compiler facts, hosted-runner image facts when available, and
+the exact controller file digest and byte count. The preparer creates one host document per native
+shard. Its digest is carried by every receipt from that shard.
+
 `final-report-v1.schema.json` is the single-file final aggregation result. It binds the verified
 Ready/NotReady status to the candidate source digest, embeds the exact canonical evidence-manifest
 JSON, records its SHA-256, and retains stable failure reasons without granting H4 release authority.

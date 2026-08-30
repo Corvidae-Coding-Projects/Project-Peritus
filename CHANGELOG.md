@@ -13,6 +13,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Add `peritus-h0-prepare` and the native H0 security workflow: derive one reproducible integrated
+  candidate from documented committed source subsets, bind each native Rust host and exact
+  controller binary in schema-defined facts, execute the fixed Linux/macOS/Windows shard matrix,
+  and retain candidate, report, and raw evidence artifacts without manufacturing the independent
+  review required for final aggregation (#32)
 - Add strict external-review admission and the `peritus-h0-aggregate` final H0 reducer: combine
   exactly one passing Linux, macOS, and Windows shard, evaluate the independently supplied review
   through verified policy, and atomically retain a candidate-bound Ready/NotReady report with the
@@ -126,6 +131,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Pass explicit private Windows install and data roots through the real package lifecycle scripts,
+  retaining the ordinary `LOCALAPPDATA` default for users while making native H2 qualification
+  independent of PowerShell environment propagation on hosted runners (#31)
 - Reconcile Windows qualification cleanup from every owned Job Object PID's actual signaled exit
   state instead of the reference-sensitive active-process accounting count, so hosted runners may
   retain handles to exited controllers without hiding or excusing a running descendant (#31, #32)

@@ -16,7 +16,9 @@ mod native;
 mod observation;
 mod operator;
 mod policy_bridge;
+mod preparation;
 mod report;
+mod repository;
 mod runner;
 mod shard;
 
@@ -49,6 +51,7 @@ pub use peritus_security_policy::{
     IndependentSecurityReview, IntegratedCandidate, ReviewCompletion, ReviewScope,
     ReviewerIdentity, SecurityRequirement,
 };
+pub use preparation::run_from_env as run_h0_preparation;
 pub use report::{NotReadyReason, QualificationReport, ReadinessEvidence, ReadinessVerdict};
 pub use runner::{FreshSubjectFactory, ProbeRequest, QualificationRunner, QualificationSubject};
 pub use shard::{QualificationPlatform, QualificationShard};

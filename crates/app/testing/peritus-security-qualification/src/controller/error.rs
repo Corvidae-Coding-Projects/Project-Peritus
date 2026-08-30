@@ -4,7 +4,7 @@ use std::path::Path;
 
 /// Failure to authenticate, execute, or publish one native security probe.
 #[derive(Debug, thiserror::Error)]
-pub enum ControllerError {
+pub(super) enum ControllerError {
     /// The fixed command-line interface was not followed exactly.
     #[error("{0}")]
     Arguments(&'static str),
@@ -25,6 +25,9 @@ pub enum ControllerError {
     /// A checked TOML inventory could not be decoded.
     #[error("H0 controller inventory: {0}")]
     Toml(#[from] toml::de::Error),
+    /// The exact committed candidate could not be inspected.
+    #[error(transparent)]
+    Repository(#[from] crate::repository::RepositoryError),
 }
 
 impl ControllerError {

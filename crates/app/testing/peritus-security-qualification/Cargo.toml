@@ -52,3 +52,7 @@ path = "src/bin/peritus-h0-aggregate.rs"
 [[bin]]
 name = "peritus-h0-controller"
 path = "src/bin/peritus-h0-controller.rs"
+
+[[bin]]
+name = "peritus-h0-prepare"
+path = "src/bin/peritus-h0-prepare.rs"
