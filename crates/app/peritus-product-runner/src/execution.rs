@@ -43,6 +43,10 @@ impl ProductRunner {
         let mut accounting = RunAccounting::new();
         accounting.check()?;
         let baseline = CandidateBaseline::capture(&input.workspace_root)?;
+        let effect_requirement = crate::delivery_requirement::ExternalEffectRequirement::from_task(
+            input.delivery_scope,
+            &input.task,
+        );
         crate::trace::prepare(&input.trace_path)?;
         let mut workspace_ownership = WorkspaceOwnership::capture(&input.workspace_root);
         let design = create_design(&input, &observe, 1, &mut accounting).await?;
@@ -163,6 +167,7 @@ impl ProductRunner {
             }
             match acceptance::decide(
                 input.delivery_scope,
+                effect_requirement,
                 &state.coordinator,
                 &inspected.gates,
                 &state.findings,
@@ -172,6 +177,7 @@ impl ProductRunner {
                     let changed_paths = inspected.gates.report.changed_paths().to_vec();
                     let successful_commands = acceptance::successful_command_lines(
                         input.delivery_scope,
+                        effect_requirement,
                         &inspected.gates,
                         &state.successful_commands,
                     );
@@ -182,6 +188,7 @@ impl ProductRunner {
                         &changed_paths,
                         successful_commands.len(),
                         input.delivery_scope,
+                        effect_requirement,
                     );
                     let summary = format!(
                         "{completion}\n\nDetailed design: {}",

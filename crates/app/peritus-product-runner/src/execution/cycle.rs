@@ -127,6 +127,10 @@ pub(super) async fn inspect_cycle(
     )?;
     check_cancelled(input)?;
     let conversation = input.conversation.render();
+    let effect_requirement = crate::delivery_requirement::ExternalEffectRequirement::from_task(
+        input.delivery_scope,
+        &input.task,
+    );
     let changed_paths = baseline.changed_paths(&input.workspace_root)?;
     let gate_report = gates::run_with_ownership(
         &input.workspace_root,
@@ -137,10 +141,10 @@ pub(super) async fn inspect_cycle(
     )?;
     let mut gate_output = gate_report.output.clone();
     if input.delivery_scope.allows_external_effects()
-        && gate_report.report.changed_paths().is_empty()
+        && (effect_requirement.is_required() || gate_report.report.changed_paths().is_empty())
     {
         super::acceptance::ExternalEffectEvidence::from_commands(&state.successful_commands)
-            .append_report(&mut gate_output);
+            .append_report(&mut gate_output, effect_requirement);
     }
     let mut evidence = RunEvidence {
         diff: bundle::diff(&input.workspace_root)?,

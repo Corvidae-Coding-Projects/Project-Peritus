@@ -19,7 +19,8 @@ use peritus_types::RunId;
 
 use support::{
     FixedConversation, ScriptedProvider, design_response, git, list_arguments, named_tool_response,
-    named_tool_response_with_id, profile, read_arguments, text_response,
+    named_tool_response_with_id, profile, read_arguments, text_response, tool_response,
+    write_arguments,
 };
 
 fn command_arguments(program: &str, args: &[&str], purpose: &str) -> Vec<u8> {
@@ -150,5 +151,134 @@ fn authorized_external_effects_complete_without_a_synthetic_workspace_diff() {
             assert!(output.gates.contains("External-effect evidence: READY"));
             assert!(output.summary.contains("caller-authorized external effects"));
             assert!(git_output(repository.path(), &["status", "--porcelain"]).trim().is_empty());
+        });
+}
+
+#[test]
+#[allow(clippy::too_many_lines, reason = "one complete mixed-delivery regression fixture")]
+fn operational_request_needs_a_live_effect_even_when_supporting_files_change() {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("runtime")
+        .block_on(async {
+            let repository = tempfile::tempdir().expect("repository");
+            let state = tempfile::tempdir().expect("state directory");
+            fs::write(repository.path().join("README.md"), "# Service fixture\n")
+                .expect("repository file");
+            fs::write(
+                repository.path().join("peritus-workspace.toml"),
+                "schema_version = 1\nkind = \"artifact\"\n",
+            )
+            .expect("artifact workspace marker");
+            git(repository.path(), &["init", "--quiet"]);
+            git(repository.path(), &["config", "user.name", "Peritus Test"]);
+            git(repository.path(), &["config", "user.email", "peritus@example.invalid"]);
+            git(repository.path(), &["config", "commit.gpgsign", "false"]);
+            git(repository.path(), &["add", "."]);
+            git(repository.path(), &["commit", "--quiet", "-m", "initial"]);
+
+            let executable = std::env::current_exe().expect("test executable");
+            let executable = executable.to_string_lossy().into_owned();
+            let developer: Arc<dyn ModelProvider> = Arc::new(ScriptedProvider {
+                profile: profile([0xB1; 16], "mixed-delivery-developer"),
+                responses: Mutex::new(VecDeque::from([
+                    named_tool_response("workspace_list", list_arguments("", 2)),
+                    named_tool_response("workspace_read", read_arguments("README.md")),
+                    design_response(),
+                    named_tool_response("workspace_list", list_arguments("", 2)),
+                    named_tool_response("workspace_read", read_arguments("README.md")),
+                    tool_response(write_arguments(
+                        "setup-service.sh",
+                        "#!/bin/sh\nset -eu\nprintf '%s\\n' 'service configured'\n",
+                    )),
+                    text_response(
+                        br#"{"kind":"complete","run_instructions":"run setup-service.sh","summary":"Added the service setup helper."}"#,
+                    ),
+                    named_tool_response("workspace_list", list_arguments("", 2)),
+                    named_tool_response(
+                        "workspace_read",
+                        read_arguments("setup-service.sh"),
+                    ),
+                    named_tool_response_with_id(
+                        "run_command",
+                        "effect",
+                        command_arguments(
+                            &executable,
+                            &["--exact", "external_effect_command_fixture"],
+                            "external_effect",
+                        ),
+                    ),
+                    named_tool_response_with_id(
+                        "run_command",
+                        "verification",
+                        command_arguments(
+                            &executable,
+                            &["--exact", "external_effect_command_fixture"],
+                            "verification",
+                        ),
+                    ),
+                    text_response(
+                        br#"{"kind":"complete","run_instructions":"connect to the configured service","summary":"Applied and verified the live service state."}"#,
+                    ),
+                ])),
+            });
+            let reviewer: Arc<dyn ModelProvider> = Arc::new(ScriptedProvider {
+                profile: profile([0xB2; 16], "mixed-delivery-reviewer"),
+                responses: Mutex::new(VecDeque::from([
+                    named_tool_response("workspace_list", list_arguments("", 2)),
+                    named_tool_response(
+                        "workspace_read",
+                        read_arguments("setup-service.sh"),
+                    ),
+                    text_response(
+                        br#"{"findings":[],"summary":"The supporting helper is well formed."}"#,
+                    ),
+                    named_tool_response("workspace_list", list_arguments("", 2)),
+                    named_tool_response(
+                        "workspace_read",
+                        read_arguments("setup-service.sh"),
+                    ),
+                    text_response(
+                        br#"{"findings":[],"summary":"The helper and live effect evidence satisfy the request."}"#,
+                    ),
+                ])),
+            });
+            let task =
+                "Configure the local fixture so that I can connect to the running service."
+                    .to_owned();
+
+            let outcome = ProductRunner::run(
+                ProductRunInput {
+                    run_id: RunId::new([0xB3; 16]).expect("run ID"),
+                    workspace_root: repository.path().to_owned(),
+                    trace_path: state.path().join("mixed-delivery.trace"),
+                    finding_state: String::new(),
+                    task: task.clone(),
+                    delivery_scope: ProductDeliveryScope::AuthorizedExternalEffects,
+                    conversation: Arc::new(FixedConversation(task)),
+                    providers: RoleProviders {
+                        writer: Arc::clone(&developer),
+                        reviewer,
+                        fixer: developer,
+                        fallbacks: Vec::new(),
+                    },
+                    cancelled: Arc::new(AtomicBool::new(false)),
+                    provider_cancellation: CancellationToken::new(),
+                },
+                Arc::new(|_| {}),
+            )
+            .await
+            .expect("mixed-delivery run");
+            let ProductRunOutcome::Complete(output) = outcome else {
+                panic!("run asked for unexpected user input");
+            };
+
+            assert_eq!(output.changed_paths, [Path::new("setup-service.sh")]);
+            assert!(output.successful_commands.len() >= 2);
+            assert!(output.gates.contains("required by the operational request: yes"));
+            assert!(output.gates.contains("External-effect evidence: READY"));
+            assert!(output.summary.contains("supporting changed file"));
+            assert_eq!(output.fixer_cycles, 1);
         });
 }

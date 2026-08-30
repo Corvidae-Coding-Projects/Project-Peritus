@@ -15,6 +15,11 @@ win.
 A low score is not automatically a benchmark gotcha. Real Peritus defects, ordinary model misses,
 provider failures, and infrastructure failures remain failures. General corrections stay in the
 product only when they improve ordinary coding work without relying on private benchmark facts.
+Installing ordinary prerequisites such as Python, Make, R, compilers, or declared packages inside
+an authorized disposable task environment, and keeping those tools discoverable on `PATH`, is
+normal task execution rather than benchmark cooking. It becomes cooking only when behavior depends
+on a task or verifier identity, hidden reference data, or altered fixtures, resources, deadlines,
+or scoring.
 
 Each entry below links to its published contract, hidden or contradictory expectation, exact
 retained result, and evidence. The text here names the score-only shortcut Peritus refused.

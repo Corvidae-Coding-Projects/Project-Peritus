@@ -3,6 +3,7 @@
 use std::{fmt::Write as _, path::PathBuf};
 
 use super::ProductDeliveryScope;
+use crate::delivery_requirement::ExternalEffectRequirement;
 
 pub(super) fn completion_summary(
     task: &str,
@@ -11,6 +12,7 @@ pub(super) fn completion_summary(
     changed_paths: &[PathBuf],
     command_count: usize,
     delivery_scope: ProductDeliveryScope,
+    effect_requirement: ExternalEffectRequirement,
 ) -> String {
     let mut summary = format!(
         "Completed the requested task: {}\n\nImplementation: {}",
@@ -24,7 +26,13 @@ pub(super) fn completion_summary(
             summary.push_str(fix.trim());
         }
     }
-    if changed_paths.is_empty() && delivery_scope.allows_external_effects() {
+    if effect_requirement.is_required() && !changed_paths.is_empty() {
+        let _ = write!(
+            summary,
+            "\n\nDeliverable: {} supporting changed file(s) plus required caller-authorized external effects; {command_count} retained acceptance command(s) passed.",
+            changed_paths.len(),
+        );
+    } else if changed_paths.is_empty() && delivery_scope.allows_external_effects() {
         let _ = write!(
             summary,
             "\n\nDeliverable: caller-authorized external effects; {command_count} retained effect and verification command(s) passed.",

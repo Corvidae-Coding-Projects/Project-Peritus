@@ -118,7 +118,11 @@ fn reviewer_checks_literal_request_independently_of_the_design() {
 
 #[test]
 fn writer_batches_tools_and_respects_artifact_workspaces() {
-    let prompt = writer_system("writer", ProductDeliveryScope::WorkspaceChanges);
+    let prompt = writer_system(
+        "writer",
+        ProductDeliveryScope::WorkspaceChanges,
+        crate::delivery_requirement::ExternalEffectRequirement::Optional,
+    );
     assert!(prompt.contains("Batch independent tool calls"));
     assert!(prompt.contains("Every fresh writer or fixer invocation"));
     assert!(prompt.contains("read each existing target"));
@@ -162,7 +166,11 @@ fn writer_batches_tools_and_respects_artifact_workspaces() {
 
 #[test]
 fn external_effect_writer_attempts_scoped_prerequisites_before_escalating() {
-    let prompt = writer_system("writer", ProductDeliveryScope::AuthorizedExternalEffects);
+    let prompt = writer_system(
+        "writer",
+        ProductDeliveryScope::AuthorizedExternalEffects,
+        crate::delivery_requirement::ExternalEffectRequirement::Optional,
+    );
 
     assert!(prompt.contains("attempt ordinary prerequisites"));
     assert!(prompt.contains("normal build or runtime dependencies"));
@@ -180,7 +188,10 @@ fn reviewer_rechecks_conserved_finding_locations_after_fixes() {
         "gates",
         "request: python check.py\nresult: success",
         "finding",
-        ProductDeliveryScope::WorkspaceChanges,
+        ReviewDelivery {
+            scope: ProductDeliveryScope::WorkspaceChanges,
+            effect_requirement: crate::delivery_requirement::ExternalEffectRequirement::Optional,
+        },
         None,
     );
 
@@ -190,4 +201,30 @@ fn reviewer_rechecks_conserved_finding_locations_after_fixes() {
     assert!(prompt.contains("For every conserved finding"));
     assert!(prompt.contains("read each cited current workspace file"));
     assert!(prompt.contains("can predate fixer writes"));
+}
+
+#[test]
+fn live_operational_delivery_rejects_helper_files_as_the_whole_result() {
+    let requirement = crate::delivery_requirement::ExternalEffectRequirement::Required;
+    let writer =
+        writer_system("writer", ProductDeliveryScope::AuthorizedExternalEffects, requirement);
+    let reviewer = reviewer_user(
+        "Configure the local service so that I can connect to it.",
+        "setup.sh changed",
+        "checks passed",
+        "",
+        "",
+        ReviewDelivery {
+            scope: ProductDeliveryScope::AuthorizedExternalEffects,
+            effect_requirement: requirement,
+        },
+        None,
+    );
+
+    for prompt in [&writer, &reviewer] {
+        assert!(prompt.contains("live"));
+        assert!(prompt.contains("setup script"));
+        assert!(prompt.contains("external_effect"));
+        assert!(prompt.contains("verification"));
+    }
 }

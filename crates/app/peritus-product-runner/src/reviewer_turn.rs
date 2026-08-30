@@ -44,7 +44,14 @@ pub async fn complete(
             evidence.gates,
             evidence.developer_commands,
             evidence.prior,
-            input.delivery_scope,
+            turn::ReviewDelivery {
+                scope: input.delivery_scope,
+                effect_requirement:
+                    crate::delivery_requirement::ExternalEffectRequirement::from_task(
+                        input.delivery_scope,
+                        &input.task,
+                    ),
+            },
             correction.as_deref(),
         );
         let media = match crate::workspace_media::discover(

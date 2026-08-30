@@ -61,6 +61,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Require explicit live operational requests to retain a successful caller-authorized effect and a
+  later fresh verification even when the writer also changes supporting scripts or documentation;
+  helper artifacts alone no longer substitute for the requested running result (`TBF-025`, #31)
 - Interrupt long writer/fixer inspection spirals with at most two deterministic in-session progress
   corrections when no workspace mutation or declared external effect occurs, directing the role to
   use authorized standard tooling and take a concrete delivery step (`TBF-024`, #31)

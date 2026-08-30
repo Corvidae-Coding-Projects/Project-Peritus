@@ -5,6 +5,7 @@ use peritus_review::ProductFindingLedger;
 
 use super::ProductDeliveryScope;
 use crate::{
+    delivery_requirement::ExternalEffectRequirement,
     developer_tools::{CommandPurpose, SuccessfulCommand},
     gates,
 };
@@ -40,12 +41,17 @@ impl ExternalEffectEvidence {
         self.effects > 0 && self.verifications > 0 && self.verification_after_effect
     }
 
-    pub(super) fn append_report(&self, report: &mut String) {
+    pub(super) fn append_report(
+        &self,
+        report: &mut String,
+        requirement: ExternalEffectRequirement,
+    ) {
         use core::fmt::Write as _;
 
         let _ = write!(
             report,
-            "\nAuthorized external-effect evidence:\n  successful effect commands: {}\n  successful fresh verification commands: {}\nExternal-effect evidence: {}\n",
+            "\nAuthorized external-effect evidence:\n  required by the operational request: {}\n  successful effect commands: {}\n  successful fresh verification commands: {}\nExternal-effect evidence: {}\n",
+            if requirement.is_required() { "yes" } else { "no" },
             self.effects,
             self.verifications,
             if self.complete() { "READY FOR INDEPENDENT REVIEW" } else { "INCOMPLETE" },
@@ -55,13 +61,16 @@ impl ExternalEffectEvidence {
 
 pub(super) fn decide(
     scope: ProductDeliveryScope,
+    requirement: ExternalEffectRequirement,
     coordinator: &ProductionRunCoordinator,
     gates: &gates::GateReport,
     findings: &ProductFindingLedger,
     commands: &[SuccessfulCommand],
 ) -> ProductionDecision {
-    if scope.allows_external_effects() && gates.report.changed_paths().is_empty() {
-        let evidence = ExternalEffectEvidence::from_commands(commands);
+    let evidence = ExternalEffectEvidence::from_commands(commands);
+    if external_evidence_required(scope, requirement, gates) && !evidence.complete() {
+        coordinator.decide_external_effects(false, findings)
+    } else if scope.allows_external_effects() && gates.report.changed_paths().is_empty() {
         coordinator.decide_external_effects(evidence.complete(), findings)
     } else {
         coordinator.decide(&gates.report, findings)
@@ -70,14 +79,29 @@ pub(super) fn decide(
 
 pub(super) fn successful_command_lines(
     scope: ProductDeliveryScope,
+    requirement: ExternalEffectRequirement,
     gates: &gates::GateReport,
     commands: &[SuccessfulCommand],
 ) -> Vec<String> {
     if scope.allows_external_effects() && gates.report.changed_paths().is_empty() {
         commands.iter().map(|command| command.command.clone()).collect()
     } else {
-        gates.report.records().iter().map(|record| record.command.clone()).collect()
+        let mut lines: Vec<String> =
+            gates.report.records().iter().map(|record| record.command.clone()).collect();
+        if requirement.is_required() {
+            lines.extend(commands.iter().map(|command| command.command.clone()));
+        }
+        lines
     }
+}
+
+fn external_evidence_required(
+    scope: ProductDeliveryScope,
+    requirement: ExternalEffectRequirement,
+    gates: &gates::GateReport,
+) -> bool {
+    scope.allows_external_effects()
+        && (requirement.is_required() || gates.report.changed_paths().is_empty())
 }
 
 #[cfg(test)]
@@ -126,6 +150,7 @@ mod tests {
         assert_eq!(
             decide(
                 ProductDeliveryScope::WorkspaceChanges,
+                ExternalEffectRequirement::Optional,
                 &coordinator,
                 &gates,
                 &findings,
@@ -136,6 +161,7 @@ mod tests {
         assert_eq!(
             decide(
                 ProductDeliveryScope::AuthorizedExternalEffects,
+                ExternalEffectRequirement::Optional,
                 &coordinator,
                 &gates,
                 &findings,

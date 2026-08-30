@@ -11,6 +11,8 @@ pub(crate) mod bundle;
 #[cfg(not(verus_only))]
 mod candidate;
 #[cfg(not(verus_only))]
+mod delivery_requirement;
+#[cfg(not(verus_only))]
 mod design;
 #[cfg(not(verus_only))]
 pub(crate) mod developer_tools;

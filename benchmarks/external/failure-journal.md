@@ -3088,6 +3088,14 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   result does not erase the avoidable cost: it is a direct, task-neutral validation target for the
   same finite in-session progress correction, not a reason for renderer- or reverse-engineering
   behavior. Its later false native reviewer terminal remains covered separately by `TBF-009`.
+- Failed recurrence: `make-mips-interpreter__Z3Vjfh5` made twenty inspection or command tool calls,
+  including eight file reads, three searches, and seven commands, but never wrote the requested
+  implementation. Four provider requests consumed 547,766 input, 23,808 cached input, and 1,378
+  output tokens before the writer returned no usable terminal response. The unchanged verifier
+  timed out on execution and found no rendered frame, so all three checks failed and reward 0 is
+  retained. This is a second task-neutral validation target for the finite delivery correction;
+  the adjacent explicit runtime-result wording also motivates `TBF-025`'s general requirement to
+  execute and freshly verify promised live behavior rather than accepting source alone.
 - Integrity decision: retain the zero and the model's unsuccessful artifact. Do not copy hidden
   document labels, use their hashes as classifications, alter the inputs, or add OCR-specific
   behavior. The correction is justified by ordinary long coding and artifact runs that inspect
@@ -3130,3 +3138,31 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   `0f6289f5492b6d814833fba328c3aeb93a722d8aecad4bfb5e7c8c2979dc8678`, verifier SHA-256 is
   `e4e6b21fed6662adb4a42aba23d35609450392839a2282f3ba77c70c8d907c0b`, and reference SHA-256 is
   `97adb02c74de75d6d66829cf12d0a3d05b35b1b48b597ab67b90388517286553`.
+
+## TBF-025: supporting files substituted for a requested live service
+
+- Suite and task: Terminal-Bench 2.0, `configure-git-webserver`, first full-suite baseline trial.
+- Symptom: the writer created `setup-server.sh` and a README, checked only the script syntax, and
+  reported completion without executing the setup or starting the requested service. The unchanged
+  verifier's live request to the declared endpoint received HTTP status 000, so one verifier check
+  failed and reward 0 is retained.
+- Cause: the authorized-external-effect acceptance boundary required effect evidence only for an
+  empty workspace diff. A supporting file made the ordinary changed-target gates applicable, so a
+  request for a live configured result could be reduced to instructions for producing that result.
+- Resolution: Peritus now classifies explicit operational imperatives under the already-authorized
+  effect scope. Such a request requires a successful command labeled `external_effect` and a later
+  successful command labeled `verification`, even when scripts, configuration, or documentation
+  also changed. The deterministic design, writer, reviewer, evidence report, acceptance decision,
+  and completion summary all retain that requirement. No service name, port, task identity, or
+  verifier behavior appears in the policy.
+- Integrity decision: installing ordinary runtime or build prerequisites and retaining them on
+  `PATH` inside the authorized disposable task environment is legitimate execution, not benchmark
+  cooking. Do not hard-code this task, launch an evaluator-specific fake endpoint, inspect the
+  verifier while solving, or change its network check.
+- Evidence: job `peritus-terminalbench-2-k5-high`; trial
+  `configure-git-webserver__ufYRVNA`; reward 0; native failure after seven requests, 136,048 input,
+  39,680 cached input, and 6,297 output tokens. The verifier's live curl returned HTTP 000.
+- Verification: a product composition regression first writes a useful setup helper, proves that
+  it cannot complete the operational request alone, then succeeds only after a separate effect and
+  later end-to-end verification. Focused product-runner tests pass; strict repository gates and an
+  unchanged final-candidate rerun remain required.

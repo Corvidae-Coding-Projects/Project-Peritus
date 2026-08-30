@@ -3,6 +3,7 @@
 use std::{collections::VecDeque, fs, path::Path};
 
 use super::{DesignDocument, publish};
+use crate::delivery_requirement::ExternalEffectRequirement;
 use crate::execution::{ProductRunInput, check_cancelled};
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
@@ -23,7 +24,8 @@ pub(super) fn create(input: &ProductRunInput) -> Result<DesignDocument, ProductR
         if input.conversation.revision() != revision {
             continue;
         }
-        let markdown = render(&transcript, &inventory);
+        let requirement = ExternalEffectRequirement::from_task(input.delivery_scope, &input.task);
+        let markdown = render(&transcript, &inventory, requirement);
         let path = input.trace_path.with_extension("design.md");
         publish(&path, markdown.as_bytes())?;
         return Ok(DesignDocument { path, markdown, conversation_revision: revision });
@@ -75,7 +77,11 @@ fn inventory(root: &Path) -> Result<Vec<InventoryEntry>, ProductRunnerError> {
     Ok(entries)
 }
 
-fn render(transcript: &str, inventory: &[InventoryEntry]) -> String {
+fn render(
+    transcript: &str,
+    inventory: &[InventoryEntry],
+    effect_requirement: ExternalEffectRequirement,
+) -> String {
     let mut design = String::from(
         "# Generated artifact production design\n\n\
 ## Objective and acceptance criteria\n\n\
@@ -85,6 +91,11 @@ Produce the complete requested artifacts in this explicit artifact workspace. Th
         design.push_str("> ");
         design.push_str(line);
         design.push('\n');
+    }
+    if effect_requirement.is_required() {
+        design.push_str(
+            "\nThe requested deliverable is a live caller-authorized operational result. Supporting scripts, documentation, and configuration files are not completion without the requested effect and a later fresh end-to-end verification.\n",
+        );
     }
     design.push_str(
         "\n## Repository findings\n\nThe workspace declares `schema_version = 1` and `kind = \"artifact\"`. It has no retained implementation requirement, so the writer should use the bounded workspace tools directly and leave only the requested outputs. The design inventory observed before mutation is:\n\n",
@@ -110,6 +121,11 @@ Produce the complete requested artifacts in this explicit artifact workspace. Th
 ## Risks and explicit non-goals\n\nDo not guess unpublished schemas or hidden evaluator conventions. Do not read future-stage or adjacent inputs merely because they are visible. Do not modify input fixtures, use network access when excluded, retain helper code, or add package infrastructure for a one-run artifact task. Report an actual source contradiction rather than silently changing the contract.\n\n\
 ## Repository grounding evidence\n\nThis design was rendered by the Rust product runner from the exact durable conversation and a bounded, sorted filesystem inventory. It did not rely on unverified model claims about repository contents.\n",
     );
+    if effect_requirement.is_required() {
+        design.push_str(
+            "\n## Live operational delivery\n\nExecute the requested operation with command purpose `external_effect`, then perform a later deterministic state or end-to-end check with purpose `verification`. Both must succeed. Supporting files remain secondary to that observed live result.\n",
+        );
+    }
     design
 }
 
@@ -138,6 +154,7 @@ mod tests {
                 InventoryEntry { path: "in/source.json".to_owned(), kind: "file", bytes: Some(42) },
                 InventoryEntry { path: "out".to_owned(), kind: "directory", bytes: None },
             ],
+            ExternalEffectRequirement::Optional,
         );
 
         assert!(design.starts_with("# Generated artifact production design"));
@@ -145,5 +162,19 @@ mod tests {
         assert!(design.contains("`in/source.json`: file (42 bytes)"));
         assert!(design.contains("## Implementation slices"));
         assert!(design.contains("Do not guess unpublished schemas"));
+    }
+
+    #[test]
+    fn operational_design_requires_live_effect_and_fresh_verification() {
+        let design = render(
+            "Start the local service and leave it running.",
+            &[],
+            ExternalEffectRequirement::Required,
+        );
+
+        assert!(design.contains("live caller-authorized operational result"));
+        assert!(design.contains("not completion without the requested effect"));
+        assert!(design.contains("`external_effect`"));
+        assert!(design.contains("`verification`"));
     }
 }

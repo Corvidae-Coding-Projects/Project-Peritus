@@ -235,7 +235,14 @@ async fn run_developer_invocation(
         model,
         DeveloperLoopRequest {
             request_prefix,
-            system: writer_system(identity.role, input.delivery_scope),
+            system: writer_system(
+                identity.role,
+                input.delivery_scope,
+                crate::delivery_requirement::ExternalEffectRequirement::from_task(
+                    input.delivery_scope,
+                    &input.task,
+                ),
+            ),
             prompt,
             attachments,
             tools: definitions()?,
@@ -265,24 +272,34 @@ pub fn reviewer_system() -> String {
     )
 }
 
+#[derive(Clone, Copy)]
+pub struct ReviewDelivery {
+    pub scope: super::ProductDeliveryScope,
+    pub effect_requirement: crate::delivery_requirement::ExternalEffectRequirement,
+}
+
 pub fn reviewer_user(
     transcript: &str,
     diff: &str,
     gates: &str,
     developer_evidence: &str,
     prior: &str,
-    delivery_scope: super::ProductDeliveryScope,
+    delivery: ReviewDelivery,
     correction: Option<&str>,
 ) -> String {
     let correction = correction.map_or(String::new(), |value| {
         format!("\n\nHarness correction from the previous rejected review:\n{value}")
     });
-    let delivery = match delivery_scope {
+    let delivery = match delivery.scope {
         super::ProductDeliveryScope::WorkspaceChanges => {
             "Delivery scope: exact workspace changes. An empty candidate cannot pass."
         }
         super::ProductDeliveryScope::AuthorizedExternalEffects => {
-            "Delivery scope: caller-authorized external effects. When the candidate has no workspace changes, require relevant successful external_effect command evidence followed by successful fresh verification command evidence; do not require a synthetic file change."
+            if delivery.effect_requirement.is_required() {
+                "Delivery scope: the operational request requires a live caller-authorized external effect even when supporting workspace files changed. Require relevant successful external_effect command evidence followed by successful fresh verification command evidence. A setup script, README, or instructions alone are not the requested configured state."
+            } else {
+                "Delivery scope: caller-authorized external effects. When the candidate has no workspace changes, require relevant successful external_effect command evidence followed by successful fresh verification command evidence; do not require a synthetic file change."
+            }
         }
     };
     format!(
@@ -290,13 +307,21 @@ pub fn reviewer_user(
     )
 }
 
-fn writer_system(role: &str, delivery_scope: super::ProductDeliveryScope) -> String {
+fn writer_system(
+    role: &str,
+    delivery_scope: super::ProductDeliveryScope,
+    effect_requirement: crate::delivery_requirement::ExternalEffectRequirement,
+) -> String {
     let delivery = match delivery_scope {
         super::ProductDeliveryScope::WorkspaceChanges => {
             "This run accepts exact workspace changes. Label build, test, lint, and other inspection commands with purpose `verification`; external effects are not an alternate completion path. The workspace_list result gives the exact workspace_root and declares workspace tool paths to be relative to it. When the task names an absolute path below that exact root, remove the root prefix once; never repeat the root directory inside itself."
         }
         super::ProductDeliveryScope::AuthorizedExternalEffects => {
-            "The caller explicitly authorizes external-effect delivery. Within the requested external subject, attempt ordinary prerequisites needed for the result before asking the user again. This includes installing normal build or runtime dependencies when the task clearly requests software or system work in a disposable environment. First try the available scoped installation mechanism; escalate only after a concrete failure or when a material choice exceeds the request. Do not extend this authority to the user's durable host or to unrelated systems. If the requested result lives outside the workspace, label commands that perform the requested action with purpose `external_effect`, then run at least one fresh deterministic state inspection or end-to-end check labeled `verification`. Both successful forms are required; do not create a synthetic workspace file merely to produce a diff. The workspace_list result gives the exact workspace_root and declares workspace tool paths to be relative to it. When the task names an absolute path below that exact root, remove the root prefix once; never repeat the root directory inside itself."
+            if effect_requirement.is_required() {
+                "The caller explicitly authorizes external-effect delivery, and the original operational imperative requires the live configured result even when supporting workspace files change. A setup script, README, or instructions alone cannot complete this request. Within the requested external subject, attempt ordinary prerequisites needed for the result before asking the user again. This includes installing normal build or runtime dependencies when the task clearly requests software or system work in a disposable environment. First try the available scoped installation mechanism; escalate only after a concrete failure or when a material choice exceeds the request. Do not extend this authority to the user's durable host or to unrelated systems. Label commands that perform the requested action with purpose `external_effect`, then run at least one fresh deterministic state inspection or end-to-end check labeled `verification`. Both successful forms are required. The workspace_list result gives the exact workspace_root and declares workspace tool paths to be relative to it. When the task names an absolute path below that exact root, remove the root prefix once; never repeat the root directory inside itself."
+            } else {
+                "The caller explicitly authorizes external-effect delivery. Within the requested external subject, attempt ordinary prerequisites needed for the result before asking the user again. This includes installing normal build or runtime dependencies when the task clearly requests software or system work in a disposable environment. First try the available scoped installation mechanism; escalate only after a concrete failure or when a material choice exceeds the request. Do not extend this authority to the user's durable host or to unrelated systems. If the requested result lives outside the workspace, label commands that perform the requested action with purpose `external_effect`, then run at least one fresh deterministic state inspection or end-to-end check labeled `verification`. Both successful forms are required; do not create a synthetic workspace file merely to produce a diff. The workspace_list result gives the exact workspace_root and declares workspace tool paths to be relative to it. When the task names an absolute path below that exact root, remove the root prefix once; never repeat the root directory inside itself."
+            }
         }
     };
     format!(

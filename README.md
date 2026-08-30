@@ -40,6 +40,8 @@ Malformed or stalled provider turns use bounded retries with traced backoff and 
 requires repository-grounded inspection, deterministic project checks, independent review, and an
 exact accepted revision. A long inspection sequence that produces no workspace mutation or
 declared external effect receives a finite in-session correction toward a concrete delivery step.
+When a caller-authorized operational request asks for a live result, supporting scripts and
+documentation are accepted only alongside a successful effect and a later fresh verification.
 
 ## What remains before release
 
