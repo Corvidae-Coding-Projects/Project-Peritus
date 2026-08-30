@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 895,
+  "next_comment_id": 896,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -4203,7 +4203,7 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:01:40.256074700Z",
-      "updated_at": "2026-08-27T23:04:38.169128397Z",
+      "updated_at": "2026-08-30T15:53:02.508174361Z",
       "labels": [
         "qualification",
         "release"
@@ -4307,6 +4307,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAohwgmvJmiQmQw0vEFCkahGk3GXy5fV7+DcjiG24OPXLYfweweEJ+a8X7aj8Hjn159kNq8Roan063dlbwPTvMBw=="
+        },
+        "f3c9d01c-8021-4b57-9baf-d3656371c4df": {
+          "display_id": 895,
+          "author": "6ME5",
+          "content": "Implemented the Rust peritus-h4 envelope/verify/finalize operator. It verifies all required detached signatures, signature-binds fresh-subject cleanup, compares distinct build witnesses, reconstructs AC-01..25 and the independent final audit, evaluates verified release policy, and emits a no-overwrite final bundle. Added the strict plan schema/template and operator guide. Focused H4 tests, strict Clippy, JSON syntax, docs/policy, and source-layout checks pass.",
+          "created_at": "2026-08-30T15:53:02.505543452Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAtT5awGk36TlY9nD7pBTQYQZp5QncqBPbNmH1OnX2j1TKUDrNLdLxS8lBPPOG42obbnwn9xYfOlLW2nfBPBzMDg=="
         }
       }
     },
@@ -8811,8 +8820,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T15:52:57.314667941Z",
+    "timestamp": "2026-08-30T15:53:02.508174361Z",
     "agent_id": "6ME5",
-    "agent_seq": 1089
+    "agent_seq": 1090
   }
 }
