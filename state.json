@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 832,
+  "next_comment_id": 833,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T07:04:04.432053017Z",
+      "updated_at": "2026-08-30T07:04:09.371307172Z",
       "labels": [
         "qualification",
         "release"
@@ -2426,6 +2426,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABASbQdZk3FdUvlXkf3XXkMMorRM4Qy2Bm4gTga7R9rLXS7N3O5y5z0kENjddRDH33qTmIxZSGsRJ8FYrQAiLtKCg=="
+        },
+        "7453f685-92a0-4a37-a11b-46876dc8a11a": {
+          "display_id": 832,
+          "author": "6ME5",
+          "content": "[action] Signed exact-ID benchmark evidence audit; all current nonpass/unscored and reward-1/native-failure trials are explicitly classified, docs-check green, frozen campaign 96/445.",
+          "created_at": "2026-08-30T07:04:09.368780852Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAChDPzAjlQdmjYq8qV864ljrRCMQ9UepuSwHPlpUWgWeyBibQ0ODJeJz6azd0ZW6IWBaJ7W0uKWOXbTNJYatwBg=="
         },
         "74e94003-da37-451e-9206-8db647deb64b": {
           "display_id": 667,
@@ -8244,8 +8253,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T07:04:04.432053017Z",
+    "timestamp": "2026-08-30T07:04:09.371307172Z",
     "agent_id": "6ME5",
-    "agent_seq": 1022
+    "agent_seq": 1023
   }
 }
