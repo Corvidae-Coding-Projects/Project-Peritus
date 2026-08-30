@@ -2390,6 +2390,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   threshold at every required size. Native Peritus still ended during review on the same provider
   terminal after twelve requests, 325,114 input, 55,552 cached input, and 8,118 output tokens. The
   real performance pass is retained; only the false terminal belongs to role recovery.
+- Trial `llm-inference-batching-scheduler__VmXQPrh` read the supplied analytical model, explored
+  packing widths, refined the narrow first-bucket padding/time tradeoff, wrote both 800-request
+  plans, and passed all six unchanged integrity, schema, coverage, consistency, and performance
+  checks for reward 1.0. Native Peritus still ended during review on the same provider terminal
+  after ten requests, 699,804 input, 31,744 cached input, and 10,081 output tokens. The successful
+  shape-aware optimization is retained; only the false terminal belongs to role recovery.
 
 ## TBM-001: a writer mirrored the response field into the request schema
 
@@ -3066,6 +3072,15 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   `financial-document-processor__P6xNjCg`; reward 0; native provider terminal after sixteen
   requests, 555,251 input, 63,488 cached input, and 22,773 output tokens over 944.172 seconds; no
   changed paths; verifier interval completed normally with seven failures.
+- Rewarded recurrence: `path-tracing-reverse__924etyD` eventually reconstructed, compiled, and
+  byte-for-byte verified an independent C renderer, and all three unchanged verifier checks passed
+  for reward 1.0. Before its first source write, however, the frozen writer made 31 inspection calls
+  across repeated role recovery, including broad and repeated `strings`, `nm`, `objdump`, and
+  unavailable-executable probes. Its trace grew past 889 KiB and the complete run consumed
+  1,697,567 input, 87,296 cached input, and 12,615 output tokens across sixteen requests. The valid
+  result does not erase the avoidable cost: it is a direct, task-neutral validation target for the
+  same finite in-session progress correction, not a reason for renderer- or reverse-engineering
+  behavior. Its later false native reviewer terminal remains covered separately by `TBF-009`.
 - Integrity decision: retain the zero and the model's unsuccessful artifact. Do not copy hidden
   document labels, use their hashes as classifications, alter the inputs, or add OCR-specific
   behavior. The correction is justified by ordinary long coding and artifact runs that inspect
