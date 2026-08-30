@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1001,
+  "next_comment_id": 1002,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T21:11:28.910549098Z",
+      "updated_at": "2026-08-30T21:16:17.443461391Z",
       "labels": [
         "qualification",
         "release"
@@ -2228,6 +2228,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAqsPypHO/z59yDC/wQ4gi1fq5UlYQyMmv1Y/JTDoMaMSo+XBnwROxDHVkPnVT7xlVdFBP93qO1U02DATRDrEBBA=="
+        },
+        "4758f423-975c-4b86-ab17-aa25f7c4d96f": {
+          "display_id": 1001,
+          "author": "6ME5",
+          "content": "Exact-head runner wave for signed commit 929a720b43426728033deaaa1e7b5d4e53ab9cac is fully green: H0 native security qualification 33334177117 succeeded; H2 native product package 33334177097 succeeded with retained three-platform 18/18 Ready evidence; Gate A 33334177106 succeeded across all 23 jobs; Foundation verification 33334177127 succeeded across all six jobs, including locked Verus and Linux/macOS/Windows Rust checks.",
+          "created_at": "2026-08-30T21:16:17.439305430Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABATIhYmKLc5Yt2KxD5myS5WT3Ym6iSR/xCvzinq4DP08PAdv04eb0WoAtORXMfYMy1DAagByueY0h+M6O2LdrWDw=="
         },
         "477b2636-7621-4b15-9c8c-af11ce0650a3": {
           "display_id": 779,
@@ -9765,8 +9774,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T21:11:28.910549098Z",
+    "timestamp": "2026-08-30T21:16:17.443461391Z",
     "agent_id": "6ME5",
-    "agent_seq": 1197
+    "agent_seq": 1198
   }
 }
