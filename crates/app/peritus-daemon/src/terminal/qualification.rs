@@ -99,6 +99,7 @@ enum PtyQualificationErrorKind {
     BufferAllocation,
     PtyAllocation,
     ReaderCreation,
+    WriterCreation,
     ReaderThread,
     Spawn,
     Read,
@@ -112,8 +113,9 @@ enum PtyQualificationErrorKind {
 ///
 /// The child writes a fixed payload to both standard output and standard error. A bounded reader
 /// drains that combined stream concurrently so neither a platform buffer nor child reaping can
-/// wait on the other. The qualifier then reaps the child, closes the master owner to make Windows
-/// `ConPTY` publish EOF, and joins the reader before accepting any observation. Reads use a fixed
+/// wait on the other. The qualifier explicitly takes and closes the master writer so the child
+/// receives terminal EOF, then reaps the child, closes the master owner so Windows `ConPTY`
+/// publishes reader EOF, and joins the reader before accepting any observation. Reads use a fixed
 /// positive byte buffer.
 ///
 /// # Errors
@@ -166,8 +168,16 @@ pub fn qualify_pty_ordering() -> Result<PtyQualificationObservation, PtyQualific
             source.into_boxed_dyn_error(),
         )
     })?;
-    drop(pair.slave);
     let mut child = PtyChildOwner::new(child);
+    drop(pair.slave);
+    let writer = pair.master.take_writer().map_err(|source| {
+        PtyQualificationError::with_source(
+            PtyQualificationErrorKind::WriterCreation,
+            "open terminal input writer",
+            "the PTY master could not produce its input owner",
+            source.into_boxed_dyn_error(),
+        )
+    })?;
     let reader_thread = std::thread::Builder::new()
         .name("peritus-pty-qualification-reader".to_owned())
         .spawn(move || read_terminal(reader, events, read_buffer))
@@ -179,6 +189,7 @@ pub fn qualify_pty_ordering() -> Result<PtyQualificationObservation, PtyQualific
                 Box::new(source),
             )
         })?;
+    close_child_input(writer);
     let status = child.wait();
     drop(child);
     drop(pair.master);
@@ -206,6 +217,12 @@ pub fn qualify_pty_ordering() -> Result<PtyQualificationObservation, PtyQualific
     }
 
     Ok(summarize(&events, peak_buffered_bytes))
+}
+
+fn close_child_input(writer: Box<dyn std::io::Write + Send>) {
+    #[cfg(target_os = "macos")]
+    std::thread::sleep(std::time::Duration::from_millis(20));
+    drop(writer);
 }
 
 impl PtyQualificationError {
