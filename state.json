@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1007,
+  "next_comment_id": 1008,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T21:36:33.237088105Z",
+      "updated_at": "2026-08-30T21:49:17.335342049Z",
       "labels": [
         "qualification",
         "release"
@@ -1805,6 +1805,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJTUyNHYirPr2Qc8Z0SieCQILJfiRXcnTIaS9hKtKQg3uJyL2zCf5K7LfQe/UVNFT07ZqT+yJsCzfRijNTtwRBg=="
+        },
+        "254f9de8-1103-4544-b349-1c21263ac51c": {
+          "display_id": 1007,
+          "author": "6ME5",
+          "content": "Exact-head 33388299 H0 run 33336881541 completed success and is retained outside Git at /home/doll/.local/state/peritus/qualification/h0/run-33336881541. Linux passed 40/40 with report SHA-256 538ccd6ff5be988e91f69dc5a194a2a9d9a2837b77453059976c335f632832b0; macOS passed 1/1 with 746cdb92bd9b6e76fc603f67ec87beabf51f91e72ca9a4eaa24fca94db7a3aa0; Windows passed 1/1 with db2e67e65478cfbfcdb8876406a5c4d3f03e621afde2bfa0c8be61ed194ddf8e. Every case retained zero remaining processes, paths, mounts, and endpoints. GitHub artifact IDs: Linux 9739443412, macOS 9739305056, Windows 9739328387.",
+          "created_at": "2026-08-30T21:49:17.331185891Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAeXk6lz72TNeY8HlgFYClGDnxqqK4CK0BvDW8zjFnnLlBILdco3Oq1vxUpIBs3+5DukFtDFHy3N578+7G9nlYAQ=="
         },
         "26158618-1d31-4a77-b420-4a9147d7255a": {
           "display_id": 886,
@@ -9819,8 +9828,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T21:36:33.237088105Z",
+    "timestamp": "2026-08-30T21:49:17.335342049Z",
     "agent_id": "6ME5",
-    "agent_seq": 1201
+    "agent_seq": 1202
   }
 }
