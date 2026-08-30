@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 947,
+  "next_comment_id": 948,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T18:21:26.529372564Z",
+      "updated_at": "2026-08-30T18:26:12.103327897Z",
       "labels": [
         "qualification",
         "release"
@@ -2269,6 +2269,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjc0uVPyMqgsBWamQWm2zS2FS/ueixskg796gOAR63A6TiHQ+jVuh7z2ym1bgl9hhNv7q9rHoayhcHsHjkbvWCQ=="
+        },
+        "4f98e930-f17c-4ebe-93f6-1fcec18d97cb": {
+          "display_id": 947,
+          "author": "6ME5",
+          "content": "Exact-head H2 run 33325905238 retained the same Windows scenario-11 failure at adf1a5c2: artifact h2-windows-2025 ID 9736803055 contains scenarios 1-10 passed and cleanup-clean, then no scenario-11 response. The controller hit its 30-minute monotonic deadline and cleanup metadata was absent. Linux artifact 9736487880 and macOS artifact 9736270380 are Ready 18/18. The direct cause left by adf1a5c2 is now isolated: the qualifier cloned the reader but never called portable-pty MasterPty::take_writer and closed that writer, so ConPTY never received child-input EOF before child.wait. The subsequent master close could therefore never be reached. The next checkpoint explicitly takes/closes the writer, then waits, closes master for reader EOF, and joins the reader.",
+          "created_at": "2026-08-30T18:26:12.100633804Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAN5hcjEeg2VrD55BV6oj78KYGMMYBcEEN3yj2kIstrl838ezfQuRAWfX+nUNVo2hdzNPqdtkDx7tXXy/659llBQ=="
         },
         "4fd417b0-d611-4dec-94cf-45f40b4e22fe": {
           "display_id": 652,
@@ -9275,8 +9284,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T18:21:26.529372564Z",
+    "timestamp": "2026-08-30T18:26:12.103327897Z",
     "agent_id": "6ME5",
-    "agent_seq": 1142
+    "agent_seq": 1143
   }
 }
