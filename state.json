@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 860,
+  "next_comment_id": 861,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T10:44:25.397337781Z",
+      "updated_at": "2026-08-30T10:44:30.238804541Z",
       "labels": [
         "qualification",
         "release"
@@ -2741,6 +2741,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAsmuxFDL/XS+iQQuXA9hB/dztWL5dPqiWm32P3e3ve1oXP1ghjuaj4gSu2e/QljIHU/eZ0+3GfEqSqp+I0zfKBA=="
+        },
+        "8c5cfc10-2ac3-4b4e-a689-43915ebd32c9": {
+          "display_id": 860,
+          "author": "6ME5",
+          "content": "[action] Pushed isolated formal-boundary hotfix 17d541e4; exact locked peritus-product-runner Verus verification passed; resuming native H2 qualification while hosted CI reruns.",
+          "created_at": "2026-08-30T10:44:30.236271636Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAGmgvW9myHRYUZ2hy9S7/6T/yjzhMM2uWWwvEZ48a9EcAdV+nWC3Tj84YR5WRHORtsUr65zQlV7RkIqdhhUvfBQ=="
         },
         "8cacefdf-7706-4c3c-920b-a11b31a7e8a4": {
           "display_id": 697,
@@ -8496,8 +8505,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T10:44:25.397337781Z",
+    "timestamp": "2026-08-30T10:44:30.238804541Z",
     "agent_id": "6ME5",
-    "agent_seq": 1052
+    "agent_seq": 1053
   }
 }
