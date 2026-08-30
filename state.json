@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 936,
+  "next_comment_id": 937,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T17:56:54.288789683Z",
+      "updated_at": "2026-08-30T18:03:21.241443899Z",
       "labels": [
         "qualification",
         "release"
@@ -3421,6 +3421,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+2t5cYI5OOhOZR4g8M3GhaC89spGGEz8VYhhYvM9ZhFh1rmr8pEgqeScnBtmMWzTbiMEQFMed7oiYrwiGIHwBQ=="
+        },
+        "adb84cd6-d372-4340-8c34-749498418589": {
+          "display_id": 936,
+          "author": "6ME5",
+          "content": "Exact-head H2 Linux hosted qualification is Ready at adf1a5c2ef526d17e51412efb4973cec10156948. Run 33325905238, artifact h2-ubuntu-24.04 ID 9736487880: 18/18 scenarios passed, 18/18 fresh subjects cleanup-complete with zero remaining resources. Report SHA-256 3e361d50f6deafcbb8502bdcc1ad0181b769cb209adb500da5f59e6bf1411198; manifest SHA-256 e937a24c981acf2effacab3abbdc595d79ce1770e7e4d210a858ad4d68d43eb1; verdict evidence SHA-256 3b9cd7597e9f6ee4d037992fcfbf4553925df50517af56fcb050c1b483bf82ff. macOS is already Ready; Windows remains active with no reported failure.",
+          "created_at": "2026-08-30T18:03:21.238842302Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZ7wXHyWXdy2bhK+9nxY6hmFSrq8gOZ68Ne9CAiUXVuXInEOusOlut9sthWb5KXNObxd001SzRlVa29sn9sLcCg=="
         },
         "ade5b27a-908a-4431-8c61-7d3e71b8deb0": {
           "display_id": 724,
@@ -9176,8 +9185,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T17:56:54.288789683Z",
+    "timestamp": "2026-08-30T18:03:21.241443899Z",
     "agent_id": "6ME5",
-    "agent_seq": 1131
+    "agent_seq": 1132
   }
 }
