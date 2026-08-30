@@ -28,7 +28,6 @@ pub(super) fn run_macos_probe(request: &ProbeRequest) -> Result<MacosHostProbe, 
             &[
                 "-p",
                 "(version 1)(deny default)(allow process-exec (literal \"/usr/bin/true\"))",
-                "--",
                 "/usr/bin/true",
             ],
             request.connect_timeout,

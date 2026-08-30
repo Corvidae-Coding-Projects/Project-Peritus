@@ -4,7 +4,8 @@ use super::verus_commands::{
     VERUS_STRICT_BUILD_ARGS, VERUS_STRICT_VERIFY_ARGS, VERUS_WORKSPACE_BUILD_ARGS,
     VERUS_WORKSPACE_VERIFY_ARGS,
 };
-use super::workflow_commands::{ParsedScript, WORKSPACE_TEST_ARGS, parse_script};
+use super::workflow_command_contracts::WORKSPACE_TEST_ARGS;
+use super::workflow_commands::{ParsedScript, parse_script};
 use crate::error::Diagnostic;
 use crate::model::ToolchainPolicy;
 use std::path::Path;

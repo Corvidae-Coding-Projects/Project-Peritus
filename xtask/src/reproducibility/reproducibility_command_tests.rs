@@ -45,6 +45,20 @@ fn complete_recipe_command_forms_accept_locked_inputs_before_the_boundary() {
 }
 
 #[test]
+fn exact_ubuntu_bubblewrap_prerequisite_is_reviewed_but_variants_fail_closed() {
+    let exact = "sudo apt-get update\nsudo apt-get install --yes --no-install-recommends bubblewrap\nbwrap --version\n";
+    assert!(validate(exact).is_empty());
+
+    for altered in [
+        exact.replace("bubblewrap", "docker.io"),
+        exact.replace("bwrap --version", "bwrap --help"),
+        format!("sudo sh -c 'apt-get update'\n{exact}"),
+    ] {
+        assert_message(&validate(&altered), "outside the checked command model");
+    }
+}
+
+#[test]
 fn fake_nested_and_background_cargo_are_not_accepted_as_direct_evidence() {
     let fake = validate("echo cargo test --workspace");
     assert_message(&fake, "unaudited executable");

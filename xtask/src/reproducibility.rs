@@ -41,6 +41,7 @@ mod verification_commands;
 mod verus_commands;
 mod workflow_actionlint;
 mod workflow_ci;
+mod workflow_command_contracts;
 mod workflow_command_policy;
 mod workflow_command_syntax;
 mod workflow_commands;

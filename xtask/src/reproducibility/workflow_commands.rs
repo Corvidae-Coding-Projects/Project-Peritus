@@ -1,20 +1,10 @@
 use std::collections::BTreeSet;
 use std::path::Path;
 
+use super::workflow_command_contracts::PRE_CARGO_AUTHORITY;
 use super::workflow_command_syntax::{
     is_assignment, is_control_word, is_non_resolving, is_opaque, option_takes_value,
 };
-
-const PRE_CARGO_AUTHORITY: &str = "6ca5f56d2ab12e93f155d684b33f4a86c2f877b8";
-pub(super) const WORKSPACE_TEST_ARGS: &[&str] = &[
-    "test",
-    "--workspace",
-    "--all-targets",
-    "--all-features",
-    "--locked",
-    "--",
-    "--test-threads=1",
-];
 
 #[derive(Clone, Copy)]
 pub(super) struct CommandPolicy {
@@ -221,6 +211,23 @@ impl ParsedScript {
                 ">>",
                 "$GITHUB_PATH",
             ])
+    }
+
+    pub(super) fn is_reviewed_ubuntu_sandbox_install(&self) -> bool {
+        let commands = &self.commands;
+        self.issues.len() == 1
+            && self.issues.contains(&ScriptIssue::NestedShell)
+            && commands.len() == 3
+            && commands[0].is_exact_command(&["sudo", "apt-get", "update"])
+            && commands[1].is_exact_command(&[
+                "sudo",
+                "apt-get",
+                "install",
+                "--yes",
+                "--no-install-recommends",
+                "bubblewrap",
+            ])
+            && commands[2].is_exact_command(&["bwrap", "--version"])
     }
 
     pub(super) fn exact_cargo_command(&self, expected: &[&str]) -> bool {

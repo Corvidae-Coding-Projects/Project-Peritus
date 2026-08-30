@@ -148,10 +148,12 @@ fn validate_with_mode(
     let parsed = parse_script(script);
     let actionlint_install = workflow_actionlint::is_reviewed_install(&parsed);
     let config_preflight = parsed.is_reviewed_config_preflight();
+    let ubuntu_sandbox_install = parsed.is_reviewed_ubuntu_sandbox_install();
     if !parsed.is_failure_propagating()
         && !parsed.is_reviewed_archive_install()
         && !actionlint_install
         && !config_preflight
+        && !ubuntu_sandbox_install
     {
         diagnostics.push(Diagnostic::at(
             path,
@@ -172,6 +174,7 @@ fn validate_with_mode(
             && !AUDITED_EXECUTABLES.contains(&executable)
             && !(actionlint_install && executable == "tar")
             && !(config_preflight && executable == "git")
+            && !(ubuntu_sandbox_install && matches!(executable, "sudo" | "apt-get" | "bwrap"))
         {
             diagnostics.push(Diagnostic::at(
                 path,

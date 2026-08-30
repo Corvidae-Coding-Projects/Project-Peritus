@@ -193,12 +193,17 @@ fn cancellation_tree_reap(layout: &HostLayout) -> Result<Observation, Box<dyn st
 
 fn sandbox_denial(layout: &HostLayout) -> Result<Observation, Box<dyn std::error::Error>> {
     let output = command_output(&layout.helper, ["--version"])?;
-    if output.status.success() || output.stderr.is_empty() {
+    if !helper_rejected_raw_invocation(output.status.success()) {
         return Ok(Observation::failed("native sandbox helper accepted an unbound raw invocation"));
     }
     Ok(Observation::passed("native sandbox helper rejected raw execution before activation")
         .fact("native.raw-fallback-absent", true)
-        .fact("native.pre-activation-denial", true))
+        .fact("native.pre-activation-denial", true)
+        .fact("native.exit-status-authoritative", true))
+}
+
+const fn helper_rejected_raw_invocation(status_success: bool) -> bool {
+    !status_success
 }
 
 #[cfg(target_os = "linux")]
@@ -332,4 +337,15 @@ const fn native_endpoint(path: Option<&std::path::Path>) -> bool {
 #[cfg(windows)]
 const fn endpoint_is_owner_private(path: Option<&std::path::Path>) -> bool {
     path.is_none()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::helper_rejected_raw_invocation;
+
+    #[test]
+    fn raw_helper_denial_uses_reserved_exit_status_without_requiring_diagnostics() {
+        assert!(helper_rejected_raw_invocation(false));
+        assert!(!helper_rejected_raw_invocation(true));
+    }
 }

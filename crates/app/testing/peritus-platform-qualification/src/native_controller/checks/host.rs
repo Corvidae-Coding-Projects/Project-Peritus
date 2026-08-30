@@ -97,6 +97,7 @@ pub(super) fn lifecycle(
     package: &Path,
     action: LifecycleAction,
 ) -> Result<Output, Box<dyn std::error::Error>> {
+    let subject_root = package.parent().ok_or("native package has no subject root")?;
     let stem = match action {
         LifecycleAction::Install => "Install-Peritus",
         LifecycleAction::Upgrade => "Upgrade-Peritus",
@@ -118,7 +119,28 @@ pub(super) fn lifecycle(
         }
         command
     };
+    configure_subject_environment(&mut command, subject_root);
     bounded_output(&mut command)
+}
+
+fn configure_subject_environment(command: &mut Command, root: &Path) {
+    command
+        .env_clear()
+        .env("HOME", root)
+        .env("USERPROFILE", root)
+        .env("LOCALAPPDATA", root.join("local-app-data"))
+        .env("APPDATA", root.join("app-data"))
+        .env("XDG_CONFIG_HOME", root.join("config"))
+        .env("XDG_STATE_HOME", root.join("state"))
+        .env("XDG_DATA_HOME", root.join("data"))
+        .env("TMPDIR", root.join("tmp"))
+        .env("TEMP", root.join("tmp"))
+        .env("TMP", root.join("tmp"));
+    for name in ["PATH", "SYSTEMROOT", "WINDIR"] {
+        if let Some(value) = std::env::var_os(name) {
+            command.env(name, value);
+        }
+    }
 }
 
 pub(super) fn command_output<I, S>(
@@ -165,4 +187,30 @@ fn bounded_output(command: &mut Command) -> Result<Output, Box<dyn std::error::E
         return Err("native H2 child output exceeded its controller bound".into());
     }
     Ok(output)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::ffi::OsStr;
+    use std::path::Path;
+    use std::process::Command;
+
+    use super::configure_subject_environment;
+
+    #[test]
+    fn lifecycle_child_reinstalls_private_platform_directories_after_environment_clear() {
+        let root = Path::new("qualification-root");
+        let local_app_data = root.join("local-app-data");
+        let temporary = root.join("tmp");
+        let mut command = Command::new("unused");
+        configure_subject_environment(&mut command, root);
+
+        assert_eq!(configured(&command, "HOME"), Some(root.as_os_str()));
+        assert_eq!(configured(&command, "LOCALAPPDATA"), Some(local_app_data.as_os_str()));
+        assert_eq!(configured(&command, "TEMP"), Some(temporary.as_os_str()));
+    }
+
+    fn configured<'a>(command: &'a Command, name: &str) -> Option<&'a OsStr> {
+        command.get_envs().find_map(|(key, value)| (key == name).then_some(value).flatten())
+    }
 }

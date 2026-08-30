@@ -269,6 +269,13 @@ real package, process, daemon, transport, sandbox, terminal, upgrade, rollback, 
 effects on its current host. The controller reports unsupported native facilities honestly; it
 does not replace them with a fixture result.
 
+Every nested install, upgrade, and uninstall process receives the fresh subject's private home,
+local application data, configuration, state, data, and temporary directories explicitly. The
+controller does not rely on a shell to preserve those values after its own environment was cleared.
+This keeps PowerShell and Unix package effects inside the same disposable subject used by the
+report. Native sandbox probes likewise follow the installed helper protocol for denial checks and
+the host utility's actual command-line grammar when checking live backend availability.
+
 A Linux development qualification using the native controller has completed all 18 scenarios as
 `Ready`, with complete cleanup and zero remaining resources for every fresh subject. Release
 integration must still authenticate the final manifest, run this controller against the exact
@@ -282,3 +289,8 @@ report and raw evidence under `target/peritus-qualification/h2/`. The native pac
 that command on Ubuntu, macOS, and Windows and uploads each evidence directory. The sandbox scenario
 uses the live Linux namespace, macOS Seatbelt, or Windows AppContainer/Job Object probe for its host;
 missing facilities remain `Unsupported` and make the required campaign `NotReady`.
+
+The Ubuntu job installs its declared Bubblewrap host prerequisite before qualification and records
+the installed version in the workflow log. Installation alone is not evidence of support: the H2
+controller still executes the native namespace and capability probe, and a nonfunctional binary or
+host configuration remains `Unsupported`.

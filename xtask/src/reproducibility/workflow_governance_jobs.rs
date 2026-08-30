@@ -3,7 +3,8 @@ use super::verus_commands::{
     VERUS_WORKSPACE_VERIFY_ARGS,
 };
 use super::workflow_actionlint;
-use super::workflow_commands::{ParsedScript, WORKSPACE_TEST_ARGS, parse_script};
+use super::workflow_command_contracts::WORKSPACE_TEST_ARGS;
+use super::workflow_commands::{ParsedScript, parse_script};
 use super::workflow_governance::{
     candidate_checkout, config_step, exact_keys, integer, mapping_value, rust_step, string,
 };

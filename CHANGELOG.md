@@ -112,6 +112,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Make native H2 lifecycle children receive the fresh subject's private home, local application
+  data, configuration, state, data, and temporary roots explicitly after environment clearing, so
+  Windows PowerShell installers cannot lose `LOCALAPPDATA`; accept the macOS helper's reserved
+  nonzero protocol exit without requiring stderr, and invoke `sandbox-exec` with its native
+  option-to-command syntax so the live Seatbelt compilation probe is meaningful; install the
+  declared Bubblewrap prerequisite on the Ubuntu native qualification host while retaining the
+  probe's fail-closed functional check (#31)
 - Preserve native H2 reports and raw artifacts from failed hosted campaigns, print the retained
   report path and exact not-ready scenario reasons from `xtask`, and retain a bounded sanitized TUI
   transcript tail when an interactive lifecycle fails before a scenario response (#31)
