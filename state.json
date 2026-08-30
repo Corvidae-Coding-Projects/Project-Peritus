@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 927,
+  "next_comment_id": 928,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T17:39:56.806295031Z",
+      "updated_at": "2026-08-30T17:40:22.867079468Z",
       "labels": [
         "qualification",
         "release"
@@ -1531,6 +1531,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA1YPNURBmypTvtpnsDNaitHVej+g+EtqtzRMCMK2BenVx0JJiNnc8bxWEzng+kG4xeRkubxFhVHw/PFk+NAFJCQ=="
+        },
+        "15275f3c-8c57-41ab-a3eb-b58370c13333": {
+          "display_id": 927,
+          "author": "6ME5",
+          "content": "Signed commit adf1a5c2 fixes the H2/Gate A PTY deadlock by running the bounded combined-stream reader concurrently, then reaping the child, closing the master, and joining the reader. The event reader/reducer is a separate 144-line module; the lifecycle owner is 296 lines. Verification before push: real qualifier returned 45 bytes/one exit with conserved offsets and 8-byte bound; all 66 daemon tests and 23 H2 tests passed; native and Windows-GNU strict Clippy, architecture-check, docs-check, rustfmt, and diff checks passed. Pushed for fresh Linux/macOS/Windows H2, Gate A, and Foundation evidence.",
+          "created_at": "2026-08-30T17:40:22.864484865Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAoj83CvAPcZ8gc2QehKDgO++nd326WJsbzmXY+1Zh2F8fUPcjSeCjn5CjiwEelji8wE/TvTO86uLLgj0hPrHhAQ=="
         },
         "167ebe50-a3f7-4abb-9696-8fc15b58168d": {
           "display_id": 851,
@@ -9095,8 +9104,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T17:39:56.806295031Z",
+    "timestamp": "2026-08-30T17:40:22.867079468Z",
     "agent_id": "6ME5",
-    "agent_seq": 1122
+    "agent_seq": 1123
   }
 }
