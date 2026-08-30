@@ -29,6 +29,7 @@ mod file_metadata;
 pub(crate) mod gates;
 #[cfg(not(verus_only))]
 mod progress;
+#[cfg(not(verus_only))]
 mod review;
 #[cfg(not(verus_only))]
 mod reviewer_turn;
