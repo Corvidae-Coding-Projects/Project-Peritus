@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 830,
+  "next_comment_id": 831,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T06:56:33.532564123Z",
+      "updated_at": "2026-08-30T06:56:38.178257954Z",
       "labels": [
         "qualification",
         "release"
@@ -2552,6 +2552,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAR/5Wj/xkROT80WGB1or/uqbwwW5bZpj1zLNjTZOn3z2x0qjZKoIOQz8skrS4G7kQ54yxGPSkmKVE6B/lIj1XAg=="
+        },
+        "7e0a74d3-54c3-4400-9b85-310746c6e843": {
+          "display_id": 830,
+          "author": "6ME5",
+          "content": "[action] Signed checkpoint bb8878fa adds the task-neutral TBF-026 calibration/generalization evidence rule; complete local gates pass and frozen baseline is 96/445 (56 pass, 34 fail, 6 unscored).",
+          "created_at": "2026-08-30T06:56:38.175533204Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAnOCy3zDZGP/W8Vy4dBca2YaviY9VWuIPG+yFXu0uSWXWdreBrqK2H9f3AqDUsoUvjgaUQDB0myGKYgrrMVOzBQ=="
         },
         "82d77893-0b34-4a42-b47f-fef117969a72": {
           "display_id": 625,
@@ -8226,8 +8235,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T06:56:33.532564123Z",
+    "timestamp": "2026-08-30T06:56:38.178257954Z",
     "agent_id": "6ME5",
-    "agent_seq": 1020
+    "agent_seq": 1021
   }
 }
