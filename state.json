@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 980,
+  "next_comment_id": 981,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T19:45:59.932161638Z",
+      "updated_at": "2026-08-30T19:46:09.198552681Z",
       "labels": [
         "qualification",
         "release"
@@ -2030,6 +2030,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABSHKxK6GmtmhfX2JCQ9TdEmn03VwPFbWZo7AgKm2ulTMOWBGz/1RY/Hm61w0IMqSl3zDTxjvLYiiDHJ0fqdsCA=="
+        },
+        "390db972-e765-48ad-b0a5-b64836c795f8": {
+          "display_id": 980,
+          "author": "6ME5",
+          "content": "[action] Exact-head H0 Windows native shard green; retained artifact validates AppContainer fix. Monitoring remaining H0/H2/Foundation/Gate A jobs.",
+          "created_at": "2026-08-30T19:46:09.196197397Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAUfkNi+ZDrQpVNXFiOYRV1cSga1u4FsN8nXNlE3guzdNmNZ97WQNVr2jU1gOjcDrpKAkLT/mBjwL7gHaX2tmIBg=="
         },
         "39bc81b6-f5fb-4901-bc8a-bc0382bd0e68": {
           "display_id": 713,
@@ -9576,8 +9585,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T19:46:04.641042494Z",
+    "timestamp": "2026-08-30T19:46:09.198552681Z",
     "agent_id": "6ME5",
-    "agent_seq": 1176
+    "agent_seq": 1177
   }
 }
