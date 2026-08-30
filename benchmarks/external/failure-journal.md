@@ -2239,10 +2239,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   zero; the cancellation verifier passed five of six checks and the DNA verifier failed only the
   reverse-primer temperature check. The later trials retain the same frozen generic terminal, but
   their causes must remain separate until the normalized candidate reruns expose the stable
-  provider category. The retained traces identify malformed Codex runtime turns in `dna-assembly`
-  and `feal-linear-cryptanalysis`; `vulnerable-secret` instead contains the older generic reported
-  terminal and may be a non-retryable provider safety event covered by `TBF-006`, not an empty turn
-  that Peritus should route around. Trial `regex-chess__mp4rEJs` is the clearest useful-progress
+  provider category. The retained traces identify malformed Codex runtime turns in trials
+  `dna-assembly__S6TDP4F` and `feal-linear-cryptanalysis__RgGdfgJ`; neither produced its requested
+  output, and their unchanged verifiers retained reward 0 after five and four native requests.
+  Trial `vulnerable-secret__iegyEDc` instead contains the older generic reported terminal, produced
+  no requested output, and retained reward 0 after two native requests; it may be a non-retryable
+  provider safety event covered by `TBF-006`, not an empty turn that Peritus should route around.
+  Trial `regex-chess__mp4rEJs` is the clearest useful-progress
   case: its durable last observation records one 751,437-byte `re.json`, passing native JSON and
   exact-target gates, and an empty finding ledger. All four unchanged verifier tests passed for
   reward 1.0, but a later provider terminal still made the frozen product report failure after
@@ -2436,6 +2439,18 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   requests, 72,777 input, 23,808 cached input, and 2,881 output tokens over 140.796 seconds. The
   correctly verified numerical artifact is retained; only the false native terminal belongs to
   provider-neutral role recovery.
+- Exact-ID audit: sixteen further unchanged trials earned reward 1 while the frozen native result
+  remained the same generic provider terminal: `build-pmars__7mDnmHY`,
+  `constraints-scheduling__4ccV4Vy`, `custom-memory-heap-crash__rMuT39V`,
+  `db-wal-recovery__xVTomeQ`, `extract-elf__iH5QU33`, `fix-git__azjqcAo`,
+  `git-leak-recovery__JdXSmsu`, `headless-terminal__wkdbxC3`,
+  `log-summary-date-ranges__fvFKj7V`, `nginx-request-logging__SBrU2rp`,
+  `openssl-selfsigned-cert__dogUcYg`, `password-recovery__h9XtQX4`,
+  `regex-log__fXuZKpf`, `sanitize-git-repo__a89qRj2`, `tune-mjcf__56dpLe6`, and
+  `winning-avg-corewars__VjzHSLy`. Their retained result and invocation files preserve individual
+  timing and usage. This audit changes no task classification: valid artifacts survived, the
+  unchanged verifiers accepted them, and only the false native terminal is assigned to the general
+  role-recovery correction.
 
 ## TBM-001: a writer mirrored the response field into the request schema
 
@@ -2904,7 +2919,8 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   in `TBM-002`. Retain the unchanged zero. Do not normalize clean input against its explicit
   contract, copy the reference implementation, hard-code downloaded vectors, alter process limits,
   or reinterpret browser startup failure as evidence of safety merely to improve the score.
-- Evidence: task ref
+- Evidence: job `peritus-terminalbench-2-k5-high`; trial
+  `filter-js-from-html__2hVYPSz`; task ref
   `sha256:18470eb1fd5611b7c27f69a1ec0f66cfbf95f93c2c295d55709381cf8b7cb3cd`;
   verifier SHA-256 `6b43e99fb1c47792a39307fe90df91adfde4a588497c08f3b7da7b3265ef2733`;
   reference-solution SHA-256
