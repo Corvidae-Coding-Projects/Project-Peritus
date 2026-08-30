@@ -140,6 +140,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Correct the C0 operator guide to describe the production daemon's implemented migration,
   recovery, projection, authority, outbox, and readiness startup composition instead of retaining
   the obsolete pre-daemon limitation (#31).
+- Move the native H0 and H2 evidence uploads to the current immutable `upload-artifact` v7.0.1
+  action, removing GitHub's forced Node 20 compatibility warning without changing retained paths or
+  artifact policy (#31).
 
 ### Fixed
 
