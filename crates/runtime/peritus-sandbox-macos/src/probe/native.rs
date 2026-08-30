@@ -25,11 +25,7 @@ pub(super) fn run_macos_probe(request: &ProbeRequest) -> Result<MacosHostProbe, 
     let profile_compilation = seatbelt
         && command_succeeds(
             request.seatbelt_path(),
-            &[
-                "-p",
-                "(version 1)(deny default)(allow process-exec (literal \"/usr/bin/true\"))",
-                "/usr/bin/true",
-            ],
+            &["-p", "(version 1)(allow default)", "/usr/bin/true"],
             request.connect_timeout,
         );
     let credential_store = executable_file(Path::new("/usr/bin/security"))

@@ -274,7 +274,10 @@ local application data, configuration, state, data, and temporary directories ex
 controller does not rely on a shell to preserve those values after its own environment was cleared.
 This keeps PowerShell and Unix package effects inside the same disposable subject used by the
 report. Native sandbox probes likewise follow the installed helper protocol for denial checks and
-the host utility's actual command-line grammar when checking live backend availability.
+the host utility's actual command-line grammar when checking live backend availability. The macOS
+availability probe uses a runnable allow-default profile because its purpose is to verify that the
+host can compile and activate Seatbelt; separate helper protocol and sandbox conformance checks own
+the actual deny policy.
 
 A Linux development qualification using the native controller has completed all 18 scenarios as
 `Ready`, with complete cleanup and zero remaining resources for every fresh subject. Release
