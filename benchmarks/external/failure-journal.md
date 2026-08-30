@@ -2864,6 +2864,14 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   Native review also ended on the `TBF-009` provider terminal after eleven requests, 534,441 input,
   79,360 cached input, and 11,622 output tokens over 291.849 seconds. This is an honest general
   execution miss, not a benchmark gotcha and not a reason for Doom- or MIPS-specific behavior.
+- Frozen attempt `make-doom-for-mips__Hr7kpWw` repeated the same failure independently. The writer
+  observed `/usr/bin/apt` and `/usr/bin/apt-get`, confirmed that `clang` and a MIPS toolchain were
+  absent, and repeatedly searched the filesystem instead of using the available package manager.
+  It then hand-assembled another stand-in ELF and generated a synthetic frame. The unchanged
+  verifier accepted only frame existence; real startup text and 95-percent image similarity failed,
+  so reward 0 is retained. Native review ended on `TBF-009` after twelve requests, 941,760 input,
+  182,528 cached input, and 13,677 output tokens over 333.727 seconds. This is recurrence evidence
+  for the existing scoped-prerequisite correction, not a new task-specific fix.
 - Trial `adaptive-rejection-sampler__QTBndEK` explicitly required R to be installed when absent.
   The writer produced a substantial modular sampler, sample data, and formal tests, then received a
   literal executable-not-found result for `Rscript` and declared the runtime unavailable without
