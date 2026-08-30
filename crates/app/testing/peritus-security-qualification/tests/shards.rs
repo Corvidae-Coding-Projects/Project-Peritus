@@ -52,6 +52,32 @@ fn aggregation_rejects_missing_platform_and_candidate_drift() {
     assert!(QualificationRunner.aggregate(vec![linux, macos, windows]).is_err());
 }
 
+#[test]
+fn shard_json_round_trips_exact_evidence_and_rejects_failed_or_cross_host_tampering() {
+    let candidate = candidate(4);
+    let limits = QualificationLimits::production();
+    let cancellation = CancellationToken::new();
+    let linux = shard(candidate, limits, &cancellation, QualificationPlatform::Linux);
+    let bytes = linux.canonical_json().expect("canonical shard JSON");
+    let restored = peritus_security_qualification::QualificationShard::parse_ready_json(&bytes)
+        .expect("ready shard JSON");
+    assert_eq!(restored, linux);
+
+    let mut failed: serde_json::Value = serde_json::from_slice(&bytes).expect("shard value");
+    failed["status"] = serde_json::Value::String("failed".to_owned());
+    let failed = serde_json::to_vec(&failed).expect("failed shard bytes");
+    assert!(peritus_security_qualification::QualificationShard::parse_ready_json(&failed).is_err());
+
+    let mut wrong_platform: serde_json::Value =
+        serde_json::from_slice(&bytes).expect("shard value");
+    wrong_platform["platform"] = serde_json::Value::String("macos".to_owned());
+    let wrong_platform = serde_json::to_vec(&wrong_platform).expect("tampered shard bytes");
+    assert!(
+        peritus_security_qualification::QualificationShard::parse_ready_json(&wrong_platform)
+            .is_err()
+    );
+}
+
 fn shard(
     candidate: IntegratedCandidate,
     limits: QualificationLimits,

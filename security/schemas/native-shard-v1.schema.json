@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://peritus.invalid/schemas/security/native-shard-v1.schema.json",
+  "title": "Peritus H0 native qualification shard v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "platform", "candidate", "limits", "status", "cases"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "platform": {"enum": ["linux", "macos", "windows"]},
+    "candidate": {"$ref": "#/$defs/candidate"},
+    "limits": {"$ref": "#/$defs/limits"},
+    "status": {"enum": ["passed", "failed"]},
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 40,
+      "items": {"$ref": "#/$defs/case"}
+    }
+  },
+  "$defs": {
+    "identifier": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "safe_code": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9._-]+$"
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "acceptance_spec_id",
+        "harness_id",
+        "workspace_id",
+        "workspace_generation",
+        "workspace_revision",
+        "policy_id",
+        "provider_profile_id",
+        "source_sha256",
+        "release_manifest_sha256",
+        "qualification_plan_sha256"
+      ],
+      "properties": {
+        "acceptance_spec_id": {"$ref": "#/$defs/identifier"},
+        "harness_id": {"$ref": "#/$defs/identifier"},
+        "workspace_id": {"$ref": "#/$defs/identifier"},
+        "workspace_generation": {"type": "integer", "minimum": 1},
+        "workspace_revision": {"type": "integer", "minimum": 1},
+        "policy_id": {"$ref": "#/$defs/identifier"},
+        "provider_profile_id": {"$ref": "#/$defs/identifier"},
+        "source_sha256": {"$ref": "#/$defs/sha256"},
+        "release_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "qualification_plan_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["duration_millis", "processes", "peak_memory_bytes", "output_bytes", "artifacts"],
+      "properties": {
+        "duration_millis": {"type": "integer", "minimum": 1, "maximum": 3600000},
+        "processes": {"type": "integer", "minimum": 1, "maximum": 1024},
+        "peak_memory_bytes": {"type": "integer", "minimum": 1, "maximum": 68719476736},
+        "output_bytes": {"type": "integer", "minimum": 1, "maximum": 1073741824},
+        "artifacts": {"type": "integer", "minimum": 1, "maximum": 4096}
+      }
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["probe_id", "outcome", "subject_id", "failures", "native_execution", "cleanup"],
+      "properties": {
+        "probe_id": {"type": "string", "pattern": "^h0\\."},
+        "outcome": {"enum": ["not-executed", "failed", "passed"]},
+        "subject_id": {
+          "anyOf": [
+            {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9._-]+$"},
+            {"type": "null"}
+          ]
+        },
+        "failures": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {"type": "string", "pattern": "^[a-z0-9-]+$"}
+        },
+        "native_execution": {
+          "anyOf": [{"$ref": "#/$defs/native_execution"}, {"type": "null"}]
+        },
+        "cleanup": {"anyOf": [{"$ref": "#/$defs/cleanup"}, {"type": "null"}]}
+      }
+    },
+    "native_execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "semantic_outcome",
+        "executor_sha256",
+        "host_fingerprint_sha256",
+        "command_sha256",
+        "exit_code",
+        "native_sandbox_observed",
+        "usage",
+        "evidence"
+      ],
+      "properties": {
+        "semantic_outcome": {"enum": ["passed", "failed", "unsupported"]},
+        "executor_sha256": {"$ref": "#/$defs/sha256"},
+        "host_fingerprint_sha256": {"$ref": "#/$defs/sha256"},
+        "command_sha256": {"$ref": "#/$defs/sha256"},
+        "exit_code": {"type": "integer"},
+        "native_sandbox_observed": {"type": "boolean"},
+        "usage": {"$ref": "#/$defs/usage"},
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 96,
+          "items": {"$ref": "#/$defs/evidence"}
+        }
+      }
+    },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["elapsed_millis", "process_count", "peak_memory_bytes", "output_bytes", "artifact_count"],
+      "properties": {
+        "elapsed_millis": {"type": "integer", "minimum": 0},
+        "process_count": {"type": "integer", "minimum": 0},
+        "peak_memory_bytes": {"type": "integer", "minimum": 0},
+        "output_bytes": {"type": "integer", "minimum": 0},
+        "artifact_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "evidence": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "label", "value"],
+          "properties": {
+            "kind": {"const": "fact"},
+            "label": {"$ref": "#/$defs/safe_code"},
+            "value": {"type": "boolean"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "label", "value"],
+          "properties": {
+            "kind": {"const": "count"},
+            "label": {"$ref": "#/$defs/safe_code"},
+            "value": {"type": "integer", "minimum": 0}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "label", "sha256", "bytes"],
+          "properties": {
+            "kind": {"const": "digest"},
+            "label": {"$ref": "#/$defs/safe_code"},
+            "sha256": {"$ref": "#/$defs/sha256"},
+            "bytes": {"type": "integer", "minimum": 0}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "label", "value"],
+          "properties": {
+            "kind": {"const": "code"},
+            "label": {"$ref": "#/$defs/safe_code"},
+            "value": {"$ref": "#/$defs/safe_code"}
+          }
+        }
+      ]
+    },
+    "cleanup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "subject_id",
+        "remaining_processes",
+        "remaining_paths",
+        "remaining_mounts",
+        "remaining_endpoints",
+        "evidence_sha256"
+      ],
+      "properties": {
+        "subject_id": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9._-]+$"},
+        "remaining_processes": {"type": "integer", "minimum": 0},
+        "remaining_paths": {"type": "integer", "minimum": 0},
+        "remaining_mounts": {"type": "integer", "minimum": 0},
+        "remaining_endpoints": {"type": "integer", "minimum": 0},
+        "evidence_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

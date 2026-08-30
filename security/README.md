@@ -18,5 +18,10 @@ The native process boundary uses `native-probe-request-v1.schema.json` and
 carry only bounded structured evidence. These schemas define the transport between the H0 runner
 and a reviewed platform probe executable; they are not passing probe evidence by themselves.
 
+`native-shard-v1.schema.json` is the durable cross-host boundary. A passing shard retains the exact
+candidate, resource limits, receipt provenance, structured evidence, and cleanup accounting for its
+canonical platform subset. Aggregation reparses those values into the domain model; failed or
+tampered shard documents remain diagnostics and cannot be admitted as ready input.
+
 See the [H0 security guide](../docs/h0-security-qualification.md) for the campaign, boundaries, and
 release verdict.

@@ -8,6 +8,7 @@ mod catalog;
 mod digest;
 mod error;
 mod evidence;
+mod interchange;
 mod limits;
 mod manifest;
 mod native;

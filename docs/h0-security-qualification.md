@@ -70,6 +70,12 @@ and limit bindings, globally unique fresh subjects, and exactly one report for e
 probe. It then restores the original 42-case order. Missing or duplicate platform evidence cannot
 be interpreted as portable success.
 
+Native jobs exchange `native-shard-v1` JSON. The document preserves every candidate identity,
+resource ceiling, native receipt digest, structured evidence entry, and cleanup count needed to
+reconstruct the domain report exactly. Its parser admits only a passing canonical shard and repeats
+all resource, sandbox, evidence, and cleanup checks before aggregation. A failed shard remains a
+diagnostic artifact and cannot contribute to readiness.
+
 The adapter returns a `NativeExecutionReceipt` containing executor, host, and exact-command
 digests, exit status, native-sandbox observation, resource accounting, and nonempty structured
 evidence. There is no simulated or assumed-success receipt variant. Host adapters are nevertheless a

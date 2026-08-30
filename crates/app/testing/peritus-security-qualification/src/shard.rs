@@ -88,6 +88,26 @@ impl QualificationShard {
     pub fn cases(&self) -> &[CaseReport] {
         &self.cases
     }
+
+    /// Encodes this shard as bounded, deterministic JSON for cross-host aggregation.
+    ///
+    /// # Errors
+    ///
+    /// Returns when JSON serialization fails.
+    pub fn canonical_json(&self) -> Result<Vec<u8>, QualificationError> {
+        crate::interchange::encode(self)
+    }
+
+    /// Parses only a complete passing shard suitable for aggregation.
+    ///
+    /// Failed shard documents remain useful diagnostics but cannot cross this admission boundary.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed, oversized, failed, stale, incomplete, or internally inconsistent input.
+    pub fn parse_ready_json(bytes: &[u8]) -> Result<Self, QualificationError> {
+        crate::interchange::decode_ready(bytes)
+    }
 }
 
 pub fn aggregate(

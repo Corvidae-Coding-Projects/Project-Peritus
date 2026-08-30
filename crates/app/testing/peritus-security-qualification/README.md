@@ -56,6 +56,12 @@ candidate and resource-limit bindings, rejects duplicate subject or probe eviden
 the original 42-case catalog order before policy evaluation. No host can stand in for another
 operating system.
 
+Each shard has a deterministic JSON projection described by
+`security/schemas/native-shard-v1.schema.json`. The parser reconstructs the exact candidate,
+limits, native receipts, evidence entries, and cleanup observations. It admits only a passing,
+internally consistent canonical shard; a failed report can be retained for diagnosis but cannot be
+aggregated into H0 readiness.
+
 ## Evidence
 
 `EvidenceManifest` produces deterministic JSON in stable probe order and hashes those exact bytes

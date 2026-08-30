@@ -28,7 +28,7 @@ fn production_catalog_covers_every_literal_requirement_and_criterion() {
 #[test]
 fn security_catalogs_and_schemas_are_packaged() {
     let assets = bundled_security_assets();
-    assert_eq!(assets.len(), 9);
+    assert_eq!(assets.len(), 10);
     assert!(assets.iter().all(|asset| !asset.contents().is_empty()));
     assert!(assets.iter().any(|asset| asset.path().ends_with("evidence-manifest-v1.schema.json")));
     assert!(
@@ -37,5 +37,6 @@ fn security_catalogs_and_schemas_are_packaged() {
     assert!(
         assets.iter().any(|asset| asset.path().ends_with("native-probe-response-v1.schema.json"))
     );
+    assert!(assets.iter().any(|asset| asset.path().ends_with("native-shard-v1.schema.json")));
     assert!(assets.iter().any(|asset| asset.path().ends_with("threat-model-v1.toml")));
 }
