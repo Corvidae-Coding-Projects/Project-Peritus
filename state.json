@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1029,
+  "next_comment_id": 1030,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T23:23:28.749703Z",
+      "updated_at": "2026-08-30T23:25:57.958645478Z",
       "labels": [
         "qualification",
         "release"
@@ -1765,6 +1765,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABArs3sPiGWyRBoAua2uH5yX33wt0GwtGYiYiCptJVB0ZbBOPbwBEeN8Dqk5rjiglQbJbC++d252JNO6g9HLdIODA=="
+        },
+        "23f560fa-acae-4f7a-850b-e8c7dfb70218": {
+          "display_id": 1029,
+          "author": "6ME5",
+          "content": "Implemented and independently exercised the first genuine H1 production controller route: exact staged peritusd is killed after its durable journal/outbox effect-before-ack checkpoint, restarted from the same journal, checked for exactly-once reconciliation and live-fence settlement, retained with six evidence classes, and fully cleaned. The explicit one-case diagnostic passed; the other 42 routes remain fail-closed. Preparing an intentional signed checkpoint after focused tests, strict Clippy, architecture, docs, format, and diff checks passed.",
+          "created_at": "2026-08-30T23:25:57.955947387Z",
+          "kind": "action",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjWmml/wJw6LaVuiZCi/kL1Yp4lhCn9bVVdukKVbAa0KMnppT3yWn2LKAQ4VFUA7NCGlqsIY5Tdo04r/I19ENCA=="
         },
         "2440d353-07b9-4dea-bf52-73e6218d77b1": {
           "display_id": 557,
@@ -10013,8 +10022,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T23:23:28.749703Z",
+    "timestamp": "2026-08-30T23:25:57.958645478Z",
     "agent_id": "6ME5",
-    "agent_seq": 1224
+    "agent_seq": 1225
   }
 }
