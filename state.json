@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 989,
+  "next_comment_id": 990,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T20:08:15.978479338Z",
+      "updated_at": "2026-08-30T20:08:21.390261923Z",
       "labels": [
         "qualification",
         "release"
@@ -3218,6 +3218,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAecVMiRwAQ2xsGGfhjhooMx3yqTfTH/wZdcnn+45aMQE0AAWRKkPRA66EcN1PQ+8f5tn/xVH+i0ZxeOZkMQmqDA=="
+        },
+        "8fec3e83-66c5-4fbc-9340-59d4e7578813": {
+          "display_id": 989,
+          "author": "6ME5",
+          "content": "[action] Fixed exact hosted Windows image-path regression and bounded TUI cold-start failure in signed/pushed a178f0dc; waiting for fresh exact-head H2/Foundation/Gate runners.",
+          "created_at": "2026-08-30T20:08:21.384712747Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAKOvOZfUw6wMr4Wt4T+DsFKzSoqo+xC8oaIS94R93a9xGkrTZAme2vOVPKsiBlqS9TZKEMzTD0T7yNFClHaEBCQ=="
         },
         "901f363b-1c3f-4003-9521-f7e8d6d50e20": {
           "display_id": 605,
@@ -9657,8 +9666,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T20:08:15.978479338Z",
+    "timestamp": "2026-08-30T20:08:21.390261923Z",
     "agent_id": "6ME5",
-    "agent_seq": 1185
+    "agent_seq": 1186
   }
 }
