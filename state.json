@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 883,
+  "next_comment_id": 884,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T13:34:54.645179818Z",
+      "updated_at": "2026-08-30T13:43:12.761214893Z",
       "labels": [
         "qualification",
         "release"
@@ -1886,6 +1886,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjlat81YzAWg4LUEMd8IkFrMiXYb0uBjdydg0t92NVO+dcg7l/ZC+S8n5VPto+L9aAl/kESMEaFNXxQegUH1ACg=="
+        },
+        "35bf0a13-9168-4908-819a-1e5a4b31f65e": {
+          "display_id": 883,
+          "author": "6ME5",
+          "content": "Windows H2 root cause repaired in signed commit 8aaffdff. The first retained scenario had passed with zero cleanup resources, but Job Object ActiveProcesses remained 1 because Rust still owned the exited controller process handle; Microsoft documents that the count decrements only after all process references are released. H0, H1, and H2 now reap and release that handle before reconciliation and allow a bounded two-second drain for real terminating descendants; persistent descendants are still kill-on-close and fail qualification. Verification: Windows GNU strict Clippy for all three qualification crates, all focused H0/H1/H2 tests, rustfmt, diff check, and full cargo xtask all green across 78 packages and 3189 sources. macOS hosted H2 is independently green; Linux remains active.",
+          "created_at": "2026-08-30T13:43:12.758699647Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA/8Pcv9DAbReTUu5ZNMc7ty6/RIhs8tPkatU6qTOS7TEoZWHg7AF6UyrcOGBAkC/w/9X/ASYOHsaY/xlgKDgYBA=="
         },
         "363abb9d-1ee6-420c-83bc-1d72a9c0c46f": {
           "display_id": 721,
@@ -8703,8 +8712,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T13:34:54.645179818Z",
+    "timestamp": "2026-08-30T13:43:12.761214893Z",
     "agent_id": "6ME5",
-    "agent_seq": 1077
+    "agent_seq": 1078
   }
 }
