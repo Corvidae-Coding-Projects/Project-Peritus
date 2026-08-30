@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 774,
+  "next_comment_id": 775,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -5350,7 +5350,7 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T22:24:16.640107633Z",
-      "updated_at": "2026-08-30T00:15:43.899103322Z",
+      "updated_at": "2026-08-30T00:34:26.049664802Z",
       "labels": [
         "performance",
         "qualification"
@@ -5382,6 +5382,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzcsANZVF1gPeSHVi0NjRXIVWH0KHKWNsHZ1qqRt8TOoW30FTmGUq2voLHkqdl8VqEAA5lPzOr6cBrOeuXhT/DQ=="
+        },
+        "424b8138-d92d-47a1-96ff-5a3eb7be0397": {
+          "display_id": 774,
+          "author": "6ME5",
+          "content": "Committed signed checkpoint cdba8256. H3 now has exact reference-machine fail-fast admission, sequential load plus concurrent long-horizon campaign coordination, one shared accounting ledger, deterministic bounded per-metric sampling with campaign-wide resequencing, exact terminal drains for partial queue cycles, common subject-executable identity checks, receipts, and fail-closed evaluation. Verified: 10 peritus-benchmarks unit tests plus 9 integration tests; 10 performance-qualification unit tests; strict all-target/all-feature Clippy for both packages; two ignored operator smokes against target/debug/peritusd covering scheduler lifecycle and crash/restart/successor event; cargo xtask all reports 78 packages, 3103 sources, 2616 formal-boundary files, 12241 ordinary-safe entry points, 135 docs, and 27 pinned actions. Remaining H3: native host probe, retained evidence writer and operator command, accepted-baseline workflow, reference-machine load/full executions, and eight-hour retained soak evidence.",
+          "created_at": "2026-08-30T00:34:26.045708348Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAftQf64ONtA34ahP1POKxTewKPRFfIgwJQPS7uzEMaxpnmz95jlIldPx2l6pbbgz18ZJNWAYdbDtKsUNnwJ7nAw=="
         },
         "62212cb3-1fe5-441f-8bd4-0910eb08372e": {
           "display_id": 772,
@@ -7722,8 +7731,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T00:33:58.127703814Z",
+    "timestamp": "2026-08-30T00:34:26.049664802Z",
     "agent_id": "6ME5",
-    "agent_seq": 962
+    "agent_seq": 963
   }
 }
