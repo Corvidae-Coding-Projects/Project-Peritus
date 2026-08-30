@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 835,
+  "next_comment_id": 836,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T07:09:02.468289255Z",
+      "updated_at": "2026-08-30T07:32:30.046175907Z",
       "labels": [
         "qualification",
         "release"
@@ -1481,6 +1481,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAfm9jN3uVKQQgBpp/vw1zrgtypxHcvJbF0LK8f01v77/zDJvrmGwUcmwu7Of855HRRwOPWOBmSMny7A9S+hWFCg=="
+        },
+        "14ded787-d808-4f46-8ca7-ce598a0ba645": {
+          "display_id": 835,
+          "author": "6ME5",
+          "content": "Signed commit 972319d5 adds the Rust-owned Terminal-Bench campaign reporter, v1 JSON schema, operator documentation, and compile-compcert frozen-failure classification. It atomically publishes no-overwrite snapshot/final reports, reconciles Harbor aggregate and direct child state, retains per-trial evidence and usage, and binds pin plus frozen agent identities. Live 99-trial snapshot validated against the schema: 56 reward-one, 37 reward-zero, 6 unscored. Focused 32-test suite, strict Clippy, rustfmt, docs-check, JSON Schema validation, and cargo xtask all pass. Frozen agent digest remains a53ca55a5565207c9da703ed37cba5f3e6f9975b5ff21d39fccb1696e2909005.",
+          "created_at": "2026-08-30T07:32:30.043504861Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAT3KNLbRpSzZffgUeQe8cdoaz18cVnfEMYD8v1nXj0uzDoOk5Ec4lkykw5clwbJGAO1nOy/7l6Ksx7vhoiGg4BQ=="
         },
         "15107f96-a103-413c-bf01-d898efafb294": {
           "display_id": 747,
@@ -8271,8 +8280,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T07:09:02.468289255Z",
+    "timestamp": "2026-08-30T07:32:30.046175907Z",
     "agent_id": "6ME5",
-    "agent_seq": 1025
+    "agent_seq": 1026
   }
 }
