@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 924,
+  "next_comment_id": 925,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T17:23:51.935673137Z",
+      "updated_at": "2026-08-30T17:37:02.127245294Z",
       "labels": [
         "qualification",
         "release"
@@ -3124,6 +3124,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAW6AYxgxJLuIZp1eXRlJnywNexkLkEnSi11h7RP7DLrzHPIMTvM25tmp3M6/OgMjRwCWS+BDMZC/hBOWQEiB7DQ=="
+        },
+        "9d4ddfb5-134f-4c7c-a689-a7a46f344698": {
+          "display_id": 924,
+          "author": "6ME5",
+          "content": "Run 33323733857 macOS artifact 9736069347 retained successful scenarios 1-10 with zero-resource cleanup and no scenario 11 response; pipe-separation reached peritusd qualify-pty and the controller expired after 30 minutes. Gate A run 33323733860 independently cancelled only macOS Rust tests after the same PTY path occupied its full 30-minute test limit; the other 22 jobs passed. Root cause: the prior Windows EOF correction waited for the child before starting the cloned PTY reader, contrary to portable-pty lifecycle requirements. The local correction drains the bounded combined stream concurrently, reaps the child, closes the master to publish ConPTY EOF, and joins the reader before accepting evidence. It is split into 296/144-line cohesive modules. Verification: real qualifier returns 45 bytes and one exit immediately; all 66 daemon tests, all 23 H2 package tests, native and Windows-GNU strict Clippy, architecture-check, docs-check, rustfmt, and diff checks pass. Awaiting the current Windows artifact before signed push and fresh hosted rerun.",
+          "created_at": "2026-08-30T17:37:02.124262376Z",
+          "kind": "resolution",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAI5eAGCoKor/+1e1+Uuhbj8PWv55RsfOsb3RPpndplwqwtmfcJ47rtXCgC+xo0dQmBf8QQeIWIb1TfzOE9/JNDA=="
         },
         "9d7a5004-f893-4e8a-9b4e-a163ab3d3503": {
           "display_id": 692,
@@ -9068,8 +9077,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T17:23:51.935673137Z",
+    "timestamp": "2026-08-30T17:37:02.127245294Z",
     "agent_id": "6ME5",
-    "agent_seq": 1119
+    "agent_seq": 1120
   }
 }
