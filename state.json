@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 887,
+  "next_comment_id": 888,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -8332,7 +8332,7 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:01:08.433031832Z",
-      "updated_at": "2026-08-30T13:57:06.499841964Z",
+      "updated_at": "2026-08-30T14:40:11.755578690Z",
       "labels": [
         "qualification",
         "security"
@@ -8346,6 +8346,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9bYKy7+P2L+yNVnSP3idOtqfF3Ms5LJ7UxMtyIlMLWaSoEeiM0AbRP5t2J7qRv9TzpolJORE7eBYTJfzkjuYAw=="
+        },
+        "3436cbe8-09d8-47f9-bb21-96d358216acb": {
+          "display_id": 887,
+          "author": "6ME5",
+          "content": "Signed checkpoint 1d3b6077 adds the real candidate-bound peritus-h0-controller, closed 42-probe execution plans, exact Git-archive source verification, reviewed source/inventory reconciliation, native sandbox activation, bounded retained evidence, and regression coverage. It also repairs the hosted H2 Windows environment boundary, installs Ubuntu's restricted Bubblewrap AppArmor profile, and widens the local A3 conformance I/O bound after the macOS runner failure. Verification: 25 H0 tests, complete H2 tests, daemon conformance, 89 workflow-policy tests, native strict Clippy, Windows cross-Clippy, docs/reproducibility checks, and full cargo xtask all green across 78 packages and 3207 sources.",
+          "created_at": "2026-08-30T14:40:11.744159926Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAE2GU5Mi1/p97Z0G0P/yCb2hRf90vyhqcMH8N45+UPCGkLNmcSrnR5QgpscVfhHfpgRHpozsI4fMsQiLEo05cCg=="
         },
         "3a12dc78-3f9f-48ce-a5bc-f0fc8ee66d41": {
           "display_id": 885,
@@ -8739,8 +8748,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T14:02:44.985359495Z",
+    "timestamp": "2026-08-30T14:40:11.755578690Z",
     "agent_id": "6ME5",
-    "agent_seq": 1081
+    "agent_seq": 1082
   }
 }
