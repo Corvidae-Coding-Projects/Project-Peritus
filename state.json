@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 780,
+  "next_comment_id": 781,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -5359,7 +5359,7 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T22:24:16.640107633Z",
-      "updated_at": "2026-08-30T01:09:15.914205059Z",
+      "updated_at": "2026-08-30T01:16:27.210373786Z",
       "labels": [
         "performance",
         "qualification"
@@ -5418,6 +5418,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA23PA6AAaA+sQcovFwyN8GITDd6e/2tHMlsh0VneR5b8uvhOWrv5gLkwFqHgO+Cmpvh4DLkhrnFRu3N/Xol+lDQ=="
+        },
+        "6c058b9f-49a8-4ce5-870c-26b57a4caed2": {
+          "display_id": 780,
+          "author": "6ME5",
+          "content": "[action] Committed TBF-015 pre-stream failure evidence fix as 518edbcd; full local gate green; frozen Terminal-Bench baseline unchanged",
+          "created_at": "2026-08-30T01:16:27.207815325Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAEW9JIYosVp3LEex5EFw5JZI/H7dfULoOA2SSonv3EOu366fBNyIL7VZQwvwt4NKgcrZ7OYl9inDi1+7qY+l4BA=="
         },
         "6fe590ac-deb6-4281-8c5d-220b214f3a7a": {
           "display_id": 771,
@@ -7776,8 +7785,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T01:16:22.489929647Z",
+    "timestamp": "2026-08-30T01:16:27.210373786Z",
     "agent_id": "6ME5",
-    "agent_seq": 968
+    "agent_seq": 969
   }
 }
