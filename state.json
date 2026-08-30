@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 799,
+  "next_comment_id": 800,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T02:30:15.253843053Z",
+      "updated_at": "2026-08-30T02:30:24.425525645Z",
       "labels": [
         "qualification",
         "release"
@@ -2939,6 +2939,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA3YrRwEw5SH2SzLLsqZkV+dVl2iE8C4T2sIq1x31p3Hm3jRQ/Ziv9bRiQFDBDoukPmARXJAkA5hRqLGbID+EbAA=="
+        },
+        "c72f3e99-a5cd-488d-a151-f35fd6157628": {
+          "display_id": 799,
+          "author": "6ME5",
+          "content": "Frozen baseline reached 61 of 445 completed trials. Rewarded model-extraction-relu-logits passed its unchanged verifier, while the frozen native runner retained the known false provider terminal during review. This is added as general TBF-009 recovery evidence. Ordinary prerequisite installation and executable discovery in disposable task environments remain legitimate task execution, not benchmark-specific behavior. Candidate hosted checks currently show no failure.",
+          "created_at": "2026-08-30T02:30:24.422578843Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAji06hPVjNpAEMwwoZvqOrH/Q/i1lq3ChSRR8DZt2wjp5wnZ6dTe0ADLF3fvXEdEiTKdCjklKJVa3EiZ0kl8lDw=="
         },
         "ca43fd35-adc5-4ecf-83b1-40a0dbb1a668": {
           "display_id": 568,
@@ -7947,8 +7956,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T02:30:15.253843053Z",
+    "timestamp": "2026-08-30T02:30:24.425525645Z",
     "agent_id": "6ME5",
-    "agent_seq": 987
+    "agent_seq": 988
   }
 }
