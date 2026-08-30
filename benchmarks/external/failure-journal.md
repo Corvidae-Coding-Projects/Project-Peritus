@@ -2621,6 +2621,11 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   role then ended on an empty provider response, so `TBF-009` also applies. The current general rule
   tells its fresh recovery invocation to attempt an ordinary scoped Python prerequisite rather than
   treating the missing executable as a reason to stop or ask the user.
+- Trial `torch-pipeline-parallelism__LwPjbQF` repeated that missing-Python sequence after correctly
+  writing the requested `/app/pipeline_parallel.py`. Its frozen native run ended during review on
+  the same empty-provider terminal after seven requests, 141,101 input, 23,808 cached input, and
+  6,303 output tokens over 182.460 seconds. This reinforces the general prerequisite and role
+  recovery classes; it is not evidence for a package- or task-specific branch.
 - Verification: a product-runner regression requires the scoped prerequisite, concrete-failure,
   escalation, and durable-host boundaries to appear only for caller-authorized external-effect runs.
   Focused tests, strict Clippy, and the full repository gate are required before commit. An unchanged
@@ -2651,17 +2656,21 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   prohibit nested-root repetition. The unchanged final-candidate task must write the literal target
   before this is counted as a demonstrated external improvement.
 
-## TBI-007: a cold verifier spent its full deadline downloading Torch
+## TBI-007: cold verifiers spent their full deadlines downloading Torch
 
-- Suite and task: Terminal-Bench 2.0, `torch-tensor-parallelism`, first full-suite baseline trial.
-- Symptom: Harbor published no reward because the unchanged verifier reached its 900-second deadline
-  before executing any test. Its script first installed curl and uv, then requested Python 3.13,
-  Pytest, Torch 2.7.0, and the Pytest CTRF plugin from the network.
+- Suite and tasks: Terminal-Bench 2.0, `torch-tensor-parallelism` and
+  `torch-pipeline-parallelism`, first full-suite baseline trials.
+- Symptom: Harbor published no reward for either trial because each unchanged verifier reached its
+  900-second deadline before executing any test. The scripts first installed curl and uv, then
+  requested Python 3.13, Pytest, Torch 2.7.0, and their supporting packages from the network.
 - Cause: the cold Torch resolution selected the CUDA distribution and began downloading Torch plus
-  multi-gigabyte NVIDIA runtime packages inside the verifier deadline. Retained output ends during
-  those downloads, and Harbor reports `VerifierTimeoutError` from the unchanged verifier process.
-- Classification: benchmark infrastructure failure independent of Peritus's wrong-path and provider
-  failures above. Retain the null result. Do not extend the verifier timeout, preinstall a modified
-  task image, mount a private dependency cache, select a different Torch build, or infer a reward
-  from the unexecuted tests. A later unchanged rerun may classify the candidate only if the official
-  verifier itself completes under its published resources.
+  multi-gigabyte NVIDIA runtime packages inside the verifier deadline. Both retained outputs end
+  during those downloads, and Harbor reports `VerifierTimeoutError` from the unchanged verifier
+  processes. Exact trials: `torch-tensor-parallelism__QzhvGPy` and
+  `torch-pipeline-parallelism__LwPjbQF`.
+- Classification: benchmark infrastructure failure independent of the native wrong-path,
+  missing-prerequisite, and provider failures above. Retain both null results. Do not extend the
+  verifier timeout, preinstall a modified task image, mount a private dependency cache, select a
+  different Torch build, or infer a reward from the unexecuted tests. A later unchanged rerun may
+  classify a candidate only if the official verifier itself completes under its published
+  resources.
