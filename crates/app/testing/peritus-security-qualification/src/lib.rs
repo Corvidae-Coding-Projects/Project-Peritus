@@ -28,7 +28,8 @@ pub use evidence::{
     NativeExecutionReceipt, SafeEvidenceCode,
 };
 pub use interchange::{
-    decode_candidate as parse_candidate_json, encode_candidate as candidate_json,
+    decode_candidate as parse_candidate_json, decode_review as parse_review_json,
+    encode_candidate as candidate_json, encode_final_report as final_report_json,
 };
 pub use limits::{CancellationToken, QualificationLimits, ResourceUsage};
 pub use manifest::EvidenceManifest;
@@ -37,7 +38,10 @@ pub use observation::{
     CaseFailure, CaseOutcome, CaseReport, CleanupObservation, ProbeObservation, ProbeOutcome,
     QualificationRun,
 };
-pub use operator::{H0OperatorStatus, run_from_env as run_h0_operator};
+pub use operator::{
+    H0AggregateStatus, H0OperatorStatus, run_aggregate_from_env as run_h0_aggregate_operator,
+    run_from_env as run_h0_operator,
+};
 pub use peritus_security_policy::{
     AcceptanceCriterion, FindingLifecycle, FindingObservation, FindingSeverity,
     IndependentSecurityReview, IntegratedCandidate, ReviewCompletion, ReviewScope,

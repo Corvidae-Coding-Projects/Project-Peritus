@@ -82,6 +82,13 @@ report path, and current platform. It runs only that platform's canonical subset
 shard even when cases fail. A successful exit means the shard passed; it is not a complete H0
 verdict and does not replace cross-host aggregation or independent review.
 
+`peritus-h0-aggregate` is the final evidence reducer. It requires one admitted passing shard from
+Linux, macOS, and Windows plus the separately produced external-review document. It reconstructs
+the canonical 42-case run, evaluates `QualificationReport` through the verified policy, and
+atomically publishes a no-overwrite `final-report-v1` document. That document carries the exact
+canonical evidence-manifest JSON, its digest, and stable NotReady reasons. An incomplete or
+non-independent review produces a retained NotReady report rather than a manufactured pass.
+
 The adapter returns a `NativeExecutionReceipt` containing executor, host, and exact-command
 digests, exit status, native-sandbox observation, resource accounting, and nonempty structured
 evidence. There is no simulated or assumed-success receipt variant. Host adapters are nevertheless a

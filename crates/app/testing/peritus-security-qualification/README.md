@@ -73,6 +73,19 @@ It reads bounded regular candidate and host-fact documents, uses the host-fact b
 fingerprint, executes the canonical platform subset, and atomically publishes one no-overwrite
 shard report. Exit success means every assigned case passed; the report is retained either way.
 
+After all three native hosts finish, the final operator admits the separately produced external
+review, reconstructs the exact 42-case run, executes the verified policy, and publishes one
+no-overwrite report containing the exact canonical evidence-manifest JSON and its digest:
+
+```text
+peritus-h0-aggregate --linux FILE --macos FILE --windows FILE \
+  --review FILE --report FILE
+```
+
+Only complete passing native shards enter aggregation. The final report is still published when
+the external review is incomplete, non-independent, or contains an unresolved blocker; in that
+case the command exits unsuccessfully and records stable NotReady reason codes.
+
 ## Evidence
 
 `EvidenceManifest` produces deterministic JSON in stable probe order and hashes those exact bytes

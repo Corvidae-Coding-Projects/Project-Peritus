@@ -2,6 +2,8 @@
 
 mod candidate;
 mod case;
+mod final_report;
+mod review;
 
 use serde::{Deserialize, Serialize};
 
@@ -117,6 +119,26 @@ pub fn encode_candidate(
 /// Rejects malformed, oversized, zero-identity, zero-revision, or unknown-schema input.
 pub fn decode_candidate(bytes: &[u8]) -> Result<crate::IntegratedCandidate, QualificationError> {
     candidate::decode(bytes)
+}
+
+/// Parses one independently produced, candidate-bound external security review.
+///
+/// # Errors
+///
+/// Rejects malformed, oversized, stale, noncanonical, or internally contradictory review input.
+pub fn decode_review(bytes: &[u8]) -> Result<crate::IndependentSecurityReview, QualificationError> {
+    review::decode(bytes)
+}
+
+/// Encodes one final H0 policy reduction and its exact canonical evidence manifest.
+///
+/// # Errors
+///
+/// Returns when the embedded manifest is not UTF-8 or report serialization fails.
+pub fn encode_final_report(
+    report: &crate::QualificationReport,
+) -> Result<Vec<u8>, QualificationError> {
+    final_report::encode(report)
 }
 
 fn parse_platform(value: &str) -> Result<QualificationPlatform, QualificationError> {

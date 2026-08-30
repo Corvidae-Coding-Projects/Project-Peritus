@@ -13,6 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Add strict external-review admission and the `peritus-h0-aggregate` final H0 reducer: combine
+  exactly one passing Linux, macOS, and Windows shard, evaluate the independently supplied review
+  through verified policy, and atomically retain a candidate-bound Ready/NotReady report with the
+  exact canonical evidence manifest and stable failure codes (#32)
 - Add candidate-bound H0 native-platform shards with a fixed Linux 40, macOS 1, and Windows 1
   partition plus fail-closed three-host aggregation, preventing one host from manufacturing native
   security evidence for another operating system; add bounded deterministic shard JSON that

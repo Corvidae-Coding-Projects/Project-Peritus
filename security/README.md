@@ -28,5 +28,9 @@ digest, and qualification-plan digest shared by every host. It is an identity in
 the named source or artifacts are authentic; release orchestration must produce and authenticate
 those bindings separately.
 
+`final-report-v1.schema.json` is the single-file final aggregation result. It binds the verified
+Ready/NotReady status to the candidate source digest, embeds the exact canonical evidence-manifest
+JSON, records its SHA-256, and retains stable failure reasons without granting H4 release authority.
+
 See the [H0 security guide](../docs/h0-security-qualification.md) for the campaign, boundaries, and
 release verdict.

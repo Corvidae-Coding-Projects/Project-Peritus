@@ -1,5 +1,7 @@
 //! One-command native H0 shard operator.
 
+mod aggregate;
+mod aggregate_args;
 mod args;
 
 use std::env;
@@ -14,6 +16,8 @@ use crate::{
 };
 
 use self::args::Options;
+
+pub use aggregate::{H0AggregateStatus, run_from_env as run_aggregate_from_env};
 
 const MAX_HOST_FACT_BYTES: u64 = 1024 * 1024;
 const MAX_CANDIDATE_BYTES: u64 = 256 * 1024;

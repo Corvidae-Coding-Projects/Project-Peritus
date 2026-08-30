@@ -42,3 +42,7 @@ workspace = true
 [[bin]]
 name = "peritus-h0"
 path = "src/bin/peritus-h0.rs"
+
+[[bin]]
+name = "peritus-h0-aggregate"
+path = "src/bin/peritus-h0-aggregate.rs"
