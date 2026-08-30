@@ -90,7 +90,9 @@ fn extract(root: &Path, transcript: &str) -> Vec<PathMention> {
         let words = line.split_whitespace().collect::<Vec<_>>();
         for (index, word) in words.iter().enumerate() {
             let required_output = output_context(&words[..index]);
-            let Some(relative) = parse_path(root, word, required_output) else {
+            let quoted_bare_name =
+                required_output && path_noun_context(&words[..index]) && explicitly_delimited(word);
+            let Some(relative) = parse_path(root, word, required_output, quoted_bare_name) else {
                 continue;
             };
             paths
@@ -105,14 +107,15 @@ fn extract(root: &Path, transcript: &str) -> Vec<PathMention> {
         .collect()
 }
 
-fn parse_path(root: &Path, raw: &str, required_output: bool) -> Option<PathBuf> {
-    let token = raw.trim_matches(|character: char| {
-        matches!(
-            character,
-            '`' | '\'' | '"' | '(' | ')' | '[' | ']' | '{' | '}' | '<' | '>' | ',' | ';' | ':'
-        )
-    });
+fn parse_path(
+    root: &Path,
+    raw: &str,
+    required_output: bool,
+    quoted_bare_name: bool,
+) -> Option<PathBuf> {
+    let token = trim_delimiters(raw);
     let token = token.strip_suffix('.').unwrap_or(token);
+    let token = trim_delimiters(token);
     if token.is_empty()
         || token.contains("://")
         || token.contains('*')
@@ -125,7 +128,7 @@ fn parse_path(root: &Path, raw: &str, required_output: bool) -> Option<PathBuf> 
     let relative = if path.is_absolute() {
         path.strip_prefix(root).ok()?.to_path_buf()
     } else {
-        if !required_output || (!token.contains('/') && !token.contains('.')) {
+        if !required_output || (!token.contains('/') && !token.contains('.') && !quoted_bare_name) {
             return None;
         }
         path.to_path_buf()
@@ -140,6 +143,15 @@ fn parse_path(root: &Path, raw: &str, required_output: bool) -> Option<PathBuf> 
     Some(relative)
 }
 
+fn trim_delimiters(raw: &str) -> &str {
+    raw.trim_matches(|character: char| {
+        matches!(
+            character,
+            '`' | '\'' | '"' | '(' | ')' | '[' | ']' | '{' | '}' | '<' | '>' | ',' | ';' | ':'
+        )
+    })
+}
+
 fn output_context(words: &[&str]) -> bool {
     let start = words.len().saturating_sub(12);
     let context = &words[start..];
@@ -148,6 +160,27 @@ fn output_context(words: &[&str]) -> bool {
     };
     let negation_start = trigger.saturating_sub(2);
     !context[negation_start..trigger].iter().any(|word| negation(word))
+}
+
+fn path_noun_context(words: &[&str]) -> bool {
+    let start = words.len().saturating_sub(6);
+    words[start..].iter().any(|word| {
+        matches!(
+            normalized(word).as_str(),
+            "artifact"
+                | "binary"
+                | "directory"
+                | "executable"
+                | "file"
+                | "folder"
+                | "program"
+                | "script"
+        )
+    })
+}
+
+fn explicitly_delimited(raw: &str) -> bool {
+    matches!(raw.chars().next(), Some('`' | '\'' | '"')) && raw.len() > 1
 }
 
 fn output_verb(word: &str) -> bool {
@@ -253,5 +286,17 @@ mod tests {
             relative: PathBuf::from("out/report.json"),
             required_output: true,
         }));
+    }
+
+    #[test]
+    fn quoted_extensionless_executable_is_a_required_output() {
+        let root = tempfile::tempdir().expect("root");
+        fs::write(root.path().join("cli_tool"), "candidate").expect("executable");
+        let transcript = "The final output must include a binary executable called `cli_tool`.";
+
+        let record = run(root.path(), transcript, &[PathBuf::from("cli_tool")]);
+
+        assert_eq!(record.exit_code, Some(0));
+        assert!(record.output.contains("cli_tool: present"));
     }
 }

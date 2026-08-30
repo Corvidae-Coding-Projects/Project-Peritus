@@ -2184,6 +2184,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   `crack-7z-hash__gqdRV7a`; agent execution ended after 1.189 seconds with no verifier result. The
   retained trial contains `agent/peritus/conversation.json`, no developer trace, and the masked
   filesystem diagnostic in `exception.txt` and `result.json`.
+- Second frozen-baseline observation: trial `fix-ocaml-gc__qrz7jeu` ended before a first provider
+  trace event, retained `conversation.json` but no developer trace, and therefore surfaced the same
+  masking filesystem exception after 81.304 seconds with no verifier result. The immutable
+  baseline executable predates the trace-preparation correction; the current candidate must retain
+  the original product failure category on the required unchanged rerun before the underlying task
+  outcome is classified.
 - Verification: a production-composition regression forces the provider to fail before returning
   any response and proves the original provider category survives while a nested zero-byte trace
   exists. A benchmark-projection regression proves the empty trace reports zero requests and zero
@@ -2331,6 +2337,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   ended during review on the same provider terminal after thirteen requests, 281,753 input, 63,488
   cached input, and 11,265 output tokens over 599.506 seconds. The long validation produced useful
   correctness evidence; only the false terminal is assigned to provider-neutral role recovery.
+- Trial `pytorch-model-cli__Mta9uVw` inspected the supplied image and weights, discovered the
+  available ordinary runtime, and produced all three explicitly requested artifacts in `/app`: the
+  executable `cli_tool`, `weights.json`, and `prediction.txt`. The unchanged verifier awarded reward
+  1.0. Native Peritus still ended during review on the same provider terminal after nine requests,
+  214,733 input, 47,616 cached input, and 9,587 output tokens. This is evidence for general runtime
+  discovery and literal artifact delivery; only the false terminal is assigned to role recovery.
 
 ## TBM-001: a writer mirrored the response field into the request schema
 

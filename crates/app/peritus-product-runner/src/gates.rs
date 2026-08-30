@@ -263,7 +263,7 @@ mod tests {
         fs::write(root.path().join("main.py.c"), "int main(void) { return 0; }\n")
             .expect("misplaced candidate");
         let transcript =
-            format!("Write a single file in {}/polyglot/main.py.c.", root.path().display(),);
+            format!("Write a single file in {}/polyglot/main.py.c.", root.path().display());
 
         let report = run_scoped(
             root.path(),
