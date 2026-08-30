@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 849,
+  "next_comment_id": 850,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T08:55:30.053176210Z",
+      "updated_at": "2026-08-30T09:18:45.517219741Z",
       "labels": [
         "qualification",
         "release"
@@ -2894,6 +2894,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA0/0D/XBgMEnvton4J4DUyrz3fbZsdXURWmV83KgBKjncJjh30s+E6MNPjmtCTpTO0xR7+pzDKXVqcPRKsWAwCQ=="
+        },
+        "a0de6ae5-0424-47f0-8c80-b1ae82778eda": {
+          "display_id": 849,
+          "author": "6ME5",
+          "content": "H1 native-controller checkpoint is ready: persistent per-scenario process, exact four-stage request binding, retained artifact verification, cancellation/process-tree cleanup, versioned schemas, and all local gates green. Staging only intentional H1 source/docs/schema files.",
+          "created_at": "2026-08-30T09:18:45.512461980Z",
+          "kind": "action",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZWHg2S+Qx+NLKEsu46e2sNkBVlkgdLQ4Ffu/EhhfR3O34mK2Jn8Rhz9tS8Vuvh3dci37gucvbwZCcZH0RJA9DQ=="
         },
         "a1ee1189-9f34-4072-8f27-196a53eef444": {
           "display_id": 770,
@@ -8397,8 +8406,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T08:55:30.053176210Z",
+    "timestamp": "2026-08-30T09:18:45.517219741Z",
     "agent_id": "6ME5",
-    "agent_seq": 1041
+    "agent_seq": 1042
   }
 }
