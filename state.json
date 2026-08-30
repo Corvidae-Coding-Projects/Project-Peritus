@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 829,
+  "next_comment_id": 830,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T06:46:56.665570517Z",
+      "updated_at": "2026-08-30T06:56:33.532564123Z",
       "labels": [
         "qualification",
         "release"
@@ -3470,6 +3470,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAq2a3tRU0xKl7KlMji70ueL3J8Wk6UXOeb5mXA52bDWswFMOkJkACFdRkasn22qEHTZsfi0RfBxul7/zLAR8qBw=="
+        },
+        "ed39f572-cdb0-4351-b367-7ed96e6cd68f": {
+          "display_id": 829,
+          "author": "6ME5",
+          "content": "Committed bb8878fa: general TBF-026 calibration-versus-validation workflow and artifact-design rule. All 95 product-runner tests, strict all-target/all-feature Clippy, rustfmt, docs-check, and cargo xtask all pass; source files remain below 500 lines; frozen Terminal-Bench binary digest remains a53ca55a5565207c9da703ed37cba5f3e6f9975b5ff21d39fccb1696e2909005. Frozen baseline is 96/445: 56 pass, 34 fail, 6 unscored; protein-assembly is active. Also recorded a legitimate NumPy prerequisite/artifact pass and a repeated provider-policy terminal without task-specific behavior.",
+          "created_at": "2026-08-30T06:56:33.529190726Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAEHxUR99/9gO7rftdu1aY7OdLwCo4RgENs4E04W5j/gU7rzTsF+dwrJxtw+9j1hoaiSX/CFAcs7/H2zbMGyQyBQ=="
         },
         "ee232ed9-552a-4e89-83e6-f0483891b1e6": {
           "display_id": 827,
@@ -8217,8 +8226,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T06:46:56.665570517Z",
+    "timestamp": "2026-08-30T06:56:33.532564123Z",
     "agent_id": "6ME5",
-    "agent_seq": 1019
+    "agent_seq": 1020
   }
 }
