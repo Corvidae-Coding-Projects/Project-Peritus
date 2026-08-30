@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 812,
+  "next_comment_id": 813,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T04:27:37.785755216Z",
+      "updated_at": "2026-08-30T04:51:33.358806151Z",
       "labels": [
         "qualification",
         "release"
@@ -2732,6 +2732,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABACGP/f5S3DsbD27nZukbRaFZczdbuxo3dkONje7YM8DOe3T2EsOWlTZWKSPsfybk0dxKYtJn6Kw1n8C68HnpNBA=="
+        },
+        "a4832b41-b343-441c-a3c4-8e5685d7c823": {
+          "display_id": 812,
+          "author": "6ME5",
+          "content": "TBF-022: the frozen gpt2-codegolf trial exposed a general shared-environment isolation defect. Harbor cancelled its local Compose exec at 900 seconds, but the in-container Peritus tree continued through the verifier and appended two command results and two workspace patches. The adapter now supervises the exact native child PID and, on cancellation, walks its Linux /proc descendants, sends bounded TERM/KILL, verifies absence, and only then propagates cancellation. This does not alter task identity, timeout, verifier, or score. Fourteen adapter tests include a real live process-tree cancellation; cargo xtask all passes. Frozen executable digest remains a53ca55a5565207c9da703ed37cba5f3e6f9975b5ff21d39fccb1696e2909005.",
+          "created_at": "2026-08-30T04:51:33.355988902Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAui/BEQOlZpQ/PsStbOfyU74Vd7CjcHwdfYHAURW9tlC4Rc5HuyuBJTAT2VhTC9bTRF7bqpQAeNSDThqqr6aDBw=="
         },
         "a49a0f2b-1718-4670-817e-d265b48d4ce6": {
           "display_id": 589,
@@ -8064,8 +8073,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T04:27:37.785755216Z",
+    "timestamp": "2026-08-30T04:51:33.358806151Z",
     "agent_id": "6ME5",
-    "agent_seq": 1002
+    "agent_seq": 1003
   }
 }
