@@ -133,11 +133,27 @@ const fn failover_reason(error: &DeveloperLoopError) -> Option<&'static str> {
 const fn same_provider_retry_reason(error: &DeveloperLoopError) -> Option<&'static str> {
     match error {
         DeveloperLoopError::EmptyResponse => Some("empty_response"),
+        DeveloperLoopError::ProviderTerminal { category, .. } => {
+            same_provider_terminal_reason(*category)
+        }
         DeveloperLoopError::Model(ModelDriveError::Provider(error)) => match error.kind() {
             ProviderCoreErrorKind::Connect => Some("connection"),
             ProviderCoreErrorKind::MalformedStream => Some("malformed_stream"),
             _ => None,
         },
+        _ => None,
+    }
+}
+
+const fn same_provider_terminal_reason(category: FailureCategory) -> Option<&'static str> {
+    match category {
+        FailureCategory::RateLimited => Some("rate_limited"),
+        FailureCategory::TransientProvider => Some("transient_provider"),
+        FailureCategory::Transport => Some("transport"),
+        FailureCategory::MalformedPayload => Some("malformed_payload"),
+        FailureCategory::IncompleteStream => Some("incomplete_stream"),
+        FailureCategory::Timeout => Some("timeout"),
+        FailureCategory::Provider => Some("provider"),
         _ => None,
     }
 }
@@ -201,6 +217,16 @@ mod tests {
         assert_eq!(recovery.retry(&DeveloperLoopError::EmptyResponse), None);
 
         recovery.reset();
+        let interrupted = DeveloperLoopError::ProviderTerminal {
+            provider: "fixture".to_owned(),
+            category: FailureCategory::IncompleteStream,
+            diagnostic_code: "fixture.interrupted".to_owned(),
+        };
+        assert_eq!(recovery.retry(&interrupted), Some("incomplete_stream"));
+        assert_eq!(recovery.retry(&interrupted), Some("incomplete_stream"));
+        assert_eq!(recovery.retry(&interrupted), None);
+
+        recovery.reset();
         assert_eq!(
             recovery.retry(&DeveloperLoopError::ProviderTerminal {
                 provider: "fixture".to_owned(),
@@ -213,7 +239,16 @@ mod tests {
             recovery.retry(&DeveloperLoopError::ProviderTerminal {
                 provider: "fixture".to_owned(),
                 category: FailureCategory::Timeout,
-                diagnostic_code: "fixture.nonretryable-timeout".to_owned(),
+                diagnostic_code: "fixture.timeout".to_owned(),
+            }),
+            Some("timeout")
+        );
+        recovery.reset();
+        assert_eq!(
+            recovery.retry(&DeveloperLoopError::ProviderTerminal {
+                provider: "fixture".to_owned(),
+                category: FailureCategory::AmbiguousAcceptance,
+                diagnostic_code: "fixture.ambiguous".to_owned(),
             }),
             None
         );

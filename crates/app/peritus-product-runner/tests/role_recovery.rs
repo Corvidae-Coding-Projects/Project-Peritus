@@ -19,12 +19,12 @@ use peritus_types::RunId;
 
 use support::{
     FixedConversation, ScriptedProvider, cargo, design_response, empty_response, git,
-    list_arguments, named_tool_response, profile, read_arguments, text_response, tool_response,
-    write_arguments,
+    interrupted_response, list_arguments, named_tool_response, profile, read_arguments,
+    text_response, tool_response, write_arguments,
 };
 
 #[test]
-fn designer_writer_and_reviewer_restart_after_exhausted_empty_responses() {
+fn roles_restart_after_exhausted_empty_and_interrupted_responses() {
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -49,7 +49,7 @@ mod tests {
 }
 ";
             let mut writer_responses = VecDeque::new();
-            writer_responses.extend((0..4).map(|_| empty_response()));
+            writer_responses.push_back(interrupted_response());
             writer_responses.extend([
                 named_tool_response("workspace_list", list_arguments("", 3)),
                 named_tool_response("workspace_read", read_arguments("Cargo.toml")),
@@ -70,7 +70,7 @@ mod tests {
             });
 
             let mut reviewer_responses = VecDeque::new();
-            reviewer_responses.extend((0..4).map(|_| empty_response()));
+            reviewer_responses.push_back(interrupted_response());
             reviewer_responses.extend([
                 named_tool_response("workspace_list", list_arguments("", 3)),
                 named_tool_response("workspace_read", read_arguments("src/lib.rs")),

@@ -289,8 +289,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   failing readiness solely because its operation count ends between complete saturation cycles
   (#35)
 - Start a bounded fresh repository-grounded invocation when designer, writer, fixer, or reviewer
-  exhausts one invocation's empty, connection, or malformed-stream retries; preserve useful
-  workspace progress, refuse safety and other non-retryable terminals, and stop after three total
+  exhausts one invocation's empty, connection, malformed, interrupted/incomplete, transient,
+  transport, rate-limit, timeout, or generic provider responses; preserve useful workspace
+  progress, keep authority and ambiguous-acceptance failures terminal, and stop after three total
   same-provider role invocations (`TBF-009`, #31)
 - Enforce user-declared closed mutation contracts across the complete candidate diff so helpful
   adjacent edits cannot escape exact path, value, or transformation restrictions (`TBF-028`, #31)

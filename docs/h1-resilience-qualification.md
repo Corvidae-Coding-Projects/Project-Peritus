@@ -97,6 +97,28 @@ The four stages are `prepare`, `inject`, `recover`, and `cleanup`; the controlle
 cleanup response. Unknown fields, stale identities, malformed values, excessive output, timeouts,
 unexpected exit, missing evidence, false digests, and surviving descendants fail closed.
 
+## Production controller boundary
+
+The standard production controller qualifies the exact staged `peritusd` executable. It does not
+link the daemon's component crates and reproduce their behavior inside the test process. For native
+process, dependency, storage, and quota cases, the controller invokes a narrow `peritusd`
+qualification-admin surface against a fresh disposable state root. That surface exposes fixed
+scenario controls and observations; it does not expose an arbitrary command runner or a way to
+construct a successful H1 response.
+
+The persistent controller writes each digest-bound stage request beneath the private subject root,
+starts the staged candidate with that request, observes the required checkpoint or terminal state,
+and independently retains the candidate output and platform observations. Expected candidate death
+is accepted only after the named checkpoint was observed. Starting and stopping an idle process is
+not fault evidence.
+
+Host-reboot cases use an external disposable-VM driver owned by the controller. The driver must
+bind the guest image, candidate digest, request digest, boot identity, pre-reboot checkpoint, and
+post-boot recovery observation. The controller never reboots the developer or CI host, and it does
+not substitute a process or container restart for a host reboot. If the reviewed VM driver or its
+required image is unavailable, the production campaign is honestly not ready rather than silently
+downgrading those cases.
+
 The release integration owner must:
 
 1. build and independently review the platform controller executable used by the standard native

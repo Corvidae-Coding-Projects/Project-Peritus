@@ -1954,6 +1954,15 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   `UNIX-CONNECT:/tmp/qemu-monitor.sock` convention. The retained reward remains 0; repeated success
   through a different valid interface is stronger evidence for the existing contract diagnosis,
   not a reason to add the hidden socket path.
+- Third recurrence: trial `install-windows-3-11__4zmGsT3` again booted the supplied Windows 3.11
+  image under QEMU snapshot mode, exposed VNC and nginx, and verified programmatic keyboard input
+  through QMP on port 4444 and an HMP Unix socket chosen by the implementation. The unchanged
+  verifier passed its network, QEMU-parameter, and guest-core-file checks, then failed only because
+  it again attempted the unpublished exact path `/tmp/qemu-monitor.sock`. The trial used 14
+  provider requests, 397,333 input, 47,616 cached input, and 15,111 output tokens over 514.953
+  seconds. Native review ended on the separately tracked provider-terminal failure, so the null
+  aggregate reward and native non-acceptance remain unchanged; neither changes the repeated hidden
+  path diagnosis.
 - Disposition: retain the unchanged reward 0 and report the unpublished verifier convention. Do not
   add a Terminal-Bench filename rule or require every valid programmatic control interface to
   duplicate itself at that path. A future upstream prompt or verifier can name the required socket
@@ -2250,10 +2259,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   task-specific behavior.
 - Resolution: the current candidate keeps the checked in-turn retry planner, then permits up to two
   fresh repository-grounded invocations for designer, writer, fixer, and reviewer after empty,
-  pre-submission connection, or malformed-stream exhaustion. Each fresh invocation re-lists and
-  reads the current workspace, preserving useful artifacts without trusting stale model context.
-  The third failed invocation remains terminal; safety, refusal, cancellation, ambiguous
-  transport, and other normalized non-retryable terminals never enter this same-provider path.
+  pre-submission connection, malformed stream or payload, interrupted or incomplete stream,
+  transient provider, transport, rate-limit, timeout, or generic provider exhaustion. Each fresh
+  invocation re-lists and reads the current workspace, preserving useful artifacts without trusting
+  stale model context. The third failed invocation remains terminal; authentication, permission,
+  missing-model, quota, invalid-request, safety, refusal, cancellation, and ambiguous-acceptance
+  terminals never enter this same-provider path.
 - Evidence: baseline trials `cancel-async-tasks__aPpRDvK`,
   `polyglot-rust-c__EWL8xpT`, `dna-insert__KD4hLQo`, and
   `rstan-to-pystan__fMdVnzV` all retain the same typed failure. Their unchanged Harbor rewards were
@@ -2542,6 +2553,28 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   requests, 1,040,777 input, 126,976 cached input, and 8,751 output tokens over about 19 minutes.
   The successful resource-aware recovery and verified compiler are retained; only the false
   terminal belongs to provider-neutral role recovery.
+- Frozen recurrence `log-summary-date-ranges__uY3w2WY` computed the complete 16-row CSV, wrote it to
+  the requested path, read it back, and passed both unchanged structure-and-count verifier checks
+  for reward 1.0. Its reviewer was then interrupted, leaving the same false native provider
+  terminal after six requests, 155,441 input, 39,680 cached input, and 1,488 output tokens over
+  105.410 seconds. This independently repeats the earlier passing trial for the same task.
+- Trial `vulnerable-secret__ddRHVBX` ended at the other end of the same recovery spectrum: the first
+  role invocation grounded itself in the executable workspace, then returned no usable continuation
+  after one request. No requested result file existed and the unchanged verifier correctly retained
+  reward 0. General fresh-role recovery must cover both a first-turn terminal and an interrupted
+  reviewer without inferring success from either external result.
+- Aggregate audit after 195 completed frozen trials found 107 unchanged verifier rewards of 1.0,
+  but only 19 of those trials reached native Peritus success. Seventy-six verifier passes retained
+  a native provider failure, six retained a native no-progress gate failure, and six published no
+  native report. The same snapshot contained 59 reward-zero provider terminals and three unscored
+  provider terminals. This does not convert external reward into native acceptance or predict that
+  every zero is recoverable; it quantifies that role recovery and terminal handoff are the dominant
+  frozen control-flow defect rather than an isolated task family.
+- Verification: the focused policy regression proves interrupted-stream recovery is finite and
+  excludes safety and ambiguous-acceptance terminals. The production composition regression runs
+  with no fallback provider: the designer recovers from exhausted empty responses, and both writer
+  and reviewer recover from `IncompleteStream` terminals before completing the exact task. The
+  focused role-recovery test and strict all-target/all-feature Clippy pass.
 
 ## TBM-001: a writer mirrored the response field into the request schema
 
@@ -2660,6 +2693,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   dataset, private mirror, task-specific shortcut, or changed benchmark deadline. A future
   final-candidate rerun may choose a public integrity-checked source only when ordinary source
   selection and the remaining wall-clock budget support it.
+- Frozen attempt `caffe-cifar-10__qjsjeor` reached the same unchanged 1,200-second agent deadline.
+  It installed the ordinary Caffe dependencies, configured a CPU-only CMake build, and spent the
+  final portion of the available phase compiling Caffe; Harbor cancelled before the executable,
+  trained model, and training log existed. The unchanged verifier passed only prototxt presence and
+  failed the remaining five build, configuration, training, and accuracy checks for reward 0. No
+  native invocation report was published. This is a third honest deadline miss in the same family,
+  not evidence for a hidden artifact, altered timeout, or task-specific fast path.
 - Independent attempt `extract-moves-from-video__wf7tsAp` ended earlier on the provider terminal
   after 1,083.994 seconds, eighteen requests, 1,322,171 input, 71,424 cached input, and 23,657 output
   tokens without writing `solution.txt`; both unchanged checks failed for reward 0. Together the
@@ -2901,6 +2941,10 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   missing-trace masking failure after 44.240 and 21.999 seconds. Each retained `conversation.json`
   but no developer trace, invocation report, usage, verifier result, or reward. They add independent
   coverage for pre-stream failure retention; neither implies task-specific recovery behavior.
+- Frozen attempt `crack-7z-hash__j38mdEC` produced the same missing-trace masking error after
+  23.251 seconds. It retained no invocation report, usage, verifier result, or reward and increased
+  Harbor's infrastructure-error count by one. This is another unchanged-binary recurrence for the
+  existing pre-stream trace preparation regression, not a new task-specific failure.
 - Later frozen attempts sharpen the same recovery evidence without changing its classification.
   `feal-linear-cryptanalysis__9LZmKm8` observed an absent ordinary Python module and then three
   malformed runtime responses; it wrote no `plaintexts.txt` and retained reward 0 after three
@@ -3007,6 +3051,14 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   disposable task is legitimate execution, not benchmark cooking. The external reward is retained,
   but native non-completion remains a real failure until the final candidate both uses the general
   prerequisite path and exits successfully.
+- Frozen attempt `dna-assembly__ywMxhKi` again found neither `oligotm` nor `primer3`, then spent its
+  remaining writer turns implementing and checking a hand approximation instead of installing the
+  ordinary package. It produced all four primer pairs, but the unchanged verifier rejected the
+  vector reverse primer because its 48-base annealing tract exceeded the published 45-base maximum,
+  so reward 0 is retained. Native review separately ended on the `TBF-009` provider terminal after
+  thirteen requests, 351,012 input, 63,488 cached input, and 22,422 output tokens over 925.408
+  seconds. This is another final-candidate target for general prerequisite use plus fresh reviewer
+  recovery, not a reason for primer-specific harness logic.
 - Verification: product-runner regressions require both the scoped-prerequisite and durable-host
   boundaries in the external-effect prompt, plus actionable missing-executable guidance from the
   command tool itself. All 95 product-runner tests, strict all-target/all-feature Clippy, rustfmt,

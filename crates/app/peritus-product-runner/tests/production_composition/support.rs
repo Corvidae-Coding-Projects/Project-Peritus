@@ -2,9 +2,10 @@ use std::{collections::VecDeque, path::Path, sync::Mutex};
 
 use peritus_model_protocol::{
     CancellationKind, Capability, CapabilityMatrix, CapabilityProvenance, EventEnvelope,
-    FinishReason, ItemId, ItemKind, ModelEvent, ModelLimits, ModelName, ModelRequest,
-    OutputLimitEnforcement, ProtocolLimits, ProviderName, ProviderProfile, ResumeKind, StateMode,
-    StreamFragment, ToolCallId, ToolName, WireDialect,
+    FailureCategory, FinishReason, ItemId, ItemKind, ModelEvent, ModelFailure, ModelLimits,
+    ModelName, ModelRequest, OutcomeCertainty, OutputLimitEnforcement, ProtocolLimits,
+    ProviderName, ProviderProfile, RedactedDiagnostic, ResumeKind, Retryability, StateMode,
+    StreamFragment, ToolCallId, ToolName, TransportPhase, WireDialect,
 };
 use peritus_product_runner::ConversationView;
 use peritus_provider_core::{
@@ -175,6 +176,29 @@ pub fn empty_response() -> VecDeque<EventEnvelope> {
         ModelEvent::ResponseStarted { response_id: None, model: None },
         ModelEvent::Finish(FinishReason::Stop),
         ModelEvent::ResponseCompleted,
+    ])
+}
+
+#[allow(dead_code, reason = "shared integration support is compiled once per test binary")]
+pub fn interrupted_response() -> VecDeque<EventEnvelope> {
+    let provider = ProviderName::new("scripted-interrupted".to_owned()).expect("provider");
+    let diagnostic =
+        RedactedDiagnostic::new("fixture.process_interrupted".to_owned(), None, None, None)
+            .expect("diagnostic");
+    let failure = ModelFailure::new(
+        provider,
+        FailureCategory::IncompleteStream,
+        TransportPhase::ReadingBody,
+        OutcomeCertainty::AcceptedPartial,
+        Retryability::Never,
+        None,
+        None,
+        None,
+        diagnostic,
+    );
+    response([
+        ModelEvent::ResponseStarted { response_id: None, model: None },
+        ModelEvent::ResponseFailed(failure),
     ])
 }
 
