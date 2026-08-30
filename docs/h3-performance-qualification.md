@@ -84,8 +84,14 @@ reservoirs preserve representative samples without exceeding the profile's globa
 the final merge assigns one contiguous, monotonic campaign sequence. A final partial queue cycle
 uses an exact drain operation so completed workloads do not retain queue ownership.
 
-The automatic host probe, retained evidence writer, accepted-baseline operator workflow, and actual
-eight-hour reference-machine execution evidence remain required before H3 can report readiness.
+The evidence writer revalidates the exact input documents against the executed typed dataset and
+accepted baseline. It streams private copies of the exact subject and runner executables while
+recomputing their campaign-bound digests, writes measurements, receipts, accounting, and machine
+facts, then atomically publishes the primary-artifact manifest and its bound report without
+overwriting earlier evidence. The real-daemon evidence smoke exercises this complete path.
+
+The automatic host probe, operator command and accepted-baseline workflow, and actual eight-hour
+reference-machine execution evidence remain required before H3 can report readiness.
 
 ## Bounded accounting and backpressure
 

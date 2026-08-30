@@ -16,14 +16,18 @@ mod daemon;
 mod effects;
 mod error;
 #[cfg(unix)]
+mod evidence;
+#[cfg(unix)]
 mod identity;
 mod machine;
 #[cfg(unix)]
 mod process;
 mod runner;
+#[cfg(unix)]
 mod sampling;
 #[cfg(unix)]
 mod scheduler;
+#[cfg(unix)]
 mod shared_accounting;
 #[cfg(unix)]
 mod subject;
@@ -31,7 +35,9 @@ mod subject;
 #[cfg(unix)]
 pub use campaign::{CampaignCoordinator, CampaignMode, CampaignOutcome, CampaignRequest};
 pub use cancellation::CancellationFlag;
-pub use error::{CampaignError, RunnerError, SubjectError};
+pub use error::{CampaignError, EvidenceError, RunnerError, SubjectError};
+#[cfg(unix)]
+pub use evidence::{CampaignEvidenceWriter, PublishedEvidence};
 pub use machine::{MachineAssessment, MachineMismatch, MachineObservation};
 pub use runner::PacedRunner;
 #[cfg(unix)]

@@ -21,6 +21,8 @@ peritus-protocol = { version = "=0.0.0", path = "../../../foundation/peritus-pro
 peritus-scheduler = { version = "=0.0.0", path = "../../../orchestration/peritus-scheduler" }
 peritus-types = { version = "=0.0.0", path = "../../../foundation/peritus-types" }
 sha2.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true
 

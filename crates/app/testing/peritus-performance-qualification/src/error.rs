@@ -1,5 +1,8 @@
 //! Typed runner failures that remain distinct from subject verdicts.
 
+use std::io;
+use std::path::{Path, PathBuf};
+
 use peritus_benchmarks::QualificationError;
 
 /// Failure to launch, communicate with, or exercise one disposable integrated subject.
@@ -7,7 +10,7 @@ use peritus_benchmarks::QualificationError;
 pub enum SubjectError {
     /// Filesystem, process, or local transport failure.
     #[error("qualification subject I/O failed")]
-    Io(#[from] std::io::Error),
+    Io(#[from] io::Error),
     /// Public A3 message construction or validation failed.
     #[error("qualification subject A3 protocol failed")]
     Protocol(#[from] peritus_app_protocol::AppProtocolError),
@@ -70,6 +73,53 @@ pub enum CampaignError {
     /// System time could not be represented relative to the Unix epoch.
     #[error("qualification campaign clock was before the Unix epoch")]
     Clock(#[from] std::time::SystemTimeError),
+}
+
+/// Failure to validate or atomically retain one H3 evidence bundle.
+#[derive(Debug, thiserror::Error)]
+pub enum EvidenceError {
+    /// Stable H3 input or report construction failed.
+    #[error("qualification evidence contract failed")]
+    Qualification(#[from] QualificationError),
+    /// Exact profile or workload bytes do not describe the executed dataset.
+    #[error("retained profile or workload document does not match the executed dataset")]
+    DatasetMismatch,
+    /// Exact accepted-baseline bytes do not describe the baseline used for evaluation.
+    #[error("retained accepted-baseline document does not match the evaluated baseline")]
+    BaselineMismatch,
+    /// A retained executable did not match the identity recorded during execution.
+    #[error("{role} executable digest mismatch: expected {expected}, observed {observed}")]
+    ExecutableDigestMismatch {
+        /// Executable role being retained.
+        role: &'static str,
+        /// Digest recorded by the campaign.
+        expected: String,
+        /// Digest recomputed while copying evidence.
+        observed: String,
+    },
+    /// Evidence publication never replaces an existing path.
+    #[error("qualification evidence output already exists: {0}")]
+    OutputExists(PathBuf),
+    /// An evidence source or output path was not a regular file or usable directory target.
+    #[error("invalid qualification evidence path: {0}")]
+    InvalidPath(PathBuf),
+    /// A bounded filesystem operation failed.
+    #[error("could not {operation} at {}", path.display())]
+    Io {
+        /// Stable operation description.
+        operation: &'static str,
+        /// Path acted on.
+        path: PathBuf,
+        /// Operating-system error.
+        #[source]
+        source: io::Error,
+    },
+}
+
+impl EvidenceError {
+    pub(crate) fn io(operation: &'static str, path: &Path, source: io::Error) -> Self {
+        Self::Io { operation, path: path.to_path_buf(), source }
+    }
 }
 
 /// Failure to execute or account one qualification plan.

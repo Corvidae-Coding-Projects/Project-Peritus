@@ -1,6 +1,8 @@
 //! Deterministic local provider, artifact, queue, timing, and resource observations.
 
-use std::fs::{self, OpenOptions};
+#[cfg(target_os = "linux")]
+use std::fs;
+use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::Path;
 use std::time::Duration;

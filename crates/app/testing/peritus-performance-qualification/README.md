@@ -27,6 +27,13 @@ the coordinator merges everything into one monotonic campaign sequence. Queue wo
 an exact drain when their operation count stops partway through a saturation cycle, so successful
 plans return the shared ledger to a balanced terminal state.
 
+`CampaignEvidenceWriter` publishes a completed campaign through a private temporary directory and
+one final rename. It refuses an existing destination, reparses the exact profile, workload, and
+optional baseline documents, and requires them to equal the typed inputs that were executed. It
+streams copies of `peritusd` and the qualification runner while recomputing their recorded SHA-256
+identities, then retains measurements, receipts, accounting, machine facts, the content-addressed
+manifest, and its bound report. A failure never creates the requested final bundle path.
+
 ## Focused checks
 
 From the repository root:
@@ -41,4 +48,12 @@ To run the retained real-daemon smoke after building `peritusd`:
 PERITUS_H3_DAEMON="$PWD/target/debug/peritusd" \
   CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-performance-qualification \
   --test integrated_smoke -- --ignored
+```
+
+To run a one-operation real campaign and verify its complete atomic evidence bundle:
+
+```sh
+PERITUS_H3_DAEMON="$PWD/target/debug/peritusd" \
+  CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-performance-qualification \
+  --test campaign_evidence_smoke -- --ignored --test-threads=1
 ```

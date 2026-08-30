@@ -18,6 +18,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   reference-machine match before launch, share one combined resource ledger, retain deterministic
   bounded samples across the full horizon, and return one fail-closed evaluation and receipt set
   (#35)
+- Add atomic H3 evidence publication that revalidates the exact profile, workload catalog, and
+  accepted-baseline documents; streams and verifies the subject and runner executables against
+  their campaign identities; retains private measurements, receipts, accounting, and machine
+  facts; and binds them into a content-addressed manifest and qualification report (#35)
 - Bind every new external-benchmark invocation to the exact clean Peritus source revision, Cargo
   package version, and SHA-256 of the native executable; make Harbor verify the uploaded binary
   against the native report and retain both identities in its trial metadata (#31)
@@ -45,6 +49,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Fixed
+- Compile H3 campaign-only sampling and shared accounting only on its supported Unix boundary and
+  scope Linux process-status imports to Linux, keeping strict macOS and Windows Clippy builds free
+  of platform-created dead code and unused imports (#35)
 - Finish partial queue-saturation cycles with an exact planned drain so every production catalog
   workload returns its command, exporter, or provider queue to a balanced terminal state instead of
   failing readiness solely because its operation count ends between complete saturation cycles

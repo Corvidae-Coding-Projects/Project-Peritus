@@ -71,6 +71,9 @@ impl CampaignRequest {
 
 /// Executed campaign data ready for external evidence retention.
 pub struct CampaignOutcome {
+    dataset: QualificationDataset,
+    baseline: Option<BaselineManifest>,
+    subject_executable: PathBuf,
     measurements: MeasurementSet,
     accounting: AccountingSummary,
     receipts: Vec<RunnerReceipt>,
@@ -83,6 +86,24 @@ pub struct CampaignOutcome {
 }
 
 impl CampaignOutcome {
+    /// Returns the exact typed dataset used to generate every workload plan.
+    #[must_use]
+    pub const fn dataset(&self) -> &QualificationDataset {
+        &self.dataset
+    }
+
+    /// Returns the accepted baseline actually supplied to evaluation, when any.
+    #[must_use]
+    pub const fn baseline(&self) -> Option<&BaselineManifest> {
+        self.baseline.as_ref()
+    }
+
+    /// Returns the exact subject executable path opened by each disposable instance.
+    #[must_use]
+    pub fn subject_executable(&self) -> &std::path::Path {
+        &self.subject_executable
+    }
+
     /// Returns the bounded, campaign-resequenced measurements.
     #[must_use]
     pub const fn measurements(&self) -> &MeasurementSet {
@@ -217,6 +238,9 @@ impl CampaignCoordinator {
             request.baseline.as_ref(),
         )?;
         Ok(CampaignOutcome {
+            dataset: request.dataset,
+            baseline: request.baseline,
+            subject_executable: request.daemon_executable,
             measurements,
             accounting,
             receipts,
