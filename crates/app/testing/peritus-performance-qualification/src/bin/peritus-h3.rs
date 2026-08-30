@@ -13,6 +13,12 @@ fn main() {
         Ok(published) => {
             println!("evidence: {}", published.root().display());
             println!("verdict: {:?}", published.report().verdict());
+            if let Some(digest) = published.baseline_candidate_digest() {
+                println!(
+                    "baseline candidate: {} ({digest})",
+                    published.root().join("baseline-candidate.json").display()
+                );
+            }
             if published.report().verdict() == QualificationVerdict::NotReady {
                 std::process::exit(3);
             }

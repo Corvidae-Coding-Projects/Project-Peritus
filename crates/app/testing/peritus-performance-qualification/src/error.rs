@@ -168,6 +168,14 @@ pub enum OperatorError {
     /// Command arguments were missing, duplicated, or unknown.
     #[error("invalid peritus-h3 arguments: {0}")]
     Usage(String),
+    /// The reviewed exact document digest did not match the selected baseline bytes.
+    #[error("accepted baseline digest mismatch: expected {expected}, observed {observed}")]
+    BaselineDigestMismatch {
+        /// Digest explicitly accepted by the operator.
+        expected: String,
+        /// Digest computed from the selected document.
+        observed: String,
+    },
     /// A bounded input or executable filesystem operation failed.
     #[error("could not {operation} at {}", path.display())]
     Io {

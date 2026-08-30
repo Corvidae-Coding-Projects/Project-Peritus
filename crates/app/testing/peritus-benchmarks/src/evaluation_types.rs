@@ -118,6 +118,24 @@ impl ObjectiveEvaluation {
         &self.objective_id
     }
 
+    /// Returns the workload whose statistic was evaluated.
+    #[must_use]
+    pub const fn workload_id(&self) -> &StableId {
+        &self.workload_id
+    }
+
+    /// Returns the metric selected by this objective.
+    #[must_use]
+    pub const fn metric(&self) -> Metric {
+        self.metric
+    }
+
+    /// Returns the summary statistic selected by this objective.
+    #[must_use]
+    pub const fn statistic(&self) -> Statistic {
+        self.statistic
+    }
+
     /// Returns the objective status.
     #[must_use]
     pub const fn status(&self) -> ObjectiveStatus {

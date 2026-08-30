@@ -6,7 +6,8 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use peritus_benchmarks::{
-    DatasetLimits, QualificationDataset, RunnerDescriptor, StableId, baseline_from_json,
+    DatasetLimits, QualificationDataset, RunnerDescriptor, Sha256Digest, StableId,
+    baseline_from_json,
 };
 
 use crate::{
@@ -25,6 +26,7 @@ Usage: peritus-h3 <load|full> \\
   --profile <profile.json> \\
   --workloads <workloads.json> \\
   [--baseline <accepted-baseline.json>] \\
+  [--accept-baseline-sha256 <reviewed-document-digest>] \\
   --evidence <new-output-directory> \\
   --storage-class <stable-id> \\
   --revision <source-revision>\n\
@@ -40,6 +42,7 @@ pub struct OperatorOptions {
     profile: PathBuf,
     workloads: PathBuf,
     baseline: Option<PathBuf>,
+    baseline_digest: Option<Sha256Digest>,
     evidence: PathBuf,
     storage_class: StableId,
     revision: String,
@@ -64,6 +67,7 @@ impl OperatorOptions {
         let mut profile = None;
         let mut workloads = None;
         let mut baseline = None;
+        let mut baseline_digest = None;
         let mut evidence = None;
         let mut storage_class = None;
         let mut revision = None;
@@ -80,6 +84,12 @@ impl OperatorOptions {
                 "--profile" => assign(&mut profile, PathBuf::from(value), &flag)?,
                 "--workloads" => assign(&mut workloads, PathBuf::from(value), &flag)?,
                 "--baseline" => assign(&mut baseline, PathBuf::from(value), &flag)?,
+                "--accept-baseline-sha256" => {
+                    let value = value
+                        .into_string()
+                        .map_err(|_| usage("--accept-baseline-sha256 must be UTF-8".to_owned()))?;
+                    assign(&mut baseline_digest, Sha256Digest::parse(value)?, &flag)?;
+                }
                 "--evidence" => assign(&mut evidence, PathBuf::from(value), &flag)?,
                 "--storage-class" => {
                     let value = value
@@ -101,12 +111,18 @@ impl OperatorOptions {
                 _ => return Err(usage(format!("unknown option `{flag}`"))),
             }
         }
+        if baseline.is_some() != baseline_digest.is_some() {
+            return Err(usage(
+                "--baseline and --accept-baseline-sha256 must be supplied together".to_owned(),
+            ));
+        }
         Ok(Self {
             mode,
             daemon: required(daemon, "--daemon")?,
             profile: required(profile, "--profile")?,
             workloads: required(workloads, "--workloads")?,
             baseline,
+            baseline_digest,
             evidence: required(evidence, "--evidence")?,
             storage_class: required(storage_class, "--storage-class")?,
             revision: required(revision, "--revision")?,
@@ -128,6 +144,15 @@ impl OperatorOptions {
             .as_deref()
             .map(|path| read_document(path, MAX_BASELINE_BYTES, "read accepted baseline"))
             .transpose()?;
+        if let (Some(document), Some(expected)) = (&baseline_document, &self.baseline_digest) {
+            let observed = Sha256Digest::of_bytes(document.as_bytes());
+            if &observed != expected {
+                return Err(OperatorError::BaselineDigestMismatch {
+                    expected: expected.to_string(),
+                    observed: observed.to_string(),
+                });
+            }
+        }
         let limits = DatasetLimits::production_defaults();
         let dataset =
             QualificationDataset::from_json(&profile_document, &workload_document, limits)?;
@@ -248,6 +273,29 @@ mod tests {
         ));
     }
 
+    #[test]
+    fn baseline_bytes_must_match_the_explicitly_accepted_digest() {
+        let temporary = tempfile::tempdir().expect("temporary");
+        let profile = temporary.path().join("profile.json");
+        let workloads = temporary.path().join("workloads.json");
+        let baseline = temporary.path().join("baseline.json");
+        fs::write(&profile, "{}").expect("profile");
+        fs::write(&workloads, "{}").expect("workloads");
+        fs::write(&baseline, "observed").expect("baseline");
+        let options = OperatorOptions {
+            mode: CampaignMode::Load,
+            daemon: PathBuf::from("peritusd"),
+            profile,
+            workloads,
+            baseline: Some(baseline),
+            baseline_digest: Some(Sha256Digest::of_bytes(b"different")),
+            evidence: temporary.path().join("evidence"),
+            storage_class: StableId::new("storage").expect("storage"),
+            revision: "revision".to_owned(),
+        };
+        assert!(matches!(options.execute(), Err(OperatorError::BaselineDigestMismatch { .. })));
+    }
+
     fn arguments() -> Vec<OsString> {
         [
             "full",
@@ -259,6 +307,8 @@ mod tests {
             "workloads.json",
             "--baseline",
             "baseline.json",
+            "--accept-baseline-sha256",
+            "0000000000000000000000000000000000000000000000000000000000000000",
             "--evidence",
             "evidence",
             "--storage-class",

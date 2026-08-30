@@ -6,6 +6,8 @@
 #[cfg(unix)]
 mod a3;
 #[cfg(unix)]
+mod baseline_candidate;
+#[cfg(unix)]
 mod campaign;
 #[cfg(all(test, unix))]
 mod campaign_tests;
@@ -17,6 +19,8 @@ mod effects;
 mod error;
 #[cfg(unix)]
 mod evidence;
+#[cfg(unix)]
+mod evidence_io;
 #[cfg(unix)]
 mod file_digest;
 #[cfg(unix)]

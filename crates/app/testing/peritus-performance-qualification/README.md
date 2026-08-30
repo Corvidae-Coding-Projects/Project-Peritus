@@ -45,6 +45,7 @@ target/debug/peritus-h3 full \
   --profile benchmarks/profiles/qualification-candidate-v1.json \
   --workloads benchmarks/workloads/production-v1.json \
   --baseline /path/to/reviewed/accepted-baseline.json \
+  --accept-baseline-sha256 <reviewed-document-sha256> \
   --evidence /path/to/new/peritus-h3-evidence \
   --storage-class nvme-gen4 \
   --revision "$(git rev-parse HEAD)"
@@ -56,10 +57,17 @@ the storage generation remains explicit because unprivileged operating-system in
 report it consistently. Both raw CPU/memory facts and their normalized hardware class are retained.
 The command fails before launching `peritusd` if that class does not exactly match the profile.
 
-An accepted baseline is optional at the syntax level so the command can retain first-run evidence,
-but the checked-in production profile requires it for `Ready`. A completed `NotReady` campaign
-publishes its honest report and exits with status 3. Input or runtime failure exits with status 1;
-invalid command syntax exits with status 2.
+An accepted baseline is optional so the command can retain first-run evidence, but the checked-in
+production profile requires it for `Ready`. When every objective has enough samples, the evidence
+bundle contains `baseline-candidate.json`. It is derived from the observed objective statistics and
+binds the exact source evidence-manifest digest, but it is not accepted automatically.
+
+Review the report, manifest, candidate, and underlying measurements independently. If the run is a
+valid baseline, compute the exact candidate file's SHA-256 and supply both `--baseline` and
+`--accept-baseline-sha256` on a later run. The command rejects either option alone and rejects any
+byte change after review. This explicit action admits the baseline for H3 comparison; it does not
+grant release authority. A completed `NotReady` campaign publishes its honest report and exits with
+status 3. Input or runtime failure exits with status 1; invalid syntax exits with status 2.
 
 ## Focused checks
 

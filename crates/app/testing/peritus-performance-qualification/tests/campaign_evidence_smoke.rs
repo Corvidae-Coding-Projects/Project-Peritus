@@ -43,9 +43,9 @@ fn real_operator_publishes_a_complete_atomic_bundle() {
         OsString::from("--daemon"),
         daemon_executable().into_os_string(),
         OsString::from("--profile"),
-        profile_path.into_os_string(),
+        profile_path.clone().into_os_string(),
         OsString::from("--workloads"),
-        workload_path.into_os_string(),
+        workload_path.clone().into_os_string(),
         OsString::from("--evidence"),
         output.clone().into_os_string(),
         OsString::from("--storage-class"),
@@ -59,6 +59,8 @@ fn real_operator_publishes_a_complete_atomic_bundle() {
 
     assert_eq!(published.root(), output);
     assert_eq!(published.manifest().artifacts().len(), 8);
+    assert!(published.baseline_candidate().is_some());
+    assert!(published.baseline_candidate_digest().is_some());
     assert_eq!(
         published.report().evidence_manifest_digest(),
         &published.manifest().digest().expect("manifest digest")
@@ -76,9 +78,43 @@ fn real_operator_publishes_a_complete_atomic_bundle() {
         "results/machine.json",
         "manifest.json",
         "report.json",
+        "baseline-candidate.json",
     ] {
         assert!(output.join(relative).is_file(), "missing {relative}");
     }
+
+    let candidate_path = output.join("baseline-candidate.json");
+    let candidate_digest =
+        published.baseline_candidate_digest().expect("candidate digest").to_string();
+    let accepted_output = temporary.path().join("accepted-run");
+    let accepted = OperatorOptions::parse(vec![
+        OsString::from("load"),
+        OsString::from("--daemon"),
+        daemon_executable().into_os_string(),
+        OsString::from("--profile"),
+        profile_path.into_os_string(),
+        OsString::from("--workloads"),
+        workload_path.into_os_string(),
+        OsString::from("--baseline"),
+        candidate_path.clone().into_os_string(),
+        OsString::from("--accept-baseline-sha256"),
+        OsString::from(candidate_digest),
+        OsString::from("--evidence"),
+        accepted_output.clone().into_os_string(),
+        OsString::from("--storage-class"),
+        OsString::from("smoke-storage"),
+        OsString::from("--revision"),
+        OsString::from("operator-smoke"),
+    ])
+    .expect("accepted operator options")
+    .execute()
+    .expect("accepted operator execution");
+    assert!(accepted.baseline_candidate().is_some());
+    assert_eq!(
+        std::fs::read(accepted_output.join("inputs/accepted-baseline.json"))
+            .expect("retained accepted baseline"),
+        std::fs::read(candidate_path).expect("candidate baseline")
+    );
 }
 
 fn profile_document() -> String {

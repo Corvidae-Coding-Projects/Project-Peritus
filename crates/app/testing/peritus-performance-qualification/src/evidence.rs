@@ -1,18 +1,18 @@
 //! Atomic, content-addressed retention for completed H3 campaigns.
 
-use std::fs::{self, File};
-use std::io::{Read as _, Write as _};
+use std::fs;
 use std::os::unix::fs::PermissionsExt as _;
 use std::path::{Path, PathBuf};
 
 use peritus_benchmarks::{
-    ArtifactPath, DatasetLimits, EvidenceArtifact, EvidenceManifest, EvidenceManifestBuilder,
-    QualificationDataset, QualificationError, QualificationReport, Sha256Digest,
-    baseline_from_json,
+    ArtifactPath, BaselineManifest, DatasetLimits, EvidenceArtifact, EvidenceManifest,
+    EvidenceManifestBuilder, QualificationDataset, QualificationError, QualificationReport,
+    Sha256Digest, baseline_from_json,
 };
 use serde_json::Serializer;
-use sha2::{Digest as _, Sha256};
 
+use crate::baseline_candidate::derive_candidate;
+use crate::evidence_io::{copy_executable, write_private};
 use crate::{CampaignOutcome, EvidenceError};
 
 const PROFILE_PATH: &str = "inputs/profile.json";
@@ -24,12 +24,15 @@ const MEASUREMENTS_PATH: &str = "results/measurements.ndjson";
 const RECEIPTS_PATH: &str = "results/receipts.json";
 const ACCOUNTING_PATH: &str = "results/accounting.json";
 const MACHINE_PATH: &str = "results/machine.json";
+const BASELINE_CANDIDATE_PATH: &str = "baseline-candidate.json";
 
 /// Successfully published H3 evidence and its in-memory content bindings.
 pub struct PublishedEvidence {
     root: PathBuf,
     manifest: EvidenceManifest,
     report: QualificationReport,
+    baseline_candidate: Option<BaselineManifest>,
+    baseline_candidate_digest: Option<Sha256Digest>,
 }
 
 impl PublishedEvidence {
@@ -49,6 +52,19 @@ impl PublishedEvidence {
     #[must_use]
     pub const fn report(&self) -> &QualificationReport {
         &self.report
+    }
+
+    /// Returns the fully observed derived baseline, which remains unaccepted until a later command
+    /// supplies its exact document digest.
+    #[must_use]
+    pub const fn baseline_candidate(&self) -> Option<&BaselineManifest> {
+        self.baseline_candidate.as_ref()
+    }
+
+    /// Returns the SHA-256 of the exact pretty JSON candidate file, including its final newline.
+    #[must_use]
+    pub const fn baseline_candidate_digest(&self) -> Option<&Sha256Digest> {
+        self.baseline_candidate_digest.as_ref()
     }
 }
 
@@ -102,10 +118,25 @@ impl CampaignEvidenceWriter {
         let mut report_bytes = report.pretty_json()?.into_bytes();
         report_bytes.push(b'\n');
         write_private(&staging.path().join("report.json"), &report_bytes)?;
+        let baseline_candidate = derive_candidate(&manifest, outcome.evaluation())?;
+        let baseline_candidate_digest = if let Some(candidate) = &baseline_candidate {
+            let mut bytes = candidate.pretty_json()?.into_bytes();
+            bytes.push(b'\n');
+            write_private(&staging.path().join(BASELINE_CANDIDATE_PATH), &bytes)?;
+            Some(Sha256Digest::of_bytes(&bytes))
+        } else {
+            None
+        };
 
         fs::rename(staging.path(), output)
             .map_err(|source| EvidenceError::io("publish evidence bundle", output, source))?;
-        Ok(PublishedEvidence { root: output.to_path_buf(), manifest, report })
+        Ok(PublishedEvidence {
+            root: output.to_path_buf(),
+            manifest,
+            report,
+            baseline_candidate,
+            baseline_candidate_digest,
+        })
     }
 }
 
@@ -236,103 +267,6 @@ fn write_artifact(
     Ok(EvidenceArtifact::from_bytes(path, media_type, bytes)?)
 }
 
-fn copy_executable(
-    root: &Path,
-    relative: &str,
-    role: &'static str,
-    source: &Path,
-    expected: &Sha256Digest,
-) -> Result<EvidenceArtifact, EvidenceError> {
-    let metadata = fs::metadata(source)
-        .map_err(|error| EvidenceError::io("inspect executable evidence", source, error))?;
-    if !metadata.is_file() {
-        return Err(EvidenceError::InvalidPath(source.to_path_buf()));
-    }
-    let destination = root.join(relative);
-    create_private_parent(&destination)?;
-    let mut input = File::open(source)
-        .map_err(|error| EvidenceError::io("open executable evidence", source, error))?;
-    let mut output = File::create(&destination)
-        .map_err(|error| EvidenceError::io("create executable evidence", &destination, error))?;
-    output
-        .set_permissions(fs::Permissions::from_mode(0o600))
-        .map_err(|error| EvidenceError::io("protect executable evidence", &destination, error))?;
-    let (length, observed) = copy_and_digest(source, &destination, &mut input, &mut output)?;
-    if &observed != expected {
-        return Err(EvidenceError::ExecutableDigestMismatch {
-            role,
-            expected: expected.to_string(),
-            observed: observed.to_string(),
-        });
-    }
-    Ok(EvidenceArtifact::new(
-        ArtifactPath::new(relative)?,
-        "application/octet-stream",
-        length,
-        observed,
-    )?)
-}
-
-fn copy_and_digest(
-    source: &Path,
-    destination: &Path,
-    input: &mut File,
-    output: &mut File,
-) -> Result<(u64, Sha256Digest), EvidenceError> {
-    let mut hasher = Sha256::new();
-    let mut length = 0_u64;
-    let mut buffer = vec![0_u8; 64 * 1024].into_boxed_slice();
-    loop {
-        let count = input
-            .read(&mut buffer)
-            .map_err(|error| EvidenceError::io("read executable evidence", source, error))?;
-        if count == 0 {
-            break;
-        }
-        output
-            .write_all(&buffer[..count])
-            .map_err(|error| EvidenceError::io("write executable evidence", destination, error))?;
-        hasher.update(&buffer[..count]);
-        length = length
-            .checked_add(u64::try_from(count).unwrap_or(u64::MAX))
-            .ok_or(QualificationError::ArithmeticOverflow("executable evidence length"))?;
-    }
-    output
-        .sync_all()
-        .map_err(|error| EvidenceError::io("sync executable evidence", destination, error))?;
-    let digest = Sha256Digest::parse(lower_hex(&hasher.finalize()))?;
-    Ok((length, digest))
-}
-
-fn lower_hex(bytes: &[u8]) -> String {
-    const HEX: &[u8; 16] = b"0123456789abcdef";
-    let mut encoded = String::with_capacity(bytes.len().saturating_mul(2));
-    for byte in bytes {
-        encoded.push(char::from(HEX[usize::from(byte >> 4)]));
-        encoded.push(char::from(HEX[usize::from(byte & 0x0f)]));
-    }
-    encoded
-}
-
-fn write_private(path: &Path, bytes: &[u8]) -> Result<(), EvidenceError> {
-    create_private_parent(path)?;
-    let mut file = File::create(path)
-        .map_err(|error| EvidenceError::io("create evidence artifact", path, error))?;
-    file.set_permissions(fs::Permissions::from_mode(0o600))
-        .map_err(|error| EvidenceError::io("protect evidence artifact", path, error))?;
-    file.write_all(bytes)
-        .and_then(|()| file.sync_all())
-        .map_err(|error| EvidenceError::io("write evidence artifact", path, error))
-}
-
-fn create_private_parent(path: &Path) -> Result<(), EvidenceError> {
-    let parent = path.parent().ok_or_else(|| EvidenceError::InvalidPath(path.to_path_buf()))?;
-    fs::create_dir_all(parent)
-        .map_err(|error| EvidenceError::io("create evidence directory", parent, error))?;
-    fs::set_permissions(parent, fs::Permissions::from_mode(0o700))
-        .map_err(|error| EvidenceError::io("protect evidence directory", parent, error))
-}
-
 fn require_new_output(output: &Path) -> Result<(), EvidenceError> {
     if output.exists() {
         Err(EvidenceError::OutputExists(output.to_path_buf()))
@@ -350,44 +284,7 @@ fn usable_parent(output: &Path) -> Result<&Path, EvidenceError> {
 
 #[cfg(test)]
 mod tests {
-    use std::os::unix::fs::PermissionsExt as _;
-
-    use peritus_benchmarks::Sha256Digest;
-
     use super::*;
-
-    #[test]
-    fn executable_copy_is_private_and_content_bound() {
-        let temporary = tempfile::tempdir().expect("temporary root");
-        let source = temporary.path().join("runner");
-        fs::write(&source, b"exact runner bytes").expect("source");
-        let expected = Sha256Digest::of_bytes(b"exact runner bytes");
-
-        let artifact =
-            copy_executable(temporary.path(), "bundle/runner", "runner", &source, &expected)
-                .expect("copy");
-
-        let destination = temporary.path().join("bundle/runner");
-        assert_eq!(artifact.digest(), &expected);
-        assert_eq!(fs::read(&destination).expect("retained bytes"), b"exact runner bytes");
-        assert_eq!(
-            fs::metadata(destination).expect("metadata").permissions().mode() & 0o777,
-            0o600
-        );
-    }
-
-    #[test]
-    fn executable_copy_rejects_identity_drift() {
-        let temporary = tempfile::tempdir().expect("temporary root");
-        let source = temporary.path().join("subject");
-        fs::write(&source, b"observed").expect("source");
-        let expected = Sha256Digest::of_bytes(b"different");
-
-        assert!(matches!(
-            copy_executable(temporary.path(), "bundle/subject", "subject", &source, &expected,),
-            Err(EvidenceError::ExecutableDigestMismatch { role: "subject", .. })
-        ));
-    }
 
     #[test]
     fn publication_refuses_an_existing_bundle() {

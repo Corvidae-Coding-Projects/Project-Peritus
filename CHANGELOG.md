@@ -26,6 +26,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   baseline inputs, duplicate-free arguments, automatic CPU/core/memory observation, an explicit
   reviewed storage class, exact runner identity, fail-fast reference-machine diagnostics, atomic
   evidence publication, and a distinct exit status for a completed `NotReady` qualification (#35)
+- Derive an inert `baseline-candidate.json` from every campaign with complete objective samples,
+  binding its entries to the exact evidence-manifest digest; require a later operator to supply
+  both that reviewed file and its exact SHA-256 before it can participate as an accepted baseline
+  (#35)
 - Bind every new external-benchmark invocation to the exact clean Peritus source revision, Cargo
   package version, and SHA-256 of the native executable; make Harbor verify the uploaded binary
   against the native report and retain both identities in its trial metadata (#31)
@@ -53,6 +57,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Fixed
+
+- Include the required schema version when serializing H3 baseline manifests so a generated,
+  reviewed baseline round-trips through the accepted-baseline parser in a later campaign (#35)
 - Compile H3 campaign-only sampling and shared accounting only on its supported Unix boundary and
   scope Linux process-status imports to Linux, keeping strict macOS and Windows Clippy builds free
   of platform-created dead code and unused imports (#35)

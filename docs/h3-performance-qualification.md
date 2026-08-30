@@ -99,8 +99,19 @@ GiB hardware class. Storage generation is an explicit reviewed argument because 
 unprivileged interfaces do not expose it consistently. Exact profile mismatch stops before daemon
 launch and reports every mismatched field.
 
-The accepted-baseline review workflow and actual eight-hour reference-machine execution evidence
-remain required before H3 can report readiness.
+When every objective has sufficient observations, evidence publication also writes an inert
+`baseline-candidate.json`. Its workload/metric/statistic entries come from the evaluated campaign
+and its `evidence_digest` binds the exact source manifest. The candidate is deliberately outside
+that manifest's primary-artifact list because it is derived from the manifest digest.
+
+Generation is not acceptance. A later `peritus-h3` invocation must supply both `--baseline` and the
+independently reviewed exact file SHA-256 through `--accept-baseline-sha256`. Either option alone, a
+changed byte, a different profile, or an invalid document is rejected before host probing or daemon
+launch. H3 then retains the exact accepted document in the new evidence bundle and compares every
+objective. This operator action admits comparison evidence only; H4 retains release authority.
+
+Actual eight-hour reference-machine execution evidence remains required before H3 can report
+readiness.
 
 ## Bounded accounting and backpressure
 
