@@ -17,6 +17,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   task coverage, retain the digest and provenance of every selected result, recompute scores, time,
   and token/cache usage, expose legacy identity coverage, and require native build identity for the
   final candidate campaign (#31)
+- Retain a verifier-passing DNA assembly trial whose frozen native agent still timed out after
+  discovering but not installing an available ordinary prerequisite, strengthening the general
+  disposable-environment installation diagnosis without adding task-specific behavior (#31)
 - Add a Rust-owned Terminal-Bench campaign reporter that reconciles Harbor's aggregate state with
   directly visible child results, distinguishes in-progress snapshots from immutable final
   reports, retains per-trial evidence paths and token/cache totals, binds the benchmark pin and

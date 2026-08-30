@@ -2833,6 +2833,17 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   and retry the real command instead of substituting a stand-in. The same rule is visible in the
   provider-neutral command catalog and contains no benchmark, task, language, package-manager, or
   verifier identity.
+- Trial `dna-assembly__zznVSkd` adds a successful artifact with the same prerequisite failure. The
+  writer created and repeatedly verified the complete four-pair `primers.fasta`, and the unchanged
+  verifier installed Ubuntu's ordinary `primer3` package, ran its exact checks, and awarded reward
+  1. The frozen Peritus run had already proved that `oligotm` was absent and that `primer3` was an
+  available `apt` candidate, but it continued hand-approximating melting temperatures through
+  repeated writer/reviewer cycles instead of installing the package. Harbor cancelled the native
+  agent at the unchanged 1,800-second deadline, so no native invocation report or usage total was
+  published even though the final artifact passed. Installing that normal package in the
+  disposable task is legitimate execution, not benchmark cooking. The external reward is retained,
+  but native non-completion remains a real failure until the final candidate both uses the general
+  prerequisite path and exits successfully.
 - Verification: product-runner regressions require both the scoped-prerequisite and durable-host
   boundaries in the external-effect prompt, plus actionable missing-executable guidance from the
   command tool itself. All 95 product-runner tests, strict all-target/all-feature Clippy, rustfmt,
