@@ -69,6 +69,16 @@ fn structured_commands_drain_and_bound_both_output_streams() {
     assert_eq!(result["timed_out"].as_bool(), Some(false));
     assert!(result["stdout"].as_str().is_some_and(|value| value.contains("[output truncated]")));
     assert!(result["stderr"].as_str().is_some_and(|value| value.contains("[output truncated]")));
+    assert!(
+        result["stdout"]
+            .as_str()
+            .is_some_and(|value| value.contains("stdout-begin") && value.contains("stdout-final"))
+    );
+    assert!(
+        result["stderr"]
+            .as_str()
+            .is_some_and(|value| value.contains("stderr-begin") && value.contains("stderr-final"))
+    );
 }
 
 #[test]
@@ -85,6 +95,10 @@ fn command_output_fixture() {
         return;
     }
     let output = vec![b'x'; 600 * 1024];
+    std::io::stdout().write_all(b"stdout-begin\n").expect("stdout prefix");
     std::io::stdout().write_all(&output).expect("fixture stdout");
+    std::io::stdout().write_all(b"\nstdout-final").expect("stdout suffix");
+    std::io::stderr().write_all(b"stderr-begin\n").expect("stderr prefix");
     std::io::stderr().write_all(&output).expect("fixture stderr");
+    std::io::stderr().write_all(b"\nstderr-final").expect("stderr suffix");
 }

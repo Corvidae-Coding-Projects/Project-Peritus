@@ -2990,3 +2990,33 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   child, then prove cancellation completes the descendant TERM/KILL cleanup before propagating.
   The complete external-benchmark test set, strict repository gates, and an unchanged
   final-candidate timed trial remain required before qualification closes.
+
+## TBF-023: a bounded build log discarded its terminal diagnostic
+
+- Suite and task: Terminal-Bench 2.0, `mcmc-sampling-stan`, first full-suite baseline trial.
+- Symptom: Peritus correctly installed R 4.3.3 in the disposable task container, authored the Stan
+  model and R analysis, detected that `rstan` was absent, and attempted the exact requested 2.32.7
+  installation. Building its 117 dependencies produced more than the command tool's 512 KiB
+  per-stream window and exited 1. The retained stderr contained the beginning of the build and a
+  large body of Eigen warnings, but not the final failure diagnostic. The writer therefore lacked
+  the evidence needed to repair or narrow the dependency installation before a later provider
+  terminal ended the run. The unchanged verifier passed both supplied posterior-mean artifacts but
+  failed its four RStan execution checks for reward 0.
+- Cause: the command reader continued draining both streams safely, but preserved only the first
+  bytes of each. This bounded memory and prevented pipe deadlock while systematically discarding
+  the end of noisy compiler, package-manager, test, and build output where the useful error usually
+  appears.
+- Resolution: each stream still has the same fixed 512 KiB retention budget, but now divides it
+  between an opening window and a rolling final window. When truncation occurs, the result emits
+  the opening context, an explicit marker, and the final diagnostics while omitting the middle. The
+  tool contract still asks roles to filter predictable bulk output before execution; head-and-tail
+  retention is the accuracy fallback, not permission to request unbounded logs.
+- Evidence: job `peritus-terminalbench-2-k5-high`; trial
+  `mcmc-sampling-stan__gYsh97i`; reward 0; two of six verifier checks passed; native provider
+  terminal after eleven requests, 376,110 input, 47,616 cached input, and 4,545 output tokens over
+  635.086 seconds. The failed install observation retained 524,307 stderr characters and explicitly
+  reported that its output was truncated.
+- Verification: the structured-command regression emits distinct prefixes and suffixes around more
+  than 600 KiB on stdout and stderr, then requires both prefixes, both terminal suffixes, and both
+  truncation markers in the bounded result. Focused product-runner tests pass. Strict repository
+  gates and an unchanged final-candidate rerun remain required.

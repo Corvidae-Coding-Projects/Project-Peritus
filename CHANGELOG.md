@@ -61,6 +61,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Retain both opening context and final diagnostics when a developer command exceeds its bounded
+  output window, omitting the noisy middle so long compiler and dependency logs cannot hide the
+  actual terminal failure that a recovery turn needs (`TBF-023`, #31)
 - Supervise each Terminal-Bench native agent process tree and, when Harbor cancels the adapter,
   terminate and reap that exact tree before allowing the shared task environment to enter verifier
   execution; this restores phase isolation without changing task timeouts or scores (`TBF-022`, #31)
