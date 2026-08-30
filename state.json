@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 775,
+  "next_comment_id": 776,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -5350,7 +5350,7 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T22:24:16.640107633Z",
-      "updated_at": "2026-08-30T00:34:26.049664802Z",
+      "updated_at": "2026-08-30T00:46:04.478559796Z",
       "labels": [
         "performance",
         "qualification"
@@ -5409,6 +5409,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA15rCIuMhVMe5/rsGnj8qKatJR7ZBNuYqJUaTnsWOdbI98N3hIBrf29eXq/BHjOqKpZbEGakqFAxFwWMcEXC4CQ=="
+        },
+        "a179253e-f487-4470-b456-ea01fad91e1e": {
+          "display_id": 775,
+          "author": "6ME5",
+          "content": "Committed signed evidence checkpoint 2fdc1e44. A completed campaign can now atomically publish exact profile/workload/optional accepted-baseline bytes, streaming private copies of the subject and runner executables verified against their campaign SHA-256 identities, bounded measurement NDJSON, receipts, combined accounting, measured-machine facts, a content-addressed manifest, and its bound qualification report. Existing outputs are never overwritten and failed publication never creates the requested final path. The real A3 campaign plus full evidence smoke passed in 9.33 seconds. Default package tests: 13 passed, 3 operator smokes ignored. Strict all-target/all-feature Clippy passed locally. cargo xtask all passed 78 packages, 3105 sources, 135 docs. Also fixed the hosted macOS unused Linux import and Windows Unix-helper dead-code failures discovered on cdba8256.",
+          "created_at": "2026-08-30T00:46:04.475986411Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAvO3jm7YviVP5/jXyVB9gYqm9y/J+4OGvFWLWILMPm/t95eBiFtIRChDoLlBSBAqUvcpkLbvb2D8QWh0sNGvcCg=="
         },
         "f4ac994e-df19-45e8-98e7-6f73f30bc8d0": {
           "display_id": 490,
@@ -7731,8 +7740,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T00:34:26.049664802Z",
+    "timestamp": "2026-08-30T00:46:04.478559796Z",
     "agent_id": "6ME5",
-    "agent_seq": 963
+    "agent_seq": 964
   }
 }
