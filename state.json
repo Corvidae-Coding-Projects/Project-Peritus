@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 979,
+  "next_comment_id": 980,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -9034,7 +9034,7 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:01:08.433031832Z",
-      "updated_at": "2026-08-30T17:53:27.422632851Z",
+      "updated_at": "2026-08-30T19:46:04.641042494Z",
       "labels": [
         "qualification",
         "security"
@@ -9237,6 +9237,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAK1z3eD7i7Dy0BSW3LBJfBrKYNGVKGkJmiUGYwHJl2tarZWZ2hf7+DwFxX6FoJNyLB6h7wXEB6tecAiAMG5gzDg=="
+        },
+        "d745c8c0-9e93-4854-a8c2-a1f12526e50c": {
+          "display_id": 979,
+          "author": "6ME5",
+          "content": "Fresh exact-head H0 Windows shard passed at 87bf209b (run 33331529567, artifact 9737813528). Retained windows-shard.json status=passed, native_sandbox_observed=true, source-bound=true, resources-within=true, cleanup all zero; native AppContainer identity and complete Windows conformance tests both passed. Artifact report SHA-256: 5a2d2a067b58dd1e62054cff7067c60386f8c987eb257dde0d2e21a2b295fcf0. This validates the general token/AppContainer responsibility split on a real windows-2025 host.",
+          "created_at": "2026-08-30T19:46:04.638467944Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA1/efw3KK5QDdZaCuCxQRzKxps7Z/Ma0eJTMIo9x5t48yl5T/rbV9NXIvflGsLw0HtJuyrFRrGxQQlIM1eX1JBg=="
         }
       }
     },
@@ -9567,8 +9576,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T19:45:59.932161638Z",
+    "timestamp": "2026-08-30T19:46:04.641042494Z",
     "agent_id": "6ME5",
-    "agent_seq": 1175
+    "agent_seq": 1176
   }
 }
