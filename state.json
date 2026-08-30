@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 946,
+  "next_comment_id": 947,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T18:21:21.721139801Z",
+      "updated_at": "2026-08-30T18:21:26.529372564Z",
       "labels": [
         "qualification",
         "release"
@@ -4384,6 +4384,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABARZ2SahqPZm8MXN2ZDFV6aDgiaiVyUVR2pZ1ur1Tcl87L14Sq+Kq+WdX2pWCpW5ttueTstNtRJwo5EERjjxDLDA=="
+        },
+        "f5e824c5-9b75-4593-9b4a-4658e056c04a": {
+          "display_id": 946,
+          "author": "6ME5",
+          "content": "[action] Retained exact-head Foundation success: run 33325905206, 6/6 jobs green across policy, locked Verus, dependencies, and three native Rust platforms.",
+          "created_at": "2026-08-30T18:21:26.526956222Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAbcjs+n89p5i7gr6H0LLj+6n1pkWu0kvBOxqxTHA7RWiGkV/ll7sADJE78G9d8rlmkIjsrZqxGeA57ciIi/jHBQ=="
         },
         "f5ec1959-4a55-4026-931f-36205afa491f": {
           "display_id": 673,
@@ -9266,8 +9275,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T18:21:21.721139801Z",
+    "timestamp": "2026-08-30T18:21:26.529372564Z",
     "agent_id": "6ME5",
-    "agent_seq": 1141
+    "agent_seq": 1142
   }
 }
