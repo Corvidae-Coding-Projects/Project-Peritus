@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1015,
+  "next_comment_id": 1016,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T22:12:37.559284223Z",
+      "updated_at": "2026-08-30T22:17:49.751523799Z",
       "labels": [
         "qualification",
         "release"
@@ -1751,6 +1751,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABADrNuda74cnxIEgty9apkKPfrODk7jUEXt7vL0k3vsJdSZ70KWBk8CWFDsvc8KFHdT70hN5m8mKwsegfNGwRrBA=="
+        },
+        "229e1287-f56b-441b-b112-58522314a122": {
+          "display_id": 1015,
+          "author": "6ME5",
+          "content": "Terminal-Bench frozen aggregate at 189 completed: 105 verifier passes, but only 19 native Peritus successes. Of the passes, 74 retained native provider failure, 6 native no-progress gate failure, and 6 no native report. Also 57 reward-zero and 3 unscored trials retained provider terminals. This quantifies task-neutral role recovery/terminal handoff as the dominant frozen control-flow defect; it does not reclassify any external reward.",
+          "created_at": "2026-08-30T22:17:49.748089884Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAy+MxYulFp1laRfEEutBaPvAy+hXESyKrGmBGFn/8RjZO+Krn39Xin0hUW6nXpXlysCGlWouIaM48+NAQQI1uCw=="
         },
         "22ec2b03-866e-4d37-9bbd-55018fb1a727": {
           "display_id": 853,
@@ -9891,8 +9900,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T22:12:37.559284223Z",
+    "timestamp": "2026-08-30T22:17:49.751523799Z",
     "agent_id": "6ME5",
-    "agent_seq": 1209
+    "agent_seq": 1210
   }
 }
