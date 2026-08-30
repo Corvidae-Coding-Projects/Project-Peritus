@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1008,
+  "next_comment_id": 1009,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T21:49:17.335342049Z",
+      "updated_at": "2026-08-30T21:56:37.742395242Z",
       "labels": [
         "qualification",
         "release"
@@ -2120,6 +2120,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAtWGheKFEDL6qybD1lv4GwPPCUnz8VmLz2xidsCmqcNX8CgWgY4O5o1xqW2nNJVIj+gtx8V+K2vjYvi0X0ZTnDg=="
+        },
+        "3e2833b4-73d4-426e-8f5d-88550212f54b": {
+          "display_id": 1008,
+          "author": "6ME5",
+          "content": "Terminal-Bench frozen baseline recurrence: compile-compcert__7yzxgWZ earned unchanged reward 1 after recovering from an OOM build, rebuilding with two jobs, and passing all three verifier checks. Frozen native Peritus nevertheless ended provider-false when the reviewer process was interrupted after the complete candidate. Recorded under task-neutral TBF-009 role recovery; no task-specific change.",
+          "created_at": "2026-08-30T21:56:37.739610135Z",
+          "kind": "evidence",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZAGNPwHZ8OlnZqYrFF5EA5RGEyZF2VtYfV0cUPE2aVA3HODM6htBT0KsEzYYGTNmcRcO6KjDf90iTg12b77SAA=="
         },
         "3eadba0b-f094-4f02-9c52-e07d6a30b38c": {
           "display_id": 623,
@@ -9828,8 +9837,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T21:49:17.335342049Z",
+    "timestamp": "2026-08-30T21:56:37.742395242Z",
     "agent_id": "6ME5",
-    "agent_seq": 1202
+    "agent_seq": 1203
   }
 }
