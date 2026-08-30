@@ -51,7 +51,12 @@ pub(super) struct RestrictedToken(HANDLE);
 
 impl RestrictedToken {
     pub(super) fn create(profile: &TokenProfile) -> Result<Self, WindowsError> {
-        let restriction = OwnedLocalSid::parse(profile.principal_sid())?;
+        let restriction = match profile {
+            TokenProfile::RestrictedLowIntegrity { .. } => {
+                Some(OwnedLocalSid::parse(profile.principal_sid())?)
+            }
+            TokenProfile::AppContainer(_) => None,
+        };
         let mut current = ptr::null_mut();
         // SAFETY: output points to valid storage; the pseudo current-process handle is valid.
         if unsafe {
@@ -66,8 +71,12 @@ impl RestrictedToken {
         }
         let current = OwnedHandle(current);
         // CreateRestrictedToken requires every restricting-SID attribute field to be zero.
-        // Restricting SIDs are enabled by the kernel during the second access check.
-        let restricting = SID_AND_ATTRIBUTES { Sid: restriction.as_ptr(), Attributes: 0 };
+        // AppContainer package identity belongs in SECURITY_CAPABILITIES during process creation,
+        // not in this independent restricting-SID list.
+        let restricting =
+            restriction.as_ref().map(|sid| SID_AND_ATTRIBUTES { Sid: sid.as_ptr(), Attributes: 0 });
+        let restricting_count = u32::from(restricting.is_some());
+        let restricting_pointer = restricting.as_ref().map_or(ptr::null(), ptr::from_ref);
         let mut restricted = ptr::null_mut();
         // SAFETY: current and SID remain live, all optional arrays use zero/null pairs.
         if unsafe {
@@ -78,8 +87,8 @@ impl RestrictedToken {
                 ptr::null(),
                 0,
                 ptr::null(),
-                1,
-                &raw const restricting,
+                restricting_count,
+                restricting_pointer,
                 &raw mut restricted,
             )
         } == 0
