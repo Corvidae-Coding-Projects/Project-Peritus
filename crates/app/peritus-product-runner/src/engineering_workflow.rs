@@ -216,6 +216,12 @@ requested behavior.
    inspect intermediate signals across the complete input before claiming robust behavior. If the
    available evidence cannot support generalization, report that limit instead of treating one
    successful sample as proof.
+   When a deliverable accepts inputs beyond the supplied example, exercise at least one
+   independently created or independently selected input before claiming the interface works.
+   Derive format fields, dimensions, offsets, identifiers, and defaults from the authoritative
+   input contract rather than copying them from one example. Treat every example-derived constant
+   as a hypothesis: vary it or prove why it is invariant. A successful run on the supplied input
+   proves only that input unless the request explicitly defines a single-input artifact.
    Validate requested effects independently rather than proving only self-authored invariants. For
    local services or APIs, preserve and inspect available access evidence and confirm every required
    endpoint and exercised recovery path. When the request includes a quality or operations report,

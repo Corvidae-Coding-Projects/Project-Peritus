@@ -3380,3 +3380,37 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   `5bf0651b48969968dea30956d4b0cf9e499af59d73cc6886af3ad7aa92934647`;
   reference SHA-256
   `161b9fa46a76b05743fa3fb8eb01be275d5f89466813096aa5b89bc19b3db099`.
+
+## TBF-027: a parameterized extractor was accepted after testing only its supplied example
+
+- Suite and task: Terminal-Bench 2.0, `extract-elf`, frozen attempt
+  `extract-elf__ZetN3kN`.
+- Symptom: the writer produced a complete ELF32/ELF64 parser and successfully exercised it against
+  the supplied executable. It hard-coded a `0x400000` bias for every position-independent ELF from
+  the example address, however. The unchanged verifier compiled a fresh ordinary PIE executable;
+  the emitted keys had no overlap with its independently derived reference keys, so the existence
+  check passed, the coverage check reported zero percent, and reward 0 is retained.
+- Cause: Peritus's empirical-generalization rule covered heuristics calibrated on one example, but
+  not deterministic parameterized programs. The writer treated a value observed in one example as
+  a format invariant, and the reviewer correctly called the undisclosed reference coverage
+  unverifiable but still accepted the interface after only the supplied-input run and four spot
+  checks from that same executable.
+- Resolution: every architect, writer, and reviewer now receives a task-neutral rule for
+  parameterized deliverables: exercise at least one independently created or selected input;
+  derive fields, dimensions, offsets, identifiers, and defaults from the authoritative contract;
+  and vary or prove every example-derived constant. Deterministic artifact designs carry the same
+  rule. A run on one supplied input proves only that input unless the request explicitly defines a
+  single-input artifact.
+- Integrity decision: retain the zero. Do not copy the verifier's reference implementation, add an
+  ELF-specific offset to Peritus, key behavior to this task, or inspect a future held-out input
+  while solving. Compiling another small source file and checking format-relative invariants is
+  normal independent testing for a claimed parameterized program, not benchmark cooking.
+- Evidence: job `peritus-terminalbench-2-k5-high`; nine provider requests; 167,734 input tokens,
+  118,709 cached input tokens, and 28,111 output tokens over 402.298 seconds. Native Peritus
+  accepted `extract.js`; the retained independent verifier passed file existence and failed only
+  its fresh-binary coverage assertion.
+- Verification: embedded-workflow regressions require the independent-input and
+  example-derived-constant rules in architect, developer, and reviewer prompts. The deterministic
+  artifact-design regression requires the same acceptance boundary. Focused and repository gates
+  must pass before this correction is checkpointed; an unchanged final-candidate rerun remains
+  required.

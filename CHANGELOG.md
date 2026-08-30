@@ -93,6 +93,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Require parameterized deliverables derived from a supplied example to exercise an independent
+  input and prove or vary example-derived constants before the harness accepts a general interface
+  (`TBF-027`, #31)
 - Canonicalize both benchmark campaign roots and retained evidence before containment checks, then
   serialize report-owned evidence paths as validated forward-slash relative strings; this keeps
   HarnessBench and Terminal-Bench reports stable across macOS `/var` aliases, Windows short-name
