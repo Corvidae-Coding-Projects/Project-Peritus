@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1005,
+  "next_comment_id": 1006,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T21:36:16.950963060Z",
+      "updated_at": "2026-08-30T21:36:26.135674465Z",
       "labels": [
         "qualification",
         "release"
@@ -2156,6 +2156,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAUF4tJOltFno+wI5D2gGa4XFoLrxGPPZiYcDhvm9Bw6pe6qv312ZIXMW61wa8caOgoz6OvxqTbM6gw8BursjEAA=="
+        },
+        "40e413f4-6502-40b4-915d-78e70f028ace": {
+          "display_id": 1005,
+          "author": "6ME5",
+          "content": "Signed commit ef62841f fixes exact-head Windows H2 TUI qualification at the observed cause. The installed TUI was online, ReadyReadWrite, and streaming live events, but the transient connected notice had been replaced before the first ConPTY frame. H2 now accepts either that notice or the complete stable rendered connection proof without extending its 30-second bound. Verification: 23 package tests, strict native Clippy, strict Windows-GNU target Clippy, rustfmt, docs-check 137 files, and diff hygiene all pass. Pushed in exact head 33388299 for fresh hosted proof.",
+          "created_at": "2026-08-30T21:36:26.132495664Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWgMv07fDPE/b6iIUyshoCkaVCUqovbu+RdSQw9zDqSAxr9Tm1i2TiXIWwO51gyJdfXd3tO6PmlXvI5Ha1Kv2Dg=="
         },
         "41e823b3-c420-4805-a82f-de5d6b9a9952": {
           "display_id": 710,
@@ -9801,7 +9810,7 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T21:36:16.950963060Z",
+    "timestamp": "2026-08-30T21:36:26.135674465Z",
     "agent_id": "6ME5",
     "agent_seq": 1201
   }
