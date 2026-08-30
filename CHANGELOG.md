@@ -13,6 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Add run-level workspace-growth and observed-memory accounting to the production coding loop,
+  persist both across daemon progress snapshots, show them in live status, and fail with the typed
+  budget category before generous 50 GiB growth or 12 GiB resident-memory ceilings are exceeded
+  (#31)
 - Add the standard H2 native platform controller and `peritus-h2` operator: stage and re-digest the
   exact manifest package into one private subject per each of 18 scenarios, clear ambient user
   state, bind versioned requests and independent scenario/cleanup responses to the exact target,

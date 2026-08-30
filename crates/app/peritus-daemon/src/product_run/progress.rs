@@ -18,6 +18,9 @@ pub(super) struct RunProgress {
     pub(super) total_tokens: u64,
     pub(super) provider_cost_microunits: u64,
     pub(super) usage_observations: u32,
+    pub(super) workspace_bytes: u64,
+    pub(super) workspace_growth_bytes: u64,
+    pub(super) peak_rss_bytes: u64,
 }
 
 impl Default for RunProgress {
@@ -37,6 +40,9 @@ impl Default for RunProgress {
             total_tokens: 0,
             provider_cost_microunits: 0,
             usage_observations: 0,
+            workspace_bytes: 0,
+            workspace_growth_bytes: 0,
+            peak_rss_bytes: 0,
         }
     }
 }
@@ -55,6 +61,9 @@ impl RunProgress {
         self.total_tokens = progress.total_tokens();
         self.provider_cost_microunits = progress.provider_cost_microunits();
         self.usage_observations = progress.usage_observations();
+        self.workspace_bytes = progress.workspace_bytes();
+        self.workspace_growth_bytes = progress.workspace_growth_bytes();
+        self.peak_rss_bytes = progress.peak_rss_bytes();
     }
 
     pub(super) fn live_status(&self, base: &str) -> String {
@@ -70,6 +79,8 @@ impl RunProgress {
             format!("run horizon {} remaining", duration(remaining)),
             format!("{} provider requests", self.model_requests),
             format!("{} tool calls", self.tool_calls),
+            format!("{} workspace growth", bytes(self.workspace_growth_bytes)),
+            format!("{} observed memory", bytes(self.peak_rss_bytes)),
         ];
         if self.retries > 0 {
             fields.push(format!("{} retries", self.retries));
@@ -124,6 +135,21 @@ fn count(value: u64) -> String {
     }
 }
 
+fn bytes(value: u64) -> String {
+    const KIB: u64 = 1024;
+    const MIB: u64 = 1024 * KIB;
+    const GIB: u64 = 1024 * MIB;
+    if value >= GIB {
+        format!("{}.{:01} GiB", value / GIB, (value % GIB) * 10 / GIB)
+    } else if value >= MIB {
+        format!("{}.{:01} MiB", value / MIB, (value % MIB) * 10 / MIB)
+    } else if value >= KIB {
+        format!("{}.{:01} KiB", value / KIB, (value % KIB) * 10 / KIB)
+    } else {
+        format!("{value} B")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -145,5 +171,7 @@ mod tests {
         assert!(status.contains("4 provider requests"));
         assert!(status.contains("1 retries"));
         assert!(status.contains("2 provider switches"));
+        assert!(status.contains("workspace growth"));
+        assert!(status.contains("observed memory"));
     }
 }

@@ -57,6 +57,14 @@ three consecutive failures stop for user correction. Abrupt daemon restarts auto
 resume interrupted goals from their persisted conversation, finding ledger, trace, and unchanged
 managed worktree.
 
+At every completed effect boundary, the runner also measures regular-file bytes beneath the
+managed workspace and the harness process's resident memory through the host's ordinary process
+accounting interface. Git object storage is excluded because it is repository history rather than
+task growth; generated build trees remain included. The daemon persists and displays current
+workspace size, positive growth from the run baseline, and the highest observed resident memory.
+Generous 50 GiB growth and 12 GiB observed-memory ceilings fail with the same distinct budget
+category as token, request, tool, cost, and elapsed-time overruns.
+
 Provider, filesystem, process, and Git effects remain ordinary Rust host adapters. In
 `verus_only` builds the crate exposes the same daemon-facing boundary as a fail-closed total
 implementation that cannot fabricate completion; the D0, D1, D2, and E0 decision cores remain in

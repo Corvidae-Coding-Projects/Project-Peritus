@@ -25,6 +25,10 @@ pub const PRODUCT_RUN_MAX_TOOL_CALLS: u32 = 20_000;
 pub const PRODUCT_RUN_MAX_TOTAL_TOKENS: u64 = 100_000_000;
 /// Maximum provider-estimated cost in integer microunits.
 pub const PRODUCT_RUN_MAX_COST_MICROUNITS: u64 = 500_000_000;
+/// Maximum observed resident memory at a completed effect boundary.
+pub const PRODUCT_RUN_MAX_PEAK_RSS_BYTES: u64 = 12 * 1024 * 1024 * 1024;
+/// Maximum regular-file growth beneath the managed workspace during one run.
+pub const PRODUCT_RUN_MAX_WORKSPACE_GROWTH_BYTES: u64 = 50 * 1024 * 1024 * 1024;
 
 /// Monotonic aggregate progress for one complete product-run attempt.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -41,6 +45,9 @@ pub struct ProductRunProgress {
     provider_cost_microunits: u64,
     usage_observations: u32,
     elapsed_millis: u64,
+    workspace_bytes: u64,
+    workspace_growth_bytes: u64,
+    peak_rss_bytes: u64,
 }
 
 impl ProductRunProgress {
@@ -91,6 +98,18 @@ impl ProductRunProgress {
     /// Elapsed milliseconds at the latest effect boundary.
     pub const fn elapsed_millis(self) -> u64 {
         self.elapsed_millis
+    }
+    /// Current regular-file bytes beneath the workspace, excluding Git object storage.
+    pub const fn workspace_bytes(self) -> u64 {
+        self.workspace_bytes
+    }
+    /// Positive workspace growth since this product-run attempt began.
+    pub const fn workspace_growth_bytes(self) -> u64 {
+        self.workspace_growth_bytes
+    }
+    /// Highest resident-memory observation at a completed effect boundary.
+    pub const fn peak_rss_bytes(self) -> u64 {
+        self.peak_rss_bytes
     }
 }
 

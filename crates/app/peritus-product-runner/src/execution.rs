@@ -40,7 +40,7 @@ impl ProductRunner {
         input: ProductRunInput,
         observe: RunObserver,
     ) -> Result<ProductRunOutcome, ProductRunnerError> {
-        let mut accounting = RunAccounting::new();
+        let mut accounting = RunAccounting::new(&input.workspace_root)?;
         accounting.check()?;
         let baseline = CandidateBaseline::capture(&input.workspace_root)?;
         let effect_requirement = crate::delivery_requirement::ExternalEffectRequirement::from_task(

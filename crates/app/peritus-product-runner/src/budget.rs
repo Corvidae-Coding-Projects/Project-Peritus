@@ -1,10 +1,18 @@
 //! Cumulative accounting and generous hard ceilings for one complete product run.
 
-use std::time::{Duration, Instant};
+use std::{
+    path::Path,
+    time::{Duration, Instant},
+};
 
 use peritus_agent::DeveloperLoopOutcome;
 
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
+
+#[path = "resource_probe.rs"]
+mod resource_probe;
+
+use resource_probe::RunResourceProbe;
 
 /// Maximum wall-clock duration of one uninterrupted product-run attempt.
 pub const PRODUCT_RUN_MAX_ELAPSED: Duration = Duration::from_hours(8);
@@ -16,6 +24,10 @@ pub const PRODUCT_RUN_MAX_TOOL_CALLS: u32 = 20_000;
 pub const PRODUCT_RUN_MAX_TOTAL_TOKENS: u64 = 100_000_000;
 /// Maximum provider-estimated cost in integer microunits when the provider reports it.
 pub const PRODUCT_RUN_MAX_COST_MICROUNITS: u64 = 500_000_000;
+/// Maximum resident memory observed for the harness process at completed effect boundaries.
+pub const PRODUCT_RUN_MAX_PEAK_RSS_BYTES: u64 = 12 * 1024 * 1024 * 1024;
+/// Maximum regular-file growth beneath the managed workspace during one run.
+pub const PRODUCT_RUN_MAX_WORKSPACE_GROWTH_BYTES: u64 = 50 * 1024 * 1024 * 1024;
 
 /// Monotonic aggregate progress for one complete product-run attempt.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -32,6 +44,9 @@ pub struct ProductRunProgress {
     provider_cost_microunits: u64,
     usage_observations: u32,
     elapsed_millis: u64,
+    workspace_bytes: u64,
+    workspace_growth_bytes: u64,
+    peak_rss_bytes: u64,
 }
 
 impl ProductRunProgress {
@@ -106,16 +121,39 @@ impl ProductRunProgress {
     pub const fn elapsed_millis(self) -> u64 {
         self.elapsed_millis
     }
+
+    /// Current regular-file bytes beneath the workspace, excluding Git object storage.
+    #[must_use]
+    pub const fn workspace_bytes(self) -> u64 {
+        self.workspace_bytes
+    }
+
+    /// Positive workspace growth since this product-run attempt began.
+    #[must_use]
+    pub const fn workspace_growth_bytes(self) -> u64 {
+        self.workspace_growth_bytes
+    }
+
+    /// Highest resident-memory observation for the harness process.
+    #[must_use]
+    pub const fn peak_rss_bytes(self) -> u64 {
+        self.peak_rss_bytes
+    }
 }
 
 pub struct RunAccounting {
     started: Instant,
     progress: ProductRunProgress,
+    resources: RunResourceProbe,
 }
 
 impl RunAccounting {
-    pub fn new() -> Self {
-        Self { started: Instant::now(), progress: ProductRunProgress::default() }
+    pub fn new(workspace_root: &Path) -> Result<Self, ProductRunnerError> {
+        Ok(Self {
+            started: Instant::now(),
+            progress: ProductRunProgress::default(),
+            resources: RunResourceProbe::new(workspace_root)?,
+        })
     }
 
     pub fn record(&mut self, outcome: &DeveloperLoopOutcome) -> Result<(), ProductRunnerError> {
@@ -148,25 +186,37 @@ impl RunAccounting {
 
     pub fn check(&mut self) -> Result<(), ProductRunnerError> {
         self.progress.elapsed_millis = millis(self.started.elapsed());
-        let violation = if self.started.elapsed() > PRODUCT_RUN_MAX_ELAPSED {
-            Some("the eight-hour uninterrupted run horizon was exhausted")
-        } else if self.progress.model_requests > PRODUCT_RUN_MAX_MODEL_REQUESTS {
-            Some("the cumulative provider-request budget was exhausted")
-        } else if self.progress.tool_calls > PRODUCT_RUN_MAX_TOOL_CALLS {
-            Some("the cumulative application-tool budget was exhausted")
-        } else if self.progress.total_tokens > PRODUCT_RUN_MAX_TOTAL_TOKENS {
-            Some("the cumulative model-token budget was exhausted")
-        } else if self.progress.provider_cost_microunits > PRODUCT_RUN_MAX_COST_MICROUNITS {
-            Some("the cumulative provider-estimated cost budget was exhausted")
-        } else {
-            None
-        };
+        let resources = self.resources.observe()?;
+        self.progress.workspace_bytes = resources.workspace;
+        self.progress.workspace_growth_bytes = resources.growth;
+        self.progress.peak_rss_bytes = self.progress.peak_rss_bytes.max(resources.peak_rss);
+        let violation = budget_violation(self.progress, self.started.elapsed());
         violation.map_or(Ok(()), |detail| Err(exhausted(detail)))
     }
 
     pub fn snapshot(&mut self) -> Result<ProductRunProgress, ProductRunnerError> {
         self.check()?;
         Ok(self.progress)
+    }
+}
+
+fn budget_violation(progress: ProductRunProgress, elapsed: Duration) -> Option<&'static str> {
+    if elapsed > PRODUCT_RUN_MAX_ELAPSED {
+        Some("the eight-hour uninterrupted run horizon was exhausted")
+    } else if progress.model_requests > PRODUCT_RUN_MAX_MODEL_REQUESTS {
+        Some("the cumulative provider-request budget was exhausted")
+    } else if progress.tool_calls > PRODUCT_RUN_MAX_TOOL_CALLS {
+        Some("the cumulative application-tool budget was exhausted")
+    } else if progress.total_tokens > PRODUCT_RUN_MAX_TOTAL_TOKENS {
+        Some("the cumulative model-token budget was exhausted")
+    } else if progress.provider_cost_microunits > PRODUCT_RUN_MAX_COST_MICROUNITS {
+        Some("the cumulative provider-estimated cost budget was exhausted")
+    } else if progress.peak_rss_bytes > PRODUCT_RUN_MAX_PEAK_RSS_BYTES {
+        Some("the product-run peak resident-memory budget was exhausted")
+    } else if progress.workspace_growth_bytes > PRODUCT_RUN_MAX_WORKSPACE_GROWTH_BYTES {
+        Some("the product-run workspace-growth budget was exhausted")
+    } else {
+        None
     }
 }
 
@@ -192,7 +242,8 @@ mod tests {
 
     #[test]
     fn role_outcomes_accumulate_requests_tools_retries_and_compactions() {
-        let mut accounting = RunAccounting::new();
+        let temporary = tempfile::tempdir().expect("workspace");
+        let mut accounting = RunAccounting::new(temporary.path()).expect("accounting");
         accounting
             .record(&DeveloperLoopOutcome {
                 text: "done".to_owned(),
@@ -214,10 +265,46 @@ mod tests {
 
     #[test]
     fn provider_failovers_are_counted_separately_from_same_provider_retries() {
-        let mut accounting = RunAccounting::new();
+        let temporary = tempfile::tempdir().expect("workspace");
+        let mut accounting = RunAccounting::new(temporary.path()).expect("accounting");
         accounting.record_provider_failover().expect("record failover");
         let progress = accounting.snapshot().expect("bounded progress");
         assert_eq!(progress.provider_failovers(), 1);
         assert_eq!(progress.retries(), 0);
+    }
+
+    #[test]
+    fn workspace_growth_and_peak_memory_are_observed_at_effect_boundaries() {
+        let temporary = tempfile::tempdir().expect("workspace");
+        let mut accounting = RunAccounting::new(temporary.path()).expect("accounting");
+        std::fs::write(temporary.path().join("candidate.bin"), vec![0_u8; 4096])
+            .expect("candidate");
+
+        let progress = accounting.snapshot().expect("resource snapshot");
+
+        assert_eq!(progress.workspace_growth_bytes(), 4096);
+        assert_eq!(progress.workspace_bytes(), 4096);
+        assert!(progress.peak_rss_bytes() > 0);
+    }
+
+    #[test]
+    fn memory_and_workspace_growth_have_distinct_hard_failures() {
+        let memory = ProductRunProgress {
+            peak_rss_bytes: PRODUCT_RUN_MAX_PEAK_RSS_BYTES + 1,
+            ..ProductRunProgress::default()
+        };
+        assert_eq!(
+            budget_violation(memory, Duration::ZERO),
+            Some("the product-run peak resident-memory budget was exhausted")
+        );
+
+        let workspace = ProductRunProgress {
+            workspace_growth_bytes: PRODUCT_RUN_MAX_WORKSPACE_GROWTH_BYTES + 1,
+            ..ProductRunProgress::default()
+        };
+        assert_eq!(
+            budget_violation(workspace, Duration::ZERO),
+            Some("the product-run workspace-growth budget was exhausted")
+        );
     }
 }
