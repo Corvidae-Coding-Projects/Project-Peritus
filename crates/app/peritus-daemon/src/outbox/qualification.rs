@@ -1,18 +1,20 @@
 //! Bounded public-admin qualification for an effect-before-ack outbox restart.
 
 mod effect;
+mod journal_before;
 
 use std::path::{Path, PathBuf};
 
 use peritus_codec::{CodecLimits, encode_frame, sha256};
 use peritus_journal::{
-    AggregateId, AggregateKey, AggregateKind, AppendRequest, EventDraft, ExactFrame,
+    AggregateId, AggregateKey, AggregateKind, AppendPlan, AppendRequest, EventDraft, ExactFrame,
     HeadExpectation, OutboxDraft, OutboxId, OutboxMessage, OutboxState, SqliteJournal,
     SqliteJournalOptions, StoreId,
 };
 use peritus_types::{CommandId, EventId, EventSequence, Sha256Digest};
 
 use self::effect::QualificationDestination;
+pub use self::journal_before::{recover_journal_before_crash, stage_journal_before_crash};
 use crate::instance::InstanceGuard;
 use crate::{DaemonConfig, DaemonError, DaemonErrorCode, DaemonIdentity, DaemonRecovery};
 
@@ -198,6 +200,14 @@ impl QualificationIdentity {
 }
 
 fn seed(journal: &mut SqliteJournal, identity: &QualificationIdentity) -> Result<(), DaemonError> {
+    let plan = build_plan(journal, identity)?;
+    journal.append(plan).map(|_| ()).map_err(journal_error)
+}
+
+fn build_plan(
+    journal: &SqliteJournal,
+    identity: &QualificationIdentity,
+) -> Result<AppendPlan, DaemonError> {
     let frame = ExactFrame::new(
         encode_frame(FRAME_FAMILY, 1, &identity.payload, CodecLimits::PRODUCTION)
             .map_err(|error| codec_error("encode qualification event", error))?,
@@ -220,7 +230,7 @@ fn seed(journal: &mut SqliteJournal, identity: &QualificationIdentity) -> Result
         MAX_ATTEMPTS,
     )
     .map_err(journal_error)?;
-    let plan = AppendRequest::new(
+    AppendRequest::new(
         journal.store_id(),
         identity.command_id,
         identity.request_digest,
@@ -233,8 +243,7 @@ fn seed(journal: &mut SqliteJournal, identity: &QualificationIdentity) -> Result
         vec![outbox],
     )
     .plan()
-    .map_err(journal_error)?;
-    journal.append(plan).map(|_| ()).map_err(journal_error)
+    .map_err(journal_error)
 }
 
 fn validate_claim(
@@ -302,6 +311,15 @@ fn digest(domain: &[u8], store_id: StoreId) -> Sha256Digest {
     binding.extend_from_slice(domain);
     binding.extend_from_slice(store_id.as_bytes());
     sha256(&binding)
+}
+
+fn digest_hex(digest: Sha256Digest) -> String {
+    let mut output = String::with_capacity(64);
+    for byte in digest.as_bytes() {
+        use std::fmt::Write as _;
+        write!(&mut output, "{byte:02x}").expect("writing to String cannot fail");
+    }
+    output
 }
 
 fn qualification_error(detail: &'static str) -> DaemonError {

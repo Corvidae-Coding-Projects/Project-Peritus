@@ -5,7 +5,7 @@ use std::io::Write as _;
 use serde::Serialize;
 
 use super::evidence::EvidenceDocument;
-use super::request::{BoundRequest, Stage};
+use super::request::{BoundRequest, JournalRoute, Stage};
 
 #[derive(Serialize)]
 struct ResponseDocument<'a, T> {
@@ -125,33 +125,33 @@ pub(super) fn publish<T: Serialize>(
     Ok(())
 }
 
-pub(super) fn canonical_milestones() -> Vec<MilestoneDocument> {
+pub(super) fn canonical_milestones(route: JournalRoute) -> Vec<MilestoneDocument> {
+    let (armed, observed, reconciled) = match route {
+        JournalRoute::BeforeDurableCommit => (
+            "production journal append plan prepared in process memory",
+            "candidate killed before submitting the append plan",
+            "reopened journal has no committed event or external effect",
+        ),
+        JournalRoute::AfterDurableCommitBeforeAck => (
+            "durable outbox effect-before-ack fault armed",
+            "candidate killed after its durable checkpoint",
+            "exact effect reconciled before fence acknowledgement",
+        ),
+    };
     vec![
         MilestoneDocument {
             sequence: 0,
             kind: "prepared",
             detail: "candidate and private daemon state prepared",
         },
-        MilestoneDocument {
-            sequence: 1,
-            kind: "fault-armed",
-            detail: "durable outbox effect-before-ack fault armed",
-        },
-        MilestoneDocument {
-            sequence: 2,
-            kind: "fault-observed",
-            detail: "candidate killed after its durable checkpoint",
-        },
+        MilestoneDocument { sequence: 1, kind: "fault-armed", detail: armed },
+        MilestoneDocument { sequence: 2, kind: "fault-observed", detail: observed },
         MilestoneDocument {
             sequence: 3,
             kind: "recovery-started",
             detail: "fresh candidate process opened the same journal",
         },
-        MilestoneDocument {
-            sequence: 4,
-            kind: "reconciled",
-            detail: "exact effect reconciled before fence acknowledgement",
-        },
+        MilestoneDocument { sequence: 4, kind: "reconciled", detail: reconciled },
         MilestoneDocument {
             sequence: 5,
             kind: "inspected",

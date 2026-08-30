@@ -122,18 +122,19 @@ downgrading those cases.
 
 ### Current implementation state
 
-The checked-in Rust `peritus-h1-controller` now implements one genuine production route:
-`h1.crash.journal.after-before-ack`. It prepares a fresh daemon configuration, confirms the staged
-candidate identity, starts `peritusd qualify-outbox-stage`, and waits for the production code to
-publish its durable effect-before-ack checkpoint. The controller then kills that candidate process,
-starts the same staged bytes through `qualify-outbox-recover`, and requires the exact external effect
-to be reconciled before the new live fence is acknowledged. It independently checks that the
-journal is a nonempty regular file, the effect digest is unchanged, no duplicate effect exists, and
-no claim remains pending.
+The checked-in Rust `peritus-h1-controller` now implements both genuine journal commit routes. For
+`h1.crash.journal.before`, the staged daemon builds the production append plan, publishes a
+request-bound checkpoint before submission, and is killed. The recovery process runs the production
+journal integrity scan and requires zero committed events, aggregate heads, pending outbox claims,
+or external effects. For `h1.crash.journal.after-before-ack`, the controller waits for the real
+durable effect-before-ack checkpoint, kills the process, and then requires the same staged bytes to
+reconcile that exact effect before acknowledging the new live fence. The controller independently
+checks the SQLite journal and external effect state in both cases.
 
-The focused native diagnostic retained a one-case passing report and six raw evidence files under
-`/home/doll/.local/state/peritus/qualification/h1/journal-after-ack.S4yqQu`. Its report deliberately
-uses the `custom` profile and `not-ready-custom-catalog` verdict. The other 42 catalog routes fail
+Fresh focused diagnostics retained passing one-case reports and six raw evidence files under
+`/home/doll/.local/state/peritus/qualification/h1/journal-before.YP5d5R` and
+`/home/doll/.local/state/peritus/qualification/h1/journal-after-ack.sCtlT9`. Both reports deliberately
+use the `custom` profile and `not-ready-custom-catalog` verdict. The other 41 catalog routes fail
 closed until their real component failpoints, controlled quota/storage effects, process controls,
 or disposable-VM reboot driver are connected. Therefore the full H1 production qualification is
 still pending.

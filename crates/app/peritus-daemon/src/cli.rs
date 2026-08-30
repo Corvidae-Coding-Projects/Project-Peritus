@@ -7,7 +7,10 @@ use std::time::Duration;
 
 use peritus_app_protocol::ShutdownCompletionDisposition;
 
-use crate::outbox::{recover_outbox_crash, stage_outbox_crash};
+use crate::outbox::{
+    recover_journal_before_crash, recover_outbox_crash, stage_journal_before_crash,
+    stage_outbox_crash,
+};
 use crate::terminal::qualify_pty_ordering;
 use crate::{DaemonConfig, DaemonError, DaemonRuntime, ShutdownOutcome};
 
@@ -26,6 +29,10 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
             .map_or_else(output_failure, |()| ExitCode::SUCCESS),
         CommandLine::Serve(configuration) => run_server(configuration),
         CommandLine::QualifyPty => qualify_pty(),
+        CommandLine::StageJournalBeforeCrash(configuration) => stage_journal_before(configuration),
+        CommandLine::RecoverJournalBeforeCrash(configuration) => {
+            recover_journal_before(configuration)
+        }
         CommandLine::StageOutboxCrash(configuration) => stage_outbox(configuration),
         CommandLine::RecoverOutboxCrash(configuration) => recover_outbox(configuration),
     }
@@ -62,6 +69,8 @@ enum CommandLine {
     Version,
     Serve(OsString),
     QualifyPty,
+    StageJournalBeforeCrash(OsString),
+    RecoverJournalBeforeCrash(OsString),
     StageOutboxCrash(OsString),
     RecoverOutboxCrash(OsString),
 }
@@ -72,6 +81,12 @@ fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<CommandLine> 
         "--version" if arguments.next().is_none() => Some(CommandLine::Version),
         "serve" => configuration_argument(arguments).map(CommandLine::Serve),
         "qualify-pty" if arguments.next().is_none() => Some(CommandLine::QualifyPty),
+        "qualify-journal-before-stage" => {
+            configuration_argument(arguments).map(CommandLine::StageJournalBeforeCrash)
+        }
+        "qualify-journal-before-recover" => {
+            configuration_argument(arguments).map(CommandLine::RecoverJournalBeforeCrash)
+        }
         "qualify-outbox-stage" => {
             configuration_argument(arguments).map(CommandLine::StageOutboxCrash)
         }
@@ -79,6 +94,52 @@ fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<CommandLine> 
             configuration_argument(arguments).map(CommandLine::RecoverOutboxCrash)
         }
         _ => None,
+    }
+}
+
+fn stage_journal_before(configuration: OsString) -> ExitCode {
+    let config = match DaemonConfig::load(configuration) {
+        Ok(config) => config,
+        Err(error) => return qualification_failure(&error),
+    };
+    let checkpoint = match stage_journal_before_crash(&config) {
+        Ok(checkpoint) => checkpoint,
+        Err(error) => return qualification_failure(&error),
+    };
+    let line = format!(
+        "peritus-qualification journal-before-stage request_sha256={}",
+        checkpoint.request_sha256(),
+    );
+    if let Err(error) = write_output(&line) {
+        return output_failure(error);
+    }
+    std::thread::park_timeout(QUALIFICATION_KILL_BOUND);
+    write_error(&format!(
+        "journal-before crash qualifier was not killed at request {}",
+        checkpoint.request_sha256(),
+    ));
+    ExitCode::FAILURE
+}
+
+fn recover_journal_before(configuration: OsString) -> ExitCode {
+    let config = match DaemonConfig::load(configuration) {
+        Ok(config) => config,
+        Err(error) => return qualification_failure(&error),
+    };
+    match recover_journal_before_crash(&config) {
+        Ok(observation) => {
+            let line = format!(
+                "peritus-qualification journal-before-recover request_sha256={} journal_verified={} committed_events={} aggregate_heads={} external_effects={} pending_claims={}",
+                observation.request_sha256(),
+                observation.journal_verified(),
+                observation.committed_events(),
+                observation.aggregate_heads(),
+                observation.external_effects(),
+                observation.pending_claims(),
+            );
+            write_output(&line).map_or_else(output_failure, |()| ExitCode::SUCCESS)
+        }
+        Err(error) => qualification_failure(&error),
     }
 }
 
@@ -169,7 +230,7 @@ async fn serve(configuration: OsString) -> Result<ShutdownOutcome, DaemonError> 
 
 fn usage(executable: &OsStr) {
     write_error(&format!(
-        "usage: {} --version | serve --config <config.toml> | qualify-pty | qualify-outbox-stage --config <config.toml> | qualify-outbox-recover --config <config.toml>",
+        "usage: {} --version | serve --config <config.toml> | qualify-pty | qualify-journal-before-stage --config <config.toml> | qualify-journal-before-recover --config <config.toml> | qualify-outbox-stage --config <config.toml> | qualify-outbox-recover --config <config.toml>",
         std::path::Path::new(executable).display(),
     ));
 }

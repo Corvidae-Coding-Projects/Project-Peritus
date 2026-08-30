@@ -13,7 +13,10 @@ mod router;
 
 pub use claims::{CLAIM_DESTINATIONS, OrchestratorDirectiveClaim, TypedOutboxClaim, decode_claim};
 pub use pump::OutboxRuntime;
-pub use qualification::{recover_outbox_crash, stage_outbox_crash};
+pub use qualification::{
+    recover_journal_before_crash, recover_outbox_crash, stage_journal_before_crash,
+    stage_outbox_crash,
+};
 pub use router::DestinationRouter;
 
 pub type DurableDelivery<'a> = Pin<Box<dyn Future<Output = Result<(), DaemonError>> + Send + 'a>>;

@@ -32,7 +32,8 @@ pub(super) fn serve(paths: &ControllerPaths) -> Result<(), Box<dyn std::error::E
 
     let inject_request = next(&mut reader, paths, Stage::Inject, 2)?;
     same_scenario(&prepare_request, &inject_request)?;
-    let injected = candidate::inject(paths, &prepared.runtime)?;
+    let route = prepare_request.route()?;
+    let injected = candidate::inject(paths, &prepared.runtime, route)?;
     response::publish(
         &inject_request,
         &paths.instance_id,
@@ -42,8 +43,9 @@ pub(super) fn serve(paths: &ControllerPaths) -> Result<(), Box<dyn std::error::E
 
     let recover_request = next(&mut reader, paths, Stage::Recover, 3)?;
     same_scenario(&prepare_request, &recover_request)?;
-    let recovered = candidate::recover(paths, &prepared.runtime, &injected)?;
-    let payload = recovery_payload(paths, &recover_request, &prepared, &injected, &recovered)?;
+    let recovered = candidate::recover(paths, &prepared.runtime, &injected, route)?;
+    let payload =
+        recovery_payload(paths, &recover_request, &prepared, &injected, &recovered, route)?;
     response::publish(&recover_request, &paths.instance_id, Stage::Recover, payload)?;
 
     let cleanup_request = next(&mut reader, paths, Stage::Cleanup, 4)?;
@@ -99,6 +101,7 @@ fn recovery_payload(
     prepared: &PreparedCandidate,
     injected: &InjectedCandidate,
     recovered: &RecoveredCandidate,
+    route: super::request::JournalRoute,
 ) -> Result<RecoverPayload, Box<dyn std::error::Error>> {
     let logical_ticks = recovered.elapsed_millis.max(1);
     if logical_ticks > request.limits().logical_ticks() {
@@ -149,6 +152,8 @@ fn recovery_payload(
             "build_sha256": paths.build_sha256,
             "effect_sha256": recovered.effect_sha256,
             "effect_bytes": recovered.effect_bytes,
+            "committed_events": recovered.committed_events,
+            "aggregate_heads": recovered.aggregate_heads,
             "external_effects": recovered.external_effects,
             "exact_fence_acknowledged": recovered.exact_fence_acknowledged,
             "terminal": "failed",
@@ -157,13 +162,13 @@ fn recovery_payload(
     )?;
     let (evidence, artifact_count, evidence_bytes) = evidence.finish()?;
     Ok(RecoverPayload {
-        outcome: "replayed-committed",
+        outcome: route.outcome(),
         acceptance: AcceptanceDocument {
             terminal: "failed",
             revision_bound: false,
             evidence_current: false,
         },
-        journal: "recovered-and-verified",
+        journal: route.journal_health(),
         artifacts: "verified",
         projection: "verified",
         corruption: CorruptionDocument { detected: None, mutation_admitted: true },
@@ -188,6 +193,6 @@ fn recovery_payload(
         temporary_objects: 0,
         artifact_count,
         evidence,
-        milestones: response::canonical_milestones(),
+        milestones: response::canonical_milestones(route),
     })
 }

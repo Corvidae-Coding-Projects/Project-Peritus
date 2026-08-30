@@ -9,8 +9,14 @@ use peritus_conformance::{
 };
 
 use daemon_conformance_support::{
-    BinaryDaemonFactory, BinaryDaemonSubject, blocker_for, reachable_scenarios,
+    BinaryDaemonFactory, BinaryDaemonSubject, blocker_for, journal_before_crash_recovery,
+    reachable_scenarios,
 };
+
+#[test]
+fn journal_append_plan_dies_cleanly_before_durable_commit() {
+    journal_before_crash_recovery().expect("real pre-commit journal crash recovery");
+}
 
 #[test]
 fn every_publicly_reachable_daemon_case_passes_against_peritusd() {

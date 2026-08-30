@@ -18,6 +18,13 @@ const QUALIFICATION_TOKEN: &str = "peritus-qualification";
 const RECOVERY_TOKEN: &str = "outbox-recover";
 const EFFECT_FILE: &str = "delivery-00000000000000000000000000000001.effect";
 
+/// Proves a real append plan disappears when the staged daemon dies before submission.
+pub fn journal_before_crash_recovery() -> io::Result<()> {
+    let environment = TestEnvironment::new()?;
+    let request_sha256 = stage_journal_before_and_kill(&environment)?;
+    recover_journal_before(&environment, &request_sha256)
+}
+
 /// Exercises the public post-effect checkpoint and restart recovery boundary.
 pub(super) fn crash_recovery() -> io::Result<DaemonConformanceObservation> {
     let environment = TestEnvironment::new()?;
@@ -70,6 +77,87 @@ fn stage_and_kill(environment: &TestEnvironment) -> io::Result<()> {
         )));
     }
     validate_checkpoint(environment, &line)
+}
+
+fn stage_journal_before_and_kill(environment: &TestEnvironment) -> io::Result<String> {
+    let child = Command::new(peritusd_executable()?)
+        .arg("qualify-journal-before-stage")
+        .arg("--config")
+        .arg(environment.config_path())
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    let mut child = ChildGuard::new(child);
+    let stdout = child.take_stdout()?;
+    let (checkpoint_tx, checkpoint_rx) = mpsc::sync_channel(1);
+    let reader = thread::Builder::new()
+        .name("peritus-journal-before-checkpoint-reader".to_owned())
+        .spawn(move || {
+            let result = read_checkpoint_line(stdout);
+            let _ = checkpoint_tx.send(result);
+        })?;
+    let line = checkpoint_rx
+        .recv_timeout(PROCESS_BOUND)
+        .map_err(|_| io::Error::new(io::ErrorKind::TimedOut, "journal checkpoint timed out"))??;
+    let premature = child.kill_at_checkpoint()?;
+    reader.join().map_err(|_| io::Error::other("journal checkpoint reader panicked"))?;
+    let stderr = child.read_stderr()?;
+    if let Some(status) = premature {
+        return Err(io::Error::other(format!(
+            "journal stage exited before the adapter kill with {status}: {stderr}",
+        )));
+    }
+    if !stderr.is_empty() {
+        return Err(io::Error::other(format!("journal stage wrote diagnostics: {stderr}")));
+    }
+    let digest = line
+        .strip_prefix("peritus-qualification journal-before-stage request_sha256=")
+        .ok_or_else(|| io::Error::other("journal checkpoint prefix differs"))?;
+    if !lower_sha256(digest) {
+        return Err(io::Error::other("journal checkpoint digest is not canonical SHA-256"));
+    }
+    Ok(digest.to_owned())
+}
+
+fn recover_journal_before(environment: &TestEnvironment, request_sha256: &str) -> io::Result<()> {
+    let child = Command::new(peritusd_executable()?)
+        .arg("qualify-journal-before-recover")
+        .arg("--config")
+        .arg(environment.config_path())
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    let mut child = ChildGuard::new(child);
+    let status = TestEnvironment::wait_for_exit(child.child_mut()?)?;
+    let stdout = child.read_stdout()?;
+    let stderr = child.read_stderr()?;
+    if !status.success() || !stderr.is_empty() {
+        return Err(io::Error::other(format!("journal recovery exited with {status}: {stderr}")));
+    }
+    let line = one_output_line(&stdout)?;
+    let fields = line
+        .strip_prefix("peritus-qualification journal-before-recover ")
+        .ok_or_else(|| io::Error::other("journal recovery prefix differs"))?
+        .split_ascii_whitespace()
+        .collect::<Vec<_>>();
+    if fields.len() != 6
+        || field_value(fields.first().copied(), "request_sha256")? != request_sha256
+        || !parse_bool_field(fields.get(1).copied(), "journal_verified")?
+        || parse_u64_field(fields.get(2).copied(), "committed_events")? != 0
+        || parse_u64_field(fields.get(3).copied(), "aggregate_heads")? != 0
+        || parse_u64_field(fields.get(4).copied(), "external_effects")? != 0
+        || parse_u64_field(fields.get(5).copied(), "pending_claims")? != 0
+    {
+        return Err(io::Error::other("journal recovery retained pre-commit state"));
+    }
+    Ok(())
+}
+
+fn lower_sha256(value: &str) -> bool {
+    value.len() == 64
+        && value.bytes().all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
 }
 
 fn recover(environment: &TestEnvironment) -> io::Result<DaemonOutboxObservation> {

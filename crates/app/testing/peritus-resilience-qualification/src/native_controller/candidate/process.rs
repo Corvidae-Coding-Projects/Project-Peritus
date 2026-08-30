@@ -2,9 +2,10 @@
 
 use std::ffi::OsStr;
 use std::fs::{self, File, OpenOptions};
-use std::io::Read as _;
+use std::io::{BufRead as _, BufReader, Read as _};
 use std::path::Path;
 use std::process::{Child, Command, ExitStatus, Stdio};
+use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -16,6 +17,64 @@ pub(super) struct CommandOutput {
     pub(super) status: ExitStatus,
     pub(super) stdout: Vec<u8>,
     pub(super) stderr: Vec<u8>,
+}
+
+pub(super) struct KilledCheckpoint {
+    /// Canonical one-line checkpoint published before the process was killed.
+    pub(super) line: String,
+    /// Platform process status observed after the controller kill.
+    pub(super) status: String,
+}
+
+/// Runs a staged candidate until one bounded checkpoint line, then kills and reaps it.
+pub(super) fn kill_after_checkpoint<'a>(
+    executable: &Path,
+    arguments: impl IntoIterator<Item = &'a OsStr>,
+    cwd: &Path,
+    stderr_path: &Path,
+) -> Result<KilledCheckpoint, Box<dyn std::error::Error>> {
+    let stderr = create_output(stderr_path)?;
+    let mut command = candidate_command(executable, cwd);
+    command.args(arguments).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::from(stderr));
+    let mut child = command.spawn()?;
+    let stdout = child.stdout.take().ok_or("staged peritusd stdout pipe is unavailable")?;
+    let (sender, receiver) = mpsc::channel();
+    let reader = thread::spawn(move || {
+        let mut line = Vec::new();
+        let result = BufReader::new(stdout)
+            .take(MAX_OUTPUT_BYTES + 1)
+            .read_until(b'\n', &mut line)
+            .map(|bytes| (bytes, line));
+        let _ = sender.send(result);
+    });
+    let result = receiver.recv_timeout(PROCESS_TIMEOUT);
+    let line = if let Ok(result) = result {
+        let (bytes, line) = result?;
+        if bytes == 0 || bytes as u64 > MAX_OUTPUT_BYTES || !line.ends_with(b"\n") {
+            terminate(&mut child)?;
+            return Err("staged peritusd checkpoint output is missing or oversized".into());
+        }
+        line
+    } else {
+        terminate(&mut child)?;
+        return Err("staged peritusd did not reach its crash checkpoint within 30 seconds".into());
+    };
+    if child.try_wait()?.is_some() {
+        reader.join().map_err(|_| "H1 candidate checkpoint reader panicked")?;
+        return Err("staged peritusd exited instead of waiting at the crash checkpoint".into());
+    }
+    child.kill()?;
+    let status = child.wait()?;
+    reader.join().map_err(|_| "H1 candidate checkpoint reader panicked")?;
+    let stderr = read_bounded(stderr_path)?;
+    if !stderr.is_empty() {
+        return Err(format!(
+            "staged peritusd wrote diagnostics before its crash checkpoint: {}",
+            String::from_utf8_lossy(&stderr)
+        )
+        .into());
+    }
+    Ok(KilledCheckpoint { line: one_line(&line, "crash checkpoint")?, status: status.to_string() })
 }
 
 pub(super) fn bounded_command<'a>(

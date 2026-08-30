@@ -23,13 +23,14 @@ The controller remains responsible for real daemon, storage, dependency, quota, 
 effects. The operator refuses a descriptor whose build digest differs from the exact staged
 candidate bytes.
 
-The checked-in `peritus-h1-controller` currently owns the genuine
-`h1.crash.journal.after-before-ack` route. It starts the exact staged daemon at the production
-outbox qualifier, observes the durable effect-before-ack checkpoint, kills that process, restarts
-the same candidate bytes, verifies exact effect reconciliation and live-fence settlement, retains
-six independently digested evidence files, and proves cleanup. Other catalog routes return an
-error until their real component or disposable-host control exists; they cannot inherit a fixture
-result.
+The checked-in `peritus-h1-controller` currently owns both genuine journal crash routes. For
+`h1.crash.journal.before`, the exact staged daemon builds a production append plan, publishes its
+checkpoint before submission, and is killed; recovery requires an integrity-checked journal with
+zero committed events, heads, outbox claims, or external effects. For
+`h1.crash.journal.after-before-ack`, it is killed after the durable outbox effect checkpoint;
+recovery requires exact effect reconciliation and live-fence settlement. Both routes retain six
+independently digested evidence files and prove cleanup. Other catalog routes return an error until
+their real component or disposable-host control exists; they cannot inherit a fixture result.
 
 Use the explicit diagnostic option to exercise that route without presenting a one-case report as
 production readiness:
@@ -53,6 +54,7 @@ peritus-h1 \
 
 The report keeps the `custom` profile and `not-ready-custom-catalog` verdict even when the selected
 case passes. The command exits successfully only to make focused qualification automation useful.
+Use `h1.crash.journal.before` in the last argument to run the other journal boundary.
 
 ## Focused checks
 

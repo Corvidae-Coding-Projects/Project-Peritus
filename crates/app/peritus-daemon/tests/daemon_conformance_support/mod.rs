@@ -15,3 +15,4 @@ mod wire;
 
 pub use adapter::{BinaryDaemonFactory, BinaryDaemonSubject, blocker_for, reachable_scenarios};
 use error::debug_error;
+pub use outbox::journal_before_crash_recovery;

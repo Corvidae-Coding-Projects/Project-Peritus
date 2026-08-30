@@ -1,14 +1,11 @@
 //! Exact staged-daemon effects for the supported journal crash route.
 
+mod journal_before;
 mod process;
 
 use std::ffi::OsStr;
 use std::fs;
-use std::io::{BufRead as _, BufReader, Read as _};
 use std::path::{Path, PathBuf};
-use std::process::Stdio;
-use std::sync::mpsc;
-use std::thread;
 use std::time::Instant;
 
 use peritus_approval::CredentialRegistrySnapshot;
@@ -18,10 +15,8 @@ use serde::Serialize;
 use crate::digest;
 
 use super::args::ControllerPaths;
-use process::{
-    MAX_OUTPUT_BYTES, PROCESS_TIMEOUT, bounded_command, candidate_command, create_output, one_line,
-    read_bounded, terminate,
-};
+use super::request::JournalRoute;
+use process::{bounded_command, create_output, kill_after_checkpoint, one_line};
 
 const EFFECT_DIRECTORY: &str = "outbox-crash-qualification-v1";
 
@@ -34,10 +29,11 @@ pub(super) struct PreparedCandidate {
 #[derive(Serialize)]
 pub(super) struct InjectedCandidate {
     pub(super) checkpoint: String,
-    pub(super) claim_fence: u64,
-    pub(super) effect_path: String,
-    pub(super) effect_sha256: String,
-    pub(super) effect_bytes: u64,
+    pub(super) claim_fence: Option<u64>,
+    pub(super) request_sha256: Option<String>,
+    pub(super) effect_path: Option<String>,
+    pub(super) effect_sha256: Option<String>,
+    pub(super) effect_bytes: Option<u64>,
     pub(super) killed_exit: String,
 }
 
@@ -49,10 +45,12 @@ pub(super) struct RecoveredCandidate {
     pub(super) duplicate_effects: u64,
     pub(super) exact_fence_acknowledged: bool,
     pub(super) pending_claims: u64,
+    pub(super) committed_events: Option<u64>,
+    pub(super) aggregate_heads: Option<u64>,
     pub(super) journal_sha256: String,
     pub(super) journal_bytes: u64,
-    pub(super) effect_sha256: String,
-    pub(super) effect_bytes: u64,
+    pub(super) effect_sha256: Option<String>,
+    pub(super) effect_bytes: Option<u64>,
     pub(super) elapsed_millis: u64,
 }
 
@@ -113,47 +111,19 @@ pub(super) fn prepare(
 pub(super) fn inject(
     paths: &ControllerPaths,
     runtime: &RuntimePaths,
+    route: JournalRoute,
 ) -> Result<InjectedCandidate, Box<dyn std::error::Error>> {
-    let stderr_path = runtime.root.join("inject.stderr");
-    let stderr = create_output(&stderr_path)?;
-    let mut command = candidate_command(&paths.candidate, &runtime.root);
-    command
-        .arg("qualify-outbox-stage")
-        .arg("--config")
-        .arg(&runtime.config)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::from(stderr));
-    let mut child = command.spawn()?;
-    let stdout = child.stdout.take().ok_or("staged peritusd stdout pipe is unavailable")?;
-    let (sender, receiver) = mpsc::channel();
-    let reader = thread::spawn(move || {
-        let mut line = Vec::new();
-        let result = BufReader::new(stdout)
-            .take(MAX_OUTPUT_BYTES + 1)
-            .read_until(b'\n', &mut line)
-            .map(|bytes| (bytes, line));
-        let _ = sender.send(result);
-    });
-    let result = receiver.recv_timeout(PROCESS_TIMEOUT);
-    let line = if let Ok(result) = result {
-        let (bytes, line) = result?;
-        if bytes == 0 || bytes as u64 > MAX_OUTPUT_BYTES || !line.ends_with(b"\n") {
-            terminate(&mut child)?;
-            return Err("staged peritusd checkpoint output is missing or oversized".into());
-        }
-        line
-    } else {
-        terminate(&mut child)?;
-        return Err("staged peritusd did not reach its crash checkpoint within 30 seconds".into());
-    };
-    if child.try_wait()?.is_some() {
-        return Err("staged peritusd exited instead of waiting at the crash checkpoint".into());
+    if route == JournalRoute::BeforeDurableCommit {
+        return journal_before::inject(paths, runtime);
     }
-    child.kill()?;
-    let status = child.wait()?;
-    reader.join().map_err(|_| "H1 candidate checkpoint reader panicked")?;
-    let checkpoint = one_line(&line, "outbox crash checkpoint")?;
+    let stderr_path = runtime.root.join("inject.stderr");
+    let killed = kill_after_checkpoint(
+        &paths.candidate,
+        [OsStr::new("qualify-outbox-stage"), OsStr::new("--config"), runtime.config.as_os_str()],
+        &runtime.root,
+        &stderr_path,
+    )?;
+    let checkpoint = killed.line;
     let (effect_path, claim_fence) = parse_checkpoint(&checkpoint)?;
     let effect = fs::canonicalize(effect_path)?;
     let effect_root = fs::canonicalize(runtime.state.join(EFFECT_DIRECTORY))?;
@@ -162,21 +132,14 @@ pub(super) fn inject(
     }
     let effect_bytes = fs::metadata(&effect)?.len();
     let effect_sha256 = digest::hex(digest::file(&effect)?);
-    let stderr = read_bounded(&stderr_path)?;
-    if !stderr.is_empty() {
-        return Err(format!(
-            "staged peritusd wrote diagnostics before its crash checkpoint: {}",
-            String::from_utf8_lossy(&stderr)
-        )
-        .into());
-    }
     Ok(InjectedCandidate {
         checkpoint,
-        claim_fence,
-        effect_path: effect.to_string_lossy().into_owned(),
-        effect_sha256,
-        effect_bytes,
-        killed_exit: status.to_string(),
+        claim_fence: Some(claim_fence),
+        request_sha256: None,
+        effect_path: Some(effect.to_string_lossy().into_owned()),
+        effect_sha256: Some(effect_sha256),
+        effect_bytes: Some(effect_bytes),
+        killed_exit: killed.status,
     })
 }
 
@@ -184,7 +147,11 @@ pub(super) fn recover(
     paths: &ControllerPaths,
     runtime: &RuntimePaths,
     injected: &InjectedCandidate,
+    route: JournalRoute,
 ) -> Result<RecoveredCandidate, Box<dyn std::error::Error>> {
+    if route == JournalRoute::BeforeDurableCommit {
+        return journal_before::recover(paths, runtime, injected);
+    }
     let started = Instant::now();
     let output = bounded_command(
         &paths.candidate,
@@ -211,10 +178,16 @@ pub(super) fn recover(
     {
         return Err("staged peritusd did not reconcile and settle the exact outbox effect".into());
     }
-    let effect = fs::canonicalize(&injected.effect_path)?;
+    let injected_effect = injected
+        .effect_path
+        .as_deref()
+        .ok_or("journal after-commit checkpoint omitted its effect path")?;
+    let effect = fs::canonicalize(injected_effect)?;
     let effect_sha256 = digest::hex(digest::file(&effect)?);
     let effect_bytes = fs::metadata(&effect)?.len();
-    if effect_sha256 != injected.effect_sha256 || effect_bytes != injected.effect_bytes {
+    if Some(&effect_sha256) != injected.effect_sha256.as_ref()
+        || Some(effect_bytes) != injected.effect_bytes
+    {
         return Err("recovery changed or replaced the identity-bearing outbox effect".into());
     }
     let effect_entries =
@@ -237,10 +210,12 @@ pub(super) fn recover(
         duplicate_effects: recovered.duplicate_effects,
         exact_fence_acknowledged: recovered.exact_fence_acknowledged,
         pending_claims: recovered.pending_claims,
+        committed_events: None,
+        aggregate_heads: None,
         journal_sha256: digest::hex(digest::file(&journal)?),
         journal_bytes: journal_metadata.len(),
-        effect_sha256,
-        effect_bytes,
+        effect_sha256: Some(effect_sha256),
+        effect_bytes: Some(effect_bytes),
         elapsed_millis: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
     })
 }
@@ -356,11 +331,14 @@ fn write_new(path: &Path, bytes: &[u8]) -> Result<(), std::io::Error> {
 }
 
 fn create_private_directory(path: &Path) -> Result<(), std::io::Error> {
-    let mut builder = fs::DirBuilder::new();
     #[cfg(unix)]
-    {
+    let builder = {
         use std::os::unix::fs::DirBuilderExt as _;
+        let mut builder = fs::DirBuilder::new();
         builder.mode(0o700);
-    }
+        builder
+    };
+    #[cfg(not(unix))]
+    let builder = fs::DirBuilder::new();
     builder.create(path)
 }

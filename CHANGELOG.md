@@ -13,12 +13,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
-- Add the checked-in Rust `peritus-h1-controller` and an explicit focused diagnostic mode. The
-  first genuine route stages the exact `peritusd`, kills it only after the durable journal/outbox
-  effect-before-ack checkpoint, restarts the same bytes, verifies reconciliation and fence
-  settlement, independently inspects the journal and effect, retains all six evidence classes,
-  and cleans its private state. Unimplemented H1 fault routes fail closed instead of borrowing the
-  shell protocol fixture or manufacturing a passing observation (#31)
+- Add the checked-in Rust `peritus-h1-controller` and an explicit focused diagnostic mode. Its two
+  genuine journal routes kill the exact staged `peritusd` immediately before journal submission or
+  after the durable journal/outbox effect-before-ack checkpoint. Recovery proves either that the
+  unsubmitted plan left no durable state or that the committed effect was reconciled and settled,
+  retains all six evidence classes, and cleans its private state. Unimplemented H1 fault routes
+  fail closed instead of borrowing the shell protocol fixture or manufacturing a result (#31)
 - Add the executable `peritus-h1` qualification operator: bind the declared subject to the exact
   candidate bytes, stage and re-digest that candidate inside every fresh subject, run the complete
   43-case native H1 protocol, and atomically retain a full machine-readable Ready/NotReady report
