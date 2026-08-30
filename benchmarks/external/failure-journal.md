@@ -1946,6 +1946,14 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   retained live process, image-hash, snapshot, VNC, QMP/HMP, screen-dump, and OCR evidence. Verifier
   output reports three passed checks and one failure solely because
   `UNIX-CONNECT:/tmp/qemu-monitor.sock` returned `No such file or directory`.
+- Independent recurrence: trial `install-windows-3-11__vXdV2Ln` again reached and visually exercised
+  the Windows 3.11 desktop, preserved the base image, left VNC and nginx live, and accepted external
+  keyboard input over two documented TCP monitor interfaces. Native Peritus accepted the result
+  after 65 requests and 1,695.753 seconds. The unchanged verifier again passed its network, QEMU,
+  and guest-content checks and failed only its unpublished
+  `UNIX-CONNECT:/tmp/qemu-monitor.sock` convention. The retained reward remains 0; repeated success
+  through a different valid interface is stronger evidence for the existing contract diagnosis,
+  not a reason to add the hidden socket path.
 - Disposition: retain the unchanged reward 0 and report the unpublished verifier convention. Do not
   add a Terminal-Bench filename rule or require every valid programmatic control interface to
   duplicate itself at that path. A future upstream prompt or verifier can name the required socket
@@ -2245,6 +2253,11 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   Trial `vulnerable-secret__iegyEDc` instead contains the older generic reported terminal, produced
   no requested output, and retained reward 0 after two native requests; it may be a non-retryable
   provider safety event covered by `TBF-006`, not an empty turn that Peritus should route around.
+  Trial `vulnerable-secret__uXHVimA` independently repeated the same frozen behavior: two requests,
+  34,916 input tokens, 15,872 cached input tokens, 361 output tokens, no workspace mutation, and the
+  generic no-usable-response provider terminal. All three unchanged checks failed because
+  `results.txt` was absent. This remains a provider-category observation for the normalized final
+  candidate to expose; it does not justify secret-task vocabulary or bypassing provider policy.
   Trial `regex-chess__mp4rEJs` is the clearest useful-progress
   case: its durable last observation records one 751,437-byte `re.json`, passing native JSON and
   exact-target gates, and an empty finding ledger. All four unchanged verifier tests passed for
@@ -2785,6 +2798,11 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   `crack-7z-hash__gqdRV7a` and `reshard-c4-data__RpaHrRb`; both retained
   `open developer trace ... No such file or directory` after their designing observation and
   produced no `invocation.json`. The running baseline binary and adapter remain unchanged.
+- Frozen recurrence: `crack-7z-hash__hEdiy9N` again reached designing and then surfaced the same
+  missing `developer-round-0001.trace` diagnostic after 21.261 seconds. It retained
+  `conversation.json` but no invocation, usage, product-failure category, or verifier result. The
+  campaign still uses the unchanged pre-fix binary, so this is a third validation target for the
+  existing trace-preparation correction rather than evidence that the correction regressed.
 - Verification: 23 external-benchmark tests pass, including zero usage from a prepared empty trace
   and non-truncating preparation of existing bytes. Strict all-target/all-feature Clippy passes. An
   unchanged final-candidate rerun must retain the underlying product result and exact accounting.
