@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 894,
+  "next_comment_id": 895,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -8350,7 +8350,7 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:01:08.433031832Z",
-      "updated_at": "2026-08-30T15:09:57.164539146Z",
+      "updated_at": "2026-08-30T15:52:57.314667941Z",
       "labels": [
         "qualification",
         "security"
@@ -8454,6 +8454,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7FPPbY9SMGM58ZPP1d3wNj6Hwfp73HDQfa3gR2kWmLvMNDC78DG+N1CEjDF8QdrGFKgGOlGmayzlIeaJ5V6QCQ=="
+        },
+        "bce107e3-5a80-4efa-9e2e-5e1b565f057b": {
+          "display_id": 894,
+          "author": "6ME5",
+          "content": "Fresh native evidence from run 33318866308 isolated Linux to the deferred protected-base proof-impact command and Windows to the stripped MSVC environment. The H0 TCB probe now runs the documented local candidate policy aggregate while external review remains separate, and the controller preserves the explicit Cargo/Rustup/MSVC launch allowlist. Complete peritus-security-qualification tests, strict Clippy, cargo xtask all, and reproducibility-check pass locally.",
+          "created_at": "2026-08-30T15:52:57.303944335Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZMmKReajSsN4zBC/etwRVuwEV538rsQbrc5Sqx4ogLWdodsHi12DiqlKGx25MzNNdQRdI10RJk+6SxMIJj4KBQ=="
         },
         "cbcade51-4dbc-4abe-952d-df837cfe60fa": {
           "display_id": 476,
@@ -8802,8 +8811,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T15:10:01.765564375Z",
+    "timestamp": "2026-08-30T15:52:57.314667941Z",
     "agent_id": "6ME5",
-    "agent_seq": 1088
+    "agent_seq": 1089
   }
 }
