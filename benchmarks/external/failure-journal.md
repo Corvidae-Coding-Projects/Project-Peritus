@@ -2159,6 +2159,11 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   Native execution used two requests, 35,082 input, 7,936 cached input, and 230 output tokens over
   36.338 seconds. This strengthens the need for the already-implemented normalized diagnostic; it
   does not justify bypassing provider policy, changing the task, or adding filter-specific logic.
+- Third frozen attempt `break-filter-js-from-html__T562hZo` ended before its first provider stream
+  frame after 10.361 seconds. The frozen adapter projected zero requests and zero tokens, no
+  `out.html` existed, and the unchanged verifier retained reward 0. This is a pre-stream validation
+  case for the same typed provider-terminal projection and the `TBF-008` empty-trace evidence fix;
+  it does not justify retrying or routing around a safety decision.
 
 ## TBF-007: outside domain semantics overrode an explicit source-matching contract
 
@@ -3206,6 +3211,14 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   reward 0. This is a structured-output recurrence, not a reason for biological or API-specific
   logic. The earlier source-boundary defect from another attempt remains separately covered by
   `TBF-007`.
+- Third frozen attempt `protein-assembly__bV2ZPMo` repeated the same broad-output pattern after
+  correctly reading all supplied inputs. Its public RCSB exploration printed complete FASTA records
+  and large nested feature, hydropathy, disorder, annotation, and lineage arrays when the decision
+  needed a bounded identity/sequence/property projection. The writer ended on `TBF-009` after nine
+  requests, 284,964 input, 99,072 cached input, and 11,982 output tokens over 625.895 seconds without
+  writing `gblock.txt`; the unchanged verifier retained reward 0. This remains a validation target
+  for the existing bounded structured-output and delivery-progress rules, not a new task-specific
+  correction.
 - Verification: the tool-catalog regression requires both the decision-relevant filtering rule and
   the fallback-cap boundary to remain visible to every mutating role. Embedded-workflow coverage
   also requires the structured-response field, key/count, bounded-sample, and nested-metadata rules
