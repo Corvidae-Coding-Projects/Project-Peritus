@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 865,
+  "next_comment_id": 866,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T11:24:29.764039829Z",
+      "updated_at": "2026-08-30T11:28:29.575306341Z",
       "labels": [
         "qualification",
         "release"
@@ -2327,6 +2327,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAhDeo5dT47ripl07G83M3rOO4J1QiXLmxEqtFK0xqNCyFu4wkXKb0tQJBUc/9ZhQsvx0mu6DcaEJWm2xNvjo9Aw=="
+        },
+        "653e86d3-b9ba-4fef-90ed-f4718800da7a": {
+          "display_id": 865,
+          "author": "6ME5",
+          "content": "Hosted runner diagnosis: Candidate policy and Locked Verus workspace both failed on the same fail-closed ordinary-api-check finding in the new shutdown regression (). Replaced the macro with the already-pinned futures-util join function. Verified Rust 1.97.1 formatting, ordinary-api-check (2621 files / 12254 entry points), recovery_shutdown 2/2, strict peritus-daemon Clippy, and full xtask all (78 packages / 3175 sources).",
+          "created_at": "2026-08-30T11:28:29.569642512Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA/8ED1i8JVXdKXcABFv69wbdgNksyDowKeH6+oDH2fJOIpkka3zmw6mAF1e6j2cQoi5FIvuWWQNFtxuB0982PBw=="
         },
         "6546336e-5b96-4f9f-b7f0-3d21db026cf2": {
           "display_id": 547,
@@ -8541,8 +8550,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T11:24:29.764039829Z",
+    "timestamp": "2026-08-30T11:28:29.575306341Z",
     "agent_id": "6ME5",
-    "agent_seq": 1057
+    "agent_seq": 1058
   }
 }
