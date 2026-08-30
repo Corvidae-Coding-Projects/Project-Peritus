@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 858,
+  "next_comment_id": 859,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T10:16:37.278463285Z",
+      "updated_at": "2026-08-30T10:16:42.209967349Z",
       "labels": [
         "qualification",
         "release"
@@ -3461,6 +3461,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABASOQx6xz6l09ya3DyomPnozA+LlmNFQOJ0P3wmjRbCST8MT0lBpIJAZNmHWHSyLlsi0GmBNTO+hSzxEwZHUbYDQ=="
+        },
+        "d5ff7bd0-0412-4700-81d6-b42214fe725b": {
+          "display_id": 858,
+          "author": "6ME5",
+          "content": "[action] Committed restart-safe workspace-growth and observed-memory budgets as 3220f1ef; full native gate green; Terminal campaign remains active at 116/445.",
+          "created_at": "2026-08-30T10:16:42.206756835Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9eCUdWTYvSW/OJbuwDvfQIHFZNZNeAyVEV/ahGhtiip563OC3uUxnnG+R2k7Qw9Uh9hZLMzyGdVC2bm1se/zDg=="
         },
         "d710c41f-aa44-4fcb-9833-7962bdec1673": {
           "display_id": 650,
@@ -8478,8 +8487,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T10:16:37.278463285Z",
+    "timestamp": "2026-08-30T10:16:42.209967349Z",
     "agent_id": "6ME5",
-    "agent_seq": 1050
+    "agent_seq": 1051
   }
 }
