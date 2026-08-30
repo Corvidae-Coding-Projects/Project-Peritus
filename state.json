@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 890,
+  "next_comment_id": 891,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T14:02:44.985359495Z",
+      "updated_at": "2026-08-30T15:04:16.603769693Z",
       "labels": [
         "qualification",
         "release"
@@ -2912,6 +2912,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAwWOtmZ3khPsq7OKR0fZfrXe6okjYPpkEWLE67cvkl/UF/sMynma39DyZs8QjjCEpt5kwE56XJg1gxM7Xx4SbCA=="
+        },
+        "920e500c-2221-49ee-b24a-19ec9b1fb040": {
+          "display_id": 890,
+          "author": "6ME5",
+          "content": "Diagnosed hosted H2 Windows run 33317508524 from exact logs: release-layout reached the real PowerShell installer but LOCALAPPDATA was null. Added explicit optional Windows install/data-root parameters, retained normal user defaults, and made H2 pass private roots directly. Native H2 tests and strict native/Windows cross-Clippy are green; the next hosted run will verify PowerShell itself.",
+          "created_at": "2026-08-30T15:04:16.601190908Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9NeONKPNzRaE5gM+pghW66Wt//otyDy0jfW/LH0NBwFO3jvp9JE5nCkNuAr48DIyZCpZ3jbh+igkwEvk3xTXCQ=="
         },
         "930bc3f1-f9d1-4785-ab24-b85134ff6cd6": {
           "display_id": 591,
@@ -8766,8 +8775,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T15:04:11.121117275Z",
+    "timestamp": "2026-08-30T15:04:16.603769693Z",
     "agent_id": "6ME5",
-    "agent_seq": 1084
+    "agent_seq": 1085
   }
 }
