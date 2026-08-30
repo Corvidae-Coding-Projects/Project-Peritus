@@ -8,6 +8,7 @@ use std::{
 use peritus_gates::{GateExecutionRecord, TargetGatePlan, TargetGateReport};
 
 mod artifact_csv;
+mod explicit_paths;
 mod json_structure;
 mod source_layout;
 mod sqlite_migration;
@@ -29,8 +30,9 @@ pub fn run_with_ownership(
     changed_paths: Vec<PathBuf>,
     ownership: &WorkspaceOwnership,
     delivery_scope: ProductDeliveryScope,
+    transcript: &str,
 ) -> Result<GateReport, ProductRunnerError> {
-    run_scoped(root, changed_paths, Some(ownership), delivery_scope)
+    run_scoped(root, changed_paths, Some(ownership), delivery_scope, transcript)
 }
 
 fn run_scoped(
@@ -38,7 +40,9 @@ fn run_scoped(
     changed_paths: Vec<PathBuf>,
     ownership: Option<&WorkspaceOwnership>,
     delivery_scope: ProductDeliveryScope,
+    transcript: &str,
 ) -> Result<GateReport, ProductRunnerError> {
+    let explicit_paths = explicit_paths::run(root, transcript, &changed_paths);
     let plan = TargetGatePlan::discover(root, changed_paths).map_err(|error| {
         ProductRunnerError::new(
             ProductRunnerErrorKind::Gate,
@@ -118,7 +122,8 @@ fn run_scoped(
         };
         records.push(record);
     }
-    let report = TargetGateReport::from_execution(&plan, records);
+    let report =
+        TargetGateReport::from_execution_with_constraints(&plan, records, vec![explicit_paths]);
     let output = render(&report, delivery_scope);
     Ok(GateReport { report, output })
 }
@@ -194,6 +199,7 @@ mod tests {
             vec![PathBuf::from("third_party"), PathBuf::from("vm.js")],
             None,
             ProductDeliveryScope::WorkspaceChanges,
+            "",
         )
         .expect("gate report");
 
@@ -232,6 +238,7 @@ mod tests {
             vec![PathBuf::from("game/Cargo.toml"), PathBuf::from("game/src/main.rs")],
             None,
             ProductDeliveryScope::WorkspaceChanges,
+            "",
         )
         .expect("gate report");
         let nested_manifest =
@@ -243,5 +250,34 @@ mod tests {
         assert!(report.output.contains("--manifest-path"));
         assert!(report.output.contains(&nested_manifest));
         assert!(!report.output.contains(&root_manifest));
+    }
+
+    #[test]
+    fn explicit_nested_output_cannot_be_satisfied_at_the_workspace_root() {
+        let root = tempfile::tempdir().expect("root");
+        fs::write(
+            root.path().join("peritus-workspace.toml"),
+            "schema_version = 1\nkind = \"artifact\"\n",
+        )
+        .expect("artifact marker");
+        fs::write(root.path().join("main.py.c"), "int main(void) { return 0; }\n")
+            .expect("misplaced candidate");
+        let transcript =
+            format!("Write a single file in {}/polyglot/main.py.c.", root.path().display(),);
+
+        let report = run_scoped(
+            root.path(),
+            vec![PathBuf::from("main.py.c")],
+            None,
+            ProductDeliveryScope::WorkspaceChanges,
+            &transcript,
+        )
+        .expect("gate report");
+
+        assert!(!report.report.passed());
+        assert!(report.output.contains("[Explicit output paths]"));
+        assert!(report.output.contains("required explicit output path is missing"));
+        assert!(report.output.contains("candidate main.py.c has the requested basename"));
+        assert!(report.output.contains("Exact-target acceptance: FAIL"));
     }
 }

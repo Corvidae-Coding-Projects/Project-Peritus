@@ -61,6 +61,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Reconcile explicit request-derived output paths with the actual candidate before acceptance,
+  mapping absolute paths through the managed workspace root and rejecting missing or relocated
+  same-basename artifacts while leaving inputs and command-created temporaries alone (`TBF-019`,
+  #31)
 - Require quantitative and scientific work to establish input/output units, coordinate systems,
   and transformations before calculating or fitting, then validate results in the requested
   physical domain instead of accepting a structurally valid raw-coordinate result (`TBF-018`, #31)

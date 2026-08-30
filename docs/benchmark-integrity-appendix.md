@@ -33,6 +33,7 @@ changing correct product behavior to accommodate an evaluator bug.
 - [HBI-027](../benchmarks/external/failure-journal.md#hbi-027-harnessbench-relocates-mixed-model-sandboxes-without-rewriting-earlier-paths): the runner moves a sandbox without rewriting earlier evidence paths. Refused: rewriting immutable prior reports or patching the pinned runner.
 - [HBI-035](../benchmarks/external/failure-journal.md#hbi-035-task-068-forbidden-claim-check-ignores-negation): a forbidden-claim check ignores negation. Refused: deleting explicit language that says the forbidden promise will not be made.
 - [HBI-039](../benchmarks/external/failure-journal.md#hbi-039-task-073-omits-the-script-its-oracle-expects-to-audit): the oracle expects an input script absent from the fixture. Refused: fabricating the missing source or silently altering the fixture.
+- [TBI-008](../benchmarks/external/failure-journal.md#tbi-008-the-html-verifier-contradicts-byte-preservation-and-treats-browser-failure-as-safe): the clean-input check requires parser reserialization despite an exact formatting-preservation contract, while browser startup failures count as safe. Refused: violating the stated byte contract, copying the hidden reference behavior, or treating unexecuted checks as proof.
 
 ## Ground truth that contradicts the supplied inputs
 

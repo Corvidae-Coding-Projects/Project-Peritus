@@ -1,0 +1,257 @@
+//! Deterministic reconciliation of literal task paths with the candidate workspace.
+
+use std::{
+    collections::BTreeMap,
+    fs,
+    io::ErrorKind,
+    path::{Component, Path, PathBuf},
+};
+
+use peritus_gates::GateExecutionRecord;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct PathMention {
+    relative: PathBuf,
+    required_output: bool,
+}
+
+pub(super) fn run(root: &Path, transcript: &str, changed_paths: &[PathBuf]) -> GateExecutionRecord {
+    let mentions = extract(root, transcript);
+    let mut checked = Vec::new();
+    let mut failures = Vec::new();
+    for mention in &mentions {
+        let present = match fs::symlink_metadata(root.join(&mention.relative)) {
+            Ok(_) => true,
+            Err(error) if error.kind() == ErrorKind::NotFound => false,
+            Err(error) => {
+                failures.push(format!(
+                    "could not inspect explicit path {}: {error}",
+                    mention.relative.display(),
+                ));
+                false
+            }
+        };
+        if mention.required_output {
+            checked.push(format!(
+                "  {}: {}",
+                mention.relative.display(),
+                if present { "present" } else { "MISSING" },
+            ));
+            if !present {
+                failures.push(format!(
+                    "required explicit output path is missing: {}",
+                    mention.relative.display(),
+                ));
+            }
+        }
+        if present {
+            continue;
+        }
+        let expected_name = mention.relative.file_name();
+        for candidate in changed_paths.iter().filter(|candidate| {
+            candidate.as_path() != mention.relative && candidate.file_name() == expected_name
+        }) {
+            failures.push(format!(
+                "candidate {} has the requested basename but not the explicit path {}",
+                candidate.display(),
+                mention.relative.display(),
+            ));
+        }
+    }
+
+    failures.sort();
+    failures.dedup();
+    let mut output = if checked.is_empty() {
+        "No explicit output paths require deterministic presence checks.\n".to_owned()
+    } else {
+        format!("Required explicit output paths ({}):\n{}\n", checked.len(), checked.join("\n"))
+    };
+    if failures.is_empty() {
+        output.push_str("Explicit path reconciliation: PASS\n");
+    } else {
+        output.push_str("Explicit path reconciliation failures:\n");
+        for failure in &failures {
+            output.push_str("  - ");
+            output.push_str(failure);
+            output.push('\n');
+        }
+    }
+    GateExecutionRecord {
+        command: "peritus-internal explicit-output-paths".to_owned(),
+        label: "Explicit output paths".to_owned(),
+        exit_code: Some(i32::from(!failures.is_empty())),
+        output,
+    }
+}
+
+fn extract(root: &Path, transcript: &str) -> Vec<PathMention> {
+    let mut paths = BTreeMap::<PathBuf, bool>::new();
+    for line in transcript.lines() {
+        let words = line.split_whitespace().collect::<Vec<_>>();
+        for (index, word) in words.iter().enumerate() {
+            let required_output = output_context(&words[..index]);
+            let Some(relative) = parse_path(root, word, required_output) else {
+                continue;
+            };
+            paths
+                .entry(relative)
+                .and_modify(|required| *required |= required_output)
+                .or_insert(required_output);
+        }
+    }
+    paths
+        .into_iter()
+        .map(|(relative, required_output)| PathMention { relative, required_output })
+        .collect()
+}
+
+fn parse_path(root: &Path, raw: &str, required_output: bool) -> Option<PathBuf> {
+    let token = raw.trim_matches(|character: char| {
+        matches!(
+            character,
+            '`' | '\'' | '"' | '(' | ')' | '[' | ']' | '{' | '}' | '<' | '>' | ',' | ';' | ':'
+        )
+    });
+    let token = token.strip_suffix('.').unwrap_or(token);
+    if token.is_empty()
+        || token.contains("://")
+        || token.contains('*')
+        || token.contains('$')
+        || token.contains('=')
+    {
+        return None;
+    }
+    let path = Path::new(token);
+    let relative = if path.is_absolute() {
+        path.strip_prefix(root).ok()?.to_path_buf()
+    } else {
+        if !required_output || (!token.contains('/') && !token.contains('.')) {
+            return None;
+        }
+        path.to_path_buf()
+    };
+    if relative.as_os_str().is_empty()
+        || relative.components().any(|component| {
+            matches!(component, Component::ParentDir | Component::RootDir | Component::Prefix(_))
+        })
+    {
+        return None;
+    }
+    Some(relative)
+}
+
+fn output_context(words: &[&str]) -> bool {
+    let start = words.len().saturating_sub(12);
+    let context = &words[start..];
+    let Some(trigger) = context.iter().rposition(|word| output_verb(word)) else {
+        return false;
+    };
+    let negation_start = trigger.saturating_sub(2);
+    !context[negation_start..trigger].iter().any(|word| negation(word))
+}
+
+fn output_verb(word: &str) -> bool {
+    matches!(
+        normalized(word).as_str(),
+        "write"
+            | "writes"
+            | "create"
+            | "creates"
+            | "save"
+            | "saves"
+            | "produce"
+            | "produces"
+            | "generate"
+            | "generates"
+            | "emit"
+            | "emits"
+            | "place"
+            | "places"
+            | "put"
+            | "output"
+            | "implement"
+            | "implements"
+            | "complete"
+            | "completes"
+            | "update"
+            | "updates"
+            | "modify"
+            | "modifies"
+            | "edit"
+            | "edits"
+            | "add"
+            | "adds"
+    )
+}
+
+fn negation(word: &str) -> bool {
+    matches!(normalized(word).as_str(), "not" | "never" | "without" | "avoid" | "dont")
+}
+
+fn normalized(word: &str) -> String {
+    word.chars().filter(char::is_ascii_alphanumeric).flat_map(char::to_lowercase).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn missing_nested_output_rejects_same_basename_at_workspace_root() {
+        let root = tempfile::tempdir().expect("root");
+        fs::write(root.path().join("main.py.c"), "candidate").expect("candidate");
+        let transcript = format!(
+            "Write me a single file in {}/polyglot/main.py.c which is a polyglot.",
+            root.path().display(),
+        );
+
+        let record = run(root.path(), &transcript, &[PathBuf::from("main.py.c")]);
+
+        assert_eq!(record.exit_code, Some(1));
+        assert!(record.output.contains("required explicit output path is missing"));
+        assert!(record.output.contains("candidate main.py.c has the requested basename"));
+    }
+
+    #[test]
+    fn exact_output_passes_without_treating_command_products_as_required() {
+        let root = tempfile::tempdir().expect("root");
+        fs::create_dir(root.path().join("polyglot")).expect("directory");
+        fs::write(root.path().join("polyglot/main.py.c"), "candidate").expect("candidate");
+        let transcript = format!(
+            "Write a file in {0}/polyglot/main.py.c.\nRun gcc {0}/polyglot/main.py.c -o {0}/polyglot/cmain.",
+            root.path().display(),
+        );
+
+        let record = run(root.path(), &transcript, &[PathBuf::from("polyglot/main.py.c")]);
+
+        assert_eq!(record.exit_code, Some(0));
+        assert!(record.output.contains("polyglot/main.py.c: present"));
+        assert!(!record.output.contains("cmain: present"));
+    }
+
+    #[test]
+    fn read_only_and_negated_paths_are_not_required_outputs() {
+        let root = tempfile::tempdir().expect("root");
+        let transcript = format!(
+            "Read {0}/input.json. Do not modify {0}/locked.json. Write the result to out/report.json.",
+            root.path().display(),
+        );
+        fs::create_dir(root.path().join("out")).expect("output directory");
+        fs::write(root.path().join("out/report.json"), "{}").expect("output");
+
+        let mentions = extract(root.path(), &transcript);
+
+        assert!(mentions.contains(&PathMention {
+            relative: PathBuf::from("input.json"),
+            required_output: false,
+        }));
+        assert!(mentions.contains(&PathMention {
+            relative: PathBuf::from("locked.json"),
+            required_output: false,
+        }));
+        assert!(mentions.contains(&PathMention {
+            relative: PathBuf::from("out/report.json"),
+            required_output: true,
+        }));
+    }
+}

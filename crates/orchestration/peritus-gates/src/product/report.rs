@@ -38,8 +38,25 @@ impl TargetGateReport {
     /// Binds execution records to their complete candidate plan.
     #[must_use]
     pub fn from_execution(plan: &TargetGatePlan, records: Vec<GateExecutionRecord>) -> Self {
+        Self::from_execution_with_constraints(plan, records, Vec::new())
+    }
+
+    /// Binds planned command results and additional deterministic acceptance constraints.
+    ///
+    /// Constraints are host-owned checks that depend on request context rather than project
+    /// discovery, such as confirming that an explicitly named output path exists. They are
+    /// retained beside command records and participate in the same fail-closed decision.
+    #[must_use]
+    pub fn from_execution_with_constraints(
+        plan: &TargetGatePlan,
+        mut records: Vec<GateExecutionRecord>,
+        constraints: Vec<GateExecutionRecord>,
+    ) -> Self {
         let complete = plan.has_complete_coverage() && records.len() == plan.commands().len();
-        let passed = complete && records.iter().all(GateExecutionRecord::passed);
+        let passed = complete
+            && records.iter().all(GateExecutionRecord::passed)
+            && constraints.iter().all(GateExecutionRecord::passed);
+        records.extend(constraints);
         Self {
             changed_paths: plan.changed_paths().to_vec(),
             uncovered_paths: plan.uncovered_paths().to_vec(),
@@ -70,5 +87,31 @@ impl TargetGateReport {
     #[must_use]
     pub fn records(&self) -> &[GateExecutionRecord] {
         &self.records
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn additional_constraint_participates_in_acceptance_and_evidence() {
+        let root = tempfile::tempdir().expect("root");
+        let plan = TargetGatePlan::discover(root.path(), Vec::new()).expect("empty plan");
+        let constraint = GateExecutionRecord {
+            command: "peritus-internal explicit-output-paths".to_owned(),
+            label: "Explicit output paths".to_owned(),
+            exit_code: Some(1),
+            output: "required output path is missing".to_owned(),
+        };
+
+        let report = TargetGateReport::from_execution_with_constraints(
+            &plan,
+            Vec::new(),
+            vec![constraint.clone()],
+        );
+
+        assert!(!report.passed());
+        assert_eq!(report.records(), &[constraint]);
     }
 }

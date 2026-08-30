@@ -126,12 +126,14 @@ pub(super) async fn inspect_cycle(
         accounting,
     )?;
     check_cancelled(input)?;
+    let conversation = input.conversation.render();
     let changed_paths = baseline.changed_paths(&input.workspace_root)?;
     let gate_report = gates::run_with_ownership(
         &input.workspace_root,
         changed_paths,
         ownership,
         input.delivery_scope,
+        &conversation,
     )?;
     let mut gate_output = gate_report.output.clone();
     if input.delivery_scope.allows_external_effects()
@@ -159,7 +161,6 @@ pub(super) async fn inspect_cycle(
     if input.conversation.revision() != state.conversation_revision {
         return Ok(CycleInspection { gates: gate_report, evidence, conversation_changed: true });
     }
-    let conversation = input.conversation.render();
     let review_cycle = state.findings.cycle().saturating_add(1);
     let submission = reviewer_turn::complete(
         input,

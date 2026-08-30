@@ -2303,6 +2303,34 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   terminal after seven requests, 143,657 input, 31,744 cached input, and 5,844 output tokens over
   167.783 seconds. The successful artifact is retained; only the false terminal belongs to this
   provider-neutral role-recovery class.
+- Trial `hf-model-inference__QxiS3Gy` discovered the available Python executable and required
+  installed libraries, downloaded the named public model into the exact requested cache, started
+  the Flask service on `0.0.0.0:5000`, and verified a live sentiment request. All four unchanged
+  verifier checks passed for reward 1.0. Native Peritus still ended during review on the same
+  provider terminal after six requests, 110,818 input, 39,680 cached input, and 3,011 output tokens
+  over 217.414 seconds. This confirms ordinary dependency and executable discovery as legitimate
+  task execution; only the false native terminal remains assigned to general role recovery.
+- Trial `sparql-university__PEjTkw3` read the complete supplied graph and wrote a query covering the
+  full-professor role, all 27 EU country codes, current enrollment dates, the more-than-ten-student
+  department threshold, and aggregation across every current workplace. All three unchanged
+  verifier checks passed for reward 1.0. Native Peritus again ended during review on the same
+  provider terminal after five requests, 105,586 input, 31,744 cached input, and 2,040 output tokens
+  over 87.321 seconds. This is another correct grounded artifact retained across the false terminal,
+  not a reason for query-specific behavior.
+- Trial `largest-eigenval__mnKpTj8` used the supplied public evaluator to measure a lower-overhead
+  call into NumPy's own general eigensolver, validated the dominant eigenpair on 1,005 matrices, and
+  measured faster median execution for every published size from 2-by-2 through 10-by-10. The
+  unchanged verifier awarded reward 1.0. Native Peritus nevertheless ended during review on the
+  same provider terminal after ten requests, 211,237 input, 55,552 cached input, and 3,968 output
+  tokens over 257.635 seconds. The rewarded, evidence-driven optimization is retained; only the
+  false terminal remains assigned to general role recovery.
+- Trial `query-optimize__UYy58zw` inspected the supplied 50,606,080-byte SQLite database, persisted
+  the exact requested single-query artifact, and completed a full-dataset ordered equivalence check
+  before handoff. All six unchanged verifier checks passed for reward 1.0, including exact output,
+  database immutability, one-statement syntax, size, and runtime coverage. Native Peritus again
+  ended during review on the same provider terminal after thirteen requests, 281,753 input, 63,488
+  cached input, and 11,265 output tokens over 599.506 seconds. The long validation produced useful
+  correctness evidence; only the false terminal is assigned to provider-neutral role recovery.
 
 ## TBM-001: a writer mirrored the response field into the request schema
 
@@ -2726,3 +2754,79 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Verification: the embedded workflow regression requires the unit, requested-domain, and
   raw-coordinate boundaries to reach architect, developer, and reviewer roles. Focused tests,
   strict Clippy, documentation checks, and an unchanged final-candidate rerun remain required.
+
+## TBI-008: the HTML verifier contradicts byte preservation and treats browser failure as safe
+
+- Suite and task: Terminal-Bench 2.0, `filter-js-from-html`, first full-suite baseline trial.
+- Symptom: the request says clean HTML formatting must not change. Peritus preserved clean input
+  bytes, but the verifier serialized only the original input through BeautifulSoup and compared
+  that normalized serialization with the unnormalized candidate output. Five of twelve clean files
+  therefore failed because BeautifulSoup reordered attributes, rewrote void tags and entities, and
+  removed indentation that Peritus correctly retained. The published reference solution itself
+  reparses and serializes every document through BeautifulSoup, contradicting the explicit
+  preservation requirement.
+- Separate verifier reliability defect: the XSS check downloaded an unpinned mutable archive from
+  the head of an external GitHub repository, created 28 browser batches, and leaked enough Chromium
+  processes to reach 2,040 of the container's 2,048 PID limit. Six completed batches produced real
+  alerts, but another ten batches could not create or reach a browser session. The verifier catches
+  every such exception and returns `False`, treating an unexecuted batch as safe. This makes both
+  the attack corpus and the reported coverage non-reproducible even though the final reward was
+  zero for independent observed failures.
+- Classification: benchmark evaluator and infrastructure defects plus the distinct model limitation
+  in `TBM-002`. Retain the unchanged zero. Do not normalize clean input against its explicit
+  contract, copy the reference implementation, hard-code downloaded vectors, alter process limits,
+  or reinterpret browser startup failure as evidence of safety merely to improve the score.
+- Evidence: task ref
+  `sha256:18470eb1fd5611b7c27f69a1ec0f66cfbf95f93c2c295d55709381cf8b7cb3cd`;
+  verifier SHA-256 `6b43e99fb1c47792a39307fe90df91adfde4a588497c08f3b7da7b3265ef2733`;
+  reference-solution SHA-256
+  `9686e12af48346d2df538c3b46710122ee8dc80dfd0eecacb7a1476bf892ec9f`.
+
+## TBM-002: a byte-preserving hand parser did not match browser error recovery
+
+- Suite and task: Terminal-Bench 2.0, `filter-js-from-html`, first full-suite baseline trial.
+- Symptom: the writer produced a 332-line byte-preserving sanitizer, recovered from two faulty
+  self-test commands, then passed eleven representative sanitizer cases, idempotence, compilation,
+  and an in-place CLI check. The unchanged verifier nevertheless observed JavaScript alerts in six
+  completed browser batches and awarded reward 0.
+- Cause: a bespoke tag scanner does not implement the browser's malformed-markup recovery and legacy
+  execution semantics. The explicit combination of removing all executable JavaScript and changing
+  no unrelated byte is not generally satisfiable by substituting a normal parser/serializer; the
+  benchmark's own reference resolves that conflict by violating byte preservation.
+- Classification: model limitation in the produced artifact, separate from `TBI-008` and the frozen
+  review provider terminal. Native Peritus ended during review after eight requests, 175,685 input,
+  23,808 cached input, and 10,120 output tokens over 264.684 seconds. The current general role
+  recovery must obtain a fresh independent review; the production workflow already rejects
+  self-authored checks as proof of their own interpretation. No task-name, hidden-vector, or
+  reference-solution behavior belongs in Peritus.
+
+## TBF-019: exact output paths were advisory to deterministic acceptance
+
+- Suite and task: Terminal-Bench 2.0, `polyglot-c-py`, first full-suite baseline trial.
+- Symptom: the request explicitly required `/app/polyglot/main.py.c`, but the writer created
+  `/app/main.py.c`. It recovered from an initially invalid C/Python delimiter, compiled and tested
+  the C path, and finally stated that the artifact still needed to be placed at the requested path.
+  The exact-target gate nevertheless passed because it covered the changed root file rather than
+  reconciling that candidate with the literal request. The unchanged verifier found no
+  `/app/polyglot` directory and awarded reward 0.
+- Cause: the exact conversation, generated design, writer prompt, and reviewer prompt all preserved
+  the path, but only model roles enforced it. The host-owned gate knew which files changed and
+  whether each changed target passed its project checks; it did not retain request-derived output
+  paths as deterministic acceptance constraints. The later reviewer provider terminal therefore
+  left no independent boundary capable of rejecting the relocation.
+- Resolution: every product-run gate pass now extracts explicit output paths from the authoritative
+  conversation, maps absolute paths through the actual managed workspace root, checks required
+  output presence, and rejects a same-basename candidate written elsewhere. Read-only paths,
+  negated mutation clauses, and command-created temporary outputs remain observations rather than
+  required deliverables. These host-owned constraint records are aggregated into the same
+  fail-closed target report as build, lint, structure, and test records, so a mismatch invokes the
+  ordinary fixer loop without any task, benchmark, language, or filename branch.
+- Evidence: job `peritus-terminalbench-2-k5-high`; trial `polyglot-c-py__NnoANdu`; reward 0; ten
+  provider requests; 213,512 input, 79,360 cached input, and 8,710 output tokens; 253.316 seconds of
+  native execution; verifier failure on the absent `/app/polyglot` directory. The native reviewer
+  terminal remains separately covered by `TBF-009`.
+- Verification: focused product-runner tests reproduce the misplaced same-basename candidate,
+  prove exact placement passes, and keep input, negated, and compiler-output paths out of the
+  required-output set. The gate aggregation regression proves the constraint makes overall
+  exact-target acceptance fail. Focused tests and strict Clippy pass; full repository gates and an
+  unchanged final-candidate rerun remain required.
