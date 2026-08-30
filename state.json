@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 783,
+  "next_comment_id": 784,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T01:24:23.419544449Z",
+      "updated_at": "2026-08-30T01:24:44.175457079Z",
       "labels": [
         "qualification",
         "release"
@@ -1634,6 +1634,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABARdlXoB5C1QcVKaafYvoah7+MohtLAv701w8hb1O4rz7CmKvR//rY7uCxLsYz4altgPQIPwY3AT2HHN0vDd4GCA=="
+        },
+        "2a38c932-c980-474f-93cb-6ff0c98bd959": {
+          "display_id": 783,
+          "author": "6ME5",
+          "content": "Committed signed general TBF-016 fix as 2a87ea10: authorized external-effect runs now attempt ordinary scoped prerequisites in disposable environments before escalating, while preserving durable-host and unrelated-system boundaries. Added direct regression coverage, CHANGELOG entry, and honest baseline classifications for FastText and QEMU. Verification: 81 product-runner tests across unit/integration/doc targets; strict package Clippy; cargo fmt --check; git diff --check; cargo xtask all green (78 packages, 3111 source files, 135 docs). Frozen Terminal-Bench candidate was not rebuilt or changed; unchanged reruns remain pending.",
+          "created_at": "2026-08-30T01:24:44.172617948Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAQnxRGznYasNt0da0KIZPEqf/2C3G1CBQ5eN1ROZ9br50XnBvqUqtaeL9nmy+v+5TBwa/dXRXKW9yJdQKMxDyBg=="
         },
         "2ada89be-35f8-4bfd-9bd1-8ea8382ff38b": {
           "display_id": 637,
@@ -7803,8 +7812,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T01:24:28.596997121Z",
+    "timestamp": "2026-08-30T01:24:44.175457079Z",
     "agent_id": "6ME5",
-    "agent_seq": 971
+    "agent_seq": 972
   }
 }
