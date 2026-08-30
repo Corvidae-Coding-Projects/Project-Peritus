@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 929,
+  "next_comment_id": 930,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T17:40:27.662119398Z",
+      "updated_at": "2026-08-30T17:46:40.174317122Z",
       "labels": [
         "qualification",
         "release"
@@ -1540,6 +1540,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAoj83CvAPcZ8gc2QehKDgO++nd326WJsbzmXY+1Zh2F8fUPcjSeCjn5CjiwEelji8wE/TvTO86uLLgj0hPrHhAQ=="
+        },
+        "157c1803-e9b6-4f65-8068-96daf1d312ef": {
+          "display_id": 929,
+          "author": "6ME5",
+          "content": "Hosted regression closure: exact-head macOS H2 run 33325905238 passed all 18 native package scenarios on signed adf1a5c2 after the concurrent PTY lifecycle fix, with 18 complete cleanups and zero remaining resources. Artifact 9736270380; report SHA-256 b2842d7815ec50284bdb9beaa711bc492b3ac6fc07851627ab230a97d5350b70; verdict evidence SHA-256 42da7144ebe5f4e49b5ba62623c7a3687f5034759cf007eba6636bcb041c534a; manifest SHA-256 b00b261e1aff5c8022528e0e69e49ce9aba622f4472083f9f80a24ecdda48081. The broken head retained only scenarios 1-10 and expired after 30 minutes; the repaired full catalog finished in about 90 seconds. Windows and Linux remain active.",
+          "created_at": "2026-08-30T17:46:40.171695346Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZpHZ1tISlhK00C/vSWOdWufwjQj/NNtCX/1SBAjCX7y08G++tNWfLCp7aaROGxWtptJ+WdTyrun77OJCuqg/BQ=="
         },
         "167ebe50-a3f7-4abb-9696-8fc15b58168d": {
           "display_id": 851,
@@ -9113,8 +9122,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T17:40:27.662119398Z",
+    "timestamp": "2026-08-30T17:46:40.174317122Z",
     "agent_id": "6ME5",
-    "agent_seq": 1124
+    "agent_seq": 1125
   }
 }
