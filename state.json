@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 913,
+  "next_comment_id": 914,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T16:39:24.087330939Z",
+      "updated_at": "2026-08-30T16:46:02.316044066Z",
       "labels": [
         "qualification",
         "release"
@@ -3965,6 +3965,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABANjNmDajkO8hTF23L3Pw/5QJBCNRKXl1h3X4+r7fO9fBGeOsjTFkHJ2Fp84+CaXfMP5LCPZhfW2B/qYnWHSHnBA=="
+        },
+        "e86bfb50-5bfc-481a-b6ce-11a9ebbd88da": {
+          "display_id": 913,
+          "author": "6ME5",
+          "content": "Retained H2 Windows artifact 9735459466 from run 33320982446 proved scenarios 1-10 executed, then pipe-separation blocked until the native controller's 30-minute deadline. Root cause: portable-pty's Windows ConPTY owner retained the pseudo-console output handle while the qualifier waited for reader EOF. Commit 631c0f54d3a190602c8a49689219fe895ccee8d7 reaps the fixed small-output child, closes the PTY owner to publish EOF, then drains the cloned combined reader. It also corrects the Windows service-template check to validate the exact packaged placeholders and adds an asset regression. Evidence: real local qualifier returned 45 bytes with strict sequence/offset/one-exit facts; both packages pass; native and Windows-GNU strict cross-Clippy pass; fmt/diff pass.",
+          "created_at": "2026-08-30T16:46:02.313657664Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAG8vYImMbima15wF0pP5BOKP22YzZEoZv3OY2oQngSBmKCPmpJ58+bxiFql8kqOYAtzFmNkiuE5xo71pyjdJiDg=="
         },
         "e872295b-6739-4426-94f9-0d87cad48e0a": {
           "display_id": 859,
@@ -8973,8 +8982,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T16:39:24.087330939Z",
+    "timestamp": "2026-08-30T16:46:02.316044066Z",
     "agent_id": "6ME5",
-    "agent_seq": 1107
+    "agent_seq": 1108
   }
 }
