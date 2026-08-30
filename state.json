@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 873,
+  "next_comment_id": 874,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T12:42:35.543291878Z",
+      "updated_at": "2026-08-30T12:42:41.110504441Z",
       "labels": [
         "qualification",
         "release"
@@ -3470,6 +3470,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9NhmHUPyoSGJJOkbXcShCQkbNNuemd33Z5bYZDyhtL4cinXt91c7EFU4ZwosAJGfn4waLoe++IMmrxl9q92jDg=="
+        },
+        "cffa76f5-153a-4fdb-8d01-8c05c0ea8f95": {
+          "display_id": 873,
+          "author": "6ME5",
+          "content": "H2 now exercises the installed TUI itself: native PTY/ConPTY launch, bounded standard cursor-position response, real packaged-daemon connection, rendered frame, Ctrl-Q, exit 0, and terminal restoration. The first real attempt exposed an unanswered ESC[6n terminal query; fixing the controller (not weakening the TUI) produced local 18/18 Ready at target/peritus-qualification/h2/linux-x86_64-1788093169741395785/report.json, SHA-256 ed32cb39a8828ae387dbf4e8fb41054ac3ada343b2bce30b66260c7860a625b6. H2 failure output now names scenarios and report paths; hosted artifacts upload even after qualification failure. Full xtask gate is green.",
+          "created_at": "2026-08-30T12:42:41.107816443Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABANU6LxzUgiNF7Wt899AC2WsbDKKRDzsr5RHpVbmNA6lvBqsNbC3tJXHnmL5X9ctu4UCFdqp7OSn5JYYkPAMv0Cw=="
         },
         "d2b3116c-592e-417b-a4dc-19c8bca7bf6e": {
           "display_id": 744,
@@ -8613,8 +8622,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T12:42:35.543291878Z",
+    "timestamp": "2026-08-30T12:42:41.110504441Z",
     "agent_id": "6ME5",
-    "agent_seq": 1065
+    "agent_seq": 1066
   }
 }
