@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 975,
+  "next_comment_id": 976,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T19:37:04.282832327Z",
+      "updated_at": "2026-08-30T19:40:09.007872767Z",
       "labels": [
         "qualification",
         "release"
@@ -3002,6 +3002,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAnOCy3zDZGP/W8Vy4dBca2YaviY9VWuIPG+yFXu0uSWXWdreBrqK2H9f3AqDUsoUvjgaUQDB0myGKYgrrMVOzBQ=="
+        },
+        "80218084-068c-4d32-8c93-7deb12ba71c6": {
+          "display_id": 975,
+          "author": "6ME5",
+          "content": "Fresh H0 Windows run 33330892815 artifact 9737639291 proved the first 5b95d193 token fix partially: restricted-profile native test passed, AppContainer-profile token creation remained false. Root cause is distinct and architectural: the AppContainer package SID was incorrectly reused as CreateRestrictedToken SidsToRestrict even though Windows supplies that identity through PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES. The corrected path creates the privilege-stripped low-integrity base token without an unrelated restricting SID for AppContainer, while retaining the explicit zero-attribute restriction for RestrictedLowIntegrity. Native test remains the regression. Linux package tests (10) and strict Windows-GNU all-target/all-feature Clippy pass; fresh hosted Windows native execution is decisive.",
+          "created_at": "2026-08-30T19:40:09.005024979Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAxYsKg3lLb5Lai6X2jik100ZAvp0E3NpL+FO9yQrIHMEelG3lGPR/cesleDb9VA/ofBZ2gJSU9dcjtxc98lBbCg=="
         },
         "82d77893-0b34-4a42-b47f-fef117969a72": {
           "display_id": 625,
@@ -9531,8 +9540,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T19:37:04.282832327Z",
+    "timestamp": "2026-08-30T19:40:09.007872767Z",
     "agent_id": "6ME5",
-    "agent_seq": 1171
+    "agent_seq": 1172
   }
 }
