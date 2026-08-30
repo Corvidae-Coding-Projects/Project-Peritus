@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 877,
+  "next_comment_id": 878,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T13:07:25.855077167Z",
+      "updated_at": "2026-08-30T13:11:00.580492279Z",
       "labels": [
         "qualification",
         "release"
@@ -3902,6 +3902,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA6AptxG1f4nVlp/QG8l9KdingxvHygLrJUVq9/9S85zFTlVv0oQsmlGpXBClCrf3jtsmKuYGdcuGT7bKO7g/WAg=="
+        },
+        "f0f2efb3-8e9b-442e-9a96-834d8288de8a": {
+          "display_id": 877,
+          "author": "6ME5",
+          "content": "Diagnosed the fresh hosted H2 failures at three general native boundaries and repaired them without weakening qualification: nested lifecycle processes now receive explicit private platform directories after environment clearing on Windows; macOS raw helper denial uses the reserved nonzero protocol exit and the Seatbelt probe invokes native sandbox-exec syntax; Ubuntu declares and installs Bubblewrap while retaining the live fail-closed functional probe. Local product-native-qualification is Ready 18/18 with complete cleanup at target/peritus-qualification/h2/linux-x86_64-1788094622970164133/report.json (SHA-256 052e725e430bb7eddcd6c4b9bdf7162aa24839fe78f306cba731e0552ce4f85c). Focused reproducibility tests pass 89/89 and full cargo xtask all passes across 78 packages, 3180 source files, 2622 formal-boundary files, 12257 ordinary-safe entry points, 136 docs, and 28 pinned actions. Preparing the signed push for authoritative macOS/Windows/Linux rerun.",
+          "created_at": "2026-08-30T13:11:00.578072248Z",
+          "kind": "action",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAiTUPmlG/XDyqtYTlM1XtelHXFSz1lZ/yTrSsNPxb403WTFlp1QzusHjzFDrP1SWeDQqok2U7gPDgaVq28MV+Ag=="
         },
         "f132caea-3e67-4662-8123-221abc2a8de5": {
           "display_id": 676,
@@ -8649,8 +8658,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T13:10:33.473165889Z",
+    "timestamp": "2026-08-30T13:11:00.580492279Z",
     "agent_id": "6ME5",
-    "agent_seq": 1071
+    "agent_seq": 1072
   }
 }
