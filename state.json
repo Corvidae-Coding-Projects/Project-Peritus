@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 949,
+  "next_comment_id": 950,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T18:26:17.154856969Z",
+      "updated_at": "2026-08-30T18:26:45.956670834Z",
       "labels": [
         "qualification",
         "release"
@@ -4267,6 +4267,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAO/gtux4VvNN8W8+XId0XdXfP5ELBbEtqmfc+gCdJMTJeUJ6yo6F39zQScaAfiOw/GhhncTOr7m0herFlt6GsCw=="
+        },
+        "ee52c518-0c54-4645-ad74-7ae2efac0ee6": {
+          "display_id": 949,
+          "author": "6ME5",
+          "content": "Signed root-cause checkpoint b10e1134bd8c3a7994fc0596eb4b5462c29db571 follows portable-pty required ownership: take and close the master writer after spawning/starting the reader so the PTY child receives input EOF; then wait/reap child, close master for ConPTY reader EOF, and join the reader. Verification: real local peritusd qualify-pty returned immediately with conserved bounded output; all 66 peritus-daemon tests, all 23 peritus-platform-qualification tests, native strict all-target/all-feature daemon Clippy, Windows-GNU cross-Clippy, rustfmt, 136-file docs-check, diff hygiene, and source-size policy pass. This directly addresses run 33325905238 scenario-11 deadline without relaxing any limit.",
+          "created_at": "2026-08-30T18:26:45.954191736Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAj4RRjDwVlGLzkpKWC0AJa/D8ZC7Fo4CLN5mKDHiSCdNzO+ZuYZQz8+1tRE9lcE2QzuI8NAa8tTNMbQl7GK99Ag=="
         },
         "ee64b1ff-d642-4051-b6c2-9204b8831085": {
           "display_id": 631,
@@ -9293,8 +9302,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T18:26:17.154856969Z",
+    "timestamp": "2026-08-30T18:26:45.956670834Z",
     "agent_id": "6ME5",
-    "agent_seq": 1144
+    "agent_seq": 1145
   }
 }
