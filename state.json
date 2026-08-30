@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 785,
+  "next_comment_id": 786,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -5386,7 +5386,7 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T22:24:16.640107633Z",
-      "updated_at": "2026-08-30T01:24:28.596997121Z",
+      "updated_at": "2026-08-30T01:38:07.856460116Z",
       "labels": [
         "performance",
         "qualification"
@@ -5427,6 +5427,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzcsANZVF1gPeSHVi0NjRXIVWH0KHKWNsHZ1qqRt8TOoW30FTmGUq2voLHkqdl8VqEAA5lPzOr6cBrOeuXhT/DQ=="
+        },
+        "3ded8b73-e234-4a3d-a457-a19880133733": {
+          "display_id": 785,
+          "author": "6ME5",
+          "content": "[action] Implemented and full-gate verified TBF-017 exact workspace-root/path grounding; classified torch verifier timeout separately as TBI-007; frozen baseline advanced to 54",
+          "created_at": "2026-08-30T01:38:07.854007820Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA3zIfgPLJkAgteCOVXKfqPOMogWRViQSeBf5hmo1oG6sPY/rDLaUbDkMoPp5FeW6MIq9myvA2+EQR2Rvo3NbsAw=="
         },
         "424b8138-d92d-47a1-96ff-5a3eb7be0397": {
           "display_id": 774,
@@ -7821,8 +7830,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T01:38:03.243888876Z",
+    "timestamp": "2026-08-30T01:38:07.856460116Z",
     "agent_id": "6ME5",
-    "agent_seq": 973
+    "agent_seq": 974
   }
 }
