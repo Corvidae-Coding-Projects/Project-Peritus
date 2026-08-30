@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 915,
+  "next_comment_id": 916,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -8494,7 +8494,7 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:01:08.433031832Z",
-      "updated_at": "2026-08-30T16:13:44.745929018Z",
+      "updated_at": "2026-08-30T16:53:38.868298746Z",
       "labels": [
         "qualification",
         "security"
@@ -8580,6 +8580,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALTLiUe3e4N9rwuVqxwgk6kNhqlBay21qFW7sIUxurSOMOsO5/NRzclSF2+OXDmr75Gqqm2YS9tJ5QuqoHgvBAQ=="
+        },
+        "80af5644-7eb0-4fca-9c07-e0a24efd4082": {
+          "display_id": 915,
+          "author": "6ME5",
+          "content": "New-head H0 Windows artifact 9735554415 from run 33323387232 proved the ambient-variable pass-through still selected Git's GNU link.exe for both nested Cargo tests. Commit 09d6b2214354e460e539535e052612bc9db9db1c now uses the pinned find-msvc-tools crate to bypass a misleading developer-prompt PATH, discover the installed Visual Studio linker through Windows installation metadata, set the absolute target-specific Cargo linker, and propagate its SDK PATH/LIB/INCLUDE. A Windows test rejects non-absolute, missing, or Git linkers. Evidence: all H0 package tests pass; native and Windows-GNU strict Clippy pass; architecture and reproducibility checks pass; fmt/diff pass.",
+          "created_at": "2026-08-30T16:53:38.865764132Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA3BLpGVKFJeD+ez/FVEEAKtqFn1yvmzManwQlFXr5N3zMOz22LICziMUTwJ3MU/pOnxx8Iu6xiKrg8ciUGsnACg=="
         },
         "846adca6-5816-46dd-a2dd-d74d1c5a4d64": {
           "display_id": 479,
@@ -8991,8 +9000,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T16:46:07.204415776Z",
+    "timestamp": "2026-08-30T16:53:38.868298746Z",
     "agent_id": "6ME5",
-    "agent_seq": 1109
+    "agent_seq": 1110
   }
 }
