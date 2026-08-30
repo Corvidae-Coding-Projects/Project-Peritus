@@ -31,7 +31,11 @@ fn security_catalogs_and_schemas_are_packaged() {
     assert_eq!(assets.len(), 9);
     assert!(assets.iter().all(|asset| !asset.contents().is_empty()));
     assert!(assets.iter().any(|asset| asset.path().ends_with("evidence-manifest-v1.schema.json")));
-    assert!(assets.iter().any(|asset| asset.path().ends_with("native-probe-request-v1.schema.json")));
-    assert!(assets.iter().any(|asset| asset.path().ends_with("native-probe-response-v1.schema.json")));
+    assert!(
+        assets.iter().any(|asset| asset.path().ends_with("native-probe-request-v1.schema.json"))
+    );
+    assert!(
+        assets.iter().any(|asset| asset.path().ends_with("native-probe-response-v1.schema.json"))
+    );
     assert!(assets.iter().any(|asset| asset.path().ends_with("threat-model-v1.toml")));
 }
