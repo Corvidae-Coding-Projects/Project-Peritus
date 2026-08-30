@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 963,
+  "next_comment_id": 964,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T18:52:46.026160050Z",
+      "updated_at": "2026-08-30T18:55:18.230148985Z",
       "labels": [
         "qualification",
         "release"
@@ -4199,6 +4199,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABJcxYbESuyMWsWRZv9f876yxx1A9pmnuBbxI459uRGyn2ljqslzLPrfoKXE/Zv3sWf8n5k9/IXKjsCEmv5SEAA=="
+        },
+        "e1d3472e-0e0f-4dc5-b0c4-b2d690b2c7eb": {
+          "display_id": 963,
+          "author": "6ME5",
+          "content": "Signed commit 6b9fbc2a repairs the real Windows H2 ConPTY startup protocol: answer PSEUDOCONSOLE_INHERIT_CURSOR before waiting, retain input ownership until clean child exit, then close writer/master for reader EOF. It replaces the b10 early-close Ctrl-C failure without weakening qualification. Verified locally: 66/66 daemon tests, 23/23 H2 package tests, 8/8 real PTY repetitions, native strict all-target/all-feature Clippy, Windows-GNU strict cross-Clippy, rustfmt, architecture-check (78 packages/3232 source files), docs-check (136 files), and diff/hygiene review all pass.",
+          "created_at": "2026-08-30T18:55:18.227659025Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABATU8lnbmWl+mE6lOFmPYwUOJyhyYD4eBVLL2i0uVnrCyDadJTJyUwQ2sfuznjLdua2fDrQhoIGq4RCLthLxPPAg=="
         },
         "e3686bad-1083-4c60-ba35-9d3cf1824cb0": {
           "display_id": 593,
@@ -9423,8 +9432,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T18:55:03.599995388Z",
+    "timestamp": "2026-08-30T18:55:18.230148985Z",
     "agent_id": "6ME5",
-    "agent_seq": 1159
+    "agent_seq": 1160
   }
 }
