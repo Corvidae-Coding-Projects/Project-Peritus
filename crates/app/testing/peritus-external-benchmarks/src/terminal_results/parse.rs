@@ -78,9 +78,11 @@ fn project(
     let outcome = TrialOutcome::from_reward(reward)?;
     let invocation_path = trial_directory.join("agent/peritus/invocation.json");
     let native = invocation_path.is_file().then(|| read_json(&invocation_path)).transpose()?;
-    let relative = trial_directory.strip_prefix(job_directory).map_err(|_| {
-        BenchmarkError::Workspace("trial directory escaped its Harbor job".to_owned())
-    })?;
+    let relative = crate::report_path::canonical_relative(
+        job_directory,
+        trial_directory,
+        "Terminal-Bench trial directory",
+    )?;
     Ok(TrialReport {
         trial_name: trial.trial_name,
         task_name: trial.task_name,
@@ -96,25 +98,29 @@ fn project(
         exception: trial.exception_info,
         native,
         evidence: TrialEvidencePaths {
-            harbor_result: relative.join("result.json"),
-            native_invocation: existing(relative, trial_directory, "agent/peritus/invocation.json"),
+            harbor_result: crate::report_path::join(&relative, "result.json"),
+            native_invocation: existing(
+                &relative,
+                trial_directory,
+                "agent/peritus/invocation.json",
+            ),
             native_trace: existing(
-                relative,
+                &relative,
                 trial_directory,
                 "agent/peritus/developer-round-0001.trace",
             ),
             native_observation: existing(
-                relative,
+                &relative,
                 trial_directory,
                 "agent/peritus/last-product-observation.json",
             ),
-            verifier_output: existing(relative, trial_directory, "verifier/test-stdout.txt"),
+            verifier_output: existing(&relative, trial_directory, "verifier/test-stdout.txt"),
         },
     })
 }
 
-fn existing(relative: &Path, directory: &Path, suffix: &str) -> Option<std::path::PathBuf> {
-    directory.join(suffix).is_file().then(|| relative.join(suffix))
+fn existing(relative: &str, directory: &Path, suffix: &'static str) -> Option<String> {
+    directory.join(suffix).is_file().then(|| crate::report_path::join(relative, suffix))
 }
 
 fn read_json<T: DeserializeOwned>(path: &Path) -> Result<T, BenchmarkError> {

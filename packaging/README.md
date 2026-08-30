@@ -44,6 +44,19 @@ these assets.
 The service templates are retained for a future explicitly configured always-on runner mode. They
 are not installed as active services and are not part of the ordinary single-command product path.
 
+## Native qualification protocol
+
+`peritus-h2` is the common qualification operator for fresh Linux, macOS, and Windows release
+subjects. It stages the exact package manifest into one private subject per scenario and invokes a
+reviewed platform controller. The JSON contracts under `schemas/` define the exact request,
+scenario response, cleanup response, and retained report. Raw controller evidence is stored in an
+operator-selected directory outside the repository and verified by path, byte count, and SHA-256.
+
+The checked-in tests use a small controller fixture only to prove protocol, evidence, deadline, and
+cleanup behavior. A release still needs real platform controllers and native-host runs for all 18
+scenarios on every supported target. See [H2 platform qualification](../docs/h2-platform-qualification.md)
+for the operator command and evidence boundary.
+
 `cargo xtask release-bootstrap-smoke` qualifies the native lifecycle plus the public file-download
 path and proves that a mismatched archive checksum is rejected. Tagged release automation keeps the
 GitHub release as a draft until the Linux, macOS, and Windows policy, lifecycle, packaging, and

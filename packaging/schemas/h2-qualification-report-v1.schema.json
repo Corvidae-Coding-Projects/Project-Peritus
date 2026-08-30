@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://corvidae-coding-projects.github.io/peritus/schemas/h2-qualification-report-v1.schema.json",
+  "title": "Peritus H2 qualification report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "target", "manifest_sha256", "verdict", "scenarios"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["platform", "architecture", "version"],
+      "properties": {
+        "platform": { "enum": ["linux", "macos", "windows"] },
+        "architecture": { "enum": ["x86_64", "aarch64"] },
+        "version": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["major", "minor", "patch", "build"],
+          "properties": {
+            "major": { "type": "integer", "minimum": 0 },
+            "minor": { "type": "integer", "minimum": 0 },
+            "patch": { "type": "integer", "minimum": 0 },
+            "build": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "manifest_sha256": { "$ref": "#/$defs/sha256" },
+    "verdict": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "scenario_count", "evidence_sha256"],
+          "properties": {
+            "status": { "const": "ready" },
+            "scenario_count": { "const": 18 },
+            "evidence_sha256": { "$ref": "#/$defs/sha256" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "reasons"],
+          "properties": {
+            "status": { "const": "not-ready" },
+            "reasons": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["kind", "scenario_id"],
+                "properties": {
+                  "kind": {
+                    "enum": ["scenario-failed", "scenario-unsupported", "cleanup-incomplete"]
+                  },
+                  "scenario_id": { "$ref": "#/$defs/identifier" }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "scenarios": {
+      "type": "array",
+      "minItems": 18,
+      "maxItems": 18,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "scenario_id",
+          "subject_id",
+          "outcome",
+          "evidence_sha256",
+          "evidence",
+          "cleanup"
+        ],
+        "properties": {
+          "scenario_id": { "$ref": "#/$defs/identifier" },
+          "subject_id": { "$ref": "#/$defs/identifier" },
+          "outcome": { "enum": ["passed", "failed", "unsupported"] },
+          "evidence_sha256": { "$ref": "#/$defs/sha256" },
+          "evidence": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 64,
+            "items": { "$ref": "native-platform-response-v1.schema.json#/$defs/evidence" }
+          },
+          "cleanup": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["subject_id", "complete", "remaining_resources", "evidence_sha256"],
+            "properties": {
+              "subject_id": { "$ref": "#/$defs/identifier" },
+              "complete": { "type": "boolean" },
+              "remaining_resources": { "type": "integer", "minimum": 0 },
+              "evidence_sha256": { "$ref": "#/$defs/sha256" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "identifier": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,128}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  }
+}

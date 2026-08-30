@@ -93,7 +93,7 @@ pub(super) struct Aggregate {
 #[derive(Clone, Debug, Serialize)]
 pub(super) struct TaskReport {
     pub(super) task_id: String,
-    pub(super) result_path: PathBuf,
+    pub(super) result_path: String,
     pub(super) result_sha256: String,
     pub(super) selected_modified_unix_ns: String,
     pub(super) candidate_results: usize,
@@ -142,7 +142,7 @@ pub(super) struct TaskEvidence {
     pub(super) workspace: PathBuf,
     pub(super) prompt_file: PathBuf,
     pub(super) usage_log: PathBuf,
-    pub(super) native_invocation: Option<PathBuf>,
+    pub(super) native_invocation: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -182,12 +182,12 @@ pub(super) struct NativeInvocation {
 
 #[derive(Clone, Debug)]
 pub(super) struct SelectedResult {
-    pub(super) relative_path: PathBuf,
+    pub(super) relative_path: String,
     pub(super) modified_unix_ns: u128,
     pub(super) candidate_results: usize,
     pub(super) sha256: String,
     pub(super) report: UpstreamReport,
-    pub(super) invocation_path: Option<PathBuf>,
+    pub(super) invocation_path: Option<String>,
     pub(super) invocation: Option<NativeInvocation>,
 }
 

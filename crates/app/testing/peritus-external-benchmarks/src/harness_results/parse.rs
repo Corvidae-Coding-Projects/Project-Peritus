@@ -94,7 +94,7 @@ pub(super) fn pin_evidence(path: &Path) -> Result<PinEvidence, BenchmarkError> {
 #[derive(Debug)]
 struct Candidate {
     path: PathBuf,
-    relative_path: PathBuf,
+    relative_path: String,
     modified_unix_ns: u128,
     candidates: usize,
     task_id: String,
@@ -103,7 +103,7 @@ struct Candidate {
 impl Candidate {
     const fn new(
         path: PathBuf,
-        relative_path: PathBuf,
+        relative_path: String,
         modified_unix_ns: u128,
         task_id: String,
     ) -> Self {
@@ -144,7 +144,7 @@ fn finish(
 fn invocation(
     campaign_directory: &Path,
     workspace: &Path,
-) -> Result<Option<(PathBuf, NativeInvocation)>, BenchmarkError> {
+) -> Result<Option<(String, NativeInvocation)>, BenchmarkError> {
     let Some(sandbox) = workspace.parent() else {
         return Ok(None);
     };
@@ -225,13 +225,8 @@ fn modified_ns(path: &Path) -> Result<u128, BenchmarkError> {
     })
 }
 
-fn below(root: &Path, path: &Path) -> Result<PathBuf, BenchmarkError> {
-    path.strip_prefix(root).map(Path::to_path_buf).map_err(|_| {
-        BenchmarkError::Workspace(format!(
-            "HarnessBench evidence escaped campaign directory: {}",
-            path.display()
-        ))
-    })
+fn below(root: &Path, path: &Path) -> Result<String, BenchmarkError> {
+    crate::report_path::canonical_relative(root, path, "HarnessBench evidence")
 }
 
 fn read_json<T: DeserializeOwned>(
@@ -283,20 +278,20 @@ mod tests {
     fn selection_prefers_time_then_path() {
         let earlier = Candidate::new(
             PathBuf::from("/state/results/z/task.json"),
-            PathBuf::from("results/z/task.json"),
+            "results/z/task.json".to_owned(),
             10,
             "task".to_owned(),
         );
         let later = Candidate::new(
             PathBuf::from("/state/results/a/task.json"),
-            PathBuf::from("results/a/task.json"),
+            "results/a/task.json".to_owned(),
             11,
             "task".to_owned(),
         );
         assert!(prefer(&later, &earlier));
         let same_time_later_path = Candidate::new(
             PathBuf::from("/state/results/zz/task.json"),
-            PathBuf::from("results/zz/task.json"),
+            "results/zz/task.json".to_owned(),
             10,
             "task".to_owned(),
         );

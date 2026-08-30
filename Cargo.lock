@@ -2436,11 +2436,14 @@ dependencies = [
 name = "peritus-platform-qualification"
 version = "0.0.0"
 dependencies = [
+ "nix 0.31.3",
  "serde",
+ "serde_json",
  "sha2 0.11.0",
  "tempfile",
  "thiserror 2.0.20",
  "toml",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

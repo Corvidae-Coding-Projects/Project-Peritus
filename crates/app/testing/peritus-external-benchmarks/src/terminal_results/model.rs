@@ -215,11 +215,11 @@ pub(super) struct NativeUsage {
 
 #[derive(Clone, Debug, Serialize)]
 pub(super) struct TrialEvidencePaths {
-    pub(super) harbor_result: PathBuf,
-    pub(super) native_invocation: Option<PathBuf>,
-    pub(super) native_trace: Option<PathBuf>,
-    pub(super) native_observation: Option<PathBuf>,
-    pub(super) verifier_output: Option<PathBuf>,
+    pub(super) harbor_result: String,
+    pub(super) native_invocation: Option<String>,
+    pub(super) native_trace: Option<String>,
+    pub(super) native_observation: Option<String>,
+    pub(super) verifier_output: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

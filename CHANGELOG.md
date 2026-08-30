@@ -13,6 +13,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Add the standard H2 native platform controller and `peritus-h2` operator: stage and re-digest the
+  exact manifest package into one private subject per each of 18 scenarios, clear ambient user
+  state, bind versioned requests and independent scenario/cleanup responses to the exact target,
+  package, controller, subject, and scenario, own Unix process groups and Windows kill-on-close Job
+  Objects, verify retained raw artifacts, atomically publish a complete no-overwrite report, and
+  prove all protocol translations plus stale response, false digest, and descendant termination
+  without claiming the fixture is real Linux/macOS/Windows qualification (#31)
 - Add the standard H1 persistent native-controller adapter: stage and re-digest one reviewed
   executable inside each fresh private subject, bind all four line-delimited protocol stages to the
   exact scenario/build/controller/instance, own Unix process groups and Windows kill-on-close Job
@@ -86,6 +93,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Canonicalize both benchmark campaign roots and retained evidence before containment checks, then
+  serialize report-owned evidence paths as validated forward-slash relative strings; this keeps
+  HarnessBench and Terminal-Bench reports stable across macOS `/var` aliases, Windows short-name
+  roots, and Windows path separators while still rejecting actual path escape (#31)
 - Require command-driven API and structured-data exploration to select decision-relevant fields,
   keys, counts, or bounded samples instead of filling model context with complete nested metadata
   (`TBF-020`, #31)

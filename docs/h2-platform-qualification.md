@@ -7,9 +7,10 @@ not grant runtime authority, reinterpret a sandbox plan, or manufacture configur
 ready only after every required scenario has passed on its own fresh subject with complete cleanup.
 
 The implementation lives in `peritus-platform-qualification`. The crate contains deterministic
-contracts, manifest/checksum generation, evidence bounds, fresh-subject orchestration, and verdict
-reduction. Operating-system adapters perform effects through `FreshSubjectFactory` and
-`QualificationSubject`; native package scripts remain mechanical reviewed assets in `packaging/`.
+contracts, manifest/checksum generation, evidence bounds, fresh-subject orchestration, the shared
+native controller adapter, a retained-report operator, and verdict reduction. Platform-owned
+controller executables perform the real effects through `NativePlatformFactory`; native package
+scripts remain mechanical reviewed assets in `packaging/`.
 
 ## Shipped processes and invocation
 
@@ -246,11 +247,23 @@ package manifest, scenario count, and digest of scenario and cleanup observation
 
 ## Release integration boundary
 
-Repository integration must add `peritus-platform-qualification` to the workspace and architecture
-inventory, instantiate platform adapters in the H2 runner environment, stage binaries/helpers into
-the target package paths, render the canonical manifest/checksums, authenticate the manifest
-digest, and collect native runner evidence. Linux, macOS, and Windows results are independent: a
-cross-compile or a platform-neutral test does not substitute for a fresh native packaged host.
+`NativePlatformFactory` is the common release-runner boundary. For every scenario it copies the
+reviewed controller and every manifest artifact into a new private root, re-digests those bytes,
+clears ambient user state, supplies private configuration/state/data/temp roots, owns the complete
+controller process tree, and retains raw scenario and cleanup artifacts outside scratch state.
+Responses are accepted only when they bind the exact request digest, subject, scenario, target,
+manifest, layout, package version, and controller digest. Digest evidence names portable regular
+files beneath the assigned artifact root; missing, linked, escaped, duplicated, oversized, or
+mis-digested evidence fails the run.
 
-The crate and assets define the acceptance mechanism. Their presence alone does not claim that a
-package was built, installed, or qualified.
+`peritus-h2` runs the complete 18-scenario catalog and atomically publishes a no-overwrite JSON
+report. The report contains target and manifest identity, every fresh subject, the complete bounded
+evidence set, cleanup facts, and the final ready/not-ready reduction. Its request, response,
+cleanup, and report documents have versioned schemas under `packaging/schemas/`.
+
+The checked-in controller fixture proves all 18 protocol translations, exact report publication,
+false-digest rejection, stale-response rejection, and descendant termination at the deadline. It
+does not install a release or prove native platform facilities. Release integration still must
+provide independently reviewed Linux, macOS, and Windows controller executables, authenticate the
+manifest digest, run on fresh supported native hosts, and retain their reports and raw evidence.
+A cross-compile or platform-neutral fixture cannot substitute for those three runs.

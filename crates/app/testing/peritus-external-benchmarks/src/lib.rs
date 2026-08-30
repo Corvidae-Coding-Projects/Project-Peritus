@@ -9,6 +9,7 @@ pub mod harness_results;
 mod identity;
 mod process_entry;
 mod providers;
+mod report_path;
 mod rubric;
 mod session;
 mod terminal_agent;

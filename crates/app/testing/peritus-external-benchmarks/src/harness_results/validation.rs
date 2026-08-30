@@ -103,12 +103,7 @@ pub(super) fn task(task: &TaskReport) -> Result<(), BenchmarkError> {
         ));
     }
     validate_hex("result SHA-256", &task.result_sha256, &[64])?;
-    if task.result_path.is_absolute() {
-        return Err(BenchmarkError::Workspace(format!(
-            "HarnessBench result path is not campaign-relative: {}",
-            task.result_path.display()
-        )));
-    }
+    crate::report_path::validate(&task.result_path, "HarnessBench result path")?;
     for (label, value) in [
         ("outcome", task.scores.outcome),
         ("process", task.scores.process),
