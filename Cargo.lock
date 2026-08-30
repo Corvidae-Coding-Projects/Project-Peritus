@@ -2417,7 +2417,16 @@ dependencies = [
 name = "peritus-performance-qualification"
 version = "0.0.0"
 dependencies = [
+ "peritus-app-protocol",
+ "peritus-approval",
  "peritus-benchmarks",
+ "peritus-codec",
+ "peritus-kernel",
+ "peritus-protocol",
+ "peritus-scheduler",
+ "peritus-types",
+ "sha2 0.11.0",
+ "tempfile",
  "thiserror 2.0.20",
 ]
 

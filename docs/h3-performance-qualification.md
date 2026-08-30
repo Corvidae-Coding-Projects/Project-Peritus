@@ -64,6 +64,21 @@ The F0 adapter uses the same measurement vocabulary for representative evaluatio
 campaigns. H3 must not receive the production pointer transition or promotion approval as a harness
 operation.
 
+## Executable integration status
+
+`peritus-performance-qualification` now owns a disposable integrated G0 subject. It launches an
+exact caller-selected `peritusd` executable, retains its executable digest, negotiates a persistent
+public A3 session, submits canonical fenced scheduler commands, survives intentional daemon
+restart, and performs owned terminal, cancellation, artifact, queue, and deterministic local
+provider-pressure effects. `RunContext` carries an explicit workload binding so every measurement
+is attributable when one campaign sink receives several plans.
+
+The retained operator smoke runs a complete scheduler start, event, drain, and finalize lifecycle
+against a real daemon and proves terminal resource balance. That smoke is integration evidence, not
+an H3 production verdict. The campaign coordinator, reference-machine probe, retained evidence
+writer, accepted-baseline workflow, concurrent four-plan soak, and eight-hour execution evidence
+remain required before H3 can report readiness.
+
 ## Bounded accounting and backpressure
 
 `ResourceAccountant` is initialized from the profile `ResourceEnvelope`. Each lifecycle event is

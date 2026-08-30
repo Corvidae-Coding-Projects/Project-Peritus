@@ -12,6 +12,8 @@ mod accounting_types;
 mod baseline;
 mod baseline_dataset;
 mod contracts;
+#[cfg(test)]
+mod contracts_tests;
 mod dataset;
 mod error;
 mod evaluation;
