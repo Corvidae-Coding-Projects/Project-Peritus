@@ -1981,6 +1981,14 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - After evidence: unchanged trial `make-mips-interpreter__bzpJw83` reached and passed native source
   layout with the dirty `doomgeneric` submodule marker and its untouched vendored sources present.
   Peritus accepted the two-path candidate, and Harbor's three unchanged checks returned reward 1.0.
+- Frozen trial `build-pmars__92VRvtc` independently exercised the new-workspace form of the same
+  ownership mistake. A command fetched Debian's unmodified pMARS source, copied it into the empty
+  workspace, built it, installed a working non-X11 binary, and passed live battle and debugger
+  checks. The frozen gate nevertheless classified the imported upstream files as agent-authored and
+  rejected fourteen files over 500 lines. The current ownership ledger skips command-imported source
+  while remaining strict for direct writes and modifications. Harbor separately retained reward 0
+  because this candidate flattened the source into `/app` instead of preserving a discoverable
+  `pmars-*` directory; that honest delivery miss is not repaired by weakening source provenance.
 
 ## TBF-002: writer fabricated a read-only workspace blocker
 
@@ -2376,6 +2384,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   ended during review on the same provider terminal after thirteen requests, 281,753 input, 63,488
   cached input, and 11,265 output tokens over 599.506 seconds. The long validation produced useful
   correctness evidence; only the false terminal is assigned to provider-neutral role recovery.
+- Independent attempt `query-optimize__ScsesQP` produced another equivalent single-query artifact
+  but did not measure its runtime before handoff. Five unchanged checks passed; its 0.4933-second
+  verifier median was slower than the golden query's 0.4435 seconds and missed the published
+  1.05-times bound, so reward 0 is retained as an ordinary optimization miss. Native review also
+  ended on the same provider terminal after thirteen requests, 311,917 input, 103,680 cached input,
+  and 13,322 output tokens over 884.117 seconds. The successful attempt above and this honest zero
+  are both retained; neither warrants query-specific prompting or a hidden timing shortcut.
 - Trial `pytorch-model-cli__Mta9uVw` inspected the supplied image and weights, discovered the
   available ordinary runtime, and produced all three explicitly requested artifacts in `/app`: the
   executable `cli_tool`, `weights.json`, and `prediction.txt`. The unchanged verifier awarded reward
@@ -2393,6 +2408,19 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   literal missing module and awarded reward 0. Native execution used three requests, 53,737 input,
   23,808 cached input, and 773 output tokens over 110.550 seconds. This is a clean baseline example
   for fresh same-provider writer recovery; no cipher- or attack-specific behavior is warranted.
+- Trial `regex-chess__BeUr3tT` ended on the same provider terminal after only two requests, before
+  creating `re.json`. All four unchanged verifier checks failed on the absent file and reward 0 is
+  retained. The 914.131-second role used 36,741 input, 15,872 cached input, and only 174 output
+  tokens. Another attempt for the same task produced a verifier-complete artifact, so this is direct
+  run-variance evidence for fresh grounded role recovery rather than a chess-specific defect.
+- Three later frozen attempts show the same provider-neutral failure at different progress points.
+  `model-extraction-relu-logits__w2mGFUx` ended before its first provider event after 7.714 seconds,
+  retained zero usage and no artifact, and failed its only unchanged check; another attempt for the
+  same task passed. `feal-differential-cryptanalysis__iou7Ebr` ended after three requests, 53,737
+  input, 15,872 cached input, and 1,081 output tokens over 155.082 seconds without `attack.py`, so
+  its unchanged check failed. `raman-fitting__uMkAsoU` ended after four requests, 83,283 input,
+  15,872 cached input, and 1,362 output tokens over 135.298 seconds without `results.json`, so all
+  three checks failed. Their zeros remain honest; fresh grounded role recovery is the shared fix.
 - Trial `sqlite-db-truncate__vvgCxxU` recovered the requested JSON artifact from the truncated
   database and the unchanged verifier's only data test passed for reward 1.0. Native Peritus again
   ended during review on the same empty-provider terminal after nine requests, 166,008 input,
@@ -2523,6 +2551,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   current value. The run used 18 provider requests, 1,832,815 input tokens, 111,104 cached input
   tokens, and 8,931 output tokens over 414.649 seconds. The unchanged verifier passed file presence
   and failed only the historical value.
+- Frozen attempt `mteb-leaderboard__ngm4jT9` independently repeated the temporal-provenance error.
+  It selected the current `Qwen/Qwen3-Embedding-8B` entry as an August 2025 answer; the unchanged
+  verifier again expected the historical `GritLM/GritLM-7B` snapshot, so one of two checks passed
+  and reward 0 is retained. Native Peritus accepted the grounded-but-wrong artifact after nine
+  requests, 88,041 input, 188,477 cached input, and 9,693 output tokens over 165.979 seconds. This
+  directly validates the general historical-source rule and adds no leaderboard-specific behavior.
 - Verification: a shared workflow regression requires the temporal-provenance rule to reach the
   architect, writer/fixer, and reviewer instruction surfaces. All 70 product-runner tests, strict
   Clippy, repository formatting, and the 134-document structural check pass. An unchanged focused
@@ -2586,6 +2620,16 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   dataset, private mirror, task-specific shortcut, or changed benchmark deadline. A future
   final-candidate rerun may choose a public integrity-checked source only when ordinary source
   selection and the remaining wall-clock budget support it.
+- Independent attempt `extract-moves-from-video__wf7tsAp` ended earlier on the provider terminal
+  after 1,083.994 seconds, eighteen requests, 1,322,171 input, 71,424 cached input, and 23,657 output
+  tokens without writing `solution.txt`; both unchanged checks failed for reward 0. Together the
+  two attempts show that costly media exploration and role recovery both matter. They do not justify
+  video-specific shortcuts or a changed external deadline.
+- Trial `gcode-to-text__YYWt3UV` reached the unchanged 900-second agent deadline after writing
+  `out.txt`. The unchanged verifier passed file existence but rejected the plausible normalized
+  phrase `flag{gcode_is_challenging}` against the exact encoded text, so reward 0 is retained. This
+  is both an unfinished terminal handoff and an ordinary extraction miss; no hidden flag, task-name
+  vocabulary, or verifier-derived rewrite belongs in Peritus.
 - Decision: do not raise the benchmark timeout, skip required work, inject a prebuilt task artifact,
   add task-name knowledge, or hard-code Terminal-Bench's common deadline as a hidden product budget.
   Preserve the unchanged results, measure phase time in candidate reruns, and implement a product
@@ -2612,6 +2656,10 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   `prove-plus-comm__2cXHrFF`; retained adapter stdout contains the OCI status 127 diagnostic before
   any Peritus report or provider request. The pinned task Dockerfile independently declares
   `/workspace` and copies the starting proof there.
+- Frozen attempt `prove-plus-comm__fSyesj9` repeated the exact adapter defect independently. Harbor
+  again rejected `exec -w /app` because that directory did not exist, so no provider request or
+  verifier ran and no reward was published. The 34.694-second null result is retained as a second
+  validation target for the already-general live-working-directory correction.
 - Verification: three focused bridge regressions cover `/workspace`, unsafe root/relative/multiline
   output, and environment-command failure; Python bytecode compilation passes. The running baseline
   process retains its originally loaded adapter and remains unchanged. An unchanged focused rerun
@@ -2720,6 +2768,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   provider requests; 121,069 input, 47,616 cached input, and 6,476 output tokens; 306.505 seconds of
   native execution. The retained `last-product-observation.json` records a 5,092,600-byte
   `model.pt`, passing native gates, the exact MSE measurements, and the unchanged checkpoint digest.
+- Frozen attempt `pytorch-model-recovery__yZnHYKr` reproduced the same unpublished call-signature
+  mismatch with a separately trained artifact. It again passed four of five unchanged checks and
+  failed only because the verifier supplied two tensors to the artifact's one-tensor `forward`, so
+  reward 0 remains authoritative. Native Peritus accepted it after eleven requests, 141,450 input,
+  110,050 cached input, and 17,479 output tokens over 310.027 seconds. This strengthens the
+  underspecification classification; it does not make the hidden interface recoverable.
 
 ## TBI-006: invocation reports did not bind the native Peritus build
 
@@ -2803,6 +2857,10 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   `conversation.json` but no invocation, usage, product-failure category, or verifier result. The
   campaign still uses the unchanged pre-fix binary, so this is a third validation target for the
   existing trace-preparation correction rather than evidence that the correction regressed.
+- Frozen attempts `reshard-c4-data__zng8fgS` and `fix-ocaml-gc__SqoTV8A` later repeated that exact
+  missing-trace masking failure after 44.240 and 21.999 seconds. Each retained `conversation.json`
+  but no developer trace, invocation report, usage, verifier result, or reward. They add independent
+  coverage for pre-stream failure retention; neither implies task-specific recovery behavior.
 - Later frozen attempts sharpen the same recovery evidence without changing its classification.
   `feal-linear-cryptanalysis__9LZmKm8` observed an absent ordinary Python module and then three
   malformed runtime responses; it wrote no `plaintexts.txt` and retained reward 0 after three
@@ -2846,6 +2904,11 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   295,082 input, 55,552 cached input, and 5,505 output tokens over 151.168 seconds. The trace shows
   successful source verification and extraction, `/usr/bin/apt-get`, no compiler or make, and no
   package installation command.
+- Frozen attempt `sqlite-with-gcov__zsm9FAH` independently repeated the same unnecessary escalation.
+  It ended `waiting_for_user` after ten requests, 511,691 input, 63,488 cached input, and 4,158 output
+  tokens over 137.980 seconds without placing `sqlite3` on `PATH`; all three unchanged checks failed
+  for reward 0. This is direct recurrence evidence for scoped prerequisite autonomy, not permission
+  for a SQLite- or compiler-specific branch.
 - Second observation: `torch-tensor-parallelism__QzhvGPy` received explicit executable-not-found
   results for `python` and `python3` in an internet-enabled disposable task environment. The frozen
   role then ended on an empty provider response, so `TBF-009` also applies. The current general rule
@@ -2880,6 +2943,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   also ended on the `TBF-009` provider terminal after twelve requests, 370,152 input, 118,784 cached
   input, and 24,663 output tokens over 868.473 seconds. This is direct provider-neutral evidence for
   actionable missing-executable recovery, not a reason for R- or sampler-specific behavior.
+- Frozen attempt `adaptive-rejection-sampler__BiJxgXz` independently repeated the same general
+  prerequisite miss. It delivered another substantial R implementation and explicitly reported that
+  `Rscript` was unavailable, but did not install the ordinary runtime in the disposable environment.
+  The unchanged verifier passed four of nine checks and failed all executable-dependent behavior for
+  reward 0. Native review ended on `TBF-009` after eleven requests, 332,094 input, 65,792 cached
+  input, and 22,419 output tokens over 456.513 seconds. This is recurrence evidence for the existing
+  scoped-prerequisite correction, not a new R- or benchmark-specific fix.
 - Follow-up resolution: a missing executable now returns a structured observation that identifies
   PATH lookup failure, directs the role to verify the path and inspect package or runtime managers,
   and, only when the active task and environment authorize it, install the ordinary prerequisite
@@ -2923,6 +2993,18 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   cached input, and 5,725 output tokens over 189.733 seconds. The trace's first listing returned only
   `peritus-workspace.toml`; its later write and read both name `app/parallel_linear.py`, while the
   exact request remains in the generated design.
+- Frozen trial `filter-js-from-html__JzmM47N` independently repeated the same root-prefix error in a
+  different language and task. Its completion record names `app/filter.py` while the managed root
+  was already `/app`; the unchanged verifier therefore found no `/app/filter.py`, failed both checks,
+  and retained reward 0 before exercising any sanitizer semantics. Native review ended on
+  `TBF-009` after seven requests, 149,342 input, 31,744 cached input, and 8,905 output tokens over
+  190.291 seconds. This is cross-task evidence for exact root mapping, not an HTML-specific fix.
+- Frozen trial `torch-tensor-parallelism__nvQ4nLS` repeated the original path error directly: its
+  write tool record names `app/parallel_linear.py` below a workspace already rooted at `/app`.
+  Harbor found no `/app/parallel_linear.py`, so all three unchanged checks failed for reward 0.
+  Native review ended on `TBF-009` after eight requests, 168,996 input, 15,872 cached input, and
+  9,476 output tokens over 207.609 seconds; the missing Python runtime remains separately covered by
+  `TBF-016`. This is another final-candidate target for the same root-mapping correction.
 - Verification: product-runner regressions require listing output to carry the exact root and path
   kind, require the tool catalog to define one-prefix removal, and require the writer prompt to
   prohibit nested-root repetition. The unchanged final-candidate task must write the literal target
@@ -2946,6 +3028,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   different Torch build, or infer a reward from the unexecuted tests. A later unchanged rerun may
   classify a candidate only if the official verifier itself completes under its published
   resources.
+- Later trial `torch-pipeline-parallelism__TkjoAR9` sharpened rather than erased this boundary. The
+  unchanged verifier completed its large dependency installation and began four tests, logging two
+  passes and one failure before the same 900-second overall deadline expired without a fourth result
+  or CTRF report. The null reward remains authoritative; the incomplete stream cannot prove whether
+  the final delay belonged to setup or candidate behavior. Native Peritus had already ended on
+  `TBF-009` after eight requests, 168,499 input, 31,744 cached input, and 8,480 output tokens, and its
+  inability to run the candidate because Python was absent remains covered by `TBF-016`.
 
 ## TBF-018: a scientific fit was returned in the raw coordinate instead of the named domain
 
@@ -3050,6 +3139,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   the unchanged verifier found no `/app/polyglot` directory and retained reward 0. This second
   language-independent recurrence directly validates the current exact-output-path gate and does
   not justify a polyglot-specific relocation rule.
+- Frozen attempt `polyglot-c-py__SzVEbgj` independently repeated its task's original relocation.
+  It built and exercised a genuine Python/C Fibonacci polyglot but wrote `main.py.c` at the managed
+  root while its completion instructions claimed `/app/polyglot/main.py.c`. The unchanged verifier
+  found no `/app/polyglot` directory and retained reward 0. Native review ended on `TBF-009` after
+  twelve requests, 255,582 input, 63,488 cached input, and 9,222 output tokens over 226.360 seconds.
+  This directly exercises deterministic request-to-artifact reconciliation across another attempt.
 - Verification: focused product-runner tests reproduce the misplaced same-basename candidate,
   prove exact placement passes, and keep input, negated, and compiler-output paths out of the
   required-output set. The gate aggregation regression proves the constraint makes overall
@@ -3113,6 +3208,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   `0ef90109155c26d518e800a9e21464f8ee8671c95cbd12d1dccf667552e3c73c`, verifier SHA-256 is
   `908c4b6aa44e12b6c429c221b92eaa6b150880b9b3d74d9d5ef6869a570f4fd4`, and reference SHA-256 is
   `62bdd93b58b6490534f019e2a05b3e05499e9efb4b6ecf6894fee2355d5fe32e`.
+- Frozen attempt `sam-cell-seg__cfbZLR2` independently followed the same published folder contract.
+  It passed script existence, execution, and output existence, then the unchanged verifier tried to
+  read the output directory `/app/test_output.csv` as a CSV file and failed the remaining six checks
+  with `IsADirectoryError`; reward 0 is retained. Native review ended on `TBF-009` after eight
+  requests, 232,700 input, 62,080 cached input, and 18,194 output tokens over 370.047 seconds. This
+  recurrence strengthens the contract contradiction and does not justify suffix-based guessing.
 
 ## TBF-021: an authenticated image-capable route was absent from role fallback
 
@@ -3317,6 +3418,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Evidence: job `peritus-terminalbench-2-k5-high`; trial
   `configure-git-webserver__ufYRVNA`; reward 0; native failure after seven requests, 136,048 input,
   39,680 cached input, and 6,297 output tokens. The verifier's live curl returned HTTP 000.
+- Frozen trial `pypi-server__hKmV7vd` repeated the same source-versus-live-effect substitution. It
+  built the requested wheel and PEP 503 index and proved them through a temporary server, but its
+  final state left only instructions to start the server. The unchanged verifier's installation
+  from `localhost:8080` therefore exhausted connection retries and failed its only check for reward
+  0. Native review ended on `TBF-009` after twelve requests, 232,518 input, 47,616 cached input, and
+  5,642 output tokens over 156.572 seconds. Another frozen attempt kept the service live and passed,
+  so the general durable-effect acceptance boundary—not package-specific behavior—is the correction.
 - Verification: a product composition regression first writes a useful setup helper, proves that
   it cannot complete the operational request alone, then succeeds only after a separate effect and
   later end-to-end verification. Focused product-runner tests pass; strict repository gates and an
@@ -3348,6 +3456,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   provider requests; 506,870 input, 111,104 cached input, and 15,200 output tokens over 435.115
   seconds. The development case produced ordered frames 54 and 62; the unchanged held-out execution
   returned status 1 before writing an answer.
+- Frozen trial `train-fasttext__gzBdSni` adds a non-visual recurrence. After extensive exploration it
+  built and trained a real 57,075,923-byte fastText model and measured 0.630 accuracy on the supplied
+  10,000-row development split, but the unchanged held-out verifier measured 0.608875 against the
+  published greater-than-0.62 threshold. File and size checks passed and the accuracy check failed,
+  so reward 0 is retained. Native review ended on `TBF-009` after twenty-four requests, 1,872,112
+  input, 142,848 cached input, and 24,710 output tokens over 2,239.687 seconds. This supports the
+  task-neutral independent-validation rule; it does not justify fitting to the hidden test set.
 - Verification: embedded-workflow regressions require the calibration/generalization,
   independent-case, perturbation, and tuned-constant rules in architect, developer, and reviewer
   prompts. The deterministic artifact-design regression requires the same rule. All 95
