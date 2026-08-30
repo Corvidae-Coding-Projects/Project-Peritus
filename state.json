@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 923,
+  "next_comment_id": 924,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T17:23:46.956654452Z",
+      "updated_at": "2026-08-30T17:23:51.935673137Z",
       "labels": [
         "qualification",
         "release"
@@ -2359,6 +2359,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAxbGTq+d5e3Q0HzXxomOxCW2oGFehbN9qiGA+hcV1qUbxdER7RzHOmvADDUnORtYj0e6RreYRg95M1+S2c3QkDg=="
+        },
+        "5d4d2039-d64c-4c5e-bbc4-500421c755ce": {
+          "display_id": 923,
+          "author": "6ME5",
+          "content": "[action] Retained exact-head H2 Linux Ready artifact 9735978630: 18/18 scenarios passed, all cleanup clean; macOS/Windows H2 and Gate A/Foundation remain active.",
+          "created_at": "2026-08-30T17:23:51.933117645Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAk/t61d16ftsV6hp+jIZ3R6CXE20mfAo1psceWSTIP21UygXwm2fOCCyPDQTU3mjFfG2haSJap/RJ27KYvqcnDw=="
         },
         "5d7d6dfb-5448-47dd-ad06-867c5ef1e833": {
           "display_id": 690,
@@ -9059,8 +9068,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T17:23:46.956654452Z",
+    "timestamp": "2026-08-30T17:23:51.935673137Z",
     "agent_id": "6ME5",
-    "agent_seq": 1118
+    "agent_seq": 1119
   }
 }
