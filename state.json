@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1014,
+  "next_comment_id": 1015,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T22:12:02.146425154Z",
+      "updated_at": "2026-08-30T22:12:37.559284223Z",
       "labels": [
         "qualification",
         "release"
@@ -4181,6 +4181,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAtUDMt4pOi5wbpBubPGnl4oK8L8WnIH3BjC4WSU12e7ceaA/5SFNBu3Zf8asCxAMs8fQpGCxf7xY21fHZTkeLAA=="
+        },
+        "c64ef351-a4b4-40e2-a6c2-b438782f8c8c": {
+          "display_id": 1014,
+          "author": "6ME5",
+          "content": "98cf7171 docs(benchmarks): retain CompCert recovery recurrence (#31). Recorded the reward-1/frozen-native-provider-failure recurrence under general TBF-009. Verified: cargo xtask docs-check passed 137 files; git diff --check and cached diff check passed. Bootstrap paths remain excluded.",
+          "created_at": "2026-08-30T22:12:37.556658390Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAk7cc5SH1FFHEAeD7YVBgtYGvzocY6hNVt+J1N2VrHkdS0CitURE/yI5Q5yDXRo7E12e2rLX2neyln6xYh8htDw=="
         },
         "c6832fa1-48f7-4d6c-9b4e-3d6ba18de7ad": {
           "display_id": 706,
@@ -9882,8 +9891,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T22:12:02.146425154Z",
+    "timestamp": "2026-08-30T22:12:37.559284223Z",
     "agent_id": "6ME5",
-    "agent_seq": 1208
+    "agent_seq": 1209
   }
 }
