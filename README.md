@@ -63,8 +63,10 @@ operator to reinvent one. H0 runs one reviewed probe per case. H1 keeps one revi
 alive across prepare, fault injection, recovery, and cleanup. H2 stages a fresh exact package copy
 for each of its 18 scenarios and publishes a complete no-overwrite report through `peritus-h2`.
 All three bind responses to the exact candidate or package, verify retained raw artifacts, and own
-the complete process tree. Their remaining work is the independently reviewed platform executables
-and real-host evidence, not an in-memory fixture substitute.
+the complete process tree. H2 now includes the Rust native controller that drives the packaged
+installers, daemon, CLI, TUI, process, sandbox, upgrade, rollback, and uninstall checks. Its first
+Linux development run passed all 18 scenarios with complete cleanup. Final candidate-bound Linux,
+macOS, and Windows reports are still required; a development report is not release evidence.
 
 The tagged release workflow now stages each native archive, generates a candidate-bound inventory,
 SPDX SBOM, and SLSA provenance document in Rust, and retains GitHub keyless Sigstore attestations.

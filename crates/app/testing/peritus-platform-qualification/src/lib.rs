@@ -12,6 +12,7 @@ mod layout;
 mod lifecycle;
 mod manifest;
 mod native;
+mod native_controller;
 mod observation;
 mod package_builder;
 mod platform;
@@ -44,6 +45,7 @@ pub use manifest::{
     ArtifactRole, ManifestArtifact, PackageManifest, PackageVersion, RelativePackagePath,
 };
 pub use native::{NativeControllerLimits, NativePlatformFactory};
+pub use native_controller::run_from_env as run_h2_native_controller;
 pub use observation::{
     CleanupObservation, ObservationOutcome, QualificationRun, ScenarioObservation,
 };

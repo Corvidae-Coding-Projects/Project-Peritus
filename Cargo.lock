@@ -2437,6 +2437,9 @@ name = "peritus-platform-qualification"
 version = "0.0.0"
 dependencies = [
  "nix 0.31.3",
+ "peritus-approval",
+ "peritus-sandbox-linux",
+ "peritus-types",
  "serde",
  "serde_json",
  "sha2 0.11.0",

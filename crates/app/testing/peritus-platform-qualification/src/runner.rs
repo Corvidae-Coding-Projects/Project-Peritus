@@ -109,7 +109,23 @@ impl FreshSubjectRunner {
             let request = ScenarioRequest { target, manifest, scenario: *scenario };
             let result = subject.execute(request);
             let cleanup = subject.close();
-            let cleanup = cleanup?;
+            let cleanup = match (result.as_ref(), cleanup) {
+                (Err(execution), Err(cleanup)) => {
+                    return Err(QualificationError::new(
+                        cleanup.code(),
+                        cleanup.recovery(),
+                        cleanup.operation(),
+                        format!(
+                            "{}; prior scenario execution failed during {}: {}",
+                            cleanup.detail(),
+                            execution.operation(),
+                            execution.detail()
+                        ),
+                    ));
+                }
+                (_, Err(cleanup)) => return Err(cleanup),
+                (_, Ok(cleanup)) => cleanup,
+            };
             let mut observation = result?;
             if observation.scenario() != scenario.id()
                 || observation.subject_id() != expected_subject_id

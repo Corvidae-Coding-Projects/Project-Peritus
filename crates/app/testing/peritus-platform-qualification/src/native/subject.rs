@@ -207,6 +207,15 @@ impl QualificationSubject for NativePlatformSubject {
             },
             self.limits,
         )?;
+        if !process.status.success() && !response_path.exists() {
+            return Err(native_error(
+                "execute native H2 controller",
+                format!(
+                    "controller exited before response: {}",
+                    String::from_utf8_lossy(&process.stderr)
+                ),
+            ));
+        }
         let response_bytes =
             read_document(&response_path, self.limits.response_bytes(), "scenario response")?;
         let elapsed_millis = u64::try_from(process.elapsed.as_millis()).unwrap_or(u64::MAX);

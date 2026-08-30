@@ -9,7 +9,8 @@ ready only after every required scenario has passed on its own fresh subject wit
 The implementation lives in `peritus-platform-qualification`. The crate contains deterministic
 contracts, manifest/checksum generation, evidence bounds, fresh-subject orchestration, the shared
 native controller adapter, a retained-report operator, and verdict reduction. Platform-owned
-controller executables perform the real effects through `NativePlatformFactory`; native package
+controller executables perform the real effects through `NativePlatformFactory`. The checked-in
+`peritus-h2-controller` is the standard Rust controller for supported native hosts; native package
 scripts remain mechanical reviewed assets in `packaging/`.
 
 ## Shipped processes and invocation
@@ -261,9 +262,16 @@ report. The report contains target and manifest identity, every fresh subject, t
 evidence set, cleanup facts, and the final ready/not-ready reduction. Its request, response,
 cleanup, and report documents have versioned schemas under `packaging/schemas/`.
 
-The checked-in controller fixture proves all 18 protocol translations, exact report publication,
+The checked-in fixture still proves all 18 protocol translations, exact report publication,
 false-digest rejection, stale-response rejection, and descendant termination at the deadline. It
-does not install a release or prove native platform facilities. Release integration still must
-provide independently reviewed Linux, macOS, and Windows controller executables, authenticate the
-manifest digest, run on fresh supported native hosts, and retain their reports and raw evidence.
-A cross-compile or platform-neutral fixture cannot substitute for those three runs.
+is separate from `peritus-h2-controller`, which validates the bound request and then performs the
+real package, process, daemon, transport, sandbox, terminal, upgrade, rollback, and uninstall
+effects on its current host. The controller reports unsupported native facilities honestly; it
+does not replace them with a fixture result.
+
+A Linux development qualification using the native controller has completed all 18 scenarios as
+`Ready`, with complete cleanup and zero remaining resources for every fresh subject. Release
+integration must still authenticate the final manifest, run this controller against the exact
+candidate on fresh supported Linux, macOS, and Windows hosts, and retain those reports and raw
+artifacts. A development run, cross-compile, or platform-neutral fixture cannot substitute for the
+three final candidate-bound runs.

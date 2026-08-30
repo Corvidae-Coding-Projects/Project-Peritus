@@ -50,5 +50,11 @@ pub(super) fn stage(
             ));
         }
     }
+    fs::write(destination_root.join("manifest.toml"), manifest.canonical_bytes()).map_err(
+        |error| native_error("stage native H2 package", format!("write exact manifest: {error}")),
+    )?;
+    fs::write(destination_root.join("SHA256SUMS"), manifest.checksums()).map_err(|error| {
+        native_error("stage native H2 package", format!("write exact checksums: {error}"))
+    })?;
     Ok(())
 }

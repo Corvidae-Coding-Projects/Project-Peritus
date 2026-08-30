@@ -5,7 +5,7 @@ use std::io::{self, Read};
 use std::path::Path;
 use std::process::{Child, Command, ExitStatus, Stdio};
 use std::sync::{
-    Arc,
+    Arc, Mutex,
     atomic::{AtomicU64, Ordering},
 };
 use std::thread::{self, JoinHandle};
@@ -18,11 +18,13 @@ use super::native_error;
 use super::process_tree::ProcessTree;
 
 const POLL_INTERVAL: Duration = Duration::from_millis(20);
+const MAX_DIAGNOSTIC_BYTES: usize = 16 * 1024;
 
 pub(super) struct ProcessOutcome {
     pub(super) status: ExitStatus,
     pub(super) elapsed: Duration,
     pub(super) output_bytes: u64,
+    pub(super) stderr: Vec<u8>,
 }
 
 #[derive(Clone, Copy)]
@@ -70,8 +72,9 @@ pub(super) fn execute(
     let started = Instant::now();
     let mut child = OwnedChild::spawn(&mut command, limits.processes())?;
     let output = Arc::new(AtomicU64::new(0));
-    let stdout = drain(child.take_stdout()?, Arc::clone(&output));
-    let stderr = drain(child.take_stderr()?, Arc::clone(&output));
+    let diagnostics = Arc::new(Mutex::new(Vec::new()));
+    let stdout = drain(child.take_stdout()?, Arc::clone(&output), None);
+    let stderr = drain(child.take_stderr()?, Arc::clone(&output), Some(Arc::clone(&diagnostics)));
     let status = loop {
         if output.load(Ordering::Acquire) > limits.output_bytes() {
             child.terminate()?;
@@ -99,10 +102,15 @@ pub(super) fn execute(
     child.finish_tree()?;
     join(stdout)?;
     join(stderr)?;
+    let stderr = diagnostics
+        .lock()
+        .map_err(|_| native_error("capture native H2 output", "diagnostic lock was poisoned"))?
+        .clone();
     Ok(ProcessOutcome {
         status,
         elapsed: started.elapsed(),
         output_bytes: output.load(Ordering::Acquire),
+        stderr,
     })
 }
 
@@ -191,7 +199,11 @@ impl Drop for OwnedChild {
     }
 }
 
-fn drain(reader: impl Read + Send + 'static, count: Arc<AtomicU64>) -> JoinHandle<io::Result<()>> {
+fn drain(
+    reader: impl Read + Send + 'static,
+    count: Arc<AtomicU64>,
+    capture: Option<Arc<Mutex<Vec<u8>>>>,
+) -> JoinHandle<io::Result<()>> {
     thread::spawn(move || {
         let mut reader = reader;
         let mut buffer = [0_u8; 16 * 1024];
@@ -201,6 +213,11 @@ fn drain(reader: impl Read + Send + 'static, count: Arc<AtomicU64>) -> JoinHandl
                 return Ok(());
             }
             count.fetch_add(u64::try_from(bytes).unwrap_or(u64::MAX), Ordering::AcqRel);
+            if let Some(capture) = &capture {
+                let mut captured = capture.lock().map_err(|_| io::Error::other("capture lock"))?;
+                let remaining = MAX_DIAGNOSTIC_BYTES.saturating_sub(captured.len());
+                captured.extend_from_slice(&buffer[..bytes.min(remaining)]);
+            }
         }
     })
 }

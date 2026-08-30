@@ -12,6 +12,8 @@ keywords = ["packaging", "qualification", "cross-platform", "release"]
 categories = ["development-tools::testing"]
 
 [dependencies]
+peritus-approval = { version = "=0.0.0", path = "../../../state/peritus-approval" }
+peritus-types = { version = "=0.0.0", path = "../../../foundation/peritus-types" }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
@@ -21,6 +23,9 @@ toml.workspace = true
 
 [target.'cfg(unix)'.dependencies]
 nix.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+peritus-sandbox-linux = { version = "=0.0.0", path = "../../../runtime/peritus-sandbox-linux" }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-sys = { workspace = true, features = [
@@ -48,3 +53,7 @@ path = "src/bin/peritus-package.rs"
 [[bin]]
 name = "peritus-h2"
 path = "src/bin/peritus-h2.rs"
+
+[[bin]]
+name = "peritus-h2-controller"
+path = "src/bin/peritus-h2-controller.rs"

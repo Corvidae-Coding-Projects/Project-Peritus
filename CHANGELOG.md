@@ -13,6 +13,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Add the checked-in Rust H2 native controller that validates its exact bound request, installs the
+  staged package on the current host, exercises service configuration, daemon crash recovery,
+  local transport, same-user authentication, CLI/TUI and terminal paths, executable equivalence,
+  process cancellation, the admitted sandbox, upgrades, injected checksum rollback, uninstall,
+  protected-state preservation, and zero-resource cleanup; the first real Linux development run
+  completed all 18 scenarios as `Ready` (#31)
 - Add run-level workspace-growth and observed-memory accounting to the production coding loop,
   persist both across daemon progress snapshots, show them in live status, and fail with the typed
   budget category before generous 50 GiB growth or 12 GiB resident-memory ceilings are exceeded
