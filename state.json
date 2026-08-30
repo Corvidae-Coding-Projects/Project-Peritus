@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 823,
+  "next_comment_id": 824,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T05:33:46.683839561Z",
+      "updated_at": "2026-08-30T05:47:32.539736269Z",
       "labels": [
         "qualification",
         "release"
@@ -1418,6 +1418,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABACg9hzux/FVgV2yxz8js48vnFfHA4d3STdwroxZVOX9S7PPgMDwb/nYvV1MXhM5NA7aAj6srsU5lCiS3AojeSBA=="
+        },
+        "0e96bdc8-01e2-422c-9ccb-3d3091a83ed1": {
+          "display_id": 823,
+          "author": "6ME5",
+          "content": "Failure journal now records TBI-010 for the unpublished mteb SciFact prompt convention and adds three rewarded but natively false-terminal cases to TBF-009: million-row Vim macros, multimodal code-from-image, and 8,000-asset C-extension performance. Docs validation and diff checks pass; no task-specific production behavior was added.",
+          "created_at": "2026-08-30T05:47:32.536959162Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA2+BRJdl1uv2m5z6cFMxt8pDjuQz8d8FF50z9RLeXY5FYA4NRFrrPePSXvmcXLOL2nDKNjy0/CLhwxz91xO8eCQ=="
         },
         "10caba3c-26d9-4af3-963f-1efcdf17b620": {
           "display_id": 657,
@@ -8163,8 +8172,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T05:33:46.683839561Z",
+    "timestamp": "2026-08-30T05:47:32.539736269Z",
     "agent_id": "6ME5",
-    "agent_seq": 1013
+    "agent_seq": 1014
   }
 }
