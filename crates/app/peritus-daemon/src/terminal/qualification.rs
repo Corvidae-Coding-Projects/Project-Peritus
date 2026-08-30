@@ -100,6 +100,7 @@ enum PtyQualificationErrorKind {
     PtyAllocation,
     ReaderCreation,
     WriterCreation,
+    WriterInitialization,
     ReaderThread,
     Spawn,
     Read,
@@ -114,9 +115,9 @@ enum PtyQualificationErrorKind {
 /// The child writes a fixed payload to both standard output and standard error. A bounded reader
 /// drains that combined stream concurrently so neither a platform buffer nor child reaping can
 /// wait on the other. The qualifier explicitly takes and closes the master writer so the child
-/// receives terminal EOF, then reaps the child, closes the master owner so Windows `ConPTY`
-/// publishes reader EOF, and joins the reader before accepting any observation. Reads use a fixed
-/// positive byte buffer.
+/// can complete its startup protocol, then reaps the child, closes the input writer and master
+/// owner so Windows `ConPTY` publishes reader EOF, and joins the reader before accepting any
+/// observation. Reads use a fixed positive byte buffer.
 ///
 /// # Errors
 ///
@@ -170,7 +171,7 @@ pub fn qualify_pty_ordering() -> Result<PtyQualificationObservation, PtyQualific
     })?;
     let mut child = PtyChildOwner::new(child);
     drop(pair.slave);
-    let writer = pair.master.take_writer().map_err(|source| {
+    let mut writer = pair.master.take_writer().map_err(|source| {
         PtyQualificationError::with_source(
             PtyQualificationErrorKind::WriterCreation,
             "open terminal input writer",
@@ -189,9 +190,10 @@ pub fn qualify_pty_ordering() -> Result<PtyQualificationObservation, PtyQualific
                 Box::new(source),
             )
         })?;
-    close_child_input(writer);
+    initialize_child_input(&mut writer)?;
     let status = child.wait();
     drop(child);
+    drop(writer);
     drop(pair.master);
     let read_result = reader_thread.join();
     let status = status?;
@@ -219,10 +221,30 @@ pub fn qualify_pty_ordering() -> Result<PtyQualificationObservation, PtyQualific
     Ok(summarize(&events, peak_buffered_bytes))
 }
 
-fn close_child_input(writer: Box<dyn std::io::Write + Send>) {
-    #[cfg(target_os = "macos")]
-    std::thread::sleep(std::time::Duration::from_millis(20));
-    drop(writer);
+#[cfg(windows)]
+fn initialize_child_input(
+    writer: &mut Box<dyn std::io::Write + Send>,
+) -> Result<(), PtyQualificationError> {
+    // portable-pty 0.9 creates ConPTY with PSEUDOCONSOLE_INHERIT_CURSOR. ConPTY asks the terminal
+    // for its initial cursor position before the child can finish starting. Closing input at this
+    // point terminates the child with STATUS_CONTROL_C_EXIT; leaving it unanswered deadlocks a
+    // short command. Reply as a real terminal, keep the writer alive through child exit, and then
+    // close it to publish reader EOF.
+    writer.write_all(b"\x1b[1;1R").map_err(|source| {
+        PtyQualificationError::with_source(
+            PtyQualificationErrorKind::WriterInitialization,
+            "initialize Windows pseudo-terminal input",
+            "the ConPTY cursor-position query could not be answered",
+            Box::new(source),
+        )
+    })
+}
+
+#[cfg(not(windows))]
+fn initialize_child_input(
+    _writer: &mut Box<dyn std::io::Write + Send>,
+) -> Result<(), PtyQualificationError> {
+    Ok(())
 }
 
 impl PtyQualificationError {

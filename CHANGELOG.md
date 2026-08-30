@@ -152,10 +152,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Resolve the nested Windows H0 Cargo linker to an absolute Visual Studio MSVC tool and propagate
   its discovered SDK environment, preventing Git's unrelated GNU `link.exe` from being selected
   after the native qualification boundary clears ambient process state (#32)
-- Drain the native terminal's bounded combined stream concurrently with child execution, explicitly
-  take and close its input writer to deliver terminal EOF, then reap the child, close the master to
-  publish Windows ConPTY reader EOF, and join the reader before accepting evidence; this avoids
-  Unix wait-before-read, missing-input-EOF, and Windows read-before-close deadlocks.
+- Drain the native terminal's bounded combined stream concurrently with child execution, answer
+  Windows ConPTY's cursor-position startup query, keep the input writer alive until the child exits,
+  and then close the writer and master to publish reader EOF before accepting evidence; this avoids
+  Unix wait-before-read deadlocks, unanswered ConPTY startup, and premature Windows Ctrl-C exits.
   Validate the packaged Task Scheduler template against its exact direct-command placeholders
   rather than a rendered path that the packaged template intentionally does not contain (#31)
 - Drain and join the persistent H1 controller's response reader after a successful cleanup exit
