@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 869,
+  "next_comment_id": 870,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T11:57:55.502150540Z",
+      "updated_at": "2026-08-30T12:14:17.051702920Z",
       "labels": [
         "qualification",
         "release"
@@ -1391,6 +1391,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA5QNjvdT2DVruQhlZ7epjcjUlekpTslZgKJ0FSdn+FDf47SpCtQrbH5sl3mILFKiWdmL1IbxXjYl8WLEc5swFBw=="
+        },
+        "08bd68bd-f59a-42be-b083-7566f7dca05e": {
+          "display_id": 869,
+          "author": "6ME5",
+          "content": "[action] Diagnosed hosted macOS H2 failure as the /tmp to /private/tmp OS alias; canonicalized the controller-owned runtime root without weakening daemon validation; local 18/18 Ready and full xtask gate green.",
+          "created_at": "2026-08-30T12:14:17.047622797Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAxmQiyaNcl2JlAIaVY7lUbXM46DCjK2hL6OQJwW1qDMTMUnwDZ16aRkQb9WPsiyc+2CHjEwoHJHSCvwLLiFbJDA=="
         },
         "08c6c059-9146-4760-9edf-868de3033afc": {
           "display_id": 606,
@@ -8577,8 +8586,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T11:57:55.502150540Z",
+    "timestamp": "2026-08-30T12:14:17.051702920Z",
     "agent_id": "6ME5",
-    "agent_seq": 1061
+    "agent_seq": 1062
   }
 }
