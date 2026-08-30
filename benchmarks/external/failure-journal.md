@@ -2534,6 +2534,14 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   timing and usage. This audit changes no task classification: valid artifacts survived, the
   unchanged verifiers accepted them, and only the false native terminal is assigned to the general
   role-recovery correction.
+- Frozen recurrence `compile-compcert__7yzxgWZ` recovered from an initial memory-exhausted parallel
+  Coq build, rebuilt with two jobs, compiled the pinned CompCert 3.13.1 revision, and exercised the
+  resulting `/tmp/CompCert/ccomp` binary. All three unchanged existence, functional, and
+  unsupported-feature checks passed for reward 1.0. Native Peritus still reported a provider
+  failure when the reviewer process was interrupted after the complete candidate: twenty-three
+  requests, 1,040,777 input, 126,976 cached input, and 8,751 output tokens over about 19 minutes.
+  The successful resource-aware recovery and verified compiler are retained; only the false
+  terminal belongs to provider-neutral role recovery.
 
 ## TBM-001: a writer mirrored the response field into the request schema
 
