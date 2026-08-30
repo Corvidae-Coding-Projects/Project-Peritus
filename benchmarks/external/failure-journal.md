@@ -2276,6 +2276,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   was in progress after eight requests, 247,151 input, 39,680 cached input, and 9,342 output tokens
   over 259.2 seconds. This is further role-recovery evidence, not a Scheme-specific defect or
   permission to infer native acceptance from the later external reward.
+- Trial `count-dataset-tokens__HcDa4N9` installed ordinary Python dependencies in the disposable
+  subject, downloaded the public dataset and tokenizer, computed and independently rechecked the
+  science-domain total, and wrote the correct `answer.txt`; the unchanged verifier awarded reward
+  1.0. Native Peritus nevertheless ended during review on the same empty-provider terminal after
+  ten requests, 358,239 input, 39,680 cached input, and 3,815 output tokens over 234.720 seconds.
+  The successful artifact demonstrates legitimate prerequisite autonomy while the false native
+  terminal remains general role-recovery evidence.
 
 ## TBM-001: a writer mirrored the response field into the request schema
 
