@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 921,
+  "next_comment_id": 922,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T17:06:12.740677752Z",
+      "updated_at": "2026-08-30T17:06:17.526625670Z",
       "labels": [
         "qualification",
         "release"
@@ -4082,6 +4082,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAx82RWfMUUPe5zMGla8Q4LE4S0Sh7dsY1U9177HvFi5bjnYmitUgIlT9NBdz05i/+m+UPFgwoJzOf5KpgyA0ICQ=="
+        },
+        "ee6ae253-ffa2-480f-ac4c-33011e462b90": {
+          "display_id": 921,
+          "author": "6ME5",
+          "content": "[action] H0 fully green on exact head 09d6b221 across all three hosted platforms; retained artifact IDs and report digests; continuing H2/Gate A/Foundation.",
+          "created_at": "2026-08-30T17:06:17.523616962Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIm0fGXZFegNkNqlEmZOJjZOZnW3/qum9D/q5ub/UmJuxJhAnJc1kbiObjgI6vhXQYsOZO1hUsjQU0ZeUsoQMCQ=="
         },
         "ef9a6d25-4601-4c98-b0ef-15da887f4477": {
           "display_id": 627,
@@ -9045,8 +9054,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T17:06:12.740677752Z",
+    "timestamp": "2026-08-30T17:06:17.526625670Z",
     "agent_id": "6ME5",
-    "agent_seq": 1115
+    "agent_seq": 1116
   }
 }
