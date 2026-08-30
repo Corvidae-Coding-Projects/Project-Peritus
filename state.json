@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 857,
+  "next_comment_id": 858,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T09:59:43.406684423Z",
+      "updated_at": "2026-08-30T10:16:37.278463285Z",
       "labels": [
         "qualification",
         "release"
@@ -2957,6 +2957,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA3M9AJ6SLhjBu/fHfle85t+leCkD2u03Cc7CPPndzapE8c5RuZE2TwD6djmSZthJmqZEYlxqvUngT3huqFwJwDA=="
+        },
+        "a24c0560-46c2-41ab-b8cc-51bf311c0699": {
+          "display_id": 857,
+          "author": "6ME5",
+          "content": "Checkpoint 3220f1ef adds restart-safe run-level resource budgets: workspace bytes/growth and observed harness RSS are sampled at completed effect boundaries, persisted by the daemon, displayed in live status, and fail through the typed budget category above 50 GiB growth or 12 GiB RSS. Linux uses /proc/self/status; other supported hosts use their standard process interface. This is deliberately not claimed as a kernel per-child hard limit. Verification: cargo +1.97.1 fmt --all -- --check; CARGO_BUILD_JOBS=2 cargo +1.97.1 run --locked --package xtask -- all (78 packages, 3164 sources, 2621 formal-boundary files, 12254 ordinary-safe entrypoints, 136 docs, 27 actions).",
+          "created_at": "2026-08-30T10:16:37.275367950Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPpHHLXW7yI11y9SrQORLZOATTwZ2AVNeBZf1Zi/AtmGO+l/aeCjcABi7Dha7N/8fmyn58YudDdnacPvbwqtiAQ=="
         },
         "a2fa8cfa-107b-40e0-87eb-507b8e167357": {
           "display_id": 764,
@@ -8469,8 +8478,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T09:59:43.406684423Z",
+    "timestamp": "2026-08-30T10:16:37.278463285Z",
     "agent_id": "6ME5",
-    "agent_seq": 1049
+    "agent_seq": 1050
   }
 }
