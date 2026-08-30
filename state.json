@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 960,
+  "next_comment_id": 961,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T18:40:30.475222916Z",
+      "updated_at": "2026-08-30T18:47:21.936961498Z",
       "labels": [
         "qualification",
         "release"
@@ -3268,6 +3268,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAiUTrYTwV6cw5BVpquY7mqdbRNypSjPj66VwU/h/Ytx+IKshrMp/8B/sObEiT0RXLnsZvb4MCjpZ6HjhByf6oDg=="
+        },
+        "9d876581-8117-46cb-91e2-cd9113193eb5": {
+          "display_id": 960,
+          "author": "6ME5",
+          "content": "Commit ad5a22eaeef96f02c4df8199a67c9f386181f355: docs(benchmarks): retain frozen recurrence coverage (#31). Exact trial-ID audit now covers all 75 completed Terminal-Bench zero/null outcomes at the 167-trial snapshot, mapping recurrences to general harness fixes, honest model misses, or benchmark limitations without task-specific behavior. Verification: cargo xtask docs-check 136/136; git diff --check; selected diff and credential/placeholder hygiene review pass.",
+          "created_at": "2026-08-30T18:47:21.934369882Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAXhA6eB7/KRc2+2Lw5YZeesw1k4G4XvLm1W8PS7pfFH1ug9KZR7cfuq+DmFMONv0ZQWhX2FMQH/kSl0fwliZ3AA=="
         },
         "9db7c7e4-45ba-435e-ac40-865ab2520945": {
           "display_id": 898,
@@ -9392,8 +9401,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T18:40:30.475222916Z",
+    "timestamp": "2026-08-30T18:47:21.936961498Z",
     "agent_id": "6ME5",
-    "agent_seq": 1155
+    "agent_seq": 1156
   }
 }
