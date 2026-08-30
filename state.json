@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 972,
+  "next_comment_id": 973,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T19:29:55.332502109Z",
+      "updated_at": "2026-08-30T19:30:00.164477786Z",
       "labels": [
         "qualification",
         "release"
@@ -2435,6 +2435,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAR8aZdGIStY4TEP40akHzd5OWIlwBUM2e7KdVSh5PZ9563hhw26Nvb9ORWRKNemofv9AGhpvSAL8pPxL56bEdBg=="
+        },
+        "5aa0918b-0f53-4ec5-8dbf-105fda2ff3e6": {
+          "display_id": 972,
+          "author": "6ME5",
+          "content": "[action] Finished and staged H1 exact-candidate operator/report checkpoint after verification; external production fault and VM controller remains the next honest H1 boundary. New exact-head hosted runners are being monitored.",
+          "created_at": "2026-08-30T19:30:00.162089976Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAR4J5rlPGFXN4T2YbwQFHMagxu29tN+D0orT7fH8xItVxMHcn5vKwujqAVupb4e/SgrjGxhqXquLFi+3zUfZCDw=="
         },
         "5ae79f9b-3c5a-4a0a-a7a6-25e9cc8da524": {
           "display_id": 659,
@@ -9504,8 +9513,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T19:29:55.332502109Z",
+    "timestamp": "2026-08-30T19:30:00.164477786Z",
     "agent_id": "6ME5",
-    "agent_seq": 1168
+    "agent_seq": 1169
   }
 }
