@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 838,
+  "next_comment_id": 839,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T07:35:46.643976067Z",
+      "updated_at": "2026-08-30T07:39:58.831736090Z",
       "labels": [
         "qualification",
         "release"
@@ -2624,6 +2624,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAycRR1h5h3pMdgU0allQHAXtIKCsQ7kc8l15hZi28/FmfWUuljCLsnoY+CquUG133e3kYTd4AYGmQMcoP2J+MCg=="
+        },
+        "85abd47d-426b-4cf1-98a9-d0d3abc8464a": {
+          "display_id": 838,
+          "author": "6ME5",
+          "content": "Signed correction ca9d5869 removes operator-declared source revision from the Terminal-Bench reporter. Source identity is now inferred only from consistent Harbor trial metadata, coverage is explicit, allow-legacy reports null instead of guessing, and require-native rejects any native invocation lacking source or binary identity. The honest 99-trial snapshot validates with source_revision null, binary digest a53ca55a..., 89 native reports, and zero legacy identity coverage; a strict live probe fails without publishing. Thirty-three focused tests, strict Clippy, schema validation, and cargo xtask all pass.",
+          "created_at": "2026-08-30T07:39:58.829292356Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA0ZTAuaqH3He3NQV0ojcfKYNrrhIBUBzeT1AjIaSbcqvDdwXTkYkfHS7FBEH99N2hE6bt4z6eqc14k5+Z5nJcCA=="
         },
         "870dc332-1850-4e7b-984c-ebdb1508cc3e": {
           "display_id": 818,
@@ -8298,8 +8307,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T07:35:46.643976067Z",
+    "timestamp": "2026-08-30T07:39:58.831736090Z",
     "agent_id": "6ME5",
-    "agent_seq": 1028
+    "agent_seq": 1029
   }
 }
