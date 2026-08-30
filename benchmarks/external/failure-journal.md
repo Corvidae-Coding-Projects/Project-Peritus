@@ -2371,6 +2371,25 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   Peritus again ended during review on the same empty-provider terminal after six requests, 123,246
   input, 39,680 cached input, and 2,395 output tokens over 108.152 seconds. The correct modernization
   is retained; only the false terminal belongs to provider-neutral role recovery.
+- Trial `large-scale-text-editing__QXadNCY` derived three Vim macros from sampled rows, repaired its
+  initial macro against a bounded fixture, transformed all one million rows, removed the temporary
+  fixture, and proved byte-for-byte equality before handoff. The unchanged verifier awarded reward
+  1.0. Native Peritus still ended during review on the same provider terminal after thirteen
+  requests, 263,048 input, 79,360 cached input, and 6,112 output tokens. The correctly verified
+  large-file transformation is retained; only the false terminal belongs to role recovery.
+- Trial `code-from-image__nPzTxpZ` attached the supplied PNG to an authenticated image-capable
+  writer, transcribed the pictured pseudocode, executed the derived hash calculation, and wrote the
+  correctly prefixed value. The unchanged verifier awarded reward 1.0. Native Peritus still ended
+  during review on the same provider terminal after six requests, 114,057 input, 31,744 cached
+  input, and 1,164 output tokens. The successful multimodal artifact is retained; only the false
+  terminal belongs to role recovery.
+- Trial `portfolio-optimization__Shmqvhc` completed and compiled the supplied NumPy C-extension
+  skeleton, matched the baseline within floating-point tolerance, and passed all six unchanged
+  correctness and performance checks through 8,000 assets for reward 1.0. Its own earlier timing
+  sample was marginal at 8,000 assets, but the authoritative repeated verifier satisfied the 1.2x
+  threshold at every required size. Native Peritus still ended during review on the same provider
+  terminal after twelve requests, 325,114 input, 55,552 cached input, and 8,118 output tokens. The
+  real performance pass is retained; only the false terminal belongs to role recovery.
 
 ## TBM-001: a writer mirrored the response field into the request schema
 
@@ -3056,3 +3075,36 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   non-delivering calls, receives the concrete package-manager correction exactly once, and confirms
   it is consumed. Focused tests pass; strict repository gates and an unchanged final-candidate
   rerun remain required.
+
+## TBI-010: the embedding rank depends on an unpublished MTEB task prompt
+
+- Suite and task: Terminal-Bench 2.0, `mteb-retrieve`, first full-suite baseline trial.
+- Published contract: compute cosine similarity for the query `terminal-bench` with
+  `BAAI/bge-small-zh-v1.5` at the exact published revision, select the fifth-ranked line, and write
+  it to `result.txt`. The instruction says MTEB 1.36.8 is installed but names no MTEB task,
+  query/passage prompt convention, or prompt text.
+- Observed result: the writer loaded the exact model revision through Sentence Transformers,
+  normalized the query and document embeddings, printed the top ten scores, and wrote the observed
+  fifth-ranked line, `HumanEval: Benchmarking Python code generation via functional examples`.
+  Under that literal calculation the verifier's expected `MTEB: Massive Text Embedding Benchmark`
+  line ranked seventh. The unchanged verifier accepted the file shape and rejected its value for
+  reward 0.
+- Hidden convention: the reference does not merely load the named model. It calls MTEB's encoder
+  with `task_name="SciFact"`, a query prompt for the query, and a passage prompt for the documents.
+  `SciFact` and those prompt roles do not appear in the instruction. They change the embeddings and
+  therefore the requested ordering.
+- Classification: underspecified benchmark convention, with a separate native reviewer provider
+  terminal already covered by `TBF-009`. The artifact existed before review and the hidden ranking
+  mismatch independently determines the zero. This was not a missing-Python or missing-package
+  failure: Peritus used the installed real model stack successfully.
+- Integrity decision: retain the zero. Do not hard-code `SciFact`, copy the hidden expected line,
+  infer a private task prompt from the benchmark task name, or add embedding-model-specific
+  behavior to Peritus. A future public task should state the prompt text or exact encoder call when
+  the rank depends on it.
+- Evidence: job `peritus-terminalbench-2-k5-high`; trial `mteb-retrieve__Z4Kmrrj`; task ref
+  `sha256:5eed6e5ab80a4e7042f77a6cec8c01dd833a2c9c03a8c7ebdbd0b70f447750a5`; reward 0; six
+  native requests; 109,532 input, 15,872 cached input, and 1,462 output tokens; 98.884 seconds of
+  native execution. Instruction SHA-256 is
+  `0f6289f5492b6d814833fba328c3aeb93a722d8aecad4bfb5e7c8c2979dc8678`, verifier SHA-256 is
+  `e4e6b21fed6662adb4a42aba23d35609450392839a2282f3ba77c70c8d907c0b`, and reference SHA-256 is
+  `97adb02c74de75d6d66829cf12d0a3d05b35b1b48b597ab67b90388517286553`.
