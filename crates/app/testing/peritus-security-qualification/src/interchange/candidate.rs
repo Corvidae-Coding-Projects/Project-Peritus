@@ -10,6 +10,16 @@ use crate::{IntegratedCandidate, QualificationError, hex_digest};
 
 use super::interchange;
 
+const SCHEMA_VERSION: u8 = 1;
+const MAX_CANDIDATE_BYTES: usize = 256 * 1024;
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CandidateEnvelope {
+    schema_version: u8,
+    candidate: CandidateDocument,
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct CandidateDocument {
@@ -66,6 +76,29 @@ impl CandidateDocument {
             Sha256Digest::new(parse_hex(&self.qualification_plan_sha256)?),
         ))
     }
+}
+
+pub(super) fn encode(candidate: IntegratedCandidate) -> Result<Vec<u8>, QualificationError> {
+    let envelope = CandidateEnvelope {
+        schema_version: SCHEMA_VERSION,
+        candidate: CandidateDocument::from_candidate(candidate),
+    };
+    let mut bytes = serde_json::to_vec_pretty(&envelope)
+        .map_err(|error| interchange(format!("encode candidate JSON: {error}")))?;
+    bytes.push(b'\n');
+    Ok(bytes)
+}
+
+pub(super) fn decode(bytes: &[u8]) -> Result<IntegratedCandidate, QualificationError> {
+    if bytes.is_empty() || bytes.len() > MAX_CANDIDATE_BYTES {
+        return Err(interchange("H0 candidate JSON is empty or exceeds its byte bound"));
+    }
+    let envelope: CandidateEnvelope = serde_json::from_slice(bytes)
+        .map_err(|error| interchange(format!("decode candidate JSON: {error}")))?;
+    if envelope.schema_version != SCHEMA_VERSION {
+        return Err(interchange("H0 candidate JSON has an unsupported schema version"));
+    }
+    envelope.candidate.into_candidate()
 }
 
 fn hex<const N: usize>(bytes: &[u8; N]) -> String {

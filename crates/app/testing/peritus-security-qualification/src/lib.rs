@@ -13,6 +13,7 @@ mod limits;
 mod manifest;
 mod native;
 mod observation;
+mod operator;
 mod policy_bridge;
 mod report;
 mod runner;
@@ -26,6 +27,9 @@ pub use evidence::{
     EvidenceEntry, EvidenceSet, EvidenceValue, MAX_CASE_EVIDENCE_BYTES, MAX_CASE_EVIDENCE_ENTRIES,
     NativeExecutionReceipt, SafeEvidenceCode,
 };
+pub use interchange::{
+    decode_candidate as parse_candidate_json, encode_candidate as candidate_json,
+};
 pub use limits::{CancellationToken, QualificationLimits, ResourceUsage};
 pub use manifest::EvidenceManifest;
 pub use native::{HostFingerprint, NativeProbeFactory};
@@ -33,6 +37,7 @@ pub use observation::{
     CaseFailure, CaseOutcome, CaseReport, CleanupObservation, ProbeObservation, ProbeOutcome,
     QualificationRun,
 };
+pub use operator::{H0OperatorStatus, run_from_env as run_h0_operator};
 pub use peritus_security_policy::{
     AcceptanceCriterion, FindingLifecycle, FindingObservation, FindingSeverity,
     IndependentSecurityReview, IntegratedCandidate, ReviewCompletion, ReviewScope,

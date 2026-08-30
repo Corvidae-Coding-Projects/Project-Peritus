@@ -17,7 +17,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   partition plus fail-closed three-host aggregation, preventing one host from manufacturing native
   security evidence for another operating system; add bounded deterministic shard JSON that
   round-trips exact candidate, receipt, evidence, limits, and cleanup values while refusing failed
-  or inconsistent documents at aggregation (#32)
+  or inconsistent documents at aggregation; add the no-overwrite `peritus-h0` native shard
+  operator and standalone candidate schema (#32)
 - Exercise the installed TUI itself in H2 through the host PTY or ConPTY: answer the bounded
   standards-defined cursor-position handshake, require a real daemon connection and rendered
   frame, send the documented Ctrl-Q action, require a successful exit, and verify alternate-screen,

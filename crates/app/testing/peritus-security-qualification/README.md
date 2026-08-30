@@ -62,6 +62,17 @@ limits, native receipts, evidence entries, and cleanup observations. It admits o
 internally consistent canonical shard; a failed report can be retained for diagnosis but cannot be
 aggregated into H0 readiness.
 
+The `peritus-h0` operator runs one shard without shell mediation:
+
+```text
+peritus-h0 --controller PATH --candidate FILE --host-facts FILE \
+  --scratch DIR --artifacts DIR --report FILE --platform linux|macos|windows
+```
+
+It reads bounded regular candidate and host-fact documents, uses the host-fact bytes as the native
+fingerprint, executes the canonical platform subset, and atomically publishes one no-overwrite
+shard report. Exit success means every assigned case passed; the report is retained either way.
+
 ## Evidence
 
 `EvidenceManifest` produces deterministic JSON in stable probe order and hashes those exact bytes

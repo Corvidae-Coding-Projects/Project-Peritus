@@ -99,6 +99,26 @@ pub fn decode_ready(bytes: &[u8]) -> Result<QualificationShard, QualificationErr
     QualificationShard::new(candidate, limits, platform, cases)
 }
 
+/// Encodes one exact integrated candidate as standalone schema-v1 JSON.
+///
+/// # Errors
+///
+/// Returns when serialization fails.
+pub fn encode_candidate(
+    candidate: crate::IntegratedCandidate,
+) -> Result<Vec<u8>, QualificationError> {
+    candidate::encode(candidate)
+}
+
+/// Parses one bounded standalone schema-v1 integrated-candidate document.
+///
+/// # Errors
+///
+/// Rejects malformed, oversized, zero-identity, zero-revision, or unknown-schema input.
+pub fn decode_candidate(bytes: &[u8]) -> Result<crate::IntegratedCandidate, QualificationError> {
+    candidate::decode(bytes)
+}
+
 fn parse_platform(value: &str) -> Result<QualificationPlatform, QualificationError> {
     match value {
         "linux" => Ok(QualificationPlatform::Linux),

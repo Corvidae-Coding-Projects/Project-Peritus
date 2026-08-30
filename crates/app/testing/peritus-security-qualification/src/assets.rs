@@ -27,7 +27,7 @@ pub const fn bundled_security_assets() -> &'static [BundledSecurityAsset] {
     &ASSETS
 }
 
-const ASSETS: [BundledSecurityAsset; 10] = [
+const ASSETS: [BundledSecurityAsset; 11] = [
     BundledSecurityAsset {
         path: "security/threat-model-v1.toml",
         contents: include_str!(concat!(
@@ -96,6 +96,13 @@ const ASSETS: [BundledSecurityAsset; 10] = [
         contents: include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../../../security/schemas/native-shard-v1.schema.json"
+        )),
+    },
+    BundledSecurityAsset {
+        path: "security/schemas/native-candidate-v1.schema.json",
+        contents: include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../../../security/schemas/native-candidate-v1.schema.json"
         )),
     },
 ];

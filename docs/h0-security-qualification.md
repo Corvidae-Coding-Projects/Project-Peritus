@@ -76,6 +76,12 @@ reconstruct the domain report exactly. Its parser admits only a passing canonica
 all resource, sandbox, evidence, and cleanup checks before aggregation. A failed shard remains a
 diagnostic artifact and cannot contribute to readiness.
 
+`peritus-h0` is the native shard operator. It accepts the reviewed controller, schema-v1 exact
+candidate, reviewed host-fact document, private scratch and retained-artifact roots, no-overwrite
+report path, and current platform. It runs only that platform's canonical subset and publishes the
+shard even when cases fail. A successful exit means the shard passed; it is not a complete H0
+verdict and does not replace cross-host aggregation or independent review.
+
 The adapter returns a `NativeExecutionReceipt` containing executor, host, and exact-command
 digests, exit status, native-sandbox observation, resource accounting, and nonempty structured
 evidence. There is no simulated or assumed-success receipt variant. Host adapters are nevertheless a

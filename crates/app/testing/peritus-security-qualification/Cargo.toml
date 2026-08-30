@@ -38,3 +38,7 @@ verification-class = "C"
 
 [lints]
 workspace = true
+
+[[bin]]
+name = "peritus-h0"
+path = "src/bin/peritus-h0.rs"

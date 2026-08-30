@@ -23,5 +23,10 @@ candidate, resource limits, receipt provenance, structured evidence, and cleanup
 canonical platform subset. Aggregation reparses those values into the domain model; failed or
 tampered shard documents remain diagnostics and cannot be admitted as ready input.
 
+`native-candidate-v1.schema.json` carries the exact revision tuple, source digest, release-manifest
+digest, and qualification-plan digest shared by every host. It is an identity input, not proof that
+the named source or artifacts are authentic; release orchestration must produce and authenticate
+those bindings separately.
+
 See the [H0 security guide](../docs/h0-security-qualification.md) for the campaign, boundaries, and
 release verdict.
