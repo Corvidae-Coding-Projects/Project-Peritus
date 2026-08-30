@@ -3263,6 +3263,14 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   `2026-08-30T04:42:22.592981Z`; verifier interval
   `2026-08-30T04:42:23.351363Z` through `2026-08-30T04:42:58.041053Z`; native trace last modified at
   `2026-08-30T04:42:47.757194888Z`, inside that verifier interval.
+- Frozen recurrence: trial `gpt2-codegolf__AG8DbWx` reached the same unchanged 900-second agent
+  deadline. Its artifact passed the verifier for reward 1, but the native trace was last modified at
+  `2026-08-30T18:46:12.842986014Z`, after the verifier had finished at
+  `2026-08-30T18:46:08.520857Z`. The long-running Harbor process imported its adapter before the
+  supervisor correction was committed, so this is expected frozen-baseline evidence for the same
+  defect, not evidence that the correction was active or a reason to discard the passing score.
+  The final-candidate campaign must exercise the corrected adapter and prove the trace stops before
+  verification begins.
 - Verification: focused adapter tests require the native wrapper to record and wait for its exact
   child, then prove cancellation completes the descendant TERM/KILL cleanup before propagating.
   The complete external-benchmark test set, strict repository gates, and an unchanged
@@ -3293,6 +3301,14 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   terminal after eleven requests, 376,110 input, 47,616 cached input, and 4,545 output tokens over
   635.086 seconds. The failed install observation retained 524,307 stderr characters and explicitly
   reported that its output was truncated.
+- Frozen recurrence: trial `mcmc-sampling-stan__JrPLENv` again attempted the real `rstan` 2.32.7
+  installation and failed while compiling its dependency graph. The pre-correction frozen binary
+  again retained the warning-heavy beginning rather than the terminal build diagnostic, then ended
+  on a provider terminal after 12 requests, 555,902 input, 95,232 cached input, and 6,524 output
+  tokens over 711.006 seconds. The unchanged verifier passed the script and both posterior-value
+  artifacts but failed the three checks requiring installed, executable RStan, so reward 0 is
+  retained. This is a second observation of the general noisy-command truncation defect; it does
+  not justify an R-specific product branch.
 - Verification: the structured-command regression emits distinct prefixes and suffixes around more
   than 600 KiB on stdout and stderr, then requires both prefixes, both terminal suffixes, and both
   truncation markers in the bounded result. Focused product-runner tests pass. Strict repository
