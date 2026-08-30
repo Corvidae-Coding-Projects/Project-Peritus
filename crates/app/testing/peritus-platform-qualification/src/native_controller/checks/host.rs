@@ -1,6 +1,6 @@
 //! Private native installation paths and bounded child commands.
 
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
@@ -106,13 +106,15 @@ pub(super) fn lifecycle(
     let mut command = if cfg!(windows) {
         let mut command = Command::new("powershell");
         command.args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File"]);
-        command.arg(package.join(format!("{stem}.ps1")));
+        command.arg(shell_path(&package.join(format!("{stem}.ps1"))));
         if !matches!(action, LifecycleAction::Uninstall) {
-            command.arg("-BundleRoot").arg(package);
+            command.arg("-BundleRoot").arg(shell_path(package));
         }
-        command.arg("-InstallRoot").arg(subject_root.join("local-app-data/Programs/Peritus"));
+        command
+            .arg("-InstallRoot")
+            .arg(shell_path(&subject_root.join("local-app-data/Programs/Peritus")));
         if matches!(action, LifecycleAction::Uninstall) {
-            command.arg("-DataRoot").arg(subject_root.join("local-app-data/Peritus"));
+            command.arg("-DataRoot").arg(shell_path(&subject_root.join("local-app-data/Peritus")));
         }
         command
     } else {
@@ -129,20 +131,43 @@ pub(super) fn lifecycle(
 
 fn configure_subject_environment(command: &mut Command, root: &Path) {
     command
-        .env("HOME", root)
-        .env("USERPROFILE", root)
-        .env("LOCALAPPDATA", root.join("local-app-data"))
-        .env("APPDATA", root.join("app-data"))
-        .env("XDG_CONFIG_HOME", root.join("config"))
-        .env("XDG_STATE_HOME", root.join("state"))
-        .env("XDG_DATA_HOME", root.join("data"))
-        .env("TMPDIR", root.join("tmp"))
-        .env("TEMP", root.join("tmp"))
-        .env("TMP", root.join("tmp"));
-    for name in ["PATH", "SYSTEMROOT", "WINDIR"] {
+        .env("HOME", shell_path(root))
+        .env("USERPROFILE", shell_path(root))
+        .env("LOCALAPPDATA", shell_path(&root.join("local-app-data")))
+        .env("APPDATA", shell_path(&root.join("app-data")))
+        .env("XDG_CONFIG_HOME", shell_path(&root.join("config")))
+        .env("XDG_STATE_HOME", shell_path(&root.join("state")))
+        .env("XDG_DATA_HOME", shell_path(&root.join("data")))
+        .env("TMPDIR", shell_path(&root.join("tmp")))
+        .env("TEMP", shell_path(&root.join("tmp")))
+        .env("TMP", shell_path(&root.join("tmp")));
+    for name in ["PATH", "SYSTEMROOT", "WINDIR", "PATHEXT", "COMSPEC"] {
         if let Some(value) = std::env::var_os(name) {
             command.env(name, value);
         }
+    }
+}
+
+#[cfg(not(windows))]
+fn shell_path(path: &Path) -> OsString {
+    path.as_os_str().to_owned()
+}
+
+#[cfg(windows)]
+fn shell_path(path: &Path) -> OsString {
+    use std::os::windows::ffi::{OsStrExt as _, OsStringExt as _};
+
+    const VERBATIM_PREFIX: &[u16] = &[92, 92, 63, 92];
+    const VERBATIM_UNC_PREFIX: &[u16] = &[92, 92, 63, 92, 85, 78, 67, 92];
+    let encoded: Vec<_> = path.as_os_str().encode_wide().collect();
+    match (encoded.strip_prefix(VERBATIM_UNC_PREFIX), encoded.strip_prefix(VERBATIM_PREFIX)) {
+        (Some(remainder), _) => {
+            let mut conventional = vec![92_u16, 92];
+            conventional.extend_from_slice(remainder);
+            OsString::from_wide(&conventional)
+        }
+        (None, Some(remainder)) => OsString::from_wide(remainder),
+        (None, None) => path.as_os_str().to_owned(),
     }
 }
 
@@ -217,5 +242,20 @@ mod tests {
 
     fn configured<'a>(command: &'a Command, name: &str) -> Option<&'a OsStr> {
         command.get_envs().find_map(|(key, value)| (key == name).then_some(value).flatten())
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn powershell_paths_remove_windows_verbatim_prefixes() {
+        use super::shell_path;
+
+        assert_eq!(
+            shell_path(Path::new(r"\\?\C:\qualification\subject")),
+            OsStr::new(r"C:\qualification\subject")
+        );
+        assert_eq!(
+            shell_path(Path::new(r"\\?\UNC\server\share\subject")),
+            OsStr::new(r"\\server\share\subject")
+        );
     }
 }

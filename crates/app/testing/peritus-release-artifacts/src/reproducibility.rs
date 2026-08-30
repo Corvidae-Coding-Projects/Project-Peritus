@@ -127,7 +127,16 @@ impl ReproducibilityComparison {
     ///
     /// Returns [`ArtifactError`] if serialization fails.
     pub fn digest(&self) -> Result<Sha256Digest, ArtifactError> {
-        serde_json::to_vec(self).map(|bytes| digest_bytes(&bytes)).map_err(|source| {
+        self.canonical_json().map(|bytes| digest_bytes(&bytes))
+    }
+
+    /// Serializes deterministic compact comparison JSON.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ArtifactError`] if serialization fails.
+    pub fn canonical_json(&self) -> Result<Vec<u8>, ArtifactError> {
+        serde_json::to_vec(self).map_err(|source| {
             ArtifactError::serialization("serialize reproducibility comparison", source)
         })
     }

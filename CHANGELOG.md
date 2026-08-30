@@ -13,6 +13,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Add the production `peritus-h4` evidence operator: generate exact candidate-bound signing
+  envelopes without handling private keys, verify detached Ed25519 evidence, admit exactly one of
+  every required signed input, replay signature-bound fresh-subject cleanup, compare independent
+  artifact builds, reconstruct all 25 acceptance mappings and the independent audit, evaluate the
+  verified release policy, and retain one deterministic no-overwrite Ready/NotReady bundle; add its
+  strict plan schema and complete-shaped non-passing operator template (#34)
 - Add `peritus-h0-prepare` and the native H0 security workflow: derive one reproducible integrated
   candidate from documented committed source subsets, bind each native Rust host and exact
   controller binary in schema-defined facts, execute the fixed Linux/macOS/Windows shard matrix,
@@ -131,6 +137,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Pass conventional Windows paths to PowerShell from canonical native H2 subjects so hosted
+  qualification can use explicit private install/data roots without `Join-Path` rejecting Rust's
+  verbatim path prefix; retain the required Windows process-launch variables across the cleared
+  controller boundary (#31)
+- Preserve the complete allowlisted MSVC build environment when H0 launches its candidate-bound
+  controller, preventing Git's unrelated `link.exe` from replacing the Visual C++ linker, and run
+  the TCB inventory against the repository's documented local trust aggregate while leaving the
+  separately authorized protected-base proof-impact review outside the native shard (#32)
 - Pass explicit private Windows install and data roots through the real package lifecycle scripts,
   retaining the ordinary `LOCALAPPDATA` default for users while making native H2 qualification
   independent of PowerShell environment propagation on hosted runners (#31)

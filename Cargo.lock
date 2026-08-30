@@ -2727,6 +2727,7 @@ dependencies = [
 name = "peritus-release-qualification"
 version = "0.0.0"
 dependencies = [
+ "ed25519-dalek",
  "peritus-model-protocol",
  "peritus-provider-anthropic",
  "peritus-provider-core",
@@ -2736,6 +2737,7 @@ dependencies = [
  "peritus-types",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror 2.0.20",
  "tokio",
 ]

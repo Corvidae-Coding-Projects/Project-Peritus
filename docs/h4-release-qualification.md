@@ -101,6 +101,55 @@ Before final policy evaluation, H4 requires exactly one detached-signature-verif
 The structured artifact inventory and reproducibility comparison are also supplied directly. H4
 recomputes their canonical digests and requires equality with the corresponding signed payload.
 
+## Running the evidence operator
+
+`peritus-h4` is the production composition root. It has three commands and never accepts private
+key material. Start from a candidate-specific evidence directory outside the source checkout and
+copy `release/templates/release-inputs.template.json` to a working plan. Replace every sentinel,
+path, subject, builder, and disposition with an observation for the same exact release binding.
+The strict plan format is defined by
+`release/schemas/h4-qualification-plan-v1.schema.json`.
+
+For each retained payload, first produce the exact bytes that its external signer must sign:
+
+```sh
+cargo run --locked --package peritus-release-qualification --bin peritus-h4 -- \
+  envelope --binding binding.json --kind h0-security-report \
+  --disposition satisfied --retained-path payloads/h0-security-report.json \
+  --payload evidence/payloads/h0-security-report.json \
+  --output evidence/envelopes/h0-security-report.json
+```
+
+After the signer returns a detached Ed25519 signature, check it against the same binding, kind,
+disposition, retained path, and payload. Public keys and signatures may be raw 32/64-byte files or
+lowercase hexadecimal text. The command writes a canonical admitted-record summary and refuses to
+overwrite an earlier result.
+
+```sh
+cargo run --locked --package peritus-release-qualification --bin peritus-h4 -- \
+  verify --binding binding.json --kind h0-security-report \
+  --disposition satisfied --retained-path payloads/h0-security-report.json \
+  --payload evidence/payloads/h0-security-report.json \
+  --key-id security-reviewer-2026 --public-key evidence/keys/h0.pub \
+  --signature evidence/signatures/h0.sig --output evidence/admitted/h0.json
+```
+
+The plan's 11 campaign objects are themselves the exact signed payloads for the corresponding
+campaign evidence. That binds each fresh subject and its zero-residual cleanup observation rather
+than trusting unsigned plan metadata. Once all inputs and the independently signed final audit are
+present, reduce them into one no-overwrite final bundle:
+
+```sh
+cargo run --locked --package peritus-release-qualification --bin peritus-h4 -- \
+  finalize --plan evidence/qualification-plan.json \
+  --evidence-root evidence --output evidence/final
+```
+
+The output contains the qualification report, final evidence manifest, primary artifact inventory,
+independent-build comparison, acceptance-criterion map, collection run, and final audit. A complete
+but rejected candidate retains that bundle and exits with `NotReady`; malformed, substituted,
+unsigned, or incomplete input is rejected before publication.
+
 ## Acceptance-criterion traceability
 
 `AcceptanceCriterion` is the exact 25-item catalog in
@@ -179,12 +228,12 @@ criterion evidence; and links H0, H1, H3, and the canonical aggregate of all thr
 reports before delegating to `evaluate_release`. Any drift returns `PolicyDecision::Unavailable`.
 The adapter neither duplicates release rules nor converts policy failure into readiness.
 
-The actual release operator must instantiate native fresh-subject adapters and retain the observed
-bytes outside the source tree under a candidate-specific evidence root. Those adapters must supply
-the cryptographically verified observations used to construct both the H4 input and the verified
-policy evidence aggregate. Test fixtures and repository templates are not execution evidence.
-Until the real candidate-bound campaigns, signatures, independent reviews, and final audit have
-been collected, the truthful final state remains not ready.
+The `peritus-h4` operator admits retained native fresh-subject observations from a candidate-specific
+evidence root outside the source tree. It reconstructs campaign cleanup, build inventories,
+criterion mappings, the manifest, and the verified-policy input from those authenticated bytes.
+Test fixtures and repository templates are not execution evidence. Until the real candidate-bound
+campaigns, signatures, independent reviews, and final audit have been collected, the truthful final
+state remains not ready.
 
 ## Public release evidence pipeline
 

@@ -82,8 +82,12 @@ mandatory; the workflow cannot manufacture either one.
 
 The tagged release workflow now stages each native archive, generates a candidate-bound inventory,
 SPDX SBOM, and SLSA provenance document in Rust, and retains GitHub keyless Sigstore attestations.
-This supplies the release mechanism; the unfinished exact-candidate campaigns and independent audit
-remain the release blockers.
+The Rust `peritus-h4` operator now prepares and verifies candidate-bound Ed25519 evidence envelopes,
+replays signed fresh-subject cleanup records, compares independent builds, assembles all 25
+acceptance criteria, reconstructs the independent final audit and manifest, and emits one
+no-overwrite Ready/NotReady bundle through verified release policy. This supplies the release
+mechanism; the unfinished exact-candidate campaigns and independent audit remain the release
+blockers.
 
 ## Benchmark qualification
 

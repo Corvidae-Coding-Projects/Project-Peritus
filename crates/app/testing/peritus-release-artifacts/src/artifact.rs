@@ -2,7 +2,7 @@
 
 use std::path::{Component, Path};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{ArtifactError, ArtifactErrorCode, ReleaseBinding, Sha256Digest, digest_bytes};
 
@@ -83,7 +83,7 @@ impl MediaType {
 }
 
 /// Closed role of an artifact in a release bundle.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ArtifactRole {
     /// Executable delivered to operators.

@@ -256,7 +256,7 @@ fn configure_environment(command: &mut Command, root: &Path) {
         .env("TMPDIR", root.join("tmp"))
         .env("TEMP", root.join("tmp"))
         .env("TMP", root.join("tmp"));
-    for name in ["PATH", "SYSTEMROOT", "WINDIR"] {
+    for name in ["PATH", "SYSTEMROOT", "WINDIR", "PATHEXT", "COMSPEC"] {
         if let Some(value) = std::env::var_os(name) {
             command.env(name, value);
         }

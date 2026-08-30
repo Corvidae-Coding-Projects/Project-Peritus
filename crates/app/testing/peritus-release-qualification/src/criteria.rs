@@ -312,7 +312,16 @@ impl CriterionEvidenceMap {
     ///
     /// Returns [`QualificationError`] if serialization fails.
     pub fn digest(&self) -> Result<Sha256Digest, QualificationError> {
-        serde_json::to_vec(self).map(|bytes| digest_bytes(&bytes)).map_err(|source| {
+        self.canonical_json().map(|bytes| digest_bytes(&bytes))
+    }
+
+    /// Serializes deterministic compact criterion-map JSON.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`QualificationError`] if serialization fails.
+    pub fn canonical_json(&self) -> Result<Vec<u8>, QualificationError> {
+        serde_json::to_vec(self).map_err(|source| {
             QualificationError::serialization("serialize criterion evidence map", source)
         })
     }

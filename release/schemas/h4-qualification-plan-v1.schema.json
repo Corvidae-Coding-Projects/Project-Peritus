@@ -1,0 +1,248 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Corvidae-Coding-Projects/Project-Peritus/release/schemas/h4-qualification-plan-v1.schema.json",
+  "title": "Peritus H4 qualification plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "binding",
+    "evidence",
+    "campaigns",
+    "primary_build",
+    "independent_build",
+    "criteria",
+    "audit",
+    "evaluated_at"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "binding": { "$ref": "release-binding-v1.schema.json" },
+    "evidence": {
+      "type": "array",
+      "minItems": 25,
+      "maxItems": 25,
+      "items": { "$ref": "#/$defs/evidence" }
+    },
+    "campaigns": {
+      "type": "array",
+      "minItems": 11,
+      "maxItems": 11,
+      "items": { "$ref": "#/$defs/campaign" }
+    },
+    "primary_build": { "$ref": "#/$defs/build" },
+    "independent_build": { "$ref": "#/$defs/build" },
+    "criteria": {
+      "type": "array",
+      "minItems": 25,
+      "maxItems": 25,
+      "items": { "$ref": "#/$defs/criterion" }
+    },
+    "audit": { "$ref": "#/$defs/audit" },
+    "evaluated_at": { "type": "integer", "minimum": 0 }
+  },
+  "$defs": {
+    "requiredEvidenceKind": {
+      "enum": [
+        "h0-security-report",
+        "h1-resilience-report",
+        "h2-linux-report",
+        "h2-macos-report",
+        "h2-windows-report",
+        "h3-performance-report",
+        "gate-a",
+        "foundation",
+        "native-linux",
+        "native-macos",
+        "native-windows",
+        "soak",
+        "representative-rust",
+        "representative-type-script",
+        "representative-python",
+        "representative-java",
+        "representative-mixed",
+        "artifact-inventory",
+        "spdx-sbom",
+        "provenance",
+        "artifact-signatures",
+        "reproducibility",
+        "migration-recovery",
+        "license-notices",
+        "criterion-map"
+      ]
+    },
+    "campaignKind": {
+      "enum": [
+        "gate-a",
+        "foundation",
+        "native-linux",
+        "native-macos",
+        "native-windows",
+        "soak",
+        "representative-rust",
+        "representative-type-script",
+        "representative-python",
+        "representative-java",
+        "representative-mixed"
+      ]
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^(?!/)(?!.*//)(?!.*(?:^|/)\\.\\.(?:/|$))[!-~]+$"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[!-~]+$"
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "disposition", "path", "key_id", "public_key_path", "signature_path"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/requiredEvidenceKind" },
+        "disposition": { "enum": ["satisfied", "not-satisfied"] },
+        "path": { "$ref": "#/$defs/path" },
+        "key_id": { "$ref": "#/$defs/id" },
+        "public_key_path": { "$ref": "#/$defs/path" },
+        "signature_path": { "$ref": "#/$defs/path" }
+      }
+    },
+    "campaign": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "kind", "subject_id", "cleanup"],
+      "properties": {
+        "schema_version": { "const": 1 },
+        "kind": { "$ref": "#/$defs/campaignKind" },
+        "subject_id": { "$ref": "#/$defs/id" },
+        "cleanup": { "$ref": "#/$defs/cleanup" }
+      }
+    },
+    "cleanup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["remaining_processes", "remaining_mounts", "remaining_worktrees", "remaining_temporary_paths"],
+      "properties": {
+        "remaining_processes": { "$ref": "#/$defs/u32" },
+        "remaining_mounts": { "$ref": "#/$defs/u32" },
+        "remaining_worktrees": { "$ref": "#/$defs/u32" },
+        "remaining_temporary_paths": { "$ref": "#/$defs/u32" }
+      }
+    },
+    "u32": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["builder_id", "artifacts"],
+      "properties": {
+        "builder_id": { "$ref": "#/$defs/id" },
+        "artifacts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4096,
+          "items": { "$ref": "#/$defs/artifact" }
+        }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "source_path", "media_type", "roles"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "source_path": { "$ref": "#/$defs/path" },
+        "media_type": { "type": "string", "minLength": 3, "maxLength": 120, "pattern": "^[!-~]+/[!-~]+$" },
+        "roles": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "executable",
+              "distribution",
+              "lifecycle-tool",
+              "manifest",
+              "sbom",
+              "provenance",
+              "signature",
+              "license-notice",
+              "migration-guide",
+              "backup-guide",
+              "restore-guide",
+              "rollback-guide",
+              "qualification-evidence"
+            ]
+          }
+        }
+      }
+    },
+    "criterion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["criterion", "evidence"],
+      "properties": {
+        "criterion": { "type": "string", "pattern": "^AC-(?:0[1-9]|1[0-9]|2[0-5])$" },
+        "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/selector" } }
+      }
+    },
+    "selector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "path"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/requiredEvidenceKind" },
+        "path": { "$ref": "#/$defs/path" }
+      }
+    },
+    "audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["auditor", "contributors", "findings", "path", "key_id", "public_key_path", "signature_path"],
+      "properties": {
+        "auditor": { "$ref": "#/$defs/id" },
+        "contributors": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
+        "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+        "path": { "$ref": "#/$defs/path" },
+        "key_id": { "$ref": "#/$defs/id" },
+        "public_key_path": { "$ref": "#/$defs/path" },
+        "signature_path": { "$ref": "#/$defs/path" }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "severity", "summary", "disposition"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "severity": { "enum": ["informational", "low", "medium", "high", "critical"] },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "disposition": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["status"],
+              "properties": { "status": { "const": "open" } }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["status", "evidence"],
+              "properties": { "status": { "const": "closed" }, "evidence": { "$ref": "#/$defs/selector" } }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["status", "evidence"],
+              "properties": { "status": { "const": "risk-accepted" }, "evidence": { "$ref": "#/$defs/selector" } }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

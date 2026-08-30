@@ -263,7 +263,7 @@ fn governance(probe: ProbeId) -> Vec<Check> {
                 ],
             ),
         ],
-        P::TcbInventory => vec![source(SourceCheck::TcbInventory), xtask("verify-trust")],
+        P::TcbInventory => vec![source(SourceCheck::TcbInventory), xtask("all")],
         P::NoQuarantinedOrPlaceholderProduction => vec![xtask("source-layout-check")],
         P::FindingLifecycle => vec![
             test("peritus-security-policy", "policy", None),

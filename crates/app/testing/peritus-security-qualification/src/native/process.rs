@@ -243,7 +243,30 @@ fn join(handle: JoinHandle<io::Result<()>>) -> Result<(), QualificationError> {
 }
 
 fn preserve_runtime_environment(command: &mut Command) {
-    for name in ["PATH", "SYSTEMROOT", "WINDIR"] {
+    for name in ["PATH", "CARGO_HOME", "RUSTUP_HOME", "RUSTUP_TOOLCHAIN"] {
+        if let Some(value) = std::env::var_os(name) {
+            command.env(name, value);
+        }
+    }
+    #[cfg(windows)]
+    for name in [
+        "PATHEXT",
+        "SYSTEMROOT",
+        "WINDIR",
+        "COMSPEC",
+        "INCLUDE",
+        "LIB",
+        "LIBPATH",
+        "VCINSTALLDIR",
+        "VCToolsInstallDir",
+        "VCToolsRedistDir",
+        "WindowsSdkDir",
+        "WindowsSDKVersion",
+        "UniversalCRTSdkDir",
+        "UCRTVersion",
+        "VisualStudioVersion",
+        "VSINSTALLDIR",
+    ] {
         if let Some(value) = std::env::var_os(name) {
             command.env(name, value);
         }

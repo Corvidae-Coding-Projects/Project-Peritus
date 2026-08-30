@@ -11,6 +11,7 @@ mod error;
 mod evidence;
 mod identity;
 mod manifest;
+pub mod operator;
 mod policy_adapter;
 pub mod prelude;
 mod report;
