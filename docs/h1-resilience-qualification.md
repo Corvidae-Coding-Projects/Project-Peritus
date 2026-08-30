@@ -131,10 +131,19 @@ durable effect-before-ack checkpoint, kills the process, and then requires the s
 reconcile that exact effect before acknowledging the new live fence. The controller independently
 checks the SQLite journal and external effect state in both cases.
 
+Both blob commit routes are also real. Before publication, the staged daemon holds a fully written
+production `ArtifactWriteHandle` across its checkpoint; killing it leaves temporary bytes for the
+store's restart recovery to remove. After publication, the daemon has finalized and verified the
+content-addressed object, committed its metadata, and added a durable evidence-owned reference.
+Recovery re-hashes the object, reads its exact bytes, verifies the reference roots, checks that no
+temporary file remains, and confirms that the authoritative journal is still valid and unchanged.
+
 Fresh focused diagnostics retained passing one-case reports and six raw evidence files under
 `/home/doll/.local/state/peritus/qualification/h1/journal-before.YP5d5R` and
 `/home/doll/.local/state/peritus/qualification/h1/journal-after-ack.sCtlT9`. Both reports deliberately
-use the `custom` profile and `not-ready-custom-catalog` verdict. The other 41 catalog routes fail
+use the `custom` profile and `not-ready-custom-catalog` verdict. The blob reports are retained under
+`/home/doll/.local/state/peritus/qualification/h1/blob-before.b7G9TE` and
+`/home/doll/.local/state/peritus/qualification/h1/blob-after-ack.UZrw1b`. The other 39 catalog routes fail
 closed until their real component failpoints, controlled quota/storage effects, process controls,
 or disposable-VM reboot driver are connected. Therefore the full H1 production qualification is
 still pending.

@@ -74,12 +74,12 @@ systems and retains each report plus raw evidence. Its macOS and Windows sandbox
 actual Seatbelt and AppContainer/Job Object host probes; hosted results remain evidence only after
 the corresponding revision finishes successfully.
 
-H1 now has two checked-in production controller routes. Focused native runs against freshly built
-binaries passed both sides of the journal commit: one killed the staged daemon while the append
-plan still existed only in process memory, and one killed it at the real durable outbox
-effect-before-ack checkpoint. Recovery proved zero durable state for the first case and exact effect
-reconciliation for the second. This is useful evidence, not an H1 readiness claim: the remaining 41
-catalog routes still need genuine component, quota, process, and disposable-VM controls.
+H1 now has four checked-in production controller routes. Focused native runs against freshly built
+binaries passed both sides of the journal and blob commits. The staged daemon was killed with an
+append plan or artifact still temporary, and again after the durable outbox effect or finalized
+artifact and owner reference. Recovery proved rollback for the before cases and exact replay for the
+after cases. This is useful evidence, not an H1 readiness claim: the remaining 39 catalog routes
+still need genuine component, quota, process, and disposable-VM controls.
 
 H0 also has a Rust-owned exact-candidate preparer and a three-host native workflow. The preparer
 derives the common candidate identity from committed source, binds the controller and native host

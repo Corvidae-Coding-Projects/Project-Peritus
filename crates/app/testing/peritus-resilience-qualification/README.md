@@ -32,6 +32,12 @@ recovery requires exact effect reconciliation and live-fence settlement. Both ro
 independently digested evidence files and prove cleanup. Other catalog routes return an error until
 their real component or disposable-host control exists; they cannot inherit a fixture result.
 
+It also owns both blob commit routes through the production content-addressed artifact store. The
+before case kills an exact owned writer while its complete bytes are still temporary and requires
+restart recovery to remove them without publishing metadata or a reference. The after case kills
+the daemon after publishing the verified object, durable metadata, and evidence-owned reference,
+then requires all three to survive and agree after restart.
+
 Use the explicit diagnostic option to exercise that route without presenting a one-case report as
 production readiness:
 
@@ -55,6 +61,8 @@ peritus-h1 \
 The report keeps the `custom` profile and `not-ready-custom-catalog` verdict even when the selected
 case passes. The command exits successfully only to make focused qualification automation useful.
 Use `h1.crash.journal.before` in the last argument to run the other journal boundary.
+The equivalent blob diagnostics are `h1.crash.blob.before` and
+`h1.crash.blob.after-before-ack`.
 
 ## Focused checks
 

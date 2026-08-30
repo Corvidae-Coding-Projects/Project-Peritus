@@ -8,8 +8,9 @@ use std::time::Duration;
 use peritus_app_protocol::ShutdownCompletionDisposition;
 
 use crate::outbox::{
-    recover_journal_before_crash, recover_outbox_crash, stage_journal_before_crash,
-    stage_outbox_crash,
+    recover_blob_after_crash, recover_blob_before_crash, recover_journal_before_crash,
+    recover_outbox_crash, stage_blob_after_crash, stage_blob_before_crash,
+    stage_journal_before_crash, stage_outbox_crash,
 };
 use crate::terminal::qualify_pty_ordering;
 use crate::{DaemonConfig, DaemonError, DaemonRuntime, ShutdownOutcome};
@@ -29,6 +30,10 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
             .map_or_else(output_failure, |()| ExitCode::SUCCESS),
         CommandLine::Serve(configuration) => run_server(configuration),
         CommandLine::QualifyPty => qualify_pty(),
+        CommandLine::StageBlobBeforeCrash(configuration) => stage_blob_before(configuration),
+        CommandLine::RecoverBlobBeforeCrash(configuration) => recover_blob_before(configuration),
+        CommandLine::StageBlobAfterCrash(configuration) => stage_blob_after(configuration),
+        CommandLine::RecoverBlobAfterCrash(configuration) => recover_blob_after(configuration),
         CommandLine::StageJournalBeforeCrash(configuration) => stage_journal_before(configuration),
         CommandLine::RecoverJournalBeforeCrash(configuration) => {
             recover_journal_before(configuration)
@@ -69,6 +74,10 @@ enum CommandLine {
     Version,
     Serve(OsString),
     QualifyPty,
+    StageBlobBeforeCrash(OsString),
+    RecoverBlobBeforeCrash(OsString),
+    StageBlobAfterCrash(OsString),
+    RecoverBlobAfterCrash(OsString),
     StageJournalBeforeCrash(OsString),
     RecoverJournalBeforeCrash(OsString),
     StageOutboxCrash(OsString),
@@ -81,6 +90,18 @@ fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<CommandLine> 
         "--version" if arguments.next().is_none() => Some(CommandLine::Version),
         "serve" => configuration_argument(arguments).map(CommandLine::Serve),
         "qualify-pty" if arguments.next().is_none() => Some(CommandLine::QualifyPty),
+        "qualify-blob-before-stage" => {
+            configuration_argument(arguments).map(CommandLine::StageBlobBeforeCrash)
+        }
+        "qualify-blob-before-recover" => {
+            configuration_argument(arguments).map(CommandLine::RecoverBlobBeforeCrash)
+        }
+        "qualify-blob-after-stage" => {
+            configuration_argument(arguments).map(CommandLine::StageBlobAfterCrash)
+        }
+        "qualify-blob-after-recover" => {
+            configuration_argument(arguments).map(CommandLine::RecoverBlobAfterCrash)
+        }
         "qualify-journal-before-stage" => {
             configuration_argument(arguments).map(CommandLine::StageJournalBeforeCrash)
         }
@@ -94,6 +115,91 @@ fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<CommandLine> 
             configuration_argument(arguments).map(CommandLine::RecoverOutboxCrash)
         }
         _ => None,
+    }
+}
+
+fn stage_blob_before(configuration: OsString) -> ExitCode {
+    let config = match DaemonConfig::load(configuration) {
+        Ok(config) => config,
+        Err(error) => return qualification_failure(&error),
+    };
+    let checkpoint = match stage_blob_before_crash(&config) {
+        Ok(checkpoint) => checkpoint,
+        Err(error) => return qualification_failure(&error),
+    };
+    let line = format!(
+        "peritus-qualification blob-before-stage digest={} bytes={} temporary_files={}",
+        checkpoint.digest(),
+        checkpoint.bytes(),
+        checkpoint.temporary_files(),
+    );
+    if let Err(error) = write_output(&line) {
+        return output_failure(error);
+    }
+    std::thread::park_timeout(QUALIFICATION_KILL_BOUND);
+    write_error(&format!(
+        "blob-before qualifier was not killed for digest {}",
+        checkpoint.digest(),
+    ));
+    ExitCode::FAILURE
+}
+
+fn recover_blob_before(configuration: OsString) -> ExitCode {
+    recover_blob(configuration, false)
+}
+
+fn stage_blob_after(configuration: OsString) -> ExitCode {
+    let config = match DaemonConfig::load(configuration) {
+        Ok(config) => config,
+        Err(error) => return qualification_failure(&error),
+    };
+    let checkpoint = match stage_blob_after_crash(&config) {
+        Ok(checkpoint) => checkpoint,
+        Err(error) => return qualification_failure(&error),
+    };
+    let line = format!(
+        "peritus-qualification blob-after-stage digest={} bytes={} finalized=true referenced=true",
+        checkpoint.digest(),
+        checkpoint.bytes(),
+    );
+    if let Err(error) = write_output(&line) {
+        return output_failure(error);
+    }
+    std::thread::park_timeout(QUALIFICATION_KILL_BOUND);
+    write_error(&format!("blob-after qualifier was not killed for digest {}", checkpoint.digest()));
+    ExitCode::FAILURE
+}
+
+fn recover_blob_after(configuration: OsString) -> ExitCode {
+    recover_blob(configuration, true)
+}
+
+fn recover_blob(configuration: OsString, after_commit: bool) -> ExitCode {
+    let config = match DaemonConfig::load(configuration) {
+        Ok(config) => config,
+        Err(error) => return qualification_failure(&error),
+    };
+    let observation = if after_commit {
+        recover_blob_after_crash(&config)
+    } else {
+        recover_blob_before_crash(&config)
+    };
+    match observation {
+        Ok(observation) => {
+            let timing = if after_commit { "after" } else { "before" };
+            let line = format!(
+                "peritus-qualification blob-{timing}-recover digest={} bytes={} journal_verified={} finalized={} referenced={} temporary_files={} object_files={}",
+                observation.digest(),
+                observation.bytes(),
+                observation.journal_verified(),
+                observation.finalized(),
+                observation.referenced(),
+                observation.temporary_files(),
+                observation.object_files(),
+            );
+            write_output(&line).map_or_else(output_failure, |()| ExitCode::SUCCESS)
+        }
+        Err(error) => qualification_failure(&error),
     }
 }
 
@@ -230,7 +336,7 @@ async fn serve(configuration: OsString) -> Result<ShutdownOutcome, DaemonError> 
 
 fn usage(executable: &OsStr) {
     write_error(&format!(
-        "usage: {} --version | serve --config <config.toml> | qualify-pty | qualify-journal-before-stage --config <config.toml> | qualify-journal-before-recover --config <config.toml> | qualify-outbox-stage --config <config.toml> | qualify-outbox-recover --config <config.toml>",
+        "usage: {} --version | serve --config <config.toml> | qualify-pty | qualify-blob-before-stage --config <config.toml> | qualify-blob-before-recover --config <config.toml> | qualify-blob-after-stage --config <config.toml> | qualify-blob-after-recover --config <config.toml> | qualify-journal-before-stage --config <config.toml> | qualify-journal-before-recover --config <config.toml> | qualify-outbox-stage --config <config.toml> | qualify-outbox-recover --config <config.toml>",
         std::path::Path::new(executable).display(),
     ));
 }

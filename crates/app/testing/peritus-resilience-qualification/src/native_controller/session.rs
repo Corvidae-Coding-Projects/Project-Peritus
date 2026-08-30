@@ -101,7 +101,7 @@ fn recovery_payload(
     prepared: &PreparedCandidate,
     injected: &InjectedCandidate,
     recovered: &RecoveredCandidate,
-    route: super::request::JournalRoute,
+    route: super::request::CommitRoute,
 ) -> Result<RecoverPayload, Box<dyn std::error::Error>> {
     let logical_ticks = recovered.elapsed_millis.max(1);
     if logical_ticks > request.limits().logical_ticks() {
@@ -152,6 +152,8 @@ fn recovery_payload(
             "build_sha256": paths.build_sha256,
             "effect_sha256": recovered.effect_sha256,
             "effect_bytes": recovered.effect_bytes,
+            "artifact_sha256": recovered.artifact_sha256,
+            "artifact_bytes": recovered.artifact_bytes,
             "committed_events": recovered.committed_events,
             "aggregate_heads": recovered.aggregate_heads,
             "external_effects": recovered.external_effects,

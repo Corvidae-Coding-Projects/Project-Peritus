@@ -1,5 +1,6 @@
 //! Bounded public-admin qualification for an effect-before-ack outbox restart.
 
+mod blob;
 mod effect;
 mod journal_before;
 
@@ -13,6 +14,10 @@ use peritus_journal::{
 };
 use peritus_types::{CommandId, EventId, EventSequence, Sha256Digest};
 
+pub use self::blob::{
+    recover_blob_after_crash, recover_blob_before_crash, stage_blob_after_crash,
+    stage_blob_before_crash,
+};
 use self::effect::QualificationDestination;
 pub use self::journal_before::{recover_journal_before_crash, stage_journal_before_crash};
 use crate::instance::InstanceGuard;

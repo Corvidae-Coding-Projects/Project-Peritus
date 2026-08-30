@@ -5,6 +5,8 @@ use sha2::{Digest as _, Sha256};
 
 use super::args::{ControllerPaths, lower_sha256};
 
+const BLOB_BEFORE: &str = "h1.crash.blob.before";
+const BLOB_AFTER_BEFORE_ACK: &str = "h1.crash.blob.after-before-ack";
 const JOURNAL_BEFORE: &str = "h1.crash.journal.before";
 const JOURNAL_AFTER_BEFORE_ACK: &str = "h1.crash.journal.after-before-ack";
 const MAX_REQUEST_BYTES: usize = 512 * 1024;
@@ -118,7 +120,7 @@ impl BoundRequest {
         }
         if request.scenario.title.is_empty()
             || request.scenario.title.len() > 1_024
-            || JournalRoute::from_scenario(&request.scenario).is_none()
+            || CommitRoute::from_scenario(&request.scenario).is_none()
         {
             return Err(
                 "production H1 controller has no genuine effect route for this scenario".into()
@@ -140,9 +142,9 @@ impl BoundRequest {
     }
 
     /// Returns the genuine journal effect route bound by this request.
-    pub(super) fn route(&self) -> Result<JournalRoute, Box<dyn std::error::Error>> {
-        JournalRoute::from_scenario(&self.document.scenario)
-            .ok_or_else(|| "decoded H1 request lost its validated journal route".into())
+    pub(super) fn route(&self) -> Result<CommitRoute, Box<dyn std::error::Error>> {
+        CommitRoute::from_scenario(&self.document.scenario)
+            .ok_or_else(|| "decoded H1 request lost its validated commit route".into())
     }
 
     pub(super) const fn limits(&self) -> &LimitsDocument {
@@ -151,27 +153,43 @@ impl BoundRequest {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) enum JournalRoute {
-    BeforeDurableCommit,
-    AfterDurableCommitBeforeAck,
+pub(super) enum CommitRoute {
+    BlobBeforeDurableCommit,
+    BlobAfterDurableCommitBeforeAck,
+    JournalBeforeDurableCommit,
+    JournalAfterDurableCommitBeforeAck,
 }
 
-impl JournalRoute {
+impl CommitRoute {
     fn from_scenario(scenario: &ScenarioDocument) -> Option<Self> {
         match (&*scenario.id, &*scenario.expected_recovery, &scenario.fault) {
+            (
+                BLOB_BEFORE,
+                "rolled-back-uncommitted",
+                FaultDocument::CommitCrash { boundary, timing },
+            ) if boundary == "blob" && timing == "before-durable-commit" => {
+                Some(Self::BlobBeforeDurableCommit)
+            }
+            (
+                BLOB_AFTER_BEFORE_ACK,
+                "replayed-committed",
+                FaultDocument::CommitCrash { boundary, timing },
+            ) if boundary == "blob" && timing == "after-durable-commit-before-ack" => {
+                Some(Self::BlobAfterDurableCommitBeforeAck)
+            }
             (
                 JOURNAL_BEFORE,
                 "rolled-back-uncommitted",
                 FaultDocument::CommitCrash { boundary, timing },
             ) if boundary == "journal" && timing == "before-durable-commit" => {
-                Some(Self::BeforeDurableCommit)
+                Some(Self::JournalBeforeDurableCommit)
             }
             (
                 JOURNAL_AFTER_BEFORE_ACK,
                 "replayed-committed",
                 FaultDocument::CommitCrash { boundary, timing },
             ) if boundary == "journal" && timing == "after-durable-commit-before-ack" => {
-                Some(Self::AfterDurableCommitBeforeAck)
+                Some(Self::JournalAfterDurableCommitBeforeAck)
             }
             _ => None,
         }
@@ -180,16 +198,22 @@ impl JournalRoute {
     /// Returns the recovery outcome required for this side of the commit.
     pub(super) const fn outcome(self) -> &'static str {
         match self {
-            Self::BeforeDurableCommit => "rolled-back-uncommitted",
-            Self::AfterDurableCommitBeforeAck => "replayed-committed",
+            Self::BlobBeforeDurableCommit | Self::JournalBeforeDurableCommit => {
+                "rolled-back-uncommitted"
+            }
+            Self::BlobAfterDurableCommitBeforeAck | Self::JournalAfterDurableCommitBeforeAck => {
+                "replayed-committed"
+            }
         }
     }
 
     /// Returns the directly supportable journal-health observation.
     pub(super) const fn journal_health(self) -> &'static str {
         match self {
-            Self::BeforeDurableCommit => "verified",
-            Self::AfterDurableCommitBeforeAck => "recovered-and-verified",
+            Self::BlobBeforeDurableCommit
+            | Self::BlobAfterDurableCommitBeforeAck
+            | Self::JournalBeforeDurableCommit => "verified",
+            Self::JournalAfterDurableCommitBeforeAck => "recovered-and-verified",
         }
     }
 }
@@ -268,33 +292,64 @@ fn hex(bytes: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        FaultDocument, JOURNAL_AFTER_BEFORE_ACK, JOURNAL_BEFORE, JournalRoute, ScenarioDocument,
+        BLOB_AFTER_BEFORE_ACK, BLOB_BEFORE, CommitRoute, FaultDocument, JOURNAL_AFTER_BEFORE_ACK,
+        JOURNAL_BEFORE, ScenarioDocument,
     };
 
     #[test]
-    fn only_the_two_real_journal_routes_are_admitted() {
-        let before = scenario(JOURNAL_BEFORE, "before-durable-commit", "rolled-back-uncommitted");
+    fn only_the_four_real_commit_routes_are_admitted() {
+        let before =
+            scenario(JOURNAL_BEFORE, "journal", "before-durable-commit", "rolled-back-uncommitted");
         let after = scenario(
             JOURNAL_AFTER_BEFORE_ACK,
+            "journal",
             "after-durable-commit-before-ack",
             "replayed-committed",
         );
-        let unsupported =
-            scenario("h1.crash.blob.before", "before-durable-commit", "rolled-back-uncommitted");
-        assert_eq!(JournalRoute::from_scenario(&before), Some(JournalRoute::BeforeDurableCommit));
-        assert_eq!(
-            JournalRoute::from_scenario(&after),
-            Some(JournalRoute::AfterDurableCommitBeforeAck)
+        let unsupported = scenario(
+            "h1.crash.snapshot.before",
+            "snapshot",
+            "before-durable-commit",
+            "rolled-back-uncommitted",
         );
-        assert_eq!(JournalRoute::from_scenario(&unsupported), None);
+        let blob_before =
+            scenario(BLOB_BEFORE, "blob", "before-durable-commit", "rolled-back-uncommitted");
+        let blob_after = scenario(
+            BLOB_AFTER_BEFORE_ACK,
+            "blob",
+            "after-durable-commit-before-ack",
+            "replayed-committed",
+        );
+        assert_eq!(
+            CommitRoute::from_scenario(&before),
+            Some(CommitRoute::JournalBeforeDurableCommit)
+        );
+        assert_eq!(
+            CommitRoute::from_scenario(&after),
+            Some(CommitRoute::JournalAfterDurableCommitBeforeAck)
+        );
+        assert_eq!(
+            CommitRoute::from_scenario(&blob_before),
+            Some(CommitRoute::BlobBeforeDurableCommit)
+        );
+        assert_eq!(
+            CommitRoute::from_scenario(&blob_after),
+            Some(CommitRoute::BlobAfterDurableCommitBeforeAck)
+        );
+        assert_eq!(CommitRoute::from_scenario(&unsupported), None);
     }
 
-    fn scenario(id: &str, timing: &str, expected_recovery: &str) -> ScenarioDocument {
+    fn scenario(
+        id: &str,
+        boundary: &str,
+        timing: &str,
+        expected_recovery: &str,
+    ) -> ScenarioDocument {
         ScenarioDocument {
             id: id.to_owned(),
             title: "journal crash".to_owned(),
             fault: FaultDocument::CommitCrash {
-                boundary: "journal".to_owned(),
+                boundary: boundary.to_owned(),
                 timing: timing.to_owned(),
             },
             expected_recovery: expected_recovery.to_owned(),

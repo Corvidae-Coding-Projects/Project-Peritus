@@ -1,5 +1,6 @@
-//! Exact staged-daemon effects for the supported journal crash route.
+//! Exact staged-daemon effects for supported production commit-crash routes.
 
+mod blob;
 mod journal_before;
 mod process;
 
@@ -15,7 +16,7 @@ use serde::Serialize;
 use crate::digest;
 
 use super::args::ControllerPaths;
-use super::request::JournalRoute;
+use super::request::CommitRoute;
 use process::{bounded_command, create_output, kill_after_checkpoint, one_line};
 
 const EFFECT_DIRECTORY: &str = "outbox-crash-qualification-v1";
@@ -34,6 +35,8 @@ pub(super) struct InjectedCandidate {
     pub(super) effect_path: Option<String>,
     pub(super) effect_sha256: Option<String>,
     pub(super) effect_bytes: Option<u64>,
+    pub(super) artifact_sha256: Option<String>,
+    pub(super) artifact_bytes: Option<u64>,
     pub(super) killed_exit: String,
 }
 
@@ -51,6 +54,8 @@ pub(super) struct RecoveredCandidate {
     pub(super) journal_bytes: u64,
     pub(super) effect_sha256: Option<String>,
     pub(super) effect_bytes: Option<u64>,
+    pub(super) artifact_sha256: Option<String>,
+    pub(super) artifact_bytes: Option<u64>,
     pub(super) elapsed_millis: u64,
 }
 
@@ -111,10 +116,16 @@ pub(super) fn prepare(
 pub(super) fn inject(
     paths: &ControllerPaths,
     runtime: &RuntimePaths,
-    route: JournalRoute,
+    route: CommitRoute,
 ) -> Result<InjectedCandidate, Box<dyn std::error::Error>> {
-    if route == JournalRoute::BeforeDurableCommit {
-        return journal_before::inject(paths, runtime);
+    match route {
+        CommitRoute::BlobBeforeDurableCommit | CommitRoute::BlobAfterDurableCommitBeforeAck => {
+            return blob::inject(paths, runtime, route);
+        }
+        CommitRoute::JournalBeforeDurableCommit => {
+            return journal_before::inject(paths, runtime);
+        }
+        CommitRoute::JournalAfterDurableCommitBeforeAck => {}
     }
     let stderr_path = runtime.root.join("inject.stderr");
     let killed = kill_after_checkpoint(
@@ -139,6 +150,8 @@ pub(super) fn inject(
         effect_path: Some(effect.to_string_lossy().into_owned()),
         effect_sha256: Some(effect_sha256),
         effect_bytes: Some(effect_bytes),
+        artifact_sha256: None,
+        artifact_bytes: None,
         killed_exit: killed.status,
     })
 }
@@ -147,10 +160,16 @@ pub(super) fn recover(
     paths: &ControllerPaths,
     runtime: &RuntimePaths,
     injected: &InjectedCandidate,
-    route: JournalRoute,
+    route: CommitRoute,
 ) -> Result<RecoveredCandidate, Box<dyn std::error::Error>> {
-    if route == JournalRoute::BeforeDurableCommit {
-        return journal_before::recover(paths, runtime, injected);
+    match route {
+        CommitRoute::BlobBeforeDurableCommit | CommitRoute::BlobAfterDurableCommitBeforeAck => {
+            return blob::recover(paths, runtime, injected, route);
+        }
+        CommitRoute::JournalBeforeDurableCommit => {
+            return journal_before::recover(paths, runtime, injected);
+        }
+        CommitRoute::JournalAfterDurableCommitBeforeAck => {}
     }
     let started = Instant::now();
     let output = bounded_command(
@@ -216,6 +235,8 @@ pub(super) fn recover(
         journal_bytes: journal_metadata.len(),
         effect_sha256: Some(effect_sha256),
         effect_bytes: Some(effect_bytes),
+        artifact_sha256: None,
+        artifact_bytes: None,
         elapsed_millis: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
     })
 }

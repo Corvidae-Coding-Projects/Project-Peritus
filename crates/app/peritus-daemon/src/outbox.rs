@@ -14,8 +14,9 @@ mod router;
 pub use claims::{CLAIM_DESTINATIONS, OrchestratorDirectiveClaim, TypedOutboxClaim, decode_claim};
 pub use pump::OutboxRuntime;
 pub use qualification::{
-    recover_journal_before_crash, recover_outbox_crash, stage_journal_before_crash,
-    stage_outbox_crash,
+    recover_blob_after_crash, recover_blob_before_crash, recover_journal_before_crash,
+    recover_outbox_crash, stage_blob_after_crash, stage_blob_before_crash,
+    stage_journal_before_crash, stage_outbox_crash,
 };
 pub use router::DestinationRouter;
 

@@ -5,7 +5,7 @@ use std::io::Write as _;
 use serde::Serialize;
 
 use super::evidence::EvidenceDocument;
-use super::request::{BoundRequest, JournalRoute, Stage};
+use super::request::{BoundRequest, CommitRoute, Stage};
 
 #[derive(Serialize)]
 struct ResponseDocument<'a, T> {
@@ -125,14 +125,24 @@ pub(super) fn publish<T: Serialize>(
     Ok(())
 }
 
-pub(super) fn canonical_milestones(route: JournalRoute) -> Vec<MilestoneDocument> {
+pub(super) fn canonical_milestones(route: CommitRoute) -> Vec<MilestoneDocument> {
     let (armed, observed, reconciled) = match route {
-        JournalRoute::BeforeDurableCommit => (
+        CommitRoute::BlobBeforeDurableCommit => (
+            "exact bytes held by the production artifact writer before finalization",
+            "candidate killed before artifact publication",
+            "artifact recovery removed the abandoned temporary bytes",
+        ),
+        CommitRoute::BlobAfterDurableCommitBeforeAck => (
+            "object, metadata, and owner reference durably published",
+            "candidate killed before acknowledging artifact publication",
+            "exact artifact bytes and owner reference recovered",
+        ),
+        CommitRoute::JournalBeforeDurableCommit => (
             "production journal append plan prepared in process memory",
             "candidate killed before submitting the append plan",
             "reopened journal has no committed event or external effect",
         ),
-        JournalRoute::AfterDurableCommitBeforeAck => (
+        CommitRoute::JournalAfterDurableCommitBeforeAck => (
             "durable outbox effect-before-ack fault armed",
             "candidate killed after its durable checkpoint",
             "exact effect reconciled before fence acknowledgement",
