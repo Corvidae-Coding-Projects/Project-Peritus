@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 983,
+  "next_comment_id": 984,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T19:47:23.896839503Z",
+      "updated_at": "2026-08-30T19:51:09.862187201Z",
       "labels": [
         "qualification",
         "release"
@@ -2876,6 +2876,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAbx++psTKyX5kpDdz2Nm4w2m0rqR5y40+bhxTo+VwoSoU62KTncoziAa659bag5Rg4nR/l4oqOlSCF9iOz3piAQ=="
+        },
+        "75d5998d-d846-48f7-8ae5-b65bf419befe": {
+          "display_id": 983,
+          "author": "6ME5",
+          "content": "Exact-head H0 run 33331529567 completed success at 87bf209b across Linux, macOS, and Windows. Linux artifact 9737893447 retained 40/40 passed cases, all 40 source-bound with clean process/path/mount/endpoint cleanup; linux-shard.json SHA-256 e8ed5c7dc35c02fc0b300f4657ed3d9b4f72047fa1fb2867088ace3f00fc40b2. macOS artifact 9737795466 and Windows artifact 9737813528 also passed; Windows native AppContainer evidence was independently inspected.",
+          "created_at": "2026-08-30T19:51:09.859488528Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAwPjK1+3T2B1DS+mLA50YAlPzwrN15sPz5HUMvXhP5vg/4nxA4kxadsUUmTZrFfgXIPKhKq16OT2ylcVpkW4fDg=="
         },
         "75fbf4b7-2185-49b4-b6f3-5a0e093a9506": {
           "display_id": 961,
@@ -9603,8 +9612,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T19:47:23.896839503Z",
+    "timestamp": "2026-08-30T19:51:09.862187201Z",
     "agent_id": "6ME5",
-    "agent_seq": 1179
+    "agent_seq": 1180
   }
 }
