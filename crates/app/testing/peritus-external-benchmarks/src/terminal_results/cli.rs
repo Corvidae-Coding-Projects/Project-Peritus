@@ -2,10 +2,10 @@
 
 use std::{collections::BTreeMap, ffi::OsString, path::PathBuf};
 
-use super::model::{CampaignMode, ReportRequest};
+use super::model::{CampaignMode, IdentityPolicy, ReportRequest};
 use crate::BenchmarkError;
 
-const USAGE: &str = "peritus-terminalbench-report --job-dir PATH --output PATH --pin-file PATH --expected-trials COUNT --mode snapshot|final --campaign-label LABEL --agent-source-revision REVISION --agent-sha256 DIGEST";
+const USAGE: &str = "peritus-terminalbench-report --job-dir PATH --output PATH --pin-file PATH --expected-trials COUNT --mode snapshot|final --campaign-label LABEL --identity-policy allow-legacy|require-native --agent-sha256 DIGEST";
 const OPTIONS: &[&str] = &[
     "--job-dir",
     "--output",
@@ -13,7 +13,7 @@ const OPTIONS: &[&str] = &[
     "--expected-trials",
     "--mode",
     "--campaign-label",
-    "--agent-source-revision",
+    "--identity-policy",
     "--agent-sha256",
 ];
 
@@ -47,6 +47,11 @@ where
         "final" => CampaignMode::Final,
         _ => return Err(invalid("--mode must be snapshot or final")),
     };
+    let identity_policy = match required(&mut fields, "--identity-policy")?.as_str() {
+        "allow-legacy" => IdentityPolicy::AllowLegacy,
+        "require-native" => IdentityPolicy::RequireNative,
+        _ => return Err(invalid("--identity-policy must be allow-legacy or require-native")),
+    };
     Ok(ReportRequest {
         job_directory: PathBuf::from(required(&mut fields, "--job-dir")?),
         output: PathBuf::from(required(&mut fields, "--output")?),
@@ -54,7 +59,7 @@ where
         expected_trials,
         mode,
         campaign_label: required(&mut fields, "--campaign-label")?,
-        agent_source_revision: required(&mut fields, "--agent-source-revision")?,
+        identity_policy,
         agent_sha256: required(&mut fields, "--agent-sha256")?,
     })
 }
@@ -98,8 +103,8 @@ mod tests {
             mode,
             "--campaign-label",
             "frozen-baseline",
-            "--agent-source-revision",
-            "0123456789abcdef0123456789abcdef01234567",
+            "--identity-policy",
+            "require-native",
             "--agent-sha256",
             "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         ]
@@ -114,6 +119,7 @@ mod tests {
         assert_eq!(request.mode, CampaignMode::Final);
         assert_eq!(request.expected_trials, 445);
         assert_eq!(request.campaign_label, "frozen-baseline");
+        assert_eq!(request.identity_policy, IdentityPolicy::RequireNative);
     }
 
     #[test]

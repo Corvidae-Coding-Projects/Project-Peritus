@@ -5,7 +5,11 @@ use std::{ffi::OsString, fs, path::PathBuf};
 use serde_json::{Value, json};
 use tempfile::TempDir;
 
-use super::{build, model::CampaignMode, model::ReportRequest, run_cli};
+use super::{
+    build,
+    model::{CampaignMode, IdentityPolicy, ReportRequest},
+    run_cli,
+};
 
 const REVISION: &str = "0123456789abcdef0123456789abcdef01234567";
 const DIGEST: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
@@ -109,7 +113,22 @@ impl Fixture {
         fs::write(directory.join("verifier/test-stdout.txt"), "passed\n").expect("verifier output");
     }
 
-    fn request(&self, mode: CampaignMode, expected_trials: usize) -> ReportRequest {
+    fn remove_trial_identity(&self, name: &str) {
+        let path = self.job.join(name).join("result.json");
+        let mut value: Value = serde_json::from_slice(&fs::read(&path).expect("trial result"))
+            .expect("trial result JSON");
+        let metadata = value["agent_result"]["metadata"].as_object_mut().expect("metadata object");
+        metadata.remove("peritus_agent_source_revision");
+        metadata.remove("peritus_agent_binary_sha256");
+        write_json(&path, &value);
+    }
+
+    fn request(
+        &self,
+        mode: CampaignMode,
+        expected_trials: usize,
+        identity_policy: IdentityPolicy,
+    ) -> ReportRequest {
         ReportRequest {
             job_directory: self.job.clone(),
             output: self.output.clone(),
@@ -117,7 +136,7 @@ impl Fixture {
             expected_trials,
             mode,
             campaign_label: "frozen-baseline".to_owned(),
-            agent_source_revision: REVISION.to_owned(),
+            identity_policy,
             agent_sha256: DIGEST.to_owned(),
         }
     }
@@ -137,8 +156,8 @@ impl Fixture {
             mode.to_owned(),
             "--campaign-label".to_owned(),
             "frozen-baseline".to_owned(),
-            "--agent-source-revision".to_owned(),
-            REVISION.to_owned(),
+            "--identity-policy".to_owned(),
+            "require-native".to_owned(),
             "--agent-sha256".to_owned(),
             DIGEST.to_owned(),
         ]
@@ -153,7 +172,8 @@ fn snapshot_uses_direct_child_results_and_nested_verifier_reward() {
     let fixture = Fixture::new(2, 1, false);
     fixture.add_trial("example__one", Some(1.0));
 
-    let report = build(&fixture.request(CampaignMode::Snapshot, 2)).expect("snapshot report");
+    let report = build(&fixture.request(CampaignMode::Snapshot, 2, IdentityPolicy::RequireNative))
+        .expect("snapshot report");
     let value = serde_json::to_value(report).expect("serialized report");
 
     assert_eq!(value["complete"], false);
@@ -170,7 +190,8 @@ fn rejects_job_state_child_result_publication_race() {
     let fixture = Fixture::new(2, 2, false);
     fixture.add_trial("example__one", Some(1.0));
 
-    let error = build(&fixture.request(CampaignMode::Snapshot, 2)).expect_err("inconsistent job");
+    let error = build(&fixture.request(CampaignMode::Snapshot, 2, IdentityPolicy::RequireNative))
+        .expect_err("inconsistent job");
     assert!(error.to_string().contains("2 completed trials but 1 child result"));
 }
 
@@ -179,7 +200,8 @@ fn final_mode_refuses_an_incomplete_campaign() {
     let fixture = Fixture::new(2, 1, false);
     fixture.add_trial("example__one", Some(1.0));
 
-    let error = build(&fixture.request(CampaignMode::Final, 2)).expect_err("incomplete final");
+    let error = build(&fixture.request(CampaignMode::Final, 2, IdentityPolicy::RequireNative))
+        .expect_err("incomplete final");
     assert!(error.to_string().contains("final report requires a finished job"));
 }
 
@@ -197,6 +219,25 @@ fn command_publishes_atomically_and_never_overwrites() {
 
     let error = run_cli(fixture.arguments("final", 1)).expect_err("existing report is immutable");
     assert!(error.to_string().contains("report output already exists"));
+}
+
+#[test]
+fn legacy_policy_exposes_missing_source_identity_without_inventing_it() {
+    let fixture = Fixture::new(1, 1, true);
+    fixture.add_trial("example__one", Some(1.0));
+    fixture.remove_trial_identity("example__one");
+
+    let report = build(&fixture.request(CampaignMode::Final, 1, IdentityPolicy::AllowLegacy))
+        .expect("legacy report");
+    let value = serde_json::to_value(report).expect("serialized report");
+    assert_eq!(value["agent"]["source_revision"], Value::Null);
+    assert_eq!(value["agent"]["native_reports"], 1);
+    assert_eq!(value["agent"]["native_reports_with_source_identity"], 0);
+    assert_eq!(value["agent"]["native_reports_with_binary_identity"], 0);
+
+    let error = build(&fixture.request(CampaignMode::Final, 1, IdentityPolicy::RequireNative))
+        .expect_err("strict identity policy");
+    assert!(error.to_string().contains("has no source revision"));
 }
 
 fn write_json(path: &std::path::Path, value: &Value) {

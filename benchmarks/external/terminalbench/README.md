@@ -151,8 +151,8 @@ task before continuing.
 ## Publish a campaign report
 
 Keep generated reports beside the Harbor state rather than in Git. A snapshot is useful during a
-long campaign, but is deliberately marked incomplete. Supply the clean source revision embedded
-when the frozen agent was built and the independently measured digest of that exact executable:
+long campaign, but is deliberately marked incomplete. Supply the independently measured digest of
+the exact executable and choose the identity policy that matches the retained run:
 
 ```bash
 CARGO_BUILD_JOBS=2 cargo run --locked \
@@ -164,7 +164,7 @@ CARGO_BUILD_JOBS=2 cargo run --locked \
   --expected-trials 445 \
   --mode snapshot \
   --campaign-label frozen-baseline \
-  --agent-source-revision 0123456789abcdef0123456789abcdef01234567 \
+  --identity-policy allow-legacy \
   --agent-sha256 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 ```
 
@@ -174,13 +174,21 @@ job. Both modes require Harbor's completed count to equal the child results curr
 the report command asks the operator to retry instead of publishing through Harbor's brief
 aggregate-before-child publication race. Existing output is never replaced.
 
+The first frozen baseline predates native identity metadata, so it must use `allow-legacy`. Its
+report keeps the independently measured binary digest, leaves `source_revision` null, and exposes
+zero identity coverage instead of accepting an operator guess. New baseline and final-candidate
+runs use `require-native`; every trial that has a native invocation must then carry one consistent
+source revision and the matching binary SHA-256 in Harbor metadata. Infrastructure failures before
+native startup remain honestly unbound because that executable never ran.
+
 The report records two rates without conflating them:
 
 - `scored_accuracy` divides verifier reward by trials that produced a score.
 - `completed_success_rate` divides verifier reward by every completed trial, including unscored
   infrastructure or provider failures.
 
-It also retains the pin file and its SHA-256, the declared frozen source and executable identities,
-Harbor agent/model identity, native acceptance, token/cache totals, exceptions, and relative paths
-to each trial's Harbor result, native invocation, trace, last observation, and verifier output.
-The schema is `../../schemas/terminalbench-campaign-report-v1.schema.json`.
+It also retains the pin file and its SHA-256, inferred source identity and coverage where available,
+the independently measured executable digest, Harbor agent/model identity, native acceptance,
+token/cache totals, exceptions, and relative paths to each trial's Harbor result, native
+invocation, trace, last observation, and verifier output. The schema is
+`../../schemas/terminalbench-campaign-report-v1.schema.json`.

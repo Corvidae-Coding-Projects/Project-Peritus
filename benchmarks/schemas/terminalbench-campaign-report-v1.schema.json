@@ -76,10 +76,26 @@
     "declared_agent": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["source_revision", "binary_sha256"],
+      "required": [
+        "source_revision",
+        "binary_sha256",
+        "identity_policy",
+        "native_reports",
+        "native_reports_with_source_identity",
+        "native_reports_with_binary_identity"
+      ],
       "properties": {
-        "source_revision": {"type": "string", "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$"},
-        "binary_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        "source_revision": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "string", "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$"}
+          ]
+        },
+        "binary_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "identity_policy": {"enum": ["allow_legacy", "require_native"]},
+        "native_reports": {"type": "integer", "minimum": 0},
+        "native_reports_with_source_identity": {"type": "integer", "minimum": 0},
+        "native_reports_with_binary_identity": {"type": "integer", "minimum": 0}
       }
     },
     "aggregate": {

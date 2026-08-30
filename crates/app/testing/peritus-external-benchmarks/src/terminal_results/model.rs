@@ -13,6 +13,13 @@ pub(super) enum CampaignMode {
     Final,
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub(super) enum IdentityPolicy {
+    AllowLegacy,
+    RequireNative,
+}
+
 #[derive(Clone, Debug)]
 pub(super) struct ReportRequest {
     pub(super) job_directory: PathBuf,
@@ -21,7 +28,7 @@ pub(super) struct ReportRequest {
     pub(super) expected_trials: usize,
     pub(super) mode: CampaignMode,
     pub(super) campaign_label: String,
-    pub(super) agent_source_revision: String,
+    pub(super) identity_policy: IdentityPolicy,
     pub(super) agent_sha256: String,
 }
 
@@ -40,7 +47,7 @@ pub(super) struct CampaignReport {
     pub(super) declared_trials: usize,
     pub(super) state: JobCounts,
     pub(super) pin: PinEvidence,
-    pub(super) agent: DeclaredAgentIdentity,
+    pub(super) agent: AgentIdentity,
     pub(super) aggregate: Aggregate,
     pub(super) trials: Vec<TrialReport>,
 }
@@ -80,9 +87,13 @@ pub(super) struct PinEvidence {
 }
 
 #[derive(Clone, Debug, Serialize)]
-pub(super) struct DeclaredAgentIdentity {
-    pub(super) source_revision: String,
+pub(super) struct AgentIdentity {
+    pub(super) source_revision: Option<String>,
     pub(super) binary_sha256: String,
+    pub(super) identity_policy: IdentityPolicy,
+    pub(super) native_reports: usize,
+    pub(super) native_reports_with_source_identity: usize,
+    pub(super) native_reports_with_binary_identity: usize,
 }
 
 #[derive(Clone, Debug, Default, Serialize)]
@@ -266,7 +277,7 @@ impl CampaignReport {
         trials: Vec<TrialReport>,
     ) -> Result<Self, BenchmarkError> {
         super::validation::state(request, &state, trials.len())?;
-        super::validation::trial_identity(request, &trials)?;
+        let agent = super::validation::trial_identity(request, &trials)?;
         let complete = state.finished_at.is_some()
             && state.stats.running == 0
             && state.stats.pending == 0
@@ -288,10 +299,7 @@ impl CampaignReport {
             declared_trials: state.n_total_trials,
             state: state.stats,
             pin,
-            agent: DeclaredAgentIdentity {
-                source_revision: request.agent_source_revision.clone(),
-                binary_sha256: request.agent_sha256.clone(),
-            },
+            agent,
             aggregate,
             trials,
         })
