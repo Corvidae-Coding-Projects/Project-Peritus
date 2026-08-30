@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 781,
+  "next_comment_id": 782,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T01:16:22.489929647Z",
+      "updated_at": "2026-08-30T01:24:23.419544449Z",
       "labels": [
         "qualification",
         "release"
@@ -2183,6 +2183,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZpCVAUy8cItSo8YGIcZNoQT/hnUqZ1704kMNm5JyiPTAx9lZCYDUUvKoCvqmI4pKYQK5NsyvFlvo6JvCZ6sCBQ=="
+        },
+        "67bdeee1-73bd-45ab-a2c3-f1970ed50c1d": {
+          "display_id": 781,
+          "author": "6ME5",
+          "content": "Terminal-Bench baseline exposed TBF-016 on sqlite-with-gcov: an explicitly authorized disposable system task found apt-get but asked the user for an offline compiler without first attempting scoped installation. Implemented a general AuthorizedExternalEffects rule to attempt ordinary prerequisites before escalation while withholding authority over the durable host/unrelated systems. No task/package/verifier vocabulary was added. Recorded FastText and QEMU as ordinary deadline/execution misses, not gotchas. Focused product-runner tests (81 total across targets), strict all-feature Clippy, formatting, diff checks, and cargo xtask all (78 packages/3111 sources/135 docs) are green; unchanged final-candidate rerun remains required.",
+          "created_at": "2026-08-30T01:24:23.415890995Z",
+          "kind": "progress",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWj72zugymrkQmFON9gOEtk/o1bW9+jvHLZGwukV7MYWJribOEVVT5xaqcE8Hvv21qLqr0HBf+jkLGEyucJUPAg=="
         },
         "67dc31a0-8929-4032-99cf-796768bad7e6": {
           "display_id": 574,
@@ -7785,8 +7794,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T01:16:27.210373786Z",
+    "timestamp": "2026-08-30T01:24:23.419544449Z",
     "agent_id": "6ME5",
-    "agent_seq": 969
+    "agent_seq": 970
   }
 }
