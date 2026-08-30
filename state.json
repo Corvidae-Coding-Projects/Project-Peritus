@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1003,
+  "next_comment_id": 1004,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T21:16:22.537122471Z",
+      "updated_at": "2026-08-30T21:20:38.970117074Z",
       "labels": [
         "qualification",
         "release"
@@ -3371,6 +3371,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9JLSx0BbzX7UkxKP9VhjZ70ZRogItIq2XeV+Cgncwhsv200/tQ2bZGXMJgOvyz+cueBpMSEqLlSbSnZ+DUBmCQ=="
+        },
+        "9408eba4-9e4e-4265-906c-950ffb546199": {
+          "display_id": 1003,
+          "author": "6ME5",
+          "content": "Frozen Terminal-Bench checkpoint at 185 completed trials retained outside Git as frozen-baseline-185.snapshot.json, SHA-256 9c50eb212b6e5309b8961aba55d0a646d18fdc12929409190793efd010a6d510. It contains 174 scored trials: 103 reward-one, 71 reward-zero, 11 unscored, 25 exception-bearing; scored accuracy 0.591954 and completed success rate 0.556757. Every unique reward-zero and unscored task at this checkpoint is represented in the plain-English failure journal; automated name coverage found zero missing task families. This is an interim immutable diagnostic snapshot, not the final campaign report.",
+          "created_at": "2026-08-30T21:20:38.965515121Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAkVaI56OeDtGkKIlhTC3zk+0cdegXq49qbYLFseCr8onN1GXmtqN6wHOgulOr7dZlWGmoQ5oWT1qDTuu8wGDmCQ=="
         },
         "94c9ec85-ff57-4675-bb2f-3790d5e3d13a": {
           "display_id": 587,
@@ -9783,8 +9792,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T21:16:22.537122471Z",
+    "timestamp": "2026-08-30T21:20:38.970117074Z",
     "agent_id": "6ME5",
-    "agent_seq": 1199
+    "agent_seq": 1200
   }
 }
