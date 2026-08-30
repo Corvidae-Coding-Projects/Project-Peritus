@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 996,
+  "next_comment_id": 997,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T20:38:11.709606960Z",
+      "updated_at": "2026-08-30T20:50:00.478367571Z",
       "labels": [
         "qualification",
         "release"
@@ -3794,6 +3794,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJlMF9E1DQ2h2/OrkJGLWviu2doMUhPhuFOmEnGFW7DbUb8v8iX+me0keTB8MD2pHALeiimAENf1/ElsC7gDDAg=="
+        },
+        "b383d3cd-6289-481f-829f-b8fef9d3954e": {
+          "display_id": 996,
+          "author": "6ME5",
+          "content": "Exact-head H0 run 33334177117 completed green for commit 929a720b43426728033deaaa1e7b5d4e53ab9cac. Durable local copies are outside Git at /home/doll/.local/state/peritus/qualification/h0/run-33334177117. GitHub artifacts: Linux 9738644017, macOS 9738529904, Windows 9738562265. Reports: linux-shard.json sha256 32447704283a84c8523ce33d07f4bdb20ae74f06d60d341ec71ba875190a3d14 with 40/40 cases; macos-shard.json sha256 521653d15835c45bc8a0aa6063f1b3bcc2a82892eed353f95c52601de26fb40d with 1/1; windows-shard.json sha256 09915e199803f9f6bf89927279cc582ab7820025af1c5df1301affb1556a06b6 with 1/1. Every case reports zero remaining processes, paths, mounts, and endpoints. All three candidate records agree on source, release-manifest, and qualification-plan identities.",
+          "created_at": "2026-08-30T20:50:00.474069392Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA0SWbX3AVOxi/H6/5RbsUir3BrIZWoc4UmMMB2l0XC2DCtJeLVeQpfXvRU/8Jw2RT+cQ2rSWtzFNEYTI1rTvBAQ=="
         },
         "b479984b-196a-4ecc-b0e0-2a419c1a1362": {
           "display_id": 958,
@@ -9720,8 +9729,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T20:38:11.709606960Z",
+    "timestamp": "2026-08-30T20:50:00.478367571Z",
     "agent_id": "6ME5",
-    "agent_seq": 1192
+    "agent_seq": 1193
   }
 }
