@@ -2729,6 +2729,14 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   Native review also ended on the `TBF-009` provider terminal after eleven requests, 534,441 input,
   79,360 cached input, and 11,622 output tokens over 291.849 seconds. This is an honest general
   execution miss, not a benchmark gotcha and not a reason for Doom- or MIPS-specific behavior.
+- Trial `adaptive-rejection-sampler__QTBndEK` explicitly required R to be installed when absent.
+  The writer produced a substantial modular sampler, sample data, and formal tests, then received a
+  literal executable-not-found result for `Rscript` and declared the runtime unavailable without
+  attempting the image's available package manager. Five static and artifact checks passed, while
+  all four unchanged runtime checks failed on the missing executable for reward 0. Native Peritus
+  also ended on the `TBF-009` provider terminal after twelve requests, 370,152 input, 118,784 cached
+  input, and 24,663 output tokens over 868.473 seconds. This is direct provider-neutral evidence for
+  actionable missing-executable recovery, not a reason for R- or sampler-specific behavior.
 - Follow-up resolution: a missing executable now returns a structured observation that identifies
   PATH lookup failure, directs the role to verify the path and inspect package or runtime managers,
   and, only when the active task and environment authorize it, install the ordinary prerequisite
@@ -2952,3 +2960,33 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   order, and the exact image-capability difference without invoking either account. The focused
   external-benchmark test, strict all-target/all-feature Clippy, rustfmt, documentation check, and
   diff hygiene pass. An unchanged final-candidate rerun remains required.
+
+## TBF-022: a cancelled container exec left the native agent alive during verification
+
+- Suite and task: Terminal-Bench 2.0, `gpt2-codegolf`, first full-suite baseline trial.
+- Symptom: Harbor cancelled the agent phase at its unchanged 900-second deadline and began the
+  verifier 0.768 seconds later. Cancelling the host-side Compose exec stopped waiting for output but
+  did not stop the in-container Peritus process tree. The native agent started another Codex process
+  after verification began, and its durable trace gained two command results and two workspace
+  patches before container teardown. The unchanged verifier therefore overlapped a still-mutating
+  agent. It found the compiled sub-5,000-byte program but rejected its incorrect generated text and
+  awarded reward 0; that artifact failure remains an honest model result.
+- Cause: the thin Harbor adapter awaited `environment.exec` directly. Python cancellation ended the
+  local `podman compose exec` wait, but that boundary provided no remote process handle and did not
+  propagate termination to the already-running process inside the shared task container.
+- Resolution: the adapter now launches the exact native command under a small Linux supervisor that
+  records its child PID. On cancellation it walks that PID's in-container `/proc` descendants,
+  sends bounded TERM then KILL signals as needed, verifies every recorded process is absent, removes
+  the PID record, and only then propagates cancellation back to Harbor. The logic is task-neutral
+  and protects every shared-environment verifier from late model or tool mutations.
+- Integrity decision: retain the baseline timeout, reward 0, and original verifier result. Do not
+  extend the agent deadline, discard the score, infer what the late patches might have produced, or
+  let post-deadline work affect evaluation.
+- Evidence: job `peritus-terminalbench-2-k5-high`; trial `gpt2-codegolf__agkczXm`; agent timeout at
+  `2026-08-30T04:42:22.592981Z`; verifier interval
+  `2026-08-30T04:42:23.351363Z` through `2026-08-30T04:42:58.041053Z`; native trace last modified at
+  `2026-08-30T04:42:47.757194888Z`, inside that verifier interval.
+- Verification: focused adapter tests require the native wrapper to record and wait for its exact
+  child, then prove cancellation completes the descendant TERM/KILL cleanup before propagating.
+  The complete external-benchmark test set, strict repository gates, and an unchanged
+  final-candidate timed trial remain required before qualification closes.

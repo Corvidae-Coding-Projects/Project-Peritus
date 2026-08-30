@@ -15,6 +15,8 @@ from harbor.agents.base import BaseAgent
 from harbor.environments.base import BaseEnvironment, ExecResult
 from harbor.models.agent.context import AgentContext
 
+from benchmarks.external.terminalbench.process_supervisor import exec_supervised
+
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _PORTABLE_PERITUS = (
     _REPO_ROOT
@@ -200,8 +202,10 @@ fi
             )
         )
         runtime_env = await self._runtime_env(environment)
-        result = await environment.exec(
+        result = await exec_supervised(
+            environment,
             command,
+            pid_file=_REMOTE_HOME / f"peritus-run-{self._run_number:04}.pid",
             cwd=str(workspace),
             env=runtime_env,
         )

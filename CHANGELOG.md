@@ -61,6 +61,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Supervise each Terminal-Bench native agent process tree and, when Harbor cancels the adapter,
+  terminate and reap that exact tree before allowing the shared task environment to enter verifier
+  execution; this restores phase isolation without changing task timeouts or scores (`TBF-022`, #31)
 - Put both explicitly authenticated Terminal-Bench provider routes into its bounded fallback chain,
   preserving the default writer/reviewer assignments while allowing existing capability-aware
   routing to move an image-grounded role to the image-capable route (`TBF-021`, #31)

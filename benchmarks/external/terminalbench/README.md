@@ -9,7 +9,9 @@ The adapter does not replace Peritus with a benchmark-specific agent. Harbor sup
 task workspace and instruction to `peritus-benchmark-agent`, which runs the native Peritus design,
 writer, independent reviewer, fixer, and deterministic gates. The thin bridge resolves the task
 image's declared working directory through Harbor instead of assuming `/app`; Harbor then runs the
-task's unchanged verifier against that same workspace.
+task's unchanged verifier against that same workspace. The bridge also supervises the exact native
+agent process tree. If Harbor cancels a run, the bridge terminates and reaps that tree before it
+returns control, so no timed-out model or tool process can overlap the unchanged verifier.
 
 ## Prepare the runner
 
@@ -28,7 +30,8 @@ Check the thin Harbor boundary before a live task:
 ```bash
 PYTHONPATH=/absolute/path/to/Project-Peritus \
 /absolute/path/to/terminalbench-state/.venv/bin/python -m unittest \
-  benchmarks.external.terminalbench.test_peritus_agent
+  benchmarks.external.terminalbench.test_peritus_agent \
+  benchmarks.external.terminalbench.test_process_supervisor
 ```
 
 Build a portable static Linux adapter. The musl compiler package is named `musl-gcc` on Fedora;
