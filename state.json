@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 993,
+  "next_comment_id": 994,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T20:37:28.450593411Z",
+      "updated_at": "2026-08-30T20:37:33.590632481Z",
       "labels": [
         "qualification",
         "release"
@@ -2948,6 +2948,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8+3gnZM1uwG8dorTi9BjUqHuSnQRC3y5mlqFNdahUYh2Gk3CKRcIhtP/nwBnYcxZdCpYz1TaXW4XmH87VrJWBw=="
+        },
+        "771ee4ea-42f2-4d50-a71d-ab78132b04c5": {
+          "display_id": 993,
+          "author": "6ME5",
+          "content": "[action] Diagnosed a178f0dc hosted Windows H2: previous TUI fix passed; sandbox-execution failed because trusted canonical H2 path retained Windows extended-length prefix. Signed commits a049a759 and 929a720b retain benchmark evidence, normalize only canonical native path boundary, improve capability diagnostics, and pass focused native/Windows-target checks. Pushing exact head and replacing runners.",
+          "created_at": "2026-08-30T20:37:33.587919526Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAfay22yJNvRwhPTCdsibahLjGVwPcdoDJWvKhGSLKG5DkNdGnoXJ8bkCeawMp529StLJs97hKWtAnux9ZSP9FAQ=="
         },
         "77a45103-df82-4c72-9c63-ac3b60cbd60c": {
           "display_id": 928,
@@ -9693,8 +9702,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T20:37:28.450593411Z",
+    "timestamp": "2026-08-30T20:37:33.590632481Z",
     "agent_id": "6ME5",
-    "agent_seq": 1189
+    "agent_seq": 1190
   }
 }
