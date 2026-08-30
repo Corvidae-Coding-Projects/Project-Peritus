@@ -143,7 +143,7 @@ fn cancellation_kills_the_complete_native_process_group() {
 }
 
 struct NativeFixture {
-    _root: tempfile::TempDir,
+    root: tempfile::TempDir,
     scratch: PathBuf,
     artifacts: PathBuf,
     executor: PathBuf,
@@ -157,12 +157,13 @@ impl NativeFixture {
         fs::create_dir(&scratch).expect("scratch parent");
         fs::create_dir(&artifacts).expect("artifact parent");
         let executor = write_executor(root.path(), source);
-        Self { _root: root, scratch, artifacts, executor }
+        Self { root, scratch, artifacts, executor }
     }
 
     fn factory(&self) -> NativeProbeFactory {
         NativeProbeFactory::new(
             &self.executor,
+            self.root.path(),
             &self.scratch,
             &self.artifacts,
             HostFingerprint::from_document(b"reviewed-linux-host-v1"),
@@ -183,6 +184,7 @@ fn write_executor(parent: &std::path::Path, source: &str) -> PathBuf {
 const fn valid_executor() -> &'static str {
     r#"#!/bin/sh
 set -eu
+test -d "${14}"
 response=$4
 artifact_root=$8
 subject=${10}

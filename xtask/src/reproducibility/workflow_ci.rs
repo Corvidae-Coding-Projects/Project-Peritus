@@ -24,7 +24,7 @@ pub(super) fn validate(
     workflow: &Hash,
     path: &Path,
     tools: &ToolchainPolicy,
-    _policy: super::workflow_commands::CommandPolicy,
+    _policy: super::workflow_command_policy::CommandPolicy,
     diagnostics: &mut Vec<Diagnostic>,
 ) {
     let jobs = mapping_value(workflow, "jobs").and_then(Yaml::as_hash);

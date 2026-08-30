@@ -125,7 +125,6 @@ pub(super) fn lifecycle(
 
 fn configure_subject_environment(command: &mut Command, root: &Path) {
     command
-        .env_clear()
         .env("HOME", root)
         .env("USERPROFILE", root)
         .env("LOCALAPPDATA", root.join("local-app-data"))
@@ -198,16 +197,18 @@ mod tests {
     use super::configure_subject_environment;
 
     #[test]
-    fn lifecycle_child_reinstalls_private_platform_directories_after_environment_clear() {
+    fn lifecycle_child_overrides_private_platform_directories_without_reclearing_the_controller() {
         let root = Path::new("qualification-root");
         let local_app_data = root.join("local-app-data");
         let temporary = root.join("tmp");
         let mut command = Command::new("unused");
+        command.env("CONTROLLER_BOUND_VALUE", "retained");
         configure_subject_environment(&mut command, root);
 
         assert_eq!(configured(&command, "HOME"), Some(root.as_os_str()));
         assert_eq!(configured(&command, "LOCALAPPDATA"), Some(local_app_data.as_os_str()));
         assert_eq!(configured(&command, "TEMP"), Some(temporary.as_os_str()));
+        assert_eq!(configured(&command, "CONTROLLER_BOUND_VALUE"), Some(OsStr::new("retained")));
     }
 
     fn configured<'a>(command: &'a Command, name: &str) -> Option<&'a OsStr> {

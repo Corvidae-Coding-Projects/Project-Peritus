@@ -6,21 +6,6 @@ use super::workflow_command_syntax::{
     is_assignment, is_control_word, is_non_resolving, is_opaque, option_takes_value,
 };
 
-#[derive(Clone, Copy)]
-pub(super) struct CommandPolicy {
-    locked_xtask_alias: bool,
-}
-
-impl CommandPolicy {
-    pub(super) const fn new(locked_xtask_alias: bool) -> Self {
-        Self { locked_xtask_alias }
-    }
-
-    pub(super) const fn permits_xtask(self) -> bool {
-        self.locked_xtask_alias
-    }
-}
-
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 enum ScriptIssue {
     BackgroundExecution,
@@ -217,7 +202,7 @@ impl ParsedScript {
         let commands = &self.commands;
         self.issues.len() == 1
             && self.issues.contains(&ScriptIssue::NestedShell)
-            && commands.len() == 3
+            && commands.len() == 4
             && commands[0].is_exact_command(&["sudo", "apt-get", "update"])
             && commands[1].is_exact_command(&[
                 "sudo",
@@ -225,9 +210,16 @@ impl ParsedScript {
                 "install",
                 "--yes",
                 "--no-install-recommends",
+                "apparmor-profiles",
                 "bubblewrap",
             ])
-            && commands[2].is_exact_command(&["bwrap", "--version"])
+            && commands[2].is_exact_command(&[
+                "sudo",
+                "apparmor_parser",
+                "--replace",
+                "/usr/share/apparmor/extra-profiles/bwrap-userns-restrict",
+            ])
+            && commands[3].is_exact_command(&["bwrap", "--version"])
     }
 
     pub(super) fn exact_cargo_command(&self, expected: &[&str]) -> bool {

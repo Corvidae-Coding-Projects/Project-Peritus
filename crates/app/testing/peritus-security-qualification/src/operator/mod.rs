@@ -48,6 +48,7 @@ fn run(arguments: &[OsString]) -> Result<H0OperatorStatus, Box<dyn std::error::E
     let candidate = parse_candidate_json(&candidate_bytes)?;
     let mut factory = NativeProbeFactory::new(
         &options.controller,
+        &options.candidate_root,
         &options.scratch,
         &options.artifacts,
         HostFingerprint::from_document(&host_facts),

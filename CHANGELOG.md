@@ -17,6 +17,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   exactly one passing Linux, macOS, and Windows shard, evaluate the independently supplied review
   through verified policy, and atomically retain a candidate-bound Ready/NotReady report with the
   exact canonical evidence manifest and stable failure codes (#32)
+- Add the production `peritus-h0-controller`: verify a clean candidate's exact Git-archive digest,
+  execute a closed candidate-bound plan for every H0 probe, reconcile migration/recovery, unsafe,
+  TCB, threat, and control inventories, exercise native Linux, macOS, or Windows sandbox activation,
+  enforce bounded process/output/memory accounting, and retain digest-bound raw evidence (#32)
 - Add candidate-bound H0 native-platform shards with a fixed Linux 40, macOS 1, and Windows 1
   partition plus fail-closed three-host aggregation, preventing one host from manufacturing native
   security evidence for another operating system; add bounded deterministic shard JSON that
@@ -131,13 +135,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Retry a freshly staged native H0 executor only for the bounded Unix `ETXTBSY` launch race seen on
   parallel workspace filesystems; persistent executable-busy errors and every other spawn failure
   still fail the probe normally (#32)
-- Make native H2 lifecycle children receive the fresh subject's private home, local application
-  data, configuration, state, data, and temporary roots explicitly after environment clearing, so
-  Windows PowerShell installers cannot lose `LOCALAPPDATA`; accept the macOS helper's reserved
-  nonzero protocol exit without requiring stderr, and invoke `sandbox-exec` with its native
-  option-to-command syntax and a runnable allow-default activation profile so the live Seatbelt
-  compilation probe is meaningful; install the declared Bubblewrap prerequisite on the Ubuntu
-  native qualification host while retaining the probe's fail-closed functional check (#31)
+- Keep native H2 lifecycle children inside the outer controller's already-cleared environment and
+  override the fresh subject's private home, local application data, configuration, state, data,
+  and temporary roots without clearing Windows PowerShell's process environment a second time;
+  accept the macOS helper's reserved nonzero protocol exit without requiring stderr, and invoke
+  `sandbox-exec` with its native option-to-command syntax and a runnable allow-default activation
+  profile so the live Seatbelt compilation probe is meaningful; install Bubblewrap plus Ubuntu's
+  packaged restricted-userns AppArmor profile on the Ubuntu native qualification host while
+  retaining the probe's fail-closed functional check (#31)
+- Give the production-daemon A3 conformance client a bounded fifteen-second local-I/O window so a
+  slow hosted filesystem sync cannot turn a healthy artifact transfer into a five-second runner
+  flake (#31)
 - Preserve native H2 reports and raw artifacts from failed hosted campaigns, print the retained
   report path and exact not-ready scenario reasons from `xtask`, and retain a bounded sanitized TUI
   transcript tail when an interactive lifecycle fails before a scenario response (#31)

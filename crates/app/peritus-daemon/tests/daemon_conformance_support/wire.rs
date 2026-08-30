@@ -12,7 +12,7 @@ use peritus_app_protocol::{
 };
 use peritus_codec::HEADER_LEN;
 
-const IO_BOUND: Duration = Duration::from_secs(5);
+const IO_BOUND: Duration = Duration::from_secs(15);
 
 pub(super) struct WireClient {
     stream: UnixStream,

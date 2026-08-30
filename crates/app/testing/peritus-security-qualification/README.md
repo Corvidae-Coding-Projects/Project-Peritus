@@ -21,8 +21,9 @@ non-success.
 `NativeProbeFactory` supplies the standard process boundary for those host adapters. It creates a
 new private root for every case, sends the exact candidate, probe, and limits to a reviewed native
 executor through bounded JSON, owns and terminates that process, validates candidate-bound
-structured evidence and the exact bytes of every named raw artifact, and removes the subject root
-before reporting cleanup. A separate retained-artifact root named by the fresh subject ID survives
+structured evidence and the exact bytes of every named raw artifact, passes the canonical exact
+candidate source root for direct assertions, and removes the subject root before reporting cleanup.
+A separate retained-artifact root named by the fresh subject ID survives
 cleanup. The executor still has to implement the real platform probe; returning `unsupported` or
 failing to produce a valid bound response remains a failed case. This boundary does not create or
 stand in for an independent security review.
@@ -36,7 +37,8 @@ For every case, the factory invokes the reviewed executor as:
   --subject-root <subject-root> \
   --artifact-root <retained-root>/<fresh-id> \
   --subject-id <fresh-id> \
-  --request-sha256 <sha256>
+  --request-sha256 <sha256> \
+  --candidate-root <exact-candidate-root>
 ```
 
 The request and response formats are compiled into the crate and published under
@@ -65,13 +67,15 @@ aggregated into H0 readiness.
 The `peritus-h0` operator runs one shard without shell mediation:
 
 ```text
-peritus-h0 --controller PATH --candidate FILE --host-facts FILE \
+peritus-h0 --controller PATH --candidate FILE --candidate-root DIR --host-facts FILE \
   --scratch DIR --artifacts DIR --report FILE --platform linux|macos|windows
 ```
 
-It reads bounded regular candidate and host-fact documents, uses the host-fact bytes as the native
-fingerprint, executes the canonical platform subset, and atomically publishes one no-overwrite
-shard report. Exit success means every assigned case passed; the report is retained either way.
+It reads bounded regular candidate and host-fact documents, canonicalizes the candidate source
+root, uses the host-fact bytes as the native fingerprint, executes the canonical platform subset,
+and atomically publishes one no-overwrite shard report. The production controller recomputes the
+source archive digest before asserting any probe. Exit success means every assigned case passed;
+the report is retained either way.
 
 After all three native hosts finish, the final operator admits the separately produced external
 review, reconstructs the exact 42-case run, executes the verified policy, and publishes one

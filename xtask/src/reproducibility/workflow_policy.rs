@@ -1,5 +1,5 @@
 use super::workflow_ci;
-use super::workflow_commands::CommandPolicy;
+use super::workflow_command_policy::CommandPolicy;
 use super::workflow_files::{DocumentKind, action_files, workflow_files};
 use super::workflow_governance;
 use super::workflow_local::{LocalUseKind, validate_local_reference};

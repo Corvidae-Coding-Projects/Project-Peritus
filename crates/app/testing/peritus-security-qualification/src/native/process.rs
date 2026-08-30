@@ -33,6 +33,7 @@ pub(super) struct ProcessRequest<'a> {
     pub(super) request_path: &'a Path,
     pub(super) response_path: &'a Path,
     pub(super) artifact_root: &'a Path,
+    pub(super) candidate_root: &'a Path,
     pub(super) subject_id: &'a str,
     pub(super) request_sha256: &'a str,
 }
@@ -56,6 +57,8 @@ pub(super) fn execute(
         .arg(request.subject_id)
         .arg("--request-sha256")
         .arg(request.request_sha256)
+        .arg("--candidate-root")
+        .arg(request.candidate_root)
         .current_dir(request.root)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())

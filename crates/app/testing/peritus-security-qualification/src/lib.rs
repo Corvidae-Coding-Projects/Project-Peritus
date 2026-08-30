@@ -5,6 +5,7 @@
 
 mod assets;
 mod catalog;
+mod controller;
 mod digest;
 mod error;
 mod evidence;
@@ -21,6 +22,7 @@ mod shard;
 
 pub use assets::{BundledSecurityAsset, bundled_security_assets};
 pub use catalog::{H0_PRODUCTION_PROBE_COUNT, ProbeId, ProbeSpec, ProbeTarget};
+pub use controller::{ControllerStatus, run_from_env as run_h0_controller};
 pub use digest::{digest_bytes, hex_digest};
 pub use error::{QualificationError, QualificationErrorCode, QualificationRecovery};
 pub use evidence::{

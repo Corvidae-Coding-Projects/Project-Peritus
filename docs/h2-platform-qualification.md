@@ -293,7 +293,9 @@ that command on Ubuntu, macOS, and Windows and uploads each evidence directory. 
 uses the live Linux namespace, macOS Seatbelt, or Windows AppContainer/Job Object probe for its host;
 missing facilities remain `Unsupported` and make the required campaign `NotReady`.
 
-The Ubuntu job installs its declared Bubblewrap host prerequisite before qualification and records
-the installed version in the workflow log. Installation alone is not evidence of support: the H2
-controller still executes the native namespace and capability probe, and a nonfunctional binary or
-host configuration remains `Unsupported`.
+The Ubuntu job installs its declared Bubblewrap host prerequisite and Ubuntu's packaged
+`bwrap-userns-restrict` AppArmor profile before qualification, then records the installed version
+in the workflow log. The profile allows Bubblewrap to create the first user namespace without
+disabling Ubuntu's system-wide unprivileged-user-namespace restriction. Installation alone is not
+evidence of support: the H2 controller still executes the native namespace and capability probe,
+and a nonfunctional binary or host configuration remains `Unsupported`.

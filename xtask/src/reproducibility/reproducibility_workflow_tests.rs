@@ -1,5 +1,5 @@
 use super::reproducibility_workflow_fixture::canonical_ci;
-use super::workflow_commands::CommandPolicy;
+use super::workflow_command_policy::CommandPolicy;
 use super::workflow_files::DocumentKind;
 use super::workflow_policy::{validate as validate_repository, validate_document};
 use crate::error::Diagnostic;

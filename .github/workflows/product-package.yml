@@ -36,7 +36,8 @@ jobs:
         if: ${{ runner.os == 'Linux' }}
         run: |
           sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends bubblewrap
+          sudo apt-get install --yes --no-install-recommends apparmor-profiles bubblewrap
+          sudo apparmor_parser --replace /usr/share/apparmor/extra-profiles/bwrap-userns-restrict
           bwrap --version
       - name: Qualify native package and public installer lifecycle
         run: cargo run --locked --package xtask -- release-bootstrap-smoke

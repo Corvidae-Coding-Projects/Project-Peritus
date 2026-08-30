@@ -30,7 +30,15 @@ fn native_operator_publishes_one_parseable_linux_shard_without_overwrite() {
     fs::write(&host_facts, b"{\"host\":\"test-linux\"}\n").expect("host facts");
     let report = root.path().join("linux-shard.json");
 
-    let first = run_operator(&controller, &candidate, &host_facts, &scratch, &artifacts, &report);
+    let first = run_operator(
+        &controller,
+        root.path(),
+        &candidate,
+        &host_facts,
+        &scratch,
+        &artifacts,
+        &report,
+    );
     assert!(first.status.success());
     let shard = QualificationShard::parse_ready_json(&fs::read(&report).expect("report bytes"))
         .expect("ready shard");
@@ -39,7 +47,15 @@ fn native_operator_publishes_one_parseable_linux_shard_without_overwrite() {
     assert!(fs::read_dir(&scratch).expect("scratch entries").next().is_none());
     assert_eq!(fs::read_dir(&artifacts).expect("artifact roots").count(), 40);
 
-    let second = run_operator(&controller, &candidate, &host_facts, &scratch, &artifacts, &report);
+    let second = run_operator(
+        &controller,
+        root.path(),
+        &candidate,
+        &host_facts,
+        &scratch,
+        &artifacts,
+        &report,
+    );
     assert!(!second.status.success());
     assert!(String::from_utf8_lossy(&second.stderr).contains("report path already exists"));
 }
@@ -60,7 +76,15 @@ fn failed_native_operator_still_publishes_a_diagnostic_shard() {
     fs::write(&host_facts, b"{\"host\":\"test-linux\"}\n").expect("host facts");
     let report = root.path().join("linux-shard.json");
 
-    let output = run_operator(&controller, &candidate, &host_facts, &scratch, &artifacts, &report);
+    let output = run_operator(
+        &controller,
+        root.path(),
+        &candidate,
+        &host_facts,
+        &scratch,
+        &artifacts,
+        &report,
+    );
     assert!(!output.status.success());
     let report_bytes = fs::read(&report).expect("diagnostic report bytes");
     let report_text = String::from_utf8(report_bytes.clone()).expect("diagnostic report UTF-8");
@@ -71,6 +95,7 @@ fn failed_native_operator_still_publishes_a_diagnostic_shard() {
 
 fn run_operator(
     controller: &Path,
+    candidate_root: &Path,
     candidate: &Path,
     host_facts: &Path,
     scratch: &Path,
@@ -80,6 +105,7 @@ fn run_operator(
     Command::new(env!("CARGO_BIN_EXE_peritus-h0"))
         .args(["--controller", controller.to_str().expect("controller path")])
         .args(["--candidate", candidate.to_str().expect("candidate path")])
+        .args(["--candidate-root", candidate_root.to_str().expect("candidate root path")])
         .args(["--host-facts", host_facts.to_str().expect("host facts path")])
         .args(["--scratch", scratch.to_str().expect("scratch path")])
         .args(["--artifacts", artifacts.to_str().expect("artifact path")])
@@ -101,6 +127,7 @@ fn write_controller(parent: &Path, name: &str, source: &str) -> PathBuf {
 const fn controller_source() -> &'static str {
     r#"#!/bin/sh
 set -eu
+test -d "${14}"
 response=$4
 artifact_root=$8
 subject=${10}

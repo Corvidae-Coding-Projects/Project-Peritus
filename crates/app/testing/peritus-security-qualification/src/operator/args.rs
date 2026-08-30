@@ -8,6 +8,7 @@ use crate::QualificationPlatform;
 pub(super) struct Options {
     pub(super) controller: PathBuf,
     pub(super) candidate: PathBuf,
+    pub(super) candidate_root: PathBuf,
     pub(super) host_facts: PathBuf,
     pub(super) scratch: PathBuf,
     pub(super) artifacts: PathBuf,
@@ -17,11 +18,12 @@ pub(super) struct Options {
 
 impl Options {
     pub(super) fn parse(arguments: &[OsString]) -> Result<Self, &'static str> {
-        if arguments.len() != 14 {
+        if arguments.len() != 16 {
             return Err(usage());
         }
         let mut controller = None;
         let mut candidate = None;
+        let mut candidate_root = None;
         let mut host_facts = None;
         let mut scratch = None;
         let mut artifacts = None;
@@ -32,6 +34,7 @@ impl Options {
             match name {
                 "--controller" => set_once(&mut controller, PathBuf::from(&pair[1]))?,
                 "--candidate" => set_once(&mut candidate, PathBuf::from(&pair[1]))?,
+                "--candidate-root" => set_once(&mut candidate_root, PathBuf::from(&pair[1]))?,
                 "--host-facts" => set_once(&mut host_facts, PathBuf::from(&pair[1]))?,
                 "--scratch" => set_once(&mut scratch, PathBuf::from(&pair[1]))?,
                 "--artifacts" => set_once(&mut artifacts, PathBuf::from(&pair[1]))?,
@@ -43,6 +46,7 @@ impl Options {
         Ok(Self {
             controller: controller.ok_or_else(usage)?,
             candidate: candidate.ok_or_else(usage)?,
+            candidate_root: candidate_root.ok_or_else(usage)?,
             host_facts: host_facts.ok_or_else(usage)?,
             scratch: scratch.ok_or_else(usage)?,
             artifacts: artifacts.ok_or_else(usage)?,
@@ -69,5 +73,5 @@ fn parse_platform(value: &OsString) -> Result<QualificationPlatform, &'static st
 }
 
 pub(super) const fn usage() -> &'static str {
-    "usage: peritus-h0 --controller PATH --candidate FILE --host-facts FILE --scratch DIR --artifacts DIR --report FILE --platform linux|macos|windows"
+    "usage: peritus-h0 --controller PATH --candidate FILE --candidate-root DIR --host-facts FILE --scratch DIR --artifacts DIR --report FILE --platform linux|macos|windows"
 }

@@ -69,7 +69,7 @@ id = "T-H0-007"
 title = "evolution evaluator compromise"
 attack = "a candidate reads sealed answers, edits evaluators or profiles, escapes isolation, or promotes itself"
 requirements = ["R-SEC-001", "R-SEC-002", "R-SEC-005", "R-SEC-006"]
-probes = ["h0.evolution.sealed-answer-denial", "h0.evolution.evaluator-mutation-denial", "h0.evolution.profile-mutation-denial", "h0.evolution.self-promotion-denial", "h0.evolution.campaign-isolation"]
+probes = ["h0.evolution.sealed-answer-denial", "h0.evolution.evaluator-mutation-denial", "h0.evolution.profile-mutation-denial", "h0.evolution.self-promotion-denial", "h0.evolution.campaign-isolation", "h0.promotion.gate-binding", "h0.promotion.atomic-rollback-history"]
 
 [[threat]]
 id = "T-H0-008"
@@ -83,11 +83,11 @@ id = "T-H0-009"
 title = "unaccounted trusted code"
 attack = "unsafe Rust, trusted Verus constructs, native helpers, toolchains, or review exclusions bypass review and evidence"
 requirements = ["R-SEC-005", "R-SEC-007"]
-probes = ["h0.inventory.unsafe", "h0.inventory.tcb", "h0.release.no-quarantine-placeholder"]
+probes = ["h0.inventory.unsafe", "h0.inventory.tcb", "h0.inventory.threats", "h0.inventory.controls", "h0.release.no-quarantine-placeholder"]
 
 [[threat]]
 id = "T-H0-010"
 title = "false success after failure"
 attack = "unsupported controls, oversized output, timeout, cancellation, panic, incomplete cleanup, or unresolved blockers are reported ready"
 requirements = ["R-SEC-001", "R-SEC-004", "R-SEC-007"]
-probes = ["h0.repository.oversized-output", "h0.resources.cancellation-cleanup", "h0.review.finding-lifecycle"]
+probes = ["h0.repository.oversized-output", "h0.observability.failure-taxonomy", "h0.resources.cancellation-cleanup", "h0.review.finding-lifecycle"]

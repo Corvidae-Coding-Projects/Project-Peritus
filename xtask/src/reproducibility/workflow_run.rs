@@ -1,5 +1,5 @@
 use super::workflow_command_policy;
-use super::workflow_commands::CommandPolicy;
+use super::workflow_command_policy::CommandPolicy;
 use super::{workflow_governance, workflow_governance_jobs};
 use crate::error::Diagnostic;
 use std::path::Path;

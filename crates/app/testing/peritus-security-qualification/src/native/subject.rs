@@ -23,6 +23,7 @@ use super::{cleanup_error, native_error};
 pub struct NativeProbeFactory {
     executor: PathBuf,
     executor_digest: peritus_types::Sha256Digest,
+    candidate_root: PathBuf,
     scratch_parent: PathBuf,
     artifact_parent: PathBuf,
     host: HostFingerprint,
@@ -38,11 +39,13 @@ impl NativeProbeFactory {
     /// before the campaign begins.
     pub fn new(
         executor: impl AsRef<Path>,
+        candidate_root: impl AsRef<Path>,
         scratch_parent: impl AsRef<Path>,
         artifact_parent: impl AsRef<Path>,
         host: HostFingerprint,
     ) -> Result<Self, QualificationError> {
         let executor = canonical_file(executor.as_ref(), "native H0 executor")?;
+        let candidate_root = canonical_directory(candidate_root.as_ref(), "exact candidate root")?;
         let scratch_parent = canonical_directory(scratch_parent.as_ref(), "scratch parent")?;
         let artifact_parent =
             canonical_directory(artifact_parent.as_ref(), "retained-artifact parent")?;
@@ -50,6 +53,7 @@ impl NativeProbeFactory {
         Ok(Self {
             executor,
             executor_digest,
+            candidate_root,
             scratch_parent,
             artifact_parent,
             host,
@@ -111,6 +115,7 @@ impl FreshSubjectFactory for NativeProbeFactory {
             subject_id,
             executor: staged_executor,
             executor_digest: staged_digest,
+            candidate_root: self.candidate_root.clone(),
             host: self.host,
             root,
             artifact_root,
@@ -123,6 +128,7 @@ struct NativeProbeSubject {
     subject_id: String,
     executor: PathBuf,
     executor_digest: peritus_types::Sha256Digest,
+    candidate_root: PathBuf,
     host: HostFingerprint,
     root: PathBuf,
     artifact_root: PathBuf,
@@ -152,6 +158,7 @@ impl QualificationSubject for NativeProbeSubject {
                 request_path: &request_path,
                 response_path: &response_path,
                 artifact_root: &self.artifact_root,
+                candidate_root: &self.candidate_root,
                 subject_id: &self.subject_id,
                 request_sha256: &request_sha256,
             },
@@ -187,6 +194,7 @@ impl QualificationSubject for NativeProbeSubject {
             &request_bytes,
             &self.subject_id,
             &self.artifact_root,
+            &self.candidate_root,
         );
         let receipt = NativeExecutionReceipt::from_native_observation(
             self.executor_digest,
@@ -291,14 +299,17 @@ fn command_digest(
     request: &[u8],
     subject_id: &str,
     artifact_root: &Path,
+    candidate_root: &Path,
 ) -> peritus_types::Sha256Digest {
-    let mut bytes = b"peritus/h0/native-command/v2\0".to_vec();
+    let mut bytes = b"peritus/h0/native-command/v3\0".to_vec();
     bytes.extend_from_slice(executor_digest.as_bytes());
     bytes.extend_from_slice(executor.to_string_lossy().as_bytes());
     bytes.push(0);
     bytes.extend_from_slice(subject_id.as_bytes());
     bytes.push(0);
     bytes.extend_from_slice(artifact_root.to_string_lossy().as_bytes());
+    bytes.push(0);
+    bytes.extend_from_slice(candidate_root.to_string_lossy().as_bytes());
     bytes.push(0);
     bytes.extend_from_slice(request);
     digest_bytes(&bytes)
