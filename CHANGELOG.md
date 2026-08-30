@@ -153,6 +153,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Accept the installed TUI's stable rendered `online`, `ReadyReadWrite`, and active event-stream
+  state as native H2 connection evidence when a later subscription notice replaces the transient
+  `connected to daemon` message before Windows ConPTY renders its first frame (#31)
 - Normalize only trusted Windows paths returned by `std::fs::canonicalize` from extended-length
   drive syntax before native sandbox path validation, keeping ordinary device paths rejected while
   allowing packaged H2 subjects to prove their reparse-free helper identity; retain every required

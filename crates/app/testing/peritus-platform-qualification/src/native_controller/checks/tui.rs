@@ -21,6 +21,10 @@ const SHOW_CURSOR: &[u8] = b"\x1b[?25h";
 const DISABLE_BRACKETED_PASTE: &[u8] = b"\x1b[?2004l";
 const CURSOR_POSITION_QUERY: &[u8] = b"\x1b[6n";
 const CURSOR_POSITION_REPORT: &[u8] = b"\x1b[1;1R";
+const CONNECTED_NOTICE: &[u8] = b"connected to daemon";
+const ONLINE_STATUS: &[u8] = b"online";
+const READY_READ_WRITE: &[u8] = b"ReadyReadWrite";
+const LIVE_EVENT_STREAM: &[u8] = b"live event stream resumed";
 
 pub(super) struct TuiObservation {
     pub(super) connected: bool,
@@ -172,7 +176,10 @@ fn rendered(bytes: &[u8]) -> bool {
 }
 
 fn connected(bytes: &[u8]) -> bool {
-    contains(bytes, b"connected to daemon")
+    contains(bytes, CONNECTED_NOTICE)
+        || (contains(bytes, ONLINE_STATUS)
+            && contains(bytes, READY_READ_WRITE)
+            && contains(bytes, LIVE_EVENT_STREAM))
 }
 
 fn terminal_restored(bytes: &[u8]) -> bool {
@@ -254,6 +261,16 @@ mod tests {
         assert!(terminal_restored(transcript));
         assert!(!terminal_restored(b"\x1b[?1049h Peritus Runs connected to daemon"));
         assert_eq!(occurrences(b"\x1b[6ntext\x1b[6n", CURSOR_POSITION_QUERY), 2);
+    }
+
+    #[test]
+    fn stable_online_state_proves_connection_after_transient_notice_is_replaced() {
+        let transcript =
+            b"\x1b[?1049h Peritus Runs online ReadyReadWrite live event stream resumed after #0";
+        assert!(connected(transcript));
+        assert!(!connected(b"online ReadyReadWrite"));
+        assert!(!connected(b"ReadyReadWrite live event stream resumed after #0"));
+        assert!(!connected(b"online live event stream resumed after #0"));
     }
 
     #[test]
