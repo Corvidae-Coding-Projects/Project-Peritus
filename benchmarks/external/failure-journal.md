@@ -2803,6 +2803,23 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   `conversation.json` but no invocation, usage, product-failure category, or verifier result. The
   campaign still uses the unchanged pre-fix binary, so this is a third validation target for the
   existing trace-preparation correction rather than evidence that the correction regressed.
+- Later frozen attempts sharpen the same recovery evidence without changing its classification.
+  `feal-linear-cryptanalysis__9LZmKm8` observed an absent ordinary Python module and then three
+  malformed runtime responses; it wrote no `plaintexts.txt` and retained reward 0 after three
+  requests and 58,623 input tokens. `rstan-to-pystan__bYbHErR` legitimately installed PyStan
+  3.10.0 after recovering from Python's externally-managed-environment diagnostic, then ended on
+  malformed responses before writing the analysis or four result files; it retained reward 0
+  after six requests and 156,991 input tokens. `dna-insert__pkjcUjX` preserved a useful primer
+  artifact, installed and ran the named `oligotm` implementation, and reached review before the
+  frozen provider terminal after 22 requests and 420,955 input tokens; its external zero has the
+  separate evaluator cause in `TBI-011`. These are direct final-candidate targets for fresh
+  grounded role recovery and ordinary prerequisite continuation, not reasons for cipher, Stan, or
+  primer vocabulary in the harness.
+- The neighboring frozen attempt `cancel-async-tasks__QeBPcti` completed normally, was natively
+  accepted, and passed all six unchanged verifier checks for reward 1 after eight requests. It is
+  retained alongside the earlier zero for the same task: campaign variance is reported rather
+  than hidden, and a passing independent attempt does not erase the provider-recovery defect shown
+  by the failed attempts.
 - Verification: 23 external-benchmark tests pass, including zero usage from a prepared empty trace
   and non-truncating preparation of existing bytes. Strict all-target/all-feature Clippy passes. An
   unchanged final-candidate rerun must retain the underlying product result and exact accounting.
@@ -3018,6 +3035,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   provider requests; 213,512 input, 79,360 cached input, and 8,710 output tokens; 253.316 seconds of
   native execution; verifier failure on the absent `/app/polyglot` directory. The native reviewer
   terminal remains separately covered by `TBF-009`.
+- Frozen recurrence: `polyglot-rust-c__3hA3kGz` produced a genuine single-file Rust/C++ polyglot,
+  compiled it with both requested compilers, verified matching arbitrary-precision Fibonacci
+  values, completed independent review with no findings, and was natively accepted. It nevertheless
+  wrote `main.rs` at the managed root instead of the explicitly requested `/app/polyglot/main.rs`;
+  the unchanged verifier found no `/app/polyglot` directory and retained reward 0. This second
+  language-independent recurrence directly validates the current exact-output-path gate and does
+  not justify a polyglot-specific relocation rule.
 - Verification: focused product-runner tests reproduce the misplaced same-basename candidate,
   prove exact placement passes, and keep input, negated, and compiler-output paths out of the
   required-output set. The gate aggregation regression proves the constraint makes overall
@@ -3321,3 +3345,38 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   prompts. The deterministic artifact-design regression requires the same rule. All 95
   product-runner tests, strict all-target/all-feature Clippy, rustfmt, documentation checks, and
   `cargo xtask all` pass. An unchanged final-candidate rerun remains required.
+
+## TBI-011: a valid circular-plasmid junction was scored against one hidden decomposition
+
+- Suite and task: Terminal-Bench 2.0, `dna-insert`, frozen attempt
+  `dna-insert__pkjcUjX`.
+- Published contract: derive the change from the supplied circular input and desired output plasmid,
+  use the minimum Q5 primer-pair count, keep each annealing region within 15 to 45 nucleotides, and
+  calculate melting temperatures with the published `oligotm` flags. The instruction does not
+  prescribe one decomposition when identical bases make the insert/template junction ambiguous.
+- Observed result: Peritus compared the supplied sequences directly, found their exact 39-base
+  linear insertion, and produced one forward/reverse pair around that junction. A fresh downloaded
+  Debian `primer3` 2.6.1 binary reported 64.666053 and 63.997668 degrees for its 19- and 44-base
+  annealing regions, a 0.668385-degree difference. The artifact also passed filename, FASTA shape,
+  alphabet, minimum-pair, insertion, overlap, and length checks.
+- Hidden convention: the verifier hard-codes a cyclically shifted 39-base insert. Two repeated
+  `ag` bases can be assigned either to the left template/insert end or to the insert/right template
+  start without changing the supplied circular plasmid result. The verifier's single assignment
+  shortens the reverse annealing region by two bases and lengthens the forward-side decomposition
+  by those same matching bases. Under that hidden assignment it obtains 68.712785 and 62.925759
+  degrees and rejects their 5.787026-degree difference.
+- Classification: evaluator underspecification at a repeated circular-sequence junction. A general
+  scientific workflow should test ambiguity and equivalent representations when the published
+  domain permits them, but Peritus must not read the verifier's hard-coded insertion, choose a
+  hidden boundary after scoring, or add DNA/task-specific output behavior. The honest reward 0 is
+  retained; the later native provider terminal remains separately covered by `TBF-009`.
+- Evidence: task ref
+  `sha256:6e134a226ff852d8bf20f15480c7c1d74e3911d5b458f5cca07aabd23e380f0d`;
+  instruction SHA-256
+  `49fce0ee8b73d7ccdf4b8476c6bb87cf362689fd1d77b21a0d8737d16019a473`;
+  supplied sequence SHA-256
+  `aebe50fe8d43bb432925537aeb2be63abce3fcc259a1e04e0a37ce7af8da3da0`;
+  verifier SHA-256
+  `5bf0651b48969968dea30956d4b0cf9e499af59d73cc6886af3ad7aa92934647`;
+  reference SHA-256
+  `161b9fa46a76b05743fa3fb8eb01be275d5f89466813096aa5b89bc19b3db099`.
