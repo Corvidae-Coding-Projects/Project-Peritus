@@ -57,7 +57,11 @@ impl ExternalEffectRequirement {
                 .any(|phrase| normalized.contains(phrase));
         let executable_request =
             matches!(first, "build" | "develop" | "implement") && executable_outcome;
-        if intrinsic || (operational && live_outcome) || executable_request {
+        let install_sequence = matches!(first, "build" | "compile" | "download" | "fetch")
+            && [" and install ", " then install ", "compile and install"]
+                .iter()
+                .any(|phrase| normalized.contains(phrase));
+        if intrinsic || (operational && live_outcome) || executable_request || install_sequence {
             Self::Required
         } else {
             Self::Optional
@@ -147,6 +151,24 @@ mod tests {
             ExternalEffectRequirement::from_task(
                 ProductDeliveryScope::AuthorizedExternalEffects,
                 "Could you please write setup.sh that a user may run later?",
+            ),
+            ExternalEffectRequirement::Optional,
+        );
+    }
+
+    #[test]
+    fn coordinated_build_and_install_requires_the_installed_result() {
+        assert_eq!(
+            ExternalEffectRequirement::from_task(
+                ProductDeliveryScope::AuthorizedExternalEffects,
+                "Build the supplied package, then compile and install it to /opt/example.",
+            ),
+            ExternalEffectRequirement::Required,
+        );
+        assert_eq!(
+            ExternalEffectRequirement::from_task(
+                ProductDeliveryScope::AuthorizedExternalEffects,
+                "Build the supplied source archive without installing it.",
             ),
             ExternalEffectRequirement::Optional,
         );

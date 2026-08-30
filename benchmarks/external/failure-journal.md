@@ -2099,6 +2099,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - After evidence: the 445-trial baseline uses one frozen binary and is not mutated mid-campaign.
   The final unchanged full-suite campaign will supply the corrected-product comparison and remains
   required before this finding is closed as a demonstrated benchmark improvement.
+- Frozen recurrence: trial `build-pov-ray__fGziNjS` independently downloaded, patched, compiled,
+  installed, and sanity-rendered POV-Ray 2.2; all three unchanged source, version, and image checks
+  passed for reward 1.0. The frozen native run again rejected command-imported legacy source under
+  the first-party 500-line gate and then failed while trying to attach unrelated imported GIFs to
+  the text-only reviewer route. It used 26 requests, 1,312,714 input, 158,720 cached input, and
+  10,794 output tokens over 392.269 seconds. This repeated pass strengthens the existing general
+  media-selection and ownership corrections; it does not justify a POV-Ray exception.
 
 ## TBF-006: a provider policy terminal became an unexplained empty response
 
@@ -2403,6 +2410,19 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   same provider terminal after eight requests, 146,282 input, 63,488 cached input, and 5,293 output
   tokens. The real external effect and readiness proof are retained; only the false terminal
   belongs to role recovery.
+- Trial `circuit-fibsqrt__9o85CN9` generated a 3,091-line logic-gate artifact, exercised the two
+  required examples plus boundary inputs, and reached passing exact-target gates with an empty
+  finding ledger. All three unchanged verifier checks passed for reward 1.0. Native Peritus again
+  ended during review on the same provider terminal after twelve requests, 857,432 input, 71,424
+  cached input, and 16,037 output tokens over 501.351 seconds. The correct circuit and its costly
+  validation are retained; only the false native terminal belongs to role recovery.
+- Trial `overfull-hbox__STL7hyL` changed only the permitted LaTeX input, compiled the complete
+  document with the installed TeX toolchain, and confirmed that the final log had no overfull-box
+  warnings. All four unchanged edit-scope, build, warning, and exact-content checks passed for
+  reward 1.0. Native Peritus still ended during review on the same provider terminal after
+  seventeen requests, 438,184 input, 110,592 cached input, and 6,339 output tokens over 246.920
+  seconds. The constrained successful edit is retained; only the false terminal belongs to role
+  recovery.
 
 ## TBM-001: a writer mirrored the response field into the request schema
 
@@ -3149,11 +3169,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Cause: the authorized-external-effect acceptance boundary required effect evidence only for an
   empty workspace diff. A supporting file made the ordinary changed-target gates applicable, so a
   request for a live configured result could be reduced to instructions for producing that result.
-- Resolution: Peritus now classifies explicit operational imperatives under the already-authorized
-  effect scope. Such a request requires a successful command labeled `external_effect` and a later
-  successful command labeled `verification`, even when scripts, configuration, or documentation
-  also changed. The deterministic design, writer, reviewer, evidence report, acceptance decision,
-  and completion summary all retain that requirement. No service name, port, task identity, or
+- Resolution: Peritus now classifies explicit operational imperatives, promised executable runtime
+  results, and coordinated build/install requests under the already-authorized effect scope. Such
+  a request requires a successful command labeled `external_effect` and a later successful command
+  labeled `verification`, even when scripts, configuration, or documentation also changed. The
+  deterministic design, writer, reviewer, evidence report, acceptance decision, and completion
+  summary all retain that requirement. No service name, package, path, port, task identity, or
   verifier behavior appears in the policy.
 - Integrity decision: installing ordinary runtime or build prerequisites and retaining them on
   `PATH` inside the authorized disposable task environment is legitimate execution, not benchmark
