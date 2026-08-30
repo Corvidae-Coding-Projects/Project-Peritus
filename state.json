@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 815,
+  "next_comment_id": 816,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T04:52:22.320922134Z",
+      "updated_at": "2026-08-30T05:01:19.061702743Z",
       "labels": [
         "qualification",
         "release"
@@ -2417,6 +2417,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAkrZfr+mRdrI29aAv1dufk4Y7zHJOf299LCpD1ldpI18i7qn3TLOZiAG/J1uAeJEpNTa8Trf5DRrtD7zO3qHfBQ=="
+        },
+        "793157f9-da2c-4df4-a5e7-f7aea23fba61": {
+          "display_id": 815,
+          "author": "6ME5",
+          "content": "Committed 254877e7 (signed): TBF-023 changes bounded developer-command capture from prefix-only to a fixed head-and-rolling-tail window, preserving final build/test/package diagnostics without increasing the 512 KiB per-stream budget. The tool contract still requires proactive filtering. Regression emits over 600 KiB on both streams and requires prefixes, terminal suffixes, and truncation markers. Verification: 80 product-runner unit tests, 7 integrations, doctests, rustfmt, and cargo xtask all pass. Frozen baseline remains unchanged.",
+          "created_at": "2026-08-30T05:01:19.059297705Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA/gwaufbiTmo5eWsE1ick7ShmTtQCWUh9E6lf6X7tPUSujKlBS1dqUb2cQBdDIPKg2RdT+tP+GcFWtiD8YTDECA=="
         },
         "796b66cf-3a31-444e-899f-cf28c1fd279d": {
           "display_id": 656,
@@ -8091,8 +8100,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T04:52:22.320922134Z",
+    "timestamp": "2026-08-30T05:01:19.061702743Z",
     "agent_id": "6ME5",
-    "agent_seq": 1005
+    "agent_seq": 1006
   }
 }
