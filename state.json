@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 880,
+  "next_comment_id": 881,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -8305,12 +8305,21 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:01:08.433031832Z",
-      "updated_at": "2026-08-27T18:33:05.151946669Z",
+      "updated_at": "2026-08-30T13:22:30.465473134Z",
       "labels": [
         "qualification",
         "security"
       ],
       "comments": {
+        "3298dd63-4793-4f35-8ed0-0e89963619e9": {
+          "display_id": 880,
+          "author": "6ME5",
+          "content": "Implemented the honest H0 native-host partition: Linux owns 39 portable probes plus its native backend probe, macOS owns one native probe, and Windows owns one native probe. Exact aggregation requires one shard per platform, identical candidate/limit bindings, globally unique subjects, and exactly one report per canonical probe before restoring all 42 in catalog order. Parallel native-process testing also reproduced an ETXTBSY launch race for freshly staged executors; the process boundary now retries only that exact Unix transient four times and otherwise fails normally. Evidence: 14 H0 tests pass, the native process suite passed five parallel repetitions, strict native/macOS/Windows Clippy is green, source limits and diff checks pass, and full cargo xtask all passes across 78 packages and 3182 sources. The real native probe controller, durable shard interchange/operator, and independent review remain required.",
+          "created_at": "2026-08-30T13:22:30.462710859Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9bYKy7+P2L+yNVnSP3idOtqfF3Ms5LJ7UxMtyIlMLWaSoEeiM0AbRP5t2J7qRv9TzpolJORE7eBYTJfzkjuYAw=="
+        },
         "846adca6-5816-46dd-a2dd-d74d1c5a4d64": {
           "display_id": 479,
           "author": "6ME5",
@@ -8676,8 +8685,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T13:20:56.867832904Z",
+    "timestamp": "2026-08-30T13:22:30.465473134Z",
     "agent_id": "6ME5",
-    "agent_seq": 1074
+    "agent_seq": 1075
   }
 }
