@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1019,
+  "next_comment_id": 1020,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T22:28:24.157604079Z",
+      "updated_at": "2026-08-30T22:40:13.576384612Z",
       "labels": [
         "qualification",
         "release"
@@ -2867,6 +2867,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAB46csD4PYGBWDBJk6sQRtLR9jIUhvaFwGCe3Mv1E2TjC82ZWa+ATHrmv7mdx1L/nQ78u1zXoTz8XIT2e7z8WAQ=="
+        },
+        "6db2087f-e18a-4a7d-9b54-0228f5ef04ab": {
+          "display_id": 1019,
+          "author": "6ME5",
+          "content": "Exact-head qualification artifacts retained for 98cf7171c38942da50b8285fc67d8f29a74f6f93. H0 hosted run 33338533064 passed: Linux 40/40, macOS 1/1, Windows 1/1, with zero recorded cleanup residue. Retained under /home/doll/.local/state/peritus/qualification/h0/run-33338533064; shard SHA-256 values: Linux 90454806917c54d2819a8642bb8eee3228ae498f7bea5a568beb20d84ea8733c, macOS e9169d9c75ab3c6334936777d32f33ef8378f6c71759b20aa4257586dddbf32b, Windows 5523d36aae5812d8fb0dc2f9f368c10143539d22b86bb4747ab4101d2855. H2 hosted run 33338533059 passed Ready 18/18 with zero cleanup residue on Linux, macOS, and Windows. Retained under /home/doll/.local/state/peritus/qualification/h2/run-33338533059; report SHA-256 values: Linux 9191062309d5873dcb25c7eef6f3d1e282c856d7fa417eee4cf61f8c9cc1944b, macOS 9345ab1851cb0595144e5b014c1600e98e5285485dc8a07a59a71955d341a847, Windows 9fb08a1f977e2607db7ace0b19f9dca031ae1ad4ac29a9417ae7e0dfc13c41fb. Gate A run 33338533070 and Foundation run 33338533066 remain in progress.",
+          "created_at": "2026-08-30T22:40:13.570637383Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7/QYBBMYEN8iP/84o34kBQpVxWXLitbPOMJ6W68P0v5crwKPB+UR/M6qZz2fpYhSdphwzv4SuJn/ufaZomoFCQ=="
         },
         "6dd67637-62ba-40ac-a22e-c6e44fd63e5a": {
           "display_id": 985,
@@ -9927,8 +9936,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T22:28:24.157604079Z",
+    "timestamp": "2026-08-30T22:40:13.576384612Z",
     "agent_id": "6ME5",
-    "agent_seq": 1213
+    "agent_seq": 1214
   }
 }
