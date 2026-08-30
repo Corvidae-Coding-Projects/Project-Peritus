@@ -28,7 +28,7 @@ pub(super) struct LaunchRequest<'a> {
 }
 
 pub(super) struct OwnedController {
-    child: Child,
+    child: Option<Child>,
     stdin: ChildStdin,
     tree: ProcessTree,
     responses: Receiver<Result<Vec<u8>, SubjectError>>,
@@ -102,7 +102,7 @@ impl OwnedController {
         let stderr_count = Arc::clone(&output_bytes);
         let stderr = thread::spawn(move || drain(stderr_pipe, &stderr_count));
         Ok(Self {
-            child,
+            child: Some(child),
             stdin,
             tree,
             responses,
@@ -150,8 +150,7 @@ impl OwnedController {
                 }
             }
             if let Some(status) = self.try_wait()? {
-                self.reaped = true;
-                self.tree.finish()?;
+                self.finish_tree()?;
                 self.join_output()?;
                 return Err(supervision(
                     format!("controller exited before responding with status {status}"),
@@ -171,14 +170,14 @@ impl OwnedController {
                 stop,
                 cancellation,
             )?;
+            self.finish_tree()?;
+            self.join_output()?;
             if !status.success() {
                 return Err(supervision(
                     format!("controller cleanup exited with status {status}"),
                     false,
                 ));
             }
-            self.tree.finish()?;
-            self.join_output()?;
         }
         Ok(response)
     }
@@ -197,7 +196,6 @@ impl OwnedController {
     ) -> Result<ExitStatus, SubjectError> {
         loop {
             if let Some(status) = self.try_wait()? {
-                self.reaped = true;
                 return Ok(status);
             }
             if cancelled(abandoned, stop, cancellation) {
@@ -214,6 +212,8 @@ impl OwnedController {
 
     fn try_wait(&mut self) -> Result<Option<ExitStatus>, SubjectError> {
         self.child
+            .as_mut()
+            .ok_or_else(|| supervision("native controller was released", false))?
             .try_wait()
             .map_err(|error| supervision(format!("poll native controller: {error}"), true))
     }
@@ -223,10 +223,19 @@ impl OwnedController {
             self.tree.terminate()?;
         }
         self.child
+            .as_mut()
+            .ok_or_else(|| supervision("native controller was released", false))?
             .wait()
             .map_err(|error| supervision(format!("reap native controller: {error}"), false))?;
+        drop(self.child.take());
         self.reaped = true;
         self.join_output()
+    }
+
+    fn finish_tree(&mut self) -> Result<(), SubjectError> {
+        drop(self.child.take());
+        self.reaped = true;
+        self.tree.finish()
     }
 
     fn join_output(&mut self) -> Result<(), SubjectError> {
@@ -247,7 +256,9 @@ impl Drop for OwnedController {
     fn drop(&mut self) {
         if !self.reaped {
             let _ = self.tree.terminate();
-            let _ = self.child.wait();
+            if let Some(child) = self.child.as_mut() {
+                let _ = child.wait();
+            }
             self.reaped = true;
         }
         let _ = self.join_output();

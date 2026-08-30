@@ -125,7 +125,7 @@ pub(super) fn read_response(path: &Path, maximum: u64) -> Result<Vec<u8>, Qualif
 }
 
 struct OwnedChild {
-    child: Child,
+    child: Option<Child>,
     tree: ProcessTree,
     reaped: bool,
 }
@@ -149,49 +149,51 @@ impl OwnedChild {
             }
         };
         let tree = ProcessTree::attach(&child, maximum_processes)?;
-        Ok(Self { child, tree, reaped: false })
+        Ok(Self { child: Some(child), tree, reaped: false })
     }
 
     fn take_stdout(&mut self) -> Result<impl Read + Send + 'static, QualificationError> {
-        self.child.stdout.take().ok_or_else(|| {
+        self.child.as_mut().and_then(|child| child.stdout.take()).ok_or_else(|| {
             native_error("launch native H0 probe", "executor stdout pipe was unavailable")
         })
     }
 
     fn take_stderr(&mut self) -> Result<impl Read + Send + 'static, QualificationError> {
-        self.child.stderr.take().ok_or_else(|| {
+        self.child.as_mut().and_then(|child| child.stderr.take()).ok_or_else(|| {
             native_error("launch native H0 probe", "executor stderr pipe was unavailable")
         })
     }
 
     fn try_wait(&mut self) -> Result<Option<ExitStatus>, QualificationError> {
-        self.child.try_wait().map_err(|error| {
-            native_error("wait for native H0 probe", format!("poll executor: {error}"))
-        })
+        self.child
+            .as_mut()
+            .ok_or_else(|| native_error("wait for native H0 probe", "executor was released"))?
+            .try_wait()
+            .map_err(|error| {
+                native_error("wait for native H0 probe", format!("poll executor: {error}"))
+            })
     }
 
     fn terminate(&mut self) -> Result<(), QualificationError> {
-        if self
-            .child
-            .try_wait()
-            .map_err(|error| {
-                native_error("terminate native H0 probe", format!("poll owned child: {error}"))
-            })?
-            .is_none()
-        {
+        if self.try_wait()?.is_none() {
             self.tree.terminate()?;
         }
-        self.child.wait().map_err(|error| {
-            native_error("terminate native H0 probe", format!("reap owned child: {error}"))
-        })?;
+        self.child
+            .as_mut()
+            .ok_or_else(|| native_error("terminate native H0 probe", "executor was released"))?
+            .wait()
+            .map_err(|error| {
+                native_error("terminate native H0 probe", format!("reap owned child: {error}"))
+            })?;
+        drop(self.child.take());
         self.reaped = true;
         Ok(())
     }
 
     fn finish_tree(&mut self) -> Result<(), QualificationError> {
-        self.tree.finish()?;
+        drop(self.child.take());
         self.reaped = true;
-        Ok(())
+        self.tree.finish()
     }
 }
 
@@ -209,7 +211,9 @@ impl Drop for OwnedChild {
     fn drop(&mut self) {
         if !self.reaped {
             let _ = self.tree.terminate();
-            let _ = self.child.wait();
+            if let Some(child) = self.child.as_mut() {
+                let _ = child.wait();
+            }
         }
     }
 }

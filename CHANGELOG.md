@@ -117,6 +117,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Release exited Windows controller process handles before reconciling Job Object accounting, then
+  allow a bounded two-second drain for genuinely terminating descendants across H0, H1, and H2;
+  persistent descendants are still killed and fail qualification (#31, #32)
 - Retry a freshly staged native H0 executor only for the bounded Unix `ETXTBSY` launch race seen on
   parallel workspace filesystems; persistent executable-busy errors and every other spawn failure
   still fail the probe normally (#32)

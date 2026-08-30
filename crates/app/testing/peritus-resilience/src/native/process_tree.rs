@@ -80,6 +80,8 @@ mod platform {
     use core::{ffi::c_void, mem::size_of, ptr};
     use std::os::windows::{io::AsRawHandle as _, process::CommandExt as _};
     use std::process::{Child, Command};
+    use std::thread;
+    use std::time::{Duration, Instant};
 
     use windows_sys::Win32::{
         Foundation::{CloseHandle, HANDLE},
@@ -95,6 +97,9 @@ mod platform {
     use crate::{SubjectError, SubjectErrorCode};
 
     use super::super::subject_error;
+
+    const PROCESS_DRAIN_DEADLINE: Duration = Duration::from_secs(2);
+    const PROCESS_DRAIN_POLL_INTERVAL: Duration = Duration::from_millis(10);
 
     pub struct ProcessTree {
         job: Option<HANDLE>,
@@ -150,32 +155,24 @@ mod platform {
             let Some(job) = self.job else {
                 return Ok(());
             };
-            let mut accounting = JOBOBJECT_BASIC_ACCOUNTING_INFORMATION::default();
-            let length = u32::try_from(size_of::<JOBOBJECT_BASIC_ACCOUNTING_INFORMATION>())
-                .map_err(|_| job_error("encode Job Object accounting query"))?;
-            // SAFETY: the live job and correctly-sized mutable accounting record are valid.
-            let queried = unsafe {
-                QueryInformationJobObject(
-                    job,
-                    JobObjectBasicAccountingInformation,
-                    (&raw mut accounting).cast::<c_void>(),
-                    length,
-                    ptr::null_mut(),
-                )
-            };
-            if queried == 0 {
-                return Err(job_error("query Job Object process accounting"));
-            }
-            let active_processes = accounting.ActiveProcesses;
-            self.close()?;
-            if active_processes == 0 {
-                Ok(())
-            } else {
-                Err(subject_error(
-                    SubjectErrorCode::Cleanup,
-                    "controller exited while a descendant remained in its Job Object",
-                    false,
-                ))
+            let started = Instant::now();
+            loop {
+                let active_processes = active_processes(job)?;
+                if active_processes == 0 {
+                    self.close()?;
+                    return Ok(());
+                }
+                if started.elapsed() >= PROCESS_DRAIN_DEADLINE {
+                    self.close()?;
+                    return Err(subject_error(
+                        SubjectErrorCode::Cleanup,
+                        format!(
+                            "controller exited while {active_processes} process(es) remained in its Job Object"
+                        ),
+                        false,
+                    ));
+                }
+                thread::sleep(PROCESS_DRAIN_POLL_INTERVAL);
             }
         }
 
@@ -188,6 +185,26 @@ mod platform {
             }
             Ok(())
         }
+    }
+
+    fn active_processes(job: HANDLE) -> Result<u32, SubjectError> {
+        let mut accounting = JOBOBJECT_BASIC_ACCOUNTING_INFORMATION::default();
+        let length = u32::try_from(size_of::<JOBOBJECT_BASIC_ACCOUNTING_INFORMATION>())
+            .map_err(|_| job_error("encode Job Object accounting query"))?;
+        // SAFETY: the live job and correctly-sized mutable accounting record are valid.
+        let queried = unsafe {
+            QueryInformationJobObject(
+                job,
+                JobObjectBasicAccountingInformation,
+                (&raw mut accounting).cast::<c_void>(),
+                length,
+                ptr::null_mut(),
+            )
+        };
+        if queried == 0 {
+            return Err(job_error("query Job Object process accounting"));
+        }
+        Ok(accounting.ActiveProcesses)
     }
 
     impl Drop for ProcessTree {

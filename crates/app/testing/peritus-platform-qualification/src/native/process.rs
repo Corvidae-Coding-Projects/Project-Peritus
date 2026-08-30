@@ -133,7 +133,7 @@ pub(super) fn read_document(
 }
 
 struct OwnedChild {
-    child: Child,
+    child: Option<Child>,
     tree: ProcessTree,
     reaped: bool,
 }
@@ -151,42 +151,55 @@ impl OwnedChild {
                 return Err(error);
             }
         };
-        Ok(Self { child, tree, reaped: false })
+        Ok(Self { child: Some(child), tree, reaped: false })
     }
 
     fn take_stdout(&mut self) -> Result<impl Read + Send + 'static, QualificationError> {
-        self.child.stdout.take().ok_or_else(|| {
+        self.child.as_mut().and_then(|child| child.stdout.take()).ok_or_else(|| {
             native_error("launch native H2 controller", "controller stdout was unavailable")
         })
     }
 
     fn take_stderr(&mut self) -> Result<impl Read + Send + 'static, QualificationError> {
-        self.child.stderr.take().ok_or_else(|| {
+        self.child.as_mut().and_then(|child| child.stderr.take()).ok_or_else(|| {
             native_error("launch native H2 controller", "controller stderr was unavailable")
         })
     }
 
     fn try_wait(&mut self) -> Result<Option<ExitStatus>, QualificationError> {
-        self.child.try_wait().map_err(|error| {
-            native_error("wait for native H2 controller", format!("poll controller: {error}"))
-        })
+        self.child
+            .as_mut()
+            .ok_or_else(|| {
+                native_error("wait for native H2 controller", "controller was released")
+            })?
+            .try_wait()
+            .map_err(|error| {
+                native_error("wait for native H2 controller", format!("poll controller: {error}"))
+            })
     }
 
     fn terminate(&mut self) -> Result<(), QualificationError> {
         if self.try_wait()?.is_none() {
             self.tree.terminate()?;
         }
-        self.child.wait().map_err(|error| {
-            native_error("terminate native H2 controller", format!("reap controller: {error}"))
-        })?;
+        self.child
+            .as_mut()
+            .ok_or_else(|| {
+                native_error("terminate native H2 controller", "controller was released")
+            })?
+            .wait()
+            .map_err(|error| {
+                native_error("terminate native H2 controller", format!("reap controller: {error}"))
+            })?;
+        drop(self.child.take());
         self.reaped = true;
         Ok(())
     }
 
     fn finish_tree(&mut self) -> Result<(), QualificationError> {
-        self.tree.finish()?;
+        drop(self.child.take());
         self.reaped = true;
-        Ok(())
+        self.tree.finish()
     }
 }
 
@@ -194,7 +207,9 @@ impl Drop for OwnedChild {
     fn drop(&mut self) {
         if !self.reaped {
             let _ = self.tree.terminate();
-            let _ = self.child.wait();
+            if let Some(child) = self.child.as_mut() {
+                let _ = child.wait();
+            }
         }
     }
 }
