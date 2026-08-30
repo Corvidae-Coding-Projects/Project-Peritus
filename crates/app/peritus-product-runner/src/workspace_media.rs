@@ -93,9 +93,7 @@ pub fn discover(
         let relative = path
             .strip_prefix(root)
             .map_err(|_| repository("discovered image escaped the managed workspace".to_owned()))?;
-        let relative = relative
-            .to_str()
-            .ok_or_else(|| repository("image path is not representable as UTF-8".to_owned()))?;
+        let relative = manifest_path(relative)?;
         let index = attachments.len();
         manifest.push_str(&format!("- attachment {index}: {relative} ({bytes_len} bytes)\n"));
         total = total.saturating_add(bytes_len);
@@ -109,6 +107,12 @@ pub fn discover(
         ));
     }
     Ok(WorkspaceImages { attachments, manifest })
+}
+
+fn manifest_path(path: &Path) -> Result<String, ProductRunnerError> {
+    path.to_str()
+        .map(|value| value.replace('\\', "/"))
+        .ok_or_else(|| repository("image path is not representable as UTF-8".to_owned()))
 }
 
 fn discover_paths(root: &Path) -> Result<Vec<PathBuf>, ProductRunnerError> {
@@ -307,6 +311,14 @@ mod tests {
 
         assert_eq!(attachments.len(), 6);
         assert!(prompt.contains("attachment 5: documents/scans/page-5.jpg"));
+    }
+
+    #[test]
+    fn manifest_paths_use_provider_neutral_separators() {
+        assert_eq!(
+            manifest_path(Path::new(r"documents\scans\page-5.jpg")).expect("manifest path"),
+            "documents/scans/page-5.jpg"
+        );
     }
 
     #[test]

@@ -153,6 +153,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Serialize model-visible workspace image paths with forward slashes on every host, so Windows
+  image collections keep the same repository-relative manifest contract as Linux and macOS (#31)
+- Give a cold installed TUI up to 30 bounded seconds to complete its real daemon-connected
+  PTY/ConPTY lifecycle, and retain rendered, connected, quit, cursor-handshake, and sanitized
+  transcript-tail diagnostics if that deadline is still exceeded on a hosted runner (#31)
 - Ground image-capable runs in every bounded image beneath an explicitly named workspace
   directory, and recognize ordinary image-file and OCR wording, so document and asset collections
   reach the model instead of provoking wasteful hand-built binary decoders (#31)

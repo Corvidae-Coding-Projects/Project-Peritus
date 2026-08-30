@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use portable_pty::{Child, CommandBuilder, PtySize, native_pty_system};
 
-const DEADLINE: Duration = Duration::from_secs(15);
+const DEADLINE: Duration = Duration::from_secs(30);
 const POLL_INTERVAL: Duration = Duration::from_millis(20);
 const MAX_TRANSCRIPT_BYTES: usize = 2 * 1024 * 1024;
 const CONTROL_Q: u8 = 0x11;
@@ -85,10 +85,16 @@ pub(super) fn exercise(
             break status;
         }
         if started.elapsed() >= DEADLINE {
+            let diagnostic = transcript
+                .lock()
+                .map_err(|_| "native TUI transcript lock was poisoned")
+                .map(|state| diagnostic_tail(&state.bytes))?;
             child.terminate()?;
-            return Err(
-                "native TUI did not complete its connected lifecycle within 15 seconds".into()
-            );
+            return Err(format!(
+                "native TUI did not complete its connected lifecycle within {} seconds: rendered={rendered} connected={connected} quit_sent={quit_sent} cursor_reports={cursor_reports}; transcript tail: {diagnostic}",
+                DEADLINE.as_secs()
+            )
+            .into());
         }
         thread::sleep(POLL_INTERVAL);
     };
