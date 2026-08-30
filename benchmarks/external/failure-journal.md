@@ -3340,6 +3340,19 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   `financial-document-processor__P6xNjCg`; reward 0; native provider terminal after sixteen
   requests, 555,251 input, 63,488 cached input, and 22,773 output tokens over 944.172 seconds; no
   changed paths; verifier interval completed normally with seven failures.
+- Frozen recurrence: `financial-document-processor__pfa6ZdQ` reached Harbor's unchanged
+  1,200-second agent deadline while still hand-decoding JPEG pixels in Perl. Its 1,066,341-byte
+  native trace ended after another successful read-only decoder command, no requested directory or
+  CSV existed, and the independently completed verifier recorded seven failures and reward 0.
+  This attempt also exposed a separate general grounding bug: the instruction explicitly scoped
+  `/app/documents/` and named JPG files, but media discovery matched only individual filenames or a
+  narrow phrase such as `describe the image`, so none of the ten in-scope JPGs reached the
+  image-capable model. Peritus now treats an explicitly named workspace directory as scope for its
+  descendant images, recognizes ordinary image/OCR wording, and admits up to sixteen relevant
+  images within the unchanged 12 MiB aggregate byte ceiling. A regression attaches all six images
+  beneath an absolute named directory while an unrelated text task still attaches none. This is
+  path- and media-type policy only; it contains no document label, amount, task identity, or
+  verifier fact.
 - Rewarded recurrence: `path-tracing-reverse__924etyD` eventually reconstructed, compiled, and
   byte-for-byte verified an independent C renderer, and all three unchanged verifier checks passed
   for reward 1.0. Before its first source write, however, the frozen writer made 31 inspection calls

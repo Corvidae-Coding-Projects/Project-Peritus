@@ -153,6 +153,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Ground image-capable runs in every bounded image beneath an explicitly named workspace
+  directory, and recognize ordinary image-file and OCR wording, so document and asset collections
+  reach the model instead of provoking wasteful hand-built binary decoders (#31)
 - Create the Windows restricted primary token with the zeroed restricting-SID attributes required
   by `CreateRestrictedToken`, and require native qualification tests to observe both the restricted
   token and its low-integrity label instead of allowing the sandbox probe to degrade silently (#31)

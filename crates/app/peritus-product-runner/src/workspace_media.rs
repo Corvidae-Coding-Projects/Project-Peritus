@@ -11,7 +11,7 @@ use peritus_model_protocol::{
 
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
-const MAX_IMAGES: usize = 4;
+const MAX_IMAGES: usize = 16;
 const MAX_DISCOVERED_IMAGES: usize = 1_024;
 const MAX_IMAGE_BYTES: u64 = 4 * 1024 * 1024;
 const MAX_TOTAL_BYTES: u64 = 12 * 1024 * 1024;
@@ -146,6 +146,13 @@ fn discover_paths(root: &Path) -> Result<Vec<PathBuf>, ProductRunnerError> {
 fn requests_visual_inspection(task: &str) -> bool {
     let task = task.to_ascii_lowercase();
     [
+        "image files",
+        "photo files",
+        "picture files",
+        "jpeg files",
+        "jpg files",
+        "png files",
+        "ocr",
         "describe the image",
         "describe the photo",
         "describe the picture",
@@ -173,7 +180,28 @@ fn task_mentions_path(task: &str, root: &Path, path: &Path) -> bool {
         .replace('\\', "/");
     let filename =
         path.file_name().and_then(std::ffi::OsStr::to_str).unwrap_or_default().to_ascii_lowercase();
-    task.contains(&relative) || !filename.is_empty() && task.contains(&filename)
+    task.contains(&relative)
+        || !filename.is_empty() && task.contains(&filename)
+        || scoped_parent_is_mentioned(&task, root, path)
+}
+
+fn scoped_parent_is_mentioned(task: &str, root: &Path, path: &Path) -> bool {
+    let mut directory = path.parent();
+    while let Some(parent) = directory {
+        let Ok(relative) = parent.strip_prefix(root) else {
+            break;
+        };
+        if relative.as_os_str().is_empty() {
+            break;
+        }
+        let relative = relative.to_string_lossy().to_ascii_lowercase().replace('\\', "/");
+        let absolute = parent.to_string_lossy().to_ascii_lowercase().replace('\\', "/");
+        if task.contains(&format!("{relative}/")) || task.contains(&format!("{absolute}/")) {
+            return true;
+        }
+        directory = parent.parent();
+    }
+    false
 }
 
 fn ignored_directory(name: &std::ffi::OsStr) -> bool {
@@ -259,6 +287,26 @@ mod tests {
         let (_, attachments) = images.into_parts("task".to_owned());
 
         assert!(attachments.is_empty());
+    }
+
+    #[test]
+    fn mentioned_image_directory_attaches_the_complete_bounded_collection() {
+        let root = tempfile::tempdir().expect("workspace");
+        let documents = root.path().join("documents");
+        let scans = documents.join("scans");
+        fs::create_dir_all(&scans).expect("documents directory");
+        for index in 0..6 {
+            fs::write(scans.join(format!("page-{index}.jpg")), b"\xff\xd8\xffbounded-test-pixels")
+                .expect("image");
+        }
+        let task =
+            format!("Classify the JPG files in {}/ by their actual content", documents.display());
+
+        let images = discover(root.path(), &task, &profile(true)).expect("workspace images");
+        let (prompt, attachments) = images.into_parts(task);
+
+        assert_eq!(attachments.len(), 6);
+        assert!(prompt.contains("attachment 5: documents/scans/page-5.jpg"));
     }
 
     #[test]
