@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 991,
+  "next_comment_id": 992,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T20:12:09.941817559Z",
+      "updated_at": "2026-08-30T20:20:23.339244305Z",
       "labels": [
         "qualification",
         "release"
@@ -1769,6 +1769,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAdkrUH4PcY4O0pDxrRQC2pvX0h+0Noxa391nYP3VzfCyMa6Na+3f+BAfov19hmUTYv9QHvTJ1XVt5CjX2HgoUBQ=="
+        },
+        "24894a04-4728-45e5-805f-9d814c6a7e84": {
+          "display_id": 991,
+          "author": "6ME5",
+          "content": "Fresh head a178f0dc H0 run 33332794768 completed success across Linux, macOS, and Windows. Retained artifacts: Linux 9738271395, Windows 9738161405, macOS 9738141890. The new Windows path/TUI changes did not regress native H0 qualification.",
+          "created_at": "2026-08-30T20:20:23.335564173Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAeuEtkxMnib0kcDGbvp9ybkdgc1g0TZWWYHQBBToQj5yoH9oQm+Nu/p25Et4U76d+ymoYjbfkbfjHfITpOqYcAQ=="
         },
         "24c5b055-f9e6-484c-af07-1e5772d60f4a": {
           "display_id": 852,
@@ -9675,8 +9684,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T20:12:09.941817559Z",
+    "timestamp": "2026-08-30T20:20:23.339244305Z",
     "agent_id": "6ME5",
-    "agent_seq": 1187
+    "agent_seq": 1188
   }
 }
