@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 962,
+  "next_comment_id": 963,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T18:49:41.841104025Z",
+      "updated_at": "2026-08-30T18:52:46.026160050Z",
       "labels": [
         "qualification",
         "release"
@@ -4177,6 +4177,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAdMQ6HJblVZfpz1tb+c5B587Pi++j4FVSMdvUfjCT8A/eCeKgwKNqUpT3Pg3BDD+yEf0DMVLy1KiZi4xiW7NrBA=="
+        },
+        "e0a4b3da-ff4e-4397-9d04-ba872249b261": {
+          "display_id": 962,
+          "author": "6ME5",
+          "content": "Fresh b10e1134 H2 run 33328101034 closed the former Windows scenario-11 deadlock but failed the fixed PTY child with a non-success exit. The exact portable-pty 0.9 Windows implementation enables PSEUDOCONSOLE_INHERIT_CURSOR: leaving the terminal input unanswered blocks startup, while closing it before child exit terminates ConPTY with STATUS_CONTROL_C_EXIT. Root-cause correction now answers the cursor-position query, keeps input alive through child exit, then closes writer/master for deterministic reader EOF; no H2 limit or acceptance criterion is relaxed.",
+          "created_at": "2026-08-30T18:52:46.023321761Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAgsmUmoywWIJjKs6dDSY5Coi6d/PW6e1FixAdlETvmcvJxokxbu4nxq70TCp0Y5EFfGfk057MvatnLVK9CytrDQ=="
         },
         "e1684694-654b-46ee-9e27-241d4ef17ae2": {
           "display_id": 810,
@@ -9410,8 +9419,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T18:49:41.841104025Z",
+    "timestamp": "2026-08-30T18:52:46.026160050Z",
     "agent_id": "6ME5",
-    "agent_seq": 1157
+    "agent_seq": 1158
   }
 }
