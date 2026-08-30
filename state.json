@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 790,
+  "next_comment_id": 791,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T01:47:03.725095283Z",
+      "updated_at": "2026-08-30T01:48:14.386796643Z",
       "labels": [
         "qualification",
         "release"
@@ -2921,6 +2921,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAVGMMkgx1EhlCNB8XbFzd1Revi6Pw6zv/wdELtMExJ5GBH3mH1mBgs+UZ3dbMPLMgDeX7k+E0YlCsZArJJP8zCA=="
+        },
+        "caad943c-c3d8-4b6f-9bf8-1f0f4cca6bc7": {
+          "display_id": 790,
+          "author": "6ME5",
+          "content": "Committed fab12479: added the benchmark-integrity appendix, linked every current gotcha to retained journal evidence, documented refused score-only shortcuts, and explicitly separated product, model, provider, and infrastructure failures. Verification: CARGO_BUILD_JOBS=2 cargo xtask docs-check passed for 136 files; git diff --check passed.",
+          "created_at": "2026-08-30T01:48:14.384296363Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABArk0mhFk3ZOaAfzHjZVnRJQsD0h1GKkEh1E7JVxuYzBSzSMXTmDSs67y2sfZxmG6ESpLOqcjRIArnNdU3Y2I9CA=="
         },
         "ccbc4f60-b08c-4837-b393-4e9d4e149648": {
           "display_id": 769,
@@ -7866,8 +7875,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T01:47:08.574129426Z",
+    "timestamp": "2026-08-30T01:48:14.386796643Z",
     "agent_id": "6ME5",
-    "agent_seq": 978
+    "agent_seq": 979
   }
 }
