@@ -3540,6 +3540,15 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   so reward 0 is retained. Native review ended on `TBF-009` after twenty-four requests, 1,872,112
   input, 142,848 cached input, and 24,710 output tokens over 2,239.687 seconds. This supports the
   task-neutral independent-validation rule; it does not justify fitting to the hidden test set.
+- Third frozen attempt `video-processing__4dvBUc4` built a different scale-relative motion and
+  trajectory implementation and checked its output shape and development-video execution. It
+  reported development frames 47 and 63, but the unchanged verifier required takeoff within 50 to
+  54; on the independent video it reported takeoff 224 against 219 to 223. The three existence,
+  import, and shape checks passed while both behavioral checks failed, so reward 0 is retained.
+  Fourteen native requests used 532,358 input, 130,816 cached input, and 14,740 output tokens over
+  352.382 seconds before the separate `TBF-009` reviewer terminal. This is another validation target
+  for independent cases and evidence-limited claims; it does not justify copying hidden frame
+  ranges or adding video-specific thresholds to Peritus.
 - Verification: embedded-workflow regressions require the calibration/generalization,
   independent-case, perturbation, and tuned-constant rules in architect, developer, and reviewer
   prompts. The deterministic artifact-design regression requires the same rule. All 95
@@ -3614,3 +3623,37 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   artifact-design regression requires the same acceptance boundary. Focused and repository gates
   must pass before this correction is checkpointed; an unchanged final-candidate rerun remains
   required.
+
+## TBF-028: a helpful adjacent edit escaped a closed mutation contract
+
+- Suite and task: Terminal-Bench 2.0, `overfull-hbox`, third frozen baseline attempt
+  `overfull-hbox__SSkmz36`.
+- Symptom: the request allowed only word replacements from the closed synonym families in
+  `synonyms.txt`. Peritus successfully removed every overfull box and preserved `main.tex` and
+  `synonyms.txt`, but changed the article `a` to `an` next to the permitted `hostile` to `adverse`
+  replacement. The unchanged verifier passed compilation, warning removal, and protected-file
+  checks, then rejected that one unmapped token for reward 0.
+- Cause: the shared workflow distinguished closed examples from non-exhaustive examples, but did
+  not require every changed path and token to trace back to a closed mutation allowlist. The writer
+  treated grammatical agreement as harmless cleanup, and the independent reviewer received the
+  complete diff but reported no finding.
+- Resolution: every role now treats `only`, `exactly`, `except`, and equivalent path/value/
+  transformation restrictions as a closed mutation contract. It derives the allowed set before
+  editing and compares the complete candidate diff with that set. Helpful grammar, formatting,
+  cleanup, generated-output, and convenience changes are rejected unless the request or its named
+  mapping source permits them. The rule is task- and format-neutral.
+- Integrity decision: retain the zero. Do not copy the reference substitution set, key behavior to
+  LaTeX or this task name, weaken the unchanged verifier, or suppress ordinary grammar repair
+  globally. Grammar repair remains valid when the user's mutation contract permits it.
+- Evidence: task ref
+  `sha256:984d672ae34ada00db17a8c024110fb3527fbb5bce0844e8c0fd9b4e4d4fdacf`; instruction SHA-256
+  `91381d7490afbbf11255e22471d3ed76317353d8e1da372fbc91887e65c57f47`; unchanged verifier
+  SHA-256 `09756f87d1a29df533e86c5c7d5fd14f64acb17b03cabb55921bb2890d368e5d`;
+  fifteen native requests; 379,269 input, 132,352 cached input, and 6,963 output tokens over
+  237.879 seconds. A later reviewer provider terminal remains separately covered by `TBF-009` and
+  did not determine the verifier result.
+- Verification: the embedded-workflow regression requires closed-mutation, complete-diff, and
+  helpful-adjacent-edit rules in architect, developer, and reviewer prompts. All 100 product-runner
+  unit and integration tests, strict all-target/all-feature Clippy, rustfmt, diff checks, and the
+  137-file documentation check pass. Complete repository gates and an unchanged final-candidate
+  rerun remain required.

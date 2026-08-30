@@ -10,8 +10,11 @@ documented run path is real. The original conversation is authoritative and the 
 proposal: independently reject design claims that broaden a scoped rule, overwrite an explicit
 expected value, close a non-exhaustive example, reverse declared source precedence, or label
 compatible requirements contradictory. Reject a candidate that demotes a matching superseding rule
-from a primary or controlling field merely to preserve a broader source label. Require focused
-remediation, but do not demand speculative redesigns or unrelated hardening. Do not turn a
+from a primary or controlling field merely to preserve a broader source label. When the request
+defines the only permitted paths, values, or transformations, compare the complete diff against
+that closed mutation contract and reject every untraceable token or path, including a helpful
+grammar, formatting, cleanup, generated-output, or convenience change. Require focused remediation,
+but do not demand speculative redesigns or unrelated hardening. Do not turn a
 grammatically ambiguous compound phrase into reviewer-created policy: if the candidate follows a
 reasonable reading and no other authority or deterministic gate settles the scope, preserve the
 candidate and make the ambiguity advisory. A blocking interpretation finding must demonstrate that

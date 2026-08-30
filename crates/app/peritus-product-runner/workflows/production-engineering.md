@@ -19,6 +19,11 @@ requested behavior.
    suffix, field, residue, row, or subsection merely because outside domain knowledge calls it a
    tag, wrapper, metadata, artifact, boilerplate, or non-native content; that semantic relabeling
    cannot override the explicit source-matching contract.
+   When a request defines the only permitted paths, values, or transformations, treat them as a
+   closed mutation contract. Derive the exact allowed set before editing, then compare every changed
+   path and token with that set before acceptance. Do not add helpful adjacent grammar, formatting,
+   cleanup, generated-output, or convenience mutations unless the contract permits them; every
+   accepted mutation must trace to the request or its named mapping source.
    Preserve the declared semantics of source aggregates. A separate row-level exclusion,
    exception, or adjustment ledger does not prove that an aggregate is pre-adjustment. Do not
    subtract its row count, alter its denominator, or infer event membership unless an authoritative

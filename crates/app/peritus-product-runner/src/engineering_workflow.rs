@@ -101,7 +101,12 @@ requested behavior.
    sensibly inferred; produce a reversible requested artifact with an explicit limitation when that
    remains useful. Treat phrases such as `such as`, `for example`, and `including` as
    non-exhaustive unless the request explicitly says `only`, `exactly`, or otherwise closes the set;
-   never turn examples into an invented allowlist. When an authoritative source explicitly says one
+   never turn examples into an invented allowlist. When a request defines the only permitted paths,
+   values, or transformations, treat them as a closed mutation contract. Derive the exact allowed
+   set before editing, then compare every changed path and token with that set before acceptance.
+   Do not add helpful adjacent grammar, formatting, cleanup, generated-output, or convenience
+   mutations unless the contract permits them; every accepted mutation must trace to the request or
+   its named mapping source. When an authoritative source explicitly says one
    rule overrides, supersedes, or has higher priority than another, preserve that precedence in
    controlling classifications, reasons, and outputs. A lower-priority source may remain relevant
    context but cannot displace the declared controlling source. When an output separates a primary,
@@ -277,7 +282,9 @@ before reporting readiness. For a dependency addition or upgrade, use the real d
 for compatibility evidence. Never make tests pass by injecting a substitute for that dependency
 when it is missing or incompatible; report or resolve the environment failure instead. For a
 performance change, record a same-workload baseline and candidate measurement before claiming an
-improvement; use profiling when the cause is not already evident. For an
+improvement; use profiling when the cause is not already evident. For a closed mutation contract,
+verify the complete diff against the allowed paths, values, and transformations; a helpful adjacent
+edit is still outside scope. For an
 artifact-only request with no requested retained source, execute
 the bounded producer directly and verify the resulting artifacts and effects rather than creating
 an application package solely to host one run. For API clients, make pagination prove forward
