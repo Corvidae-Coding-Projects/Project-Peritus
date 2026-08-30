@@ -261,6 +261,7 @@ fn developer_loop_returns_executor_progress_feedback_to_the_same_session() {
                     matches!(block, ContentBlock::Text(text) if text.expose_for_wire() == "take a concrete step now")
                 })
         }));
+        drop(requests);
     });
 }
 
