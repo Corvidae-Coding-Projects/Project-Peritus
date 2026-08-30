@@ -146,6 +146,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Close a completed native terminal session before draining its cloned reader so Windows ConPTY
+  publishes EOF instead of leaving H2 terminal qualification blocked; validate the packaged Task
+  Scheduler template against its exact direct-command placeholders rather than a rendered path
+  that the packaged template intentionally does not contain (#31)
 - Drain and join the persistent H1 controller's response reader after a successful cleanup exit
   before deciding that its terminal response is missing, removing a macOS scheduling race without
   accepting failed exits or absent response frames (#31)

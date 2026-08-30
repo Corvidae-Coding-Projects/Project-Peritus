@@ -134,7 +134,11 @@ fn service_template(
             Platform::Macos => {
                 ["<string>serve</string>", "<key>KeepAlive</key>", "<key>ThrottleInterval</key>"]
             }
-            Platform::Windows => ["peritusd.exe", "serve --config", "<RestartOnFailure>"],
+            Platform::Windows => [
+                "<Command>@PERITUSD@</Command>",
+                "<Arguments>serve --config &quot;@CONFIG_FILE@&quot;</Arguments>",
+                "<RestartOnFailure>",
+            ],
         };
         if required.iter().any(|needle| !text.contains(needle)) {
             return Ok(Observation::failed(

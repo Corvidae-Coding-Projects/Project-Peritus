@@ -124,10 +124,11 @@ impl QualifiedEvent {
 
 /// Launches a fixed real PTY child and derives ordering facts from its observed bytes and exit.
 ///
-/// The child writes to both standard output and standard error. A PTY exposes those writes only
-/// through its combined terminal reader, which is streamed through a fixed positive byte buffer.
-/// The move-only child owner synchronously reaps the process on every path after a successful
-/// spawn.
+/// The child writes a fixed, pipe-buffer-sized payload to both standard output and standard error.
+/// After synchronously reaping that child, the qualifier closes the master owner before draining
+/// its cloned reader. Closing the owner is what makes a completed Windows `ConPTY` publish EOF; the
+/// cloned reader still retains the already-written combined stream. Reads use a fixed positive
+/// byte buffer.
 ///
 /// # Errors
 ///
@@ -181,6 +182,8 @@ pub fn qualify_pty_ordering() -> Result<PtyQualificationObservation, PtyQualific
     })?;
     drop(pair.slave);
     let mut child = PtyChildOwner::new(child);
+    let status = child.wait()?;
+    drop(pair.master);
 
     let mut output_offset = 0_u64;
     let mut peak_buffered_bytes = 0_u64;
@@ -223,7 +226,6 @@ pub fn qualify_pty_ordering() -> Result<PtyQualificationObservation, PtyQualific
         })?;
     }
 
-    let status = child.wait()?;
     let exit_sequence = next_sequence(&events)?;
     push_event(
         &mut events,
