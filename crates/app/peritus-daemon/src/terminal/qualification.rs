@@ -1,9 +1,13 @@
 //! Bounded operational qualification of the host's real combined PTY stream.
 
+mod reader;
+
 use core::fmt;
-use std::{error::Error, io::Read};
+use std::error::Error;
 
 use portable_pty::{Child, CommandBuilder, NativePtySystem, PtySize, PtySystem};
+
+use self::reader::{QualifiedEvent, next_sequence, push_event, read_terminal, summarize};
 
 const BUFFER_LIMIT_BYTES: usize = 8;
 const BUFFER_LIMIT_BYTES_U64: u64 = 8;
@@ -95,6 +99,7 @@ enum PtyQualificationErrorKind {
     BufferAllocation,
     PtyAllocation,
     ReaderCreation,
+    ReaderThread,
     Spawn,
     Read,
     EventLimit,
@@ -103,32 +108,13 @@ enum PtyQualificationErrorKind {
     ChildFailed,
 }
 
-#[derive(Clone, Copy)]
-enum QualifiedStream {
-    Terminal,
-}
-
-#[derive(Clone, Copy)]
-enum QualifiedEvent {
-    Output { sequence: u64, offset: u64, bytes: u64, stream: QualifiedStream },
-    Exited { sequence: u64, offset: u64 },
-}
-
-impl QualifiedEvent {
-    const fn sequence(self) -> u64 {
-        match self {
-            Self::Output { sequence, .. } | Self::Exited { sequence, .. } => sequence,
-        }
-    }
-}
-
 /// Launches a fixed real PTY child and derives ordering facts from its observed bytes and exit.
 ///
-/// The child writes a fixed, pipe-buffer-sized payload to both standard output and standard error.
-/// After synchronously reaping that child, the qualifier closes the master owner before draining
-/// its cloned reader. Closing the owner is what makes a completed Windows `ConPTY` publish EOF; the
-/// cloned reader still retains the already-written combined stream. Reads use a fixed positive
-/// byte buffer.
+/// The child writes a fixed payload to both standard output and standard error. A bounded reader
+/// drains that combined stream concurrently so neither a platform buffer nor child reaping can
+/// wait on the other. The qualifier then reaps the child, closes the master owner to make Windows
+/// `ConPTY` publish EOF, and joins the reader before accepting any observation. Reads use a fixed
+/// positive byte buffer.
 ///
 /// # Errors
 ///
@@ -164,7 +150,7 @@ pub fn qualify_pty_ordering() -> Result<PtyQualificationObservation, PtyQualific
             source.into_boxed_dyn_error(),
         )
     })?;
-    let mut reader = pair.master.try_clone_reader().map_err(|source| {
+    let reader = pair.master.try_clone_reader().map_err(|source| {
         PtyQualificationError::with_source(
             PtyQualificationErrorKind::ReaderCreation,
             "open combined terminal reader",
@@ -182,49 +168,29 @@ pub fn qualify_pty_ordering() -> Result<PtyQualificationObservation, PtyQualific
     })?;
     drop(pair.slave);
     let mut child = PtyChildOwner::new(child);
-    let status = child.wait()?;
-    drop(pair.master);
-
-    let mut output_offset = 0_u64;
-    let mut peak_buffered_bytes = 0_u64;
-    loop {
-        let count = reader.read(&mut read_buffer).map_err(|source| {
+    let reader_thread = std::thread::Builder::new()
+        .name("peritus-pty-qualification-reader".to_owned())
+        .spawn(move || read_terminal(reader, events, read_buffer))
+        .map_err(|source| {
             PtyQualificationError::with_source(
-                PtyQualificationErrorKind::Read,
-                "read combined terminal stream",
-                "the PTY reader failed before its end fence",
+                PtyQualificationErrorKind::ReaderThread,
+                "start combined terminal reader",
+                "the bounded PTY reader thread could not be started",
                 Box::new(source),
             )
         })?;
-        if count == 0 {
-            break;
-        }
-        let bytes = u64::try_from(count).map_err(|_| {
-            PtyQualificationError::rejected(
-                PtyQualificationErrorKind::Arithmetic,
-                "convert terminal read length",
-                "the observed byte count cannot be represented",
-            )
-        })?;
-        peak_buffered_bytes = peak_buffered_bytes.max(bytes);
-        let sequence = next_sequence(&events)?;
-        push_event(
-            &mut events,
-            QualifiedEvent::Output {
-                sequence,
-                offset: output_offset,
-                bytes,
-                stream: QualifiedStream::Terminal,
-            },
-        )?;
-        output_offset = output_offset.checked_add(bytes).ok_or_else(|| {
-            PtyQualificationError::rejected(
-                PtyQualificationErrorKind::Arithmetic,
-                "advance terminal output offset",
-                "the observed terminal offset overflowed",
-            )
-        })?;
-    }
+    let status = child.wait();
+    drop(child);
+    drop(pair.master);
+    let read_result = reader_thread.join();
+    let status = status?;
+    let (mut events, output_offset, peak_buffered_bytes) = read_result.map_err(|_| {
+        PtyQualificationError::rejected(
+            PtyQualificationErrorKind::ReaderThread,
+            "join combined terminal reader",
+            "the bounded PTY reader thread panicked",
+        )
+    })??;
 
     let exit_sequence = next_sequence(&events)?;
     push_event(
@@ -303,72 +269,6 @@ impl Drop for PtyChildOwner {
             let _ = child.kill();
             let _ = child.wait();
         }
-    }
-}
-
-fn push_event(
-    events: &mut Vec<QualifiedEvent>,
-    event: QualifiedEvent,
-) -> Result<(), PtyQualificationError> {
-    if events.len() >= MAXIMUM_EVENTS {
-        return Err(PtyQualificationError::rejected(
-            PtyQualificationErrorKind::EventLimit,
-            "record terminal observation",
-            "the real PTY stream exceeded its event ceiling",
-        ));
-    }
-    events.push(event);
-    Ok(())
-}
-
-fn next_sequence(events: &[QualifiedEvent]) -> Result<u64, PtyQualificationError> {
-    u64::try_from(events.len()).map_err(|_| {
-        PtyQualificationError::rejected(
-            PtyQualificationErrorKind::Arithmetic,
-            "assign terminal event sequence",
-            "the event sequence cannot be represented",
-        )
-    })
-}
-
-fn summarize(events: &[QualifiedEvent], peak_buffered_bytes: u64) -> PtyQualificationObservation {
-    let mut previous_sequence = None;
-    let mut next_offset = 0_u64;
-    let mut sequence_strictly_increasing = true;
-    let mut offsets_conserved = true;
-    let mut combined_stream_only = true;
-    let mut exit_records = 0_u64;
-    let mut exit_seen = false;
-    for event in events {
-        let sequence = event.sequence();
-        if previous_sequence.is_some_and(|previous| sequence <= previous) {
-            sequence_strictly_increasing = false;
-        }
-        previous_sequence = Some(sequence);
-        match *event {
-            QualifiedEvent::Output { offset, bytes, stream, .. } => {
-                offsets_conserved &= !exit_seen && offset == next_offset;
-                next_offset = next_offset.checked_add(bytes).unwrap_or_else(|| {
-                    offsets_conserved = false;
-                    u64::MAX
-                });
-                combined_stream_only &= matches!(stream, QualifiedStream::Terminal);
-            }
-            QualifiedEvent::Exited { offset, .. } => {
-                exit_records = exit_records.saturating_add(1);
-                offsets_conserved &= !exit_seen && offset == next_offset;
-                exit_seen = true;
-            }
-        }
-    }
-    PtyQualificationObservation {
-        output_bytes: next_offset,
-        sequence_strictly_increasing,
-        offsets_conserved,
-        combined_stream_only,
-        exit_records,
-        peak_buffered_bytes,
-        configured_buffer_limit: BUFFER_LIMIT_BYTES_U64,
     }
 }
 

@@ -149,10 +149,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Resolve the nested Windows H0 Cargo linker to an absolute Visual Studio MSVC tool and propagate
   its discovered SDK environment, preventing Git's unrelated GNU `link.exe` from being selected
   after the native qualification boundary clears ambient process state (#32)
-- Close a completed native terminal session before draining its cloned reader so Windows ConPTY
-  publishes EOF instead of leaving H2 terminal qualification blocked; validate the packaged Task
-  Scheduler template against its exact direct-command placeholders rather than a rendered path
-  that the packaged template intentionally does not contain (#31)
+- Drain the native terminal's bounded combined stream concurrently with child execution, then reap
+  the child, close the master to publish Windows ConPTY EOF, and join the reader before accepting
+  evidence; this avoids both Unix wait-before-read deadlock and Windows read-before-close deadlock.
+  Validate the packaged Task Scheduler template against its exact direct-command placeholders
+  rather than a rendered path that the packaged template intentionally does not contain (#31)
 - Drain and join the persistent H1 controller's response reader after a successful cleanup exit
   before deciding that its terminal response is missing, removing a macOS scheduling race without
   accepting failed exits or absent response frames (#31)
