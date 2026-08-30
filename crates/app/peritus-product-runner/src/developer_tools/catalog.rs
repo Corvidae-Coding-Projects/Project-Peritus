@@ -10,7 +10,7 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
     definitions_from(&[
         (
             "workspace_list",
-            "List files and directories below one workspace-relative path with current byte size and permission metadata. Call this first in every fresh writer or fixer turn; mutation and process tools remain locked until a successful listing and a targeted file read.",
+            "List files and directories below one workspace-relative path with current byte size and permission metadata. The result reports the exact workspace_root and confirms that every workspace tool path is relative to it. When the task names an absolute path below that root, remove the exact root prefix once instead of repeating the root directory. Call this first in every fresh writer or fixer turn; mutation and process tools remain locked until a successful listing and a targeted file read.",
             r#"{"additionalProperties":false,"properties":{"depth":{"type":"integer"},"path":{"type":"string"}},"type":"object"}"#,
         ),
         (
@@ -51,7 +51,7 @@ pub fn read_only_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError
     definitions_from(&[
         (
             "workspace_list",
-            "List files and directories below one workspace-relative path with current byte size and permission metadata.",
+            "List files and directories below one workspace-relative path with current byte size and permission metadata. The result reports the exact workspace_root and confirms that every workspace tool path is relative to it; remove that exact prefix once from absolute in-workspace paths.",
             r#"{"additionalProperties":false,"properties":{"depth":{"type":"integer"},"path":{"type":"string"}},"type":"object"}"#,
         ),
         (
@@ -117,6 +117,8 @@ mod tests {
         };
 
         assert!(description("workspace_list").contains("Call this first"));
+        assert!(description("workspace_list").contains("exact workspace_root"));
+        assert!(description("workspace_list").contains("remove the exact root prefix once"));
         assert!(description("workspace_read").contains("exact current target"));
         assert!(description("workspace_patch").contains("in the current turn"));
         assert!(description("workspace_remove").contains("empty directory"));

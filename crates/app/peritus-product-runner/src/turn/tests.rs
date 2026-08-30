@@ -122,6 +122,9 @@ fn writer_batches_tools_and_respects_artifact_workspaces() {
     assert!(prompt.contains("Batch independent tool calls"));
     assert!(prompt.contains("Every fresh writer or fixer invocation"));
     assert!(prompt.contains("read each existing target"));
+    assert!(prompt.contains("exact workspace_root"));
+    assert!(prompt.contains("remove the root prefix once"));
+    assert!(prompt.contains("never repeat the root directory inside itself"));
     assert!(prompt.contains("prior-cycle reads"));
     assert!(prompt.contains("peritus-internal gates are unavailable"));
     assert!(prompt.contains("bounded ephemeral producer"));

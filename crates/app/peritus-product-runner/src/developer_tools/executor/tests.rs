@@ -16,6 +16,12 @@ fn workspace_tools_inspect_edit_search_and_execute_without_a_shell() {
 
     let initial = execute(&mut tools, "workspace_list", r#"{"depth":3,"path":""}"#);
     assert!(!initial.is_error);
+    let initial_value: Value = serde_json::from_str(&wire(&initial)).expect("list result JSON");
+    assert_eq!(
+        initial_value["workspace_root"].as_str(),
+        Some(workspace.path().to_string_lossy().as_ref()),
+    );
+    assert_eq!(initial_value["path_kind"], "workspace-relative");
 
     let written = execute(
         &mut tools,

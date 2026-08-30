@@ -2264,6 +2264,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   This is evidence for a fresh provider invocation, not for hard-coding the hidden flag or reading
   the verifier. The composed regression now exhausts one invocation in each designer, writer, and
   reviewer role, then proves fresh grounding and normal product completion.
+- Trial `torch-tensor-parallelism__QzhvGPy` adds a useful-but-incorrect candidate: the writer created
+  a complete tensor-parallel module and read it back, then received executable-not-found results
+  for both `python` and `python3` before an empty provider terminal ended the run after seven
+  requests. The wrong nested output path is separately corrected by `TBF-017`, and ordinary
+  prerequisite handling is covered by `TBF-016`; preserving the file across a fresh grounded role
+  invocation remains this recovery class's responsibility.
 
 ## TBM-001: a writer mirrored the response field into the request schema
 
@@ -2604,7 +2610,52 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   295,082 input, 55,552 cached input, and 5,505 output tokens over 151.168 seconds. The trace shows
   successful source verification and extraction, `/usr/bin/apt-get`, no compiler or make, and no
   package installation command.
+- Second observation: `torch-tensor-parallelism__QzhvGPy` received explicit executable-not-found
+  results for `python` and `python3` in an internet-enabled disposable task environment. The frozen
+  role then ended on an empty provider response, so `TBF-009` also applies. The current general rule
+  tells its fresh recovery invocation to attempt an ordinary scoped Python prerequisite rather than
+  treating the missing executable as a reason to stop or ask the user.
 - Verification: a product-runner regression requires the scoped prerequisite, concrete-failure,
   escalation, and durable-host boundaries to appear only for caller-authorized external-effect runs.
   Focused tests, strict Clippy, and the full repository gate are required before commit. An unchanged
   final-candidate rerun remains required before this can count as an external comparison improvement.
+
+## TBF-017: absolute task paths were repeated below the managed workspace root
+
+- Suite and task: Terminal-Bench 2.0, `torch-tensor-parallelism`, first full-suite baseline trial.
+- Symptom: the authoritative request named `/app/parallel_linear.py` and Peritus's managed workspace
+  root was already `/app`. The writer called `workspace_write` with `app/parallel_linear.py`, which
+  created `/app/app/parallel_linear.py`. It then read and attempted to compile that same misplaced
+  file, so the literal target remained absent.
+- Cause: workspace tools correctly accepted relative paths, but the first mandatory listing did not
+  expose the exact managed root or its path convention. The model had to guess how an absolute path
+  from the request mapped into the relative tool namespace and repeated the root directory.
+- Resolution: every `workspace_list` result now reports the exact `workspace_root` and the stable
+  `workspace-relative` path kind. Read-only and writable tool descriptions and both delivery scopes
+  require an absolute task path below that root to lose the exact root prefix once and forbid
+  repeating the root directory inside itself. The rule is derived from the observed root and
+  applies to every managed workspace; it contains no benchmark, task, language, or filename.
+- Before evidence: job `peritus-terminalbench-2-k5-high`; trial
+  `torch-tensor-parallelism__QzhvGPy`; native failure after seven requests, 142,464 input, 23,808
+  cached input, and 5,725 output tokens over 189.733 seconds. The trace's first listing returned only
+  `peritus-workspace.toml`; its later write and read both name `app/parallel_linear.py`, while the
+  exact request remains in the generated design.
+- Verification: product-runner regressions require listing output to carry the exact root and path
+  kind, require the tool catalog to define one-prefix removal, and require the writer prompt to
+  prohibit nested-root repetition. The unchanged final-candidate task must write the literal target
+  before this is counted as a demonstrated external improvement.
+
+## TBI-007: a cold verifier spent its full deadline downloading Torch
+
+- Suite and task: Terminal-Bench 2.0, `torch-tensor-parallelism`, first full-suite baseline trial.
+- Symptom: Harbor published no reward because the unchanged verifier reached its 900-second deadline
+  before executing any test. Its script first installed curl and uv, then requested Python 3.13,
+  Pytest, Torch 2.7.0, and the Pytest CTRF plugin from the network.
+- Cause: the cold Torch resolution selected the CUDA distribution and began downloading Torch plus
+  multi-gigabyte NVIDIA runtime packages inside the verifier deadline. Retained output ends during
+  those downloads, and Harbor reports `VerifierTimeoutError` from the unchanged verifier process.
+- Classification: benchmark infrastructure failure independent of Peritus's wrong-path and provider
+  failures above. Retain the null result. Do not extend the verifier timeout, preinstall a modified
+  task image, mount a private dependency cache, select a different Torch build, or infer a reward
+  from the unexecuted tests. A later unchanged rerun may classify the candidate only if the official
+  verifier itself completes under its published resources.

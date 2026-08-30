@@ -46,14 +46,23 @@ pub(super) fn list(root: &Path, arguments: &Value) -> Result<Value, DeveloperLoo
                 ("permissions", Value::String(file_metadata::permissions(&metadata))),
             ]));
             if entries.len() >= 2_000 {
-                return Ok(collection("entries", entries, true));
+                return Ok(listing(root, entries, true));
             }
             if kind.is_dir() && level + 1 < depth {
                 queue.push_back((path, level + 1));
             }
         }
     }
-    Ok(collection("entries", entries, false))
+    Ok(listing(root, entries, false))
+}
+
+fn listing(root: &Path, entries: Vec<Value>, truncated: bool) -> Value {
+    object(vec![
+        ("workspace_root", Value::String(root.to_string_lossy().into_owned())),
+        ("path_kind", Value::String("workspace-relative".to_owned())),
+        ("entries", Value::Array(entries)),
+        ("truncated", Value::Bool(truncated)),
+    ])
 }
 
 pub(super) fn search(root: &Path, arguments: &Value) -> Result<Value, DeveloperLoopError> {
