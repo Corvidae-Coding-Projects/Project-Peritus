@@ -52,6 +52,7 @@ the product. The letter-and-number names follow the architecture sequence in `DE
 - [Release qualification](h4-release-qualification.md) covers artifacts, provenance, reproducibility, and audit.
 - [Migration and recovery](release-migration-recovery.md) is the release operator runbook.
 - [Professional harness capability audit](professional-harness-capability-audit.md) tracks expected production features and gaps.
+- [Benchmark integrity appendix](benchmark-integrity-appendix.md) records retained benchmark gotchas and the score-only shortcuts Peritus refuses.
 - [GitHub governance](github-governance.md) defines branch, ruleset, and required-check expectations.
 
 ## Documentation check

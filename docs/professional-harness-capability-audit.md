@@ -91,7 +91,9 @@ expectation, the retained result, and the shortcut that was refused. Refused sho
 reading hidden verifiers or reference solutions, hard-coding task names or private vocabulary,
 changing fixtures, resources, deadlines, or scoring code, and adding behavior whose only evidence
 is a benchmark-specific win. General fixes supported by ordinary application behavior remain in
-the product and are reported separately from score-only compatibility guesses.
+the product and are reported separately from score-only compatibility guesses. The living
+[benchmark integrity appendix](benchmark-integrity-appendix.md) indexes each current gotcha and the
+score-only shortcut that Peritus refused.
 
 This file is a living delivery record. Final benchmark aggregates, implemented-gap commits, and
 remaining limitations will be added only when the corresponding reproducible evidence exists.

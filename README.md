@@ -75,7 +75,10 @@ adapter run. Its retained means are:
 Forty tasks have perfect outcome and 64 score at least 0.9. The retained runs total 8.529 execution
 hours and 31,286,948 model tokens. Failures produced general improvements to recovery, grounding,
 verification, evidence handoff, multi-turn state, tool use, and artifact consistency. Peritus did
-not add task-specific answers or weaken the upstream oracles.
+not add task-specific answers or weaken the upstream oracles. The
+[benchmark integrity appendix](docs/benchmark-integrity-appendix.md) records cases where a
+score-only workaround would require hidden-answer leakage, a task-specific hack, or breaking the
+published contract.
 
 Because general fixes were intentionally made as failures were diagnosed, those 106 reports bind
 successive development checkpoints. They are the retained diagnostic baseline. The final report

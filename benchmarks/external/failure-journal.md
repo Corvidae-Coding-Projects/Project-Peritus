@@ -2270,6 +2270,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   requests. The wrong nested output path is separately corrected by `TBF-017`, and ordinary
   prerequisite handling is covered by `TBF-016`; preserving the file across a fresh grounded role
   invocation remains this recovery class's responsibility.
+- Trial `schemelike-metacircular-eval__LnUT5L8` then produced `eval.scm`, proved its behavior against
+  the direct interpreter across the discovered Scheme test corpus, and passed the unchanged Harbor
+  verifier for reward 1.0. Native Peritus still ended with the same provider terminal while review
+  was in progress after eight requests, 247,151 input, 39,680 cached input, and 9,342 output tokens
+  over 259.2 seconds. This is further role-recovery evidence, not a Scheme-specific defect or
+  permission to infer native acceptance from the later external reward.
 
 ## TBM-001: a writer mirrored the response field into the request schema
 

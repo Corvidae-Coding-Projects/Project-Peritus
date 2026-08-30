@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Add a benchmark-integrity appendix that separates real product and model failures from genuine
+  evaluator gotchas, links each retained result, and records the score-only shortcut Peritus
+  refuses (#31)
 - Add the H3 production campaign coordinator: execute short load plans sequentially and four
   eight-hour plans concurrently against disposable public-A3 daemon subjects, enforce an exact
   reference-machine match before launch, share one combined resource ledger, retain deterministic
