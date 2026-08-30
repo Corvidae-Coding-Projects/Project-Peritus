@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1012,
+  "next_comment_id": 1013,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T22:02:16.847926012Z",
+      "updated_at": "2026-08-30T22:11:53.284412501Z",
       "labels": [
         "qualification",
         "release"
@@ -4028,6 +4028,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAL9DVJPnDifcoqV9z6AYM2QKWFTuJPCMTGJ/DXJtl/WKi/++rZ7y+SOr5raSdcMSDBg5BB5YQGAsKMkQXhRx3Ag=="
+        },
+        "bdefcdaa-07ad-44c5-adaa-102dcb69b562": {
+          "display_id": 1012,
+          "author": "6ME5",
+          "content": "Exact-head hosted qualification wave is fully green at 33388299e124d62179725c3b4236269245f9ea1e: H0 run 33336881541 success; H2 run 33336881491 success on macOS/Linux/Windows with retained Ready reports; Gate A run 33336881527 success; Foundation run 33336881483 success. No hosted job failed.",
+          "created_at": "2026-08-30T22:11:53.280224639Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAgrlqfRHwKvO/0BBzFh/+aJPKyHs4Luv8iyIikSzeKS9ugidDhD/yj8VPHxASgrML8nzDVvmJr3znPmo70BuvDg=="
         },
         "be324cfa-ebdc-45ad-9e0b-c7a636edfb7b": {
           "display_id": 563,
@@ -9864,8 +9873,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T22:02:16.847926012Z",
+    "timestamp": "2026-08-30T22:11:53.284412501Z",
     "agent_id": "6ME5",
-    "agent_seq": 1206
+    "agent_seq": 1207
   }
 }
