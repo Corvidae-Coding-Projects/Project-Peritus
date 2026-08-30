@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 881,
+  "next_comment_id": 882,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -8305,7 +8305,7 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:01:08.433031832Z",
-      "updated_at": "2026-08-30T13:22:30.465473134Z",
+      "updated_at": "2026-08-30T13:29:37.127391765Z",
       "labels": [
         "qualification",
         "security"
@@ -8355,6 +8355,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA62B/bvGneGyKLbKVJwcEfulVfmVLeqWU9JO1OYGeOW9qHUqbtDRHmfQ50cQarQVBbGZw3yjXhA2QYpOtQ53BDg=="
+        },
+        "d4280435-0dc1-4ff4-ae67-2b64d9db2d20": {
+          "display_id": 881,
+          "author": "6ME5",
+          "content": "Added strict durable H0 native-shard interchange. Deterministic bounded JSON round-trips the exact integrated candidate, limits, native provenance receipts, structured evidence, resource usage, and cleanup accounting. Parsing admits only a canonical passing shard, rechecks sandbox/resource/cleanup invariants, and rejects failed, misordered, oversized, or cross-platform-tampered input before three-host aggregation. Added and bundled native-shard-v1 JSON Schema. Evidence: 15 H0 tests pass; strict native, macOS-target, and Windows-target Clippy pass; JSON syntax, docs-check, source budgets, and full cargo xtask all pass across 78 packages and 3185 sources. Holding the local commit until the active H2 hosted run finishes to avoid cancelling it.",
+          "created_at": "2026-08-30T13:29:37.124505611Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAK1z3eD7i7Dy0BSW3LBJfBrKYNGVKGkJmiUGYwHJl2tarZWZ2hf7+DwFxX6FoJNyLB6h7wXEB6tecAiAMG5gzDg=="
         }
       }
     },
@@ -8685,8 +8694,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T13:22:30.465473134Z",
+    "timestamp": "2026-08-30T13:29:37.127391765Z",
     "agent_id": "6ME5",
-    "agent_seq": 1075
+    "agent_seq": 1076
   }
 }
