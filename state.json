@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 926,
+  "next_comment_id": 927,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T17:37:07.082244534Z",
+      "updated_at": "2026-08-30T17:39:56.806295031Z",
       "labels": [
         "qualification",
         "release"
@@ -3826,6 +3826,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALsRXU9ZkezzN3j5SK8EfAAir4mDgOWa4nEsUuVdb2SaK6A3DW8/lKuhsdEcTTyRAZqIRARrzH8iOE+f61ydsCw=="
+        },
+        "d84d0b14-810b-4fba-805c-cf9dedd4673f": {
+          "display_id": 926,
+          "author": "6ME5",
+          "content": "Current-head H2 Windows artifact 9736192993 independently matches the macOS failure shape: scenarios 1-10 all passed, all ten fresh-subject cleanups report zero remaining resources, and no pipe-separation response was published before the controller deadline. This proves the attempted wait-before-read ConPTY correction moved the same deadlock to both platforms. The concurrent bounded-reader correction is locally green and ready for signed publication.",
+          "created_at": "2026-08-30T17:39:56.803669592Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAADWEs3qGoycnmMJiUneN0dPtY3Xb1dRctqb3XtRsP+jwIh52w6HwtvztVX6r8cz5e1GzgyFV6EuXlfm0j9abBA=="
         },
         "d8a5a063-ebd7-4b25-bc6d-fdedc5b7e495": {
           "display_id": 742,
@@ -9086,8 +9095,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T17:37:07.082244534Z",
+    "timestamp": "2026-08-30T17:39:56.806295031Z",
     "agent_id": "6ME5",
-    "agent_seq": 1121
+    "agent_seq": 1122
   }
 }
