@@ -153,6 +153,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Normalize only trusted Windows paths returned by `std::fs::canonicalize` from extended-length
+  drive syntax before native sandbox path validation, keeping ordinary device paths rejected while
+  allowing packaged H2 subjects to prove their reparse-free helper identity; retain every required
+  capability fact when the host still cannot support sandbox execution (#31)
 - Serialize model-visible workspace image paths with forward slashes on every host, so Windows
   image collections keep the same repository-relative manifest contract as Linux and macOS (#31)
 - Give a cold installed TUI up to 30 bounded seconds to complete its real daemon-connected

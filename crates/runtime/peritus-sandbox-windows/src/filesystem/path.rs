@@ -1,6 +1,6 @@
 //! Lexical Windows path normalization and native reparse evidence.
 
-#[cfg(target_os = "windows")]
+#[cfg(any(target_os = "windows", test))]
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -54,6 +54,17 @@ impl WindowsPath {
         let case_folded = normalized.to_ascii_lowercase();
         let digest = peritus_codec::sha256(case_folded.as_bytes());
         Ok(Self { canonical: normalized, case_folded, digest })
+    }
+
+    /// Converts the trusted drive path returned by `std::fs::canonicalize` into the policy form.
+    ///
+    /// Windows canonicalization adds the extended-length `\\?\` prefix. That prefix is an OS
+    /// representation detail, so native probes remove it before applying the ordinary strict path
+    /// policy. UNC and other device paths remain rejected by [`Self::new`].
+    #[cfg(any(target_os = "windows", test))]
+    pub(crate) fn from_canonicalized(path: &Path) -> Result<Self, WindowsError> {
+        let text = path.to_string_lossy();
+        Self::new(text.strip_prefix(r"\\?\").unwrap_or(&text))
     }
 
     /// Resolves a logical sandbox path beneath a canonical workspace.
@@ -253,4 +264,21 @@ fn path_error(detail: &'static str) -> WindowsError {
         WindowsRecovery::CorrectRequest,
         detail,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::WindowsPath;
+
+    #[test]
+    fn trusted_canonical_drive_path_removes_only_the_extended_length_prefix() {
+        let path = std::path::Path::new(r"\\?\d:\qualification\peritus-helper.exe");
+        let normalized = WindowsPath::from_canonicalized(path).expect("canonical drive path");
+
+        assert_eq!(normalized.as_str(), "D:/qualification/peritus-helper.exe");
+        assert!(WindowsPath::new(path.to_string_lossy()).is_err());
+        assert!(
+            WindowsPath::from_canonicalized(std::path::Path::new(r"\\?\UNC\host\share")).is_err()
+        );
+    }
 }

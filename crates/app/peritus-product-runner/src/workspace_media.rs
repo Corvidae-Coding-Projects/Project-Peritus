@@ -275,10 +275,9 @@ mod tests {
         )
         .expect("workspace images");
         let (prompt, attachments) = images.into_parts("task".to_owned());
-        let expected_path = PathBuf::from("in").join("reference.png");
 
         assert_eq!(attachments.len(), 1);
-        assert!(prompt.contains(&format!("attachment 0: {}", expected_path.display())));
+        assert!(prompt.contains("attachment 0: in/reference.png"));
         assert!(prompt.contains("actual pixels"));
     }
 

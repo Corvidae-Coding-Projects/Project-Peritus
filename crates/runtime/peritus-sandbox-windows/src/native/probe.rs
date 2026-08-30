@@ -31,7 +31,7 @@ pub(crate) fn run(request: &ProbeRequest) -> Result<ProbeEvidence, WindowsError>
     };
     let job_object = super::job::OwnedJob::probe();
     let acl = system_tool_exists("icacls.exe");
-    let reparse = crate::WindowsPath::new(request.helper_path().to_string_lossy())
+    let reparse = crate::WindowsPath::from_canonicalized(request.helper_path())
         .and_then(crate::ResolvedWindowsPath::resolve)
         .is_ok();
     let conpty = function_exists("kernel32.dll", b"CreatePseudoConsole\0");

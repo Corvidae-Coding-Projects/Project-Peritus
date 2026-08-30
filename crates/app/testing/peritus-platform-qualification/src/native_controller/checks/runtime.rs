@@ -275,11 +275,26 @@ fn native_sandbox_probe(layout: &HostLayout) -> Result<Observation, Box<dyn std:
         return Ok(Observation::unsupported(
             "Windows host lacks one or more required native sandbox facilities",
         )
+        .count("native.os-build", u64::from(evidence.os_build.unwrap_or(0)))
+        .fact(
+            "native.os-build-supported",
+            evidence
+                .os_build
+                .is_some_and(|build| build >= peritus_sandbox_windows::MINIMUM_WINDOWS_BUILD),
+        )
+        .fact("native.platform", evidence.platform)
+        .fact("native.architecture", evidence.architecture)
         .fact("native.helper-exact", evidence.helper_digest.is_some())
         .fact("native.restricted-token", evidence.restricted_token)
+        .fact("native.low-integrity", evidence.low_integrity)
         .fact("native.app-container", evidence.app_container_sid_exact)
         .fact("native.job-object", evidence.job_object)
-        .fact("native.default-deny-network", evidence.deny_network));
+        .fact("native.job-kill-on-close", evidence.kill_on_close)
+        .fact("native.acl", evidence.acl)
+        .fact("native.reparse-free-helper", evidence.reparse)
+        .fact("native.inherited-handle-list", evidence.inherited_handle_list)
+        .fact("native.default-deny-network", evidence.deny_network)
+        .fact("native.conpty", evidence.conpty));
     }
     Ok(Observation::passed(
         "Windows native sandbox probe admitted every production baseline control",
