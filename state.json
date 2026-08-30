@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 866,
+  "next_comment_id": 867,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T11:28:29.575306341Z",
+      "updated_at": "2026-08-30T11:28:34.193555398Z",
       "labels": [
         "qualification",
         "release"
@@ -3911,6 +3911,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAHCRpb2A7bFwAhwunLr5wnxR33eXWSRr63r9p8M/BOoRVqpupbM+iTR8lgeto7bgwDpLcNxD7/+UZu5uE5RQDBw=="
+        },
+        "f76a1f0f-cfc5-47bd-b077-b6eb10f5df76": {
+          "display_id": 866,
+          "author": "6ME5",
+          "content": "[action] Repaired shared Candidate-policy/Verus runner failure by removing unsupported tokio::join macro from formal-boundary shutdown regression; exact local gates green; preparing signed push.",
+          "created_at": "2026-08-30T11:28:34.191046332Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9j23f6kaxq2K/JS5XyqLit0A0NPQOcMuN8GdWr9Hj4Kq3be9PZb9cWgfnLOa8Mk9qCftTarD7qndJ57d3FRyDQ=="
         },
         "f8442553-6d93-475f-aaf7-e13fec0dc527": {
           "display_id": 681,
@@ -8550,8 +8559,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T11:28:29.575306341Z",
+    "timestamp": "2026-08-30T11:28:34.193555398Z",
     "agent_id": "6ME5",
-    "agent_seq": 1058
+    "agent_seq": 1059
   }
 }
