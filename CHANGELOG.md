@@ -61,6 +61,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Require quantitative and scientific work to establish input/output units, coordinate systems,
+  and transformations before calculating or fitting, then validate results in the requested
+  physical domain instead of accepting a structurally valid raw-coordinate result (`TBF-018`, #31)
 - Ground every model workspace listing in its exact managed root and explicit relative-path
   convention so absolute paths from a task lose that prefix exactly once instead of being written
   beneath a duplicated root directory (`TBF-017`, #31)

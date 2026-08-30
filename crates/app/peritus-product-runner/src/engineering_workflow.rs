@@ -42,6 +42,10 @@ requested behavior.
    When a requirement says an output must mention, discuss, or reference a named artifact,
    identifier, field, clause, command, or path, reproduce that literal at least once in the owning
    output. Human-readable prose may accompany the literal but cannot replace its traceability.
+   For quantitative or scientific work, establish every input and output unit, coordinate system,
+   and required transformation from the supplied evidence and the named domain before calculating
+   or fitting. Validate the final parameters in the requested physical domain; a numerically good
+   fit in raw coordinates is not correct when the request names a transformed coordinate.
    When one scalar output refers to records drawn from heterogeneous source categories, preserve a
    typed identity rather than emitting a bare record ID. Unless an exact representation is declared,
    combine the authoritative category or type label and stable ID as `category:id`; this keeps the

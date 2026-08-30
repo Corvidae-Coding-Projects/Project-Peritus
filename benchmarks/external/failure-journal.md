@@ -2283,6 +2283,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   ten requests, 358,239 input, 39,680 cached input, and 3,815 output tokens over 234.720 seconds.
   The successful artifact demonstrates legitimate prerequisite autonomy while the false native
   terminal remains general role-recovery evidence.
+- Trial `cobol-modernization__3MqQqNd` inspected and compiled the supplied GnuCOBOL program, wrote
+  its byte-oriented Python replacement, found two real mismatches in an initial differential run,
+  corrected them, and passed the supplied fixture plus ten representative byte-for-byte comparison
+  cases. The unchanged verifier awarded reward 1.0. Native Peritus again ended during review on the
+  empty-provider terminal after ten requests, 278,574 input, 77,824 cached input, and 19,824 output
+  tokens over 542.580 seconds. The useful repeated verification remains intact; only the false
+  terminal is assigned to this general recovery class.
 
 ## TBM-001: a writer mirrored the response field into the request schema
 
@@ -2681,3 +2688,28 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   different Torch build, or infer a reward from the unexecuted tests. A later unchanged rerun may
   classify a candidate only if the official verifier itself completes under its published
   resources.
+
+## TBF-018: a scientific fit was returned in the raw coordinate instead of the named domain
+
+- Suite and task: Terminal-Bench 2.0, `raman-fitting`, first full-suite baseline trial.
+- Symptom: the writer identified and fit the two dominant peaks, but returned their raw wavelength
+  centers and widths. It validated only the requested JSON shape and finite numbers. The unchanged
+  verifier expected the conventional wavenumber domain for the named G and 2D peaks and awarded
+  reward 0.
+- Cause: the production workflow required source grounding and independent artifact verification,
+  but did not require quantitative work to establish units, coordinate systems, or transformations
+  before fitting. The task instruction omitted the conversion formula, yet the named physical
+  phenomena and data range made the unit mismatch discoverable without verifier access. This is a
+  general scientific-analysis defect, not permission to copy hidden expected values.
+- Resolution: every role now requires quantitative and scientific work to establish input and
+  output units, coordinate systems, and transformations from supplied evidence plus the named
+  domain before calculation. Final parameters must be checked in the requested physical domain;
+  structural validity or a good raw-coordinate fit is insufficient.
+- Before evidence: job `peritus-terminalbench-2-k5-high`; trial
+  `raman-fitting__TJiztRX`; reward 0; raw fitted centers 6,328.045338 and 3,745.362819; native
+  provider terminal during review after ten requests, 228,271 input, 39,680 cached input, and 8,567
+  output tokens over 357.477 seconds. The provider terminal remains separately classified under
+  `TBF-009`.
+- Verification: the embedded workflow regression requires the unit, requested-domain, and
+  raw-coordinate boundaries to reach architect, developer, and reviewer roles. Focused tests,
+  strict Clippy, documentation checks, and an unchanged final-candidate rerun remain required.
