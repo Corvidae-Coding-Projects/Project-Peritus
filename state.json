@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 917,
+  "next_comment_id": 918,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -8503,7 +8503,7 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:01:08.433031832Z",
-      "updated_at": "2026-08-30T16:53:38.868298746Z",
+      "updated_at": "2026-08-30T16:58:13.960344251Z",
       "labels": [
         "qualification",
         "security"
@@ -8643,6 +8643,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABANAGb1K7nYNV7skDRgq4I6wgN7z5zzrQhupSnME2jpS2A4hOq9BVbboTOQslOFGKHQXiGMkY0oZRdOi8EiUdDDQ=="
+        },
+        "a847d965-037d-46ec-9409-bdebd91e3698": {
+          "display_id": 917,
+          "author": "6ME5",
+          "content": "Hosted H0 Windows run 33323733841 passed on commit 09d6b221. Artifact 9735666687 contains windows-shard.json with status=passed, one candidate-bound platform probe, zero failed cases, and clean process/path/mount/endpoint cleanup. Report SHA-256: 3221c1570d1bf57459bccf2862133102907f6c78aea2e7a93464e8c952b9dcec. This proves the absolute Visual Studio linker selection fixed the nested Cargo boundary.",
+          "created_at": "2026-08-30T16:58:13.957772695Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAxuJN7p22HW/Js8UPwAIVUsZXSNd7kw5yGLKXn8Ee9MwD46yyaNLKgWbIlRjEqGusjhsdtDhWVKXJD5pBhEMEAg=="
         },
         "af698931-8bf0-4ffa-b184-8e250efe2601": {
           "display_id": 888,
@@ -9009,8 +9018,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T16:53:44.025045020Z",
+    "timestamp": "2026-08-30T16:58:13.960344251Z",
     "agent_id": "6ME5",
-    "agent_seq": 1111
+    "agent_seq": 1112
   }
 }
