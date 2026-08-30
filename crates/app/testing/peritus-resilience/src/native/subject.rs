@@ -21,6 +21,8 @@ use super::{NativeAdapterError, NativeControllerLimits, digest, subject_error};
 pub struct NativeResilienceFactory {
     executor: PathBuf,
     executor_digest: crate::EvidenceDigest,
+    candidate: PathBuf,
+    candidate_digest: crate::EvidenceDigest,
     scratch_parent: PathBuf,
     artifact_parent: PathBuf,
     descriptor: SubjectDescriptor,
@@ -38,6 +40,7 @@ impl NativeResilienceFactory {
     /// not a regular file, or either parent is not an existing directory.
     pub fn new(
         executor: impl AsRef<Path>,
+        candidate: impl AsRef<Path>,
         scratch_parent: impl AsRef<Path>,
         artifact_parent: impl AsRef<Path>,
         descriptor: SubjectDescriptor,
@@ -45,13 +48,23 @@ impl NativeResilienceFactory {
         limits: NativeControllerLimits,
     ) -> Result<Self, NativeAdapterError> {
         let executor = canonical_file(executor.as_ref(), "controller executable")?;
+        let candidate = canonical_file(candidate.as_ref(), "release-candidate executable")?;
         let scratch_parent = canonical_directory(scratch_parent.as_ref(), "scratch parent")?;
         let artifact_parent =
             canonical_directory(artifact_parent.as_ref(), "retained-artifact parent")?;
         let executor_digest = digest::file(&executor)?;
+        let candidate_digest = digest::file(&candidate)?;
+        if candidate_digest != descriptor.build_digest() {
+            return Err(NativeAdapterError::CandidateDigestMismatch {
+                candidate_sha256: digest::hex(candidate_digest),
+                descriptor_sha256: digest::hex(descriptor.build_digest()),
+            });
+        }
         Ok(Self {
             executor,
             executor_digest,
+            candidate,
+            candidate_digest,
             scratch_parent,
             artifact_parent,
             descriptor,
@@ -118,6 +131,16 @@ impl NativeResilienceFactory {
                 "reviewed controller changed while the subject was being provisioned",
             ));
         }
+        let staged_candidate = root.join(staged_candidate_name());
+        fs::copy(&self.candidate, &staged_candidate)
+            .map_err(|error| setup_error(format!("stage release candidate: {error}")))?;
+        let staged_candidate_digest = digest::file(&staged_candidate)
+            .map_err(|error| setup_error(format!("digest staged release candidate: {error}")))?;
+        if staged_candidate_digest != self.candidate_digest {
+            return Err(setup_error(
+                "release candidate changed while the subject was being provisioned",
+            ));
+        }
         let nonce = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_err(|error| setup_error(format!("read system clock: {error}")))?
@@ -129,6 +152,7 @@ impl NativeResilienceFactory {
         let controller = ControllerHandle::launch(
             LaunchRequest {
                 executable: &staged_executor,
+                candidate_executable: &staged_candidate,
                 subject_root: &root,
                 artifact_root: &artifact_root,
                 instance_id: &instance_id,
@@ -345,4 +369,8 @@ fn protocol_stage_error() -> SubjectError {
 
 const fn staged_executor_name() -> &'static str {
     if cfg!(target_os = "windows") { "resilience-controller.exe" } else { "resilience-controller" }
+}
+
+const fn staged_candidate_name() -> &'static str {
+    if cfg!(target_os = "windows") { "peritusd.exe" } else { "peritusd" }
 }

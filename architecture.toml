@@ -346,6 +346,13 @@ layer = "testing"
 verification_class = "C"
 
 [[packages]]
+name = "peritus-resilience-qualification"
+path = "crates/app/testing/peritus-resilience-qualification"
+owner = "H1"
+layer = "testing"
+verification_class = "C"
+
+[[packages]]
 name = "peritus-release-artifacts"
 path = "crates/app/testing/peritus-release-artifacts"
 owner = "H4"

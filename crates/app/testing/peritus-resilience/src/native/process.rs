@@ -19,6 +19,7 @@ const POLL_INTERVAL: Duration = Duration::from_millis(20);
 #[derive(Clone, Copy)]
 pub(super) struct LaunchRequest<'a> {
     pub(super) executable: &'a Path,
+    pub(super) candidate_executable: &'a Path,
     pub(super) subject_root: &'a Path,
     pub(super) artifact_root: &'a Path,
     pub(super) instance_id: &'a str,
@@ -46,6 +47,8 @@ impl OwnedController {
         let mut command = Command::new(request.executable);
         command
             .arg("--serve")
+            .arg("--candidate-executable")
+            .arg(request.candidate_executable)
             .arg("--subject-root")
             .arg(request.subject_root)
             .arg("--artifact-root")

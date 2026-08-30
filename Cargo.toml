@@ -20,6 +20,7 @@ members = [
     "crates/app/testing/peritus-release-operator",
     "crates/app/testing/peritus-release-qualification",
     "crates/app/testing/peritus-resilience",
+    "crates/app/testing/peritus-resilience-qualification",
     "crates/app/testing/peritus-security-qualification",
     "crates/app/testing/peritus-test-support",
     "crates/extensions/peritus-mcp",

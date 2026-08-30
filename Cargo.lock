@@ -2756,6 +2756,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "peritus-resilience-qualification"
+version = "0.0.0"
+dependencies = [
+ "peritus-resilience",
+ "sha2 0.11.0",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "peritus-review"
 version = "0.0.0"
 dependencies = [

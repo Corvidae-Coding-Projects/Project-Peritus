@@ -13,6 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Add the executable `peritus-h1` qualification operator: bind the declared subject to the exact
+  candidate bytes, stage and re-digest that candidate inside every fresh subject, run the complete
+  43-case native H1 protocol, and atomically retain a full machine-readable Ready/NotReady report
+  without allowing a fixture controller to stand in for the release candidate (#31)
 - Add the production `peritus-h4` evidence operator: generate exact candidate-bound signing
   envelopes without handling private keys, verify detached Ed25519 evidence, admit exactly one of
   every required signed input, replay signature-bound fresh-subject cleanup, compare independent

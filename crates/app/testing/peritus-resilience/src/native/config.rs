@@ -36,6 +36,16 @@ pub enum NativeAdapterError {
         /// Rejected path.
         path: PathBuf,
     },
+    /// The supplied subject descriptor did not identify the exact candidate executable.
+    #[error(
+        "native H1 candidate digest differs from the subject descriptor: candidate={candidate_sha256} descriptor={descriptor_sha256}"
+    )]
+    CandidateDigestMismatch {
+        /// SHA-256 digest computed from the candidate executable.
+        candidate_sha256: String,
+        /// SHA-256 digest declared by the subject descriptor.
+        descriptor_sha256: String,
+    },
     /// A process bound was zero or exceeded its hard ceiling.
     #[error("native H1 limit {field}={value} is outside 1..={maximum}")]
     Limit {

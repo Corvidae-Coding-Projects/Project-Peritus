@@ -19,6 +19,7 @@ use peritus_resilience::{
     QualificationRunner, QualificationText, QualificationVerdict, ScenarioCatalog, ScenarioFailure,
     SubjectDescriptor, SubjectId,
 };
+use sha2::{Digest as _, Sha256};
 
 const ABC_SHA256: &str = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
 static NATIVE_TEST_GUARD: Mutex<()> = Mutex::new(());
@@ -132,7 +133,9 @@ impl NativeFixture {
     }
 
     fn factory(&self) -> NativeResilienceFactory {
+        let candidate_digest = file_digest(&self.controller);
         NativeResilienceFactory::new(
+            &self.controller,
             &self.controller,
             &self.scratch,
             &self.artifacts,
@@ -140,13 +143,18 @@ impl NativeFixture {
                 SubjectId::new("peritus.release.candidate").expect("subject ID"),
                 QualificationText::new("integrated Peritus release candidate")
                     .expect("subject text"),
-                EvidenceDigest::from_bytes([7; 32]),
+                candidate_digest,
             ),
             QualificationConfig::default(),
             NativeControllerLimits::default(),
         )
         .expect("native H1 factory")
     }
+}
+
+fn file_digest(path: &Path) -> EvidenceDigest {
+    let bytes = fs::read(path).expect("read candidate executable");
+    EvidenceDigest::from_bytes(Sha256::digest(bytes).into())
 }
 
 fn write_controller(parent: &Path, source: &str) -> PathBuf {
@@ -176,7 +184,7 @@ artifact_root=
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --artifact-root) artifact_root=$2; shift 2 ;;
-    --subject-root|--instance-id|--subject-id|--build-sha256|--executor-sha256) shift 2 ;;
+    --candidate-executable|--subject-root|--instance-id|--subject-id|--build-sha256|--executor-sha256) shift 2 ;;
     --serve) shift ;;
     *) exit 64 ;;
   esac
@@ -253,7 +261,7 @@ subject_root=
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --subject-root) subject_root=$2; shift 2 ;;
-    --artifact-root|--instance-id|--subject-id|--build-sha256|--executor-sha256) shift 2 ;;
+    --candidate-executable|--artifact-root|--instance-id|--subject-id|--build-sha256|--executor-sha256) shift 2 ;;
     --serve) shift ;;
     *) exit 64 ;;
   esac

@@ -20,6 +20,7 @@ mod native;
 mod observation;
 mod recovery_state;
 mod report;
+mod report_json;
 mod resource_observation;
 mod runner;
 mod scenario;
@@ -56,6 +57,7 @@ pub use report::{
     CaseStatus, NotReadyReason, QualificationReport, QualificationSummary, QualificationVerdict,
     ScenarioReport,
 };
+pub use report_json::render_report_json;
 pub use resource_observation::{
     CleanupObservation, OwnershipObservation, OwnershipResolution, ResourceUsage, RetryUsage,
 };
