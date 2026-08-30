@@ -158,6 +158,18 @@ fn writer_batches_tools_and_respects_artifact_workspaces() {
 }
 
 #[test]
+fn external_effect_writer_attempts_scoped_prerequisites_before_escalating() {
+    let prompt = writer_system("writer", ProductDeliveryScope::AuthorizedExternalEffects);
+
+    assert!(prompt.contains("attempt ordinary prerequisites"));
+    assert!(prompt.contains("normal build or runtime dependencies"));
+    assert!(prompt.contains("disposable environment"));
+    assert!(prompt.contains("First try the available scoped installation mechanism"));
+    assert!(prompt.contains("only after a concrete failure"));
+    assert!(prompt.contains("Do not extend this authority to the user's durable host"));
+}
+
+#[test]
 fn reviewer_rechecks_conserved_finding_locations_after_fixes() {
     let prompt = reviewer_user(
         "task",

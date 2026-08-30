@@ -2351,6 +2351,21 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   artifact with delayed handoff like `write-compressor`. It also demonstrates why nested work must
   receive the evaluator deadline explicitly: without that value, the eight-hour product horizon
   cannot know when to stop exploration, reserve verification time, or reject one more long command.
+- Fourth observation: `train-fasttext__DAiKUJQ` reached its unchanged 3,600-second agent deadline
+  for reward 0. The image provided 650,000 training rows and neither FastText nor a compiler. The
+  frozen run discovered those facts, installed a compiler without changing the image, built
+  FastText, trained and decoded a valid 21,340,136-byte quantized model, measured 0.5014 accuracy,
+  then built a sparse recovery trainer that reached 0.6118 after three epochs. It began one final
+  bounded training command shortly before Harbor cancelled the run, leaving no final model. This is
+  an ordinary missed task and further evidence of late deadline allocation; it is not a benchmark
+  gotcha. No hidden verifier information or score-specific shortcut is justified.
+- Fifth observation: `qemu-alpine-ssh__5cABxTx` reached its unchanged 900-second agent deadline for
+  reward 0. The frozen run launched QEMU, reached Alpine's root shell, attempted the requested
+  network, password, and sshd setup, kept the VM process alive, and repeatedly tested the forwarded
+  SSH port. It lost reliable control of the interactive serial console, spent the remaining budget
+  on recovery, and never obtained an SSH banner. The unchanged verifier later observed a connection
+  reset. This is an ordinary terminal-control and deadline miss, not a benchmark gotcha; no task
+  name, preconfigured VM, or verifier-specific connection shortcut is justified.
 - Decision: do not raise the benchmark timeout, skip required work, inject a prebuilt task artifact,
   add task-name knowledge, or hard-code Terminal-Bench's common deadline as a hidden product budget.
   Preserve the unchanged results, measure phase time in candidate reruns, and implement a product
@@ -2566,3 +2581,30 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Verification: 23 external-benchmark tests pass, including zero usage from a prepared empty trace
   and non-truncating preparation of existing bytes. Strict all-target/all-feature Clippy passes. An
   unchanged final-candidate rerun must retain the underlying product result and exact accounting.
+
+## TBF-016: authorized prerequisite installation was escalated without an attempt
+
+- Suite and task: Terminal-Bench 2.0, `sqlite-with-gcov`, first full-suite baseline trial.
+- Symptom: the request explicitly asked Peritus to compile and install SQLite in an internet-enabled
+  disposable system environment. The writer verified the vendored source, extracted it, exhaustively
+  inventoried local compiler and build-tool paths, and then asked the user to provide an offline GCC,
+  gcov, and make toolchain. It never tried the available `apt-get` installation path. Harbor ran the
+  unchanged verifier, found no installed SQLite binary, and awarded reward 0.
+- Cause: `AuthorizedExternalEffects` correctly allowed durable non-workspace delivery and required
+  effect plus verification evidence, but its writer contract did not say that ordinary prerequisites
+  inside the already-authorized external subject were included. The model converted an ordinary,
+  reversible task step into an unnecessary new-authority question.
+- Resolution: the external-effect writer contract now requires an available scoped installation
+  mechanism to be attempted when the task clearly authorizes software or system work in a disposable
+  environment. Escalation is reserved for a concrete failed attempt or a material choice beyond the
+  request, and the rule explicitly does not extend authority to the user's durable host or unrelated
+  systems. It contains no benchmark, task, package-manager, SQLite, compiler, or verifier identity.
+- Before evidence: job `peritus-terminalbench-2-k5-high`; trial
+  `sqlite-with-gcov__m9wyNWb`; reward 0; native `waiting_for_user` after nine provider requests,
+  295,082 input, 55,552 cached input, and 5,505 output tokens over 151.168 seconds. The trace shows
+  successful source verification and extraction, `/usr/bin/apt-get`, no compiler or make, and no
+  package installation command.
+- Verification: a product-runner regression requires the scoped prerequisite, concrete-failure,
+  escalation, and durable-host boundaries to appear only for caller-authorized external-effect runs.
+  Focused tests, strict Clippy, and the full repository gate are required before commit. An unchanged
+  final-candidate rerun remains required before this can count as an external comparison improvement.

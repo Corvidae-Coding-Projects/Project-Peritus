@@ -58,6 +58,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Make caller-authorized external-effect runs attempt ordinary scoped prerequisites, including
+  build or runtime dependency installation in disposable task environments, before asking the user
+  to supply tools that the environment can install itself (`TBF-016`, #31)
 - Prepare each external benchmark's durable developer trace before product execution so a
   pre-stream product failure retains an honest zero-usage invocation report and its original
   diagnosis instead of being replaced by a missing-trace adapter error (#31)
