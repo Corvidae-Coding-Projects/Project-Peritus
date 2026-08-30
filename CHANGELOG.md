@@ -122,6 +122,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Reconcile Windows qualification cleanup from every owned Job Object PID's actual signaled exit
+  state instead of the reference-sensitive active-process accounting count, so hosted runners may
+  retain handles to exited controllers without hiding or excusing a running descendant (#31, #32)
 - Release exited Windows controller process handles before reconciling Job Object accounting, then
   allow a bounded two-second drain for genuinely terminating descendants across H0, H1, and H2;
   persistent descendants are still killed and fail qualification (#31, #32)

@@ -70,21 +70,23 @@ mod platform {
         reason = "the narrow Windows H2 process-tree TCB requires audited Job Object FFI"
     )]
 
-    use core::{ffi::c_void, mem::size_of, ptr};
+    use core::{ffi::c_void, mem::size_of, ptr, slice};
     use std::os::windows::{io::AsRawHandle as _, process::CommandExt as _};
     use std::process::{Child, Command};
     use std::thread;
     use std::time::{Duration, Instant};
 
     use windows_sys::Win32::{
-        Foundation::{CloseHandle, HANDLE},
+        Foundation::{
+            CloseHandle, ERROR_INVALID_PARAMETER, GetLastError, HANDLE, WAIT_OBJECT_0, WAIT_TIMEOUT,
+        },
         System::JobObjects::{
             AssignProcessToJobObject, CreateJobObjectW, JOB_OBJECT_LIMIT_ACTIVE_PROCESS,
-            JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, JOBOBJECT_BASIC_ACCOUNTING_INFORMATION,
-            JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JobObjectBasicAccountingInformation,
+            JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, JOBOBJECT_BASIC_PROCESS_ID_LIST,
+            JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JobObjectBasicProcessIdList,
             JobObjectExtendedLimitInformation, QueryInformationJobObject, SetInformationJobObject,
         },
-        System::Threading::CREATE_NO_WINDOW,
+        System::Threading::{CREATE_NO_WINDOW, OpenProcess, WaitForSingleObject},
     };
 
     use crate::QualificationError;
@@ -93,6 +95,8 @@ mod platform {
 
     const PROCESS_DRAIN_DEADLINE: Duration = Duration::from_secs(2);
     const PROCESS_DRAIN_POLL_INTERVAL: Duration = Duration::from_millis(10);
+    const PROCESS_ID_CAPACITY: usize = 4_096;
+    const PROCESS_SYNCHRONIZE: u32 = 0x0010_0000;
 
     pub struct ProcessTree {
         job: Option<HANDLE>,
@@ -146,8 +150,8 @@ mod platform {
             };
             let started = Instant::now();
             loop {
-                let active_processes = active_processes(job)?;
-                if active_processes == 0 {
+                let running_processes = running_processes(job)?;
+                if running_processes == 0 {
                     self.close()?;
                     return Ok(());
                 }
@@ -156,7 +160,7 @@ mod platform {
                     return Err(native_error(
                         "reconcile native H2 process tree",
                         format!(
-                            "controller exited while {active_processes} process(es) remained in its Job Object"
+                            "controller exited while {running_processes} process(es) remained active in its Job Object"
                         ),
                     ));
                 }
@@ -175,24 +179,74 @@ mod platform {
         }
     }
 
-    fn active_processes(job: HANDLE) -> Result<u32, QualificationError> {
-        let mut accounting = JOBOBJECT_BASIC_ACCOUNTING_INFORMATION::default();
-        let length = u32::try_from(size_of::<JOBOBJECT_BASIC_ACCOUNTING_INFORMATION>())
-            .map_err(|_| job_error("encode Job Object accounting query"))?;
-        // SAFETY: the live job and correctly sized mutable output remain valid for this call.
+    fn running_processes(job: HANDLE) -> Result<u32, QualificationError> {
+        let bytes = size_of::<JOBOBJECT_BASIC_PROCESS_ID_LIST>()
+            .checked_add((PROCESS_ID_CAPACITY - 1) * size_of::<usize>())
+            .ok_or_else(|| job_error("size Job Object process list"))?;
+        let words = bytes.div_ceil(size_of::<usize>());
+        let mut storage = vec![0_usize; words];
+        let list = storage.as_mut_ptr().cast::<JOBOBJECT_BASIC_PROCESS_ID_LIST>();
+        let length =
+            u32::try_from(bytes).map_err(|_| job_error("encode Job Object process list"))?;
+        // SAFETY: `storage` is usize-aligned, writable for `length` bytes, and lives through the
+        // query and the subsequent bounded reads from its variable-length process-ID tail.
         let queried = unsafe {
             QueryInformationJobObject(
                 job,
-                JobObjectBasicAccountingInformation,
-                (&raw mut accounting).cast::<c_void>(),
+                JobObjectBasicProcessIdList,
+                list.cast::<c_void>(),
                 length,
                 ptr::null_mut(),
             )
         };
         if queried == 0 {
-            return Err(job_error("query Job Object process accounting"));
+            return Err(job_error("query Job Object process list"));
         }
-        Ok(accounting.ActiveProcesses)
+        // SAFETY: the successful query initialized the fixed header in `storage`.
+        let assigned = unsafe { (*list).NumberOfAssignedProcesses as usize };
+        // SAFETY: the successful query initialized the fixed header in `storage`.
+        let returned = unsafe { (*list).NumberOfProcessIdsInList as usize };
+        if assigned > returned || returned > PROCESS_ID_CAPACITY {
+            return Err(job_error("capture complete bounded Job Object process list"));
+        }
+        // SAFETY: the query reported at most `PROCESS_ID_CAPACITY` initialized entries in the
+        // variable-length tail allocated above.
+        let identifiers =
+            unsafe { slice::from_raw_parts((*list).ProcessIdList.as_ptr(), returned) };
+        let mut running = 0_u32;
+        for identifier in identifiers {
+            let process_id = u32::try_from(*identifier)
+                .map_err(|_| job_error("decode Job Object process identifier"))?;
+            if process_is_running(process_id)? {
+                running = running.saturating_add(1);
+            }
+        }
+        Ok(running)
+    }
+
+    fn process_is_running(process_id: u32) -> Result<bool, QualificationError> {
+        // SAFETY: requests only synchronization access to the kernel-owned PID returned by the
+        // Job Object query; the returned handle is closed below on every successful open.
+        let process = unsafe { OpenProcess(PROCESS_SYNCHRONIZE, 0, process_id) };
+        if process.is_null() {
+            // SAFETY: immediately reads this thread's last-error value from the failed open.
+            let error = unsafe { GetLastError() };
+            if error == ERROR_INVALID_PARAMETER {
+                return Ok(false);
+            }
+            return Err(job_error("open Job Object process for exit observation"));
+        }
+        // SAFETY: `process` is a live synchronization handle and a zero timeout does not block.
+        let state = unsafe { WaitForSingleObject(process, 0) };
+        // SAFETY: this function uniquely owns the handle returned by `OpenProcess`.
+        if unsafe { CloseHandle(process) } == 0 {
+            return Err(job_error("close Job Object process observation handle"));
+        }
+        match state {
+            WAIT_OBJECT_0 => Ok(false),
+            WAIT_TIMEOUT => Ok(true),
+            _ => Err(job_error("observe Job Object process exit state")),
+        }
     }
 
     impl Drop for ProcessTree {
