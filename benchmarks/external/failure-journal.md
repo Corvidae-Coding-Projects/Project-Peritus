@@ -2444,12 +2444,22 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   1.0. Native Peritus still ended during review on the same provider terminal after thirteen
   requests, 263,048 input, 79,360 cached input, and 6,112 output tokens. The correctly verified
   large-file transformation is retained; only the false terminal belongs to role recovery.
+- Frozen recurrence `large-scale-text-editing__AprDm2B` independently produced three permitted Vim
+  macros, transformed the complete file, and proved byte-for-byte equality. The unchanged verifier
+  again awarded reward 1.0, while native review ended on the same provider terminal after eight
+  requests, 158,231 input, 31,744 cached input, and 4,029 output tokens over 197.888 seconds. This
+  confirms the general recovery class without justifying task-specific behavior.
 - Trial `code-from-image__nPzTxpZ` attached the supplied PNG to an authenticated image-capable
   writer, transcribed the pictured pseudocode, executed the derived hash calculation, and wrote the
   correctly prefixed value. The unchanged verifier awarded reward 1.0. Native Peritus still ended
   during review on the same provider terminal after six requests, 114,057 input, 31,744 cached
   input, and 1,164 output tokens. The successful multimodal artifact is retained; only the false
   terminal belongs to role recovery.
+- Frozen recurrence `code-from-image__4Wr2ZHH` grounded the task in the supplied PNG, computed the
+  nested SHA-256 result, and wrote the exact 64-character value. The unchanged verifier again
+  awarded reward 1.0, while native review ended on the same provider terminal after six requests,
+  114,021 input, 39,680 cached input, and 1,140 output tokens over 132.083 seconds. The artifact is
+  correct; the false terminal remains a provider-neutral recovery concern.
 - Trial `portfolio-optimization__Shmqvhc` completed and compiled the supplied NumPy C-extension
   skeleton, matched the baseline within floating-point tolerance, and passed all six unchanged
   correctness and performance checks through 8,000 assets for reward 1.0. Its own earlier timing
@@ -2457,6 +2467,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   threshold at every required size. Native Peritus still ended during review on the same provider
   terminal after twelve requests, 325,114 input, 55,552 cached input, and 8,118 output tokens. The
   real performance pass is retained; only the false terminal belongs to role recovery.
+- Frozen recurrence `portfolio-optimization__WQCyVV5` independently completed the C extension,
+  matched the Python baseline within `1e-10`, and passed the unchanged correctness and performance
+  verifier for reward 1.0, including measured 11.2x and 12.6x speedups at 5,000 and 8,000 assets.
+  Native review ended on the same provider terminal after thirteen requests, 367,956 input, 63,488
+  cached input, and 11,137 output tokens over 381.849 seconds. The verified implementation is
+  retained; no task-specific recovery change is warranted.
 - Trial `llm-inference-batching-scheduler__VmXQPrh` read the supplied analytical model, explored
   packing widths, refined the narrow first-bucket padding/time tradeoff, wrote both 800-request
   plans, and passed all six unchanged integrity, schema, coverage, consistency, and performance
@@ -3422,6 +3438,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   `0f6289f5492b6d814833fba328c3aeb93a722d8aecad4bfb5e7c8c2979dc8678`, verifier SHA-256 is
   `e4e6b21fed6662adb4a42aba23d35609450392839a2282f3ba77c70c8d907c0b`, and reference SHA-256 is
   `97adb02c74de75d6d66829cf12d0a3d05b35b1b48b597ab67b90388517286553`.
+- Frozen recurrence: `mteb-retrieve__Sbf7buL` independently used the installed MTEB 1.36.8 stack,
+  exact model revision, normalized embeddings, and a stable descending rank. It again observed
+  `HumanEval: Benchmarking Python code generation via functional examples` at rank five and the
+  hidden expected MTEB line at rank seven. File shape passed and only the unpublished-value check
+  failed for verifier reward 0. Nine native requests used 176,219 input, 47,616 cached input, and
+  2,344 output tokens; a later reviewer provider terminal made native acceptance false but did not
+  change the independently decisive hidden-prompt mismatch. No product change is warranted.
 
 ## TBF-025: supporting files substituted for a requested live service
 
