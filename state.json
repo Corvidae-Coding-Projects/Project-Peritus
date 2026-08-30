@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 807,
+  "next_comment_id": 808,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T03:29:27.040885290Z",
+      "updated_at": "2026-08-30T03:55:24.123103617Z",
       "labels": [
         "qualification",
         "release"
@@ -2998,6 +2998,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABArk0mhFk3ZOaAfzHjZVnRJQsD0h1GKkEh1E7JVxuYzBSzSMXTmDSs67y2sfZxmG6ESpLOqcjRIArnNdU3Y2I9CA=="
+        },
+        "cbc155ff-39d1-44c1-8126-8c1137fdb742": {
+          "display_id": 807,
+          "author": "6ME5",
+          "content": "Committed 60266c5d: Terminal-Bench now places both explicitly authenticated account routes in its bounded fallback set while preserving default roles, so image-grounded review can use the compatible route; large-command guidance now favors decision-relevant filters without lowering the accuracy fallback cap. Retained TBF-020/TBF-021 and TBI-009 evidence, including the unchanged SAM reward 0 and refused folder-versus-file benchmark shortcut. Verification: 24 external-benchmark tests, 79 product-runner unit tests, 7 product-runner integrations, both doctest sets, strict all-target/all-feature Clippy for both crates, rustfmt, docs-check 136, and diff hygiene pass.",
+          "created_at": "2026-08-30T03:55:24.120473764Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABANCA1yBcTAQ7y5ImMLF8sZBZofl5Pb4OdPx0sf7TFd/eAL0O3djJZT3mOrddpq33E0PiG02Cfzro8lr9FuiRhAA=="
         },
         "cc78a484-6593-4cbb-866e-1bd564a58a4c": {
           "display_id": 803,
@@ -8015,8 +8024,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T03:40:47.310812082Z",
+    "timestamp": "2026-08-30T03:55:24.123103617Z",
     "agent_id": "6ME5",
-    "agent_seq": 996
+    "agent_seq": 997
   }
 }
