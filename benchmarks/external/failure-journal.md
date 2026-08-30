@@ -2947,6 +2947,21 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   missing-trace masking failure after 44.240 and 21.999 seconds. Each retained `conversation.json`
   but no developer trace, invocation report, usage, verifier result, or reward. They add independent
   coverage for pre-stream failure retention; neither implies task-specific recovery behavior.
+- The next k=5 attempts for the four tasks that first exposed this family repeated the same useful-
+  progress split. `polyglot-rust-c__LaT2DCC` wrote no requested directory before its provider
+  terminal after seven requests. `cancel-async-tasks__9D3BryS` passed five of six checks and missed
+  only cleanup when the queued-task count exceeded the concurrency limit before its terminal after
+  five requests. `dna-insert__th8Q58w` produced the requested primer file and missed only the
+  five-degree melting-temperature tolerance before its terminal after eight requests. All three
+  retained reward 0. They are unchanged-binary evidence for fresh grounded continuation and
+  progress-preserving review, not polyglot, asyncio, or primer special cases.
+- The following three frozen trials show the opposite score outcome without changing the harness
+  diagnosis. `rstan-to-pystan__7ydDPEW`, `git-leak-recovery__hkFoz9h`, and
+  `db-wal-recovery__5V7WfCk` passed all 6, 5, and 7 unchanged verifier checks respectively, but each
+  native run ended on the same provider terminal after 15, 10, and 7 requests. Their rewards remain
+  1.0 while their native reports remain failures. Fresh grounded role continuation must preserve
+  these complete candidates and reach truthful review; external reward is not rewritten as native
+  success.
 - Frozen attempt `crack-7z-hash__j38mdEC` produced the same missing-trace masking error after
   23.251 seconds. It retained no invocation report, usage, verifier result, or reward and increased
   Harbor's infrastructure-error count by one. This is another unchanged-binary recurrence for the
