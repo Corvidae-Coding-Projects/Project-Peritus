@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1034,
+  "next_comment_id": 1035,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T23:44:34.835592444Z",
+      "updated_at": "2026-08-30T23:58:58.358263400Z",
       "labels": [
         "qualification",
         "release"
@@ -1927,6 +1927,15 @@
           "kind": "action",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAji06hPVjNpAEMwwoZvqOrH/Q/i1lq3ChSRR8DZt2wjp5wnZ6dTe0ADLF3fvXEdEiTKdCjklKJVa3EiZ0kl8lDw=="
+        },
+        "2cbef5e7-5fb7-4e89-8d45-60148c2926b3": {
+          "display_id": 1034,
+          "author": "6ME5",
+          "content": "Signed d5901378 adds genuine H1 blob crash qualification on both sides of production artifact publication. Before commit, exact bytes remain in an owned temporary writer and restart recovery removes them without metadata/reference. After commit, the content-addressed object, durable metadata, and evidence-owned reference survive restart and are independently rehashed. An attempted journal-owned reference without a matching journal batch was correctly rejected by production integrity and replaced at the actual ownership boundary. Fresh reports: blob-before.b7G9TE and blob-after-ack.UZrw1b, each 1/1 with six evidence files and zero scratch residue. H1 is now 4/43 real routes. Verification: 68 daemon/qualification tests, native and Windows-GNU strict Clippy, architecture-check 79 packages/3254 files, docs-check 137 files, rustfmt, and diff hygiene passed.",
+          "created_at": "2026-08-30T23:58:58.355722136Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAAp9BWxupmjIhSXJe6QnG1rA5yBKzHT2UwbLBuYDHvNmqWDteKrTS7Nu0DygIc1yNS65QaDYJlrb5Q+8qWTplDQ=="
         },
         "2cdc60ed-3885-4565-88b5-73af0cd8e435": {
           "display_id": 701,
@@ -10058,8 +10067,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T23:44:34.835592444Z",
+    "timestamp": "2026-08-30T23:58:58.358263400Z",
     "agent_id": "6ME5",
-    "agent_seq": 1229
+    "agent_seq": 1230
   }
 }
