@@ -33,6 +33,12 @@ class, resource envelope, objectives, minimum samples, and regression thresholds
 sets `baseline_required` to true. The target values are candidate acceptance limits, not a claim
 that the current product meets them. No source baseline is established by H3 implementation work.
 
+`benchmarks/profiles/qualification-intel-core-ultra-9-275hx-v1.json` records the exact Linux host
+available for the retained local campaign. It changes only the machine identity and description;
+the production resource envelope, objectives, and regression thresholds remain unchanged. Results
+from that host are reproducible qualification evidence, not evidence that the separate AMD
+reference machine was tested.
+
 The JSON contracts in `benchmarks/schemas/` are stable interchange schemas. The Rust loader also
 rejects unknown fields, unsupported schema versions, invalid identifiers, duplicate keys, dangling
 workload references, invalid objective direction, oversized documents, and workload reservations
@@ -83,6 +89,12 @@ ledger across their subjects, and rejects subject executable-identity drift. Det
 reservoirs preserve representative samples without exceeding the profile's global record limit;
 the final merge assigns one contiguous, monotonic campaign sequence. A final partial queue cycle
 uses an exact drain operation so completed workloads do not retain queue ownership.
+
+The eleven load schedules total 33 minutes of declared runtime. The four soak schedules then run
+together for eight hours, so one `full` campaign takes at least eight hours and 33 minutes plus
+startup and evidence-publication overhead. Establishing a baseline and then comparing against that
+reviewed baseline requires two separate complete campaigns; the second run never reuses the first
+run's measurements.
 
 The evidence writer revalidates the exact input documents against the executed typed dataset and
 accepted baseline. It streams private copies of the exact subject and runner executables while

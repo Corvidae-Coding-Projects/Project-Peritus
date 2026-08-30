@@ -34,22 +34,24 @@ streams copies of `peritusd` and the qualification runner while recomputing thei
 identities, then retains measurements, receipts, accounting, machine facts, the content-addressed
 manifest, and its bound report. A failure never creates the requested final bundle path.
 
-## Operator command
+## Operator commands
 
-Build `peritusd` and the H3 operator, then run one command:
+Build `peritusd` and the H3 operator, then run the first complete campaign without a baseline:
 
 ```sh
 CARGO_BUILD_JOBS=2 cargo build --locked --bin peritusd --bin peritus-h3
 target/debug/peritus-h3 full \
   --daemon target/debug/peritusd \
-  --profile benchmarks/profiles/qualification-candidate-v1.json \
+  --profile benchmarks/profiles/qualification-intel-core-ultra-9-275hx-v1.json \
   --workloads benchmarks/workloads/production-v1.json \
-  --baseline /path/to/reviewed/accepted-baseline.json \
-  --accept-baseline-sha256 <reviewed-document-sha256> \
-  --evidence /path/to/new/peritus-h3-evidence \
+  --evidence /path/to/new/peritus-h3-baseline-evidence \
   --storage-class nvme-gen4 \
   --revision "$(git rev-parse HEAD)"
 ```
+
+That profile identifies the retained Intel qualification host. Use
+`benchmarks/profiles/qualification-candidate-v1.json` only on its declared AMD reference machine;
+the operator rejects either profile on a different host before starting a campaign.
 
 `load` runs the sub-hour catalog. `full` runs that catalog and then the four concurrent eight-hour
 workloads. The command probes the operating system, architecture, CPU, logical cores, and memory;
@@ -57,17 +59,28 @@ the storage generation remains explicit because unprivileged operating-system in
 report it consistently. Both raw CPU/memory facts and their normalized hardware class are retained.
 The command fails before launching `peritusd` if that class does not exactly match the profile.
 
-An accepted baseline is optional so the command can retain first-run evidence, but the checked-in
-production profile requires it for `Ready`. When every objective has enough samples, the evidence
-bundle contains `baseline-candidate.json`. It is derived from the observed objective statistics and
-binds the exact source evidence-manifest digest, but it is not accepted automatically.
+The first run is expected to finish `NotReady` because no accepted baseline was supplied. When every
+objective has enough samples, its evidence bundle contains `baseline-candidate.json`. Review that
+file and its bound manifest, then run a separate complete comparison with the reviewed candidate and
+its exact file digest:
 
-Review the report, manifest, candidate, and underlying measurements independently. If the run is a
-valid baseline, compute the exact candidate file's SHA-256 and supply both `--baseline` and
-`--accept-baseline-sha256` on a later run. The command rejects either option alone and rejects any
-byte change after review. This explicit action admits the baseline for H3 comparison; it does not
-grant release authority. A completed `NotReady` campaign publishes its honest report and exits with
-status 3. Input or runtime failure exits with status 1; invalid syntax exits with status 2.
+```sh
+sha256sum /path/to/peritus-h3-baseline-evidence/baseline-candidate.json
+target/debug/peritus-h3 full \
+  --daemon target/debug/peritusd \
+  --profile benchmarks/profiles/qualification-intel-core-ultra-9-275hx-v1.json \
+  --workloads benchmarks/workloads/production-v1.json \
+  --baseline /path/to/peritus-h3-baseline-evidence/baseline-candidate.json \
+  --accept-baseline-sha256 <reviewed-document-sha256> \
+  --evidence /path/to/new/peritus-h3-comparison-evidence \
+  --storage-class nvme-gen4 \
+  --revision "$(git rev-parse HEAD)"
+```
+
+The command rejects either baseline option alone and rejects any byte change after review. This
+explicit action admits the baseline for H3 comparison; it does not grant release authority. A
+completed `NotReady` campaign publishes its honest report and exits with status 3. Input or runtime
+failure exits with status 1; invalid syntax exits with status 2.
 
 ## Focused checks
 

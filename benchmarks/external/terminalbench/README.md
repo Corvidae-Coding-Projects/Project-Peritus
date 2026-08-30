@@ -71,6 +71,32 @@ The checked-in Compose provider handles the small compatibility gap between Harb
 commands and rootless `podman-compose`. It also resolves Terminal-Bench's unqualified Docker Hub
 image names deterministically and suppresses Podman's provider warning on captured protocol output.
 
+## Verify Harbor with five Oracle tasks
+
+Before invoking Peritus, run five unchanged tasks through Harbor's built-in Oracle agent. This
+checks dataset download, task images, solution mounting, the Podman boundary, and unchanged
+verifiers without consuming a model account:
+
+```bash
+PATH=/absolute/path/to/terminalbench-state/.venv/bin:$PATH \
+HARBOR_TELEMETRY=off \
+PODMAN_COMPOSE_WARNING_LOGS=false \
+PODMAN_COMPOSE_PROVIDER=/absolute/path/to/Project-Peritus/benchmarks/external/terminalbench/podman_compose_provider.py \
+harbor run \
+  --dataset terminal-bench/terminal-bench-2@latest \
+  --agent oracle \
+  --env podman \
+  --n-tasks 5 \
+  --n-attempts 1 \
+  --n-concurrent 1 \
+  --yes \
+  --job-name terminalbench-oracle-five-task-smoke \
+  --jobs-dir /absolute/path/to/terminalbench-state/jobs
+```
+
+Retain the five task names, rewards, image identities, elapsed time, and any environment error. An
+Oracle failure diagnoses the benchmark or local runtime boundary; it is not a Peritus score.
+
 ## Qualify one unchanged task
 
 From the Peritus repository, run one attempt at concurrency one:

@@ -109,6 +109,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   binding its entries to the exact evidence-manifest digest; require a later operator to supply
   both that reviewed file and its exact SHA-256 before it can participate as an accepted baseline
   (#35)
+- Add a checked-in profile for the exact Intel Core Ultra 9 275HX qualification host while
+  preserving every production resource limit, SLO, and regression threshold from the separate AMD
+  reference profile; validate that invariant in the Rust dataset contract (#35)
 - Bind every new external-benchmark invocation to the exact clean Peritus source revision, Cargo
   package version, and SHA-256 of the native executable; make Harbor verify the uploaded binary
   against the native report and retain both identities in its trial metadata (#31)
