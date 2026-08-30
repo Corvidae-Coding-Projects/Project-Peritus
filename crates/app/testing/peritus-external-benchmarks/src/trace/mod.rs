@@ -6,9 +6,23 @@ mod harnessbench;
 mod metadata;
 mod projection;
 
-use std::path::{Path, PathBuf};
+use std::{
+    fs::OpenOptions,
+    path::{Path, PathBuf},
+};
 
 use crate::{BenchmarkError, evidence::TraceUsage};
+
+pub fn prepare(trace_path: &Path) -> Result<(), BenchmarkError> {
+    OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(trace_path)
+        .and_then(|file| file.sync_all())
+        .map_err(|error| {
+            BenchmarkError::filesystem("prepare durable developer trace", trace_path, error)
+        })
+}
 
 pub fn publish_harnessbench(
     trace_inputs: &[(PathBuf, String)],
@@ -60,7 +74,7 @@ mod tests {
     fn empty_prepared_trace_has_zero_usage() {
         let directory = tempfile::tempdir().expect("trace directory");
         let path = directory.path().join("empty.trace");
-        fs::write(&path, []).expect("empty trace");
+        prepare(&path).expect("prepare trace");
 
         let usage = summarize_usage(&path, "task").expect("summarize empty trace");
 
@@ -70,5 +84,16 @@ mod tests {
         assert_eq!(usage.output_tokens, 0);
         assert_eq!(usage.total_tokens, 0);
         assert_eq!(usage.provider_cost_microunits, 0);
+    }
+
+    #[test]
+    fn preparing_an_existing_trace_never_truncates_it() {
+        let directory = tempfile::tempdir().expect("trace directory");
+        let path = directory.path().join("existing.trace");
+        fs::write(&path, b"retained").expect("existing trace");
+
+        prepare(&path).expect("prepare existing trace");
+
+        assert_eq!(fs::read(path).expect("read trace"), b"retained");
     }
 }

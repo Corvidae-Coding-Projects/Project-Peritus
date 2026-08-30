@@ -45,6 +45,7 @@ pub async fn run_harnessbench(input: HarnessBenchInput) -> Result<RunReport, Ben
         prompt.clone(),
     )?;
     let trace_path = conversation.current_trace_path();
+    trace::prepare(&trace_path)?;
     let usage_proxy = sandbox.join("usage-proxy");
     let cancellation = CancellationToken::new();
     let role_providers = providers::authenticated(&cancellation).await?;

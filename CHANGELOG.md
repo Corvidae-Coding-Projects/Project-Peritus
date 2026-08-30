@@ -58,6 +58,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Prepare each external benchmark's durable developer trace before product execution so a
+  pre-stream product failure retains an honest zero-usage invocation report and its original
+  diagnosis instead of being replaced by a missing-trace adapter error (#31)
 - Include the required schema version when serializing H3 baseline manifests so a generated,
   reviewed baseline round-trips through the accepted-baseline parser in a later campaign (#35)
 - Compile H3 campaign-only sampling and shared accounting only on its supported Unix boundary and

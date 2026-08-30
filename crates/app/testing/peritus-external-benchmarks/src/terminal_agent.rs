@@ -50,6 +50,7 @@ pub async fn run(input: TerminalBenchInput) -> Result<TerminalBenchReport, Bench
         prompt,
     )?;
     let trace_path = conversation.current_trace_path();
+    trace::prepare(&trace_path)?;
     let cancellation = CancellationToken::new();
     let role_providers = providers::authenticated(&cancellation).await?;
     let (observer, last_observation) = observation_capture();

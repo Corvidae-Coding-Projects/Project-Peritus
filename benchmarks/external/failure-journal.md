@@ -2541,3 +2541,28 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   product-runner unit and integration tests pass, as does strict all-target/all-feature Clippy. A
   focused unchanged final-candidate rerun remains required before this is counted as an external
   comparison result.
+
+## TBF-015: a pre-stream product failure was replaced by a missing-trace error
+
+- Suite and tasks: Terminal-Bench 2.0, `crack-7z-hash` and `reshard-c4-data`, first full-suite
+  baseline trials.
+- Symptom: native Peritus reached its first designing phase and then returned a product error before
+  a provider stream began. Report assembly immediately tried to reconstruct usage from
+  `developer-round-0001.trace`, which did not yet exist, so Harbor retained only a filesystem
+  exception. The original product failure, stable failure kind, zero-usage accounting, and normal
+  invocation identity were lost.
+- Cause: both external adapters treated trace creation as a provider-stream side effect while their
+  report paths treated trace existence as unconditional. A legitimate failure can occur after the
+  product run starts but before its first stream frame is written.
+- Resolution: HarnessBench and Terminal-Bench now create and sync the current durable trace before
+  invoking the product runner. The operation is append-only and never truncates a resumed trace. A
+  pre-stream failure therefore projects zero requests and tokens while preserving the actual
+  product outcome in the normal revision-bound report; malformed or truncated nonempty traces still
+  fail evidence validation.
+- Before evidence: job `peritus-terminalbench-2-k5-high`; trials
+  `crack-7z-hash__gqdRV7a` and `reshard-c4-data__RpaHrRb`; both retained
+  `open developer trace ... No such file or directory` after their designing observation and
+  produced no `invocation.json`. The running baseline binary and adapter remain unchanged.
+- Verification: 23 external-benchmark tests pass, including zero usage from a prepared empty trace
+  and non-truncating preparation of existing bytes. Strict all-target/all-feature Clippy passes. An
+  unchanged final-candidate rerun must retain the underlying product result and exact accounting.
