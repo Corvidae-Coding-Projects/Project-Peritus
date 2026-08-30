@@ -13,6 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Exercise the installed TUI itself in H2 through the host PTY or ConPTY: answer the bounded
+  standards-defined cursor-position handshake, require a real daemon connection and rendered
+  frame, send the documented Ctrl-Q action, require a successful exit, and verify alternate-screen,
+  cursor, and bracketed-paste restoration before accepting the lifecycle (#31)
 - Run the complete 18-scenario H2 campaign from the first-class
   `product-native-qualification` command on every hosted Linux, macOS, and Windows package runner,
   retain its report and raw evidence as workflow artifacts, and wire the checked-in controller to
@@ -108,6 +112,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Preserve native H2 reports and raw artifacts from failed hosted campaigns, print the retained
+  report path and exact not-ready scenario reasons from `xtask`, and retain a bounded sanitized TUI
+  transcript tail when an interactive lifecycle fails before a scenario response (#31)
 - Resolve the H2 daemon runtime through the host's canonical temporary-directory spelling before
   startup, so native macOS qualification uses `/private/tmp` instead of the `/tmp` alias while the
   production daemon continues to reject genuinely aliased or symlinked state roots (#31)

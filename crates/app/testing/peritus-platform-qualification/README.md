@@ -16,11 +16,14 @@ complete observations that `QualificationReport::evaluate` reduces without consu
 host state.
 
 `peritus-h2-controller` owns the actual platform effects: package installation, native supervisor
-and IPC exercise, process and sandbox probes, upgrade and rollback, uninstall, and resource
-cleanup. It rejects a request unless the target, package, manifest, staged controller, subject, and
-limits match its current invocation. The versioned request, scenario-response, and cleanup-response
-schemas live in `packaging/schemas/`. A separate fixture controller proves the adapter and operator
-protocol; fixture results are not release evidence for a real host.
+and IPC exercise, interactive TUI rendering through PTY or ConPTY, process and sandbox probes,
+upgrade and rollback, uninstall, and resource cleanup. The TUI check answers only the bounded
+standard cursor-position query, then requires a real daemon connection, rendered frame, orderly
+Ctrl-Q exit, and complete terminal restoration. The controller rejects a request unless the target,
+package, manifest, staged controller, subject, and limits match its current invocation. The
+versioned request, scenario-response, and cleanup-response schemas live in `packaging/schemas/`. A
+separate fixture controller proves the adapter and operator protocol; fixture results are not
+release evidence for a real host.
 
 The reviewed assets in `../../../../packaging` are the native application layer consumed by a
 release builder. They supervise the real `peritusd serve --config <absolute-file>` invocation;
@@ -56,9 +59,11 @@ target/debug/peritus-h2 \
 ```
 
 The operator refuses to overwrite a report. It exits successfully only for `Ready`, exits 3 for a
-completed `NotReady` campaign, and reports adapter or evidence failures as errors. Linux, macOS,
-and Windows must each run the native controller on a fresh supported host. The checked-in fixture
-is protocol evidence only; no package or host is claimed qualified by its test result.
+completed `NotReady` campaign, and reports adapter or evidence failures as errors. `xtask` prints
+the retained report path and exact scenario reasons for completed failures, and the hosted workflow
+uploads whatever report and raw evidence exists even when the qualification step fails. Linux,
+macOS, and Windows must each run the native controller on a fresh supported host. The checked-in
+fixture is protocol evidence only; no package or host is claimed qualified by its test result.
 
 ## Focused checks
 

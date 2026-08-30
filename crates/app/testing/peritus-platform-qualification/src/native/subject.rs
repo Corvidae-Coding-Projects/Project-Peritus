@@ -211,7 +211,8 @@ impl QualificationSubject for NativePlatformSubject {
             return Err(native_error(
                 "execute native H2 controller",
                 format!(
-                    "controller exited before response: {}",
+                    "scenario {} controller exited before response: {}",
+                    request.scenario().id().as_str(),
                     String::from_utf8_lossy(&process.stderr)
                 ),
             ));

@@ -1,5 +1,8 @@
 //! Product package build, installation, and native lifecycle qualification.
 
+mod host_version;
+mod qualification_report;
+
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -79,14 +82,23 @@ pub(crate) fn qualify(root: &Path) -> Result<PathBuf, XtaskError> {
         .args(["--report"])
         .arg(&report)
         .args(["--platform", host_os(), "--architecture", std::env::consts::ARCH])
-        .args(["--version", &host_version()?])
+        .args(["--version", &host_version::detect(host_os())?])
         .status()
         .map_err(|error| {
             XtaskError::io("run complete native H2 qualification from", &package, error)
         })?;
-    require_success(status.success(), "native H2 qualification did not reach Ready")?;
     if !report.is_file() {
-        return Err(XtaskError::metadata("native H2 qualification did not retain its report"));
+        return Err(XtaskError::metadata(format!(
+            "native H2 qualification exited with {status} without retaining its report at {}",
+            report.display()
+        )));
+    }
+    if !status.success() {
+        let reasons = qualification_report::not_ready_reasons(&report)?;
+        return Err(XtaskError::metadata(format!(
+            "native H2 qualification did not reach Ready; retained report: {}; reasons: {reasons}",
+            report.display()
+        )));
     }
     Ok(report)
 }
@@ -238,86 +250,6 @@ fn qualification_run_root(root: &Path) -> Result<PathBuf, XtaskError> {
     )))
 }
 
-fn host_version() -> Result<String, XtaskError> {
-    match host_os() {
-        "linux" => {
-            let raw = fs::read_to_string("/proc/sys/kernel/osrelease").map_err(|error| {
-                XtaskError::io(
-                    "read Linux kernel version from",
-                    Path::new("/proc/sys/kernel/osrelease"),
-                    error,
-                )
-            })?;
-            normalize_version(&raw)
-                .ok_or_else(|| XtaskError::metadata("Linux kernel version is malformed"))
-        }
-        "macos" => command_version("/usr/bin/sw_vers", &["-productVersion"], false),
-        "windows" => command_version(
-            "powershell",
-            &["-NoProfile", "-Command", "[Environment]::OSVersion.Version.ToString()"],
-            true,
-        ),
-        _ => Err(XtaskError::metadata("native H2 qualification is unsupported here")),
-    }
-}
-
-fn command_version(
-    executable: &str,
-    arguments: &[&str],
-    windows_marketing_version: bool,
-) -> Result<String, XtaskError> {
-    let output = Command::new(executable).args(arguments).output().map_err(|error| {
-        XtaskError::io("run host-version probe with", Path::new(executable), error)
-    })?;
-    if !output.status.success() {
-        return Err(XtaskError::metadata("host-version probe failed"));
-    }
-    let raw = String::from_utf8(output.stdout)
-        .map_err(|_| XtaskError::metadata("host-version probe returned non-UTF-8 output"))?;
-    let version = if windows_marketing_version {
-        normalize_windows_version(&raw)
-    } else {
-        normalize_version(&raw)
-    };
-    version.ok_or_else(|| XtaskError::metadata("host-version probe returned malformed output"))
-}
-
-fn normalize_windows_version(raw: &str) -> Option<String> {
-    let fields = numeric_version_fields(raw)?;
-    let build = *fields.get(2)?;
-    if fields.first() == Some(&10) && build >= 22_000 {
-        Some(format!("11.0.0.{build}"))
-    } else {
-        normalized_fields(fields)
-    }
-}
-
-fn normalize_version(raw: &str) -> Option<String> {
-    normalized_fields(numeric_version_fields(raw)?)
-}
-
-fn numeric_version_fields(raw: &str) -> Option<Vec<u32>> {
-    let mut fields = Vec::new();
-    for field in raw.trim().split('.').take(4) {
-        let digits = field.chars().take_while(char::is_ascii_digit).collect::<String>();
-        if digits.is_empty() {
-            break;
-        }
-        fields.push(digits.parse().ok()?);
-    }
-    (!fields.is_empty()).then_some(fields)
-}
-
-fn normalized_fields(mut fields: Vec<u32>) -> Option<String> {
-    if fields.len() > 4 {
-        return None;
-    }
-    while fields.len() < 3 {
-        fields.push(0);
-    }
-    Some(fields.iter().map(u32::to_string).collect::<Vec<_>>().join("."))
-}
-
 fn smoke_paths(subject: &Path) -> (PathBuf, PathBuf) {
     match host_os() {
         "linux" => (subject.join(".local/state/peritus"), subject.join(".local/bin/peritus")),
@@ -374,24 +306,5 @@ const fn host_os() -> &'static str {
         "windows"
     } else {
         "unsupported"
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{normalize_version, normalize_windows_version};
-
-    #[test]
-    fn native_versions_are_reduced_to_the_h2_contract() {
-        assert_eq!(normalize_version("7.1.8-200.fc44.x86_64\n").as_deref(), Some("7.1.8"));
-        assert_eq!(normalize_version("15.7.1\n").as_deref(), Some("15.7.1"));
-        assert_eq!(normalize_version("15\n").as_deref(), Some("15.0.0"));
-        assert_eq!(normalize_version("unknown"), None);
-    }
-
-    #[test]
-    fn windows_kernel_build_is_projected_to_the_supported_product_version() {
-        assert_eq!(normalize_windows_version("10.0.26100.0\r\n").as_deref(), Some("11.0.0.26100"));
-        assert_eq!(normalize_windows_version("11.0.0.30000\n").as_deref(), Some("11.0.0.30000"));
     }
 }

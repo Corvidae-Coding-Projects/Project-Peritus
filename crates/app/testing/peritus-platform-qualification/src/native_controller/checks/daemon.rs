@@ -85,6 +85,10 @@ impl<'a> DaemonSession<'a> {
         self.endpoint_path.as_deref()
     }
 
+    pub(super) fn endpoint(&self) -> &std::ffi::OsStr {
+        &self.endpoint
+    }
+
     pub(super) fn status(&self) -> Result<(), Box<dyn std::error::Error>> {
         let output = command_output(
             &self.layout.cli,

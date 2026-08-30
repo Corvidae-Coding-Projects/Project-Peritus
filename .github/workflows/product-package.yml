@@ -37,9 +37,10 @@ jobs:
       - name: Qualify all native H2 package scenarios
         run: cargo run --locked --package xtask -- product-native-qualification
       - name: Retain native H2 report and raw evidence
+        if: ${{ always() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: h2-${{ matrix.os }}
           path: target/peritus-qualification/h2/**
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14

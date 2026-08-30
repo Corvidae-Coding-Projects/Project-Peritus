@@ -5,6 +5,7 @@ mod host;
 mod lifecycle;
 mod package;
 mod runtime;
+mod tui;
 
 use serde::Serialize;
 

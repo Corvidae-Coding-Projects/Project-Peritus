@@ -7,6 +7,7 @@ use crate::{ArtifactRole, digest_file};
 use super::Observation;
 use super::daemon::{DaemonSession, cleanup_runtime};
 use super::host::{HostLayout, LifecycleAction, command_output, lifecycle, require_success};
+use super::tui::exercise as exercise_tui;
 use crate::native_controller::args::ControllerPaths;
 use crate::native_controller::request::BoundRequest;
 
@@ -119,13 +120,17 @@ fn cli_status(layout: &HostLayout) -> Result<Observation, Box<dyn std::error::Er
 }
 
 fn tui_lifecycle(layout: &HostLayout) -> Result<Observation, Box<dyn std::error::Error>> {
-    let help = command_output(&layout.tui, ["--help"])?;
-    require_success(&help, "run packaged TUI help")?;
-    let pty = command_output(&layout.daemon, ["qualify-pty"])?;
-    require_pty_observation(&pty)?;
-    Ok(Observation::passed("packaged TUI surface and native terminal lifecycle both completed")
-        .fact("native.tui-invocable", true)
-        .fact("native.terminal-restored", true))
+    let session = DaemonSession::start(layout)?;
+    let tui = exercise_tui(&layout.tui, session.endpoint())?;
+    session.status()?;
+    session.shutdown()?;
+    Ok(Observation::passed(
+        "packaged TUI connected, rendered, quit, and restored its native terminal",
+    )
+    .fact("native.tui-connected", tui.connected)
+    .fact("native.tui-rendered", tui.rendered)
+    .count("native.tui-cursor-reports", tui.cursor_reports)
+    .fact("native.terminal-restored", true))
 }
 
 fn process_equivalence(

@@ -14,6 +14,7 @@ categories = ["development-tools::testing"]
 [dependencies]
 peritus-approval = { version = "=0.0.0", path = "../../../state/peritus-approval" }
 peritus-types = { version = "=0.0.0", path = "../../../foundation/peritus-types" }
+portable-pty.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

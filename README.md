@@ -65,7 +65,9 @@ for each of its 18 scenarios and publishes a complete no-overwrite report throug
 All three bind responses to the exact candidate or package, verify retained raw artifacts, and own
 the complete process tree. H2 now includes the Rust native controller that drives the packaged
 installers, daemon, CLI, TUI, process, sandbox, upgrade, rollback, and uninstall checks. Its first
-Linux development run passed all 18 scenarios with complete cleanup. Final candidate-bound Linux,
+Linux development run passed all 18 scenarios with complete cleanup. The TUI scenario now launches
+the installed interface in a native PTY, negotiates with the packaged daemon, observes a rendered
+frame, sends Ctrl-Q, and verifies successful terminal restoration. Final candidate-bound Linux,
 macOS, and Windows reports are still required; a development report is not release evidence.
 The native package workflow now runs the same complete controller on all three hosted operating
 systems and retains each report plus raw evidence. Its macOS and Windows sandbox scenarios call the
