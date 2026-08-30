@@ -2137,6 +2137,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - After evidence: the baseline binary remains frozen. An unchanged focused rerun with the final
   candidate must confirm the exact normalized category. A provider policy refusal, if confirmed,
   remains a provider limitation rather than a task-specific behavior Peritus will evade.
+- Frozen recurrence: trial `break-filter-js-from-html__SHG5AAN` again listed the artifact
+  workspace, read the supplied filter and public task-side test, then ended with the frozen generic
+  provider terminal before creating `out.html`. The unchanged verifier therefore awarded reward 0.
+  Native execution used two requests, 35,082 input, 7,936 cached input, and 230 output tokens over
+  36.338 seconds. This strengthens the need for the already-implemented normalized diagnostic; it
+  does not justify bypassing provider policy, changing the task, or adding filter-specific logic.
 
 ## TBF-007: outside domain semantics overrode an explicit source-matching contract
 
@@ -2423,6 +2429,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   seventeen requests, 438,184 input, 110,592 cached input, and 6,339 output tokens over 246.920
   seconds. The constrained successful edit is retained; only the false terminal belongs to role
   recovery.
+- Trial `distribution-search__uehKJcJ` created the exact 150,000-element NumPy probability
+  distribution, independently reloaded it, and measured both requested KL divergences at
+  10.000000000000. All four unchanged shape, validity, normalization, and divergence checks passed
+  for reward 1.0. Native Peritus still ended during review on the same provider terminal after four
+  requests, 72,777 input, 23,808 cached input, and 2,881 output tokens over 140.796 seconds. The
+  correctly verified numerical artifact is retained; only the false native terminal belongs to
+  provider-neutral role recovery.
 
 ## TBM-001: a writer mirrored the response field into the request schema
 
@@ -3187,3 +3200,35 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   it cannot complete the operational request alone, then succeeds only after a separate effect and
   later end-to-end verification. Focused product-runner tests pass; strict repository gates and an
   unchanged final-candidate rerun remain required.
+
+## TBF-026: one calibration video was mistaken for generalization evidence
+
+- Suite and task: Terminal-Bench 2.0, `video-processing`, first full-suite baseline trial.
+- Symptom: the writer built a complete foreground-trajectory analyzer and verified its syntax,
+  exact TOML shape, missing-input behavior, and development-video output. The same script rejected
+  the unchanged held-out video with `no sustained airborne interval was detected`. Four of five
+  verifier checks passed; the held-out behavior check failed and reward 0 is retained.
+- Cause: the workflow required representative checks for performance claims and exact tests for
+  named regressions, but did not distinguish calibration evidence from generalization evidence for
+  an empirical heuristic. The writer tuned foreground thresholds and a fixed observation window
+  against the only development sample, then treated rerunning that sample as sufficient proof for
+  unseen same-class videos. A later false reviewer terminal is separately covered by `TBF-009`.
+- Resolution: every role now receives a task-neutral rule for algorithms calibrated from one
+  example: reserve an independent segment when possible, exercise contract-preserving
+  perturbations or independently derived cases with known relationships, prefer scale- and
+  duration-relative features over example-tuned constants, inspect intermediate signals across the
+  complete input, and report an evidence limit instead of claiming unsupported robustness. The
+  deterministic artifact design carries the same verification requirement.
+- Integrity decision: retain the zero and do not copy the hidden takeoff or landing ranges, inspect
+  the held-out video before scoring, key behavior to video filenames, or add computer-vision task
+  logic to Peritus. Temporal shifts, known geometric or intensity perturbations, calibration/
+  validation splits, and metamorphic relationships are ordinary black-box testing techniques.
+- Evidence: job `peritus-terminalbench-2-k5-high`; trial `video-processing__4bTdZmN`; fifteen
+  provider requests; 506,870 input, 111,104 cached input, and 15,200 output tokens over 435.115
+  seconds. The development case produced ordered frames 54 and 62; the unchanged held-out execution
+  returned status 1 before writing an answer.
+- Verification: embedded-workflow regressions require the calibration/generalization,
+  independent-case, perturbation, and tuned-constant rules in architect, developer, and reviewer
+  prompts. The deterministic artifact-design regression requires the same rule. All 95
+  product-runner tests, strict all-target/all-feature Clippy, rustfmt, documentation checks, and
+  `cargo xtask all` pass. An unchanged final-candidate rerun remains required.

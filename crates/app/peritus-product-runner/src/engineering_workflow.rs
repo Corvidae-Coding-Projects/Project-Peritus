@@ -208,6 +208,14 @@ requested behavior.
    an isolated read-only comparison. Profile when the bottleneck is not already demonstrated, and
    keep a repository-provided benchmark or threshold authoritative over a supplemental
    microbenchmark.
+   When an empirical or heuristic algorithm is calibrated from one supplied example but must work
+   on unseen same-class inputs, do not count rerunning the calibration sample as generalization
+   evidence. Reserve an independent segment when possible and exercise contract-preserving
+   perturbations or independently derived cases whose expected relationship is known. Prefer
+   scale- and duration-relative features over tuned constants justified only by the example, and
+   inspect intermediate signals across the complete input before claiming robust behavior. If the
+   available evidence cannot support generalization, report that limit instead of treating one
+   successful sample as proof.
    Validate requested effects independently rather than proving only self-authored invariants. For
    local services or APIs, preserve and inspect available access evidence and confirm every required
    endpoint and exercised recovery path. When the request includes a quality or operations report,

@@ -61,6 +61,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Require empirical or heuristic algorithms calibrated from one supplied example to exercise an
+  independent segment, contract-preserving perturbations, or independently derived cases before
+  claiming generalization; the calibration sample alone is no longer sufficient evidence
+  (`TBF-026`, #31)
 - Require explicit live operational requests to retain a successful caller-authorized effect and a
   later fresh verification even when the writer also changes supporting scripts or documentation;
   helper artifacts alone no longer substitute for the requested running result (`TBF-025`, #31)
