@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 870,
+  "next_comment_id": 871,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T12:14:17.051702920Z",
+      "updated_at": "2026-08-30T12:14:22.051742073Z",
       "labels": [
         "qualification",
         "release"
@@ -1490,6 +1490,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAAS3CxWtSYjv5vO23wlOn1zBcIf2C4bLsVkv1x4fPTyhg5TU6YGnkhltkz26os4Xmr0mtmQBuE5CgvP/51jabCQ=="
+        },
+        "13203235-e370-4415-bf93-e6c470c4a910": {
+          "display_id": 870,
+          "author": "6ME5",
+          "content": "Hosted macOS H2 exposed a real native path mismatch: /tmp resolves to /private/tmp, while the daemon intentionally rejects aliased state roots. Fixed the qualification controller to use the canonical temporary parent without loosening production validation; Windows also canonicalizes its owned state parent. Verification: full peritus-platform-qualification tests, strict native and x86_64-pc-windows-gnu Clippy, real cargo xtask product-native-qualification 18/18 Ready at target/peritus-qualification/h2/linux-x86_64-1788091555543841148/report.json (SHA-256 a1c295549a29dbf02c937aa155887f92f1f1049fcfd3501b6fc0f264694323fa), and cargo xtask all green.",
+          "created_at": "2026-08-30T12:14:22.049313520Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABApIHmZdjSlDG91eR61XJFbsmfLIFJHPPIUeS99Jjlp2zS0HCIRAIMitwrPz0CFCI8Ot/KuTCoqyLbk2mM0RvnDA=="
         },
         "1325114b-5a87-48a5-9fbd-a164392a1b65": {
           "display_id": 683,
@@ -8586,8 +8595,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T12:14:17.051702920Z",
+    "timestamp": "2026-08-30T12:14:22.051742073Z",
     "agent_id": "6ME5",
-    "agent_seq": 1062
+    "agent_seq": 1063
   }
 }
