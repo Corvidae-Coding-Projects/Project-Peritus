@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 905,
+  "next_comment_id": 906,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T15:55:32.467242442Z",
+      "updated_at": "2026-08-30T16:00:46.734859628Z",
       "labels": [
         "qualification",
         "release"
@@ -1661,6 +1661,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA5Mr7hJIzA3wIkpLQ4QieXhlEAu/rwYkeEYNOQh5T9xxB6+aiCoT/ca7RmG0RXfuooVu340ldVtC2BGrW15BmBw=="
+        },
+        "208c3df5-66c9-4c00-8d82-75b51fb66e3c": {
+          "display_id": 905,
+          "author": "6ME5",
+          "content": "[action] Diagnosed run 33320982456 H0 Windows failure from retained probe-evidence: Visual Studio discovery variables were stripped and GNU link.exe won. Added the missing narrow MSVC discovery allowlist; focused H0 tests/Clippy and docs-check pass; wait for H2 result before next signed push.",
+          "created_at": "2026-08-30T16:00:46.732464469Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAeAzZud0PDpysn3SDlXI76rPqrt6TKgFgEwZlvhxxPt1CSiJLL1htw3vFdYR1f6T7VFt+AIqJBSFuQ0cArziFCQ=="
         },
         "21d60d92-7328-4471-bd9b-0e002192ee37": {
           "display_id": 900,
@@ -8901,8 +8910,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T16:00:41.563819377Z",
+    "timestamp": "2026-08-30T16:00:46.734859628Z",
     "agent_id": "6ME5",
-    "agent_seq": 1099
+    "agent_seq": 1100
   }
 }
