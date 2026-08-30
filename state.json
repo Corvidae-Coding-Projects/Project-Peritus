@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 971,
+  "next_comment_id": 972,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T19:26:28.854275136Z",
+      "updated_at": "2026-08-30T19:29:55.332502109Z",
       "labels": [
         "qualification",
         "release"
@@ -3101,6 +3101,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAvwVEztMbmoDKwtiMlnAMOx9c4bTV6A1S6hUZbTlETKWp8A60GfAKoatCFfRk8zmTSzuuNlIwTzfwDbYWT8lnBg=="
+        },
+        "8d182096-fd9e-400f-b12b-67b3636e8d7b": {
+          "display_id": 971,
+          "author": "6ME5",
+          "content": "H1 operator checkpoint is ready to commit: new peritus-resilience-qualification crate supplies strict peritus-h1 command, exact candidate SHA-256 descriptor binding, per-subject candidate staging/re-digest, complete stable JSON report projection, and atomic no-overwrite publication for all 43 cases. The external real fault/quota/daemon/VM controller remains explicitly unimplemented and H1 remains NotReady without it. Verification: 16 focused tests, strict all-target/all-feature Clippy, rustfmt, architecture-check 79 packages/3240 sources, docs-check 137 files, diff/placeholder/debug hygiene green.",
+          "created_at": "2026-08-30T19:29:55.322418865Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAeBLHCw062OljYUSkYG/4IdnepbQbSpCZUBxjTOjITkWdeKBb7kN5gwFBSDjvbOyh6C6Ty/JoSEydYYPuZrS8AA=="
         },
         "8d5b621b-022a-4fa8-9761-c088e9d3a509": {
           "display_id": 841,
@@ -9495,8 +9504,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T19:26:28.854275136Z",
+    "timestamp": "2026-08-30T19:29:55.332502109Z",
     "agent_id": "6ME5",
-    "agent_seq": 1167
+    "agent_seq": 1168
   }
 }
