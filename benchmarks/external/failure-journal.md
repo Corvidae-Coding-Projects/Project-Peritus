@@ -2825,9 +2825,9 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   verifier identity.
 - Verification: product-runner regressions require both the scoped-prerequisite and durable-host
   boundaries in the external-effect prompt, plus actionable missing-executable guidance from the
-  command tool itself. Focused tests pass. Strict Clippy and the full repository gate are required
-  before commit. An unchanged final-candidate rerun remains required before this can count as an
-  external comparison improvement.
+  command tool itself. All 95 product-runner tests, strict all-target/all-feature Clippy, rustfmt,
+  documentation checks, and the full repository gate pass. An unchanged final-candidate rerun
+  remains required before this can count as an external comparison improvement.
 
 ## TBF-017: absolute task paths were repeated below the managed workspace root
 
@@ -2986,15 +2986,29 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Cause: `run_command` had a real 512 KiB per-stream ceiling, but its provider-neutral description
   explained the cap only as an implementation property. It did not direct the model to use a
   purpose-built filter, bounded range, or summary mode before sending a predictably large binary,
-  log, database, or generated file through the context window.
-- Resolution: the general command contract now asks every role to constrain predictable bulk
-  output to decision-relevant evidence first. The hard byte ceiling remains unchanged as an
-  accuracy-preserving fallback; there is no task, password pattern, benchmark, executable, or
-  verifier-specific behavior.
+  log, database, generated file, or structured network response through the context window.
+- Resolution: the general command and engineering-workflow contracts now ask every role to
+  constrain predictable bulk output to decision-relevant evidence first. API and structured-data
+  exploration must select the fields needed for the current decision, or begin with keys, counts,
+  and a bounded sample when the shape is unknown, instead of dumping complete nested metadata. The
+  hard byte ceiling remains unchanged as an accuracy-preserving fallback; there is no task,
+  password pattern, benchmark, executable, service, or verifier-specific behavior.
+- Frozen recurrence: trial `protein-assembly__QKqRB2d` grounded itself in all four supplied inputs
+  and performed substantial public sequence, structure, ligand, and fluorescence research. One
+  discovery command nevertheless printed whole nested source records—including repeated taxonomy
+  lineages—across the candidate PDB set when only a few descriptions, identifiers, sequences, and
+  spectral fields were decision-relevant. After ten requests, 556,647 input, 63,488 cached input,
+  and 19,159 output tokens over 700.910 seconds, the frozen writer ended on the generic provider
+  terminal covered by `TBF-009` without writing `gblock.txt`; the unchanged verifier retained
+  reward 0. This is a structured-output recurrence, not a reason for biological or API-specific
+  logic. The earlier source-boundary defect from another attempt remains separately covered by
+  `TBF-007`.
 - Verification: the tool-catalog regression requires both the decision-relevant filtering rule and
-  the fallback-cap boundary to remain visible to every mutating role. The focused product-runner
-  test, strict all-target/all-feature Clippy, rustfmt, 136-file documentation check, and diff hygiene
-  pass. An unchanged final-candidate comparison remains required.
+  the fallback-cap boundary to remain visible to every mutating role. Embedded-workflow coverage
+  also requires the structured-response field, key/count, bounded-sample, and nested-metadata rules
+  in every engineering role. All 95 product-runner tests, strict all-target/all-feature Clippy,
+  rustfmt, the 136-file documentation check, diff hygiene, and `cargo xtask all` pass. An unchanged
+  final-candidate comparison remains required.
 
 ## TBI-009: the SAM output argument is both a folder and a CSV file
 

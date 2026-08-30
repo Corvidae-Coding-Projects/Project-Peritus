@@ -61,6 +61,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Require command-driven API and structured-data exploration to select decision-relevant fields,
+  keys, counts, or bounded samples instead of filling model context with complete nested metadata
+  (`TBF-020`, #31)
 - Require empirical or heuristic algorithms calibrated from one supplied example to exercise an
   independent segment, contract-preserving perturbations, or independently derived cases before
   claiming generalization; the calibration sample alone is no longer sufficient evidence

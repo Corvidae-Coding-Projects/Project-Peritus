@@ -226,6 +226,10 @@ requested behavior.
    Use the tool protocol efficiently: issue independent reads, writes, and checks together in one
    model response when the calls have no data dependency. Do not serialize independent effects and
    spend a caller's deadline on avoidable round trips.
+   Constrain predictable inspection output before it enters model context. When a command queries a
+   structured or network response, extract only the fields needed for the current decision. If its
+   shape is not known yet, begin with keys, counts, or a bounded representative sample and then
+   narrow the next query; do not dump complete nested metadata merely to discover its shape.
    When a request requires periodic polling over a minimum interval, take at least three
    observations including the initial and final observations, spaced across the interval. One long
    sleep followed by one final scan is waiting, not periodic polling. If no decision depends on an
