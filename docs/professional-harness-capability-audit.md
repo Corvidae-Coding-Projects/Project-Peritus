@@ -49,8 +49,8 @@ useful behavior only when it fits its own local-first and evidence-driven design
 
 ## Interim Terminal-Bench control-flow evidence
 
-The frozen campaign had completed 195 trials when this audit was refreshed. Harbor had awarded
-107 rewards of 1.0, but only 19 of those trials reached a clean native Peritus terminal. Seventy-six
+The frozen campaign had completed 196 trials when this audit was refreshed. Harbor had awarded
+108 rewards of 1.0, but only 19 of those trials reached a clean native Peritus terminal. Seventy-seven
 passing artifacts were followed by a native provider failure, six by a native no-progress gate, and
 six by an external deadline or setup failure before a native report was published. The same snapshot
 contained 59 reward-zero provider terminals and three unscored provider terminals.

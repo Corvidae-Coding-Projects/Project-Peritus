@@ -2558,13 +2558,19 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   for reward 1.0. Its reviewer was then interrupted, leaving the same false native provider
   terminal after six requests, 155,441 input, 39,680 cached input, and 1,488 output tokens over
   105.410 seconds. This independently repeats the earlier passing trial for the same task.
+- Frozen trial `feal-linear-cryptanalysis__GXTw6Kw` completed the requested cryptanalysis artifact
+  and passed the unchanged verifier. The native run nevertheless ended on the same generic
+  no-usable-response provider terminal after fifteen requests, 432,249 input, 63,488 cached input,
+  and 36,298 output tokens over 1,505.667 seconds. This is the seventy-seventh verifier-passing
+  recurrence with a false native provider terminal, so it strengthens the bounded fresh-role
+  recovery diagnosis without adding cipher-specific behavior.
 - Trial `vulnerable-secret__ddRHVBX` ended at the other end of the same recovery spectrum: the first
   role invocation grounded itself in the executable workspace, then returned no usable continuation
   after one request. No requested result file existed and the unchanged verifier correctly retained
   reward 0. General fresh-role recovery must cover both a first-turn terminal and an interrupted
   reviewer without inferring success from either external result.
-- Aggregate audit after 195 completed frozen trials found 107 unchanged verifier rewards of 1.0,
-  but only 19 of those trials reached native Peritus success. Seventy-six verifier passes retained
+- Aggregate audit after 196 completed frozen trials found 108 unchanged verifier rewards of 1.0,
+  but only 19 of those trials reached native Peritus success. Seventy-seven verifier passes retained
   a native provider failure, six retained a native no-progress gate failure, and six published no
   native report. The same snapshot contained 59 reward-zero provider terminals and three unscored
   provider terminals. This does not convert external reward into native acceptance or predict that
