@@ -38,7 +38,8 @@ Long-running coding tasks persist their conversation, design, candidate changes,
 and handoff state. Productive work can continue across bounded segments and daemon restarts.
 Malformed or stalled provider turns use bounded retries with traced backoff and jitter. Completion
 requires repository-grounded inspection, deterministic project checks, independent review, and an
-exact accepted revision.
+exact accepted revision. A long inspection sequence that produces no workspace mutation or
+declared external effect receives a finite in-session correction toward a concrete delivery step.
 
 ## What remains before release
 

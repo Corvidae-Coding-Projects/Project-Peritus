@@ -89,6 +89,31 @@ struct GroundingTool {
     calls: u32,
 }
 
+#[derive(Default)]
+struct ProgressFeedbackTool {
+    feedback_pending: bool,
+}
+
+impl DeveloperToolExecutor for ProgressFeedbackTool {
+    fn execute(
+        &mut self,
+        _call: &peritus_model_protocol::CompletedToolCall,
+    ) -> Result<DeveloperToolObservation, peritus_agent::DeveloperLoopError> {
+        self.feedback_pending = true;
+        Ok(DeveloperToolObservation {
+            output: CanonicalJson::parse(
+                r#"{"content":"inspected"}"#,
+                JsonBounds::value(ProtocolLimits::PRODUCTION),
+            )?,
+            is_error: false,
+        })
+    }
+
+    fn take_progress_feedback(&mut self) -> Option<String> {
+        std::mem::take(&mut self.feedback_pending).then(|| "take a concrete step now".to_owned())
+    }
+}
+
 impl DeveloperToolExecutor for GroundingTool {
     fn execute(
         &mut self,
@@ -198,6 +223,44 @@ fn developer_loop_executes_a_tool_and_returns_its_observation_to_the_next_model_
                     .any(|block| matches!(block, ContentBlock::ToolResult(_)))
         }));
         drop(requests);
+    });
+}
+
+#[test]
+fn developer_loop_returns_executor_progress_feedback_to_the_same_session() {
+    block_on(async {
+        let provider = ScriptedProvider {
+            profile: profile(),
+            responses: Mutex::new(VecDeque::from([tool_response(), text_response()])),
+            requests: Mutex::new(Vec::new()),
+        };
+        let mut tools = ProgressFeedbackTool::default();
+        let mut trace = RecordingTrace::default();
+
+        DeveloperLoop::run(
+            &provider,
+            DeveloperLoopRequest {
+                request_prefix: "progress-feedback-test".to_owned(),
+                system: "Complete the task.".to_owned(),
+                prompt: "Inspect and implement.".to_owned(),
+                attachments: Vec::new(),
+                tools: vec![read_tool()],
+                limits: DeveloperLoopLimits::new(4, 4).expect("limits"),
+                cancellation: CancellationToken::new(),
+            },
+            &mut tools,
+            &mut trace,
+        )
+        .await
+        .expect("developer loop");
+
+        let requests = provider.requests.lock().expect("requests");
+        assert!(requests[1].messages().iter().any(|message| {
+            message.role() == Role::User
+                && message.content().iter().any(|block| {
+                    matches!(block, ContentBlock::Text(text) if text.expose_for_wire() == "take a concrete step now")
+                })
+        }));
     });
 }
 

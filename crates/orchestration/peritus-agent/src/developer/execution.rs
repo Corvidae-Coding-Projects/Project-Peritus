@@ -169,6 +169,9 @@ impl DeveloperLoop {
                     protocol_limits,
                 )?);
             }
+            if let Some(feedback) = tools.take_progress_feedback() {
+                messages.push(message(Role::User, feedback, protocol_limits)?);
+            }
         }
         Err(DeveloperLoopError::LimitExceeded)
     }

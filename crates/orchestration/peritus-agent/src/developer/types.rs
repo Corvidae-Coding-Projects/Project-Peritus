@@ -142,6 +142,14 @@ pub trait DeveloperToolExecutor: Send {
     fn completion_blocker(&self) -> Option<String> {
         None
     }
+
+    /// Returns and clears a deterministic correction after an unproductive tool sequence.
+    ///
+    /// The developer loop appends this as a user message after the current tool batch. Executors
+    /// without application-specific progress evidence use the default no-feedback behavior.
+    fn take_progress_feedback(&mut self) -> Option<String> {
+        None
+    }
 }
 
 /// Durable evidence for one deterministic transcript compaction.

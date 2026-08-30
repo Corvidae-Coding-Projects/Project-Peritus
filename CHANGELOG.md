@@ -61,6 +61,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Interrupt long writer/fixer inspection spirals with at most two deterministic in-session progress
+  corrections when no workspace mutation or declared external effect occurs, directing the role to
+  use authorized standard tooling and take a concrete delivery step (`TBF-024`, #31)
 - Retain both opening context and final diagnostics when a developer command exceeds its bounded
   output window, omitting the noisy middle so long compiler and dependency logs cannot hide the
   actual terminal failure that a recovery turn needs (`TBF-023`, #31)

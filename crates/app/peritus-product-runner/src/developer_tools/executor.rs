@@ -21,6 +21,9 @@ use super::{
 const MAX_FILE_BYTES: usize = 2 * 1024 * 1024;
 const DEFAULT_COMMAND_TIMEOUT_SECONDS: u64 = 120;
 const MAX_COMMAND_TIMEOUT_SECONDS: u64 = 600;
+const TOOLS_WITHOUT_DELIVERY_PROGRESS: u16 = 12;
+const MAX_PROGRESS_NUDGES: u8 = 2;
+const PROGRESS_FEEDBACK: &str = "The harness observed a long inspection sequence without a workspace mutation or successful declared external effect. Choose the shortest concrete delivery step now. If a standard capability is missing and the active disposable task authorizes installation, use the available package or runtime manager before hand-writing a substitute. Otherwise write or apply the requested result, then verify it. Continue inspecting only when a specific unresolved requirement still needs evidence.";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum WorkspaceToolMode {
@@ -36,6 +39,9 @@ pub struct WorkspaceDeveloperTools {
     mode: WorkspaceToolMode,
     command_evidence: CommandEvidence,
     receipts: Option<EffectReceiptLedger>,
+    tools_without_delivery_progress: u16,
+    progress_nudges: u8,
+    progress_feedback_pending: bool,
 }
 
 impl WorkspaceDeveloperTools {
@@ -51,6 +57,9 @@ impl WorkspaceDeveloperTools {
             mode: WorkspaceToolMode::ReadOnly,
             command_evidence: CommandEvidence::default(),
             receipts: None,
+            tools_without_delivery_progress: 0,
+            progress_nudges: 0,
+            progress_feedback_pending: false,
         }
     }
 
@@ -67,6 +76,9 @@ impl WorkspaceDeveloperTools {
             mode: WorkspaceToolMode::ReadWrite,
             command_evidence: CommandEvidence::default(),
             receipts: Some(EffectReceiptLedger::new(receipt_path, receipt_scope)),
+            tools_without_delivery_progress: 0,
+            progress_nudges: 0,
+            progress_feedback_pending: false,
         }
     }
 
@@ -157,15 +169,54 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
         if accepted {
             self.record_success(call.name().as_str(), &arguments, &value);
         }
+        self.observe_delivery_progress(call.name().as_str(), &arguments, &value, accepted);
         observation(&value, is_error)
     }
 
     fn completion_blocker(&self) -> Option<String> {
         self.grounding.validate().err().map(str::to_owned)
     }
+
+    fn take_progress_feedback(&mut self) -> Option<String> {
+        if !std::mem::take(&mut self.progress_feedback_pending) {
+            return None;
+        }
+        Some(PROGRESS_FEEDBACK.to_owned())
+    }
 }
 
 impl WorkspaceDeveloperTools {
+    fn observe_delivery_progress(
+        &mut self,
+        name: &str,
+        arguments: &Value,
+        result: &Value,
+        accepted: bool,
+    ) {
+        if self.mode == WorkspaceToolMode::ReadOnly {
+            return;
+        }
+        let workspace_mutation =
+            accepted && matches!(name, "workspace_write" | "workspace_patch" | "workspace_remove");
+        let external_effect = name == "run_command"
+            && result.get("success").and_then(Value::as_bool) == Some(true)
+            && string(arguments, "purpose") == Some("external_effect");
+        if workspace_mutation || external_effect {
+            self.tools_without_delivery_progress = 0;
+            self.progress_feedback_pending = false;
+            return;
+        }
+        self.tools_without_delivery_progress =
+            self.tools_without_delivery_progress.saturating_add(1);
+        if self.tools_without_delivery_progress >= TOOLS_WITHOUT_DELIVERY_PROGRESS
+            && self.progress_nudges < MAX_PROGRESS_NUDGES
+        {
+            self.tools_without_delivery_progress = 0;
+            self.progress_nudges = self.progress_nudges.saturating_add(1);
+            self.progress_feedback_pending = true;
+        }
+    }
+
     fn record_success(&mut self, name: &str, arguments: &Value, result: &Value) {
         match name {
             "workspace_list" => self.grounding.record_list(

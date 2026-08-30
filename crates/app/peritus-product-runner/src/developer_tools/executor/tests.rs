@@ -79,6 +79,33 @@ fn workspace_tools_inspect_edit_search_and_execute_without_a_shell() {
     assert!(wire(&failed).contains(r#""success":false"#));
 }
 
+#[test]
+fn long_inspection_sequence_returns_one_concrete_delivery_nudge() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    fs::write(workspace.path().join("README.md"), "grounding\n").expect("grounding file");
+    let mut tools = writable_tools(workspace.path());
+    let _ = execute(&mut tools, "workspace_list", r#"{"depth":1,"path":""}"#);
+    let _ = execute(
+        &mut tools,
+        "workspace_read",
+        r#"{"end_line":10,"path":"README.md","start_line":1}"#,
+    );
+    for _ in 0..10 {
+        let result = execute(
+            &mut tools,
+            "workspace_search",
+            r#"{"max_results":5,"path":".","query":"not-present"}"#,
+        );
+        assert!(!result.is_error);
+    }
+
+    let feedback = tools.take_progress_feedback().expect("progress feedback");
+    assert!(feedback.contains("shortest concrete delivery step"));
+    assert!(feedback.contains("package or runtime manager"));
+    assert!(feedback.contains("before hand-writing a substitute"));
+    assert!(tools.take_progress_feedback().is_none());
+}
+
 #[cfg(unix)]
 #[test]
 fn workspace_reads_report_exact_posix_permissions() {

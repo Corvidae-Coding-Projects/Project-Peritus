@@ -3020,3 +3020,39 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   than 600 KiB on stdout and stderr, then requires both prefixes, both terminal suffixes, and both
   truncation markers in the bounded result. Focused product-runner tests pass. Strict repository
   gates and an unchanged final-candidate rerun remain required.
+
+## TBF-024: a writer inspection spiral never reached a delivery effect
+
+- Suite and task: Terminal-Bench 2.0, `financial-document-processor`, first full-suite baseline
+  trial.
+- Symptom: the writer grounded in the supplied JPG and PDF collection, found the available package
+  manager, confirmed normal OCR tools were absent, and then spent 24 tool calls inspecting binary
+  structure and hand-writing JPEG decoding machinery in Perl. It never created the requested
+  invoice or other directories, moved a document, or wrote the summary CSV. A later provider
+  terminal ended the run, and all seven unchanged verifier checks failed for reward 0.
+- Cause: the production loop bounded total model turns and tool calls and detected unchanged
+  candidates between role invocations, but did not challenge an unproductive inspection sequence
+  inside one still-active invocation. The existing general prerequisite instruction was visible,
+  yet the model could continue replacing a standard absent capability from scratch until its
+  provider terminal instead of taking a concrete delivery step.
+- Resolution: writable tool executors now count calls since the last direct workspace mutation or
+  successful command explicitly declared as an external effect. Twelve calls without that evidence
+  inject a deterministic correction into the same provider session: choose the shortest concrete
+  delivery step, use an available package or runtime manager for an authorized standard capability
+  before hand-writing a substitute, and inspect further only for a named unresolved requirement.
+  Progress clears a pending correction, read-only designer/reviewer tools are unaffected, and each
+  invocation emits at most two corrections. The policy contains no document, OCR, image, benchmark,
+  task, package, or verifier identity.
+- Evidence: job `peritus-terminalbench-2-k5-high`; trial
+  `financial-document-processor__P6xNjCg`; reward 0; native provider terminal after sixteen
+  requests, 555,251 input, 63,488 cached input, and 22,773 output tokens over 944.172 seconds; no
+  changed paths; verifier interval completed normally with seven failures.
+- Integrity decision: retain the zero and the model's unsuccessful artifact. Do not copy hidden
+  document labels, use their hashes as classifications, alter the inputs, or add OCR-specific
+  behavior. The correction is justified by ordinary long coding and artifact runs that inspect
+  repeatedly without producing any requested effect.
+- Verification: a developer-loop regression proves executor feedback reaches the same model
+  session after the tool results. A product-runner regression performs twelve grounded but
+  non-delivering calls, receives the concrete package-manager correction exactly once, and confirms
+  it is consumed. Focused tests pass; strict repository gates and an unchanged final-candidate
+  rerun remain required.
