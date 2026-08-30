@@ -24,7 +24,7 @@ jobs:
       matrix:
         os: [ubuntu-24.04, macos-15, windows-2025]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -34,3 +34,12 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - name: Qualify native package and public installer lifecycle
         run: cargo run --locked --package xtask -- release-bootstrap-smoke
+      - name: Qualify all native H2 package scenarios
+        run: cargo run --locked --package xtask -- product-native-qualification
+      - name: Retain native H2 report and raw evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: h2-${{ matrix.os }}
+          path: target/peritus-qualification/h2/**
+          if-no-files-found: error
+          retention-days: 14

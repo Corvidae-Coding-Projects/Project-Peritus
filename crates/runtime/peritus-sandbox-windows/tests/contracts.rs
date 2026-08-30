@@ -279,3 +279,11 @@ const fn supported_evidence(helper_digest: Sha256Digest) -> ProbeEvidence {
 fn token() -> TokenProfile {
     TokenProfile::AppContainer(AppContainerProfile::new("Peritus.Test", "S-1-15-2-123").unwrap())
 }
+
+#[cfg(not(target_os = "windows"))]
+#[test]
+fn app_container_sid_derivation_requires_a_native_windows_host() {
+    let error = AppContainerProfile::derive_for_current_host("Peritus.Test")
+        .expect_err("non-Windows host cannot derive an AppContainer SID");
+    assert!(error.to_string().contains("native Windows host"));
+}

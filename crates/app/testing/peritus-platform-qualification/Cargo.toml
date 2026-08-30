@@ -27,7 +27,11 @@ nix.workspace = true
 [target.'cfg(target_os = "linux")'.dependencies]
 peritus-sandbox-linux = { version = "=0.0.0", path = "../../../runtime/peritus-sandbox-linux" }
 
+[target.'cfg(target_os = "macos")'.dependencies]
+peritus-sandbox-macos = { version = "=0.0.0", path = "../../../runtime/peritus-sandbox-macos" }
+
 [target.'cfg(target_os = "windows")'.dependencies]
+peritus-sandbox-windows = { version = "=0.0.0", path = "../../../runtime/peritus-sandbox-windows" }
 windows-sys = { workspace = true, features = [
     "Win32_Foundation",
     "Win32_Security",

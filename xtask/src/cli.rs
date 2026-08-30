@@ -29,6 +29,7 @@ Commands:
   product-package        Build a host-native checked Peritus package in dist/
   product-install        Build and install Peritus for the current user
   product-package-smoke  Qualify native install, repeat launch, upgrade, and uninstall
+  product-native-qualification Run and retain all 18 native H2 package scenarios
   release-bootstrap-smoke Qualify the public download, checksum, and install entry point
   release-create         Validate a tag and create its retained draft GitHub release
   release-package-stage Build, archive, checksum, and record this host's native package
@@ -50,6 +51,7 @@ enum Command {
     ProductPackage,
     ProductInstall,
     ProductPackageSmoke,
+    ProductNativeQualification,
     ReleaseBootstrapSmoke,
     ReleaseCreate,
     ReleasePackageStage,
@@ -195,7 +197,10 @@ pub(crate) fn execute(
                 &format!("verify-trust passed: {files} source file(s) scanned\n"),
             )?;
         }
-        Command::ProductPackage | Command::ProductInstall | Command::ProductPackageSmoke => {
+        Command::ProductPackage
+        | Command::ProductInstall
+        | Command::ProductPackageSmoke
+        | Command::ProductNativeQualification => {
             execute_product(command, root, output)?;
         }
         Command::ReleaseCreate => crate::release::create(root)?,
@@ -246,6 +251,10 @@ fn execute_product(
         Command::ProductPackageSmoke => {
             (crate::product_package::smoke(root)?, "native product lifecycle passed")
         }
+        Command::ProductNativeQualification => (
+            crate::product_package::qualify(root)?,
+            "native H2 qualification passed; retained report",
+        ),
         _ => return Err(XtaskError::invocation("command is not a product packaging operation")),
     };
     write_output(output, &format!("{message}: {}\n", package.display()))
@@ -272,6 +281,7 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
         Some("product-package") => Ok(Command::ProductPackage),
         Some("product-install") => Ok(Command::ProductInstall),
         Some("product-package-smoke") => Ok(Command::ProductPackageSmoke),
+        Some("product-native-qualification") => Ok(Command::ProductNativeQualification),
         Some("release-bootstrap-smoke") => Ok(Command::ReleaseBootstrapSmoke),
         Some("release-create") => Ok(Command::ReleaseCreate),
         Some("release-package-stage") => Ok(Command::ReleasePackageStage),
@@ -306,6 +316,15 @@ mod tests {
         let error = parse([OsString::from("unknown")]).expect_err("unknown command must fail");
         assert_eq!(error.code(), ErrorCode::Invocation);
         assert!(error.render().contains("cargo xtask help"));
+    }
+
+    #[test]
+    fn native_qualification_command_is_first_class() {
+        assert_eq!(
+            parse([OsString::from("product-native-qualification")])
+                .expect("native qualification command must parse"),
+            Command::ProductNativeQualification
+        );
     }
 
     #[test]

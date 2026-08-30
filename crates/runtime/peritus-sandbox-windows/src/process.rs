@@ -8,7 +8,9 @@ use peritus_types::Sha256Digest;
 
 use crate::{WindowsError, WindowsOperation, error};
 
-const MAX_PROFILE_NAME_BYTES: usize = 128;
+#[path = "process/profile.rs"]
+mod profile;
+
 const MAX_INHERITED_HANDLES: usize = 64;
 
 /// Exact native token isolation selected for a target.
@@ -55,41 +57,6 @@ impl TokenProfile {
 pub struct AppContainerProfile {
     name: String,
     sid: String,
-}
-
-impl AppContainerProfile {
-    /// Creates a checked `AppContainer` name/SID binding.
-    ///
-    /// # Errors
-    /// Rejects an empty/control-bearing name or malformed SID.
-    pub fn new(name: impl Into<String>, sid: impl Into<String>) -> Result<Self, WindowsError> {
-        let name = name.into();
-        let sid = sid.into();
-        if name.is_empty()
-            || name.len() > MAX_PROFILE_NAME_BYTES
-            || !name.is_ascii()
-            || name.bytes().any(|byte| byte.is_ascii_control())
-        {
-            return Err(error::invalid(
-                WindowsOperation::Validate,
-                "AppContainer name is empty, excessive, or contains controls",
-            ));
-        }
-        validate_sid(&sid)?;
-        Ok(Self { name, sid })
-    }
-
-    /// Returns the installed profile name.
-    #[must_use]
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    /// Returns the exact `AppContainer` SID.
-    #[must_use]
-    pub fn sid(&self) -> &str {
-        &self.sid
-    }
 }
 
 /// Desktop/console exposure selected for the target.

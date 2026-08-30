@@ -67,6 +67,10 @@ the complete process tree. H2 now includes the Rust native controller that drive
 installers, daemon, CLI, TUI, process, sandbox, upgrade, rollback, and uninstall checks. Its first
 Linux development run passed all 18 scenarios with complete cleanup. Final candidate-bound Linux,
 macOS, and Windows reports are still required; a development report is not release evidence.
+The native package workflow now runs the same complete controller on all three hosted operating
+systems and retains each report plus raw evidence. Its macOS and Windows sandbox scenarios call the
+actual Seatbelt and AppContainer/Job Object host probes; hosted results remain evidence only after
+the corresponding revision finishes successfully.
 
 The tagged release workflow now stages each native archive, generates a candidate-bound inventory,
 SPDX SBOM, and SLSA provenance document in Rust, and retains GitHub keyless Sigstore attestations.

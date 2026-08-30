@@ -29,8 +29,15 @@ remain operator/runtime owned and are preserved during upgrade, rollback, and or
 
 ## Operator command
 
-Build a target package and the standard native controller, create empty scratch and
-retained-artifact directories outside the repository, then run:
+To build a fresh host package, run every scenario, and retain the report and raw evidence under
+`target/peritus-qualification/h2/`, use:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo run --locked --package xtask -- product-native-qualification
+```
+
+For an externally assembled release candidate, build the standard native controller, create empty
+scratch and retained-artifact directories outside the repository, then run:
 
 ```sh
 CARGO_BUILD_JOBS=2 cargo build --locked \

@@ -2440,6 +2440,8 @@ dependencies = [
  "nix 0.31.3",
  "peritus-approval",
  "peritus-sandbox-linux",
+ "peritus-sandbox-macos",
+ "peritus-sandbox-windows",
  "peritus-types",
  "serde",
  "serde_json",

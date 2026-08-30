@@ -49,18 +49,7 @@ fn dispatch(
         "terminal-ownership" => qualify_pty(layout, "native PTY or ConPTY lifecycle was conserved"),
         "cancellation-tree-reap" => cancellation_tree_reap(layout),
         "sandbox-denial" => sandbox_denial(layout),
-        "sandbox-execution" => {
-            #[cfg(target_os = "linux")]
-            {
-                linux_sandbox_probe(layout)
-            }
-            #[cfg(not(target_os = "linux"))]
-            {
-                Ok(Observation::unsupported(
-                    "native admitted sandbox probe is not yet wired for this controller platform",
-                ))
-            }
-        }
+        "sandbox-execution" => native_sandbox_probe(layout),
         _ => Err("runtime scenario dispatch is incomplete".into()),
     }
 }
@@ -208,7 +197,7 @@ fn sandbox_denial(layout: &HostLayout) -> Result<Observation, Box<dyn std::error
 }
 
 #[cfg(target_os = "linux")]
-fn linux_sandbox_probe(layout: &HostLayout) -> Result<Observation, Box<dyn std::error::Error>> {
+fn native_sandbox_probe(layout: &HostLayout) -> Result<Observation, Box<dyn std::error::Error>> {
     use peritus_sandbox_linux::{LinuxProbe, ProbeRequest};
 
     let request = ProbeRequest::new(
@@ -230,6 +219,67 @@ fn linux_sandbox_probe(layout: &HostLayout) -> Result<Observation, Box<dyn std::
         .fact("native.namespaces-complete", probe.namespaces().complete())
         .fact("native.seccomp", probe.seccomp())
         .fact("native.pty", probe.pty()))
+}
+
+#[cfg(target_os = "macos")]
+fn native_sandbox_probe(layout: &HostLayout) -> Result<Observation, Box<dyn std::error::Error>> {
+    use std::time::Duration;
+
+    use peritus_sandbox_macos::{ProbeRequest, SystemProbe};
+
+    let request = ProbeRequest::new(
+        layout.helper.clone(),
+        "/usr/bin/sandbox-exec".into(),
+        None,
+        Duration::from_secs(1),
+    )?;
+    let probe = SystemProbe::run(&request)?;
+    let evidence = probe.evidence();
+    if !probe.core_supported() {
+        return Ok(Observation::unsupported(
+            "macOS host lacks one or more required native sandbox facilities",
+        )
+        .fact("native.helper-exact", evidence.helper_digest.is_some())
+        .fact("native.seatbelt", evidence.seatbelt)
+        .fact("native.profile-compilation", evidence.profile_compilation)
+        .fact("native.process-containment", evidence.process_containment));
+    }
+    Ok(Observation::passed("macOS native sandbox probe admitted every production baseline control")
+        .fact("native.helper-exact", true)
+        .fact("native.seatbelt", true)
+        .fact("native.profile-compilation", true)
+        .fact("native.process-containment", true)
+        .fact("native.pty", evidence.pty))
+}
+
+#[cfg(target_os = "windows")]
+fn native_sandbox_probe(layout: &HostLayout) -> Result<Observation, Box<dyn std::error::Error>> {
+    use peritus_sandbox_windows::{AppContainerProfile, ProbeRequest, TokenProfile, WindowsProbe};
+
+    let profile = AppContainerProfile::derive_for_current_host("Peritus.H2.Qualification")?;
+    let request =
+        ProbeRequest::new(layout.helper.clone(), TokenProfile::AppContainer(profile), None)?;
+    let probe = WindowsProbe::run(&request)?;
+    let evidence = probe.evidence();
+    if !probe.core_supported() {
+        return Ok(Observation::unsupported(
+            "Windows host lacks one or more required native sandbox facilities",
+        )
+        .fact("native.helper-exact", evidence.helper_digest.is_some())
+        .fact("native.restricted-token", evidence.restricted_token)
+        .fact("native.app-container", evidence.app_container_sid_exact)
+        .fact("native.job-object", evidence.job_object)
+        .fact("native.default-deny-network", evidence.deny_network));
+    }
+    Ok(Observation::passed(
+        "Windows native sandbox probe admitted every production baseline control",
+    )
+    .fact("native.helper-exact", true)
+    .fact("native.restricted-token", true)
+    .fact("native.app-container", true)
+    .fact("native.job-kill-on-close", evidence.kill_on_close)
+    .fact("native.default-deny-network", true)
+    .fact("native.conpty", evidence.conpty))
 }
 
 fn require_pty_observation(

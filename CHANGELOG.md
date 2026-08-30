@@ -13,6 +13,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Run the complete 18-scenario H2 campaign from the first-class
+  `product-native-qualification` command on every hosted Linux, macOS, and Windows package runner,
+  retain its report and raw evidence as workflow artifacts, and wire the checked-in controller to
+  the real macOS Seatbelt and Windows AppContainer/Job Object capability probes instead of
+  returning a platform placeholder; a fresh Linux regression remained 18/18 `Ready` (#31)
 - Add the checked-in Rust H2 native controller that validates its exact bound request, installs the
   staged package on the current host, exercises service configuration, daemon crash recovery,
   local transport, same-user authentication, CLI/TUI and terminal paths, executable equivalence,

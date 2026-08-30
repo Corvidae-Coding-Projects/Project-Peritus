@@ -275,3 +275,10 @@ integration must still authenticate the final manifest, run this controller agai
 candidate on fresh supported Linux, macOS, and Windows hosts, and retain those reports and raw
 artifacts. A development run, cross-compile, or platform-neutral fixture cannot substitute for the
 three final candidate-bound runs.
+
+`cargo run --locked --package xtask -- product-native-qualification` now builds the host package
+and controller, detects the native platform version, executes all 18 scenarios, and retains the
+report and raw evidence under `target/peritus-qualification/h2/`. The native package workflow runs
+that command on Ubuntu, macOS, and Windows and uploads each evidence directory. The sandbox scenario
+uses the live Linux namespace, macOS Seatbelt, or Windows AppContainer/Job Object probe for its host;
+missing facilities remain `Unsupported` and make the required campaign `NotReady`.

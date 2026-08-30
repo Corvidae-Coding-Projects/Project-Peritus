@@ -5,9 +5,10 @@ use core::{ffi::c_void, mem::size_of, ptr};
 use windows_sys::Win32::{
     Foundation::{CloseHandle, HANDLE, LocalFree},
     Security::{
-        Authorization::ConvertStringSidToSidW, CreateRestrictedToken, DISABLE_MAX_PRIVILEGE,
-        EqualSid, Isolation::DeriveAppContainerSidFromAppContainerName, PSID,
-        SECURITY_CAPABILITIES, SID_AND_ATTRIBUTES, SetTokenInformation, TOKEN_ADJUST_DEFAULT,
+        Authorization::{ConvertSidToStringSidW, ConvertStringSidToSidW},
+        CreateRestrictedToken, DISABLE_MAX_PRIVILEGE, EqualSid,
+        Isolation::DeriveAppContainerSidFromAppContainerName,
+        PSID, SECURITY_CAPABILITIES, SID_AND_ATTRIBUTES, SetTokenInformation, TOKEN_ADJUST_DEFAULT,
         TOKEN_ASSIGN_PRIMARY, TOKEN_DUPLICATE, TOKEN_MANDATORY_LABEL, TOKEN_QUERY,
         TokenIntegrityLevel,
     },
@@ -21,6 +22,31 @@ use crate::{
 
 const SE_GROUP_ENABLED: u32 = 4;
 const SE_GROUP_INTEGRITY: u32 = 0x20;
+const MAX_SID_TEXT_UNITS: usize = 256;
+
+pub(crate) fn derive_profile(name: String) -> Result<AppContainerProfile, WindowsError> {
+    let wide_name = wide(&name);
+    let mut derived = ptr::null_mut();
+    // SAFETY: the name is NUL terminated and the output points to writable SID storage.
+    if unsafe { DeriveAppContainerSidFromAppContainerName(wide_name.as_ptr(), &raw mut derived) }
+        < 0
+    {
+        return Err(app_error("AppContainer SID cannot be derived for the profile name"));
+    }
+    let derived = OwnedAppContainerSid(derived);
+    let mut text = ptr::null_mut();
+    // SAFETY: the derived SID is valid and the output points to writable local-string storage.
+    if unsafe { ConvertSidToStringSidW(derived.as_ptr(), &raw mut text) } == 0 {
+        return Err(app_error("derived AppContainer SID cannot be rendered"));
+    }
+    let text = OwnedLocalString(text);
+    let length = text.bounded_length()?;
+    // SAFETY: `bounded_length` found a NUL within the allocation and returns its prefix length.
+    let units = unsafe { core::slice::from_raw_parts(text.as_ptr(), length) };
+    let sid = String::from_utf16(units)
+        .map_err(|_| app_error("derived AppContainer SID text is malformed"))?;
+    AppContainerProfile::new(name, sid)
+}
 
 pub(super) struct RestrictedToken(HANDLE);
 
@@ -167,6 +193,47 @@ impl Drop for OwnedLocalSid {
     fn drop(&mut self) {
         // SAFETY: ConvertStringSidToSidW allocates with LocalAlloc and ownership is unique.
         unsafe { LocalFree(self.0) };
+    }
+}
+
+struct OwnedAppContainerSid(PSID);
+
+impl OwnedAppContainerSid {
+    const fn as_ptr(&self) -> PSID {
+        self.0
+    }
+}
+
+impl Drop for OwnedAppContainerSid {
+    fn drop(&mut self) {
+        // SAFETY: this SID is uniquely owned and allocated by the AppContainer SID API.
+        unsafe { windows_sys::Win32::Security::FreeSid(self.0) };
+    }
+}
+
+struct OwnedLocalString(*mut u16);
+
+impl OwnedLocalString {
+    const fn as_ptr(&self) -> *const u16 {
+        self.0
+    }
+
+    fn bounded_length(&self) -> Result<usize, WindowsError> {
+        for index in 0..MAX_SID_TEXT_UNITS {
+            // SAFETY: ConvertSidToStringSidW returns a NUL-terminated SID string, and the
+            // documented SID string bound is far below this defensive ceiling.
+            if unsafe { *self.0.add(index) } == 0 {
+                return Ok(index);
+            }
+        }
+        Err(app_error("derived AppContainer SID text exceeds its bound"))
+    }
+}
+
+impl Drop for OwnedLocalString {
+    fn drop(&mut self) {
+        // SAFETY: ConvertSidToStringSidW allocates this unique string with LocalAlloc.
+        unsafe { LocalFree(self.0.cast()) };
     }
 }
 
