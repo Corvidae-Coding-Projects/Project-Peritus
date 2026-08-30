@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 827,
+  "next_comment_id": 828,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T06:33:17.314547692Z",
+      "updated_at": "2026-08-30T06:46:05.557251787Z",
       "labels": [
         "qualification",
         "release"
@@ -3461,6 +3461,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAq2a3tRU0xKl7KlMji70ueL3J8Wk6UXOeb5mXA52bDWswFMOkJkACFdRkasn22qEHTZsfi0RfBxul7/zLAR8qBw=="
+        },
+        "ee232ed9-552a-4e89-83e6-f0483891b1e6": {
+          "display_id": 827,
+          "author": "6ME5",
+          "content": "Commit 6070217d extends TBF-025's task-neutral delivery classifier to coordinated build/compile/download/install requests and records three frozen-baseline recurrences: circuit-fibsqrt and overfull-hbox under TBF-009, plus build-pov-ray under TBF-005. The classifier remains path/package/task neutral. Verification: 95 product-runner tests, focused 4-case classifier coverage, mixed external-effect composition 3/3, strict all-target/all-feature Clippy, rustfmt, docs-check, diff hygiene, and cargo xtask all pass. Baseline reached 93/445 (55 reward-1, 32 reward-0, 6 unscored) before the next trial; the frozen digest remains unchanged.",
+          "created_at": "2026-08-30T06:46:05.554417938Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAO/gtux4VvNN8W8+XId0XdXfP5ELBbEtqmfc+gCdJMTJeUJ6yo6F39zQScaAfiOw/GhhncTOr7m0herFlt6GsCw=="
         },
         "ee64b1ff-d642-4051-b6c2-9204b8831085": {
           "display_id": 631,
@@ -8199,8 +8208,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T06:33:17.314547692Z",
+    "timestamp": "2026-08-30T06:46:05.557251787Z",
     "agent_id": "6ME5",
-    "agent_seq": 1017
+    "agent_seq": 1018
   }
 }
