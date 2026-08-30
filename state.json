@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1024,
+  "next_comment_id": 1025,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T22:51:11.700074884Z",
+      "updated_at": "2026-08-30T22:56:33.881990663Z",
       "labels": [
         "qualification",
         "release"
@@ -4055,6 +4055,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAXD5mFJsR65/GUq1WxD7nm4mmxf/8Jiy/j3150rxlo8NqDiCIMC9nZ0j3L1/E/3deskMbCQzQWFq+iRJVxqRFAw=="
+        },
+        "ba8dd86d-98ba-42b4-a726-fcfc22e3023c": {
+          "display_id": 1024,
+          "author": "6ME5",
+          "content": "Implemented a task-neutral TBF-009 recovery extension from current frozen evidence. After the checked in-turn planner exhausts, designer/writer/fixer/reviewer may now start up to two fresh repository-grounded same-provider invocations for interrupted/incomplete, transient, transport, malformed payload, rate-limit, timeout, and generic provider terminals as well as the existing empty/connect/malformed-stream cases. Authentication, permission, missing-model, quota, invalid-request, safety, refusal, cancellation, and ambiguous-acceptance remain terminal. Regression uses no fallback provider: designer recovers from exhausted empties, writer and reviewer recover from normalized IncompleteStream terminals, then the exact task completes. Verification: focused policy test passed; role_recovery integration passed; provider_failover passed; strict all-target/all-feature peritus-product-runner Clippy passed; fmt, diff-check, and 137-doc check passed.",
+          "created_at": "2026-08-30T22:56:33.877370811Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAVmGfAtrrf/PuS8Md92Pjk8zmWRTqi7GNhCruheBNYKz6RFNKmWjEKgwi0thol2R555Aql44kbT7wRIaSZqMHDA=="
         },
         "bb7b8d0d-f9eb-4369-a3dd-e565e22781ea": {
           "display_id": 660,
@@ -9972,8 +9981,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T22:51:11.700074884Z",
+    "timestamp": "2026-08-30T22:56:33.881990663Z",
     "agent_id": "6ME5",
-    "agent_seq": 1218
+    "agent_seq": 1219
   }
 }
