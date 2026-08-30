@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 822,
+  "next_comment_id": 823,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T05:33:24.837575641Z",
+      "updated_at": "2026-08-30T05:33:46.683839561Z",
       "labels": [
         "qualification",
         "release"
@@ -1904,6 +1904,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8uMj03mRZfbLuj0Lw6RqCjGXFVKb0tA+gXSJa39Ow2uk/AfbH+K7HFhpt2moYFSiGNDyHXKMAopihF4KsI1tAw=="
+        },
+        "42cafafa-0113-45cd-8f2f-39ff7d1eeb59": {
+          "display_id": 822,
+          "author": "6ME5",
+          "content": "[action] Frozen Terminal-Bench now has 82 completed trials: 46 reward-1, 30 reward-0, 6 unscored, one active, 362 pending. mteb-retrieve retained an honest zero because the published exact-model cosine request omits the hidden reference's SciFact task and query/passage prompts; TBI-010 documents the mismatch and refuses score-only behavior. large-scale-text-editing is active. Signed CI fix fb05f774 is pushed; fresh hosted checks currently have 9 pass, 23 queued/running, 0 fail.",
+          "created_at": "2026-08-30T05:33:46.680994003Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAO0reXngBCxTnZWYmUiXiewg1Jc05HvUIq+nSTgmqCg6Iq/pk389/3N0lIDK887dZAN1GvxGTh2MiEFgs/tp1Aw=="
         },
         "43b8a9e4-2d2a-4a23-9e42-20c5692e8c73": {
           "display_id": 545,
@@ -8154,8 +8163,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T05:33:24.837575641Z",
+    "timestamp": "2026-08-30T05:33:46.683839561Z",
     "agent_id": "6ME5",
-    "agent_seq": 1012
+    "agent_seq": 1013
   }
 }
