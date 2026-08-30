@@ -2290,6 +2290,19 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   empty-provider terminal after ten requests, 278,574 input, 77,824 cached input, and 19,824 output
   tokens over 542.580 seconds. The useful repeated verification remains intact; only the false
   terminal is assigned to this general recovery class.
+- Trial `pypi-server__YvRjseG` built and packaged the requested Python project, published it through
+  a local PEP 503 index, kept the server live on port 8080, and verified a clean installation plus
+  the requested behavior through that index. The unchanged verifier awarded reward 1.0. Native
+  Peritus still ended during review on the same provider terminal after nine requests, 170,061
+  input, 55,552 cached input, and 5,485 output tokens over 178.209 seconds. This preserves a useful
+  end-to-end external-effect pass while assigning only the false terminal to role recovery.
+- Trial `model-extraction-relu-logits__Q9XBVCw` wrote and syntax-checked a deterministic black-box
+  recovery script, produced a 20-by-10 matrix, and retained its own independent alignment check.
+  The unchanged verifier confirmed every recovered hidden row up to the allowed permutation and
+  scaling and awarded reward 1.0. Native Peritus again ended during review on the same provider
+  terminal after seven requests, 143,657 input, 31,744 cached input, and 5,844 output tokens over
+  167.783 seconds. The successful artifact is retained; only the false terminal belongs to this
+  provider-neutral role-recovery class.
 
 ## TBM-001: a writer mirrored the response field into the request schema
 
