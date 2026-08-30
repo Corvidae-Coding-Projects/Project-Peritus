@@ -2479,6 +2479,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   checks for reward 1.0. Native Peritus still ended during review on the same provider terminal
   after ten requests, 699,804 input, 31,744 cached input, and 10,081 output tokens. The successful
   shape-aware optimization is retained; only the false terminal belongs to role recovery.
+- Frozen recurrence `llm-inference-batching-scheduler__4u229n3` independently wrote both complete
+  800-request plans with only two global shapes and satisfied every unchanged cost, padding,
+  latency, coverage, integrity, and consistency check for reward 1.0. Native review ended on the
+  same provider terminal after seven requests, 474,216 input, 47,616 cached input, and 6,427 output
+  tokens over 285.902 seconds. The verified plans are retained; only the false terminal belongs to
+  provider-neutral role recovery.
 - Trial `qemu-startup__VzYVR7U` discovered the installed emulator, launched the supplied Alpine
   image as a persistent background QEMU process, and used an ordinary Python socket probe to block
   until the telnet login prompt was live on `127.0.0.1:6665`. The unchanged end-to-end verifier
@@ -2486,6 +2492,11 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   same provider terminal after eight requests, 146,282 input, 63,488 cached input, and 5,293 output
   tokens. The real external effect and readiness proof are retained; only the false terminal
   belongs to role recovery.
+- Frozen recurrence `qemu-startup__YQKkNsN` again launched the supplied Alpine image as a persistent
+  background QEMU process and observed its live serial login prompt on `127.0.0.1:6665`; the
+  unchanged end-to-end verifier connected and awarded reward 1.0. Native review ended on the same
+  provider terminal after seven requests, 126,567 input, 55,552 cached input, and 3,062 output
+  tokens over 194.784 seconds. The real effect and readiness proof are retained.
 - Trial `circuit-fibsqrt__9o85CN9` generated a 3,091-line logic-gate artifact, exercised the two
   required examples plus boundary inputs, and reached passing exact-target gates with an empty
   finding ledger. All three unchanged verifier checks passed for reward 1.0. Native Peritus again
@@ -3378,6 +3389,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   result does not erase the avoidable cost: it is a direct, task-neutral validation target for the
   same finite in-session progress correction, not a reason for renderer- or reverse-engineering
   behavior. Its later false native reviewer terminal remains covered separately by `TBF-009`.
+- Failed recurrence: `path-tracing-reverse__vvfmFdo` spent its complete frozen writer attempt on
+  repeated binary inspection and disassembly without creating `image.c`. Its native trace reached
+  1,032,033 bytes, eleven provider requests consumed 764,121 input, 55,552 cached input, and 7,138
+  output tokens over 1,174.878 seconds, and the writer ended on the known provider terminal. The
+  unchanged verifier found no source or executable and retained reward 0. This is direct evidence
+  for the same task-neutral delivery-progress correction; it does not justify renderer-specific
+  instructions or reverse-engineering shortcuts.
 - Failed recurrence: `make-mips-interpreter__Z3Vjfh5` made twenty inspection or command tool calls,
   including eight file reads, three searches, and seven commands, but never wrote the requested
   implementation. Four provider requests consumed 547,766 input, 23,808 cached input, and 1,378
@@ -3477,6 +3495,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   0. Native review ended on `TBF-009` after twelve requests, 232,518 input, 47,616 cached input, and
   5,642 output tokens over 156.572 seconds. Another frozen attempt kept the service live and passed,
   so the general durable-effect acceptance boundary—not package-specific behavior—is the correction.
+- Frozen recurrence `configure-git-webserver__nhwGwpy` performed the requested live effect instead
+  of stopping at helper files: it configured the bare repository and deployment hook, started the
+  HTTP service, then independently cloned, committed, pushed, checked deployment, and fetched
+  `hello world` from port 8080. The unchanged verifier awarded reward 1.0. Native review ended on
+  the provider terminal after nine requests, 169,422 input, 23,808 cached input, and 11,172 output
+  tokens over 294.005 seconds. This shows the live-effect contract is achievable without a
+  task-specific exception; it does not erase the earlier honest zero.
 - Verification: a product composition regression first writes a useful setup helper, proves that
   it cannot complete the operational request alone, then succeeds only after a separate effect and
   later end-to-end verification. Focused product-runner tests pass; strict repository gates and an
