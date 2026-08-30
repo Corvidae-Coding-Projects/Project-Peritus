@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 948,
+  "next_comment_id": 949,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T18:26:12.103327897Z",
+      "updated_at": "2026-08-30T18:26:17.154856969Z",
       "labels": [
         "qualification",
         "release"
@@ -4519,6 +4519,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAtbWSy2SRQ+tiFRuCyQWG+TeLWaUGnEGdtcB9rF86/iEmske8MCjJEetI/zCa1inuTuwpQEHlXgEGaZUZS81PCQ=="
+        },
+        "fdcfa249-842c-4519-8058-5d6f46954427": {
+          "display_id": 948,
+          "author": "6ME5",
+          "content": "[action] Retained H2 Windows failure evidence from run 33325905238/artifact 9736803055: scenarios 1-10 pass and clean; scenario 11 times out after missing PTY input-writer EOF. Linux/macOS remain Ready.",
+          "created_at": "2026-08-30T18:26:17.151859851Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJ7q/KCatT794E7lPJbm0dyo20Hoam1E7AJPXrpQv8OkhGd+YZyCVDrq4f3dtrzz+jvdnGbTBMtnamnAbOUjADg=="
         },
         "fddda85f-1cf6-4f83-b25b-164e460af208": {
           "display_id": 601,
@@ -9284,8 +9293,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T18:26:12.103327897Z",
+    "timestamp": "2026-08-30T18:26:17.154856969Z",
     "agent_id": "6ME5",
-    "agent_seq": 1143
+    "agent_seq": 1144
   }
 }
