@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 833,
+  "next_comment_id": 834,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T07:04:09.371307172Z",
+      "updated_at": "2026-08-30T07:08:57.656828682Z",
       "labels": [
         "qualification",
         "release"
@@ -2948,6 +2948,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWv4s3eeD60j3Co0UVRKiKcizJEI7BCkbze+QospWSjYszB8M7Q1sCkV41lkR3aWUPhOVE0fF98gpYicuez8FCA=="
+        },
+        "b2da2b9b-fe78-4d40-a4cc-28a110989547": {
+          "display_id": 833,
+          "author": "6ME5",
+          "content": "Committed general TBF-020 structured-output correction: API and structured-data exploration must select decision-relevant fields or begin with keys/counts/bounded samples instead of dumping nested metadata. Evidence was protein-assembly__QKqRB2d: 10 requests, 556,647 input tokens, no gblock, frozen provider terminal, unchanged reward 0. Verification: all 95 product-runner tests, strict all-target/all-feature Clippy, rustfmt, 136-file docs-check, cargo xtask all, diff hygiene; frozen agent digest unchanged. Baseline now 97/445 (56 pass, 35 fail, 6 unscored).",
+          "created_at": "2026-08-30T07:08:57.654133612Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJlMF9E1DQ2h2/OrkJGLWviu2doMUhPhuFOmEnGFW7DbUb8v8iX+me0keTB8MD2pHALeiimAENf1/ElsC7gDDAg=="
         },
         "b57c2257-5a05-48de-86dd-024f193897d8": {
           "display_id": 714,
@@ -8253,8 +8262,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T07:04:09.371307172Z",
+    "timestamp": "2026-08-30T07:08:57.656828682Z",
     "agent_id": "6ME5",
-    "agent_seq": 1023
+    "agent_seq": 1024
   }
 }
