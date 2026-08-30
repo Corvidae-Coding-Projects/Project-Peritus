@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 930,
+  "next_comment_id": 931,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T17:46:40.174317122Z",
+      "updated_at": "2026-08-30T17:46:45.335149437Z",
       "labels": [
         "qualification",
         "release"
@@ -4051,6 +4051,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA0Sc92UKWlT0wwIZFIEHiEUUfUQhJWOpMnWfRLwYYLwODeZTIkj5EMwgmOOFyoF0Z8D3ok2htZeDxuPiyxuC9Bw=="
+        },
+        "e7168818-56d5-4822-82d9-9e0557899121": {
+          "display_id": 930,
+          "author": "6ME5",
+          "content": "[action] Exact-head macOS H2 Ready on adf1a5c2: 18/18 passed and cleanup clean; artifact 9736270380 proves PTY deadlock fixed; monitor Windows/Linux and full gates.",
+          "created_at": "2026-08-30T17:46:45.332389877Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABVkS0ZGGGQk3X0SOtpUJ49fyKudZWRiDA9DGY1UMS6SOJLjx6qc301WD5Ojt8+g6NwdPpyimB9DjaEUhWKNpDw=="
         },
         "e71ca62c-d7c6-48b1-b075-c7c9a2b1566d": {
           "display_id": 679,
@@ -9122,8 +9131,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T17:46:40.174317122Z",
+    "timestamp": "2026-08-30T17:46:45.335149437Z",
     "agent_id": "6ME5",
-    "agent_seq": 1125
+    "agent_seq": 1126
   }
 }
