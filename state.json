@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 987,
+  "next_comment_id": 988,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T19:51:20.091056972Z",
+      "updated_at": "2026-08-30T19:51:35.190061608Z",
       "labels": [
         "qualification",
         "release"
@@ -1643,6 +1643,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzW4Bz1HkM6D4qCMSB5qsflLzM69I1YahhGcSXGa8DhA02g3WvfIxyVhC+VawQ+mysDj2FKKLqsdk9zp+J8ZcAA=="
+        },
+        "1a26a763-4e65-4271-a6fa-5c0661eaa492": {
+          "display_id": 987,
+          "author": "6ME5",
+          "content": "[action] Exact-head H0 is fully green on Linux/macOS/Windows with retained artifact IDs and digests; continue watching H2, Foundation, Gate A.",
+          "created_at": "2026-08-30T19:51:35.187453232Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJiPlxfWFKUxcnwf45elxMWisBG87whEo9wGL570xM+NZEYjzIEhZwqZQVJmvQYojVON93o65zWpheWONqKTdAw=="
         },
         "1aa2b102-5a71-4be3-bd91-bc50bd74408d": {
           "display_id": 739,
@@ -9639,8 +9648,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T19:51:30.452946736Z",
+    "timestamp": "2026-08-30T19:51:35.190061608Z",
     "agent_id": "6ME5",
-    "agent_seq": 1183
+    "agent_seq": 1184
   }
 }
