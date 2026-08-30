@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1009,
+  "next_comment_id": 1010,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T21:56:37.742395242Z",
+      "updated_at": "2026-08-30T21:56:44.654298525Z",
       "labels": [
         "qualification",
         "release"
@@ -2255,6 +2255,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAqsPypHO/z59yDC/wQ4gi1fq5UlYQyMmv1Y/JTDoMaMSo+XBnwROxDHVkPnVT7xlVdFBP93qO1U02DATRDrEBBA=="
+        },
+        "46f45367-7c38-4c1d-aaa6-d59ebab0fdc8": {
+          "display_id": 1009,
+          "author": "6ME5",
+          "content": "[action] Retained compile-compcert frozen-baseline reward-1/provider-terminal recurrence under TBF-009 while exact-head H0/H2/Gate-A/Foundation jobs remain green in progress.",
+          "created_at": "2026-08-30T21:56:44.651427460Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA/YfAKU9Cu0DfVqOBEXOd/hvIeHSEiE5GKq+Dxz6y+ZEQ195jtbUtOo3eM4YBaxSkyAEeovRHcCFLH71//zY4BQ=="
         },
         "4758f423-975c-4b86-ab17-aa25f7c4d96f": {
           "display_id": 1001,
@@ -9837,8 +9846,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T21:56:37.742395242Z",
+    "timestamp": "2026-08-30T21:56:44.654298525Z",
     "agent_id": "6ME5",
-    "agent_seq": 1203
+    "agent_seq": 1204
   }
 }
