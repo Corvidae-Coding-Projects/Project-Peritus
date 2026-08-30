@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 950,
+  "next_comment_id": 951,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T18:26:45.956670834Z",
+      "updated_at": "2026-08-30T18:26:50.655206528Z",
       "labels": [
         "qualification",
         "release"
@@ -2377,6 +2377,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAL11Qx0dPGYt20r571CUANkdawpZoVJe+zWAs7rthwBUx334MM0ubzDWI4nTdwBb7z94lOfYR6r+f0L7PMib+Cw=="
+        },
+        "5a890a79-1c5a-48dd-86f9-b020c410d5b2": {
+          "display_id": 950,
+          "author": "6ME5",
+          "content": "[action] Created signed PTY input-EOF root-cause commit b10e1134 after exact H2 Windows run 33325905238 reproduced scenario-11 timeout; focused native and Windows cross-target verification is green.",
+          "created_at": "2026-08-30T18:26:50.652557988Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAR8aZdGIStY4TEP40akHzd5OWIlwBUM2e7KdVSh5PZ9563hhw26Nvb9ORWRKNemofv9AGhpvSAL8pPxL56bEdBg=="
         },
         "5ae79f9b-3c5a-4a0a-a7a6-25e9cc8da524": {
           "display_id": 659,
@@ -9302,8 +9311,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T18:26:45.956670834Z",
+    "timestamp": "2026-08-30T18:26:50.655206528Z",
     "agent_id": "6ME5",
-    "agent_seq": 1145
+    "agent_seq": 1146
   }
 }
