@@ -57,6 +57,13 @@ the ephemeral local task container. Account files are permission-locked, exclude
 Git, and removed with the container. The official executables remain credential owners and act only
 as model routers; Peritus retains conversation, tool, workspace, and policy authority.
 
+Those two authenticated routes are the benchmark run's explicit provider set. Codex remains the
+default writer and fixer, and Claude remains the default reviewer. After ordinary same-route
+recovery, either already-authorized route may act as a fallback when its capabilities fit the role;
+for example, an image-grounded review can move to the image-capable Codex route. Every switch is
+bounded and retained in the native trace. Peritus never discovers or enables another provider for
+the benchmark implicitly.
+
 The checked-in Compose provider handles the small compatibility gap between Harbor's Compose V2
 commands and rootless `podman-compose`. It also resolves Terminal-Bench's unqualified Docker Hub
 image names deterministically and suppresses Podman's provider warning on captured protocol output.

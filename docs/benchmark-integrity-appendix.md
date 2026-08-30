@@ -34,6 +34,7 @@ changing correct product behavior to accommodate an evaluator bug.
 - [HBI-035](../benchmarks/external/failure-journal.md#hbi-035-task-068-forbidden-claim-check-ignores-negation): a forbidden-claim check ignores negation. Refused: deleting explicit language that says the forbidden promise will not be made.
 - [HBI-039](../benchmarks/external/failure-journal.md#hbi-039-task-073-omits-the-script-its-oracle-expects-to-audit): the oracle expects an input script absent from the fixture. Refused: fabricating the missing source or silently altering the fixture.
 - [TBI-008](../benchmarks/external/failure-journal.md#tbi-008-the-html-verifier-contradicts-byte-preservation-and-treats-browser-failure-as-safe): the clean-input check requires parser reserialization despite an exact formatting-preservation contract, while browser startup failures count as safe. Refused: violating the stated byte contract, copying the hidden reference behavior, or treating unexecuted checks as proof.
+- [TBI-009](../benchmarks/external/failure-journal.md#tbi-009-the-sam-output-argument-is-both-a-folder-and-a-csv-file): the public interface defines `output_path` as a folder, while the verifier and hidden reference require that exact argument to be the CSV file. Refused: reading the hidden interface, overriding explicit prose from a `.csv` suffix, or adding task-specific dual behavior.
 
 ## Ground truth that contradicts the supplied inputs
 

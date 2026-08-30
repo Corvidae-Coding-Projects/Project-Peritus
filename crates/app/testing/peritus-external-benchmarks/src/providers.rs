@@ -32,12 +32,19 @@ pub async fn authenticated(
         .map_err(|error| BenchmarkError::Provider(error.to_string()))?;
     let writer: Arc<dyn ModelProvider> = writer;
     let reviewer: Arc<dyn ModelProvider> = reviewer;
-    Ok(RoleProviders {
+    Ok(authorized_roles(writer, reviewer))
+}
+
+fn authorized_roles(
+    writer: Arc<dyn ModelProvider>,
+    reviewer: Arc<dyn ModelProvider>,
+) -> RoleProviders {
+    RoleProviders {
         writer: Arc::clone(&writer),
-        reviewer,
-        fixer: writer,
-        fallbacks: Vec::new(),
-    })
+        reviewer: Arc::clone(&reviewer),
+        fixer: Arc::clone(&writer),
+        fallbacks: vec![writer, reviewer],
+    }
 }
 
 pub async fn codex_authenticated(
@@ -118,4 +125,63 @@ fn profile(
 fn process_limits() -> Result<ProcessLimits, BenchmarkError> {
     ProcessLimits::new(16 * 1024 * 1024, 16 * 1024 * 1024, 64 * 1024, Duration::from_mins(5))
         .map_err(|error| BenchmarkError::Provider(error.to_string()))
+}
+
+#[cfg(test)]
+mod tests {
+    use peritus_model_protocol::ModelRequest;
+    use peritus_provider_core::{BoxFuture, OwnedModelStream, ProviderCoreError};
+
+    use super::*;
+
+    struct StubProvider(ProviderProfile);
+
+    impl ModelProvider for StubProvider {
+        fn profile(&self) -> &ProviderProfile {
+            &self.0
+        }
+
+        fn start(
+            &self,
+            _request: ModelRequest,
+            _cancellation: CancellationToken,
+        ) -> BoxFuture<'_, Result<OwnedModelStream, ProviderCoreError>> {
+            Box::pin(async {
+                Err(ProviderCoreError::configuration(
+                    "benchmark_provider_test",
+                    "provider invocation is outside this composition test",
+                ))
+            })
+        }
+    }
+
+    #[test]
+    fn every_authenticated_route_is_an_explicit_fallback_candidate() {
+        let writer: Arc<dyn ModelProvider> = Arc::new(StubProvider(
+            profile([0xC1; 16], "openai", "writer", WireDialect::OpenAiCodexRuntime)
+                .expect("writer profile"),
+        ));
+        let reviewer: Arc<dyn ModelProvider> = Arc::new(StubProvider(
+            profile([0xC2; 16], "anthropic", "reviewer", WireDialect::AnthropicClaudeRuntime)
+                .expect("reviewer profile"),
+        ));
+        let writer_id = writer.profile().profile_id();
+        let reviewer_id = reviewer.profile().profile_id();
+
+        let roles = authorized_roles(writer, reviewer);
+
+        assert_eq!(roles.writer.profile().profile_id(), writer_id);
+        assert_eq!(roles.fixer.profile().profile_id(), writer_id);
+        assert_eq!(roles.reviewer.profile().profile_id(), reviewer_id);
+        assert!(roles.writer.profile().capabilities().supports(Capability::ImageInput));
+        assert!(!roles.reviewer.profile().capabilities().supports(Capability::ImageInput));
+        assert_eq!(
+            roles
+                .fallbacks
+                .iter()
+                .map(|provider| provider.profile().profile_id())
+                .collect::<Vec<_>>(),
+            vec![writer_id, reviewer_id],
+        );
+    }
 }

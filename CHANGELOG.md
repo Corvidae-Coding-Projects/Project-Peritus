@@ -61,6 +61,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Put both explicitly authenticated Terminal-Bench provider routes into its bounded fallback chain,
+  preserving the default writer/reviewer assignments while allowing existing capability-aware
+  routing to move an image-grounded role to the image-capable route (`TBF-021`, #31)
+- Direct model-authored commands toward filters, bounded ranges, and summary modes before inspecting
+  large binaries, logs, databases, or generated files, while preserving the hard output cap as an
+  accuracy fallback instead of routinely filling model context (`TBF-020`, #31)
 - Reconcile explicit request-derived output paths, including quoted extensionless executable names,
   with the actual candidate before acceptance, mapping absolute paths through the managed workspace
   root and rejecting missing or relocated same-basename artifacts while leaving inputs and

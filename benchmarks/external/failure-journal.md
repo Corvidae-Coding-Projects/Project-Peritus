@@ -2343,6 +2343,22 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   1.0. Native Peritus still ended during review on the same provider terminal after nine requests,
   214,733 input, 47,616 cached input, and 9,587 output tokens. This is evidence for general runtime
   discovery and literal artifact delivery; only the false terminal is assigned to role recovery.
+- Trial `bn-fit-modify__PDV8XSX` produced the requested learned graph, intervened graph, and sampled
+  data artifacts from the supplied Bayesian-network problem. The unchanged verifier provisioned its
+  own ordinary Python environment and all nine structure and data checks passed for reward 1.0.
+  Native Peritus still ended during review on the same provider terminal after seven requests,
+  147,508 input, 15,872 cached input, and 5,300 output tokens over 210.015 seconds. The scientific
+  artifact pass is retained; only the false terminal is assigned to provider-neutral role recovery.
+- Trial `feal-differential-cryptanalysis__v8aeNWi` ended during its writer role on the same empty
+  provider terminal before creating `attack.py`. The unchanged verifier therefore reported the
+  literal missing module and awarded reward 0. Native execution used three requests, 53,737 input,
+  23,808 cached input, and 773 output tokens over 110.550 seconds. This is a clean baseline example
+  for fresh same-provider writer recovery; no cipher- or attack-specific behavior is warranted.
+- Trial `sqlite-db-truncate__vvgCxxU` recovered the requested JSON artifact from the truncated
+  database and the unchanged verifier's only data test passed for reward 1.0. Native Peritus again
+  ended during review on the same empty-provider terminal after nine requests, 166,008 input,
+  31,744 cached input, and 2,436 output tokens over 104.047 seconds. The successful forensic
+  artifact is retained; only the false terminal belongs to provider-neutral role recovery.
 
 ## TBM-001: a writer mirrored the response field into the request schema
 
@@ -2842,3 +2858,70 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   required-output set. The gate aggregation regression proves the constraint makes overall
   exact-target acceptance fail. Focused tests and strict Clippy pass; full repository gates and an
   unchanged final-candidate rerun remain required.
+
+## TBF-020: an unconstrained inspection filled model context with low-signal output
+
+- Suite and task: Terminal-Bench 2.0, `password-recovery`, first full-suite baseline trial.
+- Symptom: the writer called `strings -a` over a 4,194,304-byte disk image without filtering its
+  output first. It recovered the requested artifact and both unchanged verifier checks passed for
+  reward 1.0, but seven provider requests consumed 1,112,976 input tokens, 23,808 cached input
+  tokens, and 2,577 output tokens over 130.323 seconds of native execution. Native review then
+  ended on the provider terminal already classified by `TBF-009`.
+- Cause: `run_command` had a real 512 KiB per-stream ceiling, but its provider-neutral description
+  explained the cap only as an implementation property. It did not direct the model to use a
+  purpose-built filter, bounded range, or summary mode before sending a predictably large binary,
+  log, database, or generated file through the context window.
+- Resolution: the general command contract now asks every role to constrain predictable bulk
+  output to decision-relevant evidence first. The hard byte ceiling remains unchanged as an
+  accuracy-preserving fallback; there is no task, password pattern, benchmark, executable, or
+  verifier-specific behavior.
+- Verification: the tool-catalog regression requires both the decision-relevant filtering rule and
+  the fallback-cap boundary to remain visible to every mutating role. The focused product-runner
+  test, strict all-target/all-feature Clippy, rustfmt, 136-file documentation check, and diff hygiene
+  pass. An unchanged final-candidate comparison remains required.
+
+## TBI-009: the SAM output argument is both a folder and a CSV file
+
+- Suite and task: Terminal-Bench 2.0, `sam-cell-seg`, first full-suite baseline trial.
+- Published contract: `output_path` is explicitly described as "The path to the output folder where
+  the new masks will be saved." The writer followed that contract, created the argument as a
+  directory, and saved the input-named CSV inside it.
+- Contradictory evaluator: the unchanged verifier passes `/app/test_output.csv` as `output_path`,
+  accepts the resulting directory as existing, and then calls `pandas.read_csv` on that exact path.
+  The hidden reference silently changes the argument help to "Path to save the output CSV file" and
+  writes directly to the argument. The run therefore passed script existence, execution, and output
+  existence, then failed the remaining six checks with `IsADirectoryError`; reward 0 is retained.
+- Classification: internally contradictory artifact contract, separate from the real native
+  capability-routing defect in `TBF-021`. A robust public interface could expose separate output
+  directory and output filename arguments, but Peritus cannot replace the task's stated interface.
+- Integrity decision: do not read hidden tests while solving, infer file semantics from a `.csv`
+  suffix against explicit prose, copy the hidden reference, or add task-specific dual behavior.
+  Retained task ref is
+  `sha256:a141c1f364a9a69e27545a062f5238a27dfde68dfa0a04921966ada2854bf1db`;
+  instruction SHA-256 is
+  `0ef90109155c26d518e800a9e21464f8ee8671c95cbd12d1dccf667552e3c73c`, verifier SHA-256 is
+  `908c4b6aa44e12b6c429c221b92eaa6b150880b9b3d74d9d5ef6869a570f4fd4`, and reference SHA-256 is
+  `62bdd93b58b6490534f019e2a05b3e05499e9efb4b6ecf6894fee2355d5fe32e`.
+
+## TBF-021: an authenticated image-capable route was absent from role fallback
+
+- Suite and task: Terminal-Bench 2.0, `sam-cell-seg`, first full-suite baseline trial.
+- Symptom: the writer produced and exercised `convert_masks.py`, then the reviewer failed before its
+  first request because the default Claude account route did not advertise image input. Peritus
+  returned `attach workspace images: the selected provider cannot inspect image inputs` even though
+  the already-authenticated Codex route had successfully handled the same workspace image.
+- Cause: the adapter authenticated both named account routes and assigned their default roles, but
+  supplied an empty fallback list. G4's existing capability-aware role cursor therefore had no
+  authorized next route to select. This was an adapter-composition omission, not a provider or SAM
+  limitation.
+- Resolution: the Terminal-Bench composition preserves Codex as writer/fixer and Claude as reviewer,
+  then places both explicitly authenticated routes in the bounded fallback set. Existing
+  provider-neutral recovery now selects only a compatible already-authorized route and traces every
+  switch; no additional provider is discovered or enabled.
+- Evidence: trial `sam-cell-seg__8XMD3nv`; native failure after six requests, 147,155 input, 23,808
+  cached input, 12,460 output tokens, and 303.507 seconds. The external reward remains 0 for the
+  separate output-path contradiction in `TBI-009`.
+- Verification: a native composition regression proves default role identity, both-route fallback
+  order, and the exact image-capability difference without invoking either account. The focused
+  external-benchmark test, strict all-target/all-feature Clippy, rustfmt, documentation check, and
+  diff hygiene pass. An unchanged final-candidate rerun remains required.
