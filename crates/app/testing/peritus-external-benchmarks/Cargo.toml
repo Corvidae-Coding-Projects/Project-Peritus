@@ -36,6 +36,10 @@ path = "src/bin/peritus-benchmark-agent.rs"
 name = "peritus-terminalbench-report"
 path = "src/bin/peritus-terminalbench-report.rs"
 
+[[bin]]
+name = "peritus-harnessbench-report"
+path = "src/bin/peritus-harnessbench-report.rs"
+
 [package.metadata.peritus]
 owner = "H3"
 layer = "testing"

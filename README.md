@@ -83,6 +83,11 @@ not add task-specific answers or weaken the upstream oracles. The
 score-only workaround would require hidden-answer leakage, a task-specific hack, or breaking the
 published contract.
 
+A Rust-owned publisher now reconstructs that baseline from the retained result tree, checks exact
+coverage against all 106 pinned tasks, and records the selected report and SHA-256 for each task.
+The diagnostic run predates embedded build identity, so that limitation is explicit; the final
+single-binary campaign will reject any task without native source and executable identity.
+
 Because general fixes were intentionally made as failures were diagnosed, those 106 reports bind
 successive development checkpoints. They are the retained diagnostic baseline. The final report
 will compare them with a second complete run made by one frozen, revision-bound release candidate.

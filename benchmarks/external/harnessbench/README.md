@@ -93,6 +93,30 @@ The completed baseline contains all 106 tasks with no missing or failed native a
 | Total execution time | 8.529 hours |
 | Total model tokens | 31,286,948 |
 
+The Rust-owned campaign publisher reproduces those values directly from the retained results and
+also serves as the exact selection manifest:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo run --locked --package peritus-external-benchmarks \
+  --bin peritus-harnessbench-report -- \
+  --campaign-dir /absolute/path/to/2026-08-28-baseline \
+  --task-catalog /absolute/path/to/harness-bench/tasks \
+  --output /absolute/path/to/campaign-diagnostic-baseline-v1.json \
+  --pin-file benchmarks/external/harnessbench/pin.toml \
+  --expected-tasks 106 \
+  --campaign-label diagnostic-baseline \
+  --identity-policy allow-legacy
+```
+
+It chooses the newest result for each task by modification time and then relative path, checks that
+the selection exactly matches the 106 pinned task directories, and records each selected path,
+result digest, score, model, elapsed time, usage, and native evidence path. The retained report is
+`campaign-diagnostic-baseline-v1.json`, with SHA-256
+`26a981ef968443504a0d47d420e34783fa99c2b9d8b1d876661415175a8dbd3e`; it conforms to
+[`harnessbench-campaign-report-v1.schema.json`](../../schemas/harnessbench-campaign-report-v1.schema.json).
+The report stays in external benchmark state rather than Git because it contains machine-specific
+evidence paths.
+
 The campaign led to broad product improvements in recovery, durable multi-turn state, deterministic
 format gates, independent review, evidence handoff, exact-identifier preservation, bounded tool
 parallelism, constraint grounding, pagination, polling, and artifact reconciliation. It did not add
@@ -102,6 +126,11 @@ This aggregate was collected while those general fixes were being implemented, s
 bind different development checkpoints. It is the honest diagnostic baseline, not the frozen final
 candidate result. A second complete run with one schema-version-5 binary built from the exact final
 commit remains required for the final comparison.
+
+The diagnostic invocations all have native reports, but they predate embedded source and executable
+identity, so the aggregate honestly records 106 native invocations and zero with build identity.
+The final candidate must use `--identity-policy require-native`; an operator-supplied source guess
+is never accepted.
 
 Every reproduced product defect, upstream defect, retained mismatch, before/after run, and general
 fix is recorded in the [external failure journal](../failure-journal.md). That journal is the place

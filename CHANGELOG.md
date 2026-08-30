@@ -13,6 +13,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- Add a Rust-owned HarnessBench campaign publisher and versioned schema that require exact pinned
+  task coverage, retain the digest and provenance of every selected result, recompute scores, time,
+  and token/cache usage, expose legacy identity coverage, and require native build identity for the
+  final candidate campaign (#31)
 - Add a Rust-owned Terminal-Bench campaign reporter that reconciles Harbor's aggregate state with
   directly visible child results, distinguishes in-progress snapshots from immutable final
   reports, retains per-trial evidence paths and token/cache totals, binds the benchmark pin and

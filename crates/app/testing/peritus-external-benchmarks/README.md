@@ -36,6 +36,14 @@ never accepts an operator-supplied source guess. Use `snapshot` while a campaign
 `final` only after all expected trials are visible and Harbor has marked the job finished.
 Publication is atomic and refuses to replace an existing report.
 
+`peritus-harnessbench-report` does the same for one complete HarnessBench campaign. It compares the
+pinned task catalog with retained results, selects the newest result for each task by modification
+time and then path, and records every selected path and SHA-256. It rejects missing or extra tasks,
+malformed scores, unavailable token evidence, inconsistent task/session identities, and token
+accounting errors. `allow-legacy` accurately reports older campaigns that predate native build
+identity; `require-native` requires source revision and executable digest evidence for every task.
+Publication is atomic and never overwrites an existing result.
+
 ## Focused checks
 
 From the repository root:

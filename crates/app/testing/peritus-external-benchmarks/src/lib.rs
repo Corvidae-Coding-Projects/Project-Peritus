@@ -5,6 +5,7 @@ mod args;
 mod dispatch;
 mod error;
 mod evidence;
+pub mod harness_results;
 mod identity;
 mod process_entry;
 mod providers;
