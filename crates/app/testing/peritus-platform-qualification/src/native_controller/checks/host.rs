@@ -14,7 +14,6 @@ const MAX_CHILD_OUTPUT: usize = 2 * 1024 * 1024;
 
 pub(super) struct HostLayout {
     pub(super) platform: Platform,
-    pub(super) home: PathBuf,
     pub(super) cli: PathBuf,
     pub(super) daemon: PathBuf,
     pub(super) tui: PathBuf,
@@ -43,7 +42,6 @@ impl HostLayout {
                 config: home.join(".config/peritus/peritus.toml"),
                 state: home.join(".local/state/peritus"),
                 logs: home.join(".local/state/peritus/log"),
-                home,
             },
             "macos" => {
                 let application = home.join("Library/Application Support/Peritus");
@@ -57,7 +55,6 @@ impl HostLayout {
                     config: application.join("config/peritus.toml"),
                     state: application.join("state"),
                     logs: home.join("Library/Logs/Peritus"),
-                    home,
                 }
             }
             "windows" => {
@@ -73,7 +70,6 @@ impl HostLayout {
                     config: local.join("Peritus/config/peritus.toml"),
                     state: local.join("Peritus/state"),
                     logs: local.join("Peritus/logs"),
-                    home,
                 }
             }
             _ => return Err("H2 request target is unsupported".into()),

@@ -108,6 +108,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Resolve the H2 daemon runtime through the host's canonical temporary-directory spelling before
+  startup, so native macOS qualification uses `/private/tmp` instead of the `/tmp` alias while the
+  production daemon continues to reject genuinely aliased or symlinked state roots (#31)
 - Keep the authenticated A3 shutdown requester alive as a bounded reporting connection, release
   its connection-owned transfers and terminal attachments before authority teardown, stream all
   six correlated progress observations plus the truthful final disposition, and join the IPC

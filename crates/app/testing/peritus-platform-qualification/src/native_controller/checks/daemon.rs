@@ -26,7 +26,7 @@ pub(super) struct DaemonSession<'a> {
 
 impl<'a> DaemonSession<'a> {
     pub(super) fn start(layout: &'a HostLayout) -> Result<Self, Box<dyn std::error::Error>> {
-        let runtime = runtime_root(layout);
+        let runtime = runtime_root(layout)?;
         fs::create_dir_all(&runtime)?;
         let state = runtime.join("state");
         let registry_path = runtime.join("approval-registry.bin");
@@ -166,7 +166,7 @@ impl<'a> DaemonSession<'a> {
 }
 
 pub(super) fn cleanup_runtime(layout: &HostLayout) -> Result<(), Box<dyn std::error::Error>> {
-    let root = runtime_root(layout);
+    let root = runtime_root(layout)?;
     match fs::remove_dir_all(root) {
         Ok(()) => Ok(()),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
@@ -196,12 +196,23 @@ fn render_configuration(state: &Path, registry: &Path) -> String {
     )
 }
 
-fn runtime_root(layout: &HostLayout) -> PathBuf {
-    if cfg!(unix) {
-        PathBuf::from("/tmp").join(format!("ph2-{}", std::process::id()))
-    } else {
-        layout.home.join("h2-daemon-runtime")
-    }
+#[cfg(unix)]
+fn runtime_root(_layout: &HostLayout) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    // macOS spells its temporary directory through `/tmp`, an operating-system symlink to
+    // `/private/tmp`. The daemon deliberately rejects aliased state roots, so bind the native
+    // qualification runtime to the canonical spelling without weakening daemon validation.
+    Ok(native_temporary_parent()?.join(format!("ph2-{}", std::process::id())))
+}
+
+#[cfg(windows)]
+fn runtime_root(layout: &HostLayout) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    fs::create_dir_all(&layout.state)?;
+    Ok(fs::canonicalize(&layout.state)?.join("h2-daemon-runtime"))
+}
+
+#[cfg(unix)]
+fn native_temporary_parent() -> Result<PathBuf, std::io::Error> {
+    fs::canonicalize("/tmp")
 }
 
 fn endpoint_name() -> String {
@@ -226,4 +237,23 @@ fn hex(bytes: &[u8]) -> String {
 
 fn approval_error(action: &str, error: impl std::fmt::Debug) -> std::io::Error {
     std::io::Error::other(format!("{action} H2 approval registry: {error:?}"))
+}
+
+#[cfg(test)]
+mod tests {
+    #[cfg(unix)]
+    use std::path::Path;
+
+    #[cfg(unix)]
+    #[test]
+    fn native_runtime_parent_uses_its_canonical_spelling() {
+        let parent =
+            super::native_temporary_parent().expect("native temporary directory must resolve");
+        assert_eq!(
+            std::fs::canonicalize(&parent).expect("canonical temporary directory must resolve"),
+            parent
+        );
+        assert!(parent.is_absolute());
+        assert_ne!(parent, Path::new(""));
+    }
 }
