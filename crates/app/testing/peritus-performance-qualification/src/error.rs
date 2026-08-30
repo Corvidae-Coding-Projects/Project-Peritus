@@ -1,7 +1,9 @@
 //! Typed runner failures that remain distinct from subject verdicts.
 
 use std::io;
-use std::path::{Path, PathBuf};
+#[cfg(unix)]
+use std::path::Path;
+use std::path::PathBuf;
 
 use peritus_benchmarks::QualificationError;
 
@@ -121,6 +123,7 @@ pub enum EvidenceError {
     },
 }
 
+#[cfg(unix)]
 impl EvidenceError {
     pub(crate) fn io(operation: &'static str, path: &Path, source: io::Error) -> Self {
         Self::Io { operation, path: path.to_path_buf(), source }
@@ -153,6 +156,7 @@ pub enum MachineProbeError {
     Qualification(#[from] QualificationError),
 }
 
+#[cfg(unix)]
 impl MachineProbeError {
     pub(crate) const fn io(operation: &'static str, source: io::Error) -> Self {
         Self::Io { operation, source }
@@ -204,6 +208,7 @@ pub enum OperatorError {
     Clock(#[from] std::time::SystemTimeError),
 }
 
+#[cfg(unix)]
 impl OperatorError {
     pub(crate) fn io(operation: &'static str, path: &Path, source: io::Error) -> Self {
         Self::Io { operation, path: path.to_path_buf(), source }
