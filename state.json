@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 888,
+  "next_comment_id": 889,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -8332,7 +8332,7 @@
       "parent_uuid": "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:01:08.433031832Z",
-      "updated_at": "2026-08-30T14:40:11.755578690Z",
+      "updated_at": "2026-08-30T14:42:42.301445131Z",
       "labels": [
         "qualification",
         "security"
@@ -8400,6 +8400,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABANAGb1K7nYNV7skDRgq4I6wgN7z5zzrQhupSnME2jpS2A4hOq9BVbboTOQslOFGKHQXiGMkY0oZRdOi8EiUdDDQ=="
+        },
+        "af698931-8bf0-4ffa-b184-8e250efe2601": {
+          "display_id": 888,
+          "author": "6ME5",
+          "content": "Committed-candidate execution is now proven, not inferred: peritus-h0-controller ran h0.supply-chain.dependency-reproducibility against a clean detached 1d3b6077 worktree whose Git-archive SHA-256 was 76ebb9c6. It launched the exact locked xtask reproducibility check, passed in 7.841s, retained one 2012-byte digest-bound evidence artifact, observed 2 processes/1.061 GB peak/1239 output bytes, stayed within limits, and left the candidate clean. Temporary worktree and smoke artifacts were removed afterward.",
+          "created_at": "2026-08-30T14:42:42.298796628Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7FPPbY9SMGM58ZPP1d3wNj6Hwfp73HDQfa3gR2kWmLvMNDC78DG+N1CEjDF8QdrGFKgGOlGmayzlIeaJ5V6QCQ=="
         },
         "cbcade51-4dbc-4abe-952d-df837cfe60fa": {
           "display_id": 476,
@@ -8748,8 +8757,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T14:40:11.755578690Z",
+    "timestamp": "2026-08-30T14:42:42.301445131Z",
     "agent_id": "6ME5",
-    "agent_seq": 1082
+    "agent_seq": 1083
   }
 }
