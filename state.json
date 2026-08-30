@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 820,
+  "next_comment_id": 821,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-30T05:28:17.247663002Z",
+      "updated_at": "2026-08-30T05:28:37.215247050Z",
       "labels": [
         "qualification",
         "release"
@@ -2066,6 +2066,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAcq2F3iaftKLyKLCKVq6wMZqD73U8DEwxjgPGv/MGOnHzQyLaf8ZlcMRKiF/6DXw07UjLKscas3qL3Eu1LiBbCg=="
+        },
+        "538bac32-7367-49b3-83e2-a4ed0c1a96e5": {
+          "display_id": 820,
+          "author": "6ME5",
+          "content": "[action] Hosted Ubuntu and macOS Clippy exposed significant_drop_tightening in the new developer-loop regression. Commit fb05f774 releases the test mutex guard after its final assertion; focused test, Rust 1.97.1 all-feature Clippy, rustfmt, and diff checks pass, and the signed fix is pushed. Frozen Terminal-Bench remains unchanged; mteb-retrieve is in its verifier.",
+          "created_at": "2026-08-30T05:28:37.212405023Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA3WoA+Om1GGuDgNeBQf+5snqIyhQrmfCYJumPsh1uApYrVCSE2svGnPQaJEyotXeYggRLisv1rFjwXXSLWlGpBw=="
         },
         "5491d07c-610c-42ab-93ba-30a9cb3a57d2": {
           "display_id": 773,
@@ -8136,8 +8145,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-30T05:28:17.247663002Z",
+    "timestamp": "2026-08-30T05:28:37.215247050Z",
     "agent_id": "6ME5",
-    "agent_seq": 1010
+    "agent_seq": 1011
   }
 }
