@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1080,
+  "next_comment_id": 1081,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-31T14:32:51.490100169Z",
+      "updated_at": "2026-08-31T14:46:30.866049449Z",
       "labels": [
         "qualification",
         "release"
@@ -3515,6 +3515,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAxYsKg3lLb5Lai6X2jik100ZAvp0E3NpL+FO9yQrIHMEelG3lGPR/cesleDb9VA/ofBZ2gJSU9dcjtxc98lBbCg=="
+        },
+        "8131d360-9b89-4b3a-bd44-4c2a67790cec": {
+          "display_id": 1080,
+          "author": "6ME5",
+          "content": "Signed commit 652d7de6 adds production-wide resource grounding after Terminal-Bench TBF-030: workspace observations expose cgroup-aware CPU/memory and a conservative worker ceiling; common build ecosystems inherit bounded concurrency; recognized excessive Cargo/CMake/Make/Ninja fan-out is rejected before spawn. It also extends the native response-close grace to one bounded second for loaded macOS runners while retaining complete diagnostics. Verification passed: 104 product-runner tests, resilience native-controller regression 10/10 and suite 6/6, native and Windows-GNU strict Clippy, warning-denied docs, rustfmt, diff hygiene, full cargo xtask all, full workspace Verus, and serialized just gate-a including no-cheating release verification. No generated binary or local agent/Crosslink configuration was committed.",
+          "created_at": "2026-08-31T14:46:30.863497417Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAnoiS4mF/yVE8dOny6t1I1J/cRr1TXYptofv1knP1897orhWRp3JKF3a0AHPMcPN9affSqYqZnVIww4qdIf1yBQ=="
         },
         "82d77893-0b34-4a42-b47f-fef117969a72": {
           "display_id": 625,
@@ -10476,8 +10485,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-31T14:46:01.459393202Z",
+    "timestamp": "2026-08-31T14:46:30.866049449Z",
     "agent_id": "6ME5",
-    "agent_seq": 1280
+    "agent_seq": 1281
   }
 }
