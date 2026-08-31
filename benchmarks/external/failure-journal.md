@@ -1963,6 +1963,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   seconds. Native review ended on the separately tracked provider-terminal failure, so the null
   aggregate reward and native non-acceptance remain unchanged; neither changes the repeated hidden
   path diagnosis.
+- Fourth recurrence: corrected-adapter trial `install-windows-3-11__DTcvtyK` completed and native
+  Peritus accepted the live result after 40 provider requests and 2,885.091 seconds. Fresh review
+  confirmed the Program Manager desktop, snapshot-mode QEMU, VNC 5901, nginx 80, and keyboard input
+  through QMP at `/run/win311-qmp.sock` plus HMP at `127.0.0.1:55555`. The unchanged verifier again
+  passed network, QEMU-parameter, and guest-core-file checks, then failed only because it attempted
+  the unpublished `/tmp/qemu-monitor.sock`. The retained reward remains 0.
 - Disposition: retain the unchanged reward 0 and report the unpublished verifier convention. Do not
   add a Terminal-Bench filename rule or require every valid programmatic control interface to
   duplicate itself at that path. A future upstream prompt or verifier can name the required socket
@@ -3805,3 +3811,26 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   `2026-08-31T14:16:41.410792Z` with `AgentTimeoutError`; no OOM kill occurred. Focused
   product-runner tests and strict all-target/all-feature Clippy pass for the general correction. A
   frozen final-candidate campaign remains required.
+
+## TBF-031: a large artifact workspace was rejected before the first model call
+
+- Suite and task: Terminal-Bench 2.0 frozen baseline, corrected-adapter trial
+  `crack-7z-hash__uD4ZhrE`.
+- Symptom: the product runner stopped during deterministic artifact design after 308 milliseconds,
+  made zero provider requests, and reported that the workspace exceeded its bounded design
+  inventory. The unchanged verifier consequently awarded reward 0.
+- Cause: the generated-artifact path treated its 2,000-entry navigation bound as an acceptance
+  limit for the whole workspace. The bound correctly protected prompt and memory size, but failure
+  was the wrong behavior: exact task-relevant paths remain discoverable through the separately
+  bounded workspace tools.
+- Resolution: artifact design now deterministically selects at most 2,000 non-ignored entries,
+  renders them in sorted order, marks the sample as truncated, and explicitly tells every later role
+  that omission is not evidence of absence. The writer can proceed and use bounded listing, search,
+  and reads for named inputs. This applies to every large artifact or data workspace and does not
+  inspect the task identity.
+- Integrity decision: retain the frozen trial's reward 0. Do not delete inputs, raise the inventory
+  until this one task fits, or inject knowledge of its files. The unchanged task belongs in the
+  final-candidate rerun after the general correction is committed.
+- Verification: a focused filesystem regression with a deliberately smaller bound must prove stable
+  sorting, truncation, and rendered grounding guidance. Product-runner tests, strict Clippy,
+  formatting, documentation, and repository policy gates remain required.

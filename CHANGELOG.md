@@ -211,6 +211,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Keep generated-artifact design deterministic on large workspaces by retaining a sorted bounded
+  navigation sample with an explicit truncation notice instead of rejecting the run before the
+  first model call (`TBF-031`, #31).
 - Correlate native C4 integration-test authority timestamps with elapsed wall time and leave the
   outer tool deadline enough room for the enforced process deadline and cleanup, preventing loaded
   Windows runners from converting an expected quality result into a premature generic failure (#31).

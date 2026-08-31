@@ -15,6 +15,11 @@ struct InventoryEntry {
     bytes: Option<u64>,
 }
 
+struct Inventory {
+    entries: Vec<InventoryEntry>,
+    truncated: bool,
+}
+
 pub(super) fn create(input: &ProductRunInput) -> Result<DesignDocument, ProductRunnerError> {
     loop {
         check_cancelled(input)?;
@@ -32,7 +37,11 @@ pub(super) fn create(input: &ProductRunInput) -> Result<DesignDocument, ProductR
     }
 }
 
-fn inventory(root: &Path) -> Result<Vec<InventoryEntry>, ProductRunnerError> {
+fn inventory(root: &Path) -> Result<Inventory, ProductRunnerError> {
+    inventory_with_limit(root, MAX_INVENTORY_ENTRIES)
+}
+
+fn inventory_with_limit(root: &Path, maximum: usize) -> Result<Inventory, ProductRunnerError> {
     let mut pending = VecDeque::from([root.to_path_buf()]);
     let mut entries = Vec::new();
     while let Some(directory) = pending.pop_front() {
@@ -50,6 +59,10 @@ fn inventory(root: &Path) -> Result<Vec<InventoryEntry>, ProductRunnerError> {
             if ignored(&relative) {
                 continue;
             }
+            if entries.len() == maximum {
+                entries.sort_by(|left: &InventoryEntry, right| left.path.cmp(&right.path));
+                return Ok(Inventory { entries, truncated: true });
+            }
             let metadata = fs::symlink_metadata(&path)
                 .map_err(|error| repository("inspect artifact input", error.to_string()))?;
             let kind = if metadata.is_dir() {
@@ -65,21 +78,15 @@ fn inventory(root: &Path) -> Result<Vec<InventoryEntry>, ProductRunnerError> {
                 kind,
                 bytes: metadata.is_file().then_some(metadata.len()),
             });
-            if entries.len() > MAX_INVENTORY_ENTRIES {
-                return Err(repository(
-                    "inventory artifact workspace",
-                    "artifact workspace exceeds the bounded design inventory",
-                ));
-            }
         }
     }
     entries.sort_by(|left, right| left.path.cmp(&right.path));
-    Ok(entries)
+    Ok(Inventory { entries, truncated: false })
 }
 
 fn render(
     transcript: &str,
-    inventory: &[InventoryEntry],
+    inventory: &Inventory,
     effect_requirement: ExternalEffectRequirement,
 ) -> String {
     let mut design = String::from(
@@ -100,7 +107,7 @@ Produce the complete requested artifacts in this explicit artifact workspace. Th
     design.push_str(
         "\n## Repository findings\n\nThe workspace declares `schema_version = 1` and `kind = \"artifact\"`. It has no retained implementation requirement, so the writer should use the bounded workspace tools directly and leave only the requested outputs. The design inventory observed before mutation is:\n\n",
     );
-    for entry in inventory {
+    for entry in &inventory.entries {
         design.push_str("- `");
         design.push_str(&entry.path);
         design.push_str("`: ");
@@ -111,6 +118,13 @@ Produce the complete requested artifacts in this explicit artifact workspace. Th
             design.push_str(" bytes)");
         }
         design.push('\n');
+    }
+    if inventory.truncated {
+        design.push_str("\nThe design inventory is a deterministic navigation sample truncated after the first ");
+        design.push_str(&inventory.entries.len().to_string());
+        design.push_str(
+            " non-ignored entries. Omission from this sample does not prove that a path is absent. Use the bounded workspace listing, search, and read tools to inspect exact paths relevant to the request.\n",
+        );
     }
     design.push_str(
         "\n## Architecture and interfaces\n\nThe original request is the input/output contract. Input paths are read-only evidence. The writer owns only the explicitly requested output paths and uses `workspace_list`, `workspace_read`, `workspace_write`, `workspace_patch`, `workspace_remove`, and non-destructive `run_command` calls as needed. No package scaffold, retained producer, dependency, network access, or extra artifact is introduced unless the request explicitly requires it.\n\n\
@@ -150,10 +164,17 @@ mod tests {
     fn rendered_design_preserves_the_request_and_observed_inventory() {
         let design = render(
             "Create out/report.json with status \"ready\".\nDo not modify input files.",
-            &[
-                InventoryEntry { path: "in/source.json".to_owned(), kind: "file", bytes: Some(42) },
-                InventoryEntry { path: "out".to_owned(), kind: "directory", bytes: None },
-            ],
+            &Inventory {
+                entries: vec![
+                    InventoryEntry {
+                        path: "in/source.json".to_owned(),
+                        kind: "file",
+                        bytes: Some(42),
+                    },
+                    InventoryEntry { path: "out".to_owned(), kind: "directory", bytes: None },
+                ],
+                truncated: false,
+            },
             ExternalEffectRequirement::Optional,
         );
 
@@ -170,7 +191,7 @@ mod tests {
     fn operational_design_requires_live_effect_and_fresh_verification() {
         let design = render(
             "Start the local service and leave it running.",
-            &[],
+            &Inventory { entries: Vec::new(), truncated: false },
             ExternalEffectRequirement::Required,
         );
 
@@ -178,5 +199,25 @@ mod tests {
         assert!(design.contains("not completion without the requested effect"));
         assert!(design.contains("`external_effect`"));
         assert!(design.contains("`verification`"));
+    }
+
+    #[test]
+    fn large_workspace_inventory_is_bounded_without_blocking_design() {
+        let root = tempfile::tempdir().expect("artifact workspace");
+        for name in ["c.txt", "a.txt", "b.txt"] {
+            fs::write(root.path().join(name), name).expect("artifact input");
+        }
+
+        let inventory = inventory_with_limit(root.path(), 2).expect("bounded inventory");
+
+        assert!(inventory.truncated);
+        assert_eq!(
+            inventory.entries.iter().map(|entry| entry.path.as_str()).collect::<Vec<_>>(),
+            ["a.txt", "b.txt"]
+        );
+        let design =
+            render("Inspect the supplied inputs.", &inventory, ExternalEffectRequirement::Optional);
+        assert!(design.contains("deterministic navigation sample truncated after the first 2"));
+        assert!(design.contains("does not prove that a path is absent"));
     }
 }
