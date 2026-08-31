@@ -2050,6 +2050,7 @@ dependencies = [
  "peritus-evidence",
  "peritus-evolution",
  "peritus-gates",
+ "peritus-git",
  "peritus-harness",
  "peritus-journal",
  "peritus-kernel",

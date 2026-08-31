@@ -9,6 +9,8 @@ const BLOB_BEFORE: &str = "h1.crash.blob.before";
 const BLOB_AFTER_BEFORE_ACK: &str = "h1.crash.blob.after-before-ack";
 const JOURNAL_BEFORE: &str = "h1.crash.journal.before";
 const JOURNAL_AFTER_BEFORE_ACK: &str = "h1.crash.journal.after-before-ack";
+const SNAPSHOT_BEFORE: &str = "h1.crash.snapshot.before";
+const SNAPSHOT_AFTER_BEFORE_ACK: &str = "h1.crash.snapshot.after-before-ack";
 const MAX_REQUEST_BYTES: usize = 512 * 1024;
 
 #[derive(Deserialize)]
@@ -158,6 +160,8 @@ pub(super) enum CommitRoute {
     BlobAfterDurableCommitBeforeAck,
     JournalBeforeDurableCommit,
     JournalAfterDurableCommitBeforeAck,
+    SnapshotBeforeDurableCommit,
+    SnapshotAfterDurableCommitBeforeAck,
 }
 
 impl CommitRoute {
@@ -191,6 +195,20 @@ impl CommitRoute {
             ) if boundary == "journal" && timing == "after-durable-commit-before-ack" => {
                 Some(Self::JournalAfterDurableCommitBeforeAck)
             }
+            (
+                SNAPSHOT_BEFORE,
+                "rolled-back-uncommitted",
+                FaultDocument::CommitCrash { boundary, timing },
+            ) if boundary == "snapshot" && timing == "before-durable-commit" => {
+                Some(Self::SnapshotBeforeDurableCommit)
+            }
+            (
+                SNAPSHOT_AFTER_BEFORE_ACK,
+                "replayed-committed",
+                FaultDocument::CommitCrash { boundary, timing },
+            ) if boundary == "snapshot" && timing == "after-durable-commit-before-ack" => {
+                Some(Self::SnapshotAfterDurableCommitBeforeAck)
+            }
             _ => None,
         }
     }
@@ -198,12 +216,12 @@ impl CommitRoute {
     /// Returns the recovery outcome required for this side of the commit.
     pub(super) const fn outcome(self) -> &'static str {
         match self {
-            Self::BlobBeforeDurableCommit | Self::JournalBeforeDurableCommit => {
-                "rolled-back-uncommitted"
-            }
-            Self::BlobAfterDurableCommitBeforeAck | Self::JournalAfterDurableCommitBeforeAck => {
-                "replayed-committed"
-            }
+            Self::BlobBeforeDurableCommit
+            | Self::JournalBeforeDurableCommit
+            | Self::SnapshotBeforeDurableCommit => "rolled-back-uncommitted",
+            Self::BlobAfterDurableCommitBeforeAck
+            | Self::JournalAfterDurableCommitBeforeAck
+            | Self::SnapshotAfterDurableCommitBeforeAck => "replayed-committed",
         }
     }
 
@@ -212,7 +230,9 @@ impl CommitRoute {
         match self {
             Self::BlobBeforeDurableCommit
             | Self::BlobAfterDurableCommitBeforeAck
-            | Self::JournalBeforeDurableCommit => "verified",
+            | Self::JournalBeforeDurableCommit
+            | Self::SnapshotBeforeDurableCommit
+            | Self::SnapshotAfterDurableCommitBeforeAck => "verified",
             Self::JournalAfterDurableCommitBeforeAck => "recovered-and-verified",
         }
     }
@@ -293,11 +313,11 @@ fn hex(bytes: &[u8]) -> String {
 mod tests {
     use super::{
         BLOB_AFTER_BEFORE_ACK, BLOB_BEFORE, CommitRoute, FaultDocument, JOURNAL_AFTER_BEFORE_ACK,
-        JOURNAL_BEFORE, ScenarioDocument,
+        JOURNAL_BEFORE, SNAPSHOT_AFTER_BEFORE_ACK, SNAPSHOT_BEFORE, ScenarioDocument,
     };
 
     #[test]
-    fn only_the_four_real_commit_routes_are_admitted() {
+    fn only_the_six_real_commit_routes_are_admitted() {
         let before =
             scenario(JOURNAL_BEFORE, "journal", "before-durable-commit", "rolled-back-uncommitted");
         let after = scenario(
@@ -306,9 +326,21 @@ mod tests {
             "after-durable-commit-before-ack",
             "replayed-committed",
         );
-        let unsupported = scenario(
-            "h1.crash.snapshot.before",
+        let snapshot_before = scenario(
+            SNAPSHOT_BEFORE,
             "snapshot",
+            "before-durable-commit",
+            "rolled-back-uncommitted",
+        );
+        let snapshot_after = scenario(
+            SNAPSHOT_AFTER_BEFORE_ACK,
+            "snapshot",
+            "after-durable-commit-before-ack",
+            "replayed-committed",
+        );
+        let unsupported = scenario(
+            "h1.crash.lease.before",
+            "lease",
             "before-durable-commit",
             "rolled-back-uncommitted",
         );
@@ -335,6 +367,14 @@ mod tests {
         assert_eq!(
             CommitRoute::from_scenario(&blob_after),
             Some(CommitRoute::BlobAfterDurableCommitBeforeAck)
+        );
+        assert_eq!(
+            CommitRoute::from_scenario(&snapshot_before),
+            Some(CommitRoute::SnapshotBeforeDurableCommit)
+        );
+        assert_eq!(
+            CommitRoute::from_scenario(&snapshot_after),
+            Some(CommitRoute::SnapshotAfterDurableCommitBeforeAck)
         );
         assert_eq!(CommitRoute::from_scenario(&unsupported), None);
     }

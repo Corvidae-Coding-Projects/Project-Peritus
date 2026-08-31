@@ -38,6 +38,12 @@ restart recovery to remove them without publishing metadata or a reference. The 
 the daemon after publishing the verified object, durable metadata, and evidence-owned reference,
 then requires all three to survive and agree after restart.
 
+Both retained Git snapshot routes are real too. The before case holds a changed production
+`CandidateTree` without calling snapshot creation and requires recovery to find no Peritus snapshot
+ref or manifest. The after case publishes the deterministic synthetic commit and compare-and-swap
+ref through `peritus-git`; recovery decodes the canonical manifest and reopens the exact commit,
+tree, and ref while the controller independently checks the retained files.
+
 Use the explicit diagnostic option to exercise that route without presenting a one-case report as
 production readiness:
 
@@ -62,7 +68,8 @@ The report keeps the `custom` profile and `not-ready-custom-catalog` verdict eve
 case passes. The command exits successfully only to make focused qualification automation useful.
 Use `h1.crash.journal.before` in the last argument to run the other journal boundary.
 The equivalent blob diagnostics are `h1.crash.blob.before` and
-`h1.crash.blob.after-before-ack`.
+`h1.crash.blob.after-before-ack`. The snapshot diagnostics are `h1.crash.snapshot.before` and
+`h1.crash.snapshot.after-before-ack`.
 
 ## Focused checks
 

@@ -60,6 +60,7 @@ pub(super) fn inject(
         effect_bytes: None,
         artifact_sha256: Some(artifact_sha256),
         artifact_bytes: Some(artifact_bytes),
+        snapshot: None,
         killed_exit: killed.status,
     })
 }
@@ -135,6 +136,7 @@ pub(super) fn recover(
         effect_bytes: None,
         artifact_sha256: committed.then_some(artifact_sha256),
         artifact_bytes: committed.then_some(artifact_bytes),
+        snapshot: None,
         elapsed_millis: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
     })
 }

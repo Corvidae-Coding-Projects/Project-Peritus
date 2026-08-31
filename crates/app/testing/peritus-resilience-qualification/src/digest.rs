@@ -20,6 +20,10 @@ pub fn file(path: &Path) -> Result<EvidenceDigest, std::io::Error> {
     }
 }
 
+pub fn bytes(value: &[u8]) -> EvidenceDigest {
+    EvidenceDigest::from_bytes(Sha256::digest(value).into())
+}
+
 pub fn hex(digest: EvidenceDigest) -> String {
     let mut output = String::with_capacity(64);
     for byte in digest.as_bytes() {

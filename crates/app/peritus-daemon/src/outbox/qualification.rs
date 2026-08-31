@@ -3,6 +3,7 @@
 mod blob;
 mod effect;
 mod journal_before;
+mod snapshot;
 
 use std::path::{Path, PathBuf};
 
@@ -19,9 +20,14 @@ pub use self::blob::{
     stage_blob_before_crash,
 };
 use self::effect::QualificationDestination;
+
 pub use self::journal_before::{recover_journal_before_crash, stage_journal_before_crash};
 use crate::instance::InstanceGuard;
 use crate::{DaemonConfig, DaemonError, DaemonErrorCode, DaemonIdentity, DaemonRecovery};
+pub use snapshot::{
+    recover_snapshot_after_crash, recover_snapshot_before_crash, stage_snapshot_after_crash,
+    stage_snapshot_before_crash,
+};
 
 const DESTINATION: &str = "peritus.admin.outbox-crash.v1";
 const FRAME_FAMILY: u16 = 65_001;
@@ -283,6 +289,22 @@ fn acquire_instance(
 fn open_journal(config: &DaemonConfig, store_id: StoreId) -> Result<SqliteJournal, DaemonError> {
     SqliteJournal::open(config.paths().database(), store_id, SqliteJournalOptions::default())
         .map_err(journal_error)
+}
+
+fn verify_empty_journal(config: &DaemonConfig) -> Result<bool, DaemonError> {
+    let store_id = config.store_identity()?;
+    let _instance = acquire_instance(config, store_id)?;
+    let mut journal = open_journal(config, store_id)?;
+    let report = journal.integrity_scan().map_err(journal_error)?;
+    if report.event_count() != 0 || report.aggregate_count() != 0 || report.last_position() != 0 {
+        return Err(DaemonError::new(
+            DaemonErrorCode::CorruptState,
+            DaemonRecovery::Operator,
+            "qualify empty authoritative journal",
+            "qualification changed the authoritative journal",
+        ));
+    }
+    Ok(true)
 }
 
 fn effect_payload(store_id: StoreId, outbox_id: OutboxId) -> Vec<u8> {

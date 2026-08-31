@@ -10,7 +10,7 @@ use peritus_conformance::{
 
 use daemon_conformance_support::{
     BinaryDaemonFactory, BinaryDaemonSubject, blob_commit_crash_recovery, blocker_for,
-    journal_before_crash_recovery, reachable_scenarios,
+    journal_before_crash_recovery, reachable_scenarios, snapshot_commit_crash_recovery,
 };
 
 #[test]
@@ -21,6 +21,11 @@ fn journal_append_plan_dies_cleanly_before_durable_commit() {
 #[test]
 fn artifact_commit_recovers_on_both_sides_of_publication() {
     blob_commit_crash_recovery().expect("real artifact commit crash recovery");
+}
+
+#[test]
+fn snapshot_commit_recovers_on_both_sides_of_retained_ref_publication() {
+    snapshot_commit_crash_recovery().expect("real Git snapshot commit crash recovery");
 }
 
 #[test]

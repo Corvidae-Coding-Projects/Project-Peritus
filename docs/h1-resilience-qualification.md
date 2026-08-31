@@ -138,15 +138,25 @@ content-addressed object, committed its metadata, and added a durable evidence-o
 Recovery re-hashes the object, reads its exact bytes, verifies the reference roots, checks that no
 temporary file remains, and confirms that the authoritative journal is still valid and unchanged.
 
+Both snapshot commit routes use the production structured Git adapter. Before publication, the
+staged daemon creates a changed candidate tree and holds its exact typed identity without invoking
+snapshot creation; recovery requires no retained Peritus snapshot ref or manifest. After
+publication, the daemon creates the real deterministic synthetic commit and compare-and-swap
+retained ref, then persists its canonical manifest. Recovery decodes that manifest, reopens the
+snapshot through `peritus-git`, and requires the exact commit, tree, reference, and manifest digest.
+The controller separately inspects the loose ref and manifest bytes on both sides of the crash.
+
 Fresh focused diagnostics retained passing one-case reports and six raw evidence files under
 `/home/doll/.local/state/peritus/qualification/h1/journal-before.YP5d5R` and
 `/home/doll/.local/state/peritus/qualification/h1/journal-after-ack.sCtlT9`. Both reports deliberately
 use the `custom` profile and `not-ready-custom-catalog` verdict. The blob reports are retained under
 `/home/doll/.local/state/peritus/qualification/h1/blob-before.b7G9TE` and
-`/home/doll/.local/state/peritus/qualification/h1/blob-after-ack.UZrw1b`. The other 39 catalog routes fail
-closed until their real component failpoints, controlled quota/storage effects, process controls,
-or disposable-VM reboot driver are connected. Therefore the full H1 production qualification is
-still pending.
+`/home/doll/.local/state/peritus/qualification/h1/blob-after-ack.UZrw1b`. The snapshot reports are
+retained under `/home/doll/.local/state/peritus/qualification/h1/snapshot-before.cZLcEc` and
+`/home/doll/.local/state/peritus/qualification/h1/snapshot-after-ack.46KKAh`. The other 37 catalog
+routes fail closed until their real component failpoints, controlled quota/storage effects,
+process controls, or disposable-VM reboot driver are connected. Therefore the full H1 production
+qualification is still pending.
 
 The release integration owner must:
 

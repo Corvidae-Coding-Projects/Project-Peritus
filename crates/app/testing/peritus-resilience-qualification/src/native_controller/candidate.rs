@@ -3,6 +3,7 @@
 mod blob;
 mod journal_before;
 mod process;
+mod snapshot;
 
 use std::ffi::OsStr;
 use std::fs;
@@ -37,6 +38,7 @@ pub(super) struct InjectedCandidate {
     pub(super) effect_bytes: Option<u64>,
     pub(super) artifact_sha256: Option<String>,
     pub(super) artifact_bytes: Option<u64>,
+    pub(super) snapshot: Option<SnapshotObservation>,
     pub(super) killed_exit: String,
 }
 
@@ -56,7 +58,16 @@ pub(super) struct RecoveredCandidate {
     pub(super) effect_bytes: Option<u64>,
     pub(super) artifact_sha256: Option<String>,
     pub(super) artifact_bytes: Option<u64>,
+    pub(super) snapshot: Option<SnapshotObservation>,
     pub(super) elapsed_millis: u64,
+}
+
+#[derive(Serialize)]
+pub(super) struct SnapshotObservation {
+    pub(super) commit: Option<String>,
+    pub(super) tree: String,
+    pub(super) reference: String,
+    pub(super) manifest_sha256: Option<String>,
 }
 
 pub(super) struct RuntimePaths {
@@ -125,6 +136,10 @@ pub(super) fn inject(
         CommitRoute::JournalBeforeDurableCommit => {
             return journal_before::inject(paths, runtime);
         }
+        CommitRoute::SnapshotBeforeDurableCommit
+        | CommitRoute::SnapshotAfterDurableCommitBeforeAck => {
+            return snapshot::inject(paths, runtime, route);
+        }
         CommitRoute::JournalAfterDurableCommitBeforeAck => {}
     }
     let stderr_path = runtime.root.join("inject.stderr");
@@ -152,6 +167,7 @@ pub(super) fn inject(
         effect_bytes: Some(effect_bytes),
         artifact_sha256: None,
         artifact_bytes: None,
+        snapshot: None,
         killed_exit: killed.status,
     })
 }
@@ -168,6 +184,10 @@ pub(super) fn recover(
         }
         CommitRoute::JournalBeforeDurableCommit => {
             return journal_before::recover(paths, runtime, injected);
+        }
+        CommitRoute::SnapshotBeforeDurableCommit
+        | CommitRoute::SnapshotAfterDurableCommitBeforeAck => {
+            return snapshot::recover(paths, runtime, injected, route);
         }
         CommitRoute::JournalAfterDurableCommitBeforeAck => {}
     }
@@ -237,6 +257,7 @@ pub(super) fn recover(
         effect_bytes: Some(effect_bytes),
         artifact_sha256: None,
         artifact_bytes: None,
+        snapshot: None,
         elapsed_millis: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
     })
 }

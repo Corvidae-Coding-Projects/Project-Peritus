@@ -147,6 +147,16 @@ pub(super) fn canonical_milestones(route: CommitRoute) -> Vec<MilestoneDocument>
             "candidate killed after its durable checkpoint",
             "exact effect reconciled before fence acknowledgement",
         ),
+        CommitRoute::SnapshotBeforeDurableCommit => (
+            "production candidate tree prepared before snapshot publication",
+            "candidate killed before creating the snapshot commit and retained ref",
+            "repository reopened with no retained snapshot reference",
+        ),
+        CommitRoute::SnapshotAfterDurableCommitBeforeAck => (
+            "synthetic snapshot commit and retained ref durably published",
+            "candidate killed before acknowledging snapshot publication",
+            "exact snapshot manifest, commit, tree, and retained ref reopened",
+        ),
     };
     vec![
         MilestoneDocument {

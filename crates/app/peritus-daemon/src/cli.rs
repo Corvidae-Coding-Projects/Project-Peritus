@@ -1,5 +1,7 @@
 //! Process-facing command-line composition for `peritusd`.
 
+mod snapshot;
+
 use std::ffi::{OsStr, OsString};
 use std::io::Write;
 use std::process::ExitCode;
@@ -37,6 +39,16 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
         CommandLine::StageJournalBeforeCrash(configuration) => stage_journal_before(configuration),
         CommandLine::RecoverJournalBeforeCrash(configuration) => {
             recover_journal_before(configuration)
+        }
+        CommandLine::StageSnapshotBeforeCrash(configuration) => {
+            snapshot::stage_before(configuration)
+        }
+        CommandLine::RecoverSnapshotBeforeCrash(configuration) => {
+            snapshot::recover(configuration, false)
+        }
+        CommandLine::StageSnapshotAfterCrash(configuration) => snapshot::stage_after(configuration),
+        CommandLine::RecoverSnapshotAfterCrash(configuration) => {
+            snapshot::recover(configuration, true)
         }
         CommandLine::StageOutboxCrash(configuration) => stage_outbox(configuration),
         CommandLine::RecoverOutboxCrash(configuration) => recover_outbox(configuration),
@@ -80,6 +92,10 @@ enum CommandLine {
     RecoverBlobAfterCrash(OsString),
     StageJournalBeforeCrash(OsString),
     RecoverJournalBeforeCrash(OsString),
+    StageSnapshotBeforeCrash(OsString),
+    RecoverSnapshotBeforeCrash(OsString),
+    StageSnapshotAfterCrash(OsString),
+    RecoverSnapshotAfterCrash(OsString),
     StageOutboxCrash(OsString),
     RecoverOutboxCrash(OsString),
 }
@@ -107,6 +123,18 @@ fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<CommandLine> 
         }
         "qualify-journal-before-recover" => {
             configuration_argument(arguments).map(CommandLine::RecoverJournalBeforeCrash)
+        }
+        "qualify-snapshot-before-stage" => {
+            configuration_argument(arguments).map(CommandLine::StageSnapshotBeforeCrash)
+        }
+        "qualify-snapshot-before-recover" => {
+            configuration_argument(arguments).map(CommandLine::RecoverSnapshotBeforeCrash)
+        }
+        "qualify-snapshot-after-stage" => {
+            configuration_argument(arguments).map(CommandLine::StageSnapshotAfterCrash)
+        }
+        "qualify-snapshot-after-recover" => {
+            configuration_argument(arguments).map(CommandLine::RecoverSnapshotAfterCrash)
         }
         "qualify-outbox-stage" => {
             configuration_argument(arguments).map(CommandLine::StageOutboxCrash)
@@ -336,7 +364,7 @@ async fn serve(configuration: OsString) -> Result<ShutdownOutcome, DaemonError> 
 
 fn usage(executable: &OsStr) {
     write_error(&format!(
-        "usage: {} --version | serve --config <config.toml> | qualify-pty | qualify-blob-before-stage --config <config.toml> | qualify-blob-before-recover --config <config.toml> | qualify-blob-after-stage --config <config.toml> | qualify-blob-after-recover --config <config.toml> | qualify-journal-before-stage --config <config.toml> | qualify-journal-before-recover --config <config.toml> | qualify-outbox-stage --config <config.toml> | qualify-outbox-recover --config <config.toml>",
+        "usage: {} --version | serve --config <config.toml> | qualify-pty | qualify-blob-before-stage --config <config.toml> | qualify-blob-before-recover --config <config.toml> | qualify-blob-after-stage --config <config.toml> | qualify-blob-after-recover --config <config.toml> | qualify-journal-before-stage --config <config.toml> | qualify-journal-before-recover --config <config.toml> | qualify-snapshot-before-stage --config <config.toml> | qualify-snapshot-before-recover --config <config.toml> | qualify-snapshot-after-stage --config <config.toml> | qualify-snapshot-after-recover --config <config.toml> | qualify-outbox-stage --config <config.toml> | qualify-outbox-recover --config <config.toml>",
         std::path::Path::new(executable).display(),
     ));
 }

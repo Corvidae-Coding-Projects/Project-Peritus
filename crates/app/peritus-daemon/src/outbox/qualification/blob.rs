@@ -12,7 +12,7 @@ use peritus_types::{EventId, Sha256Digest};
 
 use crate::{DaemonConfig, DaemonError, DaemonErrorCode, DaemonRecovery};
 
-use super::{acquire_instance, journal_error, open_journal};
+use super::{acquire_instance, journal_error, open_journal, verify_empty_journal};
 
 const PAYLOAD: &[u8] = b"peritus/h1/blob-commit-qualification/v1\n";
 
@@ -212,17 +212,6 @@ fn open_store(
     .map_err(store_error)?;
     let store = ArtifactStore::open(store_config).map_err(store_error)?;
     Ok((store, digest, request))
-}
-
-fn verify_empty_journal(config: &DaemonConfig) -> Result<bool, DaemonError> {
-    let store_id = config.store_identity()?;
-    let _instance = acquire_instance(config, store_id)?;
-    let mut journal = open_journal(config, store_id)?;
-    let report = journal.integrity_scan().map_err(journal_error)?;
-    if report.event_count() != 0 || report.aggregate_count() != 0 || report.last_position() != 0 {
-        return Err(blob_error("artifact qualification changed the authoritative journal"));
-    }
-    Ok(true)
 }
 
 fn owner() -> ReferenceOwner {

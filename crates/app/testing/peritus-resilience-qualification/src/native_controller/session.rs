@@ -154,6 +154,7 @@ fn recovery_payload(
             "effect_bytes": recovered.effect_bytes,
             "artifact_sha256": recovered.artifact_sha256,
             "artifact_bytes": recovered.artifact_bytes,
+            "snapshot": recovered.snapshot,
             "committed_events": recovered.committed_events,
             "aggregate_heads": recovered.aggregate_heads,
             "external_effects": recovered.external_effects,
