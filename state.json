@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1069,
+  "next_comment_id": 1070,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-31T06:38:39.882517669Z",
+      "updated_at": "2026-08-31T10:48:24.859691326Z",
       "labels": [
         "qualification",
         "release"
@@ -1711,6 +1711,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzW4Bz1HkM6D4qCMSB5qsflLzM69I1YahhGcSXGa8DhA02g3WvfIxyVhC+VawQ+mysDj2FKKLqsdk9zp+J8ZcAA=="
+        },
+        "19dc0a69-7be2-448d-9eea-b58db06eaf83": {
+          "display_id": 1069,
+          "author": "6ME5",
+          "content": "H1 snapshot-manifest storage exhaustion is now a genuine production route, raising checked-in H1 coverage to 38/43. Candidate and rollback publication now share exact compensation: if manifest finalization fails after Git retention, the unpublished ref is released; cleanup failure leaves the workspace indeterminate. The staged public daemon fills a valid artifact quota, creates a real retained snapshot, requires quota rejection and ref compensation, then fresh recovery independently proves the ref absent, the admitted filler exact and referenced, zero temporary residue, and a healthy journal. Exact-current report: /home/doll/.local/state/peritus/qualification/h1/snapshot-disk-final.c32DUJ/report.json, SHA-256 728457cb2f05fbce8f520797780cde595141b634344bd6ca9117739e19ae1158, 1 passed/0 failed with six evidence files. Native and Windows-GNU strict Clippy, affected all-target/all-feature tests, public-binary regression, no-cheating Verus (git 4, workspace 10, daemon 5 obligations), strict rustdoc, ordinary API, architecture, docs, formatting, and diff hygiene all pass. Five H1 routes remain: two evidence-corruption controls and three disposable-VM reboot cases.",
+          "created_at": "2026-08-31T10:48:24.856940120Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIJu52FiAiGHeng4M8UJOOw/u9XGONaY4VmYwNiwwreED0KUA+yr5blTSSWQfYrlTJ6QzMDxEAioxPMH9SrG6CQ=="
         },
         "1a26a763-4e65-4271-a6fa-5c0661eaa492": {
           "display_id": 987,
@@ -10373,8 +10382,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-31T10:34:02.587306568Z",
+    "timestamp": "2026-08-31T10:48:24.859691326Z",
     "agent_id": "6ME5",
-    "agent_seq": 1268
+    "agent_seq": 1269
   }
 }
