@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1102,
+  "next_comment_id": 1103,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-31T23:35:30.481095125Z",
+      "updated_at": "2026-08-31T23:35:45.942733470Z",
       "labels": [
         "qualification",
         "release"
@@ -4487,6 +4487,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAf+nMz7sAtsg8DfiK85wFfcAYI7wR8wT3JuqhO+OYayL7PfuCOjl8R86Cf5gQmGU1gKP78jKkqBbLc+jO4iPIBA=="
+        },
+        "b4a0b742-56fc-4ce1-89b0-458c14e56726": {
+          "display_id": 1102,
+          "author": "6ME5",
+          "content": "Committed and pushed 76be0361 (fix(process): enforce sampled process ceilings). Root cause: macOS records process-group counts separately from unsupported full resource samples, but the owner only triggered limits through the full sampler; the later deadline therefore won classification. Startup and tick now enforce the already-recorded count immediately. Documented frozen pytorch-model-recovery yXN29am recurrences under TBF-022 and TBI-007 without changing benchmark inputs or scores. Verification: focused process-count regression; all 36 peritus-process tests; strict all-target/all-feature Clippy with -D warnings; rustfmt; diff check; cargo xtask all (79 packages, 3364 source files, 137 docs, 31 pinned actions).",
+          "created_at": "2026-08-31T23:35:45.939566656Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAnK1CrYYunVOtSMtwCGVFOODQORvd/mGzlNbEErjmXVGU3zrEuC0nVsi/YuFgnqUXD/47l/NJqnLC3qWVCuFYBg=="
         },
         "b57c2257-5a05-48de-86dd-024f193897d8": {
           "display_id": 714,
@@ -10674,8 +10683,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-31T23:35:30.481095125Z",
+    "timestamp": "2026-08-31T23:35:45.942733470Z",
     "agent_id": "6ME5",
-    "agent_seq": 1304
+    "agent_seq": 1305
   }
 }
