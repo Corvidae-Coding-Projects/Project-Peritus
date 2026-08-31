@@ -16,6 +16,7 @@ pub(super) const PATCH_BEFORE: &str = "h1.crash.patch.before";
 pub(super) const PATCH_AFTER_BEFORE_ACK: &str = "h1.crash.patch.after-before-ack";
 pub(super) const SNAPSHOT_BEFORE: &str = "h1.crash.snapshot.before";
 pub(super) const SNAPSHOT_AFTER_BEFORE_ACK: &str = "h1.crash.snapshot.after-before-ack";
+pub(super) const SNAPSHOT_CORRUPTION: &str = "h1.corruption.snapshot";
 pub(super) const PROMOTION_BEFORE: &str = "h1.crash.promotion.before";
 pub(super) const PROMOTION_AFTER_BEFORE_ACK: &str = "h1.crash.promotion.after-before-ack";
 pub(super) const PROJECTION_CORRUPTION: &str = "h1.corruption.projection";
@@ -36,6 +37,7 @@ pub(in crate::native_controller) enum ScenarioRoute {
     PatchAfterDurableCommitBeforeAck,
     SnapshotBeforeDurableCommit,
     SnapshotAfterDurableCommitBeforeAck,
+    SnapshotCorruption,
     PromotionBeforeDurableCommit,
     PromotionAfterDurableCommitBeforeAck,
     ProjectionCorruption,
@@ -71,16 +73,6 @@ impl ScenarioRoute {
                 FaultDocument::CommitCrash { boundary, timing },
             ) if boundary == "journal" && timing == "after-durable-commit-before-ack" => {
                 Some(Self::JournalAfterDurableCommitBeforeAck)
-            }
-            (BLOB_CORRUPTION, "quarantined-corruption", FaultDocument::Corruption { target })
-                if target == "blob" =>
-            {
-                Some(Self::BlobCorruption)
-            }
-            (JOURNAL_CORRUPTION, "failed-closed", FaultDocument::Corruption { target })
-                if target == "journal" =>
-            {
-                Some(Self::JournalCorruption)
             }
             (
                 LEASE_BEFORE,
@@ -158,6 +150,27 @@ impl ScenarioRoute {
             ) if boundary == "promotion" && timing == "after-durable-commit-before-ack" => {
                 Some(Self::PromotionAfterDurableCommitBeforeAck)
             }
+            _ => Self::from_corruption(scenario),
+        }
+    }
+
+    fn from_corruption(scenario: &ScenarioDocument) -> Option<Self> {
+        match (&*scenario.id, &*scenario.expected_recovery, &scenario.fault) {
+            (BLOB_CORRUPTION, "quarantined-corruption", FaultDocument::Corruption { target })
+                if target == "blob" =>
+            {
+                Some(Self::BlobCorruption)
+            }
+            (JOURNAL_CORRUPTION, "failed-closed", FaultDocument::Corruption { target })
+                if target == "journal" =>
+            {
+                Some(Self::JournalCorruption)
+            }
+            (
+                SNAPSHOT_CORRUPTION,
+                "quarantined-corruption",
+                FaultDocument::Corruption { target },
+            ) if target == "snapshot" => Some(Self::SnapshotCorruption),
             (PROJECTION_CORRUPTION, "rebuilt-projection", FaultDocument::Corruption { target })
                 if target == "projection" =>
             {
@@ -185,7 +198,7 @@ impl ScenarioRoute {
             | Self::SnapshotAfterDurableCommitBeforeAck
             | Self::PromotionAfterDurableCommitBeforeAck => "replayed-committed",
             Self::ProjectionCorruption => "rebuilt-projection",
-            Self::BlobCorruption => "quarantined-corruption",
+            Self::BlobCorruption | Self::SnapshotCorruption => "quarantined-corruption",
             Self::JournalCorruption => "failed-closed",
         }
     }
@@ -208,7 +221,8 @@ impl ScenarioRoute {
             | Self::PromotionBeforeDurableCommit
             | Self::PromotionAfterDurableCommitBeforeAck
             | Self::ProjectionCorruption
-            | Self::BlobCorruption => "verified",
+            | Self::BlobCorruption
+            | Self::SnapshotCorruption => "verified",
             Self::JournalAfterDurableCommitBeforeAck => "recovered-and-verified",
         }
     }
@@ -223,7 +237,7 @@ impl ScenarioRoute {
 
     pub(in crate::native_controller) const fn artifact_health(self) -> &'static str {
         match self {
-            Self::BlobCorruption => "divergence-detected",
+            Self::BlobCorruption | Self::SnapshotCorruption => "divergence-detected",
             _ => "verified",
         }
     }
@@ -232,12 +246,19 @@ impl ScenarioRoute {
         match self {
             Self::ProjectionCorruption => Some("projection"),
             Self::BlobCorruption => Some("blob"),
+            Self::SnapshotCorruption => Some("snapshot"),
             Self::JournalCorruption => Some("journal"),
             _ => None,
         }
     }
 
     pub(in crate::native_controller) const fn mutation_admitted(self) -> bool {
-        !matches!(self, Self::ProjectionCorruption | Self::JournalCorruption | Self::BlobCorruption)
+        !matches!(
+            self,
+            Self::ProjectionCorruption
+                | Self::JournalCorruption
+                | Self::BlobCorruption
+                | Self::SnapshotCorruption
+        )
     }
 }

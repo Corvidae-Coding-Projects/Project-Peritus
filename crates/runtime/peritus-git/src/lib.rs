@@ -36,7 +36,7 @@ pub use reconcile::{
 pub use repository::{GitRepository, RepositoryIdentity, RepositoryOptions};
 pub use snapshot::{
     CandidateRequest, CandidateSnapshot, CandidateTree, RestoreObservation, RestoreRequest,
-    SnapshotRef, SnapshotRequest,
+    SnapshotQuarantine, SnapshotRef, SnapshotRequest,
 };
 pub use status::{
     ChangeCode, EntryModes, StatusEntry, StatusKind, StatusObservation, SubmoduleState,

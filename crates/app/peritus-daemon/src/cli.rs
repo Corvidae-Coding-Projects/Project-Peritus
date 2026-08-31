@@ -9,6 +9,7 @@ mod patch;
 mod projection;
 mod promotion;
 mod snapshot;
+mod snapshot_corruption;
 mod usage;
 
 use std::ffi::OsString;
@@ -69,6 +70,12 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
         CommandLine::StageSnapshotAfterCrash(configuration) => snapshot::stage_after(configuration),
         CommandLine::RecoverSnapshotAfterCrash(configuration) => {
             snapshot::recover(configuration, true)
+        }
+        CommandLine::StageSnapshotCorruption(configuration) => {
+            snapshot_corruption::stage(configuration)
+        }
+        CommandLine::RecoverSnapshotCorruption(configuration) => {
+            snapshot_corruption::recover(configuration)
         }
         CommandLine::StageLeaseBeforeCrash(configuration) => lease::stage_before(configuration),
         CommandLine::RecoverLeaseBeforeCrash(configuration) => lease::recover(configuration, false),

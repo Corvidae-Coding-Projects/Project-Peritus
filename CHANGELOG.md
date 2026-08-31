@@ -14,12 +14,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 - Add the checked-in Rust `peritus-h1-controller` and an explicit focused diagnostic mode. Its
-  seventeen genuine routes cover both sides of journal submission, content-addressed blob publication,
+  eighteen genuine routes cover both sides of journal submission, content-addressed blob publication,
   retained Git snapshot publication, exclusive-lease persistence, and recoverable patch
   application, plus D1's atomic gate event/checkpoint commit and F0's campaign/pointer/approval
   promotion commit. They also cover active projection corruption with fresh-generation repair,
   committed journal-frame corruption with fail-closed startup before authority mutation, and
-  referenced blob corruption with durable quarantine and reference denial. The exact
+  referenced blob corruption with durable quarantine and reference denial, and retained Git
+  snapshot reference divergence with atomic movement out of the active namespace. The exact
   staged `peritusd` is killed before and after each corresponding durable commit. Recovery verifies
   the expected rollback or exact replay, retains all six evidence classes, and cleans its private
   state.
@@ -156,6 +157,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- Add a production Git snapshot quarantine operation that refuses healthy references, atomically
+  moves a divergent retained value out of the active namespace, preserves it for inspection, and
+  remains idempotent after restart; exercise it through the public daemon and
+  `h1.corruption.snapshot` (#31)
 - Make artifact-store startup durably contain cataloged content corruption: add a migrated
   integrity state, move divergent bytes out of the active namespace, retain their audit roots,
   deny reads and new references, and prove repeated restart safety through the public daemon and

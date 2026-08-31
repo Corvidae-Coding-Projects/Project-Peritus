@@ -191,6 +191,13 @@ the production artifact store, which must durably classify and quarantine the di
 retain the audit reference, and deny further reads or references. The controller independently
 checks the active and quarantine namespaces and the healthy journal.
 
+The snapshot-corruption route publishes a real synthetic commit, canonical manifest, and retained
+Git ref, then redirects only that ref to the baseline commit. A fresh process must detect the
+manifest/ref divergence and atomically move the observed value from the active namespace to the
+quarantine namespace. Repeating recovery must return the same containment observation. The
+controller independently checks the loose active and quarantine refs, unchanged manifest digest,
+and healthy journal.
+
 Fresh focused diagnostics retained passing one-case reports and six raw evidence files under
 `/home/doll/.local/state/peritus/qualification/h1/journal-before.YP5d5R` and
 `/home/doll/.local/state/peritus/qualification/h1/journal-after-ack.sCtlT9`. Both reports deliberately
@@ -212,8 +219,11 @@ projection-corruption report is retained under
 journal-corruption report is retained under
 `/home/doll/.local/state/peritus/qualification/h1/journal-corruption.8WRWr9`. The passing
 blob-corruption report is retained under
-`/home/doll/.local/state/peritus/qualification/h1/blob-corruption.InuR0D`. With these seventeen
-routes, the other 26 catalog routes remain fail-closed until their real component failpoints,
+`/home/doll/.local/state/peritus/qualification/h1/blob-corruption.InuR0D`. The passing
+snapshot-corruption report is retained under
+`/home/doll/.local/state/peritus/qualification/h1/snapshot-corruption.6sDQYS` with report SHA-256
+`0fa6e44e3e4e31a9dd10ee53c8e3217c248d55a09b182e327ebaf6813d63fc1a`. With these eighteen
+routes, the other 25 catalog routes remain fail-closed until their real component failpoints,
 controlled quota/storage effects, process controls, or disposable-VM reboot driver are connected.
 Therefore the full H1 production qualification is still pending.
 

@@ -14,6 +14,7 @@ mod process;
 mod projection;
 mod promotion;
 mod snapshot;
+mod snapshot_corruption;
 
 use peritus_approval::CredentialRegistrySnapshot;
 use peritus_types::RevisionNumber;
@@ -114,6 +115,7 @@ pub(super) fn inject(
         | ScenarioRoute::SnapshotAfterDurableCommitBeforeAck => {
             snapshot::inject(paths, runtime, route)
         }
+        ScenarioRoute::SnapshotCorruption => snapshot_corruption::inject(paths, runtime),
         ScenarioRoute::PromotionBeforeDurableCommit
         | ScenarioRoute::PromotionAfterDurableCommitBeforeAck => {
             promotion::inject(paths, runtime, route)
@@ -153,6 +155,7 @@ pub(super) fn recover(
         | ScenarioRoute::SnapshotAfterDurableCommitBeforeAck => {
             snapshot::recover(paths, runtime, injected, route)
         }
+        ScenarioRoute::SnapshotCorruption => snapshot_corruption::recover(paths, runtime, injected),
         ScenarioRoute::PromotionBeforeDurableCommit
         | ScenarioRoute::PromotionAfterDurableCommitBeforeAck => {
             promotion::recover(paths, runtime, injected, route)

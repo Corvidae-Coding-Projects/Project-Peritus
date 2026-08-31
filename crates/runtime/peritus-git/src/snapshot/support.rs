@@ -95,7 +95,7 @@ pub(super) fn verify_retained(
     }
 }
 
-fn observe_ref(
+pub(super) fn observe_ref(
     repository: &GitRepository,
     reference: &SnapshotRef,
     operation: Operation,
@@ -143,6 +143,14 @@ fn observe_ref(
 pub(super) fn snapshot_ref(workspace_id: WorkspaceId, snapshot_id: SnapshotId) -> SnapshotRef {
     SnapshotRef(format!(
         "refs/peritus/workspaces/{}/snapshots/{}",
+        identifier_hex(workspace_id.as_bytes()),
+        identifier_hex(snapshot_id.as_bytes())
+    ))
+}
+
+pub(super) fn quarantine_ref(workspace_id: WorkspaceId, snapshot_id: SnapshotId) -> SnapshotRef {
+    SnapshotRef(format!(
+        "refs/peritus/quarantine/workspaces/{}/snapshots/{}",
         identifier_hex(workspace_id.as_bytes()),
         identifier_hex(snapshot_id.as_bytes())
     ))

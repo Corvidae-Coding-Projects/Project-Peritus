@@ -23,9 +23,9 @@ The controller remains responsible for real daemon, storage, dependency, quota, 
 effects. The operator refuses a descriptor whose build digest differs from the exact staged
 candidate bytes.
 
-The checked-in `peritus-h1-controller` currently owns seventeen genuine routes across the journal,
+The checked-in `peritus-h1-controller` currently owns eighteen genuine routes across the journal,
 blob, retained Git snapshot, lease, patch, gate, and promotion commit boundaries, plus active
-projection repair and journal/blob corruption controls. For
+projection repair and journal/blob/snapshot corruption controls. For
 `h1.crash.journal.before`, the exact staged daemon builds a production append plan, publishes its
 checkpoint before submission, and is killed; recovery requires an integrity-checked journal with
 zero committed events, heads, outbox claims, or external effects. For
@@ -45,6 +45,11 @@ Both retained Git snapshot routes are real too. The before case holds a changed 
 ref or manifest. The after case publishes the deterministic synthetic commit and compare-and-swap
 ref through `peritus-git`; recovery decodes the canonical manifest and reopens the exact commit,
 tree, and ref while the controller independently checks the retained files.
+
+The snapshot-corruption route publishes the same production manifest and retained ref, redirects
+that ref to a different commit, and proves a fresh process refuses to reopen it. Recovery uses the
+production Git adapter to atomically remove the bad ref from active use, preserve its observed
+value under the quarantine namespace, and return the same result when repeated.
 
 Both lease routes use the real B1 lease reducer and journal commit adapter. The before case holds a
 move-only commit request without submitting it and requires a completely empty lease history after
@@ -119,6 +124,7 @@ The equivalent blob diagnostics are `h1.crash.blob.before` and
 The projection diagnostic is `h1.corruption.projection`.
 The journal diagnostic is `h1.corruption.journal`.
 The blob diagnostic is `h1.corruption.blob`.
+The snapshot diagnostic is `h1.corruption.snapshot`.
 
 ## Focused checks
 

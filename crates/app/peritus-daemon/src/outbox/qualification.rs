@@ -47,8 +47,8 @@ pub use self::promotion::{
 };
 use crate::{DaemonConfig, DaemonError, DaemonErrorCode, DaemonRecovery};
 pub use snapshot::{
-    recover_snapshot_after_crash, recover_snapshot_before_crash, stage_snapshot_after_crash,
-    stage_snapshot_before_crash,
+    recover_snapshot_after_crash, recover_snapshot_before_crash, recover_snapshot_corruption,
+    stage_snapshot_after_crash, stage_snapshot_before_crash, stage_snapshot_corruption,
 };
 
 const DESTINATION: &str = "peritus.admin.outbox-crash.v1";

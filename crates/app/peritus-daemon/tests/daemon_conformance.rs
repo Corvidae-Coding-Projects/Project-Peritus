@@ -13,7 +13,7 @@ use daemon_conformance_support::{
     blocker_for, gate_commit_crash_recovery, journal_before_crash_recovery,
     journal_corruption_recovery, lease_commit_crash_recovery, patch_commit_crash_recovery,
     projection_corruption_recovery, promotion_commit_crash_recovery, reachable_scenarios,
-    snapshot_commit_crash_recovery,
+    snapshot_commit_crash_recovery, snapshot_corruption_recovery,
 };
 
 #[test]
@@ -34,6 +34,11 @@ fn corrupt_referenced_artifact_is_quarantined_and_made_unavailable() {
 #[test]
 fn snapshot_commit_recovers_on_both_sides_of_retained_ref_publication() {
     snapshot_commit_crash_recovery().expect("real Git snapshot commit crash recovery");
+}
+
+#[test]
+fn corrupt_snapshot_reference_is_quarantined_before_reuse() {
+    snapshot_corruption_recovery().expect("real Git snapshot corruption containment");
 }
 
 #[test]

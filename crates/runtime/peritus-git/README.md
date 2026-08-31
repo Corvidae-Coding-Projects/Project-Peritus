@@ -25,6 +25,11 @@ After process restart, decode those bytes and pass the manifest to `reopen_workt
 and detached HEAD. Snapshot reopening revalidates repository identity, commit parent and tree, the
 canonical reference name, and the retained ref before recreating a typed handle.
 
+If the retained ref no longer matches that manifest, `quarantine_snapshot` can atomically move the
+observed divergent value from `refs/peritus/workspaces/...` to
+`refs/peritus/quarantine/workspaces/...`. It refuses healthy refs, preserves the divergent value
+for inspection, and returns the same observation when recovery repeats after a completed move.
+
 If linked-worktree creation completed but the caller crashed before persisting its registration
 manifest, `recover_existing_worktree` accepts the original checked `CreateWorktree` request and
 reconstructs a handle only after the existing destination, repository ownership, detached HEAD,

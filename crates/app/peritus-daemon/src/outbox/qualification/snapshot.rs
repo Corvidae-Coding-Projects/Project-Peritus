@@ -1,5 +1,6 @@
 //! Real Git snapshot recovery on both sides of retained-reference publication.
 
+mod corruption;
 mod git_command;
 
 use std::ffi::OsStr;
@@ -18,6 +19,8 @@ use crate::{DaemonConfig, DaemonError, DaemonErrorCode, DaemonRecovery};
 
 use super::verify_empty_journal;
 use git_command::{count_snapshot_refs, reference_value, run_git};
+
+pub use corruption::{recover_snapshot_corruption, stage_snapshot_corruption};
 
 const ROOT_NAME: &str = "snapshot-crash-qualification-v1";
 const INTENT_FILE: &str = "snapshot-intent-v1";

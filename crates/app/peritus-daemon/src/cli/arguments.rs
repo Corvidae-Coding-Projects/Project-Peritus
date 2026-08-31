@@ -20,6 +20,8 @@ pub(super) enum CommandLine {
     RecoverSnapshotBeforeCrash(OsString),
     StageSnapshotAfterCrash(OsString),
     RecoverSnapshotAfterCrash(OsString),
+    StageSnapshotCorruption(OsString),
+    RecoverSnapshotCorruption(OsString),
     StageLeaseBeforeCrash(OsString),
     RecoverLeaseBeforeCrash(OsString),
     StageLeaseAfterCrash(OsString),
@@ -79,6 +81,12 @@ pub(super) fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<Co
         }
         "qualify-snapshot-after-recover" => {
             configured(arguments, CommandLine::RecoverSnapshotAfterCrash)
+        }
+        "qualify-snapshot-corruption-stage" => {
+            configured(arguments, CommandLine::StageSnapshotCorruption)
+        }
+        "qualify-snapshot-corruption-recover" => {
+            configured(arguments, CommandLine::RecoverSnapshotCorruption)
         }
         "qualify-lease-before-stage" => configured(arguments, CommandLine::StageLeaseBeforeCrash),
         "qualify-lease-before-recover" => {
