@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1046,
+  "next_comment_id": 1047,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-31T02:50:18.212070947Z",
+      "updated_at": "2026-08-31T02:50:23.274451635Z",
       "labels": [
         "qualification",
         "release"
@@ -1886,6 +1886,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAGszWRx+Tqgb7A5Ur7qHgEvygbuF5rpD9Oq6GLStaJBKbn5BmKJxA10Vr3UOzPeIbFbLe1mzZY1tG10XwNgNHDg=="
+        },
+        "270e3ac0-bf4c-4944-b96c-4e40e0298d1c": {
+          "display_id": 1046,
+          "author": "6ME5",
+          "content": "Projection corruption is now a genuine H1 route. Startup no longer reuses a generation whose stored payload bytes disagree with its digest; it installs and verifies a fresh shadow generation while leaving the authoritative journal empty. Strict Clippy, affected crate tests, rustdoc, docs-check, architecture-check, public daemon subprocess conformance, and the full focused H1 operator diagnostic pass. Evidence: /home/doll/.local/state/peritus/qualification/h1/projection-corruption.78KmoW/report.json (1 passed, 0 failed, evidence SHA-256 599f9cf36097c91a811b353f06ecfe3c04fc33d43bc24346206aaae22b111c54).",
+          "created_at": "2026-08-31T02:50:23.271907770Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAseicD6H5LqYNJzjo3m062DY0ZJjIg5ASDdaewHIsxwT/SMnM2dtDBIy7G46qwQPuLOCg9YK7YszlOVOjfRWsBQ=="
         },
         "28c38d09-b63b-4027-8d66-e538ca4a5354": {
           "display_id": 666,
@@ -10170,8 +10179,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-31T02:50:18.212070947Z",
+    "timestamp": "2026-08-31T02:50:23.274451635Z",
     "agent_id": "6ME5",
-    "agent_seq": 1242
+    "agent_seq": 1243
   }
 }
