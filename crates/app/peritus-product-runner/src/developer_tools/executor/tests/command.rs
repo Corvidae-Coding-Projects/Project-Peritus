@@ -22,6 +22,11 @@ fn structured_commands_time_out_without_freezing_the_agent() {
     assert_eq!(result["success"].as_bool(), Some(false));
     assert_eq!(result["timed_out"].as_bool(), Some(true));
     assert_eq!(result["timeout_seconds"].as_u64(), Some(1));
+    assert!(
+        result["recovery_hint"]
+            .as_str()
+            .is_some_and(|value| value.contains("another bulk-transfer wrapper"))
+    );
 }
 
 #[test]
@@ -67,6 +72,7 @@ fn structured_commands_drain_and_bound_both_output_streams() {
     assert!(!command.is_error);
     let result: Value = serde_json::from_str(&wire(&command)).expect("command result JSON");
     assert_eq!(result["timed_out"].as_bool(), Some(false));
+    assert!(result["recovery_hint"].is_null());
     assert!(result["stdout"].as_str().is_some_and(|value| value.contains("[output truncated]")));
     assert!(result["stderr"].as_str().is_some_and(|value| value.contains("[output truncated]")));
     assert!(

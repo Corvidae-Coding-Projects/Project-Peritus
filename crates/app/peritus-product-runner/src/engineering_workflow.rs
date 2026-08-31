@@ -87,6 +87,19 @@ requested behavior.
    membership, or calculations at that earlier time; later backfills and recomputation remain
    possible. If no dated state can be recovered, report the evidence gap instead of presenting
    current state as historical fact.
+   When that historical state lives in a remote repository or data collection, inspect its
+   immutable manifest, index, or tree and the relevant object sizes before transferring bulk
+   history or a whole archive. Prefer targeted reads from the pinned state. Client-side sparse
+   patterns do not by themselves prove that the initial object transfer is bounded. After one bulk
+   acquisition times out or fails for size, do not retry the same collection through clone,
+   archive, or fetch variants unless new size or progress evidence shows the next operation fits;
+   switch to a materially bounded or resumable source strategy.
+   A pinned source revision proves which bytes were selected, not that a reconstructed metric has
+   the published aggregate's meaning. For a named leaderboard, report, or aggregate, find its dated
+   implementation or materialized table and preserve its exact membership, filtering, missing-data,
+   revision-joining, and aggregation rules. Do not substitute a similarly named source with
+   different aggregation or leave a provisional artifact unchanged after authoritative evidence
+   disproves it.
    Treat hard eligibility, compatibility, and placement constraints as evidence-positive. A missing
    source field does not prove that an option satisfies a required constraint, and must not be
    replaced with a permissive default unless an authoritative input explicitly defines that default.

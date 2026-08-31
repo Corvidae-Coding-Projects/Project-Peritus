@@ -2649,6 +2649,24 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   and reward 0 is retained. Native Peritus accepted the grounded-but-wrong artifact after nine
   requests, 88,041 input, 188,477 cached input, and 9,693 output tokens over 165.979 seconds. This
   directly validates the general historical-source rule and adds no leaderboard-specific behavior.
+- Corrected-adapter attempt `mteb-leaderboard__amJsaPs` exercised the new source-state rule but
+  exposed a separate acquisition failure. The writer first used the historical Scandinavian
+  Embedding Benchmark repository and wrote `jealk/TTC-L2V-supervised-2`; independent review
+  correctly rejected that provisional result for lacking an actual aggregate comparison. The
+  fixer then proved that source's aggregation differs from MTEB, pinned MTEB code revision
+  `9586697f82b6c80a8abd6eea8607495810df3e9e` and results revision
+  `71f6b6257025bbe06232352b86b09ab7bd7c904e` from August 29, 2025, and recovered the exact
+  28-task `MTEB(Scandinavian, v1)` definition and leaderboard computation. It nevertheless spent
+  three consecutive bulk attempts on the large results repository: a filtered clone reached its
+  nested 300-second deadline, a sparse clone consumed the full 600-second command deadline, and a
+  whole revision archive consumed another 600 seconds. A retryable malformed Codex response was
+  recovered automatically, but a fourth Git fetch was terminated when Harbor's unchanged
+  3,600-second agent deadline arrived. The later discovery of the repository's 6,141,873-byte
+  immutable `paths.json` index came too late to run the targeted calculation. Native Peritus never
+  accepted the candidate; Harbor still evaluated the remaining provisional file, passed path
+  presence, failed its value against `GritLM/GritLM-7B`, and retained reward 0. This is evidence for
+  manifest-first remote acquisition and semantic no-progress recovery, not for a model-name or
+  benchmark-specific answer rule.
 - Verification: a shared workflow regression requires the temporal-provenance rule to reach the
   architect, writer/fixer, and reviewer instruction surfaces. All 70 product-runner tests, strict
   Clippy, repository formatting, and the 134-document structural check pass. An unchanged focused

@@ -336,6 +336,11 @@ impl WorkspaceDeveloperTools {
             MAX_COMMAND_TIMEOUT_SECONDS,
         );
         let output = process::run(command, Duration::from_secs(timeout_seconds))?;
+        let recovery_hint = output.timed_out.then_some(
+            "Do not retry an equivalent command with a longer timeout or another bulk-transfer \
+             wrapper without new size or progress evidence. Preserve the task deadline and choose \
+             a materially bounded or resumable strategy.",
+        );
         let result = object(vec![
             ("success", Value::Bool(output.status.success() && !output.timed_out)),
             ("exit_code", output.status.code().map_or(Value::Null, Value::from)),
@@ -343,6 +348,10 @@ impl WorkspaceDeveloperTools {
             ("stderr", Value::String(output.stderr)),
             ("timed_out", Value::Bool(output.timed_out)),
             ("timeout_seconds", Value::from(timeout_seconds)),
+            (
+                "recovery_hint",
+                recovery_hint.map_or(Value::Null, |value| Value::String(value.to_owned())),
+            ),
         ]);
         Ok(result)
     }

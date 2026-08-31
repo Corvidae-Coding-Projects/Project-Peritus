@@ -211,6 +211,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Direct remote research through immutable manifest/index/tree and object-size preflight before
+  whole-repository, archive, or dataset transfer; after a timeout, return deterministic recovery
+  guidance against equivalent bulk wrappers without new evidence. Preserve the dated published
+  aggregate's exact semantics instead of substituting a similarly named source or leaving a
+  disproven provisional artifact in place (`TBF-010`, #31).
 - Synchronize the native process-tree cleanup conformance case on an explicit live-leaf marker and
   a subsequent production resource sample before cancellation. The case now exercises cleanup of
   a genuinely live descendant tree and cannot lose its descendant observation when a loaded hosted
