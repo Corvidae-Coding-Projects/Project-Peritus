@@ -4,6 +4,8 @@ use std::ffi::{OsStr, OsString};
 
 #[cfg(not(verus_only))]
 use crate::qualification::dependency::{DependencyFault, DependencyKind};
+#[cfg(not(verus_only))]
+use peritus_orchestrator::qualification::LifecyclePhase;
 
 pub(super) enum CommandLine {
     Version,
@@ -61,6 +63,16 @@ pub(super) enum CommandLine {
     },
     #[cfg(not(verus_only))]
     DependencyChild(DependencyKind),
+    #[cfg(not(verus_only))]
+    StageDaemonLifecycle {
+        phase: LifecyclePhase,
+        configuration: OsString,
+    },
+    #[cfg(not(verus_only))]
+    RecoverDaemonLifecycle {
+        phase: LifecyclePhase,
+        configuration: OsString,
+    },
     StageOutboxCrash(OsString),
     RecoverOutboxCrash(OsString),
 }
@@ -168,6 +180,16 @@ pub(super) fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<Co
         }
         #[cfg(not(verus_only))]
         "qualify-dependency-child" => dependency_child(arguments),
+        #[cfg(not(verus_only))]
+        "qualify-daemon-lifecycle-stage" => phase_configured(arguments, |phase, configuration| {
+            CommandLine::StageDaemonLifecycle { phase, configuration }
+        }),
+        #[cfg(not(verus_only))]
+        "qualify-daemon-lifecycle-recover" => {
+            phase_configured(arguments, |phase, configuration| {
+                CommandLine::RecoverDaemonLifecycle { phase, configuration }
+            })
+        }
         "qualify-outbox-stage" => configured(arguments, CommandLine::StageOutboxCrash),
         "qualify-outbox-recover" => configured(arguments, CommandLine::RecoverOutboxCrash),
         _ => None,
@@ -203,6 +225,15 @@ fn dependency_configured(
 fn dependency_child(arguments: &mut impl Iterator<Item = OsString>) -> Option<CommandLine> {
     let dependency = DependencyKind::parse(arguments.next()?.to_str()?)?;
     arguments.next().is_none().then_some(CommandLine::DependencyChild(dependency))
+}
+
+#[cfg(not(verus_only))]
+fn phase_configured(
+    arguments: &mut impl Iterator<Item = OsString>,
+    constructor: fn(LifecyclePhase, OsString) -> CommandLine,
+) -> Option<CommandLine> {
+    let phase = LifecyclePhase::parse(arguments.next()?.to_str()?)?;
+    configuration_argument(arguments).map(|configuration| constructor(phase, configuration))
 }
 
 fn configured(

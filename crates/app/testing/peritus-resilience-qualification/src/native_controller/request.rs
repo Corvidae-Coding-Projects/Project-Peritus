@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest as _, Sha256};
 
 use super::args::{ControllerPaths, lower_sha256};
-pub(super) use route::ScenarioRoute;
+pub(super) use route::{DaemonPhase, ScenarioRoute};
 
 const MAX_REQUEST_BYTES: usize = 512 * 1024;
 

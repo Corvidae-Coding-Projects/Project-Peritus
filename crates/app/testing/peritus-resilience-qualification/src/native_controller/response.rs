@@ -5,7 +5,7 @@ use std::io::Write as _;
 use serde::Serialize;
 
 use super::evidence::EvidenceDocument;
-use super::request::{BoundRequest, ScenarioRoute, Stage};
+use super::request::{BoundRequest, DaemonPhase, ScenarioRoute, Stage};
 
 #[derive(Serialize)]
 struct ResponseDocument<'a, T> {
@@ -244,7 +244,35 @@ const fn milestone_details(route: ScenarioRoute) -> (&'static str, &'static str,
         | ScenarioRoute::ProviderRetryExhaustion
         | ScenarioRoute::ToolRetryExhaustion
         | ScenarioRoute::WorkerRetryExhaustion => unreachable!(),
+        ScenarioRoute::DaemonLifecycle(phase) => daemon_milestone_details(phase),
     }
+}
+
+const fn daemon_milestone_details(
+    phase: DaemonPhase,
+) -> (&'static str, &'static str, &'static str) {
+    let armed = match phase {
+        DaemonPhase::WriterPending => "durable E0 writer-pending checkpoint committed",
+        DaemonPhase::WriterActive => "durable E0 writer-active ownership committed",
+        DaemonPhase::GatesPending => "durable E0 gates-pending checkpoint committed",
+        DaemonPhase::GatesActive => "durable E0 gates-active ownership committed",
+        DaemonPhase::ReviewPending => "durable E0 review-pending checkpoint committed",
+        DaemonPhase::ReviewActive => "durable E0 review-active ownership committed",
+        DaemonPhase::FixerPending => "durable E0 fixer-pending checkpoint committed",
+        DaemonPhase::FixerActive => "durable E0 fixer-active ownership committed",
+        DaemonPhase::RevisionAdvancing => "durable E0 revision-advancing checkpoint committed",
+        DaemonPhase::EvaluatingAcceptance => {
+            "durable E0 evaluating-acceptance checkpoint committed"
+        }
+        DaemonPhase::KernelAcceptancePending => {
+            "durable E0 kernel-acceptance-pending checkpoint committed"
+        }
+    };
+    (
+        armed,
+        "controller killed the staged peritusd process at the named durable phase",
+        "fresh peritusd replayed the exact E0 state and authoritative ownership",
+    )
 }
 
 const fn blob_milestone_details(

@@ -23,10 +23,13 @@ The controller remains responsible for real daemon, storage, dependency, quota, 
 effects. The operator refuses a descriptor whose build digest differs from the exact staged
 candidate bytes.
 
-The checked-in `peritus-h1-controller` currently owns 25 genuine routes across the journal,
+The checked-in `peritus-h1-controller` currently owns 36 genuine routes across the journal,
 blob, retained Git snapshot, lease, patch, gate, and promotion commit boundaries, plus active
 projection repair, journal/blob/snapshot corruption controls, and provider/tool/worker dependency
-failure. For
+failure. It also owns all eleven active E0 lifecycle phases. Each lifecycle case builds the shortest
+legal production reducer prefix, commits every command and state checkpoint through C0, kills the
+exact staged `peritusd`, and requires a fresh process to replay byte-identical state and
+authoritative ownership. For
 `h1.crash.journal.before`, the exact staged daemon builds a production append plan, publishes its
 checkpoint before submission, and is killed; recovery requires an integrity-checked journal with
 zero committed events, heads, outbox claims, or external effects. For
@@ -146,6 +149,10 @@ The dependency-death diagnostics are `h1.death.provider`, `h1.death.tool`, and
 `h1.death.worker`. The exhaustion diagnostics are `h1.retry-exhaustion.provider`,
 `h1.retry-exhaustion.tool`, and `h1.retry-exhaustion.worker`.
 The artifact quota diagnostic is `h1.disk-full.blob-finalize`.
+The daemon lifecycle diagnostics use the `h1.daemon-kill.` prefix followed by `writer-pending`,
+`writer-active`, `gates-pending`, `gates-active`, `review-pending`, `review-active`,
+`fixer-pending`, `fixer-active`, `revision-advancing`, `evaluating-acceptance`, or
+`kernel-acceptance-pending`.
 
 ## Focused checks
 

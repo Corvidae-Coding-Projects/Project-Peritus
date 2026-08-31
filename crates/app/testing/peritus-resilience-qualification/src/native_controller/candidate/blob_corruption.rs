@@ -123,6 +123,7 @@ pub(super) fn recover(
         promotion: None,
         projection: None,
         dependency: None,
+        lifecycle: None,
         elapsed_millis: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
     })
 }

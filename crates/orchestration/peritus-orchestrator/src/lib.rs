@@ -20,6 +20,8 @@ mod phase;
 #[cfg(not(verus_only))]
 mod product;
 mod projection;
+#[cfg(not(verus_only))]
+pub mod qualification;
 pub(crate) mod reducer;
 mod replay;
 pub mod runtime;

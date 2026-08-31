@@ -3,6 +3,8 @@
 mod arguments;
 mod blob_corruption;
 #[cfg(not(verus_only))]
+mod daemon_lifecycle;
+#[cfg(not(verus_only))]
 mod dependency;
 mod disk;
 mod gate;
@@ -124,6 +126,14 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
         }
         #[cfg(not(verus_only))]
         CommandLine::DependencyChild(dependency) => dependency::child(dependency),
+        #[cfg(not(verus_only))]
+        CommandLine::StageDaemonLifecycle { phase, configuration } => {
+            daemon_lifecycle::stage(configuration, phase)
+        }
+        #[cfg(not(verus_only))]
+        CommandLine::RecoverDaemonLifecycle { phase, configuration } => {
+            daemon_lifecycle::recover(configuration, phase)
+        }
         CommandLine::StageOutboxCrash(configuration) => stage_outbox(configuration),
         CommandLine::RecoverOutboxCrash(configuration) => recover_outbox(configuration),
     }

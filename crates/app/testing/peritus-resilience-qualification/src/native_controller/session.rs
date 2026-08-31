@@ -149,6 +149,18 @@ struct RecoveryAccounting {
 fn recovery_accounting(
     recovered: &RecoveredCandidate,
 ) -> Result<RecoveryAccounting, Box<dyn std::error::Error>> {
+    if let Some(lifecycle) = &recovered.lifecycle {
+        if !lifecycle.verification.replay_exact || !lifecycle.verification.ownership_reconciled {
+            return Err("daemon lifecycle replay did not reconcile authoritative ownership".into());
+        }
+        let events = u32::try_from(lifecycle.committed_events)
+            .map_err(|_| "daemon lifecycle event count exceeds the H1 response range")?;
+        return Ok(RecoveryAccounting {
+            ownership: ownership(1, 1, 0),
+            retries: retries(None, 0)?,
+            events,
+        });
+    }
     let Some(dependency) = &recovered.dependency else {
         return Ok(RecoveryAccounting {
             ownership: ownership(0, 0, 0),

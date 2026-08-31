@@ -79,6 +79,7 @@ pub(super) fn inject(
     })
 }
 
+#[allow(clippy::too_many_lines, reason = "complete dependency replay validation stays contiguous")]
 pub(super) fn recover(
     paths: &ControllerPaths,
     runtime: &RuntimePaths,
@@ -184,6 +185,7 @@ pub(super) fn recover(
             exhausted: recovered.state == RecoveredWorkState::Exhausted,
             ownership_reconciled: recovered.ownership_reconciled,
         }),
+        lifecycle: None,
         elapsed_millis: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
     })
 }

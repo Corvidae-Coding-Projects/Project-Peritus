@@ -215,6 +215,15 @@ catalog quota race, and exercises the store's real rollback path. Fresh-process 
 the rejected object and metadata to remain absent, the admitted referenced object to verify, used
 bytes to equal the quota, the temporary namespace to be empty, and the journal to remain healthy.
 
+All eleven daemon-lifecycle routes use reducer-produced production E0 states and the ordinary C0
+durability adapter. The staged daemon commits the shortest legal prefix ending at the requested
+writer, gate, review, fixer, revision, evaluation, or kernel-acceptance phase, publishes a bounded
+checkpoint, and is killed by the external controller. A fresh staged process loads every canonical
+event and the installed state frame, replays the prefix, and requires exact equality with the
+expected state, phase, state digest, event count, aggregate head, active-child set, open handoff,
+checked fixer proposal, and B2 certificate where applicable. This qualifies actual process death
+and restart without pretending that an idle restart reached an active lifecycle checkpoint.
+
 Fresh focused diagnostics retained passing one-case reports and six raw evidence files under
 `/home/doll/.local/state/peritus/qualification/h1/journal-before.YP5d5R` and
 `/home/doll/.local/state/peritus/qualification/h1/journal-after-ack.sCtlT9`. Both reports deliberately
@@ -251,9 +260,23 @@ digests, in provider/tool/worker death then provider/tool/worker exhaustion orde
 `ff76987c43362cd7bc6f788cb9c4cf59dd007f2790aad6fe41ca5dfc834e9c25`. The passing
 blob-finalization quota report and six raw evidence files are retained under
 `/home/doll/.local/state/peritus/qualification/h1/blob-finalize-disk.fifreA` with report SHA-256
-`0f114d8b503be7259cae2ff3a8666dec1094d8ad257867a3ebee748b57be1f19`. With these 25 routes, the
-other 18 catalog routes remain fail-closed until their real controlled storage effects, daemon
-process controls, or disposable-VM reboot driver are connected.
+`0f114d8b503be7259cae2ff3a8666dec1094d8ad257867a3ebee748b57be1f19`. The eleven passing daemon
+lifecycle reports are retained under the
+`/home/doll/.local/state/peritus/qualification/h1/daemon-<phase>.*` directories. In catalog order,
+their report SHA-256 digests are
+`f0e0d97e9f551f91a27c672346d2cfb99582d900c3b36fd6c70e3fe9194de560`,
+`3d8035f263731deb2c01a4c0bd25a3a128a3880b1a43e56255f74ccbfb7fbeff`,
+`718babc3551168ceb665baa0e468e1f7749a305a74850c6f202026b7d5134360`,
+`b8db5b2d1866f798ac79825aee23de7dd8313b126dc11500ed39ccbde139e81e`,
+`4e5817d7376f3549a1cc7093bcaadb230d4bdb0305361bec40f946bf68ca6848`,
+`b272d1101269325531895078f32b0470fa2559f14a74fd2950725a0941debc5e`,
+`ba020df425665f6286a51d4eec957f16c758d4c3de95dc47c99f68b2366e9031`,
+`bc13bd945de5b8427ff3e38ece1f2e523d2ff20fc0514fa4d53c325db0341a7e`,
+`32c5e61d0652f751c0ddb899bb4d5e50d9296250e4385134d65923e1c0e86e21`,
+`5f85bbb771fd0deb2dd7d7678cc5a9112b0cb8e7c2161aa88f3a68ab8de02a0d`, and
+`94a2ffd1bf260b0977f256d14a8d9f19391ced5f819f290c1d6aa0f582fac418`.
+With these 36 routes, the other seven catalog routes remain fail-closed until their real controlled
+storage effects, corruption controls, or disposable-VM reboot driver are connected.
 Therefore the full H1 production qualification is still pending.
 
 The release integration owner must:

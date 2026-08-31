@@ -74,7 +74,7 @@ systems and retains each report plus raw evidence. Its macOS and Windows sandbox
 actual Seatbelt and AppContainer/Job Object host probes; hosted results remain evidence only after
 the corresponding revision finishes successfully.
 
-H1 now has 25 checked-in production controller routes. Focused native runs against freshly
+H1 now has 36 checked-in production controller routes. Focused native runs against freshly
 built binaries passed both sides of the journal, blob, retained Git snapshot, exclusive-lease,
 patch, D1 gate, and F0 campaign/pointer promotion commits. A projection-corruption route also
 proves that startup rejects corrupt active bytes and atomically installs a fresh verified
@@ -90,13 +90,16 @@ fresh scheduler replay either requeues the exact owned work after one dependency
 explicit exhausted non-success after consuming the configured retry ceiling. The artifact-finalize
 disk route also drives two real writers through one durable logical quota, proves the losing
 finalization rolls its already-published bytes back, and verifies the admitted artifact after a
-fresh process opens the store. The staged daemon was
+fresh process opens the store. All eleven E0 lifecycle routes now commit the shortest legal
+writer/gate/reviewer/fixer/acceptance reducer prefix through C0, kill the staged `peritusd` at the
+named durable phase, and require a fresh process to reproduce the exact state, event count,
+aggregate head, child ownership, handoff, proposal, or B2 certificate. The staged daemon was also
 killed with checked work still unpublished, and again after each corresponding durable commit.
-Recovery proved rollback for the before cases and exact replay for the after cases, including lease projection
-identity, exact patch postimage bytes, complete gate successor state, and all-or-nothing campaign,
-production-pointer, and approve-once state. This is useful evidence, not an H1 readiness claim:
-the remaining 18 catalog routes still need genuine storage controls, daemon-process controls, and
-disposable-VM controls.
+Recovery proved rollback for the before cases and exact replay for the after cases, including lease
+projection identity, exact patch postimage bytes, complete gate successor state, and all-or-nothing
+campaign, production-pointer, and approve-once state. This is useful evidence, not an H1 readiness
+claim: the remaining seven catalog routes are journal/snapshot storage exhaustion, acceptance and
+promotion evidence corruption, and three disposable-VM reboot cases.
 
 H0 also has a Rust-owned exact-candidate preparer and a three-host native workflow. The preparer
 derives the common candidate identity from committed source, binds the controller and native host

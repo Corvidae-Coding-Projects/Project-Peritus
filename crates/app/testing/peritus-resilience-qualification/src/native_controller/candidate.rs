@@ -3,6 +3,7 @@
 mod blob;
 mod blob_corruption;
 mod config;
+mod daemon_lifecycle;
 mod dependency;
 mod disk;
 mod gate;
@@ -28,9 +29,11 @@ use super::args::ControllerPaths;
 use super::request::ScenarioRoute;
 use config::{bytes_sha256, create_private_directory, render_configuration, write_new};
 pub(super) use observation::{
-    DependencyObservation, GateObservation, InjectedCandidate, LeaseObservation, PatchObservation,
-    ProjectionCorruptionCheckpoint, ProjectionRepairObservation, PromotionCheckpoint,
-    PromotionObservation, RecoveredCandidate, SnapshotObservation,
+    DaemonLifecycleCheckpointTruth, DaemonLifecycleObservation, DaemonLifecycleOwnership,
+    DaemonLifecycleVerification, DependencyObservation, GateObservation, InjectedCandidate,
+    LeaseObservation, PatchObservation, ProjectionCorruptionCheckpoint,
+    ProjectionRepairObservation, PromotionCheckpoint, PromotionObservation, RecoveredCandidate,
+    SnapshotObservation,
 };
 use process::{bounded_command, one_line};
 
@@ -134,6 +137,7 @@ pub(super) fn inject(
         | ScenarioRoute::WorkerRetryExhaustion => {
             dependency::inject(paths, runtime, route, dependency_retry_limit)
         }
+        ScenarioRoute::DaemonLifecycle(_) => daemon_lifecycle::inject(paths, runtime, route),
     }
 }
 
@@ -185,6 +189,9 @@ pub(super) fn recover(
         | ScenarioRoute::ToolRetryExhaustion
         | ScenarioRoute::WorkerRetryExhaustion => {
             dependency::recover(paths, runtime, injected, route, dependency_retry_limit)
+        }
+        ScenarioRoute::DaemonLifecycle(_) => {
+            daemon_lifecycle::recover(paths, runtime, injected, route)
         }
     }
 }

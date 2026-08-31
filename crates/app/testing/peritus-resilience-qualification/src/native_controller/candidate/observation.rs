@@ -44,7 +44,38 @@ pub(in crate::native_controller) struct RecoveredCandidate {
     pub(in crate::native_controller) promotion: Option<PromotionObservation>,
     pub(in crate::native_controller) projection: Option<ProjectionRepairObservation>,
     pub(in crate::native_controller) dependency: Option<DependencyObservation>,
+    pub(in crate::native_controller) lifecycle: Option<DaemonLifecycleObservation>,
     pub(in crate::native_controller) elapsed_millis: u64,
+}
+
+#[derive(Serialize)]
+pub(in crate::native_controller) struct DaemonLifecycleObservation {
+    pub(in crate::native_controller) phase: String,
+    pub(in crate::native_controller) state_sha256: String,
+    pub(in crate::native_controller) committed_events: u64,
+    pub(in crate::native_controller) aggregate_heads: u64,
+    pub(in crate::native_controller) ownership: DaemonLifecycleOwnership,
+    pub(in crate::native_controller) checkpoint: DaemonLifecycleCheckpointTruth,
+    pub(in crate::native_controller) verification: DaemonLifecycleVerification,
+}
+
+#[derive(Serialize)]
+pub(in crate::native_controller) struct DaemonLifecycleOwnership {
+    pub(in crate::native_controller) active_children: u16,
+    pub(in crate::native_controller) pending_directive: bool,
+    pub(in crate::native_controller) open_handoff: bool,
+}
+
+#[derive(Serialize)]
+pub(in crate::native_controller) struct DaemonLifecycleCheckpointTruth {
+    pub(in crate::native_controller) proposed_candidate: bool,
+    pub(in crate::native_controller) acceptance_certificate: bool,
+}
+
+#[derive(Serialize)]
+pub(in crate::native_controller) struct DaemonLifecycleVerification {
+    pub(in crate::native_controller) replay_exact: bool,
+    pub(in crate::native_controller) ownership_reconciled: bool,
 }
 
 #[derive(Serialize)]

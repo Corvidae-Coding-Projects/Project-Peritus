@@ -1,6 +1,6 @@
 use super::route::{
     BLOB_AFTER_BEFORE_ACK, BLOB_BEFORE, BLOB_CORRUPTION, BLOB_FINALIZE_DISK_EXHAUSTION,
-    GATE_AFTER_BEFORE_ACK, GATE_BEFORE, JOURNAL_AFTER_BEFORE_ACK, JOURNAL_BEFORE,
+    DaemonPhase, GATE_AFTER_BEFORE_ACK, GATE_BEFORE, JOURNAL_AFTER_BEFORE_ACK, JOURNAL_BEFORE,
     JOURNAL_CORRUPTION, LEASE_AFTER_BEFORE_ACK, LEASE_BEFORE, PATCH_AFTER_BEFORE_ACK, PATCH_BEFORE,
     PROJECTION_CORRUPTION, PROMOTION_AFTER_BEFORE_ACK, PROMOTION_BEFORE, PROVIDER_DEATH,
     PROVIDER_RETRY_EXHAUSTION, SNAPSHOT_AFTER_BEFORE_ACK, SNAPSHOT_BEFORE, SNAPSHOT_CORRUPTION,
@@ -9,7 +9,7 @@ use super::route::{
 use super::{FaultDocument, ScenarioDocument};
 
 #[test]
-fn the_twenty_four_process_and_dependency_routes_are_admitted() {
+fn the_process_and_dependency_routes_are_admitted() {
     let cases = [
         (JOURNAL_BEFORE, "journal", ScenarioRoute::JournalBeforeDurableCommit),
         (BLOB_BEFORE, "blob", ScenarioRoute::BlobBeforeDurableCommit),
@@ -110,6 +110,36 @@ fn the_twenty_four_process_and_dependency_routes_are_admitted() {
         "rolled-back-uncommitted",
     );
     assert_eq!(ScenarioRoute::from_scenario(&unsupported), None);
+}
+
+#[test]
+fn all_eleven_daemon_lifecycle_routes_require_exact_catalog_identity() {
+    for (phase, expected) in [
+        ("writer-pending", DaemonPhase::WriterPending),
+        ("writer-active", DaemonPhase::WriterActive),
+        ("gates-pending", DaemonPhase::GatesPending),
+        ("gates-active", DaemonPhase::GatesActive),
+        ("review-pending", DaemonPhase::ReviewPending),
+        ("review-active", DaemonPhase::ReviewActive),
+        ("fixer-pending", DaemonPhase::FixerPending),
+        ("fixer-active", DaemonPhase::FixerActive),
+        ("revision-advancing", DaemonPhase::RevisionAdvancing),
+        ("evaluating-acceptance", DaemonPhase::EvaluatingAcceptance),
+        ("kernel-acceptance-pending", DaemonPhase::KernelAcceptancePending),
+    ] {
+        let scenario = ScenarioDocument {
+            id: format!("h1.daemon-kill.{phase}"),
+            title: "daemon lifecycle kill".to_owned(),
+            fault: FaultDocument::DaemonKill { phase: phase.to_owned() },
+            expected_recovery: "reconciled-owned-work".to_owned(),
+        };
+        assert_eq!(
+            ScenarioRoute::from_scenario(&scenario),
+            Some(ScenarioRoute::DaemonLifecycle(expected))
+        );
+        let wrong_id = ScenarioDocument { id: "h1.daemon-kill.wrong".to_owned(), ..scenario };
+        assert_eq!(ScenarioRoute::from_scenario(&wrong_id), None);
+    }
 }
 
 #[test]
