@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1073,
+  "next_comment_id": 1074,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-31T11:46:16.268688777Z",
+      "updated_at": "2026-08-31T11:55:34.265181781Z",
       "labels": [
         "qualification",
         "release"
@@ -3808,6 +3808,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAGU4p4OvJILJNU6M7O9/oCX7IIcepNuUd5xMlZjTwWR2d9oZwpb5f0mL0k1xDh0Hgyy5AcPWjdGlFxt/5NKcqAA=="
+        },
+        "97576de0-641c-4866-a778-816c5502c213": {
+          "display_id": 1073,
+          "author": "6ME5",
+          "content": "Completed H1 route 40/43 in signed commit 3cf6bc6b: real F0 campaign/pointer/approve-once activation publishes both production directives, corrupt harness-activation evidence is durably quarantined, and fresh recovery preserves the exact 16-event/four-head journal and promoted pointer. Fixed F0 publication bindings so directives carry the exact RevisionTuple and evidence derives the complete artifact set from the producing journal batch. Retained final diagnostic: /home/doll/.local/state/peritus/qualification/h1/promotion-evidence-final.vHYIJy/report.json, SHA-256 986e49e5af24ecfd736af315c07c20a0d3994c702186db1d377a0b7507710feb. Focused tests, native and Windows strict Clippy, rustdoc, no-cheating Verus, fmt, and xtask all passed.",
+          "created_at": "2026-08-31T11:55:34.261937696Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAiR1uPQ74dmIb9pVlmYP3FIEPYl5rQziXqTugel9B4QUpToqxFNB4/scB7PNKAXC3vYJ98ybhYtzBr4O6ZJoLCg=="
         },
         "978d765d-833c-43ed-aad3-2cf7252ffc2a": {
           "display_id": 543,
@@ -10409,8 +10418,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-31T11:46:16.268688777Z",
+    "timestamp": "2026-08-31T11:55:34.265181781Z",
     "agent_id": "6ME5",
-    "agent_seq": 1272
+    "agent_seq": 1273
   }
 }
