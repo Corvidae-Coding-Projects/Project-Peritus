@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1054,
+  "next_comment_id": 1055,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-31T03:46:38.651298707Z",
+      "updated_at": "2026-08-31T03:46:43.820257400Z",
       "labels": [
         "qualification",
         "release"
@@ -4604,6 +4604,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAO4U24+Ci/ra2R0Z8JgIOJQpoTSUa2dF/8xijzgTujBGasQhogrncP44HN/t1ZzGgojJVOFct/vA8T/f+R4jvCw=="
+        },
+        "d33d9fdf-e398-4ea0-a874-5807a1c75050": {
+          "display_id": 1054,
+          "author": "6ME5",
+          "content": "Gate A 33354674575 failed only ordinary-api-check because journal_corruption.rs used rusqlite params! inside a formal-boundary file. Replaced the macro/import with a typed one-element parameter array. Local cargo +1.97.1 run --locked -p xtask -- ordinary-api-check passes (2665 files, 12382 entry points); focused daemon build/test and fmt/diff checks pass.",
+          "created_at": "2026-08-31T03:46:43.817740153Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABApdZStd5quJ9ZuWKSFdlWWOOJPQygxpNSPotvdhXEdtgMoryxJYSOTYiZY8tm8cPcj0H5SxonFfGH/Ze2cZBuAw=="
         },
         "d364db9f-b25f-429d-84cc-f96d9b5fa9b6": {
           "display_id": 614,
@@ -10242,8 +10251,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-31T03:46:38.651298707Z",
+    "timestamp": "2026-08-31T03:46:43.820257400Z",
     "agent_id": "6ME5",
-    "agent_seq": 1250
+    "agent_seq": 1251
   }
 }
