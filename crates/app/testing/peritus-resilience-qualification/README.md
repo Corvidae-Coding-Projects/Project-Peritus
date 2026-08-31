@@ -23,8 +23,8 @@ The controller remains responsible for real daemon, storage, dependency, quota, 
 effects. The operator refuses a descriptor whose build digest differs from the exact staged
 candidate bytes.
 
-The checked-in `peritus-h1-controller` currently owns ten genuine crash routes across the journal,
-blob, retained Git snapshot, lease, and patch commit boundaries. For
+The checked-in `peritus-h1-controller` currently owns twelve genuine crash routes across the
+journal, blob, retained Git snapshot, lease, patch, and gate commit boundaries. For
 `h1.crash.journal.before`, the exact staged daemon builds a production append plan, publishes its
 checkpoint before submission, and is killed; recovery requires an integrity-checked journal with
 zero committed events, heads, outbox claims, or external effects. For
@@ -56,6 +56,12 @@ The before case holds the checked plan without creating transaction metadata or 
 after case retains the exact applied receipt while a fresh process and the controller independently
 re-hash the postimage and require an empty transaction directory.
 
+Both gate routes use a real contract-bound D1 `GatePlan`, accepted start transition, and C0 commit
+adapter. The before case retains the accepted transition only in the killed process. The after case
+atomically commits its gate event and complete state checkpoint. Fresh recovery rebuilds the exact
+successor from the journal and independently checks the plan, semantic-state, checkpoint, revision,
+and producing-position digests.
+
 Use the explicit diagnostic option to exercise that route without presenting a one-case report as
 production readiness:
 
@@ -83,7 +89,8 @@ The equivalent blob diagnostics are `h1.crash.blob.before` and
 `h1.crash.blob.after-before-ack`. The snapshot diagnostics are `h1.crash.snapshot.before` and
 `h1.crash.snapshot.after-before-ack`. The lease diagnostics are `h1.crash.lease.before` and
 `h1.crash.lease.after-before-ack`. The patch diagnostics are `h1.crash.patch.before` and
-`h1.crash.patch.after-before-ack`.
+`h1.crash.patch.after-before-ack`. The gate diagnostics are `h1.crash.gate.before` and
+`h1.crash.gate.after-before-ack`.
 
 ## Focused checks
 

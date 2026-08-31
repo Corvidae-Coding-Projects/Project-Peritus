@@ -1,6 +1,7 @@
 //! Process-facing command-line composition for `peritusd`.
 
 mod arguments;
+mod gate;
 mod lease;
 mod patch;
 mod snapshot;
@@ -63,6 +64,10 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
         CommandLine::RecoverPatchBeforeCrash(configuration) => patch::recover(configuration, false),
         CommandLine::StagePatchAfterCrash(configuration) => patch::stage_after(configuration),
         CommandLine::RecoverPatchAfterCrash(configuration) => patch::recover(configuration, true),
+        CommandLine::StageGateBeforeCrash(configuration) => gate::stage_before(configuration),
+        CommandLine::RecoverGateBeforeCrash(configuration) => gate::recover(configuration, false),
+        CommandLine::StageGateAfterCrash(configuration) => gate::stage_after(configuration),
+        CommandLine::RecoverGateAfterCrash(configuration) => gate::recover(configuration, true),
         CommandLine::StageOutboxCrash(configuration) => stage_outbox(configuration),
         CommandLine::RecoverOutboxCrash(configuration) => recover_outbox(configuration),
     }

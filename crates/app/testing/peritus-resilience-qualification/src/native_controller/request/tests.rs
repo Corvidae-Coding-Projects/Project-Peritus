@@ -1,11 +1,12 @@
 use super::{
-    BLOB_AFTER_BEFORE_ACK, BLOB_BEFORE, CommitRoute, FaultDocument, JOURNAL_AFTER_BEFORE_ACK,
-    JOURNAL_BEFORE, LEASE_AFTER_BEFORE_ACK, LEASE_BEFORE, PATCH_AFTER_BEFORE_ACK, PATCH_BEFORE,
-    SNAPSHOT_AFTER_BEFORE_ACK, SNAPSHOT_BEFORE, ScenarioDocument,
+    BLOB_AFTER_BEFORE_ACK, BLOB_BEFORE, CommitRoute, FaultDocument, GATE_AFTER_BEFORE_ACK,
+    GATE_BEFORE, JOURNAL_AFTER_BEFORE_ACK, JOURNAL_BEFORE, LEASE_AFTER_BEFORE_ACK, LEASE_BEFORE,
+    PATCH_AFTER_BEFORE_ACK, PATCH_BEFORE, SNAPSHOT_AFTER_BEFORE_ACK, SNAPSHOT_BEFORE,
+    ScenarioDocument,
 };
 
 #[test]
-fn only_the_ten_real_commit_routes_are_admitted() {
+fn only_the_twelve_real_commit_routes_are_admitted() {
     let before =
         scenario(JOURNAL_BEFORE, "journal", "before-durable-commit", "rolled-back-uncommitted");
     let after = scenario(
@@ -38,9 +39,17 @@ fn only_the_ten_real_commit_routes_are_admitted() {
         "after-durable-commit-before-ack",
         "replayed-committed",
     );
-    let unsupported = scenario(
-        "h1.crash.gate.before",
+    let gate_before =
+        scenario(GATE_BEFORE, "gate", "before-durable-commit", "rolled-back-uncommitted");
+    let gate_after = scenario(
+        GATE_AFTER_BEFORE_ACK,
         "gate",
+        "after-durable-commit-before-ack",
+        "replayed-committed",
+    );
+    let unsupported = scenario(
+        "h1.crash.promotion.before",
+        "promotion",
         "before-durable-commit",
         "rolled-back-uncommitted",
     );
@@ -80,6 +89,14 @@ fn only_the_ten_real_commit_routes_are_admitted() {
     assert_eq!(
         CommitRoute::from_scenario(&patch_after),
         Some(CommitRoute::PatchAfterDurableCommitBeforeAck)
+    );
+    assert_eq!(
+        CommitRoute::from_scenario(&gate_before),
+        Some(CommitRoute::GateBeforeDurableCommit)
+    );
+    assert_eq!(
+        CommitRoute::from_scenario(&gate_after),
+        Some(CommitRoute::GateAfterDurableCommitBeforeAck)
     );
     assert_eq!(
         CommitRoute::from_scenario(&snapshot_before),

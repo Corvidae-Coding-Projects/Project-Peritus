@@ -54,6 +54,7 @@ pub(super) fn inject(
             postimage: Some(target_sha256),
             receipt_manifest: manifest_sha256,
         }),
+        gate: None,
         killed_exit: killed.status,
     })
 }
@@ -130,6 +131,7 @@ pub(super) fn recover(
         snapshot: None,
         lease: None,
         patch: Some(recovered),
+        gate: None,
         elapsed_millis: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
     })
 }

@@ -44,6 +44,7 @@ peritus-review = { version = "=0.0.0", path = "../../orchestration/peritus-revie
 peritus-scheduler = { version = "=0.0.0", path = "../../orchestration/peritus-scheduler" }
 peritus-sandbox = { version = "=0.0.0", path = "../../runtime/peritus-sandbox" }
 peritus-secrets = { version = "=0.0.0", path = "../../runtime/peritus-secrets" }
+peritus-spec = { version = "=0.0.0", path = "../../foundation/peritus-spec" }
 peritus-telemetry = { version = "=0.0.0", path = "../../observe/peritus-telemetry" }
 peritus-tool-protocol = { version = "=0.0.0", path = "../../tools/peritus-tool-protocol" }
 peritus-tool-router = { version = "=0.0.0", path = "../../tools/peritus-tool-router" }

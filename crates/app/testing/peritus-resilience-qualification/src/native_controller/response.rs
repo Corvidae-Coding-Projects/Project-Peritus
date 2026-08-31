@@ -157,6 +157,16 @@ pub(super) fn canonical_milestones(route: CommitRoute) -> Vec<MilestoneDocument>
             "candidate killed before acknowledging the committed lease receipt",
             "exact lease event, head, revision, digest, and producer reopened",
         ),
+        CommitRoute::GateBeforeDurableCommit => (
+            "production D1 start transition accepted in process memory",
+            "candidate killed before submitting the gate transition",
+            "gate journal and complete checkpoint remained absent",
+        ),
+        CommitRoute::GateAfterDurableCommitBeforeAck => (
+            "gate event and complete D1 checkpoint committed atomically",
+            "candidate killed before acknowledging the gate commit receipt",
+            "exact gate plan, successor state, event, and checkpoint reopened",
+        ),
         CommitRoute::PatchBeforeDurableCommit => (
             "workspace-bound production patch plan prepared in process memory",
             "candidate killed before creating transaction state or changing the target",

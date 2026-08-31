@@ -65,6 +65,7 @@ pub(super) fn inject(
         snapshot: Some(SnapshotObservation { commit, tree, reference, manifest_sha256 }),
         lease: None,
         patch: None,
+        gate: None,
         killed_exit: killed.status,
     })
 }
@@ -149,6 +150,7 @@ pub(super) fn recover(
         snapshot: Some(SnapshotObservation { commit, tree, reference, manifest_sha256 }),
         lease: None,
         patch: None,
+        gate: None,
         elapsed_millis: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
     })
 }

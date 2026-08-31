@@ -159,6 +159,12 @@ transaction state or changing the target. After commit, the exact postimage and 
 receipt are durable. A fresh process re-hashes the target and requires no pending transaction
 metadata; the controller independently inspects the same regular file, byte count, and digest.
 
+Both gate routes use a production contract-bound D1 `GatePlan`, accepted start transition, and C0
+commit adapter. Before commit, the accepted transition remains only in the killed process. After
+commit, the gate event and complete state checkpoint are installed atomically. Fresh recovery
+rebuilds the exact successor from the journal and verifies its plan and state digests, checkpoint
+digest, revision, and producing position.
+
 Fresh focused diagnostics retained passing one-case reports and six raw evidence files under
 `/home/doll/.local/state/peritus/qualification/h1/journal-before.YP5d5R` and
 `/home/doll/.local/state/peritus/qualification/h1/journal-after-ack.sCtlT9`. Both reports deliberately
@@ -170,7 +176,9 @@ retained under `/home/doll/.local/state/peritus/qualification/h1/snapshot-before
 retained under `/home/doll/.local/state/peritus/qualification/h1/lease-before.UFyq0t` and
 `/home/doll/.local/state/peritus/qualification/h1/lease-after-ack.zurTPp`. The patch reports are
 retained under `/home/doll/.local/state/peritus/qualification/h1/patch-before.GlxK0f` and
-`/home/doll/.local/state/peritus/qualification/h1/patch-after-ack.Pknry2`. The other 33 catalog
+`/home/doll/.local/state/peritus/qualification/h1/patch-after-ack.Pknry2`. The gate reports are
+retained under `/home/doll/.local/state/peritus/qualification/h1/gate-before.p0OBxq` and
+`/home/doll/.local/state/peritus/qualification/h1/gate-after-ack.6ob4pt`. The other 31 catalog
 routes fail closed until their real component failpoints, controlled quota/storage effects,
 process controls, or disposable-VM reboot driver are connected. Therefore the full H1 production
 qualification is still pending.

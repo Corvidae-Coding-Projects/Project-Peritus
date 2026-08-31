@@ -11,6 +11,8 @@ const JOURNAL_BEFORE: &str = "h1.crash.journal.before";
 const JOURNAL_AFTER_BEFORE_ACK: &str = "h1.crash.journal.after-before-ack";
 const LEASE_BEFORE: &str = "h1.crash.lease.before";
 const LEASE_AFTER_BEFORE_ACK: &str = "h1.crash.lease.after-before-ack";
+const GATE_BEFORE: &str = "h1.crash.gate.before";
+const GATE_AFTER_BEFORE_ACK: &str = "h1.crash.gate.after-before-ack";
 const PATCH_BEFORE: &str = "h1.crash.patch.before";
 const PATCH_AFTER_BEFORE_ACK: &str = "h1.crash.patch.after-before-ack";
 const SNAPSHOT_BEFORE: &str = "h1.crash.snapshot.before";
@@ -166,6 +168,8 @@ pub(super) enum CommitRoute {
     JournalAfterDurableCommitBeforeAck,
     LeaseBeforeDurableCommit,
     LeaseAfterDurableCommitBeforeAck,
+    GateBeforeDurableCommit,
+    GateAfterDurableCommitBeforeAck,
     PatchBeforeDurableCommit,
     PatchAfterDurableCommitBeforeAck,
     SnapshotBeforeDurableCommit,
@@ -218,6 +222,20 @@ impl CommitRoute {
                 Some(Self::LeaseAfterDurableCommitBeforeAck)
             }
             (
+                GATE_BEFORE,
+                "rolled-back-uncommitted",
+                FaultDocument::CommitCrash { boundary, timing },
+            ) if boundary == "gate" && timing == "before-durable-commit" => {
+                Some(Self::GateBeforeDurableCommit)
+            }
+            (
+                GATE_AFTER_BEFORE_ACK,
+                "replayed-committed",
+                FaultDocument::CommitCrash { boundary, timing },
+            ) if boundary == "gate" && timing == "after-durable-commit-before-ack" => {
+                Some(Self::GateAfterDurableCommitBeforeAck)
+            }
+            (
                 PATCH_BEFORE,
                 "rolled-back-uncommitted",
                 FaultDocument::CommitCrash { boundary, timing },
@@ -255,11 +273,13 @@ impl CommitRoute {
             Self::BlobBeforeDurableCommit
             | Self::JournalBeforeDurableCommit
             | Self::LeaseBeforeDurableCommit
+            | Self::GateBeforeDurableCommit
             | Self::PatchBeforeDurableCommit
             | Self::SnapshotBeforeDurableCommit => "rolled-back-uncommitted",
             Self::BlobAfterDurableCommitBeforeAck
             | Self::JournalAfterDurableCommitBeforeAck
             | Self::LeaseAfterDurableCommitBeforeAck
+            | Self::GateAfterDurableCommitBeforeAck
             | Self::PatchAfterDurableCommitBeforeAck
             | Self::SnapshotAfterDurableCommitBeforeAck => "replayed-committed",
         }
@@ -273,6 +293,8 @@ impl CommitRoute {
             | Self::JournalBeforeDurableCommit
             | Self::LeaseBeforeDurableCommit
             | Self::LeaseAfterDurableCommitBeforeAck
+            | Self::GateBeforeDurableCommit
+            | Self::GateAfterDurableCommitBeforeAck
             | Self::PatchBeforeDurableCommit
             | Self::PatchAfterDurableCommitBeforeAck
             | Self::SnapshotBeforeDurableCommit

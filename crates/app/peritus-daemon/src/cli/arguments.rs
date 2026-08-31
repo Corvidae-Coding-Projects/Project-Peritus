@@ -24,6 +24,10 @@ pub(super) enum CommandLine {
     RecoverPatchBeforeCrash(OsString),
     StagePatchAfterCrash(OsString),
     RecoverPatchAfterCrash(OsString),
+    StageGateBeforeCrash(OsString),
+    RecoverGateBeforeCrash(OsString),
+    StageGateAfterCrash(OsString),
+    RecoverGateAfterCrash(OsString),
     StageOutboxCrash(OsString),
     RecoverOutboxCrash(OsString),
 }
@@ -68,6 +72,10 @@ pub(super) fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<Co
         }
         "qualify-patch-after-stage" => configured(arguments, CommandLine::StagePatchAfterCrash),
         "qualify-patch-after-recover" => configured(arguments, CommandLine::RecoverPatchAfterCrash),
+        "qualify-gate-before-stage" => configured(arguments, CommandLine::StageGateBeforeCrash),
+        "qualify-gate-before-recover" => configured(arguments, CommandLine::RecoverGateBeforeCrash),
+        "qualify-gate-after-stage" => configured(arguments, CommandLine::StageGateAfterCrash),
+        "qualify-gate-after-recover" => configured(arguments, CommandLine::RecoverGateAfterCrash),
         "qualify-outbox-stage" => configured(arguments, CommandLine::StageOutboxCrash),
         "qualify-outbox-recover" => configured(arguments, CommandLine::RecoverOutboxCrash),
         _ => None,

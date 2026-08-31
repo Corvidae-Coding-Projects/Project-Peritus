@@ -2074,6 +2074,7 @@ dependencies = [
  "peritus-sandbox",
  "peritus-scheduler",
  "peritus-secrets",
+ "peritus-spec",
  "peritus-telemetry",
  "peritus-test-support",
  "peritus-tool-protocol",
