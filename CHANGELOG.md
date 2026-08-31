@@ -211,6 +211,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Correlate native C4 integration-test authority timestamps with elapsed wall time and leave the
+  outer tool deadline enough room for the enforced process deadline and cleanup, preventing loaded
+  Windows runners from converting an expected quality result into a premature generic failure (#31).
 - Ground developer commands in the actual CPU and memory envelope, including Linux cgroup-v2
   limits; publish a conservative build-worker ceiling, apply it across common language/build
   ecosystems, and reject recognized explicit build fan-out above it before a constrained task can
