@@ -72,7 +72,7 @@ fn execute(
         control.close_stdin().map_err(|_| infrastructure())?;
     }
     if scenario == ProcessScenario::TreeCleanup {
-        wait_for_tree_sample(&control)?;
+        wait_for_tree_ready(&control)?;
     }
     if matches!(
         scenario,
@@ -112,25 +112,21 @@ fn execute(
     ))
 }
 
-fn wait_for_tree_sample(
+fn wait_for_tree_ready(
     control: &peritus_process::ProcessControl,
 ) -> Result<(), ProcessConformanceError> {
     let mut cursor = ProcessCursor::after(0);
-    let mut tree_ready = false;
     for _ in 0..100 {
         let events = control.wait_events(cursor, 64, Duration::from_millis(50));
         for event in events {
             cursor = ProcessCursor::after(event.sequence());
-            if tree_ready && matches!(event.kind(), ProcessEventKind::ResourceSample) {
-                return Ok(());
-            }
             if matches!(event.kind(), ProcessEventKind::Output(OutputStream::Stdout))
                 && control
                     .retained_stream_output(OutputStream::Stdout)
                     .windows(TREE_READY.len())
                     .any(|window| window == TREE_READY)
             {
-                tree_ready = true;
+                return Ok(());
             }
         }
         if control.terminal_result().is_some() {

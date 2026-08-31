@@ -216,10 +216,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   guidance against equivalent bulk wrappers without new evidence. Preserve the dated published
   aggregate's exact semantics instead of substituting a similarly named source or leaving a
   disproven provisional artifact in place (`TBF-010`, #31).
-- Synchronize the native process-tree cleanup conformance case on an explicit live-leaf marker and
-  a subsequent production resource sample before cancellation. The case now exercises cleanup of
-  a genuinely live descendant tree and cannot lose its descendant observation when a loaded hosted
-  runner schedules the original 200 ms fixture entirely between sampler ticks (#31).
+- Synchronize the native process-tree cleanup conformance case on an explicit live-leaf marker
+  before cancellation. The marker is observed after the production supervisor's process-count
+  pass, so the case exercises cleanup of a genuinely live descendant tree without depending on the
+  full resource-sample event that is intentionally unavailable on macOS (#31).
 - Bound every initial independent-review evidence packet against the active provider's input
   profile, retaining section-aware head/tail samples and exact SHA-256 provenance while directing
   the reviewer to fresh workspace tools for omitted current detail. Preserve tracked edits even
