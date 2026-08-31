@@ -19,6 +19,8 @@ pub(super) enum CommandLine {
     RecoverBlobCorruption(OsString),
     StageBlobFinalizeExhaustion(OsString),
     RecoverBlobFinalizeExhaustion(OsString),
+    StageJournalAppendExhaustion(OsString),
+    RecoverJournalAppendExhaustion(OsString),
     StageJournalBeforeCrash(OsString),
     RecoverJournalBeforeCrash(OsString),
     StageJournalCorruption(OsString),
@@ -96,6 +98,12 @@ pub(super) fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<Co
         }
         "qualify-disk-blob-finalize-recover" => {
             configured(arguments, CommandLine::RecoverBlobFinalizeExhaustion)
+        }
+        "qualify-disk-journal-append-stage" => {
+            configured(arguments, CommandLine::StageJournalAppendExhaustion)
+        }
+        "qualify-disk-journal-append-recover" => {
+            configured(arguments, CommandLine::RecoverJournalAppendExhaustion)
         }
         "qualify-journal-before-stage" => {
             configured(arguments, CommandLine::StageJournalBeforeCrash)

@@ -60,4 +60,6 @@ pub use record::{
     ArtifactDependency, CommittedRecord, DurableStateRecord, EventDraft, ExactFrame,
     GlobalEventWindow, MAX_GLOBAL_WINDOW_RECORDS, StateInstall,
 };
-pub use sqlite::{CommandResolution, SqliteJournal, SqliteJournalOptions, SqliteSettings};
+pub use sqlite::{
+    CommandResolution, SqliteJournal, SqliteJournalOptions, SqliteSettings, SqliteStoragePages,
+};

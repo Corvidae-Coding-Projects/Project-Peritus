@@ -178,6 +178,11 @@ const fn milestone_details(route: ScenarioRoute) -> (&'static str, &'static str,
             "committed event frame changed without updating its recorded digest",
             "fresh daemon startup detected divergence before authority mutation",
         ),
+        ScenarioRoute::JournalAppendDiskExhaustion => (
+            "authoritative SQLite page ceiling fixed at the current allocation",
+            "oversized production append returned exact storage exhaustion",
+            "fresh journal proved the rejected command and every partial row absent",
+        ),
         ScenarioRoute::LeaseBeforeDurableCommit => (
             "move-only lease commit request prepared in process memory",
             "candidate killed before submitting the lease transition",

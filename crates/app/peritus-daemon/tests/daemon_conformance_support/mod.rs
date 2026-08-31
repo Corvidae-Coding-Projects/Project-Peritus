@@ -6,6 +6,7 @@ mod blob;
 mod blob_corruption;
 mod command;
 mod dependency;
+mod disk_journal;
 mod error;
 mod gate;
 mod journal_corruption;
@@ -28,6 +29,7 @@ pub use adapter::{BinaryDaemonFactory, BinaryDaemonSubject, blocker_for, reachab
 pub use blob::commit_crash_recovery as blob_commit_crash_recovery;
 pub use blob_corruption::corruption_recovery as blob_corruption_recovery;
 pub use dependency::dependency_failure_recovery;
+pub use disk_journal::journal_append_exhaustion_recovery;
 use error::debug_error;
 pub use gate::commit_crash_recovery as gate_commit_crash_recovery;
 pub use journal_corruption::corruption_recovery as journal_corruption_recovery;

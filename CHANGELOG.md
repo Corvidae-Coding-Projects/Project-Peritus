@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
-- Add the checked-in Rust `peritus-h1-controller` and an explicit focused diagnostic mode. Its 36
+- Add the checked-in Rust `peritus-h1-controller` and an explicit focused diagnostic mode. Its 37
   genuine routes cover both sides of journal submission, content-addressed blob publication,
   retained Git snapshot publication, exclusive-lease persistence, and recoverable patch
   application, plus D1's atomic gate event/checkpoint commit and F0's campaign/pointer/approval
@@ -27,7 +27,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   ceiling. The artifact-finalization disk route opens two production writers against one durable
   logical quota, admits the first, requires the second finalization to lose the real catalog quota
   race, and proves fresh-process recovery retained no rejected metadata, published bytes, or
-  temporary file. All eleven daemon-lifecycle routes construct their production E0 state through
+  temporary file. The journal-append disk route fixes the production SQLite connection's page
+  ceiling at its current allocation, requires an oversized exact append to return `SQLITE_FULL`,
+  and proves through a fresh process that no command, event, or aggregate head partially survived.
+  All eleven daemon-lifecycle routes construct their production E0 state through
   legal reducer commands, commit it through C0, kill the staged daemon at the named active phase,
   and require fresh-process replay to preserve state, phase, ownership, handoff, proposal, and
   acceptance-certificate truth. The exact

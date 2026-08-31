@@ -11,9 +11,10 @@ use peritus_conformance::{
 use daemon_conformance_support::{
     BinaryDaemonFactory, BinaryDaemonSubject, blob_commit_crash_recovery, blob_corruption_recovery,
     blocker_for, dependency_failure_recovery, gate_commit_crash_recovery,
-    journal_before_crash_recovery, journal_corruption_recovery, lease_commit_crash_recovery,
-    patch_commit_crash_recovery, projection_corruption_recovery, promotion_commit_crash_recovery,
-    reachable_scenarios, snapshot_commit_crash_recovery, snapshot_corruption_recovery,
+    journal_append_exhaustion_recovery, journal_before_crash_recovery, journal_corruption_recovery,
+    lease_commit_crash_recovery, patch_commit_crash_recovery, projection_corruption_recovery,
+    promotion_commit_crash_recovery, reachable_scenarios, snapshot_commit_crash_recovery,
+    snapshot_corruption_recovery,
 };
 
 #[test]
@@ -69,6 +70,11 @@ fn corrupt_projection_is_replaced_during_fresh_startup() {
 #[test]
 fn corrupt_journal_stops_fresh_startup_before_authority_mutation() {
     journal_corruption_recovery().expect("real journal corruption recovery");
+}
+
+#[test]
+fn journal_page_exhaustion_rolls_back_and_allows_fresh_inspection() {
+    journal_append_exhaustion_recovery().expect("real journal page-exhaustion recovery");
 }
 
 #[test]

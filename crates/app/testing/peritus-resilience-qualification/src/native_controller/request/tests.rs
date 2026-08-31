@@ -1,10 +1,11 @@
 use super::route::{
     BLOB_AFTER_BEFORE_ACK, BLOB_BEFORE, BLOB_CORRUPTION, BLOB_FINALIZE_DISK_EXHAUSTION,
-    DaemonPhase, GATE_AFTER_BEFORE_ACK, GATE_BEFORE, JOURNAL_AFTER_BEFORE_ACK, JOURNAL_BEFORE,
-    JOURNAL_CORRUPTION, LEASE_AFTER_BEFORE_ACK, LEASE_BEFORE, PATCH_AFTER_BEFORE_ACK, PATCH_BEFORE,
-    PROJECTION_CORRUPTION, PROMOTION_AFTER_BEFORE_ACK, PROMOTION_BEFORE, PROVIDER_DEATH,
-    PROVIDER_RETRY_EXHAUSTION, SNAPSHOT_AFTER_BEFORE_ACK, SNAPSHOT_BEFORE, SNAPSHOT_CORRUPTION,
-    ScenarioRoute, TOOL_DEATH, TOOL_RETRY_EXHAUSTION, WORKER_DEATH, WORKER_RETRY_EXHAUSTION,
+    DaemonPhase, GATE_AFTER_BEFORE_ACK, GATE_BEFORE, JOURNAL_AFTER_BEFORE_ACK,
+    JOURNAL_APPEND_DISK_EXHAUSTION, JOURNAL_BEFORE, JOURNAL_CORRUPTION, LEASE_AFTER_BEFORE_ACK,
+    LEASE_BEFORE, PATCH_AFTER_BEFORE_ACK, PATCH_BEFORE, PROJECTION_CORRUPTION,
+    PROMOTION_AFTER_BEFORE_ACK, PROMOTION_BEFORE, PROVIDER_DEATH, PROVIDER_RETRY_EXHAUSTION,
+    SNAPSHOT_AFTER_BEFORE_ACK, SNAPSHOT_BEFORE, SNAPSHOT_CORRUPTION, ScenarioRoute, TOOL_DEATH,
+    TOOL_RETRY_EXHAUSTION, WORKER_DEATH, WORKER_RETRY_EXHAUSTION,
 };
 use super::{FaultDocument, ScenarioDocument};
 
@@ -153,6 +154,20 @@ fn the_finalize_time_artifact_quota_route_is_admitted() {
     assert_eq!(
         ScenarioRoute::from_scenario(&scenario),
         Some(ScenarioRoute::BlobFinalizeDiskExhaustion)
+    );
+}
+
+#[test]
+fn the_authoritative_journal_page_exhaustion_route_is_admitted() {
+    let scenario = ScenarioDocument {
+        id: JOURNAL_APPEND_DISK_EXHAUSTION.to_owned(),
+        title: "journal append storage exhaustion".to_owned(),
+        fault: FaultDocument::DiskExhaustion { scope: "journal-append".to_owned() },
+        expected_recovery: "rolled-back-uncommitted".to_owned(),
+    };
+    assert_eq!(
+        ScenarioRoute::from_scenario(&scenario),
+        Some(ScenarioRoute::JournalAppendDiskExhaustion)
     );
 }
 

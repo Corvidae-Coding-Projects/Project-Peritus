@@ -12,6 +12,7 @@ pub(super) const BLOB_FINALIZE_DISK_EXHAUSTION: &str = "h1.disk-full.blob-finali
 pub(super) const JOURNAL_BEFORE: &str = "h1.crash.journal.before";
 pub(super) const JOURNAL_AFTER_BEFORE_ACK: &str = "h1.crash.journal.after-before-ack";
 pub(super) const JOURNAL_CORRUPTION: &str = "h1.corruption.journal";
+pub(super) const JOURNAL_APPEND_DISK_EXHAUSTION: &str = "h1.disk-full.journal-append";
 pub(super) const LEASE_BEFORE: &str = "h1.crash.lease.before";
 pub(super) const LEASE_AFTER_BEFORE_ACK: &str = "h1.crash.lease.after-before-ack";
 pub(super) const GATE_BEFORE: &str = "h1.crash.gate.before";
@@ -40,6 +41,7 @@ pub(in crate::native_controller) enum ScenarioRoute {
     JournalBeforeDurableCommit,
     JournalAfterDurableCommitBeforeAck,
     JournalCorruption,
+    JournalAppendDiskExhaustion,
     LeaseBeforeDurableCommit,
     LeaseAfterDurableCommitBeforeAck,
     GateBeforeDurableCommit,
@@ -201,6 +203,11 @@ impl ScenarioRoute {
     fn from_disk_exhaustion(scenario: &ScenarioDocument) -> Option<Self> {
         match (&*scenario.id, &*scenario.expected_recovery, &scenario.fault) {
             (
+                JOURNAL_APPEND_DISK_EXHAUSTION,
+                "rolled-back-uncommitted",
+                FaultDocument::DiskExhaustion { scope },
+            ) if scope == "journal-append" => Some(Self::JournalAppendDiskExhaustion),
+            (
                 BLOB_FINALIZE_DISK_EXHAUSTION,
                 "discarded-unreferenced",
                 FaultDocument::DiskExhaustion { scope },
@@ -254,7 +261,8 @@ impl ScenarioRoute {
             | Self::GateBeforeDurableCommit
             | Self::PatchBeforeDurableCommit
             | Self::SnapshotBeforeDurableCommit
-            | Self::PromotionBeforeDurableCommit => "rolled-back-uncommitted",
+            | Self::PromotionBeforeDurableCommit
+            | Self::JournalAppendDiskExhaustion => "rolled-back-uncommitted",
             Self::BlobAfterDurableCommitBeforeAck
             | Self::JournalAfterDurableCommitBeforeAck
             | Self::LeaseAfterDurableCommitBeforeAck
@@ -296,6 +304,7 @@ impl ScenarioRoute {
             | Self::ProjectionCorruption
             | Self::BlobCorruption
             | Self::BlobFinalizeDiskExhaustion
+            | Self::JournalAppendDiskExhaustion
             | Self::SnapshotCorruption
             | Self::ProviderDeath
             | Self::ToolDeath

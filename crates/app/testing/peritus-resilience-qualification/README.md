@@ -23,7 +23,7 @@ The controller remains responsible for real daemon, storage, dependency, quota, 
 effects. The operator refuses a descriptor whose build digest differs from the exact staged
 candidate bytes.
 
-The checked-in `peritus-h1-controller` currently owns 36 genuine routes across the journal,
+The checked-in `peritus-h1-controller` currently owns 37 genuine routes across the journal,
 blob, retained Git snapshot, lease, patch, gate, and promotion commit boundaries, plus active
 projection repair, journal/blob/snapshot corruption controls, and provider/tool/worker dependency
 failure. It also owns all eleven active E0 lifecycle phases. Each lifecycle case builds the shortest
@@ -44,6 +44,12 @@ requires the second finalization to be rejected by durable catalog accounting af
 The store removes those losing bytes before returning the typed quota error. A fresh staged daemon
 then verifies the admitted object, exact used-byte count, empty temporary namespace, absent rejected
 metadata, and healthy journal.
+
+The journal-append disk route opens the production SQLite journal, fixes that connection's page
+ceiling at its current allocation, and submits one oversized exact append through the ordinary
+transaction path. The stage must receive SQLite's real storage-exhaustion result and prove that the
+command, event, and aggregate head are absent. A separate candidate process then reopens the same
+database and independently verifies the rejected append left no partial authoritative state.
 
 It also owns both blob commit routes through the production content-addressed artifact store. The
 before case kills an exact owned writer while its complete bytes are still temporary and requires

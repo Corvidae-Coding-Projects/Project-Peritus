@@ -166,6 +166,16 @@ impl JournalError {
             | JournalErrorKind::UnsupportedSchema => RecoveryClass::Terminal,
         }
     }
+
+    /// Returns whether `SQLite` reported deterministic database or disk exhaustion.
+    #[must_use]
+    pub fn is_storage_exhausted(&self) -> bool {
+        matches!(
+            self.source.as_ref(),
+            Some(rusqlite::Error::SqliteFailure(error, _))
+                if error.code == rusqlite::ErrorCode::DiskFull
+        )
+    }
 }
 
 impl fmt::Display for JournalError {

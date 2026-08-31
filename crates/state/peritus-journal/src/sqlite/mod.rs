@@ -15,7 +15,7 @@ mod tests;
 use crate::CommittedBatch;
 use peritus_types::{CommandId, Sha256Digest};
 
-pub use connection::{SqliteJournal, SqliteJournalOptions, SqliteSettings};
+pub use connection::{SqliteJournal, SqliteJournalOptions, SqliteSettings, SqliteStoragePages};
 
 /// Durable resolution of one exact command identity.
 #[derive(Debug, Eq, PartialEq)]

@@ -62,6 +62,12 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
         CommandLine::RecoverBlobFinalizeExhaustion(configuration) => {
             disk::recover_blob_finalize_exhaustion(configuration)
         }
+        CommandLine::StageJournalAppendExhaustion(configuration) => {
+            disk::stage_journal_append_exhaustion(configuration)
+        }
+        CommandLine::RecoverJournalAppendExhaustion(configuration) => {
+            disk::recover_journal_append_exhaustion(configuration)
+        }
         CommandLine::StageJournalBeforeCrash(configuration) => stage_journal_before(configuration),
         CommandLine::RecoverJournalBeforeCrash(configuration) => {
             recover_journal_before(configuration)

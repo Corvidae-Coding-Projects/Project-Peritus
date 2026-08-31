@@ -6,6 +6,7 @@ pub mod daemon_lifecycle;
 #[cfg(not(verus_only))]
 pub mod dependency;
 pub mod disk;
+pub mod disk_journal;
 pub mod journal;
 pub mod journal_corruption;
 pub mod projection;

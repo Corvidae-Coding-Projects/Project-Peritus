@@ -48,3 +48,46 @@ pub(super) fn recover_blob_finalize_exhaustion(configuration: OsString) -> ExitC
         Err(error) => super::qualification_failure(&error),
     }
 }
+
+pub(super) fn stage_journal_append_exhaustion(configuration: OsString) -> ExitCode {
+    let config = match DaemonConfig::load(configuration) {
+        Ok(config) => config,
+        Err(error) => return super::qualification_failure(&error),
+    };
+    match crate::qualification::disk_journal::stage_journal_append_exhaustion(&config) {
+        Ok(checkpoint) => {
+            let line = format!(
+                "peritus-qualification disk-journal-append-stage request_sha256={} page_count={} page_size={} maximum_bytes={} storage_exhausted=true append_absent=true",
+                checkpoint.request_sha256(),
+                checkpoint.page_count(),
+                checkpoint.page_size(),
+                checkpoint.maximum_bytes(),
+            );
+            super::write_output(&line).map_or_else(super::output_failure, |()| ExitCode::SUCCESS)
+        }
+        Err(error) => super::qualification_failure(&error),
+    }
+}
+
+pub(super) fn recover_journal_append_exhaustion(configuration: OsString) -> ExitCode {
+    let config = match DaemonConfig::load(configuration) {
+        Ok(config) => config,
+        Err(error) => return super::qualification_failure(&error),
+    };
+    match crate::qualification::disk_journal::recover_journal_append_exhaustion(&config) {
+        Ok(observation) => {
+            let line = format!(
+                "peritus-qualification disk-journal-append-recover request_sha256={} page_count={} page_size={} maximum_bytes={} committed_events={} aggregate_heads={} journal_verified={} append_absent=true",
+                observation.request_sha256(),
+                observation.page_count(),
+                observation.page_size(),
+                observation.maximum_bytes(),
+                observation.committed_events(),
+                observation.aggregate_heads(),
+                observation.journal_verified(),
+            );
+            super::write_output(&line).map_or_else(super::output_failure, |()| ExitCode::SUCCESS)
+        }
+        Err(error) => super::qualification_failure(&error),
+    }
+}

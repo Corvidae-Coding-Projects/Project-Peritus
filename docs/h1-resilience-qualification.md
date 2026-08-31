@@ -215,6 +215,13 @@ catalog quota race, and exercises the store's real rollback path. Fresh-process 
 the rejected object and metadata to remain absent, the admitted referenced object to verify, used
 bytes to equal the quota, the temporary namespace to be empty, and the journal to remain healthy.
 
+The journal-append disk route applies SQLite's real page ceiling to the active production journal
+connection at its current allocation, then submits a 2 MiB exact event frame through the ordinary
+append transaction. The stage requires `SQLITE_FULL` and verifies the command, event, and aggregate
+head are all absent. A separate candidate process reopens the same database and repeats those
+absence and integrity checks, so the route proves atomic rollback without requiring host-wide disk
+exhaustion or pretending a connection-local fault setting survives restart.
+
 All eleven daemon-lifecycle routes use reducer-produced production E0 states and the ordinary C0
 durability adapter. The staged daemon commits the shortest legal prefix ending at the requested
 writer, gate, review, fixer, revision, evaluation, or kernel-acceptance phase, publishes a bounded
@@ -275,7 +282,10 @@ their report SHA-256 digests are
 `32c5e61d0652f751c0ddb899bb4d5e50d9296250e4385134d65923e1c0e86e21`,
 `5f85bbb771fd0deb2dd7d7678cc5a9112b0cb8e7c2161aa88f3a68ab8de02a0d`, and
 `94a2ffd1bf260b0977f256d14a8d9f19391ced5f819f290c1d6aa0f582fac418`.
-With these 36 routes, the other seven catalog routes remain fail-closed until their real controlled
+The passing journal-append disk-exhaustion report and six raw evidence files are retained under
+`/home/doll/.local/state/peritus/qualification/h1/journal-disk.TdiM1k` with report SHA-256
+`7298744b66df4198e1c6041c8c7d8fa064869cef59f919043c31552096aff537`.
+With these 37 routes, the other six catalog routes remain fail-closed until their real controlled
 storage effects, corruption controls, or disposable-VM reboot driver are connected.
 Therefore the full H1 production qualification is still pending.
 
