@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1101,
+  "next_comment_id": 1102,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-31T23:13:09.544076019Z",
+      "updated_at": "2026-08-31T23:35:30.481095125Z",
       "labels": [
         "qualification",
         "release"
@@ -1787,6 +1787,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAl1sj7Q0ThbZdLuJN3qHvgX0/HtxUNkKRq/gg4bzxr+RnZwtVhIJLu1Zh8inbwHcHIPm2XL5NR0s/L4Y/9p/bBg=="
+        },
+        "1c31d47c-9753-4b1d-8312-4f6d17d58cc3": {
+          "display_id": 1101,
+          "author": "6ME5",
+          "content": "[action] Fix macOS process-limit classification by enforcing standalone process-count samples; document frozen PyTorch verifier and process-family recurrences",
+          "created_at": "2026-08-31T23:35:30.477855295Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPYjJGzf4EJEEX73btrO65z5N10O4QJnMFUEVrPZOkYMBGqmGoOQFJAJEAr9Ju4heduVXOeD2MSHxydBCiJiyCA=="
         },
         "1cd83c11-51d7-4cbf-9074-8aebca1a1855": {
           "display_id": 670,
@@ -10665,8 +10674,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-31T23:13:09.544076019Z",
+    "timestamp": "2026-08-31T23:35:30.481095125Z",
     "agent_id": "6ME5",
-    "agent_seq": 1303
+    "agent_seq": 1304
   }
 }
