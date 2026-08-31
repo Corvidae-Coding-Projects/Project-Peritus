@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1039,
+  "next_comment_id": 1040,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-31T00:45:28.452521077Z",
+      "updated_at": "2026-08-31T01:05:24.719103742Z",
       "labels": [
         "qualification",
         "release"
@@ -4942,6 +4942,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAC80UfPaa3R5bsJJsfwZqi5WngbUuqwP0h6yXEVEvZYcKRjjPn8hE/G2kARf6IT9JLGtSPdL2LhnUUhgVdDuiAw=="
+        },
+        "eca79464-5c7d-4888-abb2-e3cc532a20e7": {
+          "display_id": 1039,
+          "author": "6ME5",
+          "content": "Implemented and verified both real patch application crash boundaries in commit 2569fb70. The staged public peritusd now holds the daemon instance lease while a production PatchPlan remains unsubmitted or a production apply_patch receipt is durable; fresh recovery and the independent controller verify the exact postimage, receipt identity, empty transaction state, and untouched journal. Fresh diagnostics passed at /home/doll/.local/state/peritus/qualification/h1/patch-before.GlxK0f and /home/doll/.local/state/peritus/qualification/h1/patch-after-ack.Pknry2. Focused daemon and qualification tests, native and Windows-GNU strict Clippy, architecture, docs, formatting, and diff checks passed. H1 now has 10 genuine routes; 33 remain fail-closed.",
+          "created_at": "2026-08-31T01:05:24.716679938Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAk9gBK6h6YaPeTqdsdi31GxaLR2LKwCNuOsI+sCRydws7BIyHyWh3I1UHQIr6Z+Ui7MPpr3h70QBeyWwI+JSeCA=="
         },
         "ed114217-65d3-49ce-a8c6-6b64548350a1": {
           "display_id": 1036,
@@ -10103,8 +10112,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-31T00:45:28.452521077Z",
+    "timestamp": "2026-08-31T01:05:24.719103742Z",
     "agent_id": "6ME5",
-    "agent_seq": 1234
+    "agent_seq": 1235
   }
 }
