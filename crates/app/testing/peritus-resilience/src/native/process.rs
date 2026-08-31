@@ -3,19 +3,20 @@
 use std::io::{self, BufRead as _, BufReader, Read, Write as _};
 use std::path::Path;
 use std::process::{Child, ChildStdin, Command, ExitStatus, Stdio};
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, TryRecvError};
-use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
 use crate::{CancellationToken, SubjectError, SubjectErrorCode};
 
+use super::diagnostics::Diagnostics;
 use super::process_tree::ProcessTree;
 use super::{NativeControllerLimits, subject_error};
 
 const POLL_INTERVAL: Duration = Duration::from_millis(20);
-const MAX_DIAGNOSTIC_BYTES: usize = 16 * 1024;
+const RESPONSE_CLOSE_GRACE: Duration = Duration::from_millis(100);
 
 #[derive(Clone, Copy)]
 pub(super) struct LaunchRequest<'a> {
@@ -38,7 +39,7 @@ pub(super) struct OwnedController {
     responses: Receiver<Result<Vec<u8>, SubjectError>>,
     stdout: Option<JoinHandle<()>>,
     stderr: Option<JoinHandle<io::Result<()>>>,
-    stderr_bytes: Arc<Mutex<Vec<u8>>>,
+    stderr_bytes: Diagnostics,
     output_bytes: Arc<AtomicU64>,
     reaped: bool,
 }
@@ -123,8 +124,8 @@ impl OwnedController {
             read_responses(stdout_pipe, response_limit, &stdout_count, &response_sender);
         });
         let stderr_count = Arc::clone(&output_bytes);
-        let stderr_bytes = Arc::new(Mutex::new(Vec::new()));
-        let stderr_capture = Arc::clone(&stderr_bytes);
+        let stderr_bytes = Diagnostics::default();
+        let stderr_capture = stderr_bytes.clone();
         let stderr = thread::spawn(move || drain(stderr_pipe, &stderr_count, &stderr_capture));
         Ok(Self {
             child: Some(child),
@@ -171,7 +172,7 @@ impl OwnedController {
                 Ok(result) => break result?,
                 Err(RecvTimeoutError::Timeout) => {}
                 Err(RecvTimeoutError::Disconnected) => {
-                    self.terminate()?;
+                    self.settle_closed_response()?;
                     return Err(self.failure("controller response stream closed", true));
                 }
             }
@@ -223,12 +224,20 @@ impl OwnedController {
         self.output_bytes.load(Ordering::Acquire).saturating_sub(initial)
     }
 
+    fn settle_closed_response(&mut self) -> Result<(), SubjectError> {
+        let started = Instant::now();
+        while started.elapsed() < RESPONSE_CLOSE_GRACE {
+            if self.try_wait()?.is_some() {
+                break;
+            }
+            thread::sleep(POLL_INTERVAL);
+        }
+        self.terminate()
+    }
+
     fn failure(&self, detail: impl Into<String>, retryable: bool) -> SubjectError {
         let mut detail = detail.into();
-        let diagnostics = {
-            let bytes = lock(&self.stderr_bytes);
-            String::from_utf8_lossy(&bytes).trim().to_owned()
-        };
+        let diagnostics = self.stderr_bytes.render();
         if !diagnostics.is_empty() {
             detail.push_str("; diagnostics: ");
             detail.push_str(&diagnostics);
@@ -353,7 +362,7 @@ fn read_responses(
     }
 }
 
-fn drain(mut reader: impl Read, count: &AtomicU64, diagnostics: &Mutex<Vec<u8>>) -> io::Result<()> {
+fn drain(mut reader: impl Read, count: &AtomicU64, diagnostics: &Diagnostics) -> io::Result<()> {
     let mut buffer = [0_u8; 16 * 1024];
     loop {
         let bytes = reader.read(&mut buffer)?;
@@ -361,16 +370,7 @@ fn drain(mut reader: impl Read, count: &AtomicU64, diagnostics: &Mutex<Vec<u8>>)
             return Ok(());
         }
         count.fetch_add(u64::try_from(bytes).unwrap_or(u64::MAX), Ordering::AcqRel);
-        let mut retained = lock(diagnostics);
-        let available = MAX_DIAGNOSTIC_BYTES.saturating_sub(retained.len());
-        retained.extend_from_slice(&buffer[..bytes.min(available)]);
-    }
-}
-
-fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
-    match mutex.lock() {
-        Ok(guard) => guard,
-        Err(poisoned) => poisoned.into_inner(),
+        diagnostics.record(&buffer[..bytes]);
     }
 }
 

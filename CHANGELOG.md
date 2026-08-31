@@ -211,6 +211,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Give a native controller that closes its response stream a bounded exit grace before process-tree
+  termination, then drain its diagnostic pipe completely. This keeps fast terminal stderr visible
+  on slower hosted schedulers without weakening process ownership or deadlines (#31).
 - Add a provider-free protocol handshake between Harbor and the uploaded native benchmark agent.
   Setup now verifies the report schema, compiled source revision, package version, and executable
   SHA-256 before a Terminal-Bench task can spend its agent budget, so a stale portable build fails

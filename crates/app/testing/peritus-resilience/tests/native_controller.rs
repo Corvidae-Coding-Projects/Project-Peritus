@@ -117,8 +117,9 @@ fn dropping_a_pending_run_kills_the_controller_and_its_descendant() {
 #[test]
 fn controller_failure_retains_bounded_stderr_diagnostics() {
     let _native_test = native_test_guard();
-    let fixture =
-        NativeFixture::new("#!/bin/sh\nprintf 'precise controller failure\\n' >&2\nexit 1\n");
+    let fixture = NativeFixture::new(
+        "#!/bin/sh\nexec 1>&-\nsleep 0.05\nprintf 'precise controller failure\\n' >&2\nexit 1\n",
+    );
     let factory = fixture.factory();
     let production = ScenarioCatalog::h1_production().expect("built-in H1 catalog");
     let catalog = ScenarioCatalog::custom(vec![production.scenarios()[0].clone()])

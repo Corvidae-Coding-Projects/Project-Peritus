@@ -2,6 +2,7 @@
 
 mod config;
 mod controller;
+mod diagnostics;
 mod digest;
 mod path;
 mod process;
