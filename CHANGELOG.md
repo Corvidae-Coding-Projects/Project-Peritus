@@ -211,6 +211,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Give Gate A's cold per-operation Rust jobs the same 45-minute hosted-runner allowance as the
+  stricter Foundation matrix, preventing healthy Windows test runs from being cancelled after
+  compilation and hundreds of passing tests solely because the former 30-minute ceiling elapsed
+  (#31).
 - Preserve official Claude CLI OAuth rotation across serialized Terminal-Bench task containers by
   validating and atomically checkpointing newer account state only when the host source has not
   changed, preventing stale copied refresh state from disabling the fallback route (`TBF-032`, #31).
