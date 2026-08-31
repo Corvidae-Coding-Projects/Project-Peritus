@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1090,
+  "next_comment_id": 1091,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-31T19:07:19.298730529Z",
+      "updated_at": "2026-08-31T20:39:35.316520674Z",
       "labels": [
         "qualification",
         "release"
@@ -4168,6 +4168,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAe815NTeuYc7SuRbWzYh44o18it6qy5XNm2UrmHotjqBcFJpz82Wjwm+bY8k3jNMQOXSLWTw7tjrbS+uF3vyICw=="
+        },
+        "a502487d-1810-4256-8be9-bbdcb8055d10": {
+          "display_id": 1090,
+          "author": "6ME5",
+          "content": "Signed commit 3708f7fd fixes TBF-022 after corrected-adapter trial headless-terminal__fMw82kx proved a timed-out native trace still overlapped Harbor verification. TerminalBench cancellation now marks the complete launched process family, repeatedly quiesces the current tree plus detached/reparented marked processes, kills them, and proves both sets absent before propagating cancellation. The unchanged reward-1 headless-terminal and extract-elf timeout evidence plus TBI-011 DNA recurrence are retained without score rewriting or benchmark-specific behavior. Verification: all 20 TerminalBench adapter/credential/supervisor tests pass, the regression proves an escaped process is outside the recorded root before cancellation and absent afterward, Python compilation passes, docs-check validates 137 files, and diff hygiene passes.",
+          "created_at": "2026-08-31T20:39:35.313190877Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPOs7pXJ9rTCQq8QPnEL4c+Rj7VImsAiIaAdeuOij6WK14HScPJyEdd9zy1XkH0ijOmeCBppIUhoAUm1RsvZqDA=="
         },
         "a5226eba-8dca-48ae-a8d6-8759dfd399c1": {
           "display_id": 981,
@@ -10562,8 +10571,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-31T19:52:02.333243425Z",
+    "timestamp": "2026-08-31T20:39:35.316520674Z",
     "agent_id": "6ME5",
-    "agent_seq": 1291
+    "agent_seq": 1292
   }
 }
