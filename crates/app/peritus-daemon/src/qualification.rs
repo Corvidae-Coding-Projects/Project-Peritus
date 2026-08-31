@@ -1,6 +1,7 @@
 //! Production qualification seams shared by component-specific fault routes.
 
 pub mod blob_corruption;
+#[cfg(not(verus_only))]
 pub mod dependency;
 pub mod disk;
 pub mod journal;

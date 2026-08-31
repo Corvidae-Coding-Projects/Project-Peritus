@@ -2,6 +2,7 @@
 
 mod arguments;
 mod blob_corruption;
+#[cfg(not(verus_only))]
 mod dependency;
 mod disk;
 mod gate;
@@ -113,12 +114,15 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
         CommandLine::RecoverProjectionCorruption(configuration) => {
             projection::recover(configuration)
         }
+        #[cfg(not(verus_only))]
         CommandLine::StageDependencyFault { dependency, fault, retry_limit, configuration } => {
             dependency::stage(configuration, dependency, fault, retry_limit)
         }
+        #[cfg(not(verus_only))]
         CommandLine::RecoverDependencyFault { dependency, fault, retry_limit, configuration } => {
             dependency::recover(configuration, dependency, fault, retry_limit)
         }
+        #[cfg(not(verus_only))]
         CommandLine::DependencyChild(dependency) => dependency::child(dependency),
         CommandLine::StageOutboxCrash(configuration) => stage_outbox(configuration),
         CommandLine::RecoverOutboxCrash(configuration) => recover_outbox(configuration),

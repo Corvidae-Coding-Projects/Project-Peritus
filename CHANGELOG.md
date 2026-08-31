@@ -180,6 +180,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   artifact policy (#31).
 
 ### Fixed
+
+- Exclude the dependency-failure qualification admin boundary from `verus_only` builds, matching
+  the product runner's existing effect-boundary classification while retaining the complete route
+  in ordinary release binaries. This restores full-workspace Verus verification after the real
+  provider/tool/worker H1 routes were connected (#31).
+
 - Make projection shadow installation verify the stored payload bytes before reusing an identical
   generation, so startup repair replaces a corrupt active projection instead of reactivating it
   (#31)

@@ -2,6 +2,7 @@
 
 use std::ffi::{OsStr, OsString};
 
+#[cfg(not(verus_only))]
 use crate::qualification::dependency::{DependencyFault, DependencyKind};
 
 pub(super) enum CommandLine {
@@ -44,18 +45,21 @@ pub(super) enum CommandLine {
     RecoverPromotionAfterCrash(OsString),
     StageProjectionCorruption(OsString),
     RecoverProjectionCorruption(OsString),
+    #[cfg(not(verus_only))]
     StageDependencyFault {
         dependency: DependencyKind,
         fault: DependencyFault,
         retry_limit: u16,
         configuration: OsString,
     },
+    #[cfg(not(verus_only))]
     RecoverDependencyFault {
         dependency: DependencyKind,
         fault: DependencyFault,
         retry_limit: u16,
         configuration: OsString,
     },
+    #[cfg(not(verus_only))]
     DependencyChild(DependencyKind),
     StageOutboxCrash(OsString),
     RecoverOutboxCrash(OsString),
@@ -145,11 +149,13 @@ pub(super) fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<Co
         "qualify-projection-corruption-recover" => {
             configured(arguments, CommandLine::RecoverProjectionCorruption)
         }
+        #[cfg(not(verus_only))]
         "qualify-dependency-stage" => {
             dependency_configured(arguments, |dependency, fault, retry_limit, configuration| {
                 CommandLine::StageDependencyFault { dependency, fault, retry_limit, configuration }
             })
         }
+        #[cfg(not(verus_only))]
         "qualify-dependency-recover" => {
             dependency_configured(arguments, |dependency, fault, retry_limit, configuration| {
                 CommandLine::RecoverDependencyFault {
@@ -160,6 +166,7 @@ pub(super) fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<Co
                 }
             })
         }
+        #[cfg(not(verus_only))]
         "qualify-dependency-child" => dependency_child(arguments),
         "qualify-outbox-stage" => configured(arguments, CommandLine::StageOutboxCrash),
         "qualify-outbox-recover" => configured(arguments, CommandLine::RecoverOutboxCrash),
@@ -167,6 +174,7 @@ pub(super) fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<Co
     }
 }
 
+#[cfg(not(verus_only))]
 fn dependency_configured(
     arguments: &mut impl Iterator<Item = OsString>,
     constructor: fn(DependencyKind, DependencyFault, u16, OsString) -> CommandLine,
@@ -191,6 +199,7 @@ fn dependency_configured(
     ))
 }
 
+#[cfg(not(verus_only))]
 fn dependency_child(arguments: &mut impl Iterator<Item = OsString>) -> Option<CommandLine> {
     let dependency = DependencyKind::parse(arguments.next()?.to_str()?)?;
     arguments.next().is_none().then_some(CommandLine::DependencyChild(dependency))
