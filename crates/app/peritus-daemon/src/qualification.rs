@@ -1,6 +1,7 @@
 //! Production qualification seams shared by component-specific fault routes.
 
 pub mod journal;
+pub mod journal_corruption;
 pub mod projection;
 
 pub use journal::{

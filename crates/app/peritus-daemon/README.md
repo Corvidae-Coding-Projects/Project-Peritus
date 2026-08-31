@@ -6,7 +6,9 @@ supervises bounded effect work, and coordinates deterministic startup, recovery,
 Its independent A2 adapter exercises all 28 daemon cases through the public `peritusd` process,
 including a real host PTY, a real C0 outbox crash after an external effect but before settlement,
 both sides of the atomic B1 lease event/projection commit, and both sides of recoverable patch
-application and the atomic D1 gate event/checkpoint commit.
+application and the atomic D1 gate event/checkpoint commit. Its qualification surface also proves
+fresh startup replaces a corrupt derived projection and refuses a corrupt authoritative journal
+before allocating authority.
 
 The crate does not expose writable storage handles or reusable authority tokens. Embedders receive
 configuration, lifecycle status, and a bounded authority client. Product-run configuration carries

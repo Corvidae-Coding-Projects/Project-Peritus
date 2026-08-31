@@ -74,16 +74,18 @@ systems and retains each report plus raw evidence. Its macOS and Windows sandbox
 actual Seatbelt and AppContainer/Job Object host probes; hosted results remain evidence only after
 the corresponding revision finishes successfully.
 
-H1 now has fifteen checked-in production controller routes. Focused native runs against freshly
+H1 now has sixteen checked-in production controller routes. Focused native runs against freshly
 built binaries passed both sides of the journal, blob, retained Git snapshot, exclusive-lease,
 patch, D1 gate, and F0 campaign/pointer promotion commits. A projection-corruption route also
 proves that startup rejects corrupt active bytes and atomically installs a fresh verified
-generation without changing the authoritative journal. The staged daemon was killed with checked
-work still unpublished, and again after each corresponding durable commit. Recovery proved
+generation without changing the authoritative journal. A journal-corruption route proves that
+fresh startup detects a changed committed frame and stops before authority mutation. The staged
+daemon was killed with checked work still unpublished, and again after each corresponding durable
+commit. Recovery proved
 rollback for the before cases and exact replay for the after cases, including lease projection
 identity, exact patch postimage bytes, complete gate successor state, and all-or-nothing campaign,
 production-pointer, and approve-once state. This is useful evidence, not an H1 readiness claim:
-the remaining 28 catalog routes still need genuine component, quota, process, and disposable-VM
+the remaining 27 catalog routes still need genuine component, quota, process, and disposable-VM
 controls.
 
 H0 also has a Rust-owned exact-candidate preparer and a three-host native workflow. The preparer

@@ -10,9 +10,9 @@ use peritus_conformance::{
 
 use daemon_conformance_support::{
     BinaryDaemonFactory, BinaryDaemonSubject, blob_commit_crash_recovery, blocker_for,
-    gate_commit_crash_recovery, journal_before_crash_recovery, lease_commit_crash_recovery,
-    patch_commit_crash_recovery, projection_corruption_recovery, promotion_commit_crash_recovery,
-    reachable_scenarios, snapshot_commit_crash_recovery,
+    gate_commit_crash_recovery, journal_before_crash_recovery, journal_corruption_recovery,
+    lease_commit_crash_recovery, patch_commit_crash_recovery, projection_corruption_recovery,
+    promotion_commit_crash_recovery, reachable_scenarios, snapshot_commit_crash_recovery,
 };
 
 #[test]
@@ -53,6 +53,11 @@ fn promotion_commit_recovers_on_both_sides_of_atomic_activation() {
 #[test]
 fn corrupt_projection_is_replaced_during_fresh_startup() {
     projection_corruption_recovery().expect("real projection corruption recovery");
+}
+
+#[test]
+fn corrupt_journal_stops_fresh_startup_before_authority_mutation() {
+    journal_corruption_recovery().expect("real journal corruption recovery");
 }
 
 #[test]

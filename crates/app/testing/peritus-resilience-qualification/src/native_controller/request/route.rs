@@ -6,6 +6,7 @@ pub(super) const BLOB_BEFORE: &str = "h1.crash.blob.before";
 pub(super) const BLOB_AFTER_BEFORE_ACK: &str = "h1.crash.blob.after-before-ack";
 pub(super) const JOURNAL_BEFORE: &str = "h1.crash.journal.before";
 pub(super) const JOURNAL_AFTER_BEFORE_ACK: &str = "h1.crash.journal.after-before-ack";
+pub(super) const JOURNAL_CORRUPTION: &str = "h1.corruption.journal";
 pub(super) const LEASE_BEFORE: &str = "h1.crash.lease.before";
 pub(super) const LEASE_AFTER_BEFORE_ACK: &str = "h1.crash.lease.after-before-ack";
 pub(super) const GATE_BEFORE: &str = "h1.crash.gate.before";
@@ -24,6 +25,7 @@ pub(in crate::native_controller) enum ScenarioRoute {
     BlobAfterDurableCommitBeforeAck,
     JournalBeforeDurableCommit,
     JournalAfterDurableCommitBeforeAck,
+    JournalCorruption,
     LeaseBeforeDurableCommit,
     LeaseAfterDurableCommitBeforeAck,
     GateBeforeDurableCommit,
@@ -67,6 +69,11 @@ impl ScenarioRoute {
                 FaultDocument::CommitCrash { boundary, timing },
             ) if boundary == "journal" && timing == "after-durable-commit-before-ack" => {
                 Some(Self::JournalAfterDurableCommitBeforeAck)
+            }
+            (JOURNAL_CORRUPTION, "failed-closed", FaultDocument::Corruption { target })
+                if target == "journal" =>
+            {
+                Some(Self::JournalCorruption)
             }
             (
                 LEASE_BEFORE,
@@ -171,12 +178,14 @@ impl ScenarioRoute {
             | Self::SnapshotAfterDurableCommitBeforeAck
             | Self::PromotionAfterDurableCommitBeforeAck => "replayed-committed",
             Self::ProjectionCorruption => "rebuilt-projection",
+            Self::JournalCorruption => "failed-closed",
         }
     }
 
     /// Returns the directly supportable journal-health observation.
     pub(in crate::native_controller) const fn journal_health(self) -> &'static str {
         match self {
+            Self::JournalCorruption => "hash-divergence-detected",
             Self::BlobBeforeDurableCommit
             | Self::BlobAfterDurableCommitBeforeAck
             | Self::JournalBeforeDurableCommit
@@ -198,6 +207,7 @@ impl ScenarioRoute {
     pub(in crate::native_controller) const fn projection_health(self) -> &'static str {
         match self {
             Self::ProjectionCorruption => "rebuilt-and-verified",
+            Self::JournalCorruption => "unavailable",
             _ => "verified",
         }
     }
@@ -205,11 +215,12 @@ impl ScenarioRoute {
     pub(in crate::native_controller) const fn corruption_target(self) -> Option<&'static str> {
         match self {
             Self::ProjectionCorruption => Some("projection"),
+            Self::JournalCorruption => Some("journal"),
             _ => None,
         }
     }
 
     pub(in crate::native_controller) const fn mutation_admitted(self) -> bool {
-        !matches!(self, Self::ProjectionCorruption)
+        !matches!(self, Self::ProjectionCorruption | Self::JournalCorruption)
     }
 }

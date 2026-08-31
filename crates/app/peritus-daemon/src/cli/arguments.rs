@@ -12,6 +12,8 @@ pub(super) enum CommandLine {
     RecoverBlobAfterCrash(OsString),
     StageJournalBeforeCrash(OsString),
     RecoverJournalBeforeCrash(OsString),
+    StageJournalCorruption(OsString),
+    RecoverJournalCorruption(OsString),
     StageSnapshotBeforeCrash(OsString),
     RecoverSnapshotBeforeCrash(OsString),
     StageSnapshotAfterCrash(OsString),
@@ -53,6 +55,12 @@ pub(super) fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<Co
         }
         "qualify-journal-before-recover" => {
             configured(arguments, CommandLine::RecoverJournalBeforeCrash)
+        }
+        "qualify-journal-corruption-stage" => {
+            configured(arguments, CommandLine::StageJournalCorruption)
+        }
+        "qualify-journal-corruption-recover" => {
+            configured(arguments, CommandLine::RecoverJournalCorruption)
         }
         "qualify-snapshot-before-stage" => {
             configured(arguments, CommandLine::StageSnapshotBeforeCrash)

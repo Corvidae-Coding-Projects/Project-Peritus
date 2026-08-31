@@ -179,6 +179,12 @@ the mismatch, and then invokes recovery in a fresh daemon process. Recovery must
 a second generation with the exact genesis-rebuilt payload and digest, leave the authoritative
 journal unchanged, and prove the repaired projection is reusable on the next startup.
 
+The journal-corruption route commits a real D1 gate event and complete checkpoint, changes its
+stored frame without changing the recorded frame digest, and invokes the full production daemon
+startup path in a fresh process. Startup must return typed corrupt state with read-only guidance
+before allocating authority or binding an application principal. A second direct integrity scan
+must still diagnose the same corrupt frame, and all authoritative row counts must remain unchanged.
+
 Fresh focused diagnostics retained passing one-case reports and six raw evidence files under
 `/home/doll/.local/state/peritus/qualification/h1/journal-before.YP5d5R` and
 `/home/doll/.local/state/peritus/qualification/h1/journal-after-ack.sCtlT9`. Both reports deliberately
@@ -196,8 +202,10 @@ retained under `/home/doll/.local/state/peritus/qualification/h1/gate-before.p0O
 under `/home/doll/.local/state/peritus/qualification/h1/promotion-before.7ATDYH` and
 `/home/doll/.local/state/peritus/qualification/h1/promotion-after-ack.7ATDYH`. The passing
 projection-corruption report is retained under
-`/home/doll/.local/state/peritus/qualification/h1/projection-corruption.78KmoW`. With these fifteen
-routes, the other 28 catalog routes remain fail-closed until their real component failpoints,
+`/home/doll/.local/state/peritus/qualification/h1/projection-corruption.78KmoW`. The passing
+journal-corruption report is retained under
+`/home/doll/.local/state/peritus/qualification/h1/journal-corruption.8WRWr9`. With these sixteen
+routes, the other 27 catalog routes remain fail-closed until their real component failpoints,
 controlled quota/storage effects, process controls, or disposable-VM reboot driver are connected.
 Therefore the full H1 production qualification is still pending.
 

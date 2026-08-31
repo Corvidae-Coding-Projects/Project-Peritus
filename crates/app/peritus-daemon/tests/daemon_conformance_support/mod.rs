@@ -6,6 +6,7 @@ mod blob;
 mod command;
 mod error;
 mod gate;
+mod journal_corruption;
 mod lease;
 mod lifecycle;
 mod outbox;
@@ -24,6 +25,7 @@ pub use adapter::{BinaryDaemonFactory, BinaryDaemonSubject, blocker_for, reachab
 pub use blob::commit_crash_recovery as blob_commit_crash_recovery;
 use error::debug_error;
 pub use gate::commit_crash_recovery as gate_commit_crash_recovery;
+pub use journal_corruption::corruption_recovery as journal_corruption_recovery;
 pub use lease::commit_crash_recovery as lease_commit_crash_recovery;
 pub use outbox::journal_before_crash_recovery;
 pub use patch::commit_crash_recovery as patch_commit_crash_recovery;

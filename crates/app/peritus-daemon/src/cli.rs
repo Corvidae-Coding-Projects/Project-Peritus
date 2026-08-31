@@ -2,6 +2,7 @@
 
 mod arguments;
 mod gate;
+mod journal_corruption;
 mod lease;
 mod patch;
 mod projection;
@@ -47,6 +48,12 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
         CommandLine::StageJournalBeforeCrash(configuration) => stage_journal_before(configuration),
         CommandLine::RecoverJournalBeforeCrash(configuration) => {
             recover_journal_before(configuration)
+        }
+        CommandLine::StageJournalCorruption(configuration) => {
+            journal_corruption::stage(configuration)
+        }
+        CommandLine::RecoverJournalCorruption(configuration) => {
+            journal_corruption::recover(configuration)
         }
         CommandLine::StageSnapshotBeforeCrash(configuration) => {
             snapshot::stage_before(configuration)

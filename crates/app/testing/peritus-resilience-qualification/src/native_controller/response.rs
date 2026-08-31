@@ -126,7 +126,31 @@ pub(super) fn publish<T: Serialize>(
 }
 
 pub(super) fn canonical_milestones(route: ScenarioRoute) -> Vec<MilestoneDocument> {
-    let (armed, observed, reconciled) = match route {
+    let (armed, observed, reconciled) = milestone_details(route);
+    vec![
+        MilestoneDocument {
+            sequence: 0,
+            kind: "prepared",
+            detail: "candidate and private daemon state prepared",
+        },
+        MilestoneDocument { sequence: 1, kind: "fault-armed", detail: armed },
+        MilestoneDocument { sequence: 2, kind: "fault-observed", detail: observed },
+        MilestoneDocument {
+            sequence: 3,
+            kind: "recovery-started",
+            detail: "fresh candidate process opened the same journal",
+        },
+        MilestoneDocument { sequence: 4, kind: "reconciled", detail: reconciled },
+        MilestoneDocument {
+            sequence: 5,
+            kind: "inspected",
+            detail: "controller independently inspected retained state",
+        },
+    ]
+}
+
+const fn milestone_details(route: ScenarioRoute) -> (&'static str, &'static str, &'static str) {
+    match route {
         ScenarioRoute::BlobBeforeDurableCommit => (
             "exact bytes held by the production artifact writer before finalization",
             "candidate killed before artifact publication",
@@ -146,6 +170,11 @@ pub(super) fn canonical_milestones(route: ScenarioRoute) -> Vec<MilestoneDocumen
             "durable outbox effect-before-ack fault armed",
             "candidate killed after its durable checkpoint",
             "exact effect reconciled before fence acknowledgement",
+        ),
+        ScenarioRoute::JournalCorruption => (
+            "one valid D1 event and checkpoint committed to the authoritative journal",
+            "committed event frame changed without updating its recorded digest",
+            "fresh daemon startup detected divergence before authority mutation",
         ),
         ScenarioRoute::LeaseBeforeDurableCommit => (
             "move-only lease commit request prepared in process memory",
@@ -202,25 +231,5 @@ pub(super) fn canonical_milestones(route: ScenarioRoute) -> Vec<MilestoneDocumen
             "active projection payload bytes replaced without changing their recorded digest",
             "startup replay installed and verified a new atomic shadow generation",
         ),
-    };
-    vec![
-        MilestoneDocument {
-            sequence: 0,
-            kind: "prepared",
-            detail: "candidate and private daemon state prepared",
-        },
-        MilestoneDocument { sequence: 1, kind: "fault-armed", detail: armed },
-        MilestoneDocument { sequence: 2, kind: "fault-observed", detail: observed },
-        MilestoneDocument {
-            sequence: 3,
-            kind: "recovery-started",
-            detail: "fresh candidate process opened the same journal",
-        },
-        MilestoneDocument { sequence: 4, kind: "reconciled", detail: reconciled },
-        MilestoneDocument {
-            sequence: 5,
-            kind: "inspected",
-            detail: "controller independently inspected retained state",
-        },
-    ]
+    }
 }

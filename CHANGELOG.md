@@ -14,13 +14,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 - Add the checked-in Rust `peritus-h1-controller` and an explicit focused diagnostic mode. Its
-  fifteen genuine routes cover both sides of journal submission, content-addressed blob publication,
+  sixteen genuine routes cover both sides of journal submission, content-addressed blob publication,
   retained Git snapshot publication, exclusive-lease persistence, and recoverable patch
   application, plus D1's atomic gate event/checkpoint commit and F0's campaign/pointer/approval
-  promotion commit. They also cover active projection corruption and fresh-generation repair. The
-  exact staged `peritusd` is killed before and after each corresponding durable commit. Recovery
-  verifies the expected rollback or exact replay, retains all six evidence classes, and cleans its
-  private state.
+  promotion commit. They also cover active projection corruption with fresh-generation repair and
+  committed journal-frame corruption with fail-closed startup before authority mutation. The exact
+  staged `peritusd` is killed before and after each corresponding durable commit. Recovery verifies
+  the expected rollback or exact replay, retains all six evidence classes, and cleans its private
+  state.
   Unimplemented H1 routes fail closed instead of borrowing the shell fixture or manufacturing a
   result (#31)
 - Add the executable `peritus-h1` qualification operator: bind the declared subject to the exact
