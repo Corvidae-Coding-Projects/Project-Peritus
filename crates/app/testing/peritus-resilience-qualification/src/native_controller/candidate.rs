@@ -1,6 +1,7 @@
 //! Exact staged-daemon effects for supported production resilience routes.
 
 mod blob;
+mod blob_corruption;
 mod config;
 mod gate;
 mod journal_after;
@@ -99,6 +100,7 @@ pub(super) fn inject(
         ScenarioRoute::BlobBeforeDurableCommit | ScenarioRoute::BlobAfterDurableCommitBeforeAck => {
             blob::inject(paths, runtime, route)
         }
+        ScenarioRoute::BlobCorruption => blob_corruption::inject(paths, runtime),
         ScenarioRoute::JournalBeforeDurableCommit => journal_before::inject(paths, runtime),
         ScenarioRoute::JournalCorruption => journal_corruption::inject(paths, runtime),
         ScenarioRoute::LeaseBeforeDurableCommit
@@ -131,6 +133,7 @@ pub(super) fn recover(
         ScenarioRoute::BlobBeforeDurableCommit | ScenarioRoute::BlobAfterDurableCommitBeforeAck => {
             blob::recover(paths, runtime, injected, route)
         }
+        ScenarioRoute::BlobCorruption => blob_corruption::recover(paths, runtime, injected),
         ScenarioRoute::JournalBeforeDurableCommit => {
             journal_before::recover(paths, runtime, injected)
         }

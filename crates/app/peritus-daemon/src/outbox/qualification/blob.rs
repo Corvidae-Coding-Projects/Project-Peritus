@@ -41,6 +41,7 @@ impl BlobBeforeCheckpoint {
 /// Durable checkpoint after exact bytes, metadata, and their owner reference are published.
 pub struct BlobAfterCheckpoint {
     digest: String,
+    artifact_digest: ArtifactDigest,
     bytes: u64,
 }
 
@@ -51,6 +52,10 @@ impl BlobAfterCheckpoint {
 
     pub(crate) const fn bytes(&self) -> u64 {
         self.bytes
+    }
+
+    pub(crate) const fn artifact_digest(&self) -> ArtifactDigest {
+        self.artifact_digest
     }
 }
 
@@ -156,7 +161,11 @@ pub fn stage_blob_after_crash(config: &DaemonConfig) -> Result<BlobAfterCheckpoi
     {
         return Err(blob_error("finalized artifact identity differs from the staged bytes"));
     }
-    Ok(BlobAfterCheckpoint { digest: digest.to_hex(), bytes: finalized.size() })
+    Ok(BlobAfterCheckpoint {
+        digest: digest.to_hex(),
+        artifact_digest: digest,
+        bytes: finalized.size(),
+    })
 }
 
 /// Reopens the production store and verifies the exact finalized bytes and durable owner root.

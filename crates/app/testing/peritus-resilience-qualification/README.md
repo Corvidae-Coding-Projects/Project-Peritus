@@ -23,9 +23,9 @@ The controller remains responsible for real daemon, storage, dependency, quota, 
 effects. The operator refuses a descriptor whose build digest differs from the exact staged
 candidate bytes.
 
-The checked-in `peritus-h1-controller` currently owns sixteen genuine routes across the journal,
+The checked-in `peritus-h1-controller` currently owns seventeen genuine routes across the journal,
 blob, retained Git snapshot, lease, patch, gate, and promotion commit boundaries, plus active
-projection corruption and repair. For
+projection repair and journal/blob corruption controls. For
 `h1.crash.journal.before`, the exact staged daemon builds a production append plan, publishes its
 checkpoint before submission, and is killed; recovery requires an integrity-checked journal with
 zero committed events, heads, outbox claims, or external effects. For
@@ -80,6 +80,12 @@ startup path in a fresh process. Startup must report typed corrupt state before 
 authority epoch or application principal, and the controller proves the corrupt bytes and every
 authoritative row count remain unchanged.
 
+The blob-corruption route publishes a real content-addressed object and durable evidence reference,
+then changes its active bytes without changing the recorded identity. Fresh store startup must
+persist the corrupt integrity state, move the divergent bytes to quarantine, retain the audit
+reference, and make the artifact unavailable to readers or new references. A second restart must
+preserve that contained state.
+
 Use the explicit diagnostic option to exercise that route without presenting a one-case report as
 production readiness:
 
@@ -112,6 +118,7 @@ The equivalent blob diagnostics are `h1.crash.blob.before` and
 `h1.crash.promotion.before` and `h1.crash.promotion.after-before-ack`.
 The projection diagnostic is `h1.corruption.projection`.
 The journal diagnostic is `h1.corruption.journal`.
+The blob diagnostic is `h1.corruption.blob`.
 
 ## Focused checks
 

@@ -14,11 +14,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 - Add the checked-in Rust `peritus-h1-controller` and an explicit focused diagnostic mode. Its
-  sixteen genuine routes cover both sides of journal submission, content-addressed blob publication,
+  seventeen genuine routes cover both sides of journal submission, content-addressed blob publication,
   retained Git snapshot publication, exclusive-lease persistence, and recoverable patch
   application, plus D1's atomic gate event/checkpoint commit and F0's campaign/pointer/approval
-  promotion commit. They also cover active projection corruption with fresh-generation repair and
-  committed journal-frame corruption with fail-closed startup before authority mutation. The exact
+  promotion commit. They also cover active projection corruption with fresh-generation repair,
+  committed journal-frame corruption with fail-closed startup before authority mutation, and
+  referenced blob corruption with durable quarantine and reference denial. The exact
   staged `peritusd` is killed before and after each corresponding durable commit. Recovery verifies
   the expected rollback or exact replay, retains all six evidence classes, and cleans its private
   state.
@@ -155,6 +156,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- Make artifact-store startup durably contain cataloged content corruption: add a migrated
+  integrity state, move divergent bytes out of the active namespace, retain their audit roots,
+  deny reads and new references, and prove repeated restart safety through the public daemon and
+  `h1.corruption.blob` (#31)
 - Correct the C0 operator guide to describe the production daemon's implemented migration,
   recovery, projection, authority, outbox, and readiness startup composition instead of retaining
   the obsolete pre-daemon limitation (#31).

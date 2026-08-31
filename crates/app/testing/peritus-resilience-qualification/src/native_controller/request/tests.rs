@@ -1,5 +1,5 @@
 use super::route::{
-    BLOB_AFTER_BEFORE_ACK, BLOB_BEFORE, GATE_AFTER_BEFORE_ACK, GATE_BEFORE,
+    BLOB_AFTER_BEFORE_ACK, BLOB_BEFORE, BLOB_CORRUPTION, GATE_AFTER_BEFORE_ACK, GATE_BEFORE,
     JOURNAL_AFTER_BEFORE_ACK, JOURNAL_BEFORE, JOURNAL_CORRUPTION, LEASE_AFTER_BEFORE_ACK,
     LEASE_BEFORE, PATCH_AFTER_BEFORE_ACK, PATCH_BEFORE, PROJECTION_CORRUPTION,
     PROMOTION_AFTER_BEFORE_ACK, PROMOTION_BEFORE, SNAPSHOT_AFTER_BEFORE_ACK, SNAPSHOT_BEFORE,
@@ -8,7 +8,7 @@ use super::route::{
 use super::{FaultDocument, ScenarioDocument};
 
 #[test]
-fn only_the_sixteen_real_routes_are_admitted() {
+fn only_the_seventeen_real_routes_are_admitted() {
     let cases = [
         (JOURNAL_BEFORE, "journal", ScenarioRoute::JournalBeforeDurableCommit),
         (BLOB_BEFORE, "blob", ScenarioRoute::BlobBeforeDurableCommit),
@@ -59,6 +59,13 @@ fn only_the_sixteen_real_routes_are_admitted() {
         ScenarioRoute::from_scenario(&journal_corruption),
         Some(ScenarioRoute::JournalCorruption)
     );
+    let blob_corruption = ScenarioDocument {
+        id: BLOB_CORRUPTION.to_owned(),
+        title: "blob corruption".to_owned(),
+        fault: FaultDocument::Corruption { target: "blob".to_owned() },
+        expected_recovery: "quarantined-corruption".to_owned(),
+    };
+    assert_eq!(ScenarioRoute::from_scenario(&blob_corruption), Some(ScenarioRoute::BlobCorruption));
     let unsupported = scenario(
         "h1.crash.unknown.before",
         "unknown",

@@ -115,7 +115,7 @@ fn recovery_payload(
             evidence_current: false,
         },
         journal: route.journal_health(),
-        artifacts: "verified",
+        artifacts: route.artifact_health(),
         projection: route.projection_health(),
         corruption: CorruptionDocument {
             detected: route.corruption_target(),

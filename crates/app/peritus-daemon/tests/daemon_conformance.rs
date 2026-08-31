@@ -9,10 +9,11 @@ use peritus_conformance::{
 };
 
 use daemon_conformance_support::{
-    BinaryDaemonFactory, BinaryDaemonSubject, blob_commit_crash_recovery, blocker_for,
-    gate_commit_crash_recovery, journal_before_crash_recovery, journal_corruption_recovery,
-    lease_commit_crash_recovery, patch_commit_crash_recovery, projection_corruption_recovery,
-    promotion_commit_crash_recovery, reachable_scenarios, snapshot_commit_crash_recovery,
+    BinaryDaemonFactory, BinaryDaemonSubject, blob_commit_crash_recovery, blob_corruption_recovery,
+    blocker_for, gate_commit_crash_recovery, journal_before_crash_recovery,
+    journal_corruption_recovery, lease_commit_crash_recovery, patch_commit_crash_recovery,
+    projection_corruption_recovery, promotion_commit_crash_recovery, reachable_scenarios,
+    snapshot_commit_crash_recovery,
 };
 
 #[test]
@@ -23,6 +24,11 @@ fn journal_append_plan_dies_cleanly_before_durable_commit() {
 #[test]
 fn artifact_commit_recovers_on_both_sides_of_publication() {
     blob_commit_crash_recovery().expect("real artifact commit crash recovery");
+}
+
+#[test]
+fn corrupt_referenced_artifact_is_quarantined_and_made_unavailable() {
+    blob_corruption_recovery().expect("real artifact corruption containment");
 }
 
 #[test]

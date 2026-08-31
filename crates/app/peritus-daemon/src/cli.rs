@@ -1,6 +1,7 @@
 //! Process-facing command-line composition for `peritusd`.
 
 mod arguments;
+mod blob_corruption;
 mod gate;
 mod journal_corruption;
 mod lease;
@@ -45,6 +46,10 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
         CommandLine::RecoverBlobBeforeCrash(configuration) => recover_blob_before(configuration),
         CommandLine::StageBlobAfterCrash(configuration) => stage_blob_after(configuration),
         CommandLine::RecoverBlobAfterCrash(configuration) => recover_blob_after(configuration),
+        CommandLine::StageBlobCorruption(configuration) => blob_corruption::stage(configuration),
+        CommandLine::RecoverBlobCorruption(configuration) => {
+            blob_corruption::recover(configuration)
+        }
         CommandLine::StageJournalBeforeCrash(configuration) => stage_journal_before(configuration),
         CommandLine::RecoverJournalBeforeCrash(configuration) => {
             recover_journal_before(configuration)

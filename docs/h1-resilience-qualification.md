@@ -185,6 +185,12 @@ startup path in a fresh process. Startup must return typed corrupt state with re
 before allocating authority or binding an application principal. A second direct integrity scan
 must still diagnose the same corrupt frame, and all authoritative row counts must remain unchanged.
 
+The blob-corruption route publishes a real finalized artifact and durable evidence-owned reference,
+then changes the active object bytes without changing their recorded digest. A fresh process opens
+the production artifact store, which must durably classify and quarantine the divergent bytes,
+retain the audit reference, and deny further reads or references. The controller independently
+checks the active and quarantine namespaces and the healthy journal.
+
 Fresh focused diagnostics retained passing one-case reports and six raw evidence files under
 `/home/doll/.local/state/peritus/qualification/h1/journal-before.YP5d5R` and
 `/home/doll/.local/state/peritus/qualification/h1/journal-after-ack.sCtlT9`. Both reports deliberately
@@ -204,8 +210,10 @@ under `/home/doll/.local/state/peritus/qualification/h1/promotion-before.7ATDYH`
 projection-corruption report is retained under
 `/home/doll/.local/state/peritus/qualification/h1/projection-corruption.78KmoW`. The passing
 journal-corruption report is retained under
-`/home/doll/.local/state/peritus/qualification/h1/journal-corruption.8WRWr9`. With these sixteen
-routes, the other 27 catalog routes remain fail-closed until their real component failpoints,
+`/home/doll/.local/state/peritus/qualification/h1/journal-corruption.8WRWr9`. The passing
+blob-corruption report is retained under
+`/home/doll/.local/state/peritus/qualification/h1/blob-corruption.InuR0D`. With these seventeen
+routes, the other 26 catalog routes remain fail-closed until their real component failpoints,
 controlled quota/storage effects, process controls, or disposable-VM reboot driver are connected.
 Therefore the full H1 production qualification is still pending.
 

@@ -9,8 +9,8 @@ use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, 
 
 use crate::{
     ArtifactDigest, ArtifactMetadata, ArtifactReferenceSet, ArtifactStoreError, ErrorCode,
-    GcInventoryEntry, QuarantineState, RecoveryClass, ReferenceOwner, ReferenceRoots,
-    StoreOperation,
+    GcInventoryEntry, IntegrityState, QuarantineState, RecoveryClass, ReferenceOwner,
+    ReferenceRoots, StoreOperation,
 };
 use value::{
     RawMetadata, array, corrupt_catalog, decode_quarantine, encode_quarantine, missing_artifact,
@@ -51,15 +51,22 @@ impl Catalog {
                 .map_err(catalog_io)?;
         let existing = transaction
             .query_row(
-                "SELECT size, finalization_state, quarantine_state
+                "SELECT size, finalization_state, quarantine_state, integrity_state
                FROM artifact_records WHERE digest = ?1",
                 [metadata.digest().as_bytes().as_slice()],
-                |row| Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?, row.get::<_, i64>(2)?)),
+                |row| {
+                    Ok((
+                        row.get::<_, i64>(0)?,
+                        row.get::<_, i64>(1)?,
+                        row.get::<_, i64>(2)?,
+                        row.get::<_, i64>(3)?,
+                    ))
+                },
             )
             .optional()
             .map_err(catalog_io)?;
-        if let Some((existing_size, finalization, quarantine)) = existing {
-            if existing_size != size || finalization != 2 {
+        if let Some((existing_size, finalization, quarantine, integrity)) = existing {
+            if existing_size != size || finalization != 2 || integrity != 1 {
                 return Err(corrupt_catalog(
                     "durable artifact metadata disagrees with finalized content",
                 ));
@@ -130,7 +137,7 @@ impl Catalog {
             .query_row(
                 "SELECT size, media_type, encryption_algorithm, encryption_key_reference,
                     encryption_parameters_digest, finalization_state, creating_event,
-                    quarantine_state, quarantine_generation
+                    quarantine_state, quarantine_generation, integrity_state
                FROM artifact_records WHERE digest = ?1",
                 [digest.as_bytes().as_slice()],
                 |row| {
@@ -144,6 +151,7 @@ impl Catalog {
                         creating_event: row.get(6)?,
                         quarantine: row.get(7)?,
                         quarantine_generation: row.get(8)?,
+                        integrity: row.get(9)?,
                     })
                 },
             )
@@ -226,13 +234,23 @@ impl Catalog {
     }
 
     pub(crate) fn inventory(&self) -> Result<Vec<GcInventoryEntry>, ArtifactStoreError> {
-        let mut statement = self
-            .connection
-            .prepare(
-                "SELECT digest, size, quarantine_state, quarantine_generation
-               FROM artifact_records WHERE finalization_state = 2 ORDER BY digest",
-            )
-            .map_err(catalog_io)?;
+        self.inventory_where("AND integrity_state = 1")
+    }
+
+    pub(crate) fn recovery_inventory(&self) -> Result<Vec<GcInventoryEntry>, ArtifactStoreError> {
+        self.inventory_where("")
+    }
+
+    fn inventory_where(
+        &self,
+        integrity_filter: &'static str,
+    ) -> Result<Vec<GcInventoryEntry>, ArtifactStoreError> {
+        let query = format!(
+            "SELECT digest, size, quarantine_state, quarantine_generation
+               FROM artifact_records WHERE finalization_state = 2 {integrity_filter}
+               ORDER BY digest"
+        );
+        let mut statement = self.connection.prepare(&query).map_err(catalog_io)?;
         let rows = statement
             .query_map([], |row| {
                 Ok((
@@ -254,6 +272,29 @@ impl Catalog {
             ));
         }
         Ok(inventory)
+    }
+
+    pub(crate) fn set_integrity(
+        &self,
+        digest: ArtifactDigest,
+        state: IntegrityState,
+    ) -> Result<(), ArtifactStoreError> {
+        let tag = match state {
+            IntegrityState::Healthy => 1_i64,
+            IntegrityState::Corrupt => 2_i64,
+        };
+        let changed = self
+            .connection
+            .execute(
+                "UPDATE artifact_records SET integrity_state = ?2
+                  WHERE digest = ?1 AND finalization_state = 2",
+                params![digest.as_bytes().as_slice(), tag],
+            )
+            .map_err(catalog_io)?;
+        if changed != 1 {
+            return Err(missing_artifact());
+        }
+        Ok(())
     }
 
     pub(crate) fn used_bytes(&self) -> Result<u64, ArtifactStoreError> {

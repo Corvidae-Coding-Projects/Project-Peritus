@@ -161,6 +161,11 @@ const fn milestone_details(route: ScenarioRoute) -> (&'static str, &'static str,
             "candidate killed before acknowledging artifact publication",
             "exact artifact bytes and owner reference recovered",
         ),
+        ScenarioRoute::BlobCorruption => (
+            "finalized content-addressed bytes and their evidence reference published",
+            "active object bytes changed without changing their durable identity",
+            "startup quarantined divergent bytes and denied further references",
+        ),
         ScenarioRoute::JournalBeforeDurableCommit => (
             "production journal append plan prepared in process memory",
             "candidate killed before submitting the append plan",

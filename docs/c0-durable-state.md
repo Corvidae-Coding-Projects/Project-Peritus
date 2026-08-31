@@ -212,11 +212,14 @@ Publication necessarily precedes catalog insertion. A crash in that interval lea
 untracked object, never an authoritative reference. On open, recovery removes abandoned temporary
 files, re-hashes every cataloged or discovered object, completes interrupted quarantine moves,
 moves untracked active objects to quarantine for one recovery cycle, and removes untracked files
-already left in quarantine by an earlier completed sweep. Missing cataloged bytes or a path/content
-digest mismatch is a terminal integrity failure.
+already left in quarantine by an earlier completed sweep. A cataloged object whose bytes disagree
+with its recorded digest or size is durably marked corrupt, moved out of the active namespace, and
+made unavailable while its audit reference remains intact. The corrupt state and move are
+restart-safe. Missing cataloged bytes and noncanonical layouts remain terminal integrity failures.
 
-Journal and evidence roots live in the shared `artifact_references` table. A reference may name
-only finalized active metadata. `plan_gc` loads the durable inventory and both root sets and creates
+Journal and evidence roots live in the shared `artifact_references` table. A new reference may name
+only finalized, active, healthy metadata. Existing roots remain as audit evidence if recovery later
+contains corrupt bytes. `plan_gc` loads the durable inventory and both root sets and creates
 a canonical plan for an explicit positive `CollectionGeneration`:
 
 - an active unmarked object is quarantined;

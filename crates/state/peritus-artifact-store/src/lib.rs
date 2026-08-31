@@ -27,11 +27,12 @@ pub use digest::ArtifactDigest;
 pub use error::{ArtifactStoreError, ErrorCode, RecoveryClass, StoreOperation};
 pub use gc_plan::{CollectionGeneration, GcAction, GcApplication, GcInventoryEntry, GcPlan};
 pub use metadata::{
-    ArtifactMetadata, EncryptionMetadata, FinalizationState, MediaType, QuarantineState,
+    ArtifactMetadata, EncryptionMetadata, FinalizationState, IntegrityState, MediaType,
+    QuarantineState,
 };
 pub use owned::{ArtifactReadChunk, ArtifactReadHandle, ArtifactWriteHandle};
 pub use quota::{QuotaPlan, QuotaSnapshot};
-pub use recovery::{QuarantinedArtifact, RecoveryReport};
+pub use recovery::{ContainedCorruption, QuarantinedArtifact, RecoveryReport};
 pub use references::{ArtifactReferenceSet, ReferenceRoots};
 pub use references::{ReferenceOwner, ReferenceOwnerKind};
 pub use store::{ArtifactStore, SpaceObservation};
