@@ -3200,6 +3200,15 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   `TBF-009` after eight requests, 168,499 input, 31,744 cached input, and 8,480 output tokens, and its
   inability to run the candidate because Python was absent remains covered by `TBF-016`.
 
+- Frozen trial `pytorch-model-recovery__yXN29am` independently hit the same infrastructure
+  boundary. Its unchanged verifier spent the complete interval from
+  `2026-08-31T23:17:34.873632Z` through `2026-08-31T23:32:34.884183Z` installing Torch 2.7.1 and
+  the CUDA distribution, including 783.0 MiB of Torch plus multi-gigabyte NVIDIA dependencies, and
+  timed out before publishing a verifier result. Harbor retained the earlier agent timeout as the
+  trial exception, while the raw trial log records the separate `VerifierTimeoutError`. The null
+  result remains an infrastructure outcome; no task image, dependency selection, timeout, or score
+  is changed.
+
 ## TBF-018: a scientific fit was returned in the raw coordinate instead of the named domain
 
 - Suite and task: Terminal-Bench 2.0, `raman-fitting`, first full-suite baseline trial.
@@ -3454,6 +3463,14 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   only one descendant snapshot, so a detached or reparented process could escape the proof. The
   running baseline process had already imported that implementation and remains frozen; the source
   correction is reserved for a fresh final-candidate campaign.
+- Frozen corrected-adapter recurrence `pytorch-model-recovery__yXN29am` reached its unchanged agent
+  deadline at `2026-08-31T23:17:34.146547Z`. Harbor began verification at
+  `2026-08-31T23:17:34.873632Z`, but the native trace continued changing until
+  `2026-08-31T23:20:35.277747466Z`, almost three minutes inside the verifier interval. The campaign
+  executable at `d4a72e67` includes the original descendant-snapshot supervisor but predates the
+  inherited-marker correction at `3708f7fd`, so this is expected frozen evidence for the already
+  corrected process-family escape. The null verifier result and unchanged timeouts are retained;
+  only a fresh campaign built after `3708f7fd` can validate the corrected boundary.
 - Verification: four focused adapter tests pass. They require the native wrapper to record and wait
   for its exact child, prove cancellation reaps an ordinary live tree, and now deliberately create
   a marked process that reparents outside the recorded tree and prove it is also gone before

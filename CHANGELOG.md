@@ -229,6 +229,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   before cancellation. The marker is observed after the production supervisor's process-count
   pass, so the case exercises cleanup of a genuinely live descendant tree without depending on the
   full resource-sample event that is intentionally unavailable on macOS (#31).
+- Enforce a sampled process-count ceiling immediately even when the host does not provide the full
+  CPU, memory, disk, and handle sample. This makes macOS stop and classify an owned process-tree
+  overrun as `ResourceLimit` instead of waiting for the later wall deadline (#31).
 - Bound every initial independent-review evidence packet against the active provider's input
   profile, retaining section-aware head/tail samples and exact SHA-256 provenance while directing
   the reviewer to fresh workspace tools for omitted current detail. Preserve tracked edits even

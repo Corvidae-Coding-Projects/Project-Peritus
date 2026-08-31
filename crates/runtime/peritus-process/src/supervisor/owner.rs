@@ -161,7 +161,9 @@ impl SpawnedOwner {
         if let Some(process_count) = self.process.process_count()? {
             self.resources.observe_process_count(process_count);
         }
-        if self.resources.sample(self.tree, &self.plan, &self.shared, false)? {
+        if self.resources.limit_exceeded(&self.plan)
+            || self.resources.sample(self.tree, &self.plan, &self.shared, false)?
+        {
             self.trigger_resource_limit()?;
         }
         Ok(())
@@ -180,7 +182,8 @@ impl SpawnedOwner {
             self.trigger_resource_limit()?;
         }
         if self.os_exit.is_none()
-            && self.resources.sample(self.tree, &self.plan, &self.shared, false)?
+            && (self.resources.limit_exceeded(&self.plan)
+                || self.resources.sample(self.tree, &self.plan, &self.shared, false)?)
         {
             self.trigger_resource_limit()?;
         }
