@@ -1,6 +1,8 @@
 //! Process-facing command-line composition for `peritusd`.
 
+mod lease;
 mod snapshot;
+mod usage;
 
 use std::ffi::{OsStr, OsString};
 use std::io::Write;
@@ -24,7 +26,7 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
     let mut arguments = arguments.into_iter();
     let executable = arguments.next().unwrap_or_default();
     let Some(command) = parse(&mut arguments) else {
-        usage(&executable);
+        usage::write(&executable);
         return ExitCode::from(2);
     };
     match command {
@@ -50,6 +52,10 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
         CommandLine::RecoverSnapshotAfterCrash(configuration) => {
             snapshot::recover(configuration, true)
         }
+        CommandLine::StageLeaseBeforeCrash(configuration) => lease::stage_before(configuration),
+        CommandLine::RecoverLeaseBeforeCrash(configuration) => lease::recover(configuration, false),
+        CommandLine::StageLeaseAfterCrash(configuration) => lease::stage_after(configuration),
+        CommandLine::RecoverLeaseAfterCrash(configuration) => lease::recover(configuration, true),
         CommandLine::StageOutboxCrash(configuration) => stage_outbox(configuration),
         CommandLine::RecoverOutboxCrash(configuration) => recover_outbox(configuration),
     }
@@ -96,6 +102,10 @@ enum CommandLine {
     RecoverSnapshotBeforeCrash(OsString),
     StageSnapshotAfterCrash(OsString),
     RecoverSnapshotAfterCrash(OsString),
+    StageLeaseBeforeCrash(OsString),
+    RecoverLeaseBeforeCrash(OsString),
+    StageLeaseAfterCrash(OsString),
+    RecoverLeaseAfterCrash(OsString),
     StageOutboxCrash(OsString),
     RecoverOutboxCrash(OsString),
 }
@@ -135,6 +145,18 @@ fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<CommandLine> 
         }
         "qualify-snapshot-after-recover" => {
             configuration_argument(arguments).map(CommandLine::RecoverSnapshotAfterCrash)
+        }
+        "qualify-lease-before-stage" => {
+            configuration_argument(arguments).map(CommandLine::StageLeaseBeforeCrash)
+        }
+        "qualify-lease-before-recover" => {
+            configuration_argument(arguments).map(CommandLine::RecoverLeaseBeforeCrash)
+        }
+        "qualify-lease-after-stage" => {
+            configuration_argument(arguments).map(CommandLine::StageLeaseAfterCrash)
+        }
+        "qualify-lease-after-recover" => {
+            configuration_argument(arguments).map(CommandLine::RecoverLeaseAfterCrash)
         }
         "qualify-outbox-stage" => {
             configuration_argument(arguments).map(CommandLine::StageOutboxCrash)
@@ -360,13 +382,6 @@ async fn serve(configuration: OsString) -> Result<ShutdownOutcome, DaemonError> 
     let mut runtime = DaemonRuntime::start(config).await?;
     runtime.wait_for_shutdown_signal().await?;
     runtime.shutdown().await
-}
-
-fn usage(executable: &OsStr) {
-    write_error(&format!(
-        "usage: {} --version | serve --config <config.toml> | qualify-pty | qualify-blob-before-stage --config <config.toml> | qualify-blob-before-recover --config <config.toml> | qualify-blob-after-stage --config <config.toml> | qualify-blob-after-recover --config <config.toml> | qualify-journal-before-stage --config <config.toml> | qualify-journal-before-recover --config <config.toml> | qualify-snapshot-before-stage --config <config.toml> | qualify-snapshot-before-recover --config <config.toml> | qualify-snapshot-after-stage --config <config.toml> | qualify-snapshot-after-recover --config <config.toml> | qualify-outbox-stage --config <config.toml> | qualify-outbox-recover --config <config.toml>",
-        std::path::Path::new(executable).display(),
-    ));
 }
 
 fn write_output(message: &str) -> std::io::Result<()> {

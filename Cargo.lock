@@ -2054,6 +2054,7 @@ dependencies = [
  "peritus-harness",
  "peritus-journal",
  "peritus-kernel",
+ "peritus-leases",
  "peritus-migrations",
  "peritus-model-protocol",
  "peritus-orchestrator",

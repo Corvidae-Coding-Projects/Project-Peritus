@@ -146,6 +146,13 @@ retained ref, then persists its canonical manifest. Recovery decodes that manife
 snapshot through `peritus-git`, and requires the exact commit, tree, reference, and manifest digest.
 The controller separately inspects the loose ref and manifest bytes on both sides of the crash.
 
+Both lease routes use the production B1 reducer and C0 journal adapter. Before commit, the staged
+daemon holds the exact move-only `LeaseCommitRequest` in memory and recovery requires no event,
+aggregate head, or lease projection. After commit, the lease event and projection are installed in
+one journal transaction. A fresh process integrity-checks the journal and reopens the exact state
+key, revision, digest, and producing position; the controller requires those facts to match the
+pre-crash committed receipt.
+
 Fresh focused diagnostics retained passing one-case reports and six raw evidence files under
 `/home/doll/.local/state/peritus/qualification/h1/journal-before.YP5d5R` and
 `/home/doll/.local/state/peritus/qualification/h1/journal-after-ack.sCtlT9`. Both reports deliberately
@@ -153,7 +160,9 @@ use the `custom` profile and `not-ready-custom-catalog` verdict. The blob report
 `/home/doll/.local/state/peritus/qualification/h1/blob-before.b7G9TE` and
 `/home/doll/.local/state/peritus/qualification/h1/blob-after-ack.UZrw1b`. The snapshot reports are
 retained under `/home/doll/.local/state/peritus/qualification/h1/snapshot-before.cZLcEc` and
-`/home/doll/.local/state/peritus/qualification/h1/snapshot-after-ack.46KKAh`. The other 37 catalog
+`/home/doll/.local/state/peritus/qualification/h1/snapshot-after-ack.46KKAh`. The lease reports are
+retained under `/home/doll/.local/state/peritus/qualification/h1/lease-before.UFyq0t` and
+`/home/doll/.local/state/peritus/qualification/h1/lease-after-ack.zurTPp`. The other 35 catalog
 routes fail closed until their real component failpoints, controlled quota/storage effects,
 process controls, or disposable-VM reboot driver are connected. Therefore the full H1 production
 qualification is still pending.

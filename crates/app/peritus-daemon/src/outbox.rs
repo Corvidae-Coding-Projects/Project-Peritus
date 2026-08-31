@@ -15,9 +15,11 @@ pub use claims::{CLAIM_DESTINATIONS, OrchestratorDirectiveClaim, TypedOutboxClai
 pub use pump::OutboxRuntime;
 pub use qualification::{
     recover_blob_after_crash, recover_blob_before_crash, recover_journal_before_crash,
-    recover_outbox_crash, recover_snapshot_after_crash, recover_snapshot_before_crash,
-    stage_blob_after_crash, stage_blob_before_crash, stage_journal_before_crash,
-    stage_outbox_crash, stage_snapshot_after_crash, stage_snapshot_before_crash,
+    recover_lease_after_crash, recover_lease_before_crash, recover_outbox_crash,
+    recover_snapshot_after_crash, recover_snapshot_before_crash, stage_blob_after_crash,
+    stage_blob_before_crash, stage_journal_before_crash, stage_lease_after_crash,
+    stage_lease_before_crash, stage_outbox_crash, stage_snapshot_after_crash,
+    stage_snapshot_before_crash,
 };
 pub use router::DestinationRouter;
 

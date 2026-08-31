@@ -1,13 +1,15 @@
 //! Exact staged-daemon effects for supported production commit-crash routes.
 
 mod blob;
+mod config;
 mod journal_before;
+mod lease;
 mod process;
 mod snapshot;
 
 use std::ffi::OsStr;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::Instant;
 
 use peritus_approval::CredentialRegistrySnapshot;
@@ -18,7 +20,8 @@ use crate::digest;
 
 use super::args::ControllerPaths;
 use super::request::CommitRoute;
-use process::{bounded_command, create_output, kill_after_checkpoint, one_line};
+use config::{bytes_sha256, create_private_directory, render_configuration, write_new};
+use process::{bounded_command, kill_after_checkpoint, one_line};
 
 const EFFECT_DIRECTORY: &str = "outbox-crash-qualification-v1";
 
@@ -39,6 +42,7 @@ pub(super) struct InjectedCandidate {
     pub(super) artifact_sha256: Option<String>,
     pub(super) artifact_bytes: Option<u64>,
     pub(super) snapshot: Option<SnapshotObservation>,
+    pub(super) lease: Option<LeaseObservation>,
     pub(super) killed_exit: String,
 }
 
@@ -59,6 +63,7 @@ pub(super) struct RecoveredCandidate {
     pub(super) artifact_sha256: Option<String>,
     pub(super) artifact_bytes: Option<u64>,
     pub(super) snapshot: Option<SnapshotObservation>,
+    pub(super) lease: Option<LeaseObservation>,
     pub(super) elapsed_millis: u64,
 }
 
@@ -68,6 +73,14 @@ pub(super) struct SnapshotObservation {
     pub(super) tree: String,
     pub(super) reference: String,
     pub(super) manifest_sha256: Option<String>,
+}
+
+#[derive(Serialize)]
+pub(super) struct LeaseObservation {
+    pub(super) request_sha256: String,
+    pub(super) state_revision: Option<u64>,
+    pub(super) state_sha256: Option<String>,
+    pub(super) producing_position: Option<u64>,
 }
 
 pub(super) struct RuntimePaths {
@@ -136,6 +149,9 @@ pub(super) fn inject(
         CommitRoute::JournalBeforeDurableCommit => {
             return journal_before::inject(paths, runtime);
         }
+        CommitRoute::LeaseBeforeDurableCommit | CommitRoute::LeaseAfterDurableCommitBeforeAck => {
+            return lease::inject(paths, runtime, route);
+        }
         CommitRoute::SnapshotBeforeDurableCommit
         | CommitRoute::SnapshotAfterDurableCommitBeforeAck => {
             return snapshot::inject(paths, runtime, route);
@@ -168,6 +184,7 @@ pub(super) fn inject(
         artifact_sha256: None,
         artifact_bytes: None,
         snapshot: None,
+        lease: None,
         killed_exit: killed.status,
     })
 }
@@ -184,6 +201,9 @@ pub(super) fn recover(
         }
         CommitRoute::JournalBeforeDurableCommit => {
             return journal_before::recover(paths, runtime, injected);
+        }
+        CommitRoute::LeaseBeforeDurableCommit | CommitRoute::LeaseAfterDurableCommitBeforeAck => {
+            return lease::recover(paths, runtime, injected, route);
         }
         CommitRoute::SnapshotBeforeDurableCommit
         | CommitRoute::SnapshotAfterDurableCommitBeforeAck => {
@@ -258,6 +278,7 @@ pub(super) fn recover(
         artifact_sha256: None,
         artifact_bytes: None,
         snapshot: None,
+        lease: None,
         elapsed_millis: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
     })
 }
@@ -332,55 +353,4 @@ fn value_field<'a>(field: &'a str, name: &str) -> Result<&'a str, Box<dyn std::e
         return Err(format!("expected staged peritusd field {name}, found {observed}").into());
     }
     Ok(value)
-}
-
-fn render_configuration(state: &Path, registry: &Path, build_sha256: &str) -> String {
-    format!(
-        "version = 1\nstore_id = \"{}\"\n\n[paths]\nstate_root = {}\nartifact_root = {}\nevidence_root = {}\nworkspace_root = {}\nprocess_root = {}\ntransaction_root = {}\nbackup_root = {}\n\n[approval_registry]\npayload_file = {}\ngeneration = 1\n\n[human]\nactor_id = \"{}\"\n\n[product]\nautomatic_provider_failover = false\n\n[telemetry]\nmode = \"disabled\"\n\n[tools]\nallow = []\n",
-        &build_sha256[..32],
-        toml_path(state),
-        toml_path(&state.join("artifacts")),
-        toml_path(&state.join("evidence")),
-        toml_path(&state.join("workspaces")),
-        toml_path(&state.join("processes")),
-        toml_path(&state.join("transactions")),
-        toml_path(&state.join("backups")),
-        toml_path(registry),
-        "42".repeat(16),
-    )
-}
-
-fn toml_path(path: &Path) -> String {
-    format!("{:?}", path.to_string_lossy())
-}
-
-fn bytes_sha256(bytes: &[u8]) -> String {
-    use sha2::{Digest as _, Sha256};
-    let digest = Sha256::digest(bytes);
-    let mut output = String::with_capacity(64);
-    for byte in digest {
-        use std::fmt::Write as _;
-        write!(&mut output, "{byte:02x}").expect("writing to String cannot fail");
-    }
-    output
-}
-
-fn write_new(path: &Path, bytes: &[u8]) -> Result<(), std::io::Error> {
-    use std::io::Write as _;
-    let mut file = create_output(path)?;
-    file.write_all(bytes)?;
-    file.sync_all()
-}
-
-fn create_private_directory(path: &Path) -> Result<(), std::io::Error> {
-    #[cfg(unix)]
-    let builder = {
-        use std::os::unix::fs::DirBuilderExt as _;
-        let mut builder = fs::DirBuilder::new();
-        builder.mode(0o700);
-        builder
-    };
-    #[cfg(not(unix))]
-    let builder = fs::DirBuilder::new();
-    builder.create(path)
 }

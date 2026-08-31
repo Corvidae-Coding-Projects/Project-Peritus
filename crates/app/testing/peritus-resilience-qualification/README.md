@@ -23,7 +23,8 @@ The controller remains responsible for real daemon, storage, dependency, quota, 
 effects. The operator refuses a descriptor whose build digest differs from the exact staged
 candidate bytes.
 
-The checked-in `peritus-h1-controller` currently owns both genuine journal crash routes. For
+The checked-in `peritus-h1-controller` currently owns eight genuine crash routes across the
+journal, blob, retained Git snapshot, and lease commit boundaries. For
 `h1.crash.journal.before`, the exact staged daemon builds a production append plan, publishes its
 checkpoint before submission, and is killed; recovery requires an integrity-checked journal with
 zero committed events, heads, outbox claims, or external effects. For
@@ -43,6 +44,12 @@ Both retained Git snapshot routes are real too. The before case holds a changed 
 ref or manifest. The after case publishes the deterministic synthetic commit and compare-and-swap
 ref through `peritus-git`; recovery decodes the canonical manifest and reopens the exact commit,
 tree, and ref while the controller independently checks the retained files.
+
+Both lease routes use the real B1 lease reducer and journal commit adapter. The before case holds a
+move-only commit request without submitting it and requires a completely empty lease history after
+restart. The after case kills the staged daemon after the atomic event/projection commit and
+requires a fresh process to recover the same request digest, projection revision and digest, and
+producing event position.
 
 Use the explicit diagnostic option to exercise that route without presenting a one-case report as
 production readiness:
@@ -69,7 +76,8 @@ case passes. The command exits successfully only to make focused qualification a
 Use `h1.crash.journal.before` in the last argument to run the other journal boundary.
 The equivalent blob diagnostics are `h1.crash.blob.before` and
 `h1.crash.blob.after-before-ack`. The snapshot diagnostics are `h1.crash.snapshot.before` and
-`h1.crash.snapshot.after-before-ack`.
+`h1.crash.snapshot.after-before-ack`. The lease diagnostics are `h1.crash.lease.before` and
+`h1.crash.lease.after-before-ack`.
 
 ## Focused checks
 

@@ -25,6 +25,7 @@ peritus-harness = { version = "=0.0.0", path = "../../orchestration/peritus-harn
 peritus-gates = { version = "=0.0.0", path = "../../orchestration/peritus-gates" }
 peritus-git = { version = "=0.0.0", path = "../../runtime/peritus-git" }
 peritus-journal = { version = "=0.0.0", path = "../../state/peritus-journal" }
+peritus-leases = { version = "=0.0.0", path = "../../state/peritus-leases" }
 peritus-migrations = { version = "=0.0.0", path = "../../state/peritus-migrations" }
 peritus-model-protocol = { version = "=0.0.0", path = "../../model/peritus-model-protocol" }
 peritus-policy = { version = "=0.0.0", path = "../../foundation/peritus-policy" }

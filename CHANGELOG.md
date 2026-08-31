@@ -13,12 +13,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
-- Add the checked-in Rust `peritus-h1-controller` and an explicit focused diagnostic mode. Its six
-  genuine routes cover both sides of journal submission, content-addressed blob publication, and
-  retained Git snapshot publication. The exact staged `peritusd` is killed with an in-memory
-  journal plan, temporary artifact, or unpublished candidate tree, and after a durable outbox
-  effect, finalized artifact/reference, or synthetic snapshot commit/ref. Recovery verifies the
-  expected rollback or replay, retains all six evidence classes, and cleans its private state.
+- Add the checked-in Rust `peritus-h1-controller` and an explicit focused diagnostic mode. Its eight
+  genuine routes cover both sides of journal submission, content-addressed blob publication,
+  retained Git snapshot publication, and exclusive-lease persistence. The exact staged `peritusd`
+  is killed with an in-memory journal plan, temporary artifact, unpublished candidate tree, or
+  move-only lease transition, and after each corresponding durable commit. Recovery verifies the
+  expected rollback or exact replay, retains all six evidence classes, and cleans its private state.
   Unimplemented H1 routes fail closed instead of borrowing the shell fixture or manufacturing a
   result (#31)
 - Add the executable `peritus-h1` qualification operator: bind the declared subject to the exact

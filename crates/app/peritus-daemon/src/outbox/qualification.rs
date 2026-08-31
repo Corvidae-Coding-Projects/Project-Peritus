@@ -3,6 +3,7 @@
 mod blob;
 mod effect;
 mod journal_before;
+mod lease;
 mod snapshot;
 
 use std::path::{Path, PathBuf};
@@ -22,6 +23,10 @@ pub use self::blob::{
 use self::effect::QualificationDestination;
 
 pub use self::journal_before::{recover_journal_before_crash, stage_journal_before_crash};
+pub use self::lease::{
+    recover_lease_after_crash, recover_lease_before_crash, stage_lease_after_crash,
+    stage_lease_before_crash,
+};
 use crate::instance::InstanceGuard;
 use crate::{DaemonConfig, DaemonError, DaemonErrorCode, DaemonIdentity, DaemonRecovery};
 pub use snapshot::{

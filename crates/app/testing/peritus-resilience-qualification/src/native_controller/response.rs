@@ -147,6 +147,16 @@ pub(super) fn canonical_milestones(route: CommitRoute) -> Vec<MilestoneDocument>
             "candidate killed after its durable checkpoint",
             "exact effect reconciled before fence acknowledgement",
         ),
+        CommitRoute::LeaseBeforeDurableCommit => (
+            "move-only lease commit request prepared in process memory",
+            "candidate killed before submitting the lease transition",
+            "reopened journal has no lease event, head, or durable projection",
+        ),
+        CommitRoute::LeaseAfterDurableCommitBeforeAck => (
+            "lease transition and projection durably committed together",
+            "candidate killed before acknowledging the committed lease receipt",
+            "exact lease event, head, revision, digest, and producer reopened",
+        ),
         CommitRoute::SnapshotBeforeDurableCommit => (
             "production candidate tree prepared before snapshot publication",
             "candidate killed before creating the snapshot commit and retained ref",
