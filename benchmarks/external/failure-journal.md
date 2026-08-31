@@ -3775,3 +3775,33 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Verification: 43 native external-benchmark tests, 16 Harbor adapter/supervisor tests, strict
   all-target/all-feature Clippy, rustfmt, and direct execution of the committed portable agent's
   protocol handshake must pass before checkpointing this correction.
+
+## TBF-030: host CPU count hid the task container's execution ceiling
+
+- Suite and task: Terminal-Bench 2.0 frozen baseline, corrected-adapter trial
+  `caffe-cifar-10__JhMWenk`.
+- Symptom: the native agent configured the real Caffe source correctly, then requested
+  `cmake --build build --parallel 24`. The task exposed 24 logical CPUs but its cgroup allowed one
+  CPU (`cpu.max` was `100000 100000`) and 2 GiB of memory. Twenty-four compiler processes pinned
+  `memory.current` at `memory.max`, consumed roughly 2 GiB of cgroup swap, and accumulated hundreds
+  of thousands of memory-throttling events without an OOM kill. The build made slow progress until
+  Harbor's unchanged 1,200-second agent deadline expired, so reward 0 is retained.
+- Cause: repository grounding exposed files and path semantics but not the command's actual runtime
+  envelope. The command adapter bounded Cargo at two jobs, yet did not account for cgroup CPU quota,
+  memory ceilings, or other build systems. A model could therefore infer parallelism from visible
+  host CPUs and oversubscribe a constrained container by an order of magnitude.
+- Resolution: `workspace_list` now returns an observed execution-resource object with logical CPUs,
+  cgroup-aware effective CPUs, effective memory ceiling, and conservative recommended parallelism.
+  Every developer role must use that grounded ceiling. The command adapter supplies matching
+  defaults for Cargo, CMake, Make, Go, Rayon, native extension builds, and npm, and refuses recognized
+  explicit Cargo/CMake/Make/Ninja fan-out above the ceiling with a retryable diagnostic before
+  spawning the process. No Caffe, task, image, or verifier identity participates in the policy.
+- Integrity decision: retain the timeout and do not extend the benchmark deadline, increase its
+  resources, alter its image, or rewrite its Caffe build. Resource-aware admission is ordinary
+  production harness behavior and applies equally to user projects in containers, CI jobs, and
+  memory-constrained hosts.
+- Evidence: agent version `0.0.0+sha.ed0ef30eb5dd`; native source revision
+  `d4a72e676dc6ea8d371137436cc393464598a631`; trial ended at
+  `2026-08-31T14:16:41.410792Z` with `AgentTimeoutError`; no OOM kill occurred. Focused
+  product-runner tests and strict all-target/all-feature Clippy pass for the general correction. A
+  frozen final-candidate campaign remains required.

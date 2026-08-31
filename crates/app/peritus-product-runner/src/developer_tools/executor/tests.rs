@@ -22,6 +22,13 @@ fn workspace_tools_inspect_edit_search_and_execute_without_a_shell() {
         Some(workspace.path().to_string_lossy().as_ref()),
     );
     assert_eq!(initial_value["path_kind"], "workspace-relative");
+    assert!(initial_value["execution_resources"]["logical_cpus"].as_u64().is_some());
+    assert!(initial_value["execution_resources"]["effective_cpus"].as_u64().is_some());
+    assert!(
+        initial_value["execution_resources"]["recommended_parallelism"]
+            .as_u64()
+            .is_some_and(|value| value >= 1)
+    );
 
     let written = execute(
         &mut tools,

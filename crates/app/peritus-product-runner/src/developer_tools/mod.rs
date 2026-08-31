@@ -11,6 +11,7 @@ mod path;
 mod process;
 mod receipt;
 mod removal;
+mod resources;
 mod wire;
 
 pub use catalog::{definitions, read_only_definitions};

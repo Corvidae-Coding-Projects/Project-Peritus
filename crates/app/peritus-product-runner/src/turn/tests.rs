@@ -127,6 +127,8 @@ fn writer_batches_tools_and_respects_artifact_workspaces() {
     assert!(prompt.contains("Every fresh writer or fixer invocation"));
     assert!(prompt.contains("read each existing target"));
     assert!(prompt.contains("exact workspace_root"));
+    assert!(prompt.contains("workspace_list.execution_resources"));
+    assert!(prompt.contains("recommended_parallelism"));
     assert!(prompt.contains("remove the root prefix once"));
     assert!(prompt.contains("never repeat the root directory inside itself"));
     assert!(prompt.contains("prior-cycle reads"));

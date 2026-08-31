@@ -16,7 +16,7 @@ use super::process_tree::ProcessTree;
 use super::{NativeControllerLimits, subject_error};
 
 const POLL_INTERVAL: Duration = Duration::from_millis(20);
-const RESPONSE_CLOSE_GRACE: Duration = Duration::from_millis(100);
+const RESPONSE_CLOSE_GRACE: Duration = Duration::from_secs(1);
 
 #[derive(Clone, Copy)]
 pub(super) struct LaunchRequest<'a> {

@@ -211,6 +211,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Ground developer commands in the actual CPU and memory envelope, including Linux cgroup-v2
+  limits; publish a conservative build-worker ceiling, apply it across common language/build
+  ecosystems, and reject recognized explicit build fan-out above it before a constrained task can
+  exhaust its deadline through swap thrashing (`TBF-030`, #31).
 - Give a native controller that closes its response stream a bounded exit grace before process-tree
   termination, then drain its diagnostic pipe completely. This keeps fast terminal stderr visible
   on slower hosted schedulers without weakening process ownership or deadlines (#31).

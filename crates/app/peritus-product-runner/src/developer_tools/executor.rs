@@ -16,6 +16,7 @@ use super::{
     process,
     receipt::{EffectReceiptLedger, ReceiptDecision},
     removal,
+    resources::CommandResources,
     wire::{bounded_u64, object, observation, required_string, string},
 };
 const MAX_FILE_BYTES: usize = 2 * 1024 * 1024;
@@ -39,6 +40,7 @@ pub struct WorkspaceDeveloperTools {
     mode: WorkspaceToolMode,
     command_evidence: CommandEvidence,
     receipts: Option<EffectReceiptLedger>,
+    resources: CommandResources,
     tools_without_delivery_progress: u16,
     progress_nudges: u8,
     progress_feedback_pending: bool,
@@ -57,6 +59,7 @@ impl WorkspaceDeveloperTools {
             mode: WorkspaceToolMode::ReadOnly,
             command_evidence: CommandEvidence::default(),
             receipts: None,
+            resources: CommandResources::observe(),
             tools_without_delivery_progress: 0,
             progress_nudges: 0,
             progress_feedback_pending: false,
@@ -76,6 +79,7 @@ impl WorkspaceDeveloperTools {
             mode: WorkspaceToolMode::ReadWrite,
             command_evidence: CommandEvidence::default(),
             receipts: Some(EffectReceiptLedger::new(receipt_path, receipt_scope)),
+            resources: CommandResources::observe(),
             tools_without_delivery_progress: 0,
             progress_nudges: 0,
             progress_feedback_pending: false,
@@ -136,7 +140,7 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
             }
         }
         let result = match call.name().as_str() {
-            "workspace_list" => inspection::list(&self.root, &arguments),
+            "workspace_list" => inspection::list(&self.root, &arguments, self.resources),
             "workspace_search" => inspection::search(&self.root, &arguments),
             "workspace_read" => inspection::read(&self.root, &arguments),
             "workspace_write" | "workspace_patch" | "workspace_remove" | "run_command"
@@ -323,9 +327,7 @@ impl WorkspaceDeveloperTools {
         };
         let mut command = Command::new(program);
         command.args(&args).current_dir(current_dir);
-        if program == "cargo" {
-            command.env("CARGO_BUILD_JOBS", "2");
-        }
+        self.resources.prepare(&mut command, program, &args)?;
         let timeout_seconds = bounded_u64(
             arguments,
             "timeout_seconds",

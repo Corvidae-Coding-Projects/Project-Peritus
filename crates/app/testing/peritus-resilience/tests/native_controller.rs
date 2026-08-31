@@ -126,13 +126,17 @@ fn controller_failure_retains_bounded_stderr_diagnostics() {
         .expect("focused H1 catalog");
     let report = block_on(QualificationRunner::run(factory.config(), &catalog, &factory));
 
-    assert!(report.cases()[0].failures().iter().any(|failure| {
-        matches!(
-            failure,
-            ScenarioFailure::Subject { error, .. }
-                if error.context().as_str().contains("precise controller failure")
-        )
-    }));
+    assert!(
+        report.cases()[0].failures().iter().any(|failure| {
+            matches!(
+                failure,
+                ScenarioFailure::Subject { error, .. }
+                    if error.context().as_str().contains("precise controller failure")
+            )
+        }),
+        "controller failures omitted stderr: {:?}",
+        report.cases()[0].failures(),
+    );
 }
 
 #[test]

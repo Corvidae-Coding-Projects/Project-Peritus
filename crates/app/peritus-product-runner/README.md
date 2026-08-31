@@ -34,6 +34,12 @@ canonical request digest to `Started`, `Completed`, or `Ambiguous` state. Exact 
 replay their bounded result. A command left in `Started` across restart is never launched again;
 Peritus returns an explicit ambiguous observation so the agent or user can reconcile its effects.
 
+The first workspace listing also grounds command execution in the current runtime rather than the
+host's apparent CPU count. It reports logical and effective CPUs, the effective memory ceiling,
+and a conservative recommended parallelism. Linux observations include cgroup-v2 limits. Command
+execution applies that ceiling to common build ecosystems and returns a retryable error before
+recognized Cargo, CMake, Make, or Ninja arguments can request a larger worker fan-out.
+
 Independent review is a fresh D0 developer loop rather than a one-shot completion. It begins with
 an observed workspace listing, reads the authoritative inputs and changed files through a
 read-only tool executor, and only then admits the typed review. The executor rejects write, patch,

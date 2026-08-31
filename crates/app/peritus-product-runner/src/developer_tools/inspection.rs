@@ -8,13 +8,18 @@ use serde_json::Value;
 use super::{
     effect::limit,
     path::{checked, ignored, tool},
+    resources::CommandResources,
     wire::{bounded_usize, collection, object, required_string, string},
 };
 use crate::file_metadata;
 
 const MAX_FILE_BYTES: usize = 2 * 1024 * 1024;
 
-pub(super) fn list(root: &Path, arguments: &Value) -> Result<Value, DeveloperLoopError> {
+pub(super) fn list(
+    root: &Path,
+    arguments: &Value,
+    resources: CommandResources,
+) -> Result<Value, DeveloperLoopError> {
     let relative = string(arguments, "path").unwrap_or("");
     let depth = bounded_usize(arguments, "depth", 3, 1, 12);
     let start = if relative.is_empty() { root.to_owned() } else { checked(root, relative, false)? };
@@ -46,20 +51,26 @@ pub(super) fn list(root: &Path, arguments: &Value) -> Result<Value, DeveloperLoo
                 ("permissions", Value::String(file_metadata::permissions(&metadata))),
             ]));
             if entries.len() >= 2_000 {
-                return Ok(listing(root, entries, true));
+                return Ok(listing(root, entries, true, resources));
             }
             if kind.is_dir() && level + 1 < depth {
                 queue.push_back((path, level + 1));
             }
         }
     }
-    Ok(listing(root, entries, false))
+    Ok(listing(root, entries, false, resources))
 }
 
-fn listing(root: &Path, entries: Vec<Value>, truncated: bool) -> Value {
+fn listing(
+    root: &Path,
+    entries: Vec<Value>,
+    truncated: bool,
+    resources: CommandResources,
+) -> Value {
     object(vec![
         ("workspace_root", Value::String(root.to_string_lossy().into_owned())),
         ("path_kind", Value::String("workspace-relative".to_owned())),
+        ("execution_resources", resources.observation()),
         ("entries", Value::Array(entries)),
         ("truncated", Value::Bool(truncated)),
     ])
