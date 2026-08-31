@@ -55,12 +55,16 @@ setup, rejects a report-schema or digest mismatch before task execution, and cop
 into trial metadata. Rebuild after every committed source change before starting or resuming a
 campaign; the handshake deliberately rejects an older portable executable.
 
-Run `codex login` and `claude login` on the host before starting the suite. The adapter copies the
-portable Peritus binary, the exact discovered Codex executable and its matching
+Run `codex login` and `claude auth login` on the host before starting the suite. The adapter copies
+the portable Peritus binary, the exact discovered Codex executable and its matching
 `codex-code-mode-host` companion, the Claude executable, and only the two account-state files into
 the ephemeral local task container. Account files are permission-locked, excluded from logs and
-Git, and removed with the container. The official executables remain credential owners and act only
-as model routers; Peritus retains conversation, tool, workspace, and policy authority.
+Git, and removed with the container. Because the official Claude executable can rotate OAuth state
+during a real turn, the serialized adapter downloads that one document after the run, validates its
+bounded schema and nondecreasing expiries, and atomically checkpoints it only when the host file is
+still the exact state uploaded to the task. A concurrent host login always wins. Token values never
+enter adapter output or retained evidence. The official executables remain credential owners and
+act only as model routers; Peritus retains conversation, tool, workspace, and policy authority.
 
 Those two authenticated routes are the benchmark run's explicit provider set. Codex remains the
 default writer and fixer, and Claude remains the default reviewer. After ordinary same-route

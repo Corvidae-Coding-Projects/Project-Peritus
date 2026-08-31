@@ -15,6 +15,10 @@ from harbor.agents.base import BaseAgent
 from harbor.environments.base import BaseEnvironment, ExecResult
 from harbor.models.agent.context import AgentContext
 
+from benchmarks.external.terminalbench.credential_state import (
+    checkpoint_claude_credentials,
+    credential_digest,
+)
 from benchmarks.external.terminalbench.process_supervisor import exec_supervised
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -73,6 +77,7 @@ class PeritusAgent(BaseAgent):
             Path.home() / ".claude/.credentials.json",
             "Claude account state",
         )
+        self._uploaded_claude_digest: str | None = None
         self._run_number = 0
 
     @staticmethod
@@ -106,6 +111,7 @@ class PeritusAgent(BaseAgent):
         prepared = await environment.exec(f"mkdir -p {directories}", user="root")
         _require_success(prepared, "prepare Peritus runtime directories")
 
+        self._uploaded_claude_digest = credential_digest(self._claude_credentials)
         uploads = (
             (self._peritus_binary, _REMOTE_BIN / "peritus-benchmark-agent"),
             (self._codex_binary, _REMOTE_BIN / "codex"),
@@ -207,13 +213,16 @@ fi
             )
         )
         runtime_env = await self._runtime_env(environment)
-        result = await exec_supervised(
-            environment,
-            command,
-            pid_file=_REMOTE_HOME / f"peritus-run-{self._run_number:04}.pid",
-            cwd=str(workspace),
-            env=runtime_env,
-        )
+        try:
+            result = await exec_supervised(
+                environment,
+                command,
+                pid_file=_REMOTE_HOME / f"peritus-run-{self._run_number:04}.pid",
+                cwd=str(workspace),
+                env=runtime_env,
+            )
+        finally:
+            await self._checkpoint_claude_credentials(environment)
         self._retain_process_output(result)
         _require_success(result, "run native Peritus product composition")
         report = _parse_report(result.stdout or "")
@@ -232,6 +241,21 @@ fi
             "peritus_source_revision": identity["source_revision"],
             "peritus_binary_sha256": identity["binary_sha256"],
         }
+
+    async def _checkpoint_claude_credentials(self, environment: BaseEnvironment) -> None:
+        uploaded_digest = self._uploaded_claude_digest
+        if uploaded_digest is None:
+            raise RuntimeError("Claude credential checkpoint has no uploaded-state identity")
+        with tempfile.TemporaryDirectory(prefix="peritus-claude-state-") as raw:
+            candidate = Path(raw) / ".credentials.json"
+            await environment.download_file(
+                str(_REMOTE_HOME / ".claude/.credentials.json"), candidate
+            )
+            checkpoint_claude_credentials(
+                self._claude_credentials,
+                uploaded_digest,
+                candidate,
+            )
 
     async def _runtime_env(self, environment: BaseEnvironment) -> dict[str, str]:
         return {

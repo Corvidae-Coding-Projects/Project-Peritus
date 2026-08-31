@@ -3834,3 +3834,32 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Verification: a focused filesystem regression with a deliberately smaller bound must prove stable
   sorting, truncation, and rendered grounding guidance. Product-runner tests, strict Clippy,
   formatting, documentation, and repository policy gates remain required.
+
+## TBF-032: disposable tasks discarded official CLI OAuth rotation
+
+- Suite and tasks: Terminal-Bench 2.0 frozen baseline, corrected-adapter trials
+  `vulnerable-secret__aoXTUBZ` and `feal-linear-cryptanalysis__ayu2ydK`.
+- Symptom: each task passed setup's `claude auth status --json`, but a later fallback invocation
+  ended with `anthropic.claude_runtime.authentication`. On the host, the same status command still
+  reported `loggedIn: true`; an actual inert official-CLI canary returned `OAuth session expired and
+  could not be refreshed`. The host access-token expiry was `2026-08-31T10:23:49Z` while its
+  refresh-token expiry remained later.
+- Cause: the adapter copied Claude's credential document into every disposable task and then threw
+  away all CLI-owned changes when the container ended. That is incompatible with refresh-token
+  rotation: a successful refresh can advance only the private task copy and leave the next task
+  with obsolete host state. Presence-only status inspection cannot prove that a stored OAuth
+  session can complete a model call.
+- Resolution: after each serialized native run, the adapter downloads only the Claude credential
+  document into a private temporary directory, validates its bounded JSON shape, required token
+  fields, and nondecreasing access and refresh expiries, and atomically checkpoints it with mode
+  `0600` only if the host file still matches the exact uploaded digest. If the user or another owner
+  changed the host login during the trial, that newer host state wins. No token value enters output,
+  logs, reports, or Git.
+- Integrity decision: retain both reward-zero trials and do not relabel provider authentication as
+  task success. This is credential lifecycle correctness for every serialized disposable provider
+  run; it does not inspect a task, verifier, or score. The already-stale host state still requires
+  one fresh user login before the repaired adapter can prove rotation continuity.
+- Verification: 19 unchanged and new Python adapter/supervisor tests pass, including atomic private
+  replacement, rollback rejection, concurrent-host-change preservation, protocol identity,
+  process cleanup, and report parsing. A fresh authenticated live trial and a later task after the
+  original access expiry remain required before final qualification.
