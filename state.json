@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1043,
+  "next_comment_id": 1044,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-31T02:17:38.849245471Z",
+      "updated_at": "2026-08-31T02:17:45.421973416Z",
       "labels": [
         "qualification",
         "release"
@@ -4631,6 +4631,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA86hyBrJ+EsiiUMDCxOVAo+EU5sLG55VJImFI7SxoxhUsf26qKJcCMD9dF4pSCm8idS8fFCognu2JyFtM0rpSBg=="
+        },
+        "d9229180-71c5-4251-805b-88563281cd25": {
+          "display_id": 1043,
+          "author": "6ME5",
+          "content": "H1 promotion qualification is implemented and locally green. The checked-in controller now has 14/43 genuine routes. Retained evidence: promotion-before.7ATDYH and promotion-after-ack.7ATDYH. The work found and fixed a real F0 replay defect: state checkpoints from an atomic multi-aggregate command must bind to the final event of that shared command, not necessarily the aggregate-local event. Public peritusd subprocess conformance, both operator diagnostics, strict focused Clippy/tests, rustdoc, docs-check, and architecture-check pass. 29 H1 routes remain fail-closed.",
+          "created_at": "2026-08-31T02:17:45.418908651Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAgv0XDTqRCPcHmLbtGwW/RdWB8zgUd1fGzDV03cPQicq33AP9vYD38twkN2y25q33pyZS9pKUzl9yAU6/c7eFDQ=="
         },
         "d93fbef3-9041-4d7d-a2d5-2f7e9d23a91b": {
           "display_id": 899,
@@ -10143,8 +10152,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-31T02:17:38.849245471Z",
+    "timestamp": "2026-08-31T02:17:45.421973416Z",
     "agent_id": "6ME5",
-    "agent_seq": 1239
+    "agent_seq": 1240
   }
 }
