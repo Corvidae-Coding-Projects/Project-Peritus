@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1065,
+  "next_comment_id": 1066,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-31T05:29:59.650233011Z",
+      "updated_at": "2026-08-31T05:32:25.976472807Z",
       "labels": [
         "qualification",
         "release"
@@ -1513,6 +1513,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAcSZsOoO9CXKW4kNWTRcQdpHjtEPlXREbKVyjU32NcsCrhUr2dzQ3jpGPUfAZoj0+oB3i9nK1SugmeGkS0gCcDQ=="
+        },
+        "0f425dc8-c1d7-4c6c-9dfa-dfc00e7f91ce": {
+          "display_id": 1065,
+          "author": "6ME5",
+          "content": "Committed 30b15608 to classify the dependency-failure qualification CLI and module as ordinary effect boundaries. Exact verification: cargo verus verify -p peritus-daemon --all-features --locked --check-toolchain passed; strict all-target Clippy passed; peritus-daemon tests passed (54 unit plus 24 integration); docs-check 137, architecture-check 79/3323, ordinary-api-check 2678/12402, fmt and diff checks passed.",
+          "created_at": "2026-08-31T05:32:25.973019642Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA/Xu7Oxid7wBZa4UNDmALyUDqwodhnQlU6Bhix2N9fSv8K8f8L7i0OdYbI4UZTBzuw6sUDvXx3i9Q3HBEW6xPCg=="
         },
         "10caba3c-26d9-4af3-963f-1efcdf17b620": {
           "display_id": 657,
@@ -10337,8 +10346,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-31T05:29:59.650233011Z",
+    "timestamp": "2026-08-31T05:32:25.976472807Z",
     "agent_id": "6ME5",
-    "agent_seq": 1262
+    "agent_seq": 1263
   }
 }
