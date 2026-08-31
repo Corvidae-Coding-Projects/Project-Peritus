@@ -4,6 +4,7 @@ mod arguments;
 mod gate;
 mod lease;
 mod patch;
+mod promotion;
 mod snapshot;
 mod usage;
 
@@ -68,6 +69,18 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
         CommandLine::RecoverGateBeforeCrash(configuration) => gate::recover(configuration, false),
         CommandLine::StageGateAfterCrash(configuration) => gate::stage_after(configuration),
         CommandLine::RecoverGateAfterCrash(configuration) => gate::recover(configuration, true),
+        CommandLine::StagePromotionBeforeCrash(configuration) => {
+            promotion::stage_before(configuration)
+        }
+        CommandLine::RecoverPromotionBeforeCrash(configuration) => {
+            promotion::recover(configuration, false)
+        }
+        CommandLine::StagePromotionAfterCrash(configuration) => {
+            promotion::stage_after(configuration)
+        }
+        CommandLine::RecoverPromotionAfterCrash(configuration) => {
+            promotion::recover(configuration, true)
+        }
         CommandLine::StageOutboxCrash(configuration) => stage_outbox(configuration),
         CommandLine::RecoverOutboxCrash(configuration) => recover_outbox(configuration),
     }

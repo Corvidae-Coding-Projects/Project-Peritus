@@ -20,7 +20,7 @@ peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
 peritus-evidence = { version = "=0.0.0", path = "../../state/peritus-evidence" }
 peritus-debugger = { version = "=0.0.0", path = "../../analysis/peritus-debugger" }
 peritus-eval = { version = "=0.0.0", path = "../../analysis/peritus-eval" }
-peritus-evolution = { version = "=0.0.0", path = "../../analysis/peritus-evolution" }
+peritus-evolution = { version = "=0.0.0", path = "../../analysis/peritus-evolution", features = ["qualification"] }
 peritus-harness = { version = "=0.0.0", path = "../../orchestration/peritus-harness" }
 peritus-gates = { version = "=0.0.0", path = "../../orchestration/peritus-gates" }
 peritus-git = { version = "=0.0.0", path = "../../runtime/peritus-git" }

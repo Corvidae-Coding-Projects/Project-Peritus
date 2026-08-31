@@ -13,12 +13,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
-- Add the checked-in Rust `peritus-h1-controller` and an explicit focused diagnostic mode. Its twelve
+- Add the checked-in Rust `peritus-h1-controller` and an explicit focused diagnostic mode. Its fourteen
   genuine routes cover both sides of journal submission, content-addressed blob publication,
   retained Git snapshot publication, exclusive-lease persistence, and recoverable patch
-  application, plus D1's atomic gate event/checkpoint commit. The exact staged `peritusd` is killed
-  before and after each corresponding durable commit. Recovery verifies the expected rollback or
-  exact replay, retains all six evidence classes, and cleans its private state.
+  application, plus D1's atomic gate event/checkpoint commit and F0's campaign/pointer/approval
+  promotion commit. The exact staged `peritusd` is killed before and after each corresponding
+  durable commit. Recovery verifies the expected rollback or exact replay, retains all six
+  evidence classes, and cleans its private state.
   Unimplemented H1 routes fail closed instead of borrowing the shell fixture or manufacturing a
   result (#31)
 - Add the executable `peritus-h1` qualification operator: bind the declared subject to the exact
@@ -160,6 +161,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   artifact policy (#31).
 
 ### Fixed
+- Validate an F0 checkpoint's producer against the exact final event from its shared C0 command
+  instead of requiring the producer to be the same aggregate's last event. This preserves strict
+  replay checks while allowing genuine multi-aggregate campaign/pointer promotion transactions to
+  recover after restart (#31)
 
 - Accept the installed TUI's stable rendered `online`, `ReadyReadWrite`, and active event-stream
   state as native H2 connection evidence when a later subscription notice replaces the transient

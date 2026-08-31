@@ -5,8 +5,10 @@ mod config;
 mod gate;
 mod journal_before;
 mod lease;
+mod observation;
 mod patch;
 mod process;
+mod promotion;
 mod snapshot;
 
 use std::ffi::OsStr;
@@ -14,15 +16,17 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::Instant;
 
+use crate::digest;
 use peritus_approval::CredentialRegistrySnapshot;
 use peritus_types::RevisionNumber;
-use serde::Serialize;
-
-use crate::digest;
 
 use super::args::ControllerPaths;
 use super::request::CommitRoute;
 use config::{bytes_sha256, create_private_directory, render_configuration, write_new};
+pub(super) use observation::{
+    GateObservation, InjectedCandidate, LeaseObservation, PatchObservation, PromotionCheckpoint,
+    PromotionObservation, RecoveredCandidate, SnapshotObservation,
+};
 use process::{bounded_command, kill_after_checkpoint, one_line};
 
 const EFFECT_DIRECTORY: &str = "outbox-crash-qualification-v1";
@@ -31,79 +35,6 @@ pub(super) struct PreparedCandidate {
     pub(super) runtime: RuntimePaths,
     pub(super) journal_head_sha256: String,
     pub(super) version: String,
-}
-
-#[derive(Serialize)]
-pub(super) struct InjectedCandidate {
-    pub(super) checkpoint: String,
-    pub(super) claim_fence: Option<u64>,
-    pub(super) request_sha256: Option<String>,
-    pub(super) effect_path: Option<String>,
-    pub(super) effect_sha256: Option<String>,
-    pub(super) effect_bytes: Option<u64>,
-    pub(super) artifact_sha256: Option<String>,
-    pub(super) artifact_bytes: Option<u64>,
-    pub(super) snapshot: Option<SnapshotObservation>,
-    pub(super) lease: Option<LeaseObservation>,
-    pub(super) patch: Option<PatchObservation>,
-    pub(super) gate: Option<GateObservation>,
-    pub(super) killed_exit: String,
-}
-
-#[derive(Serialize)]
-pub(super) struct RecoveredCandidate {
-    pub(super) observation: String,
-    pub(super) destination_reconciled: bool,
-    pub(super) external_effects: u64,
-    pub(super) duplicate_effects: u64,
-    pub(super) exact_fence_acknowledged: bool,
-    pub(super) pending_claims: u64,
-    pub(super) committed_events: Option<u64>,
-    pub(super) aggregate_heads: Option<u64>,
-    pub(super) journal_sha256: String,
-    pub(super) journal_bytes: u64,
-    pub(super) effect_sha256: Option<String>,
-    pub(super) effect_bytes: Option<u64>,
-    pub(super) artifact_sha256: Option<String>,
-    pub(super) artifact_bytes: Option<u64>,
-    pub(super) snapshot: Option<SnapshotObservation>,
-    pub(super) lease: Option<LeaseObservation>,
-    pub(super) patch: Option<PatchObservation>,
-    pub(super) gate: Option<GateObservation>,
-    pub(super) elapsed_millis: u64,
-}
-
-#[derive(Serialize)]
-pub(super) struct SnapshotObservation {
-    pub(super) commit: Option<String>,
-    pub(super) tree: String,
-    pub(super) reference: String,
-    pub(super) manifest_sha256: Option<String>,
-}
-
-#[derive(Serialize)]
-pub(super) struct LeaseObservation {
-    pub(super) request_sha256: String,
-    pub(super) state_revision: Option<u64>,
-    pub(super) state_sha256: Option<String>,
-    pub(super) producing_position: Option<u64>,
-}
-
-#[derive(Serialize)]
-pub(super) struct PatchObservation {
-    pub(super) identity: String,
-    pub(super) postimage: Option<String>,
-    pub(super) receipt_manifest: Option<String>,
-}
-
-#[derive(Serialize)]
-pub(super) struct GateObservation {
-    pub(super) request_sha256: String,
-    pub(super) plan_sha256: String,
-    pub(super) successor_sha256: Option<String>,
-    pub(super) checkpoint_sha256: Option<String>,
-    pub(super) state_revision: Option<u64>,
-    pub(super) producing_position: Option<u64>,
 }
 
 pub(super) struct RuntimePaths {
@@ -185,6 +116,10 @@ pub(super) fn inject(
         | CommitRoute::SnapshotAfterDurableCommitBeforeAck => {
             return snapshot::inject(paths, runtime, route);
         }
+        CommitRoute::PromotionBeforeDurableCommit
+        | CommitRoute::PromotionAfterDurableCommitBeforeAck => {
+            return promotion::inject(paths, runtime, route);
+        }
         CommitRoute::JournalAfterDurableCommitBeforeAck => {}
     }
     let stderr_path = runtime.root.join("inject.stderr");
@@ -216,6 +151,7 @@ pub(super) fn inject(
         lease: None,
         patch: None,
         gate: None,
+        promotion: None,
         killed_exit: killed.status,
     })
 }
@@ -245,6 +181,10 @@ pub(super) fn recover(
         CommitRoute::SnapshotBeforeDurableCommit
         | CommitRoute::SnapshotAfterDurableCommitBeforeAck => {
             return snapshot::recover(paths, runtime, injected, route);
+        }
+        CommitRoute::PromotionBeforeDurableCommit
+        | CommitRoute::PromotionAfterDurableCommitBeforeAck => {
+            return promotion::recover(paths, runtime, injected, route);
         }
         CommitRoute::JournalAfterDurableCommitBeforeAck => {}
     }
@@ -318,6 +258,7 @@ pub(super) fn recover(
         lease: None,
         patch: None,
         gate: None,
+        promotion: None,
         elapsed_millis: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
     })
 }

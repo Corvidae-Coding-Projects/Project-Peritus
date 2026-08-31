@@ -11,7 +11,12 @@ readme = "README.md"
 keywords = ["evolution", "agents", "evaluation", "formal-verification"]
 categories = ["development-tools::testing"]
 
+[features]
+default = []
+qualification = ["dep:ed25519-dalek"]
+
 [dependencies]
+ed25519-dalek = { workspace = true, optional = true }
 peritus-approval = { version = "=0.0.0", path = "../../state/peritus-approval" }
 peritus-artifact-store = { version = "=0.0.0", path = "../../state/peritus-artifact-store" }
 peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }

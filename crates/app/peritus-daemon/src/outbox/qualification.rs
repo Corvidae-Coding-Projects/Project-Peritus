@@ -7,6 +7,7 @@ mod journal;
 mod journal_before;
 mod lease;
 mod patch;
+mod promotion;
 mod snapshot;
 
 use std::path::{Path, PathBuf};
@@ -40,6 +41,10 @@ pub use self::lease::{
 pub use self::patch::{
     recover_patch_after_crash, recover_patch_before_crash, stage_patch_after_crash,
     stage_patch_before_crash,
+};
+pub use self::promotion::{
+    recover_promotion_after_crash, recover_promotion_before_crash, stage_promotion_after_crash,
+    stage_promotion_before_crash,
 };
 use crate::{DaemonConfig, DaemonError, DaemonErrorCode, DaemonRecovery};
 pub use snapshot::{

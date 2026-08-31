@@ -165,6 +165,14 @@ commit, the gate event and complete state checkpoint are installed atomically. F
 rebuilds the exact successor from the journal and verifies its plan and state digests, checkpoint
 digest, revision, and producing position.
 
+Both promotion routes use the production F0 reducers, artifact dependencies, canonical frames,
+approve-once authority, and C0 atomic activation adapter. Before commit, the final accepted campaign
+and production-pointer transitions remain only in the killed process; recovery finds the seeded
+promotion-review campaign, pending pointer, and unconsumed approval unchanged. After commit, one
+transaction installs both events, both complete checkpoints, and approval consumption. Fresh
+recovery requires the exact promoted campaign, active pointer generation, authorization digest,
+approval revision, event count, and aggregate heads with no partial state.
+
 Fresh focused diagnostics retained passing one-case reports and six raw evidence files under
 `/home/doll/.local/state/peritus/qualification/h1/journal-before.YP5d5R` and
 `/home/doll/.local/state/peritus/qualification/h1/journal-after-ack.sCtlT9`. Both reports deliberately
@@ -178,10 +186,12 @@ retained under `/home/doll/.local/state/peritus/qualification/h1/lease-before.UF
 retained under `/home/doll/.local/state/peritus/qualification/h1/patch-before.GlxK0f` and
 `/home/doll/.local/state/peritus/qualification/h1/patch-after-ack.Pknry2`. The gate reports are
 retained under `/home/doll/.local/state/peritus/qualification/h1/gate-before.p0OBxq` and
-`/home/doll/.local/state/peritus/qualification/h1/gate-after-ack.6ob4pt`. The other 31 catalog
-routes fail closed until their real component failpoints, controlled quota/storage effects,
-process controls, or disposable-VM reboot driver are connected. Therefore the full H1 production
-qualification is still pending.
+`/home/doll/.local/state/peritus/qualification/h1/gate-after-ack.6ob4pt`. The promotion reports are retained
+under `/home/doll/.local/state/peritus/qualification/h1/promotion-before.7ATDYH` and
+`/home/doll/.local/state/peritus/qualification/h1/promotion-after-ack.7ATDYH`. With those two routes,
+the other 29 catalog routes remain fail-closed until their real component failpoints, controlled
+quota/storage effects, process controls, or disposable-VM reboot driver are connected. Therefore
+the full H1 production qualification is still pending.
 
 The release integration owner must:
 

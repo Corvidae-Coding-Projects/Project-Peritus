@@ -66,6 +66,7 @@ pub(super) fn inject(
         lease: None,
         patch: None,
         gate: None,
+        promotion: None,
         killed_exit: killed.status,
     })
 }
@@ -151,6 +152,7 @@ pub(super) fn recover(
         lease: None,
         patch: None,
         gate: None,
+        promotion: None,
         elapsed_millis: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
     })
 }

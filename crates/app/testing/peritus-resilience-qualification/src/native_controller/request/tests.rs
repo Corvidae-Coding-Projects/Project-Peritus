@@ -1,110 +1,48 @@
-use super::{
-    BLOB_AFTER_BEFORE_ACK, BLOB_BEFORE, CommitRoute, FaultDocument, GATE_AFTER_BEFORE_ACK,
-    GATE_BEFORE, JOURNAL_AFTER_BEFORE_ACK, JOURNAL_BEFORE, LEASE_AFTER_BEFORE_ACK, LEASE_BEFORE,
-    PATCH_AFTER_BEFORE_ACK, PATCH_BEFORE, SNAPSHOT_AFTER_BEFORE_ACK, SNAPSHOT_BEFORE,
-    ScenarioDocument,
+use super::route::{
+    BLOB_AFTER_BEFORE_ACK, BLOB_BEFORE, CommitRoute, GATE_AFTER_BEFORE_ACK, GATE_BEFORE,
+    JOURNAL_AFTER_BEFORE_ACK, JOURNAL_BEFORE, LEASE_AFTER_BEFORE_ACK, LEASE_BEFORE,
+    PATCH_AFTER_BEFORE_ACK, PATCH_BEFORE, PROMOTION_AFTER_BEFORE_ACK, PROMOTION_BEFORE,
+    SNAPSHOT_AFTER_BEFORE_ACK, SNAPSHOT_BEFORE,
 };
+use super::{FaultDocument, ScenarioDocument};
 
 #[test]
-fn only_the_twelve_real_commit_routes_are_admitted() {
-    let before =
-        scenario(JOURNAL_BEFORE, "journal", "before-durable-commit", "rolled-back-uncommitted");
-    let after = scenario(
-        JOURNAL_AFTER_BEFORE_ACK,
-        "journal",
-        "after-durable-commit-before-ack",
-        "replayed-committed",
-    );
-    let snapshot_before =
-        scenario(SNAPSHOT_BEFORE, "snapshot", "before-durable-commit", "rolled-back-uncommitted");
-    let snapshot_after = scenario(
-        SNAPSHOT_AFTER_BEFORE_ACK,
-        "snapshot",
-        "after-durable-commit-before-ack",
-        "replayed-committed",
-    );
-    let lease_before =
-        scenario(LEASE_BEFORE, "lease", "before-durable-commit", "rolled-back-uncommitted");
-    let lease_after = scenario(
-        LEASE_AFTER_BEFORE_ACK,
-        "lease",
-        "after-durable-commit-before-ack",
-        "replayed-committed",
-    );
-    let patch_before =
-        scenario(PATCH_BEFORE, "patch", "before-durable-commit", "rolled-back-uncommitted");
-    let patch_after = scenario(
-        PATCH_AFTER_BEFORE_ACK,
-        "patch",
-        "after-durable-commit-before-ack",
-        "replayed-committed",
-    );
-    let gate_before =
-        scenario(GATE_BEFORE, "gate", "before-durable-commit", "rolled-back-uncommitted");
-    let gate_after = scenario(
-        GATE_AFTER_BEFORE_ACK,
-        "gate",
-        "after-durable-commit-before-ack",
-        "replayed-committed",
-    );
+fn only_the_fourteen_real_commit_routes_are_admitted() {
+    let cases = [
+        (JOURNAL_BEFORE, "journal", CommitRoute::JournalBeforeDurableCommit),
+        (BLOB_BEFORE, "blob", CommitRoute::BlobBeforeDurableCommit),
+        (SNAPSHOT_BEFORE, "snapshot", CommitRoute::SnapshotBeforeDurableCommit),
+        (LEASE_BEFORE, "lease", CommitRoute::LeaseBeforeDurableCommit),
+        (PATCH_BEFORE, "patch", CommitRoute::PatchBeforeDurableCommit),
+        (GATE_BEFORE, "gate", CommitRoute::GateBeforeDurableCommit),
+        (PROMOTION_BEFORE, "promotion", CommitRoute::PromotionBeforeDurableCommit),
+    ];
+    for (id, boundary, expected) in cases {
+        let value = scenario(id, boundary, "before-durable-commit", "rolled-back-uncommitted");
+        assert_eq!(CommitRoute::from_scenario(&value), Some(expected));
+    }
+    let after_cases = [
+        (JOURNAL_AFTER_BEFORE_ACK, "journal", CommitRoute::JournalAfterDurableCommitBeforeAck),
+        (BLOB_AFTER_BEFORE_ACK, "blob", CommitRoute::BlobAfterDurableCommitBeforeAck),
+        (SNAPSHOT_AFTER_BEFORE_ACK, "snapshot", CommitRoute::SnapshotAfterDurableCommitBeforeAck),
+        (LEASE_AFTER_BEFORE_ACK, "lease", CommitRoute::LeaseAfterDurableCommitBeforeAck),
+        (PATCH_AFTER_BEFORE_ACK, "patch", CommitRoute::PatchAfterDurableCommitBeforeAck),
+        (GATE_AFTER_BEFORE_ACK, "gate", CommitRoute::GateAfterDurableCommitBeforeAck),
+        (
+            PROMOTION_AFTER_BEFORE_ACK,
+            "promotion",
+            CommitRoute::PromotionAfterDurableCommitBeforeAck,
+        ),
+    ];
+    for (id, boundary, expected) in after_cases {
+        let value = scenario(id, boundary, "after-durable-commit-before-ack", "replayed-committed");
+        assert_eq!(CommitRoute::from_scenario(&value), Some(expected));
+    }
     let unsupported = scenario(
-        "h1.crash.promotion.before",
-        "promotion",
+        "h1.crash.unknown.before",
+        "unknown",
         "before-durable-commit",
         "rolled-back-uncommitted",
-    );
-    let blob_before =
-        scenario(BLOB_BEFORE, "blob", "before-durable-commit", "rolled-back-uncommitted");
-    let blob_after = scenario(
-        BLOB_AFTER_BEFORE_ACK,
-        "blob",
-        "after-durable-commit-before-ack",
-        "replayed-committed",
-    );
-    assert_eq!(CommitRoute::from_scenario(&before), Some(CommitRoute::JournalBeforeDurableCommit));
-    assert_eq!(
-        CommitRoute::from_scenario(&after),
-        Some(CommitRoute::JournalAfterDurableCommitBeforeAck)
-    );
-    assert_eq!(
-        CommitRoute::from_scenario(&blob_before),
-        Some(CommitRoute::BlobBeforeDurableCommit)
-    );
-    assert_eq!(
-        CommitRoute::from_scenario(&blob_after),
-        Some(CommitRoute::BlobAfterDurableCommitBeforeAck)
-    );
-    assert_eq!(
-        CommitRoute::from_scenario(&lease_before),
-        Some(CommitRoute::LeaseBeforeDurableCommit)
-    );
-    assert_eq!(
-        CommitRoute::from_scenario(&lease_after),
-        Some(CommitRoute::LeaseAfterDurableCommitBeforeAck)
-    );
-    assert_eq!(
-        CommitRoute::from_scenario(&patch_before),
-        Some(CommitRoute::PatchBeforeDurableCommit)
-    );
-    assert_eq!(
-        CommitRoute::from_scenario(&patch_after),
-        Some(CommitRoute::PatchAfterDurableCommitBeforeAck)
-    );
-    assert_eq!(
-        CommitRoute::from_scenario(&gate_before),
-        Some(CommitRoute::GateBeforeDurableCommit)
-    );
-    assert_eq!(
-        CommitRoute::from_scenario(&gate_after),
-        Some(CommitRoute::GateAfterDurableCommitBeforeAck)
-    );
-    assert_eq!(
-        CommitRoute::from_scenario(&snapshot_before),
-        Some(CommitRoute::SnapshotBeforeDurableCommit)
-    );
-    assert_eq!(
-        CommitRoute::from_scenario(&snapshot_after),
-        Some(CommitRoute::SnapshotAfterDurableCommitBeforeAck)
     );
     assert_eq!(CommitRoute::from_scenario(&unsupported), None);
 }

@@ -158,6 +158,7 @@ fn recovery_payload(
             "lease": recovered.lease,
             "patch": recovered.patch,
             "gate": recovered.gate,
+            "promotion": recovered.promotion,
             "committed_events": recovered.committed_events,
             "aggregate_heads": recovered.aggregate_heads,
             "external_effects": recovered.external_effects,

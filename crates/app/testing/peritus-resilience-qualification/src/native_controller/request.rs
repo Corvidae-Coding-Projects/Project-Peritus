@@ -1,22 +1,13 @@
 //! Strict request decoding and binding for the persistent H1 controller.
 
+mod route;
+
 use serde::{Deserialize, Serialize};
 use sha2::{Digest as _, Sha256};
 
 use super::args::{ControllerPaths, lower_sha256};
+pub(super) use route::CommitRoute;
 
-const BLOB_BEFORE: &str = "h1.crash.blob.before";
-const BLOB_AFTER_BEFORE_ACK: &str = "h1.crash.blob.after-before-ack";
-const JOURNAL_BEFORE: &str = "h1.crash.journal.before";
-const JOURNAL_AFTER_BEFORE_ACK: &str = "h1.crash.journal.after-before-ack";
-const LEASE_BEFORE: &str = "h1.crash.lease.before";
-const LEASE_AFTER_BEFORE_ACK: &str = "h1.crash.lease.after-before-ack";
-const GATE_BEFORE: &str = "h1.crash.gate.before";
-const GATE_AFTER_BEFORE_ACK: &str = "h1.crash.gate.after-before-ack";
-const PATCH_BEFORE: &str = "h1.crash.patch.before";
-const PATCH_AFTER_BEFORE_ACK: &str = "h1.crash.patch.after-before-ack";
-const SNAPSHOT_BEFORE: &str = "h1.crash.snapshot.before";
-const SNAPSHOT_AFTER_BEFORE_ACK: &str = "h1.crash.snapshot.after-before-ack";
 const MAX_REQUEST_BYTES: usize = 512 * 1024;
 
 #[derive(Deserialize)]
@@ -157,150 +148,6 @@ impl BoundRequest {
 
     pub(super) const fn limits(&self) -> &LimitsDocument {
         &self.document.limits
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) enum CommitRoute {
-    BlobBeforeDurableCommit,
-    BlobAfterDurableCommitBeforeAck,
-    JournalBeforeDurableCommit,
-    JournalAfterDurableCommitBeforeAck,
-    LeaseBeforeDurableCommit,
-    LeaseAfterDurableCommitBeforeAck,
-    GateBeforeDurableCommit,
-    GateAfterDurableCommitBeforeAck,
-    PatchBeforeDurableCommit,
-    PatchAfterDurableCommitBeforeAck,
-    SnapshotBeforeDurableCommit,
-    SnapshotAfterDurableCommitBeforeAck,
-}
-
-impl CommitRoute {
-    fn from_scenario(scenario: &ScenarioDocument) -> Option<Self> {
-        match (&*scenario.id, &*scenario.expected_recovery, &scenario.fault) {
-            (
-                BLOB_BEFORE,
-                "rolled-back-uncommitted",
-                FaultDocument::CommitCrash { boundary, timing },
-            ) if boundary == "blob" && timing == "before-durable-commit" => {
-                Some(Self::BlobBeforeDurableCommit)
-            }
-            (
-                BLOB_AFTER_BEFORE_ACK,
-                "replayed-committed",
-                FaultDocument::CommitCrash { boundary, timing },
-            ) if boundary == "blob" && timing == "after-durable-commit-before-ack" => {
-                Some(Self::BlobAfterDurableCommitBeforeAck)
-            }
-            (
-                JOURNAL_BEFORE,
-                "rolled-back-uncommitted",
-                FaultDocument::CommitCrash { boundary, timing },
-            ) if boundary == "journal" && timing == "before-durable-commit" => {
-                Some(Self::JournalBeforeDurableCommit)
-            }
-            (
-                JOURNAL_AFTER_BEFORE_ACK,
-                "replayed-committed",
-                FaultDocument::CommitCrash { boundary, timing },
-            ) if boundary == "journal" && timing == "after-durable-commit-before-ack" => {
-                Some(Self::JournalAfterDurableCommitBeforeAck)
-            }
-            (
-                LEASE_BEFORE,
-                "rolled-back-uncommitted",
-                FaultDocument::CommitCrash { boundary, timing },
-            ) if boundary == "lease" && timing == "before-durable-commit" => {
-                Some(Self::LeaseBeforeDurableCommit)
-            }
-            (
-                LEASE_AFTER_BEFORE_ACK,
-                "replayed-committed",
-                FaultDocument::CommitCrash { boundary, timing },
-            ) if boundary == "lease" && timing == "after-durable-commit-before-ack" => {
-                Some(Self::LeaseAfterDurableCommitBeforeAck)
-            }
-            (
-                GATE_BEFORE,
-                "rolled-back-uncommitted",
-                FaultDocument::CommitCrash { boundary, timing },
-            ) if boundary == "gate" && timing == "before-durable-commit" => {
-                Some(Self::GateBeforeDurableCommit)
-            }
-            (
-                GATE_AFTER_BEFORE_ACK,
-                "replayed-committed",
-                FaultDocument::CommitCrash { boundary, timing },
-            ) if boundary == "gate" && timing == "after-durable-commit-before-ack" => {
-                Some(Self::GateAfterDurableCommitBeforeAck)
-            }
-            (
-                PATCH_BEFORE,
-                "rolled-back-uncommitted",
-                FaultDocument::CommitCrash { boundary, timing },
-            ) if boundary == "patch" && timing == "before-durable-commit" => {
-                Some(Self::PatchBeforeDurableCommit)
-            }
-            (
-                PATCH_AFTER_BEFORE_ACK,
-                "replayed-committed",
-                FaultDocument::CommitCrash { boundary, timing },
-            ) if boundary == "patch" && timing == "after-durable-commit-before-ack" => {
-                Some(Self::PatchAfterDurableCommitBeforeAck)
-            }
-            (
-                SNAPSHOT_BEFORE,
-                "rolled-back-uncommitted",
-                FaultDocument::CommitCrash { boundary, timing },
-            ) if boundary == "snapshot" && timing == "before-durable-commit" => {
-                Some(Self::SnapshotBeforeDurableCommit)
-            }
-            (
-                SNAPSHOT_AFTER_BEFORE_ACK,
-                "replayed-committed",
-                FaultDocument::CommitCrash { boundary, timing },
-            ) if boundary == "snapshot" && timing == "after-durable-commit-before-ack" => {
-                Some(Self::SnapshotAfterDurableCommitBeforeAck)
-            }
-            _ => None,
-        }
-    }
-
-    /// Returns the recovery outcome required for this side of the commit.
-    pub(super) const fn outcome(self) -> &'static str {
-        match self {
-            Self::BlobBeforeDurableCommit
-            | Self::JournalBeforeDurableCommit
-            | Self::LeaseBeforeDurableCommit
-            | Self::GateBeforeDurableCommit
-            | Self::PatchBeforeDurableCommit
-            | Self::SnapshotBeforeDurableCommit => "rolled-back-uncommitted",
-            Self::BlobAfterDurableCommitBeforeAck
-            | Self::JournalAfterDurableCommitBeforeAck
-            | Self::LeaseAfterDurableCommitBeforeAck
-            | Self::GateAfterDurableCommitBeforeAck
-            | Self::PatchAfterDurableCommitBeforeAck
-            | Self::SnapshotAfterDurableCommitBeforeAck => "replayed-committed",
-        }
-    }
-
-    /// Returns the directly supportable journal-health observation.
-    pub(super) const fn journal_health(self) -> &'static str {
-        match self {
-            Self::BlobBeforeDurableCommit
-            | Self::BlobAfterDurableCommitBeforeAck
-            | Self::JournalBeforeDurableCommit
-            | Self::LeaseBeforeDurableCommit
-            | Self::LeaseAfterDurableCommitBeforeAck
-            | Self::GateBeforeDurableCommit
-            | Self::GateAfterDurableCommitBeforeAck
-            | Self::PatchBeforeDurableCommit
-            | Self::PatchAfterDurableCommitBeforeAck
-            | Self::SnapshotBeforeDurableCommit
-            | Self::SnapshotAfterDurableCommitBeforeAck => "verified",
-            Self::JournalAfterDurableCommitBeforeAck => "recovered-and-verified",
-        }
     }
 }
 

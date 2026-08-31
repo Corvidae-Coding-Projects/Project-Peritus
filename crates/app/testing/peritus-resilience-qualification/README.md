@@ -23,8 +23,8 @@ The controller remains responsible for real daemon, storage, dependency, quota, 
 effects. The operator refuses a descriptor whose build digest differs from the exact staged
 candidate bytes.
 
-The checked-in `peritus-h1-controller` currently owns twelve genuine crash routes across the
-journal, blob, retained Git snapshot, lease, patch, and gate commit boundaries. For
+The checked-in `peritus-h1-controller` currently owns fourteen genuine crash routes across the
+journal, blob, retained Git snapshot, lease, patch, gate, and promotion commit boundaries. For
 `h1.crash.journal.before`, the exact staged daemon builds a production append plan, publishes its
 checkpoint before submission, and is killed; recovery requires an integrity-checked journal with
 zero committed events, heads, outbox claims, or external effects. For
@@ -62,6 +62,12 @@ atomically commits its gate event and complete state checkpoint. Fresh recovery 
 successor from the journal and independently checks the plan, semantic-state, checkpoint, revision,
 and producing-position digests.
 
+Both promotion routes build the real F0 campaign and production-pointer predecessors, finalized
+artifact evidence, and signed approve-once decision. The before case holds only the accepted final
+transitions when killed. The after case commits both activation events, both checkpoints, and
+approval consumption in one C0 transaction. Fresh recovery checks the exact proposal,
+authorization, campaign, pointer, approval revision, event count, and aggregate-head count.
+
 Use the explicit diagnostic option to exercise that route without presenting a one-case report as
 production readiness:
 
@@ -90,7 +96,8 @@ The equivalent blob diagnostics are `h1.crash.blob.before` and
 `h1.crash.snapshot.after-before-ack`. The lease diagnostics are `h1.crash.lease.before` and
 `h1.crash.lease.after-before-ack`. The patch diagnostics are `h1.crash.patch.before` and
 `h1.crash.patch.after-before-ack`. The gate diagnostics are `h1.crash.gate.before` and
-`h1.crash.gate.after-before-ack`.
+`h1.crash.gate.after-before-ack`. The promotion diagnostics are
+`h1.crash.promotion.before` and `h1.crash.promotion.after-before-ack`.
 
 ## Focused checks
 

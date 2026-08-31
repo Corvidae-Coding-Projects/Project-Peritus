@@ -35,6 +35,8 @@ mod error;
 mod identity;
 mod limits;
 mod pointer;
+#[cfg(feature = "qualification")]
+pub mod qualification;
 mod runtime;
 mod selection;
 pub mod verified;

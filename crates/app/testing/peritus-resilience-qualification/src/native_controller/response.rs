@@ -187,6 +187,16 @@ pub(super) fn canonical_milestones(route: CommitRoute) -> Vec<MilestoneDocument>
             "candidate killed before acknowledging snapshot publication",
             "exact snapshot manifest, commit, tree, and retained ref reopened",
         ),
+        CommitRoute::PromotionBeforeDurableCommit => (
+            "production promotion transitions accepted with approve-once authority",
+            "candidate killed before submitting the atomic activation",
+            "campaign, production pointer, and approval remained at their predecessors",
+        ),
+        CommitRoute::PromotionAfterDurableCommitBeforeAck => (
+            "campaign, pointer, checkpoints, and approval consumption committed atomically",
+            "candidate killed before acknowledging the promotion receipt",
+            "exact promoted campaign, active pointer, and consumed approval reopened",
+        ),
     };
     vec![
         MilestoneDocument {
