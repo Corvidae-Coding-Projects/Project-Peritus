@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1049,
+  "next_comment_id": 1050,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-31T03:16:55.862646350Z",
+      "updated_at": "2026-08-31T03:38:44.312781125Z",
       "labels": [
         "qualification",
         "release"
@@ -3416,6 +3416,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA0ZTAuaqH3He3NQV0ojcfKYNrrhIBUBzeT1AjIaSbcqvDdwXTkYkfHS7FBEH99N2hE6bt4z6eqc14k5+Z5nJcCA=="
+        },
+        "86e3f0c6-8782-45c0-95ad-9b6afc07c29d": {
+          "display_id": 1049,
+          "author": "6ME5",
+          "content": "Implemented genuine h1.corruption.blob and general artifact containment. Artifact startup now migrates durable integrity state, detects cataloged digest divergence, moves bad bytes out of the active namespace, retains audit references, denies reads/new references, and reopens idempotently. Public daemon subprocess regression passes. Focused native H1 operator passed 1/1 at /home/doll/.local/state/peritus/qualification/h1/blob-corruption.InuR0D with evidence SHA-256 2291274b5b1444a4b3ac6eda84c692bd0d737b12c1aaf802f4b917200baf3a25. H1 now has 17 real routes; 26 remain. Affected all-target/all-feature tests, strict Clippy, rustdoc, docs-check, and architecture-check passed.",
+          "created_at": "2026-08-31T03:38:44.307472935Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABANxnfU3forB4rL+KMT1LFl4YLjRHZuKusdlPae2HzriGGXg3GYrU8K8pXLxkK/1WzkcjnqpgxZ4PnNUZT0JbIAA=="
         },
         "870dc332-1850-4e7b-984c-ebdb1508cc3e": {
           "display_id": 818,
@@ -10197,8 +10206,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-31T03:16:55.862646350Z",
+    "timestamp": "2026-08-31T03:38:44.312781125Z",
     "agent_id": "6ME5",
-    "agent_seq": 1245
+    "agent_seq": 1246
   }
 }
