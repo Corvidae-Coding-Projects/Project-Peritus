@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1051,
+  "next_comment_id": 1052,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-31T03:38:49.630381419Z",
+      "updated_at": "2026-08-31T03:39:21.615422891Z",
       "labels": [
         "qualification",
         "release"
@@ -5171,6 +5171,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA6AptxG1f4nVlp/QG8l9KdingxvHygLrJUVq9/9S85zFTlVv0oQsmlGpXBClCrf3jtsmKuYGdcuGT7bKO7g/WAg=="
+        },
+        "f0c81311-7e15-4707-b7ee-181681c8077c": {
+          "display_id": 1051,
+          "author": "6ME5",
+          "content": "Committed 559460af (feat(qualification): quarantine corrupt blobs). This signed checkpoint contains the durable artifact integrity migration, restart containment, public daemon regression, genuine h1.corruption.blob route, retained H1 evidence documentation, and 17/43 coverage update. Bootstrap paths remain untracked and unstaged.",
+          "created_at": "2026-08-31T03:39:21.611518383Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJNOaqbW1IGZGimzqA06BJgtTPzIPr63tfqBHyzE6UXDRSFV+Rvpz7dyGtNHvdvl9VY0KFTmtJiUVo/+jILXUBg=="
         },
         "f0f2efb3-8e9b-442e-9a96-834d8288de8a": {
           "display_id": 877,
@@ -10215,8 +10224,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-31T03:38:49.630381419Z",
+    "timestamp": "2026-08-31T03:39:21.615422891Z",
     "agent_id": "6ME5",
-    "agent_seq": 1247
+    "agent_seq": 1248
   }
 }
