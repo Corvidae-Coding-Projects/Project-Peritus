@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1038,
+  "next_comment_id": 1039,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-31T00:26:56.788926925Z",
+      "updated_at": "2026-08-31T00:45:28.452521077Z",
       "labels": [
         "qualification",
         "release"
@@ -2017,6 +2017,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAqqNfR9AJLOq6mHtI5n8j7Duas4QlQXi0YS/B7ZUEnFb3dK+MxLvbhIxqAW0xT2J3Ig10WCigndA0tqeaRvrzAQ=="
+        },
+        "307982be-26d9-45bc-a90a-4f88aa6bc09a": {
+          "display_id": 1038,
+          "author": "6ME5",
+          "content": "Signed cbfe488a adds genuine H1 lease crash qualification on both sides of the production B1/C0 commit. Before commit, staged peritusd holds a move-only LeaseCommitRequest and restart proves zero events, heads, and projection. After commit-before-ack, restart recovers the exact request digest, state revision/digest, and producing position. Fresh diagnostics lease-before.UFyq0t and lease-after-ack.zurTPp each passed 1/1 with six evidence classes; H1 is now 8/43 real routes. Verification: 54 daemon unit tests plus 18 integration/protocol/runtime tests, 6 qualification tests, native and Windows-GNU strict Clippy, architecture-check 79 packages/3266 source files, docs-check 137 files, rustfmt, and diff hygiene passed.",
+          "created_at": "2026-08-31T00:45:28.449707066Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABt+qVRvs/P7VWcpseXjW1+6fwr2BbdTapwpAI3hyJ527yz+HM4UJXaemsyFAWjyiS5EOAiCydmFVMfLEnKZ+BA=="
         },
         "31722d09-1437-439c-a025-50183b2ac18d": {
           "display_id": 649,
@@ -10094,8 +10103,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-31T00:26:56.788926925Z",
+    "timestamp": "2026-08-31T00:45:28.452521077Z",
     "agent_id": "6ME5",
-    "agent_seq": 1233
+    "agent_seq": 1234
   }
 }
