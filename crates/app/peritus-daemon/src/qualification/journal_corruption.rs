@@ -3,7 +3,7 @@
 use peritus_codec::sha256;
 use peritus_journal::JournalErrorKind;
 use peritus_types::Sha256Digest;
-use rusqlite::{Connection, OptionalExtension as _, params};
+use rusqlite::{Connection, OptionalExtension as _};
 
 use crate::outbox::stage_gate_after_crash;
 use crate::{DaemonConfig, DaemonError, DaemonErrorCode, DaemonRecovery, DaemonRuntime};
@@ -94,7 +94,7 @@ pub fn stage_corruption(config: &DaemonConfig) -> Result<JournalCorruptionCheckp
         return Err(qualification_error("committed journal frame was invalid before injection"));
     }
     let changed = connection
-        .execute("UPDATE events SET frame = ?1 WHERE global_position = 1", params![CORRUPT_FRAME])
+        .execute("UPDATE events SET frame = ?1 WHERE global_position = 1", [CORRUPT_FRAME])
         .map_err(sqlite_error)?;
     if changed != 1 {
         return Err(qualification_error("journal fault injection changed the wrong row count"));
