@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1071,
+  "next_comment_id": 1072,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-31T11:14:25.634810796Z",
+      "updated_at": "2026-08-31T11:21:54.297687643Z",
       "labels": [
         "qualification",
         "release"
@@ -4366,6 +4366,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAVmGfAtrrf/PuS8Md92Pjk8zmWRTqi7GNhCruheBNYKz6RFNKmWjEKgwi0thol2R555Aql44kbT7wRIaSZqMHDA=="
+        },
+        "bab1f460-dd32-453b-bb12-9f4630b9c20d": {
+          "display_id": 1071,
+          "author": "6ME5",
+          "content": "H1 acceptance-evidence corruption is now a genuine production route, raising checked-in coverage to 39/43. EvidenceStore startup atomically copies corrupt portable record bytes and every raw indexed field into a digest-bound durable quarantine, denies that evidence identity to readers, and repeats idempotently. The public staged daemon admits real revision/journal-bound evidence, injects record-byte divergence, and fresh recovery plus the independent Rust controller verify exact containment with no authority mutation. Retained diagnostic: /home/doll/.local/state/peritus/qualification/h1/evidence-corruption.rYq4Qs/report.json, SHA-256 6f424f43ef3a10589433b2750e0958a9c5565df6bcb0e6d82ee4498d17d3e414, 1 passed/0 failed with six evidence files. Affected all-target/all-feature tests, native and Windows-GNU strict Clippy, strict rustdoc, no-cheating Verus, architecture, source-layout, ordinary API, docs, formatting, diff hygiene, and full xtask policy all pass.",
+          "created_at": "2026-08-31T11:21:54.294928639Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8eyfvHHw3AohEQYTmPYywBUYTfXSiaAquT7qvBZimlCxotSPltueM+Ta2WJjDqzvbKDMGouUgQ9QDY9MqGWDAw=="
         },
         "bb7b8d0d-f9eb-4369-a3dd-e565e22781ea": {
           "display_id": 660,
@@ -10391,8 +10400,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-31T11:14:25.634810796Z",
+    "timestamp": "2026-08-31T11:21:54.297687643Z",
     "agent_id": "6ME5",
-    "agent_seq": 1270
+    "agent_seq": 1271
   }
 }
