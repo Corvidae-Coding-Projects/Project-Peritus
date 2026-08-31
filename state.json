@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1104,
+  "next_comment_id": 1105,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-31T23:58:11.817546865Z",
+      "updated_at": "2026-08-31T23:58:53.166721118Z",
       "labels": [
         "qualification",
         "release"
@@ -2021,6 +2021,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAmUAEn0UbmU5LOt4XphJwA1wtQtpPB1Yn6C6ehrmoDrEfYcoE/4jSogtQFzG7dZi3+fRlO2nsDV08yRn+clqrBg=="
+        },
+        "292c5099-6687-4c0f-9494-3564c1d69584": {
+          "display_id": 1104,
+          "author": "6ME5",
+          "content": "Hosted validation for 76be0361: both formerly failing macOS paths are green. Gate A Rust test (macos-15) passed in 11m25s (job 99682069890); Foundation Rust (macos-15) passed its test phase and completed green in 21m17s (job 99681797801). All completed PR checks are green; the remaining Windows, Verus, and Ubuntu product jobs are still in progress.",
+          "created_at": "2026-08-31T23:58:53.163886441Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAVYRufk7HajIQkcOiYEBNaokaQw2qkRQq3nRtSsu+co+/LHsK3gy7rAviRgLf8WucIXasSOnDHZJFs/Gtu3FaCg=="
         },
         "2a38c932-c980-474f-93cb-6ff0c98bd959": {
           "display_id": 783,
@@ -10692,8 +10701,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-31T23:58:11.817546865Z",
+    "timestamp": "2026-08-31T23:58:53.166721118Z",
     "agent_id": "6ME5",
-    "agent_seq": 1306
+    "agent_seq": 1307
   }
 }
