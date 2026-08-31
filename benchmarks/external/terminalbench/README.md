@@ -50,8 +50,10 @@ PERITUS_SOURCE_REVISION="$(git rev-parse --verify HEAD)" \
 
 The first command refuses tracked source changes. The native schema-version-2 report retains that
 full source revision, the Cargo package version, and the executable SHA-256. The Harbor bridge
-independently hashes the uploaded executable, rejects a digest mismatch, and copies both identities
-into trial metadata.
+independently hashes the uploaded executable, runs its provider-free `protocol` handshake during
+setup, rejects a report-schema or digest mismatch before task execution, and copies both identities
+into trial metadata. Rebuild after every committed source change before starting or resuming a
+campaign; the handshake deliberately rejects an older portable executable.
 
 Run `codex login` and `claude login` on the host before starting the suite. The adapter copies the
 portable Peritus binary, the exact discovered Codex executable and its matching

@@ -5,6 +5,9 @@ use std::{io::Read as _, process::ExitCode};
 /// Runs the benchmark process using the current arguments and standard streams.
 #[must_use]
 pub fn main_entry() -> ExitCode {
+    if std::env::args_os().nth(1).as_deref() == Some(std::ffi::OsStr::new("protocol")) {
+        return protocol();
+    }
     let runtime =
         match tokio::runtime::Builder::new_multi_thread().worker_threads(2).enable_all().build() {
             Ok(runtime) => runtime,
@@ -29,6 +32,25 @@ pub fn main_entry() -> ExitCode {
         }
         Err(error) => {
             eprintln!("peritus-benchmark-agent: {error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn protocol() -> ExitCode {
+    if std::env::args_os().count() != 2 {
+        eprintln!("peritus-benchmark-agent: protocol does not accept arguments");
+        return ExitCode::FAILURE;
+    }
+    match crate::identity::BenchmarkAgentProtocol::current()
+        .and_then(|protocol| serde_json::to_string(&protocol).map_err(crate::BenchmarkError::from))
+    {
+        Ok(json) => {
+            println!("{json}");
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            eprintln!("peritus-benchmark-agent: protocol: {error}");
             ExitCode::FAILURE
         }
     }

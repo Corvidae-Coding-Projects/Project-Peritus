@@ -152,6 +152,12 @@ fi
         _require_success(installed, "install Git in task environment")
 
     async def _qualify_runtime(self, environment: BaseEnvironment) -> None:
+        runtime_env = await self._runtime_env(environment)
+        protocol = await environment.exec(
+            "peritus-benchmark-agent protocol", env=runtime_env, timeout_sec=30
+        )
+        _require_success(protocol, "qualify native Peritus protocol")
+        _parse_protocol(protocol.stdout or "", self._peritus_digest)
         command = " && ".join(
             (
                 "codex --version >/dev/null",
@@ -160,7 +166,6 @@ fi
                 "claude auth status --json >/dev/null 2>&1",
             )
         )
-        runtime_env = await self._runtime_env(environment)
         result = await environment.exec(command, env=runtime_env, timeout_sec=60)
         _require_success(result, "qualify authenticated provider routers")
 
@@ -314,6 +319,21 @@ def _parse_report(stdout: str) -> dict[str, Any]:
             raise RuntimeError("Peritus returned an unsupported Terminal-Bench report")
         return report
     raise RuntimeError("Peritus returned a malformed invocation report") from malformed
+
+
+def _parse_protocol(stdout: str, expected_digest: str) -> dict[str, Any]:
+    try:
+        protocol = json.loads(stdout)
+    except json.JSONDecodeError as error:
+        raise RuntimeError("native Peritus protocol response is malformed") from error
+    if (
+        not isinstance(protocol, dict)
+        or protocol.get("schema_version") != 1
+        or protocol.get("terminalbench_report_schema_version") != 2
+    ):
+        raise RuntimeError("native Peritus executable and Harbor adapter are incompatible")
+    _report_identity(protocol, expected_digest)
+    return protocol
 
 
 def _report_identity(report: dict[str, Any], expected_digest: str) -> dict[str, str]:

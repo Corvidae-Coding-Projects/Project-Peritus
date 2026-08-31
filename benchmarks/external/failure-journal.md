@@ -3751,3 +3751,27 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   unit and integration tests, strict all-target/all-feature Clippy, rustfmt, diff checks, and the
   137-file documentation check pass. Complete repository gates and an unchanged final-candidate
   rerun remain required.
+
+## TBF-029: a stale portable agent crossed a newer adapter protocol
+
+- Suite and task: Terminal-Bench 2.0 frozen baseline resume, 29 trials between
+  `2026-08-31T07:28:58Z` and `2026-08-31T13:36:58Z`.
+- Symptom: Harbor uploaded and ran the native agent, which returned a complete schema-version-1
+  report. The checked-in Python adapter had advanced to schema version 2 with mandatory native
+  identity and therefore classified every result as `Peritus returned an unsupported
+  Terminal-Bench report`. No affected trial reached scoring.
+- Cause: the long-running campaign could resume with the portable musl artifact left from an older
+  source revision. The adapter validated a report only after a full provider-backed task run; it
+  had no cheap executable-capability handshake during setup. Provider availability was unrelated
+  to these 29 failures.
+- Resolution: the native executable now exposes a provider-free `protocol` command containing its
+  protocol schema, Terminal-Bench report schema, compiled full source revision, package version,
+  and self-measured binary SHA-256. Harbor compares that document with its own hash of the uploaded
+  bytes before authenticating providers or starting the agent. A stale or locally mismatched build
+  now fails immediately with an explicit compatibility diagnosis.
+- Integrity decision: keep all 29 baseline exceptions as infrastructure failures. Do not translate
+  them into scores, edit task state, or retry them inside the frozen campaign. The final-candidate
+  campaign reruns the unchanged tasks after building from its exact clean committed revision.
+- Verification: 43 native external-benchmark tests, 16 Harbor adapter/supervisor tests, strict
+  all-target/all-feature Clippy, rustfmt, and direct execution of the committed portable agent's
+  protocol handshake must pass before checkpointing this correction.

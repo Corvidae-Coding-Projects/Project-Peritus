@@ -9,6 +9,17 @@ use crate::BenchmarkError;
 
 const COMPILED_SOURCE_REVISION: Option<&str> = option_env!("PERITUS_SOURCE_REVISION");
 
+/// Report schema emitted by the native Terminal-Bench composition.
+pub const TERMINALBENCH_REPORT_SCHEMA_VERSION: u32 = 2;
+
+/// Provider-free executable contract used before an external trial starts.
+#[derive(Debug, Eq, PartialEq, Serialize)]
+pub struct BenchmarkAgentProtocol {
+    schema_version: u32,
+    terminalbench_report_schema_version: u32,
+    agent_identity: BenchmarkAgentIdentity,
+}
+
 /// Source and binary identity retained with every external benchmark invocation.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct BenchmarkAgentIdentity {
@@ -22,7 +33,7 @@ pub struct BenchmarkAgentIdentity {
 
 impl BenchmarkAgentIdentity {
     /// Inspects the current executable and returns its immutable benchmark identity.
-    pub(crate) fn current() -> Result<Self, BenchmarkError> {
+    pub(super) fn current() -> Result<Self, BenchmarkError> {
         let source_revision = required_source_revision(COMPILED_SOURCE_REVISION)?;
         let executable = std::env::current_exe().map_err(|error| {
             BenchmarkError::filesystem(
@@ -49,6 +60,17 @@ impl BenchmarkAgentIdentity {
             package_version: env!("CARGO_PKG_VERSION"),
             source_revision,
             binary_sha256: lowercase_hex(&hasher.finalize()),
+        })
+    }
+}
+
+impl BenchmarkAgentProtocol {
+    /// Inspects the running executable and binds its supported report contract.
+    pub(crate) fn current() -> Result<Self, BenchmarkError> {
+        Ok(Self {
+            schema_version: 1,
+            terminalbench_report_schema_version: TERMINALBENCH_REPORT_SCHEMA_VERSION,
+            agent_identity: BenchmarkAgentIdentity::current()?,
         })
     }
 }
@@ -119,5 +141,22 @@ mod tests {
     #[test]
     fn encodes_digest_bytes_as_lowercase_hex() {
         assert_eq!(lowercase_hex(&[0x00, 0x5a, 0xff]), "005aff");
+    }
+
+    #[test]
+    fn protocol_declares_the_terminalbench_report_contract() {
+        let protocol = BenchmarkAgentProtocol {
+            schema_version: 1,
+            terminalbench_report_schema_version: TERMINALBENCH_REPORT_SCHEMA_VERSION,
+            agent_identity: BenchmarkAgentIdentity {
+                package_version: "0.0.0",
+                source_revision: "0123456789abcdef0123456789abcdef01234567",
+                binary_sha256: "a".repeat(64),
+            },
+        };
+
+        let document = serde_json::to_value(protocol).expect("protocol JSON");
+        assert_eq!(document["schema_version"], 1);
+        assert_eq!(document["terminalbench_report_schema_version"], 2);
     }
 }

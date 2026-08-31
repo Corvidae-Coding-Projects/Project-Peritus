@@ -16,7 +16,7 @@ use crate::{
     agent::{observation_capture, publish_last_observation, run_id},
     args::TerminalBenchInput,
     evidence::TerminalBenchReport,
-    identity::BenchmarkAgentIdentity,
+    identity::{BenchmarkAgentIdentity, TERMINALBENCH_REPORT_SCHEMA_VERSION},
     providers, session, trace, workspace,
 };
 
@@ -88,7 +88,7 @@ pub async fn run(input: TerminalBenchInput) -> Result<TerminalBenchReport, Bench
         ),
     };
     let report = TerminalBenchReport {
-        schema_version: 2,
+        schema_version: TERMINALBENCH_REPORT_SCHEMA_VERSION,
         agent_identity,
         success,
         task_id: input.task_id,

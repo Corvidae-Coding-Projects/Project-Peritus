@@ -211,6 +211,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Add a provider-free protocol handshake between Harbor and the uploaded native benchmark agent.
+  Setup now verifies the report schema, compiled source revision, package version, and executable
+  SHA-256 before a Terminal-Bench task can spend its agent budget, so a stale portable build fails
+  one explicit preflight instead of silently invalidating a campaign (`TBF-029`, #31).
 - Exclude the dependency-failure qualification admin boundary from `verus_only` builds, matching
   the product runner's existing effect-boundary classification while retaining the complete route
   in ordinary release binaries. This restores full-workspace Verus verification after the real

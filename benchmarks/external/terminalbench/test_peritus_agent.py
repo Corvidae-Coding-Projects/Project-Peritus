@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -10,6 +11,7 @@ from harbor.environments.base import ExecResult
 
 from benchmarks.external.terminalbench.peritus_agent import (
     _file_sha256,
+    _parse_protocol,
     _parse_report,
     _report_identity,
     _runtime_path,
@@ -117,6 +119,32 @@ class ReportIdentityTests(unittest.TestCase):
         }
 
         self.assertEqual(_report_identity(report, digest)["binary_sha256"], digest)
+
+    def test_protocol_binds_adapter_schema_and_executable_identity(self) -> None:
+        digest = "a" * 64
+        protocol = {
+            "schema_version": 1,
+            "terminalbench_report_schema_version": 2,
+            "agent_identity": {
+                "package_version": "0.0.0",
+                "source_revision": "0123456789abcdef0123456789abcdef01234567",
+                "binary_sha256": digest,
+            },
+        }
+
+        parsed = _parse_protocol(json.dumps(protocol), digest)
+
+        self.assertEqual(parsed["terminalbench_report_schema_version"], 2)
+
+    def test_protocol_rejects_stale_report_schema_before_a_trial(self) -> None:
+        protocol = {
+            "schema_version": 1,
+            "terminalbench_report_schema_version": 1,
+            "agent_identity": {},
+        }
+
+        with self.assertRaisesRegex(RuntimeError, "incompatible"):
+            _parse_protocol(json.dumps(protocol), "a" * 64)
 
     def test_rejects_a_report_from_different_executable_bytes(self) -> None:
         report = {

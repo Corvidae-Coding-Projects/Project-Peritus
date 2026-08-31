@@ -16,7 +16,9 @@ Harbor's independent verifier—not the adapter—owns the external score.
 
 Every live invocation requires `PERITUS_SOURCE_REVISION` at compile time. The report binds that
 full Git object ID to the Cargo package version and the SHA-256 of the executable that actually ran.
-Harbor independently hashes the uploaded binary and rejects a mismatched native report. Ordinary
+`peritus-benchmark-agent protocol` exposes those identities and the supported Terminal-Bench report
+schema without contacting a provider. Harbor runs that handshake immediately after upload and
+rejects a stale adapter, schema, source revision, or executable before task execution. Ordinary
 workspace builds can compile the crate without this variable, but such a binary refuses to run an
 external benchmark rather than publishing unattributable evidence.
 
