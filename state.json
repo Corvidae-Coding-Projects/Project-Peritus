@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1063,
+  "next_comment_id": 1064,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-31T05:07:20.057357957Z",
+      "updated_at": "2026-08-31T05:26:10.073146853Z",
       "labels": [
         "qualification",
         "release"
@@ -1387,6 +1387,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAC0DzQ1hOk084SZa3W7Z5X4PpxPPL5lejO3rRjPF6hJyUdagOo4Lxg0WIa7+//EFKZ6tTAXBaxlkqOaqCS6hCDQ=="
+        },
+        "07845bfc-884d-4ed5-9643-075c5a3999e6": {
+          "display_id": 1063,
+          "author": "6ME5",
+          "content": "Signed commit d7c0ce2e adds the real h1.disk-full.blob-finalize route. Two production owned writers race one durable logical artifact quota; the losing finalize publishes then rolls back its bytes and metadata, and a fresh staged daemon verifies the admitted reference, used-byte count, empty temporary namespace, absent rejected object, and healthy journal. Retained diagnostic: /home/doll/.local/state/peritus/qualification/h1/blob-finalize-disk.fifreA/report.json, SHA-256 0f114d8b503be7259cae2ff3a8666dec1094d8ad257867a3ebee748b57be1f19, 1 passed/0 failed with six evidence classes. Focused 54+7 lib tests, strict all-target/all-feature Clippy, rustdoc, docs-check, architecture-check, ordinary-api-check, formatting, and diff checks passed. H1 checked-in coverage is now 25/43; 18 routes remain.",
+          "created_at": "2026-08-31T05:26:10.069134996Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA3z8/572nTj2mCSx04XMu3sQFdBSlQbq4pzoQcFbbTsahdUUQMS6qg0pDgAIgwDqwl2FZCNabaTwp+IleUz06Dg=="
         },
         "079f5ca1-5ae2-4c4a-b606-52c5a6046843": {
           "display_id": 1044,
@@ -10319,8 +10328,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-31T05:07:20.057357957Z",
+    "timestamp": "2026-08-31T05:26:10.073146853Z",
     "agent_id": "6ME5",
-    "agent_seq": 1260
+    "agent_seq": 1261
   }
 }
