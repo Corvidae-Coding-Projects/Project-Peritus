@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1044,
+  "next_comment_id": 1045,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-31T02:17:45.421973416Z",
+      "updated_at": "2026-08-31T02:18:42.083125429Z",
       "labels": [
         "qualification",
         "release"
@@ -1382,6 +1382,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAC0DzQ1hOk084SZa3W7Z5X4PpxPPL5lejO3rRjPF6hJyUdagOo4Lxg0WIa7+//EFKZ6tTAXBaxlkqOaqCS6hCDQ=="
+        },
+        "079f5ca1-5ae2-4c4a-b606-52c5a6046843": {
+          "display_id": 1044,
+          "author": "6ME5",
+          "content": "Committed 3d0bcb08: H1 F0 atomic-promotion crash recovery. Fourteen real H1 routes now cover both sides of journal, blob, snapshot, lease, patch, gate, and promotion commits. Local evidence is green for public daemon subprocess recovery, focused operator diagnostics, strict Clippy/tests, rustdoc, documentation, and architecture gates. No generated artifacts or bootstrap files were committed.",
+          "created_at": "2026-08-31T02:18:42.080544512Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAo9YrdTCZNbNR74S957NtQHeiQfvK2e/jjG1IQ7qMWHrSGxB/RPDLsv0nDPDvksQyZXduD5Ufeae24rlB2hQKAA=="
         },
         "07f0ea13-0228-46e9-8ee0-636bba25f2d8": {
           "display_id": 837,
@@ -10152,8 +10161,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-31T02:17:45.421973416Z",
+    "timestamp": "2026-08-31T02:18:42.083125429Z",
     "agent_id": "6ME5",
-    "agent_seq": 1240
+    "agent_seq": 1241
   }
 }
