@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1042,
+  "next_comment_id": 1043,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-31T01:23:20.672661413Z",
+      "updated_at": "2026-08-31T02:17:38.849245471Z",
       "labels": [
         "qualification",
         "release"
@@ -1805,6 +1805,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAeuEtkxMnib0kcDGbvp9ybkdgc1g0TZWWYHQBBToQj5yoH9oQm+Nu/p25Et4U76d+ymoYjbfkbfjHfITpOqYcAQ=="
+        },
+        "248a7955-818e-49f1-8391-a11d26002b78": {
+          "display_id": 1042,
+          "author": "6ME5",
+          "content": "[action] Finished the H1 F0 atomic-promotion crash pair: 14 real routes now pass. The before crash preserves seeded campaign, pointer, and approve-once state; the after crash replays both activation events, both checkpoints, and approval consumption. Fixed multi-aggregate C0 checkpoint replay to validate the final shared-command producer event. Focused tests, strict Clippy, rustdoc, docs-check, and architecture-check pass.",
+          "created_at": "2026-08-31T02:17:38.846470821Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzETKflHxZQX2k0m+HYAXXx67APaBooAY2HAYlAfQfmhhDJ9zMaPfo2u9AXAzhDL4UKXMpG2awlADgA9CxQNvAQ=="
         },
         "24c5b055-f9e6-484c-af07-1e5772d60f4a": {
           "display_id": 852,
@@ -10134,8 +10143,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-31T01:23:20.672661413Z",
+    "timestamp": "2026-08-31T02:17:38.849245471Z",
     "agent_id": "6ME5",
-    "agent_seq": 1238
+    "agent_seq": 1239
   }
 }
