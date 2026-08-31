@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1087,
+  "next_comment_id": 1088,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-31T16:05:24.662181659Z",
+      "updated_at": "2026-08-31T19:04:15.284531686Z",
       "labels": [
         "qualification",
         "release"
@@ -1346,6 +1346,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAaCBEvLwV/kdJE7K/3mIJECLlpLB6aPm2DDhXEaAhwTE3piCDSvdrrbqpaxB1hCUKY+rAAQGaNAy10tUB9zcbDg=="
+        },
+        "036253c3-5756-4756-a26d-8e98a0c576e7": {
+          "display_id": 1087,
+          "author": "6ME5",
+          "content": "Terminal-Bench credential-lifecycle repair committed as b2621b74. Corrected-adapter trials vulnerable-secret__aoXTUBZ and feal-linear-cryptanalysis__ayu2ydK passed presence-only Claude status during setup, then failed real fallback turns with anthropic.claude_runtime.authentication. The host status still reported loggedIn=true, but an inert official-CLI canary proved the OAuth session expired and could not refresh; its access state had expired at 2026-08-31T10:23:49Z. Disposable tasks previously discarded any official-CLI credential rotation. The serialized adapter now downloads only that bounded document after a run, validates required shape plus nondecreasing access/refresh expiries, and atomically checkpoints mode 0600 only if the host still matches the uploaded digest; a concurrent host login wins and token values never enter output or Git. Verified all 19 adapter/supervisor tests, Python compilation, warning-denied workspace docs, diff checks, and complete xtask policy checks. Existing rewards remain unchanged. One fresh user Opening browser to sign in…\nIf the browser didn't open, visit: https://claude.com/cai/oauth/authorize?code=true&client_id=9d1c250a-e61b-44d9-88ed-5944d1962f5e&response_type=code&redirect_uri=https%3A%2F%2Fplatform.claude.com%2Foauth%2Fcode%2Fcallback&scope=org%3Acreate_api_key+user%3Aprofile+user%3Ainference+user%3Asessions%3Aclaude_code+user%3Amcp_servers+user%3Afile_upload&code_challenge=K7m2CCxYfTelx9HgKX4aVD72H1fKkoFkLgtpsn3Xt1I&code_challenge_method=S256&state=poYZiO9MnC18gW_GAPM8N-APg5rCjpVeo1qapwvDKhM\nPaste code here if prompted > Login successful. is required before the repaired adapter can receive live evidence.",
+          "created_at": "2026-08-31T19:04:15.281954318Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAxyRFszKcH5b0SApMBpCmdKQ97B3PVWAEtkZCoFy7KabFjToK8dhXe7LAUVX5k3is3y6ezC+Db4KTM1I2TTA2BA=="
         },
         "03766697-0e0f-4895-8c26-6b7090884cd6": {
           "display_id": 629,
@@ -10539,8 +10548,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-31T16:05:24.662181659Z",
+    "timestamp": "2026-08-31T19:04:15.284531686Z",
     "agent_id": "6ME5",
-    "agent_seq": 1287
+    "agent_seq": 1288
   }
 }
