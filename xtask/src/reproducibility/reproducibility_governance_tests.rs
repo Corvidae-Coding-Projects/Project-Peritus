@@ -136,8 +136,8 @@ fn required_workflow_retains_the_measured_verus_timeout() {
 #[test]
 fn required_workflow_retains_the_measured_rust_matrix_timeout() {
     let altered = canonical_governance().replacen(
+        "    name: Rust ${{ matrix.operation }} (${{ matrix.os }})\n    needs: policy\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-24.04, macos-15, windows-2025]\n        operation: [fmt, build, test, doc-test, clippy, docs]\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 45",
         "    name: Rust ${{ matrix.operation }} (${{ matrix.os }})\n    needs: policy\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-24.04, macos-15, windows-2025]\n        operation: [fmt, build, test, doc-test, clippy, docs]\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 30",
-        "    name: Rust ${{ matrix.operation }} (${{ matrix.os }})\n    needs: policy\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-24.04, macos-15, windows-2025]\n        operation: [fmt, build, test, doc-test, clippy, docs]\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 20",
         1,
     );
 
