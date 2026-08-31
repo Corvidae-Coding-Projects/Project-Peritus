@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1057,
+  "next_comment_id": 1058,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-31T03:47:37.771179385Z",
+      "updated_at": "2026-08-31T04:04:15.000652180Z",
       "labels": [
         "qualification",
         "release"
@@ -2525,6 +2525,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAx5vByBy7SbfgFY5IUmUPVcGU16U5Kl0Qv4QQAfbI9+Zcex/8GEuHB36Lbcu/Gt0V4kWGXBMUU0xmnWGKOka/CQ=="
+        },
+        "4ea6b3a7-8b91-4797-815b-c2a45ef21e8f": {
+          "display_id": 1057,
+          "author": "6ME5",
+          "content": "Implemented genuine H1 h1.corruption.snapshot. Production peritus-git now atomically moves a divergent retained snapshot ref to refs/peritus/quarantine/... while refusing healthy refs and supporting idempotent restart. Public peritusd stage/recover commands, subprocess regression, and staged H1 controller route are wired. Real focused run passed 1/1 at /home/doll/.local/state/peritus/qualification/h1/snapshot-corruption.6sDQYS/report.json (SHA-256 0fa6e44e3e4e31a9dd10ee53c8e3217c248d55a09b182e327ebaf6813d63fc1a). H1 is 18/43; 25 routes remain. Affected tests, strict Clippy, rustdoc, ordinary-api-check, docs-check, architecture-check, fmt, and diff checks pass.",
+          "created_at": "2026-08-31T04:04:14.994168860Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABACobWn5QNVz/0XI8my+9OEXyZzPDRdYTPwrmSRfA/UZHU65T+ShX2rbiBhFdoerFjKQi64sOE4lB+hdgMLnlqBA=="
         },
         "4f01718b-abf8-4882-871e-b142823d98fa": {
           "display_id": 638,
@@ -10269,8 +10278,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-31T03:47:37.771179385Z",
+    "timestamp": "2026-08-31T04:04:15.000652180Z",
     "agent_id": "6ME5",
-    "agent_seq": 1253
+    "agent_seq": 1254
   }
 }
