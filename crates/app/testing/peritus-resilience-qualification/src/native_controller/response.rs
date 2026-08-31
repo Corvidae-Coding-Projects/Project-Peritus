@@ -183,6 +183,11 @@ const fn milestone_details(route: ScenarioRoute) -> (&'static str, &'static str,
             "portable evidence bytes changed without changing their indexed identity",
             "fresh evidence startup quarantined the bytes and denied record reuse",
         ),
+        ScenarioRoute::HarnessPromotionCorruption => (
+            "F0 promotion activated and published through its exact durable outbox directives",
+            "published harness-activation evidence bytes changed without changing their identity",
+            "fresh startup quarantined the evidence while preserving the exact production pointer",
+        ),
         ScenarioRoute::JournalAppendDiskExhaustion => (
             "authoritative SQLite page ceiling fixed at the current allocation",
             "oversized production append returned exact storage exhaustion",

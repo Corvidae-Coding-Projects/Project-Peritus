@@ -26,7 +26,8 @@ impl ScenarioRoute {
         match self {
             Self::BlobCorruption
             | Self::SnapshotCorruption
-            | Self::AcceptanceEvidenceCorruption => "divergence-detected",
+            | Self::AcceptanceEvidenceCorruption
+            | Self::HarnessPromotionCorruption => "divergence-detected",
             _ => "verified",
         }
     }
@@ -36,6 +37,7 @@ impl ScenarioRoute {
             Self::ProjectionCorruption => Some("projection"),
             Self::BlobCorruption => Some("blob"),
             Self::AcceptanceEvidenceCorruption => Some("acceptance-evidence"),
+            Self::HarnessPromotionCorruption => Some("harness-promotion"),
             Self::SnapshotCorruption => Some("snapshot"),
             Self::JournalCorruption => Some("journal"),
             _ => None,
@@ -49,6 +51,7 @@ impl ScenarioRoute {
                 | Self::JournalCorruption
                 | Self::BlobCorruption
                 | Self::AcceptanceEvidenceCorruption
+                | Self::HarnessPromotionCorruption
                 | Self::SnapshotCorruption
         )
     }

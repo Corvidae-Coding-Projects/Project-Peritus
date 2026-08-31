@@ -1,12 +1,12 @@
 use super::route::{
     ACCEPTANCE_EVIDENCE_CORRUPTION, BLOB_AFTER_BEFORE_ACK, BLOB_BEFORE, BLOB_CORRUPTION,
     BLOB_FINALIZE_DISK_EXHAUSTION, DaemonPhase, GATE_AFTER_BEFORE_ACK, GATE_BEFORE,
-    JOURNAL_AFTER_BEFORE_ACK, JOURNAL_APPEND_DISK_EXHAUSTION, JOURNAL_BEFORE, JOURNAL_CORRUPTION,
-    LEASE_AFTER_BEFORE_ACK, LEASE_BEFORE, PATCH_AFTER_BEFORE_ACK, PATCH_BEFORE,
-    PROJECTION_CORRUPTION, PROMOTION_AFTER_BEFORE_ACK, PROMOTION_BEFORE, PROVIDER_DEATH,
-    PROVIDER_RETRY_EXHAUSTION, SNAPSHOT_AFTER_BEFORE_ACK, SNAPSHOT_BEFORE,
-    SNAPSHOT_COMMIT_DISK_EXHAUSTION, SNAPSHOT_CORRUPTION, ScenarioRoute, TOOL_DEATH,
-    TOOL_RETRY_EXHAUSTION, WORKER_DEATH, WORKER_RETRY_EXHAUSTION,
+    HARNESS_PROMOTION_CORRUPTION, JOURNAL_AFTER_BEFORE_ACK, JOURNAL_APPEND_DISK_EXHAUSTION,
+    JOURNAL_BEFORE, JOURNAL_CORRUPTION, LEASE_AFTER_BEFORE_ACK, LEASE_BEFORE,
+    PATCH_AFTER_BEFORE_ACK, PATCH_BEFORE, PROJECTION_CORRUPTION, PROMOTION_AFTER_BEFORE_ACK,
+    PROMOTION_BEFORE, PROVIDER_DEATH, PROVIDER_RETRY_EXHAUSTION, SNAPSHOT_AFTER_BEFORE_ACK,
+    SNAPSHOT_BEFORE, SNAPSHOT_COMMIT_DISK_EXHAUSTION, SNAPSHOT_CORRUPTION, ScenarioRoute,
+    TOOL_DEATH, TOOL_RETRY_EXHAUSTION, WORKER_DEATH, WORKER_RETRY_EXHAUSTION,
 };
 use super::{FaultDocument, ScenarioDocument};
 
@@ -197,6 +197,20 @@ fn the_acceptance_evidence_corruption_route_is_admitted() {
     assert_eq!(
         ScenarioRoute::from_scenario(&scenario),
         Some(ScenarioRoute::AcceptanceEvidenceCorruption)
+    );
+}
+
+#[test]
+fn the_harness_promotion_corruption_route_is_admitted() {
+    let scenario = ScenarioDocument {
+        id: HARNESS_PROMOTION_CORRUPTION.to_owned(),
+        title: "harness promotion corruption".to_owned(),
+        fault: FaultDocument::Corruption { target: "harness-promotion".to_owned() },
+        expected_recovery: "quarantined-corruption".to_owned(),
+    };
+    assert_eq!(
+        ScenarioRoute::from_scenario(&scenario),
+        Some(ScenarioRoute::HarnessPromotionCorruption)
     );
 }
 

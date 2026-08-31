@@ -13,9 +13,9 @@ use daemon_conformance_support::{
     blocker_for, dependency_failure_recovery, evidence_corruption_recovery,
     gate_commit_crash_recovery, journal_append_exhaustion_recovery, journal_before_crash_recovery,
     journal_corruption_recovery, lease_commit_crash_recovery, patch_commit_crash_recovery,
-    projection_corruption_recovery, promotion_commit_crash_recovery, reachable_scenarios,
-    snapshot_commit_crash_recovery, snapshot_corruption_recovery,
-    snapshot_quota_exhaustion_recovery,
+    projection_corruption_recovery, promotion_commit_crash_recovery,
+    promotion_evidence_corruption_recovery, reachable_scenarios, snapshot_commit_crash_recovery,
+    snapshot_corruption_recovery, snapshot_quota_exhaustion_recovery,
 };
 
 #[test]
@@ -81,6 +81,11 @@ fn corrupt_journal_stops_fresh_startup_before_authority_mutation() {
 #[test]
 fn corrupt_acceptance_evidence_is_quarantined_before_reuse() {
     evidence_corruption_recovery().expect("real acceptance evidence containment");
+}
+
+#[test]
+fn corrupt_harness_activation_evidence_is_quarantined_without_pointer_mutation() {
+    promotion_evidence_corruption_recovery().expect("real harness activation evidence containment");
 }
 
 #[test]

@@ -18,6 +18,7 @@ mod patch;
 mod process;
 mod projection;
 mod promotion;
+mod promotion_evidence_corruption;
 mod snapshot;
 mod snapshot_corruption;
 mod snapshot_disk;
@@ -115,6 +116,9 @@ pub(super) fn inject(
         ScenarioRoute::JournalBeforeDurableCommit => journal_before::inject(paths, runtime),
         ScenarioRoute::JournalCorruption => journal_corruption::inject(paths, runtime),
         ScenarioRoute::AcceptanceEvidenceCorruption => evidence_corruption::inject(paths, runtime),
+        ScenarioRoute::HarnessPromotionCorruption => {
+            promotion_evidence_corruption::inject(paths, runtime)
+        }
         ScenarioRoute::JournalAppendDiskExhaustion => journal_disk::inject(paths, runtime),
         ScenarioRoute::LeaseBeforeDurableCommit
         | ScenarioRoute::LeaseAfterDurableCommitBeforeAck => lease::inject(paths, runtime, route),
@@ -166,6 +170,9 @@ pub(super) fn recover(
         ScenarioRoute::JournalCorruption => journal_corruption::recover(paths, runtime, injected),
         ScenarioRoute::AcceptanceEvidenceCorruption => {
             evidence_corruption::recover(paths, runtime, injected)
+        }
+        ScenarioRoute::HarnessPromotionCorruption => {
+            promotion_evidence_corruption::recover(paths, runtime, injected)
         }
         ScenarioRoute::JournalAppendDiskExhaustion => {
             journal_disk::recover(paths, runtime, injected)

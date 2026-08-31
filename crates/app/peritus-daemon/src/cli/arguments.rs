@@ -27,6 +27,8 @@ pub(super) enum CommandLine {
     RecoverJournalCorruption(OsString),
     StageEvidenceCorruption(OsString),
     RecoverEvidenceCorruption(OsString),
+    StagePromotionEvidenceCorruption(OsString),
+    RecoverPromotionEvidenceCorruption(OsString),
     StageSnapshotBeforeCrash(OsString),
     RecoverSnapshotBeforeCrash(OsString),
     StageSnapshotAfterCrash(OsString),
@@ -126,6 +128,12 @@ pub(super) fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<Co
         }
         "qualify-evidence-corruption-recover" => {
             configured(arguments, CommandLine::RecoverEvidenceCorruption)
+        }
+        "qualify-promotion-evidence-corruption-stage" => {
+            configured(arguments, CommandLine::StagePromotionEvidenceCorruption)
+        }
+        "qualify-promotion-evidence-corruption-recover" => {
+            configured(arguments, CommandLine::RecoverPromotionEvidenceCorruption)
         }
         "qualify-snapshot-before-stage" => {
             configured(arguments, CommandLine::StageSnapshotBeforeCrash)

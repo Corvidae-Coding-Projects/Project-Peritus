@@ -9,6 +9,7 @@ pub(super) const BLOB_BEFORE: &str = "h1.crash.blob.before";
 pub(super) const BLOB_AFTER_BEFORE_ACK: &str = "h1.crash.blob.after-before-ack";
 pub(super) const BLOB_CORRUPTION: &str = "h1.corruption.blob";
 pub(super) const ACCEPTANCE_EVIDENCE_CORRUPTION: &str = "h1.corruption.acceptance-evidence";
+pub(super) const HARNESS_PROMOTION_CORRUPTION: &str = "h1.corruption.harness-promotion";
 pub(super) const BLOB_FINALIZE_DISK_EXHAUSTION: &str = "h1.disk-full.blob-finalize";
 pub(super) const JOURNAL_BEFORE: &str = "h1.crash.journal.before";
 pub(super) const JOURNAL_AFTER_BEFORE_ACK: &str = "h1.crash.journal.after-before-ack";
@@ -40,6 +41,7 @@ pub(in crate::native_controller) enum ScenarioRoute {
     BlobAfterDurableCommitBeforeAck,
     BlobCorruption,
     AcceptanceEvidenceCorruption,
+    HarnessPromotionCorruption,
     BlobFinalizeDiskExhaustion,
     JournalBeforeDurableCommit,
     JournalAfterDurableCommitBeforeAck,
@@ -190,6 +192,11 @@ impl ScenarioRoute {
                 "quarantined-corruption",
                 FaultDocument::Corruption { target },
             ) if target == "acceptance-evidence" => Some(Self::AcceptanceEvidenceCorruption),
+            (
+                HARNESS_PROMOTION_CORRUPTION,
+                "quarantined-corruption",
+                FaultDocument::Corruption { target },
+            ) if target == "harness-promotion" => Some(Self::HarnessPromotionCorruption),
             (JOURNAL_CORRUPTION, "failed-closed", FaultDocument::Corruption { target })
                 if target == "journal" =>
             {
@@ -288,7 +295,8 @@ impl ScenarioRoute {
             Self::ProjectionCorruption => "rebuilt-projection",
             Self::BlobCorruption
             | Self::SnapshotCorruption
-            | Self::AcceptanceEvidenceCorruption => "quarantined-corruption",
+            | Self::AcceptanceEvidenceCorruption
+            | Self::HarnessPromotionCorruption => "quarantined-corruption",
             Self::BlobFinalizeDiskExhaustion => "discarded-unreferenced",
             Self::JournalCorruption => "failed-closed",
             Self::ProviderDeath

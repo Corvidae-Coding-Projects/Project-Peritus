@@ -206,6 +206,14 @@ corrupt bytes into a digest-bound quarantine, and denies the quarantined identit
 controller independently verifies the retained bytes and quarantine digest in SQLite, and a second
 startup proves containment is idempotent without changing the authoritative journal.
 
+The harness-promotion corruption route commits the real F0 campaign, production pointer, and
+approve-once activation transaction, then publishes both production evolution directives. It
+changes only the stored harness-activation evidence bytes. A fresh process must quarantine that
+row while preserving readable campaign evidence, all 16 committed events, all four aggregate
+heads, and exact replay of the promoted production pointer. The controller independently verifies
+the evidence, outbox, pointer-state, and quarantine rows in SQLite, then requires a second startup
+to produce the same single containment observation.
+
 The provider, tool, and worker death and retry-exhaustion routes use the production D3 scheduler
 and C0 journal adapter. Provider attempts execute the staged daemon through
 `TokioProcessTransport`. Tool attempts use the ordinary grounded, receipt-backed
@@ -309,8 +317,11 @@ object, empty temporary namespace, healthy journal, and absent ref through a fre
 The passing acceptance-evidence corruption report and six raw evidence files are retained under
 `/home/doll/.local/state/peritus/qualification/h1/evidence-corruption.rYq4Qs` with report SHA-256
 `6f424f43ef3a10589433b2750e0958a9c5565df6bcb0e6d82ee4498d17d3e414`.
-With these 39 routes, the other four catalog routes remain fail-closed until their real controlled
-corruption controls or disposable-VM reboot driver are connected.
+The passing harness-promotion evidence corruption report and six raw evidence files are retained
+under `/home/doll/.local/state/peritus/qualification/h1/promotion-evidence-final.vHYIJy` with report
+SHA-256 `986e49e5af24ecfd736af315c07c20a0d3994c702186db1d377a0b7507710feb`.
+With these 40 routes, the other three catalog routes remain fail-closed until their real
+disposable-VM reboot driver is connected.
 Therefore the full H1 production qualification is still pending.
 
 The release integration owner must:

@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
-- Add the checked-in Rust `peritus-h1-controller` and an explicit focused diagnostic mode. Its 39
+- Add the checked-in Rust `peritus-h1-controller` and an explicit focused diagnostic mode. Its 40
   genuine routes cover both sides of journal submission, content-addressed blob publication,
   retained Git snapshot publication, exclusive-lease persistence, and recoverable patch
   application, plus D1's atomic gate event/checkpoint commit and F0's campaign/pointer/approval
@@ -23,7 +23,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   snapshot reference divergence with atomic movement out of the active namespace. Acceptance
   evidence corruption now enters a durable digest-bound quarantine during evidence-store startup;
   recovery preserves every raw indexed field and corrupt record byte for audit while denying that
-  evidence identity to all readers, and a second startup proves containment is idempotent.
+  evidence identity to all readers, and a second startup proves containment is idempotent. The
+  harness-promotion corruption route commits and publishes the real atomic F0 activation, corrupts
+  only its harness-activation evidence, and proves fresh recovery quarantines that record without
+  changing the 16-event, four-head journal or production pointer. F0 publication directives now
+  carry their exact `RevisionTuple`, and publication admits the complete artifact dependency set
+  from the producing journal batch instead of trusting caller-supplied revision or partial artifact
+  context.
   Provider, tool, and worker death now run through the real executable provider transport,
   ordinary grounded receipt-backed product tool, and daemon-owned worker supervisor. Scheduler
   replay requeues exact owned work after death and preserves exhausted non-success after consuming

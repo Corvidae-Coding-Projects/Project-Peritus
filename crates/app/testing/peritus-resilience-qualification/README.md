@@ -23,9 +23,9 @@ The controller remains responsible for real daemon, storage, dependency, quota, 
 effects. The operator refuses a descriptor whose build digest differs from the exact staged
 candidate bytes.
 
-The checked-in `peritus-h1-controller` currently owns 39 genuine routes across the journal,
+The checked-in `peritus-h1-controller` currently owns 40 genuine routes across the journal,
 blob, retained Git snapshot, lease, patch, gate, and promotion commit boundaries, plus active
-projection repair, journal/blob/snapshot/acceptance-evidence corruption controls, and
+projection repair, journal/blob/snapshot/acceptance-evidence/harness-promotion corruption controls, and
 provider/tool/worker dependency failure. It also owns all eleven active E0 lifecycle phases. Each
 lifecycle case builds the shortest legal production reducer prefix, commits every command and state
 checkpoint through C0, kills the exact staged `peritusd`, and requires a fresh process to replay
@@ -122,6 +122,14 @@ quarantine before the record can be read. The original evidence identity remains
 authoritative journal remains unchanged, and a second startup must preserve exactly one identical
 quarantine observation.
 
+The harness-promotion corruption route prepares and commits the real F0 campaign, production
+pointer, and approve-once activation transaction, then publishes both resulting evolution outbox
+directives through the production evidence boundary. It changes only the durable
+harness-activation evidence bytes. A fresh evidence-store startup must quarantine that exact row
+while keeping the campaign evidence readable, the complete 16-event/four-head journal unchanged,
+and the production pointer replayable at the promoted revision. Repeating startup must preserve one
+identical quarantine observation.
+
 The six dependency routes use the real durable scheduler and one real effect boundary per
 dependency. Provider cases execute the staged daemon through the executable-backed provider
 transport. Tool cases use the same grounded, receipt-backed `run_command` path as ordinary coding
@@ -166,6 +174,7 @@ The journal diagnostic is `h1.corruption.journal`.
 The blob diagnostic is `h1.corruption.blob`.
 The snapshot diagnostic is `h1.corruption.snapshot`.
 The acceptance-evidence diagnostic is `h1.corruption.acceptance-evidence`.
+The harness-promotion evidence diagnostic is `h1.corruption.harness-promotion`.
 The dependency-death diagnostics are `h1.death.provider`, `h1.death.tool`, and
 `h1.death.worker`. The exhaustion diagnostics are `h1.retry-exhaustion.provider`,
 `h1.retry-exhaustion.tool`, and `h1.retry-exhaustion.worker`.

@@ -1,7 +1,10 @@
 //! Deterministic publication outbox directives for F0 artifacts.
 
 use peritus_journal::{OutboxDraft, OutboxId, OutboxMessage, OutboxState};
-use peritus_types::{ProjectId, Sha256Digest};
+use peritus_types::{
+    AcceptanceSpecId, Generation, HarnessId, PolicyId, ProjectId, ProviderProfileId,
+    RevisionNumber, RevisionTuple, Sha256Digest, WorkspaceId,
+};
 
 use crate::{
     CampaignCommand, CampaignCommandKind, EvolutionCampaignId, EvolutionError, EvolutionErrorKind,
@@ -29,6 +32,7 @@ pub struct EvolutionPublicationDirective {
     kind: EvolutionPublicationKind,
     project_id: ProjectId,
     campaign_id: Option<EvolutionCampaignId>,
+    revision: RevisionTuple,
     action_digest: Sha256Digest,
     artifact_digest: Sha256Digest,
     evidence_digest: Sha256Digest,
@@ -49,6 +53,11 @@ impl EvolutionPublicationDirective {
     #[must_use]
     pub const fn campaign_id(self) -> Option<EvolutionCampaignId> {
         self.campaign_id
+    }
+    /// Exact production revision whose event and evidence are published.
+    #[must_use]
+    pub const fn revision(self) -> RevisionTuple {
+        self.revision
     }
     /// Exact promotion or rollback action digest.
     #[must_use]
@@ -79,6 +88,7 @@ impl EvolutionPublicationDirective {
         if let Some(value) = self.campaign_id {
             bytes.extend_from_slice(value.as_bytes());
         }
+        write_revision(&mut bytes, self.revision);
         bytes.extend_from_slice(self.action_digest.as_bytes());
         bytes.extend_from_slice(self.artifact_digest.as_bytes());
         bytes.extend_from_slice(self.evidence_digest.as_bytes());
@@ -105,14 +115,22 @@ impl EvolutionPublicationDirective {
             ),
             _ => return Err(protocol("bad optional campaign tag")),
         };
+        let revision = read_revision(&mut input)?;
         let action_digest = Sha256Digest::new(take_array(&mut input)?);
         let artifact_digest = Sha256Digest::new(take_array(&mut input)?);
         let evidence_digest = Sha256Digest::new(take_array(&mut input)?);
         if !input.is_empty() {
             return Err(protocol("publication directive has trailing bytes"));
         }
-        let value =
-            Self { kind, project_id, campaign_id, action_digest, artifact_digest, evidence_digest };
+        let value = Self {
+            kind,
+            project_id,
+            campaign_id,
+            revision,
+            action_digest,
+            artifact_digest,
+            evidence_digest,
+        };
         if value.canonical_bytes() != bytes {
             return Err(protocol("publication directive is noncanonical"));
         }
@@ -195,6 +213,7 @@ pub(super) fn campaign_outbox(
         kind: EvolutionPublicationKind::CampaignDecision,
         project_id: proposal.project_id(),
         campaign_id: Some(proposal.campaign_id()),
+        revision: proposal.candidate().revision(),
         action_digest: proposal.digest(),
         artifact_digest: proposal.evidence_bundle_artifact(),
         evidence_digest: proposal.digest(),
@@ -220,6 +239,7 @@ pub(super) fn pointer_outbox(
         kind: EvolutionPublicationKind::HarnessActivation,
         project_id: state.project_id(),
         campaign_id: record.campaign_id(),
+        revision: record.successor().revision(),
         action_digest: record.action_digest(),
         artifact_digest: record.evidence_artifact(),
         evidence_digest: record.evidence_digest(),
@@ -250,6 +270,32 @@ fn take_array<const N: usize>(input: &mut &[u8]) -> Result<[u8; N], EvolutionErr
     let (value, tail) = input.split_at(N);
     *input = tail;
     value.try_into().map_err(|_| protocol("invalid directive field width"))
+}
+
+fn write_revision(bytes: &mut Vec<u8>, revision: RevisionTuple) {
+    bytes.extend_from_slice(revision.acceptance_spec_id().as_bytes());
+    bytes.extend_from_slice(revision.harness_id().as_bytes());
+    bytes.extend_from_slice(revision.workspace_id().as_bytes());
+    bytes.extend_from_slice(&revision.workspace_generation().get().to_be_bytes());
+    bytes.extend_from_slice(&revision.workspace_revision().get().to_be_bytes());
+    bytes.extend_from_slice(revision.policy_id().as_bytes());
+    bytes.extend_from_slice(revision.provider_profile_id().as_bytes());
+}
+
+fn read_revision(input: &mut &[u8]) -> Result<RevisionTuple, EvolutionError> {
+    Ok(RevisionTuple::new(
+        AcceptanceSpecId::new(take_array(input)?).map_err(|_| protocol("bad acceptance spec"))?,
+        HarnessId::new(take_array(input)?).map_err(|_| protocol("bad harness"))?,
+        WorkspaceId::new(take_array(input)?).map_err(|_| protocol("bad workspace"))?,
+        Generation::new(take_u64(input)?).map_err(|_| protocol("bad workspace generation"))?,
+        RevisionNumber::new(take_u64(input)?).map_err(|_| protocol("bad workspace revision"))?,
+        PolicyId::new(take_array(input)?).map_err(|_| protocol("bad policy"))?,
+        ProviderProfileId::new(take_array(input)?).map_err(|_| protocol("bad provider profile"))?,
+    ))
+}
+
+fn take_u64(input: &mut &[u8]) -> Result<u64, EvolutionError> {
+    Ok(u64::from_be_bytes(take_array(input)?))
 }
 
 const fn protocol(detail: &'static str) -> EvolutionError {

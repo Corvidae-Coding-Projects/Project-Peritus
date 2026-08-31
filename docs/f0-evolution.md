@@ -102,6 +102,12 @@ The pointer transition is authoritative journal state. An outbox message such as
 `production-harness.changed` notification is only retryable downstream observation and never the
 activation itself.
 
+Each evolution publication directive carries the exact seven-component `RevisionTuple` of the
+candidate or activated harness revision. The publisher derives the complete artifact dependency
+set from the directive's producing journal batch and rejects a directive whose named artifact is
+not part of that batch. Evidence admission therefore receives the same revision and artifact set
+that C0 committed; neither can be replaced or truncated by a publication caller.
+
 ## Rollback
 
 Rollback is a new activation, not history rewriting. Its target must be a retained previously active

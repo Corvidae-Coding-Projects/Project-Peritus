@@ -14,6 +14,7 @@ mod lease;
 mod patch;
 mod projection;
 mod promotion;
+mod promotion_evidence_corruption;
 mod server;
 mod snapshot;
 mod snapshot_corruption;
@@ -80,6 +81,12 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
         }
         CommandLine::RecoverEvidenceCorruption(configuration) => {
             evidence_corruption::recover(configuration)
+        }
+        CommandLine::StagePromotionEvidenceCorruption(configuration) => {
+            promotion_evidence_corruption::stage(configuration)
+        }
+        CommandLine::RecoverPromotionEvidenceCorruption(configuration) => {
+            promotion_evidence_corruption::recover(configuration)
         }
         CommandLine::StageSnapshotBeforeCrash(configuration) => {
             snapshot::stage_before(configuration)

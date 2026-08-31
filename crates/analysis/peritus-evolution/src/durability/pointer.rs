@@ -68,7 +68,7 @@ pub fn commit_pointer_transition(
         event.id(),
         event.previous_event(),
         ExactFrame::new(event_bytes).map_err(journal_error)?,
-        transition.state().state_digest(),
+        pointer_event_revision_digest(transition.state()),
         Vec::new(),
     )
     .map_err(journal_error)?;
@@ -94,6 +94,15 @@ pub fn commit_pointer_transition(
         pointer_outbox(command, transition.state())?,
     );
     journal.append(request.plan().map_err(journal_error)?).map_err(journal_error)
+}
+
+pub(super) fn pointer_event_revision_digest(
+    state: &ProductionHarnessState,
+) -> peritus_types::Sha256Digest {
+    state.history().last().map_or_else(
+        || state.state_digest(),
+        |record| peritus_evidence::revision_digest(&record.successor().revision()),
+    )
 }
 
 pub(super) fn artifact_dependencies(kind: &PointerCommandKind) -> Vec<ArtifactDependency> {

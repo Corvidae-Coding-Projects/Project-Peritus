@@ -53,7 +53,7 @@ pub(super) fn pointer_event(
         event.id(),
         event.previous_event(),
         ExactFrame::new(bytes).map_err(journal_error)?,
-        transition.state().state_digest(),
+        super::super::pointer::pointer_event_revision_digest(transition.state()),
         Vec::new(),
     )
     .map_err(journal_error)
