@@ -18,9 +18,11 @@ use crate::progress::WorkspaceCheckpoint;
 use crate::trace::FileDeveloperTrace;
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
+mod evidence;
 mod provider;
 mod terminal;
 
+pub use evidence::ReviewerPrompt;
 use terminal::TerminalTurn;
 
 const MAX_UNPRODUCTIVE_TERMINALS: u8 = 3;
@@ -278,24 +280,30 @@ pub struct ReviewDelivery {
     pub effect_requirement: crate::delivery_requirement::ExternalEffectRequirement,
 }
 
-pub fn reviewer_user(
-    transcript: &str,
-    diff: &str,
-    gates: &str,
-    developer_evidence: &str,
-    prior: &str,
-    delivery: ReviewDelivery,
-    correction: Option<&str>,
-) -> String {
-    let correction = correction.map_or(String::new(), |value| {
-        format!("\n\nHarness correction from the previous rejected review:\n{value}")
-    });
-    let delivery = match delivery.scope {
+pub fn reviewer_user(prompt: &ReviewerPrompt<'_>) -> String {
+    let projected = evidence::project(
+        prompt.max_input_tokens,
+        prompt.transcript,
+        prompt.diff,
+        prompt.gates,
+        prompt.developer_evidence,
+        prompt.prior,
+        prompt.correction.unwrap_or_default(),
+    );
+    let correction = if projected.correction.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "\n\nHarness correction from the previous rejected review:\n{}",
+            projected.correction
+        )
+    };
+    let delivery = match prompt.delivery.scope {
         super::ProductDeliveryScope::WorkspaceChanges => {
             "Delivery scope: exact workspace changes. An empty candidate cannot pass."
         }
         super::ProductDeliveryScope::AuthorizedExternalEffects => {
-            if delivery.effect_requirement.is_required() {
+            if prompt.delivery.effect_requirement.is_required() {
                 "Delivery scope: the operational request requires a live caller-authorized external effect even when supporting workspace files changed. Require relevant successful external_effect command evidence followed by successful fresh verification command evidence. A setup script, README, or instructions alone are not the requested configured state."
             } else {
                 "Delivery scope: caller-authorized external effects. When the candidate has no workspace changes, require relevant successful external_effect command evidence followed by successful fresh verification command evidence; do not require a synthetic file change."
@@ -303,7 +311,8 @@ pub fn reviewer_user(
         }
     };
     format!(
-        "Conversation:\n{transcript}\n\n{delivery}\n\nCurrent diff:\n{diff}\n\nExact-target checks:\n{gates}\n\nDeveloper command observations:\n{developer_evidence}\n\nConserved finding history:\n{prior}\n\nBegin with a workspace_list host-function call, then independently inspect the authoritative workspace inputs and exact changed files through further read-only tool calls before returning the typed review. Developer command observations are real bounded process results: confirm that each claimed acceptance command exercises the explicit requested behavior and reject circular mocks, irrelevant success, or verification that predates the effect. For every conserved finding, read each cited current workspace file before repeating the finding; prior diff and finding text can predate fixer writes and do not prove that a defect remains.{correction}"
+        "Conversation:\n{}\n\n{delivery}\n\nCurrent diff:\n{}\n\nExact-target checks:\n{}\n\nDeveloper command observations:\n{}\n\nConserved finding history:\n{}\n\nBegin with a workspace_list host-function call, then independently inspect the authoritative workspace inputs and exact changed files through further read-only tool calls before returning the typed review. Developer command observations are real bounded process results: confirm that each claimed acceptance command exercises the explicit requested behavior and reject circular mocks, irrelevant success, or verification that predates the effect. For every conserved finding, read each cited current workspace file before repeating the finding; prior diff and finding text can predate fixer writes and do not prove that a defect remains.{correction}",
+        projected.transcript, projected.diff, projected.gates, projected.developer, projected.prior,
     )
 }
 

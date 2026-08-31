@@ -184,18 +184,19 @@ fn external_effect_writer_attempts_scoped_prerequisites_before_escalating() {
 
 #[test]
 fn reviewer_rechecks_conserved_finding_locations_after_fixes() {
-    let prompt = reviewer_user(
-        "task",
-        "diff",
-        "gates",
-        "request: python check.py\nresult: success",
-        "finding",
-        ReviewDelivery {
+    let prompt = reviewer_user(&ReviewerPrompt {
+        transcript: "task",
+        diff: "diff",
+        gates: "gates",
+        developer_evidence: "request: python check.py\nresult: success",
+        prior: "finding",
+        max_input_tokens: 200_000,
+        delivery: ReviewDelivery {
             scope: ProductDeliveryScope::WorkspaceChanges,
             effect_requirement: crate::delivery_requirement::ExternalEffectRequirement::Optional,
         },
-        None,
-    );
+        correction: None,
+    });
 
     assert!(prompt.contains("Developer command observations"));
     assert!(prompt.contains("python check.py"));
@@ -206,22 +207,45 @@ fn reviewer_rechecks_conserved_finding_locations_after_fixes() {
 }
 
 #[test]
+fn reviewer_bounds_oversized_initial_evidence_before_provider_compaction() {
+    let oversized = "evidence".repeat(100_000);
+    let prompt = reviewer_user(&ReviewerPrompt {
+        transcript: "literal task",
+        diff: &oversized,
+        gates: &oversized,
+        developer_evidence: &oversized,
+        prior: "",
+        max_input_tokens: 200_000,
+        delivery: ReviewDelivery {
+            scope: ProductDeliveryScope::WorkspaceChanges,
+            effect_requirement: crate::delivery_requirement::ExternalEffectRequirement::Optional,
+        },
+        correction: None,
+    });
+
+    assert!(prompt.len() < 320 * 1024, "review prompt bytes: {}", prompt.len());
+    assert!(prompt.contains("Peritus bounded reviewer evidence"));
+    assert!(prompt.contains("Use fresh read-only workspace tools"));
+}
+
+#[test]
 fn live_operational_delivery_rejects_helper_files_as_the_whole_result() {
     let requirement = crate::delivery_requirement::ExternalEffectRequirement::Required;
     let writer =
         writer_system("writer", ProductDeliveryScope::AuthorizedExternalEffects, requirement);
-    let reviewer = reviewer_user(
-        "Configure the local service so that I can connect to it.",
-        "setup.sh changed",
-        "checks passed",
-        "",
-        "",
-        ReviewDelivery {
+    let reviewer = reviewer_user(&ReviewerPrompt {
+        transcript: "Configure the local service so that I can connect to it.",
+        diff: "setup.sh changed",
+        gates: "checks passed",
+        developer_evidence: "",
+        prior: "",
+        max_input_tokens: 200_000,
+        delivery: ReviewDelivery {
             scope: ProductDeliveryScope::AuthorizedExternalEffects,
             effect_requirement: requirement,
         },
-        None,
-    );
+        correction: None,
+    });
 
     for prompt in [&writer, &reviewer] {
         assert!(prompt.contains("live"));

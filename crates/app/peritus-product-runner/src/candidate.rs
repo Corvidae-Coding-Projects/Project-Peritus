@@ -59,7 +59,7 @@ impl CandidateBaseline {
                 "git could not compare the managed worktree with HEAD",
             ));
         }
-        append_paths(&tracked.stdout, &mut paths)?;
+        append_paths(&tracked.stdout, &mut paths, CandidatePathKind::Tracked)?;
         let untracked = Command::new("git")
             .args(["ls-files", "--others", "--exclude-standard", "-z"])
             .current_dir(root)
@@ -71,7 +71,7 @@ impl CandidateBaseline {
                 "git could not enumerate untracked candidate files",
             ));
         }
-        append_paths(&untracked.stdout, &mut paths)?;
+        append_paths(&untracked.stdout, &mut paths, CandidatePathKind::Untracked)?;
         append_nested_repository_changes(root, &mut paths)?;
         Ok(paths.into_iter().collect())
     }
@@ -111,7 +111,7 @@ fn append_nested_repository_changes(
                 "git could not compare the nested repository with its HEAD",
             ));
         }
-        append_prefixed_paths(&relative, &changed.stdout, paths)?;
+        append_prefixed_paths(&relative, &changed.stdout, paths, CandidatePathKind::Tracked)?;
         let untracked = Command::new("git")
             .args(["ls-files", "--others", "--exclude-standard", "-z"])
             .current_dir(&nested)
@@ -123,7 +123,7 @@ fn append_nested_repository_changes(
                 "git could not enumerate nested untracked files",
             ));
         }
-        append_prefixed_paths(&relative, &untracked.stdout, paths)?;
+        append_prefixed_paths(&relative, &untracked.stdout, paths, CandidatePathKind::Untracked)?;
     }
     Ok(())
 }
@@ -132,29 +132,46 @@ fn append_prefixed_paths(
     prefix: &Path,
     encoded: &[u8],
     paths: &mut BTreeSet<PathBuf>,
+    kind: CandidatePathKind,
 ) -> Result<(), ProductRunnerError> {
     for value in encoded.split(|byte| *byte == 0).filter(|path| !path.is_empty()) {
         let relative = std::str::from_utf8(value).map(PathBuf::from).map_err(|_| {
             repository("decode nested candidate path", "workspace path is not UTF-8")
         })?;
         let path = prefix.join(relative);
-        if !workspace_filter::generated(&path) {
+        if kind.retains(&path) {
             paths.insert(path);
         }
     }
     Ok(())
 }
 
-fn append_paths(encoded: &[u8], paths: &mut BTreeSet<PathBuf>) -> Result<(), ProductRunnerError> {
+fn append_paths(
+    encoded: &[u8],
+    paths: &mut BTreeSet<PathBuf>,
+    kind: CandidatePathKind,
+) -> Result<(), ProductRunnerError> {
     for value in encoded.split(|byte| *byte == 0).filter(|path| !path.is_empty()) {
         let path = std::str::from_utf8(value)
             .map(PathBuf::from)
             .map_err(|_| repository("decode candidate path", "workspace path is not UTF-8"))?;
-        if !workspace_filter::generated(&path) {
+        if kind.retains(&path) {
             paths.insert(path);
         }
     }
     Ok(())
+}
+
+#[derive(Clone, Copy)]
+enum CandidatePathKind {
+    Tracked,
+    Untracked,
+}
+
+impl CandidatePathKind {
+    fn retains(self, path: &Path) -> bool {
+        matches!(self, Self::Tracked) || !workspace_filter::generated(path)
+    }
 }
 
 fn repository(operation: &'static str, detail: impl Into<String>) -> ProductRunnerError {
@@ -190,6 +207,27 @@ mod tests {
         ];
         assert_eq!(first.changed_paths(root.path()).expect("changes"), expected);
         assert_eq!(second.changed_paths(root.path()).expect("changes"), expected);
+    }
+
+    #[test]
+    fn candidate_keeps_tracked_build_paths_but_omits_untracked_build_products() {
+        let root = tempfile::tempdir().expect("root");
+        run(root.path(), &["init", "--quiet"]);
+        run(root.path(), &["config", "user.email", "peritus@example.invalid"]);
+        run(root.path(), &["config", "user.name", "Peritus Test"]);
+        fs::create_dir(root.path().join("build")).expect("build directory");
+        fs::write(root.path().join("build/maintained.py"), "VALUE = 1\n").expect("source");
+        run(root.path(), &["add", "."]);
+        run(root.path(), &["commit", "--quiet", "-m", "fixture"]);
+        fs::write(root.path().join("build/maintained.py"), "VALUE = 2\n").expect("modify");
+        fs::write(root.path().join("build/generated.py"), "VALUE = 3\n").expect("generated");
+
+        let baseline = CandidateBaseline::capture(root.path()).expect("baseline");
+
+        assert_eq!(
+            baseline.changed_paths(root.path()).expect("changes"),
+            vec![PathBuf::from("build/maintained.py")]
+        );
     }
 
     #[test]

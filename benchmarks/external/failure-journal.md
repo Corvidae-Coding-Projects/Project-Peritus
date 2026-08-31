@@ -2582,6 +2582,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   provider terminals. This does not convert external reward into native acceptance or predict that
   every zero is recoverable; it quantifies that role recovery and terminal handoff are the dominant
   frozen control-flow defect rather than an isolated task family.
+- Corrected-adapter trial `winning-avg-corewars__tQ9GFSt` provides direct unchanged-task validation.
+  Three earlier attempts all earned reward 1 but ended with native provider failure. The frozen
+  corrected candidate sustained 39 grounded requests over 1,512.957 seconds, reached native
+  acceptance with no failure kind or exception, and again earned reward 1 from the unchanged
+  verifier. Its 1,242,317 input, 381,141 cached input, and 47,870 output tokens are retained rather
+  than hidden as inefficiency. This is evidence for the general recovery loop, not task-specific
+  Core War behavior.
 - Verification: the focused policy regression proves interrupted-stream recovery is finite and
   excludes safety and ambiguous-acceptance terminals. The production composition regression runs
   with no fallback provider: the designer recovers from exhausted empty responses, and both writer
@@ -2929,6 +2936,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   the nested source patch and successful direct extension tests. The unchanged external verifier
   passed repository presence, three compiled extensions, direct helpers, Python/Cython equivalence,
   example use, and the repository test suite.
+- Corrected-adapter recurrence: trial `build-cython-ext__c7MW39v` proves the nested expansion now
+  exposes the real tracked source edits, but also exposed a residual generated-tree gap. Setuptools
+  created untracked `build/lib.*`, `build/temp.*`, and `pyknotid.egg-info` trees; the candidate grew
+  to 71 paths and the diff packet to 630,753 bytes. Candidate discovery now distinguishes tracked
+  from untracked paths: it never hides a tracked edit because of its directory name, while
+  conventional untracked Python build, package-metadata, and cache trees remain excluded. This is
+  language-ecosystem hygiene and does not inspect the task or verifier.
 - Verification: two candidate tests prove stable ordinary enumeration and nested dirty-file
   expansion, including generated-tree exclusion. Three diff-bundle tests prove ordinary untracked
   projection, exact permissions, and prefixed nested tracked/untracked patches. All 77
@@ -3901,3 +3915,36 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   replacement, rollback rejection, concurrent-host-change preservation, protocol identity,
   process cleanup, and report parsing. A fresh authenticated live trial and a later task after the
   original access expiry remain required before final qualification.
+
+## TBF-033: the first reviewer packet could exceed context before compaction could act
+
+- Suite and task: Terminal-Bench 2.0 frozen baseline, corrected-adapter trial
+  `build-cython-ext__c7MW39v`.
+- Symptom: the writer completed a useful 37-request implementation and the unchanged verifier later
+  awarded reward 1, but native Peritus ended with provider failure before independent review. Its
+  deterministic context check estimated 718,934 input tokens against the selected provider's
+  200,000-token limit even after compaction. The retained observation was 657,860 bytes, including
+  a 630,753-byte diff, and command evidence added substantially more first-turn input.
+- Cause: developer context compaction correctly summarized old completed tool exchanges, but an
+  initial reviewer request has no old exchanges to compact. The review producer concatenated the
+  full conversation, diff, gates, command observations, finding history, and retry correction into
+  one unbounded message, so the consumer could only reject it. Generated build output amplified the
+  defect but was not required for it: a legitimate large diff or command transcript could do the
+  same in an ordinary repository.
+- Resolution: the reviewer now derives a deterministic evidence budget from the active provider
+  profile, capped at half of its input allowance under the same conservative three-bytes-per-token
+  estimate and at 384 KiB. It allocates that budget by semantic section, redistributes unused space
+  to sections that need it, and retains the beginning and end of every bounded section with its
+  original byte count and SHA-256. The prompt explicitly directs the reviewer to its read-only
+  workspace tools for authoritative omitted detail. Provider fallback recomputes the packet for the
+  newly selected profile; no benchmark or task identity enters the policy.
+- Integrity decision: retain the native failure and external reward exactly as observed. The source
+  correction is not used by the running frozen campaign, and the unchanged task remains eligible
+  for the final candidate campaign only after all general fixes are frozen.
+- Verification: focused projection tests exercise both a 200,000-token profile and a smaller
+  64,000-token profile, preserve literal task and small evidence sections, retain head/tail and
+  digest provenance for large sections, and bound the complete first reviewer prompt. All 110
+  product-runner unit, integration, role-recovery, failover, and external-effect tests pass. Strict
+  all-target/all-feature Clippy passes with warnings denied, formatting is clean, and documentation
+  validation covers all 137 maintained Markdown files. The complete local repository policy gate
+  passes across 79 packages and 3,363 source files.

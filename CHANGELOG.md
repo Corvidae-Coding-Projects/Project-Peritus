@@ -211,6 +211,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Bound every initial independent-review evidence packet against the active provider's input
+  profile, retaining section-aware head/tail samples and exact SHA-256 provenance while directing
+  the reviewer to fresh workspace tools for omitted current detail. Preserve tracked edits even
+  under conventional build directories, but keep untracked Python build, package-metadata, and
+  cache trees out of candidate and diff context (`TBF-014`, `TBF-033`, #31).
 - Quiesce and reap the complete marked Terminal-Bench process family when Harbor cancels an agent,
   including a child that detached or reparented outside the recorded PID tree, so timed-out model
   or tool work cannot mutate the shared task container during verification (`TBF-022`, #31).

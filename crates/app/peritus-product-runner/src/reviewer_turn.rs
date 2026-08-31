@@ -38,13 +38,14 @@ pub async fn complete(
     loop {
         check_cancelled(input)?;
         invocation = invocation.saturating_add(1);
-        let prompt = turn::reviewer_user(
-            evidence.conversation,
-            evidence.diff,
-            evidence.gates,
-            evidence.developer_commands,
-            evidence.prior,
-            turn::ReviewDelivery {
+        let prompt = turn::reviewer_user(&turn::ReviewerPrompt {
+            transcript: evidence.conversation,
+            diff: evidence.diff,
+            gates: evidence.gates,
+            developer_evidence: evidence.developer_commands,
+            prior: evidence.prior,
+            max_input_tokens: providers.current().profile().limits().max_input_tokens(),
+            delivery: turn::ReviewDelivery {
                 scope: input.delivery_scope,
                 effect_requirement:
                     crate::delivery_requirement::ExternalEffectRequirement::from_task(
@@ -52,8 +53,8 @@ pub async fn complete(
                         &input.task,
                     ),
             },
-            correction.as_deref(),
-        );
+            correction: correction.as_deref(),
+        });
         let media = match crate::workspace_media::discover(
             &input.workspace_root,
             evidence.conversation,
