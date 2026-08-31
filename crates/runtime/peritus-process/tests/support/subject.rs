@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use peritus_conformance::{
     ProcessConformanceError, ProcessConformanceFixture, ProcessConformanceObservation,
     ProcessConformanceSubject, ProcessDisposition, ProcessEffectObservation,
@@ -12,6 +14,8 @@ use peritus_process::{
 };
 
 use super::{Ids, PlanOptions, TestRoot, commit_authority, intent, open_journal, plan};
+
+const TREE_READY: &[u8] = b"tree-ready\n";
 
 pub struct ProductionProcessSubject {
     sequence: u8,
@@ -58,7 +62,7 @@ fn execute(
     let owned = launch(root, ids, execution)?;
     let control = owned.control();
     if scenario == ProcessScenario::PtyStreaming {
-        std::thread::sleep(std::time::Duration::from_millis(20));
+        std::thread::sleep(Duration::from_millis(20));
         control
             .resize(TerminalSize::new(30, 100, 0, 0).map_err(|_| infrastructure())?)
             .map_err(|_| infrastructure())?;
@@ -67,7 +71,15 @@ fn execute(
         control.write_stdin(fixture.stdin().to_vec()).map_err(|_| infrastructure())?;
         control.close_stdin().map_err(|_| infrastructure())?;
     }
-    if matches!(scenario, ProcessScenario::Cancellation | ProcessScenario::TerminalUniqueness) {
+    if scenario == ProcessScenario::TreeCleanup {
+        wait_for_tree_sample(&control)?;
+    }
+    if matches!(
+        scenario,
+        ProcessScenario::Cancellation
+            | ProcessScenario::TreeCleanup
+            | ProcessScenario::TerminalUniqueness
+    ) {
         control.cancel(CancellationReason::User).map_err(|_| infrastructure())?;
     }
     let terminal = owned.wait().map_err(|_| infrastructure())?;
@@ -98,6 +110,34 @@ fn execute(
         false,
         false,
     ))
+}
+
+fn wait_for_tree_sample(
+    control: &peritus_process::ProcessControl,
+) -> Result<(), ProcessConformanceError> {
+    let mut cursor = ProcessCursor::after(0);
+    let mut tree_ready = false;
+    for _ in 0..100 {
+        let events = control.wait_events(cursor, 64, Duration::from_millis(50));
+        for event in events {
+            cursor = ProcessCursor::after(event.sequence());
+            if tree_ready && matches!(event.kind(), ProcessEventKind::ResourceSample) {
+                return Ok(());
+            }
+            if matches!(event.kind(), ProcessEventKind::Output(OutputStream::Stdout))
+                && control
+                    .retained_stream_output(OutputStream::Stdout)
+                    .windows(TREE_READY.len())
+                    .any(|window| window == TREE_READY)
+            {
+                tree_ready = true;
+            }
+        }
+        if control.terminal_result().is_some() {
+            break;
+        }
+    }
+    Err(infrastructure())
 }
 
 fn execution_plan(

@@ -211,6 +211,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Synchronize the native process-tree cleanup conformance case on an explicit live-leaf marker and
+  a subsequent production resource sample before cancellation. The case now exercises cleanup of
+  a genuinely live descendant tree and cannot lose its descendant observation when a loaded hosted
+  runner schedules the original 200 ms fixture entirely between sampler ticks (#31).
 - Bound every initial independent-review evidence packet against the active provider's input
   profile, retaining section-aware head/tail samples and exact SHA-256 provenance while directing
   the reviewer to fresh workspace tools for omitted current detail. Preserve tracked edits even

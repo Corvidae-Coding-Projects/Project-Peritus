@@ -8,6 +8,8 @@ use std::{
     time::Duration,
 };
 
+const TREE_READY: &[u8] = b"tree-ready\n";
+
 pub fn run() {
     let arguments: Vec<String> = env::args().collect();
     match arguments.get(1).map(String::as_str) {
@@ -107,10 +109,16 @@ fn tree(depth: Option<&String>) {
 
 fn tree_child(depth: Option<&String>) {
     let depth = depth.and_then(|value| value.parse::<u64>().ok()).unwrap_or(0);
-    if depth > 1 {
-        tree(Some(&(depth - 1).to_string()));
-    } else {
-        thread::sleep(Duration::from_millis(200));
+    match depth {
+        0 => thread::sleep(Duration::from_millis(200)),
+        1 => {
+            let mut output = std::io::stdout().lock();
+            output.write_all(TREE_READY).expect("fixture tree readiness");
+            output.flush().expect("flush fixture tree readiness");
+            drop(output);
+            thread::sleep(Duration::from_secs(10));
+        }
+        _ => tree(Some(&(depth - 1).to_string())),
     }
 }
 
