@@ -54,6 +54,7 @@ wrong, unsafe, or contract-breaking result.
 - [HBI-036](../benchmarks/external/failure-journal.md#hbi-036-task-070-contradicts-its-shortlist-threshold-and-scans-raw-substrings): hidden shortlist expectations contradict the must-have threshold. Refused: weakening the stated hiring rule.
 - [HBI-040](../benchmarks/external/failure-journal.md#hbi-040-task-074-ground-truth-contradicts-its-evidence-rubric): hidden grading contradicts the published evidence rubric. Refused: changing a rubric-faithful assessment to match the private grade.
 - [HBI-041](../benchmarks/external/failure-journal.md#hbi-041-task-075-overlaps-its-confidence-calibration-categories): hidden confidence categories overlap contrary to the stated calibration. Refused: replacing a reasoned classification with the private label.
+- [TBI-011](../benchmarks/external/failure-journal.md#tbi-011-a-valid-circular-plasmid-junction-was-scored-against-one-hidden-decomposition): repeated bases permit equivalent circular-plasmid junction decompositions, but the verifier grades only its private split. Refused: reading the verifier and replacing a valid one-pair primer design solely to match that hidden boundary.
 
 ## Unpublished vocabulary, schemas, and serialization
 

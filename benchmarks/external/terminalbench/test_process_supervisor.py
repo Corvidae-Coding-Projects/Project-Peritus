@@ -68,6 +68,8 @@ class ProcessSupervisorTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertIn("peritus-benchmark-agent terminalbench --workspace /app &", command)
+        self.assertIn("PERITUS_SUPERVISOR_TOKEN=", command)
+        self.assertIn("export PERITUS_SUPERVISOR_TOKEN", command)
         self.assertIn("child=$!", command)
         self.assertIn("printf '%s\\n' \"$child\" > \"$pid_file\"", command)
         self.assertIn("wait \"$child\"", command)
@@ -94,8 +96,9 @@ class ProcessSupervisorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(environment.calls), 2)
         cleanup_command, cleanup_options = environment.calls[1]
         self.assertIn("/proc/$current/task/$current/children", cleanup_command)
-        self.assertIn("kill -TERM $tree", cleanup_command)
-        self.assertIn("kill -KILL $survivors", cleanup_command)
+        self.assertIn("/proc/[0-9]*/environ", cleanup_command)
+        self.assertIn("kill -STOP $targets", cleanup_command)
+        self.assertIn("kill -KILL $targets", cleanup_command)
         self.assertEqual(cleanup_options["user"], "root")
         self.assertEqual(cleanup_options["timeout_sec"], 20)
 
@@ -127,6 +130,53 @@ class ProcessSupervisorTests(unittest.IsolatedAsyncioTestCase):
             )
 
             self.assertFalse(Path(f"/proc/{child_pid}").exists())
+            self.assertFalse(pid_path.exists())
+
+    async def test_cancellation_reaps_a_reparented_marked_process(self) -> None:
+        environment = _LocalCancellationEnvironment()
+        with TemporaryDirectory(prefix="peritus-supervisor-") as raw:
+            pid_path = Path(raw) / "agent.pid"
+            escaped_pid_path = Path(raw) / "escaped.pid"
+            command = (
+                "sh -c 'sh -c \"sleep 60 >/dev/null 2>&1 & "
+                f"echo \\$! > {escaped_pid_path}\"; sleep 60'"
+            )
+            task = asyncio.create_task(
+                exec_supervised(
+                    environment,  # type: ignore[arg-type]
+                    command,
+                    pid_file=PurePosixPath(str(pid_path)),
+                    cwd=raw,
+                    env={},
+                )
+            )
+            for _ in range(100):
+                if pid_path.exists() and escaped_pid_path.exists():
+                    break
+                await asyncio.sleep(0.01)
+            self.assertTrue(pid_path.exists())
+            self.assertTrue(escaped_pid_path.exists())
+            root_pid = int(pid_path.read_text(encoding="utf-8").strip())
+            escaped_pid = int(escaped_pid_path.read_text(encoding="utf-8").strip())
+            escaped_status = Path(f"/proc/{escaped_pid}/status").read_text(
+                encoding="utf-8"
+            )
+            escaped_parent = next(
+                int(line.split()[1])
+                for line in escaped_status.splitlines()
+                if line.startswith("PPid:")
+            )
+            self.assertNotEqual(root_pid, escaped_parent)
+
+            task.cancel()
+            with self.assertRaises(asyncio.CancelledError):
+                await task
+            await asyncio.gather(
+                *(process.wait() for process in environment.processes)
+            )
+
+            self.assertFalse(Path(f"/proc/{root_pid}").exists())
+            self.assertFalse(Path(f"/proc/{escaped_pid}").exists())
             self.assertFalse(pid_path.exists())
 
 

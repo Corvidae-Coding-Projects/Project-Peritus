@@ -10,8 +10,9 @@ task workspace and instruction to `peritus-benchmark-agent`, which runs the nati
 writer, independent reviewer, fixer, and deterministic gates. The thin bridge resolves the task
 image's declared working directory through Harbor instead of assuming `/app`; Harbor then runs the
 task's unchanged verifier against that same workspace. The bridge also supervises the exact native
-agent process tree. If Harbor cancels a run, the bridge terminates and reaps that tree before it
-returns control, so no timed-out model or tool process can overlap the unchanged verifier.
+agent process family. If Harbor cancels a run, the bridge quiesces and reaps both the current tree
+and any marked process that detached from it before returning control, so no timed-out model or
+tool process can overlap the unchanged verifier.
 
 ## Prepare the runner
 

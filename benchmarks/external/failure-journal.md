@@ -2671,6 +2671,19 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   Harbor's public custom-agent `run(instruction, environment, context)` boundary does not supply the
   already-computed outer deadline to the agent, so Peritus cannot reserve review time from that
   value without a new upstream interface or suite-specific deadline discovery.
+- Corrected-adapter observation `headless-terminal__fMw82kx` reached the same unchanged 900-second
+  deadline after sustained native progress. Harbor retained no terminal invocation report, but the
+  generated implementation passed all seven unchanged verifier checks for reward 1. This is a
+  second independent example of a correct artifact outliving the external agent phase rather than
+  a completed Peritus run. The score and timeout are both retained; neither is rewritten to hide
+  the mismatch between artifact completion and native terminal handoff.
+- Corrected-adapter observation `extract-elf__Fxyp3G5` also reached the unchanged 900-second
+  deadline with a verifier-complete artifact. Its retained native invocation ended during review
+  after 17 requests and 899.312 seconds, reporting the interrupted Claude process as an ambiguous
+  provider terminal; Harbor then recorded `AgentTimeoutError`, while the unchanged verifier
+  awarded reward 1. Unlike the overlapping headless-terminal recurrence in `TBF-022`, this trace
+  stopped about 22 seconds before verification began. The timeout, native failure, external pass,
+  and successful containment are all retained as separate facts.
 - Third observation: `extract-moves-from-video__t7VnGw4` reached its unchanged 1,800-second agent
   deadline for reward 0. The frozen run recovered a 12,165,146-byte source video despite the image
   lacking ordinary download and media tools, assembled FFmpeg and Tesseract from distribution
@@ -3378,11 +3391,14 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Cause: the thin Harbor adapter awaited `environment.exec` directly. Python cancellation ended the
   local `podman compose exec` wait, but that boundary provided no remote process handle and did not
   propagate termination to the already-running process inside the shared task container.
-- Resolution: the adapter now launches the exact native command under a small Linux supervisor that
-  records its child PID. On cancellation it walks that PID's in-container `/proc` descendants,
-  sends bounded TERM then KILL signals as needed, verifies every recorded process is absent, removes
-  the PID record, and only then propagates cancellation back to Harbor. The logic is task-neutral
-  and protects every shared-environment verifier from late model or tool mutations.
+- Resolution: the adapter launches the exact native command under a small Linux supervisor that
+  records its child PID. The first correction walked that PID's in-container `/proc` descendants,
+  terminated the snapshot, verified every recorded process was absent, and only then propagated
+  cancellation. A corrected-adapter recurrence showed that a one-time descendant snapshot was not
+  enough. The wrapper now gives the complete process family a run-unique inherited marker;
+  cancellation repeatedly stops the union of the current tree and every marked process, kills that
+  quiescent set, and proves both sets absent before Harbor can verify. The logic is task-neutral and
+  protects every shared-environment verifier from late model or tool mutations.
 - Integrity decision: retain the baseline timeout, reward 0, and original verifier result. Do not
   extend the agent deadline, discard the score, infer what the late patches might have produced, or
   let post-deadline work affect evaluation.
@@ -3398,8 +3414,18 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   defect, not evidence that the correction was active or a reason to discard the passing score.
   The final-candidate campaign must exercise the corrected adapter and prove the trace stops before
   verification begins.
-- Verification: focused adapter tests require the native wrapper to record and wait for its exact
-  child, then prove cancellation completes the descendant TERM/KILL cleanup before propagating.
+- Corrected-adapter recurrence `headless-terminal__fMw82kx` timed out at
+  `2026-08-31T20:17:39.630489Z`; its verifier ran from `2026-08-31T20:17:50.956415Z` through
+  `2026-08-31T20:18:04.022670Z`, while the native trace was still modified at
+  `2026-08-31T20:17:57.509329Z`. The artifact passed all seven checks for reward 1, but verifier
+  overlap remains an integrity failure. Code inspection found that the first supervisor retained
+  only one descendant snapshot, so a detached or reparented process could escape the proof. The
+  running baseline process had already imported that implementation and remains frozen; the source
+  correction is reserved for a fresh final-candidate campaign.
+- Verification: four focused adapter tests pass. They require the native wrapper to record and wait
+  for its exact child, prove cancellation reaps an ordinary live tree, and now deliberately create
+  a marked process that reparents outside the recorded tree and prove it is also gone before
+  cancellation propagates. Python compilation passes.
   The complete external-benchmark test set, strict repository gates, and an unchanged
   final-candidate timed trial remain required before qualification closes.
 
@@ -3689,6 +3715,18 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   `5bf0651b48969968dea30956d4b0cf9e499af59d73cc6886af3ad7aa92934647`;
   reference SHA-256
   `161b9fa46a76b05743fa3fb8eb01be275d5f89466813096aa5b89bc19b3db099`.
+- Corrected-adapter recurrence `dna-insert__fvdEyyi` reached a clean native terminal on frozen
+  source `d4a72e676dc6ea8d371137436cc393464598a631`: one forward-first pair, all three exact-target
+  gates passing, no review findings, 25 provider requests, and 821.461 seconds. Direct comparison
+  of the supplied linear FASTA records assigns the 39-base insertion as
+  `tagattagaagaagaattaagaagaagattaacagaaag`; real `oligotm` measured the resulting 15-base
+  forward and 28-base reverse annealing regions at 59.535508 and 58.041322 degrees. The unchanged
+  verifier instead hard-codes the cyclically shifted 39-base string
+  `agtagattagaagaagaattaagaagaagattaacagaa`, reassigns the repeated boundary bases, and measures
+  only 26 bases of the same reverse primer at 55.857347 degrees. It therefore retained reward 0.
+  This independent recurrence strengthens the existing classification: the artifact satisfies a
+  valid decomposition of the published circular-plasmid contract, and improving this score by
+  copying the verifier's private junction convention would be benchmark-specific tuning.
 
 ## TBF-027: a parameterized extractor was accepted after testing only its supplied example
 
