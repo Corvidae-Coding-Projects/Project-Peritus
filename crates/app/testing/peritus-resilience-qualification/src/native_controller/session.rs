@@ -32,7 +32,8 @@ pub(super) fn serve(paths: &ControllerPaths) -> Result<(), Box<dyn std::error::E
     let inject_request = next(&mut reader, paths, Stage::Inject, 2)?;
     same_scenario(&prepare_request, &inject_request)?;
     let route = prepare_request.route()?;
-    let injected = candidate::inject(paths, &prepared.runtime, route)?;
+    let dependency_retry_limit = prepare_request.dependency_retry_limit(route);
+    let injected = candidate::inject(paths, &prepared.runtime, route, dependency_retry_limit)?;
     response::publish(
         &inject_request,
         &paths.instance_id,
@@ -42,7 +43,8 @@ pub(super) fn serve(paths: &ControllerPaths) -> Result<(), Box<dyn std::error::E
 
     let recover_request = next(&mut reader, paths, Stage::Recover, 3)?;
     same_scenario(&prepare_request, &recover_request)?;
-    let recovered = candidate::recover(paths, &prepared.runtime, &injected, route)?;
+    let recovered =
+        candidate::recover(paths, &prepared.runtime, &injected, route, dependency_retry_limit)?;
     let payload =
         recovery_payload(paths, &recover_request, &prepared, &injected, &recovered, route)?;
     response::publish(&recover_request, &paths.instance_id, Stage::Recover, payload)?;
@@ -106,6 +108,7 @@ fn recovery_payload(
     if logical_ticks > request.limits().logical_ticks() {
         return Err("H1 recovery exceeded the request logical-time bound".into());
     }
+    let accounting = recovery_accounting(recovered)?;
     let retained = recovery_evidence::retain(paths, request, prepared, injected, recovered)?;
     Ok(RecoverPayload {
         outcome: route.outcome(),
@@ -121,19 +124,10 @@ fn recovery_payload(
             detected: route.corruption_target(),
             mutation_admitted: route.mutation_admitted(),
         },
-        ownership: OwnershipDocument {
-            scan_completed: true,
-            discovered: 0,
-            resumed: 0,
-            failed: 0,
-            indeterminate: 0,
-            unaccounted: 0,
-            orphan_candidates_detected: 0,
-            orphans_remaining: 0,
-        },
-        retries: RetryDocument { provider: 0, tool: 0, worker: 0, reconciliation: 1 },
+        ownership: accounting.ownership,
+        retries: accounting.retries,
         resources: ResourceDocument {
-            events: 12,
+            events: accounting.events,
             evidence_bytes: retained.bytes,
             peak_owned_processes: 1,
             cleanup_steps: 1,
@@ -144,4 +138,58 @@ fn recovery_payload(
         evidence: retained.documents,
         milestones: response::canonical_milestones(route),
     })
+}
+
+struct RecoveryAccounting {
+    ownership: OwnershipDocument,
+    retries: RetryDocument,
+    events: u32,
+}
+
+fn recovery_accounting(
+    recovered: &RecoveredCandidate,
+) -> Result<RecoveryAccounting, Box<dyn std::error::Error>> {
+    let Some(dependency) = &recovered.dependency else {
+        return Ok(RecoveryAccounting {
+            ownership: ownership(0, 0, 0),
+            retries: retries(None, 0)?,
+            events: 12,
+        });
+    };
+    let events = u32::try_from(dependency.committed_events)
+        .map_err(|_| "dependency event count exceeds the H1 response range")?;
+    let (resumed, failed) = if dependency.exhausted { (0, 1) } else { (1, 0) };
+    Ok(RecoveryAccounting {
+        ownership: ownership(1, resumed, failed),
+        retries: retries(Some(&dependency.dependency), dependency.attempts)?,
+        events,
+    })
+}
+
+const fn ownership(discovered: u16, resumed: u16, failed: u16) -> OwnershipDocument {
+    OwnershipDocument {
+        scan_completed: true,
+        discovered,
+        resumed,
+        failed,
+        indeterminate: 0,
+        unaccounted: 0,
+        orphan_candidates_detected: 0,
+        orphans_remaining: 0,
+    }
+}
+
+fn retries(
+    dependency: Option<&str>,
+    attempts: u16,
+) -> Result<RetryDocument, Box<dyn std::error::Error>> {
+    let mut usage = RetryDocument { provider: 0, tool: 0, worker: 0, reconciliation: 1 };
+    match dependency {
+        None => {}
+        Some("provider") => usage.provider = attempts,
+        Some("tool") => usage.tool = attempts,
+        Some("worker") => usage.worker = attempts,
+        Some(_) => return Err("dependency observation has an unknown retry class".into()),
+    }
+    Ok(usage)
 }

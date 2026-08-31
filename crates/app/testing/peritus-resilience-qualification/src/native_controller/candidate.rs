@@ -3,6 +3,7 @@
 mod blob;
 mod blob_corruption;
 mod config;
+mod dependency;
 mod gate;
 mod journal_after;
 mod journal_before;
@@ -26,7 +27,7 @@ use super::args::ControllerPaths;
 use super::request::ScenarioRoute;
 use config::{bytes_sha256, create_private_directory, render_configuration, write_new};
 pub(super) use observation::{
-    GateObservation, InjectedCandidate, LeaseObservation, PatchObservation,
+    DependencyObservation, GateObservation, InjectedCandidate, LeaseObservation, PatchObservation,
     ProjectionCorruptionCheckpoint, ProjectionRepairObservation, PromotionCheckpoint,
     PromotionObservation, RecoveredCandidate, SnapshotObservation,
 };
@@ -96,6 +97,7 @@ pub(super) fn inject(
     paths: &ControllerPaths,
     runtime: &RuntimePaths,
     route: ScenarioRoute,
+    dependency_retry_limit: Option<u16>,
 ) -> Result<InjectedCandidate, Box<dyn std::error::Error>> {
     match route {
         ScenarioRoute::BlobBeforeDurableCommit | ScenarioRoute::BlobAfterDurableCommitBeforeAck => {
@@ -122,6 +124,14 @@ pub(super) fn inject(
         }
         ScenarioRoute::ProjectionCorruption => projection::inject(paths, runtime),
         ScenarioRoute::JournalAfterDurableCommitBeforeAck => journal_after::inject(paths, runtime),
+        ScenarioRoute::ProviderDeath
+        | ScenarioRoute::ToolDeath
+        | ScenarioRoute::WorkerDeath
+        | ScenarioRoute::ProviderRetryExhaustion
+        | ScenarioRoute::ToolRetryExhaustion
+        | ScenarioRoute::WorkerRetryExhaustion => {
+            dependency::inject(paths, runtime, route, dependency_retry_limit)
+        }
     }
 }
 
@@ -130,6 +140,7 @@ pub(super) fn recover(
     runtime: &RuntimePaths,
     injected: &InjectedCandidate,
     route: ScenarioRoute,
+    dependency_retry_limit: Option<u16>,
 ) -> Result<RecoveredCandidate, Box<dyn std::error::Error>> {
     match route {
         ScenarioRoute::BlobBeforeDurableCommit | ScenarioRoute::BlobAfterDurableCommitBeforeAck => {
@@ -163,6 +174,14 @@ pub(super) fn recover(
         ScenarioRoute::ProjectionCorruption => projection::recover(paths, runtime, injected),
         ScenarioRoute::JournalAfterDurableCommitBeforeAck => {
             journal_after::recover(paths, runtime, injected)
+        }
+        ScenarioRoute::ProviderDeath
+        | ScenarioRoute::ToolDeath
+        | ScenarioRoute::WorkerDeath
+        | ScenarioRoute::ProviderRetryExhaustion
+        | ScenarioRoute::ToolRetryExhaustion
+        | ScenarioRoute::WorkerRetryExhaustion => {
+            dependency::recover(paths, runtime, injected, route, dependency_retry_limit)
         }
     }
 }

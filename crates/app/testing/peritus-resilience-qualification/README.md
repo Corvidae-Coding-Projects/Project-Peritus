@@ -23,9 +23,10 @@ The controller remains responsible for real daemon, storage, dependency, quota, 
 effects. The operator refuses a descriptor whose build digest differs from the exact staged
 candidate bytes.
 
-The checked-in `peritus-h1-controller` currently owns eighteen genuine routes across the journal,
+The checked-in `peritus-h1-controller` currently owns 24 genuine routes across the journal,
 blob, retained Git snapshot, lease, patch, gate, and promotion commit boundaries, plus active
-projection repair and journal/blob/snapshot corruption controls. For
+projection repair, journal/blob/snapshot corruption controls, and provider/tool/worker dependency
+failure. For
 `h1.crash.journal.before`, the exact staged daemon builds a production append plan, publishes its
 checkpoint before submission, and is killed; recovery requires an integrity-checked journal with
 zero committed events, heads, outbox claims, or external effects. For
@@ -91,6 +92,15 @@ persist the corrupt integrity state, move the divergent bytes to quarantine, ret
 reference, and make the artifact unavailable to readers or new references. A second restart must
 preserve that contained state.
 
+The six dependency routes use the real durable scheduler and one real effect boundary per
+dependency. Provider cases execute the staged daemon through the executable-backed provider
+transport. Tool cases use the same grounded, receipt-backed `run_command` path as ordinary coding
+runs. Worker cases abort a task owned by the daemon worker supervisor. A death case leaves one
+retryable failure for fresh replay to requeue. A retry-exhaustion case executes the exact configured
+attempt ceiling and requires fresh replay to retain terminal exhausted non-success. All six focused
+diagnostics passed under
+`/home/doll/.local/state/peritus/qualification/h1/dependency-routes.5nwGZV`.
+
 Use the explicit diagnostic option to exercise that route without presenting a one-case report as
 production readiness:
 
@@ -125,6 +135,9 @@ The projection diagnostic is `h1.corruption.projection`.
 The journal diagnostic is `h1.corruption.journal`.
 The blob diagnostic is `h1.corruption.blob`.
 The snapshot diagnostic is `h1.corruption.snapshot`.
+The dependency-death diagnostics are `h1.death.provider`, `h1.death.tool`, and
+`h1.death.worker`. The exhaustion diagnostics are `h1.retry-exhaustion.provider`,
+`h1.retry-exhaustion.tool`, and `h1.retry-exhaustion.worker`.
 
 ## Focused checks
 

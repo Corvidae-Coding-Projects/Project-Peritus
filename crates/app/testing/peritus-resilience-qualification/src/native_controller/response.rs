@@ -126,7 +126,11 @@ pub(super) fn publish<T: Serialize>(
 }
 
 pub(super) fn canonical_milestones(route: ScenarioRoute) -> Vec<MilestoneDocument> {
-    let (armed, observed, reconciled) = milestone_details(route);
+    let (armed, observed, reconciled) = if route.dependency().is_some() {
+        dependency_milestone_details(route)
+    } else {
+        milestone_details(route)
+    };
     vec![
         MilestoneDocument {
             sequence: 0,
@@ -241,5 +245,31 @@ const fn milestone_details(route: ScenarioRoute) -> (&'static str, &'static str,
             "active projection payload bytes replaced without changing their recorded digest",
             "startup replay installed and verified a new atomic shadow generation",
         ),
+        ScenarioRoute::ProviderDeath
+        | ScenarioRoute::ToolDeath
+        | ScenarioRoute::WorkerDeath
+        | ScenarioRoute::ProviderRetryExhaustion
+        | ScenarioRoute::ToolRetryExhaustion
+        | ScenarioRoute::WorkerRetryExhaustion => unreachable!(),
+    }
+}
+
+const fn dependency_milestone_details(
+    route: ScenarioRoute,
+) -> (&'static str, &'static str, &'static str) {
+    match route {
+        ScenarioRoute::ProviderDeath | ScenarioRoute::ToolDeath | ScenarioRoute::WorkerDeath => (
+            "one dependency attempt durably acknowledged scheduler ownership",
+            "the selected real dependency boundary returned a terminal failure",
+            "fresh scheduler replay requeued the exact owned work without duplication",
+        ),
+        ScenarioRoute::ProviderRetryExhaustion
+        | ScenarioRoute::ToolRetryExhaustion
+        | ScenarioRoute::WorkerRetryExhaustion => (
+            "the configured dependency attempts were admitted under an immutable retry bound",
+            "each real dependency attempt returned a terminal failure observation",
+            "fresh scheduler replay retained explicit exhausted non-success truth",
+        ),
+        _ => unreachable!(),
     }
 }

@@ -20,6 +20,12 @@ pub(super) const SNAPSHOT_CORRUPTION: &str = "h1.corruption.snapshot";
 pub(super) const PROMOTION_BEFORE: &str = "h1.crash.promotion.before";
 pub(super) const PROMOTION_AFTER_BEFORE_ACK: &str = "h1.crash.promotion.after-before-ack";
 pub(super) const PROJECTION_CORRUPTION: &str = "h1.corruption.projection";
+pub(super) const PROVIDER_DEATH: &str = "h1.death.provider";
+pub(super) const TOOL_DEATH: &str = "h1.death.tool";
+pub(super) const WORKER_DEATH: &str = "h1.death.worker";
+pub(super) const PROVIDER_RETRY_EXHAUSTION: &str = "h1.retry-exhaustion.provider";
+pub(super) const TOOL_RETRY_EXHAUSTION: &str = "h1.retry-exhaustion.tool";
+pub(super) const WORKER_RETRY_EXHAUSTION: &str = "h1.retry-exhaustion.worker";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(in crate::native_controller) enum ScenarioRoute {
@@ -41,6 +47,12 @@ pub(in crate::native_controller) enum ScenarioRoute {
     PromotionBeforeDurableCommit,
     PromotionAfterDurableCommitBeforeAck,
     ProjectionCorruption,
+    ProviderDeath,
+    ToolDeath,
+    WorkerDeath,
+    ProviderRetryExhaustion,
+    ToolRetryExhaustion,
+    WorkerRetryExhaustion,
 }
 
 impl ScenarioRoute {
@@ -176,6 +188,42 @@ impl ScenarioRoute {
             {
                 Some(Self::ProjectionCorruption)
             }
+            _ => Self::from_dependency(scenario),
+        }
+    }
+
+    fn from_dependency(scenario: &ScenarioDocument) -> Option<Self> {
+        match (&*scenario.id, &*scenario.expected_recovery, &scenario.fault) {
+            (
+                PROVIDER_DEATH,
+                "reconciled-owned-work",
+                FaultDocument::DependencyDeath { dependency },
+            ) if dependency == "provider" => Some(Self::ProviderDeath),
+            (
+                TOOL_DEATH,
+                "reconciled-owned-work",
+                FaultDocument::DependencyDeath { dependency },
+            ) if dependency == "tool" => Some(Self::ToolDeath),
+            (
+                WORKER_DEATH,
+                "reconciled-owned-work",
+                FaultDocument::DependencyDeath { dependency },
+            ) if dependency == "worker" => Some(Self::WorkerDeath),
+            (
+                PROVIDER_RETRY_EXHAUSTION,
+                "retry-budget-exhausted",
+                FaultDocument::RetryExhaustion { dependency },
+            ) if dependency == "provider" => Some(Self::ProviderRetryExhaustion),
+            (
+                TOOL_RETRY_EXHAUSTION,
+                "retry-budget-exhausted",
+                FaultDocument::RetryExhaustion { dependency },
+            ) if dependency == "tool" => Some(Self::ToolRetryExhaustion),
+            (
+                WORKER_RETRY_EXHAUSTION,
+                "retry-budget-exhausted",
+                FaultDocument::RetryExhaustion { dependency },
+            ) if dependency == "worker" => Some(Self::WorkerRetryExhaustion),
             _ => None,
         }
     }
@@ -200,6 +248,10 @@ impl ScenarioRoute {
             Self::ProjectionCorruption => "rebuilt-projection",
             Self::BlobCorruption | Self::SnapshotCorruption => "quarantined-corruption",
             Self::JournalCorruption => "failed-closed",
+            Self::ProviderDeath | Self::ToolDeath | Self::WorkerDeath => "reconciled-owned-work",
+            Self::ProviderRetryExhaustion
+            | Self::ToolRetryExhaustion
+            | Self::WorkerRetryExhaustion => "retry-budget-exhausted",
         }
     }
 
@@ -222,7 +274,13 @@ impl ScenarioRoute {
             | Self::PromotionAfterDurableCommitBeforeAck
             | Self::ProjectionCorruption
             | Self::BlobCorruption
-            | Self::SnapshotCorruption => "verified",
+            | Self::SnapshotCorruption
+            | Self::ProviderDeath
+            | Self::ToolDeath
+            | Self::WorkerDeath
+            | Self::ProviderRetryExhaustion
+            | Self::ToolRetryExhaustion
+            | Self::WorkerRetryExhaustion => "verified",
             Self::JournalAfterDurableCommitBeforeAck => "recovered-and-verified",
         }
     }
@@ -259,6 +317,32 @@ impl ScenarioRoute {
                 | Self::JournalCorruption
                 | Self::BlobCorruption
                 | Self::SnapshotCorruption
+        )
+    }
+
+    pub(in crate::native_controller) const fn dependency(self) -> Option<&'static str> {
+        match self {
+            Self::ProviderDeath | Self::ProviderRetryExhaustion => Some("provider"),
+            Self::ToolDeath | Self::ToolRetryExhaustion => Some("tool"),
+            Self::WorkerDeath | Self::WorkerRetryExhaustion => Some("worker"),
+            _ => None,
+        }
+    }
+
+    pub(in crate::native_controller) const fn dependency_fault(self) -> Option<&'static str> {
+        match self {
+            Self::ProviderDeath | Self::ToolDeath | Self::WorkerDeath => Some("death"),
+            Self::ProviderRetryExhaustion
+            | Self::ToolRetryExhaustion
+            | Self::WorkerRetryExhaustion => Some("retry-exhaustion"),
+            _ => None,
+        }
+    }
+
+    pub(in crate::native_controller) const fn is_retry_exhaustion(self) -> bool {
+        matches!(
+            self,
+            Self::ProviderRetryExhaustion | Self::ToolRetryExhaustion | Self::WorkerRetryExhaustion
         )
     }
 }

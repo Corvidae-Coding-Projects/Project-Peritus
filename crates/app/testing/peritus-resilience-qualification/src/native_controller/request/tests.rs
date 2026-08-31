@@ -2,13 +2,14 @@ use super::route::{
     BLOB_AFTER_BEFORE_ACK, BLOB_BEFORE, BLOB_CORRUPTION, GATE_AFTER_BEFORE_ACK, GATE_BEFORE,
     JOURNAL_AFTER_BEFORE_ACK, JOURNAL_BEFORE, JOURNAL_CORRUPTION, LEASE_AFTER_BEFORE_ACK,
     LEASE_BEFORE, PATCH_AFTER_BEFORE_ACK, PATCH_BEFORE, PROJECTION_CORRUPTION,
-    PROMOTION_AFTER_BEFORE_ACK, PROMOTION_BEFORE, SNAPSHOT_AFTER_BEFORE_ACK, SNAPSHOT_BEFORE,
-    SNAPSHOT_CORRUPTION, ScenarioRoute,
+    PROMOTION_AFTER_BEFORE_ACK, PROMOTION_BEFORE, PROVIDER_DEATH, PROVIDER_RETRY_EXHAUSTION,
+    SNAPSHOT_AFTER_BEFORE_ACK, SNAPSHOT_BEFORE, SNAPSHOT_CORRUPTION, ScenarioRoute, TOOL_DEATH,
+    TOOL_RETRY_EXHAUSTION, WORKER_DEATH, WORKER_RETRY_EXHAUSTION,
 };
 use super::{FaultDocument, ScenarioDocument};
 
 #[test]
-fn only_the_eighteen_real_routes_are_admitted() {
+fn only_the_twenty_four_real_routes_are_admitted() {
     let cases = [
         (JOURNAL_BEFORE, "journal", ScenarioRoute::JournalBeforeDurableCommit),
         (BLOB_BEFORE, "blob", ScenarioRoute::BlobBeforeDurableCommit),
@@ -76,6 +77,32 @@ fn only_the_eighteen_real_routes_are_admitted() {
         ScenarioRoute::from_scenario(&snapshot_corruption),
         Some(ScenarioRoute::SnapshotCorruption)
     );
+    for (id, dependency, expected) in [
+        (PROVIDER_DEATH, "provider", ScenarioRoute::ProviderDeath),
+        (TOOL_DEATH, "tool", ScenarioRoute::ToolDeath),
+        (WORKER_DEATH, "worker", ScenarioRoute::WorkerDeath),
+    ] {
+        let value = ScenarioDocument {
+            id: id.to_owned(),
+            title: "dependency death".to_owned(),
+            fault: FaultDocument::DependencyDeath { dependency: dependency.to_owned() },
+            expected_recovery: "reconciled-owned-work".to_owned(),
+        };
+        assert_eq!(ScenarioRoute::from_scenario(&value), Some(expected));
+    }
+    for (id, dependency, expected) in [
+        (PROVIDER_RETRY_EXHAUSTION, "provider", ScenarioRoute::ProviderRetryExhaustion),
+        (TOOL_RETRY_EXHAUSTION, "tool", ScenarioRoute::ToolRetryExhaustion),
+        (WORKER_RETRY_EXHAUSTION, "worker", ScenarioRoute::WorkerRetryExhaustion),
+    ] {
+        let value = ScenarioDocument {
+            id: id.to_owned(),
+            title: "dependency retry exhaustion".to_owned(),
+            fault: FaultDocument::RetryExhaustion { dependency: dependency.to_owned() },
+            expected_recovery: "retry-budget-exhausted".to_owned(),
+        };
+        assert_eq!(ScenarioRoute::from_scenario(&value), Some(expected));
+    }
     let unsupported = scenario(
         "h1.crash.unknown.before",
         "unknown",

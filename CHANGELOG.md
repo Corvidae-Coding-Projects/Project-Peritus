@@ -13,14 +13,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
-- Add the checked-in Rust `peritus-h1-controller` and an explicit focused diagnostic mode. Its
-  eighteen genuine routes cover both sides of journal submission, content-addressed blob publication,
+- Add the checked-in Rust `peritus-h1-controller` and an explicit focused diagnostic mode. Its 24
+  genuine routes cover both sides of journal submission, content-addressed blob publication,
   retained Git snapshot publication, exclusive-lease persistence, and recoverable patch
   application, plus D1's atomic gate event/checkpoint commit and F0's campaign/pointer/approval
   promotion commit. They also cover active projection corruption with fresh-generation repair,
   committed journal-frame corruption with fail-closed startup before authority mutation, and
   referenced blob corruption with durable quarantine and reference denial, and retained Git
-  snapshot reference divergence with atomic movement out of the active namespace. The exact
+  snapshot reference divergence with atomic movement out of the active namespace. Provider, tool,
+  and worker death now run through the real executable provider transport, ordinary grounded
+  receipt-backed product tool, and daemon-owned worker supervisor. Scheduler replay requeues exact
+  owned work after death and preserves exhausted non-success after consuming the configured retry
+  ceiling. The exact
   staged `peritusd` is killed before and after each corresponding durable commit. Recovery verifies
   the expected rollback or exact replay, retains all six evidence classes, and cleans its private
   state.

@@ -30,6 +30,8 @@ pub(crate) mod gates;
 #[cfg(not(verus_only))]
 mod progress;
 #[cfg(not(verus_only))]
+pub mod qualification;
+#[cfg(not(verus_only))]
 mod review;
 #[cfg(not(verus_only))]
 mod reviewer_turn;

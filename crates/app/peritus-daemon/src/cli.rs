@@ -2,6 +2,7 @@
 
 mod arguments;
 mod blob_corruption;
+mod dependency;
 mod gate;
 mod journal_corruption;
 mod lease;
@@ -105,6 +106,13 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
         CommandLine::RecoverProjectionCorruption(configuration) => {
             projection::recover(configuration)
         }
+        CommandLine::StageDependencyFault { dependency, fault, retry_limit, configuration } => {
+            dependency::stage(configuration, dependency, fault, retry_limit)
+        }
+        CommandLine::RecoverDependencyFault { dependency, fault, retry_limit, configuration } => {
+            dependency::recover(configuration, dependency, fault, retry_limit)
+        }
+        CommandLine::DependencyChild(dependency) => dependency::child(dependency),
         CommandLine::StageOutboxCrash(configuration) => stage_outbox(configuration),
         CommandLine::RecoverOutboxCrash(configuration) => recover_outbox(configuration),
     }

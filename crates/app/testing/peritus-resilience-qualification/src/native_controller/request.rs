@@ -149,6 +149,15 @@ impl BoundRequest {
     pub(super) const fn limits(&self) -> &LimitsDocument {
         &self.document.limits
     }
+
+    pub(super) fn dependency_retry_limit(&self, route: ScenarioRoute) -> Option<u16> {
+        match route.dependency()? {
+            "provider" => Some(self.document.limits.provider_retries),
+            "tool" => Some(self.document.limits.tool_retries),
+            "worker" => Some(self.document.limits.worker_restarts),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

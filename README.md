@@ -74,7 +74,7 @@ systems and retains each report plus raw evidence. Its macOS and Windows sandbox
 actual Seatbelt and AppContainer/Job Object host probes; hosted results remain evidence only after
 the corresponding revision finishes successfully.
 
-H1 now has eighteen checked-in production controller routes. Focused native runs against freshly
+H1 now has 24 checked-in production controller routes. Focused native runs against freshly
 built binaries passed both sides of the journal, blob, retained Git snapshot, exclusive-lease,
 patch, D1 gate, and F0 campaign/pointer promotion commits. A projection-corruption route also
 proves that startup rejects corrupt active bytes and atomically installs a fresh verified
@@ -84,13 +84,15 @@ blob-corruption route now changes a referenced content-addressed object and prov
 quarantines the divergent bytes, retains their audit root, and denies further use. The staged
 snapshot-corruption route redirects a retained snapshot ref to the wrong commit, then proves that
 fresh recovery atomically removes it from active use and retains the divergent value under the
-quarantine namespace. The staged
-daemon was killed with checked work still unpublished, and again after each corresponding durable
-commit. Recovery proved
-rollback for the before cases and exact replay for the after cases, including lease projection
+quarantine namespace. Six dependency routes now exercise real executable-backed provider failure,
+the ordinary grounded and receipt-backed product command tool, and daemon-owned worker tasks. A
+fresh scheduler replay either requeues the exact owned work after one dependency death or preserves
+explicit exhausted non-success after consuming the configured retry ceiling. The staged daemon was
+killed with checked work still unpublished, and again after each corresponding durable commit.
+Recovery proved rollback for the before cases and exact replay for the after cases, including lease projection
 identity, exact patch postimage bytes, complete gate successor state, and all-or-nothing campaign,
 production-pointer, and approve-once state. This is useful evidence, not an H1 readiness claim:
-the remaining 25 catalog routes still need genuine component, quota, process, and disposable-VM
+the remaining 19 catalog routes still need genuine quota, daemon-process, and disposable-VM
 controls.
 
 H0 also has a Rust-owned exact-candidate preparer and a three-host native workflow. The preparer

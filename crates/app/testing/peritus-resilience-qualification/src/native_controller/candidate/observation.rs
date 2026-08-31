@@ -43,7 +43,22 @@ pub(in crate::native_controller) struct RecoveredCandidate {
     pub(in crate::native_controller) gate: Option<GateObservation>,
     pub(in crate::native_controller) promotion: Option<PromotionObservation>,
     pub(in crate::native_controller) projection: Option<ProjectionRepairObservation>,
+    pub(in crate::native_controller) dependency: Option<DependencyObservation>,
     pub(in crate::native_controller) elapsed_millis: u64,
+}
+
+#[derive(Serialize)]
+pub(in crate::native_controller) struct DependencyObservation {
+    pub(in crate::native_controller) dependency: String,
+    pub(in crate::native_controller) fault: String,
+    pub(in crate::native_controller) attempts: u16,
+    pub(in crate::native_controller) committed_events: u64,
+    pub(in crate::native_controller) aggregate_heads: u64,
+    pub(in crate::native_controller) state_sha256: String,
+    pub(in crate::native_controller) effect_sha256: String,
+    pub(in crate::native_controller) receipt_bytes: u64,
+    pub(in crate::native_controller) exhausted: bool,
+    pub(in crate::native_controller) ownership_reconciled: bool,
 }
 
 #[derive(Serialize)]

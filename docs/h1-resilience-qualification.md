@@ -198,6 +198,16 @@ quarantine namespace. Repeating recovery must return the same containment observ
 controller independently checks the loose active and quarantine refs, unchanged manifest digest,
 and healthy journal.
 
+The provider, tool, and worker death and retry-exhaustion routes use the production D3 scheduler
+and C0 journal adapter. Provider attempts execute the staged daemon through
+`TokioProcessTransport`. Tool attempts use the ordinary grounded, receipt-backed
+`WorkspaceDeveloperTools::run_command` path after listing and reading the workspace. Worker
+attempts create a task owned by `WorkerSupervisor` and observe its bounded shutdown abort. Each
+failure becomes a real retryable scheduler transition. Fresh replay either requeues the exact work
+after one dependency death or retains terminal exhausted non-success after the configured attempt
+ceiling. The controller checks the replayed state digest, attempt and event counts, aggregate head,
+empty reservation set, effect digest, and tool receipt bytes.
+
 Fresh focused diagnostics retained passing one-case reports and six raw evidence files under
 `/home/doll/.local/state/peritus/qualification/h1/journal-before.YP5d5R` and
 `/home/doll/.local/state/peritus/qualification/h1/journal-after-ack.sCtlT9`. Both reports deliberately
@@ -222,9 +232,18 @@ blob-corruption report is retained under
 `/home/doll/.local/state/peritus/qualification/h1/blob-corruption.InuR0D`. The passing
 snapshot-corruption report is retained under
 `/home/doll/.local/state/peritus/qualification/h1/snapshot-corruption.6sDQYS` with report SHA-256
-`0fa6e44e3e4e31a9dd10ee53c8e3217c248d55a09b182e327ebaf6813d63fc1a`. With these eighteen
-routes, the other 25 catalog routes remain fail-closed until their real component failpoints,
-controlled quota/storage effects, process controls, or disposable-VM reboot driver are connected.
+`0fa6e44e3e4e31a9dd10ee53c8e3217c248d55a09b182e327ebaf6813d63fc1a`. The six passing dependency
+reports and 36 raw evidence files are retained under
+`/home/doll/.local/state/peritus/qualification/h1/dependency-routes.5nwGZV`. Their report SHA-256
+digests, in provider/tool/worker death then provider/tool/worker exhaustion order, are
+`e214b237393511b08206c510bb67f5de2e40f011ca8614e566d5ff3ba8557fd7`,
+`94ce882f5a66c50f29e30a059f10599221ce12640db704e6507901ddbb3db577`,
+`f73d643e855a25abf785fcfb60e6079287d70c0782d8886a33fa021077d43d4d`,
+`d4a2b6cf84a13d359ab691f28d7147d0b6ea20654130dfc724ab1878a92ead07`,
+`462b2d6bd0582a27b70437dd1eda75c1a1b6ab12a52b551e3927f5edef7c096d`, and
+`ff76987c43362cd7bc6f788cb9c4cf59dd007f2790aad6fe41ca5dfc834e9c25`. With these 24 routes, the
+other 19 catalog routes remain fail-closed until their real controlled quota/storage effects,
+daemon process controls, or disposable-VM reboot driver are connected.
 Therefore the full H1 production qualification is still pending.
 
 The release integration owner must:
