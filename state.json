@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1100,
+  "next_comment_id": 1101,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-31T23:02:48.844210284Z",
+      "updated_at": "2026-08-31T23:13:09.544076019Z",
       "labels": [
         "qualification",
         "release"
@@ -5387,6 +5387,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABANjNmDajkO8hTF23L3Pw/5QJBCNRKXl1h3X4+r7fO9fBGeOsjTFkHJ2Fp84+CaXfMP5LCPZhfW2B/qYnWHSHnBA=="
+        },
+        "e7f89c6a-0440-4b85-adc1-6df20c66b619": {
+          "display_id": 1100,
+          "author": "6ME5",
+          "content": "Committed 431c1af5: TBF-035 root-cause correction after comparison with Codex CLI reference 41ab01a2ea. Exact tool observations remain in the durable trace; model history now receives a provider-relative 512-10,000-token head/tail value with original size and SHA-256. Normal old-exchange compaction retains eight recent messages, with complete recent exchanges eligible only when the request otherwise exceeds the provider limit. Regression coverage proves exact-trace/model-bound separation, accumulated compaction, and emergency recent compaction. All 36 peritus-agent tests, strict all-target/all-feature Clippy, formatting, diff hygiene, docs-check (137 files), and cargo xtask all (79 packages/3,364 sources) pass.",
+          "created_at": "2026-08-31T23:13:09.537374411Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAfYVLJUk1OQXlvjKNh1jH4OZLQvk42fONHQSRE7Z1ymweqj8aQIvnXpAvsFIboow51OMqDa3GvpB0ge8EVZC6BA=="
         },
         "e86bfb50-5bfc-481a-b6ce-11a9ebbd88da": {
           "display_id": 913,
@@ -10656,8 +10665,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-31T23:02:48.844210284Z",
+    "timestamp": "2026-08-31T23:13:09.544076019Z",
     "agent_id": "6ME5",
-    "agent_seq": 1302
+    "agent_seq": 1303
   }
 }
