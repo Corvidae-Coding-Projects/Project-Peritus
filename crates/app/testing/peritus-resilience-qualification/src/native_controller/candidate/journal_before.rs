@@ -41,7 +41,8 @@ pub(super) fn inject(
         patch: None,
         gate: None,
         promotion: None,
-        killed_exit: killed.status,
+        projection: None,
+        fault_process_exit: killed.status,
     })
 }
 
@@ -111,6 +112,7 @@ pub(super) fn recover(
         patch: None,
         gate: None,
         promotion: None,
+        projection: None,
         elapsed_millis: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
     })
 }

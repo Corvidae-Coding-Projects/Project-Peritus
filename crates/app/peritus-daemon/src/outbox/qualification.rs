@@ -3,7 +3,6 @@
 mod blob;
 mod effect;
 mod gate;
-mod journal;
 mod journal_before;
 mod lease;
 mod patch;
@@ -28,7 +27,7 @@ pub use self::gate::{
     recover_gate_after_crash, recover_gate_before_crash, stage_gate_after_crash,
     stage_gate_before_crash,
 };
-use self::journal::{
+use crate::qualification::{
     acquire_instance, journal_error, open_journal, verify_empty_journal,
     verify_empty_journal_for_store,
 };

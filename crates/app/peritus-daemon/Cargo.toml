@@ -56,6 +56,7 @@ peritus-trace = { version = "=0.0.0", path = "../../observe/peritus-trace" }
 peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
 peritus-workspace = { version = "=0.0.0", path = "../../runtime/peritus-workspace" }
 portable-pty.workspace = true
+rusqlite.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
@@ -82,7 +83,6 @@ peritus-kernel = { version = "=0.0.0", path = "../../foundation/peritus-kernel" 
 peritus-protocol = { version = "=0.0.0", path = "../../foundation/peritus-protocol" }
 peritus-role = { version = "=0.0.0", path = "../../orchestration/peritus-role" }
 peritus-test-support = { version = "=0.0.0", path = "../testing/peritus-test-support" }
-rusqlite.workspace = true
 tempfile.workspace = true
 
 [[bin]]

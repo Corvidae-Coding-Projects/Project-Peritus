@@ -1,12 +1,11 @@
 //! Four-stage persistent controller session and honest observation reduction.
 
-use std::io::{BufRead, BufReader, Read as _};
+mod recovery_evidence;
 
-use serde_json::json;
+use std::io::{BufRead, BufReader, Read as _};
 
 use super::args::ControllerPaths;
 use super::candidate::{self, InjectedCandidate, PreparedCandidate, RecoveredCandidate};
-use super::evidence::EvidenceSet;
 use super::request::{BoundRequest, Stage};
 use super::response::{
     self, AcceptanceDocument, CleanupPayload, CorruptionDocument, InjectPayload, OwnershipDocument,
@@ -101,73 +100,13 @@ fn recovery_payload(
     prepared: &PreparedCandidate,
     injected: &InjectedCandidate,
     recovered: &RecoveredCandidate,
-    route: super::request::CommitRoute,
+    route: super::request::ScenarioRoute,
 ) -> Result<RecoverPayload, Box<dyn std::error::Error>> {
     let logical_ticks = recovered.elapsed_millis.max(1);
     if logical_ticks > request.limits().logical_ticks() {
         return Err("H1 recovery exceeded the request logical-time bound".into());
     }
-    let mut evidence = EvidenceSet::new(&paths.artifact_root, request.limits().evidence_bytes());
-    evidence.retain("fault-injection", "fault", "fault-injection.json", injected)?;
-    evidence.retain(
-        "journal",
-        "journal",
-        "journal.json",
-        &json!({
-            "baseline_head_sha256": prepared.journal_head_sha256,
-            "recovered_journal_sha256": recovered.journal_sha256,
-            "recovered_journal_bytes": recovered.journal_bytes,
-        }),
-    )?;
-    evidence.retain("recovery", "recovery", "recovery.json", recovered)?;
-    evidence.retain(
-        "ownership",
-        "ownership",
-        "ownership.json",
-        &json!({
-            "scan_completed": true,
-            "pending_claims": recovered.pending_claims,
-            "duplicate_effects": recovered.duplicate_effects,
-            "unaccounted": 0,
-            "orphans_remaining": 0,
-        }),
-    )?;
-    evidence.retain(
-        "resource",
-        "resource",
-        "resource.json",
-        &json!({
-            "candidate_processes": 3,
-            "peak_concurrent_candidate_processes": 1,
-            "recovery_elapsed_millis": recovered.elapsed_millis,
-            "cleanup_steps": 1,
-        }),
-    )?;
-    evidence.retain(
-        "final-state",
-        "final",
-        "final-state.json",
-        &json!({
-            "candidate_version": prepared.version,
-            "build_sha256": paths.build_sha256,
-            "effect_sha256": recovered.effect_sha256,
-            "effect_bytes": recovered.effect_bytes,
-            "artifact_sha256": recovered.artifact_sha256,
-            "artifact_bytes": recovered.artifact_bytes,
-            "snapshot": recovered.snapshot,
-            "lease": recovered.lease,
-            "patch": recovered.patch,
-            "gate": recovered.gate,
-            "promotion": recovered.promotion,
-            "committed_events": recovered.committed_events,
-            "aggregate_heads": recovered.aggregate_heads,
-            "external_effects": recovered.external_effects,
-            "exact_fence_acknowledged": recovered.exact_fence_acknowledged,
-            "terminal": "failed",
-            "accepted": false,
-        }),
-    )?;
-    let (evidence, artifact_count, evidence_bytes) = evidence.finish()?;
+    let retained = recovery_evidence::retain(paths, request, prepared, injected, recovered)?;
     Ok(RecoverPayload {
         outcome: route.outcome(),
         acceptance: AcceptanceDocument {
@@ -177,8 +116,11 @@ fn recovery_payload(
         },
         journal: route.journal_health(),
         artifacts: "verified",
-        projection: "verified",
-        corruption: CorruptionDocument { detected: None, mutation_admitted: true },
+        projection: route.projection_health(),
+        corruption: CorruptionDocument {
+            detected: route.corruption_target(),
+            mutation_admitted: route.mutation_admitted(),
+        },
         ownership: OwnershipDocument {
             scan_completed: true,
             discovered: 0,
@@ -192,14 +134,14 @@ fn recovery_payload(
         retries: RetryDocument { provider: 0, tool: 0, worker: 0, reconciliation: 1 },
         resources: ResourceDocument {
             events: 12,
-            evidence_bytes,
+            evidence_bytes: retained.bytes,
             peak_owned_processes: 1,
             cleanup_steps: 1,
             logical_ticks,
         },
         temporary_objects: 0,
-        artifact_count,
-        evidence,
+        artifact_count: retained.artifact_count,
+        evidence: retained.documents,
         milestones: response::canonical_milestones(route),
     })
 }

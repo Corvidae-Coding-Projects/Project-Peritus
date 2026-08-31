@@ -23,7 +23,9 @@ from event payloads.
 returns either reuse or a reasoned genesis rebuild. `rebuild_from_genesis` prepares a complete
 in-memory candidate; `install_shadow` then advances the active pointer under an explicit
 generation compare-and-swap in one SQLite transaction. A failure leaves the old active generation
-unchanged, and a repeated rebuild of one journal/schema binding must have identical checksums.
+unchanged. Reuse also re-hashes the stored payload bytes instead of trusting their recorded digest;
+corrupt bytes force a new verified generation. A repeated rebuild of one valid journal/schema
+binding must have identical checksums.
 
 Projection data is not authoritative and is never an input to journal repair. The current crate
 does not provide incremental catch-up, automatic startup orchestration, or old-generation garbage

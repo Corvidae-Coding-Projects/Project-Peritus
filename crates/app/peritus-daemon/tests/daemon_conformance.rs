@@ -11,8 +11,8 @@ use peritus_conformance::{
 use daemon_conformance_support::{
     BinaryDaemonFactory, BinaryDaemonSubject, blob_commit_crash_recovery, blocker_for,
     gate_commit_crash_recovery, journal_before_crash_recovery, lease_commit_crash_recovery,
-    patch_commit_crash_recovery, promotion_commit_crash_recovery, reachable_scenarios,
-    snapshot_commit_crash_recovery,
+    patch_commit_crash_recovery, projection_corruption_recovery, promotion_commit_crash_recovery,
+    reachable_scenarios, snapshot_commit_crash_recovery,
 };
 
 #[test]
@@ -48,6 +48,11 @@ fn gate_commit_recovers_on_both_sides_of_atomic_checkpoint_install() {
 #[test]
 fn promotion_commit_recovers_on_both_sides_of_atomic_activation() {
     promotion_commit_crash_recovery().expect("real promotion commit crash recovery");
+}
+
+#[test]
+fn corrupt_projection_is_replaced_during_fresh_startup() {
+    projection_corruption_recovery().expect("real projection corruption recovery");
 }
 
 #[test]

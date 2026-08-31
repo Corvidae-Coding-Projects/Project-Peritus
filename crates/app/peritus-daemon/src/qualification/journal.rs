@@ -1,18 +1,18 @@
-//! Shared authoritative-journal access for crash qualification routes.
+//! Shared authoritative-journal access for production qualification routes.
 
 use peritus_journal::{SqliteJournal, SqliteJournalOptions, StoreId};
 
 use crate::instance::InstanceGuard;
 use crate::{DaemonConfig, DaemonError, DaemonErrorCode, DaemonIdentity, DaemonRecovery};
 
-pub(super) fn acquire_instance(
+pub fn acquire_instance(
     config: &DaemonConfig,
     store_id: StoreId,
 ) -> Result<InstanceGuard, DaemonError> {
     InstanceGuard::acquire(config.paths().state_root(), &DaemonIdentity::new(store_id))
 }
 
-pub(super) fn open_journal(
+pub fn open_journal(
     config: &DaemonConfig,
     store_id: StoreId,
 ) -> Result<SqliteJournal, DaemonError> {
@@ -20,13 +20,13 @@ pub(super) fn open_journal(
         .map_err(journal_error)
 }
 
-pub(super) fn verify_empty_journal(config: &DaemonConfig) -> Result<bool, DaemonError> {
+pub fn verify_empty_journal(config: &DaemonConfig) -> Result<bool, DaemonError> {
     let store_id = config.store_identity()?;
     let _instance = acquire_instance(config, store_id)?;
     verify_empty_journal_for_store(config, store_id)
 }
 
-pub(super) fn verify_empty_journal_for_store(
+pub fn verify_empty_journal_for_store(
     config: &DaemonConfig,
     store_id: StoreId,
 ) -> Result<bool, DaemonError> {
@@ -43,7 +43,7 @@ pub(super) fn verify_empty_journal_for_store(
     Ok(true)
 }
 
-pub(super) fn journal_error(error: peritus_journal::JournalError) -> DaemonError {
+pub fn journal_error(error: peritus_journal::JournalError) -> DaemonError {
     DaemonError::with_source(
         DaemonErrorCode::Storage,
         DaemonRecovery::Reconcile,

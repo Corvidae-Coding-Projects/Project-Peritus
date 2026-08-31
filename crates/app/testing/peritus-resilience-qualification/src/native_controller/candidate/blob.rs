@@ -10,18 +10,18 @@ use crate::digest;
 use super::process::{bounded_command, kill_after_checkpoint, one_line};
 use super::{InjectedCandidate, RecoveredCandidate, RuntimePaths};
 use crate::native_controller::args::{ControllerPaths, lower_sha256};
-use crate::native_controller::request::CommitRoute;
+use crate::native_controller::request::ScenarioRoute;
 
 pub(super) fn inject(
     paths: &ControllerPaths,
     runtime: &RuntimePaths,
-    route: CommitRoute,
+    route: ScenarioRoute,
 ) -> Result<InjectedCandidate, Box<dyn std::error::Error>> {
     let (command, prefix, field_count) = match route {
-        CommitRoute::BlobBeforeDurableCommit => {
+        ScenarioRoute::BlobBeforeDurableCommit => {
             ("qualify-blob-before-stage", "peritus-qualification blob-before-stage ", 3)
         }
-        CommitRoute::BlobAfterDurableCommitBeforeAck => {
+        ScenarioRoute::BlobAfterDurableCommitBeforeAck => {
             ("qualify-blob-after-stage", "peritus-qualification blob-after-stage ", 4)
         }
         _ => return Err("blob controller received a non-blob route".into()),
@@ -39,12 +39,12 @@ pub(super) fn inject(
     }
     let artifact_bytes = number_field(fields[1], "bytes")?;
     match route {
-        CommitRoute::BlobBeforeDurableCommit => {
+        ScenarioRoute::BlobBeforeDurableCommit => {
             if number_field(fields[2], "temporary_files")? != 1 {
                 return Err("pre-commit artifact checkpoint has no exact temporary object".into());
             }
         }
-        CommitRoute::BlobAfterDurableCommitBeforeAck => {
+        ScenarioRoute::BlobAfterDurableCommitBeforeAck => {
             if !boolean_field(fields[2], "finalized")? || !boolean_field(fields[3], "referenced")? {
                 return Err("post-commit artifact checkpoint is not durable and referenced".into());
             }
@@ -65,7 +65,8 @@ pub(super) fn inject(
         patch: None,
         gate: None,
         promotion: None,
-        killed_exit: killed.status,
+        projection: None,
+        fault_process_exit: killed.status,
     })
 }
 
@@ -73,14 +74,14 @@ pub(super) fn recover(
     paths: &ControllerPaths,
     runtime: &RuntimePaths,
     injected: &InjectedCandidate,
-    route: CommitRoute,
+    route: ScenarioRoute,
 ) -> Result<RecoveredCandidate, Box<dyn std::error::Error>> {
     let started = Instant::now();
     let (command, prefix, committed) = match route {
-        CommitRoute::BlobBeforeDurableCommit => {
+        ScenarioRoute::BlobBeforeDurableCommit => {
             ("qualify-blob-before-recover", "peritus-qualification blob-before-recover ", false)
         }
-        CommitRoute::BlobAfterDurableCommitBeforeAck => {
+        ScenarioRoute::BlobAfterDurableCommitBeforeAck => {
             ("qualify-blob-after-recover", "peritus-qualification blob-after-recover ", true)
         }
         _ => return Err("blob controller received a non-blob route".into()),
@@ -145,6 +146,7 @@ pub(super) fn recover(
         patch: None,
         gate: None,
         promotion: None,
+        projection: None,
         elapsed_millis: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
     })
 }

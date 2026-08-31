@@ -23,8 +23,9 @@ The controller remains responsible for real daemon, storage, dependency, quota, 
 effects. The operator refuses a descriptor whose build digest differs from the exact staged
 candidate bytes.
 
-The checked-in `peritus-h1-controller` currently owns fourteen genuine crash routes across the
-journal, blob, retained Git snapshot, lease, patch, gate, and promotion commit boundaries. For
+The checked-in `peritus-h1-controller` currently owns fifteen genuine routes across the journal,
+blob, retained Git snapshot, lease, patch, gate, and promotion commit boundaries, plus active
+projection corruption and repair. For
 `h1.crash.journal.before`, the exact staged daemon builds a production append plan, publishes its
 checkpoint before submission, and is killed; recovery requires an integrity-checked journal with
 zero committed events, heads, outbox claims, or external effects. For
@@ -68,6 +69,11 @@ transitions when killed. The after case commits both activation events, both che
 approval consumption in one C0 transaction. Fresh recovery checks the exact proposal,
 authorization, campaign, pointer, approval revision, event count, and aggregate-head count.
 
+The projection-corruption route uses the production startup projection catalog. It changes the
+exact active payload while retaining its recorded digest, proves that the generation is invalid,
+and starts a fresh daemon process. Recovery must install a new generation whose payload and digest
+match a genesis replay, leave the authoritative empty journal unchanged, and then become reusable.
+
 Use the explicit diagnostic option to exercise that route without presenting a one-case report as
 production readiness:
 
@@ -98,6 +104,7 @@ The equivalent blob diagnostics are `h1.crash.blob.before` and
 `h1.crash.patch.after-before-ack`. The gate diagnostics are `h1.crash.gate.before` and
 `h1.crash.gate.after-before-ack`. The promotion diagnostics are
 `h1.crash.promotion.before` and `h1.crash.promotion.after-before-ack`.
+The projection diagnostic is `h1.corruption.projection`.
 
 ## Focused checks
 

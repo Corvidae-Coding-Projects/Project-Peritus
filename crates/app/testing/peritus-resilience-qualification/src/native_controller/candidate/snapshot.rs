@@ -9,18 +9,18 @@ use crate::digest;
 use super::process::{bounded_command, kill_after_checkpoint, one_line};
 use super::{InjectedCandidate, RecoveredCandidate, RuntimePaths, SnapshotObservation};
 use crate::native_controller::args::{ControllerPaths, lower_sha256};
-use crate::native_controller::request::CommitRoute;
+use crate::native_controller::request::ScenarioRoute;
 
 pub(super) fn inject(
     paths: &ControllerPaths,
     runtime: &RuntimePaths,
-    route: CommitRoute,
+    route: ScenarioRoute,
 ) -> Result<InjectedCandidate, Box<dyn std::error::Error>> {
     let (command, prefix, count) = match route {
-        CommitRoute::SnapshotBeforeDurableCommit => {
+        ScenarioRoute::SnapshotBeforeDurableCommit => {
             ("qualify-snapshot-before-stage", "peritus-qualification snapshot-before-stage ", 2)
         }
-        CommitRoute::SnapshotAfterDurableCommitBeforeAck => {
+        ScenarioRoute::SnapshotAfterDurableCommitBeforeAck => {
             ("qualify-snapshot-after-stage", "peritus-qualification snapshot-after-stage ", 5)
         }
         _ => return Err("snapshot controller received a non-snapshot route".into()),
@@ -33,8 +33,8 @@ pub(super) fn inject(
     )?;
     let fields = fields(&killed.line, prefix, count)?;
     let (commit, tree_index, reference_index, manifest_sha256) = match route {
-        CommitRoute::SnapshotBeforeDurableCommit => (None, 0, 1, None),
-        CommitRoute::SnapshotAfterDurableCommitBeforeAck => {
+        ScenarioRoute::SnapshotBeforeDurableCommit => (None, 0, 1, None),
+        ScenarioRoute::SnapshotAfterDurableCommitBeforeAck => {
             let commit = value_field(fields[0], "commit")?.to_owned();
             require_object_id(&commit)?;
             if !boolean_field(fields[4], "retained")? {
@@ -67,7 +67,8 @@ pub(super) fn inject(
         patch: None,
         gate: None,
         promotion: None,
-        killed_exit: killed.status,
+        projection: None,
+        fault_process_exit: killed.status,
     })
 }
 
@@ -75,16 +76,16 @@ pub(super) fn recover(
     paths: &ControllerPaths,
     runtime: &RuntimePaths,
     injected: &InjectedCandidate,
-    route: CommitRoute,
+    route: ScenarioRoute,
 ) -> Result<RecoveredCandidate, Box<dyn std::error::Error>> {
     let started = Instant::now();
     let (command, prefix, committed) = match route {
-        CommitRoute::SnapshotBeforeDurableCommit => (
+        ScenarioRoute::SnapshotBeforeDurableCommit => (
             "qualify-snapshot-before-recover",
             "peritus-qualification snapshot-before-recover ",
             false,
         ),
-        CommitRoute::SnapshotAfterDurableCommitBeforeAck => (
+        ScenarioRoute::SnapshotAfterDurableCommitBeforeAck => (
             "qualify-snapshot-after-recover",
             "peritus-qualification snapshot-after-recover ",
             true,
@@ -153,6 +154,7 @@ pub(super) fn recover(
         patch: None,
         gate: None,
         promotion: None,
+        projection: None,
         elapsed_millis: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
     })
 }

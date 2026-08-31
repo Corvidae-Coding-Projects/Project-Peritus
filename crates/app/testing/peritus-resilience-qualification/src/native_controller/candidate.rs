@@ -1,35 +1,33 @@
-//! Exact staged-daemon effects for supported production commit-crash routes.
+//! Exact staged-daemon effects for supported production resilience routes.
 
 mod blob;
 mod config;
 mod gate;
+mod journal_after;
 mod journal_before;
 mod lease;
 mod observation;
 mod patch;
 mod process;
+mod projection;
 mod promotion;
 mod snapshot;
 
+use peritus_approval::CredentialRegistrySnapshot;
+use peritus_types::RevisionNumber;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::PathBuf;
-use std::time::Instant;
-
-use crate::digest;
-use peritus_approval::CredentialRegistrySnapshot;
-use peritus_types::RevisionNumber;
 
 use super::args::ControllerPaths;
-use super::request::CommitRoute;
+use super::request::ScenarioRoute;
 use config::{bytes_sha256, create_private_directory, render_configuration, write_new};
 pub(super) use observation::{
-    GateObservation, InjectedCandidate, LeaseObservation, PatchObservation, PromotionCheckpoint,
+    GateObservation, InjectedCandidate, LeaseObservation, PatchObservation,
+    ProjectionCorruptionCheckpoint, ProjectionRepairObservation, PromotionCheckpoint,
     PromotionObservation, RecoveredCandidate, SnapshotObservation,
 };
-use process::{bounded_command, kill_after_checkpoint, one_line};
-
-const EFFECT_DIRECTORY: &str = "outbox-crash-qualification-v1";
+use process::{bounded_command, one_line};
 
 pub(super) struct PreparedCandidate {
     pub(super) runtime: RuntimePaths,
@@ -94,173 +92,70 @@ pub(super) fn prepare(
 pub(super) fn inject(
     paths: &ControllerPaths,
     runtime: &RuntimePaths,
-    route: CommitRoute,
+    route: ScenarioRoute,
 ) -> Result<InjectedCandidate, Box<dyn std::error::Error>> {
     match route {
-        CommitRoute::BlobBeforeDurableCommit | CommitRoute::BlobAfterDurableCommitBeforeAck => {
-            return blob::inject(paths, runtime, route);
+        ScenarioRoute::BlobBeforeDurableCommit | ScenarioRoute::BlobAfterDurableCommitBeforeAck => {
+            blob::inject(paths, runtime, route)
         }
-        CommitRoute::JournalBeforeDurableCommit => {
-            return journal_before::inject(paths, runtime);
+        ScenarioRoute::JournalBeforeDurableCommit => journal_before::inject(paths, runtime),
+        ScenarioRoute::LeaseBeforeDurableCommit
+        | ScenarioRoute::LeaseAfterDurableCommitBeforeAck => lease::inject(paths, runtime, route),
+        ScenarioRoute::PatchBeforeDurableCommit
+        | ScenarioRoute::PatchAfterDurableCommitBeforeAck => patch::inject(paths, runtime, route),
+        ScenarioRoute::GateBeforeDurableCommit | ScenarioRoute::GateAfterDurableCommitBeforeAck => {
+            gate::inject(paths, runtime, route)
         }
-        CommitRoute::LeaseBeforeDurableCommit | CommitRoute::LeaseAfterDurableCommitBeforeAck => {
-            return lease::inject(paths, runtime, route);
+        ScenarioRoute::SnapshotBeforeDurableCommit
+        | ScenarioRoute::SnapshotAfterDurableCommitBeforeAck => {
+            snapshot::inject(paths, runtime, route)
         }
-        CommitRoute::PatchBeforeDurableCommit | CommitRoute::PatchAfterDurableCommitBeforeAck => {
-            return patch::inject(paths, runtime, route);
+        ScenarioRoute::PromotionBeforeDurableCommit
+        | ScenarioRoute::PromotionAfterDurableCommitBeforeAck => {
+            promotion::inject(paths, runtime, route)
         }
-        CommitRoute::GateBeforeDurableCommit | CommitRoute::GateAfterDurableCommitBeforeAck => {
-            return gate::inject(paths, runtime, route);
-        }
-        CommitRoute::SnapshotBeforeDurableCommit
-        | CommitRoute::SnapshotAfterDurableCommitBeforeAck => {
-            return snapshot::inject(paths, runtime, route);
-        }
-        CommitRoute::PromotionBeforeDurableCommit
-        | CommitRoute::PromotionAfterDurableCommitBeforeAck => {
-            return promotion::inject(paths, runtime, route);
-        }
-        CommitRoute::JournalAfterDurableCommitBeforeAck => {}
+        ScenarioRoute::ProjectionCorruption => projection::inject(paths, runtime),
+        ScenarioRoute::JournalAfterDurableCommitBeforeAck => journal_after::inject(paths, runtime),
     }
-    let stderr_path = runtime.root.join("inject.stderr");
-    let killed = kill_after_checkpoint(
-        &paths.candidate,
-        [OsStr::new("qualify-outbox-stage"), OsStr::new("--config"), runtime.config.as_os_str()],
-        &runtime.root,
-        &stderr_path,
-    )?;
-    let checkpoint = killed.line;
-    let (effect_path, claim_fence) = parse_checkpoint(&checkpoint)?;
-    let effect = fs::canonicalize(effect_path)?;
-    let effect_root = fs::canonicalize(runtime.state.join(EFFECT_DIRECTORY))?;
-    if !effect.starts_with(&effect_root) || !fs::symlink_metadata(&effect)?.file_type().is_file() {
-        return Err("staged peritusd checkpoint names an invalid effect path".into());
-    }
-    let effect_bytes = fs::metadata(&effect)?.len();
-    let effect_sha256 = digest::hex(digest::file(&effect)?);
-    Ok(InjectedCandidate {
-        checkpoint,
-        claim_fence: Some(claim_fence),
-        request_sha256: None,
-        effect_path: Some(effect.to_string_lossy().into_owned()),
-        effect_sha256: Some(effect_sha256),
-        effect_bytes: Some(effect_bytes),
-        artifact_sha256: None,
-        artifact_bytes: None,
-        snapshot: None,
-        lease: None,
-        patch: None,
-        gate: None,
-        promotion: None,
-        killed_exit: killed.status,
-    })
 }
 
 pub(super) fn recover(
     paths: &ControllerPaths,
     runtime: &RuntimePaths,
     injected: &InjectedCandidate,
-    route: CommitRoute,
+    route: ScenarioRoute,
 ) -> Result<RecoveredCandidate, Box<dyn std::error::Error>> {
     match route {
-        CommitRoute::BlobBeforeDurableCommit | CommitRoute::BlobAfterDurableCommitBeforeAck => {
-            return blob::recover(paths, runtime, injected, route);
+        ScenarioRoute::BlobBeforeDurableCommit | ScenarioRoute::BlobAfterDurableCommitBeforeAck => {
+            blob::recover(paths, runtime, injected, route)
         }
-        CommitRoute::JournalBeforeDurableCommit => {
-            return journal_before::recover(paths, runtime, injected);
+        ScenarioRoute::JournalBeforeDurableCommit => {
+            journal_before::recover(paths, runtime, injected)
         }
-        CommitRoute::LeaseBeforeDurableCommit | CommitRoute::LeaseAfterDurableCommitBeforeAck => {
-            return lease::recover(paths, runtime, injected, route);
+        ScenarioRoute::LeaseBeforeDurableCommit
+        | ScenarioRoute::LeaseAfterDurableCommitBeforeAck => {
+            lease::recover(paths, runtime, injected, route)
         }
-        CommitRoute::PatchBeforeDurableCommit | CommitRoute::PatchAfterDurableCommitBeforeAck => {
-            return patch::recover(paths, runtime, injected, route);
+        ScenarioRoute::PatchBeforeDurableCommit
+        | ScenarioRoute::PatchAfterDurableCommitBeforeAck => {
+            patch::recover(paths, runtime, injected, route)
         }
-        CommitRoute::GateBeforeDurableCommit | CommitRoute::GateAfterDurableCommitBeforeAck => {
-            return gate::recover(paths, runtime, injected, route);
+        ScenarioRoute::GateBeforeDurableCommit | ScenarioRoute::GateAfterDurableCommitBeforeAck => {
+            gate::recover(paths, runtime, injected, route)
         }
-        CommitRoute::SnapshotBeforeDurableCommit
-        | CommitRoute::SnapshotAfterDurableCommitBeforeAck => {
-            return snapshot::recover(paths, runtime, injected, route);
+        ScenarioRoute::SnapshotBeforeDurableCommit
+        | ScenarioRoute::SnapshotAfterDurableCommitBeforeAck => {
+            snapshot::recover(paths, runtime, injected, route)
         }
-        CommitRoute::PromotionBeforeDurableCommit
-        | CommitRoute::PromotionAfterDurableCommitBeforeAck => {
-            return promotion::recover(paths, runtime, injected, route);
+        ScenarioRoute::PromotionBeforeDurableCommit
+        | ScenarioRoute::PromotionAfterDurableCommitBeforeAck => {
+            promotion::recover(paths, runtime, injected, route)
         }
-        CommitRoute::JournalAfterDurableCommitBeforeAck => {}
+        ScenarioRoute::ProjectionCorruption => projection::recover(paths, runtime, injected),
+        ScenarioRoute::JournalAfterDurableCommitBeforeAck => {
+            journal_after::recover(paths, runtime, injected)
+        }
     }
-    let started = Instant::now();
-    let output = bounded_command(
-        &paths.candidate,
-        [OsStr::new("qualify-outbox-recover"), OsStr::new("--config"), runtime.config.as_os_str()],
-        &runtime.root,
-        &runtime.root.join("recover.stdout"),
-        &runtime.root.join("recover.stderr"),
-    )?;
-    if !output.status.success() || !output.stderr.is_empty() {
-        return Err(format!(
-            "staged peritusd recovery failed with {}: {}",
-            output.status,
-            String::from_utf8_lossy(&output.stderr)
-        )
-        .into());
-    }
-    let observation = one_line(&output.stdout, "outbox crash recovery")?;
-    let recovered = parse_recovery(&observation)?;
-    if !recovered.destination_reconciled
-        || recovered.external_effects != 1
-        || recovered.duplicate_effects != 0
-        || !recovered.exact_fence_acknowledged
-        || recovered.pending_claims != 0
-    {
-        return Err("staged peritusd did not reconcile and settle the exact outbox effect".into());
-    }
-    let injected_effect = injected
-        .effect_path
-        .as_deref()
-        .ok_or("journal after-commit checkpoint omitted its effect path")?;
-    let effect = fs::canonicalize(injected_effect)?;
-    let effect_sha256 = digest::hex(digest::file(&effect)?);
-    let effect_bytes = fs::metadata(&effect)?.len();
-    if Some(&effect_sha256) != injected.effect_sha256.as_ref()
-        || Some(effect_bytes) != injected.effect_bytes
-    {
-        return Err("recovery changed or replaced the identity-bearing outbox effect".into());
-    }
-    let effect_entries =
-        fs::read_dir(runtime.state.join(EFFECT_DIRECTORY))?.collect::<Result<Vec<_>, _>>()?;
-    if effect_entries.len() != 1
-        || !effect_entries[0].file_type()?.is_file()
-        || fs::canonicalize(effect_entries[0].path())? != effect
-    {
-        return Err("recovery left a duplicate or non-file outbox effect".into());
-    }
-    let journal = runtime.state.join("peritus.sqlite3");
-    let journal_metadata = fs::symlink_metadata(&journal)?;
-    if !journal_metadata.file_type().is_file() || journal_metadata.len() == 0 {
-        return Err("recovered daemon journal is missing or empty".into());
-    }
-    Ok(RecoveredCandidate {
-        observation,
-        destination_reconciled: recovered.destination_reconciled,
-        external_effects: recovered.external_effects,
-        duplicate_effects: recovered.duplicate_effects,
-        exact_fence_acknowledged: recovered.exact_fence_acknowledged,
-        pending_claims: recovered.pending_claims,
-        committed_events: None,
-        aggregate_heads: None,
-        journal_sha256: digest::hex(digest::file(&journal)?),
-        journal_bytes: journal_metadata.len(),
-        effect_sha256: Some(effect_sha256),
-        effect_bytes: Some(effect_bytes),
-        artifact_sha256: None,
-        artifact_bytes: None,
-        snapshot: None,
-        lease: None,
-        patch: None,
-        gate: None,
-        promotion: None,
-        elapsed_millis: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
-    })
 }
 
 pub(super) fn cleanup(runtime: &RuntimePaths) -> Result<(), Box<dyn std::error::Error>> {
@@ -273,64 +168,4 @@ pub(super) fn cleanup(runtime: &RuntimePaths) -> Result<(), Box<dyn std::error::
         return Err("H1 controller runtime remained after cleanup".into());
     }
     Ok(())
-}
-
-fn parse_checkpoint(line: &str) -> Result<(&str, u64), Box<dyn std::error::Error>> {
-    let value = line
-        .strip_prefix("peritus-qualification outbox-stage effect_path=")
-        .ok_or("staged peritusd returned an unknown crash checkpoint")?;
-    let (path, fence) = value
-        .rsplit_once(" claim_fence=")
-        .ok_or("staged peritusd omitted the crash checkpoint fence")?;
-    let fence = fence.parse::<u64>()?;
-    if path.is_empty() || fence == 0 {
-        return Err("staged peritusd returned an invalid crash checkpoint".into());
-    }
-    Ok((path, fence))
-}
-
-struct ParsedRecovery {
-    destination_reconciled: bool,
-    external_effects: u64,
-    duplicate_effects: u64,
-    exact_fence_acknowledged: bool,
-    pending_claims: u64,
-}
-
-fn parse_recovery(line: &str) -> Result<ParsedRecovery, Box<dyn std::error::Error>> {
-    let fields = line
-        .strip_prefix("peritus-qualification outbox-recover ")
-        .ok_or("staged peritusd returned an unknown recovery observation")?
-        .split_whitespace()
-        .collect::<Vec<_>>();
-    if fields.len() != 5 {
-        return Err("staged peritusd recovery observation has the wrong field count".into());
-    }
-    Ok(ParsedRecovery {
-        destination_reconciled: boolean_field(fields[0], "destination_reconciled")?,
-        external_effects: number_field(fields[1], "external_effects")?,
-        duplicate_effects: number_field(fields[2], "duplicate_effects")?,
-        exact_fence_acknowledged: boolean_field(fields[3], "exact_fence_acknowledged")?,
-        pending_claims: number_field(fields[4], "pending_claims")?,
-    })
-}
-
-fn boolean_field(field: &str, name: &str) -> Result<bool, Box<dyn std::error::Error>> {
-    match value_field(field, name)? {
-        "true" => Ok(true),
-        "false" => Ok(false),
-        _ => Err(format!("staged peritusd field {name} is not boolean").into()),
-    }
-}
-
-fn number_field(field: &str, name: &str) -> Result<u64, Box<dyn std::error::Error>> {
-    value_field(field, name)?.parse::<u64>().map_err(Into::into)
-}
-
-fn value_field<'a>(field: &'a str, name: &str) -> Result<&'a str, Box<dyn std::error::Error>> {
-    let (observed, value) = field.split_once('=').ok_or("malformed staged peritusd field")?;
-    if observed != name {
-        return Err(format!("expected staged peritusd field {name}, found {observed}").into());
-    }
-    Ok(value)
 }

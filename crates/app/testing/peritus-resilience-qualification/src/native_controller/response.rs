@@ -5,7 +5,7 @@ use std::io::Write as _;
 use serde::Serialize;
 
 use super::evidence::EvidenceDocument;
-use super::request::{BoundRequest, CommitRoute, Stage};
+use super::request::{BoundRequest, ScenarioRoute, Stage};
 
 #[derive(Serialize)]
 struct ResponseDocument<'a, T> {
@@ -125,77 +125,82 @@ pub(super) fn publish<T: Serialize>(
     Ok(())
 }
 
-pub(super) fn canonical_milestones(route: CommitRoute) -> Vec<MilestoneDocument> {
+pub(super) fn canonical_milestones(route: ScenarioRoute) -> Vec<MilestoneDocument> {
     let (armed, observed, reconciled) = match route {
-        CommitRoute::BlobBeforeDurableCommit => (
+        ScenarioRoute::BlobBeforeDurableCommit => (
             "exact bytes held by the production artifact writer before finalization",
             "candidate killed before artifact publication",
             "artifact recovery removed the abandoned temporary bytes",
         ),
-        CommitRoute::BlobAfterDurableCommitBeforeAck => (
+        ScenarioRoute::BlobAfterDurableCommitBeforeAck => (
             "object, metadata, and owner reference durably published",
             "candidate killed before acknowledging artifact publication",
             "exact artifact bytes and owner reference recovered",
         ),
-        CommitRoute::JournalBeforeDurableCommit => (
+        ScenarioRoute::JournalBeforeDurableCommit => (
             "production journal append plan prepared in process memory",
             "candidate killed before submitting the append plan",
             "reopened journal has no committed event or external effect",
         ),
-        CommitRoute::JournalAfterDurableCommitBeforeAck => (
+        ScenarioRoute::JournalAfterDurableCommitBeforeAck => (
             "durable outbox effect-before-ack fault armed",
             "candidate killed after its durable checkpoint",
             "exact effect reconciled before fence acknowledgement",
         ),
-        CommitRoute::LeaseBeforeDurableCommit => (
+        ScenarioRoute::LeaseBeforeDurableCommit => (
             "move-only lease commit request prepared in process memory",
             "candidate killed before submitting the lease transition",
             "reopened journal has no lease event, head, or durable projection",
         ),
-        CommitRoute::LeaseAfterDurableCommitBeforeAck => (
+        ScenarioRoute::LeaseAfterDurableCommitBeforeAck => (
             "lease transition and projection durably committed together",
             "candidate killed before acknowledging the committed lease receipt",
             "exact lease event, head, revision, digest, and producer reopened",
         ),
-        CommitRoute::GateBeforeDurableCommit => (
+        ScenarioRoute::GateBeforeDurableCommit => (
             "production D1 start transition accepted in process memory",
             "candidate killed before submitting the gate transition",
             "gate journal and complete checkpoint remained absent",
         ),
-        CommitRoute::GateAfterDurableCommitBeforeAck => (
+        ScenarioRoute::GateAfterDurableCommitBeforeAck => (
             "gate event and complete D1 checkpoint committed atomically",
             "candidate killed before acknowledging the gate commit receipt",
             "exact gate plan, successor state, event, and checkpoint reopened",
         ),
-        CommitRoute::PatchBeforeDurableCommit => (
+        ScenarioRoute::PatchBeforeDurableCommit => (
             "workspace-bound production patch plan prepared in process memory",
             "candidate killed before creating transaction state or changing the target",
             "workspace reopened without the target or pending transaction metadata",
         ),
-        CommitRoute::PatchAfterDurableCommitBeforeAck => (
+        ScenarioRoute::PatchAfterDurableCommitBeforeAck => (
             "production patch postimage and transaction receipt durably completed",
             "candidate killed before acknowledging the applied patch receipt",
             "exact target bytes reopened with no pending transaction metadata",
         ),
-        CommitRoute::SnapshotBeforeDurableCommit => (
+        ScenarioRoute::SnapshotBeforeDurableCommit => (
             "production candidate tree prepared before snapshot publication",
             "candidate killed before creating the snapshot commit and retained ref",
             "repository reopened with no retained snapshot reference",
         ),
-        CommitRoute::SnapshotAfterDurableCommitBeforeAck => (
+        ScenarioRoute::SnapshotAfterDurableCommitBeforeAck => (
             "synthetic snapshot commit and retained ref durably published",
             "candidate killed before acknowledging snapshot publication",
             "exact snapshot manifest, commit, tree, and retained ref reopened",
         ),
-        CommitRoute::PromotionBeforeDurableCommit => (
+        ScenarioRoute::PromotionBeforeDurableCommit => (
             "production promotion transitions accepted with approve-once authority",
             "candidate killed before submitting the atomic activation",
             "campaign, production pointer, and approval remained at their predecessors",
         ),
-        CommitRoute::PromotionAfterDurableCommitBeforeAck => (
+        ScenarioRoute::PromotionAfterDurableCommitBeforeAck => (
             "campaign, pointer, checkpoints, and approval consumption committed atomically",
             "candidate killed before acknowledging the promotion receipt",
             "exact promoted campaign, active pointer, and consumed approval reopened",
+        ),
+        ScenarioRoute::ProjectionCorruption => (
+            "active journal projection generation installed and checksum-verified",
+            "active projection payload bytes replaced without changing their recorded digest",
+            "startup replay installed and verified a new atomic shadow generation",
         ),
     };
     vec![

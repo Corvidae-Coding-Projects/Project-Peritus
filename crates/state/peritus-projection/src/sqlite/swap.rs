@@ -151,22 +151,35 @@ fn existing_is_same_binding<S>(
     generation: u64,
     candidate: &RebuildCandidate<S>,
 ) -> Result<bool, ProjectionError> {
-    let stored: (i64, Vec<u8>, Vec<u8>, Vec<u8>, Vec<u8>) = transaction
+    let stored = transaction
         .query_row(
-            "SELECT last_position, journal_head_digest, schema_digest, payload_digest, invariant_digest FROM peritus_projection_generations WHERE projection_name = ?1 AND projection_version = ?2 AND generation = ?3",
+            "SELECT last_position, journal_head_digest, schema_digest, payload_digest, invariant_digest, payload FROM peritus_projection_generations WHERE projection_name = ?1 AND projection_version = ?2 AND generation = ?3",
             params![name, version, u64_to_i64(generation, "generation")?],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
+            |row| {
+                Ok(StoredGeneration {
+                    last_position: row.get(0)?,
+                    journal_head: row.get(1)?,
+                    schema_digest: row.get(2)?,
+                    payload_digest: row.get(3)?,
+                    invariant_digest: row.get(4)?,
+                    payload: row.get(5)?,
+                })
+            },
         )
         .map_err(|error| ProjectionError::sqlite("compare active projection", error))?;
     let checkpoint = candidate.checkpoint();
-    let same_binding = stored.0 == u64_to_i64(checkpoint.last_position(), "last position")?
-        && stored.1.as_slice() == checkpoint.journal_head_digest().as_bytes()
-        && stored.2.as_slice() == checkpoint.schema().digest().as_bytes();
+    let same_binding = stored.last_position
+        == u64_to_i64(checkpoint.last_position(), "last position")?
+        && stored.journal_head.as_slice() == checkpoint.journal_head_digest().as_bytes()
+        && stored.schema_digest.as_slice() == checkpoint.schema().digest().as_bytes();
     if !same_binding {
         return Ok(false);
     }
-    if stored.3.as_slice() != checkpoint.payload_digest().as_bytes()
-        || stored.4.as_slice() != candidate.invariant_digest().as_bytes()
+    if sha256(&stored.payload).as_bytes().as_slice() != stored.payload_digest.as_slice() {
+        return Ok(false);
+    }
+    if stored.payload_digest.as_slice() != checkpoint.payload_digest().as_bytes()
+        || stored.invariant_digest.as_slice() != candidate.invariant_digest().as_bytes()
     {
         return Err(ProjectionError::new(
             ProjectionErrorKind::FoldInvariant,
@@ -176,6 +189,15 @@ fn existing_is_same_binding<S>(
         ));
     }
     Ok(true)
+}
+
+struct StoredGeneration {
+    last_position: i64,
+    journal_head: Vec<u8>,
+    schema_digest: Vec<u8>,
+    payload_digest: Vec<u8>,
+    invariant_digest: Vec<u8>,
+    payload: Vec<u8>,
 }
 
 fn insert_generation<S>(

@@ -173,6 +173,12 @@ transaction installs both events, both complete checkpoints, and approval consum
 recovery requires the exact promoted campaign, active pointer generation, authorization digest,
 approval revision, event count, and aggregate heads with no partial state.
 
+The projection-corruption route uses the production startup catalog and SQLite projection store.
+It changes the active payload bytes while preserving their recorded digest, proves startup detects
+the mismatch, and then invokes recovery in a fresh daemon process. Recovery must atomically install
+a second generation with the exact genesis-rebuilt payload and digest, leave the authoritative
+journal unchanged, and prove the repaired projection is reusable on the next startup.
+
 Fresh focused diagnostics retained passing one-case reports and six raw evidence files under
 `/home/doll/.local/state/peritus/qualification/h1/journal-before.YP5d5R` and
 `/home/doll/.local/state/peritus/qualification/h1/journal-after-ack.sCtlT9`. Both reports deliberately
@@ -188,10 +194,12 @@ retained under `/home/doll/.local/state/peritus/qualification/h1/patch-before.Gl
 retained under `/home/doll/.local/state/peritus/qualification/h1/gate-before.p0OBxq` and
 `/home/doll/.local/state/peritus/qualification/h1/gate-after-ack.6ob4pt`. The promotion reports are retained
 under `/home/doll/.local/state/peritus/qualification/h1/promotion-before.7ATDYH` and
-`/home/doll/.local/state/peritus/qualification/h1/promotion-after-ack.7ATDYH`. With those two routes,
-the other 29 catalog routes remain fail-closed until their real component failpoints, controlled
-quota/storage effects, process controls, or disposable-VM reboot driver are connected. Therefore
-the full H1 production qualification is still pending.
+`/home/doll/.local/state/peritus/qualification/h1/promotion-after-ack.7ATDYH`. The passing
+projection-corruption report is retained under
+`/home/doll/.local/state/peritus/qualification/h1/projection-corruption.78KmoW`. With these fifteen
+routes, the other 28 catalog routes remain fail-closed until their real component failpoints,
+controlled quota/storage effects, process controls, or disposable-VM reboot driver are connected.
+Therefore the full H1 production qualification is still pending.
 
 The release integration owner must:
 

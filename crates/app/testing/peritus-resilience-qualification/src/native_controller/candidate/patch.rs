@@ -9,12 +9,12 @@ use crate::digest;
 use super::process::{bounded_command, kill_after_checkpoint, one_line};
 use super::{InjectedCandidate, PatchObservation, RecoveredCandidate, RuntimePaths};
 use crate::native_controller::args::{ControllerPaths, lower_sha256};
-use crate::native_controller::request::CommitRoute;
+use crate::native_controller::request::ScenarioRoute;
 
 pub(super) fn inject(
     paths: &ControllerPaths,
     runtime: &RuntimePaths,
-    route: CommitRoute,
+    route: ScenarioRoute,
 ) -> Result<InjectedCandidate, Box<dyn std::error::Error>> {
     let (command, prefix, count, committed) = route_parameters(route)?;
     let killed = kill_after_checkpoint(
@@ -56,7 +56,8 @@ pub(super) fn inject(
         }),
         gate: None,
         promotion: None,
-        killed_exit: killed.status,
+        projection: None,
+        fault_process_exit: killed.status,
     })
 }
 
@@ -64,7 +65,7 @@ pub(super) fn recover(
     paths: &ControllerPaths,
     runtime: &RuntimePaths,
     injected: &InjectedCandidate,
-    route: CommitRoute,
+    route: ScenarioRoute,
 ) -> Result<RecoveredCandidate, Box<dyn std::error::Error>> {
     let started = Instant::now();
     let (stage_command, stage_prefix, _, committed) = route_parameters(route)?;
@@ -134,6 +135,7 @@ pub(super) fn recover(
         patch: Some(recovered),
         gate: None,
         promotion: None,
+        projection: None,
         elapsed_millis: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
     })
 }
@@ -162,16 +164,16 @@ fn observe_target(
 }
 
 fn route_parameters(
-    route: CommitRoute,
+    route: ScenarioRoute,
 ) -> Result<(&'static str, &'static str, usize, bool), Box<dyn std::error::Error>> {
     match route {
-        CommitRoute::PatchBeforeDurableCommit => Ok((
+        ScenarioRoute::PatchBeforeDurableCommit => Ok((
             "qualify-patch-before-stage",
             "peritus-qualification patch-before-stage ",
             2,
             false,
         )),
-        CommitRoute::PatchAfterDurableCommitBeforeAck => {
+        ScenarioRoute::PatchAfterDurableCommitBeforeAck => {
             Ok(("qualify-patch-after-stage", "peritus-qualification patch-after-stage ", 4, true))
         }
         _ => Err("patch controller received a non-patch route".into()),

@@ -44,6 +44,7 @@ mod lifecycle;
 mod outbox;
 mod product_run;
 mod prompt;
+pub(crate) mod qualification;
 pub(crate) mod session;
 mod shutdown;
 mod startup;

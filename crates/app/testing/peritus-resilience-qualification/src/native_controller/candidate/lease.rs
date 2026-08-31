@@ -9,12 +9,12 @@ use crate::digest;
 use super::process::{bounded_command, kill_after_checkpoint, one_line};
 use super::{InjectedCandidate, LeaseObservation, RecoveredCandidate, RuntimePaths};
 use crate::native_controller::args::{ControllerPaths, lower_sha256};
-use crate::native_controller::request::CommitRoute;
+use crate::native_controller::request::ScenarioRoute;
 
 pub(super) fn inject(
     paths: &ControllerPaths,
     runtime: &RuntimePaths,
-    route: CommitRoute,
+    route: ScenarioRoute,
 ) -> Result<InjectedCandidate, Box<dyn std::error::Error>> {
     let (command, prefix, count, committed) = route_parameters(route)?;
     let killed = kill_after_checkpoint(
@@ -57,7 +57,8 @@ pub(super) fn inject(
         patch: None,
         gate: None,
         promotion: None,
-        killed_exit: killed.status,
+        projection: None,
+        fault_process_exit: killed.status,
     })
 }
 
@@ -65,7 +66,7 @@ pub(super) fn recover(
     paths: &ControllerPaths,
     runtime: &RuntimePaths,
     injected: &InjectedCandidate,
-    route: CommitRoute,
+    route: ScenarioRoute,
 ) -> Result<RecoveredCandidate, Box<dyn std::error::Error>> {
     let started = Instant::now();
     let (command, prefix, _, committed) = route_parameters(route)?;
@@ -131,21 +132,22 @@ pub(super) fn recover(
         patch: None,
         gate: None,
         promotion: None,
+        projection: None,
         elapsed_millis: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
     })
 }
 
 fn route_parameters(
-    route: CommitRoute,
+    route: ScenarioRoute,
 ) -> Result<(&'static str, &'static str, usize, bool), Box<dyn std::error::Error>> {
     match route {
-        CommitRoute::LeaseBeforeDurableCommit => Ok((
+        ScenarioRoute::LeaseBeforeDurableCommit => Ok((
             "qualify-lease-before-stage",
             "peritus-qualification lease-before-stage ",
             1,
             false,
         )),
-        CommitRoute::LeaseAfterDurableCommitBeforeAck => {
+        ScenarioRoute::LeaseAfterDurableCommitBeforeAck => {
             Ok(("qualify-lease-after-stage", "peritus-qualification lease-after-stage ", 5, true))
         }
         _ => Err("lease controller received a non-lease route".into()),

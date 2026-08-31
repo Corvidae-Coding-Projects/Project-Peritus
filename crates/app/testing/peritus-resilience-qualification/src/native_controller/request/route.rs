@@ -16,9 +16,10 @@ pub(super) const SNAPSHOT_BEFORE: &str = "h1.crash.snapshot.before";
 pub(super) const SNAPSHOT_AFTER_BEFORE_ACK: &str = "h1.crash.snapshot.after-before-ack";
 pub(super) const PROMOTION_BEFORE: &str = "h1.crash.promotion.before";
 pub(super) const PROMOTION_AFTER_BEFORE_ACK: &str = "h1.crash.promotion.after-before-ack";
+pub(super) const PROJECTION_CORRUPTION: &str = "h1.corruption.projection";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(in crate::native_controller) enum CommitRoute {
+pub(in crate::native_controller) enum ScenarioRoute {
     BlobBeforeDurableCommit,
     BlobAfterDurableCommitBeforeAck,
     JournalBeforeDurableCommit,
@@ -33,9 +34,10 @@ pub(in crate::native_controller) enum CommitRoute {
     SnapshotAfterDurableCommitBeforeAck,
     PromotionBeforeDurableCommit,
     PromotionAfterDurableCommitBeforeAck,
+    ProjectionCorruption,
 }
 
-impl CommitRoute {
+impl ScenarioRoute {
     pub(super) fn from_scenario(scenario: &ScenarioDocument) -> Option<Self> {
         match (&*scenario.id, &*scenario.expected_recovery, &scenario.fault) {
             (
@@ -142,11 +144,16 @@ impl CommitRoute {
             ) if boundary == "promotion" && timing == "after-durable-commit-before-ack" => {
                 Some(Self::PromotionAfterDurableCommitBeforeAck)
             }
+            (PROJECTION_CORRUPTION, "rebuilt-projection", FaultDocument::Corruption { target })
+                if target == "projection" =>
+            {
+                Some(Self::ProjectionCorruption)
+            }
             _ => None,
         }
     }
 
-    /// Returns the recovery outcome required for this side of the commit.
+    /// Returns the recovery outcome required for this route.
     pub(in crate::native_controller) const fn outcome(self) -> &'static str {
         match self {
             Self::BlobBeforeDurableCommit
@@ -163,6 +170,7 @@ impl CommitRoute {
             | Self::PatchAfterDurableCommitBeforeAck
             | Self::SnapshotAfterDurableCommitBeforeAck
             | Self::PromotionAfterDurableCommitBeforeAck => "replayed-committed",
+            Self::ProjectionCorruption => "rebuilt-projection",
         }
     }
 
@@ -181,8 +189,27 @@ impl CommitRoute {
             | Self::SnapshotBeforeDurableCommit
             | Self::SnapshotAfterDurableCommitBeforeAck
             | Self::PromotionBeforeDurableCommit
-            | Self::PromotionAfterDurableCommitBeforeAck => "verified",
+            | Self::PromotionAfterDurableCommitBeforeAck
+            | Self::ProjectionCorruption => "verified",
             Self::JournalAfterDurableCommitBeforeAck => "recovered-and-verified",
         }
+    }
+
+    pub(in crate::native_controller) const fn projection_health(self) -> &'static str {
+        match self {
+            Self::ProjectionCorruption => "rebuilt-and-verified",
+            _ => "verified",
+        }
+    }
+
+    pub(in crate::native_controller) const fn corruption_target(self) -> Option<&'static str> {
+        match self {
+            Self::ProjectionCorruption => Some("projection"),
+            _ => None,
+        }
+    }
+
+    pub(in crate::native_controller) const fn mutation_admitted(self) -> bool {
+        !matches!(self, Self::ProjectionCorruption)
     }
 }

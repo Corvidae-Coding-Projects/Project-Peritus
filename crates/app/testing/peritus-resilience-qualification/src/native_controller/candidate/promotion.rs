@@ -11,7 +11,7 @@ use super::{
     InjectedCandidate, PromotionCheckpoint, PromotionObservation, RecoveredCandidate, RuntimePaths,
 };
 use crate::native_controller::args::{ControllerPaths, lower_sha256};
-use crate::native_controller::request::CommitRoute;
+use crate::native_controller::request::ScenarioRoute;
 
 const PREPARED_EVENTS: u64 = 14;
 const COMMITTED_EVENTS: u64 = 16;
@@ -20,7 +20,7 @@ const AGGREGATE_HEADS: u64 = 4;
 pub(super) fn inject(
     paths: &ControllerPaths,
     runtime: &RuntimePaths,
-    route: CommitRoute,
+    route: ScenarioRoute,
 ) -> Result<InjectedCandidate, Box<dyn std::error::Error>> {
     let (command, prefix, count, committed) = route_parameters(route)?;
     let killed = kill_after_checkpoint(
@@ -66,7 +66,8 @@ pub(super) fn inject(
         patch: None,
         gate: None,
         promotion: Some(checkpoint),
-        killed_exit: killed.status,
+        projection: None,
+        fault_process_exit: killed.status,
     })
 }
 
@@ -74,7 +75,7 @@ pub(super) fn recover(
     paths: &ControllerPaths,
     runtime: &RuntimePaths,
     injected: &InjectedCandidate,
-    route: CommitRoute,
+    route: ScenarioRoute,
 ) -> Result<RecoveredCandidate, Box<dyn std::error::Error>> {
     let started = Instant::now();
     let (stage_command, stage_prefix, _, committed) = route_parameters(route)?;
@@ -134,6 +135,7 @@ pub(super) fn recover(
         patch: None,
         gate: None,
         promotion: Some(recovered),
+        projection: None,
         elapsed_millis: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
     })
 }
@@ -174,16 +176,16 @@ fn verify_recovery(
 }
 
 fn route_parameters(
-    route: CommitRoute,
+    route: ScenarioRoute,
 ) -> Result<(&'static str, &'static str, usize, bool), Box<dyn std::error::Error>> {
     match route {
-        CommitRoute::PromotionBeforeDurableCommit => Ok((
+        ScenarioRoute::PromotionBeforeDurableCommit => Ok((
             "qualify-promotion-before-stage",
             "peritus-qualification promotion-before-stage ",
             6,
             false,
         )),
-        CommitRoute::PromotionAfterDurableCommitBeforeAck => Ok((
+        ScenarioRoute::PromotionAfterDurableCommitBeforeAck => Ok((
             "qualify-promotion-after-stage",
             "peritus-qualification promotion-after-stage ",
             10,

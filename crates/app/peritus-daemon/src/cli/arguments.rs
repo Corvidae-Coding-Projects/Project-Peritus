@@ -32,6 +32,8 @@ pub(super) enum CommandLine {
     RecoverPromotionBeforeCrash(OsString),
     StagePromotionAfterCrash(OsString),
     RecoverPromotionAfterCrash(OsString),
+    StageProjectionCorruption(OsString),
+    RecoverProjectionCorruption(OsString),
     StageOutboxCrash(OsString),
     RecoverOutboxCrash(OsString),
 }
@@ -91,6 +93,12 @@ pub(super) fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<Co
         }
         "qualify-promotion-after-recover" => {
             configured(arguments, CommandLine::RecoverPromotionAfterCrash)
+        }
+        "qualify-projection-corruption-stage" => {
+            configured(arguments, CommandLine::StageProjectionCorruption)
+        }
+        "qualify-projection-corruption-recover" => {
+            configured(arguments, CommandLine::RecoverProjectionCorruption)
         }
         "qualify-outbox-stage" => configured(arguments, CommandLine::StageOutboxCrash),
         "qualify-outbox-recover" => configured(arguments, CommandLine::RecoverOutboxCrash),

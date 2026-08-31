@@ -4,6 +4,7 @@ mod arguments;
 mod gate;
 mod lease;
 mod patch;
+mod projection;
 mod promotion;
 mod snapshot;
 mod usage;
@@ -80,6 +81,10 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
         }
         CommandLine::RecoverPromotionAfterCrash(configuration) => {
             promotion::recover(configuration, true)
+        }
+        CommandLine::StageProjectionCorruption(configuration) => projection::stage(configuration),
+        CommandLine::RecoverProjectionCorruption(configuration) => {
+            projection::recover(configuration)
         }
         CommandLine::StageOutboxCrash(configuration) => stage_outbox(configuration),
         CommandLine::RecoverOutboxCrash(configuration) => recover_outbox(configuration),

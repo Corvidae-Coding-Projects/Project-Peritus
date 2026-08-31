@@ -17,7 +17,8 @@ pub(in crate::native_controller) struct InjectedCandidate {
     pub(in crate::native_controller) patch: Option<PatchObservation>,
     pub(in crate::native_controller) gate: Option<GateObservation>,
     pub(in crate::native_controller) promotion: Option<PromotionCheckpoint>,
-    pub(in crate::native_controller) killed_exit: String,
+    pub(in crate::native_controller) projection: Option<ProjectionCorruptionCheckpoint>,
+    pub(in crate::native_controller) fault_process_exit: String,
 }
 
 #[derive(Serialize)]
@@ -41,6 +42,7 @@ pub(in crate::native_controller) struct RecoveredCandidate {
     pub(in crate::native_controller) patch: Option<PatchObservation>,
     pub(in crate::native_controller) gate: Option<GateObservation>,
     pub(in crate::native_controller) promotion: Option<PromotionObservation>,
+    pub(in crate::native_controller) projection: Option<ProjectionRepairObservation>,
     pub(in crate::native_controller) elapsed_millis: u64,
 }
 
@@ -102,4 +104,29 @@ pub(in crate::native_controller) struct PromotionObservation {
     pub(in crate::native_controller) committed_events: u64,
     pub(in crate::native_controller) aggregate_heads: u64,
     pub(in crate::native_controller) committed: bool,
+}
+
+#[derive(Serialize)]
+pub(in crate::native_controller) struct ProjectionCorruptionCheckpoint {
+    pub(in crate::native_controller) name: String,
+    pub(in crate::native_controller) generation: u64,
+    pub(in crate::native_controller) original_payload_sha256: String,
+    pub(in crate::native_controller) corrupt_payload_sha256: String,
+    pub(in crate::native_controller) payload_bytes: u64,
+    pub(in crate::native_controller) corrupted: bool,
+}
+
+#[derive(Serialize)]
+pub(in crate::native_controller) struct ProjectionRepairObservation {
+    pub(in crate::native_controller) name: String,
+    pub(in crate::native_controller) previous_generation: u64,
+    pub(in crate::native_controller) repaired_generation: u64,
+    pub(in crate::native_controller) corrupt_payload_sha256: String,
+    pub(in crate::native_controller) repaired_payload_sha256: String,
+    pub(in crate::native_controller) payload_bytes: u64,
+    pub(in crate::native_controller) generation_count: u64,
+    pub(in crate::native_controller) event_count: u64,
+    pub(in crate::native_controller) aggregate_heads: u64,
+    pub(in crate::native_controller) payload_valid: bool,
+    pub(in crate::native_controller) reusable: bool,
 }

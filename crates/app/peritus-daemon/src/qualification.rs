@@ -1,0 +1,9 @@
+//! Production qualification seams shared by component-specific fault routes.
+
+pub mod journal;
+pub mod projection;
+
+pub use journal::{
+    acquire_instance, journal_error, open_journal, verify_empty_journal,
+    verify_empty_journal_for_store,
+};

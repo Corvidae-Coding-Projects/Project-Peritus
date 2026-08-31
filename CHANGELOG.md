@@ -13,13 +13,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
-- Add the checked-in Rust `peritus-h1-controller` and an explicit focused diagnostic mode. Its fourteen
-  genuine routes cover both sides of journal submission, content-addressed blob publication,
+- Add the checked-in Rust `peritus-h1-controller` and an explicit focused diagnostic mode. Its
+  fifteen genuine routes cover both sides of journal submission, content-addressed blob publication,
   retained Git snapshot publication, exclusive-lease persistence, and recoverable patch
   application, plus D1's atomic gate event/checkpoint commit and F0's campaign/pointer/approval
-  promotion commit. The exact staged `peritusd` is killed before and after each corresponding
-  durable commit. Recovery verifies the expected rollback or exact replay, retains all six
-  evidence classes, and cleans its private state.
+  promotion commit. They also cover active projection corruption and fresh-generation repair. The
+  exact staged `peritusd` is killed before and after each corresponding durable commit. Recovery
+  verifies the expected rollback or exact replay, retains all six evidence classes, and cleans its
+  private state.
   Unimplemented H1 routes fail closed instead of borrowing the shell fixture or manufacturing a
   result (#31)
 - Add the executable `peritus-h1` qualification operator: bind the declared subject to the exact
@@ -161,6 +162,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   artifact policy (#31).
 
 ### Fixed
+- Make projection shadow installation verify the stored payload bytes before reusing an identical
+  generation, so startup repair replaces a corrupt active projection instead of reactivating it
+  (#31)
 - Validate an F0 checkpoint's producer against the exact final event from its shared C0 command
   instead of requiring the producer to be the same aggregate's last event. This preserves strict
   replay checks while allowing genuine multi-aggregate campaign/pointer promotion transactions to

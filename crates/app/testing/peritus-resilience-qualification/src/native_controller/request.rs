@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest as _, Sha256};
 
 use super::args::{ControllerPaths, lower_sha256};
-pub(super) use route::CommitRoute;
+pub(super) use route::ScenarioRoute;
 
 const MAX_REQUEST_BYTES: usize = 512 * 1024;
 
@@ -119,7 +119,7 @@ impl BoundRequest {
         }
         if request.scenario.title.is_empty()
             || request.scenario.title.len() > 1_024
-            || CommitRoute::from_scenario(&request.scenario).is_none()
+            || ScenarioRoute::from_scenario(&request.scenario).is_none()
         {
             return Err(
                 "production H1 controller has no genuine effect route for this scenario".into()
@@ -141,8 +141,8 @@ impl BoundRequest {
     }
 
     /// Returns the genuine journal effect route bound by this request.
-    pub(super) fn route(&self) -> Result<CommitRoute, Box<dyn std::error::Error>> {
-        CommitRoute::from_scenario(&self.document.scenario)
+    pub(super) fn route(&self) -> Result<ScenarioRoute, Box<dyn std::error::Error>> {
+        ScenarioRoute::from_scenario(&self.document.scenario)
             .ok_or_else(|| "decoded H1 request lost its validated commit route".into())
     }
 
