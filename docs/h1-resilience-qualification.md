@@ -208,6 +208,13 @@ after one dependency death or retains terminal exhausted non-success after the c
 ceiling. The controller checks the replayed state digest, attempt and event counts, aggregate head,
 empty reservation set, effect digest, and tool receipt bytes.
 
+The blob-finalization disk route uses the production artifact store's durable logical quota rather
+than filling the developer host. Two exact owned writers are admitted against the same available
+capacity. The first finalization consumes the quota; the second publishes its bytes, loses the
+catalog quota race, and exercises the store's real rollback path. Fresh-process recovery requires
+the rejected object and metadata to remain absent, the admitted referenced object to verify, used
+bytes to equal the quota, the temporary namespace to be empty, and the journal to remain healthy.
+
 Fresh focused diagnostics retained passing one-case reports and six raw evidence files under
 `/home/doll/.local/state/peritus/qualification/h1/journal-before.YP5d5R` and
 `/home/doll/.local/state/peritus/qualification/h1/journal-after-ack.sCtlT9`. Both reports deliberately
@@ -241,9 +248,12 @@ digests, in provider/tool/worker death then provider/tool/worker exhaustion orde
 `f73d643e855a25abf785fcfb60e6079287d70c0782d8886a33fa021077d43d4d`,
 `d4a2b6cf84a13d359ab691f28d7147d0b6ea20654130dfc724ab1878a92ead07`,
 `462b2d6bd0582a27b70437dd1eda75c1a1b6ab12a52b551e3927f5edef7c096d`, and
-`ff76987c43362cd7bc6f788cb9c4cf59dd007f2790aad6fe41ca5dfc834e9c25`. With these 24 routes, the
-other 19 catalog routes remain fail-closed until their real controlled quota/storage effects,
-daemon process controls, or disposable-VM reboot driver are connected.
+`ff76987c43362cd7bc6f788cb9c4cf59dd007f2790aad6fe41ca5dfc834e9c25`. The passing
+blob-finalization quota report and six raw evidence files are retained under
+`/home/doll/.local/state/peritus/qualification/h1/blob-finalize-disk.fifreA` with report SHA-256
+`0f114d8b503be7259cae2ff3a8666dec1094d8ad257867a3ebee748b57be1f19`. With these 25 routes, the
+other 18 catalog routes remain fail-closed until their real controlled storage effects, daemon
+process controls, or disposable-VM reboot driver are connected.
 Therefore the full H1 production qualification is still pending.
 
 The release integration owner must:

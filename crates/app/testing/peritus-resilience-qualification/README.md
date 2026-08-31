@@ -23,7 +23,7 @@ The controller remains responsible for real daemon, storage, dependency, quota, 
 effects. The operator refuses a descriptor whose build digest differs from the exact staged
 candidate bytes.
 
-The checked-in `peritus-h1-controller` currently owns 24 genuine routes across the journal,
+The checked-in `peritus-h1-controller` currently owns 25 genuine routes across the journal,
 blob, retained Git snapshot, lease, patch, gate, and promotion commit boundaries, plus active
 projection repair, journal/blob/snapshot corruption controls, and provider/tool/worker dependency
 failure. For
@@ -34,6 +34,13 @@ zero committed events, heads, outbox claims, or external effects. For
 recovery requires exact effect reconciliation and live-fence settlement. Both routes retain six
 independently digested evidence files and prove cleanup. Other catalog routes return an error until
 their real component or disposable-host control exists; they cannot inherit a fixture result.
+
+The artifact-finalization disk route uses the production store's checked logical quota. It opens
+two exact writers while the quota can admit either one, finalizes and references the first, and
+requires the second finalization to be rejected by durable catalog accounting after publication.
+The store removes those losing bytes before returning the typed quota error. A fresh staged daemon
+then verifies the admitted object, exact used-byte count, empty temporary namespace, absent rejected
+metadata, and healthy journal.
 
 It also owns both blob commit routes through the production content-addressed artifact store. The
 before case kills an exact owned writer while its complete bytes are still temporary and requires
@@ -138,6 +145,7 @@ The snapshot diagnostic is `h1.corruption.snapshot`.
 The dependency-death diagnostics are `h1.death.provider`, `h1.death.tool`, and
 `h1.death.worker`. The exhaustion diagnostics are `h1.retry-exhaustion.provider`,
 `h1.retry-exhaustion.tool`, and `h1.retry-exhaustion.worker`.
+The artifact quota diagnostic is `h1.disk-full.blob-finalize`.
 
 ## Focused checks
 

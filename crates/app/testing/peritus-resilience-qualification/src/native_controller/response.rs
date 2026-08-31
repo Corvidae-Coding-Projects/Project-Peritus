@@ -155,21 +155,14 @@ pub(super) fn canonical_milestones(route: ScenarioRoute) -> Vec<MilestoneDocumen
 
 const fn milestone_details(route: ScenarioRoute) -> (&'static str, &'static str, &'static str) {
     match route {
-        ScenarioRoute::BlobBeforeDurableCommit => (
-            "exact bytes held by the production artifact writer before finalization",
-            "candidate killed before artifact publication",
-            "artifact recovery removed the abandoned temporary bytes",
-        ),
-        ScenarioRoute::BlobAfterDurableCommitBeforeAck => (
-            "object, metadata, and owner reference durably published",
-            "candidate killed before acknowledging artifact publication",
-            "exact artifact bytes and owner reference recovered",
-        ),
-        ScenarioRoute::BlobCorruption => (
-            "finalized content-addressed bytes and their evidence reference published",
-            "active object bytes changed without changing their durable identity",
-            "startup quarantined divergent bytes and denied further references",
-        ),
+        ScenarioRoute::BlobBeforeDurableCommit => blob_milestone_details(BlobMilestone::Before),
+        ScenarioRoute::BlobAfterDurableCommitBeforeAck => {
+            blob_milestone_details(BlobMilestone::After)
+        }
+        ScenarioRoute::BlobCorruption => blob_milestone_details(BlobMilestone::Corruption),
+        ScenarioRoute::BlobFinalizeDiskExhaustion => {
+            blob_milestone_details(BlobMilestone::QuotaExhaustion)
+        }
         ScenarioRoute::JournalBeforeDurableCommit => (
             "production journal append plan prepared in process memory",
             "candidate killed before submitting the append plan",
@@ -252,6 +245,41 @@ const fn milestone_details(route: ScenarioRoute) -> (&'static str, &'static str,
         | ScenarioRoute::ToolRetryExhaustion
         | ScenarioRoute::WorkerRetryExhaustion => unreachable!(),
     }
+}
+
+const fn blob_milestone_details(
+    route: BlobMilestone,
+) -> (&'static str, &'static str, &'static str) {
+    match route {
+        BlobMilestone::Before => (
+            "exact bytes held by the production artifact writer before finalization",
+            "candidate killed before artifact publication",
+            "artifact recovery removed the abandoned temporary bytes",
+        ),
+        BlobMilestone::After => (
+            "object, metadata, and owner reference durably published",
+            "candidate killed before acknowledging artifact publication",
+            "exact artifact bytes and owner reference recovered",
+        ),
+        BlobMilestone::Corruption => (
+            "finalized content-addressed bytes and their evidence reference published",
+            "active object bytes changed without changing their durable identity",
+            "startup quarantined divergent bytes and denied further references",
+        ),
+        BlobMilestone::QuotaExhaustion => (
+            "two exact writers admitted against one durable artifact quota",
+            "second finalization lost the real catalog quota race",
+            "published target bytes rolled back while the admitted object stayed verified",
+        ),
+    }
+}
+
+#[derive(Clone, Copy)]
+enum BlobMilestone {
+    Before,
+    After,
+    Corruption,
+    QuotaExhaustion,
 }
 
 const fn dependency_milestone_details(

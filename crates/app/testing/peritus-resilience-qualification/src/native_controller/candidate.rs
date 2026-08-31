@@ -4,6 +4,7 @@ mod blob;
 mod blob_corruption;
 mod config;
 mod dependency;
+mod disk;
 mod gate;
 mod journal_after;
 mod journal_before;
@@ -104,6 +105,7 @@ pub(super) fn inject(
             blob::inject(paths, runtime, route)
         }
         ScenarioRoute::BlobCorruption => blob_corruption::inject(paths, runtime),
+        ScenarioRoute::BlobFinalizeDiskExhaustion => disk::inject(paths, runtime),
         ScenarioRoute::JournalBeforeDurableCommit => journal_before::inject(paths, runtime),
         ScenarioRoute::JournalCorruption => journal_corruption::inject(paths, runtime),
         ScenarioRoute::LeaseBeforeDurableCommit
@@ -147,6 +149,7 @@ pub(super) fn recover(
             blob::recover(paths, runtime, injected, route)
         }
         ScenarioRoute::BlobCorruption => blob_corruption::recover(paths, runtime, injected),
+        ScenarioRoute::BlobFinalizeDiskExhaustion => disk::recover(paths, runtime, injected),
         ScenarioRoute::JournalBeforeDurableCommit => {
             journal_before::recover(paths, runtime, injected)
         }

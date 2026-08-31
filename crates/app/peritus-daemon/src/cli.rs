@@ -3,6 +3,7 @@
 mod arguments;
 mod blob_corruption;
 mod dependency;
+mod disk;
 mod gate;
 mod journal_corruption;
 mod lease;
@@ -51,6 +52,12 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
         CommandLine::StageBlobCorruption(configuration) => blob_corruption::stage(configuration),
         CommandLine::RecoverBlobCorruption(configuration) => {
             blob_corruption::recover(configuration)
+        }
+        CommandLine::StageBlobFinalizeExhaustion(configuration) => {
+            disk::stage_blob_finalize_exhaustion(configuration)
+        }
+        CommandLine::RecoverBlobFinalizeExhaustion(configuration) => {
+            disk::recover_blob_finalize_exhaustion(configuration)
         }
         CommandLine::StageJournalBeforeCrash(configuration) => stage_journal_before(configuration),
         CommandLine::RecoverJournalBeforeCrash(configuration) => {

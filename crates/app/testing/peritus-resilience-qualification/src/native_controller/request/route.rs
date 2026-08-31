@@ -5,6 +5,7 @@ use super::{FaultDocument, ScenarioDocument};
 pub(super) const BLOB_BEFORE: &str = "h1.crash.blob.before";
 pub(super) const BLOB_AFTER_BEFORE_ACK: &str = "h1.crash.blob.after-before-ack";
 pub(super) const BLOB_CORRUPTION: &str = "h1.corruption.blob";
+pub(super) const BLOB_FINALIZE_DISK_EXHAUSTION: &str = "h1.disk-full.blob-finalize";
 pub(super) const JOURNAL_BEFORE: &str = "h1.crash.journal.before";
 pub(super) const JOURNAL_AFTER_BEFORE_ACK: &str = "h1.crash.journal.after-before-ack";
 pub(super) const JOURNAL_CORRUPTION: &str = "h1.corruption.journal";
@@ -32,6 +33,7 @@ pub(in crate::native_controller) enum ScenarioRoute {
     BlobBeforeDurableCommit,
     BlobAfterDurableCommitBeforeAck,
     BlobCorruption,
+    BlobFinalizeDiskExhaustion,
     JournalBeforeDurableCommit,
     JournalAfterDurableCommitBeforeAck,
     JournalCorruption,
@@ -188,6 +190,17 @@ impl ScenarioRoute {
             {
                 Some(Self::ProjectionCorruption)
             }
+            _ => Self::from_disk_exhaustion(scenario),
+        }
+    }
+
+    fn from_disk_exhaustion(scenario: &ScenarioDocument) -> Option<Self> {
+        match (&*scenario.id, &*scenario.expected_recovery, &scenario.fault) {
+            (
+                BLOB_FINALIZE_DISK_EXHAUSTION,
+                "discarded-unreferenced",
+                FaultDocument::DiskExhaustion { scope },
+            ) if scope == "blob-finalize" => Some(Self::BlobFinalizeDiskExhaustion),
             _ => Self::from_dependency(scenario),
         }
     }
@@ -247,6 +260,7 @@ impl ScenarioRoute {
             | Self::PromotionAfterDurableCommitBeforeAck => "replayed-committed",
             Self::ProjectionCorruption => "rebuilt-projection",
             Self::BlobCorruption | Self::SnapshotCorruption => "quarantined-corruption",
+            Self::BlobFinalizeDiskExhaustion => "discarded-unreferenced",
             Self::JournalCorruption => "failed-closed",
             Self::ProviderDeath | Self::ToolDeath | Self::WorkerDeath => "reconciled-owned-work",
             Self::ProviderRetryExhaustion
@@ -274,6 +288,7 @@ impl ScenarioRoute {
             | Self::PromotionAfterDurableCommitBeforeAck
             | Self::ProjectionCorruption
             | Self::BlobCorruption
+            | Self::BlobFinalizeDiskExhaustion
             | Self::SnapshotCorruption
             | Self::ProviderDeath
             | Self::ToolDeath

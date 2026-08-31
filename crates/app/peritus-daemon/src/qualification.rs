@@ -2,6 +2,7 @@
 
 pub mod blob_corruption;
 pub mod dependency;
+pub mod disk;
 pub mod journal;
 pub mod journal_corruption;
 pub mod projection;
