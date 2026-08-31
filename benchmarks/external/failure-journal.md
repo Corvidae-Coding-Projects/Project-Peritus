@@ -3999,3 +3999,39 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   commit changes the progress fingerprint. All 113 product-runner tests, strict all-target and
   all-feature Clippy with warnings denied, formatting, diff hygiene, the 137-file documentation
   check, and the complete repository policy gate pass.
+
+## TBF-035: one oversized recent tool result could exceed context before becoming compactable
+
+- Suite and task: Terminal-Bench 2.0 frozen baseline, corrected-adapter trial
+  `regex-chess__EDMxAJV`.
+- Symptom: the writer generated and inspected a 1.2 MiB JSON artifact, then native Peritus stopped
+  after seven requests with provider failure `estimated input tokens 217093 exceed provider limit
+  200000 after deterministic compaction`. The retained developer trace was 1,604,487 bytes. The
+  unchanged verifier awarded reward 0: its size check passed, but three functional tests failed.
+- Cause: deterministic compaction protected the newest eight messages and only replaced older
+  complete tool exchanges. The writer's last file read returned a very large single-line JSON value;
+  that complete call/result exchange was still inside the protected recent window, so no eligible
+  old exchange could make the next request fit. The session ended before the writer could respond to
+  its own verification evidence. Independently, the generated artifact still had functional defects,
+  so the context failure is not presented as the sole cause of the external score.
+- Resolution: adopt the layered history control used by mature coding harnesses. Record the exact
+  tool observation first, then derive its model-visible budget from one eighth of the active
+  provider input window, clamped between 512 and 10,000 estimated tokens. An
+  oversized result becomes a deterministic head/tail record with its original byte count, token
+  estimate, SHA-256, and guidance to make a narrower tool request; the full value remains in the
+  durable trace. Retain the normal recent-message window while requests fit. If old-exchange
+  compaction still leaves a request above the provider's actual input limit, perform a second
+  deterministic pass that may replace a complete recent tool exchange. The compaction replacement
+  likewise retains bounded previews and exact SHA-256 lineage.
+- Integrity decision: retain the frozen trial's reward 0 and native failure. The correction does not
+  inspect chess, JSON, a task name, an expected artifact, or verifier behavior; it applies to any
+  oversized recent command, file, search, compiler, test, or diagnostic result. The unchanged task
+  remains eligible for the final-candidate campaign after the general correction is frozen.
+- Verification: one regression gives a 32,768-token provider a 120,014-byte exact tool observation
+  and proves that the trace retains all of it while model history receives a digest-bound value no
+  larger than 12,288 bytes. A separate regression supplies a 120,000-byte tool-call argument, which
+  cannot be handled by result truncation, and proves emergency compaction of that complete recent
+  exchange before the next provider request. Accumulated old-exchange compaction and prompt caching
+  remain covered independently. All 36 `peritus-agent` tests, strict all-target and all-feature
+  Clippy with warnings denied, formatting, diff hygiene, the 137-file documentation check, and the
+  complete repository policy gate pass across 79 packages and 3,364 source files.

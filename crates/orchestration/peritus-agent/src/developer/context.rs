@@ -10,7 +10,7 @@ use peritus_types::Sha256Digest;
 
 use super::{DeveloperContextCompaction, DeveloperLoopError};
 
-const POLICY_REVISION: &[u8] = b"peritus-developer-compaction-v1";
+const POLICY_REVISION: &[u8] = b"peritus-developer-compaction-v2";
 const RETAIN_RECENT_MESSAGES: usize = 8;
 const TOKEN_ESTIMATE_BYTES: u64 = 3;
 const COMPACTION_TRIGGER_PERCENT: u64 = 85;
@@ -18,7 +18,10 @@ const RESULT_PREVIEW_CHARS: usize = 512;
 const TEXT_PREVIEW_CHARS: usize = 256;
 const COMPACTION_OPEN: &str = "<peritus-compaction ";
 
-/// Compacts complete old tool exchanges until the request is comfortably inside its input limit.
+/// Compacts complete tool exchanges until the request fits its input limit.
+///
+/// The normal pass retains recent exchanges. A second pass compacts a recent complete exchange
+/// only when retaining it would make the next provider request impossible.
 pub(super) fn prepare_messages(
     messages: &mut Vec<Message>,
     tools: &[ToolDefinition],
@@ -41,7 +44,13 @@ pub(super) fn prepare_messages(
     let trigger = (budget.usable_input().saturating_mul(COMPACTION_TRIGGER_PERCENT) / 100).max(1);
     let mut records = Vec::new();
     while estimated_request_tokens(messages, tools) > trigger {
-        let Some(record) = compact_once(messages, limits)? else {
+        let Some(record) = compact_once(messages, limits, RETAIN_RECENT_MESSAGES)? else {
+            break;
+        };
+        records.push(record);
+    }
+    while estimated_request_tokens(messages, tools) > budget.usable_input() {
+        let Some(record) = compact_once(messages, limits, 0)? else {
             break;
         };
         records.push(record);
@@ -59,8 +68,9 @@ pub(super) fn prepare_messages(
 fn compact_once(
     messages: &mut Vec<Message>,
     limits: ProtocolLimits,
+    retain_recent_messages: usize,
 ) -> Result<Option<DeveloperContextCompaction>, DeveloperLoopError> {
-    let cutoff = messages.len().saturating_sub(RETAIN_RECENT_MESSAGES);
+    let cutoff = messages.len().saturating_sub(retain_recent_messages);
     if cutoff <= 2 {
         return Ok(None);
     }

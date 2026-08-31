@@ -107,6 +107,29 @@ pub fn tool_response() -> VecDeque<EventEnvelope> {
     ])
 }
 
+pub fn oversized_tool_argument_response() -> VecDeque<EventEnvelope> {
+    let limits = ProtocolLimits::PRODUCTION;
+    let item = ItemId::new("oversized-tool-item".to_owned()).expect("item");
+    let call = ToolCallId::new("oversized-read-call".to_owned()).expect("call");
+    let arguments = format!(r#"{{"path":"{}"}}"#, "x".repeat(120_000));
+    response([
+        ModelEvent::ResponseStarted { response_id: None, model: None },
+        ModelEvent::ItemStarted { item_id: item.clone(), index: 0, kind: ItemKind::ToolCall },
+        ModelEvent::ToolCallStarted {
+            item_id: item.clone(),
+            call_id: call.clone(),
+            name: ToolName::new("workspace_read".to_owned()).expect("tool"),
+        },
+        ModelEvent::ToolArgumentDelta {
+            call_id: call,
+            fragment: StreamFragment::new(arguments.into_bytes(), limits).expect("arguments"),
+        },
+        ModelEvent::ItemCompleted(item),
+        ModelEvent::Finish(FinishReason::ToolCalls),
+        ModelEvent::ResponseCompleted,
+    ])
+}
+
 pub fn batch_tool_response() -> VecDeque<EventEnvelope> {
     let limits = ProtocolLimits::PRODUCTION;
     let first_item = ItemId::new("first-tool-item".to_owned()).expect("item");

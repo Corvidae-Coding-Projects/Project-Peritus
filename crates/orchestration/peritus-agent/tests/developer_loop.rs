@@ -156,6 +156,7 @@ impl DeveloperToolExecutor for RecordingTool {
 struct RecordingTrace {
     envelopes: u32,
     observations: u32,
+    observation_bytes: Vec<usize>,
     compactions: u32,
     retries: Vec<peritus_agent::DeveloperRetryRecord>,
 }
@@ -167,7 +168,10 @@ impl DeveloperTrace for RecordingTrace {
     ) -> Result<(), peritus_agent::DeveloperLoopError> {
         match event {
             DeveloperTraceEvent::ProviderEnvelope(_) => self.envelopes += 1,
-            DeveloperTraceEvent::ToolObservation { .. } => self.observations += 1,
+            DeveloperTraceEvent::ToolObservation { observation, .. } => {
+                self.observations += 1;
+                self.observation_bytes.push(observation.output.canonical_bytes().len());
+            }
             DeveloperTraceEvent::ContextCompaction(_) => self.compactions += 1,
             DeveloperTraceEvent::RetryScheduled(record) => self.retries.push(*record),
         }

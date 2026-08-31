@@ -11,6 +11,7 @@ use peritus_provider_core::ModelProvider;
 use crate::{ModelAdvance, ModelSession};
 
 use super::context::prepare_messages;
+use super::observation::model_visible_tool_output;
 use super::retry::DeveloperRetryPlanner;
 use super::{
     DeveloperLoopError, DeveloperLoopOutcome, DeveloperLoopRequest, DeveloperToolExecutor,
@@ -159,11 +160,16 @@ impl DeveloperLoop {
                     call: &call,
                     observation: &observation,
                 })?;
+                let model_output = model_visible_tool_output(
+                    &observation.output,
+                    profile.limits().max_input_tokens(),
+                    protocol_limits,
+                )?;
                 messages.push(Message::new(
                     Role::Tool,
                     vec![ContentBlock::ToolResult(ToolResult::new(
                         call.id().clone(),
-                        observation.output,
+                        model_output,
                         observation.is_error,
                     ))],
                     protocol_limits,

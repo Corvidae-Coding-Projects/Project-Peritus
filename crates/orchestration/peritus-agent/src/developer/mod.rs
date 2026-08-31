@@ -3,6 +3,7 @@
 mod context;
 mod error;
 mod execution;
+mod observation;
 mod retry;
 mod types;
 mod usage;

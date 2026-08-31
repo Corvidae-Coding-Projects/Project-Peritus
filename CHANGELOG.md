@@ -211,6 +211,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Retain exact tool observations in the durable trace while deriving each model-visible budget from
+  one eighth of the active provider input window, clamped between 512 and 10,000 estimated tokens.
+  Preserve deterministic head/tail previews, original size, and SHA-256; keep the normal recent
+  window while requests fit, then compact a complete recent exchange only when the next request
+  would otherwise exceed the provider limit (`TBF-035`, #31).
 - Keep the coding run's original committed HEAD as its comparison base even when the requested
   work legitimately creates commits, merges branches, or switches HEAD. Exact changed-target
   discovery, review diffs, and progress detection now retain committed task effects instead of
