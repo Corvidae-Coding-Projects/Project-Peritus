@@ -5,6 +5,8 @@ mod authority_support;
 mod caller_binding;
 #[path = "authority_support/namespace_safety.rs"]
 mod namespace_safety;
+#[path = "authorized_gateway/snapshot_publication.rs"]
+mod snapshot_publication;
 #[path = "authorized_gateway/tool_binding.rs"]
 mod tool_binding;
 
@@ -195,10 +197,8 @@ fn rollback_stays_dirty_when_manifest_finalization_fails_after_restore() {
         .expect("authorized candidate");
 
     let rollback_ids = ids.for_action_revision(32, RevisionNumber::new(2).expect("revision two"));
-    let rollback_request = RollbackRequest::new(
-        &fixture.initial,
-        SnapshotId::new([85; 16]).expect("rollback successor"),
-    );
+    let rollback_snapshot = SnapshotId::new([85; 16]).expect("rollback successor");
+    let rollback_request = RollbackRequest::new(&fixture.initial, rollback_snapshot);
     let rollback_intent =
         intent(&rollback_ids, rollback_authorization_payload(gateway.state(), &rollback_request));
     let rollback_receipts = receipts(&temp, &rollback_ids, &rollback_intent);
@@ -212,6 +212,11 @@ fn rollback_stays_dirty_when_manifest_finalization_fails_after_restore() {
     assert_eq!(gateway.state().condition(), WorkspaceCondition::Dirty);
     assert_eq!(gateway.state().revision(), RevisionNumber::new(2).expect("unchanged revision"));
     assert!(!gateway.state().binding().root().join("authorized.txt").exists());
+    snapshot_publication::assert_snapshot_reference_absent(
+        &fixture.source,
+        ids.workspace,
+        rollback_snapshot,
+    );
 }
 
 #[test]

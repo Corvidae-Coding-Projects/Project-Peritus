@@ -14,7 +14,7 @@ use daemon_conformance_support::{
     journal_append_exhaustion_recovery, journal_before_crash_recovery, journal_corruption_recovery,
     lease_commit_crash_recovery, patch_commit_crash_recovery, projection_corruption_recovery,
     promotion_commit_crash_recovery, reachable_scenarios, snapshot_commit_crash_recovery,
-    snapshot_corruption_recovery,
+    snapshot_corruption_recovery, snapshot_quota_exhaustion_recovery,
 };
 
 #[test]
@@ -40,6 +40,11 @@ fn snapshot_commit_recovers_on_both_sides_of_retained_ref_publication() {
 #[test]
 fn corrupt_snapshot_reference_is_quarantined_before_reuse() {
     snapshot_corruption_recovery().expect("real Git snapshot corruption containment");
+}
+
+#[test]
+fn snapshot_manifest_quota_releases_the_unpublished_reference() {
+    snapshot_quota_exhaustion_recovery().expect("real snapshot manifest quota recovery");
 }
 
 #[test]

@@ -91,3 +91,29 @@ pub(super) fn recover_journal_append_exhaustion(configuration: OsString) -> Exit
         Err(error) => super::qualification_failure(&error),
     }
 }
+
+pub(super) fn stage_snapshot(configuration: OsString) -> ExitCode {
+    let config = match DaemonConfig::load(configuration) {
+        Ok(config) => config,
+        Err(error) => return super::qualification_failure(&error),
+    };
+    match crate::outbox::stage_snapshot_quota_exhaustion(&config) {
+        Ok(line) => {
+            super::write_output(&line).map_or_else(super::output_failure, |()| ExitCode::SUCCESS)
+        }
+        Err(error) => super::qualification_failure(&error),
+    }
+}
+
+pub(super) fn recover_snapshot(configuration: OsString) -> ExitCode {
+    let config = match DaemonConfig::load(configuration) {
+        Ok(config) => config,
+        Err(error) => return super::qualification_failure(&error),
+    };
+    match crate::outbox::recover_snapshot_quota_exhaustion(&config) {
+        Ok(line) => {
+            super::write_output(&line).map_or_else(super::output_failure, |()| ExitCode::SUCCESS)
+        }
+        Err(error) => super::qualification_failure(&error),
+    }
+}

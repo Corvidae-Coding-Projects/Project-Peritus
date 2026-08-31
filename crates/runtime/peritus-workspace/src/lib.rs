@@ -17,6 +17,7 @@ mod inspection;
 mod manifest;
 mod mutation;
 mod open;
+mod publication;
 mod read_only;
 mod reconcile;
 mod refinement;
@@ -44,6 +45,7 @@ pub use mutation::{
     MutationOutcome, patch_authorization_payload, patch_authorization_payload_for_caller,
 };
 pub use open::{ReadOnlyOpenRequest, WritableOpenRequest};
+pub use publication::{SnapshotPublicationFailure, finalize_snapshot_manifest};
 pub use read_only::ReadOnlyWorkspace;
 pub use reconcile::{
     ReconciliationEvidence, ReconciliationInput, ReconciliationOutcome, RestartDisposition,

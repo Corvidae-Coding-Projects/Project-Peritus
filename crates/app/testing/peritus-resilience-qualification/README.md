@@ -23,7 +23,7 @@ The controller remains responsible for real daemon, storage, dependency, quota, 
 effects. The operator refuses a descriptor whose build digest differs from the exact staged
 candidate bytes.
 
-The checked-in `peritus-h1-controller` currently owns 37 genuine routes across the journal,
+The checked-in `peritus-h1-controller` currently owns 38 genuine routes across the journal,
 blob, retained Git snapshot, lease, patch, gate, and promotion commit boundaries, plus active
 projection repair, journal/blob/snapshot corruption controls, and provider/tool/worker dependency
 failure. It also owns all eleven active E0 lifecycle phases. Each lifecycle case builds the shortest
@@ -50,6 +50,13 @@ ceiling at its current allocation, and submits one oversized exact append throug
 transaction path. The stage must receive SQLite's real storage-exhaustion result and prove that the
 command, event, and aggregate head are absent. A separate candidate process then reopens the same
 database and independently verifies the rejected append left no partial authoritative state.
+
+The snapshot-manifest disk route first fills a valid production artifact-store quota with one
+referenced object, then creates an exact production Git snapshot and attempts to finalize its
+workspace manifest through the shared publication boundary. Quota rejection must release the
+unpublished retained ref before returning. A fresh candidate process independently verifies that
+the ref is absent, the admitted object remains exact and referenced, the temporary namespace is
+empty, and the journal is healthy.
 
 It also owns both blob commit routes through the production content-addressed artifact store. The
 before case kills an exact owned writer while its complete bytes are still temporary and requires
@@ -155,6 +162,8 @@ The dependency-death diagnostics are `h1.death.provider`, `h1.death.tool`, and
 `h1.death.worker`. The exhaustion diagnostics are `h1.retry-exhaustion.provider`,
 `h1.retry-exhaustion.tool`, and `h1.retry-exhaustion.worker`.
 The artifact quota diagnostic is `h1.disk-full.blob-finalize`.
+The journal quota diagnostic is `h1.disk-full.journal-append`.
+The snapshot-manifest quota diagnostic is `h1.disk-full.snapshot-commit`.
 The daemon lifecycle diagnostics use the `h1.daemon-kill.` prefix followed by `writer-pending`,
 `writer-active`, `gates-pending`, `gates-active`, `review-pending`, `review-active`,
 `fixer-pending`, `fixer-active`, `revision-advancing`, `evaluating-acceptance`, or

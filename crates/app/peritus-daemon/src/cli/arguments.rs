@@ -31,6 +31,8 @@ pub(super) enum CommandLine {
     RecoverSnapshotAfterCrash(OsString),
     StageSnapshotCorruption(OsString),
     RecoverSnapshotCorruption(OsString),
+    StageSnapshotQuotaExhaustion(OsString),
+    RecoverSnapshotQuotaExhaustion(OsString),
     StageLeaseBeforeCrash(OsString),
     RecoverLeaseBeforeCrash(OsString),
     StageLeaseAfterCrash(OsString),
@@ -134,6 +136,12 @@ pub(super) fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<Co
         }
         "qualify-snapshot-corruption-recover" => {
             configured(arguments, CommandLine::RecoverSnapshotCorruption)
+        }
+        "qualify-disk-snapshot-commit-stage" => {
+            configured(arguments, CommandLine::StageSnapshotQuotaExhaustion)
+        }
+        "qualify-disk-snapshot-commit-recover" => {
+            configured(arguments, CommandLine::RecoverSnapshotQuotaExhaustion)
         }
         "qualify-lease-before-stage" => configured(arguments, CommandLine::StageLeaseBeforeCrash),
         "qualify-lease-before-recover" => {

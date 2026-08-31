@@ -51,6 +51,18 @@ pub use snapshot::{
     stage_snapshot_after_crash, stage_snapshot_before_crash, stage_snapshot_corruption,
 };
 
+pub(super) fn stage_snapshot_quota_exhaustion(
+    config: &DaemonConfig,
+) -> Result<String, DaemonError> {
+    snapshot::stage_snapshot_quota_exhaustion(config)
+}
+
+pub(super) fn recover_snapshot_quota_exhaustion(
+    config: &DaemonConfig,
+) -> Result<String, DaemonError> {
+    snapshot::recover_snapshot_quota_exhaustion(config)
+}
+
 const DESTINATION: &str = "peritus.admin.outbox-crash.v1";
 const FRAME_FAMILY: u16 = 65_001;
 const MAX_ATTEMPTS: u16 = 2;

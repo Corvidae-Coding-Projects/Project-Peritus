@@ -222,6 +222,13 @@ head are all absent. A separate candidate process reopens the same database and 
 absence and integrity checks, so the route proves atomic rollback without requiring host-wide disk
 exhaustion or pretending a connection-local fault setting survives restart.
 
+The snapshot-manifest disk route fills a valid production artifact-store quota with one referenced
+object, then creates and retains an exact Git snapshot through the ordinary workspace publication
+boundary. Manifest finalization must reject the new object and compensate by releasing the exact
+unpublished snapshot reference. A separate candidate process verifies the reference is absent,
+the admitted filler remains exact and referenced, no temporary file survives, and the production
+journal remains healthy.
+
 All eleven daemon-lifecycle routes use reducer-produced production E0 states and the ordinary C0
 durability adapter. The staged daemon commits the shortest legal prefix ending at the requested
 writer, gate, review, fixer, revision, evaluation, or kernel-acceptance phase, publishes a bounded
@@ -285,8 +292,14 @@ their report SHA-256 digests are
 The passing journal-append disk-exhaustion report and six raw evidence files are retained under
 `/home/doll/.local/state/peritus/qualification/h1/journal-disk.TdiM1k` with report SHA-256
 `7298744b66df4198e1c6041c8c7d8fa064869cef59f919043c31552096aff537`.
-With these 37 routes, the other six catalog routes remain fail-closed until their real controlled
-storage effects, corruption controls, or disposable-VM reboot driver are connected.
+The passing snapshot-manifest disk-exhaustion report and six raw evidence files are retained under
+`/home/doll/.local/state/peritus/qualification/h1/snapshot-disk-final.c32DUJ` with report SHA-256
+`728457cb2f05fbce8f520797780cde595141b634344bd6ca9117739e19ae1158`. The route fills a valid
+production artifact-store quota, creates an exact retained Git snapshot, requires rejected
+manifest publication to release that unpublished ref, and independently verifies the admitted
+object, empty temporary namespace, healthy journal, and absent ref through a fresh process.
+With these 38 routes, the other five catalog routes remain fail-closed until their real controlled
+corruption controls or disposable-VM reboot driver are connected.
 Therefore the full H1 production qualification is still pending.
 
 The release integration owner must:

@@ -213,21 +213,10 @@ const fn milestone_details(route: ScenarioRoute) -> (&'static str, &'static str,
             "candidate killed before acknowledging the applied patch receipt",
             "exact target bytes reopened with no pending transaction metadata",
         ),
-        ScenarioRoute::SnapshotBeforeDurableCommit => (
-            "production candidate tree prepared before snapshot publication",
-            "candidate killed before creating the snapshot commit and retained ref",
-            "repository reopened with no retained snapshot reference",
-        ),
-        ScenarioRoute::SnapshotAfterDurableCommitBeforeAck => (
-            "synthetic snapshot commit and retained ref durably published",
-            "candidate killed before acknowledging snapshot publication",
-            "exact snapshot manifest, commit, tree, and retained ref reopened",
-        ),
-        ScenarioRoute::SnapshotCorruption => (
-            "synthetic snapshot commit, manifest, and retained ref published",
-            "active snapshot ref redirected to a different repository commit",
-            "fresh recovery atomically moved the divergent ref into quarantine",
-        ),
+        ScenarioRoute::SnapshotBeforeDurableCommit
+        | ScenarioRoute::SnapshotAfterDurableCommitBeforeAck
+        | ScenarioRoute::SnapshotCorruption
+        | ScenarioRoute::SnapshotCommitDiskExhaustion => snapshot_milestone_details(route),
         ScenarioRoute::PromotionBeforeDurableCommit => (
             "production promotion transitions accepted with approve-once authority",
             "candidate killed before submitting the atomic activation",
@@ -250,6 +239,34 @@ const fn milestone_details(route: ScenarioRoute) -> (&'static str, &'static str,
         | ScenarioRoute::ToolRetryExhaustion
         | ScenarioRoute::WorkerRetryExhaustion => unreachable!(),
         ScenarioRoute::DaemonLifecycle(phase) => daemon_milestone_details(phase),
+    }
+}
+
+const fn snapshot_milestone_details(
+    route: ScenarioRoute,
+) -> (&'static str, &'static str, &'static str) {
+    match route {
+        ScenarioRoute::SnapshotBeforeDurableCommit => (
+            "production candidate tree prepared before snapshot publication",
+            "candidate killed before creating the snapshot commit and retained ref",
+            "repository reopened with no retained snapshot reference",
+        ),
+        ScenarioRoute::SnapshotAfterDurableCommitBeforeAck => (
+            "synthetic snapshot commit and retained ref durably published",
+            "candidate killed before acknowledging snapshot publication",
+            "exact snapshot manifest, commit, tree, and retained ref reopened",
+        ),
+        ScenarioRoute::SnapshotCorruption => (
+            "synthetic snapshot commit, manifest, and retained ref published",
+            "active snapshot ref redirected to a different repository commit",
+            "fresh recovery atomically moved the divergent ref into quarantine",
+        ),
+        ScenarioRoute::SnapshotCommitDiskExhaustion => (
+            "snapshot commit and durable manifest publication entered one production transaction",
+            "manifest finalization exceeded the configured artifact quota",
+            "fresh recovery found no retained snapshot ref or artifact residue",
+        ),
+        _ => unreachable!(),
     }
 }
 

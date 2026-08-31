@@ -17,10 +17,7 @@ mod snapshot;
 mod snapshot_corruption;
 mod usage;
 
-use std::ffi::OsString;
-use std::io::Write;
-use std::process::ExitCode;
-use std::time::Duration;
+use std::{ffi::OsString, io::Write, process::ExitCode, time::Duration};
 
 use peritus_app_protocol::ShutdownCompletionDisposition;
 
@@ -93,6 +90,12 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
         }
         CommandLine::RecoverSnapshotCorruption(configuration) => {
             snapshot_corruption::recover(configuration)
+        }
+        CommandLine::StageSnapshotQuotaExhaustion(configuration) => {
+            disk::stage_snapshot(configuration)
+        }
+        CommandLine::RecoverSnapshotQuotaExhaustion(configuration) => {
+            disk::recover_snapshot(configuration)
         }
         CommandLine::StageLeaseBeforeCrash(configuration) => lease::stage_before(configuration),
         CommandLine::RecoverLeaseBeforeCrash(configuration) => lease::recover(configuration, false),

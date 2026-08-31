@@ -9,6 +9,7 @@ use crate::{
     ErrorCode, MutationOutcome, RecoveryClass, SnapshotIdentity, WorkspaceAuthorizationRequest,
     WorkspaceCondition, WorkspaceError, WorkspaceGateway, WorkspaceManifest, WorkspaceOperation,
 };
+use crate::{SnapshotPublicationFailure, finalize_snapshot_manifest};
 
 /// Retained immutable candidate and its finalized C0 artifact observation.
 pub struct CandidateOutcome {
@@ -138,14 +139,14 @@ impl WorkspaceGateway {
             snapshot.tree(),
             detail_digest,
         );
-        let artifact = manifest.finalize(artifacts, permit.dispatch_event()).map_err(|_| {
-            self.workspace_mut().state_mut().set_condition(WorkspaceCondition::Dirty);
-            candidate_error(
-                ErrorCode::Artifact,
-                RecoveryClass::Reconcile,
-                "candidate exists but its manifest was not finalized",
-            )
-        })?;
+        let artifact = finalize_snapshot_manifest(
+            &repository,
+            &snapshot,
+            &manifest,
+            artifacts,
+            permit.dispatch_event(),
+        )
+        .map_err(|failure| candidate_publication_error(self, &failure))?;
         self.workspace_mut().state_mut().install(identity.clone());
         Ok(CandidateOutcome {
             action_id: permit.action_id(),
@@ -156,6 +157,27 @@ impl WorkspaceGateway {
             artifact,
         })
     }
+}
+
+const fn candidate_publication_error(
+    gateway: &mut WorkspaceGateway,
+    failure: &SnapshotPublicationFailure,
+) -> WorkspaceError {
+    let compensated = failure.compensation_failure().is_none();
+    gateway.workspace_mut().state_mut().set_condition(if compensated {
+        WorkspaceCondition::Dirty
+    } else {
+        WorkspaceCondition::Indeterminate
+    });
+    candidate_error(
+        if compensated { ErrorCode::Artifact } else { ErrorCode::Git },
+        RecoveryClass::Reconcile,
+        if compensated {
+            "candidate manifest was not finalized; its retained snapshot was released"
+        } else {
+            "candidate manifest failed and retained snapshot cleanup was inconclusive"
+        },
+    )
 }
 
 /// Returns canonical payload bytes for a candidate action intent.

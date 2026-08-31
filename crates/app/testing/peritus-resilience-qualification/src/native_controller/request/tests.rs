@@ -4,8 +4,9 @@ use super::route::{
     JOURNAL_APPEND_DISK_EXHAUSTION, JOURNAL_BEFORE, JOURNAL_CORRUPTION, LEASE_AFTER_BEFORE_ACK,
     LEASE_BEFORE, PATCH_AFTER_BEFORE_ACK, PATCH_BEFORE, PROJECTION_CORRUPTION,
     PROMOTION_AFTER_BEFORE_ACK, PROMOTION_BEFORE, PROVIDER_DEATH, PROVIDER_RETRY_EXHAUSTION,
-    SNAPSHOT_AFTER_BEFORE_ACK, SNAPSHOT_BEFORE, SNAPSHOT_CORRUPTION, ScenarioRoute, TOOL_DEATH,
-    TOOL_RETRY_EXHAUSTION, WORKER_DEATH, WORKER_RETRY_EXHAUSTION,
+    SNAPSHOT_AFTER_BEFORE_ACK, SNAPSHOT_BEFORE, SNAPSHOT_COMMIT_DISK_EXHAUSTION,
+    SNAPSHOT_CORRUPTION, ScenarioRoute, TOOL_DEATH, TOOL_RETRY_EXHAUSTION, WORKER_DEATH,
+    WORKER_RETRY_EXHAUSTION,
 };
 use super::{FaultDocument, ScenarioDocument};
 
@@ -168,6 +169,20 @@ fn the_authoritative_journal_page_exhaustion_route_is_admitted() {
     assert_eq!(
         ScenarioRoute::from_scenario(&scenario),
         Some(ScenarioRoute::JournalAppendDiskExhaustion)
+    );
+}
+
+#[test]
+fn the_snapshot_manifest_quota_route_is_admitted() {
+    let scenario = ScenarioDocument {
+        id: SNAPSHOT_COMMIT_DISK_EXHAUSTION.to_owned(),
+        title: "snapshot commit quota exhaustion".to_owned(),
+        fault: FaultDocument::DiskExhaustion { scope: "snapshot-commit".to_owned() },
+        expected_recovery: "rolled-back-uncommitted".to_owned(),
+    };
+    assert_eq!(
+        ScenarioRoute::from_scenario(&scenario),
+        Some(ScenarioRoute::SnapshotCommitDiskExhaustion)
     );
 }
 

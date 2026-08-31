@@ -2,7 +2,7 @@
 
 use std::{future::Future, pin::Pin};
 
-use crate::DaemonError;
+use crate::{DaemonConfig, DaemonError};
 
 mod claims;
 mod clock;
@@ -26,6 +26,26 @@ pub use qualification::{
     stage_snapshot_after_crash, stage_snapshot_before_crash, stage_snapshot_corruption,
 };
 pub use router::DestinationRouter;
+
+#[allow(
+    clippy::redundant_pub_crate,
+    reason = "the private outbox module exposes this qualification renderer to its CLI sibling"
+)]
+pub(super) fn stage_snapshot_quota_exhaustion(
+    config: &DaemonConfig,
+) -> Result<String, DaemonError> {
+    qualification::stage_snapshot_quota_exhaustion(config)
+}
+
+#[allow(
+    clippy::redundant_pub_crate,
+    reason = "the private outbox module exposes this qualification renderer to its CLI sibling"
+)]
+pub(super) fn recover_snapshot_quota_exhaustion(
+    config: &DaemonConfig,
+) -> Result<String, DaemonError> {
+    qualification::recover_snapshot_quota_exhaustion(config)
+}
 
 pub type DurableDelivery<'a> = Pin<Box<dyn Future<Output = Result<(), DaemonError>> + Send + 'a>>;
 

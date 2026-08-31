@@ -1,7 +1,10 @@
 //! Real Git snapshot recovery on both sides of retained-reference publication.
 
 mod corruption;
+mod disk;
 mod git_command;
+
+pub(super) use disk::{recover_snapshot_quota_exhaustion, stage_snapshot_quota_exhaustion};
 
 use std::ffi::OsStr;
 use std::fs::{self, OpenOptions};

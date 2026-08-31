@@ -13,6 +13,8 @@ use crate::{
     StatusObservation, TreeId,
 };
 
+/// Returns the deterministic retained reference for one workspace snapshot identity.
+#[must_use]
 pub fn expected_snapshot_ref(workspace_id: WorkspaceId, snapshot_id: SnapshotId) -> SnapshotRef {
     support::snapshot_ref(workspace_id, snapshot_id)
 }
