@@ -13,23 +13,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
-- Add the checked-in Rust `peritus-h1-controller` and an explicit focused diagnostic mode. Its 38
+- Add the checked-in Rust `peritus-h1-controller` and an explicit focused diagnostic mode. Its 39
   genuine routes cover both sides of journal submission, content-addressed blob publication,
   retained Git snapshot publication, exclusive-lease persistence, and recoverable patch
   application, plus D1's atomic gate event/checkpoint commit and F0's campaign/pointer/approval
   promotion commit. They also cover active projection corruption with fresh-generation repair,
   committed journal-frame corruption with fail-closed startup before authority mutation, and
   referenced blob corruption with durable quarantine and reference denial, and retained Git
-  snapshot reference divergence with atomic movement out of the active namespace. Provider, tool,
-  and worker death now run through the real executable provider transport, ordinary grounded
-  receipt-backed product tool, and daemon-owned worker supervisor. Scheduler replay requeues exact
-  owned work after death and preserves exhausted non-success after consuming the configured retry
-  ceiling. The artifact-finalization disk route opens two production writers against one durable
-  logical quota, admits the first, requires the second finalization to lose the real catalog quota
-  race, and proves fresh-process recovery retained no rejected metadata, published bytes, or
-  temporary file. The journal-append disk route fixes the production SQLite connection's page
-  ceiling at its current allocation, requires an oversized exact append to return `SQLITE_FULL`,
-  and proves through a fresh process that no command, event, or aggregate head partially survived.
+  snapshot reference divergence with atomic movement out of the active namespace. Acceptance
+  evidence corruption now enters a durable digest-bound quarantine during evidence-store startup;
+  recovery preserves every raw indexed field and corrupt record byte for audit while denying that
+  evidence identity to all readers, and a second startup proves containment is idempotent.
+  Provider, tool, and worker death now run through the real executable provider transport,
+  ordinary grounded receipt-backed product tool, and daemon-owned worker supervisor. Scheduler
+  replay requeues exact owned work after death and preserves exhausted non-success after consuming
+  the configured retry ceiling. The artifact-finalization disk route opens two production writers
+  against one durable logical quota, admits the first, requires the second finalization to lose the
+  real catalog quota race, and proves fresh-process recovery retained no rejected metadata,
+  published bytes, or temporary file. The journal-append disk route fixes the production SQLite
+  connection's page ceiling at its current allocation, requires an oversized exact append to
+  return `SQLITE_FULL`, and proves through a fresh process that no command, event, or aggregate
+  head partially survived.
   The snapshot-manifest disk route fills a valid production artifact-store quota, publishes an
   exact retained Git snapshot, then requires manifest finalization to reject the new object and
   compensate by releasing that unpublished reference. Fresh recovery independently proves the

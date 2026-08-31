@@ -2767,6 +2767,7 @@ dependencies = [
  "peritus-approval",
  "peritus-resilience",
  "peritus-types",
+ "rusqlite",
  "serde",
  "serde_json",
  "sha2 0.11.0",

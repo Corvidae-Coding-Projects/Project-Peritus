@@ -37,4 +37,16 @@ CREATE TABLE IF NOT EXISTS peritus_evidence_invalidations (
     reason_digest BLOB NOT NULL CHECK(length(reason_digest) = 32),
     PRIMARY KEY(target_id, invalidation_digest)
 ) STRICT, WITHOUT ROWID;
+
+CREATE TABLE IF NOT EXISTS peritus_evidence_quarantine (
+    evidence_id BLOB PRIMARY KEY NOT NULL CHECK(length(evidence_id) = 16),
+    quarantine_digest BLOB NOT NULL UNIQUE CHECK(length(quarantine_digest) = 32),
+    record_digest BLOB NOT NULL,
+    global_position INTEGER NOT NULL,
+    event_id BLOB NOT NULL,
+    batch_hash BLOB NOT NULL,
+    revision_digest BLOB NOT NULL,
+    record_bytes BLOB NOT NULL,
+    detected_error TEXT NOT NULL CHECK(length(detected_error) > 0)
+) STRICT, WITHOUT ROWID;
 ";

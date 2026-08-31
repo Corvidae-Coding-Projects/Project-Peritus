@@ -74,7 +74,7 @@ systems and retains each report plus raw evidence. Its macOS and Windows sandbox
 actual Seatbelt and AppContainer/Job Object host probes; hosted results remain evidence only after
 the corresponding revision finishes successfully.
 
-H1 now has 38 checked-in production controller routes. Focused native runs against freshly
+H1 now has 39 checked-in production controller routes. Focused native runs against freshly
 built binaries passed both sides of the journal, blob, retained Git snapshot, exclusive-lease,
 patch, D1 gate, and F0 campaign/pointer promotion commits. A projection-corruption route also
 proves that startup rejects corrupt active bytes and atomically installs a fresh verified
@@ -84,7 +84,10 @@ blob-corruption route now changes a referenced content-addressed object and prov
 quarantines the divergent bytes, retains their audit root, and denies further use. The staged
 snapshot-corruption route redirects a retained snapshot ref to the wrong commit, then proves that
 fresh recovery atomically removes it from active use and retains the divergent value under the
-quarantine namespace. Six dependency routes now exercise real executable-backed provider failure,
+quarantine namespace. An acceptance-evidence corruption route changes the portable record bytes
+without changing their indexed identity, then proves that fresh evidence-store startup preserves
+the exact corrupt row in a digest-bound quarantine and denies it to every subsequent reader. Six
+dependency routes now exercise real executable-backed provider failure,
 the ordinary grounded and receipt-backed product command tool, and daemon-owned worker tasks. A
 fresh scheduler replay either requeues the exact owned work after one dependency death or preserves
 explicit exhausted non-success after consuming the configured retry ceiling. The artifact-finalize
@@ -100,8 +103,8 @@ projection identity, exact patch postimage bytes, complete gate successor state,
 campaign, production-pointer, and approve-once state. This is useful evidence, not an H1 readiness
 claim: production quota routes now prove that artifact finalization and snapshot-manifest
 publication leave no rejected bytes, metadata, or retained Git reference, while journal exhaustion
-leaves no partial command, event, or aggregate head. The remaining five catalog routes are
-acceptance and promotion evidence corruption plus three disposable-VM reboot cases.
+leaves no partial command, event, or aggregate head. The remaining four catalog routes are
+promotion evidence corruption plus three disposable-VM reboot cases.
 
 H0 also has a Rust-owned exact-candidate preparer and a three-host native workflow. The preparer
 derives the common candidate identity from committed source, binds the controller and native host

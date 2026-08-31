@@ -1,5 +1,6 @@
 //! Strict request decoding and binding for the persistent H1 controller.
 
+mod health;
 mod route;
 
 use serde::{Deserialize, Serialize};

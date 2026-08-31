@@ -25,6 +25,7 @@ peritus-harness = { version = "=0.0.0", path = "../../orchestration/peritus-harn
 peritus-gates = { version = "=0.0.0", path = "../../orchestration/peritus-gates" }
 peritus-git = { version = "=0.0.0", path = "../../runtime/peritus-git" }
 peritus-journal = { version = "=0.0.0", path = "../../state/peritus-journal" }
+peritus-kernel = { version = "=0.0.0", path = "../../foundation/peritus-kernel" }
 peritus-leases = { version = "=0.0.0", path = "../../state/peritus-leases" }
 peritus-migrations = { version = "=0.0.0", path = "../../state/peritus-migrations" }
 peritus-model-protocol = { version = "=0.0.0", path = "../../model/peritus-model-protocol" }
@@ -33,6 +34,7 @@ peritus-collaboration = { version = "=0.0.0", path = "../../orchestration/peritu
 peritus-process = { version = "=0.0.0", path = "../../runtime/peritus-process" }
 peritus-product-runner = { version = "=0.0.0", path = "../peritus-product-runner" }
 peritus-projection = { version = "=0.0.0", path = "../../state/peritus-projection" }
+peritus-protocol = { version = "=0.0.0", path = "../../foundation/peritus-protocol" }
 peritus-provider-anthropic = { version = "=0.0.0", path = "../../model/peritus-provider-anthropic" }
 peritus-provider-compatible = { version = "=0.0.0", path = "../../model/peritus-provider-compatible" }
 peritus-provider-core = { version = "=0.0.0", path = "../../model/peritus-provider-core" }
@@ -79,8 +81,6 @@ windows-sys = { workspace = true, features = [
 [dev-dependencies]
 futures-util.workspace = true
 peritus-conformance = { version = "=0.0.0", path = "../testing/peritus-conformance" }
-peritus-kernel = { version = "=0.0.0", path = "../../foundation/peritus-kernel" }
-peritus-protocol = { version = "=0.0.0", path = "../../foundation/peritus-protocol" }
 peritus-role = { version = "=0.0.0", path = "../../orchestration/peritus-role" }
 peritus-test-support = { version = "=0.0.0", path = "../testing/peritus-test-support" }
 tempfile.workspace = true

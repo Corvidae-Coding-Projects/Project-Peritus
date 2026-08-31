@@ -20,6 +20,8 @@ const COMMANDS: &[&str] = &[
     "qualify-journal-before-recover --config <config.toml>",
     "qualify-journal-corruption-stage --config <config.toml>",
     "qualify-journal-corruption-recover --config <config.toml>",
+    "qualify-evidence-corruption-stage --config <config.toml>",
+    "qualify-evidence-corruption-recover --config <config.toml>",
     "qualify-snapshot-before-stage --config <config.toml>",
     "qualify-snapshot-before-recover --config <config.toml>",
     "qualify-snapshot-after-stage --config <config.toml>",

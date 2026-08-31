@@ -178,6 +178,11 @@ const fn milestone_details(route: ScenarioRoute) -> (&'static str, &'static str,
             "committed event frame changed without updating its recorded digest",
             "fresh daemon startup detected divergence before authority mutation",
         ),
+        ScenarioRoute::AcceptanceEvidenceCorruption => (
+            "one revision-bound acceptance evidence record admitted against a real journal event",
+            "portable evidence bytes changed without changing their indexed identity",
+            "fresh evidence startup quarantined the bytes and denied record reuse",
+        ),
         ScenarioRoute::JournalAppendDiskExhaustion => (
             "authoritative SQLite page ceiling fixed at the current allocation",
             "oversized production append returned exact storage exhaustion",

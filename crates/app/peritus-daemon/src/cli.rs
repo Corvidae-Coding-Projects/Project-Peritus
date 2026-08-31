@@ -7,27 +7,27 @@ mod daemon_lifecycle;
 #[cfg(not(verus_only))]
 mod dependency;
 mod disk;
+mod evidence_corruption;
 mod gate;
 mod journal_corruption;
 mod lease;
 mod patch;
 mod projection;
 mod promotion;
+mod server;
 mod snapshot;
 mod snapshot_corruption;
 mod usage;
 
 use std::{ffi::OsString, io::Write, process::ExitCode, time::Duration};
 
-use peritus_app_protocol::ShutdownCompletionDisposition;
-
+use crate::DaemonConfig;
 use crate::outbox::{
     recover_blob_after_crash, recover_blob_before_crash, recover_journal_before_crash,
     recover_outbox_crash, stage_blob_after_crash, stage_blob_before_crash,
     stage_journal_before_crash, stage_outbox_crash,
 };
 use crate::terminal::qualify_pty_ordering;
-use crate::{DaemonConfig, DaemonError, DaemonRuntime, ShutdownOutcome};
 use arguments::{CommandLine, parse};
 
 const QUALIFICATION_KILL_BOUND: Duration = Duration::from_secs(30);
@@ -43,7 +43,7 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
     match command {
         CommandLine::Version => write_output(&format!("peritusd {}", env!("CARGO_PKG_VERSION")))
             .map_or_else(output_failure, |()| ExitCode::SUCCESS),
-        CommandLine::Serve(configuration) => run_server(configuration),
+        CommandLine::Serve(configuration) => server::run(configuration),
         CommandLine::QualifyPty => qualify_pty(),
         CommandLine::StageBlobBeforeCrash(configuration) => stage_blob_before(configuration),
         CommandLine::RecoverBlobBeforeCrash(configuration) => recover_blob_before(configuration),
@@ -74,6 +74,12 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
         }
         CommandLine::RecoverJournalCorruption(configuration) => {
             journal_corruption::recover(configuration)
+        }
+        CommandLine::StageEvidenceCorruption(configuration) => {
+            evidence_corruption::stage(configuration)
+        }
+        CommandLine::RecoverEvidenceCorruption(configuration) => {
+            evidence_corruption::recover(configuration)
         }
         CommandLine::StageSnapshotBeforeCrash(configuration) => {
             snapshot::stage_before(configuration)
@@ -145,33 +151,6 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
         }
         CommandLine::StageOutboxCrash(configuration) => stage_outbox(configuration),
         CommandLine::RecoverOutboxCrash(configuration) => recover_outbox(configuration),
-    }
-}
-
-fn run_server(configuration: OsString) -> ExitCode {
-    let runtime = match tokio::runtime::Builder::new_multi_thread().enable_all().build() {
-        Ok(runtime) => runtime,
-        Err(error) => {
-            write_error(&format!("failed to construct daemon runtime: {error}"));
-            return ExitCode::FAILURE;
-        }
-    };
-    match runtime.block_on(serve(configuration)) {
-        Ok(outcome) if outcome.disposition() == ShutdownCompletionDisposition::Clean => {
-            ExitCode::SUCCESS
-        }
-        Ok(outcome) => {
-            write_error(&format!(
-                "daemon shutdown was unclean: remaining={:?}, failures={:?}",
-                outcome.remaining(),
-                outcome.failures(),
-            ));
-            ExitCode::FAILURE
-        }
-        Err(error) => {
-            write_error(&error.to_string());
-            ExitCode::FAILURE
-        }
     }
 }
 
@@ -376,13 +355,6 @@ fn qualification_failure(error: &impl std::fmt::Display) -> ExitCode {
 fn output_failure(error: std::io::Error) -> ExitCode {
     write_error(&format!("failed to write qualification observation: {error}"));
     ExitCode::FAILURE
-}
-
-async fn serve(configuration: OsString) -> Result<ShutdownOutcome, DaemonError> {
-    let config = DaemonConfig::load(configuration)?;
-    let mut runtime = DaemonRuntime::start(config).await?;
-    runtime.wait_for_shutdown_signal().await?;
-    runtime.shutdown().await
 }
 
 fn write_output(message: &str) -> std::io::Result<()> {

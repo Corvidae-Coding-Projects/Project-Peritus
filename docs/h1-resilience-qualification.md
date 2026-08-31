@@ -198,6 +198,14 @@ quarantine namespace. Repeating recovery must return the same containment observ
 controller independently checks the loose active and quarantine refs, unchanged manifest digest,
 and healthy journal.
 
+The acceptance-evidence corruption route admits a real portable evidence record whose revision,
+journal frame, event, command, artifact set, and causal bindings all come from production stores.
+It changes only the durable record bytes while preserving the indexed identity. A fresh candidate
+process opens the production evidence store, atomically copies every raw indexed field and the
+corrupt bytes into a digest-bound quarantine, and denies the quarantined identity to readers. The
+controller independently verifies the retained bytes and quarantine digest in SQLite, and a second
+startup proves containment is idempotent without changing the authoritative journal.
+
 The provider, tool, and worker death and retry-exhaustion routes use the production D3 scheduler
 and C0 journal adapter. Provider attempts execute the staged daemon through
 `TokioProcessTransport`. Tool attempts use the ordinary grounded, receipt-backed
@@ -298,7 +306,10 @@ The passing snapshot-manifest disk-exhaustion report and six raw evidence files 
 production artifact-store quota, creates an exact retained Git snapshot, requires rejected
 manifest publication to release that unpublished ref, and independently verifies the admitted
 object, empty temporary namespace, healthy journal, and absent ref through a fresh process.
-With these 38 routes, the other five catalog routes remain fail-closed until their real controlled
+The passing acceptance-evidence corruption report and six raw evidence files are retained under
+`/home/doll/.local/state/peritus/qualification/h1/evidence-corruption.rYq4Qs` with report SHA-256
+`6f424f43ef3a10589433b2750e0958a9c5565df6bcb0e6d82ee4498d17d3e414`.
+With these 39 routes, the other four catalog routes remain fail-closed until their real controlled
 corruption controls or disposable-VM reboot driver are connected.
 Therefore the full H1 production qualification is still pending.
 

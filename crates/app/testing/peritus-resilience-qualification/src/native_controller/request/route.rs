@@ -8,6 +8,7 @@ pub(in crate::native_controller) use daemon::DaemonPhase;
 pub(super) const BLOB_BEFORE: &str = "h1.crash.blob.before";
 pub(super) const BLOB_AFTER_BEFORE_ACK: &str = "h1.crash.blob.after-before-ack";
 pub(super) const BLOB_CORRUPTION: &str = "h1.corruption.blob";
+pub(super) const ACCEPTANCE_EVIDENCE_CORRUPTION: &str = "h1.corruption.acceptance-evidence";
 pub(super) const BLOB_FINALIZE_DISK_EXHAUSTION: &str = "h1.disk-full.blob-finalize";
 pub(super) const JOURNAL_BEFORE: &str = "h1.crash.journal.before";
 pub(super) const JOURNAL_AFTER_BEFORE_ACK: &str = "h1.crash.journal.after-before-ack";
@@ -38,6 +39,7 @@ pub(in crate::native_controller) enum ScenarioRoute {
     BlobBeforeDurableCommit,
     BlobAfterDurableCommitBeforeAck,
     BlobCorruption,
+    AcceptanceEvidenceCorruption,
     BlobFinalizeDiskExhaustion,
     JournalBeforeDurableCommit,
     JournalAfterDurableCommitBeforeAck,
@@ -183,6 +185,11 @@ impl ScenarioRoute {
             {
                 Some(Self::BlobCorruption)
             }
+            (
+                ACCEPTANCE_EVIDENCE_CORRUPTION,
+                "quarantined-corruption",
+                FaultDocument::Corruption { target },
+            ) if target == "acceptance-evidence" => Some(Self::AcceptanceEvidenceCorruption),
             (JOURNAL_CORRUPTION, "failed-closed", FaultDocument::Corruption { target })
                 if target == "journal" =>
             {
@@ -279,7 +286,9 @@ impl ScenarioRoute {
             | Self::SnapshotAfterDurableCommitBeforeAck
             | Self::PromotionAfterDurableCommitBeforeAck => "replayed-committed",
             Self::ProjectionCorruption => "rebuilt-projection",
-            Self::BlobCorruption | Self::SnapshotCorruption => "quarantined-corruption",
+            Self::BlobCorruption
+            | Self::SnapshotCorruption
+            | Self::AcceptanceEvidenceCorruption => "quarantined-corruption",
             Self::BlobFinalizeDiskExhaustion => "discarded-unreferenced",
             Self::JournalCorruption => "failed-closed",
             Self::ProviderDeath
@@ -290,76 +299,6 @@ impl ScenarioRoute {
             | Self::ToolRetryExhaustion
             | Self::WorkerRetryExhaustion => "retry-budget-exhausted",
         }
-    }
-
-    /// Returns the directly supportable journal-health observation.
-    pub(in crate::native_controller) const fn journal_health(self) -> &'static str {
-        match self {
-            Self::JournalCorruption => "hash-divergence-detected",
-            Self::BlobBeforeDurableCommit
-            | Self::BlobAfterDurableCommitBeforeAck
-            | Self::JournalBeforeDurableCommit
-            | Self::LeaseBeforeDurableCommit
-            | Self::LeaseAfterDurableCommitBeforeAck
-            | Self::GateBeforeDurableCommit
-            | Self::GateAfterDurableCommitBeforeAck
-            | Self::PatchBeforeDurableCommit
-            | Self::PatchAfterDurableCommitBeforeAck
-            | Self::SnapshotBeforeDurableCommit
-            | Self::SnapshotAfterDurableCommitBeforeAck
-            | Self::PromotionBeforeDurableCommit
-            | Self::PromotionAfterDurableCommitBeforeAck
-            | Self::ProjectionCorruption
-            | Self::BlobCorruption
-            | Self::BlobFinalizeDiskExhaustion
-            | Self::JournalAppendDiskExhaustion
-            | Self::SnapshotCommitDiskExhaustion
-            | Self::SnapshotCorruption
-            | Self::ProviderDeath
-            | Self::ToolDeath
-            | Self::WorkerDeath
-            | Self::ProviderRetryExhaustion
-            | Self::ToolRetryExhaustion
-            | Self::WorkerRetryExhaustion => "verified",
-            Self::DaemonLifecycle(_) | Self::JournalAfterDurableCommitBeforeAck => {
-                "recovered-and-verified"
-            }
-        }
-    }
-
-    pub(in crate::native_controller) const fn projection_health(self) -> &'static str {
-        match self {
-            Self::ProjectionCorruption => "rebuilt-and-verified",
-            Self::JournalCorruption => "unavailable",
-            _ => "verified",
-        }
-    }
-
-    pub(in crate::native_controller) const fn artifact_health(self) -> &'static str {
-        match self {
-            Self::BlobCorruption | Self::SnapshotCorruption => "divergence-detected",
-            _ => "verified",
-        }
-    }
-
-    pub(in crate::native_controller) const fn corruption_target(self) -> Option<&'static str> {
-        match self {
-            Self::ProjectionCorruption => Some("projection"),
-            Self::BlobCorruption => Some("blob"),
-            Self::SnapshotCorruption => Some("snapshot"),
-            Self::JournalCorruption => Some("journal"),
-            _ => None,
-        }
-    }
-
-    pub(in crate::native_controller) const fn mutation_admitted(self) -> bool {
-        !matches!(
-            self,
-            Self::ProjectionCorruption
-                | Self::JournalCorruption
-                | Self::BlobCorruption
-                | Self::SnapshotCorruption
-        )
     }
 
     pub(in crate::native_controller) const fn dependency(self) -> Option<&'static str> {

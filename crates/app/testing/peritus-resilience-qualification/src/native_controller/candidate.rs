@@ -6,6 +6,7 @@ mod config;
 mod daemon_lifecycle;
 mod dependency;
 mod disk;
+mod evidence_corruption;
 mod gate;
 mod journal_after;
 mod journal_before;
@@ -113,6 +114,7 @@ pub(super) fn inject(
         ScenarioRoute::BlobFinalizeDiskExhaustion => disk::inject(paths, runtime),
         ScenarioRoute::JournalBeforeDurableCommit => journal_before::inject(paths, runtime),
         ScenarioRoute::JournalCorruption => journal_corruption::inject(paths, runtime),
+        ScenarioRoute::AcceptanceEvidenceCorruption => evidence_corruption::inject(paths, runtime),
         ScenarioRoute::JournalAppendDiskExhaustion => journal_disk::inject(paths, runtime),
         ScenarioRoute::LeaseBeforeDurableCommit
         | ScenarioRoute::LeaseAfterDurableCommitBeforeAck => lease::inject(paths, runtime, route),
@@ -162,6 +164,9 @@ pub(super) fn recover(
             journal_before::recover(paths, runtime, injected)
         }
         ScenarioRoute::JournalCorruption => journal_corruption::recover(paths, runtime, injected),
+        ScenarioRoute::AcceptanceEvidenceCorruption => {
+            evidence_corruption::recover(paths, runtime, injected)
+        }
         ScenarioRoute::JournalAppendDiskExhaustion => {
             journal_disk::recover(paths, runtime, injected)
         }

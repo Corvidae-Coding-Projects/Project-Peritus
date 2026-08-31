@@ -23,13 +23,13 @@ The controller remains responsible for real daemon, storage, dependency, quota, 
 effects. The operator refuses a descriptor whose build digest differs from the exact staged
 candidate bytes.
 
-The checked-in `peritus-h1-controller` currently owns 38 genuine routes across the journal,
+The checked-in `peritus-h1-controller` currently owns 39 genuine routes across the journal,
 blob, retained Git snapshot, lease, patch, gate, and promotion commit boundaries, plus active
-projection repair, journal/blob/snapshot corruption controls, and provider/tool/worker dependency
-failure. It also owns all eleven active E0 lifecycle phases. Each lifecycle case builds the shortest
-legal production reducer prefix, commits every command and state checkpoint through C0, kills the
-exact staged `peritusd`, and requires a fresh process to replay byte-identical state and
-authoritative ownership. For
+projection repair, journal/blob/snapshot/acceptance-evidence corruption controls, and
+provider/tool/worker dependency failure. It also owns all eleven active E0 lifecycle phases. Each
+lifecycle case builds the shortest legal production reducer prefix, commits every command and state
+checkpoint through C0, kills the exact staged `peritusd`, and requires a fresh process to replay
+byte-identical state and authoritative ownership. For
 `h1.crash.journal.before`, the exact staged daemon builds a production append plan, publishes its
 checkpoint before submission, and is killed; recovery requires an integrity-checked journal with
 zero committed events, heads, outbox claims, or external effects. For
@@ -115,6 +115,13 @@ persist the corrupt integrity state, move the divergent bytes to quarantine, ret
 reference, and make the artifact unavailable to readers or new references. A second restart must
 preserve that contained state.
 
+The acceptance-evidence corruption route admits a real revision-bound portable evidence record,
+then changes its stored record bytes without changing any indexed identity. Fresh evidence-store
+startup must copy every raw indexed field and the corrupt bytes into a digest-bound durable
+quarantine before the record can be read. The original evidence identity remains unavailable, the
+authoritative journal remains unchanged, and a second startup must preserve exactly one identical
+quarantine observation.
+
 The six dependency routes use the real durable scheduler and one real effect boundary per
 dependency. Provider cases execute the staged daemon through the executable-backed provider
 transport. Tool cases use the same grounded, receipt-backed `run_command` path as ordinary coding
@@ -158,6 +165,7 @@ The projection diagnostic is `h1.corruption.projection`.
 The journal diagnostic is `h1.corruption.journal`.
 The blob diagnostic is `h1.corruption.blob`.
 The snapshot diagnostic is `h1.corruption.snapshot`.
+The acceptance-evidence diagnostic is `h1.corruption.acceptance-evidence`.
 The dependency-death diagnostics are `h1.death.provider`, `h1.death.tool`, and
 `h1.death.worker`. The exhaustion diagnostics are `h1.retry-exhaustion.provider`,
 `h1.retry-exhaustion.tool`, and `h1.retry-exhaustion.worker`.

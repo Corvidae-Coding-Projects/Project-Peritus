@@ -59,7 +59,9 @@ impl EvidenceStore {
         connection
             .execute_batch(super::schema::INSTALL)
             .map_err(|error| EvidenceError::sqlite("install evidence schema", error))?;
-        Ok(Self { connection })
+        let mut store = Self { connection };
+        store.contain_corrupt_records()?;
+        Ok(store)
     }
 
     /// Atomically admits immutable evidence and its actual artifact roots.

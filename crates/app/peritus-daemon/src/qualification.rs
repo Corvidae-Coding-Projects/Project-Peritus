@@ -7,6 +7,7 @@ pub mod daemon_lifecycle;
 pub mod dependency;
 pub mod disk;
 pub mod disk_journal;
+pub mod evidence_corruption;
 pub mod journal;
 pub mod journal_corruption;
 pub mod projection;

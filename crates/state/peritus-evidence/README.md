@@ -30,9 +30,11 @@ The deterministic revision, causal-position, and bundle-order predicates are exe
 functions used by the ordinary Rust admission, freshness, planning, and verification paths.
 
 Bundles provide deterministic integrity verification, not signatures or transport authentication.
-The current crate does not automatically rebuild a corrupt evidence catalog; callers must retain
-immutable source material and stop evidence use when a dependency or catalog integrity error is
-reported.
+On open, the store atomically copies any corrupt portable record and all its raw indexed fields to
+a digest-bound durable quarantine before the record can be reused. Quarantined identities remain
+unavailable to readers and repeat startup is idempotent. The store does not invent a replacement or
+silently rebuild that evidence: callers must retain immutable source material and admit fresh
+evidence after resolving the underlying fault.
 
 See [C0 durable state](../../../docs/c0-durable-state.md) for provenance details, failure recovery,
 startup ordering, and exact validation commands.

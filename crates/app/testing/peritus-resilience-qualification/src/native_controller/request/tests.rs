@@ -1,12 +1,12 @@
 use super::route::{
-    BLOB_AFTER_BEFORE_ACK, BLOB_BEFORE, BLOB_CORRUPTION, BLOB_FINALIZE_DISK_EXHAUSTION,
-    DaemonPhase, GATE_AFTER_BEFORE_ACK, GATE_BEFORE, JOURNAL_AFTER_BEFORE_ACK,
-    JOURNAL_APPEND_DISK_EXHAUSTION, JOURNAL_BEFORE, JOURNAL_CORRUPTION, LEASE_AFTER_BEFORE_ACK,
-    LEASE_BEFORE, PATCH_AFTER_BEFORE_ACK, PATCH_BEFORE, PROJECTION_CORRUPTION,
-    PROMOTION_AFTER_BEFORE_ACK, PROMOTION_BEFORE, PROVIDER_DEATH, PROVIDER_RETRY_EXHAUSTION,
-    SNAPSHOT_AFTER_BEFORE_ACK, SNAPSHOT_BEFORE, SNAPSHOT_COMMIT_DISK_EXHAUSTION,
-    SNAPSHOT_CORRUPTION, ScenarioRoute, TOOL_DEATH, TOOL_RETRY_EXHAUSTION, WORKER_DEATH,
-    WORKER_RETRY_EXHAUSTION,
+    ACCEPTANCE_EVIDENCE_CORRUPTION, BLOB_AFTER_BEFORE_ACK, BLOB_BEFORE, BLOB_CORRUPTION,
+    BLOB_FINALIZE_DISK_EXHAUSTION, DaemonPhase, GATE_AFTER_BEFORE_ACK, GATE_BEFORE,
+    JOURNAL_AFTER_BEFORE_ACK, JOURNAL_APPEND_DISK_EXHAUSTION, JOURNAL_BEFORE, JOURNAL_CORRUPTION,
+    LEASE_AFTER_BEFORE_ACK, LEASE_BEFORE, PATCH_AFTER_BEFORE_ACK, PATCH_BEFORE,
+    PROJECTION_CORRUPTION, PROMOTION_AFTER_BEFORE_ACK, PROMOTION_BEFORE, PROVIDER_DEATH,
+    PROVIDER_RETRY_EXHAUSTION, SNAPSHOT_AFTER_BEFORE_ACK, SNAPSHOT_BEFORE,
+    SNAPSHOT_COMMIT_DISK_EXHAUSTION, SNAPSHOT_CORRUPTION, ScenarioRoute, TOOL_DEATH,
+    TOOL_RETRY_EXHAUSTION, WORKER_DEATH, WORKER_RETRY_EXHAUSTION,
 };
 use super::{FaultDocument, ScenarioDocument};
 
@@ -183,6 +183,20 @@ fn the_snapshot_manifest_quota_route_is_admitted() {
     assert_eq!(
         ScenarioRoute::from_scenario(&scenario),
         Some(ScenarioRoute::SnapshotCommitDiskExhaustion)
+    );
+}
+
+#[test]
+fn the_acceptance_evidence_corruption_route_is_admitted() {
+    let scenario = ScenarioDocument {
+        id: ACCEPTANCE_EVIDENCE_CORRUPTION.to_owned(),
+        title: "acceptance evidence corruption".to_owned(),
+        fault: FaultDocument::Corruption { target: "acceptance-evidence".to_owned() },
+        expected_recovery: "quarantined-corruption".to_owned(),
+    };
+    assert_eq!(
+        ScenarioRoute::from_scenario(&scenario),
+        Some(ScenarioRoute::AcceptanceEvidenceCorruption)
     );
 }
 
