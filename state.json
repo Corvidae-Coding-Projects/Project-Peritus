@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1084,
+  "next_comment_id": 1085,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-08-31T15:36:04.177531286Z",
+      "updated_at": "2026-08-31T15:58:44.490700182Z",
       "labels": [
         "qualification",
         "release"
@@ -2750,6 +2750,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWos0irlgZ3ybu+nLPDtZCOsMrW1b3vb7Vne54xLEuP5SxPfsw+qJ+UL79v/vgOJTERcT9tONqjdej67SrAqWBw=="
+        },
+        "596a5aea-2b26-42c2-9322-1235d25fa16a": {
+          "display_id": 1084,
+          "author": "6ME5",
+          "content": "Committed 0e0d6ec6: Gate A's per-operation Rust jobs now have a 45-minute allowance. The cancelled Windows job had compiled successfully and passed hundreds of tests before GitHub stopped the final xtask CLI test at the former 30-minute ceiling; actionlint, diff checks, format/docs policy, and cargo xtask all pass locally.",
+          "created_at": "2026-08-31T15:58:44.488164765Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABATAton8oEm8hdVKtTs5u4Av5bLzCpGztOfhLdiq/JD5YxBpTUwjncCec2HD9/1qMVb1WyOLFYQ49RUfYY4B9NDQ=="
         },
         "598f0c1f-2534-493a-a329-cd436289f4de": {
           "display_id": 553,
@@ -10512,8 +10521,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-31T15:36:04.177531286Z",
+    "timestamp": "2026-08-31T15:58:44.490700182Z",
     "agent_id": "6ME5",
-    "agent_seq": 1284
+    "agent_seq": 1285
   }
 }
