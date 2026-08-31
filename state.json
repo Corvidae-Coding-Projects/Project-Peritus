@@ -45,6 +45,10 @@
     "f68244a3-b4ed-4597-a8e1-330360aa4bb1": 39
   },
   "locks": {
+    "31": {
+      "agent_id": "6ME5",
+      "claimed_at": "2026-08-31T06:38:33.477590990Z"
+    },
     "35": {
       "agent_id": "6ME5",
       "claimed_at": "2026-08-30T04:05:45.643660911Z"
@@ -10364,8 +10368,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-08-31T06:09:23.048547428Z",
+    "timestamp": "2026-08-31T06:38:33.477590990Z",
     "agent_id": "6ME5",
-    "agent_seq": 1265
+    "agent_seq": 1266
   }
 }
