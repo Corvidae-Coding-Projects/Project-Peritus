@@ -211,6 +211,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Keep the coding run's original committed HEAD as its comparison base even when the requested
+  work legitimately creates commits, merges branches, or switches HEAD. Exact changed-target
+  discovery, review diffs, and progress detection now retain committed task effects instead of
+  rejecting them as concurrent workspace drift (`TBF-034`, #31).
 - Direct remote research through immutable manifest/index/tree and object-size preflight before
   whole-repository, archive, or dataset transfer; after a timeout, return deterministic recovery
   guidance against equivalent bulk wrappers without new evidence. Preserve the dated published

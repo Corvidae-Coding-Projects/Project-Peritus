@@ -147,7 +147,7 @@ pub(super) async fn inspect_cycle(
             .append_report(&mut gate_output, effect_requirement);
     }
     let mut evidence = RunEvidence {
-        diff: bundle::diff(&input.workspace_root)?,
+        diff: bundle::diff(&input.workspace_root, baseline)?,
         gates: gate_output,
         review: review::render(&state.findings),
         developer_commands: state.developer_evidence.clone(),

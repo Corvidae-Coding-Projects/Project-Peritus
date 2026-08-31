@@ -11,7 +11,7 @@ use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
 /// Validated managed-worktree candidate reference.
 pub struct CandidateBaseline {
-    head: Vec<u8>,
+    head: String,
 }
 
 impl CandidateBaseline {
@@ -28,35 +28,36 @@ impl CandidateBaseline {
                 "managed workspace has no committed HEAD",
             ));
         }
-        Ok(Self { head: output.stdout })
-    }
-
-    /// Returns every tracked modification/deletion and nonignored untracked file against HEAD.
-    ///
-    /// Using the committed worktree base keeps the same candidate set through daemon restart and
-    /// retry instead of silently rebasing around unfinished agent work.
-    pub fn changed_paths(&self, root: &Path) -> Result<Vec<PathBuf>, ProductRunnerError> {
-        let head = Command::new("git")
-            .args(["rev-parse", "--verify", "HEAD"])
-            .current_dir(root)
-            .output()
-            .map_err(|error| repository("recheck candidate base", error.to_string()))?;
-        if !head.status.success() || head.stdout != self.head {
+        let head = String::from_utf8(output.stdout)
+            .map_err(|_| repository("resolve candidate base", "Git HEAD is not UTF-8"))?;
+        let head = head.trim().to_owned();
+        if head.is_empty() {
             return Err(repository(
-                "recheck candidate base",
-                "managed worktree HEAD changed during the coding run",
+                "resolve candidate base",
+                "managed workspace has no committed HEAD",
             ));
         }
+        Ok(Self { head })
+    }
+
+    /// Returns every tracked modification/deletion and nonignored untracked file against the
+    /// captured run baseline.
+    ///
+    /// Comparing the current tree with the captured commit retains changes that the coding task
+    /// legitimately committed, merged, or carried across a branch switch.
+    pub fn changed_paths(&self, root: &Path) -> Result<Vec<PathBuf>, ProductRunnerError> {
         let mut paths = BTreeSet::new();
         let tracked = Command::new("git")
-            .args(["diff", "--name-only", "-z", "HEAD", "--"])
+            .args(["diff", "--no-ext-diff", "--name-only", "-z"])
+            .arg(&self.head)
+            .arg("--")
             .current_dir(root)
             .output()
             .map_err(|error| repository("list tracked candidate paths", error.to_string()))?;
         if !tracked.status.success() {
             return Err(repository(
                 "list tracked candidate paths",
-                "git could not compare the managed worktree with HEAD",
+                "git could not compare the managed worktree with the captured run baseline",
             ));
         }
         append_paths(&tracked.stdout, &mut paths, CandidatePathKind::Tracked)?;
@@ -74,6 +75,10 @@ impl CandidateBaseline {
         append_paths(&untracked.stdout, &mut paths, CandidatePathKind::Untracked)?;
         append_nested_repository_changes(root, &mut paths)?;
         Ok(paths.into_iter().collect())
+    }
+
+    pub(crate) fn head(&self) -> &str {
+        &self.head
     }
 }
 
@@ -227,6 +232,27 @@ mod tests {
         assert_eq!(
             baseline.changed_paths(root.path()).expect("changes"),
             vec![PathBuf::from("build/maintained.py")]
+        );
+    }
+
+    #[test]
+    fn candidate_includes_changes_committed_after_the_run_baseline() {
+        let root = tempfile::tempdir().expect("root");
+        run(root.path(), &["init", "--quiet"]);
+        run(root.path(), &["config", "user.email", "peritus@example.invalid"]);
+        run(root.path(), &["config", "user.name", "Peritus Test"]);
+        fs::write(root.path().join("site.md"), "before\n").expect("baseline source");
+        run(root.path(), &["add", "."]);
+        run(root.path(), &["commit", "--quiet", "-m", "fixture"]);
+        let baseline = CandidateBaseline::capture(root.path()).expect("baseline");
+
+        fs::write(root.path().join("site.md"), "after\n").expect("updated source");
+        run(root.path(), &["add", "site.md"]);
+        run(root.path(), &["commit", "--quiet", "-m", "update site"]);
+
+        assert_eq!(
+            baseline.changed_paths(root.path()).expect("committed changes"),
+            vec![PathBuf::from("site.md")]
         );
     }
 

@@ -9,11 +9,12 @@ use crate::{
 
 const MAX_FILE_BYTES: usize = 192 * 1024;
 
-pub fn diff(root: &Path) -> Result<String, ProductRunnerError> {
-    let baseline = CandidateBaseline::capture(root)?;
+pub fn diff(root: &Path, baseline: &CandidateBaseline) -> Result<String, ProductRunnerError> {
     let changed_paths = baseline.changed_paths(root)?;
     let output = Command::new("git")
-        .args(["-C", root_text(root)?, "diff", "--no-ext-diff", "--", "."])
+        .args(["-C", root_text(root)?, "diff", "--no-ext-diff"])
+        .arg(baseline.head())
+        .args(["--", "."])
         .output()
         .map_err(|error| repository("read workspace diff", &error))?;
     if !output.status.success() {
@@ -235,10 +236,11 @@ mod tests {
     fn diff_includes_untracked_text_files() {
         let temporary = tempfile::tempdir().expect("temporary repository");
         initialize_repository(temporary.path());
+        let baseline = CandidateBaseline::capture(temporary.path()).expect("baseline");
         let content = "pub fn ready() -> bool { true }\n";
         fs::write(temporary.path().join("new.rs"), content).expect("write untracked source");
 
-        let actual = diff(temporary.path()).expect("collect diff");
+        let actual = diff(temporary.path(), &baseline).expect("collect diff");
 
         assert!(actual.contains("diff --git a/new.rs b/new.rs"));
         assert!(actual.contains("+pub fn ready() -> bool { true }"));
@@ -254,11 +256,12 @@ mod tests {
 
         let temporary = tempfile::tempdir().expect("temporary repository");
         initialize_repository(temporary.path());
+        let baseline = CandidateBaseline::capture(temporary.path()).expect("baseline");
         let key = temporary.path().join("server.key");
         fs::write(&key, "private\n").expect("write key");
         fs::set_permissions(&key, fs::Permissions::from_mode(0o600)).expect("set permissions");
 
-        let actual = diff(temporary.path()).expect("collect diff");
+        let actual = diff(temporary.path(), &baseline).expect("collect diff");
 
         assert!(actual.contains("server.key: kind=file, bytes=8, permissions=0600"));
         assert!(actual.contains("new file mode 100644"));
@@ -268,6 +271,7 @@ mod tests {
     fn diff_projects_dirty_nested_repository_files_into_outer_context() {
         let temporary = tempfile::tempdir().expect("temporary repository");
         initialize_repository(temporary.path());
+        let baseline = CandidateBaseline::capture(temporary.path()).expect("baseline");
         let nested = temporary.path().join("imported");
         fs::create_dir(&nested).expect("nested repository");
         initialize_repository(&nested);
@@ -296,7 +300,7 @@ mod tests {
         fs::write(nested.join("tracked.rs"), "pub const VALUE: u8 = 2;\n").expect("modify source");
         fs::write(nested.join("new.rs"), "pub const NEW: u8 = 3;\n").expect("new source");
 
-        let actual = diff(temporary.path()).expect("collect diff");
+        let actual = diff(temporary.path(), &baseline).expect("collect diff");
 
         assert!(
             actual.contains("diff --git a/imported/tracked.rs b/imported/tracked.rs"),
@@ -307,6 +311,26 @@ mod tests {
         assert!(actual.contains("+pub const NEW: u8 = 3;"));
     }
 
+    #[test]
+    fn diff_includes_changes_committed_after_the_run_baseline() {
+        let temporary = tempfile::tempdir().expect("temporary repository");
+        initialize_repository(temporary.path());
+        let baseline = CandidateBaseline::capture(temporary.path()).expect("baseline");
+        fs::write(temporary.path().join("committed.txt"), "retained\n").expect("source");
+        let add = Command::new("git")
+            .args(["add", "committed.txt"])
+            .current_dir(temporary.path())
+            .status()
+            .expect("stage source");
+        assert!(add.success());
+        commit(temporary.path(), "committed candidate");
+
+        let actual = diff(temporary.path(), &baseline).expect("collect committed diff");
+
+        assert!(actual.contains("diff --git a/committed.txt b/committed.txt"), "{actual}");
+        assert!(actual.contains("+retained"), "{actual}");
+    }
+
     fn initialize_repository(root: &Path) {
         let init = Command::new("git")
             .args(["init", "--quiet"])
@@ -314,6 +338,10 @@ mod tests {
             .status()
             .expect("run git init");
         assert!(init.success());
+        commit(root, "fixture");
+    }
+
+    fn commit(root: &Path, message: &str) {
         let commit = Command::new("git")
             .args([
                 "-c",
@@ -324,7 +352,7 @@ mod tests {
                 "--quiet",
                 "--allow-empty",
                 "-m",
-                "fixture",
+                message,
             ])
             .current_dir(root)
             .status()

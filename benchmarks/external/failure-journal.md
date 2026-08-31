@@ -3966,3 +3966,36 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   all-target/all-feature Clippy passes with warnings denied, formatting is clean, and documentation
   validation covers all 137 maintained Markdown files. The complete local repository policy gate
   passes across 79 packages and 3,363 source files.
+
+## TBF-034: a requested Git merge invalidated the harness candidate baseline
+
+- Suite and task: Terminal-Bench 2.0 frozen baseline, corrected-adapter trial
+  `fix-git__YdD2yHn`.
+- Symptom: the writer recovered detached commit
+  `650dba427e0a9dcd118f41a4c5e35c8017550a5a`, preserved it on a recovery branch, merged it into
+  local `master` as `ffeeb12fc93f43e3f6d85fbfa331b29fbd096ecf`, passed repository and Jekyll
+  verification, and completed with a clean tree. The unchanged external verifier awarded reward
+  1. Native Peritus nevertheless stopped before review with repository failure `managed worktree
+  HEAD changed during the coding run`, marked the product unaccepted, and exposed no changed paths.
+- Cause: candidate discovery captured the initial HEAD to detect a changing workspace, then
+  required current HEAD to remain byte-identical. That invariant treated an authorized commit,
+  merge, or branch switch as foreign interference. Review diff construction independently
+  recaptured current HEAD, so merely removing the rejection would still have hidden every change
+  already committed by the task. Progress fingerprints likewise ignored commit-only effects.
+- Resolution: retain the run's original committed HEAD as the immutable comparison object, not as
+  a prohibition on ref movement. Changed-target discovery and reviewer diff generation compare the
+  current index, worktree, and committed tree against that original object, preserving committed
+  merges alongside staged, unstaged, deleted, and untracked paths. Short-turn progress fingerprints
+  also bind current HEAD identity so a successful commit counts as forward progress even when it
+  leaves a clean tree.
+- Integrity decision: retain the external reward 1 and native failure exactly as observed. The
+  frozen campaign continues on its original `d4a72e67` executable. This correction contains no task
+  name, recovery SHA, expected path, verifier value, or benchmark-specific branch rule; it applies
+  to ordinary user requests for commits, merges, cherry-picks, version bumps, and history repair.
+- Evidence: trial started `2026-08-31T22:40:15.862076Z` and finished
+  `2026-08-31T22:53:04.231570Z`; 35 native requests used 1,405,335 input, 159,744 cached input, and
+  21,837 output tokens. Regression coverage commits a changed file after baseline capture, requires
+  exact candidate paths and review diff bytes from the original baseline, and proves an empty
+  commit changes the progress fingerprint. All 113 product-runner tests, strict all-target and
+  all-feature Clippy with warnings denied, formatting, diff hygiene, the 137-file documentation
+  check, and the complete repository policy gate pass.

@@ -12,9 +12,10 @@ use crate::{
     ProductRunnerError, ProductRunnerErrorKind, candidate::CandidateBaseline, file_metadata,
 };
 
-/// Exact content identity of the candidate relative to its stable Git HEAD.
+/// Exact content and committed-HEAD identity of the current workspace state.
 #[derive(Eq, PartialEq)]
 pub struct WorkspaceCheckpoint {
+    head: String,
     entries: Vec<CheckpointEntry>,
 }
 
@@ -26,7 +27,7 @@ struct CheckpointEntry {
 }
 
 impl WorkspaceCheckpoint {
-    /// Streams every changed file into a stable digest without retaining its contents in memory.
+    /// Captures HEAD and streams every changed file into a digest without retaining its contents.
     pub fn capture(root: &Path) -> Result<Self, ProductRunnerError> {
         let baseline = CandidateBaseline::capture(root)?;
         let entries = baseline
@@ -34,7 +35,7 @@ impl WorkspaceCheckpoint {
             .into_iter()
             .map(|path| checkpoint_entry(root, path))
             .collect::<Result<Vec<_>, _>>()?;
-        Ok(Self { entries })
+        Ok(Self { head: baseline.head().to_owned(), entries })
     }
 }
 
@@ -102,6 +103,21 @@ mod tests {
         fs::write(root.path().join("new.txt"), "untracked").expect("write untracked");
         let untracked = WorkspaceCheckpoint::capture(root.path()).expect("untracked");
         assert!(changed != untracked);
+    }
+
+    #[test]
+    fn checkpoint_changes_when_the_task_creates_a_commit() {
+        let root = tempfile::tempdir().expect("root");
+        run(root.path(), &["init", "--quiet"]);
+        run(root.path(), &["config", "user.email", "peritus@example.invalid"]);
+        run(root.path(), &["config", "user.name", "Peritus Test"]);
+        run(root.path(), &["commit", "--quiet", "--allow-empty", "-m", "fixture"]);
+        let before = WorkspaceCheckpoint::capture(root.path()).expect("before commit");
+
+        run(root.path(), &["commit", "--quiet", "--allow-empty", "-m", "task effect"]);
+        let after = WorkspaceCheckpoint::capture(root.path()).expect("after commit");
+
+        assert!(before != after);
     }
 
     #[cfg(unix)]
