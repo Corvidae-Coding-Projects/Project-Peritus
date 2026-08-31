@@ -249,6 +249,29 @@ const fn milestone_details(route: ScenarioRoute) -> (&'static str, &'static str,
         | ScenarioRoute::ToolRetryExhaustion
         | ScenarioRoute::WorkerRetryExhaustion => unreachable!(),
         ScenarioRoute::DaemonLifecycle(phase) => daemon_milestone_details(phase),
+        ScenarioRoute::HostReboot(phase) => reboot_milestone_details(phase),
+    }
+}
+
+const fn reboot_milestone_details(
+    phase: super::request::RebootPhase,
+) -> (&'static str, &'static str, &'static str) {
+    match phase {
+        super::request::RebootPhase::OutstandingEffect => (
+            "guest C0 delivery claimed before its external effect",
+            "disposable guest reboot changed kernel boot identity",
+            "fresh boot applied and acknowledged the exact effect once",
+        ),
+        super::request::RebootPhase::DurableBeforeAck => (
+            "guest external effect persisted before C0 acknowledgement",
+            "disposable guest reboot changed kernel boot identity",
+            "fresh boot reconciled the effect before exact acknowledgement",
+        ),
+        super::request::RebootPhase::StartupReconciliation => (
+            "fresh guest startup reclaimed and reconciled the durable effect",
+            "disposable guest reboot interrupted reconciliation before acknowledgement",
+            "next boot reconciled and acknowledged without duplication",
+        ),
     }
 }
 

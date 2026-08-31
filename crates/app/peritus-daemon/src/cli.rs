@@ -15,6 +15,7 @@ mod patch;
 mod projection;
 mod promotion;
 mod promotion_evidence_corruption;
+mod reboot;
 mod server;
 mod snapshot;
 mod snapshot_corruption;
@@ -158,6 +159,12 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
         }
         CommandLine::StageOutboxCrash(configuration) => stage_outbox(configuration),
         CommandLine::RecoverOutboxCrash(configuration) => recover_outbox(configuration),
+        CommandLine::StageHostReboot { phase, reconciliation, configuration } => {
+            reboot::stage(configuration, phase, reconciliation)
+        }
+        CommandLine::RecoverHostReboot { phase, configuration } => {
+            reboot::recover(configuration, phase)
+        }
     }
 }
 

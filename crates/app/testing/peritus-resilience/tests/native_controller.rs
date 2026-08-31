@@ -114,6 +114,34 @@ fn dropping_a_pending_run_kills_the_controller_and_its_descendant() {
     assert_eq!(fs::read_dir(&fixture.scratch).expect("scratch contents").count(), 0);
 }
 
+#[test]
+fn controller_failure_retains_bounded_stderr_diagnostics() {
+    let _native_test = native_test_guard();
+    let fixture =
+        NativeFixture::new("#!/bin/sh\nprintf 'precise controller failure\\n' >&2\nexit 1\n");
+    let factory = fixture.factory();
+    let production = ScenarioCatalog::h1_production().expect("built-in H1 catalog");
+    let catalog = ScenarioCatalog::custom(vec![production.scenarios()[0].clone()])
+        .expect("focused H1 catalog");
+    let report = block_on(QualificationRunner::run(factory.config(), &catalog, &factory));
+
+    assert!(report.cases()[0].failures().iter().any(|failure| {
+        matches!(
+            failure,
+            ScenarioFailure::Subject { error, .. }
+                if error.context().as_str().contains("precise controller failure")
+        )
+    }));
+}
+
+#[test]
+fn immutable_controller_resource_is_bound_by_digest() {
+    let _native_test = native_test_guard();
+    let fixture = NativeFixture::new(&valid_controller(ABC_SHA256, true));
+    assert!(fixture.factory().with_controller_resource(&fixture.controller).is_ok());
+    assert!(fixture.factory().with_controller_resource(&fixture.scratch).is_err());
+}
+
 struct NativeFixture {
     _root: tempfile::TempDir,
     scratch: PathBuf,

@@ -57,6 +57,13 @@ const COMMANDS: &[&str] = &[
     "qualify-daemon-lifecycle-recover <phase> --config <config.toml>",
     "qualify-outbox-stage --config <config.toml>",
     "qualify-outbox-recover --config <config.toml>",
+    "qualify-reboot-outstanding-stage --config <config.toml>",
+    "qualify-reboot-outstanding-recover --config <config.toml>",
+    "qualify-reboot-durable-stage --config <config.toml>",
+    "qualify-reboot-durable-recover --config <config.toml>",
+    "qualify-reboot-startup-stage --config <config.toml>",
+    "qualify-reboot-startup-reconciliation-stage --config <config.toml>",
+    "qualify-reboot-startup-recover --config <config.toml>",
 ];
 
 pub(super) fn write(executable: &OsStr) {

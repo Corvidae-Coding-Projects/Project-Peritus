@@ -320,9 +320,27 @@ The passing acceptance-evidence corruption report and six raw evidence files are
 The passing harness-promotion evidence corruption report and six raw evidence files are retained
 under `/home/doll/.local/state/peritus/qualification/h1/promotion-evidence-final.vHYIJy` with report
 SHA-256 `986e49e5af24ecfd736af315c07c20a0d3994c702186db1d377a0b7507710feb`.
-With these 40 routes, the other three catalog routes remain fail-closed until their real
-disposable-VM reboot driver is connected.
-Therefore the full H1 production qualification is still pending.
+The final three controller routes use an immutable Alpine 3.24.1 BIOS/cloud-init qcow2 as the base
+for a fresh QEMU/KVM copy-on-write guest. The controller creates one disposable SSH identity and
+cloud-init payload, copies the exact static candidate into the guest, and waits without aggressive
+connection retries. It then proves a real kernel boot-ID transition at the outstanding-effect and
+durable-before-ack boundaries. The startup-reconciliation route proves two transitions: one before
+startup reclaims and reconciles the effect, and another before the final fresh process acknowledges
+that exact live fence. The passing focused reports and their SHA-256 digests are:
+
+- outstanding effect:
+  `/home/doll/.local/state/peritus/qualification/h1/reboot-outstanding-final.jGfR3w/report.json`,
+  `718183bf3ad03839dba46cdf73f7e8b3fb3c642d7a2ce87ca3305e9ed6e2f0db`;
+- durable before acknowledgement:
+  `/home/doll/.local/state/peritus/qualification/h1/reboot-durable-final.mcHRcP/report.json`,
+  `dc747eb74233917a7032761ebb80e7721c42ab69f7b39ba626757ad7fb29e784`;
+- startup reconciliation:
+  `/home/doll/.local/state/peritus/qualification/h1/reboot-startup-final.7W4YhX/report.json`,
+  `7f6d64d964882a821114acc53e2f8550f1b0599d70969db47c69dcd3590f28fa`.
+
+All 43 catalog routes are now connected to genuine production or disposable-host effects. The full
+H1 production qualification is still pending because these are focused development diagnostics,
+not one complete report bound to the final release revision.
 
 The release integration owner must:
 
@@ -340,7 +358,7 @@ The release integration owner must:
    under the H4 release record.
 
 The repository tests prove the persistent protocol, all 43 fresh-subject translations, retained
-artifact verification, cancellation, descendant ownership, and cleanup. They do not prove that an
-external platform controller performed a real host reboot or storage fault. H1 is complete only
-after that reviewed controller runs the full catalog against the exact release candidate and
-produces a `Ready` report with retained evidence.
+artifact verification, cancellation, descendant ownership, cleanup, and bounded controller-error
+diagnostics. The focused Linux reports above additionally prove the real disposable-host reboot
+effects. H1 is complete only after the reviewed controller runs the full catalog against the exact
+release candidate and produces a `Ready` report with retained evidence.

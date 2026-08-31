@@ -1,9 +1,15 @@
 //! Closed mapping from declared H1 scenarios to production effect routes.
 
 mod daemon;
+mod reboot;
 
 use super::{FaultDocument, ScenarioDocument};
 pub(in crate::native_controller) use daemon::DaemonPhase;
+pub(in crate::native_controller) use reboot::RebootPhase;
+#[cfg(test)]
+pub(super) use reboot::{
+    REBOOT_DURABLE_BEFORE_ACK, REBOOT_OUTSTANDING_EFFECT, REBOOT_STARTUP_RECONCILIATION,
+};
 
 pub(super) const BLOB_BEFORE: &str = "h1.crash.blob.before";
 pub(super) const BLOB_AFTER_BEFORE_ACK: &str = "h1.crash.blob.after-before-ack";
@@ -34,7 +40,6 @@ pub(super) const WORKER_DEATH: &str = "h1.death.worker";
 pub(super) const PROVIDER_RETRY_EXHAUSTION: &str = "h1.retry-exhaustion.provider";
 pub(super) const TOOL_RETRY_EXHAUSTION: &str = "h1.retry-exhaustion.tool";
 pub(super) const WORKER_RETRY_EXHAUSTION: &str = "h1.retry-exhaustion.worker";
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(in crate::native_controller) enum ScenarioRoute {
     BlobBeforeDurableCommit,
@@ -67,6 +72,7 @@ pub(in crate::native_controller) enum ScenarioRoute {
     ToolRetryExhaustion,
     WorkerRetryExhaustion,
     DaemonLifecycle(DaemonPhase),
+    HostReboot(RebootPhase),
 }
 
 impl ScenarioRoute {
@@ -269,7 +275,9 @@ impl ScenarioRoute {
                 "retry-budget-exhausted",
                 FaultDocument::RetryExhaustion { dependency },
             ) if dependency == "worker" => Some(Self::WorkerRetryExhaustion),
-            _ => daemon::from_scenario(scenario).map(Self::DaemonLifecycle),
+            _ => reboot::from_scenario(scenario)
+                .map(Self::HostReboot)
+                .or_else(|| daemon::from_scenario(scenario).map(Self::DaemonLifecycle)),
         }
     }
 
@@ -302,7 +310,8 @@ impl ScenarioRoute {
             Self::ProviderDeath
             | Self::ToolDeath
             | Self::WorkerDeath
-            | Self::DaemonLifecycle(_) => "reconciled-owned-work",
+            | Self::DaemonLifecycle(_)
+            | Self::HostReboot(_) => "reconciled-owned-work",
             Self::ProviderRetryExhaustion
             | Self::ToolRetryExhaustion
             | Self::WorkerRetryExhaustion => "retry-budget-exhausted",
@@ -338,6 +347,13 @@ impl ScenarioRoute {
     pub(in crate::native_controller) const fn daemon_phase(self) -> Option<DaemonPhase> {
         match self {
             Self::DaemonLifecycle(phase) => Some(phase),
+            _ => None,
+        }
+    }
+
+    pub(in crate::native_controller) const fn reboot_phase(self) -> Option<RebootPhase> {
+        match self {
+            Self::HostReboot(phase) => Some(phase),
             _ => None,
         }
     }

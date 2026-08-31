@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
-- Add the checked-in Rust `peritus-h1-controller` and an explicit focused diagnostic mode. Its 40
+- Add the checked-in Rust `peritus-h1-controller` and an explicit focused diagnostic mode. Its 43
   genuine routes cover both sides of journal submission, content-addressed blob publication,
   retained Git snapshot publication, exclusive-lease persistence, and recoverable patch
   application, plus D1's atomic gate event/checkpoint commit and F0's campaign/pointer/approval
@@ -46,6 +46,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   reference is absent, the admitted filler is intact, no temporary file remains, and the journal
   is healthy. Candidate creation and rollback share this compensation boundary so any real
   manifest-publication failure cannot strand an authoritative-looking Git ref.
+  The final three routes run the exact static candidate in a fresh copy-on-write Alpine guest,
+  record real kernel boot-ID changes, and prove exactly-once C0 effect recovery when rebooted before
+  the effect, after its durable effect but before acknowledgement, and during startup
+  reconciliation. The immutable guest image is supplied outside Git and re-digested for every
+  subject.
   All eleven daemon-lifecycle routes construct their production E0 state through
   legal reducer commands, commit it through C0, kill the staged daemon at the named active phase,
   and require fresh-process replay to preserve state, phase, ownership, handoff, proposal, and
@@ -185,6 +190,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+
+- Retain bounded, sanitized native-controller stderr in supervision failures so an exited H1
+  controller reports its precise operational cause instead of only `response stream closed` (#31)
 
 - Add a production Git snapshot quarantine operation that refuses healthy references, atomically
   moves a divergent retained value out of the active namespace, preserves it for inspection, and

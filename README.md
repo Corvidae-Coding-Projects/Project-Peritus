@@ -74,7 +74,7 @@ systems and retains each report plus raw evidence. Its macOS and Windows sandbox
 actual Seatbelt and AppContainer/Job Object host probes; hosted results remain evidence only after
 the corresponding revision finishes successfully.
 
-H1 now has 40 checked-in production controller routes. Focused native runs against freshly
+H1 now has all 43 checked-in production controller routes. Focused native runs against freshly
 built binaries passed both sides of the journal, blob, retained Git snapshot, exclusive-lease,
 patch, D1 gate, and F0 campaign/pointer promotion commits. A projection-corruption route also
 proves that startup rejects corrupt active bytes and atomically installs a fresh verified
@@ -106,8 +106,11 @@ projection identity, exact patch postimage bytes, complete gate successor state,
 campaign, production-pointer, and approve-once state. This is useful evidence, not an H1 readiness
 claim: production quota routes now prove that artifact finalization and snapshot-manifest
 publication leave no rejected bytes, metadata, or retained Git reference, while journal exhaustion
-leaves no partial command, event, or aggregate head. The remaining three catalog routes are the
-disposable-VM reboot cases.
+leaves no partial command, event, or aggregate head. The final three routes boot a digest-bound
+Alpine guest under QEMU/KVM, stage the exact static `peritusd`, and prove outstanding-effect,
+durable-before-ack, and startup-reconciliation recovery across changed guest kernel boot IDs. All
+three focused reboot diagnostics passed with exact single-effect and cleanup evidence. A complete
+43-case run against the eventual exact release revision is still required before H1 can be Ready.
 
 H0 also has a Rust-owned exact-candidate preparer and a three-host native workflow. The preparer
 derives the common candidate identity from committed source, binds the controller and native host

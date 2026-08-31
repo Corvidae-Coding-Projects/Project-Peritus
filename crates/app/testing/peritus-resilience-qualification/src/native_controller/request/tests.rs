@@ -4,9 +4,11 @@ use super::route::{
     HARNESS_PROMOTION_CORRUPTION, JOURNAL_AFTER_BEFORE_ACK, JOURNAL_APPEND_DISK_EXHAUSTION,
     JOURNAL_BEFORE, JOURNAL_CORRUPTION, LEASE_AFTER_BEFORE_ACK, LEASE_BEFORE,
     PATCH_AFTER_BEFORE_ACK, PATCH_BEFORE, PROJECTION_CORRUPTION, PROMOTION_AFTER_BEFORE_ACK,
-    PROMOTION_BEFORE, PROVIDER_DEATH, PROVIDER_RETRY_EXHAUSTION, SNAPSHOT_AFTER_BEFORE_ACK,
-    SNAPSHOT_BEFORE, SNAPSHOT_COMMIT_DISK_EXHAUSTION, SNAPSHOT_CORRUPTION, ScenarioRoute,
-    TOOL_DEATH, TOOL_RETRY_EXHAUSTION, WORKER_DEATH, WORKER_RETRY_EXHAUSTION,
+    PROMOTION_BEFORE, PROVIDER_DEATH, PROVIDER_RETRY_EXHAUSTION, REBOOT_DURABLE_BEFORE_ACK,
+    REBOOT_OUTSTANDING_EFFECT, REBOOT_STARTUP_RECONCILIATION, RebootPhase,
+    SNAPSHOT_AFTER_BEFORE_ACK, SNAPSHOT_BEFORE, SNAPSHOT_COMMIT_DISK_EXHAUSTION,
+    SNAPSHOT_CORRUPTION, ScenarioRoute, TOOL_DEATH, TOOL_RETRY_EXHAUSTION, WORKER_DEATH,
+    WORKER_RETRY_EXHAUSTION,
 };
 use super::{FaultDocument, ScenarioDocument};
 
@@ -112,6 +114,35 @@ fn the_process_and_dependency_routes_are_admitted() {
         "rolled-back-uncommitted",
     );
     assert_eq!(ScenarioRoute::from_scenario(&unsupported), None);
+}
+
+#[test]
+fn all_three_host_reboot_routes_require_exact_catalog_identity() {
+    for (id, phase, expected) in [
+        (REBOOT_OUTSTANDING_EFFECT, "outstanding-effect", RebootPhase::OutstandingEffect),
+        (REBOOT_DURABLE_BEFORE_ACK, "durable-before-ack", RebootPhase::DurableBeforeAck),
+        (
+            REBOOT_STARTUP_RECONCILIATION,
+            "startup-reconciliation",
+            RebootPhase::StartupReconciliation,
+        ),
+    ] {
+        let scenario = ScenarioDocument {
+            id: id.to_owned(),
+            title: "host reboot".to_owned(),
+            fault: FaultDocument::HostReboot { phase: phase.to_owned() },
+            expected_recovery: "reconciled-owned-work".to_owned(),
+        };
+        assert_eq!(
+            ScenarioRoute::from_scenario(&scenario),
+            Some(ScenarioRoute::HostReboot(expected))
+        );
+        let wrong_phase = ScenarioDocument {
+            fault: FaultDocument::HostReboot { phase: "wrong".to_owned() },
+            ..scenario
+        };
+        assert_eq!(ScenarioRoute::from_scenario(&wrong_phase), None);
+    }
 }
 
 #[test]

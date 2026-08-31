@@ -14,6 +14,7 @@ use crate::{
 };
 
 use super::controller::{ControllerHandle, LaunchRequest};
+use super::path::{canonical_directory, canonical_file};
 use super::protocol::{Stage, ValidatedStage, encode_request, parse_response};
 use super::{NativeAdapterError, NativeControllerLimits, digest, subject_error};
 
@@ -28,7 +29,13 @@ pub struct NativeResilienceFactory {
     descriptor: SubjectDescriptor,
     config: QualificationConfig,
     limits: NativeControllerLimits,
+    controller_resource: Option<ControllerResource>,
     next_instance: AtomicU64,
+}
+
+struct ControllerResource {
+    path: PathBuf,
+    digest: crate::EvidenceDigest,
 }
 
 impl NativeResilienceFactory {
@@ -70,8 +77,28 @@ impl NativeResilienceFactory {
             descriptor,
             config,
             limits,
+            controller_resource: None,
             next_instance: AtomicU64::new(1),
         })
+    }
+
+    /// Binds one immutable external resource supplied to the reviewed controller.
+    ///
+    /// The resource is re-digested before every subject starts. It is not copied into the private
+    /// subject because large read-only VM images are expected to be shared through copy-on-write
+    /// overlays.
+    ///
+    /// # Errors
+    ///
+    /// Returns a typed configuration error when the resource is not a canonical regular file.
+    pub fn with_controller_resource(
+        mut self,
+        resource: impl AsRef<Path>,
+    ) -> Result<Self, NativeAdapterError> {
+        let path = canonical_file(resource.as_ref(), "controller resource")?;
+        let digest = digest::file(&path)?;
+        self.controller_resource = Some(ControllerResource { path, digest });
+        Ok(self)
     }
 
     /// Returns the exact deterministic bounds serialized into every controller request.
@@ -149,6 +176,17 @@ impl NativeResilienceFactory {
         let artifact_root = create_artifact_root(&self.artifact_parent, &instance_id)?;
         let executor_sha256 = digest::hex(staged_digest);
         let build_sha256 = digest::hex(self.descriptor.build_digest());
+        let resource = self.controller_resource.as_ref();
+        if let Some(resource) = resource {
+            let observed = digest::file(&resource.path)
+                .map_err(|error| setup_error(format!("digest controller resource: {error}")))?;
+            if observed != resource.digest {
+                return Err(setup_error(
+                    "controller resource changed while the subject was being provisioned",
+                ));
+            }
+        }
+        let resource_sha256 = resource.map(|value| digest::hex(value.digest));
         let controller = ControllerHandle::launch(
             LaunchRequest {
                 executable: &staged_executor,
@@ -159,6 +197,8 @@ impl NativeResilienceFactory {
                 subject_id: self.descriptor.id().as_str(),
                 build_sha256: &build_sha256,
                 executor_sha256: &executor_sha256,
+                controller_resource: resource.map(|value| value.path.as_path()),
+                controller_resource_sha256: resource_sha256.as_deref(),
             },
             self.limits,
             cancellation,
@@ -310,32 +350,6 @@ impl Drop for NativeResilienceSubject {
             let _ = temporary.close();
         }
     }
-}
-
-fn canonical_file(path: &Path, label: &'static str) -> Result<PathBuf, NativeAdapterError> {
-    let canonical = fs::canonicalize(path)
-        .map_err(|error| NativeAdapterError::filesystem("canonicalize path", path, error))?;
-    if !fs::metadata(&canonical).is_ok_and(|metadata| metadata.is_file()) {
-        return Err(NativeAdapterError::PathType {
-            label,
-            expected: "a regular file",
-            path: canonical,
-        });
-    }
-    Ok(canonical)
-}
-
-fn canonical_directory(path: &Path, label: &'static str) -> Result<PathBuf, NativeAdapterError> {
-    let canonical = fs::canonicalize(path)
-        .map_err(|error| NativeAdapterError::filesystem("canonicalize path", path, error))?;
-    if !fs::metadata(&canonical).is_ok_and(|metadata| metadata.is_dir()) {
-        return Err(NativeAdapterError::PathType {
-            label,
-            expected: "an existing directory",
-            path: canonical,
-        });
-    }
-    Ok(canonical)
 }
 
 fn create_artifact_root(parent: &Path, instance_id: &str) -> Result<PathBuf, SubjectError> {

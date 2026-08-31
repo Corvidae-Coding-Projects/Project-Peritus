@@ -3,9 +3,9 @@
 use std::io::{self, BufRead as _, BufReader, Read, Write as _};
 use std::path::Path;
 use std::process::{Child, ChildStdin, Command, ExitStatus, Stdio};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, TryRecvError};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
@@ -15,6 +15,7 @@ use super::process_tree::ProcessTree;
 use super::{NativeControllerLimits, subject_error};
 
 const POLL_INTERVAL: Duration = Duration::from_millis(20);
+const MAX_DIAGNOSTIC_BYTES: usize = 16 * 1024;
 
 #[derive(Clone, Copy)]
 pub(super) struct LaunchRequest<'a> {
@@ -26,6 +27,8 @@ pub(super) struct LaunchRequest<'a> {
     pub(super) subject_id: &'a str,
     pub(super) build_sha256: &'a str,
     pub(super) executor_sha256: &'a str,
+    pub(super) controller_resource: Option<&'a Path>,
+    pub(super) controller_resource_sha256: Option<&'a str>,
 }
 
 pub(super) struct OwnedController {
@@ -35,6 +38,7 @@ pub(super) struct OwnedController {
     responses: Receiver<Result<Vec<u8>, SubjectError>>,
     stdout: Option<JoinHandle<()>>,
     stderr: Option<JoinHandle<io::Result<()>>>,
+    stderr_bytes: Arc<Mutex<Vec<u8>>>,
     output_bytes: Arc<AtomicU64>,
     reaped: bool,
 }
@@ -66,6 +70,22 @@ impl OwnedController {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .env_clear();
+        match (request.controller_resource, request.controller_resource_sha256) {
+            (Some(resource), Some(digest)) => {
+                command
+                    .arg("--controller-resource")
+                    .arg(resource)
+                    .arg("--controller-resource-sha256")
+                    .arg(digest);
+            }
+            (None, None) => {}
+            _ => {
+                return Err(supervision(
+                    "controller resource path and digest must be supplied together",
+                    false,
+                ));
+            }
+        }
         preserve_runtime_environment(&mut command);
         ProcessTree::configure(&mut command);
         Self::spawn(&mut command, limits)
@@ -103,7 +123,9 @@ impl OwnedController {
             read_responses(stdout_pipe, response_limit, &stdout_count, &response_sender);
         });
         let stderr_count = Arc::clone(&output_bytes);
-        let stderr = thread::spawn(move || drain(stderr_pipe, &stderr_count));
+        let stderr_bytes = Arc::new(Mutex::new(Vec::new()));
+        let stderr_capture = Arc::clone(&stderr_bytes);
+        let stderr = thread::spawn(move || drain(stderr_pipe, &stderr_count, &stderr_capture));
         Ok(Self {
             child: Some(child),
             stdin,
@@ -111,6 +133,7 @@ impl OwnedController {
             responses,
             stdout: Some(stdout),
             stderr: Some(stderr),
+            stderr_bytes,
             output_bytes,
             reaped: false,
         })
@@ -149,7 +172,7 @@ impl OwnedController {
                 Err(RecvTimeoutError::Timeout) => {}
                 Err(RecvTimeoutError::Disconnected) => {
                     self.terminate()?;
-                    return Err(supervision("controller response stream closed", true));
+                    return Err(self.failure("controller response stream closed", true));
                 }
             }
             if let Some(status) = self.try_wait()? {
@@ -157,7 +180,7 @@ impl OwnedController {
                 self.join_output()?;
                 if cleanup {
                     if !status.success() {
-                        return Err(supervision(
+                        return Err(self.failure(
                             format!("controller cleanup exited with status {status}"),
                             false,
                         ));
@@ -167,7 +190,7 @@ impl OwnedController {
                         Err(TryRecvError::Empty | TryRecvError::Disconnected) => {}
                     }
                 }
-                return Err(supervision(
+                return Err(self.failure(
                     format!("controller exited before responding with status {status}"),
                     true,
                 ));
@@ -188,10 +211,9 @@ impl OwnedController {
             self.finish_tree()?;
             self.join_output()?;
             if !status.success() {
-                return Err(supervision(
-                    format!("controller cleanup exited with status {status}"),
-                    false,
-                ));
+                return Err(
+                    self.failure(format!("controller cleanup exited with status {status}"), false)
+                );
             }
         }
         Ok(response)
@@ -199,6 +221,19 @@ impl OwnedController {
 
     fn output_since(&self, initial: u64) -> u64 {
         self.output_bytes.load(Ordering::Acquire).saturating_sub(initial)
+    }
+
+    fn failure(&self, detail: impl Into<String>, retryable: bool) -> SubjectError {
+        let mut detail = detail.into();
+        let diagnostics = {
+            let bytes = lock(&self.stderr_bytes);
+            String::from_utf8_lossy(&bytes).trim().to_owned()
+        };
+        if !diagnostics.is_empty() {
+            detail.push_str("; diagnostics: ");
+            detail.push_str(&diagnostics);
+        }
+        supervision(detail, retryable)
     }
 
     fn wait_for_exit(
@@ -318,7 +353,7 @@ fn read_responses(
     }
 }
 
-fn drain(mut reader: impl Read, count: &AtomicU64) -> io::Result<()> {
+fn drain(mut reader: impl Read, count: &AtomicU64, diagnostics: &Mutex<Vec<u8>>) -> io::Result<()> {
     let mut buffer = [0_u8; 16 * 1024];
     loop {
         let bytes = reader.read(&mut buffer)?;
@@ -326,6 +361,16 @@ fn drain(mut reader: impl Read, count: &AtomicU64) -> io::Result<()> {
             return Ok(());
         }
         count.fetch_add(u64::try_from(bytes).unwrap_or(u64::MAX), Ordering::AcqRel);
+        let mut retained = lock(diagnostics);
+        let available = MAX_DIAGNOSTIC_BYTES.saturating_sub(retained.len());
+        retained.extend_from_slice(&buffer[..bytes.min(available)]);
+    }
+}
+
+fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    match mutex.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
     }
 }
 

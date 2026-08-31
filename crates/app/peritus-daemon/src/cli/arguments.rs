@@ -2,6 +2,7 @@
 
 use std::ffi::{OsStr, OsString};
 
+use crate::outbox::HostRebootPhase;
 #[cfg(not(verus_only))]
 use crate::qualification::dependency::{DependencyFault, DependencyKind};
 #[cfg(not(verus_only))]
@@ -83,6 +84,15 @@ pub(super) enum CommandLine {
     },
     StageOutboxCrash(OsString),
     RecoverOutboxCrash(OsString),
+    StageHostReboot {
+        phase: HostRebootPhase,
+        reconciliation: bool,
+        configuration: OsString,
+    },
+    RecoverHostReboot {
+        phase: HostRebootPhase,
+        configuration: OsString,
+    },
 }
 
 pub(super) fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<CommandLine> {
@@ -224,6 +234,52 @@ pub(super) fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<Co
         }
         "qualify-outbox-stage" => configured(arguments, CommandLine::StageOutboxCrash),
         "qualify-outbox-recover" => configured(arguments, CommandLine::RecoverOutboxCrash),
+        "qualify-reboot-outstanding-stage" => {
+            configured(arguments, |configuration| CommandLine::StageHostReboot {
+                phase: HostRebootPhase::OutstandingEffect,
+                reconciliation: false,
+                configuration,
+            })
+        }
+        "qualify-reboot-outstanding-recover" => {
+            configured(arguments, |configuration| CommandLine::RecoverHostReboot {
+                phase: HostRebootPhase::OutstandingEffect,
+                configuration,
+            })
+        }
+        "qualify-reboot-durable-stage" => {
+            configured(arguments, |configuration| CommandLine::StageHostReboot {
+                phase: HostRebootPhase::DurableBeforeAck,
+                reconciliation: false,
+                configuration,
+            })
+        }
+        "qualify-reboot-durable-recover" => {
+            configured(arguments, |configuration| CommandLine::RecoverHostReboot {
+                phase: HostRebootPhase::DurableBeforeAck,
+                configuration,
+            })
+        }
+        "qualify-reboot-startup-stage" => {
+            configured(arguments, |configuration| CommandLine::StageHostReboot {
+                phase: HostRebootPhase::StartupReconciliation,
+                reconciliation: false,
+                configuration,
+            })
+        }
+        "qualify-reboot-startup-reconciliation-stage" => {
+            configured(arguments, |configuration| CommandLine::StageHostReboot {
+                phase: HostRebootPhase::StartupReconciliation,
+                reconciliation: true,
+                configuration,
+            })
+        }
+        "qualify-reboot-startup-recover" => {
+            configured(arguments, |configuration| CommandLine::RecoverHostReboot {
+                phase: HostRebootPhase::StartupReconciliation,
+                configuration,
+            })
+        }
         _ => None,
     }
 }

@@ -42,7 +42,13 @@ async fn run(
         digest::file(&options.candidate)?,
     );
     let config = QualificationConfig::default();
-    let factory = NativeResilienceFactory::new(
+    let catalog = selected_catalog(options.scenario_id.as_deref())?;
+    let needs_reboot_image =
+        options.scenario_id.as_deref().is_none_or(|scenario| scenario.starts_with("h1.reboot."));
+    if needs_reboot_image && options.reboot_image.is_none() {
+        return Err("production or reboot-focused H1 qualification requires --reboot-image".into());
+    }
+    let mut factory = NativeResilienceFactory::new(
         &options.controller,
         &options.candidate,
         &options.scratch,
@@ -51,7 +57,9 @@ async fn run(
         config,
         NativeControllerLimits::default(),
     )?;
-    let catalog = selected_catalog(options.scenario_id.as_deref())?;
+    if let Some(image) = &options.reboot_image {
+        factory = factory.with_controller_resource(image)?;
+    }
     let report = QualificationRunner::run(config, &catalog, &factory).await;
     publication::publish(&options.report, &render_report_json(&report)?)?;
     Ok(if report.is_ready() {

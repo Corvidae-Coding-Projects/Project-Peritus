@@ -12,6 +12,7 @@ JSON report. A report path is never overwritten.
 peritus-h1 \
   --controller /reviewed/peritus-h1-controller \
   --candidate /release/peritusd \
+  --reboot-image /reviewed/generic-alpine-bios-cloudinit.qcow2 \
   --scratch /private/h1/scratch \
   --artifacts /private/h1/artifacts \
   --report /evidence/h1-report.json \
@@ -23,7 +24,7 @@ The controller remains responsible for real daemon, storage, dependency, quota, 
 effects. The operator refuses a descriptor whose build digest differs from the exact staged
 candidate bytes.
 
-The checked-in `peritus-h1-controller` currently owns 40 genuine routes across the journal,
+The checked-in `peritus-h1-controller` owns all 43 genuine routes across the journal,
 blob, retained Git snapshot, lease, patch, gate, and promotion commit boundaries, plus active
 projection repair, journal/blob/snapshot/acceptance-evidence/harness-promotion corruption controls, and
 provider/tool/worker dependency failure. It also owns all eleven active E0 lifecycle phases. Each
@@ -35,8 +36,8 @@ checkpoint before submission, and is killed; recovery requires an integrity-chec
 zero committed events, heads, outbox claims, or external effects. For
 `h1.crash.journal.after-before-ack`, it is killed after the durable outbox effect checkpoint;
 recovery requires exact effect reconciliation and live-fence settlement. Both routes retain six
-independently digested evidence files and prove cleanup. Other catalog routes return an error until
-their real component or disposable-host control exists; they cannot inherit a fixture result.
+independently digested evidence files and prove cleanup. Every catalog route has a closed production
+mapping; none can inherit a fixture result.
 
 The artifact-finalization disk route uses the production store's checked logical quota. It opens
 two exact writers while the quota can admit either one, finalizes and references the first, and
@@ -130,6 +131,16 @@ while keeping the campaign evidence readable, the complete 16-event/four-head jo
 and the production pointer replayable at the promoted revision. Repeating startup must preserve one
 identical quarantine observation.
 
+The three reboot routes run the exact static Linux candidate inside a fresh copy-on-write Alpine
+guest. The controller binds the immutable base image digest, candidate digest, request digest,
+daemon checkpoint, and every observed kernel boot ID. It uses key-only localhost SSH, never reboots
+the qualification host, and shuts the guest down during subject cleanup. The outstanding-effect
+case reboots after the live C0 claim but before its effect. The durable-before-ack case reboots after
+the effect is synced. The startup-reconciliation case reboots once into recovery, pauses after the
+second live claim has reconciled the effect, and reboots again before final acknowledgement. Every
+case requires exactly one external effect, no duplicate, the exact live fence acknowledgement, and
+no pending claim.
+
 The six dependency routes use the real durable scheduler and one real effect boundary per
 dependency. Provider cases execute the staged daemon through the executable-backed provider
 transport. Tool cases use the same grounded, receipt-backed `run_command` path as ordinary coding
@@ -138,6 +149,13 @@ retryable failure for fresh replay to requeue. A retry-exhaustion case executes 
 attempt ceiling and requires fresh replay to retain terminal exhausted non-success. All six focused
 diagnostics passed under
 `/home/doll/.local/state/peritus/qualification/h1/dependency-routes.5nwGZV`.
+
+The reboot image is an external qualification resource, not a repository binary. The passing Linux
+diagnostics used Alpine 3.24.1
+`generic_alpine-3.24.1-x86_64-bios-cloudinit-r0.qcow2`, whose official SHA-512 is
+`8d756f6fc7653daa4fb4e2e213d8a66007bcb1e5a846e28891af62c47b90685c694486c2746099ad99e9e8f5278db76b69d11dfe1e9361aa4c8406df16929a9c`.
+The operator re-digests the supplied file before every fresh subject and the controller refuses a
+different invocation binding.
 
 Use the explicit diagnostic option to exercise that route without presenting a one-case report as
 production readiness:
@@ -178,6 +196,12 @@ The harness-promotion evidence diagnostic is `h1.corruption.harness-promotion`.
 The dependency-death diagnostics are `h1.death.provider`, `h1.death.tool`, and
 `h1.death.worker`. The exhaustion diagnostics are `h1.retry-exhaustion.provider`,
 `h1.retry-exhaustion.tool`, and `h1.retry-exhaustion.worker`.
+The reboot diagnostics are `h1.reboot.outstanding-effect`,
+`h1.reboot.durable-before-ack`, and `h1.reboot.startup-reconciliation`. They require
+`--reboot-image` and a candidate executable that can run in the selected guest; the Alpine image
+uses the `x86_64-unknown-linux-musl` release build. The host must provide
+`qemu-system-x86_64`, `qemu-img`, `ssh`, `ssh-keygen`, and `mkisofs`. KVM is used when available;
+otherwise the qualifier falls back to QEMU's TCG accelerator.
 The artifact quota diagnostic is `h1.disk-full.blob-finalize`.
 The journal quota diagnostic is `h1.disk-full.journal-append`.
 The snapshot-manifest quota diagnostic is `h1.disk-full.snapshot-commit`.

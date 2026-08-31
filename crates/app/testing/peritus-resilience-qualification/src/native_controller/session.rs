@@ -18,7 +18,8 @@ pub(super) fn serve(paths: &ControllerPaths) -> Result<(), Box<dyn std::error::E
     let stdin = std::io::stdin();
     let mut reader = BufReader::new(stdin.lock());
     let prepare_request = next(&mut reader, paths, Stage::Prepare, 1)?;
-    let prepared = candidate::prepare(paths)?;
+    let route = prepare_request.route()?;
+    let mut prepared = candidate::prepare(paths, route)?;
     response::publish(
         &prepare_request,
         &paths.instance_id,
@@ -31,9 +32,14 @@ pub(super) fn serve(paths: &ControllerPaths) -> Result<(), Box<dyn std::error::E
 
     let inject_request = next(&mut reader, paths, Stage::Inject, 2)?;
     same_scenario(&prepare_request, &inject_request)?;
-    let route = prepare_request.route()?;
     let dependency_retry_limit = prepare_request.dependency_retry_limit(route);
-    let injected = candidate::inject(paths, &prepared.runtime, route, dependency_retry_limit)?;
+    let injected = candidate::inject(
+        paths,
+        &mut prepared,
+        route,
+        dependency_retry_limit,
+        &inject_request.request_sha256,
+    )?;
     response::publish(
         &inject_request,
         &paths.instance_id,
@@ -43,8 +49,7 @@ pub(super) fn serve(paths: &ControllerPaths) -> Result<(), Box<dyn std::error::E
 
     let recover_request = next(&mut reader, paths, Stage::Recover, 3)?;
     same_scenario(&prepare_request, &recover_request)?;
-    let recovered =
-        candidate::recover(paths, &prepared.runtime, &injected, route, dependency_retry_limit)?;
+    let recovered = candidate::recover(paths, &prepared, &injected, route, dependency_retry_limit)?;
     let payload =
         recovery_payload(paths, &recover_request, &prepared, &injected, &recovered, route)?;
     response::publish(&recover_request, &paths.instance_id, Stage::Recover, payload)?;
@@ -56,7 +61,7 @@ pub(super) fn serve(paths: &ControllerPaths) -> Result<(), Box<dyn std::error::E
     if cleanup_limit < 1 {
         return Err("H1 request does not permit the required cleanup step".into());
     }
-    candidate::cleanup(&prepared.runtime)?;
+    candidate::cleanup(&mut prepared)?;
     response::publish(
         &cleanup_request,
         &paths.instance_id,
@@ -108,7 +113,7 @@ fn recovery_payload(
     if logical_ticks > request.limits().logical_ticks() {
         return Err("H1 recovery exceeded the request logical-time bound".into());
     }
-    let accounting = recovery_accounting(recovered)?;
+    let accounting = recovery_accounting(recovered, route)?;
     let retained = recovery_evidence::retain(paths, request, prepared, injected, recovered)?;
     Ok(RecoverPayload {
         outcome: route.outcome(),
@@ -148,6 +153,7 @@ struct RecoveryAccounting {
 
 fn recovery_accounting(
     recovered: &RecoveredCandidate,
+    route: super::request::ScenarioRoute,
 ) -> Result<RecoveryAccounting, Box<dyn std::error::Error>> {
     if let Some(lifecycle) = &recovered.lifecycle {
         if !lifecycle.verification.replay_exact || !lifecycle.verification.ownership_reconciled {
@@ -159,6 +165,13 @@ fn recovery_accounting(
             ownership: ownership(1, 1, 0),
             retries: retries(None, 0)?,
             events,
+        });
+    }
+    if route.reboot_phase().is_some() {
+        return Ok(RecoveryAccounting {
+            ownership: ownership(1, 1, 0),
+            retries: retries(None, 0)?,
+            events: 12,
         });
     }
     let Some(dependency) = &recovered.dependency else {

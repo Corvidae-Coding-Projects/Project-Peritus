@@ -7,6 +7,7 @@ mod journal_before;
 mod lease;
 mod patch;
 mod promotion;
+mod reboot;
 mod snapshot;
 
 use std::path::{Path, PathBuf};
@@ -45,6 +46,9 @@ pub use self::promotion::{
     recover_promotion_after_crash, recover_promotion_before_crash, stage_promotion_after_crash,
     stage_promotion_before_crash,
 };
+pub use self::reboot::{
+    HostRebootPhase, recover_host_reboot, stage_host_reboot, stage_startup_reconciliation,
+};
 use crate::{DaemonConfig, DaemonError, DaemonErrorCode, DaemonRecovery};
 pub use snapshot::{
     recover_snapshot_after_crash, recover_snapshot_before_crash, recover_snapshot_corruption,
@@ -65,7 +69,7 @@ pub(super) fn recover_snapshot_quota_exhaustion(
 
 const DESTINATION: &str = "peritus.admin.outbox-crash.v1";
 const FRAME_FAMILY: u16 = 65_001;
-const MAX_ATTEMPTS: u16 = 2;
+const MAX_ATTEMPTS: u16 = 3;
 const FIRST_CLAIM_NOW: u64 = 1;
 const FIRST_CLAIM_LEASE: u64 = 2;
 const RECOVERY_CLAIM_NOW: u64 = FIRST_CLAIM_LEASE;

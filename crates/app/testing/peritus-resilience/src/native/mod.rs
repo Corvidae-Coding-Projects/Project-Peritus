@@ -3,6 +3,7 @@
 mod config;
 mod controller;
 mod digest;
+mod path;
 mod process;
 mod process_tree;
 mod protocol;

@@ -12,11 +12,12 @@ pub struct OperatorOptions {
     pub subject_id: String,
     pub implementation: String,
     pub scenario_id: Option<String>,
+    pub reboot_image: Option<PathBuf>,
 }
 
 impl OperatorOptions {
     pub(super) fn parse(arguments: &[OsString]) -> Result<Self, &'static str> {
-        if !matches!(arguments.len(), 14 | 16) {
+        if arguments.len() < 14 || arguments.len() > 18 || !arguments.len().is_multiple_of(2) {
             return Err(usage());
         }
         let mut controller = None;
@@ -27,6 +28,7 @@ impl OperatorOptions {
         let mut subject_id = None;
         let mut implementation = None;
         let mut scenario_id = None;
+        let mut reboot_image = None;
         for pair in arguments.chunks_exact(2) {
             let name = pair[0].to_str().ok_or_else(usage)?;
             match name {
@@ -38,6 +40,7 @@ impl OperatorOptions {
                 "--subject-id" => set_once(&mut subject_id, text(&pair[1])?)?,
                 "--implementation" => set_once(&mut implementation, text(&pair[1])?)?,
                 "--diagnostic-scenario" => set_once(&mut scenario_id, text(&pair[1])?)?,
+                "--reboot-image" => set_once(&mut reboot_image, PathBuf::from(&pair[1]))?,
                 _ => return Err(usage()),
             }
         }
@@ -50,6 +53,7 @@ impl OperatorOptions {
             subject_id: subject_id.ok_or_else(usage)?,
             implementation: implementation.ok_or_else(usage)?,
             scenario_id,
+            reboot_image,
         })
     }
 }
@@ -66,7 +70,7 @@ fn text(value: &OsString) -> Result<String, &'static str> {
 }
 
 const fn usage() -> &'static str {
-    "usage: peritus-h1 --controller FILE --candidate FILE --scratch DIR --artifacts DIR --report FILE --subject-id ID --implementation TEXT [--diagnostic-scenario ID]"
+    "usage: peritus-h1 --controller FILE --candidate FILE --scratch DIR --artifacts DIR --report FILE --subject-id ID --implementation TEXT [--reboot-image FILE] [--diagnostic-scenario ID]"
 }
 
 #[cfg(test)]
@@ -122,6 +126,32 @@ mod tests {
         .map(OsString::from);
         let parsed = OperatorOptions::parse(&arguments).expect("parse focused H1 options");
         assert_eq!(parsed.scenario_id.as_deref(), Some("h1.crash.journal.after-before-ack"));
+        assert_eq!(parsed.reboot_image, None);
+    }
+
+    #[test]
+    fn disposable_reboot_image_is_explicit() {
+        let arguments = [
+            "--report",
+            "report.json",
+            "--candidate",
+            "peritusd",
+            "--controller",
+            "controller",
+            "--artifacts",
+            "artifacts",
+            "--implementation",
+            "release",
+            "--scratch",
+            "scratch",
+            "--subject-id",
+            "peritus.release",
+            "--reboot-image",
+            "alpine.qcow2",
+        ]
+        .map(OsString::from);
+        let parsed = OperatorOptions::parse(&arguments).expect("parse reboot image");
+        assert_eq!(parsed.reboot_image.as_deref(), Some(std::path::Path::new("alpine.qcow2")));
     }
 
     #[test]

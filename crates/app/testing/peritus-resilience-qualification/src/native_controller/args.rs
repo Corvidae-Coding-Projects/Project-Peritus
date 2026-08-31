@@ -14,11 +14,15 @@ pub(super) struct ControllerPaths {
     pub(super) subject_id: String,
     pub(super) build_sha256: String,
     pub(super) executor_sha256: String,
+    pub(super) controller_resource: Option<PathBuf>,
+    pub(super) controller_resource_sha256: Option<String>,
 }
 
 impl ControllerPaths {
     pub(super) fn parse(arguments: &[OsString]) -> Result<Self, Box<dyn std::error::Error>> {
-        if arguments.len() != 15 || arguments.first().is_none_or(|value| value != "--serve") {
+        if !matches!(arguments.len(), 15 | 19)
+            || arguments.first().is_none_or(|value| value != "--serve")
+        {
             return Err(usage().into());
         }
         let mut candidate = None;
@@ -28,6 +32,8 @@ impl ControllerPaths {
         let mut subject_id = None;
         let mut build_sha256 = None;
         let mut executor_sha256 = None;
+        let mut controller_resource = None;
+        let mut controller_resource_sha256 = None;
         for pair in arguments[1..].chunks_exact(2) {
             match pair[0].to_str().ok_or_else(usage)? {
                 "--candidate-executable" => set_once(&mut candidate, PathBuf::from(&pair[1]))?,
@@ -37,6 +43,12 @@ impl ControllerPaths {
                 "--subject-id" => set_once(&mut subject_id, text(&pair[1])?)?,
                 "--build-sha256" => set_once(&mut build_sha256, text(&pair[1])?)?,
                 "--executor-sha256" => set_once(&mut executor_sha256, text(&pair[1])?)?,
+                "--controller-resource" => {
+                    set_once(&mut controller_resource, PathBuf::from(&pair[1]))?;
+                }
+                "--controller-resource-sha256" => {
+                    set_once(&mut controller_resource_sha256, text(&pair[1])?)?;
+                }
                 _ => return Err(usage().into()),
             }
         }
@@ -48,6 +60,8 @@ impl ControllerPaths {
             subject_id: subject_id.ok_or_else(usage)?,
             build_sha256: build_sha256.ok_or_else(usage)?,
             executor_sha256: executor_sha256.ok_or_else(usage)?,
+            controller_resource,
+            controller_resource_sha256,
         };
         paths.validate()?;
         Ok(paths)
@@ -59,6 +73,20 @@ impl ControllerPaths {
         self.artifact_root = canonical_directory(&self.artifact_root, "artifact root")?;
         let controller = std::env::current_exe()?;
         let controller = canonical_file(&controller, "controller executable")?;
+        match (&self.controller_resource, &self.controller_resource_sha256) {
+            (Some(resource), Some(digest)) => {
+                let canonical = canonical_file(resource, "controller resource")?;
+                if canonical.starts_with(&self.subject_root)
+                    || !lower_sha256(digest)
+                    || digest::hex(digest::file(&canonical)?) != *digest
+                {
+                    return Err("H1 controller resource differs from its invocation binding".into());
+                }
+                self.controller_resource = Some(canonical);
+            }
+            (None, None) => {}
+            _ => return Err("H1 controller resource path and digest are incomplete".into()),
+        }
         if !self.candidate.starts_with(&self.subject_root)
             || !controller.starts_with(&self.subject_root)
             || self.artifact_root.starts_with(&self.subject_root)
@@ -132,7 +160,7 @@ fn instance_id(value: &str) -> bool {
 }
 
 const fn usage() -> &'static str {
-    "usage: peritus-h1-controller --serve --candidate-executable FILE --subject-root DIR --artifact-root DIR --instance-id ID --subject-id ID --build-sha256 HEX --executor-sha256 HEX"
+    "usage: peritus-h1-controller --serve --candidate-executable FILE --subject-root DIR --artifact-root DIR --instance-id ID --subject-id ID --build-sha256 HEX --executor-sha256 HEX [--controller-resource FILE --controller-resource-sha256 HEX]"
 }
 
 #[cfg(test)]
