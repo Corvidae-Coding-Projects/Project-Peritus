@@ -2058,6 +2058,7 @@ dependencies = [
  "peritus-migrations",
  "peritus-model-protocol",
  "peritus-orchestrator",
+ "peritus-patch",
  "peritus-policy",
  "peritus-process",
  "peritus-product-runner",

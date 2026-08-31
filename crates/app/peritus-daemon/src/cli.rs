@@ -1,10 +1,12 @@
 //! Process-facing command-line composition for `peritusd`.
 
+mod arguments;
 mod lease;
+mod patch;
 mod snapshot;
 mod usage;
 
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsString;
 use std::io::Write;
 use std::process::ExitCode;
 use std::time::Duration;
@@ -18,6 +20,7 @@ use crate::outbox::{
 };
 use crate::terminal::qualify_pty_ordering;
 use crate::{DaemonConfig, DaemonError, DaemonRuntime, ShutdownOutcome};
+use arguments::{CommandLine, parse};
 
 const QUALIFICATION_KILL_BOUND: Duration = Duration::from_secs(30);
 
@@ -56,6 +59,10 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
         CommandLine::RecoverLeaseBeforeCrash(configuration) => lease::recover(configuration, false),
         CommandLine::StageLeaseAfterCrash(configuration) => lease::stage_after(configuration),
         CommandLine::RecoverLeaseAfterCrash(configuration) => lease::recover(configuration, true),
+        CommandLine::StagePatchBeforeCrash(configuration) => patch::stage_before(configuration),
+        CommandLine::RecoverPatchBeforeCrash(configuration) => patch::recover(configuration, false),
+        CommandLine::StagePatchAfterCrash(configuration) => patch::stage_after(configuration),
+        CommandLine::RecoverPatchAfterCrash(configuration) => patch::recover(configuration, true),
         CommandLine::StageOutboxCrash(configuration) => stage_outbox(configuration),
         CommandLine::RecoverOutboxCrash(configuration) => recover_outbox(configuration),
     }
@@ -85,86 +92,6 @@ fn run_server(configuration: OsString) -> ExitCode {
             write_error(&error.to_string());
             ExitCode::FAILURE
         }
-    }
-}
-
-enum CommandLine {
-    Version,
-    Serve(OsString),
-    QualifyPty,
-    StageBlobBeforeCrash(OsString),
-    RecoverBlobBeforeCrash(OsString),
-    StageBlobAfterCrash(OsString),
-    RecoverBlobAfterCrash(OsString),
-    StageJournalBeforeCrash(OsString),
-    RecoverJournalBeforeCrash(OsString),
-    StageSnapshotBeforeCrash(OsString),
-    RecoverSnapshotBeforeCrash(OsString),
-    StageSnapshotAfterCrash(OsString),
-    RecoverSnapshotAfterCrash(OsString),
-    StageLeaseBeforeCrash(OsString),
-    RecoverLeaseBeforeCrash(OsString),
-    StageLeaseAfterCrash(OsString),
-    RecoverLeaseAfterCrash(OsString),
-    StageOutboxCrash(OsString),
-    RecoverOutboxCrash(OsString),
-}
-
-fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<CommandLine> {
-    let command = arguments.next()?;
-    match command.to_str()? {
-        "--version" if arguments.next().is_none() => Some(CommandLine::Version),
-        "serve" => configuration_argument(arguments).map(CommandLine::Serve),
-        "qualify-pty" if arguments.next().is_none() => Some(CommandLine::QualifyPty),
-        "qualify-blob-before-stage" => {
-            configuration_argument(arguments).map(CommandLine::StageBlobBeforeCrash)
-        }
-        "qualify-blob-before-recover" => {
-            configuration_argument(arguments).map(CommandLine::RecoverBlobBeforeCrash)
-        }
-        "qualify-blob-after-stage" => {
-            configuration_argument(arguments).map(CommandLine::StageBlobAfterCrash)
-        }
-        "qualify-blob-after-recover" => {
-            configuration_argument(arguments).map(CommandLine::RecoverBlobAfterCrash)
-        }
-        "qualify-journal-before-stage" => {
-            configuration_argument(arguments).map(CommandLine::StageJournalBeforeCrash)
-        }
-        "qualify-journal-before-recover" => {
-            configuration_argument(arguments).map(CommandLine::RecoverJournalBeforeCrash)
-        }
-        "qualify-snapshot-before-stage" => {
-            configuration_argument(arguments).map(CommandLine::StageSnapshotBeforeCrash)
-        }
-        "qualify-snapshot-before-recover" => {
-            configuration_argument(arguments).map(CommandLine::RecoverSnapshotBeforeCrash)
-        }
-        "qualify-snapshot-after-stage" => {
-            configuration_argument(arguments).map(CommandLine::StageSnapshotAfterCrash)
-        }
-        "qualify-snapshot-after-recover" => {
-            configuration_argument(arguments).map(CommandLine::RecoverSnapshotAfterCrash)
-        }
-        "qualify-lease-before-stage" => {
-            configuration_argument(arguments).map(CommandLine::StageLeaseBeforeCrash)
-        }
-        "qualify-lease-before-recover" => {
-            configuration_argument(arguments).map(CommandLine::RecoverLeaseBeforeCrash)
-        }
-        "qualify-lease-after-stage" => {
-            configuration_argument(arguments).map(CommandLine::StageLeaseAfterCrash)
-        }
-        "qualify-lease-after-recover" => {
-            configuration_argument(arguments).map(CommandLine::RecoverLeaseAfterCrash)
-        }
-        "qualify-outbox-stage" => {
-            configuration_argument(arguments).map(CommandLine::StageOutboxCrash)
-        }
-        "qualify-outbox-recover" => {
-            configuration_argument(arguments).map(CommandLine::RecoverOutboxCrash)
-        }
-        _ => None,
     }
 }
 
@@ -297,12 +224,6 @@ fn recover_journal_before(configuration: OsString) -> ExitCode {
         }
         Err(error) => qualification_failure(&error),
     }
-}
-
-fn configuration_argument(arguments: &mut impl Iterator<Item = OsString>) -> Option<OsString> {
-    let flag = arguments.next()?;
-    let configuration = arguments.next()?;
-    (flag == OsStr::new("--config") && arguments.next().is_none()).then_some(configuration)
 }
 
 fn qualify_pty() -> ExitCode {

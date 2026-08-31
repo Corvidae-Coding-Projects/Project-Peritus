@@ -5,7 +5,8 @@ IPC peers, negotiates the A3 application protocol, serializes authority-bearing 
 supervises bounded effect work, and coordinates deterministic startup, recovery, and shutdown.
 Its independent A2 adapter exercises all 28 daemon cases through the public `peritusd` process,
 including a real host PTY, a real C0 outbox crash after an external effect but before settlement,
-and both sides of the atomic B1 lease event/projection commit.
+both sides of the atomic B1 lease event/projection commit, and both sides of recoverable patch
+application.
 
 The crate does not expose writable storage handles or reusable authority tokens. Embedders receive
 configuration, lifecycle status, and a bounded authority client. Product-run configuration carries

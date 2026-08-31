@@ -2,8 +2,10 @@
 
 mod blob;
 mod effect;
+mod journal;
 mod journal_before;
 mod lease;
+mod patch;
 mod snapshot;
 
 use std::path::{Path, PathBuf};
@@ -11,8 +13,7 @@ use std::path::{Path, PathBuf};
 use peritus_codec::{CodecLimits, encode_frame, sha256};
 use peritus_journal::{
     AggregateId, AggregateKey, AggregateKind, AppendPlan, AppendRequest, EventDraft, ExactFrame,
-    HeadExpectation, OutboxDraft, OutboxId, OutboxMessage, OutboxState, SqliteJournal,
-    SqliteJournalOptions, StoreId,
+    HeadExpectation, OutboxDraft, OutboxId, OutboxMessage, OutboxState, SqliteJournal, StoreId,
 };
 use peritus_types::{CommandId, EventId, EventSequence, Sha256Digest};
 
@@ -21,14 +22,21 @@ pub use self::blob::{
     stage_blob_before_crash,
 };
 use self::effect::QualificationDestination;
+use self::journal::{
+    acquire_instance, journal_error, open_journal, verify_empty_journal,
+    verify_empty_journal_for_store,
+};
 
 pub use self::journal_before::{recover_journal_before_crash, stage_journal_before_crash};
 pub use self::lease::{
     recover_lease_after_crash, recover_lease_before_crash, stage_lease_after_crash,
     stage_lease_before_crash,
 };
-use crate::instance::InstanceGuard;
-use crate::{DaemonConfig, DaemonError, DaemonErrorCode, DaemonIdentity, DaemonRecovery};
+pub use self::patch::{
+    recover_patch_after_crash, recover_patch_before_crash, stage_patch_after_crash,
+    stage_patch_before_crash,
+};
+use crate::{DaemonConfig, DaemonError, DaemonErrorCode, DaemonRecovery};
 pub use snapshot::{
     recover_snapshot_after_crash, recover_snapshot_before_crash, stage_snapshot_after_crash,
     stage_snapshot_before_crash,
@@ -284,34 +292,6 @@ fn validate_claim(
         .ok_or_else(|| qualification_error("qualification claim has no positive live fence"))
 }
 
-fn acquire_instance(
-    config: &DaemonConfig,
-    store_id: StoreId,
-) -> Result<InstanceGuard, DaemonError> {
-    InstanceGuard::acquire(config.paths().state_root(), &DaemonIdentity::new(store_id))
-}
-
-fn open_journal(config: &DaemonConfig, store_id: StoreId) -> Result<SqliteJournal, DaemonError> {
-    SqliteJournal::open(config.paths().database(), store_id, SqliteJournalOptions::default())
-        .map_err(journal_error)
-}
-
-fn verify_empty_journal(config: &DaemonConfig) -> Result<bool, DaemonError> {
-    let store_id = config.store_identity()?;
-    let _instance = acquire_instance(config, store_id)?;
-    let mut journal = open_journal(config, store_id)?;
-    let report = journal.integrity_scan().map_err(journal_error)?;
-    if report.event_count() != 0 || report.aggregate_count() != 0 || report.last_position() != 0 {
-        return Err(DaemonError::new(
-            DaemonErrorCode::CorruptState,
-            DaemonRecovery::Operator,
-            "qualify empty authoritative journal",
-            "qualification changed the authoritative journal",
-        ));
-    }
-    Ok(true)
-}
-
 fn effect_payload(store_id: StoreId, outbox_id: OutboxId) -> Vec<u8> {
     let mut payload = Vec::with_capacity(75);
     payload.extend_from_slice(b"peritus/g0/outbox-crash-effect/v1\0");
@@ -360,16 +340,6 @@ fn qualification_error(detail: &'static str) -> DaemonError {
         DaemonRecovery::Operator,
         "qualify effect-before-ack outbox recovery",
         detail,
-    )
-}
-
-fn journal_error(error: peritus_journal::JournalError) -> DaemonError {
-    DaemonError::with_source(
-        DaemonErrorCode::Storage,
-        DaemonRecovery::Reconcile,
-        error.operation(),
-        error.to_string(),
-        error,
     )
 }
 

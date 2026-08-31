@@ -153,6 +153,12 @@ one journal transaction. A fresh process integrity-checks the journal and reopen
 key, revision, digest, and producing position; the controller requires those facts to match the
 pre-crash committed receipt.
 
+Both patch routes use the production workspace-bound `PatchPlan` and recoverable filesystem
+transaction adapter. Before commit, the staged daemon holds the checked plan without creating
+transaction state or changing the target. After commit, the exact postimage and installed-manifest
+receipt are durable. A fresh process re-hashes the target and requires no pending transaction
+metadata; the controller independently inspects the same regular file, byte count, and digest.
+
 Fresh focused diagnostics retained passing one-case reports and six raw evidence files under
 `/home/doll/.local/state/peritus/qualification/h1/journal-before.YP5d5R` and
 `/home/doll/.local/state/peritus/qualification/h1/journal-after-ack.sCtlT9`. Both reports deliberately
@@ -162,7 +168,9 @@ use the `custom` profile and `not-ready-custom-catalog` verdict. The blob report
 retained under `/home/doll/.local/state/peritus/qualification/h1/snapshot-before.cZLcEc` and
 `/home/doll/.local/state/peritus/qualification/h1/snapshot-after-ack.46KKAh`. The lease reports are
 retained under `/home/doll/.local/state/peritus/qualification/h1/lease-before.UFyq0t` and
-`/home/doll/.local/state/peritus/qualification/h1/lease-after-ack.zurTPp`. The other 35 catalog
+`/home/doll/.local/state/peritus/qualification/h1/lease-after-ack.zurTPp`. The patch reports are
+retained under `/home/doll/.local/state/peritus/qualification/h1/patch-before.GlxK0f` and
+`/home/doll/.local/state/peritus/qualification/h1/patch-after-ack.Pknry2`. The other 33 catalog
 routes fail closed until their real component failpoints, controlled quota/storage effects,
 process controls, or disposable-VM reboot driver are connected. Therefore the full H1 production
 qualification is still pending.

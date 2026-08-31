@@ -4,6 +4,7 @@ mod blob;
 mod config;
 mod journal_before;
 mod lease;
+mod patch;
 mod process;
 mod snapshot;
 
@@ -43,6 +44,7 @@ pub(super) struct InjectedCandidate {
     pub(super) artifact_bytes: Option<u64>,
     pub(super) snapshot: Option<SnapshotObservation>,
     pub(super) lease: Option<LeaseObservation>,
+    pub(super) patch: Option<PatchObservation>,
     pub(super) killed_exit: String,
 }
 
@@ -64,6 +66,7 @@ pub(super) struct RecoveredCandidate {
     pub(super) artifact_bytes: Option<u64>,
     pub(super) snapshot: Option<SnapshotObservation>,
     pub(super) lease: Option<LeaseObservation>,
+    pub(super) patch: Option<PatchObservation>,
     pub(super) elapsed_millis: u64,
 }
 
@@ -81,6 +84,13 @@ pub(super) struct LeaseObservation {
     pub(super) state_revision: Option<u64>,
     pub(super) state_sha256: Option<String>,
     pub(super) producing_position: Option<u64>,
+}
+
+#[derive(Serialize)]
+pub(super) struct PatchObservation {
+    pub(super) identity: String,
+    pub(super) postimage: Option<String>,
+    pub(super) receipt_manifest: Option<String>,
 }
 
 pub(super) struct RuntimePaths {
@@ -152,6 +162,9 @@ pub(super) fn inject(
         CommitRoute::LeaseBeforeDurableCommit | CommitRoute::LeaseAfterDurableCommitBeforeAck => {
             return lease::inject(paths, runtime, route);
         }
+        CommitRoute::PatchBeforeDurableCommit | CommitRoute::PatchAfterDurableCommitBeforeAck => {
+            return patch::inject(paths, runtime, route);
+        }
         CommitRoute::SnapshotBeforeDurableCommit
         | CommitRoute::SnapshotAfterDurableCommitBeforeAck => {
             return snapshot::inject(paths, runtime, route);
@@ -185,6 +198,7 @@ pub(super) fn inject(
         artifact_bytes: None,
         snapshot: None,
         lease: None,
+        patch: None,
         killed_exit: killed.status,
     })
 }
@@ -204,6 +218,9 @@ pub(super) fn recover(
         }
         CommitRoute::LeaseBeforeDurableCommit | CommitRoute::LeaseAfterDurableCommitBeforeAck => {
             return lease::recover(paths, runtime, injected, route);
+        }
+        CommitRoute::PatchBeforeDurableCommit | CommitRoute::PatchAfterDurableCommitBeforeAck => {
+            return patch::recover(paths, runtime, injected, route);
         }
         CommitRoute::SnapshotBeforeDurableCommit
         | CommitRoute::SnapshotAfterDurableCommitBeforeAck => {
@@ -279,6 +296,7 @@ pub(super) fn recover(
         artifact_bytes: None,
         snapshot: None,
         lease: None,
+        patch: None,
         elapsed_millis: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
     })
 }

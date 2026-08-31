@@ -1,11 +1,11 @@
 use super::{
     BLOB_AFTER_BEFORE_ACK, BLOB_BEFORE, CommitRoute, FaultDocument, JOURNAL_AFTER_BEFORE_ACK,
-    JOURNAL_BEFORE, LEASE_AFTER_BEFORE_ACK, LEASE_BEFORE, SNAPSHOT_AFTER_BEFORE_ACK,
-    SNAPSHOT_BEFORE, ScenarioDocument,
+    JOURNAL_BEFORE, LEASE_AFTER_BEFORE_ACK, LEASE_BEFORE, PATCH_AFTER_BEFORE_ACK, PATCH_BEFORE,
+    SNAPSHOT_AFTER_BEFORE_ACK, SNAPSHOT_BEFORE, ScenarioDocument,
 };
 
 #[test]
-fn only_the_eight_real_commit_routes_are_admitted() {
+fn only_the_ten_real_commit_routes_are_admitted() {
     let before =
         scenario(JOURNAL_BEFORE, "journal", "before-durable-commit", "rolled-back-uncommitted");
     let after = scenario(
@@ -30,9 +30,17 @@ fn only_the_eight_real_commit_routes_are_admitted() {
         "after-durable-commit-before-ack",
         "replayed-committed",
     );
-    let unsupported = scenario(
-        "h1.crash.patch.before",
+    let patch_before =
+        scenario(PATCH_BEFORE, "patch", "before-durable-commit", "rolled-back-uncommitted");
+    let patch_after = scenario(
+        PATCH_AFTER_BEFORE_ACK,
         "patch",
+        "after-durable-commit-before-ack",
+        "replayed-committed",
+    );
+    let unsupported = scenario(
+        "h1.crash.gate.before",
+        "gate",
         "before-durable-commit",
         "rolled-back-uncommitted",
     );
@@ -64,6 +72,14 @@ fn only_the_eight_real_commit_routes_are_admitted() {
     assert_eq!(
         CommitRoute::from_scenario(&lease_after),
         Some(CommitRoute::LeaseAfterDurableCommitBeforeAck)
+    );
+    assert_eq!(
+        CommitRoute::from_scenario(&patch_before),
+        Some(CommitRoute::PatchBeforeDurableCommit)
+    );
+    assert_eq!(
+        CommitRoute::from_scenario(&patch_after),
+        Some(CommitRoute::PatchAfterDurableCommitBeforeAck)
     );
     assert_eq!(
         CommitRoute::from_scenario(&snapshot_before),

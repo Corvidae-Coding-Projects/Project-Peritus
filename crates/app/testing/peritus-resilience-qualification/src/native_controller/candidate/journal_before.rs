@@ -38,6 +38,7 @@ pub(super) fn inject(
         artifact_bytes: None,
         snapshot: None,
         lease: None,
+        patch: None,
         killed_exit: killed.status,
     })
 }
@@ -105,6 +106,7 @@ pub(super) fn recover(
         artifact_bytes: None,
         snapshot: None,
         lease: None,
+        patch: None,
         elapsed_millis: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
     })
 }

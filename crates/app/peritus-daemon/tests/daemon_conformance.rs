@@ -10,8 +10,8 @@ use peritus_conformance::{
 
 use daemon_conformance_support::{
     BinaryDaemonFactory, BinaryDaemonSubject, blob_commit_crash_recovery, blocker_for,
-    journal_before_crash_recovery, lease_commit_crash_recovery, reachable_scenarios,
-    snapshot_commit_crash_recovery,
+    journal_before_crash_recovery, lease_commit_crash_recovery, patch_commit_crash_recovery,
+    reachable_scenarios, snapshot_commit_crash_recovery,
 };
 
 #[test]
@@ -32,6 +32,11 @@ fn snapshot_commit_recovers_on_both_sides_of_retained_ref_publication() {
 #[test]
 fn lease_commit_recovers_on_both_sides_of_durable_projection_install() {
     lease_commit_crash_recovery().expect("real lease commit crash recovery");
+}
+
+#[test]
+fn patch_commit_recovers_on_both_sides_of_durable_application() {
+    patch_commit_crash_recovery().expect("real patch commit crash recovery");
 }
 
 #[test]

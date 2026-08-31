@@ -157,6 +157,16 @@ pub(super) fn canonical_milestones(route: CommitRoute) -> Vec<MilestoneDocument>
             "candidate killed before acknowledging the committed lease receipt",
             "exact lease event, head, revision, digest, and producer reopened",
         ),
+        CommitRoute::PatchBeforeDurableCommit => (
+            "workspace-bound production patch plan prepared in process memory",
+            "candidate killed before creating transaction state or changing the target",
+            "workspace reopened without the target or pending transaction metadata",
+        ),
+        CommitRoute::PatchAfterDurableCommitBeforeAck => (
+            "production patch postimage and transaction receipt durably completed",
+            "candidate killed before acknowledging the applied patch receipt",
+            "exact target bytes reopened with no pending transaction metadata",
+        ),
         CommitRoute::SnapshotBeforeDurableCommit => (
             "production candidate tree prepared before snapshot publication",
             "candidate killed before creating the snapshot commit and retained ref",
