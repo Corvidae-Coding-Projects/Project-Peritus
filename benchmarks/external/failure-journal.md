@@ -3404,6 +3404,16 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   path; a fully quoted requested executable remains authoritative, while an interpreter at the
   start of a quoted command does not. Six focused path tests and all 119 product-runner unit,
   integration, and role-recovery tests pass. The frozen campaign binary remains unchanged.
+- Frozen recurrence `constraints-scheduling__HF9wLuo` created the one requested calendar file,
+  preserved all three inputs, and independently derived the earliest valid meeting. Deterministic
+  acceptance nevertheless interpreted the parenthetical attendee value `alice@example.com` as a
+  second required workspace path. After 19 provider requests, the fixer correctly refused to
+  fabricate a contentless email-named artifact and returned `waiting_for_user`; the unchanged
+  verifier passed all three tests for reward 1.0. Unquoted email-address values are now excluded
+  from path inference, while an explicitly quoted name in a file-noun context remains a valid
+  unusual filename. Seven focused path tests and all 120 product-runner unit, integration, and
+  role-recovery tests pass. This general distinction applies to manifests, contact data,
+  configuration, calendars, and documentation without naming any benchmark task in product code.
 
 ## TBF-020: an unconstrained inspection filled model context with low-signal output
 

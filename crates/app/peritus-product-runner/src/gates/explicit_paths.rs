@@ -149,6 +149,7 @@ fn parse_path(
         || token.contains('*')
         || token.contains('$')
         || token.contains('=')
+        || (email_address(token) && !quoted_bare_name)
     {
         return None;
     }
@@ -169,6 +170,13 @@ fn parse_path(
         return None;
     }
     Some(relative)
+}
+
+fn email_address(token: &str) -> bool {
+    let Some((local, domain)) = token.split_once('@') else {
+        return false;
+    };
+    !local.is_empty() && !domain.is_empty() && domain.contains('.') && !token.contains('/')
 }
 
 fn prose_abbreviation(raw: &str) -> bool {
@@ -362,6 +370,29 @@ mod tests {
         assert!(record.output.contains("extract.js: present"));
         assert!(record.output.contains("out.json: present"));
         assert!(!record.output.contains("node:"));
+    }
+
+    #[test]
+    fn attendee_email_is_not_mistaken_for_an_output_path() {
+        let root = tempfile::tempdir().expect("root");
+        fs::write(root.path().join("meeting_scheduled.ics"), "candidate").expect("calendar");
+        let transcript =
+            "Create meeting_scheduled.ics for Alice (alice@example.com). Then send the invitation.";
+
+        let record = run(root.path(), transcript, &[PathBuf::from("meeting_scheduled.ics")]);
+
+        assert_eq!(record.exit_code, Some(0), "{}", record.output);
+        assert!(record.output.contains("meeting_scheduled.ics: present"));
+        assert!(!record.output.contains("alice@example.com:"));
+
+        fs::write(root.path().join("alice@example.com"), "candidate").expect("quoted file");
+        let explicitly_named = run(
+            root.path(),
+            "Create the file `alice@example.com`.",
+            &[PathBuf::from("alice@example.com")],
+        );
+        assert_eq!(explicitly_named.exit_code, Some(0), "{}", explicitly_named.output);
+        assert!(explicitly_named.output.contains("alice@example.com: present"));
     }
 
     #[test]

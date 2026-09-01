@@ -4,6 +4,9 @@
   as a required workspace file; retain deterministic checks for fully quoted extensionless
   deliverables, and record the verifier-passing Terminal-Bench run that exposed the needless
   900-second acceptance loop.
+- Distinguish unquoted email-address values from output paths while preserving explicitly named
+  email-shaped filenames, preventing valid contact, calendar, manifest, and configuration tasks
+  from entering a needless fixer or user-question loop.
 - Fixed macOS resilience cleanup to observe controller process groups through the bounded native
   process inventory instead of treating group-wide signal permission as an existence check.
 - Recorded frozen Terminal-Bench evidence that a real named lifecycle ingress cannot be replaced
