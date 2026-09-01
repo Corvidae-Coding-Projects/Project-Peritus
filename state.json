@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1123,
+  "next_comment_id": 1124,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-09-01T17:10:03.435304654Z",
+      "updated_at": "2026-09-01T17:15:20.500978514Z",
       "labels": [
         "qualification",
         "release"
@@ -5266,6 +5266,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA86hyBrJ+EsiiUMDCxOVAo+EU5sLG55VJImFI7SxoxhUsf26qKJcCMD9dF4pSCm8idS8fFCognu2JyFtM0rpSBg=="
+        },
+        "d90d1890-209c-4ce4-b994-0f3e44acefb0": {
+          "display_id": 1123,
+          "author": "6ME5",
+          "content": "Committed and pushed 1c98d5b5 fix(bench): retain rotated Claude credentials (#31). The Terminal-Bench adapter now admits official Claude CLI rotations when access expiry advances and the replacement refresh credential is future-valid, while retaining host-digest CAS protection and stale/expired/malformed rejection. Long resumes now document a real minimal Claude request rather than relying on local auth status. The intermittent Windows Google conformance response now uses explicit JSON content type and content length. Verification: 25 Python adapter/supervisor tests; full peritus-provider-google tests; strict provider Clippy; 20 repeated provider conformance runs; cargo fmt check; 137-file docs check; git diff check.",
+          "created_at": "2026-09-01T17:15:20.498615987Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAmmW4YuWzZagrRDzAU1vfVhazWnayQRYcuMo8iOiyrYFcLAZ55t7jBF9XsAM1NLq/bsKeKgne1KKu93fp6QUjBg=="
         },
         "d9229180-71c5-4251-805b-88563281cd25": {
           "display_id": 1043,
@@ -10859,8 +10868,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-01T17:10:03.435304654Z",
+    "timestamp": "2026-09-01T17:15:20.500978514Z",
     "agent_id": "6ME5",
-    "agent_seq": 1328
+    "agent_seq": 1329
   }
 }
