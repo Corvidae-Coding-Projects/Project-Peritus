@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1136,
+  "next_comment_id": 1137,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-09-01T22:26:54.443207570Z",
+      "updated_at": "2026-09-01T23:05:30.626801592Z",
       "labels": [
         "qualification",
         "release"
@@ -4730,6 +4730,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAaS0WuEgEnl861UJdQDqre6IF6LrWIicMmrnZDT5R+M20IaaLy/g0rZ8Mn/CXKRsc6VGaI3Qy0EwgbbxULmD9AQ=="
+        },
+        "b5a32d6f-a28d-42d0-8490-6fa25d777be5": {
+          "display_id": 1136,
+          "author": "6ME5",
+          "content": "Frozen-campaign recurrences: fix-git__UAY2jZJ passed the unchanged verifier but reproduced already-fixed TBF-034 on HEAD movement; regex-chess__nRygVtr retained an honest zero and reproduced already-fixed TBF-035 with two 668KB reads plus independent candidate defects; pytorch-model-recovery__HGMcWfw was natively accepted with an improved output-layer-only model but the unchanged verifier timed out downloading the cold CUDA Torch stack, so it remains a TBI-007 null rather than a quality zero. No new product behavior was added.",
+          "created_at": "2026-09-01T23:05:30.624020549Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAqb+gOlbBh+i/D5C6zngK56WNHlQSwTWtd4nPDVDZLYXiw/JeAuhq0NsI3Xfprc3kuFvYzygzf4vBVVQEi0VtBw=="
         },
         "b60ca672-bd6a-46aa-b857-f2307ead92af": {
           "display_id": 882,
@@ -10980,8 +10989,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-01T22:26:54.443207570Z",
+    "timestamp": "2026-09-01T23:05:30.626801592Z",
     "agent_id": "6ME5",
-    "agent_seq": 1342
+    "agent_seq": 1343
   }
 }
