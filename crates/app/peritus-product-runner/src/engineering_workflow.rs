@@ -45,7 +45,10 @@ requested behavior.
    For quantitative or scientific work, establish every input and output unit, coordinate system,
    and required transformation from the supplied evidence and the named domain before calculating
    or fitting. Validate the final parameters in the requested physical domain; a numerically good
-   fit in raw coordinates is not correct when the request names a transformed coordinate.
+   fit in raw coordinates is not correct when the request names a transformed coordinate. Retain a
+   unit ledger in tool or command evidence that names the input unit, output unit, applied formula
+   or transformation, and at least one dimensional or expected-range check on the final values.
+   Independent review must block when that evidence is absent or still describes raw coordinates.
    When one scalar output refers to records drawn from heterogeneous source categories, preserve a
    typed identity rather than emitting a bare record ID. Unless an exact representation is declared,
    combine the authoritative category or type label and stable ID as `category:id`; this keeps the

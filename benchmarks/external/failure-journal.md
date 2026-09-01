@@ -3199,6 +3199,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   the final delay belonged to setup or candidate behavior. Native Peritus had already ended on
   `TBF-009` after eight requests, 168,499 input, 31,744 cached input, and 8,480 output tokens, and its
   inability to run the candidate because Python was absent remains covered by `TBF-016`.
+- Corrected-adapter rerun `torch-pipeline-parallelism__Ji5Bu4C` repeated the same unchanged-verifier
+  boundary. After downloading Python 3.13, Torch, Transformers, and the CUDA dependency set, pytest
+  collected four tests and logged two passes plus one failure before the exact 900-second verifier
+  deadline expired without a final test or CTRF reward. Native Peritus had already reported a gate
+  failure after 26 requests. Retain the null result; do not infer a score from the partial stream or
+  change the benchmark environment to rescue it.
 
 - Frozen trial `pytorch-model-recovery__yXN29am` independently hit the same infrastructure
   boundary. Its unchanged verifier spent the complete interval from
@@ -3221,18 +3227,28 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   before fitting. The task instruction omitted the conversion formula, yet the named physical
   phenomena and data range made the unit mismatch discoverable without verifier access. This is a
   general scientific-analysis defect, not permission to copy hidden expected values.
-- Resolution: every role now requires quantitative and scientific work to establish input and
-  output units, coordinate systems, and transformations from supplied evidence plus the named
-  domain before calculation. Final parameters must be checked in the requested physical domain;
-  structural validity or a good raw-coordinate fit is insufficient.
+- Resolution: every role requires quantitative and scientific work to establish input and output
+  units, coordinate systems, and transformations from supplied evidence plus the named domain
+  before calculation. The workflow now also requires retained tool or command evidence to name the
+  unit ledger, applied formula or transformation, and a dimensional or expected-range check on the
+  final values. Independent review must block when that evidence is absent or remains in raw
+  coordinates; structural validity or a good raw-coordinate fit is insufficient.
 - Before evidence: job `peritus-terminalbench-2-k5-high`; trial
   `raman-fitting__TJiztRX`; reward 0; raw fitted centers 6,328.045338 and 3,745.362819; native
   provider terminal during review after ten requests, 228,271 input, 39,680 cached input, and 8,567
   output tokens over 357.477 seconds. The provider terminal remains separately classified under
   `TBF-009`.
-- Verification: the embedded workflow regression requires the unit, requested-domain, and
-  raw-coordinate boundaries to reach architect, developer, and reviewer roles. Focused tests,
-  strict Clippy, documentation checks, and an unchanged final-candidate rerun remain required.
+- Frozen recurrence `raman-fitting__Pkt3WET` was natively accepted after 18 requests but returned
+  the same raw centers, 3,745.359943 and 6,327.895709, under the requested G and 2D labels. The
+  reviewer claimed that source excerpts confirmed those values without recording wavelength-to-
+  wavenumber conversion or a named-domain range check. The unchanged verifier passed JSON existence
+  and failed both physical-parameter cases for reward 0. This proves the original warning alone was
+  insufficient and motivates the explicit evidence-and-blocker contract above.
+- Verification: the embedded workflow regression requires unit, requested-domain, raw-coordinate,
+  retained-ledger, dimensional/range, and independent-review blocker terms to reach architect,
+  developer, and reviewer roles. All 114 product-runner unit and integration tests, strict all-
+  target/all-feature Clippy, rustfmt, diff hygiene, and the 137-file documentation check pass. An
+  unchanged final-candidate rerun remains required.
 
 ## TBI-008: the HTML verifier contradicts byte preservation and treats browser failure as safe
 
@@ -3318,11 +3334,20 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   found no `/app/polyglot` directory and retained reward 0. Native review ended on `TBF-009` after
   twelve requests, 255,582 input, 63,488 cached input, and 9,222 output tokens over 226.360 seconds.
   This directly exercises deterministic request-to-artifact reconciliation across another attempt.
+- Corrected-adapter trial `count-dataset-tokens__EhsmZ8H` wrote the exact requested `answer.txt`,
+  and its independent reviewer correctly identified both the value and artifact as complete, but
+  deterministic acceptance extracted the illustrative prose token `e.g.` as a required relative
+  path. Native Peritus therefore reported a gate failure after 24 requests even though the
+  unchanged verifier awarded reward 1.0. Output-path extraction now ignores ordinary unquoted prose
+  abbreviations while retaining explicitly delimited unusual filenames and the actual absolute
+  output path. This is general request-language parsing, not a dataset or answer-specific rule.
 - Verification: focused product-runner tests reproduce the misplaced same-basename candidate,
-  prove exact placement passes, and keep input, negated, and compiler-output paths out of the
-  required-output set. The gate aggregation regression proves the constraint makes overall
-  exact-target acceptance fail. Focused tests and strict Clippy pass; full repository gates and an
-  unchanged final-candidate rerun remain required.
+  prove exact placement passes, keep input, negated, compiler-output, and prose-abbreviation tokens
+  out of the required-output set, and require the real explicit path to remain authoritative. The
+  gate aggregation regression proves the constraint makes overall exact-target acceptance fail.
+  All 114 product-runner unit and integration tests, strict all-target/all-feature Clippy, rustfmt,
+  and diff hygiene pass; full repository gates and an unchanged final-candidate rerun remain
+  required.
 
 ## TBF-020: an unconstrained inspection filled model context with low-signal output
 
@@ -3975,6 +4000,18 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   Retain all three frozen null results in the diagnostic record; rerun them unchanged after loading
   the corrected adapter, with the same product binary, task definitions, verifiers, timeouts, and
   single-task concurrency.
+- Corrected-adapter rerun `torch-tensor-parallelism__zbXZD9W` then reached the unchanged verifier
+  instead of ending on credential checkpointing. Harbor retained the exact 900-second agent timeout
+  and official reward 0: the verifier completed after its cold Torch setup, passed file existence
+  and all five single-rank cases, and failed eight multi-rank column/row gradient comparisons. This
+  is a legitimate candidate-quality failure and remains zero; it proves only that the general
+  checkpoint repair restored authoritative verification, not that the task itself passed.
+- Corrected-adapter rerun `schemelike-metacircular-eval__cKyGmpj` completed without an exception,
+  reported native product acceptance after 51 provider requests, and received official reward 1.0
+  from the unchanged verifier. It retained source revision `d4a72e67` and executable SHA-256
+  `ed0ef30eb5dda2817ebd8a02e46062b7c5a7400e22ee04653d5106d3e6ffb1e7`, demonstrating that
+  reloading only the general adapter correction recovered the previously erased result without
+  changing the scored product binary.
 - Verification: 23 unchanged and new Python adapter/supervisor tests pass, including atomic private
   replacement, rollback rejection, concurrent-host-change preservation, protocol identity,
   process cleanup, and report parsing. A fresh authenticated live trial and a later task after the

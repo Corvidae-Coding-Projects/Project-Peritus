@@ -225,6 +225,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   work legitimately creates commits, merges branches, or switches HEAD. Exact changed-target
   discovery, review diffs, and progress detection now retain committed task effects instead of
   rejecting them as concurrent workspace drift (`TBF-034`, #31).
+- Distinguish ordinary unquoted prose abbreviations such as “e.g.” and “i.e.” from relative output
+  paths, preventing illustrative wording from manufacturing a missing-file gate while retaining
+  deterministic checks for the request's actual explicit artifacts (`TBF-019`, #31).
 - Direct remote research through immutable manifest/index/tree and object-size preflight before
   whole-repository, archive, or dataset transfer; after a timeout, return deterministic recovery
   guidance against equivalent bulk wrappers without new evidence. Preserve the dated published
@@ -401,8 +404,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   root and rejecting missing or relocated same-basename artifacts while leaving inputs and
   command-created temporaries alone (`TBF-019`, #31)
 - Require quantitative and scientific work to establish input/output units, coordinate systems,
-  and transformations before calculating or fitting, then validate results in the requested
-  physical domain instead of accepting a structurally valid raw-coordinate result (`TBF-018`, #31)
+  and transformations before calculating or fitting; retain a unit ledger, applied formula, and
+  dimensional or expected-range check in execution evidence, then require independent review to
+  block raw-coordinate or unevidenced results (`TBF-018`, #31)
 - Ground every model workspace listing in its exact managed root and explicit relative-path
   convention so absolute paths from a task lose that prefix exactly once instead of being written
   beneath a duplicated root directory (`TBF-017`, #31)

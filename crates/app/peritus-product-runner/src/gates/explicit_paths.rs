@@ -113,6 +113,9 @@ fn parse_path(
     required_output: bool,
     quoted_bare_name: bool,
 ) -> Option<PathBuf> {
+    if prose_abbreviation(raw) {
+        return None;
+    }
     let token = trim_delimiters(raw);
     let token = token.strip_suffix('.').unwrap_or(token);
     let token = trim_delimiters(token);
@@ -141,6 +144,18 @@ fn parse_path(
         return None;
     }
     Some(relative)
+}
+
+fn prose_abbreviation(raw: &str) -> bool {
+    if explicitly_delimited(raw) {
+        return false;
+    }
+    let token = raw
+        .trim_matches(|character: char| {
+            matches!(character, '(' | ')' | '[' | ']' | '{' | '}' | '<' | '>' | ',' | ';' | ':')
+        })
+        .to_ascii_lowercase();
+    matches!(token.as_str(), "e.g." | "i.e.")
 }
 
 fn trim_delimiters(raw: &str) -> &str {
@@ -298,5 +313,22 @@ mod tests {
 
         assert_eq!(record.exit_code, Some(0));
         assert!(record.output.contains("cli_tool: present"));
+    }
+
+    #[test]
+    fn prose_abbreviation_is_not_an_output_path() {
+        let root = tempfile::tempdir().expect("root");
+        fs::write(root.path().join("answer.txt"), "1000000\n").expect("answer");
+        let transcript = format!(
+            "Write the integer without commas (e.g. \"1000000\") to {}/answer.txt.",
+            root.path().display(),
+        );
+
+        let record = run(root.path(), &transcript, &[PathBuf::from("answer.txt")]);
+
+        assert_eq!(record.exit_code, Some(0));
+        assert!(record.output.contains("Required explicit output paths (1):"));
+        assert!(record.output.contains("answer.txt: present"));
+        assert!(!record.output.contains("e.g"));
     }
 }
