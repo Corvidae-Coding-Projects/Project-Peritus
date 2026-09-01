@@ -191,6 +191,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- Extend the frozen Terminal-Bench evidence with an emergent cross-component validation miss, a
+  slow-source deadline recurrence, another pre-model large-inventory recurrence, and a fifth
+  independent reproduction of an unpublished verifier socket path; retain every honest zero and
+  derive only task-neutral post-campaign lessons (#31).
 - Retain bounded, sanitized native-controller stderr in supervision failures so an exited H1
   controller reports its precise operational cause instead of only `response stream closed` (#31)
 

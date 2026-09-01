@@ -1969,6 +1969,14 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   through QMP at `/run/win311-qmp.sock` plus HMP at `127.0.0.1:55555`. The unchanged verifier again
   passed network, QEMU-parameter, and guest-core-file checks, then failed only because it attempted
   the unpublished `/tmp/qemu-monitor.sock`. The retained reward remains 0.
+- Fifth recurrence: frozen trial `install-windows-3-11__26jCfud` built QEMU 5.2 from source under
+  the grounded two-job ceiling, booted the supplied image to a verifier-recognized Windows 3.11
+  state, preserved snapshot mode, exposed the required VNC and nginx services, and left a working
+  HMP Unix interface at `/run/peritus-win311/monitor.sock`. The unchanged verifier again passed its
+  network, exact QEMU-parameter, and guest-core-file checks and failed only when it attempted the
+  unpublished `/tmp/qemu-monitor.sock`. Retain reward 0; spending 2,438,270 input and 91,441 output
+  tokens on additional grounding could not reveal a literal excluded from the authoritative task,
+  and the recurrence does not justify a hidden-path compatibility branch.
 - Disposition: retain the unchanged reward 0 and report the unpublished verifier convention. Do not
   add a Terminal-Bench filename rule or require every valid programmatic control interface to
   duplicate itself at that path. A future upstream prompt or verifier can name the required socket
@@ -2750,6 +2758,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   failed the remaining five build, configuration, training, and accuracy checks for reward 0. No
   native invocation report was published. This is a third honest deadline miss in the same family,
   not evidence for a hidden artifact, altered timeout, or task-specific fast path.
+- Frozen attempt `caffe-cifar-10__VXCJ8b7` independently reached the unchanged 1,200-second agent
+  deadline after its official CIFAR-10 `wget` occupied a large portion of the run. The agent resumed
+  productive model work after that download completed, but Harbor ended the phase before Caffe was
+  built or training began. The unchanged verifier passed the two prototxt/configuration checks and
+  failed the absent executable, model, training log, and accuracy evidence for reward 0. This is the
+  same honest slow-source plus external-deadline class, not a provider stall and not grounds for a
+  bundled dataset, altered deadline, or Caffe-specific route.
 - Independent attempt `extract-moves-from-video__wf7tsAp` ended earlier on the provider terminal
   after 1,083.994 seconds, eighteen requests, 1,322,171 input, 71,424 cached input, and 23,657 output
   tokens without writing `solution.txt`; both unchanged checks failed for reward 0. Together the
@@ -3131,6 +3146,18 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   thirteen requests, 351,012 input, 63,488 cached input, and 22,422 output tokens over 925.408
   seconds. This is another final-candidate target for general prerequisite use plus fresh reviewer
   recovery, not a reason for primer-specific harness logic.
+- Frozen attempt `dna-assembly__cRMeSvP` proves the general prerequisite correction worked but
+  exposes a separate whole-artifact verification miss. The writer installed the ordinary `primer3`
+  package, invoked its real `/usr/bin/oligotm` with the exact requested flags, reconstructed the
+  output sequence, and selected a declared 43-nucleotide vector reverse annealing segment. Four
+  nominal overhang bases also matched the immediately adjacent template, however, so the unchanged
+  verifier observed a 47-nucleotide contiguous annealing tract and rejected the published
+  45-nucleotide maximum. The reviewer repeatedly checked the intended component lengths and final
+  strings but did not re-parse emergent behavior across their boundary. Retain reward 0. The
+  task-neutral lesson is to validate the complete emitted artifact against authoritative input and
+  count accidental cross-component overlap, escaping, framing, delimiter, and prefix/suffix effects
+  instead of trusting the producer's intended segmentation; no DNA-, primer-, or verifier-specific
+  branch is justified.
 - Verification: product-runner regressions require both the scoped-prerequisite and durable-host
   boundaries in the external-effect prompt, plus actionable missing-executable guidance from the
   command tool itself. All 95 product-runner tests, strict all-target/all-feature Clippy, rustfmt,
@@ -4000,6 +4027,11 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   segmentation fault, and retained reward 0 because the requested patch and tests were absent. This
   independently exercises the existing large-repository correction; it does not justify changing
   the task, verifier, inventory ceiling, or frozen campaign binary.
+- Frozen recurrence `crack-7z-hash__3AnLGF2` stopped at the same artifact-inventory boundary after
+  329 milliseconds and zero provider requests. The corrected adapter retained the native repository
+  failure, the unchanged verifier found no requested result, and reward 0 remains authoritative.
+  This is another direct recurrence from campaign executable `d4a72e67`, which predates the general
+  truncated-navigation correction in `7091df79`; it requires no task-specific change.
 - Verification: a focused filesystem regression with a deliberately smaller bound must prove stable
   sorting, truncation, and rendered grounding guidance. Product-runner tests, strict Clippy,
   formatting, documentation, and repository policy gates remain required.
