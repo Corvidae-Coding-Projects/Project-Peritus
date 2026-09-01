@@ -4446,3 +4446,40 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   literal OS KeyboardInterrupt/SIGINT`. The unchanged verifier then passed normal concurrency,
   bounded concurrency, and signal cancellation below and at the limit, but observed two starts and
   zero cleanup completions when three jobs shared two slots.
+
+## TBF-042: the outer runner deadline never reached the product scheduler
+
+- Suite and task: Terminal-Bench 2.0 frozen baseline, corrected-adapter trial
+  `winning-avg-corewars__CZWhwbn`.
+- Symptom: Peritus used the complete 3,600-second Harbor agent window while producing and improving
+  a working candidate. Harbor then cancelled the adapter before native Peritus could publish its
+  invocation report. The unchanged verifier still passed all three tests and awarded reward 1,
+  including all five required opponent win-rate thresholds.
+- Cause: the product runner knew only its normal eight-hour hard ceiling. Harbor's custom-agent
+  interface did not include the task deadline in `AgentContext`, while the thin adapter waited on
+  the native process until Harbor's outer `asyncio.wait_for` fired. Model roles therefore had no
+  shared time-remaining signal and the native process had no earlier cancellation or reporting
+  boundary.
+- Resolution: `ProductRunInput` now carries an explicit caller-resolved horizon. Accounting,
+  architect, writer, reviewer, fixer, and the active provider cancellation token share that same
+  limit. Terminal-Bench derives Harbor's exact resolved deadline from its retained trial lock and
+  digest-addressed task definition using Harbor's own override, cap, and multiplier order, then
+  reserves a bounded ten-percent tail for cancellation, reporting, credential checkpointing, and
+  process settlement. Missing deadline evidence fails visibly. The ordinary daemon and
+  HarnessBench retain the deliberate eight-hour product ceiling.
+- Integrity decision: the verifier, task, provider identities, model-turn limits, acceptance gates,
+  and candidate are unchanged. No task name or expected solution enters product behavior. The
+  correction applies to CI executors, job queues, RPC request budgets, hosted agents, and any other
+  caller whose deadline is shorter than Peritus's normal horizon. Retain the recorded timeout and
+  verifier reward exactly; an unchanged final-candidate rerun remains required.
+- Evidence: Harbor recorded `AgentTimeoutError: Agent execution timed out after 3600.0 seconds` and
+  no native usage report. The unchanged verifier passed opponent integrity, candidate existence,
+  and performance. It measured 96/100 wins against stone, 99/100 against vampire, 82/100 against
+  paper, 45/100 against snake, and 63/100 against g2-clear.
+- Verification: focused deadline tests cover ordinary reserve calculation, Harbor's override/cap/
+  multiplier order, the eight-hour product ceiling, and missing retained evidence. All 29 Python
+  adapter tests, 44 external-benchmark Rust tests, and 121 product-runner unit and integration tests
+  pass. Strict all-target/all-feature Clippy is clean for the product runner, daemon, and external
+  adapter. Documentation validation passes all 137 maintained files. The complete repository policy
+  gate passes across 79 packages, 3,371 source files, 2,711 formal-boundary files, 12,482
+  ordinary-safe executable entry points, 3,371 trust-scanned files, and 31 pinned actions.

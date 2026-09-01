@@ -1,11 +1,12 @@
 //! Strict benchmark-agent command grammar.
 
-use std::{collections::BTreeMap, ffi::OsString, path::PathBuf};
+use std::{collections::BTreeMap, ffi::OsString, path::PathBuf, time::Duration};
 
 use crate::BenchmarkError;
+use peritus_product_runner::PRODUCT_RUN_MAX_ELAPSED;
 
 const HARNESSBENCH_USAGE: &str = "peritus-benchmark-agent harnessbench --workspace PATH --sandbox PATH --prompt-file PATH --session-id ID --task-id ID --model-id ID";
-const TERMINALBENCH_USAGE: &str = "peritus-benchmark-agent terminalbench --workspace PATH --evidence-dir PATH --prompt-file PATH --session-id ID --task-id ID --model-id ID";
+const TERMINALBENCH_USAGE: &str = "peritus-benchmark-agent terminalbench --workspace PATH --evidence-dir PATH --prompt-file PATH --session-id ID --task-id ID --model-id ID --max-elapsed-seconds SECONDS";
 
 pub enum Command {
     HarnessBench(HarnessBenchInput),
@@ -30,6 +31,7 @@ pub struct TerminalBenchInput {
     pub session_id: String,
     pub task_id: String,
     pub model_id: String,
+    pub max_elapsed: Duration,
 }
 
 impl Command {
@@ -77,6 +79,7 @@ fn parse_terminalbench(values: &[OsString]) -> Result<TerminalBenchInput, Benchm
             "--session-id",
             "--task-id",
             "--model-id",
+            "--max-elapsed-seconds",
         ],
         TERMINALBENCH_USAGE,
     )?;
@@ -87,6 +90,7 @@ fn parse_terminalbench(values: &[OsString]) -> Result<TerminalBenchInput, Benchm
         session_id: required(&mut fields, "--session-id", TERMINALBENCH_USAGE)?,
         task_id: required(&mut fields, "--task-id", TERMINALBENCH_USAGE)?,
         model_id: required(&mut fields, "--model-id", TERMINALBENCH_USAGE)?,
+        max_elapsed: required_duration(&mut fields, "--max-elapsed-seconds", TERMINALBENCH_USAGE)?,
     })
 }
 
@@ -118,6 +122,24 @@ fn required_path(
     usage: &str,
 ) -> Result<PathBuf, BenchmarkError> {
     required(fields, name, usage).map(PathBuf::from)
+}
+
+fn required_duration(
+    fields: &mut BTreeMap<String, String>,
+    name: &'static str,
+    usage: &str,
+) -> Result<Duration, BenchmarkError> {
+    let raw = required(fields, name, usage)?;
+    let seconds =
+        raw.parse::<u64>().map_err(|_| invalid(format!("{name} must be a positive integer")))?;
+    let duration = Duration::from_secs(seconds);
+    if duration.is_zero() || duration > PRODUCT_RUN_MAX_ELAPSED {
+        return Err(invalid(format!(
+            "{name} must be between 1 and {}",
+            PRODUCT_RUN_MAX_ELAPSED.as_secs()
+        )));
+    }
+    Ok(duration)
 }
 
 fn required(
@@ -193,6 +215,8 @@ mod tests {
                 "task",
                 "--model-id",
                 "peritus",
+                "--max-elapsed-seconds",
+                "720",
             ]
             .into_iter()
             .map(OsString::from),
@@ -203,6 +227,7 @@ mod tests {
         };
         assert_eq!(input.workspace, PathBuf::from("/app"));
         assert_eq!(input.evidence_dir, PathBuf::from("/logs/agent/peritus"));
+        assert_eq!(input.max_elapsed, Duration::from_mins(12));
     }
 
     #[test]
@@ -212,6 +237,23 @@ mod tests {
             vec!["agent", "harnessbench", "--workspace", "one", "--workspace", "two"],
         ] {
             assert!(Command::parse(arguments.into_iter().map(OsString::from)).is_err());
+        }
+    }
+
+    #[test]
+    fn rejects_invalid_terminalbench_run_horizons() {
+        for value in ["0", "not-a-number", "28801"] {
+            let arguments = TERMINALBENCH_USAGE.split_whitespace().skip(2).collect::<Vec<_>>();
+            let mut command = vec!["agent", "terminalbench"];
+            for pair in arguments.chunks_exact(2) {
+                command.extend_from_slice(pair);
+            }
+            let horizon = command
+                .iter()
+                .position(|argument| *argument == "--max-elapsed-seconds")
+                .expect("horizon option");
+            command[horizon + 1] = value;
+            assert!(Command::parse(command.into_iter().map(OsString::from)).is_err());
         }
     }
 }

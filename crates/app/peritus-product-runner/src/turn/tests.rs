@@ -43,7 +43,7 @@ fn fresh_provider_recovery_requires_new_repository_grounding() {
 
 #[test]
 fn reviewer_checks_literal_request_independently_of_the_design() {
-    let prompt = reviewer_system();
+    let prompt = reviewer_system(Duration::from_mins(10));
     assert!(prompt.contains("Begin every review by requesting"));
     assert!(prompt.contains("model tool-call interface"));
     assert!(prompt.contains("they are not provider-native tools"));
@@ -122,6 +122,7 @@ fn writer_batches_tools_and_respects_artifact_workspaces() {
         "writer",
         ProductDeliveryScope::WorkspaceChanges,
         crate::delivery_requirement::ExternalEffectRequirement::Optional,
+        Duration::from_mins(10),
     );
     assert!(prompt.contains("Batch independent tool calls"));
     assert!(prompt.contains("Every fresh writer or fixer invocation"));
@@ -172,6 +173,7 @@ fn external_effect_writer_attempts_scoped_prerequisites_before_escalating() {
         "writer",
         ProductDeliveryScope::AuthorizedExternalEffects,
         crate::delivery_requirement::ExternalEffectRequirement::Optional,
+        Duration::from_mins(10),
     );
 
     assert!(prompt.contains("attempt ordinary prerequisites"));
@@ -231,8 +233,12 @@ fn reviewer_bounds_oversized_initial_evidence_before_provider_compaction() {
 #[test]
 fn live_operational_delivery_rejects_helper_files_as_the_whole_result() {
     let requirement = crate::delivery_requirement::ExternalEffectRequirement::Required;
-    let writer =
-        writer_system("writer", ProductDeliveryScope::AuthorizedExternalEffects, requirement);
+    let writer = writer_system(
+        "writer",
+        ProductDeliveryScope::AuthorizedExternalEffects,
+        requirement,
+        Duration::from_mins(10),
+    );
     let reviewer = reviewer_user(&ReviewerPrompt {
         transcript: "Configure the local service so that I can connect to it.",
         diff: "setup.sh changed",

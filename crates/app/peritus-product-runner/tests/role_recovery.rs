@@ -12,7 +12,8 @@ use std::{
 };
 
 use peritus_product_runner::{
-    ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunner, RoleProviders,
+    PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput, ProductRunOutcome,
+    ProductRunner, RoleProviders,
 };
 use peritus_provider_core::{CancellationToken, ModelProvider};
 use peritus_types::RunId;
@@ -93,6 +94,7 @@ mod tests {
                     trace_path: state.path().join("product.trace"),
                     finding_state: String::new(),
                     task: task.clone(),
+                    max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
                     delivery_scope: ProductDeliveryScope::WorkspaceChanges,
                     conversation: Arc::new(FixedConversation(task)),
                     providers: RoleProviders {

@@ -206,6 +206,8 @@ pub struct ProductRunInput {
     pub finding_state: String,
     /// Natural-language coding task.
     pub task: String,
+    /// Caller-resolved wall-clock horizon, bounded by the product's eight-hour hard ceiling.
+    pub max_elapsed: Duration,
     /// Caller-authorized deliverable boundary. Ordinary product runs use workspace changes.
     pub delivery_scope: ProductDeliveryScope,
     /// Live conversation, including the original task and all follow-ups.

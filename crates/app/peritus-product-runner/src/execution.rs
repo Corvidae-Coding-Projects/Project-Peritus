@@ -11,7 +11,13 @@ pub use types::{
     ProductRunPhase, ProductRunUpdate, RoleProviders, RunObserver,
 };
 
-use std::sync::atomic::Ordering;
+use std::{
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+    time::Duration,
+};
 
 use peritus_orchestrator::{ProductionDecision, ProductionRunCoordinator};
 use peritus_review::ProductFindingLedger;
@@ -40,7 +46,47 @@ impl ProductRunner {
         input: ProductRunInput,
         observe: RunObserver,
     ) -> Result<ProductRunOutcome, ProductRunnerError> {
-        let mut accounting = RunAccounting::new(&input.workspace_root)?;
+        crate::budget::validate_run_horizon(input.max_elapsed)?;
+        let max_elapsed = input.max_elapsed;
+        let cancelled = Arc::clone(&input.cancelled);
+        let provider_cancellation = input.provider_cancellation.clone();
+        let deadline_reached = Arc::new(AtomicBool::new(false));
+        let timer_reached = Arc::clone(&deadline_reached);
+        let timer_cancelled = Arc::clone(&cancelled);
+        let timer_provider_cancellation = provider_cancellation.clone();
+        let timer = tokio::spawn(async move {
+            tokio::time::sleep(max_elapsed).await;
+            timer_reached.store(true, Ordering::SeqCst);
+            timer_cancelled.store(true, Ordering::SeqCst);
+            let _ = timer_provider_cancellation.cancel();
+        });
+        let result = tokio::time::timeout(
+            max_elapsed.saturating_add(Duration::from_secs(5)),
+            Self::run_until_complete(input, observe),
+        )
+        .await;
+        timer.abort();
+        let _ = timer.await;
+        match result {
+            Ok(result) if !deadline_reached.load(Ordering::SeqCst) => result,
+            Ok(_) | Err(_) => {
+                cancelled.store(true, Ordering::SeqCst);
+                let _ = provider_cancellation.cancel();
+                Err(ProductRunnerError::new(
+                    ProductRunnerErrorKind::Budget,
+                    "complete coding run before caller deadline",
+                    "the configured run horizon was exhausted",
+                ))
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_lines, reason = "the E0 effect and decision order remains explicit")]
+    async fn run_until_complete(
+        input: ProductRunInput,
+        observe: RunObserver,
+    ) -> Result<ProductRunOutcome, ProductRunnerError> {
+        let mut accounting = RunAccounting::new(&input.workspace_root, input.max_elapsed)?;
         accounting.check()?;
         let baseline = CandidateBaseline::capture(&input.workspace_root)?;
         let effect_requirement = crate::delivery_requirement::ExternalEffectRequirement::from_task(

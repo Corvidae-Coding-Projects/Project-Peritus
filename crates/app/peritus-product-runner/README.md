@@ -52,16 +52,22 @@ progress and deliverable evidence; it does not own UI, provider login, workspace
 commit/export/discard authority. `Complete` is impossible for an empty or uncovered candidate, a
 failed or missing exact-target command, or any unresolved policy blocker.
 
-Run lifetime is deliberately separate from model-turn lifetime. One provider attempt remains
-wall-clock bounded and one developer segment remains bounded to 48 logical turns and 512 tool
-calls. If that segment changed the exact Git candidate, its content checkpoint starts another
-fresh, repository-grounded segment with a compact prompt. Therefore substantial work can continue
-for as many segments as it needs without retaining an ever-growing model context. A segment that
-exhausts its allowance without changing the candidate stops as no-progress, and three consecutive
-malformed or ungrounded task-level terminals receive the exact rejection as corrective context;
-three consecutive failures stop for user correction. Abrupt daemon restarts automatically
-resume interrupted goals from their persisted conversation, finding ledger, trace, and unchanged
-managed worktree.
+Run lifetime is deliberately separate from model-turn lifetime. The caller supplies the real
+wall-clock horizon, up to the product's eight-hour hard ceiling. Every architect, writer, reviewer,
+and fixer invocation receives the remaining shared time so it can do substantial work without
+spending the complete window on open-ended exploration or optimization. At the horizon, Peritus
+signals the shared provider cancellation token, gives the active operation a short settlement
+period, and returns a typed budget failure that the caller can persist and report.
+
+One provider attempt remains wall-clock bounded and one developer segment remains bounded to 48
+logical turns and 512 tool calls. If that segment changed the exact Git candidate, its content
+checkpoint starts another fresh, repository-grounded segment with a compact prompt. Therefore
+substantial work can continue for as many segments as it needs without retaining an ever-growing
+model context. A segment that exhausts its allowance without changing the candidate stops as
+no-progress, and three consecutive malformed or ungrounded task-level terminals receive the exact
+rejection as corrective context; three consecutive failures stop for user correction. Abrupt daemon
+restarts automatically resume interrupted goals from their persisted conversation, finding ledger,
+trace, and unchanged managed worktree.
 
 At every completed effect boundary, the runner also measures regular-file bytes beneath the
 managed workspace and the harness process's resident memory through the host's ordinary process

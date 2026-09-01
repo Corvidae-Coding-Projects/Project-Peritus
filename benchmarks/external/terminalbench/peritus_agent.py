@@ -19,6 +19,7 @@ from benchmarks.external.terminalbench.credential_state import (
     checkpoint_claude_credentials,
     credential_digest,
 )
+from benchmarks.external.terminalbench.deadline import product_budget_seconds
 from benchmarks.external.terminalbench.process_supervisor import exec_supervised
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -193,6 +194,7 @@ fi
         session_id = str(self.context_id or self.session_id or "harbor-trial")
         task_id = environment.environment_name
         evidence_dir = self.environment_logs_dir / "peritus"
+        max_elapsed_seconds = product_budget_seconds(self.logs_dir)
         command = " ".join(
             shlex.quote(value)
             for value in (
@@ -210,6 +212,8 @@ fi
                 task_id,
                 "--model-id",
                 self.model_name or "peritus-native",
+                "--max-elapsed-seconds",
+                str(max_elapsed_seconds),
             )
         )
         runtime_env = await self._runtime_env(environment)

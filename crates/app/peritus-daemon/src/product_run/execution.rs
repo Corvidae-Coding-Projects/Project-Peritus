@@ -10,8 +10,8 @@ use peritus_app_protocol::{
     ProductRunSnapshot,
 };
 use peritus_product_runner::{
-    ConversationView, ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunner,
-    RoleProviders, RunObserver,
+    ConversationView, PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput,
+    ProductRunOutcome, ProductRunner, RoleProviders, RunObserver,
 };
 use peritus_provider_core::CancellationToken;
 use peritus_types::RunId;
@@ -49,6 +49,7 @@ impl ProductRunService {
                     trace_path,
                     finding_state,
                     task: request.task().to_owned(),
+                    max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
                     delivery_scope: ProductDeliveryScope::WorkspaceChanges,
                     conversation,
                     providers,

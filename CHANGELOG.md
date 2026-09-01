@@ -1,5 +1,9 @@
 # Changelog
 
+- Propagate a caller's real execution deadline into every product run, tell each model role how much
+  shared time remains, cooperatively cancel in-flight provider work at that horizon, and reserve a
+  bounded Terminal-Bench tail for durable reports and process cleanup instead of letting Harbor
+  kill an otherwise useful candidate at its outer deadline (`TBF-042`, #31).
 - Stop exact-output reconciliation from treating an interpreter at the start of a quoted command
   as a required workspace file; retain deterministic checks for fully quoted extensionless
   deliverables, and record the verifier-passing Terminal-Bench run that exposed the needless

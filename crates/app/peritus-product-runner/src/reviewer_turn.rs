@@ -77,7 +77,7 @@ pub async fn complete(
                     "{}-invocation-{invocation}",
                     turn::request_name(input.run_id, "reviewer", cycle),
                 ),
-                system: turn::reviewer_system(),
+                system: turn::reviewer_system(accounting.remaining()),
                 prompt,
                 attachments,
                 tools: read_only_definitions()?,

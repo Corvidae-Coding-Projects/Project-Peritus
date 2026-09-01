@@ -143,14 +143,17 @@ impl ProductRunProgress {
 
 pub struct RunAccounting {
     started: Instant,
+    max_elapsed: Duration,
     progress: ProductRunProgress,
     resources: RunResourceProbe,
 }
 
 impl RunAccounting {
-    pub fn new(workspace_root: &Path) -> Result<Self, ProductRunnerError> {
+    pub fn new(workspace_root: &Path, max_elapsed: Duration) -> Result<Self, ProductRunnerError> {
+        validate_run_horizon(max_elapsed)?;
         Ok(Self {
             started: Instant::now(),
+            max_elapsed,
             progress: ProductRunProgress::default(),
             resources: RunResourceProbe::new(workspace_root)?,
         })
@@ -190,7 +193,7 @@ impl RunAccounting {
         self.progress.workspace_bytes = resources.workspace;
         self.progress.workspace_growth_bytes = resources.growth;
         self.progress.peak_rss_bytes = self.progress.peak_rss_bytes.max(resources.peak_rss);
-        let violation = budget_violation(self.progress, self.started.elapsed());
+        let violation = budget_violation(self.progress, self.started.elapsed(), self.max_elapsed);
         violation.map_or(Ok(()), |detail| Err(exhausted(detail)))
     }
 
@@ -198,11 +201,29 @@ impl RunAccounting {
         self.check()?;
         Ok(self.progress)
     }
+
+    pub fn remaining(&self) -> Duration {
+        self.max_elapsed.saturating_sub(self.started.elapsed())
+    }
 }
 
-fn budget_violation(progress: ProductRunProgress, elapsed: Duration) -> Option<&'static str> {
-    if elapsed > PRODUCT_RUN_MAX_ELAPSED {
-        Some("the eight-hour uninterrupted run horizon was exhausted")
+pub fn validate_run_horizon(max_elapsed: Duration) -> Result<(), ProductRunnerError> {
+    if max_elapsed.is_zero() {
+        Err(invalid_horizon("configured run horizon must be greater than zero"))
+    } else if max_elapsed > PRODUCT_RUN_MAX_ELAPSED {
+        Err(invalid_horizon("configured run horizon exceeds the eight-hour hard ceiling"))
+    } else {
+        Ok(())
+    }
+}
+
+fn budget_violation(
+    progress: ProductRunProgress,
+    elapsed: Duration,
+    max_elapsed: Duration,
+) -> Option<&'static str> {
+    if elapsed > max_elapsed {
+        Some("the configured run horizon was exhausted")
     } else if progress.model_requests > PRODUCT_RUN_MAX_MODEL_REQUESTS {
         Some("the cumulative provider-request budget was exhausted")
     } else if progress.tool_calls > PRODUCT_RUN_MAX_TOOL_CALLS {
@@ -236,6 +257,10 @@ fn exhausted(detail: &'static str) -> ProductRunnerError {
     ProductRunnerError::new(ProductRunnerErrorKind::Budget, "account complete coding run", detail)
 }
 
+fn invalid_horizon(detail: &'static str) -> ProductRunnerError {
+    ProductRunnerError::new(ProductRunnerErrorKind::Budget, "configure coding run horizon", detail)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -243,7 +268,8 @@ mod tests {
     #[test]
     fn role_outcomes_accumulate_requests_tools_retries_and_compactions() {
         let temporary = tempfile::tempdir().expect("workspace");
-        let mut accounting = RunAccounting::new(temporary.path()).expect("accounting");
+        let mut accounting =
+            RunAccounting::new(temporary.path(), PRODUCT_RUN_MAX_ELAPSED).expect("accounting");
         accounting
             .record(&DeveloperLoopOutcome {
                 text: "done".to_owned(),
@@ -266,7 +292,8 @@ mod tests {
     #[test]
     fn provider_failovers_are_counted_separately_from_same_provider_retries() {
         let temporary = tempfile::tempdir().expect("workspace");
-        let mut accounting = RunAccounting::new(temporary.path()).expect("accounting");
+        let mut accounting =
+            RunAccounting::new(temporary.path(), PRODUCT_RUN_MAX_ELAPSED).expect("accounting");
         accounting.record_provider_failover().expect("record failover");
         let progress = accounting.snapshot().expect("bounded progress");
         assert_eq!(progress.provider_failovers(), 1);
@@ -276,7 +303,8 @@ mod tests {
     #[test]
     fn workspace_growth_and_peak_memory_are_observed_at_effect_boundaries() {
         let temporary = tempfile::tempdir().expect("workspace");
-        let mut accounting = RunAccounting::new(temporary.path()).expect("accounting");
+        let mut accounting =
+            RunAccounting::new(temporary.path(), PRODUCT_RUN_MAX_ELAPSED).expect("accounting");
         std::fs::write(temporary.path().join("candidate.bin"), vec![0_u8; 4096])
             .expect("candidate");
 
@@ -294,7 +322,7 @@ mod tests {
             ..ProductRunProgress::default()
         };
         assert_eq!(
-            budget_violation(memory, Duration::ZERO),
+            budget_violation(memory, Duration::ZERO, PRODUCT_RUN_MAX_ELAPSED),
             Some("the product-run peak resident-memory budget was exhausted")
         );
 
@@ -303,8 +331,23 @@ mod tests {
             ..ProductRunProgress::default()
         };
         assert_eq!(
-            budget_violation(workspace, Duration::ZERO),
+            budget_violation(workspace, Duration::ZERO, PRODUCT_RUN_MAX_ELAPSED),
             Some("the product-run workspace-growth budget was exhausted")
+        );
+    }
+
+    #[test]
+    fn caller_run_horizon_is_bounded_and_drives_elapsed_budget() {
+        assert!(validate_run_horizon(Duration::ZERO).is_err());
+        assert!(validate_run_horizon(PRODUCT_RUN_MAX_ELAPSED + Duration::from_secs(1)).is_err());
+        assert!(validate_run_horizon(Duration::from_mins(1)).is_ok());
+        assert_eq!(
+            budget_violation(
+                ProductRunProgress::default(),
+                Duration::from_secs(61),
+                Duration::from_mins(1),
+            ),
+            Some("the configured run horizon was exhausted")
         );
     }
 }

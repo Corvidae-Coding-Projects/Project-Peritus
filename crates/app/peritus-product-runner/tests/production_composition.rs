@@ -11,8 +11,8 @@ use std::{
 };
 
 use peritus_product_runner::{
-    ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunPhase, ProductRunner,
-    ProductRunnerErrorKind, RoleProviders, RunObserver,
+    PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput, ProductRunOutcome,
+    ProductRunPhase, ProductRunner, ProductRunnerErrorKind, RoleProviders, RunObserver,
 };
 use peritus_provider_core::{CancellationToken, ModelProvider};
 use peritus_types::RunId;
@@ -50,6 +50,7 @@ fn provider_failure_before_first_response_retains_an_empty_trace() {
                     trace_path: trace_path.clone(),
                     finding_state: String::new(),
                     task: task.clone(),
+                    max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
                     delivery_scope: ProductDeliveryScope::WorkspaceChanges,
                     conversation: Arc::new(FixedConversation(task)),
                     providers: RoleProviders {
@@ -163,6 +164,7 @@ mod tests {
                     trace_path: trace_path.clone(),
                     finding_state: String::new(),
                     task: task.clone(),
+                    max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
                     delivery_scope: ProductDeliveryScope::WorkspaceChanges,
                     conversation: Arc::new(FixedConversation(task)),
                     providers: RoleProviders {
@@ -332,6 +334,7 @@ mod tests {
                     trace_path: state.path().join("product.trace"),
                     finding_state: String::new(),
                     task: task.clone(),
+                    max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
                     delivery_scope: ProductDeliveryScope::WorkspaceChanges,
                     conversation: Arc::new(FixedConversation(task)),
                     providers: RoleProviders {

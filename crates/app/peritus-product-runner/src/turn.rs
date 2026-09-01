@@ -1,6 +1,6 @@
 //! Tool-capable writer/fixer turns and independent reviewer prompts.
 
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use peritus_agent::{
     DeveloperLoop, DeveloperLoopError, DeveloperLoopLimits, DeveloperLoopOutcome,
@@ -20,12 +20,17 @@ use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
 mod evidence;
 mod provider;
+mod request_name;
 mod terminal;
 
 pub use evidence::ReviewerPrompt;
 use terminal::TerminalTurn;
 
 const MAX_UNPRODUCTIVE_TERMINALS: u8 = 3;
+
+pub fn request_name(run_id: RunId, role: &str, cycle: u32) -> String {
+    request_name::format(run_id, role, cycle)
+}
 
 #[allow(
     clippy::too_many_arguments,
@@ -55,11 +60,18 @@ pub async fn complete_developer_turn(
         invocation = invocation.saturating_add(1);
         let revision = input.conversation.revision();
         let identity = DeveloperInvocation { role, cycle, invocation };
+        let remaining = accounting.remaining();
         let Some((result, tools)) = run_selected_invocation(
             input,
             &mut providers,
             identity,
-            InvocationContext { design, findings, correction: correction.as_deref(), ownership },
+            InvocationContext {
+                design,
+                findings,
+                correction: correction.as_deref(),
+                ownership,
+                remaining,
+            },
             accounting,
         )
         .await?
@@ -169,6 +181,7 @@ struct InvocationContext<'a> {
     findings: Option<&'a str>,
     correction: Option<&'a str>,
     ownership: &'a WorkspaceOwnership,
+    remaining: Duration,
 }
 
 async fn run_selected_invocation(
@@ -181,16 +194,7 @@ async fn run_selected_invocation(
     Option<(Result<DeveloperLoopOutcome, DeveloperLoopError>, WorkspaceDeveloperTools)>,
     ProductRunnerError,
 > {
-    let result = run_developer_invocation(
-        input,
-        providers.current(),
-        identity,
-        context.design,
-        context.findings,
-        context.correction,
-        context.ownership,
-    )
-    .await;
+    let result = run_developer_invocation(input, providers.current(), identity, context).await;
     match result {
         Ok(result) => Ok(Some(result)),
         Err(error) if let Some(switch) = providers.advance_for_capability(&error) => {
@@ -211,10 +215,7 @@ async fn run_developer_invocation(
     input: &ProductRunInput,
     model: &dyn ModelProvider,
     identity: DeveloperInvocation<'_>,
-    design: &str,
-    findings: Option<&str>,
-    correction: Option<&str>,
-    ownership: &WorkspaceOwnership,
+    context: InvocationContext<'_>,
 ) -> Result<
     (Result<DeveloperLoopOutcome, DeveloperLoopError>, WorkspaceDeveloperTools),
     ProductRunnerError,
@@ -222,13 +223,13 @@ async fn run_developer_invocation(
     let transcript = input.conversation.render();
     let media =
         crate::workspace_media::discover(&input.workspace_root, &transcript, model.profile())?;
-    let prompt = writer_user(&transcript, design, findings, correction);
+    let prompt = writer_user(&transcript, context.design, context.findings, context.correction);
     let (prompt, attachments) = media.into_parts(prompt);
     let prefix = request_name(input.run_id, identity.role, identity.cycle);
     let request_prefix = format!("{prefix}-invocation-{}", identity.invocation);
     let mut tools = WorkspaceDeveloperTools::with_ownership(
         input.workspace_root.clone(),
-        ownership.clone(),
+        context.ownership.clone(),
         input.trace_path.with_extension("effects.bin"),
         request_prefix.clone(),
     );
@@ -244,6 +245,7 @@ async fn run_developer_invocation(
                     input.delivery_scope,
                     &input.task,
                 ),
+                context.remaining,
             ),
             prompt,
             attachments,
@@ -258,19 +260,14 @@ async fn run_developer_invocation(
     Ok((result, tools))
 }
 
-pub fn request_name(run_id: RunId, role: &str, cycle: u32) -> String {
-    let mut value = String::from("peritus-");
-    for byte in run_id.as_bytes() {
-        use core::fmt::Write as _;
-        let _ = write!(value, "{byte:02x}");
-    }
-    format!("{value}-{role}-{cycle}")
-}
-
-pub fn reviewer_system() -> String {
-    format!(
+pub fn reviewer_system(remaining: Duration) -> String {
+    let instructions = format!(
         "You are the independent D2 reviewer in a coding harness. Begin every review by requesting the declared read-only `workspace_list` host function through the model tool-call interface. After receiving that listing, request `workspace_search` and `workspace_read` as needed before reaching a verdict. Peritus executes these requests and returns their results on later turns; they are not provider-native tools. Use them to inspect the authoritative source inputs, exact changed files, current permission metadata, and relevant surrounding repository context. Do not rely on the writer's account of files you can inspect. Inspect the original conversation, exact diff, and exact-target gate evidence; the design is a proposal, not authority. When the caller explicitly authorizes external-effect delivery, evaluate the retained structured command observations against the requested effect: require a relevant successful action and a later fresh state or end-to-end verification, but do not invent a missing repository diff as a finding. Git diff modes distinguish executable from non-executable files and do not encode exact POSIX permissions such as 0600; use Peritus workspace metadata when exact permissions matter. Verify every explicit requested path, field, value, operation, and scoped rule against the result. When the request requires an output component to match a named source, treat the complete selected source value as that component and apply only transformations the request names; outside knowledge that labels part of the source as a tag, wrapper, metadata, artifact, or non-native content is not authority to delete it. Reject self-authored checks that merely prove the implementation agrees with its own interpretation. A non-advisory finding must identify an unmet explicit requirement, a failed deterministic gate, or a concrete contradiction. Do not replace one reasonable reading of a grammatically ambiguous compound phrase with another merely because you prefer a narrower scope. Unless another authoritative source or deterministic gate resolves that scope, preserve a candidate that satisfies a reasonable reading and report the ambiguity only as advisory; a blocking interpretation finding must show the candidate violates every reasonable reading. Do not settle whether a trailing modifier distributes over coordinated list items by assuming that distribution and then citing an earlier item's lack of the modifier's property; independently consider distributive and nearest-item attachments. Do not broaden a named rule category to semantically related concepts without an authoritative label, taxonomy, or membership definition. Treat optional richer traces, duplicated corroboration, and evidence-presentation improvements as advisory, never as reasons for repeated fixer cycles. Accept contemporaneous process metrics unless contradicted; do not rerun stateful external operations merely to reproduce one-shot transient failures. Return only one JSON object with this shape: {{\"summary\":\"...\",\"findings\":[{{\"category\":\"correctness|requested_behavior|build_coverage|test_coverage|security|maintainability|documentation\",\"severity\":\"advisory|low|medium|high|critical\",\"title\":\"stable concise identity\",\"description\":\"specific observed problem\",\"location\":\"path:line or empty\",\"reproduction\":\"exact evidence or command\",\"remediation\":\"specific required fix\"}}]}}. Do not return a blocking Boolean; policy derives blocker status from typed fields. Repeat every still-present finding using the same title and location. Omit a prior finding only after independently confirming its fix in the fresh diff and evidence. Do not invent obscure hypothetical threats or demand unrelated redesign. Do not use markdown fences.\n\n{}",
         crate::engineering_workflow::reviewer(),
+    );
+    format!(
+        "This independent review begins with approximately {} seconds left in the shared caller window. Inspect decisive evidence first and return a grounded verdict without optional rechecks.\n\n{instructions}",
+        remaining.as_secs()
     )
 }
 
@@ -320,6 +317,7 @@ fn writer_system(
     role: &str,
     delivery_scope: super::ProductDeliveryScope,
     effect_requirement: crate::delivery_requirement::ExternalEffectRequirement,
+    remaining: Duration,
 ) -> String {
     let delivery = match delivery_scope {
         super::ProductDeliveryScope::WorkspaceChanges => {
@@ -333,9 +331,13 @@ fn writer_system(
             }
         }
     };
-    format!(
+    let instructions = format!(
         "You are the {role} developer in a production coding harness. Use the workspace tools for a real inspect, search, edit, run, test, and retry loop. Every fresh writer or fixer invocation starts with no repository-grounding credit: first call workspace_list, then workspace_read on at least one observed file, and read each existing target before changing it. Design text, prior-cycle reads, findings, and diff text do not replace these current-turn tool observations. Treat workspace_list.execution_resources as the authoritative command envelope and keep build/test worker counts at or below its recommended_parallelism. Do not call workspace_write, workspace_patch, workspace_remove, or run_command before that grounding sequence. {delivery} Harness-owned peritus-internal gates are unavailable as workspace commands and run independently after your turn. Make substantial maintainable changes and preserve unrelated work. Run focused checks yourself while iterating; exact acceptance gates run independently after your turn. Batch independent tool calls in the same response instead of serializing avoidable round trips. A successful workspace_write with changed=false means the requested content already matches; move on instead of repeating it. Use workspace_remove for an intentional regular file or listed empty directory; directory removal is non-recursive. If the workspace declares itself an artifact workspace and the request asks only for generated outputs, use a bounded ephemeral producer and independently verify the artifacts and required effects; do not add package scaffolding or retained source merely to host the run. Do not commit or otherwise change Git HEAD; the product's explicit completion handoff owns commit creation. Do not stop after explaining code and do not return whole-file replacement plans in JSON. When the implementation is ready for independent gates, return only {{\"kind\":\"complete\",\"summary\":\"what this task-level deliverable now does\",\"run_instructions\":\"exact command or concise steps for the user to run it\"}}. Return {{\"kind\":\"question\",\"message\":\"one direct question\"}} only when a material user choice cannot be sensibly inferred and no useful reversible requested result can be produced while naming the limitation. Do not invent obscure concerns.\n\n{}",
         crate::engineering_workflow::developer(),
+    );
+    format!(
+        "This role begins with approximately {} seconds left in the caller's product-run window, shared with deterministic gates, independent review, and any required fix. Use the available time for substantial work, but stop open-ended exploration or optimization early enough to return the strongest tested candidate for those downstream phases.\n\n{instructions}",
+        remaining.as_secs()
     )
 }
 

@@ -61,6 +61,7 @@ pub async fn run(input: TerminalBenchInput) -> Result<TerminalBenchReport, Bench
             trace_path: trace_path.clone(),
             finding_state: String::new(),
             task,
+            max_elapsed: input.max_elapsed,
             delivery_scope: ProductDeliveryScope::AuthorizedExternalEffects,
             conversation: Arc::new(conversation.clone()),
             providers: role_providers,

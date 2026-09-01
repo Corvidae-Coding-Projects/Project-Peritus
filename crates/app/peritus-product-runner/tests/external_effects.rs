@@ -12,7 +12,8 @@ use std::{
 };
 
 use peritus_product_runner::{
-    ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunner, RoleProviders,
+    PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput, ProductRunOutcome,
+    ProductRunner, RoleProviders,
 };
 use peritus_provider_core::{CancellationToken, ModelProvider};
 use peritus_types::RunId;
@@ -126,6 +127,7 @@ fn authorized_external_effects_complete_without_a_synthetic_workspace_diff() {
                     trace_path: state.path().join("external.trace"),
                     finding_state: String::new(),
                     task: task.clone(),
+                    max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
                     delivery_scope: ProductDeliveryScope::AuthorizedExternalEffects,
                     conversation: Arc::new(FixedConversation(task)),
                     providers: RoleProviders {
@@ -255,6 +257,7 @@ fn operational_request_needs_a_live_effect_even_when_supporting_files_change() {
                     trace_path: state.path().join("mixed-delivery.trace"),
                     finding_state: String::new(),
                     task: task.clone(),
+                    max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
                     delivery_scope: ProductDeliveryScope::AuthorizedExternalEffects,
                     conversation: Arc::new(FixedConversation(task)),
                     providers: RoleProviders {

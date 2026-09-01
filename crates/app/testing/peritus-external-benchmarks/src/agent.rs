@@ -8,8 +8,8 @@ use std::{
 };
 
 use peritus_product_runner::{
-    ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunUpdate, ProductRunner,
-    RunObserver,
+    PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput, ProductRunOutcome,
+    ProductRunUpdate, ProductRunner, RunObserver,
 };
 use peritus_provider_core::CancellationToken;
 use peritus_types::RunId;
@@ -57,6 +57,7 @@ pub async fn run_harnessbench(input: HarnessBenchInput) -> Result<RunReport, Ben
             trace_path: trace_path.clone(),
             finding_state: String::new(),
             task: prompt.clone(),
+            max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
             delivery_scope: ProductDeliveryScope::WorkspaceChanges,
             conversation: Arc::new(conversation.clone()),
             providers: role_providers,

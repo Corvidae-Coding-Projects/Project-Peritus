@@ -14,6 +14,15 @@ agent process family. If Harbor cancels a run, the bridge quiesces and reaps bot
 and any marked process that detached from it before returning control, so no timed-out model or
 tool process can overlap the unchanged verifier.
 
+Harbor does not pass a custom agent its resolved timeout directly. The bridge therefore reads the
+current trial's retained `lock.json` and the exact digest-addressed cached `task.toml`, applies
+Harbor's override, cap, and multiplier order, and passes the resulting horizon to native Peritus.
+It reserves ten percent, between 90 and 300 seconds when the task is long enough, for provider
+cancellation, credential checkpointing, the native invocation report, and Harbor process cleanup.
+Peritus tells each role how much of its work window remains and returns a typed budget result before
+the outer runner can kill it. Missing or malformed deadline evidence fails visibly instead of
+silently falling back to the normal eight-hour interactive horizon.
+
 ## Prepare the runner
 
 Use Python 3.12, Podman, and `podman-compose` 1.6.0. Install the pinned Harbor checkout in a virtual
@@ -32,6 +41,7 @@ Check the thin Harbor boundary before a live task:
 PYTHONPATH=/absolute/path/to/Project-Peritus \
 /absolute/path/to/terminalbench-state/.venv/bin/python -m unittest \
   benchmarks.external.terminalbench.test_peritus_agent \
+  benchmarks.external.terminalbench.test_deadline \
   benchmarks.external.terminalbench.test_process_supervisor
 ```
 
