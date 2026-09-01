@@ -1,5 +1,8 @@
 # Changelog
 
+- Record the frozen Terminal-Bench context-exhaustion recurrence that is already corrected by
+  model-visible tool-output bounds, semantic checkpoints, and emergency compaction of a newest
+  complete exchange; preserve the unsupported-answer reward as an honest zero (`TBF-043`, #31).
 - Propagate a caller's real execution deadline into every product run, tell each model role how much
   shared time remains, cooperatively cancel in-flight provider work at that horizon, and reserve a
   bounded Terminal-Bench tail for durable reports and process cleanup instead of letting Harbor

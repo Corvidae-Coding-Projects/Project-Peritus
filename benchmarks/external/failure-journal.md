@@ -4483,3 +4483,38 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   adapter. Documentation validation passes all 137 maintained files. The complete repository policy
   gate passes across 79 packages, 3,371 source files, 2,711 formal-boundary files, 12,482
   ordinary-safe executable entry points, 3,371 trust-scanned files, and 31 pinned actions.
+
+## TBF-043: one recent command result exhausted the fixer's context window
+
+- Suite and task: Terminal-Bench 2.0 frozen baseline, corrected-adapter trial
+  `mteb-leaderboard__svjmNWD`.
+- Symptom: the writer produced an answer, but the independent reviewer correctly rejected it because
+  the retained searches did not establish the requested leaderboard fact. During the following
+  fixer turn, one broad command returned 568,433 bytes. The frozen product retained that exact
+  result in its durable trace and then rejected the next provider request at an estimated 226,855
+  input tokens against the provider's 200,000-token limit. The unchanged verifier expected a
+  different answer and awarded reward 0.
+- Cause: the frozen compaction policy always preserved the eight newest messages and admitted exact
+  tool output into model history. A single large result inside that protected suffix could therefore
+  exceed the complete input window, while older exchanges were either too small to compact
+  beneficially or insufficient to restore the request. The failure occurred after 36 provider
+  requests without any recorded compaction.
+- Existing general resolution: current Peritus bounds every model-visible tool result before adding
+  it to history while retaining the exact bytes and digest in the durable trace. If the request is
+  still impossible, a second deterministic pass may compact the newest complete exchange instead of
+  treating the normal recent-history preference as absolute. Semantic checkpoints preserve useful
+  completed state, with deterministic digest-bound compaction as the fail-closed fallback. These
+  changes apply to compiler logs, searches, generated data, test output, repository listings, and
+  every other tool source; they contain no leaderboard names, expected model identifier, or task
+  answer.
+- Integrity decision: retain reward 0. The reviewer's refusal to accept an unsupported factual
+  answer was correct, and the hidden verifier answer must not enter prompts, policies, or tests. The
+  harness defect was losing the opportunity to continue grounded research after a large ordinary
+  observation, not failing to guess the verifier's expected value.
+- Evidence: the native report records a provider failure during the fixer after 36 requests,
+  1,474,196 input tokens, 284,821 cached input tokens, and 27,155 output tokens. The 1,473,298-byte
+  trace contains 51 exact tool observations; its largest output is 568,433 bytes and it contains no
+  compaction event. Current focused regressions prove that a 30-exchange verbose transcript is
+  semantically compacted, a 120,014-byte exact observation is bounded before model history, an
+  impossible newest complete exchange is compacted, and unusable semantic compaction falls back to
+  deterministic compaction. An unchanged final-candidate rerun remains required.
