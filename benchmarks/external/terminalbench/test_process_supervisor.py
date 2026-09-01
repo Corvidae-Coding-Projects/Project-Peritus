@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import signal
 import unittest
 from pathlib import Path, PurePosixPath
 from tempfile import TemporaryDirectory
@@ -12,6 +13,7 @@ from harbor.environments.base import ExecResult
 
 from benchmarks.external.terminalbench.process_supervisor import (
     _supervised_command,
+    _termination_command,
     exec_supervised,
 )
 
@@ -95,7 +97,7 @@ class ProcessSupervisorTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(environment.cleaned.is_set())
         self.assertEqual(len(environment.calls), 2)
         cleanup_command, cleanup_options = environment.calls[1]
-        self.assertIn("/proc/$current/task/$current/children", cleanup_command)
+        self.assertIn("/proc/$1/task/$1/children", cleanup_command)
         self.assertIn("/proc/[0-9]*/environ", cleanup_command)
         self.assertIn("kill -STOP $targets", cleanup_command)
         self.assertIn("kill -KILL $targets", cleanup_command)
@@ -178,6 +180,32 @@ class ProcessSupervisorTests(unittest.IsolatedAsyncioTestCase):
             self.assertFalse(Path(f"/proc/{root_pid}").exists())
             self.assertFalse(Path(f"/proc/{escaped_pid}").exists())
             self.assertFalse(pid_path.exists())
+
+    async def test_recursive_tree_walk_retains_each_parent_pid(self) -> None:
+        environment = _LocalCancellationEnvironment()
+        with TemporaryDirectory(prefix="peritus-supervisor-") as raw:
+            pid_path = Path(raw) / "agent.pid"
+            process = await asyncio.create_subprocess_exec(
+                "sh",
+                "-c",
+                "sleep 60 & while :; do sleep 60; done",
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+                start_new_session=True,
+            )
+            pid_path.write_text(f"{process.pid}\n", encoding="utf-8")
+            try:
+                result = await environment.exec(
+                    _termination_command(PurePosixPath(str(pid_path)))
+                )
+                self.assertEqual(result.return_code, 0, result.stderr)
+                await asyncio.wait_for(process.wait(), timeout=2)
+                self.assertFalse(Path(f"/proc/{process.pid}").exists())
+                self.assertFalse(pid_path.exists())
+            finally:
+                if process.returncode is None:
+                    os.killpg(process.pid, signal.SIGKILL)
+                    await process.wait()
 
 
 if __name__ == "__main__":

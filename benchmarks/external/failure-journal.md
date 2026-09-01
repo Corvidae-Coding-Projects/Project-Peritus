@@ -3471,10 +3471,20 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   inherited-marker correction at `3708f7fd`, so this is expected frozen evidence for the already
   corrected process-family escape. The null verifier result and unchanged timeouts are retained;
   only a fresh campaign built after `3708f7fd` can validate the corrected boundary.
-- Verification: four focused adapter tests pass. They require the native wrapper to record and wait
-  for its exact child, prove cancellation reaps an ordinary live tree, and now deliberately create
-  a marked process that reparents outside the recorded tree and prove it is also gone before
-  cancellation propagates. Python compilation passes.
+- Frozen tree-walker recurrence `extract-moves-from-video__CVxEpH2` reached the unchanged
+  1,800-second agent deadline at `2026-09-01T00:40:49.868895Z` after performing active FFmpeg and
+  Tesseract analysis. Cleanup then reported survivor PID `138094` three times, raised a runtime
+  error, and prevented verification, so the retained reward is null. The original recursive shell
+  function stored its current PID in a global variable; each recursive child overwrote its parent,
+  causing a three-process chain to collapse to the leaf PID repeated three times. The current
+  inherited-marker scan can compensate when `/proc/*/environ` is readable, but the explicit tree
+  proof must remain correct on its own. Tree collection now addresses each function call through
+  its scoped positional parameter, preserving and terminating every parent PID. The frozen
+  campaign remains unchanged; a fresh final-candidate campaign must validate the corrected adapter.
+- Verification: five focused adapter tests pass. They require the native wrapper to record and wait
+  for its exact child, prove cancellation reaps an ordinary live tree, deliberately create a marked
+  process that reparents outside the recorded tree, and independently prove a recursive unmarked
+  tree retains and reaps every parent PID before cancellation propagates. Python compilation passes.
   The complete external-benchmark test set, strict repository gates, and an unchanged
   final-candidate timed trial remain required before qualification closes.
 

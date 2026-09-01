@@ -78,11 +78,10 @@ IFS= read -r root < "$pid_file"
 case "$root" in (*[!0-9]*|'') echo 'invalid supervised PID' >&2; exit 1;; esac
 marker={quoted_marker}
 collect_tree() {{
-  current=$1
-  [ -d "/proc/$current" ] || return 0
-  children=$(cat "/proc/$current/task/$current/children" 2>/dev/null || true)
+  [ -d "/proc/$1" ] || return 0
+  children=$(cat "/proc/$1/task/$1/children" 2>/dev/null || true)
   for child in $children; do collect_tree "$child"; done
-  printf '%s\\n' "$current"
+  printf '%s\\n' "$1"
 }}
 collect_marked() {{
   for environment in /proc/[0-9]*/environ; do

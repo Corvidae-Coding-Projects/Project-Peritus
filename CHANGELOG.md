@@ -245,6 +245,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Quiesce and reap the complete marked Terminal-Bench process family when Harbor cancels an agent,
   including a child that detached or reparented outside the recorded PID tree, so timed-out model
   or tool work cannot mutate the shared task container during verification (`TBF-022`, #31).
+- Preserve every parent PID while recursively walking a cancelled Terminal-Bench process tree;
+  shell recursion no longer collapses a chain to repeated copies of its leaf, and an unmarked
+  looping-tree regression independently proves complete cleanup (`TBF-022`, #31).
 - Give Gate A's cold per-operation Rust jobs the same 45-minute hosted-runner allowance as the
   stricter Foundation matrix, preventing healthy Windows test runs from being cancelled after
   compilation and hundreds of passing tests solely because the former 30-minute ceiling elapsed
