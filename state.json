@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1107,
+  "next_comment_id": 1108,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-09-01T00:12:29.815267867Z",
+      "updated_at": "2026-09-01T00:15:41.473454683Z",
       "labels": [
         "qualification",
         "release"
@@ -5963,6 +5963,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzyZki5hUw8maPG1xeyNOYDa05NfuXi4jy1dMjY5/pHG9+3LD8r8DGTkiV7Z5S73uGYEoqS3pjYLH+uG9fz8oBQ=="
+        },
+        "ffa756b9-9557-4a22-a751-36c34ddc0e57": {
+          "display_id": 1107,
+          "author": "6ME5",
+          "content": "Signed commit 629c07ff adds Codex-style semantic context checkpoints before deterministic compaction. The checkpoint turn preserves the original system/task messages, disables tools and parallel calls, uses the existing retry/cache/trace path, accounts successful and fallback attempt usage/retries, binds source and replacement by SHA-256, and falls back deterministically on unusable semantic output. Context encoding and model-request construction were split into dedicated modules so every developer source file remains below 400 lines. Verification: CARGO_BUILD_JOBS=2 cargo test -p peritus-agent --all-features; strict all-feature/all-target Clippy; cargo fmt --check; git diff --check; CARGO_BUILD_JOBS=2 cargo xtask all (79 packages, all checks passed). Pushed to PR #39.",
+          "created_at": "2026-09-01T00:15:41.470996016Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAhukgrCPgx8B6DxCwfIO7IiccLV1ykfmPXeBjGZLUswIftjY6Q4onCzAmpid2nBx5hombkHQmZq+QtCCF+NVhDg=="
         }
       }
     },
@@ -10719,8 +10728,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-01T00:12:29.815267867Z",
+    "timestamp": "2026-09-01T00:15:41.473454683Z",
     "agent_id": "6ME5",
-    "agent_seq": 1309
+    "agent_seq": 1310
   }
 }
