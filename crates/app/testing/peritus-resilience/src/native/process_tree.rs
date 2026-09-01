@@ -4,6 +4,8 @@
 mod platform {
     use std::os::unix::process::CommandExt as _;
     use std::process::{Child, Command};
+    use std::thread;
+    use std::time::{Duration, Instant};
 
     use nix::errno::Errno;
     use nix::sys::signal::{Signal, kill};
@@ -12,6 +14,9 @@ mod platform {
     use crate::{SubjectError, SubjectErrorCode};
 
     use super::super::subject_error;
+
+    const PROCESS_DRAIN_DEADLINE: Duration = Duration::from_secs(2);
+    const PROCESS_DRAIN_POLL_INTERVAL: Duration = Duration::from_millis(10);
 
     pub struct ProcessTree {
         group: i32,
@@ -38,23 +43,29 @@ mod platform {
         }
 
         pub fn finish(&self) -> Result<(), SubjectError> {
-            match kill(Pid::from_raw(-self.group), None) {
-                Err(Errno::ESRCH) => return Ok(()),
-                Ok(()) => {}
-                Err(error) => {
+            let started = Instant::now();
+            loop {
+                match kill(Pid::from_raw(-self.group), None) {
+                    Err(Errno::ESRCH) => return Ok(()),
+                    Ok(()) => {}
+                    Err(error) => {
+                        return Err(subject_error(
+                            SubjectErrorCode::Cleanup,
+                            format!("inspect owned controller process group: {error}"),
+                            false,
+                        ));
+                    }
+                }
+                if started.elapsed() >= PROCESS_DRAIN_DEADLINE {
+                    signal_group(self.group, Signal::SIGKILL)?;
                     return Err(subject_error(
                         SubjectErrorCode::Cleanup,
-                        format!("inspect owned controller process group: {error}"),
+                        "controller exited while a descendant remained in its process group",
                         false,
                     ));
                 }
+                thread::sleep(PROCESS_DRAIN_POLL_INTERVAL);
             }
-            signal_group(self.group, Signal::SIGKILL)?;
-            Err(subject_error(
-                SubjectErrorCode::Cleanup,
-                "controller exited while a descendant remained in its process group",
-                false,
-            ))
         }
     }
 

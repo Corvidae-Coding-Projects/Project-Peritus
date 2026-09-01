@@ -2,6 +2,9 @@
 
 #![cfg(unix)]
 
+#[path = "native_controller/drain.rs"]
+mod drain;
+
 use std::fs;
 use std::future::Future;
 use std::os::unix::fs::PermissionsExt as _;
@@ -200,6 +203,14 @@ fn write_controller(parent: &Path, source: &str) -> PathBuf {
 }
 
 fn valid_controller(evidence_sha256: &str, bind_prepare_request: bool) -> String {
+    controller_with_cleanup(evidence_sha256, bind_prepare_request, "")
+}
+
+fn controller_with_cleanup(
+    evidence_sha256: &str,
+    bind_prepare_request: bool,
+    cleanup_command: &str,
+) -> String {
     let abc = ABC_SHA256;
     let request_sha_command = if bind_prepare_request {
         r#"request_sha=$(printf '%s' "$request" | sed -n 's/.*"request_sha256":"\([^"]*\)".*/\1/p')"#
@@ -276,6 +287,7 @@ while IFS= read -r request; do
       payload='{{"outcome":"'"$expected"'","acceptance":{{"terminal":"failed","revision_bound":false,"evidence_current":false}},"journal":"'"$journal"'","artifacts":"'"$artifacts"'","projection":"'"$projection"'","corruption":{{"detected":'"$detected"',"mutation_admitted":'"$admitted"'}},"ownership":{{"scan_completed":true,"discovered":'"$discovered"',"resumed":0,"failed":'"$failed"',"indeterminate":0,"unaccounted":0,"orphan_candidates_detected":'"$candidates"',"orphans_remaining":0}},"retries":{{"provider":'"$provider"',"tool":'"$tool"',"worker":'"$worker"',"reconciliation":1}},"resources":{{"events":12,"evidence_bytes":18,"peak_owned_processes":2,"cleanup_steps":1,"logical_ticks":50}},"temporary_objects":0,"artifact_count":6,"evidence":[{{"kind":"fault-injection","id":"fault","path":"fault.json","sha256":"{evidence_sha256}","bytes":3}},{{"kind":"journal","id":"journal","path":"journal.json","sha256":"{evidence_sha256}","bytes":3}},{{"kind":"recovery","id":"recovery","path":"recovery.json","sha256":"{evidence_sha256}","bytes":3}},{{"kind":"ownership","id":"ownership","path":"ownership.json","sha256":"{evidence_sha256}","bytes":3}},{{"kind":"resource","id":"resource","path":"resource.json","sha256":"{evidence_sha256}","bytes":3}},{{"kind":"final-state","id":"final","path":"final.json","sha256":"{evidence_sha256}","bytes":3}}],"milestones":[{{"sequence":0,"kind":"prepared","detail":"baseline prepared"}},{{"sequence":1,"kind":"fault-armed","detail":"fault armed"}},{{"sequence":2,"kind":"fault-observed","detail":"fault observed"}},{{"sequence":3,"kind":"recovery-started","detail":"recovery started"}},{{"sequence":4,"kind":"reconciled","detail":"work reconciled"}},{{"sequence":5,"kind":"inspected","detail":"state inspected"}}]}}'
       ;;
     cleanup)
+      {cleanup_command}
       payload='{{"resources_released":true,"owned_work_remaining":0,"cleanup_steps":1}}'
       ;;
     *) exit 65 ;;

@@ -211,6 +211,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Give an exited Unix H1 controller process group the same bounded two-second natural-drain window
+  as the Windows Job Object path before declaring that descendants leaked. Persistent descendants
+  are still killed and rejected, while loaded macOS runners no longer misclassify a just-settling
+  cleanup as a resource leak (#31).
 - Account inline images by a conservative per-image vision-token ceiling instead of treating their
   compressed JPEG or PNG transfer bytes as text tokens. Exact bytes and digests still cross the
   provider boundary, while legitimate multi-image work can reach the first model turn without an
