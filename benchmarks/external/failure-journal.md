@@ -3241,6 +3241,14 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   trial exception, while the raw trial log records the separate `VerifierTimeoutError`. The null
   result remains an infrastructure outcome; no task image, dependency selection, timeout, or score
   is changed.
+- Corrected-adapter trial `pytorch-model-recovery__HGMcWfw` reached the same null boundary after a
+  natively accepted candidate. Peritus created exactly `model.pt`, strictly reloaded the original
+  state dictionary, preserved the original weights digest, changed only the output layer, and
+  measured MSE improving from 1.543385028839 to 0.675975322723. The unchanged verifier then spent
+  all 900 seconds downloading the same 783.0 MiB Torch package and multi-gigabyte CUDA dependency
+  set and timed out before collecting a test or reward. Preserve the accepted native evidence and
+  null external result separately; neither proves the hidden checks passed, and the verifier timeout
+  is not a candidate-quality zero.
 - Corrected-adapter trial `mteb-retrieve__DKpVJtd` added a network-failure variant of the same cold
   CUDA dependency boundary. Native Peritus completed successfully and wrote the requested
   `result.txt`; the unchanged verifier then selected Torch 2.13.0 and several gigabytes of NVIDIA
@@ -4213,6 +4221,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   commit changes the progress fingerprint. All 113 product-runner tests, strict all-target and
   all-feature Clippy with warnings denied, formatting, diff hygiene, the 137-file documentation
   check, and the complete repository policy gate pass.
+- Frozen-campaign recurrence: `fix-git__UAY2jZJ` recovered the same abandoned commit on
+  `recovery/lost-site-changes-650dba4`, merged it into `master` as
+  `79e496a40fa3948dad5251e897d3807279f352cc`, produced a clean worktree, and passed both unchanged
+  verifier tests for reward 1. Frozen Peritus again stopped before review only because HEAD moved.
+  The run used 37 requests, 1,496,243 input tokens, 166,656 cached input tokens, and 19,370 output
+  tokens. This is second independent evidence for the existing committed-task-effects correction,
+  not a new Git-task special case.
 
 ## TBF-035: one oversized recent tool result could exceed context before becoming compactable
 
@@ -4252,6 +4267,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   Peritus stopped after five provider requests at an estimated 202,234 input tokens before creating
   the required Stan and R files. Its unchanged verifier awarded reward 0. Both recurrences ran the
   frozen executable and remain covered by the same model-visible observation bound.
+  A second `regex-chess` attempt, `regex-chess__nRygVtr`, read the same generated artifact twice at
+  668,855 and 668,856 output bytes. Frozen Peritus stopped after eight provider requests at an
+  estimated 240,379 input tokens with no compaction event. The unchanged verifier again passed its
+  size check but found the same three functional failures and retained reward 0. This confirms both
+  the general recent-observation defect and that context repair alone must not erase the candidate's
+  independent correctness failures.
 - Verification: one regression gives a 32,768-token provider a 120,014-byte exact tool observation
   and proves that the trace retains all of it while model history receives a digest-bound value no
   larger than 12,288 bytes. A separate regression supplies a 120,000-byte tool-call argument, which
