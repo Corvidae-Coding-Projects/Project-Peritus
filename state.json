@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1133,
+  "next_comment_id": 1134,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-09-01T22:14:08.171285946Z",
+      "updated_at": "2026-09-01T22:14:33.097882654Z",
       "labels": [
         "qualification",
         "release"
@@ -4820,6 +4820,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAdW4n9wAqbSug2S5uosr1D3w7ES0l/oFq0BmBXQk5CdyH8rMbdVYuyPy9zQRhkPcW13YhyO2ribM9fk9lEcO3Cg=="
+        },
+        "bc9b6d64-ee35-4586-8a9c-e0760112a166": {
+          "display_id": 1133,
+          "author": "6ME5",
+          "content": "Committed 389c7d10 (signed): fix(runtime): honor caller run deadlines. ProductRunInput now carries a bounded caller horizon; all architect/writer/reviewer/fixer invocations see remaining shared time; the runner cooperatively cancels providers at the horizon and hard-settles five seconds later without unsupported formal-boundary macros. The Terminal-Bench bridge resolves Harbor's exact override/cap/multiplier deadline from retained lock and task evidence and reserves a bounded tail. TBF-042 and user-facing docs record the unchanged verifier-perfect/outer-timeout evidence and integrity decision. Verification passed: 121 product-runner tests, 44 external-benchmark Rust tests, 29 Python adapter tests, strict affected-crate Clippy, rustfmt, 137 docs, and full xtask all across 79 packages/3371 source files/2711 formal-boundary files/12482 ordinary-safe entry points/31 actions.",
+          "created_at": "2026-09-01T22:14:33.095569896Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABApreuo3MbHIQHxIJTqJVK8g8H6YxscXTnkwOGdujsIPBhLc5WNosQGiveSx9MwuNQ6s+kNLUCtuPoMIbU1vWdBQ=="
         },
         "bd098db0-ed98-4848-96d1-8c7ed6d8a70a": {
           "display_id": 590,
@@ -10953,8 +10962,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-01T22:14:08.171285946Z",
+    "timestamp": "2026-09-01T22:14:33.097882654Z",
     "agent_id": "6ME5",
-    "agent_seq": 1339
+    "agent_seq": 1340
   }
 }
