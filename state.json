@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1120,
+  "next_comment_id": 1121,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-09-01T09:21:23.300638237Z",
+      "updated_at": "2026-09-01T09:51:08.360116972Z",
       "labels": [
         "qualification",
         "release"
@@ -5378,6 +5378,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAEGmbvXf6ImW3q8ry0ArRMtciy23n+A2KD7eSfqHCd9c/zk00lC+gxVlwu9R2jShx5D+k1S6ip4Gg7wNa6kTlCQ=="
+        },
+        "df1b0b24-8d53-4792-9d03-3a965c65138f": {
+          "display_id": 1120,
+          "author": "6ME5",
+          "content": "Signed commit e310fa94 repairs the macOS H1 cleanup race from Actions job 99805235868. Unix now gives an exited controller process group a bounded two-second natural-drain window, matching the existing Windows lifecycle; persistent descendants are still killed and rejected. Added a short-lived-descendant regression in its own test module to keep the parent below the source-size budget. Verification: all 16 peritus-resilience tests, strict all-target/all-feature Clippy, rustfmt, and the complete 79-package repository gate pass. Pushed to feature/g4-conversational-runs.",
+          "created_at": "2026-09-01T09:51:08.356912297Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAYcyYnfi5idv6dCUjI3IlKimNjuFuNlX9VVP2bryTnKqiVFtmusqWlgnEuX7jUZt/RDM3H7iTi6N06YwocQbGBg=="
         },
         "dfc56dfd-77d7-4a04-941d-65f92722de0f": {
           "display_id": 600,
@@ -10836,8 +10845,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-01T09:21:23.300638237Z",
+    "timestamp": "2026-09-01T09:51:08.360116972Z",
     "agent_id": "6ME5",
-    "agent_seq": 1324
+    "agent_seq": 1325
   }
 }
