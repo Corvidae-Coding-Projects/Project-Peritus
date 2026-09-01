@@ -19,6 +19,7 @@ use peritus_agent::{
 use peritus_model_protocol::{
     CanonicalJson, ContentBlock, EventEnvelope, JsonBounds, ModelRequest, ParallelToolPolicy,
     ProtocolLimits, ProviderProfile, ReasoningEffort, ReasoningPolicy, Role, SummaryPolicy,
+    ToolChoice,
 };
 use peritus_provider_core::{
     BoxFuture, CancellationToken, ModelProvider, ModelStream, OwnedModelStream, ProviderCoreError,
@@ -62,18 +63,30 @@ impl ModelProvider for ScriptedProvider {
         cancellation: CancellationToken,
     ) -> BoxFuture<'_, Result<OwnedModelStream, ProviderCoreError>> {
         Box::pin(async move {
+            let semantic_compaction = matches!(request.tool_choice(), ToolChoice::None);
+            let invalid_semantic_compaction =
+                request.request_id().expose_for_wire().starts_with("fallback-compaction-test-");
             self.requests
                 .lock()
                 .map_err(|_| ProviderCoreError::configuration("scripted_provider", "lock failed"))?
                 .push(request);
-            let events = self
-                .responses
-                .lock()
-                .map_err(|_| ProviderCoreError::configuration("scripted_provider", "lock failed"))?
-                .pop_front()
-                .ok_or_else(|| {
-                    ProviderCoreError::configuration("scripted_provider", "script exhausted")
-                })?;
+            let events = if semantic_compaction {
+                if invalid_semantic_compaction {
+                    tool_response()
+                } else {
+                    fixtures::semantic_compaction_response()
+                }
+            } else {
+                self.responses
+                    .lock()
+                    .map_err(|_| {
+                        ProviderCoreError::configuration("scripted_provider", "lock failed")
+                    })?
+                    .pop_front()
+                    .ok_or_else(|| {
+                        ProviderCoreError::configuration("scripted_provider", "script exhausted")
+                    })?
+            };
             Ok(OwnedModelStream::new(ScriptedStream { events }, cancellation))
         })
     }

@@ -172,15 +172,25 @@ pub fn batch_tool_response() -> VecDeque<EventEnvelope> {
 }
 
 pub fn text_response() -> VecDeque<EventEnvelope> {
+    text_response_value("message-item", "implementation inspected")
+}
+
+pub fn semantic_compaction_response() -> VecDeque<EventEnvelope> {
+    text_response_value(
+        "semantic-compaction-item",
+        "Checkpoint: workspace inspection is complete. Preserve observed paths and continue from the latest tool evidence.",
+    )
+}
+
+fn text_response_value(item_id: &str, value: &str) -> VecDeque<EventEnvelope> {
     let limits = ProtocolLimits::PRODUCTION;
-    let item = ItemId::new("message-item".to_owned()).expect("item");
+    let item = ItemId::new(item_id.to_owned()).expect("item");
     response([
         ModelEvent::ResponseStarted { response_id: None, model: None },
         ModelEvent::ItemStarted { item_id: item.clone(), index: 0, kind: ItemKind::Message },
         ModelEvent::TextDelta {
             item_id: item.clone(),
-            fragment: StreamFragment::new(b"implementation inspected".to_vec(), limits)
-                .expect("text"),
+            fragment: StreamFragment::new(value.as_bytes().to_vec(), limits).expect("text"),
         },
         ModelEvent::ItemCompleted(item),
         ModelEvent::Finish(FinishReason::Stop),

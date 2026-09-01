@@ -115,13 +115,25 @@ fn developer_loop_compacts_old_complete_tool_exchanges_with_digest_evidence() {
         assert!(outcome.compactions > 0);
         assert_eq!(u32::from(outcome.compactions), trace.compactions);
         let requests = provider.requests.lock().expect("requests");
+        let semantic = requests
+            .iter()
+            .find(|request| matches!(request.tool_choice(), ToolChoice::None))
+            .expect("semantic compaction request");
+        assert!(semantic.tools().is_empty());
+        assert_eq!(semantic.messages()[0].role(), Role::System);
+        assert_eq!(semantic.messages()[1].role(), Role::User);
+        assert!(semantic.messages().iter().any(|message| {
+            message.content().iter().any(|block| {
+                matches!(block, ContentBlock::Text(text) if text.expose_for_wire().contains("Create a concise context checkpoint"))
+            })
+        }));
         let last = requests.last().expect("final request");
         assert_eq!(last.messages()[0].role(), Role::System);
         assert_eq!(last.messages()[1].role(), Role::User);
         assert!(last.messages().iter().any(|message| {
             message.role() == Role::User
                 && message.content().iter().any(|block| {
-                    matches!(block, ContentBlock::Text(text) if text.expose_for_wire().starts_with("<peritus-compaction ") && text.expose_for_wire().contains("source_sha256="))
+                    matches!(block, ContentBlock::Text(text) if text.expose_for_wire().starts_with("<peritus-compaction ") && text.expose_for_wire().contains("mode=\"semantic\"") && text.expose_for_wire().contains("Checkpoint: workspace inspection is complete") && text.expose_for_wire().contains("source_sha256="))
                 })
         }));
         drop(requests);
@@ -219,6 +231,50 @@ fn developer_loop_compacts_an_impossible_recent_complete_exchange() {
                 })
         }));
         assert!(!final_request.messages().iter().any(|message| message.role() == Role::Tool));
+        drop(requests);
+    });
+}
+
+#[test]
+fn developer_loop_falls_back_when_semantic_compaction_is_unusable() {
+    block_on(async {
+        let provider = ScriptedProvider {
+            profile: profile(),
+            responses: Mutex::new(VecDeque::from([
+                oversized_tool_argument_response(),
+                text_response(),
+            ])),
+            requests: Mutex::new(Vec::new()),
+        };
+        let mut tools = RecordingTool::default();
+        let mut trace = RecordingTrace::default();
+        let outcome = DeveloperLoop::run(
+            &provider,
+            DeveloperLoopRequest {
+                request_prefix: "fallback-compaction-test".to_owned(),
+                system: "Inspect before completing.".to_owned(),
+                prompt: "Read the workspace and complete the task.".to_owned(),
+                attachments: Vec::new(),
+                tools: vec![read_tool()],
+                limits: DeveloperLoopLimits::new(3, 3).expect("limits"),
+                cancellation: CancellationToken::new(),
+            },
+            &mut tools,
+            &mut trace,
+        )
+        .await
+        .expect("deterministic fallback completes the loop");
+
+        assert_eq!(outcome.compactions, 1);
+        assert_eq!(trace.compactions, 1);
+        let requests = provider.requests.lock().expect("requests");
+        assert!(requests.iter().any(|request| matches!(request.tool_choice(), ToolChoice::None)));
+        let final_request = requests.last().expect("final request");
+        assert!(final_request.messages().iter().any(|message| {
+            message.content().iter().any(|block| {
+                matches!(block, ContentBlock::Text(text) if text.expose_for_wire().starts_with("<peritus-compaction ") && !text.expose_for_wire().contains("mode=\"semantic\""))
+            })
+        }));
         drop(requests);
     });
 }

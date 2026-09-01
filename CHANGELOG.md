@@ -216,6 +216,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Preserve deterministic head/tail previews, original size, and SHA-256; keep the normal recent
   window while requests fit, then compact a complete recent exchange only when the next request
   would otherwise exceed the provider limit (`TBF-035`, #31).
+- Before deterministic history reduction, ask the active provider for a tool-disabled semantic
+  checkpoint that preserves completed work, decisions, constraints, failures, exact diagnostics,
+  and next steps. Keep the original system and task messages, bind the replaced transcript and
+  checkpoint by SHA-256, include checkpoint usage in run accounting, and fall back to the existing
+  deterministic compactor when the semantic turn is unavailable or unusable (#31).
 - Keep the coding run's original committed HEAD as its comparison base even when the requested
   work legitimately creates commits, merges branches, or switches HEAD. Exact changed-target
   discovery, review diffs, and progress detection now retain committed task effects instead of

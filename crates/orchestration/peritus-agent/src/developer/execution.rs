@@ -1,18 +1,18 @@
 //! Tight provider/tool execution loop.
 
 use peritus_model_protocol::{
-    BoundedText, CachePolicy, Capability, ContentBlock, GenerationConfig, Message, ModelRequest,
-    ParallelToolPolicy, PersistencePolicy, ProtocolLimits, ReasoningEffort, ReasoningPolicy,
-    ReducedItem, RequestId, RequestOptions, RequestedCapabilities, Role, StructuredOutput,
-    SummaryPolicy, TerminalOutcome, ToolChoice, ToolResult, negotiate,
+    BoundedText, Capability, ContentBlock, Message, ModelRequest, ProtocolLimits, ReducedItem,
+    RequestedCapabilities, Role, TerminalOutcome, ToolResult, negotiate,
 };
 use peritus_provider_core::ModelProvider;
 
 use crate::{ModelAdvance, ModelSession};
 
 use super::context::prepare_messages;
+use super::model_request::{ModelTurnKind, build_model_request};
 use super::observation::model_visible_tool_output;
 use super::retry::DeveloperRetryPlanner;
+use super::semantic::SemanticCompaction;
 use super::{
     DeveloperLoopError, DeveloperLoopOutcome, DeveloperLoopRequest, DeveloperToolExecutor,
     DeveloperTrace, DeveloperTraceEvent, DeveloperUsage,
@@ -69,6 +69,44 @@ impl DeveloperLoop {
             if request.cancellation.is_cancelled() {
                 return Err(DeveloperLoopError::Cancelled);
             }
+            if let Some(semantic) = SemanticCompaction::prepare(
+                &messages,
+                &request.tools,
+                profile,
+                request.limits.max_output_tokens(),
+                protocol_limits,
+            )? {
+                match complete_turn(
+                    provider,
+                    &request,
+                    semantic.request_messages(),
+                    profile,
+                    negotiated,
+                    protocol_limits,
+                    turn,
+                    ModelTurnKind::SemanticCompaction,
+                    &mut retries,
+                    &mut usage,
+                    trace,
+                )
+                .await
+                {
+                    Ok(session) => {
+                        if let Ok(Some(record)) =
+                            semantic.install(&mut messages, &session, protocol_limits)
+                        {
+                            trace.record(DeveloperTraceEvent::ContextCompaction(&record))?;
+                            compactions = compactions
+                                .checked_add(1)
+                                .ok_or(DeveloperLoopError::LimitExceeded)?;
+                        }
+                    }
+                    Err(DeveloperLoopError::Cancelled) => {
+                        return Err(DeveloperLoopError::Cancelled);
+                    }
+                    Err(_) => {}
+                }
+            }
             let records = prepare_messages(
                 &mut messages,
                 &request.tools,
@@ -84,7 +122,7 @@ impl DeveloperLoop {
                     u16::try_from(records.len()).map_err(|_| DeveloperLoopError::LimitExceeded)?,
                 )
                 .ok_or(DeveloperLoopError::LimitExceeded)?;
-            let (session, turn_retries, turn_usage) = complete_turn(
+            let session = complete_turn(
                 provider,
                 &request,
                 &messages,
@@ -92,11 +130,12 @@ impl DeveloperLoop {
                 negotiated,
                 protocol_limits,
                 turn,
+                ModelTurnKind::Developer,
+                &mut retries,
+                &mut usage,
                 trace,
             )
             .await?;
-            retries = retries.checked_add(turn_retries).ok_or(DeveloperLoopError::LimitExceeded)?;
-            usage.merge(turn_usage)?;
 
             let mut assistant = Vec::new();
             let mut calls = Vec::new();
@@ -192,23 +231,37 @@ async fn complete_turn(
     negotiated: peritus_model_protocol::NegotiatedCapabilities,
     protocol_limits: ProtocolLimits,
     turn: u16,
+    kind: ModelTurnKind,
+    retries: &mut u16,
+    usage: &mut DeveloperUsage,
     trace: &mut dyn DeveloperTrace,
-) -> Result<(ModelSession, u16, DeveloperUsage), DeveloperLoopError> {
+) -> Result<ModelSession, DeveloperLoopError> {
     let maximum = request.limits.max_attempts_per_turn();
-    let planner =
-        DeveloperRetryPlanner::new(&request.request_prefix, turn, maximum, &request.cancellation);
-    let mut retries = 0_u16;
-    let mut usage = DeveloperUsage::default();
+    let retry_prefix = match kind {
+        ModelTurnKind::Developer => request.request_prefix.clone(),
+        ModelTurnKind::SemanticCompaction => {
+            format!("{}-semantic-compaction", request.request_prefix)
+        }
+    };
+    let planner = DeveloperRetryPlanner::new(&retry_prefix, turn, maximum, &request.cancellation);
     for attempt in 1..=maximum {
         if request.cancellation.is_cancelled() {
             return Err(DeveloperLoopError::Cancelled);
         }
-        let model_request =
-            model_request(request, messages, profile, negotiated, protocol_limits, turn, attempt)?;
+        let model_request = build_model_request(
+            request,
+            messages,
+            profile,
+            negotiated,
+            protocol_limits,
+            turn,
+            attempt,
+            kind,
+        )?;
         match drive(provider, model_request, request, protocol_limits, trace).await {
             Ok(session) if successful(session.terminal()) && usable(&session) => {
                 usage.observe(session.usage_high_water())?;
-                return Ok((session, retries, usage));
+                return Ok(session);
             }
             Ok(session) => {
                 usage.observe(session.usage_high_water())?;
@@ -218,68 +271,18 @@ async fn complete_turn(
                     return Err(terminal_error(session.terminal()));
                 };
                 planner.record_and_wait(&record, trace).await?;
-                retries = retries.checked_add(1).ok_or(DeveloperLoopError::LimitExceeded)?;
+                *retries = retries.checked_add(1).ok_or(DeveloperLoopError::LimitExceeded)?;
             }
             Err(error) => {
                 let Some(record) = planner.error(attempt, &error)? else {
                     return Err(error);
                 };
                 planner.record_and_wait(&record, trace).await?;
-                retries = retries.checked_add(1).ok_or(DeveloperLoopError::LimitExceeded)?;
+                *retries = retries.checked_add(1).ok_or(DeveloperLoopError::LimitExceeded)?;
             }
         }
     }
     Err(DeveloperLoopError::EmptyResponse)
-}
-
-fn model_request(
-    request: &DeveloperLoopRequest,
-    messages: &[Message],
-    profile: &peritus_model_protocol::ProviderProfile,
-    negotiated: peritus_model_protocol::NegotiatedCapabilities,
-    protocol_limits: ProtocolLimits,
-    turn: u16,
-    attempt: u8,
-) -> Result<ModelRequest, DeveloperLoopError> {
-    let parallel_tools = if negotiated.includes(Capability::ParallelToolCalls) {
-        ParallelToolPolicy::Allowed(negotiated.limits().max_parallel_tool_calls())
-    } else {
-        ParallelToolPolicy::Disabled
-    };
-    let reasoning = if negotiated.includes(Capability::ReasoningControls) {
-        ReasoningPolicy::Effort { effort: ReasoningEffort::High, summary: SummaryPolicy::None }
-    } else {
-        ReasoningPolicy::Disabled
-    };
-    Ok(ModelRequest::new(
-        profile,
-        negotiated,
-        RequestId::new(format!("{}-{turn}-attempt-{attempt}", request.request_prefix))?,
-        messages.to_vec(),
-        request.tools.clone(),
-        ToolChoice::Auto,
-        parallel_tools,
-        RequestOptions::new(
-            StructuredOutput::Text,
-            reasoning,
-            GenerationConfig::new(
-                profile.limits().max_output_tokens().min(request.limits.max_output_tokens()),
-                Vec::new(),
-                None,
-                None,
-                None,
-            )?,
-            if negotiated.includes(Capability::PromptCaching) {
-                CachePolicy::Automatic
-            } else {
-                CachePolicy::Disabled
-            },
-            PersistencePolicy::LOCAL_FIRST,
-            None,
-            Vec::new(),
-        ),
-        protocol_limits,
-    )?)
 }
 
 async fn drive(

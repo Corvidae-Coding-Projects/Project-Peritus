@@ -152,7 +152,7 @@ pub trait DeveloperToolExecutor: Send {
     }
 }
 
-/// Durable evidence for one deterministic transcript compaction.
+/// Durable evidence for one semantic or deterministic transcript compaction.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct DeveloperContextCompaction {
     policy_digest: Sha256Digest,
@@ -331,7 +331,7 @@ pub enum DeveloperTraceEvent<'a> {
         /// Canonical application result.
         observation: &'a DeveloperToolObservation,
     },
-    /// A checked deterministic compaction replaced complete prior tool exchanges.
+    /// A checked semantic or deterministic compaction replaced complete prior history.
     ContextCompaction(&'a DeveloperContextCompaction),
     /// Checked retry policy scheduled another provider attempt after a bounded wait.
     RetryScheduled(&'a DeveloperRetryRecord),
@@ -354,7 +354,7 @@ pub struct DeveloperLoopOutcome {
     pub model_turns: u16,
     /// Number of application tool calls observed.
     pub tool_calls: u32,
-    /// Number of deterministic transcript compactions applied during the role.
+    /// Number of transcript compactions applied during the role.
     pub compactions: u16,
     /// Number of bounded provider retries completed during the role.
     pub retries: u16,

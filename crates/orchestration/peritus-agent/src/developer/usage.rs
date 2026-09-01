@@ -61,26 +61,6 @@ impl DeveloperUsage {
         Ok(())
     }
 
-    pub(crate) fn merge(&mut self, other: Self) -> Result<(), DeveloperLoopError> {
-        self.input_tokens = checked_add(self.input_tokens, other.input_tokens)?;
-        self.cached_input_tokens =
-            checked_add(self.cached_input_tokens, other.cached_input_tokens)?;
-        self.cache_creation_input_tokens =
-            checked_add(self.cache_creation_input_tokens, other.cache_creation_input_tokens)?;
-        self.output_tokens = checked_add(self.output_tokens, other.output_tokens)?;
-        self.reasoning_output_tokens =
-            checked_add(self.reasoning_output_tokens, other.reasoning_output_tokens)?;
-        self.tool_tokens = checked_add(self.tool_tokens, other.tool_tokens)?;
-        self.total_tokens = checked_add(self.total_tokens, other.total_tokens)?;
-        self.provider_cost_microunits =
-            checked_add(self.provider_cost_microunits, other.provider_cost_microunits)?;
-        self.observations = self
-            .observations
-            .checked_add(other.observations)
-            .ok_or(DeveloperLoopError::LimitExceeded)?;
-        Ok(())
-    }
-
     /// Provider-reported input tokens across responses.
     #[must_use]
     pub const fn input_tokens(self) -> u64 {
