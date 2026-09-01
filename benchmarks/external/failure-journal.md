@@ -3214,6 +3214,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   trial exception, while the raw trial log records the separate `VerifierTimeoutError`. The null
   result remains an infrastructure outcome; no task image, dependency selection, timeout, or score
   is changed.
+- Corrected-adapter trial `mteb-retrieve__DKpVJtd` added a network-failure variant of the same cold
+  CUDA dependency boundary. Native Peritus completed successfully and wrote the requested
+  `result.txt`; the unchanged verifier then selected Torch 2.13.0 and several gigabytes of NVIDIA
+  packages. `uv` failed while extracting `nvidia-cufft==12.0.0.61` because its unchanged 30-second
+  HTTP timeout expired, before any test ran. Harbor retained a null result while the verifier's
+  `reward.txt` contained zero. Preserve both artifacts as infrastructure evidence and rerun the
+  unchanged trial; do not infer candidate correctness from the file or alter the task environment.
 
 ## TBF-018: a scientific fit was returned in the raw coordinate instead of the named domain
 
@@ -3778,6 +3785,16 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   352.382 seconds before the separate `TBF-009` reviewer terminal. This is another validation target
   for independent cases and evidence-limited claims; it does not justify copying hidden frame
   ranges or adding video-specific thresholds to Peritus.
+- Frozen-campaign recurrence: `video-processing__FprWpSY` produced a third scale-relative
+  foreground-trajectory implementation and passed the supplied example, import, shape, and file
+  checks. Its claimed independent check merely re-encoded the same example and reproduced the same
+  frame pair, so it did not exercise a distinct runner trajectory. The unchanged held-out video
+  reached the real script but the script rejected it as having incomplete jump boundaries; four of
+  five verifier checks passed and reward 0 is retained. Native Peritus accepted after 16 requests,
+  demonstrating that the frozen roles did not reliably apply the already task-neutral
+  calibration-versus-generalization rule. This recurrence strengthens the case for provenance-aware
+  validation evidence, but does not justify hidden-video inspection, filename branching, or fixed
+  takeoff and landing ranges.
 - Verification: embedded-workflow regressions require the calibration/generalization,
   independent-case, perturbation, and tuned-constant rules in architect, developer, and reviewer
   prompts. The deterministic artifact-design regression requires the same rule. All 95
@@ -4011,6 +4028,17 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   task success. This is credential lifecycle correctness for every serialized disposable provider
   run; it does not inspect a task, verifier, or score. The already-stale host state still requires
   one fresh user login before the repaired adapter can prove rotation continuity.
+- Frozen-campaign recurrence: `break-filter-js-from-html__ecQ7bg9` reached a useful grounded writer
+  turn, then its fresh-role failover ended with `anthropic.claude_runtime.authentication` after two
+  provider requests and before any workspace mutation. Host `claude auth status` still reported
+  `loggedIn: true`, while an inert official-CLI request returned `OAuth session expired and could
+  not be refreshed`; the stored access expiry was already about eight hours old and the refresh
+  expiry remained in the future. The unchanged verifier found no requested artifact and awarded
+  reward 0. The campaign was stopped immediately instead of converting the remaining tasks into
+  authentication zeros. Its in-flight `protein-assembly__d62scRn` trial was canceled by that
+  operator stop and is excluded from score interpretation pending an unchanged rerun after a fresh
+  login. This recurrence shows that presence-only status remains insufficient as a long-campaign
+  readiness check even when credential checkpointing is available.
 - Frozen recurrence `torch-tensor-parallelism__xuc9GAQ` completed its native run but produced no
   verifier result because the candidate document reported a shorter refresh-token lifetime and the
   checkpoint's rollback rejection escaped the adapter on `2026-09-01T03:24:44.309298Z`. The host
@@ -4067,6 +4095,14 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Integrity decision: retain the native failure and external reward exactly as observed. The source
   correction is not used by the running frozen campaign, and the unchanged task remains eligible
   for the final candidate campaign only after all general fixes are frozen.
+- Frozen-campaign recurrence: `build-pov-ray__KnEY232` downloaded, compiled, installed, and
+  successfully rendered with POV-Ray 2.2, but its 297-file candidate produced a 1,048,595-byte
+  exact diff. Native Peritus stopped before review after 16 provider requests because the initial
+  reviewer packet was estimated at 407,289 tokens against the 200,000-token limit. The unchanged
+  verifier independently found that one retained archive file did not match the expected source
+  hash and awarded reward 0, so the context failure is not presented as the sole cause of the
+  score. The frozen executable predates the provider-aware reviewer projection above; this is
+  independent evidence for that task-neutral correction, not a POV-Ray-specific fix.
 - Verification: focused projection tests exercise both a 200,000-token profile and a smaller
   64,000-token profile, preserve literal task and small evidence sections, retain head/tail and
   digest provenance for large sections, and bound the complete first reviewer prompt. All 110
@@ -4272,6 +4308,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   all 118 product-runner tests, strict all-target/all-feature Clippy, rustfmt, the 137-file
   documentation check, and the complete 79-package repository policy gate pass. A final-candidate
   rerun remains required.
+- Frozen-campaign recurrence: `make-mips-interpreter__rBJEZ4r` named the same ordinary
+  `doomgeneric/` source tree and reproduced the same four screenshot attachments totaling about
+  2.7 MiB. Its generated design was only 29,174 bytes, but the first writer request was rejected at
+  an estimated 923,168 input tokens before any provider request or workspace change. The unchanged
+  verifier found no interpreter or rendered frame and awarded reward 0. This remains independent
+  evidence for the existing source-directory correction, not a MIPS-specific fix.
 
 ## TBF-040: compressed image bytes were miscounted as text tokens
 
