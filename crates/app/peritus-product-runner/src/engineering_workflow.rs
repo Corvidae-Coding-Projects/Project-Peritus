@@ -195,6 +195,11 @@ requested behavior.
    integration files explicitly so parallel workers do not overwrite one another.
 5. Implement the complete requested behavior with typed errors, deterministic core logic, clear
    side-effect boundaries, and tests at the lowest useful layer. Preserve unrelated user work.
+   When the user requires a named acceptance command or test suite to pass, treat task-related
+   failures inside the stated mutation paths and domain as actionable even when they predate the
+   first edit. `Pre-existing` does not mean `out of scope`. Do not ask for permission merely because
+   an in-scope failure was already present; pause only when its correction would leave the stated
+   boundary, overwrite unrelated user work, or conflict with another explicit instruction.
    Preserve files created by test harnesses, local services, hooks, and other external processes;
    logs and sidecar files may be acceptance evidence even when they appear during your run. Never
    invent a stricter output-cleanliness rule than the user requested, and never delete a file merely

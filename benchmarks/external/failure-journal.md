@@ -3431,6 +3431,14 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   with `IsADirectoryError`; reward 0 is retained. Native review ended on `TBF-009` after eight
   requests, 232,700 input, 62,080 cached input, and 18,194 output tokens over 370.047 seconds. This
   recurrence strengthens the contract contradiction and does not justify suffix-based guessing.
+- Corrected-adapter trial `sam-cell-seg__eppTSnp` completed four native review/fix cycles, loaded the
+  real MobileSAM checkpoint during the unchanged verifier, and refined all 32 masks on CPU. Script
+  existence, execution, and output existence passed. The candidate again honored the published
+  folder contract and wrote `/app/test_output.csv/test_metadata.csv`; all six later checks then
+  attempted to read the directory `/app/test_output.csv` as a file and failed with
+  `IsADirectoryError`. Retain reward 0. The 52-request, 1,772,772-input-token run adds strong
+  end-to-end evidence for the same evaluator contradiction without justifying suffix-based or
+  benchmark-specific behavior.
 
 ## TBF-021: an authenticated image-capable route was absent from role fallback
 
@@ -4196,3 +4204,60 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   for the golden query and 0.629751510 seconds for `sol.sql`. Native Peritus accepted after 12
   requests, 254,623 input, 47,616 cached input, and 7,788 output tokens using frozen revision
   `d4a72e67`.
+
+## TBF-038: an in-scope pre-existing failure caused a needless user handoff
+
+- Suite and task: Terminal-Bench 2.0 frozen baseline, corrected-adapter trial
+  `fix-code-vulnerability__KWhgG7Y`.
+- Symptom: the writer repaired one input-validation defect and its focused tests, then the required
+  `pytest -rA` run still failed the repository's control-character header test. Although the request
+  named `bottle.py`, required the complete suite to pass, and asked for the vulnerability to be
+  fixed, Peritus stopped to ask whether it could restore the pre-existing validation. The unchanged
+  verifier found the named file still accepted CR/LF/NUL header characters and retained reward 0.
+- Cause: preservation guidance conflated a failure that predates the first edit with unrelated user
+  work. The remaining failure was inside the stated mutation file and vulnerability domain and was
+  directly governed by the user's named acceptance command, so no material scope choice remained.
+- Resolution: every engineering role now treats task-related failures from a user-required named
+  acceptance command as actionable when they remain inside the stated mutation paths and domain,
+  even when they predate the first edit. The role still pauses when a correction would leave that
+  boundary, overwrite unrelated user work, or conflict with another explicit instruction.
+- Integrity decision: retain reward 0. Do not encode Bottle, CWE-93, control characters, or the
+  verifier's expected patch. This correction applies to ordinary bug fixes, migrations, refactors,
+  dependency upgrades, and build repairs with explicit acceptance suites.
+- Evidence: native Peritus ended `waiting_for_user` after 15 requests, 406,072 input, 47,616 cached
+  input, and 13,635 output tokens. The unchanged verifier passed 366 upstream tests and failed the
+  one control-character regression, then passed four of six task checks and independently failed
+  the same behavior plus the corresponding report classification. A prior unchanged attempt
+  `fix-code-vulnerability__TeqBwoz` passed all 367 upstream and six task checks, confirming the
+  task is achievable without special handling.
+- Verification: the embedded-workflow regression requires the named-acceptance, pre-existing-scope,
+  no-needless-permission, and unrelated-work boundaries in every role. All 118 product-runner tests,
+  strict all-target/all-feature Clippy, rustfmt, the 137-file documentation check, and the complete
+  79-package repository policy gate pass. A final-candidate rerun remains required.
+
+## TBF-039: mentioning a source tree attached unrelated screenshots to the writer
+
+- Suite and task: Terminal-Bench 2.0 frozen baseline, corrected-adapter trial
+  `make-doom-for-mips__PFTL7J9`.
+- Symptom: native Peritus stopped before its first writer request with estimated input tokens
+  919,141 against the provider's 200,000-token limit. The grounded design was only 17,170 bytes,
+  but the task named `/app/doomgeneric/`; media discovery expanded that ordinary source-directory
+  mention into four unrelated descendant screenshots totaling about 2.7 MiB. Conservative context
+  accounting charged their inline bytes before the provider could receive the request.
+- Cause: direct named-image attachment and directory expansion shared one path-matching predicate.
+  Any mentioned parent directory therefore made every descendant image an input, even when the
+  request concerned source code and mentioned images only as future generated output.
+- Resolution: direct named image paths remain attachable, but parent-directory expansion now
+  requires an actual visual-inspection or image-classification request. Explicit image-directory
+  tasks still attach the complete bounded collection; ordinary source, repository, archive, and
+  project directory mentions do not pull incidental screenshots into context.
+- Integrity decision: retain reward 0. Do not raise the provider limit, exclude Doom filenames, or
+  change token accounting to hide raw media. The correction removes irrelevant media before the
+  provider-neutral request boundary.
+- Evidence: the run retained zero provider requests and a zero-byte developer trace; the unchanged
+  verifier found no executable or frame and failed all three checks. Focused media regressions
+  prove direct named images, explicit JPG-directory classification, text-only provider rejection,
+  unrelated reference prose, and ordinary source-directory exclusion; the embedded workflow test,
+  all 118 product-runner tests, strict all-target/all-feature Clippy, rustfmt, the 137-file
+  documentation check, and the complete 79-package repository policy gate pass. A final-candidate
+  rerun remains required.

@@ -163,6 +163,10 @@ const REQUIRED_WORKFLOW_TERMS: &[&str] = &[
     "define forward progress",
     "repeated page or cursor token",
     "permanent client errors",
+    "named acceptance command",
+    "Pre-existing` does not mean `out of scope",
+    "Do not ask for permission merely because",
+    "overwrite unrelated user work",
 ];
 
 #[test]

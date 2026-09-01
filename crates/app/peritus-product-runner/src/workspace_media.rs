@@ -48,12 +48,13 @@ pub fn discover(
     profile: &ProviderProfile,
 ) -> Result<WorkspaceImages, ProductRunnerError> {
     let discovered = discover_paths(root)?;
+    let visual_request = requests_visual_inspection(task);
     let mut paths = discovered
         .iter()
-        .filter(|path| task_mentions_path(task, root, path))
+        .filter(|path| task_mentions_path(task, root, path, visual_request))
         .cloned()
         .collect::<Vec<_>>();
-    if paths.is_empty() && requests_visual_inspection(task) {
+    if paths.is_empty() && visual_request {
         paths = discovered;
     }
     paths.truncate(MAX_IMAGES);
@@ -169,12 +170,21 @@ fn requests_visual_inspection(task: &str) -> bool {
         "edit the photo",
         "edit the picture",
         "edit the screenshot",
+        "classify the image",
+        "classify the photo",
+        "classify the picture",
+        "classify the screenshot",
+        "classify the jpg",
+        "classify the jpeg",
+        "classify the png",
+        "classify the gif",
+        "classify the webp",
     ]
     .iter()
     .any(|needle| task.contains(needle))
 }
 
-fn task_mentions_path(task: &str, root: &Path, path: &Path) -> bool {
+fn task_mentions_path(task: &str, root: &Path, path: &Path, visual_request: bool) -> bool {
     let task = task.to_ascii_lowercase().replace('\\', "/");
     let relative = path
         .strip_prefix(root)
@@ -186,7 +196,7 @@ fn task_mentions_path(task: &str, root: &Path, path: &Path) -> bool {
         path.file_name().and_then(std::ffi::OsStr::to_str).unwrap_or_default().to_ascii_lowercase();
     task.contains(&relative)
         || !filename.is_empty() && task.contains(&filename)
-        || scoped_parent_is_mentioned(&task, root, path)
+        || visual_request && scoped_parent_is_mentioned(&task, root, path)
 }
 
 fn scoped_parent_is_mentioned(task: &str, root: &Path, path: &Path) -> bool {
@@ -310,6 +320,23 @@ mod tests {
 
         assert_eq!(attachments.len(), 6);
         assert!(prompt.contains("attachment 5: documents/scans/page-5.jpg"));
+    }
+
+    #[test]
+    fn mentioned_source_directory_does_not_attach_descendant_screenshots() {
+        let root = tempfile::tempdir().expect("workspace");
+        let screenshots = root.path().join("doomgeneric/screenshots");
+        fs::create_dir_all(&screenshots).expect("screenshots directory");
+        fs::write(screenshots.join("sdl.png"), b"\x89PNG\r\n\x1a\npixels").expect("image");
+        let task = format!(
+            "Build the sources in {}/doomgeneric/ so node vm.js writes frames to frame.bmp.",
+            root.path().display(),
+        );
+
+        let images = discover(root.path(), &task, &profile(false)).expect("non-visual source task");
+        let (_, attachments) = images.into_parts(task);
+
+        assert!(attachments.is_empty());
     }
 
     #[test]
