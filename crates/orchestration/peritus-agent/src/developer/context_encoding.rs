@@ -6,6 +6,11 @@ use super::DeveloperLoopError;
 
 pub(super) const POLICY_REVISION: &[u8] = b"peritus-developer-compaction-v3";
 const TOKEN_ESTIMATE_BYTES: u64 = 3;
+// Vision providers account decoded image tiles rather than compressed transfer bytes. Keep a
+// deliberately generous per-image ceiling so a valid image collection cannot consume the entire
+// text window merely because its JPEG or PNG encoding is large.
+const MAX_IMAGE_ESTIMATE_TOKENS: u64 = 10_000;
+const MAX_IMAGE_ESTIMATE_BYTES: u64 = MAX_IMAGE_ESTIMATE_TOKENS * TOKEN_ESTIMATE_BYTES;
 
 pub(super) fn estimated_request_tokens(messages: &[Message], tools: &[ToolDefinition]) -> u64 {
     let message_bytes = messages.iter().map(encoded_message_size).fold(0_u64, u64::saturating_add);
@@ -25,9 +30,10 @@ fn encoded_message_size(message: &Message) -> u64 {
     message.content().iter().fold(16_u64, |total, block| {
         total.saturating_add(match block {
             ContentBlock::Text(value) | ContentBlock::Refusal(value) => value.len() as u64,
-            ContentBlock::Image(media)
-            | ContentBlock::Audio(media)
-            | ContentBlock::Document(media) => {
+            ContentBlock::Image(media) => media
+                .inline_bytes_for_wire()
+                .map_or(256, |bytes| (bytes.len() as u64).min(MAX_IMAGE_ESTIMATE_BYTES)),
+            ContentBlock::Audio(media) | ContentBlock::Document(media) => {
                 media.inline_bytes_for_wire().map_or(256, |bytes| bytes.len() as u64)
             }
             ContentBlock::ToolCall(call) => {

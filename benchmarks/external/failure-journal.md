@@ -4135,6 +4135,17 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   inspect chess, JSON, a task name, an expected artifact, or verifier behavior; it applies to any
   oversized recent command, file, search, compiler, test, or diagnostic result. The unchanged task
   remains eligible for the final-candidate campaign after the general correction is frozen.
+- Frozen-campaign recurrence: `gpt2-codegolf__CYifUve` produced a 592,517-byte exact effect ledger
+  after the writer printed a large binary-model sample through `run_command`. Native Peritus stopped
+  after four provider requests at an estimated 212,179 input tokens against the same 200,000-token
+  limit, before creating `/app/gpt2.c`; the unchanged verifier therefore awarded reward 0. The
+  651-byte conversation and 4,857-byte design rule out an oversized initial task packet. This is
+  retained as independent evidence for the same task-neutral correction, not assigned a new fix.
+  The immediately following `mcmc-sampling-stan__yS7fTbw` trial independently reproduced the same
+  boundary: a failed dependency-install command retained about 557 KiB of diagnostics, and native
+  Peritus stopped after five provider requests at an estimated 202,234 input tokens before creating
+  the required Stan and R files. Its unchanged verifier awarded reward 0. Both recurrences ran the
+  frozen executable and remain covered by the same model-visible observation bound.
 - Verification: one regression gives a 32,768-token provider a 120,014-byte exact tool observation
   and proves that the trace retains all of it while model history receives a digest-bound value no
   larger than 12,288 bytes. A separate regression supplies a 120,000-byte tool-call argument, which
@@ -4261,3 +4272,32 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   all 118 product-runner tests, strict all-target/all-feature Clippy, rustfmt, the 137-file
   documentation check, and the complete 79-package repository policy gate pass. A final-candidate
   rerun remains required.
+
+## TBF-040: compressed image bytes were miscounted as text tokens
+
+- Suite and task: Terminal-Bench 2.0 frozen baseline, corrected-adapter trial
+  `financial-document-processor__gEQUEoJ`.
+- Symptom: the task explicitly required classifying a directory of scanned financial documents.
+  Native Peritus discovered its 11 JPEG inputs, but rejected the first writer request at an
+  estimated 1,343,398 input tokens against the provider's 200,000-token limit. No provider request
+  ran and no output was created, so the unchanged verifier failed all seven checks and awarded
+  reward 0.
+- Cause: the context estimator divided each compressed image's transfer bytes by the conservative
+  text bytes-per-token constant. The 11 JPEGs contained 3,983,712 bytes, which explains nearly the
+  entire rejected estimate, but vision providers account decoded image tiles rather than treating
+  JPEG or PNG bytes as text. The existing 12 MiB transport and per-image provider bounds therefore
+  did not establish a usable model-context bound.
+- Resolution: account each inline image by its exact transfer size up to a deliberately generous
+  10,000-token vision ceiling. Small images retain byte-based conservatism; large compressed images
+  cannot consume the entire text window merely because of their encoding. Exact bytes and content
+  digests remain unchanged at the provider boundary. Inline audio and document content remain
+  byte-accounted because their tokenization does not share the image-tile contract.
+- Integrity decision: retain reward 0. The correction contains no invoice fields, expected
+  classifications, filenames, task identity, or verifier behavior; it applies to screenshots,
+  diagrams, scanned forms, visual regression sets, and other legitimate multi-image coding work.
+- Verification: a regression gives a 32,768-token image-capable provider two exact 200,000-byte
+  JPEG inputs and proves that one valid request retains both attachments instead of failing the
+  text-context check. All 38 `peritus-agent` tests, all 118 product-runner tests, and strict
+  all-target/all-feature Clippy for both crates pass with warnings denied; documentation validation
+  covers all 137 maintained Markdown files. The complete repository policy gate passes across 79
+  packages and 3,368 source files. A final-candidate rerun remains required.

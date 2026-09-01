@@ -211,6 +211,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Account inline images by a conservative per-image vision-token ceiling instead of treating their
+  compressed JPEG or PNG transfer bytes as text tokens. Exact bytes and digests still cross the
+  provider boundary, while legitimate multi-image work can reach the first model turn without an
+  impossible preflight estimate (`TBF-040`, #31).
 - Retain exact tool observations in the durable trace while deriving each model-visible budget from
   one eighth of the active provider input window, clamped between 512 and 10,000 estimated tokens.
   Preserve deterministic head/tail previews, original size, and SHA-256; keep the normal recent

@@ -28,6 +28,25 @@ pub fn profile() -> ProviderProfile {
     .expect("profile")
 }
 
+pub fn image_profile() -> ProviderProfile {
+    ProviderProfile::new(
+        ProviderProfileId::new([0x7D; 16]).expect("profile ID"),
+        1,
+        ProviderName::new("image-provider".to_owned()).expect("provider"),
+        ModelName::new("image-model".to_owned()).expect("model"),
+        WireDialect::CompatibleResponses,
+        CapabilityMatrix::new(&[Capability::ToolCalls, Capability::ImageInput], &[])
+            .expect("capabilities"),
+        CapabilityProvenance::Probed,
+        ModelLimits::new(32_768, 4_096, 16, 1, 256 * 1024).expect("limits"),
+        OutputLimitEnforcement::ProviderEnforced,
+        StateMode::StatelessReplay,
+        ResumeKind::Unsupported,
+        CancellationKind::BestEffortLocalAbort,
+    )
+    .expect("profile")
+}
+
 pub fn parallel_profile() -> ProviderProfile {
     ProviderProfile::new(
         ProviderProfileId::new([0x7B; 16]).expect("profile ID"),

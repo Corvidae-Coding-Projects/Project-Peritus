@@ -1,11 +1,11 @@
 //! Context accounting and caching behavior of the production developer loop.
 
 use super::fixtures::{
-    caching_profile, oversized_tool_argument_response, profile, read_tool, text_response,
-    tool_response,
+    caching_profile, image_profile, oversized_tool_argument_response, profile, read_tool,
+    text_response, tool_response,
 };
 use super::*;
-use peritus_model_protocol::CachePolicy;
+use peritus_model_protocol::{CachePolicy, MediaInput, MediaKind, MediaType};
 
 #[derive(Default)]
 struct VerboseTool {
@@ -75,6 +75,60 @@ fn developer_loop_negotiates_automatic_prompt_caching() {
         let requests = provider.requests.lock().expect("requests");
         assert_eq!(requests.len(), 1);
         assert_eq!(requests[0].options().cache(), &CachePolicy::Automatic);
+        drop(requests);
+    });
+}
+
+#[test]
+fn developer_loop_accounts_image_tiles_instead_of_compressed_transfer_bytes() {
+    block_on(async {
+        let provider = ScriptedProvider {
+            profile: image_profile(),
+            responses: Mutex::new(VecDeque::from([text_response()])),
+            requests: Mutex::new(Vec::new()),
+        };
+        let limits = ProtocolLimits::PRODUCTION;
+        let attachments = (0..2)
+            .map(|index| {
+                MediaInput::inline(
+                    MediaKind::Image,
+                    MediaType::new("image/jpeg".to_owned()).expect("media type"),
+                    vec![index; 200_000],
+                    limits,
+                )
+                .expect("bounded image")
+            })
+            .collect();
+        let mut tools = RecordingTool::default();
+        let mut trace = RecordingTrace::default();
+
+        DeveloperLoop::run(
+            &provider,
+            DeveloperLoopRequest {
+                request_prefix: "image-accounting-test".to_owned(),
+                system: "Inspect the supplied images.".to_owned(),
+                prompt: "Describe both documents.".to_owned(),
+                attachments,
+                tools: vec![read_tool()],
+                limits: DeveloperLoopLimits::new(2, 2).expect("limits"),
+                cancellation: CancellationToken::new(),
+            },
+            &mut tools,
+            &mut trace,
+        )
+        .await
+        .expect("image collection fits its vision-token budget");
+
+        let requests = provider.requests.lock().expect("requests");
+        assert_eq!(requests.len(), 1);
+        assert_eq!(
+            requests[0].messages()[1]
+                .content()
+                .iter()
+                .filter(|block| matches!(block, ContentBlock::Image(_)))
+                .count(),
+            2
+        );
         drop(requests);
     });
 }
