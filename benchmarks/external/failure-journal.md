@@ -3393,6 +3393,17 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   All 114 product-runner unit and integration tests, strict all-target/all-feature Clippy, rustfmt,
   and diff hygiene pass; full repository gates and an unchanged final-candidate rerun remain
   required.
+- Frozen recurrence `extract-elf__UV9kQhp` created the requested `extract.js`, ran the literal
+  `node extract.js /app/a.out > out.json` command, and independently checked all 700 emitted words.
+  The explicit-output gate nevertheless interpreted the opening backtick on the first token of that
+  multi-token command as a complete quoted extensionless filename and required a workspace file
+  named `node`. Review correctly identified the gate mismatch, but deterministic acceptance kept
+  the otherwise complete run alive until Harbor's unchanged 900-second agent deadline. The
+  unchanged verifier passed both tests and retained reward 1.0. Output-path parsing now requires
+  matching opening and closing delimiters before an extensionless bare token can become a required
+  path; a fully quoted requested executable remains authoritative, while an interpreter at the
+  start of a quoted command does not. Six focused path tests and all 119 product-runner unit,
+  integration, and role-recovery tests pass. The frozen campaign binary remains unchanged.
 
 ## TBF-020: an unconstrained inspection filled model context with low-signal output
 

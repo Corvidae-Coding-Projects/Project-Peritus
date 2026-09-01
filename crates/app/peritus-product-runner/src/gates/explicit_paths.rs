@@ -220,7 +220,15 @@ fn path_noun_context(words: &[&str]) -> bool {
 }
 
 fn explicitly_delimited(raw: &str) -> bool {
-    matches!(raw.chars().next(), Some('`' | '\'' | '"')) && raw.len() > 1
+    let token = raw.trim_end_matches(['.', ',', ';', ':']);
+    let Some(opening) = token.chars().next() else {
+        return false;
+    };
+    let Some(closing) = token.chars().last() else {
+        return false;
+    };
+    token.len() > opening.len_utf8()
+        && matches!((opening, closing), ('`', '`') | ('\'', '\'') | ('"', '"'))
 }
 
 fn output_verb(word: &str) -> bool {
@@ -338,6 +346,22 @@ mod tests {
 
         assert_eq!(record.exit_code, Some(0));
         assert!(record.output.contains("cli_tool: present"));
+    }
+
+    #[test]
+    fn command_interpreter_is_not_mistaken_for_an_output_path() {
+        let root = tempfile::tempdir().expect("root");
+        fs::write(root.path().join("extract.js"), "candidate").expect("program");
+        fs::write(root.path().join("out.json"), "{}").expect("output");
+        let transcript = "Write a program and run it as `node extract.js /app/a.out > out.json`.";
+
+        let record =
+            run(root.path(), transcript, &[PathBuf::from("extract.js"), PathBuf::from("out.json")]);
+
+        assert_eq!(record.exit_code, Some(0), "{}", record.output);
+        assert!(record.output.contains("extract.js: present"));
+        assert!(record.output.contains("out.json: present"));
+        assert!(!record.output.contains("node:"));
     }
 
     #[test]
