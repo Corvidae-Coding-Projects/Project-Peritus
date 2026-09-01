@@ -183,12 +183,18 @@ mod tests {
             };
 
             assert_eq!(output.changed_paths, vec![Path::new("src/lib.rs").to_owned()]);
-            assert_eq!(output.successful_commands.len(), 7);
+            assert_eq!(output.successful_commands.len(), 8);
             assert!(
                 output
                     .successful_commands
                     .iter()
                     .any(|command| command == "peritus-internal explicit-output-paths")
+            );
+            assert!(
+                output
+                    .successful_commands
+                    .iter()
+                    .any(|command| command == "peritus-internal deliverable-inventory")
             );
             assert!(output.successful_commands.iter().any(|command| {
                 command.contains("peritus-internal source-layout --max-lines 500")

@@ -3277,6 +3277,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   verifier SHA-256 `6b43e99fb1c47792a39307fe90df91adfde4a588497c08f3b7da7b3265ef2733`;
   reference-solution SHA-256
   `9686e12af48346d2df538c3b46710122ee8dc80dfd0eecacb7a1476bf892ec9f`.
+- Frozen recurrence `filter-js-from-html__pvSq8Pe` again failed five of twelve clean documents only
+  because the verifier compared BeautifulSoup-normalized original bytes with unnormalized preserved
+  output. The same run also exposed real sanitizer defects: four browser batches produced alerts,
+  independently justifying reward 0 under `TBM-002`. Harbor recorded the exact 1,800-second agent
+  timeout and then completed the unchanged verifier. Retain the zero without normalizing unrelated
+  clean bytes, copying the reference, or weakening the browser evidence.
 
 ## TBM-002: a byte-preserving hand parser did not match browser error recovery
 
@@ -3295,6 +3301,11 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   recovery must obtain a fresh independent review; the production workflow already rejects
   self-authored checks as proof of their own interpretation. No task-name, hidden-vector, or
   reference-solution behavior belongs in Peritus.
+- Frozen recurrence `filter-js-from-html__pvSq8Pe` reached the unchanged browser verifier after an
+  agent timeout and produced alerts in four of 28 batches, including malformed event-handler,
+  encoded URL, and parser-recovery cases. The clean-document evaluator contradiction remains
+  separately recorded in `TBI-008`, but these alerts are genuine candidate failures and reward 0
+  remains authoritative. This is not evidence for task-specific vectors or verifier access.
 
 ## TBF-019: exact output paths were advisory to deterministic acceptance
 
@@ -3958,6 +3969,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   verifier generated 9,898 input shards, found the requested `/app/compress.py` absent, and awarded
   reward 0. The campaign executable at `d4a72e67` predates the task-neutral bounded-sample fix in
   `7091df79`; retain the zero and rerun only in the fresh final-candidate campaign.
+- Frozen recurrence `fix-ocaml-gc__e6bKtb7` stopped on the same bounded-inventory error before its
+  first provider request and retained the repository failure cleanly in the corrected adapter. The
+  unchanged verifier cloned and built unmodified upstream OCaml, encountered a cold-start
+  segmentation fault, and retained reward 0 because the requested patch and tests were absent. This
+  independently exercises the existing large-repository correction; it does not justify changing
+  the task, verifier, inventory ceiling, or frozen campaign binary.
 - Verification: a focused filesystem regression with a deliberately smaller bound must prove stable
   sorting, truncation, and rendered grounding guidance. Product-runner tests, strict Clippy,
   formatting, documentation, and repository policy gates remain required.
@@ -4118,3 +4135,64 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   remain covered independently. All 36 `peritus-agent` tests, strict all-target and all-feature
   Clippy with warnings denied, formatting, diff hygiene, the 137-file documentation check, and the
   complete repository policy gate pass across 79 packages and 3,364 source files.
+
+## TBF-036: verification byproducts escaped into the final deliverable
+
+- Suite and task: Terminal-Bench 2.0 frozen baseline, corrected-adapter trial
+  `polyglot-c-py__8gjH98c`.
+- Symptom: the writer created the requested `/app/polyglot/main.py.c`, compiled it to
+  `/app/polyglot/cmain`, and verified both language paths successfully. Native Peritus explicitly
+  listed both files as changed and accepted the product after independent review. The unchanged
+  verifier required the requested single-file deliverable, found the leftover `cmain` executable,
+  and awarded reward 0.
+- Cause: deterministic acceptance reconciled required output paths but did not reconcile an explicit
+  single-file or closed deliverable contract against additional changed files. The reviewer treated
+  a compiler output created by an acceptance command as proof, not as a temporary byproduct that
+  must be removed before delivery.
+- Resolution: a host-owned closed-deliverable constraint now derives explicit single-file requests,
+  requires exactly one named output path, and compares it with the final changed-path inventory.
+  Unexpected generated artifacts make exact-target acceptance fail and enter the ordinary fixer
+  loop. Ambiguous, negated, and multi-output language does not close the inventory. The gate is
+  language- and task-independent and assumes no filename, compiler, benchmark, or hidden verifier
+  expectation.
+- Integrity decision: retain reward 0. The candidate's requested source was functional, but leaving
+  a compiled executable beside a promised single-file deliverable is a real product-hygiene failure
+  that can affect packages, generated code, archives, release assets, and user repositories.
+- Evidence: native Peritus accepted after 17 requests and reported changed paths
+  `polyglot/main.py.c` and `polyglot/cmain`; the unchanged verifier's only failure was the exact
+  directory inventory `['main.py.c', 'cmain']` instead of `['main.py.c']`. The frozen product used
+  source revision `d4a72e67` and binary SHA-256
+  `ed0ef30eb5dda2817ebd8a02e46062b7c5a7400e22ee04653d5106d3e6ffb1e7`.
+- Verification: focused regressions reject the retained compiler byproduct, accept the exact
+  one-file inventory, and leave negated or multi-output requests open. All 117 product-runner unit,
+  integration, provider-failover, role-recovery, and documentation tests pass; strict all-target
+  and all-feature Clippy with warnings denied and rustfmt are clean. The complete repository policy
+  gate passes across 79 packages, 3,368 source files, 2,709 formal-boundary files, 12,479
+  ordinary-safe executable entry points, 137 documentation files, and 31 pinned actions. An
+  unchanged final-candidate rerun remains required.
+
+## TBF-037: structural optimization was accepted without comparative timing
+
+- Suite and task: Terminal-Bench 2.0 frozen baseline, corrected-adapter trial
+  `query-optimize__hbtMdm7`.
+- Symptom: the writer replaced correlated SQL subqueries with grouped CTEs and a window function,
+  proved exact 500-row equivalence against the supplied database, and was natively accepted after
+  review called the new query an optimization. The unchanged verifier passed correctness, database
+  immutability, single-query, and size checks, but measured a 0.630-second candidate median against
+  the 0.454-second golden median. The candidate was about 39 percent slower and received reward 0.
+- Cause: the workflow treated structural plausibility and an execution plan as sufficient evidence
+  for a performance claim. It spent most of the 900-second agent budget comparing complete outputs
+  through the known slow query, but never ran even a bounded comparative timing sample before
+  acceptance.
+- Proposed general correction: performance requirements must retain a baseline, workload,
+  measurement method, repeated candidate timing, and explicit comparison in the evidence ledger.
+  Review must block unmeasured claims such as faster, lower latency, less memory, or higher
+  throughput. Validation should stage cheap samples before expensive full proofs and bound any one
+  command so correctness evidence cannot consume the complete delivery budget.
+- Integrity decision: retain reward 0. The candidate was correct but did not satisfy its primary
+  performance objective; neither a query-specific rewrite nor the verifier's timing values belong
+  in the harness.
+- Evidence: the unchanged verifier passed five of six tests and reported medians 0.453834738 seconds
+  for the golden query and 0.629751510 seconds for `sol.sql`. Native Peritus accepted after 12
+  requests, 254,623 input, 47,616 cached input, and 7,788 output tokens using frozen revision
+  `d4a72e67`.

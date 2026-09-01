@@ -107,6 +107,31 @@ fn extract(root: &Path, transcript: &str) -> Vec<PathMention> {
         .collect()
 }
 
+pub(super) fn required_outputs(root: &Path, transcript: &str) -> Vec<PathBuf> {
+    extract(root, transcript)
+        .into_iter()
+        .filter_map(|mention| mention.required_output.then_some(mention.relative))
+        .collect()
+}
+
+pub(super) fn requests_single_file(transcript: &str) -> bool {
+    transcript.lines().any(|line| {
+        let words = line.split_whitespace().collect::<Vec<_>>();
+        words.iter().enumerate().any(|(index, word)| {
+            let normalized_word = normalized(word);
+            let phrase = normalized_word == "singlefile"
+                || (normalized_word == "single"
+                    && words.get(index + 1).is_some_and(|next| normalized(next) == "file"));
+            if !phrase {
+                return false;
+            }
+            let context = &words[index.saturating_sub(6)..index];
+            context.iter().any(|candidate| output_verb(candidate))
+                && !context.iter().rev().take(4).any(|candidate| negation(candidate))
+        })
+    })
+}
+
 fn parse_path(
     root: &Path,
     raw: &str,

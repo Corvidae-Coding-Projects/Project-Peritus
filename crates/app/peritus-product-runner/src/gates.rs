@@ -8,6 +8,7 @@ use std::{
 use peritus_gates::{GateExecutionRecord, TargetGatePlan, TargetGateReport};
 
 mod artifact_csv;
+mod deliverable_inventory;
 mod explicit_paths;
 mod json_structure;
 mod source_layout;
@@ -43,6 +44,7 @@ fn run_scoped(
     transcript: &str,
 ) -> Result<GateReport, ProductRunnerError> {
     let explicit_paths = explicit_paths::run(root, transcript, &changed_paths);
+    let deliverable_inventory = deliverable_inventory::run(root, transcript, &changed_paths);
     let plan = TargetGatePlan::discover(root, changed_paths).map_err(|error| {
         ProductRunnerError::new(
             ProductRunnerErrorKind::Gate,
@@ -122,8 +124,11 @@ fn run_scoped(
         };
         records.push(record);
     }
-    let report =
-        TargetGateReport::from_execution_with_constraints(&plan, records, vec![explicit_paths]);
+    let report = TargetGateReport::from_execution_with_constraints(
+        &plan,
+        records,
+        vec![explicit_paths, deliverable_inventory],
+    );
     let output = render(&report, delivery_scope);
     Ok(GateReport { report, output })
 }
