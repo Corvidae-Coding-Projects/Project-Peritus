@@ -3874,6 +3874,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   This independent recurrence strengthens the existing classification: the artifact satisfies a
   valid decomposition of the published circular-plasmid contract, and improving this score by
   copying the verifier's private junction convention would be benchmark-specific tuning.
+- Frozen-campaign recurrence `dna-insert__zDReN7j` produced the same valid one-pair artifact from
+  the published linear records, independently measured the same 59.535508 and 58.041322 degree
+  annealing temperatures with the required `oligotm` flags, passed all native gates and review, and
+  reached a clean product terminal after 16 requests. The unchanged verifier again reassigned the
+  two ambiguous circular-junction bases, measured its shortened reverse region at 55.857347
+  degrees, and retained reward 0. This is another honest recurrence of the same evaluator
+  underspecification, not evidence for a new product change.
 
 ## TBF-027: a parameterized extractor was accepted after testing only its supplied example
 
@@ -4385,3 +4392,36 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   all-target/all-feature Clippy for both crates pass with warnings denied; documentation validation
   covers all 137 maintained Markdown files. The complete repository policy gate passes across 79
   packages and 3,368 source files. A final-candidate rerun remains required.
+
+## TBF-041: an internal cancellation simulation substituted for the named process signal
+
+- Suite and task: Terminal-Bench 2.0 frozen baseline, corrected-adapter trial
+  `cancel-async-tasks__5rUhw9b`.
+- Symptom: the writer implemented bounded asynchronous execution and verified cancellation by
+  calling `Task.cancel()` inside one event loop. The independent reviewer explicitly observed that
+  the request named keyboard interruption but downgraded the absent process-level signal test to an
+  advisory. Native Peritus accepted the result. The unchanged verifier sent `SIGINT` to a real
+  Python process with more jobs than the concurrency limit; both active jobs started, but neither
+  completed its asynchronous cleanup, so one of six tests failed and reward remained 0.
+- Cause: the workflow permits an internal simulation to stand in for an explicitly named lifecycle
+  ingress without proving equivalence. In this candidate, a queued semaphore waiter changed
+  `asyncio.gather` cancellation timing: the process-level `asyncio.run` shutdown path could interrupt
+  active cleanup even though directly cancelling and awaiting the parent task passed the writer's
+  in-process check. The reviewer identified the exact evidence gap but treated it as optional.
+- Proposed general correction: when a request names an observable lifecycle ingress such as a
+  process signal, restart, timeout, disconnect, or crash, acceptance must exercise that ingress at
+  the real public boundary whenever the disposable environment supports it. An internal method call
+  or simulated exception is supplemental evidence unless an authoritative contract establishes
+  equivalence. Boundary-sensitive concurrency behavior should cover below, at, and above configured
+  limits when those states are materially distinct. Review blocks a claimed lifecycle guarantee
+  when only the internal simulation ran.
+- Integrity decision: retain reward 0. The correction must not mention Python, asyncio, SIGINT, task
+  names, or verifier fixtures in product behavior; it applies equally to services, CLIs, queues,
+  schedulers, clients, and supervised workers. The task has also passed in another frozen attempt,
+  so this result records real campaign variance rather than an impossibility or hidden convention.
+- Evidence: native Peritus accepted after eight requests and reported 116,892 input, 39,326 cached
+  input, and 8,528 output tokens. The writer's six-job/two-slot in-process cancellation check passed.
+  The reviewer retained an advisory titled `Cancellation cleanup verified via Task.cancel(), not a
+  literal OS KeyboardInterrupt/SIGINT`. The unchanged verifier then passed normal concurrency,
+  bounded concurrency, and signal cancellation below and at the limit, but observed two starts and
+  zero cleanup completions when three jobs shared two slots.

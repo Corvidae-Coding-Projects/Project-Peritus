@@ -45,16 +45,8 @@ mod platform {
         pub fn finish(&self) -> Result<(), SubjectError> {
             let started = Instant::now();
             loop {
-                match kill(Pid::from_raw(-self.group), None) {
-                    Err(Errno::ESRCH) => return Ok(()),
-                    Ok(()) => {}
-                    Err(error) => {
-                        return Err(subject_error(
-                            SubjectErrorCode::Cleanup,
-                            format!("inspect owned controller process group: {error}"),
-                            false,
-                        ));
-                    }
+                if process_group_is_empty(self.group)? {
+                    return Ok(());
                 }
                 if started.elapsed() >= PROCESS_DRAIN_DEADLINE {
                     signal_group(self.group, Signal::SIGKILL)?;
@@ -67,6 +59,66 @@ mod platform {
                 thread::sleep(PROCESS_DRAIN_POLL_INTERVAL);
             }
         }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    fn process_group_is_empty(group: i32) -> Result<bool, SubjectError> {
+        match kill(Pid::from_raw(-group), None) {
+            Err(Errno::ESRCH) => Ok(true),
+            Ok(()) => Ok(false),
+            Err(error) => Err(subject_error(
+                SubjectErrorCode::Cleanup,
+                format!("inspect owned controller process group: {error}"),
+                false,
+            )),
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    #[allow(
+        unsafe_code,
+        reason = "inventoried libproc read-only process-group enumeration boundary"
+    )]
+    fn process_group_is_empty(group: i32) -> Result<bool, SubjectError> {
+        use std::{ffi::c_void, mem::size_of_val};
+
+        const MAX_GROUP_PROCESSES: usize = 16_384;
+
+        let mut pids = vec![0_i32; MAX_GROUP_PROCESSES];
+        let buffer_bytes = i32::try_from(size_of_val(pids.as_slice())).map_err(|_| {
+            subject_error(
+                SubjectErrorCode::Cleanup,
+                "macOS process-group buffer exceeds platform capacity",
+                false,
+            )
+        })?;
+        // SAFETY: `pids` is writable for `buffer_bytes`; libproc reads the exact controller-owned
+        // process group and transfers no ownership.
+        let count = unsafe {
+            libc::proc_listpgrppids(group, pids.as_mut_ptr().cast::<c_void>(), buffer_bytes)
+        };
+        if count < 0 {
+            return Err(subject_error(
+                SubjectErrorCode::Cleanup,
+                "enumerate owned macOS controller process group",
+                false,
+            ));
+        }
+        let count = usize::try_from(count).map_err(|_| {
+            subject_error(
+                SubjectErrorCode::Cleanup,
+                "macOS process-group count exceeds platform capacity",
+                false,
+            )
+        })?;
+        if count >= pids.len() {
+            return Err(subject_error(
+                SubjectErrorCode::Cleanup,
+                "macOS process-group observation exceeded its bounded buffer",
+                false,
+            ));
+        }
+        Ok(count == 0)
     }
 
     fn signal_group(group: i32, signal: Signal) -> Result<(), SubjectError> {

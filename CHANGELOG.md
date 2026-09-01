@@ -1,5 +1,10 @@
 # Changelog
 
+- Fixed macOS resilience cleanup to observe controller process groups through the bounded native
+  process inventory instead of treating group-wide signal permission as an existence check.
+- Recorded frozen Terminal-Bench evidence that a real named lifecycle ingress cannot be replaced
+  by an internal simulation, while preserving the honest circular-plasmid evaluator recurrence.
+
 - Repair trusted managed workspaces by re-registering their validated current detached HEAD while
   preserving agent commits and unfinished files; make every coding run generate and follow a
   durable evidence-grounded design; and enforce the embedded production-engineering workflow,

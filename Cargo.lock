@@ -2751,6 +2751,7 @@ dependencies = [
 name = "peritus-resilience"
 version = "0.0.0"
 dependencies = [
+ "libc",
  "nix 0.31.3",
  "serde",
  "serde_json",
