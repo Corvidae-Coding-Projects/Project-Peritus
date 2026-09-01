@@ -62,10 +62,20 @@ the portable Peritus binary, the exact discovered Codex executable and its match
 the ephemeral local task container. Account files are permission-locked, excluded from logs and
 Git, and removed with the container. Because the official Claude executable can rotate OAuth state
 during a real turn, the serialized adapter downloads that one document after the run, validates its
-bounded schema and nondecreasing expiries, and atomically checkpoints it only when the host file is
-still the exact state uploaded to the task. A concurrent host login always wins. Token values never
-enter adapter output or retained evidence. The official executables remain credential owners and
-act only as model routers; Peritus retains conversation, tool, workspace, and policy authority.
+bounded schema, non-regressing access expiry, and future-valid refresh expiry, and atomically
+checkpoints it only when the host file is still the exact state uploaded to the task. A legitimate
+rotation may replace a longer-lived refresh credential with a shorter-lived one while advancing the
+access expiry; the adapter retains that CLI-owned state. A concurrent host login always wins. Token
+values never enter adapter output or retained evidence. The official executables remain credential
+owners and act only as model routers; Peritus retains conversation, tool, workspace, and policy
+authority. `claude auth status` is only a local-state check. Before a long campaign or resume, prove
+the session with one minimal real request:
+
+```bash
+claude -p --output-format json --model sonnet --effort low --tools '' \
+  --disallowedTools 'mcp__*' --disable-slash-commands --no-chrome \
+  --no-session-persistence --safe-mode 'Return exactly the single word READY.'
+```
 
 Those two authenticated routes are the benchmark run's explicit provider set. Codex remains the
 default writer and fixer, and Claude remains the default reviewer. After ordinary same-route

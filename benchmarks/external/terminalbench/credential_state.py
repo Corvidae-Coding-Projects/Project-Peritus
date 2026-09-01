@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import tempfile
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -32,6 +33,8 @@ def checkpoint_claude_credentials(
     host_path: Path,
     uploaded_digest: str,
     candidate_path: Path,
+    *,
+    now_ms: int | None = None,
 ) -> bool:
     """Atomically retain a newer CLI-owned state if the uploaded host state is unchanged."""
 
@@ -46,7 +49,13 @@ def checkpoint_claude_credentials(
         return False
     if candidate.access_expires_at < host.access_expires_at:
         return False
-    if candidate.refresh_expires_at < host.refresh_expires_at:
+    current_time_ms = time.time_ns() // 1_000_000 if now_ms is None else now_ms
+    if candidate.refresh_expires_at <= current_time_ms:
+        return False
+    if (
+        candidate.refresh_expires_at < host.refresh_expires_at
+        and candidate.access_expires_at <= host.access_expires_at
+    ):
         return False
     if candidate_bytes == host_bytes:
         return False

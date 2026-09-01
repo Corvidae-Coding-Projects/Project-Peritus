@@ -38,7 +38,9 @@ class CredentialCheckpointTests(unittest.TestCase):
             candidate.write_bytes(_document(200, 1_000, "new"))
             uploaded = credential_digest(host)
 
-            changed = checkpoint_claude_credentials(host, uploaded, candidate)
+            changed = checkpoint_claude_credentials(
+                host, uploaded, candidate, now_ms=50
+            )
 
             self.assertTrue(changed)
             self.assertEqual(host.read_bytes(), candidate.read_bytes())
@@ -54,7 +56,9 @@ class CredentialCheckpointTests(unittest.TestCase):
             host.write_bytes(_document(300, 1_000, "other-owner"))
             candidate.write_bytes(_document(200, 1_000, "container"))
 
-            changed = checkpoint_claude_credentials(host, uploaded, candidate)
+            changed = checkpoint_claude_credentials(
+                host, uploaded, candidate, now_ms=50
+            )
 
             self.assertFalse(changed)
             self.assertEqual(host.read_bytes(), _document(300, 1_000, "other-owner"))
@@ -71,7 +75,9 @@ class CredentialCheckpointTests(unittest.TestCase):
                 with self.subTest(value=value):
                     candidate.write_bytes(value)
 
-                    changed = checkpoint_claude_credentials(host, uploaded, candidate)
+                    changed = checkpoint_claude_credentials(
+                        host, uploaded, candidate, now_ms=50
+                    )
 
                     self.assertFalse(changed)
                     self.assertEqual(host.read_bytes(), original)
@@ -88,7 +94,7 @@ class CredentialCheckpointTests(unittest.TestCase):
                     candidate.write_bytes(_document(access, refresh, "older"))
 
                     changed = checkpoint_claude_credentials(
-                        host, credential_digest(host), candidate
+                        host, credential_digest(host), candidate, now_ms=50
                     )
 
                     self.assertFalse(changed)
@@ -103,7 +109,40 @@ class CredentialCheckpointTests(unittest.TestCase):
             candidate.write_bytes(_document(200, 1_000, "candidate"))
 
             with self.assertRaises(ValueError):
-                checkpoint_claude_credentials(host, credential_digest(host), candidate)
+                checkpoint_claude_credentials(
+                    host, credential_digest(host), candidate, now_ms=50
+                )
+
+    def test_retains_rotation_with_newer_access_and_shorter_refresh_lifetime(self) -> None:
+        with TemporaryDirectory() as raw:
+            root = Path(raw)
+            host = root / "credentials.json"
+            candidate = root / "candidate.json"
+            host.write_bytes(_document(200, 2_000, "old"))
+            candidate.write_bytes(_document(300, 1_000, "rotated"))
+
+            changed = checkpoint_claude_credentials(
+                host, credential_digest(host), candidate, now_ms=50
+            )
+
+            self.assertTrue(changed)
+            self.assertEqual(host.read_bytes(), candidate.read_bytes())
+
+    def test_rejects_rotation_with_expired_refresh_credential(self) -> None:
+        with TemporaryDirectory() as raw:
+            root = Path(raw)
+            host = root / "credentials.json"
+            candidate = root / "candidate.json"
+            original = _document(200, 2_000, "host")
+            host.write_bytes(original)
+            candidate.write_bytes(_document(300, 500, "expired"))
+
+            changed = checkpoint_claude_credentials(
+                host, credential_digest(host), candidate, now_ms=500
+            )
+
+            self.assertFalse(changed)
+            self.assertEqual(host.read_bytes(), original)
 
 
 if __name__ == "__main__":

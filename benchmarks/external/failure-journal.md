@@ -4020,10 +4020,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   session can complete a model call.
 - Resolution: after each serialized native run, the adapter downloads only the Claude credential
   document into a private temporary directory, validates its bounded JSON shape, required token
-  fields, and nondecreasing access and refresh expiries, and atomically checkpoints it with mode
-  `0600` only if the host file still matches the exact uploaded digest. If the user or another owner
-  changed the host login during the trial, that newer host state wins. No token value enters output,
-  logs, reports, or Git.
+  fields, non-regressing access expiry, and future-valid refresh expiry, and atomically checkpoints
+  it with mode `0600` only if the host file still matches the exact uploaded digest. An advanced
+  access expiry admits a CLI-owned refresh rotation even when the replacement refresh expiry is
+  shorter than the uploaded credential's: refresh expiries are validity bounds, not monotonic
+  version numbers. If the user or another owner changed the host login during the trial, that newer
+  host state wins. No token value enters output, logs, reports, or Git.
 - Integrity decision: retain both reward-zero trials and do not relabel provider authentication as
   task success. This is credential lifecycle correctness for every serialized disposable provider
   run; it does not inspect a task, verifier, or score. The already-stale host state still requires
@@ -4065,7 +4067,15 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   `ed0ef30eb5dda2817ebd8a02e46062b7c5a7400e22ee04653d5106d3e6ffb1e7`, demonstrating that
   reloading only the general adapter correction recovered the previously erased result without
   changing the scored product binary.
-- Verification: 23 unchanged and new Python adapter/supervisor tests pass, including atomic private
+- Later root-cause correction: the first checkpoint repair treated the refresh-token expiry as a
+  monotonic version and therefore rejected a valid Claude rotation whenever the official CLI
+  advanced the access expiry but issued a shorter-lived, still-future refresh credential. Claude
+  had already invalidated the uploaded refresh token, so preserving that older document caused the
+  delayed authentication recurrence. The compare-before-replace host digest remains the concurrency
+  guard; candidate admission now requires a non-regressing access expiry and a refresh expiry after
+  the observed wall clock, and requires an access-expiry advance whenever refresh lifetime shrinks.
+  Deterministic regressions cover the admitted rotation and rejection of expired refresh state.
+- Verification: 25 unchanged and new Python adapter/supervisor tests pass, including atomic private
   replacement, rollback rejection, concurrent-host-change preservation, protocol identity,
   process cleanup, and report parsing. A fresh authenticated live trial and a later task after the
   original access expiry remain required before final qualification.
