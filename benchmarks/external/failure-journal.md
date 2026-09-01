@@ -3928,6 +3928,11 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Integrity decision: retain the frozen trial's reward 0. Do not delete inputs, raise the inventory
   until this one task fits, or inject knowledge of its files. The unchanged task belongs in the
   final-candidate rerun after the general correction is committed.
+- Frozen recurrence `reshard-c4-data__twiPQrR` stopped at the same artifact-inventory boundary on
+  `2026-09-01T02:42:29.027868796Z`, after 13.022 seconds and before any provider request. Its
+  verifier generated 9,898 input shards, found the requested `/app/compress.py` absent, and awarded
+  reward 0. The campaign executable at `d4a72e67` predates the task-neutral bounded-sample fix in
+  `7091df79`; retain the zero and rerun only in the fresh final-candidate campaign.
 - Verification: a focused filesystem regression with a deliberately smaller bound must prove stable
   sorting, truncation, and rendered grounding guidance. Product-runner tests, strict Clippy,
   formatting, documentation, and repository policy gates remain required.
@@ -3956,7 +3961,21 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   task success. This is credential lifecycle correctness for every serialized disposable provider
   run; it does not inspect a task, verifier, or score. The already-stale host state still requires
   one fresh user login before the repaired adapter can prove rotation continuity.
-- Verification: 19 unchanged and new Python adapter/supervisor tests pass, including atomic private
+- Frozen recurrence `torch-tensor-parallelism__xuc9GAQ` completed its native run but produced no
+  verifier result because the candidate document reported a shorter refresh-token lifetime and the
+  checkpoint's rollback rejection escaped the adapter on `2026-09-01T03:24:44.309298Z`. The host
+  document remained untouched, which was the safe credential outcome, but a safely declined
+  optional checkpoint must not replace completed task work with a null result. Frozen trial
+  `schemelike-metacircular-eval__6YArtPr` then repeated the same failure class at
+  `2026-09-01T03:37:32.910654Z` when Claude left an invalid candidate access token. The checkpoint
+  failure repeated a third time in `torch-pipeline-parallelism__fJuXNqK` at
+  `2026-09-01T03:51:53.702541Z`, proving the loaded adapter would systematically discard later
+  completed tasks. The checkpoint now returns unchanged for candidate lifetime rollback, malformed
+  data, or an unreadable candidate while retaining strict validation of the uploaded host document.
+  Retain all three frozen null results in the diagnostic record; rerun them unchanged after loading
+  the corrected adapter, with the same product binary, task definitions, verifiers, timeouts, and
+  single-task concurrency.
+- Verification: 23 unchanged and new Python adapter/supervisor tests pass, including atomic private
   replacement, rollback rejection, concurrent-host-change preservation, protocol identity,
   process cleanup, and report parsing. A fresh authenticated live trial and a later task after the
   original access expiry remain required before final qualification.

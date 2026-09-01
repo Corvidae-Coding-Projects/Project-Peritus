@@ -255,6 +255,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Preserve official Claude CLI OAuth rotation across serialized Terminal-Bench task containers by
   validating and atomically checkpointing newer account state only when the host source has not
   changed, preventing stale copied refresh state from disabling the fallback route (`TBF-032`, #31).
+- Decline stale, malformed, empty, or unreadable task-local Claude credential candidates without
+  replacing a valid host login or erasing completed agent work; the final verifier now remains
+  authoritative when optional credential checkpointing has nothing safe to retain (`TBF-032`, #31).
 - Keep generated-artifact design deterministic on large workspaces by retaining a sorted bounded
   navigation sample with an explicit truncation notice instead of rejecting the run before the
   first model call (`TBF-031`, #31).

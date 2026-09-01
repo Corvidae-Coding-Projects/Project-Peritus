@@ -38,13 +38,16 @@ def checkpoint_claude_credentials(
     host_bytes = _read_bounded(host_path)
     if hashlib.sha256(host_bytes).hexdigest() != uploaded_digest:
         return False
-    candidate_bytes = _read_bounded(candidate_path)
     host = _decode(host_bytes)
-    candidate = _decode(candidate_bytes)
+    try:
+        candidate_bytes = _read_bounded(candidate_path)
+        candidate = _decode(candidate_bytes)
+    except (OSError, ValueError):
+        return False
     if candidate.access_expires_at < host.access_expires_at:
-        raise ValueError("Claude credential checkpoint would reduce the access-token lifetime")
+        return False
     if candidate.refresh_expires_at < host.refresh_expires_at:
-        raise ValueError("Claude credential checkpoint would reduce the refresh-token lifetime")
+        return False
     if candidate_bytes == host_bytes:
         return False
     _atomic_replace(host_path, candidate_bytes)

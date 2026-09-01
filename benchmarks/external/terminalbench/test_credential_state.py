@@ -59,18 +59,51 @@ class CredentialCheckpointTests(unittest.TestCase):
             self.assertFalse(changed)
             self.assertEqual(host.read_bytes(), _document(300, 1_000, "other-owner"))
 
-    def test_rejects_invalid_or_rollback_state(self) -> None:
+    def test_preserves_host_for_invalid_candidate_state(self) -> None:
         with TemporaryDirectory() as raw:
             root = Path(raw)
             host = root / "credentials.json"
             candidate = root / "candidate.json"
-            host.write_bytes(_document(200, 1_000, "host"))
+            original = _document(200, 1_000, "host")
+            host.write_bytes(original)
             uploaded = credential_digest(host)
-            for value in (b"not-json", _document(100, 1_000, "older")):
-                with self.subTest(value=value[:12]):
+            for value in (b"not-json", b""):
+                with self.subTest(value=value):
                     candidate.write_bytes(value)
-                    with self.assertRaises(ValueError):
-                        checkpoint_claude_credentials(host, uploaded, candidate)
+
+                    changed = checkpoint_claude_credentials(host, uploaded, candidate)
+
+                    self.assertFalse(changed)
+                    self.assertEqual(host.read_bytes(), original)
+
+    def test_preserves_host_when_candidate_reduces_either_lifetime(self) -> None:
+        with TemporaryDirectory() as raw:
+            root = Path(raw)
+            for access, refresh in ((100, 1_000), (200, 900)):
+                with self.subTest(access=access, refresh=refresh):
+                    host = root / "credentials.json"
+                    candidate = root / "candidate.json"
+                    original = _document(200, 1_000, "host")
+                    host.write_bytes(original)
+                    candidate.write_bytes(_document(access, refresh, "older"))
+
+                    changed = checkpoint_claude_credentials(
+                        host, credential_digest(host), candidate
+                    )
+
+                    self.assertFalse(changed)
+                    self.assertEqual(host.read_bytes(), original)
+
+    def test_rejects_invalid_host_state(self) -> None:
+        with TemporaryDirectory() as raw:
+            root = Path(raw)
+            host = root / "credentials.json"
+            candidate = root / "candidate.json"
+            host.write_bytes(b"not-json")
+            candidate.write_bytes(_document(200, 1_000, "candidate"))
+
+            with self.assertRaises(ValueError):
+                checkpoint_claude_credentials(host, credential_digest(host), candidate)
 
 
 if __name__ == "__main__":
