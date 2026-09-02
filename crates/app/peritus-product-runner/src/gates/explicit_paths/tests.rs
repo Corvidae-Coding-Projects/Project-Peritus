@@ -43,7 +43,7 @@ fn read_only_and_negated_paths_are_not_required_outputs() {
     fs::create_dir(root.path().join("out")).expect("output directory");
     fs::write(root.path().join("out/report.json"), "{}").expect("output");
 
-    let mentions = extract(root.path(), &transcript);
+    let mentions = extract(root.path(), &transcript).mentions;
 
     assert!(
         mentions.contains(&PathMention {
@@ -61,6 +61,35 @@ fn read_only_and_negated_paths_are_not_required_outputs() {
         relative: PathBuf::from("out/report.json"),
         required_output: true,
     }));
+}
+
+#[test]
+fn alternative_output_paths_require_one_member_instead_of_every_member() {
+    let root = tempfile::tempdir().expect("root");
+    fs::write(root.path().join("ars.R"), "candidate").expect("implementation");
+    fs::write(root.path().join("normal_samples.txt"), "samples").expect("samples");
+    let transcript = format!(
+        "Save the main implementation in {0}/ars.R. Generate at least one sample file named \
+         {0}/normal_samples.txt or {0}/exponential_samples.txt.",
+        root.path().display(),
+    );
+    let changed = [PathBuf::from("ars.R"), PathBuf::from("normal_samples.txt")];
+
+    let record = run(root.path(), &transcript, &changed);
+
+    assert_eq!(record.exit_code, Some(0), "{}", record.output);
+    assert!(record.output.contains("one of [normal_samples.txt: present"));
+    assert!(
+        !record
+            .output
+            .contains("required explicit output path is missing: exponential_samples.txt")
+    );
+    assert_eq!(required_outputs(root.path(), &transcript), vec![PathBuf::from("ars.R")]);
+
+    fs::remove_file(root.path().join("normal_samples.txt")).expect("remove samples");
+    let missing = run(root.path(), &transcript, &[PathBuf::from("ars.R")]);
+    assert_eq!(missing.exit_code, Some(1));
+    assert!(missing.output.contains("at least one alternative explicit output path is required"));
 }
 
 #[test]

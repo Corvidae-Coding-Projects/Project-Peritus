@@ -3530,6 +3530,16 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   `IsADirectoryError`. Retain reward 0. The 52-request, 1,772,772-input-token run adds strong
   end-to-end evidence for the same evaluator contradiction without justifying suffix-based or
   benchmark-specific behavior.
+- Frozen-campaign trial `sam-cell-seg__g754CXE` completed five native review/fix cycles, recovered
+  from two malformed provider responses, split the implementation into focused files below 500
+  lines, and passed its local geometry, overlap, boundary, large-table, and CSV-preservation checks.
+  The unchanged verifier installed the pinned dependencies, loaded the real MobileSAM checkpoint,
+  and refined all 32 masks on CPU. Script existence, execution, and output existence passed; the
+  remaining six checks again tried to read the contract-compliant output directory
+  `/app/test_output.csv` as a CSV file and failed with `IsADirectoryError`. Retain reward 0. The
+  88-request run used 3,327,116 input, 523,904 cached input, and 96,155 output tokens over 6,056.533
+  agent seconds. This is a third independent end-to-end recurrence of the evaluator contradiction,
+  not evidence for a task-specific suffix workaround.
 
 ## TBF-021: an authenticated image-capable route was absent from role fallback
 
@@ -4448,6 +4458,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   an estimated 923,168 input tokens before any provider request or workspace change. The unchanged
   verifier found no interpreter or rendered frame and awarded reward 0. This remains independent
   evidence for the existing source-directory correction, not a MIPS-specific fix.
+- Frozen-campaign recurrence: `make-doom-for-mips__W3Si6em` again stopped before its first provider
+  request at the identical 919,141-token estimate. Its 17,170-byte grounded design and zero-byte
+  developer trace confirm that four incidental screenshots beneath the named source directory,
+  rather than the requested source-build work, exhausted the frozen writer request. The unchanged
+  verifier found no executable or frame and retained reward 0. Current source already contains the
+  provider-neutral media-relevance correction and focused regression, so this result requires no
+  task-specific change.
 
 ## TBF-040: compressed image bytes were miscounted as text tokens
 
@@ -4954,3 +4971,63 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   speculative transforms in every role. Tool-catalog coverage independently requires the same
   guidance in the writer-visible command interface. Full product-runner and repository
   qualification remain required.
+
+## TBF-054: grounding corrections consumed the independent fix window
+
+- Suite and task: Terminal-Bench 2.0 frozen baseline, corrected-adapter trial
+  `fix-code-vulnerability__4ctaR8r`.
+- Symptom: the writer repaired one input-validation defect and added direct regression coverage,
+  while the required complete test suite still exposed a second in-scope defect. Independent
+  review correctly and repeatedly identified that remaining defect, but reviewer turns alternated
+  between premature terminal JSON and a workspace listing without the required file read. Harbor's
+  unchanged 900-second agent deadline expired before the fixer could run. The unchanged verifier
+  passed 366 of 367 upstream tests and four of six task checks; reward 0 and `AgentTimeoutError`
+  remain authoritative.
+- Cause: repository grounding was enforced only after a provider returned a terminal response.
+  Corrective prose asked for the missing host calls, but the provider could repeat the same invalid
+  sequence, forcing whole reviewer invocations to restart and spending the shared correction
+  budget without adding evidence.
+- General resolution: the developer loop now asks its tool executor which declared prerequisite is
+  missing and projects that operation as a provider-level specific tool choice. Workspace roles
+  therefore receive exactly `workspace_list`, then exactly `workspace_read`, before normal automatic
+  tool selection and parallel batches become available. Empty roots accept both `""` and `"."` as
+  the observed workspace root. The existing completion blocker remains a defense against providers
+  that violate their negotiated tool-choice contract.
+- Integrity decision: retain the timeout and reward 0. No Bottle symbol, vulnerability class,
+  filename, task identity, or verifier expectation enters this behavior. The correction applies to
+  every writer, reviewer, and fixer that must establish repository reality before acting.
+- Verification: focused developer-loop coverage proves the required tool is projected as a
+  `Specific` choice, prerequisite turns disable parallel calls, and automatic selection resumes
+  after grounding. Product-runner grounding coverage proves the exact list/read sequence and empty
+  root spelling. All `peritus-agent` and `peritus-product-runner` tests pass with two build jobs;
+  strict repository and hosted qualification remain required.
+
+## TBF-055: alternative output paths became cumulative requirements
+
+- Suite and task: Terminal-Bench 2.0 frozen baseline, corrected-adapter trial
+  `adaptive-rejection-sampler__rfXj4up`.
+- Symptom: the writer installed the missing runtime through the disposable environment's package
+  manager, implemented and tested the requested sampler, and generated one of the two explicitly
+  alternative sample files. All nine unchanged verifier checks passed and Harbor awarded reward 1.
+  The frozen exact-path gate nevertheless required both alternatives and also treated the prose
+  abbreviation `e.g.` as a path. Reviewers repeatedly and correctly classified those failures as
+  gate defects, but the unresolved deterministic failure kept the native loop active until Harbor's
+  unchanged 900-second deadline produced `AgentTimeoutError`.
+- Cause: path extraction flattened every output-looking token into one set of cumulative
+  requirements. It preserved no relationship between alternatives joined by `or`, including the
+  common `at least one` and `one of` forms. The abbreviation problem is independently corrected by
+  `TBF-050`; it is retained here because both defects affected the same frozen gate result.
+- General resolution: explicit path extraction now retains alternative groups. Ordinary `A or B`
+  chains and cardinality phrases require at least one present member, report each observed member,
+  and still fail when the complete group is absent. Individually required paths remain cumulative,
+  wrong-directory basename checks still apply to unsatisfied requirements, and alternative paths
+  no longer make a closed single-file inventory appear to have multiple mandatory outputs.
+- Integrity decision: retain reward 1 and the timeout. No language, sampler name, distribution,
+  sample filename, task identity, or verifier behavior enters the gate. The correction applies to
+  alternative archives, reports, manifests, executables, generated artifacts, and other ordinary
+  output contracts.
+- Verification: the focused regression proves that one member satisfies the group, neither member
+  fails it, the separate implementation path remains mandatory, and closed-inventory extraction
+  excludes alternatives. All 127 product-runner unit tests, integration tests, doc tests, and strict
+  all-target/all-feature Clippy pass with two build jobs; repository and hosted qualification remain
+  required.

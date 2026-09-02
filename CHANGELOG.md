@@ -1,5 +1,11 @@
 # Changelog
 
+- Preserve explicit output alternatives as real at-least-one groups instead of cumulative
+  requirements, while keeping separate mandatory paths and wrong-directory checks strict
+  (`TBF-055`, #31).
+- Constrain incomplete repository-grounding turns to the exact missing host operation before
+  restoring automatic and parallel tool choice, preventing repeated premature terminal responses
+  from consuming the reviewer/fixer window (`TBF-054`, #31).
 - Require performance claims over small bounded discrete domains to measure every supported value,
   and require consistent wins to exceed ordinary timing noise (`TBF-052`, #31).
 - Enforce task-declared opaque query interfaces across writer, fixer, designer, and reviewer tools:

@@ -143,6 +143,15 @@ pub trait DeveloperToolExecutor: Send {
         None
     }
 
+    /// Names the one declared tool that must run before other work can make progress.
+    ///
+    /// The developer loop projects this as a provider-level specific tool choice. This lets an
+    /// executor enforce deterministic prerequisites such as repository grounding without relying
+    /// on a model to infer the next protocol step from corrective prose.
+    fn required_tool_name(&self) -> Option<&str> {
+        None
+    }
+
     /// Returns and clears a deterministic correction after an unproductive tool sequence.
     ///
     /// The developer loop appends this as a user message after the current tool batch. Executors

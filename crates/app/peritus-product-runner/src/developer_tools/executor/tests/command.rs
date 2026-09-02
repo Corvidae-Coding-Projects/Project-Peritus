@@ -1,5 +1,5 @@
 use super::*;
-use std::{io::Write as _, time::Instant};
+use std::{io::Write as _, process::Command, time::Instant};
 
 #[test]
 fn structured_commands_time_out_without_freezing_the_agent() {

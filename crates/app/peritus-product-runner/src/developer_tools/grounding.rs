@@ -13,10 +13,20 @@ pub struct GroundingEvidence {
 }
 
 impl GroundingEvidence {
-    pub const fn record_list(&mut self, path: &str, entries: usize) {
+    pub fn record_list(&mut self, path: &str, entries: usize) {
         self.list_calls = self.list_calls.saturating_add(1);
-        if path.is_empty() && entries == 0 {
+        if (path.is_empty() || path.as_bytes() == b".") && entries == 0 {
             self.root_observed_empty = true;
+        }
+    }
+
+    pub fn required_tool_name(&self) -> Option<&'static str> {
+        if self.list_calls == 0 {
+            Some("workspace_list")
+        } else if self.read_paths.is_empty() && !self.root_observed_empty {
+            Some("workspace_read")
+        } else {
+            None
         }
     }
 
@@ -90,9 +100,12 @@ mod tests {
     #[test]
     fn existing_target_requires_repository_and_target_observation() {
         let mut evidence = GroundingEvidence::default();
+        assert_eq!(evidence.required_tool_name(), Some("workspace_list"));
         assert!(evidence.ensure_mutation_allowed("src/lib.rs", true).is_err());
         evidence.record_list("", 2);
+        assert_eq!(evidence.required_tool_name(), Some("workspace_read"));
         evidence.record_read("Cargo.toml");
+        assert_eq!(evidence.required_tool_name(), None);
         assert!(evidence.ensure_mutation_allowed("src/lib.rs", true).is_err());
         evidence.record_read("src/lib.rs");
         assert!(evidence.ensure_mutation_allowed("src/lib.rs", true).is_ok());
@@ -101,7 +114,8 @@ mod tests {
     #[test]
     fn observed_empty_repository_allows_new_files() {
         let mut evidence = GroundingEvidence::default();
-        evidence.record_list("", 0);
+        evidence.record_list(".", 0);
+        assert_eq!(evidence.required_tool_name(), None);
         assert!(evidence.ensure_mutation_allowed("src/main.rs", false).is_ok());
     }
 

@@ -27,23 +27,39 @@ pub(super) fn build_model_request(
     turn: u16,
     attempt: u8,
     kind: ModelTurnKind,
+    required_tool: Option<&str>,
 ) -> Result<ModelRequest, DeveloperLoopError> {
-    let parallel_tools =
-        if kind == ModelTurnKind::Developer && negotiated.includes(Capability::ParallelToolCalls) {
-            ParallelToolPolicy::Allowed(negotiated.limits().max_parallel_tool_calls())
-        } else {
-            ParallelToolPolicy::Disabled
-        };
+    let parallel_tools = if kind == ModelTurnKind::Developer
+        && required_tool.is_none()
+        && negotiated.includes(Capability::ParallelToolCalls)
+    {
+        ParallelToolPolicy::Allowed(negotiated.limits().max_parallel_tool_calls())
+    } else {
+        ParallelToolPolicy::Disabled
+    };
     let reasoning = if negotiated.includes(Capability::ReasoningControls) {
         ReasoningPolicy::Effort { effort: ReasoningEffort::High, summary: SummaryPolicy::None }
     } else {
         ReasoningPolicy::Disabled
     };
+    let developer_tool_choice = match required_tool {
+        Some(required) => request
+            .tools
+            .iter()
+            .find(|tool| tool.name().as_str() == required)
+            .map(|tool| ToolChoice::Specific(tool.name().clone()))
+            .ok_or_else(|| {
+                DeveloperLoopError::Context(format!(
+                    "executor required undeclared developer tool: {required}"
+                ))
+            })?,
+        None => ToolChoice::Auto,
+    };
     let (request_id, tools, tool_choice, output_tokens) = match kind {
         ModelTurnKind::Developer => (
             format!("{}-{turn}-attempt-{attempt}", request.request_prefix),
             request.tools.clone(),
-            ToolChoice::Auto,
+            developer_tool_choice,
             request.limits.max_output_tokens(),
         ),
         ModelTurnKind::SemanticCompaction => (

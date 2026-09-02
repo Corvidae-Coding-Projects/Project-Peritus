@@ -85,6 +85,7 @@ impl DeveloperLoop {
                     protocol_limits,
                     turn,
                     ModelTurnKind::SemanticCompaction,
+                    None,
                     &mut retries,
                     &mut usage,
                     trace,
@@ -122,6 +123,7 @@ impl DeveloperLoop {
                     u16::try_from(records.len()).map_err(|_| DeveloperLoopError::LimitExceeded)?,
                 )
                 .ok_or(DeveloperLoopError::LimitExceeded)?;
+            let required_tool = tools.required_tool_name().map(str::to_owned);
             let session = complete_turn(
                 provider,
                 &request,
@@ -131,6 +133,7 @@ impl DeveloperLoop {
                 protocol_limits,
                 turn,
                 ModelTurnKind::Developer,
+                required_tool.as_deref(),
                 &mut retries,
                 &mut usage,
                 trace,
@@ -232,6 +235,7 @@ async fn complete_turn(
     protocol_limits: ProtocolLimits,
     turn: u16,
     kind: ModelTurnKind,
+    required_tool: Option<&str>,
     retries: &mut u16,
     usage: &mut DeveloperUsage,
     trace: &mut dyn DeveloperTrace,
@@ -257,6 +261,7 @@ async fn complete_turn(
             turn,
             attempt,
             kind,
+            required_tool,
         )?;
         match drive(provider, model_request, request, protocol_limits, trace).await {
             Ok(session) if successful(session.terminal()) && usable(&session) => {

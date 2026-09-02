@@ -1,7 +1,7 @@
 //! Deterministic reconciliation of literal task paths with the candidate workspace.
 
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     fs,
     io::ErrorKind,
     path::{Component, Path, PathBuf},
@@ -9,17 +9,26 @@ use std::{
 
 use peritus_gates::GateExecutionRecord;
 
+mod alternatives;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct PathMention {
     relative: PathBuf,
     required_output: bool,
 }
 
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+struct PathRequirements {
+    mentions: Vec<PathMention>,
+    alternatives: Vec<Vec<PathBuf>>,
+}
+
 pub(super) fn run(root: &Path, transcript: &str, changed_paths: &[PathBuf]) -> GateExecutionRecord {
-    let mentions = extract(root, transcript);
+    let requirements = extract(root, transcript);
     let mut checked = Vec::new();
     let mut failures = Vec::new();
-    for mention in &mentions {
+    let mut presence = BTreeMap::new();
+    for mention in &requirements.mentions {
         let present = match fs::symlink_metadata(root.join(&mention.relative)) {
             Ok(_) => true,
             Err(error) if error.kind() == ErrorKind::NotFound => false,
@@ -31,6 +40,7 @@ pub(super) fn run(root: &Path, transcript: &str, changed_paths: &[PathBuf]) -> G
                 false
             }
         };
+        presence.insert(mention.relative.clone(), present);
         if mention.required_output {
             checked.push(format!(
                 "  {}: {}",
@@ -44,17 +54,49 @@ pub(super) fn run(root: &Path, transcript: &str, changed_paths: &[PathBuf]) -> G
                 ));
             }
         }
-        if present {
-            continue;
+    }
+    let mut required_missing = requirements
+        .mentions
+        .iter()
+        .filter(|mention| {
+            mention.required_output && !presence.get(&mention.relative).copied().unwrap_or(false)
+        })
+        .map(|mention| mention.relative.clone())
+        .collect::<BTreeSet<_>>();
+    for alternatives in &requirements.alternatives {
+        let states = alternatives
+            .iter()
+            .map(|path| {
+                let present = presence.get(path).copied().unwrap_or(false);
+                format!("{}: {}", path.display(), if present { "present" } else { "missing" })
+            })
+            .collect::<Vec<_>>();
+        let satisfied =
+            alternatives.iter().any(|path| presence.get(path).copied().unwrap_or(false));
+        checked.push(format!("  one of [{}]", states.join(", ")));
+        if !satisfied {
+            for path in alternatives {
+                required_missing.insert(path.clone());
+            }
+            failures.push(format!(
+                "at least one alternative explicit output path is required: {}",
+                alternatives
+                    .iter()
+                    .map(|path| path.display().to_string())
+                    .collect::<Vec<_>>()
+                    .join(" or "),
+            ));
         }
-        let expected_name = mention.relative.file_name();
+    }
+    for relative in required_missing {
+        let expected_name = relative.file_name();
         for candidate in changed_paths.iter().filter(|candidate| {
-            candidate.as_path() != mention.relative && candidate.file_name() == expected_name
+            candidate.as_path() != relative && candidate.file_name() == expected_name
         }) {
             failures.push(format!(
                 "candidate {} has the requested basename but not the explicit path {}",
                 candidate.display(),
-                mention.relative.display(),
+                relative.display(),
             ));
         }
     }
@@ -84,10 +126,12 @@ pub(super) fn run(root: &Path, transcript: &str, changed_paths: &[PathBuf]) -> G
     }
 }
 
-fn extract(root: &Path, transcript: &str) -> Vec<PathMention> {
+fn extract(root: &Path, transcript: &str) -> PathRequirements {
     let mut paths = BTreeMap::<PathBuf, bool>::new();
+    let mut alternatives = Vec::new();
     for line in transcript.lines() {
         let words = line.split_whitespace().collect::<Vec<_>>();
+        let mut line_mentions = Vec::new();
         for (index, word) in words.iter().enumerate() {
             if descriptive_extension(word, words.get(index + 1).copied()) {
                 continue;
@@ -98,20 +142,34 @@ fn extract(root: &Path, transcript: &str) -> Vec<PathMention> {
             let Some(relative) = parse_path(root, word, required_output, quoted_bare_name) else {
                 continue;
             };
+            line_mentions.push((index, relative, required_output));
+        }
+        let line_alternatives = alternatives::groups(&words, &line_mentions);
+        let alternative_paths =
+            line_alternatives.iter().flatten().cloned().collect::<BTreeSet<_>>();
+        alternatives.extend(line_alternatives);
+        for (_, relative, required_output) in line_mentions {
+            let individually_required = required_output && !alternative_paths.contains(&relative);
             paths
                 .entry(relative)
-                .and_modify(|required| *required |= required_output)
-                .or_insert(required_output);
+                .and_modify(|required| *required |= individually_required)
+                .or_insert(individually_required);
         }
     }
-    paths
-        .into_iter()
-        .map(|(relative, required_output)| PathMention { relative, required_output })
-        .collect()
+    alternatives.sort();
+    alternatives.dedup();
+    PathRequirements {
+        mentions: paths
+            .into_iter()
+            .map(|(relative, required_output)| PathMention { relative, required_output })
+            .collect(),
+        alternatives,
+    }
 }
 
 pub(super) fn required_outputs(root: &Path, transcript: &str) -> Vec<PathBuf> {
     extract(root, transcript)
+        .mentions
         .into_iter()
         .filter_map(|mention| mention.required_output.then_some(mention.relative))
         .collect()

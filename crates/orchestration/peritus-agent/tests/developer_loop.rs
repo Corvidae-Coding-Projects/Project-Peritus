@@ -146,6 +146,10 @@ impl DeveloperToolExecutor for GroundingTool {
     fn completion_blocker(&self) -> Option<String> {
         (self.calls == 0).then(|| "read one observed workspace file".to_owned())
     }
+
+    fn required_tool_name(&self) -> Option<&str> {
+        (self.calls == 0).then_some("workspace_read")
+    }
 }
 
 impl DeveloperToolExecutor for RecordingTool {
@@ -367,6 +371,16 @@ fn developer_loop_continues_an_early_terminal_in_the_same_grounding_session() {
         assert_eq!(tools.calls, 1);
         let requests = provider.requests.lock().expect("requests");
         assert_eq!(requests.len(), 3);
+        assert!(matches!(
+            requests[0].tool_choice(),
+            ToolChoice::Specific(name) if name.as_str() == "workspace_read"
+        ));
+        assert_eq!(requests[0].parallel_tool_policy(), ParallelToolPolicy::Disabled);
+        assert!(matches!(
+            requests[1].tool_choice(),
+            ToolChoice::Specific(name) if name.as_str() == "workspace_read"
+        ));
+        assert!(matches!(requests[2].tool_choice(), ToolChoice::Auto));
         assert!(requests[1].messages().iter().any(|message| {
             message.role() == Role::User
                 && message.content().iter().any(|block| {
