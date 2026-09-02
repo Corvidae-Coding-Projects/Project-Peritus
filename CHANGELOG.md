@@ -275,6 +275,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Guide binary and damaged-data inspection from contract-supplied stable fragments into bounded
+  neighboring byte or record windows before speculative decoding or broad parameter searches. This
+  preserves recoverable partial evidence without restoring unbounded binary dumps (`TBF-053`, #31).
 - Give an exited Unix H1 controller process group the same bounded two-second natural-drain window
   as the Windows Job Object path before declaring that descendants leaked. Persistent descendants
   are still killed and rejected, while loaded macOS runners no longer misclassify a just-settling

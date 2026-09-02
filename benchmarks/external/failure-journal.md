@@ -4923,3 +4923,34 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   `ed0ef30eb5dda2817ebd8a02e46062b7c5a7400e22ee04653d5106d3e6ffb1e7`. The focused workflow
   regression requires exhaustive small-domain coverage, stratified larger-domain coverage, and a
   timing-noise margin to reach every role. Full local and hosted qualification remain required.
+
+## TBF-053: an exact whole-record filter discarded recoverable partial evidence
+
+- Suite and task: Terminal-Bench 2.0 frozen baseline, corrected-adapter trial
+  `password-recovery__MFBsNm9`.
+- Symptom: the writer responsibly avoided the earlier unbounded binary dump from `TBF-020`, but
+  made one complete regular expression its first and only grounded content search. That expression
+  returned no match. The writer then spent the remainder of Harbor's unchanged 900-second window
+  installing tools and testing XOR subsets, TrueCrypt/VeraCrypt modes, and 50,796 speculative
+  AES-XTS key candidates. It wrote no requested artifact; both unchanged verifier checks failed,
+  Harbor retained `AgentTimeoutError`, and reward 0 is authoritative.
+- Cause: bounded-output guidance said to use a purpose-built filter, but did not distinguish a
+  complete-record filter from a stable-fragment discovery query when binary, deleted, damaged, or
+  truncated evidence may not preserve the entire logical record as one match. Earlier honest runs
+  on the same public input located the contract-supplied stable prefix at byte offset 1,048,652 and
+  recovered the value from a bounded adjacent window. The current attempt abandoned grounded local
+  evidence too early and widened into format and cryptographic guesses.
+- General resolution: every role now searches binary or partially recoverable data first by the
+  strongest stable fragment supplied by the request, inspects a bounded byte or record window
+  around each hit, and validates any reconstruction against the complete contract. If that path
+  fails, it prefers format-aware recovery tools before speculative transforms or broad parameter
+  searches. The command tool repeats the same ordering next to its existing bulk-output boundary.
+- Integrity decision: retain the timeout and reward 0. No password, pattern, offset, filename,
+  encryption mode, benchmark identity, or verifier behavior enters product instructions. The rule
+  applies to damaged logs, archives, databases, packet captures, binary formats, deleted records,
+  and any input where one recoverable anchor can survive beside disrupted neighboring content.
+- Verification: workflow regression terms require the complete-record distinction, stable-fragment
+  discovery, bounded neighboring windows, format-aware recovery, and avoidance of premature
+  speculative transforms in every role. Tool-catalog coverage independently requires the same
+  guidance in the writer-visible command interface. Full product-runner and repository
+  qualification remain required.

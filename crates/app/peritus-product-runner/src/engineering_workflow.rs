@@ -299,6 +299,13 @@ requested behavior.
    structured or network response, extract only the fields needed for the current decision. If its
    shape is not known yet, begin with keys, counts, or a bounded representative sample and then
    narrow the next query; do not dump complete nested metadata merely to discover its shape.
+   For binary, deleted, damaged, truncated, or otherwise partially recoverable data, do not make a
+   complete-record match the only discovery path. Search first for the strongest stable fragment
+   supplied by the contract, then inspect a bounded byte or record window around each hit and
+   validate the reconstructed whole value against every declared constraint. If that grounded
+   search fails, prefer format-aware recovery tools before speculative transforms, encryption
+   guesses, or broad parameter searches. This preserves useful nearby evidence without admitting
+   an unconstrained binary dump into context.
    When a request requires periodic polling over a minimum interval, take at least three
    observations including the initial and final observations, spaced across the interval. One long
    sleep followed by one final scan is waiting, not periodic polling. If no decision depends on an

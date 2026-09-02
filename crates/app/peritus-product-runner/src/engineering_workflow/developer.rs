@@ -23,6 +23,9 @@ artifact-only request with no requested retained source, execute
 the bounded producer directly and verify the resulting artifacts and effects rather than creating
 an application package solely to host one run. For API clients, make pagination prove forward
 progress, reject repeated cursors or pages, bound retries, and surface permanent errors immediately.
+For binary, deleted, damaged, or truncated inputs, search for a contract-supplied stable fragment
+and inspect bounded neighboring bytes or records before trying speculative decoding or encryption
+hypotheses; validate any reconstructed value against the complete contract.
 When consuming aggregate data alongside an exclusion or adjustment ledger, preserve the aggregate
 unless the source contract identifies it as pre-adjustment and provides enough record-level evidence
 to derive every requested metric without guessed membership or effects.
