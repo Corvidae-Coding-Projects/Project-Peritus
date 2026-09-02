@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1145,
+  "next_comment_id": 1146,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1274,7 +1274,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-09-02T13:59:07.095040792Z",
+      "updated_at": "2026-09-02T22:06:32.167696765Z",
       "labels": [
         "qualification",
         "release"
@@ -3475,6 +3475,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAfesCdnrlbpsMx6GXNvUgF+ULmoWE7xdwk8EbY7D4mkmw0p0hkuIt/Wm+wh3XI9LpsEVWV2QElwsC2ifmyhETAg=="
+        },
+        "711852ef-410b-4afc-9751-435231e1c908": {
+          "display_id": 1145,
+          "author": "6ME5",
+          "content": "[action] Replaced long hosted checks with architecture, scenario, worker, and release-stage shards; every workflow job is capped at ten minutes and full local Rust, docs, policy, workflow, and representative Verus gates are green",
+          "created_at": "2026-09-02T22:06:32.164079126Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPRwgoiImk/cfrfEdzDoLgH6pPWI/E/ERisX93VP4CfDfGQOI/COq0UoX21ML6BRSbRJzolZhtL8c3jmI97EoAw=="
         },
         "71d30731-0d74-4c7c-a352-402df21a1baf": {
           "display_id": 743,
@@ -11057,8 +11066,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-02T14:02:05.263947527Z",
+    "timestamp": "2026-09-02T22:06:32.167696765Z",
     "agent_id": "6ME5",
-    "agent_seq": 1352
+    "agent_seq": 1353
   }
 }
