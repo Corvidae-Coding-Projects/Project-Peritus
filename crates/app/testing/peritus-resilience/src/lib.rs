@@ -16,9 +16,11 @@ mod failure;
 mod fault;
 mod identity;
 mod invariant;
+mod native;
 mod observation;
 mod recovery_state;
 mod report;
+mod report_json;
 mod resource_observation;
 mod runner;
 mod scenario;
@@ -44,6 +46,7 @@ pub use fault::{
     FaultInjection, RebootPhase, RecoveryOutcome,
 };
 pub use identity::{EvidenceDigest, EvidenceId, ScenarioId, SubjectId, ValueError, ValueViolation};
+pub use native::{NativeAdapterError, NativeControllerLimits, NativeResilienceFactory};
 pub use observation::{
     AcceptanceObservation, ArtifactHealth, CorruptionObservation, DisruptionObservation,
     JournalHealth, ObservationError, PreparationObservation, ProjectionHealth, RecoveryObservation,
@@ -54,6 +57,7 @@ pub use report::{
     CaseStatus, NotReadyReason, QualificationReport, QualificationSummary, QualificationVerdict,
     ScenarioReport,
 };
+pub use report_json::render_report_json;
 pub use resource_observation::{
     CleanupObservation, OwnershipObservation, OwnershipResolution, ResourceUsage, RetryUsage,
 };

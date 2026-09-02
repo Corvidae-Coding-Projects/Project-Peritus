@@ -74,6 +74,7 @@ impl BaselineEntry {
 /// Evidence-bound accepted baseline for one profile and subject revision.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct BaselineManifest {
+    schema_version: u32,
     id: StableId,
     profile_id: StableId,
     subject_revision: String,
@@ -116,7 +117,7 @@ impl BaselineManifest {
                 });
             }
         }
-        Ok(Self { id, profile_id, subject_revision, evidence_digest, entries })
+        Ok(Self { schema_version: 1, id, profile_id, subject_revision, evidence_digest, entries })
     }
 
     /// Returns the stable baseline identifier.
@@ -162,6 +163,26 @@ impl BaselineManifest {
                 && entry.metric() == metric
                 && entry.statistic() == statistic
         })
+    }
+
+    /// Serializes the baseline deterministically as compact JSON.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`QualificationError`] when JSON serialization fails.
+    pub fn canonical_json(&self) -> Result<Vec<u8>, QualificationError> {
+        serde_json::to_vec(self)
+            .map_err(|source| QualificationError::Serialization { kind: "baseline", source })
+    }
+
+    /// Serializes the baseline as human-readable JSON without changing its values.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`QualificationError`] when JSON serialization fails.
+    pub fn pretty_json(&self) -> Result<String, QualificationError> {
+        serde_json::to_string_pretty(self)
+            .map_err(|source| QualificationError::Serialization { kind: "baseline", source })
     }
 }
 

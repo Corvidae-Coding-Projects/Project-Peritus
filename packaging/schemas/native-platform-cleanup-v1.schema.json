@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://corvidae-coding-projects.github.io/peritus/schemas/native-platform-cleanup-v1.schema.json",
+  "title": "Peritus native H2 cleanup response v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "subject_id",
+    "scenario_id",
+    "request_sha256",
+    "complete",
+    "remaining_resources",
+    "evidence"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "subject_id": { "$ref": "#/$defs/identifier" },
+    "scenario_id": { "$ref": "#/$defs/identifier" },
+    "request_sha256": { "$ref": "#/$defs/sha256" },
+    "complete": { "type": "boolean" },
+    "remaining_resources": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "bytes": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 }
+      }
+    }
+  },
+  "$defs": {
+    "identifier": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,128}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "path": { "type": "string", "pattern": "^[A-Za-z0-9._/-]{1,1024}$" }
+  }
+}

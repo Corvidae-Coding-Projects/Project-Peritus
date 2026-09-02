@@ -6,3 +6,11 @@ durable commit receipt.
 
 Schema version 1 covers lifecycle commands, command envelopes, immutable event records, reducer
 errors, lifecycle phases, B1 policy and budget data, and B2 acceptance contracts.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-protocol
+```

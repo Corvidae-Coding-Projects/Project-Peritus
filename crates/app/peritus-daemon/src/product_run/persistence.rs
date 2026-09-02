@@ -8,6 +8,7 @@ use std::{
 };
 
 use peritus_app_protocol::{
+    ProductConversationMessage, ProductConversationRole, ProductDeliverable,
     ProductProviderSelection, ProductRunPhase, ProductRunRequest, ProductRunSnapshot,
 };
 use peritus_provider_core::CancellationToken;
@@ -15,7 +16,8 @@ use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 use serde::Deserialize;
 use serde::Serialize;
 
-use super::{ProductRunServiceError, RunRecord, filesystem, invalid};
+use super::progress::RunProgress;
+use super::{ProductRunServiceError, RunRecord, SharedConversation, filesystem, invalid};
 use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
 
 #[derive(Serialize, Deserialize)]
@@ -33,13 +35,63 @@ struct PersistedRecord {
     gates: String,
     review: String,
     summary: String,
+    #[serde(default)]
+    finding_state: String,
+    #[serde(default)]
+    deliverable: Option<PersistedDeliverable>,
+    #[serde(default)]
+    messages: Vec<PersistedMessage>,
+    #[serde(default)]
+    progress: PersistedProgress,
+}
+
+#[derive(Default, Serialize, Deserialize)]
+struct PersistedProgress {
+    started_unix_millis: u64,
+    last_effect_unix_millis: u64,
+    model_requests: u32,
+    tool_calls: u32,
+    retries: u32,
+    #[serde(default)]
+    provider_failovers: u32,
+    compactions: u32,
+    input_tokens: u64,
+    cached_input_tokens: u64,
+    output_tokens: u64,
+    total_tokens: u64,
+    provider_cost_microunits: u64,
+    usage_observations: u32,
+    #[serde(default)]
+    workspace_bytes: u64,
+    #[serde(default)]
+    workspace_growth_bytes: u64,
+    #[serde(default)]
+    peak_rss_bytes: u64,
+}
+
+#[derive(Serialize, Deserialize)]
+struct PersistedMessage {
+    role: u16,
+    content: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct PersistedDeliverable {
+    workspace_path: String,
+    changed_paths: Vec<String>,
+    successful_commands: Vec<String>,
+    run_instructions: String,
+    accepted: bool,
+    commit_revision: String,
+    export_path: String,
+    discarded: bool,
 }
 
 pub(super) fn persist_record(
     directory: &Path,
     record: &RunRecord,
 ) -> Result<(), ProductRunServiceError> {
-    let persisted = PersistedRecord::from_snapshot(&record.snapshot);
+    let persisted = PersistedRecord::from_record(record)?;
     let bytes =
         serde_json::to_vec_pretty(&persisted).map_err(|_| ProductRunServiceError::Unavailable)?;
     let path = directory.join(format!("{}.json", persisted.run_id));
@@ -74,9 +126,19 @@ pub(super) fn load_records(directory: &Path) -> Result<BTreeMap<RunId, RunRecord
 }
 
 impl PersistedRecord {
-    fn from_snapshot(snapshot: &ProductRunSnapshot) -> Self {
+    fn from_record(record: &RunRecord) -> Result<Self, ProductRunServiceError> {
+        let snapshot = &record.snapshot;
         let providers = snapshot.providers();
-        Self {
+        let messages = record
+            .conversation
+            .messages()?
+            .into_iter()
+            .map(|message| PersistedMessage {
+                role: message.role().tag(),
+                content: message.content().to_owned(),
+            })
+            .collect();
+        Ok(Self {
             run_id: hex(snapshot.run_id().as_bytes()),
             workspace_id: hex(snapshot.workspace_id().as_bytes()),
             writer: hex(providers.writer().as_bytes()),
@@ -90,7 +152,11 @@ impl PersistedRecord {
             gates: snapshot.gates().to_owned(),
             review: snapshot.review().to_owned(),
             summary: snapshot.summary().to_owned(),
-        }
+            finding_state: record.finding_state.clone(),
+            deliverable: snapshot.deliverable().map(PersistedDeliverable::from_deliverable),
+            messages,
+            progress: PersistedProgress::from_run(&record.progress),
+        })
     }
 
     fn into_record(self) -> Result<RunRecord, ProductRunServiceError> {
@@ -115,7 +181,33 @@ impl PersistedRecord {
                 "Daemon restart interrupted this run; retry is available".to_owned(),
             )
         };
-        let snapshot = ProductRunSnapshot::new(
+        let mut messages = self
+            .messages
+            .into_iter()
+            .map(|message| {
+                let role = ProductConversationRole::from_tag(message.role)
+                    .ok_or(ProductRunServiceError::InvalidMessage)?;
+                ProductConversationMessage::new(role, message.content)
+                    .map_err(|_| ProductRunServiceError::InvalidMessage)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        if messages.is_empty() {
+            messages.push(
+                ProductConversationMessage::new(ProductConversationRole::User, self.task.clone())
+                    .map_err(|_| ProductRunServiceError::InvalidMessage)?,
+            );
+            if loaded_phase.terminal() && !self.summary.trim().is_empty() {
+                messages.push(
+                    ProductConversationMessage::new(
+                        ProductConversationRole::Agent,
+                        format!("{}: {}", status, self.summary),
+                    )
+                    .map_err(|_| ProductRunServiceError::InvalidMessage)?,
+                );
+            }
+        }
+        let conversation = SharedConversation::new(run_id, messages)?;
+        let mut snapshot = ProductRunSnapshot::new(
             run_id,
             workspace_id,
             providers,
@@ -129,12 +221,107 @@ impl PersistedRecord {
             self.summary,
         )
         .map_err(|_| ProductRunServiceError::InvalidMessage)?;
+        if let Some(deliverable) = self.deliverable {
+            snapshot = snapshot.with_deliverable(deliverable.into_deliverable()?);
+        }
         Ok(RunRecord {
             request,
             snapshot,
             cancelled: Arc::new(AtomicBool::new(false)),
             provider_cancellation: CancellationToken::new(),
+            conversation,
+            finding_state: self.finding_state,
+            progress: self.progress.into_run(),
         })
+    }
+}
+
+impl PersistedProgress {
+    const fn from_run(value: &RunProgress) -> Self {
+        Self {
+            started_unix_millis: value.started_unix_millis,
+            last_effect_unix_millis: value.last_effect_unix_millis,
+            model_requests: value.model_requests,
+            tool_calls: value.tool_calls,
+            retries: value.retries,
+            provider_failovers: value.provider_failovers,
+            compactions: value.compactions,
+            input_tokens: value.input_tokens,
+            cached_input_tokens: value.cached_input_tokens,
+            output_tokens: value.output_tokens,
+            total_tokens: value.total_tokens,
+            provider_cost_microunits: value.provider_cost_microunits,
+            usage_observations: value.usage_observations,
+            workspace_bytes: value.workspace_bytes,
+            workspace_growth_bytes: value.workspace_growth_bytes,
+            peak_rss_bytes: value.peak_rss_bytes,
+        }
+    }
+
+    fn into_run(self) -> RunProgress {
+        if self.started_unix_millis == 0 || self.last_effect_unix_millis == 0 {
+            return RunProgress::default();
+        }
+        RunProgress {
+            started_unix_millis: self.started_unix_millis,
+            last_effect_unix_millis: self.last_effect_unix_millis,
+            model_requests: self.model_requests,
+            tool_calls: self.tool_calls,
+            retries: self.retries,
+            provider_failovers: self.provider_failovers,
+            compactions: self.compactions,
+            input_tokens: self.input_tokens,
+            cached_input_tokens: self.cached_input_tokens,
+            output_tokens: self.output_tokens,
+            total_tokens: self.total_tokens,
+            provider_cost_microunits: self.provider_cost_microunits,
+            usage_observations: self.usage_observations,
+            workspace_bytes: self.workspace_bytes,
+            workspace_growth_bytes: self.workspace_growth_bytes,
+            peak_rss_bytes: self.peak_rss_bytes,
+        }
+    }
+}
+
+impl PersistedDeliverable {
+    fn from_deliverable(value: &ProductDeliverable) -> Self {
+        Self {
+            workspace_path: value.workspace_path().to_owned(),
+            changed_paths: value.changed_paths().to_vec(),
+            successful_commands: value.successful_commands().to_vec(),
+            run_instructions: value.run_instructions().to_owned(),
+            accepted: value.accepted(),
+            commit_revision: value.commit_revision().to_owned(),
+            export_path: value.export_path().to_owned(),
+            discarded: value.discarded(),
+        }
+    }
+
+    fn into_deliverable(self) -> Result<ProductDeliverable, ProductRunServiceError> {
+        let mut value = ProductDeliverable::new(
+            self.workspace_path,
+            self.changed_paths,
+            self.successful_commands,
+            self.run_instructions,
+        )
+        .map_err(|_| ProductRunServiceError::InvalidMessage)?;
+        if self.accepted {
+            value = value.mark_accepted();
+        }
+        if !self.commit_revision.is_empty() {
+            value = value
+                .mark_committed(self.commit_revision)
+                .map_err(|_| ProductRunServiceError::InvalidMessage)?;
+        }
+        if !self.export_path.is_empty() {
+            value = value
+                .mark_exported(self.export_path)
+                .map_err(|_| ProductRunServiceError::InvalidMessage)?;
+        }
+        if self.discarded {
+            value = value.mark_discarded();
+        }
+        Ok(value)
     }
 }
 
@@ -162,3 +349,7 @@ fn unhex(value: &str) -> Result<[u8; 16], ProductRunServiceError> {
     }
     Ok(bytes)
 }
+
+#[cfg(test)]
+#[path = "persistence/tests.rs"]
+mod tests;

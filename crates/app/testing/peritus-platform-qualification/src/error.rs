@@ -17,6 +17,10 @@ pub enum QualificationErrorCode {
     EvidenceBound,
     /// A fresh subject violated the runner protocol.
     SubjectProtocol,
+    /// A native platform controller failed to launch, respond, or terminate cleanly.
+    NativeExecution,
+    /// A fresh native subject could not prove complete cleanup.
+    Cleanup,
     /// A package lifecycle plan was incomplete or unsafe.
     Lifecycle,
     /// An operating-system file observation failed.
@@ -36,6 +40,8 @@ pub enum QualificationRecovery {
     ConfigureHost,
     /// Quarantine the observed package or subject evidence.
     Quarantine,
+    /// Repair or replace the native platform controller implementation.
+    RepairAdapter,
 }
 
 /// Typed, bounded-safe H2 qualification error.

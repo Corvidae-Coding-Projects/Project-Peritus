@@ -57,6 +57,23 @@ pub fn choose_default(
     }
 }
 
+pub fn choose_failover(
+    terminal: &mut Terminal<'_>,
+    enabled: &[ProviderKind],
+    default: bool,
+) -> Result<bool, LauncherError> {
+    if enabled.len() < 2 {
+        return Ok(false);
+    }
+    let suffix = if default { " [Y/n]: " } else { " [y/N]: " };
+    terminal.confirm(
+        &format!(
+            "If one provider is temporarily unavailable, try another selected provider for that role?{suffix}"
+        ),
+        default,
+    )
+}
+
 fn parse_selection(answer: &str) -> Result<Vec<ProviderKind>, LauncherError> {
     let normalized = answer.replace(' ', "");
     if normalized == "0" {

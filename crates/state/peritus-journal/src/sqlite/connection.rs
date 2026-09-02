@@ -33,6 +33,40 @@ pub struct SqliteSettings {
     pub defensive: bool,
 }
 
+/// Current physical page accounting and page ceiling for one authoritative connection.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SqliteStoragePages {
+    page_count: u64,
+    page_size: u64,
+    maximum_pages: u64,
+}
+
+impl SqliteStoragePages {
+    /// Returns the pages currently allocated by `SQLite`.
+    #[must_use]
+    pub const fn page_count(self) -> u64 {
+        self.page_count
+    }
+
+    /// Returns the configured bytes in one `SQLite` page.
+    #[must_use]
+    pub const fn page_size(self) -> u64 {
+        self.page_size
+    }
+
+    /// Returns the `SQLite` page ceiling observed by this connection.
+    #[must_use]
+    pub const fn maximum_pages(self) -> u64 {
+        self.maximum_pages
+    }
+
+    /// Returns the maximum database bytes admitted by the current ceiling.
+    #[must_use]
+    pub const fn maximum_bytes(self) -> u64 {
+        self.maximum_pages.saturating_mul(self.page_size)
+    }
+}
+
 /// Single-owner writable `SQLite` journal.
 ///
 /// Mutating operations require `&mut self`, making the authoritative connection's serialized
@@ -115,6 +149,83 @@ impl SqliteJournal {
             defensive,
         })
     }
+
+    /// Reads `SQLite`'s current database size and active page ceiling.
+    ///
+    /// # Errors
+    ///
+    /// Returns a typed storage error if `SQLite` cannot report canonical positive values.
+    pub fn storage_pages(&self) -> Result<SqliteStoragePages, JournalError> {
+        storage_pages(&self.connection)
+    }
+
+    /// Lowers this connection's `SQLite` database page ceiling without shrinking existing storage.
+    ///
+    /// Future transactions on this connection that require another page fail atomically with
+    /// `SQLite`'s `SQLITE_FULL` result. Callers that require a process-lifetime budget must apply
+    /// it whenever they establish the owning connection.
+    ///
+    /// # Errors
+    ///
+    /// Rejects zero, unrepresentable, or below-current ceilings and returns a typed storage error
+    /// when `SQLite` cannot apply or re-observe the requested limit.
+    pub fn limit_storage_pages(
+        &mut self,
+        maximum_pages: u64,
+    ) -> Result<SqliteStoragePages, JournalError> {
+        let current = storage_pages(&self.connection)?;
+        let maximum = i64::try_from(maximum_pages).map_err(|_| invalid_page_limit())?;
+        if maximum_pages == 0 || maximum_pages < current.page_count {
+            return Err(invalid_page_limit());
+        }
+        self.connection
+            .pragma_update(None, "max_page_count", maximum)
+            .map_err(|error| JournalError::sqlite("configure journal page ceiling", error))?;
+        let observed = storage_pages(&self.connection)?;
+        if observed.maximum_pages != maximum_pages {
+            return Err(JournalError::new(
+                JournalErrorKind::Storage,
+                "configure journal page ceiling",
+                "SQLite did not retain the requested page ceiling",
+            ));
+        }
+        Ok(observed)
+    }
+}
+
+fn storage_pages(connection: &Connection) -> Result<SqliteStoragePages, JournalError> {
+    let page_count: i64 = connection
+        .pragma_query_value(None, "page_count", |row| row.get(0))
+        .map_err(|error| JournalError::sqlite("read journal page count", error))?;
+    let page_size: i64 = connection
+        .pragma_query_value(None, "page_size", |row| row.get(0))
+        .map_err(|error| JournalError::sqlite("read journal page size", error))?;
+    let maximum_pages: i64 = connection
+        .pragma_query_value(None, "max_page_count", |row| row.get(0))
+        .map_err(|error| JournalError::sqlite("read journal page ceiling", error))?;
+    Ok(SqliteStoragePages {
+        page_count: positive_page_value(page_count)?,
+        page_size: positive_page_value(page_size)?,
+        maximum_pages: positive_page_value(maximum_pages)?,
+    })
+}
+
+fn positive_page_value(value: i64) -> Result<u64, JournalError> {
+    u64::try_from(value).ok().filter(|value| *value > 0).ok_or_else(|| {
+        JournalError::new(
+            JournalErrorKind::CorruptJournal,
+            "read journal storage pages",
+            "SQLite returned a nonpositive storage-page value",
+        )
+    })
+}
+
+const fn invalid_page_limit() -> JournalError {
+    JournalError::new(
+        JournalErrorKind::InvalidInput,
+        "configure journal page ceiling",
+        "journal page ceiling is zero, unrepresentable, or below current allocation",
+    )
 }
 
 fn configure(connection: &Connection, busy_timeout: Duration) -> Result<(), JournalError> {

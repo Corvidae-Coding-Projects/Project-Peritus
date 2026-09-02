@@ -7,3 +7,11 @@ messages are defined by `peritus-protocol`.
 The codec treats every input byte as untrusted. It checks lengths before allocation or slicing,
 rejects unknown primitive tags and trailing bytes, and never treats a digest as authenticity or
 authority evidence.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-codec
+```

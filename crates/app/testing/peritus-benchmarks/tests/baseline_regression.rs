@@ -1,12 +1,40 @@
 //! Boundary tests for baseline regression classification and readiness.
 
 use peritus_benchmarks::{
-    BaselineEntry, BaselineManifest, CapacityLimits, ConcurrencyLimits, MeasurementIngestor,
-    MeasurementRecord, Metric, ObjectiveBound, QualificationEvaluator, QualificationProfileBuilder,
-    QualificationVerdict, QueueLimits, ReferenceMachine, RegressionClass, RegressionPolicy,
-    ResourceAccountant, ResourceEnvelope, RunnerReceipt, RunnerTermination, ScenarioKind,
-    Sha256Digest, SloObjective, StableId, Statistic, Workload, WorkloadParameters,
+    BaselineEntry, BaselineManifest, CapacityLimits, ConcurrencyLimits, DatasetLimits,
+    MeasurementIngestor, MeasurementRecord, Metric, ObjectiveBound, QualificationEvaluator,
+    QualificationProfileBuilder, QualificationVerdict, QueueLimits, ReferenceMachine,
+    RegressionClass, RegressionPolicy, ResourceAccountant, ResourceEnvelope, RunnerReceipt,
+    RunnerTermination, ScenarioKind, Sha256Digest, SloObjective, StableId, Statistic, Workload,
+    WorkloadParameters, baseline_from_json,
 };
+
+#[test]
+fn serialized_baseline_is_valid_input_for_a_later_campaign() {
+    let baseline = BaselineManifest::new(
+        StableId::new("baseline").expect("id"),
+        StableId::new("profile").expect("id"),
+        "revision",
+        Sha256Digest::of_bytes(b"evidence"),
+        vec![
+            BaselineEntry::new(
+                StableId::new("workload").expect("id"),
+                Metric::EventAppendLatency,
+                Statistic::P99,
+                10,
+                20,
+            )
+            .expect("entry"),
+        ],
+    )
+    .expect("baseline");
+    let document = baseline.pretty_json().expect("serialize");
+    assert_eq!(
+        baseline_from_json(&document, DatasetLimits::production_defaults())
+            .expect("parse serialized baseline"),
+        baseline
+    );
+}
 
 #[test]
 fn blocking_baseline_regression_prevents_readiness_even_when_slo_is_met() {

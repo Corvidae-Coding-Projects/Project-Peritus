@@ -29,3 +29,11 @@ Restart reconciliation supplies the current workspace tuple to patch recovery th
 `RecoveryBinding`, inspects Git against the retained current snapshot, and produces one of clean,
 dirty, fenced, or indeterminate. The durable action ledger is target metadata, not a patch
 transaction, and is excluded from transaction recovery scans.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-workspace
+```

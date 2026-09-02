@@ -84,6 +84,7 @@ impl Cli {
 fn parse_command(parser: &mut Parser) -> Result<Command, CliError> {
     let command = parser.command("command")?;
     match command.as_str() {
+        "update" => parse_update(parser),
         "providers" => {
             parser.finish()?;
             Ok(Command::Providers)
@@ -114,6 +115,23 @@ fn parse_command(parser: &mut Parser) -> Result<Command, CliError> {
         }
         _ => Err(CliError::usage(format!("unknown command: {command}"))),
     }
+}
+
+fn parse_update(parser: &mut Parser) -> Result<Command, CliError> {
+    let automatic_checks = match parser.peek_utf8()? {
+        Some("--enable-checks") => {
+            parser.pop();
+            Some(true)
+        }
+        Some("--disable-checks") => {
+            parser.pop();
+            Some(false)
+        }
+        Some(option) => return Err(CliError::usage(format!("unknown update option: {option}"))),
+        None => None,
+    };
+    parser.finish()?;
+    Ok(Command::Update(UpdateArgs { automatic_checks }))
 }
 
 fn parse_shutdown(parser: &mut Parser) -> Result<Command, CliError> {

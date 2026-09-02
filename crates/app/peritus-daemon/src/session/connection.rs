@@ -7,13 +7,17 @@ use std::{
 };
 
 use peritus_app_protocol::{
-    AppErrorCode, AppMessage, AppProtocolError, AppProtocolLimits, AppRequestEnvelope,
-    AppResponseEnvelope, AppResponsePayload, ControlPayload, NegotiationOutcome, ShutdownRequest,
+    AppErrorCode, AppEventEnvelope, AppEventPayload, AppMessage, AppProtocolError,
+    AppProtocolLimits, AppRequestEnvelope, AppResponseEnvelope, AppResponsePayload, ControlPayload,
+    NegotiationOutcome,
 };
 use tokio::sync::{mpsc, watch};
 use tokio::time::MissedTickBehavior;
 
-use super::{heartbeat::ConnectionHeartbeat, negotiation::establish, request::handle_request};
+use super::{
+    ShutdownCommand, ShutdownEventReceiver, heartbeat::ConnectionHeartbeat, negotiation::establish,
+    request::handle_request,
+};
 use crate::{
     AuthenticatedConnection, AuthorityHandle, DaemonError, DaemonErrorCode, DaemonRecovery,
     artifact::ArtifactClient,
@@ -27,7 +31,7 @@ pub async fn run_connection(
     authority: AuthorityHandle,
     terminals: TerminalRegistry,
     product_runs: ProductRunService,
-    shutdown: mpsc::Sender<ShutdownRequest>,
+    shutdown: mpsc::Sender<ShutdownCommand>,
     mut stop: watch::Receiver<bool>,
 ) -> Result<(), DaemonError> {
     let peer = connection.peer();
@@ -55,6 +59,7 @@ pub async fn run_connection(
     let mut heartbeat_tick = tokio::time::interval(Duration::from_secs(10));
     heartbeat_tick.set_missed_tick_behavior(MissedTickBehavior::Skip);
     heartbeat_tick.tick().await;
+    let mut resources_released = false;
 
     let result = async {
         loop {
@@ -93,7 +98,7 @@ pub async fn run_connection(
                                 .await?;
                             return Ok(());
                         }
-                        handle_request(
+                        let shutdown_events = handle_request(
                             &mut frames,
                             &authority,
                             &shutdown,
@@ -107,6 +112,24 @@ pub async fn run_connection(
                             request,
                         )
                         .await?;
+                        if let Some(events) = shutdown_events {
+                            authority
+                                .abandon_artifact_transfers(
+                                    context.actor_id(),
+                                    context.protocol().session_id(),
+                                    artifacts.transfer_ids(),
+                                )
+                                .await?;
+                            terminals.release_attachments(
+                                context.actor_id(),
+                                context.protocol().session_id(),
+                                &terminal_bindings,
+                            );
+                            terminal_bindings.clear();
+                            resources_released = true;
+                            relay_shutdown(&mut frames, context.protocol(), events).await?;
+                            return Ok(());
+                        }
                     }
                     AppMessage::Control(control) => {
                         if control.context() != context.protocol() {
@@ -149,23 +172,51 @@ pub async fn run_connection(
         }
     }
     .await;
-    let cleanup = authority
-        .abandon_artifact_transfers(
+    let cleanup = if resources_released {
+        Ok(())
+    } else {
+        let cleanup = authority
+            .abandon_artifact_transfers(
+                context.actor_id(),
+                context.protocol().session_id(),
+                artifacts.transfer_ids(),
+            )
+            .await;
+        terminals.release_attachments(
             context.actor_id(),
             context.protocol().session_id(),
-            artifacts.transfer_ids(),
-        )
-        .await;
-    terminals.release_attachments(
-        context.actor_id(),
-        context.protocol().session_id(),
-        &terminal_bindings,
-    );
+            &terminal_bindings,
+        );
+        cleanup
+    };
     match (result, cleanup) {
         (Err(error), _) => Err(error),
         (Ok(()), Err(error)) => Err(error),
         (Ok(()), Ok(())) => Ok(()),
     }
+}
+
+async fn relay_shutdown<S>(
+    frames: &mut crate::AppFrameStream<S>,
+    context: peritus_app_protocol::ProtocolContext,
+    mut events: ShutdownEventReceiver,
+) -> Result<(), DaemonError>
+where
+    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
+{
+    while let Some(payload) = events.recv().await {
+        let complete = matches!(payload, AppEventPayload::ShutdownComplete(_));
+        frames.write(&AppMessage::Event(AppEventEnvelope::new(context, payload))).await?;
+        if complete {
+            return Ok(());
+        }
+    }
+    Err(DaemonError::new(
+        DaemonErrorCode::Transport,
+        DaemonRecovery::Retry,
+        "relay daemon shutdown",
+        "shutdown reporting channel closed before completion",
+    ))
 }
 
 enum ConnectionAction {
@@ -193,21 +244,14 @@ where
         for event in events {
             let (payload, terminal) = match event {
                 TerminalBridgeEvent::Output(output) => {
-                    (peritus_app_protocol::AppEventPayload::TerminalOutput(output), None)
+                    (AppEventPayload::TerminalOutput(output), None)
                 }
                 TerminalBridgeEvent::Exited(exit) => {
                     let process_id = exit.binding().process_id();
-                    (
-                        peritus_app_protocol::AppEventPayload::TerminalExited(exit),
-                        Some((exit.binding(), process_id)),
-                    )
+                    (AppEventPayload::TerminalExited(exit), Some((exit.binding(), process_id)))
                 }
             };
-            frames
-                .write(&AppMessage::Event(peritus_app_protocol::AppEventEnvelope::new(
-                    context, payload,
-                )))
-                .await?;
+            frames.write(&AppMessage::Event(AppEventEnvelope::new(context, payload))).await?;
             if let Some((binding, process_id)) = terminal {
                 completed.push(binding);
                 terminals.retire(process_id).map_err(terminal_bridge_error)?;

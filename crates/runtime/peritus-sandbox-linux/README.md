@@ -30,3 +30,11 @@ Native cleanup kills and drains only the exact owned cgroup leaf. Recovery requi
 root birth identity and a leaf member whose live process ancestry reaches that root; mismatched or
 inaccessible state remains fail-closed. The crate contains no unsafe Rust; Linux syscall wrappers
 are provided by reviewed safe dependencies.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-sandbox-linux
+```

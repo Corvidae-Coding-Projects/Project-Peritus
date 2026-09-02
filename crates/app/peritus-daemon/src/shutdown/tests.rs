@@ -53,7 +53,7 @@ fn client_shutdown_reports_monotonic_exact_unclean_truth() {
     coordinator
         .record_stage(ShutdownStage::WorkersJoined, first.with_workers(0))
         .expect("unused stages may be skipped monotonically");
-    assert!(coordinator.record_stage(ShutdownStage::ConnectionsJoined, first).is_err());
+    assert!(coordinator.record_stage(ShutdownStage::ConnectionsDraining, first).is_err());
     assert!(coordinator.complete(first).is_err());
 
     coordinator.record_stage(ShutdownStage::AuthorityStopped, first).expect("final named stage");

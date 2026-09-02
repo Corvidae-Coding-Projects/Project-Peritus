@@ -8,6 +8,7 @@ use crate::{
     ErrorCode, RecoveryClass, SnapshotIdentity, WorkspaceAuthorizationRequest, WorkspaceCondition,
     WorkspaceError, WorkspaceGateway, WorkspaceManifest, WorkspaceOperation,
 };
+use crate::{SnapshotPublicationFailure, finalize_snapshot_manifest};
 
 /// Exact retained snapshot to restore and identity for its new successor snapshot.
 #[derive(Clone, Copy, Debug)]
@@ -177,14 +178,14 @@ impl WorkspaceGateway {
             snapshot.tree(),
             candidate.manifest_digest(),
         );
-        let artifact = manifest.finalize(artifacts, permit.dispatch_event()).map_err(|_| {
-            self.workspace_mut().state_mut().set_condition(WorkspaceCondition::Dirty);
-            rollback_error(
-                ErrorCode::Artifact,
-                RecoveryClass::Reconcile,
-                "rollback exists but its manifest was not finalized",
-            )
-        })?;
+        let artifact = finalize_snapshot_manifest(
+            &repository,
+            &snapshot,
+            &manifest,
+            artifacts,
+            permit.dispatch_event(),
+        )
+        .map_err(|failure| rollback_publication_error(self, &failure))?;
         self.workspace_mut().state_mut().install(identity.clone());
         Ok(RollbackOutcome {
             action_id: permit.action_id(),
@@ -195,6 +196,27 @@ impl WorkspaceGateway {
             artifact,
         })
     }
+}
+
+const fn rollback_publication_error(
+    gateway: &mut WorkspaceGateway,
+    failure: &SnapshotPublicationFailure,
+) -> WorkspaceError {
+    let compensated = failure.compensation_failure().is_none();
+    gateway.workspace_mut().state_mut().set_condition(if compensated {
+        WorkspaceCondition::Dirty
+    } else {
+        WorkspaceCondition::Indeterminate
+    });
+    rollback_error(
+        if compensated { ErrorCode::Artifact } else { ErrorCode::Git },
+        RecoveryClass::Reconcile,
+        if compensated {
+            "rollback manifest was not finalized; its retained snapshot was released"
+        } else {
+            "rollback manifest failed and retained snapshot cleanup was inconclusive"
+        },
+    )
 }
 
 /// Returns canonical payload bytes for an exact rollback action intent.

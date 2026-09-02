@@ -13,6 +13,8 @@ pub enum RetryCause {
     RateLimited,
     /// Provider explicitly returned a transient server failure.
     TransientProvider,
+    /// A normalized provider response explicitly permits a bounded fresh request.
+    SafeNewRequest,
     /// Submission may have reached the provider.
     AmbiguousSubmission,
     /// Provider accepted the response but no normalized event was exposed.
@@ -129,7 +131,8 @@ pub fn plan_retry(input: RetryInput) -> Result<RetryDecision, ProtocolError> {
         RetryCause::BeforeSend
         | RetryCause::Connect
         | RetryCause::RateLimited
-        | RetryCause::TransientProvider => Action::New,
+        | RetryCause::TransientProvider
+        | RetryCause::SafeNewRequest => Action::New,
         RetryCause::AmbiguousSubmission | RetryCause::AcceptedNoEvents => {
             if matches!(
                 input.guarantee,

@@ -164,16 +164,22 @@ fn constrained_turn_disables_runtime_authority_and_normalizes_inert_output() {
         assert!(turn.arguments.iter().any(|argument| argument == required), "missing {required}");
     }
     assert!(argument_pair(&turn.arguments, "--tools", ""));
+    assert!(argument_pair(&turn.arguments, "--effort", "high"));
     assert!(argument_pair(&turn.arguments, "--mcp-config", r#"{"mcpServers":{}}"#));
     assert!(argument_pair(&turn.arguments, "--disallowedTools", "mcp__*"));
     let schema = argument_after(&turn.arguments, "--json-schema").expect("schema argument");
     assert!(schema.contains("\"const\":\"lookup\""));
     let prompt = std::str::from_utf8(&turn.stdin).expect("prompt UTF-8");
     assert!(prompt.contains("look up 42"));
-    assert!(!prompt.contains("lookup"));
+    assert!(prompt.contains("\"peritus_tool_protocol\""));
+    assert!(prompt.contains("\"name\":\"lookup\""));
+    assert!(prompt.contains("\"maximum_calls_this_turn\":2"));
+    assert!(prompt.contains("\"arguments_schema\""));
     assert!(!prompt.contains("host policy"));
     let system = std::str::from_utf8(&turn.system).expect("system UTF-8");
     assert!(system.contains("sole agent harness"));
+    assert!(system.contains("do not attempt a Claude Code tool"));
+    assert!(system.contains("replay its tool_result"));
     assert!(system.contains("host policy"));
     assert!(turn.current_dir);
     assert_eq!(

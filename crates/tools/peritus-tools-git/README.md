@@ -17,3 +17,11 @@ against the independently committed C1 authorization before effect.
 `git.merge` is registered with its repository-history mutation class but returns a stable typed
 unsupported result without receiving a ref-mutation handle. It remains unavailable until C1 owns a
 separately authorized user-branch delivery operation.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-tools-git
+```

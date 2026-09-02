@@ -17,14 +17,14 @@ env:
   RUST_VERSION: 1.97.1
 
 jobs:
-  native-product:
-    name: Product lifecycle (${{ matrix.os }})
+  bootstrap:
+    name: Product lifecycle bootstrap (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, macos-15, windows-2025]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -32,5 +32,48 @@ jobs:
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
         with:
           toolchain: ${{ env.RUST_VERSION }}
-      - name: Qualify native package lifecycle
-        run: cargo run --locked --package xtask -- product-package-smoke
+      - name: Install Linux native sandbox prerequisite
+        if: ${{ runner.os == 'Linux' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends apparmor-profiles bubblewrap
+          sudo apparmor_parser --replace /usr/share/apparmor/extra-profiles/bwrap-userns-restrict
+          bwrap --version
+      - name: Qualify native package and public installer lifecycle
+        run: cargo run --locked --package xtask -- release-bootstrap-smoke
+
+  h2:
+    name: H2 scenarios ${{ matrix.shard }} (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - name: Install Linux native sandbox prerequisite
+        if: ${{ runner.os == 'Linux' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends apparmor-profiles bubblewrap
+          sudo apparmor_parser --replace /usr/share/apparmor/extra-profiles/bwrap-userns-restrict
+          bwrap --version
+      - name: Qualify one native H2 package scenario
+        run: >-
+          cargo run --locked --package xtask --
+          product-native-qualification-shard ${{ matrix.shard }}
+      - name: Retain native H2 report and raw evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: h2-${{ matrix.os }}-${{ matrix.shard }}
+          path: target/peritus-qualification/h2/**
+          if-no-files-found: warn
+          retention-days: 14

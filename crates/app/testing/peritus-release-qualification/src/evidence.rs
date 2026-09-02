@@ -1,6 +1,6 @@
 //! Signed evidence envelopes bound to an exact H4 candidate.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use peritus_release_artifacts::{
     ArtifactError, BoundedId, Ed25519PublicKey, Ed25519Signature, ReleaseBinding, ReleasePath,
@@ -10,7 +10,7 @@ use peritus_release_artifacts::{
 use crate::{QualificationError, QualificationErrorCode};
 
 /// Signed result asserted by the producer of an evidence record.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum EvidenceDisposition {
     /// The recorded check or evidence contract was satisfied.
@@ -40,7 +40,7 @@ impl EvidenceSignature {
 }
 
 /// Closed H4 evidence category.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum EvidenceKind {
     /// Signed H0 security qualification report.

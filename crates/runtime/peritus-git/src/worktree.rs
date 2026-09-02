@@ -16,6 +16,13 @@ pub fn recover_existing(
     recovery::recover_existing(repository, request)
 }
 
+pub fn recover_current(
+    repository: &GitRepository,
+    request: RecoverWorktree,
+) -> Result<RegisteredWorktree, GitError> {
+    recovery::recover_current(repository, request)
+}
+
 /// Intended access class for a managed worktree.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum WorktreeAccess {
@@ -44,6 +51,30 @@ impl CreateWorktree {
         access: WorktreeAccess,
     ) -> Self {
         Self { name, destination: destination.into(), baseline, access }
+    }
+}
+
+/// Request to re-register a previously trusted detached worktree at its current HEAD.
+///
+/// Unlike [`CreateWorktree`], this request deliberately has no caller-supplied baseline. Recovery
+/// observes and validates the existing linked worktree before adopting its current detached commit
+/// and tree. Working-tree changes are retained.
+#[derive(Clone, Debug)]
+pub struct RecoverWorktree {
+    name: WorktreeName,
+    destination: PathBuf,
+    access: WorktreeAccess,
+}
+
+impl RecoverWorktree {
+    /// Creates a recovery request for an existing, previously trusted managed worktree.
+    #[must_use]
+    pub fn new(
+        name: WorktreeName,
+        destination: impl Into<PathBuf>,
+        access: WorktreeAccess,
+    ) -> Self {
+        Self { name, destination: destination.into(), access }
     }
 }
 

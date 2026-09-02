@@ -140,6 +140,15 @@ pub enum QuarantineState {
     },
 }
 
+/// Integrity state established by content verification and restart recovery.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum IntegrityState {
+    /// The finalized bytes match their durable digest and size.
+    Healthy,
+    /// Verification found divergent bytes and restart recovery contained them.
+    Corrupt,
+}
+
 /// Complete metadata value persisted by the C0 database boundary.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ArtifactMetadata {
@@ -150,6 +159,7 @@ pub struct ArtifactMetadata {
     finalization: FinalizationState,
     creating_event: EventId,
     quarantine: QuarantineState,
+    integrity: IntegrityState,
 }
 
 impl ArtifactMetadata {
@@ -164,7 +174,21 @@ impl ArtifactMetadata {
         creating_event: EventId,
         quarantine: QuarantineState,
     ) -> Self {
-        Self { digest, size, media_type, encryption, finalization, creating_event, quarantine }
+        Self {
+            digest,
+            size,
+            media_type,
+            encryption,
+            finalization,
+            creating_event,
+            quarantine,
+            integrity: IntegrityState::Healthy,
+        }
+    }
+
+    pub(crate) const fn with_integrity(mut self, integrity: IntegrityState) -> Self {
+        self.integrity = integrity;
+        self
     }
 
     /// Returns the content digest.
@@ -209,11 +233,18 @@ impl ArtifactMetadata {
         self.quarantine
     }
 
+    /// Returns the last durable integrity classification.
+    #[must_use]
+    pub const fn integrity(&self) -> IntegrityState {
+        self.integrity
+    }
+
     /// Returns whether a journal transaction may reference this metadata record.
     #[must_use]
     pub const fn is_referenceable(&self) -> bool {
         matches!(self.finalization, FinalizationState::Finalized)
             && matches!(self.quarantine, QuarantineState::Active)
+            && matches!(self.integrity, IntegrityState::Healthy)
     }
 }
 

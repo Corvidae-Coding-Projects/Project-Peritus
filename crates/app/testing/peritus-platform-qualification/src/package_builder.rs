@@ -22,8 +22,8 @@ pub fn run_from_env() -> Result<(), Box<dyn std::error::Error>> {
     let root = workspace_root()?;
     let platform = host_platform()?;
     let architecture = host_architecture()?;
-    let use_debug_artifacts = parse_arguments()?;
-    if !use_debug_artifacts {
+    let artifact_source = parse_arguments()?;
+    if artifact_source == ArtifactSource::BuildRelease {
         build_binaries(&root, platform)?;
     }
     let output =
@@ -35,7 +35,10 @@ pub fn run_from_env() -> Result<(), Box<dyn std::error::Error>> {
     fs::create_dir_all(output.join("libexec"))?;
     fs::create_dir_all(output.join("share/peritus"))?;
     let executable_suffix = if platform == Platform::Windows { ".exe" } else { "" };
-    let target = root.join(if use_debug_artifacts { "target/debug" } else { "target/release" });
+    let target = root.join(match artifact_source {
+        ArtifactSource::Debug => "target/debug",
+        ArtifactSource::BuildRelease | ArtifactSource::PreparedRelease => "target/release",
+    });
     let helper = helper_name(platform);
     let mut artifacts = stage_binaries(&target, &output, helper, executable_suffix)?;
     artifacts.extend(stage_packaging_assets(&root, &output, platform)?);
@@ -98,12 +101,20 @@ fn stage_binaries(
     ])
 }
 
-fn parse_arguments() -> Result<bool, &'static str> {
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ArtifactSource {
+    BuildRelease,
+    Debug,
+    PreparedRelease,
+}
+
+fn parse_arguments() -> Result<ArtifactSource, &'static str> {
     let mut arguments = env::args().skip(1);
     match (arguments.next().as_deref(), arguments.next()) {
-        (None, None) => Ok(false),
-        (Some("--use-debug-artifacts"), None) => Ok(true),
-        _ => Err("usage: peritus-package [--use-debug-artifacts]"),
+        (None, None) => Ok(ArtifactSource::BuildRelease),
+        (Some("--use-debug-artifacts"), None) => Ok(ArtifactSource::Debug),
+        (Some("--use-release-artifacts"), None) => Ok(ArtifactSource::PreparedRelease),
+        _ => Err("usage: peritus-package [--use-debug-artifacts|--use-release-artifacts]"),
     }
 }
 

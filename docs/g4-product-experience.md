@@ -8,8 +8,9 @@ peritus
 ```
 
 No normal flow requires an IPC endpoint, an environment export, an internal identifier, or a
-hand-written TOML file. From a source checkout, `cargo xtask product-install` creates and installs
-the checked native package first.
+hand-written TOML file. Published releases install through the root POSIX or PowerShell bootstrap;
+from a source checkout, `cargo xtask product-install` creates and installs the same checked native
+package.
 
 ## First launch
 
@@ -22,11 +23,20 @@ Provider onboarding shows every available route and readiness state. Account-bac
 Claude routes delegate login and requests to the official `codex` and `claude` executables, which
 remain the credential owners. Direct OpenAI, Anthropic, Gemini, and compatible routes use hidden
 credential input and the operating-system credential store. Peritus stores only provider settings
-and opaque credential references. Offline mode remains available for inspection.
+and opaque credential references. When at least two routes are selected, setup asks whether a role
+may automatically try another selected provider after its current provider is unavailable. The
+choice defaults off, is stored with provider settings, and returns to off if fewer than two routes
+remain. Offline mode remains available for inspection.
 
 Completed setup is resumable. Repeat launch skips healthy decisions, repairs only the provider or
 workspace that needs attention, regenerates immutable daemon configuration when settings change,
 and starts or reuses the packaged local daemon before entering the UI.
+
+The launcher records both the immutable daemon configuration and the installed daemon executable
+digest. After an upgrade it waits for an older daemon to withdraw its endpoint and release its
+instance lock before starting the replacement. If a connection later drops, the offline status
+displays `R restart/reconnect`; that action returns daemon ownership to the launcher, restores
+readiness, and resumes the durable application session.
 
 ## Coding runs
 
@@ -34,25 +44,96 @@ The Runs view is the ordinary work surface:
 
 1. Press `n`, describe the desired coding outcome, and press Enter. Shift-Enter adds a line.
 2. Peritus sends the task and the selected writer, reviewer, and fixer providers to the daemon.
-3. The writer returns a checked complete-file edit plan for the managed worktree.
-4. Peritus runs the repository's detected native checks, presents the bounded diff, and asks an
-   independent reviewer for specific blocking findings.
-5. A fixer receives real check or review failures and can revise the work for up to two cycles.
-6. The run completes only when repository checks pass and the independent review is nonblocking.
+3. Before code is written, a read-only design pass inspects the real repository and publishes a
+   detailed Markdown design beside the durable run trace. It covers acceptance criteria,
+   repository findings, architecture and interfaces, data and control flow, exact files and
+   modules, implementation slices, verification, and realistic risks. The writer and every fixer
+   receive that exact design; a material conversational redirect regenerates it before more code.
+   The harness requires a successful workspace listing and targeted file reads, then appends those
+   observed paths to the artifact as deterministic grounding evidence.
+4. The production D0 writer inspects and searches the real managed worktree, makes bounded edits,
+   runs structured commands, observes build/test failures, and retries before reporting readiness.
+   Its embedded production-engineering workflow and role skills require cohesive modules, thin
+   composition roots, explicit interfaces, separately testable deterministic logic, and disjoint
+   file ownership for parallel slices. An existing file cannot be written or patched until that
+   exact file has been read during the current developer turn.
+   A model turn is not the lifetime of the run: malformed, empty, timeout, and recoverable
+   transport outcomes receive up to three fresh bounded attempts. A 48-turn developer segment that
+   materially changes the exact Git candidate publishes a content checkpoint and continues in a
+   fresh repository-grounded segment. This keeps memory bounded while allowing productive goals to
+   run for as many segments as required. Exhausting a segment without changing the candidate is a
+   genuine no-progress stop rather than an arbitrary total-work limit. A malformed or ungrounded
+   task-level terminal receives its exact harness rejection on the next bounded attempt, so a model
+   can correct the contract rather than blindly repeat the same response.
+   Ordinary finite commands use `run_command`. A program that needs terminal input or background
+   progress uses `command_start`, which returns a stable run-owned handle. The writer can poll it,
+   write bounded input, resize its PTY, signal it, cancel its owned process tree, or reconcile an
+   interrupted observation. These controls route through the existing C4 router and daemon-owned
+   C2 process store; G4 does not carry a second shell or PTY manager. Output remains bounded and
+   artifact-backed. Live-handle recovery does not claim to recreate a lost terminal after a daemon
+   process restart; startup instead reconciles C2 state and exposes the product run as recoverable.
+5. D1 maps every exact changed file to its nearest Rust, Node, Python, or Go project manifest and
+   runs its source-layout policy and explicit format/compile/build/test/lint commands. Production
+   source files over 500 lines fail deterministically. Uncovered files, missing commands, failed
+   commands, or an empty candidate all refuse acceptance; an unrelated root project cannot satisfy
+   a nested game or package.
+6. The independent D2 reviewer returns typed findings. Policy derives blocker status, so
+   correctness, requested-behavior, build-coverage, test-coverage, and security findings block
+   regardless of the reviewer's severity wording. Findings remain open across daemon persistence
+   until a fixer addresses them and a fresh reviewer confirms their absence.
+7. E0 sends all failed checks and conserved findings to the tool-capable fixer and repeats fresh
+   gates and review within an explicit bounded cycle budget.
+8. The run completes only when exact-target gates pass and no conserved policy blocker remains.
+   Completion retains the original task-level result plus any verified fixer summaries.
+
+Every run is also a durable conversation. Select it and press Enter or `m` to reply, redirect, add
+context, or say continue; Shift-Enter adds a line. Messages sent during active work are incorporated
+at the next safe writer or reviewer boundary. Messages sent to a Failed, Cancelled, Recovery
+required, Waiting for user, or Complete run resume the same managed worktree with the entire
+conversation. When the writer genuinely needs a material choice it asks one direct question and
+enters Waiting for user instead of guessing or abandoning the run.
 
 Peritus admits one active coding run per managed worktree, preventing two model loops from editing
-the same files at once. Other configured workspaces remain independently usable.
+the same files at once. A completed but uncommitted deliverable also reserves that worktree until
+it is committed or discarded, preventing a later task from silently absorbing its files. Other
+configured workspaces remain independently usable.
 
-The daemon persists each visible phase: Queued, Writing, Checking, Reviewing, Fixing, Verifying,
-Complete, Failed, Cancelled, or Recovery required. The Runs view shows that state as text as well as
-color, the Diff view shows tracked and newly created text files, and the Review view shows the latest
-review or repository checks. Press `x` to cancel a selected run and `r` to retry a failed,
-cancelled, or interrupted run. A daemon restart marks an unfinished run Recovery required rather
-than pretending it completed.
+The daemon persists each visible phase: Queued, Designing, Writing, Checking, Reviewing, Fixing,
+Verifying, Waiting for user, Complete, Failed, Cancelled, or Recovery required, together with its
+bounded conversation. The Runs view shows that state as text as well as color, the Diff view shows
+tracked and newly created text files, and the Review view shows the latest review or repository
+checks. While a run is active, its status reports elapsed time, time since the last completed
+durable effect, the remaining eight-hour uninterrupted run horizon, provider requests, tool calls,
+retries, compactions, and normalized token/cache/cost counters when the provider supplies them. A
+provider-switch counter appears after an opted-in fallback. A long quiet provider call therefore
+remains visibly alive without inventing progress. The generous cumulative ceilings stop runaway
+execution across the entire designer-writer-reviewer-fixer run; they do not shorten productive
+segments or replace the existing progress-based continuation rule.
+Before a writable filesystem or command tool starts, the runner syncs a bounded receipt containing
+the deterministic role/invocation/effect identity, provider call ID, tool name, and canonical
+request digest. It syncs the bounded result after completion. An exact completed call replays its
+recorded result without repeating the effect. An interrupted filesystem operation may retry through
+its exact preconditions and no-op behavior, while an interrupted external command becomes an
+explicit ambiguous result and is never relaunched automatically.
+The run summary names the durable detailed-design path.
+After completion, the handoff shows the managed path, exact changed-file count, exact successful
+commands, and how to run the result. Press `i` to inspect, `a` to accept, `c` to commit only the
+deliverable paths, `p` to export an exact patch, or uppercase `D` to discard only those paths.
+Press `x` to cancel a selected run and `r` to retry a failed or cancelled run. After a daemon
+restart, an unfinished run is reconstructed as Recovery required and immediately resumed
+when its provider and workspace are still available; if automatic admission cannot proceed, it
+stays visibly recoverable for manual `r`. Durable conversation, candidate files, traces, and typed
+findings remain conserved.
 
 Provider roles default to the selected provider. In the Runs view, press `w`, `e`, or `f` to cycle
-the writer, reviewer, or fixer independently before starting the next task. Press `?` for the full
-keyboard reference. Existing G2 trace, evolution, approval, and terminal views remain available.
+the writer, reviewer, or fixer independently before starting the next task. If automatic failover
+was enabled in provider settings, each role first exhausts the selected provider's bounded retry
+policy, then considers the other configured tool-capable routes in stable order. A route that lacks
+required image capability is skipped through the same recorded boundary. Safety, refusal,
+cancellation, and ambiguous-acceptance outcomes stop without switching. The trace retains role,
+cycle, previous and next profile identities, and the stable reason for every switch. Press `?` for
+the full keyboard reference. Existing G2 trace, evolution, approval, and terminal views remain
+available.
 
 ## Workspace status and settings
 
@@ -67,12 +148,19 @@ The workspace menu uses plain path labels and text status:
 Forgetting a trusted entry removes it from the recent list but retains the registered managed copy
 for safe daemon recovery and later product cleanup. It never silently discards unfinished changes.
 An interrupted registration publication is recovered from the exact managed worktree rather than
-creating another copy.
+creating another copy. Repairing a previously trusted copy re-registers its actual validated
+detached HEAD, preserving both agent commits and unfinished files instead of demanding that it
+still match a newer source-checkout HEAD.
 
 Focused settings commands are:
 
 ```text
 peritus open [PATH]     Open an explicit repository, defaulting to the current directory
+peritus update          Check for and install the latest public release
+peritus update --disable-checks
+                        Disable automatic startup checks; manual checks still work
+peritus update --enable-checks
+                        Re-enable automatic startup checks
 peritus providers       Add, remove, repair, or select providers
 peritus workspaces      Switch, add, trust, repair, or forget workspaces
 ```
@@ -96,9 +184,25 @@ daemon, TUI, helper, optional supervisor template, and legacy supervisor registr
 preserving provider credentials, configuration generations, managed worktrees, run state, logs,
 and diagnostics.
 
+The public `install.sh` and `install.ps1` bootstraps resolve the latest GitHub release, select the
+native platform and architecture archive, verify its separately published SHA-256 value, and invoke
+the package's own install or upgrade adapter. A tagged release first creates a retained draft,
+builds and qualifies Linux, macOS, and Windows packages independently, uploads all native archives
+and checksums, and publishes only after every package job succeeds.
+
+Interactive startup performs a cached release check at most once every six hours. Network failure
+does not block offline use. When a newer exact `vMAJOR.MINOR.PATCH` release exists, Peritus offers
+the update with a useful default; `peritus update` performs the same check immediately. Archive
+downloads stream to the protected cache with a 1 GiB bound and are checksum-verified before native
+installation. Unix upgrades finish transactionally before exit. Windows launches a detached helper
+that waits for the running executable to exit, applies the transactional upgrade, and verifies the
+new installed version. Automatic checks default on; the update command's `--disable-checks` and
+`--enable-checks` options persist the user's choice without affecting manual checks.
+
 Hosted Linux, macOS, and Windows gates assemble native packages from already checked build outputs,
-exercise install, repeat command launch, upgrade, and uninstall, and assert protected-state
-preservation. The production package command separately builds optimized locked artifacts.
+exercise install, repeat command launch, upgrade, uninstall, the public bootstrap, and checksum
+rejection, and assert protected-state preservation. The production package command separately
+builds optimized locked artifacts.
 
 ## Local state
 

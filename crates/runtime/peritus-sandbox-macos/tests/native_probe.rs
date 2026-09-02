@@ -19,10 +19,10 @@ fn live_macos_probe_reports_installed_capabilities_truthfully() {
     assert!(evidence.os_version.is_some_and(|version| version.0 >= 15));
     assert!(evidence.helper);
     assert!(evidence.helper_digest.is_some());
-    assert!(!evidence.profile_compilation || evidence.seatbelt);
-    let expected_core =
-        evidence.seatbelt && evidence.profile_compilation && evidence.process_containment;
-    assert_eq!(probe.core_supported(), expected_core);
+    assert!(evidence.seatbelt);
+    assert!(evidence.profile_compilation);
+    assert!(evidence.process_containment);
+    assert!(probe.core_supported());
 
     let supported_features = probe.supported_features();
     let descriptor = MacosDescriptor::from_probe(probe).unwrap();

@@ -1,5 +1,5 @@
 use super::workflow_ci;
-use super::workflow_commands::CommandPolicy;
+use super::workflow_command_policy::CommandPolicy;
 use super::workflow_files::{DocumentKind, action_files, workflow_files};
 use super::workflow_governance;
 use super::workflow_local::{LocalUseKind, validate_local_reference};
@@ -169,6 +169,7 @@ fn validate_job(
     match job {
         Yaml::Hash(mapping) => {
             workflow_run::reject_defaults(mapping, path, location, diagnostics);
+            validate_job_timeout(mapping, path, location, diagnostics);
             let mut count = mapping_value(mapping, "uses").map_or(0, |uses| {
                 validate_uses(
                     root,
@@ -216,6 +217,22 @@ fn validate_job(
             })
             .sum(),
         _ => 0,
+    }
+}
+
+fn validate_job_timeout(
+    mapping: &Hash,
+    path: &Path,
+    location: &str,
+    diagnostics: &mut Vec<Diagnostic>,
+) {
+    let timeout = mapping_value(mapping, "timeout-minutes").and_then(Yaml::as_i64);
+    if !timeout.is_some_and(|minutes| (1..=10).contains(&minutes)) {
+        diagnostics.push(Diagnostic::at(
+            path,
+            format!("`{location}` does not have a timeout from 1 through 10 minutes"),
+            "split the work into bounded jobs and keep every hosted runner at or below ten minutes",
+        ));
     }
 }
 

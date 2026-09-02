@@ -12,7 +12,7 @@ use peritus_trace::TraceProjection;
 
 use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
 
-pub(super) fn ensure_current(
+pub fn ensure_current(
     journal: &mut SqliteJournal,
     database: &Path,
 ) -> Result<ProjectionStore, DaemonError> {

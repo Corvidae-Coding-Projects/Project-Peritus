@@ -6,9 +6,9 @@ SQLite database, and admits revision-bound evidence. It does not run tools, work
 processes, or any other external effect.
 
 This document describes the library APIs and recovery behavior implemented in the five C0 crates.
-There is not yet a daemon, operator CLI, or automated startup supervisor that composes these steps.
-Applications embedding C0 must preserve the ordering below and must supply deployment-specific
-paths, identities, retention policy, and outage coordination.
+The production `peritus-daemon` composes them through its checked startup supervisor. Other
+applications embedding C0 must preserve the same ordering and supply deployment-specific paths,
+identities, retention policy, and outage coordination.
 
 ## Durable ownership
 
@@ -212,11 +212,14 @@ Publication necessarily precedes catalog insertion. A crash in that interval lea
 untracked object, never an authoritative reference. On open, recovery removes abandoned temporary
 files, re-hashes every cataloged or discovered object, completes interrupted quarantine moves,
 moves untracked active objects to quarantine for one recovery cycle, and removes untracked files
-already left in quarantine by an earlier completed sweep. Missing cataloged bytes or a path/content
-digest mismatch is a terminal integrity failure.
+already left in quarantine by an earlier completed sweep. A cataloged object whose bytes disagree
+with its recorded digest or size is durably marked corrupt, moved out of the active namespace, and
+made unavailable while its audit reference remains intact. The corrupt state and move are
+restart-safe. Missing cataloged bytes and noncanonical layouts remain terminal integrity failures.
 
-Journal and evidence roots live in the shared `artifact_references` table. A reference may name
-only finalized active metadata. `plan_gc` loads the durable inventory and both root sets and creates
+Journal and evidence roots live in the shared `artifact_references` table. A new reference may name
+only finalized, active, healthy metadata. Existing roots remain as audit evidence if recovery later
+contains corrupt bytes. `plan_gc` loads the durable inventory and both root sets and creates
 a canonical plan for an explicit positive `CollectionGeneration`:
 
 - an active unmarked object is quarantined;
@@ -339,8 +342,9 @@ indeterminate journal and migration commits have identity-based resolution paths
 
 ## Operator startup and recovery ordering
 
-The following is the safe composition contract for an embedding daemon. It is not yet packaged as
-an executable command.
+The following is the safe composition contract for an embedding daemon. `peritus-daemon` implements
+this sequence in its startup modules and reports the exact failed phase before it enables later
+workers or command intake.
 
 1. Quiesce every writer and preserve the configured database, artifact root, store identity,
    migration operation identities, and backup directory. A fresh deployment must create the empty

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://peritus.invalid/schemas/security/native-host-facts-v1.schema.json",
+  "title": "Peritus H0 native host facts v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "platform",
+    "host_os",
+    "host_arch",
+    "candidate_commit",
+    "candidate_source_sha256",
+    "rustc_verbose",
+    "controller_file",
+    "controller_sha256",
+    "controller_bytes",
+    "runner_os",
+    "runner_arch",
+    "runner_image",
+    "runner_image_version"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "platform": {"enum": ["linux", "macos", "windows"]},
+    "host_os": {"type": "string", "minLength": 1, "maxLength": 64},
+    "host_arch": {"type": "string", "minLength": 1, "maxLength": 64},
+    "candidate_commit": {"type": "string", "pattern": "^[0-9a-f]{40,64}$"},
+    "candidate_source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "rustc_verbose": {"type": "string", "minLength": 1, "maxLength": 8192},
+    "controller_file": {"type": "string", "minLength": 1, "maxLength": 255},
+    "controller_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "controller_bytes": {"type": "integer", "minimum": 1},
+    "runner_os": {"type": ["string", "null"], "maxLength": 256},
+    "runner_arch": {"type": ["string", "null"], "maxLength": 256},
+    "runner_image": {"type": ["string", "null"], "maxLength": 256},
+    "runner_image_version": {"type": ["string", "null"], "maxLength": 256}
+  }
+}

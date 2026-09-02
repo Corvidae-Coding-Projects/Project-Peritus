@@ -7,3 +7,11 @@ for accepted commands.
 The crate consumes exact-revision policy, budget, and acceptance facts from the B1/B2 verified
 crates. It performs no persistence, I/O, clock reads, process execution, or durable authorization.
 Commands are requests; only checked witnesses can advance authority-bearing phases.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-kernel
+```

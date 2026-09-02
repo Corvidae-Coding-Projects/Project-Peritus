@@ -2037,6 +2037,7 @@ name = "peritus-daemon"
 version = "0.0.0"
 dependencies = [
  "fs4",
+ "futures-util",
  "libc",
  "peritus-app-protocol",
  "peritus-approval",
@@ -2049,12 +2050,15 @@ dependencies = [
  "peritus-evidence",
  "peritus-evolution",
  "peritus-gates",
+ "peritus-git",
  "peritus-harness",
  "peritus-journal",
  "peritus-kernel",
+ "peritus-leases",
  "peritus-migrations",
  "peritus-model-protocol",
  "peritus-orchestrator",
+ "peritus-patch",
  "peritus-policy",
  "peritus-process",
  "peritus-product-runner",
@@ -2070,6 +2074,7 @@ dependencies = [
  "peritus-sandbox",
  "peritus-scheduler",
  "peritus-secrets",
+ "peritus-spec",
  "peritus-telemetry",
  "peritus-test-support",
  "peritus-tool-protocol",
@@ -2164,6 +2169,7 @@ dependencies = [
 name = "peritus-evolution"
 version = "0.0.0"
 dependencies = [
+ "ed25519-dalek",
  "peritus-approval",
  "peritus-artifact-store",
  "peritus-codec",
@@ -2183,6 +2189,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "peritus-external-benchmarks"
+version = "0.0.0"
+dependencies = [
+ "base64",
+ "peritus-model-protocol",
+ "peritus-process",
+ "peritus-product-runner",
+ "peritus-provider-anthropic",
+ "peritus-provider-core",
+ "peritus-provider-openai",
+ "peritus-types",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "tempfile",
+ "thiserror 2.0.20",
+ "tokio",
+]
+
+[[package]]
 name = "peritus-gates"
 version = "0.0.0"
 dependencies = [
@@ -2194,8 +2220,10 @@ dependencies = [
  "peritus-tool-protocol",
  "peritus-tools-quality",
  "peritus-types",
+ "serde_json",
  "sha2 0.11.0",
  "tempfile",
+ "toml",
  "vstd",
 ]
 
@@ -2267,6 +2295,7 @@ version = "0.0.0"
 dependencies = [
  "crossterm",
  "fs4",
+ "futures-util",
  "getrandom 0.4.3",
  "peritus-approval",
  "peritus-daemon",
@@ -2276,6 +2305,9 @@ dependencies = [
  "peritus-tui",
  "peritus-types",
  "peritus-workspace",
+ "reqwest",
+ "serde_json",
+ "sha2 0.11.0",
  "tempfile",
  "thiserror 2.0.20",
  "tokio",
@@ -2389,14 +2421,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "peritus-performance-qualification"
+version = "0.0.0"
+dependencies = [
+ "peritus-app-protocol",
+ "peritus-approval",
+ "peritus-benchmarks",
+ "peritus-codec",
+ "peritus-kernel",
+ "peritus-protocol",
+ "peritus-scheduler",
+ "peritus-types",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "tempfile",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "peritus-platform-qualification"
 version = "0.0.0"
 dependencies = [
+ "nix 0.31.3",
+ "peritus-approval",
+ "peritus-sandbox-linux",
+ "peritus-sandbox-macos",
+ "peritus-sandbox-windows",
+ "peritus-types",
+ "portable-pty",
  "serde",
+ "serde_json",
  "sha2 0.11.0",
  "tempfile",
  "thiserror 2.0.20",
  "toml",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2465,15 +2525,37 @@ dependencies = [
 name = "peritus-product-runner"
 version = "0.0.0"
 dependencies = [
+ "peritus-agent",
+ "peritus-artifact-store",
+ "peritus-budget",
+ "peritus-codec",
+ "peritus-gates",
+ "peritus-journal",
+ "peritus-kernel",
+ "peritus-leases",
  "peritus-model-protocol",
+ "peritus-orchestrator",
+ "peritus-policy",
+ "peritus-process",
+ "peritus-protocol",
  "peritus-provider-anthropic",
  "peritus-provider-core",
  "peritus-provider-openai",
+ "peritus-review",
+ "peritus-sandbox",
+ "peritus-spec",
+ "peritus-tool-protocol",
+ "peritus-tool-router",
+ "peritus-tools-shell",
  "peritus-types",
+ "rusqlite",
  "serde",
  "serde_json",
+ "sha2 0.11.0",
  "tempfile",
  "tokio",
+ "toml",
+ "yaml-rust2",
 ]
 
 [[package]]
@@ -2641,6 +2723,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "peritus-release-operator"
+version = "0.0.0"
+dependencies = [
+ "peritus-release-artifacts",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "thiserror 2.0.20",
+ "toml",
+]
+
+[[package]]
 name = "peritus-release-policy"
 version = "0.0.0"
 dependencies = [
@@ -2652,6 +2746,7 @@ dependencies = [
 name = "peritus-release-qualification"
 version = "0.0.0"
 dependencies = [
+ "ed25519-dalek",
  "peritus-model-protocol",
  "peritus-provider-anthropic",
  "peritus-provider-core",
@@ -2661,6 +2756,7 @@ dependencies = [
  "peritus-types",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror 2.0.20",
  "tokio",
 ]
@@ -2669,7 +2765,29 @@ dependencies = [
 name = "peritus-resilience"
 version = "0.0.0"
 dependencies = [
+ "libc",
+ "nix 0.31.3",
+ "serde",
+ "serde_json",
  "sha2 0.11.0",
+ "tempfile",
+ "thiserror 2.0.20",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "peritus-resilience-qualification"
+version = "0.0.0"
+dependencies = [
+ "peritus-approval",
+ "peritus-resilience",
+ "peritus-types",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]
@@ -2801,12 +2919,17 @@ dependencies = [
 name = "peritus-security-qualification"
 version = "0.0.0"
 dependencies = [
+ "find-msvc-tools",
+ "nix 0.31.3",
  "peritus-security-policy",
  "peritus-types",
  "serde",
  "serde_json",
  "sha2 0.11.0",
+ "tempfile",
  "thiserror 2.0.20",
+ "toml",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

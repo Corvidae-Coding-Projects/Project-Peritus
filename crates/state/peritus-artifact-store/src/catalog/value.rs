@@ -4,7 +4,7 @@ use peritus_types::{EventId, Sha256Digest};
 
 use crate::{
     ArtifactDigest, ArtifactMetadata, ArtifactStoreError, CollectionGeneration, EncryptionMetadata,
-    ErrorCode, FinalizationState, MediaType, QuarantineState, RecoveryClass,
+    ErrorCode, FinalizationState, IntegrityState, MediaType, QuarantineState, RecoveryClass,
 };
 
 pub(super) struct RawMetadata {
@@ -17,6 +17,7 @@ pub(super) struct RawMetadata {
     pub(super) creating_event: Vec<u8>,
     pub(super) quarantine: i64,
     pub(super) quarantine_generation: Option<i64>,
+    pub(super) integrity: i64,
 }
 
 impl RawMetadata {
@@ -42,6 +43,11 @@ impl RawMetadata {
             _ => return Err(corrupt_catalog("unknown finalization state")),
         };
         let quarantine = decode_quarantine(self.quarantine, self.quarantine_generation)?;
+        let integrity = match self.integrity {
+            1 => IntegrityState::Healthy,
+            2 => IntegrityState::Corrupt,
+            _ => return Err(corrupt_catalog("unknown integrity state")),
+        };
         let creating_event = EventId::new(array::<16>(&self.creating_event)?)
             .map_err(|_| corrupt_catalog("zero creating event identity"))?;
         Ok(ArtifactMetadata::new(
@@ -52,7 +58,8 @@ impl RawMetadata {
             finalization,
             creating_event,
             quarantine,
-        ))
+        )
+        .with_integrity(integrity))
     }
 }
 

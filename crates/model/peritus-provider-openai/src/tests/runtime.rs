@@ -5,7 +5,9 @@ use std::collections::BTreeSet;
 use peritus_model_protocol::{Capability, RequestedCapabilities, negotiate};
 use peritus_provider_core::ProcessLimits;
 
-use super::runtime_support::{codex_profile, codex_tool_request};
+use super::runtime_support::{
+    codex_image_profile, codex_image_request, codex_profile, codex_tool_request,
+};
 use super::support::{fixture, model_limits, profile_minimal};
 use crate::runtime::output::{DecodeFailure, decode};
 use crate::runtime::request;
@@ -21,6 +23,7 @@ fn profile_and_projection_are_exact_and_minimum_safe() {
     assert!(prompt.contains("PERITUS_PROVIDER_REQUEST_JSON"));
     assert!(prompt.contains("host_tools"));
     assert!(prompt.contains("max_output_tokens_advisory"));
+    assert_eq!(encoded.reasoning_effort(), "high");
     assert_eq!(
         schema.pointer("/properties/tool_calls/items/properties/name/enum/0"),
         Some(&serde_json::Value::String("lookup".to_owned()))
@@ -38,6 +41,22 @@ fn profile_and_projection_are_exact_and_minimum_safe() {
         ProcessLimits::PRODUCTION,
     )
     .is_err());
+}
+
+#[test]
+fn inline_image_is_staged_outside_the_prompt_with_a_digest_descriptor() {
+    let profile = codex_image_profile("runtime-image");
+    let request = codex_image_request(&profile, "runtime-image-projection");
+    let encoded = request::encode(&request).expect("runtime image projection");
+    let prompt = core::str::from_utf8(&encoded.prompt).expect("prompt UTF-8");
+
+    assert!(prompt.contains("image_attachment"));
+    assert!(prompt.contains("attachment_index"));
+    assert!(prompt.contains("sha256"));
+    assert!(!prompt.contains("bounded-image-bytes"));
+    assert!(
+        CodexRuntimeConfig::new(missing_executable(), profile, ProcessLimits::PRODUCTION,).is_ok()
+    );
 }
 
 #[test]
@@ -74,6 +93,40 @@ fn decoder_rejects_corruption_incompletion_and_native_execution() {
         decode(&fixture("runtime-auth-error.jsonl"), &allowed, 0),
         Err(DecodeFailure::Authentication)
     ));
+}
+
+#[test]
+fn decoder_classifies_common_runtime_failures_without_retaining_provider_text() {
+    let allowed = BTreeSet::new();
+    let cases = [
+        (
+            br#"{"type":"turn.failed","error":{"message":"cyber policy: request rejected"}}
+"#
+            .as_slice(),
+            DecodeFailure::Safety,
+        ),
+        (
+            br#"{"type":"turn.failed","error":{"message":"rate limit reached"}}
+"#
+            .as_slice(),
+            DecodeFailure::RateLimited,
+        ),
+        (
+            br#"{"type":"turn.failed","error":{"message":"current quota exceeded"}}
+"#
+            .as_slice(),
+            DecodeFailure::QuotaExhausted,
+        ),
+        (
+            br#"{"type":"turn.failed","error":{"message":"input exceeds context window"}}
+"#
+            .as_slice(),
+            DecodeFailure::ContextLimit,
+        ),
+    ];
+    for (transcript, expected) in cases {
+        assert!(matches!(decode(transcript, &allowed, 0), Err(actual) if actual == expected));
+    }
 }
 
 #[test]

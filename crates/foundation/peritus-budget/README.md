@@ -40,3 +40,11 @@ external truth.
 
 This verification-class `V` crate depends only on `peritus-types` and the pinned `vstd`. A2 test
 support is a development dependency only.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-budget
+```

@@ -189,7 +189,9 @@ impl ToolExecution for ShellExecution {
         reason: CancellationReason,
         observed_at: AuthorityInstant,
     ) -> Result<ExecutionUpdate, DispatchFailure> {
-        self.control.cancel(cancellation(reason)).map_err(|error| failure::process(&error))?;
+        if self.control.terminal_result().is_none() {
+            self.control.cancel(cancellation(reason)).map_err(|error| failure::process(&error))?;
+        }
         self.poll_owned(observed_at)
     }
 

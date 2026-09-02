@@ -1,5 +1,5 @@
 use super::just_policy::validate_contents;
-use super::workflow_commands::CommandPolicy;
+use super::workflow_command_policy::CommandPolicy;
 use crate::error::Diagnostic;
 
 const CANONICAL: &str = r"

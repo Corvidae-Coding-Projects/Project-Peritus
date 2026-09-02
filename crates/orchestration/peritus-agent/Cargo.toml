@@ -29,6 +29,7 @@ peritus-tool-protocol = { version = "=0.0.0", path = "../../tools/peritus-tool-p
 peritus-tool-router = { version = "=0.0.0", path = "../../tools/peritus-tool-router" }
 peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
 serde_json.workspace = true
+tokio.workspace = true
 vstd.workspace = true
 
 [dev-dependencies]

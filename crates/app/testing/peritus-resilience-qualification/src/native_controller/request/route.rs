@@ -1,0 +1,360 @@
+//! Closed mapping from declared H1 scenarios to production effect routes.
+
+mod daemon;
+mod reboot;
+
+use super::{FaultDocument, ScenarioDocument};
+pub(in crate::native_controller) use daemon::DaemonPhase;
+pub(in crate::native_controller) use reboot::RebootPhase;
+#[cfg(test)]
+pub(super) use reboot::{
+    REBOOT_DURABLE_BEFORE_ACK, REBOOT_OUTSTANDING_EFFECT, REBOOT_STARTUP_RECONCILIATION,
+};
+
+pub(super) const BLOB_BEFORE: &str = "h1.crash.blob.before";
+pub(super) const BLOB_AFTER_BEFORE_ACK: &str = "h1.crash.blob.after-before-ack";
+pub(super) const BLOB_CORRUPTION: &str = "h1.corruption.blob";
+pub(super) const ACCEPTANCE_EVIDENCE_CORRUPTION: &str = "h1.corruption.acceptance-evidence";
+pub(super) const HARNESS_PROMOTION_CORRUPTION: &str = "h1.corruption.harness-promotion";
+pub(super) const BLOB_FINALIZE_DISK_EXHAUSTION: &str = "h1.disk-full.blob-finalize";
+pub(super) const JOURNAL_BEFORE: &str = "h1.crash.journal.before";
+pub(super) const JOURNAL_AFTER_BEFORE_ACK: &str = "h1.crash.journal.after-before-ack";
+pub(super) const JOURNAL_CORRUPTION: &str = "h1.corruption.journal";
+pub(super) const JOURNAL_APPEND_DISK_EXHAUSTION: &str = "h1.disk-full.journal-append";
+pub(super) const LEASE_BEFORE: &str = "h1.crash.lease.before";
+pub(super) const LEASE_AFTER_BEFORE_ACK: &str = "h1.crash.lease.after-before-ack";
+pub(super) const GATE_BEFORE: &str = "h1.crash.gate.before";
+pub(super) const GATE_AFTER_BEFORE_ACK: &str = "h1.crash.gate.after-before-ack";
+pub(super) const PATCH_BEFORE: &str = "h1.crash.patch.before";
+pub(super) const PATCH_AFTER_BEFORE_ACK: &str = "h1.crash.patch.after-before-ack";
+pub(super) const SNAPSHOT_BEFORE: &str = "h1.crash.snapshot.before";
+pub(super) const SNAPSHOT_AFTER_BEFORE_ACK: &str = "h1.crash.snapshot.after-before-ack";
+pub(super) const SNAPSHOT_CORRUPTION: &str = "h1.corruption.snapshot";
+pub(super) const SNAPSHOT_COMMIT_DISK_EXHAUSTION: &str = "h1.disk-full.snapshot-commit";
+pub(super) const PROMOTION_BEFORE: &str = "h1.crash.promotion.before";
+pub(super) const PROMOTION_AFTER_BEFORE_ACK: &str = "h1.crash.promotion.after-before-ack";
+pub(super) const PROJECTION_CORRUPTION: &str = "h1.corruption.projection";
+pub(super) const PROVIDER_DEATH: &str = "h1.death.provider";
+pub(super) const TOOL_DEATH: &str = "h1.death.tool";
+pub(super) const WORKER_DEATH: &str = "h1.death.worker";
+pub(super) const PROVIDER_RETRY_EXHAUSTION: &str = "h1.retry-exhaustion.provider";
+pub(super) const TOOL_RETRY_EXHAUSTION: &str = "h1.retry-exhaustion.tool";
+pub(super) const WORKER_RETRY_EXHAUSTION: &str = "h1.retry-exhaustion.worker";
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(in crate::native_controller) enum ScenarioRoute {
+    BlobBeforeDurableCommit,
+    BlobAfterDurableCommitBeforeAck,
+    BlobCorruption,
+    AcceptanceEvidenceCorruption,
+    HarnessPromotionCorruption,
+    BlobFinalizeDiskExhaustion,
+    JournalBeforeDurableCommit,
+    JournalAfterDurableCommitBeforeAck,
+    JournalCorruption,
+    JournalAppendDiskExhaustion,
+    LeaseBeforeDurableCommit,
+    LeaseAfterDurableCommitBeforeAck,
+    GateBeforeDurableCommit,
+    GateAfterDurableCommitBeforeAck,
+    PatchBeforeDurableCommit,
+    PatchAfterDurableCommitBeforeAck,
+    SnapshotBeforeDurableCommit,
+    SnapshotAfterDurableCommitBeforeAck,
+    SnapshotCorruption,
+    SnapshotCommitDiskExhaustion,
+    PromotionBeforeDurableCommit,
+    PromotionAfterDurableCommitBeforeAck,
+    ProjectionCorruption,
+    ProviderDeath,
+    ToolDeath,
+    WorkerDeath,
+    ProviderRetryExhaustion,
+    ToolRetryExhaustion,
+    WorkerRetryExhaustion,
+    DaemonLifecycle(DaemonPhase),
+    HostReboot(RebootPhase),
+}
+
+impl ScenarioRoute {
+    pub(super) fn from_scenario(scenario: &ScenarioDocument) -> Option<Self> {
+        match (&*scenario.id, &*scenario.expected_recovery, &scenario.fault) {
+            (
+                BLOB_BEFORE,
+                "rolled-back-uncommitted",
+                FaultDocument::CommitCrash { boundary, timing },
+            ) if boundary == "blob" && timing == "before-durable-commit" => {
+                Some(Self::BlobBeforeDurableCommit)
+            }
+            (
+                BLOB_AFTER_BEFORE_ACK,
+                "replayed-committed",
+                FaultDocument::CommitCrash { boundary, timing },
+            ) if boundary == "blob" && timing == "after-durable-commit-before-ack" => {
+                Some(Self::BlobAfterDurableCommitBeforeAck)
+            }
+            (
+                JOURNAL_BEFORE,
+                "rolled-back-uncommitted",
+                FaultDocument::CommitCrash { boundary, timing },
+            ) if boundary == "journal" && timing == "before-durable-commit" => {
+                Some(Self::JournalBeforeDurableCommit)
+            }
+            (
+                JOURNAL_AFTER_BEFORE_ACK,
+                "replayed-committed",
+                FaultDocument::CommitCrash { boundary, timing },
+            ) if boundary == "journal" && timing == "after-durable-commit-before-ack" => {
+                Some(Self::JournalAfterDurableCommitBeforeAck)
+            }
+            (
+                LEASE_BEFORE,
+                "rolled-back-uncommitted",
+                FaultDocument::CommitCrash { boundary, timing },
+            ) if boundary == "lease" && timing == "before-durable-commit" => {
+                Some(Self::LeaseBeforeDurableCommit)
+            }
+            (
+                LEASE_AFTER_BEFORE_ACK,
+                "replayed-committed",
+                FaultDocument::CommitCrash { boundary, timing },
+            ) if boundary == "lease" && timing == "after-durable-commit-before-ack" => {
+                Some(Self::LeaseAfterDurableCommitBeforeAck)
+            }
+            (
+                GATE_BEFORE,
+                "rolled-back-uncommitted",
+                FaultDocument::CommitCrash { boundary, timing },
+            ) if boundary == "gate" && timing == "before-durable-commit" => {
+                Some(Self::GateBeforeDurableCommit)
+            }
+            (
+                GATE_AFTER_BEFORE_ACK,
+                "replayed-committed",
+                FaultDocument::CommitCrash { boundary, timing },
+            ) if boundary == "gate" && timing == "after-durable-commit-before-ack" => {
+                Some(Self::GateAfterDurableCommitBeforeAck)
+            }
+            (
+                PATCH_BEFORE,
+                "rolled-back-uncommitted",
+                FaultDocument::CommitCrash { boundary, timing },
+            ) if boundary == "patch" && timing == "before-durable-commit" => {
+                Some(Self::PatchBeforeDurableCommit)
+            }
+            (
+                PATCH_AFTER_BEFORE_ACK,
+                "replayed-committed",
+                FaultDocument::CommitCrash { boundary, timing },
+            ) if boundary == "patch" && timing == "after-durable-commit-before-ack" => {
+                Some(Self::PatchAfterDurableCommitBeforeAck)
+            }
+            (
+                SNAPSHOT_BEFORE,
+                "rolled-back-uncommitted",
+                FaultDocument::CommitCrash { boundary, timing },
+            ) if boundary == "snapshot" && timing == "before-durable-commit" => {
+                Some(Self::SnapshotBeforeDurableCommit)
+            }
+            (
+                SNAPSHOT_AFTER_BEFORE_ACK,
+                "replayed-committed",
+                FaultDocument::CommitCrash { boundary, timing },
+            ) if boundary == "snapshot" && timing == "after-durable-commit-before-ack" => {
+                Some(Self::SnapshotAfterDurableCommitBeforeAck)
+            }
+            _ => Self::from_promotion(scenario),
+        }
+    }
+
+    fn from_promotion(scenario: &ScenarioDocument) -> Option<Self> {
+        match (&*scenario.id, &*scenario.expected_recovery, &scenario.fault) {
+            (
+                PROMOTION_BEFORE,
+                "rolled-back-uncommitted",
+                FaultDocument::CommitCrash { boundary, timing },
+            ) if boundary == "promotion" && timing == "before-durable-commit" => {
+                Some(Self::PromotionBeforeDurableCommit)
+            }
+            (
+                PROMOTION_AFTER_BEFORE_ACK,
+                "replayed-committed",
+                FaultDocument::CommitCrash { boundary, timing },
+            ) if boundary == "promotion" && timing == "after-durable-commit-before-ack" => {
+                Some(Self::PromotionAfterDurableCommitBeforeAck)
+            }
+            _ => Self::from_corruption(scenario),
+        }
+    }
+
+    fn from_corruption(scenario: &ScenarioDocument) -> Option<Self> {
+        match (&*scenario.id, &*scenario.expected_recovery, &scenario.fault) {
+            (BLOB_CORRUPTION, "quarantined-corruption", FaultDocument::Corruption { target })
+                if target == "blob" =>
+            {
+                Some(Self::BlobCorruption)
+            }
+            (
+                ACCEPTANCE_EVIDENCE_CORRUPTION,
+                "quarantined-corruption",
+                FaultDocument::Corruption { target },
+            ) if target == "acceptance-evidence" => Some(Self::AcceptanceEvidenceCorruption),
+            (
+                HARNESS_PROMOTION_CORRUPTION,
+                "quarantined-corruption",
+                FaultDocument::Corruption { target },
+            ) if target == "harness-promotion" => Some(Self::HarnessPromotionCorruption),
+            (JOURNAL_CORRUPTION, "failed-closed", FaultDocument::Corruption { target })
+                if target == "journal" =>
+            {
+                Some(Self::JournalCorruption)
+            }
+            (
+                SNAPSHOT_CORRUPTION,
+                "quarantined-corruption",
+                FaultDocument::Corruption { target },
+            ) if target == "snapshot" => Some(Self::SnapshotCorruption),
+            (PROJECTION_CORRUPTION, "rebuilt-projection", FaultDocument::Corruption { target })
+                if target == "projection" =>
+            {
+                Some(Self::ProjectionCorruption)
+            }
+            _ => Self::from_disk_exhaustion(scenario),
+        }
+    }
+
+    fn from_disk_exhaustion(scenario: &ScenarioDocument) -> Option<Self> {
+        match (&*scenario.id, &*scenario.expected_recovery, &scenario.fault) {
+            (
+                JOURNAL_APPEND_DISK_EXHAUSTION,
+                "rolled-back-uncommitted",
+                FaultDocument::DiskExhaustion { scope },
+            ) if scope == "journal-append" => Some(Self::JournalAppendDiskExhaustion),
+            (
+                BLOB_FINALIZE_DISK_EXHAUSTION,
+                "discarded-unreferenced",
+                FaultDocument::DiskExhaustion { scope },
+            ) if scope == "blob-finalize" => Some(Self::BlobFinalizeDiskExhaustion),
+            (
+                SNAPSHOT_COMMIT_DISK_EXHAUSTION,
+                "rolled-back-uncommitted",
+                FaultDocument::DiskExhaustion { scope },
+            ) if scope == "snapshot-commit" => Some(Self::SnapshotCommitDiskExhaustion),
+            _ => Self::from_dependency(scenario),
+        }
+    }
+
+    fn from_dependency(scenario: &ScenarioDocument) -> Option<Self> {
+        match (&*scenario.id, &*scenario.expected_recovery, &scenario.fault) {
+            (
+                PROVIDER_DEATH,
+                "reconciled-owned-work",
+                FaultDocument::DependencyDeath { dependency },
+            ) if dependency == "provider" => Some(Self::ProviderDeath),
+            (
+                TOOL_DEATH,
+                "reconciled-owned-work",
+                FaultDocument::DependencyDeath { dependency },
+            ) if dependency == "tool" => Some(Self::ToolDeath),
+            (
+                WORKER_DEATH,
+                "reconciled-owned-work",
+                FaultDocument::DependencyDeath { dependency },
+            ) if dependency == "worker" => Some(Self::WorkerDeath),
+            (
+                PROVIDER_RETRY_EXHAUSTION,
+                "retry-budget-exhausted",
+                FaultDocument::RetryExhaustion { dependency },
+            ) if dependency == "provider" => Some(Self::ProviderRetryExhaustion),
+            (
+                TOOL_RETRY_EXHAUSTION,
+                "retry-budget-exhausted",
+                FaultDocument::RetryExhaustion { dependency },
+            ) if dependency == "tool" => Some(Self::ToolRetryExhaustion),
+            (
+                WORKER_RETRY_EXHAUSTION,
+                "retry-budget-exhausted",
+                FaultDocument::RetryExhaustion { dependency },
+            ) if dependency == "worker" => Some(Self::WorkerRetryExhaustion),
+            _ => reboot::from_scenario(scenario)
+                .map(Self::HostReboot)
+                .or_else(|| daemon::from_scenario(scenario).map(Self::DaemonLifecycle)),
+        }
+    }
+
+    /// Returns the recovery outcome required for this route.
+    pub(in crate::native_controller) const fn outcome(self) -> &'static str {
+        match self {
+            Self::BlobBeforeDurableCommit
+            | Self::JournalBeforeDurableCommit
+            | Self::LeaseBeforeDurableCommit
+            | Self::GateBeforeDurableCommit
+            | Self::PatchBeforeDurableCommit
+            | Self::SnapshotBeforeDurableCommit
+            | Self::PromotionBeforeDurableCommit
+            | Self::JournalAppendDiskExhaustion
+            | Self::SnapshotCommitDiskExhaustion => "rolled-back-uncommitted",
+            Self::BlobAfterDurableCommitBeforeAck
+            | Self::JournalAfterDurableCommitBeforeAck
+            | Self::LeaseAfterDurableCommitBeforeAck
+            | Self::GateAfterDurableCommitBeforeAck
+            | Self::PatchAfterDurableCommitBeforeAck
+            | Self::SnapshotAfterDurableCommitBeforeAck
+            | Self::PromotionAfterDurableCommitBeforeAck => "replayed-committed",
+            Self::ProjectionCorruption => "rebuilt-projection",
+            Self::BlobCorruption
+            | Self::SnapshotCorruption
+            | Self::AcceptanceEvidenceCorruption
+            | Self::HarnessPromotionCorruption => "quarantined-corruption",
+            Self::BlobFinalizeDiskExhaustion => "discarded-unreferenced",
+            Self::JournalCorruption => "failed-closed",
+            Self::ProviderDeath
+            | Self::ToolDeath
+            | Self::WorkerDeath
+            | Self::DaemonLifecycle(_)
+            | Self::HostReboot(_) => "reconciled-owned-work",
+            Self::ProviderRetryExhaustion
+            | Self::ToolRetryExhaustion
+            | Self::WorkerRetryExhaustion => "retry-budget-exhausted",
+        }
+    }
+
+    pub(in crate::native_controller) const fn dependency(self) -> Option<&'static str> {
+        match self {
+            Self::ProviderDeath | Self::ProviderRetryExhaustion => Some("provider"),
+            Self::ToolDeath | Self::ToolRetryExhaustion => Some("tool"),
+            Self::WorkerDeath | Self::WorkerRetryExhaustion => Some("worker"),
+            _ => None,
+        }
+    }
+
+    pub(in crate::native_controller) const fn dependency_fault(self) -> Option<&'static str> {
+        match self {
+            Self::ProviderDeath | Self::ToolDeath | Self::WorkerDeath => Some("death"),
+            Self::ProviderRetryExhaustion
+            | Self::ToolRetryExhaustion
+            | Self::WorkerRetryExhaustion => Some("retry-exhaustion"),
+            _ => None,
+        }
+    }
+
+    pub(in crate::native_controller) const fn is_retry_exhaustion(self) -> bool {
+        matches!(
+            self,
+            Self::ProviderRetryExhaustion | Self::ToolRetryExhaustion | Self::WorkerRetryExhaustion
+        )
+    }
+
+    pub(in crate::native_controller) const fn daemon_phase(self) -> Option<DaemonPhase> {
+        match self {
+            Self::DaemonLifecycle(phase) => Some(phase),
+            _ => None,
+        }
+    }
+
+    pub(in crate::native_controller) const fn reboot_phase(self) -> Option<RebootPhase> {
+        match self {
+            Self::HostReboot(phase) => Some(phase),
+            _ => None,
+        }
+    }
+}

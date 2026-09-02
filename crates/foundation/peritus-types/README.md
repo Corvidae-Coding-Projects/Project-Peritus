@@ -26,3 +26,11 @@ preconditions.
 This verification-class `V` crate depends only on the workspace-pinned `vstd`. It deliberately
 does not provide serialization, random ID generation, UUID conversion, hashing, time, I/O, or
 authority decisions.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-types
+```

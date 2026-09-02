@@ -178,7 +178,7 @@ fn stale_checkpoint_rebuilds_and_stale_swap_is_atomic() {
 }
 
 #[test]
-fn corrupt_payload_is_planned_for_rebuild() {
+fn corrupt_payload_is_replaced_by_a_new_active_generation() {
     let mut fixture = Fixture::new();
     fixture.append(key(AggregateKind::Kernel, 12), phase_frame(), 92);
     let projection = JournalCatalogProjection::new().expect("projection");
@@ -196,11 +196,23 @@ fn corrupt_payload_is_planned_for_rebuild() {
         )
         .expect("corrupt payload");
     drop(connection);
-    let store = ProjectionStore::open(&fixture.path, StoreOptions::default()).expect("reopen");
+    let mut store = ProjectionStore::open(&fixture.path, StoreOptions::default()).expect("reopen");
     assert_eq!(
         store.plan_startup(projection.schema(), export.report()).expect("repair plan"),
         RepairAction::RebuildFromGenesis(RepairReason::PayloadCorrupt)
     );
+    let corrupt = store.load_active(projection.schema()).expect("load corrupt").expect("active");
+    assert!(!corrupt.payload_is_valid());
+    let rebuilt = rebuild_from_genesis(&projection, &export).expect("repeat rebuild");
+    let replacement = store
+        .install_shadow(&rebuilt, Some(corrupt.generation()))
+        .expect("replace corrupt generation");
+    assert_eq!(replacement.get(), corrupt.generation().get() + 1);
+    let active = store.load_active(projection.schema()).expect("load repaired").expect("active");
+    assert_eq!(active.generation(), replacement);
+    assert!(active.payload_is_valid());
+    assert_eq!(active.payload(), rebuilt.payload());
+    assert_eq!(store.generation_count(projection.schema()).expect("count"), 2);
 }
 
 #[test]

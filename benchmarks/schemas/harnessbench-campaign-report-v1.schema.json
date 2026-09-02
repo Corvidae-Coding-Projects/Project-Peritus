@@ -1,0 +1,239 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://project-peritus.invalid/schemas/harnessbench-campaign-report-v1.json",
+  "title": "Peritus HarnessBench campaign report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "campaign_label",
+    "selection_policy",
+    "complete",
+    "campaign_directory",
+    "results_directory",
+    "task_catalog",
+    "expected_tasks",
+    "selected_tasks",
+    "pin",
+    "agent",
+    "aggregate",
+    "tasks"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "campaign_label": {"type": "string", "minLength": 1, "maxLength": 128},
+    "selection_policy": {"const": "latest_result_per_task_by_mtime_then_path"},
+    "complete": {"const": true},
+    "campaign_directory": {"$ref": "#/$defs/path"},
+    "results_directory": {"$ref": "#/$defs/path"},
+    "task_catalog": {"$ref": "#/$defs/path"},
+    "expected_tasks": {"type": "integer", "minimum": 1},
+    "selected_tasks": {"type": "integer", "minimum": 1},
+    "pin": {"$ref": "#/$defs/pin"},
+    "agent": {"$ref": "#/$defs/agent"},
+    "aggregate": {"$ref": "#/$defs/aggregate"},
+    "tasks": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/task"}}
+  },
+  "$defs": {
+    "path": {"type": "string", "minLength": 1},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "revision": {"type": "string", "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$"},
+    "score": {"type": "number", "minimum": 0, "maximum": 1},
+    "count": {"type": "integer", "minimum": 0},
+    "string_array": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "pin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "contents"],
+      "properties": {
+        "path": {"$ref": "#/$defs/path"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "contents": {"type": "string", "minLength": 1}
+      }
+    },
+    "agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identity_policy",
+        "native_invocations",
+        "native_invocations_with_identity",
+        "source_revisions",
+        "binary_sha256s"
+      ],
+      "properties": {
+        "identity_policy": {"enum": ["allow_legacy", "require_native"]},
+        "native_invocations": {"$ref": "#/$defs/count"},
+        "native_invocations_with_identity": {"$ref": "#/$defs/count"},
+        "source_revisions": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/revision"},
+          "uniqueItems": true
+        },
+        "binary_sha256s": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/sha256"},
+          "uniqueItems": true
+        }
+      }
+    },
+    "aggregate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tasks",
+        "adapter_successes",
+        "adapter_failures",
+        "outcome_mean",
+        "process_mean",
+        "security_mean",
+        "combined_mean",
+        "perfect_outcomes",
+        "outcomes_at_least_0_9",
+        "combined_at_least_0_9",
+        "elapsed_seconds",
+        "request_count",
+        "input_tokens",
+        "output_tokens",
+        "cache_read_tokens",
+        "cache_write_tokens",
+        "total_tokens"
+      ],
+      "properties": {
+        "tasks": {"$ref": "#/$defs/count"},
+        "adapter_successes": {"$ref": "#/$defs/count"},
+        "adapter_failures": {"$ref": "#/$defs/count"},
+        "outcome_mean": {"$ref": "#/$defs/score"},
+        "process_mean": {"$ref": "#/$defs/score"},
+        "security_mean": {"$ref": "#/$defs/score"},
+        "combined_mean": {"$ref": "#/$defs/score"},
+        "perfect_outcomes": {"$ref": "#/$defs/count"},
+        "outcomes_at_least_0_9": {"$ref": "#/$defs/count"},
+        "combined_at_least_0_9": {"$ref": "#/$defs/count"},
+        "elapsed_seconds": {"type": "number", "minimum": 0},
+        "request_count": {"$ref": "#/$defs/count"},
+        "input_tokens": {"$ref": "#/$defs/count"},
+        "output_tokens": {"$ref": "#/$defs/count"},
+        "cache_read_tokens": {"$ref": "#/$defs/count"},
+        "cache_write_tokens": {"$ref": "#/$defs/count"},
+        "total_tokens": {"$ref": "#/$defs/count"}
+      }
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_id",
+        "result_path",
+        "result_sha256",
+        "selected_modified_unix_ns",
+        "candidate_results",
+        "mode",
+        "model_id",
+        "api_model_slug",
+        "api_model_label",
+        "session_id",
+        "elapsed_seconds",
+        "adapter_ok",
+        "scores",
+        "usage",
+        "evidence",
+        "agent_identity"
+      ],
+      "properties": {
+        "task_id": {"type": "string", "minLength": 1},
+        "result_path": {"$ref": "#/$defs/path"},
+        "result_sha256": {"$ref": "#/$defs/sha256"},
+        "selected_modified_unix_ns": {"type": "string", "pattern": "^[0-9]+$"},
+        "candidate_results": {"type": "integer", "minimum": 1},
+        "mode": {"type": "string", "minLength": 1},
+        "model_id": {"type": "string", "minLength": 1},
+        "api_model_slug": {"type": "string", "minLength": 1},
+        "api_model_label": {"type": "string", "minLength": 1},
+        "session_id": {"type": "string", "minLength": 1},
+        "elapsed_seconds": {"type": "number", "minimum": 0},
+        "adapter_ok": {"type": "boolean"},
+        "scores": {"$ref": "#/$defs/scores"},
+        "usage": {"$ref": "#/$defs/usage"},
+        "evidence": {"$ref": "#/$defs/evidence"},
+        "agent_identity": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/native_identity"}
+          ]
+        }
+      }
+    },
+    "scores": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome_score", "process_score", "security_score", "combined_score"],
+      "properties": {
+        "outcome_score": {"$ref": "#/$defs/score"},
+        "process_score": {"$ref": "#/$defs/score"},
+        "security_score": {"$ref": "#/$defs/score"},
+        "combined_score": {"$ref": "#/$defs/score"}
+      }
+    },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "available",
+        "source",
+        "log_file",
+        "request_count",
+        "input_tokens",
+        "output_tokens",
+        "cache_read_tokens",
+        "cache_write_tokens",
+        "total_tokens",
+        "providers",
+        "models"
+      ],
+      "properties": {
+        "available": {"const": true},
+        "source": {"type": "string", "minLength": 1},
+        "log_file": {"$ref": "#/$defs/path"},
+        "request_count": {"$ref": "#/$defs/count"},
+        "input_tokens": {"$ref": "#/$defs/count"},
+        "output_tokens": {"$ref": "#/$defs/count"},
+        "cache_read_tokens": {"$ref": "#/$defs/count"},
+        "cache_write_tokens": {"$ref": "#/$defs/count"},
+        "total_tokens": {"$ref": "#/$defs/count"},
+        "providers": {"$ref": "#/$defs/string_array"},
+        "models": {"$ref": "#/$defs/string_array"}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workspace", "prompt_file", "usage_log", "native_invocation"],
+      "properties": {
+        "workspace": {"$ref": "#/$defs/path"},
+        "prompt_file": {"$ref": "#/$defs/path"},
+        "usage_log": {"$ref": "#/$defs/path"},
+        "native_invocation": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/path"}
+          ]
+        }
+      }
+    },
+    "native_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["package_version", "source_revision", "binary_sha256"],
+      "properties": {
+        "package_version": {"type": "string", "minLength": 1},
+        "source_revision": {"$ref": "#/$defs/revision"},
+        "binary_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

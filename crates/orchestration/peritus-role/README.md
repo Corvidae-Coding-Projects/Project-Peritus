@@ -18,3 +18,11 @@ executable `is_narrow` result is proved equivalent to the formal B1 subset predi
 `ReviewIndependenceView` copies every immutable B2 reviewer-independence requirement and adds the
 C6 fresh-context requirement. It requests evidence from the future review engine; it never claims
 that evidence already exists.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-role
+```

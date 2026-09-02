@@ -6,12 +6,15 @@
 
 pub(crate) mod api_contract;
 pub(crate) mod architecture;
+pub(crate) mod ci_shard;
 pub(crate) mod cli;
+pub(crate) mod documentation;
 pub(crate) mod error;
 pub(crate) mod formatting;
 pub(crate) mod metadata;
 pub(crate) mod model;
 pub(crate) mod product_package;
+pub(crate) mod release;
 pub(crate) mod reproducibility;
 pub(crate) mod source;
 pub(crate) mod toolchain;

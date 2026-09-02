@@ -63,6 +63,58 @@ and Windows hosts where required. `QualificationSubject::execute` receives the e
 case, cooperative cancellation signal, and hard limits for monotonic duration, processes, peak
 memory, output, and artifacts.
 
+The production runner has a fixed three-host partition. The Linux shard executes the portable
+tier-one catalog and the Linux backend probe; macOS and Windows execute only their corresponding
+native backend probes. The aggregator requires one shard from every platform, identical candidate
+and limit bindings, globally unique fresh subjects, and exactly one report for every canonical
+probe. It then restores the original 42-case order. Missing or duplicate platform evidence cannot
+be interpreted as portable success.
+
+Native jobs exchange `native-shard-v1` JSON. The document preserves every candidate identity,
+resource ceiling, native receipt digest, structured evidence entry, and cleanup count needed to
+reconstruct the domain report exactly. Its parser admits only a passing canonical shard and repeats
+all resource, sandbox, evidence, and cleanup checks before aggregation. A failed shard remains a
+diagnostic artifact and cannot contribute to readiness.
+
+`peritus-h0` is the native shard operator. It accepts the reviewed controller, schema-v1 exact
+candidate, canonical source root for that candidate, reviewed host-fact document, private scratch
+and retained-artifact roots, no-overwrite report path, and current platform. The production
+controller recomputes the source archive digest before making probe assertions. It runs only that
+platform's canonical subset and publishes the
+shard even when cases fail. A successful exit means the shard passed; it is not a complete H0
+verdict and does not replace cross-host aggregation or independent review.
+
+`peritus-h0-prepare` is the reviewed input builder used before each native shard. It requires a
+clean checkout, the compiled controller, the current native platform, and a new output directory.
+It computes the source identity from the exact `git archive HEAD` bytes. The acceptance, harness,
+policy, provider, release-manifest, and qualification-plan identities are independently derived
+from documented committed path sets, while the workspace lineage comes from the repository field
+in the root manifest. The resulting candidate document is identical on all three hosts; host facts
+remain platform-specific and bind the exact controller binary, Rust compiler, runner image facts,
+candidate commit, and source digest. It refuses cross-platform claims and never overwrites an
+earlier output directory.
+
+The v1 component boundaries are explicit:
+
+- acceptance binds the production architecture, B2 design, architecture registry, specification,
+  and quality-policy sources;
+- harness binds the agent, harness, and orchestrator crates;
+- policy binds the architecture registry, policy crates, and `security/` assets;
+- provider profile binds the complete `crates/model/` provider boundary;
+- release manifest binds the workspace and toolchain manifests, installers, release assets and
+  workflow, native product composition, and packaging/release tooling; and
+- qualification plan binds this H0 crate, verified security policy, H0 guide, and security assets.
+
+Changing a tracked file in one of these sets changes that component identity. Any tracked change
+also changes the complete source digest, so a component list cannot hide candidate drift.
+
+`peritus-h0-aggregate` is the final evidence reducer. It requires one admitted passing shard from
+Linux, macOS, and Windows plus the separately produced external-review document. It reconstructs
+the canonical 42-case run, evaluates `QualificationReport` through the verified policy, and
+atomically publishes a no-overwrite `final-report-v1` document. That document carries the exact
+canonical evidence-manifest JSON, its digest, and stable NotReady reasons. An incomplete or
+non-independent review produces a retained NotReady report rather than a manufactured pass.
+
 The adapter returns a `NativeExecutionReceipt` containing executor, host, and exact-command
 digests, exit status, native-sandbox observation, resource accounting, and nonempty structured
 evidence. There is no simulated or assumed-success receipt variant. Host adapters are nevertheless a
@@ -74,6 +126,11 @@ adapter error, cancellation, and panic. Cleanup accounts for remaining processes
 and endpoints and supplies a direct evidence digest. Reused subjects, missing cleanup, subject
 mismatch, or any remaining resource fails the case. Cancellation and limit overrun never become a
 pass.
+
+Some Unix workspace and overlay filesystems can briefly return `ETXTBSY` immediately after a fresh
+executor is staged. The native boundary retries only that exact operating-system condition four
+times with a short bounded delay. Any persistent busy state or different launch error remains a
+typed native failure.
 
 ## External review and findings
 
@@ -122,9 +179,23 @@ consumed as H0 evidence by H4; it cannot itself sign, tag, publish, promote, or 
 Application integration must provide native adapters, exact candidate identities, artifact-store
 retention, and an independently obtained review record. CI/release integration must additionally:
 
+`NativeProbeFactory` is the standard fresh-process adapter. It stages one reviewed executor into a
+new private root for each probe, sends the versioned candidate-bound request, owns the complete
+process tree, validates the bounded response, and removes the root before returning cleanup. It
+also assigns a retained-artifact root named by the fresh subject ID and verifies every digest entry
+against the named regular file's actual length and SHA-256. Linux and macOS use a dedicated process
+group; Windows uses a kill-on-close Job Object. Platform probe executables still own the actual
+assertions and must write their raw evidence under that assigned root. A structurally valid response
+cannot replace those effects or the independent review.
+
 1. validate the checked-in schemas and reconcile the Rust and TOML catalogs;
 2. run platform-specific cases on native tier-one hosts rather than cross-compiled binaries;
 3. retain raw artifacts by the digests named in canonical JSON;
 4. publish both canonical manifest bytes and their SHA-256;
 5. require the V-class verification target before accepting the H0 report; and
 6. pass Ready evidence to the separate H4 release-authority transition.
+
+The checked-in `security-qualification.yml` workflow performs the native execution and retention
+steps on Linux, macOS, and Windows. It does not invent an independent review: the three passing
+artifacts must be inspected separately and supplied with that review to `peritus-h0-aggregate`
+before H0 can become Ready.

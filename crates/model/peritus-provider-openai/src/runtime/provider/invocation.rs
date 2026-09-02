@@ -1,5 +1,6 @@
 //! Hardened authentication and isolated one-turn process projections.
 
+use std::fs::OpenOptions;
 use std::io::Write as _;
 use std::path::Path;
 use std::time::Duration;
@@ -66,9 +67,10 @@ pub(super) async fn run_turn(
     schema.write_all(&runtime.schema).map_err(|_| temporary_failure())?;
     schema.flush().map_err(|_| temporary_failure())?;
     let schema_path = path_argument(schema.path())?;
+    let image_paths = write_images(directory.path(), runtime.images())?;
     let process = ProcessRequest::new(
         config.executable().process_executable().clone(),
-        arguments(request.model().as_str(), schema_path),
+        arguments(request.model().as_str(), runtime.reasoning_effort(), schema_path, &image_paths),
         runtime.prompt.clone(),
         Some(directory.path().to_path_buf()),
         isolated_environment()?,
@@ -77,7 +79,12 @@ pub(super) async fn run_turn(
     transport.run(process, cancellation).await
 }
 
-fn arguments(model: &str, schema_path: String) -> Vec<String> {
+fn arguments(
+    model: &str,
+    reasoning_effort: &str,
+    schema_path: String,
+    image_paths: &[String],
+) -> Vec<String> {
     let mut values = vec![
         "exec".to_owned(),
         "--json".to_owned(),
@@ -92,16 +99,48 @@ fn arguments(model: &str, schema_path: String) -> Vec<String> {
         "--model".to_owned(),
         model.to_owned(),
         "--config".to_owned(),
-        "model_reasoning_effort=\"low\"".to_owned(),
+        format!("model_reasoning_effort=\"{reasoning_effort}\""),
     ];
     for feature in DISABLED_NATIVE_FEATURES {
         values.push("--disable".to_owned());
         values.push((*feature).to_owned());
     }
+    for path in image_paths {
+        values.push("--image".to_owned());
+        values.push(path.clone());
+    }
     values.push("--output-schema".to_owned());
     values.push(schema_path);
     values.push("-".to_owned());
     values
+}
+
+fn write_images(
+    directory: &Path,
+    images: &[super::super::request::RuntimeImage],
+) -> Result<Vec<String>, ProviderCoreError> {
+    images
+        .iter()
+        .enumerate()
+        .map(|(index, image)| {
+            let extension = match image.media_type.as_str() {
+                "image/png" => "png",
+                "image/jpeg" => "jpg",
+                "image/webp" => "webp",
+                "image/gif" => "gif",
+                _ => return Err(unsupported_image_type()),
+            };
+            let path = directory.join(format!("input-image-{index:04}.{extension}"));
+            let mut file = OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&path)
+                .map_err(|_| temporary_failure())?;
+            file.write_all(&image.bytes).map_err(|_| temporary_failure())?;
+            file.flush().map_err(|_| temporary_failure())?;
+            path_argument(&path)
+        })
+        .collect()
 }
 
 pub(super) fn isolated_environment() -> Result<Vec<EnvironmentName>, ProviderCoreError> {
@@ -132,6 +171,13 @@ const fn temporary_failure() -> ProviderCoreError {
     ProviderCoreError::configuration(
         "codex_runtime_tempfile",
         "private temporary runtime state could not be created",
+    )
+}
+
+const fn unsupported_image_type() -> ProviderCoreError {
+    ProviderCoreError::invalid_request(
+        "codex_runtime_image_type",
+        "Codex runtime supports inline PNG, JPEG, WebP, and GIF images",
     )
 }
 

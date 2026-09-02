@@ -45,3 +45,11 @@ projection rebuild, or evidence admission; do not repair a broken chain by rewri
 
 See [C0 durable state](../../../docs/c0-durable-state.md) for composition, startup ordering,
 failure classes, and validation commands.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-journal
+```

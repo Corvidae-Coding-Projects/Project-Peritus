@@ -6,12 +6,12 @@
   "additionalProperties": false,
   "required": ["candidate", "reviewer_actor", "reviewer_organization_sha256", "review_context_sha256", "producer_actor", "producer_organization_sha256", "completion", "scopes", "independent_from_producer", "report_sha256", "findings"],
   "properties": {
-    "candidate": {"type": "object"},
-    "reviewer_actor": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
-    "reviewer_organization_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "review_context_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "producer_actor": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
-    "producer_organization_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "candidate": {"$ref": "#/$defs/candidate"},
+    "reviewer_actor": {"$ref": "#/$defs/identifier"},
+    "reviewer_organization_sha256": {"$ref": "#/$defs/sha256"},
+    "review_context_sha256": {"$ref": "#/$defs/sha256"},
+    "producer_actor": {"$ref": "#/$defs/identifier"},
+    "producer_organization_sha256": {"$ref": "#/$defs/sha256"},
     "completion": {"enum": ["incomplete", "completed"]},
     "scopes": {
       "type": "array",
@@ -21,21 +21,49 @@
       "items": {"enum": ["sandbox-escape", "authority-isolation", "evolution-and-promotion", "supply-chain", "unsafe-and-tcb"]}
     },
     "independent_from_producer": {"type": "boolean"},
-    "report_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "report_sha256": {"$ref": "#/$defs/sha256"},
     "findings": {
       "type": "array",
       "items": {
         "type": "object",
+        "additionalProperties": false,
         "required": ["finding_id", "candidate_source_sha256", "severity", "lifecycle", "authority_sha256", "remediation_sha256", "retest_sha256"],
         "properties": {
           "finding_id": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
           "candidate_source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
           "severity": {"enum": ["critical", "high", "medium", "low", "informational"]},
           "lifecycle": {"enum": ["open", "accepted-risk", "resolved"]},
-          "authority_sha256": {"type": ["string", "null"]},
-          "remediation_sha256": {"type": ["string", "null"]},
-          "retest_sha256": {"type": ["string", "null"]}
+          "authority_sha256": {
+            "anyOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+          },
+          "remediation_sha256": {
+            "anyOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+          },
+          "retest_sha256": {
+            "anyOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+          }
         }
+      }
+    }
+  },
+  "$defs": {
+    "identifier": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["acceptance_spec_id", "harness_id", "workspace_id", "workspace_generation", "workspace_revision", "policy_id", "provider_profile_id", "source_sha256", "release_manifest_sha256", "qualification_plan_sha256"],
+      "properties": {
+        "acceptance_spec_id": {"$ref": "#/$defs/identifier"},
+        "harness_id": {"$ref": "#/$defs/identifier"},
+        "workspace_id": {"$ref": "#/$defs/identifier"},
+        "workspace_generation": {"type": "integer", "minimum": 1},
+        "workspace_revision": {"type": "integer", "minimum": 1},
+        "policy_id": {"$ref": "#/$defs/identifier"},
+        "provider_profile_id": {"$ref": "#/$defs/identifier"},
+        "source_sha256": {"$ref": "#/$defs/sha256"},
+        "release_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "qualification_plan_sha256": {"$ref": "#/$defs/sha256"}
       }
     }
   }

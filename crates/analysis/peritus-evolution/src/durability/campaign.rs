@@ -70,7 +70,7 @@ pub fn commit_campaign_transition(
         event.id(),
         event.previous_event(),
         ExactFrame::new(event_bytes).map_err(journal_error)?,
-        transition.state().state_digest(),
+        event_revision_digest(command, transition.state()),
         Vec::new(),
     )
     .map_err(journal_error)?;
@@ -96,6 +96,18 @@ pub fn commit_campaign_transition(
         campaign_outbox(command)?,
     );
     journal.append(request.plan().map_err(journal_error)?).map_err(journal_error)
+}
+
+fn event_revision_digest(
+    command: &CampaignCommand,
+    state: &CampaignState,
+) -> peritus_types::Sha256Digest {
+    match command.kind() {
+        CampaignCommandKind::RequestPromotion(proposal) => {
+            peritus_evidence::revision_digest(&proposal.candidate().revision())
+        }
+        _ => state.state_digest(),
+    }
 }
 
 pub(super) fn artifact_dependencies(kind: &CampaignCommandKind) -> Vec<ArtifactDependency> {

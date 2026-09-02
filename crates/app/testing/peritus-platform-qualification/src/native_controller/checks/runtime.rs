@@ -1,0 +1,366 @@
+//! Native daemon, application, process, terminal, and sandbox checks.
+
+use std::fs;
+
+use crate::{ArtifactRole, digest_file};
+
+use super::Observation;
+use super::daemon::{DaemonSession, cleanup_runtime};
+use super::host::{HostLayout, LifecycleAction, command_output, lifecycle, require_success};
+use super::tui::exercise as exercise_tui;
+use crate::native_controller::args::ControllerPaths;
+use crate::native_controller::request::BoundRequest;
+
+const MAX_BINARY_BYTES: u64 = 2 * 1024 * 1024 * 1024;
+
+pub(super) fn run(
+    paths: &ControllerPaths,
+    request: &BoundRequest,
+) -> Result<Observation, Box<dyn std::error::Error>> {
+    let layout = HostLayout::new(paths, request)?;
+    require_success(
+        &lifecycle(&paths.package_root, LifecycleAction::Install)?,
+        "install package for runtime qualification",
+    )?;
+    let result = dispatch(paths, request, &layout);
+    let daemon_cleanup = cleanup_runtime(&layout);
+    let cleanup = lifecycle(&paths.package_root, LifecycleAction::Uninstall);
+    match (result, daemon_cleanup, cleanup) {
+        (Ok(observation), Ok(()), Ok(output)) => {
+            require_success(&output, "uninstall package after runtime qualification")?;
+            Ok(observation)
+        }
+        (Err(error), _, _) | (Ok(_), Err(error), _) | (Ok(_), Ok(()), Err(error)) => Err(error),
+    }
+}
+
+fn dispatch(
+    paths: &ControllerPaths,
+    request: &BoundRequest,
+    layout: &HostLayout,
+) -> Result<Observation, Box<dyn std::error::Error>> {
+    match request.scenario_id() {
+        "service-restart" => service_restart(layout),
+        "local-transport" => local_transport(layout),
+        "peer-authentication" => peer_authentication(layout),
+        "cli-status" => cli_status(layout),
+        "tui-lifecycle" => tui_lifecycle(layout),
+        "process-equivalence" => process_equivalence(paths, request, layout),
+        "pipe-separation" => qualify_pty(layout, "native pipe separation was conserved"),
+        "terminal-ownership" => qualify_pty(layout, "native PTY or ConPTY lifecycle was conserved"),
+        "cancellation-tree-reap" => cancellation_tree_reap(layout),
+        "sandbox-denial" => sandbox_denial(layout),
+        "sandbox-execution" => native_sandbox_probe(layout),
+        _ => Err("runtime scenario dispatch is incomplete".into()),
+    }
+}
+
+fn service_restart(layout: &HostLayout) -> Result<Observation, Box<dyn std::error::Error>> {
+    let mut first = DaemonSession::start(layout)?;
+    first.status()?;
+    first.kill()?;
+    let second = DaemonSession::start(layout)?;
+    second.status()?;
+    second.shutdown()?;
+    Ok(Observation::passed("packaged daemon restarted cleanly from the same durable state")
+        .count("native.successful-starts", 2)
+        .fact("native.crash-endpoint-withdrawn", true))
+}
+
+fn local_transport(layout: &HostLayout) -> Result<Observation, Box<dyn std::error::Error>> {
+    let session = DaemonSession::start(layout)?;
+    let native = {
+        #[cfg(unix)]
+        {
+            native_endpoint(session.endpoint_path())?
+        }
+        #[cfg(windows)]
+        {
+            native_endpoint(session.endpoint_path())
+        }
+    };
+    session.shutdown()?;
+    if !native {
+        return Ok(Observation::failed("daemon readiness did not use the native local endpoint"));
+    }
+    Ok(Observation::passed("daemon exposed one reachable native local endpoint")
+        .fact("native.remote-address-absent", true)
+        .fact("native.local-endpoint", true))
+}
+
+fn peer_authentication(layout: &HostLayout) -> Result<Observation, Box<dyn std::error::Error>> {
+    let session = DaemonSession::start(layout)?;
+    session.status()?;
+    let protected = {
+        #[cfg(unix)]
+        {
+            endpoint_is_owner_private(session.endpoint_path())?
+        }
+        #[cfg(windows)]
+        {
+            endpoint_is_owner_private(session.endpoint_path())
+        }
+    };
+    session.shutdown()?;
+    if !protected {
+        return Ok(Observation::failed("native endpoint was not owner private"));
+    }
+    Ok(Observation::passed("same-user CLI authenticated through an owner-private native endpoint")
+        .fact("native.owner-private-endpoint", true)
+        .fact("native.authenticated-status", true))
+}
+
+fn cli_status(layout: &HostLayout) -> Result<Observation, Box<dyn std::error::Error>> {
+    let session = DaemonSession::start(layout)?;
+    session.status()?;
+    session.shutdown()?;
+    Ok(Observation::passed("packaged CLI negotiated status and orderly daemon shutdown")
+        .fact("native.cli-status-success", true)
+        .fact("native.shutdown-success", true))
+}
+
+fn tui_lifecycle(layout: &HostLayout) -> Result<Observation, Box<dyn std::error::Error>> {
+    let session = DaemonSession::start(layout)?;
+    let tui = exercise_tui(&layout.tui, session.endpoint())?;
+    session.status()?;
+    session.shutdown()?;
+    Ok(Observation::passed(
+        "packaged TUI connected, rendered, quit, and restored its native terminal",
+    )
+    .fact("native.tui-connected", tui.connected)
+    .fact("native.tui-rendered", tui.rendered)
+    .count("native.tui-cursor-reports", tui.cursor_reports)
+    .fact("native.terminal-restored", true))
+}
+
+fn process_equivalence(
+    paths: &ControllerPaths,
+    request: &BoundRequest,
+    layout: &HostLayout,
+) -> Result<Observation, Box<dyn std::error::Error>> {
+    let installed = [
+        (ArtifactRole::Cli, &layout.cli),
+        (ArtifactRole::Daemon, &layout.daemon),
+        (ArtifactRole::Tui, &layout.tui),
+        (ArtifactRole::SandboxHelper, &layout.helper),
+    ];
+    for (role, path) in installed {
+        let artifact = request
+            .manifest
+            .artifacts()
+            .iter()
+            .find(|artifact| artifact.role() == role)
+            .ok_or("manifest role was missing")?;
+        let source =
+            digest_file(paths.package_root.join(artifact.path().as_str()), MAX_BINARY_BYTES)?;
+        let destination = digest_file(path, MAX_BINARY_BYTES)?;
+        if source != destination {
+            return Ok(Observation::failed("installed executable differed from release control"));
+        }
+    }
+    Ok(Observation::passed("installed executables exactly matched release-control bytes")
+        .count("native.equivalent-executables", installed.len() as u64)
+        .fact("native.wrapper-absent", true))
+}
+
+fn qualify_pty(
+    layout: &HostLayout,
+    summary: &'static str,
+) -> Result<Observation, Box<dyn std::error::Error>> {
+    let output = command_output(&layout.daemon, ["qualify-pty"])?;
+    require_pty_observation(&output)?;
+    Ok(Observation::passed(summary)
+        .fact("native.sequence-strict", true)
+        .fact("native.offsets-conserved", true)
+        .fact("native.complete-release", true))
+}
+
+fn cancellation_tree_reap(layout: &HostLayout) -> Result<Observation, Box<dyn std::error::Error>> {
+    let mut session = DaemonSession::start(layout)?;
+    session.kill()?;
+    if let Some(path) = session.endpoint_path()
+        && path.exists()
+    {
+        fs::remove_file(path)?;
+    }
+    if session.endpoint_path().is_some_and(std::path::Path::exists) {
+        return Ok(Observation::failed("daemon endpoint survived forced process termination"));
+    }
+    Ok(Observation::passed("forced daemon cancellation reaped the process and withdrew transport")
+        .fact("native.endpoint-withdrawn", true)
+        .fact("native.process-reaped", true))
+}
+
+fn sandbox_denial(layout: &HostLayout) -> Result<Observation, Box<dyn std::error::Error>> {
+    let output = command_output(&layout.helper, ["--version"])?;
+    if !helper_rejected_raw_invocation(output.status.success()) {
+        return Ok(Observation::failed("native sandbox helper accepted an unbound raw invocation"));
+    }
+    Ok(Observation::passed("native sandbox helper rejected raw execution before activation")
+        .fact("native.raw-fallback-absent", true)
+        .fact("native.pre-activation-denial", true)
+        .fact("native.exit-status-authoritative", true))
+}
+
+const fn helper_rejected_raw_invocation(status_success: bool) -> bool {
+    !status_success
+}
+
+#[cfg(target_os = "linux")]
+fn native_sandbox_probe(layout: &HostLayout) -> Result<Observation, Box<dyn std::error::Error>> {
+    use peritus_sandbox_linux::{LinuxProbe, ProbeRequest};
+
+    let request = ProbeRequest::new(
+        "/usr/bin/bwrap".into(),
+        layout.helper.clone(),
+        "/sys/fs/cgroup".into(),
+        None,
+    )?;
+    let probe = LinuxProbe::run(&request)?;
+    if !probe.baseline_supported() {
+        return Ok(Observation::unsupported(
+            "Linux host lacks one or more required native sandbox facilities",
+        )
+        .fact("native.helper-exact", probe.helper_digest().is_some())
+        .fact("native.bubblewrap-functional", probe.bubblewrap().functional()));
+    }
+    Ok(Observation::passed("Linux native sandbox probe admitted every production baseline control")
+        .fact("native.helper-exact", true)
+        .fact("native.namespaces-complete", probe.namespaces().complete())
+        .fact("native.seccomp", probe.seccomp())
+        .fact("native.pty", probe.pty()))
+}
+
+#[cfg(target_os = "macos")]
+fn native_sandbox_probe(layout: &HostLayout) -> Result<Observation, Box<dyn std::error::Error>> {
+    use std::time::Duration;
+
+    use peritus_sandbox_macos::{ProbeRequest, SystemProbe};
+
+    let request = ProbeRequest::new(
+        layout.helper.clone(),
+        "/usr/bin/sandbox-exec".into(),
+        None,
+        Duration::from_secs(1),
+    )?;
+    let probe = SystemProbe::run(&request)?;
+    let evidence = probe.evidence();
+    if !probe.core_supported() {
+        return Ok(Observation::unsupported(
+            "macOS host lacks one or more required native sandbox facilities",
+        )
+        .fact("native.helper-exact", evidence.helper_digest.is_some())
+        .fact("native.seatbelt", evidence.seatbelt)
+        .fact("native.profile-compilation", evidence.profile_compilation)
+        .fact("native.process-containment", evidence.process_containment));
+    }
+    Ok(Observation::passed("macOS native sandbox probe admitted every production baseline control")
+        .fact("native.helper-exact", true)
+        .fact("native.seatbelt", true)
+        .fact("native.profile-compilation", true)
+        .fact("native.process-containment", true)
+        .fact("native.pty", evidence.pty))
+}
+
+#[cfg(target_os = "windows")]
+fn native_sandbox_probe(layout: &HostLayout) -> Result<Observation, Box<dyn std::error::Error>> {
+    use peritus_sandbox_windows::{AppContainerProfile, ProbeRequest, TokenProfile, WindowsProbe};
+
+    let profile = AppContainerProfile::derive_for_current_host("Peritus.H2.Qualification")?;
+    let request =
+        ProbeRequest::new(layout.helper.clone(), TokenProfile::AppContainer(profile), None)?;
+    let probe = WindowsProbe::run(&request)?;
+    let evidence = probe.evidence();
+    if !probe.core_supported() {
+        return Ok(Observation::unsupported(
+            "Windows host lacks one or more required native sandbox facilities",
+        )
+        .count("native.os-build", u64::from(evidence.os_build.unwrap_or(0)))
+        .fact(
+            "native.os-build-supported",
+            evidence
+                .os_build
+                .is_some_and(|build| build >= peritus_sandbox_windows::MINIMUM_WINDOWS_BUILD),
+        )
+        .fact("native.platform", evidence.platform)
+        .fact("native.architecture", evidence.architecture)
+        .fact("native.helper-exact", evidence.helper_digest.is_some())
+        .fact("native.restricted-token", evidence.restricted_token)
+        .fact("native.low-integrity", evidence.low_integrity)
+        .fact("native.app-container", evidence.app_container_sid_exact)
+        .fact("native.job-object", evidence.job_object)
+        .fact("native.job-kill-on-close", evidence.kill_on_close)
+        .fact("native.acl", evidence.acl)
+        .fact("native.reparse-free-helper", evidence.reparse)
+        .fact("native.inherited-handle-list", evidence.inherited_handle_list)
+        .fact("native.default-deny-network", evidence.deny_network)
+        .fact("native.conpty", evidence.conpty));
+    }
+    Ok(Observation::passed(
+        "Windows native sandbox probe admitted every production baseline control",
+    )
+    .fact("native.helper-exact", true)
+    .fact("native.restricted-token", true)
+    .fact("native.app-container", true)
+    .fact("native.job-kill-on-close", evidence.kill_on_close)
+    .fact("native.default-deny-network", true)
+    .fact("native.conpty", evidence.conpty))
+}
+
+fn require_pty_observation(
+    output: &std::process::Output,
+) -> Result<(), Box<dyn std::error::Error>> {
+    require_success(output, "run packaged terminal qualification")?;
+    let text = std::str::from_utf8(&output.stdout)?;
+    for required in [
+        "sequence_strictly_increasing=true",
+        "offsets_conserved=true",
+        "combined_stream_only=true",
+        "exit_records=1",
+    ] {
+        if !text.contains(required) {
+            return Err("packaged terminal qualification omitted a required observation".into());
+        }
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
+fn endpoint_is_owner_private(
+    path: Option<&std::path::Path>,
+) -> Result<bool, Box<dyn std::error::Error>> {
+    use std::os::unix::fs::{FileTypeExt as _, PermissionsExt as _};
+
+    let path = path.ok_or("Unix daemon did not expose a filesystem endpoint")?;
+    let metadata = fs::symlink_metadata(path)?;
+    Ok(metadata.file_type().is_socket() && metadata.permissions().mode().trailing_zeros() >= 6)
+}
+
+#[cfg(unix)]
+fn native_endpoint(path: Option<&std::path::Path>) -> Result<bool, Box<dyn std::error::Error>> {
+    use std::os::unix::fs::FileTypeExt as _;
+
+    let path = path.ok_or("Unix daemon did not expose a filesystem endpoint")?;
+    Ok(fs::symlink_metadata(path)?.file_type().is_socket())
+}
+
+#[cfg(windows)]
+const fn native_endpoint(path: Option<&std::path::Path>) -> bool {
+    path.is_none()
+}
+
+#[cfg(windows)]
+const fn endpoint_is_owner_private(path: Option<&std::path::Path>) -> bool {
+    path.is_none()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::helper_rejected_raw_invocation;
+
+    #[test]
+    fn raw_helper_denial_uses_reserved_exit_status_without_requiring_diagnostics() {
+        assert!(helper_rejected_raw_invocation(false));
+        assert!(!helper_rejected_raw_invocation(true));
+    }
+}

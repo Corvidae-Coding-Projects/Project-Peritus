@@ -19,15 +19,24 @@ Usage: cargo xtask <command>
 Commands:
   all                    Run all locally executable repository policy checks
   architecture-check     Validate packages, layers, ownership, and source layout
+  docs-check             Validate maintained Markdown structure and local links
   format-check           Check every workspace package without one oversized command line
   ordinary-api-check     Validate formal APIs callable from ordinary safe Rust
   source-layout-check    Validate module names, crate roots, and source budgets
   reproducibility-check  Validate toolchain pins, lock policy, and immutable CI inputs
   toolchain-check        Probe installed Rust, Verus, vstd metadata, and bundled Z3
   verify-trust           Reject trusted Verus constructs outside approved roots
+  ci-shard OPERATION SHARD Run one reviewed package shard for hosted Rust or Verus CI
   product-package        Build a host-native checked Peritus package in dist/
   product-install        Build and install Peritus for the current user
   product-package-smoke  Qualify native install, repeat launch, upgrade, and uninstall
+  product-native-qualification Run and retain all 18 native H2 package scenarios
+  product-native-qualification-shard INDEX Run one of 18 single-scenario H2 shards
+  release-bootstrap-smoke Qualify the public download, checksum, and install entry point
+  release-create         Validate a tag and create its retained draft GitHub release
+  release-package-stage Build, archive, checksum, and record this host's native package
+  release-package-assemble Assemble a native package from separately built release binaries
+  release-publish        Publish a draft only after every native package job passes
   help                   Print this help
 ";
 
@@ -35,15 +44,24 @@ Commands:
 enum Command {
     All,
     Architecture,
+    Documentation,
     Formatting,
     OrdinaryApi,
     SourceLayout,
     Reproducibility,
     Toolchain,
     Trust,
+    CiShard { operation: crate::ci_shard::Operation, shard: &'static str },
     ProductPackage,
     ProductInstall,
     ProductPackageSmoke,
+    ProductNativeQualification,
+    ProductNativeQualificationShard { index: usize },
+    ReleaseBootstrapSmoke,
+    ReleaseCreate,
+    ReleasePackageStage,
+    ReleasePackageAssemble,
+    ReleasePublish,
     Help,
 }
 
@@ -122,23 +140,7 @@ pub(crate) fn execute(
     }
 
     match command {
-        Command::All => {
-            let policy = metadata::architecture_policy(root)?;
-            let (packages, files) = architecture::check(root, &policy)?;
-            let api = api_contract::check(root, &policy)?;
-            let trust_files = trust::check_local(root, &policy)?;
-            let tools = metadata::toolchain_policy(root)?;
-            let actions = reproducibility::check(root, &tools)?;
-            write_output(
-                output,
-                &format!(
-                    "all checks passed: {packages} package(s), {files} source file(s), \
-                     {} formal-boundary file(s), {} ordinary-safe executable entry point(s), \
-                     {trust_files} trust-scanned file(s), {actions} pinned action(s)\n",
-                    api.files, api.executable_entry_points
-                ),
-            )?;
-        }
+        Command::All => execute_all(root, output)?,
         Command::Architecture => {
             let policy = metadata::architecture_policy(root)?;
             let (packages, files) = architecture::check(root, &policy)?;
@@ -148,6 +150,10 @@ pub(crate) fn execute(
                     "architecture-check passed: {packages} package(s), {files} source file(s)\n"
                 ),
             )?;
+        }
+        Command::Documentation => {
+            let files = crate::documentation::check(root)?;
+            write_output(output, &format!("docs-check passed: {files} documentation file(s)\n"))?;
         }
         Command::Formatting => {
             let packages = crate::formatting::check(root)?;
@@ -197,12 +203,54 @@ pub(crate) fn execute(
                 &format!("verify-trust passed: {files} source file(s) scanned\n"),
             )?;
         }
-        Command::ProductPackage | Command::ProductInstall | Command::ProductPackageSmoke => {
+        Command::CiShard { operation, shard } => {
+            let packages = crate::ci_shard::run(root, operation, shard)?;
+            write_output(
+                output,
+                &format!("CI shard `{shard}` passed {operation:?} for {packages} package(s)\n"),
+            )?;
+        }
+        Command::ProductPackage
+        | Command::ProductInstall
+        | Command::ProductPackageSmoke
+        | Command::ProductNativeQualification
+        | Command::ProductNativeQualificationShard { .. } => {
             execute_product(command, root, output)?;
         }
+        Command::ReleaseCreate => crate::release::create(root)?,
+        Command::ReleaseBootstrapSmoke => {
+            let package = crate::release::bootstrap_smoke(root)?;
+            write_output(
+                output,
+                &format!("public release bootstrap passed: {}\n", package.display()),
+            )?;
+        }
+        Command::ReleasePackageStage => crate::release::package_stage(root)?,
+        Command::ReleasePackageAssemble => crate::release::package_assemble(root)?,
+        Command::ReleasePublish => crate::release::publish()?,
         Command::Help => {}
     }
     Ok(())
+}
+
+fn execute_all(root: &Path, output: &mut dyn Write) -> Result<(), XtaskError> {
+    let policy = metadata::architecture_policy(root)?;
+    let (packages, files) = architecture::check(root, &policy)?;
+    let api = api_contract::check(root, &policy)?;
+    let documentation = crate::documentation::check(root)?;
+    let trust_files = trust::check_local(root, &policy)?;
+    let tools = metadata::toolchain_policy(root)?;
+    let actions = reproducibility::check(root, &tools)?;
+    write_output(
+        output,
+        &format!(
+            "all checks passed: {packages} package(s), {files} source file(s), \
+             {} formal-boundary file(s), {} ordinary-safe executable entry point(s), \
+             {trust_files} trust-scanned file(s), {documentation} documentation file(s), \
+             {actions} pinned action(s)\n",
+            api.files, api.executable_entry_points
+        ),
+    )
 }
 
 fn execute_product(
@@ -218,6 +266,14 @@ fn execute_product(
         Command::ProductPackageSmoke => {
             (crate::product_package::smoke(root)?, "native product lifecycle passed")
         }
+        Command::ProductNativeQualification => (
+            crate::product_package::qualify(root)?,
+            "native H2 qualification passed; retained report",
+        ),
+        Command::ProductNativeQualificationShard { index } => (
+            crate::product_package::qualify_shard(root, index)?,
+            "native H2 qualification shard passed; retained reports",
+        ),
         _ => return Err(XtaskError::invocation("command is not a product packaging operation")),
     };
     write_output(output, &format!("{message}: {}\n", package.display()))
@@ -226,6 +282,9 @@ fn execute_product(
 fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError> {
     let mut args = args.into_iter();
     let first = args.next();
+    if let Some(command) = shard_args::parse(first.as_ref(), &mut args)? {
+        return Ok(command);
+    }
     if args.next().is_some() {
         return Err(XtaskError::invocation(
             "expected exactly one command; run `cargo xtask help` for the supported interface",
@@ -234,6 +293,7 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
     match first.as_deref().and_then(|value| value.to_str()) {
         Some("all") => Ok(Command::All),
         Some("architecture-check") => Ok(Command::Architecture),
+        Some("docs-check") => Ok(Command::Documentation),
         Some("format-check") => Ok(Command::Formatting),
         Some("ordinary-api-check") => Ok(Command::OrdinaryApi),
         Some("source-layout-check") => Ok(Command::SourceLayout),
@@ -243,6 +303,12 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
         Some("product-package") => Ok(Command::ProductPackage),
         Some("product-install") => Ok(Command::ProductInstall),
         Some("product-package-smoke") => Ok(Command::ProductPackageSmoke),
+        Some("product-native-qualification") => Ok(Command::ProductNativeQualification),
+        Some("release-bootstrap-smoke") => Ok(Command::ReleaseBootstrapSmoke),
+        Some("release-create") => Ok(Command::ReleaseCreate),
+        Some("release-package-stage") => Ok(Command::ReleasePackageStage),
+        Some("release-package-assemble") => Ok(Command::ReleasePackageAssemble),
+        Some("release-publish") => Ok(Command::ReleasePublish),
         Some("help" | "-h" | "--help") | None => Ok(Command::Help),
         Some(command) => Err(XtaskError::invocation(format!(
             "unknown command `{command}`; run `cargo xtask help` for the supported interface"
@@ -276,6 +342,15 @@ mod tests {
     }
 
     #[test]
+    fn native_qualification_command_is_first_class() {
+        assert_eq!(
+            parse([OsString::from("product-native-qualification")])
+                .expect("native qualification command must parse"),
+            Command::ProductNativeQualification
+        );
+    }
+
+    #[test]
     fn workspace_root_is_discovered_from_the_xtask_directory() {
         let crate_root = fs::canonicalize(env!("CARGO_MANIFEST_DIR"))
             .expect("xtask manifest directory must be canonicalizable");
@@ -304,3 +379,4 @@ mod tests {
         ));
     }
 }
+mod shard_args;

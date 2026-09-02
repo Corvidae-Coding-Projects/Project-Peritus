@@ -201,6 +201,17 @@ fn durable_catalog_corruption_is_detected_on_reopen() {
         .expect("corrupt record bytes");
     drop(connection);
     let reopened = support::open_evidence(&fixture.path);
+    let quarantine = reopened
+        .quarantined(record.id())
+        .expect("read quarantine")
+        .expect("corrupt record quarantined");
+    assert_eq!(quarantine.evidence_id(), record.id());
+    assert_eq!(quarantine.record_bytes(), 1);
+    assert_eq!(reopened.quarantine_count().expect("quarantine count"), 1);
     let error = reopened.load(record.id()).expect_err("catalog corruption rejected");
     assert_eq!(error.kind(), EvidenceErrorKind::CorruptCatalog);
+
+    drop(reopened);
+    let reopened = support::open_evidence(&fixture.path);
+    assert_eq!(reopened.quarantined(record.id()).expect("idempotent quarantine"), Some(quarantine));
 }

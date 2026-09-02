@@ -19,6 +19,7 @@ use super::{SqliteJournal, SqliteJournalOptions};
 mod application_tests;
 mod outbox_tests;
 mod recovery_tests;
+mod storage_tests;
 
 fn id16(value: u8) -> [u8; 16] {
     [value; 16]

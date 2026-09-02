@@ -28,3 +28,11 @@ Ordinary run APIs keep the shared seven-field `RevisionTuple` unchanged. The rea
 `GoverningHarnessBinding` pairs it with the exact E1 revision identity and matching materialization
 receipt/snapshot, rejecting lineage, digest, or C1 snapshot disagreement without exposing a
 mutation route.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-harness
+```

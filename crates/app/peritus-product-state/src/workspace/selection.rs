@@ -65,9 +65,11 @@ impl WorkspaceSelection {
         });
         let previous = std::mem::take(&mut self.recent);
         for existing in previous {
-            if existing.workspace_id() == profile.workspace_id()
-                || existing.repository_root() == profile.repository_root()
-            {
+            if existing.workspace_id() == profile.workspace_id() {
+                // This is an in-place profile refresh for the same workspace lineage. Its new
+                // registration supersedes the old one; retaining both would make the catalog
+                // internally contradictory.
+            } else if existing.repository_root() == profile.repository_root() {
                 self.retain_registration(existing);
             } else {
                 self.recent.push(existing);
@@ -203,5 +205,33 @@ mod tests {
         assert_eq!(selection.recent().len(), 1);
         assert_eq!(selection.registered().len(), 1);
         assert_eq!(selection.active().expect("active").trust_level(), WorkspaceTrust::Restricted);
+    }
+
+    #[test]
+    fn refreshing_a_trusted_workspace_replaces_its_old_registration() {
+        let mut selection = WorkspaceSelection::default();
+        let original = profile("/repo", 3)
+            .trust(
+                "/state/registration.bin".to_owned(),
+                "06".repeat(32),
+                "/state/worktree".to_owned(),
+                "/state/transactions".to_owned(),
+            )
+            .expect("trusted");
+        selection.activate(original.clone()).expect("original registration");
+        let refreshed = original
+            .trust(
+                "/state/registration.bin".to_owned(),
+                "07".repeat(32),
+                "/state/worktree".to_owned(),
+                "/state/transactions".to_owned(),
+            )
+            .expect("refreshed");
+
+        selection.activate(refreshed).expect("refresh registration");
+
+        assert_eq!(selection.recent().len(), 1);
+        assert_eq!(selection.registered().len(), 1);
+        assert_eq!(selection.recent()[0].registration_digest(), Some(&*"07".repeat(32)));
     }
 }

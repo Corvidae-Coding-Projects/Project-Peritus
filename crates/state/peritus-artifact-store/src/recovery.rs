@@ -3,8 +3,8 @@
 use std::{collections::BTreeMap, fs, path::Path};
 
 use crate::{
-    ArtifactDigest, ArtifactStore, ArtifactStoreError, ErrorCode, QuarantineState, RecoveryClass,
-    StoreOperation,
+    ArtifactDigest, ArtifactStore, ArtifactStoreError, ErrorCode, IntegrityState, QuarantineState,
+    RecoveryClass, StoreOperation,
     finalize::{inspect_file, verify_finalized},
     path::{io, sync_directory},
 };
@@ -14,6 +14,27 @@ use crate::{
 pub struct QuarantinedArtifact {
     digest: ArtifactDigest,
     size: u64,
+}
+
+/// Cataloged artifact whose divergent bytes were durably contained during recovery.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ContainedCorruption {
+    digest: ArtifactDigest,
+    expected_size: u64,
+}
+
+impl ContainedCorruption {
+    /// Returns the durable content identity whose bytes diverged.
+    #[must_use]
+    pub const fn digest(self) -> ArtifactDigest {
+        self.digest
+    }
+
+    /// Returns the logical size recorded before corruption was detected.
+    #[must_use]
+    pub const fn expected_size(self) -> u64 {
+        self.expected_size
+    }
 }
 
 impl QuarantinedArtifact {
@@ -37,6 +58,7 @@ pub struct RecoveryReport {
     completed_state_moves: u64,
     removed_swept_files: u64,
     quarantined_orphans: Vec<QuarantinedArtifact>,
+    contained_corruptions: Vec<ContainedCorruption>,
 }
 
 impl RecoveryReport {
@@ -63,6 +85,13 @@ impl RecoveryReport {
     pub fn quarantined_orphans(&self) -> &[QuarantinedArtifact] {
         &self.quarantined_orphans
     }
+
+    /// Returns cataloged artifacts whose divergent bytes were made non-referenceable and moved
+    /// out of the active object namespace.
+    #[must_use]
+    pub fn contained_corruptions(&self) -> &[ContainedCorruption] {
+        &self.contained_corruptions
+    }
 }
 
 impl ArtifactStore {
@@ -82,16 +111,36 @@ impl ArtifactStore {
             ..RecoveryReport::default()
         };
 
-        let inventory: BTreeMap<_, _> =
-            self.catalog.inventory()?.into_iter().map(|entry| (entry.digest(), entry)).collect();
+        let inventory: BTreeMap<_, _> = self
+            .catalog
+            .recovery_inventory()?
+            .into_iter()
+            .map(|entry| (entry.digest(), entry))
+            .collect();
         for (&digest, entry) in &inventory {
             let object = self.paths.object(digest);
             let quarantine = self.paths.quarantine(digest);
             let object_exists = regular_file_exists(&object)?;
             let quarantine_exists = regular_file_exists(&quarantine)?;
+            let metadata = self.catalog.metadata(digest)?.ok_or_else(missing_recorded_file)?;
+            if metadata.integrity() == IntegrityState::Corrupt {
+                self.recover_contained_corruption(digest, object_exists, quarantine_exists)?;
+                continue;
+            }
             match entry.quarantine() {
                 QuarantineState::Active => match (object_exists, quarantine_exists) {
-                    (true, false) => verify_finalized(&object, digest, entry.size())?,
+                    (true, false) => {
+                        if let Err(error) = verify_finalized(&object, digest, entry.size()) {
+                            if error.code() != ErrorCode::CorruptObject {
+                                return Err(error);
+                            }
+                            self.catalog.set_integrity(digest, IntegrityState::Corrupt)?;
+                            self.move_corrupt_to_quarantine(digest)?;
+                            report
+                                .contained_corruptions
+                                .push(ContainedCorruption { digest, expected_size: entry.size() });
+                        }
+                    }
                     (false, true) => {
                         verify_finalized(&quarantine, digest, entry.size())?;
                         self.move_to_objects(digest, entry.size())?;
@@ -149,6 +198,33 @@ impl ArtifactStore {
             }
         }
         Ok(report)
+    }
+
+    fn recover_contained_corruption(
+        &self,
+        digest: ArtifactDigest,
+        object_exists: bool,
+        quarantine_exists: bool,
+    ) -> Result<(), ArtifactStoreError> {
+        match (object_exists, quarantine_exists) {
+            (true, false) => self.move_corrupt_to_quarantine(digest),
+            (false, true) => Ok(()),
+            (true, true) => Err(corrupt_layout(
+                "contained corruption exists in active and quarantine namespaces",
+            )),
+            (false, false) => Err(missing_recorded_file()),
+        }
+    }
+
+    fn move_corrupt_to_quarantine(&self, digest: ArtifactDigest) -> Result<(), ArtifactStoreError> {
+        let source = self.paths.object(digest);
+        let destination = self.paths.quarantine(digest);
+        let source_parent = self.paths.ensure_object_parent(digest)?;
+        let destination_parent = self.paths.ensure_quarantine_parent(digest)?;
+        fs::rename(source, destination)
+            .map_err(|error| io(StoreOperation::MoveQuarantine, error))?;
+        sync_directory(&destination_parent)?;
+        sync_directory(&source_parent)
     }
 }
 

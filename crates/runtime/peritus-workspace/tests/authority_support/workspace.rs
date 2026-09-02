@@ -20,7 +20,7 @@ use tempfile::TempDir;
 use super::{AuthorityReceipts, Ids, commit_authority, open_journal};
 
 pub struct WorkspaceFixture {
-    pub _source: TemporaryRepository,
+    pub source: TemporaryRepository,
     pub gateway: WorkspaceGateway,
     pub patch: PatchSet,
     pub initial: CandidateSnapshot,
@@ -111,7 +111,7 @@ pub fn workspace_fixture(temp: &TempDir, ids: &Ids, label: &str) -> WorkspaceFix
         PatchSet::new(ids.workspace, Generation::first(), RevisionNumber::first(), vec![operation])
             .expect("patch set");
     WorkspaceFixture {
-        _source: source,
+        source,
         gateway: WorkspaceGateway::new(workspace),
         patch,
         initial: snapshot,

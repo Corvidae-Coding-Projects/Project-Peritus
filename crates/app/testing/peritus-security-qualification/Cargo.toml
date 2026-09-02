@@ -17,7 +17,22 @@ peritus-types = { version = "=0.0.0", path = "../../../foundation/peritus-types"
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
+tempfile.workspace = true
 thiserror.workspace = true
+toml.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+nix.workspace = true
+
+[target.'cfg(target_os = "windows")'.dependencies]
+find-msvc-tools.workspace = true
+windows-sys = { workspace = true, features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_JobObjects",
+    "Win32_System_ProcessStatus",
+    "Win32_System_Threading",
+] }
 
 [package.metadata.peritus]
 owner = "H0"
@@ -26,3 +41,19 @@ verification-class = "C"
 
 [lints]
 workspace = true
+
+[[bin]]
+name = "peritus-h0"
+path = "src/bin/peritus-h0.rs"
+
+[[bin]]
+name = "peritus-h0-aggregate"
+path = "src/bin/peritus-h0-aggregate.rs"
+
+[[bin]]
+name = "peritus-h0-controller"
+path = "src/bin/peritus-h0-controller.rs"
+
+[[bin]]
+name = "peritus-h0-prepare"
+path = "src/bin/peritus-h0-prepare.rs"

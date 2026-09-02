@@ -11,3 +11,11 @@ platform credential service is unavailable.
 The platform adapter also provides the product onboarding boundary for writing, replacing, and
 removing credentials. Those operations accept zeroizing `SecretMaterial` and return only exact
 content-bound `SecretReference` values.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-secrets
+```

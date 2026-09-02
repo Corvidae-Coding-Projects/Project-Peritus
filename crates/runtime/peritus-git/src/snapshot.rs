@@ -1,6 +1,7 @@
 //! Candidate-tree creation, retained snapshots, and exact tree restoration.
 
 mod operations;
+mod quarantine;
 mod support;
 
 use std::path::PathBuf;
@@ -12,6 +13,8 @@ use crate::{
     StatusObservation, TreeId,
 };
 
+/// Returns the deterministic retained reference for one workspace snapshot identity.
+#[must_use]
 pub fn expected_snapshot_ref(workspace_id: WorkspaceId, snapshot_id: SnapshotId) -> SnapshotRef {
     support::snapshot_ref(workspace_id, snapshot_id)
 }
@@ -82,12 +85,12 @@ impl CandidateTree {
     }
 }
 
-/// Validated namespaced reference retaining one snapshot commit.
+/// Validated namespaced reference owned by the Peritus snapshot subsystem.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct SnapshotRef(String);
 
 impl SnapshotRef {
-    /// Returns the canonical `refs/peritus/workspaces/...` name.
+    /// Returns the canonical active or quarantine reference name.
     #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
@@ -122,6 +125,34 @@ impl<'a> SnapshotRequest<'a> {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CandidateSnapshot {
     manifest: CandidateSnapshotManifest,
+}
+
+/// Durable evidence that a divergent retained snapshot was removed from active use.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SnapshotQuarantine {
+    active_reference: SnapshotRef,
+    quarantine_reference: SnapshotRef,
+    observed_commit: CommitId,
+}
+
+impl SnapshotQuarantine {
+    /// Returns the active reference that is now absent.
+    #[must_use]
+    pub const fn active_reference(&self) -> &SnapshotRef {
+        &self.active_reference
+    }
+
+    /// Returns the reference retaining the divergent value for inspection.
+    #[must_use]
+    pub const fn quarantine_reference(&self) -> &SnapshotRef {
+        &self.quarantine_reference
+    }
+
+    /// Returns the divergent commit formerly reachable through the active reference.
+    #[must_use]
+    pub const fn observed_commit(&self) -> CommitId {
+        self.observed_commit
+    }
 }
 
 impl CandidateSnapshot {

@@ -1,4 +1,4 @@
-//! Verus refinement of durable bootstrap ordering.
+//! Verus refinements of durable bootstrap and product-selection policy.
 
 use vstd::prelude::*;
 
@@ -44,6 +44,29 @@ pub const fn bootstrap_transition_model_exec(
             | (BootstrapPhaseModel::RegistryReady, BootstrapPhaseModel::RegistryReady | BootstrapPhaseModel::ConfigurationReady)
             | (BootstrapPhaseModel::ConfigurationReady, BootstrapPhaseModel::ConfigurationReady)
     )
+}
+
+} // verus!
+
+verus! {
+
+/// A provider switch can be authorized only when another selected route exists.
+pub open spec fn provider_failover_shape(
+    enabled_providers: u64,
+    automatic_failover: bool,
+) -> bool {
+    !automatic_failover || enabled_providers >= 2
+}
+
+/// Executable refinement of the provider failover selection invariant.
+#[must_use]
+pub const fn provider_failover_shape_model_exec(
+    enabled_providers: u64,
+    automatic_failover: bool,
+) -> (result: bool)
+    ensures result == provider_failover_shape(enabled_providers, automatic_failover)
+{
+    !automatic_failover || enabled_providers >= 2
 }
 
 } // verus!
@@ -114,4 +137,13 @@ const fn trust_model(trust: WorkspaceTrust) -> WorkspaceTrustModel {
         WorkspaceTrust::Restricted => WorkspaceTrustModel::Restricted,
         WorkspaceTrust::Trusted => WorkspaceTrustModel::Trusted,
     }
+}
+
+/// Applies the verified failover-selection predicate to a runtime provider count.
+#[must_use]
+pub const fn provider_failover_shape_exec(
+    enabled_providers: u64,
+    automatic_failover: bool,
+) -> bool {
+    provider_failover_shape_model_exec(enabled_providers, automatic_failover)
 }

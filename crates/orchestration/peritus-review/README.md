@@ -25,6 +25,12 @@ The reducer owns the closed lifecycle for:
 
 `Completed` means D2 review completion only. B0/E0 remains the overall run-acceptance boundary.
 
+The production-facing finding ledger admits normalized typed categories without a reviewer-owned
+blocking Boolean. Policy always blocks unresolved correctness, requested-behavior, build-coverage,
+test-coverage, and security findings. Omission alone cannot close a finding: a fixer proposal and a
+later fresh reviewer confirmation are both required, and the complete ledger supports checked
+durable restoration.
+
 ## Durable protocol
 
 D2 uses B3 schema-version-one families 53–55 for commands, events, and complete state. The C0
@@ -48,3 +54,11 @@ CARGO_BUILD_JOBS=1 cargo verus verify --locked --package peritus-review --all-fe
 ```
 
 See [`docs/d2-review-engine.md`](../../../docs/d2-review-engine.md) for the operating contract.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-review
+```

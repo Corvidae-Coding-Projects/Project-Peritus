@@ -15,6 +15,20 @@ pub enum ScenarioCategory {
     Lifecycle,
 }
 
+impl ScenarioCategory {
+    /// Returns the canonical protocol spelling.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Package => "package",
+            Self::Service => "service",
+            Self::Application => "application",
+            Self::Runtime => "runtime",
+            Self::Lifecycle => "lifecycle",
+        }
+    }
+}
+
 /// Stable scenario identity.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ScenarioId {
@@ -92,6 +106,40 @@ impl ScenarioSpec {
 }
 
 impl ScenarioId {
+    /// Parses one canonical protocol spelling.
+    #[must_use]
+    pub fn parse(value: &str) -> Option<Self> {
+        Self::all()
+            .iter()
+            .find(|scenario| scenario.id().as_str() == value)
+            .map(|scenario| scenario.id())
+    }
+
+    /// Returns the canonical protocol spelling.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::ArtifactIntegrity => "artifact-integrity",
+            Self::ReleaseLayout => "release-layout",
+            Self::ProtectedRoots => "protected-roots",
+            Self::ServiceAutostart => "service-autostart",
+            Self::ServiceRestart => "service-restart",
+            Self::LocalTransport => "local-transport",
+            Self::PeerAuthentication => "peer-authentication",
+            Self::CliStatus => "cli-status",
+            Self::TuiLifecycle => "tui-lifecycle",
+            Self::ProcessEquivalence => "process-equivalence",
+            Self::PipeSeparation => "pipe-separation",
+            Self::TerminalOwnership => "terminal-ownership",
+            Self::CancellationTreeReap => "cancellation-tree-reap",
+            Self::SandboxDenial => "sandbox-denial",
+            Self::SandboxExecution => "sandbox-execution",
+            Self::UpgradePreservation => "upgrade-preservation",
+            Self::UpgradeRollback => "upgrade-rollback",
+            Self::UninstallPreservation => "uninstall-preservation",
+        }
+    }
+
     /// Returns the complete canonical H2 scenario list.
     #[must_use]
     pub const fn all() -> &'static [ScenarioSpec] {

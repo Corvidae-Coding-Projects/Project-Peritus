@@ -1,314 +1,262 @@
 # Project Peritus
 
-Peritus is a local-first, Verus-first coding-agent harness under active production qualification.
-It combines explicit durable workspace/state semantics, a tight inspect/edit/run/test loop,
-writer-reviewer-fixer orchestration, and evidence-driven harness observability and evolution.
+Peritus is a local-first coding-agent harness built primarily in Rust and Verus. It combines:
 
-The repository is not yet a releasable product. Implementation is staged for safe parallel work,
-but no stage is an MVP and no intermediate stage carries a production-readiness claim.
+- explicit workspace and durable-state semantics;
+- a tight inspect, edit, run, test, and diagnose loop;
+- writer, independent reviewer, and fixer orchestration;
+- evidence-based acceptance, recovery, observability, and harness evolution; and
+- a terminal product that handles provider setup, workspaces, long-running tasks, and handoff.
+
+The aim is a production coding harness, not a demonstration or an MVP. All planned architecture
+slices have implementations, tests, policy surfaces, and operator documentation. The repository is
+still under final production qualification, so it deliberately reports `NotReadyForProduction`
+until the exact release candidate passes every required native-host and release gate.
 
 ## Current development state
 
-The implemented foundation and runtime spine now covers:
+| Area | Implemented capability |
+| --- | --- |
+| A0-A3 foundation | Pinned Rust and Verus toolchains, architecture policy, conformance support, and the versioned application protocol |
+| B0-B3 authority | Lifecycle kernel, policy, capabilities, budgets, leases, approvals, quality policy, and domain protocol |
+| C0-C7 substrate | Durable state, worktrees, processes, sandboxes, tools, model providers, context and memory, traces and telemetry |
+| D0-D3 engines | Agent loop, deterministic gate DAG, independent review, resource-aware scheduling, and collaboration |
+| E0-E3 orchestration | Writer-reviewer-fixer delivery, harness materialization, failure analysis, and isolated evaluation |
+| F0 evolution | Evidence-bound harness changes with human-controlled promotion and rollback |
+| G0-G4 product | Daemon, CLI, TUI, plugins and MCP, provider onboarding, managed workspaces, conversational coding runs, packaging, and self-update |
+| H0-H4 qualification | Security, resilience, platform, performance, artifact, provenance, and release-readiness machinery |
 
-- A0–A3: pinned Rust/Verus workspace governance, verified foundational types and trust accounting,
-  deterministic test support, reusable conformance execution, and the transport-neutral
-  application protocol with negotiated versions/features, canonical envelopes, resumable events,
-  artifact/prompt/terminal flows, generated schemas, compatibility fixtures, and Verus refinements;
-- B0–B3: the lifecycle kernel, capabilities/policy/budgets/leases/approvals, acceptance contracts,
-  quality policy, and the versioned domain protocol/codec;
-- C0: the durable journal, rebuildable projections, artifact store, migrations, evidence admission,
-  committed B0/B1 receipts, and restart-safe authority observations;
-- C1: structured Git/worktree operations, checked atomic patches, target-owned workspace
-  authorization, candidates, snapshots, rollback, and restart reconciliation; and
-- C2: structured process and PTY execution, the target-owned execution gateway, complete
-  platform-neutral sandbox contracts, bounded supervision/output/cancellation and resource
-  accounting, durable process recovery and retryable output publication, holder quiescence,
-  executable reference semantics, and reusable A2 qualification; and
-- C3: target-owned native backend preparation and lifecycle hooks, protected helper channels,
-  native Linux, macOS, and Windows enforcement backends and probes, managed HTTP/CONNECT egress,
-  exact secret leases and delivery, redaction, native recovery, and complete backend teardown; and
-- C4: bounded canonical tool descriptors and JSON schemas, capability/role exposure, target-owned
-  one-use authorization and routing, replay/control/result envelopes, and C1/C2/C3-backed
-  filesystem, Git, shell, and explicit quality tools with fresh-subject conformance; and
-- C5: a versioned provider-neutral model protocol, exact capability negotiation, bounded normalized
-  streaming and reduction, deterministic retry/idempotency and cancellation semantics, a hardened
-  HTTP/process transport boundary, production OpenAI Responses, Anthropic Messages, stable-v1
-  Google Interactions/Generate Content, explicitly profiled compatible endpoints, and separate
-  account-backed Codex/Claude routes through their credential-owning official executables, with
-  immutable wire fixtures and fresh-subject A2 conformance; and
-- C6: canonical role-specific context views, provenance and authority-aware context DAGs,
-  deterministic dependency-complete selection and token accounting, validated compaction lineage,
-  typed provider-neutral render plans, scoped evidence-backed memory lifecycle and tombstones,
-  deterministic explainable retrieval, and rebuildable canonical indexes;
-- C7: durable causal trace observations with canonical persistence and replay, default-surface
-  redaction, bounded rebuildable projections, non-authoritative metrics, bounded telemetry
-  buffering, exporter failure isolation, acknowledgement, shutdown, and restart recovery;
-- D0: a durable verified inner-agent state machine and cooperative runtime composition for
-  role-scoped context/memory preparation, normalized provider streaming, independently authorized
-  C4 tool execution and long-running control, stable result ordering, bounded accounting,
-  completion proposals, pause/cancel/retry/recovery, and crash-safe C0 replay; and
-- D1: a durable gate DAG engine with exact specification/workspace/snapshot bindings, deterministic
-  dependency planning and aggregation, C4-only quality execution, strict structured result parsing,
-  clean read-only snapshots, explicit assertion-versus-infrastructure outcomes, bounded retry and
-  cancellation, crash recovery, fresh evidence admission, and fail-closed acceptance; and
-- D2: a durable deterministic independent-review engine with immutable contract/revision/context
-  bindings, bounded structured submissions, separately reported quorum dimensions, stable finding
-  provenance and conservation, duplicate reconciliation, fixer/reviewer disposition handshakes,
-  externally authorized waiver observation, exact revision invalidation, oscillation/escalation,
-  B2 quality projections, and crash-safe C0 replay; and
-- D3: durable bounded resource-aware scheduling with dependency readiness, explicit worker
-  reservations, deterministic fairness and recovery, plus causal collaboration task trees,
-  delegation, message and artifact handoff, truthful joins, cancellation propagation, and
-  crash-safe C0 replay; and
-- E0: a durable deterministic AcTor delivery orchestrator that composes writer D0 turns, fresh D1
-  gates, independent D2 review, bounded fixer revision cycles, D3 work/task ownership, B2
-  evaluation, and durable B0 acceptance truth with commit-before-effect directives, pause,
-  cancellation, and exact restart reconciliation; and
-- E1: strict C1-backed harness manifests and complete typed component catalogs, deterministic
-  compatibility/authority graphs, protected controlled assets, immutable content-addressed
-  revision DAGs, exact owned-path C1 materialization and ancestor rollback, plus C0 durability,
-  replay, projections, protocol fixtures, and independent A2 conformance; and
-- E2: immutable subject-bound C7/C0 evidence selection, deterministic causal timelines and closed
-  failure taxonomy, citation-complete root-cause analysis, cross-run pattern clustering, E1
-  component correlation and harness-health summaries, optional strictly validated C5/C6 model
-  assistance, plus crash-safe jobs, replay, report artifact/evidence publication, protocol
-  fixtures, migration, Verus obligations, and independent A2 conformance; and
-- E3: immutable dataset and evaluator isolation, exact E1/C5/C2/C3 profile binding, deterministic
-  paired D3 rollout plans, complete attempt/outcome/resource accounting, frozen integer/fixed-point
-  statistical analysis, crash-safe schedule/execution/publication effects, canonical reports,
-  C0 evidence admission, protocol fixtures, migration, Verus refinements, and independent A2
-  conformance without harness mutation or promotion authority; and
-- F0: immutable evidence-citing evolution campaigns, isolated E1 candidate variants and interaction
-  groups, deterministic E3-backed attribution and deny-wins multi-objective selection, exact D2
-  review and B0/B1 human-authority binding, atomic durable production-pointer activation,
-  append-only rollback, crash-safe replay/publication, protocol fixtures, migration, Verus
-  promotion/evaluator-isolation refinements, and independent A2 conformance; and
-- G0: the production `peritusd` application root with strict protected state configuration,
-  singleton local IPC ownership, authenticated durable A3 sessions, one bounded C0 authority owner,
-  exact application idempotency and event subscriptions, streaming artifacts, fresh signed-approval
-  prompts, C2 terminal bridges, configured C3/C4/C5 provider and tool inventories, bounded worker
-  supervision, fenced destination-native outbox delivery, F0 pointer loading, C7 local telemetry,
-  ordered startup/recovery/shutdown, explicit read-only diagnostics, Verus lifecycle refinements,
-  and an independent 28-case A2 daemon contract with 28/28 public-`peritusd` subprocess coverage,
-  including real PTY execution and effect-before-ack kill/recovery qualification; and
-- G1: the production `peritus` command-line client with strict dependency-free parsing, protected
-  Unix-socket and Windows named-pipe A3 transport, negotiation and session resume, stable human and
-  JSON output/exit categories, generic B3 command submission, resumable event streams, artifact
-  transfer, prompt settlement, terminal control, heartbeat handling, and shell completions; and
-- G2: the production `peritus-tui` client with a deterministic reducer/effect boundary, bounded
-  runs/diff/review/trace/evolution/approval/terminal projections, reconnect and cursor resume,
-  signed approval input, sanitized terminal rendering, PTY control, and reliable terminal-mode
-  restoration; and
-- G3: H-class canonical plugin contracts, strict filesystem discovery and trust binding, isolated
-  process and Wasmtime-CLI plugin hosting, authority-mediated invocation, lifecycle quotas and
-  cancellation, plus a bounded MCP 2025-06-18 JSON-RPC server for authority-filtered tools,
-  resources, and prompts, backed by a seven-case runtime-neutral A2 plugin contract; and
-- G4: the `peritus` no-argument product entry discovers platform-native
-  per-user directories, creates protected roots and stable local identities, publishes a canonical
-  public approval registry and strict daemon configuration, resumes immutable-generation setup
-  state, resolves a version-matched packaged `peritusd`, and starts or reuses its local endpoint
-  before entering the TUI. First launch now presents a provider catalog with visible readiness and
-  useful defaults; delegates ChatGPT/Claude subscription login to the official `codex`/`claude`
-  clients; configures direct OpenAI, Anthropic, Gemini, and compatible routes using hidden input and
-  the operating-system credential store; persists switching/default/offline choices; and exposes
-  focused repair plus `peritus providers` settings without environment exports or hand-written
-  configuration. It now also discovers the current Git root, accepts `peritus open [PATH]`, keeps a
-  most-recent workspace list, names the exact repository before trust, starts unknown repositories
-  in restricted mode, creates a separate application-managed detached worktree when trusted,
-  publishes and recovers canonical C1 registrations, reports clean/dirty/repair state, switches or
-  forgets entries through `peritus workspaces`, and restarts a running daemon only when generated
-  configuration changed. Its daemon-owned coding-run service accepts a task and explicit provider
-  choice for each role, executes the writer, repository checks, independent reviewer, and bounded
-  fixer loop in the managed worktree, persists every visible phase, recovers interrupted records,
-  and supports query, cancellation, and retry through canonical A3 messages. The TUI provides an
-  accessible task composer, textual progress timeline, diff and review/check views, role-provider
-  switching, cancellation, and retry. Host-native package assembly now installs the launcher,
-  daemon, TUI, sandbox helper, lifecycle scripts, manifest, and checksums while preserving product
-  state across repeat install, upgrade, rollback, and uninstall; and
-- H0: a verified exact-candidate security-readiness policy plus a 42-case fresh-native-subject
-  campaign covering R-SEC-001 through R-SEC-007, the nine security-relevant acceptance criteria,
-  malicious repositories, native sandboxes, role isolation, evidence invalidation, evolution,
-  observability/redaction, supply chain, unsafe/TCB reconciliation, independent review, bounded
-  resources, cancellation, panic containment, cleanup, and canonical evidence; and
-- H1: a 43-scenario deterministic resilience qualification catalog covering every authoritative
-  commit boundary, active daemon phase, corruption and disk-exhaustion class, provider/tool/worker
-  death, reboot and reconciliation path, with fresh subjects, bounded cleanup/resource accounting,
-  canonical evidence, false-success rejection, and a fail-closed production verdict; and
-- H2: typed Linux, macOS, and Windows package/layout/service/transport/sandbox/process-equivalence
-  contracts, fresh packaged-host qualification, and per-user install, upgrade, rollback, uninstall,
-  systemd, launchd, and Task Scheduler assets that preserve protected configuration and state; and
-- H3: deterministic workload, profile, SLO, measurement, accounting, baseline-comparison, evidence,
-  load, and eight-hour soak machinery with a dedicated Criterion benchmark target, stable schemas,
-  bounded-resource/backpressure evaluation, and no fabricated performance baseline; and
-- H4: a verified exact 25-criterion/44-requirement release policy, deterministic SPDX 2.3 SBOM,
-  provenance, detached Ed25519 verification, independent-builder reproducibility, migration,
-  recovery, licensing and artifact contracts, eleven fresh-subject final campaigns, signed H0-H3
-  inputs, independent final audit, content-addressed evidence, and a fail-closed composition adapter
-  that cannot sign, tag, publish, deploy, or manufacture evidence.
+The product supports direct OpenAI, Anthropic, Gemini, and compatible API routes. It also supports
+ChatGPT and Claude subscription accounts through the official `codex` and `claude` executables.
+Those executables own login and model transport; Peritus retains conversation, tool, workspace,
+review, and policy authority. When two or more providers are selected, provider settings offer
+explicit automatic-failover consent. A role switches only after its selected provider exhausts
+ordinary recovery, never for safety, refusal, cancellation, or ambiguous-acceptance outcomes, and
+records the exact switch in durable trace and live progress evidence. Once a route fails over, a
+run-scoped circuit keeps later roles from repeatedly calling that same unavailable provider when a
+healthy consented fallback exists.
 
-All original architecture slices A0 through H4 and the G4 product composition now have implemented
-code, tests, formal-policy surfaces, schemas, and operating documentation. G3 deliberately cannot
-mint C4/B1 authority:
-packaged application embedding must supply a current daemon-owned mediator for each exact run,
-workspace, and target. Qualification machinery does not fabricate a production verdict. A release
-still requires running the H0-H4 campaigns against the exact final commit, retaining reviewed
-native-host, eight-hour-soak, multi-language, signature, reproducibility, and independent-audit
-evidence, and obtaining an H4 `Ready` decision. Until that evidence exists, Peritus remains
-`NotReadyForProduction` by construction.
+Long-running coding tasks persist their conversation, design, candidate changes, findings, trace,
+and handoff state. Productive work can continue across bounded segments and daemon restarts.
+Malformed or stalled provider turns use bounded retries with traced backoff and jitter. Completion
+requires repository-grounded inspection, deterministic project checks, independent review, and an
+exact accepted revision. A long inspection sequence that produces no workspace mutation or
+declared external effect receives a finite in-session correction toward a concrete delivery step.
+When a caller-authorized operational request asks for a live result, supporting scripts and
+documentation are accepted only alongside a successful effect and a later fresh verification.
 
-Gate A is the current merge authority: ordinary Rust checks, architecture and API policy,
-supply-chain policy, pinned toolchains, full Verus verification, and verified release builds must
-all pass together. Required GitHub-hosted checks now execute on Ubuntu, macOS, and Windows, with a
-separate locked Foundation matrix covering the same platform, dependency, and Verus boundaries.
+## What remains before release
 
-## Install and run the current product build
+The implementation is not the release decision. Production readiness still requires:
 
-From a source checkout, build the checked host-native package and install it for the current user:
+1. completing the accepted broadly useful repairs found by the finished Terminal-Bench 2.0
+   diagnostic campaign;
+2. freezing the remediation candidate after every retained failure has an honest systemic,
+   evaluator-integrity, or candidate-quality disposition;
+3. only then, under an explicit qualification start, running both complete benchmark suites once
+   with one exact, revision-bound final binary;
+4. running H0-H4 against the exact final commit on Linux, macOS, and Windows;
+5. retaining the eight-hour soak, signature, provenance, reproducibility, migration, and recovery evidence;
+6. receiving an independent final audit and an H4 `Ready` result; and
+7. publishing the first signed GitHub release only after every required hosted check is green.
 
-```text
+The H4 adapter cannot sign, tag, publish, deploy, or manufacture missing evidence. Human release
+authority remains outside the harness.
+
+H0, H1, and H2 now have standard native process boundaries instead of requiring each release
+operator to reinvent one. H0 runs one reviewed probe per case. H1 keeps one reviewed controller
+alive across prepare, fault injection, recovery, and cleanup. H2 stages a fresh exact package copy
+for each of its 18 scenarios and publishes a complete no-overwrite report through `peritus-h2`.
+All three bind responses to the exact candidate or package, verify retained raw artifacts, and own
+the complete process tree. H2 now includes the Rust native controller that drives the packaged
+installers, daemon, CLI, TUI, process, sandbox, upgrade, rollback, and uninstall checks. Its first
+Linux development run passed all 18 scenarios with complete cleanup. The TUI scenario now launches
+the installed interface in a native PTY, negotiates with the packaged daemon, observes a rendered
+frame, sends Ctrl-Q, and verifies successful terminal restoration. Final candidate-bound Linux,
+macOS, and Windows reports are still required; a development report is not release evidence.
+The native package workflow now runs the same complete controller on all three hosted operating
+systems and retains each report plus raw evidence. Its macOS and Windows sandbox scenarios call the
+actual Seatbelt and AppContainer/Job Object host probes; hosted results remain evidence only after
+the corresponding revision finishes successfully.
+
+H1 now has all 43 checked-in production controller routes. Focused native runs against freshly
+built binaries passed both sides of the journal, blob, retained Git snapshot, exclusive-lease,
+patch, D1 gate, and F0 campaign/pointer promotion commits. A projection-corruption route also
+proves that startup rejects corrupt active bytes and atomically installs a fresh verified
+generation without changing the authoritative journal. A journal-corruption route proves that
+fresh startup detects a changed committed frame and stops before authority mutation. A
+blob-corruption route now changes a referenced content-addressed object and proves that restart
+quarantines the divergent bytes, retains their audit root, and denies further use. The staged
+snapshot-corruption route redirects a retained snapshot ref to the wrong commit, then proves that
+fresh recovery atomically removes it from active use and retains the divergent value under the
+quarantine namespace. An acceptance-evidence corruption route changes the portable record bytes
+without changing their indexed identity, then proves that fresh evidence-store startup preserves
+the exact corrupt row in a digest-bound quarantine and denies it to every subsequent reader. The
+harness-promotion corruption route now publishes both real F0 activation directives, corrupts only
+the harness-activation evidence, and proves fresh startup quarantines it without changing the
+already-committed 16-event, four-head activation or production pointer. Six
+dependency routes now exercise real executable-backed provider failure,
+the ordinary grounded and receipt-backed product command tool, and daemon-owned worker tasks. A
+fresh scheduler replay either requeues the exact owned work after one dependency death or preserves
+explicit exhausted non-success after consuming the configured retry ceiling. The artifact-finalize
+disk route also drives two real writers through one durable logical quota, proves the losing
+finalization rolls its already-published bytes back, and verifies the admitted artifact after a
+fresh process opens the store. All eleven E0 lifecycle routes now commit the shortest legal
+writer/gate/reviewer/fixer/acceptance reducer prefix through C0, kill the staged `peritusd` at the
+named durable phase, and require a fresh process to reproduce the exact state, event count,
+aggregate head, child ownership, handoff, proposal, or B2 certificate. The staged daemon was also
+killed with checked work still unpublished, and again after each corresponding durable commit.
+Recovery proved rollback for the before cases and exact replay for the after cases, including lease
+projection identity, exact patch postimage bytes, complete gate successor state, and all-or-nothing
+campaign, production-pointer, and approve-once state. This is useful evidence, not an H1 readiness
+claim: production quota routes now prove that artifact finalization and snapshot-manifest
+publication leave no rejected bytes, metadata, or retained Git reference, while journal exhaustion
+leaves no partial command, event, or aggregate head. The final three routes boot a digest-bound
+Alpine guest under QEMU/KVM, stage the exact static `peritusd`, and prove outstanding-effect,
+durable-before-ack, and startup-reconciliation recovery across changed guest kernel boot IDs. All
+three focused reboot diagnostics passed with exact single-effect and cleanup evidence. A complete
+43-case run against the eventual exact release revision is still required before H1 can be Ready.
+
+H0 also has a Rust-owned exact-candidate preparer and a three-host native workflow. The preparer
+derives the common candidate identity from committed source, binds the controller and native host
+facts, and refuses dirty or cross-platform inputs. Each host runs four isolated worker partitions,
+reassembles them in catalog order, and retains the same canonical platform report and raw evidence.
+Cross-host aggregation and a separately supplied independent review remain mandatory; the workflow
+cannot manufacture either one.
+
+All hosted jobs are capped at ten minutes. Rust and Verus checks are partitioned by the reviewed
+architecture layers, H2 assigns one of its 18 scenarios to each shard, and tagged releases build
+each native binary separately before package assembly and attestation. Required Gate A check names
+remain stable and aggregate the complete shard set.
+
+The tagged release workflow now stages each native archive, generates a candidate-bound inventory,
+SPDX SBOM, and SLSA provenance document in Rust, and retains GitHub keyless Sigstore attestations.
+The Rust `peritus-h4` operator now prepares and verifies candidate-bound Ed25519 evidence envelopes,
+replays signed fresh-subject cleanup records, compares independent builds, assembles all 25
+acceptance criteria, reconstructs the independent final audit and manifest, and emits one
+no-overwrite Ready/NotReady bundle through verified release policy. This supplies the release
+mechanism; the unfinished exact-candidate campaigns and independent audit remain the release
+blockers.
+
+## Benchmark qualification
+
+The completed pinned HarnessBench diagnostic campaign contains all 106 tasks with no missing native
+adapter run. Its retained means are:
+
+| Measure | Result |
+| --- | ---: |
+| Outcome | 0.8969 |
+| Process | 0.9286 |
+| Security | 1.0000 |
+| Combined | 0.8331 |
+
+Forty tasks have perfect outcome and 64 score at least 0.9. The retained runs total 8.529 execution
+hours and 31,286,948 model tokens. Failures produced general improvements to recovery, grounding,
+verification, evidence handoff, multi-turn state, tool use, and artifact consistency. Peritus did
+not add task-specific answers or weaken the upstream oracles. The
+[benchmark integrity appendix](docs/benchmark-integrity-appendix.md) records cases where a
+score-only workaround would require hidden-answer leakage, a task-specific hack, or breaking the
+published contract.
+
+A Rust-owned publisher now reconstructs that baseline from the retained result tree, checks exact
+coverage against all 106 pinned tasks, and records the selected report and SHA-256 for each task.
+The diagnostic run predates embedded build identity, so that limitation is explicit; the final
+single-binary campaign will reject any task without native source and executable identity.
+
+Because general fixes were intentionally made as failures were diagnosed, those 106 reports bind
+successive development checkpoints. They are the retained diagnostic baseline. The final report
+will compare them with a second complete run made by one frozen, revision-bound release candidate.
+
+The frozen Terminal-Bench 2.0 diagnostic campaign is complete: all 445 serialized trials finished,
+with 239 rewards of 1, 151 rewards of 0, and 55 unscored trials. Accuracy across the 390 scored
+trials is 0.6128; success across all completed trials is 0.5371. This retained baseline spans
+successive development checkpoints and therefore is diagnostic evidence, not the final-candidate
+score. Its immutable normalized report has SHA-256
+`d7feff820c7d38d204744f75ef9214cb7b91949cac2c8c3b5625f10c39321bc0`. Setup, exact evidence,
+results, and reproduced failures are documented under [external benchmarks](benchmarks/README.md).
+
+## Install and run
+
+No public release exists yet. From a source checkout, build and install the current native package
+for your user account:
+
+```sh
 cargo xtask product-install
-```
-
-After installation, ordinary use is one command. It requires no endpoint, provider export, or
-hand-written configuration:
-
-```text
 peritus
 ```
 
-Run it from inside a Git repository to use that repository automatically. Use `peritus open
-[PATH]`, `peritus providers`, or `peritus workspaces` for an explicit workspace, provider settings,
-or workspace settings. Press `n` in the Runs view to describe a coding task; `w`, `e`, and `f`
-select the writer, reviewer, and fixer providers. The
-[G4 product-experience guide](docs/g4-product-experience.md) explains onboarding, trust, coding
-runs, native packaging, state locations, and recovery.
+After the first release is published, Linux and macOS users will be able to install it with:
 
-## Foundation checks
+```sh
+curl -fsSL https://raw.githubusercontent.com/Corvidae-Coding-Projects/Project-Peritus/main/install.sh | sh
+```
 
-Rust `1.97.1`, Verus `0.2026.08.09.92f466f`, and vstd revision
-`92f466f247f45128c630d1c843fd6e27d2115587` are pinned. Install those tools, then use the
-checked-in command surface:
+Windows PowerShell users will be able to run:
+
+```powershell
+irm https://raw.githubusercontent.com/Corvidae-Coding-Projects/Project-Peritus/main/install.ps1 | iex
+```
+
+The bootstrap selects the correct release asset, verifies its SHA-256 digest, and invokes the same
+transactional installer used by source builds. Peritus checks for updates at startup at most once
+every six hours and never blocks offline use. Use `peritus update` for a manual check,
+`peritus update --disable-checks` to disable automatic checks, and `--enable-checks` to restore
+them.
+
+Run `peritus` inside a Git repository to open it automatically. The first launch guides provider
+login and workspace trust without requiring environment exports or hand-written configuration.
+Useful direct commands are:
+
+```text
+peritus open [PATH]   Open a specific workspace
+peritus providers    Configure or switch providers
+peritus workspaces   Inspect or repair managed workspaces
+peritus update       Check for a product update now
+```
+
+In the TUI, press `n` to create a task. Select a run and press Enter or `m` to add context, answer a
+question, redirect work, or continue a failed or completed run in the same managed worktree. After
+acceptance, inspect the diff and choose whether to commit, export, or discard it. The
+[product-experience guide](docs/g4-product-experience.md) contains the complete interaction and
+recovery reference.
+
+## Develop and verify
+
+Peritus pins Rust `1.97.1`, Verus `0.2026.08.09.92f466f`, and vstd revision
+`92f466f247f45128c630d1c843fd6e27d2115587`. With those tools installed, use the checked command
+surface:
 
 ```text
 just check          # format, build, tests, Clippy, docs, and workspace policy
 just licenses       # dependency, source, and license policy
-just toolchain      # probe the installed Rust/Verus/vstd/Z3 pins
-just ordinary-api   # audit formal APIs callable from ordinary safe Rust
-just test           # includes deterministic H0-H4 unit and qualification-contract suites
-just verus-verify   # full TCB-aware verification plus no-cheating V/H roots
-just verus-build    # full verified release plus no-cheating V/H builds
-just gate-a         # the complete formal-foundation gate
+just toolchain      # confirm the Rust, Verus, vstd, and Z3 pins
+just ordinary-api   # check the safe-Rust boundary around formal code
+just test           # run unit and qualification-contract suites
+just verus-verify   # verify all declared Verus roots and trust policy
+just verus-build    # build the verified release configuration
+just gate-a         # run the complete merge gate
 ```
 
-Credentialed C5 qualification is explicit because hosted and ordinary local gates never receive
-provider accounts. After authenticating the official executables, run the retained
-`peritus-release-qualification` live-account examples documented in the owning provider crate
-READMEs. Each probe exercises the production Peritus adapter and requires normalized
-usage, exact canary text, no native-tool activity, and a completed terminal.
+Keep local builds resource-aware:
 
-All dependency-resolving commands use `--locked`. `architecture.toml` is the reviewed registry
-for crate ownership, dependency layers, verification classes, trusted source roots, and source
-size exceptions. New crates must inherit the workspace package metadata and lints, declare their
-owner/layer/class in Cargo metadata, and be registered in that policy file.
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --workspace
+```
 
-The checked `cargo xtask` interface also works from a workspace member directory. Root CI rejects
-nested or legacy Cargo configuration before that convenience is considered trustworthy, so a
-repository that has not passed the root gate must not treat a member-local Cargo alias as evidence.
+`architecture.toml` is the reviewed registry for crate ownership, dependency layers, verification
+classes, trusted roots, and source-size policy. Every crate README names a package-specific check.
+`cargo xtask docs-check` validates maintained Markdown structure and local links; `cargo xtask all`
+includes it with the other repository policy checks.
 
-The [foundation toolchain policy](docs/foundation-toolchain.md) documents the exact pins, accepted
-Verus cfg names, locked-input rules, and the known cargo-verus/bundled-Z3 metadata discrepancy.
-The [formal foundation](docs/formal-foundation.md) documents the verified value types, zero-cheat
-TCB baseline, semantic manifests, and the claims that A1 deliberately does and does not establish.
-The [test and conformance foundation](docs/test-conformance-foundation.md) defines deterministic
-clock, identifier, event, fault, script, provider, tool, repository and content-addressed fixture
-semantics, plus the runtime-neutral conformance runner and its fail-closed suite verdicts.
-Focused A2 checks are `cargo test --package peritus-test-support --all-targets --all-features
---locked` and `cargo test --package peritus-conformance --all-targets --all-features --locked`.
-The [A3 application protocol guide](docs/a3-app-protocol.md) documents version and feature
-negotiation, exact B3 command/event bindings, bounded idempotency and resumable subscriptions,
-artifact/prompt/terminal flows, daemon controls, stable errors, schemas, compatibility, and the
-transport/non-authority boundary.
-The [C0 durable-state guide](docs/c0-durable-state.md) documents the journal, projections,
-artifacts, migrations, and evidence boundary. The [C1 workspace guide](docs/c1-workspaces.md)
-documents structured Git worktrees, typed atomic patches, target-owned authorization, snapshots,
-rollback, and restart reconciliation. The
-[E1 harness-materialization guide](docs/e1-harness-materialization.md) documents strict manifest
-inventory, checked component graphs, immutable revision history, C0/C1 materialization, restart,
-and ancestor rollback. The
-[E2 debugger guide](docs/e2-debugger.md) documents exact subject and evidence binding,
-deterministic selection/timelines/causes/clustering, closed taxonomy, citations, optional validated
-model analysis, durable replay/publication, and the non-mutation/non-authority boundary. The
-[E3 evaluation guide](docs/e3-evaluation.md) documents immutable datasets and profiles,
-candidate/evaluator isolation, deterministic paired planning, complete outcome/resource
-accounting, frozen statistical methods, durable execution/publication, replay, migration, and the
-non-promotion boundary. The
-[F0 production harness evolution guide](docs/f0-evolution.md) documents evidence-bound campaigns,
-change manifests, interaction-aware attribution, deterministic selection, exact human promotion
-authority, atomic production-pointer activation, recovery, and append-only rollback. The
-[G0 daemon guide](docs/g0-daemon.md) documents strict configuration, local application transport,
-single-writer authority, durable services, outbox/worker composition, startup and recovery,
-readiness, and verification. The companion [recovery](docs/g0-recovery-runbook.md) and
-[shutdown](docs/g0-shutdown-runbook.md) runbooks define operator handling for migration, journal,
-approval-registry, outbox, process, artifact, timeout, and forced-kill cases. The
-[G1 CLI guide](docs/g1-cli.md) documents the complete scriptable A3 surface, stable output and exit
-contract, resumable streams, and local transport boundary. The
-[G2 TUI guide](docs/g2-tui.md) documents deterministic presentation state, keyboard controls,
-reconnection, approval handling, PTY sanitation, and terminal restoration. The
-[G3 extensions guide](docs/g3-extensions.md) documents canonical plugin manifests, discovery and
-trust, isolated process/Wasm lifecycle, authority mediation, quotas, MCP lifecycle and methods,
-conformance, and the remaining daemon-embedding boundary. The
-[H0 security guide](docs/h0-security-qualification.md) defines the literal R-SEC and acceptance
-catalogs, 42-case fresh-subject campaign, threat/control/unsafe/TCB inventories, independent review,
-evidence binding, cleanup, and fail-closed security verdict. The
-[H1 resilience guide](docs/h1-resilience-qualification.md) defines the 43-case disruption catalog,
-fresh-subject execution, recovery invariants, evidence, and release verdict. The
-[H2 platform guide](docs/h2-platform-qualification.md) defines package layouts, native supervisor
-contracts, install/upgrade/rollback/uninstall behavior, platform equivalence, and host evidence. The
-[H3 performance guide](docs/h3-performance-qualification.md) defines stable workload/profile data,
-SLO evaluation, bounded accounting, baseline regression, load/soak execution, and evidence. The
-[H4 release-policy guide](docs/h4-release-policy.md) defines the verified 25-criterion and
-44-requirement decision boundary. The
-[H4 release-qualification guide](docs/h4-release-qualification.md) and
-[migration/recovery runbook](docs/release-migration-recovery.md) define signed evidence collection,
-release artifacts, independent audit, reproducibility, restoration, policy composition, and the
-non-authorizing final verdict. The
-[C2 process and sandbox guide](docs/c2-process-sandbox.md) documents structured process execution,
-complete sandbox contracts, target-owned launch authorization, bounded supervision, terminal
-accounting, restart reconciliation, and holder quiescence.
-The [C3 platform security guide](docs/c3-platform-security.md) documents the native backend seam,
-protected helper protocol, Linux/macOS/Windows enforcement and probes, managed egress, exact secret
-delivery, teardown, recovery, and the distinction between implementation and packaged-host
-qualification.
-The [C4 tool system guide](docs/c4-tool-system.md) documents bounded schemas and envelopes,
-capability/role exposure, two-phase authorization and one-use routing, C1/C2/C3-backed built-ins,
-owned controls and replay, and the boundary between quality invocation and the future D1 gate DAG.
-The [C5 model provider guide](docs/c5-model-providers.md) documents the provider-neutral protocol,
-verified reduction and retry semantics, hardened HTTP/process ownership, official first-party API
-and account-runtime contracts, explicit compatible profiles, immutable fixtures, and provider
-conformance boundary.
-The [C6 context and memory guide](docs/c6-context-memory.md) documents canonical role views,
-provenance-aware context graphs, deterministic selection and token planning, validated compaction,
-typed rendering, scoped derived-memory lifecycle, explainable retrieval, and rebuildable indexes.
-The [C7 trace and telemetry guide](docs/c7-trace-telemetry.md) documents causal durable
-observations, redaction, replay, projections, bounded buffering, export acknowledgement, failure
-isolation, shutdown, and restart recovery.
-The [D0 agent-loop guide](docs/d0-agent-loop.md) documents durable inner-turn transitions,
-provider acknowledgement, independent tool authority, bounded parallel execution and control,
-budget/limit handling, completion proposals, and honest restart recovery.
-The [D1 gate-engine guide](docs/d1-gate-engine.md) documents deterministic gate planning and
-aggregation, exact revision and clean-snapshot freshness, C4 quality execution, strict parsing,
-evidence admission, bounded retry/cancellation, and crash-safe replay.
-The [D2 review-engine guide](docs/d2-review-engine.md) documents immutable review bindings,
-structured submissions, independent quorum, finding conservation and reconciliation,
-fixer/reviewer dispositions, externally authorized waiver observations, revision invalidation,
-truthful escalation, B2 projections, and crash-safe replay.
-The [D3 scheduler and collaboration guide](docs/d3-scheduler-collaboration.md) documents bounded
-resource scheduling, deterministic fairness, dependency readiness, worker ownership, causal task
-trees, joins, handoffs, cancellation propagation, and restart recovery.
-The [E0 AcTor orchestrator guide](docs/e0-actor-orchestrator.md) documents exact writer, gate,
-reviewer, fixer, evaluation, and B0 handoffs; bounded revision loops; commit-before-effect
-directives; pause and cancellation; replay; and terminal acceptance truth.
-The [GitHub governance runbook](docs/github-governance.md) defines the GitHub Team-compatible
-repository ruleset and required `Gate A` status that must be active after the A1 genesis push.
-Immutable required-workflow authority remains an explicitly documented Enterprise Cloud deferral.
+## Repository guide
+
+- [Documentation index](docs/README.md) explains the architecture and points to each operator guide.
+- [Benchmarks](benchmarks/README.md) covers HarnessBench, Terminal-Bench, and the failure journal.
+- [Packaging](packaging/README.md) describes native packages and installation layout.
+- [Release](release/README.md) describes release evidence and publication.
+- [Security](security/README.md) lists security qualification assets and boundaries.
+- [Verification](verification/README.md) describes Verus roots, trust accounting, and proofs.
+- [xtask](xtask/README.md) documents the checked repository-policy commands.
+
+Generated workspaces, benchmark results, account state, credentials, and large traces belong outside
+Git. Only durable code, schemas, policies, documentation, and reproducible summaries are committed.

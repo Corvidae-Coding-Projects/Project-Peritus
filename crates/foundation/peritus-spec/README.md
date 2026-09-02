@@ -22,3 +22,11 @@ persist contracts, or grant authority. Callers supply already-computed identifie
 `peritus-quality-policy` evaluates observations; later gate and review crates produce them.
 
 The production dependency set is limited to `peritus-types` and the workspace-pinned `vstd`.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-spec
+```

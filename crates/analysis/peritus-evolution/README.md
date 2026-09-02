@@ -12,9 +12,25 @@ Canonical wire frames, C0 persistence/replay, approve-once atomic activation, ar
 publication, and deterministic recovery remain separate narrow integration boundaries in the same
 crate.
 
+Evolution publication directives carry the exact production `RevisionTuple`. The publisher derives
+the complete artifact dependency set from the producing C0 journal batch, verifies the directive's
+artifact is present, and admits evidence only with those committed bindings.
+
+The optional `qualification` feature supplies deterministic, store-bound fixtures for the real F0
+promotion crash boundary. It is used by the daemon's administrative H1 surface and is not part of
+ordinary evolution planning.
+
 All production constructors reject drift and noncanonical or over-limit input. E2, E3, selection,
 and review values remain inert evidence: only a later exact B0/B1/C0 authorization gateway may
 commit a production activation.
 
 See [`docs/f0-evolution.md`](../../../docs/f0-evolution.md) for aggregate ownership, promotion and
 rollback workflows, recovery guidance, protocol families, and serialized verification commands.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-evolution
+```

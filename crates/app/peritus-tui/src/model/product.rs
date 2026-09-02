@@ -1,8 +1,9 @@
 //! Interactive product-run composer and daemon-observation projection.
 
 use peritus_app_protocol::{
-    AppRequestPayload, ProductProviderSelection, ProductRunControl, ProductRunControlAction,
-    ProductRunQuery, ProductRunRequest, ProductRunSnapshot,
+    AppRequestPayload, ProductProviderSelection, ProductRunContinuation, ProductRunControl,
+    ProductRunControlAction, ProductRunConversation, ProductRunConversationQuery, ProductRunQuery,
+    ProductRunRequest, ProductRunSnapshot,
 };
 
 use super::{AppModel, Editor, EditorKind, Effect, NoticeLevel, PendingRequest};
@@ -13,6 +14,7 @@ pub struct ProductUi {
     pub launch: ProductLaunchContext,
     pub runs: Vec<ProductRunSnapshot>,
     pub selected: usize,
+    pub conversation: Option<ProductRunConversation>,
     writer: usize,
     reviewer: usize,
     fixer: usize,
@@ -25,6 +27,7 @@ impl ProductUi {
             launch,
             runs: Vec::new(),
             selected: 0,
+            conversation: None,
             writer: default,
             reviewer: default,
             fixer: default,
@@ -33,6 +36,10 @@ impl ProductUi {
 
     pub fn selected_run(&self) -> Option<&ProductRunSnapshot> {
         self.runs.get(self.selected)
+    }
+    pub fn selected_conversation(&self) -> Option<&ProductRunConversation> {
+        let selected = self.selected_run()?.run_id();
+        self.conversation.as_ref().filter(|conversation| conversation.run_id() == selected)
     }
     pub fn writer_label(&self) -> &str {
         self.launch.providers().get(self.writer).map_or("No provider", |provider| provider.label())
@@ -119,6 +126,42 @@ impl AppModel {
             .collect()
     }
 
+    pub(super) fn open_product_message_composer(&mut self) {
+        let Some(run_id) =
+            self.product.as_ref().and_then(ProductUi::selected_run).map(ProductRunSnapshot::run_id)
+        else {
+            self.notice(NoticeLevel::Warning, "select a coding run before sending a message");
+            return;
+        };
+        self.editor = Some(Editor {
+            kind: EditorKind::ProductMessage(run_id),
+            title: "Message this coding run",
+            hint: "Reply, redirect, add context, or say continue. Shift-Enter adds a line.",
+            buffer: String::new(),
+            cursor: 0,
+        });
+    }
+
+    pub(super) fn submit_product_message(
+        &mut self,
+        run_id: peritus_types::RunId,
+        message: String,
+    ) -> Vec<Effect> {
+        let continuation = match ProductRunContinuation::new(run_id, message) {
+            Ok(continuation) => continuation,
+            Err(error) => {
+                self.notice(NoticeLevel::Error, error.to_string());
+                return Vec::new();
+            }
+        };
+        self.request(
+            AppRequestPayload::ContinueProductRun(continuation),
+            PendingRequest::ProductContinue,
+        )
+        .into_iter()
+        .collect()
+    }
+
     pub(super) fn poll_product_runs(&mut self) -> Vec<Effect> {
         if self.product.is_none()
             || self.context.is_none()
@@ -126,12 +169,32 @@ impl AppModel {
         {
             return Vec::new();
         }
-        self.request(
-            AppRequestPayload::QueryProductRuns(ProductRunQuery::recent()),
-            PendingRequest::ProductQuery,
-        )
-        .into_iter()
-        .collect()
+        let mut effects: Vec<Effect> = self
+            .request(
+                AppRequestPayload::QueryProductRuns(ProductRunQuery::recent()),
+                PendingRequest::ProductQuery,
+            )
+            .into_iter()
+            .collect();
+        if !self
+            .pending
+            .values()
+            .any(|pending| matches!(pending, PendingRequest::ProductConversationQuery))
+            && let Some(run_id) = self
+                .product
+                .as_ref()
+                .and_then(ProductUi::selected_run)
+                .map(ProductRunSnapshot::run_id)
+            && let Some(effect) = self.request(
+                AppRequestPayload::QueryProductRunConversation(ProductRunConversationQuery::new(
+                    run_id,
+                )),
+                PendingRequest::ProductConversationQuery,
+            )
+        {
+            effects.push(effect);
+        }
+        effects
     }
 
     pub(super) fn accept_product_runs(&mut self, snapshots: Vec<ProductRunSnapshot>) {
@@ -153,6 +216,13 @@ impl AppModel {
         }
     }
 
+    pub(super) fn accept_product_conversation(&mut self, conversation: ProductRunConversation) {
+        let Some(product) = &mut self.product else { return };
+        if product.selected_run().is_some_and(|run| run.run_id() == conversation.run_id()) {
+            product.conversation = Some(conversation);
+        }
+    }
+
     pub(super) fn control_selected_product_run(
         &mut self,
         action: ProductRunControlAction,
@@ -166,7 +236,10 @@ impl AppModel {
             self.notice(NoticeLevel::Warning, "no coding run is selected");
             return Vec::new();
         };
-        if matches!(action, ProductRunControlAction::Cancel) && phase.terminal() {
+        if matches!(action, ProductRunControlAction::Cancel)
+            && phase.terminal()
+            && phase != peritus_app_protocol::ProductRunPhase::WaitingForUser
+        {
             self.notice(NoticeLevel::Warning, "the selected coding run is already finished");
             return Vec::new();
         }
@@ -174,6 +247,20 @@ impl AppModel {
             self.notice(
                 NoticeLevel::Warning,
                 "retry is available only for failed, cancelled, or interrupted runs",
+            );
+            return Vec::new();
+        }
+        if matches!(
+            action,
+            ProductRunControlAction::Accept
+                | ProductRunControlAction::Commit
+                | ProductRunControlAction::Export
+                | ProductRunControlAction::Discard
+        ) && phase != peritus_app_protocol::ProductRunPhase::Complete
+        {
+            self.notice(
+                NoticeLevel::Warning,
+                "deliverable actions are available after exact acceptance completes",
             );
             return Vec::new();
         }
@@ -191,15 +278,17 @@ impl AppModel {
         self.notice(NoticeLevel::Info, "provider role selection updated for the next run");
     }
 
-    pub(super) const fn select_previous_product(&mut self) -> bool {
+    pub(super) fn select_previous_product(&mut self) -> bool {
         let Some(product) = &mut self.product else { return false };
         product.selected = product.selected.saturating_sub(1);
+        product.conversation = None;
         true
     }
 
     pub(super) fn select_next_product(&mut self) -> bool {
         let Some(product) = &mut self.product else { return false };
         product.selected = (product.selected + 1).min(product.runs.len().saturating_sub(1));
+        product.conversation = None;
         true
     }
 }

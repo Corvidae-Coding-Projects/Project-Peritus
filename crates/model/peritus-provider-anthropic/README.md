@@ -40,23 +40,30 @@ keychain state, and it provides no login UI. Authentication is checked with exac
 `claude auth status --json`; an unauthenticated result tells the user to run `claude auth login`
 outside Peritus.
 
-One turn invokes the executable with `-p --output-format json`, the exact profile model,
-`--effort low`, `--safe-mode`, `--tools ""`, `--disallowedTools "mcp__*"`,
+One turn invokes the executable with `-p --output-format json`, the exact profile model, Peritus's
+bounded `--effort` selection (high by default), `--safe-mode`, `--tools ""`, `--disallowedTools "mcp__*"`,
 `--disable-slash-commands`, `--no-chrome`, `--no-session-persistence`, `--strict-mcp-config`, an
 empty `--mcp-config`, a private `--system-prompt-file`, and a required `--json-schema`. It runs in a
 fresh private directory and removes `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, and
 `CLAUDE_CODE_OAUTH_TOKEN` from both status and turn processes. Peritus owns the complete transcript,
-tool catalog, policy, tool execution, and cancellation lifecycle; Claude native tools, plugins,
-MCP, slash commands, browser integration, and session persistence are not part of this adapter.
+tool catalog, policy, tool execution, and cancellation lifecycle. Every prompt contains the typed
+`peritus_tool_protocol` catalog and tells the model to return inert host requests through the
+validated `tool_calls` field; Peritus executes them and replays each result on the next turn. Claude
+native tools, plugins, MCP, slash commands, browser integration, and session persistence are not
+part of this adapter.
 
 The runtime accepts only text and inert host-tool history and normalizes one final structured result
 into deterministic text/tool/usage events. Its honest profile advertises tool calls, bounded
-parallel tool calls, and detailed usage only. It is stateless, has no exact resume or remote
+parallel tool calls, portable reasoning-effort selection, and detailed usage. It is stateless, has no exact resume or remote
 cancellation, does not advertise streaming, and marks output-token limits advisory because the
 official executable exposes no exact `max_output_tokens` turn flag. Missing structured output is an
 incomplete terminal; malformed JSON/schema fails as malformed; nonzero exit after partial stdout is
 an interrupted incomplete terminal; an empty post-submit exit remains ambiguous. Cancellation kills
 and reaps the owned process before emitting one cancelled terminal.
+
+The runtime accepts automatic provider-managed prompt caching as a no-flag routing policy. It does
+not accept explicit cache identities or TTL breakpoints, and Peritus retains the complete stateless
+transcript locally.
 
 The documented final-result envelope does not expose a trustworthy typed rate-limit or Retry-After
 contract. Generic `is_error` results are therefore non-retryable provider terminals in production,
@@ -113,4 +120,12 @@ just source-layout
 just ordinary-api
 CARGO_BUILD_JOBS=1 cargo verus verify --package peritus-provider-anthropic --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
 CARGO_BUILD_JOBS=1 cargo verus build --package peritus-provider-anthropic --all-features --release --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
+```
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-provider-anthropic
 ```

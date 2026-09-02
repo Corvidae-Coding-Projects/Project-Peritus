@@ -36,11 +36,12 @@ pub use reconcile::{
 pub use repository::{GitRepository, RepositoryIdentity, RepositoryOptions};
 pub use snapshot::{
     CandidateRequest, CandidateSnapshot, CandidateTree, RestoreObservation, RestoreRequest,
-    SnapshotRef, SnapshotRequest,
+    SnapshotQuarantine, SnapshotRef, SnapshotRequest, expected_snapshot_ref,
 };
 pub use status::{
     ChangeCode, EntryModes, StatusEntry, StatusKind, StatusObservation, SubmoduleState,
 };
 pub use worktree::{
-    CreateWorktree, RegisteredWorktree, RemovalPolicy, WorktreeAccess, WorktreeObservation,
+    CreateWorktree, RecoverWorktree, RegisteredWorktree, RemovalPolicy, WorktreeAccess,
+    WorktreeObservation,
 };

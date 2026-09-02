@@ -75,6 +75,26 @@ pub trait FreshSubjectFactory {
 pub struct FreshSubjectRunner;
 
 impl FreshSubjectRunner {
+    /// Runs one catalog scenario on its own fresh subject.
+    ///
+    /// # Errors
+    ///
+    /// Returns target/manifest drift, provisioning, execution, cleanup, or protocol failures.
+    pub fn run_scenario(
+        &self,
+        factory: &mut dyn FreshSubjectFactory,
+        target: QualificationTarget,
+        manifest: &PackageManifest,
+        scenario: ScenarioId,
+    ) -> Result<ScenarioObservation, QualificationError> {
+        validate_inputs(target, manifest)?;
+        let spec = ScenarioId::all()
+            .iter()
+            .find(|candidate| candidate.id() == scenario)
+            .ok_or_else(|| protocol_error("scenario is not in the closed H2 catalog"))?;
+        execute_scenario(factory, target, manifest, *spec)
+    }
+
     /// Runs the complete closed catalog with one newly provisioned subject per scenario.
     ///
     /// Cleanup is attempted after both successful and failed scenario execution. An execution
@@ -90,40 +110,76 @@ impl FreshSubjectRunner {
         target: QualificationTarget,
         manifest: &PackageManifest,
     ) -> Result<QualificationRun, QualificationError> {
-        let contract = crate::PlatformContract::production(target.platform());
-        contract.validate_target(target)?;
-        if manifest.platform() != target.platform()
-            || manifest.architecture() != target.architecture()
-        {
-            return Err(QualificationError::new(
-                crate::QualificationErrorCode::InvalidInput,
-                crate::QualificationRecovery::RebuildRelease,
-                "start packaged-host qualification",
-                "manifest platform or architecture differs from the fresh-subject target",
-            ));
-        }
+        validate_inputs(target, manifest)?;
         let mut observations = Vec::with_capacity(ScenarioId::all().len());
         for scenario in ScenarioId::all() {
-            let mut subject = factory.create(target, scenario.id())?;
-            let expected_subject_id = subject.subject_id().to_owned();
-            let request = ScenarioRequest { target, manifest, scenario: *scenario };
-            let result = subject.execute(request);
-            let cleanup = subject.close();
-            let cleanup = cleanup?;
-            let mut observation = result?;
-            if observation.scenario() != scenario.id()
-                || observation.subject_id() != expected_subject_id
-            {
-                return Err(QualificationError::new(
-                    crate::QualificationErrorCode::SubjectProtocol,
-                    crate::QualificationRecovery::ReplaceSubject,
-                    "run packaged-host qualification",
-                    "adapter returned an observation for a different scenario or subject",
-                ));
-            }
-            observation.attach_cleanup(cleanup)?;
-            observations.push(observation);
+            observations.push(execute_scenario(factory, target, manifest, *scenario)?);
         }
         QualificationRun::new(target, manifest.digest(), observations)
     }
+}
+
+fn validate_inputs(
+    target: QualificationTarget,
+    manifest: &PackageManifest,
+) -> Result<(), QualificationError> {
+    let contract = crate::PlatformContract::production(target.platform());
+    contract.validate_target(target)?;
+    if manifest.platform() != target.platform() || manifest.architecture() != target.architecture()
+    {
+        return Err(QualificationError::new(
+            crate::QualificationErrorCode::InvalidInput,
+            crate::QualificationRecovery::RebuildRelease,
+            "start packaged-host qualification",
+            "manifest platform or architecture differs from the fresh-subject target",
+        ));
+    }
+    Ok(())
+}
+
+fn execute_scenario(
+    factory: &mut dyn FreshSubjectFactory,
+    target: QualificationTarget,
+    manifest: &PackageManifest,
+    scenario: ScenarioSpec,
+) -> Result<ScenarioObservation, QualificationError> {
+    let mut subject = factory.create(target, scenario.id())?;
+    let expected_subject_id = subject.subject_id().to_owned();
+    let request = ScenarioRequest { target, manifest, scenario };
+    let result = subject.execute(request);
+    let cleanup = subject.close();
+    let cleanup = match (result.as_ref(), cleanup) {
+        (Err(execution), Err(cleanup)) => {
+            return Err(QualificationError::new(
+                cleanup.code(),
+                cleanup.recovery(),
+                cleanup.operation(),
+                format!(
+                    "{}; prior scenario execution failed during {}: {}",
+                    cleanup.detail(),
+                    execution.operation(),
+                    execution.detail()
+                ),
+            ));
+        }
+        (_, Err(cleanup)) => return Err(cleanup),
+        (_, Ok(cleanup)) => cleanup,
+    };
+    let mut observation = result?;
+    if observation.scenario() != scenario.id() || observation.subject_id() != expected_subject_id {
+        return Err(protocol_error(
+            "adapter returned an observation for a different scenario or subject",
+        ));
+    }
+    observation.attach_cleanup(cleanup)?;
+    Ok(observation)
+}
+
+fn protocol_error(detail: &'static str) -> QualificationError {
+    QualificationError::new(
+        crate::QualificationErrorCode::SubjectProtocol,
+        crate::QualificationRecovery::ReplaceSubject,
+        "run packaged-host qualification",
+        detail,
+    )
 }

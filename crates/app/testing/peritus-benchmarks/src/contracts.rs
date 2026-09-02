@@ -113,13 +113,30 @@ pub struct RunContext {
     run: StableId,
     profile: StableId,
     plan: StableId,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    workload: Option<StableId>,
 }
 
 impl RunContext {
     /// Constructs exact run, profile, and plan bindings.
     #[must_use]
     pub const fn new(run_id: StableId, profile_id: StableId, plan_id: StableId) -> Self {
-        Self { run: run_id, profile: profile_id, plan: plan_id }
+        Self { run: run_id, profile: profile_id, plan: plan_id, workload: None }
+    }
+
+    /// Constructs bindings that explicitly identify the workload exercised by the plan.
+    ///
+    /// Subject adapters use this form when one campaign-level measurement sink receives records
+    /// from more than one plan. Legacy callers that omit the field continue to bind the workload
+    /// to the plan identifier.
+    #[must_use]
+    pub const fn for_workload(
+        run_id: StableId,
+        profile_id: StableId,
+        plan_id: StableId,
+        workload_id: StableId,
+    ) -> Self {
+        Self { run: run_id, profile: profile_id, plan: plan_id, workload: Some(workload_id) }
     }
 
     /// Returns the unique qualification run identifier.
@@ -138,6 +155,15 @@ impl RunContext {
     #[must_use]
     pub const fn plan_id(&self) -> &StableId {
         &self.plan
+    }
+
+    /// Returns the workload whose observations this invocation emits.
+    ///
+    /// Older integrations did not carry a separate workload binding, so their plan identifier is
+    /// retained as the compatible fallback.
+    #[must_use]
+    pub fn workload_id(&self) -> &StableId {
+        self.workload.as_ref().unwrap_or(&self.plan)
     }
 }
 

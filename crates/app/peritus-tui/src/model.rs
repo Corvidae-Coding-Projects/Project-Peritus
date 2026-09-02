@@ -166,6 +166,8 @@ enum PendingRequest {
     ProductStart,
     ProductQuery,
     ProductControl,
+    ProductContinue,
+    ProductConversationQuery,
 }
 
 /// The kind of value being collected by the modal editor.
@@ -175,6 +177,7 @@ pub enum EditorKind {
     ApprovalSignature(PromptId),
     PromptAnswer(PromptId),
     ProductTask,
+    ProductMessage(RunId),
 }
 
 /// Modal, single-line input state.

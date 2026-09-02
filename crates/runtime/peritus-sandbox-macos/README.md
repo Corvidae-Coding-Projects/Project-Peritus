@@ -49,3 +49,11 @@ return an empty unsupported probe instead of a reference or raw-effect fallback.
 Platform-neutral compilation, manifest, lifecycle, and recovery tests run on every development
 host. Native Seatbelt and rlimit behavior is compiled and executed only on macOS; Linux test runs
 do not constitute macOS qualification.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-sandbox-macos
+```

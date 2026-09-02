@@ -50,3 +50,11 @@ SHA-256 digest. Manifested bytes are never normalized. Every nonempty surface/ve
 contain `minimal`, `realistic`, `corrupt`, and `adversarial` cases; an empty pre-release catalog
 is allowed only through an explicit coverage policy and returns an observable `EmptyPreRelease`
 result rather than covered status.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-test-support
+```

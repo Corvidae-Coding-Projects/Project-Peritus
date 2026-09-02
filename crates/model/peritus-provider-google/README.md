@@ -79,3 +79,11 @@ just ordinary-api
 CARGO_BUILD_JOBS=1 cargo verus verify --package peritus-provider-google --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
 CARGO_BUILD_JOBS=1 cargo verus build --package peritus-provider-google --all-features --release --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20
 ```
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-provider-google
+```

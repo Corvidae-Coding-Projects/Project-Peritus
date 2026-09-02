@@ -82,15 +82,9 @@ fn finalized_artifact_and_publication_recover_after_restart() {
         journal.claim_outbox(200, 300).expect("claim publication").expect("pending publication");
     let claim = EvolutionPublicationClaim::from_message(&message).expect("checked F0 claim");
     assert_eq!(claim.directive().kind(), EvolutionPublicationKind::CampaignDecision);
-    let published = publish_claimed_evolution(
-        &mut journal,
-        &mut evidence,
-        &artifacts,
-        &claim,
-        artifact,
-        revision_tuple(),
-    )
-    .expect("publish and acknowledge");
+    let published =
+        publish_claimed_evolution(&mut journal, &mut evidence, &artifacts, &claim, artifact)
+            .expect("publish and acknowledge");
     assert_eq!(
         evidence.load(published.evidence().id()).expect("load evidence"),
         Some(published.evidence().clone()),
@@ -120,6 +114,14 @@ fn directive_bytes(
     bytes.extend_from_slice(project_id().as_bytes());
     bytes.push(1);
     bytes.extend_from_slice(campaign_id().as_bytes());
+    let revision = revision_tuple();
+    bytes.extend_from_slice(revision.acceptance_spec_id().as_bytes());
+    bytes.extend_from_slice(revision.harness_id().as_bytes());
+    bytes.extend_from_slice(revision.workspace_id().as_bytes());
+    bytes.extend_from_slice(&revision.workspace_generation().get().to_be_bytes());
+    bytes.extend_from_slice(&revision.workspace_revision().get().to_be_bytes());
+    bytes.extend_from_slice(revision.policy_id().as_bytes());
+    bytes.extend_from_slice(revision.provider_profile_id().as_bytes());
     bytes.extend_from_slice(digest(104).as_bytes());
     bytes.extend_from_slice(artifact.as_bytes());
     bytes.extend_from_slice(semantic.as_bytes());

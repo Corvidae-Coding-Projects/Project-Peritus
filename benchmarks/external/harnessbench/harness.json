@@ -1,0 +1,25 @@
+{
+  "models": {
+    "peritus-codex-claude": {
+      "adapter": "generic_cli",
+      "command": "peritus-benchmark-agent",
+      "session_prefix": "harnessbench-peritus",
+      "model": "gpt-5.6-sol",
+      "args": [
+        "harnessbench",
+        "--workspace",
+        "{workspace}",
+        "--sandbox",
+        "{sandbox}",
+        "--prompt-file",
+        "{prompt_file}",
+        "--session-id",
+        "{session_id}",
+        "--task-id",
+        "{task_id}",
+        "--model-id",
+        "{model_id}"
+      ]
+    }
+  }
+}

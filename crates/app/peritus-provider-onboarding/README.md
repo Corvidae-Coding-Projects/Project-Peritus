@@ -12,3 +12,11 @@ Direct API credentials are captured by the product UI, immediately moved into ze
 and published through the operating-system credential store. This crate returns only opaque exact
 references and non-secret provider settings; it never places API keys in product state or daemon
 configuration.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-provider-onboarding
+```

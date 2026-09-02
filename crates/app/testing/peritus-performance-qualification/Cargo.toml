@@ -1,0 +1,35 @@
+[package]
+name = "peritus-performance-qualification"
+description = "Executable integrated load and soak qualification for Peritus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["performance", "qualification", "load-testing", "soak-testing"]
+categories = ["development-tools::testing"]
+
+[dependencies]
+peritus-app-protocol = { version = "=0.0.0", path = "../../peritus-app-protocol" }
+peritus-approval = { version = "=0.0.0", path = "../../../state/peritus-approval" }
+peritus-benchmarks = { version = "=0.0.0", path = "../peritus-benchmarks" }
+peritus-codec = { version = "=0.0.0", path = "../../../foundation/peritus-codec" }
+peritus-kernel = { version = "=0.0.0", path = "../../../foundation/peritus-kernel" }
+peritus-protocol = { version = "=0.0.0", path = "../../../foundation/peritus-protocol" }
+peritus-scheduler = { version = "=0.0.0", path = "../../../orchestration/peritus-scheduler" }
+peritus-types = { version = "=0.0.0", path = "../../../foundation/peritus-types" }
+sha2.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+
+[package.metadata.peritus]
+owner = "H3"
+layer = "testing"
+verification-class = "C"
+
+[lints]
+workspace = true

@@ -7,11 +7,19 @@ use peritus_model_protocol::{CanonicalJson, JsonBounds, ProtocolLimits, UsageCou
 use serde::de::{self, Deserializer, MapAccess, Visitor};
 use serde_json::Value;
 
+mod failure;
+
+use failure::reported_failure;
+
 const MAX_JSONL_LINES: usize = 100_000;
 const MAX_JSONL_LINE_BYTES: usize = 4 * 1024 * 1024;
 
 pub enum DecodeFailure {
     Authentication,
+    Safety,
+    RateLimited,
+    QuotaExhausted,
+    ContextLimit,
     Reported,
     Malformed,
     Incomplete,
@@ -22,6 +30,10 @@ impl Clone for DecodeFailure {
     fn clone(&self) -> Self {
         match self {
             Self::Authentication => Self::Authentication,
+            Self::Safety => Self::Safety,
+            Self::RateLimited => Self::RateLimited,
+            Self::QuotaExhausted => Self::QuotaExhausted,
+            Self::ContextLimit => Self::ContextLimit,
             Self::Reported => Self::Reported,
             Self::Malformed => Self::Malformed,
             Self::Incomplete => Self::Incomplete,
@@ -42,6 +54,10 @@ impl fmt::Debug for DecodeFailure {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str(match self {
             Self::Authentication => "Authentication",
+            Self::Safety => "Safety",
+            Self::RateLimited => "RateLimited",
+            Self::QuotaExhausted => "QuotaExhausted",
+            Self::ContextLimit => "ContextLimit",
             Self::Reported => "Reported",
             Self::Malformed => "Malformed",
             Self::Incomplete => "Incomplete",
@@ -332,20 +348,6 @@ fn decode_usage(value: Option<&Value>) -> Result<UsageCounters, DecodeFailure> {
 
 fn optional_u64(value: Option<&Value>) -> Result<Option<u64>, DecodeFailure> {
     value.map_or(Ok(None), |value| value.as_u64().map(Some).ok_or(DecodeFailure::Malformed))
-}
-
-fn reported_failure(event: &Value) -> DecodeFailure {
-    let code = event
-        .pointer("/error/type")
-        .or_else(|| event.pointer("/error/code"))
-        .or_else(|| event.get("code"))
-        .and_then(Value::as_str);
-    match code {
-        Some("authentication_error" | "unauthorized" | "invalid_api_key") => {
-            DecodeFailure::Authentication
-        }
-        _ => DecodeFailure::Reported,
-    }
 }
 
 fn string<'a>(value: &'a Value, field: &str) -> Result<&'a str, DecodeFailure> {

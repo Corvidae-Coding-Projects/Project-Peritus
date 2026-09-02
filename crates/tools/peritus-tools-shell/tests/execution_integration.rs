@@ -36,6 +36,8 @@ use peritus_tools_quality::{
 use peritus_tools_shell::{ShellDispatcher, exec_descriptor};
 use peritus_types::{GateId, Generation};
 
+const TOOL_DEADLINE_TICK: u64 = 10_020;
+
 #[test]
 fn shell_exec_runs_literal_argv_accepts_stdin_and_publishes_output_artifacts() {
     let descriptor = exec_descriptor().expect("shell descriptor");
@@ -291,7 +293,7 @@ fn tool_call(ids: &router_authority::Ids, arguments: BoundedJson, key: &str) -> 
         arguments,
         CallLimits::new(5_000, 4_096, 512, 512, 512, 2).expect("call limits"),
         ids.revision,
-        instant(80),
+        instant(TOOL_DEADLINE_TICK),
         IdempotencyKey::new(key.to_owned()).expect("idempotency key"),
     )
 }
@@ -333,13 +335,13 @@ fn artifact_store(root: &process_authority::TestRoot) -> ArtifactStore {
 fn await_result(router: &mut ToolRouter, handle: InvocationHandle, first_tick: u64) -> ToolResult {
     let began = Instant::now();
     let deadline = Duration::from_secs(10);
-    let mut tick = first_tick;
     while began.elapsed() < deadline {
-        let update = router.poll(handle, instant(tick)).expect("poll execution");
+        let elapsed_millis = u64::try_from(began.elapsed().as_millis()).unwrap_or(u64::MAX);
+        let observed_at = instant(first_tick.saturating_add(elapsed_millis));
+        let update = router.poll(handle, observed_at).expect("poll execution");
         if let Some(result) = update.terminal() {
             return result.clone();
         }
-        tick = tick.checked_add(1).expect("test authority tick overflow");
         thread::sleep(Duration::from_millis(10));
     }
     panic!("execution did not terminate within the ten-second test deadline")
@@ -351,7 +353,7 @@ fn candidate_outcome(result: &ToolResult) -> String {
         .and_then(|value| value.property("candidate"))
         .and_then(|value| value.property("outcome"))
         .and_then(|value| value.as_str().map(str::to_owned))
-        .expect("candidate outcome")
+        .unwrap_or_else(|| panic!("candidate outcome missing from {result:?}"))
 }
 
 fn fixture_binary() -> String {

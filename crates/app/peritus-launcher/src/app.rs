@@ -8,7 +8,7 @@ use peritus_types::{ProviderProfileId, WorkspaceId};
 
 use crate::{
     AppLayout, DaemonSupervisor, LauncherError, ProductBootstrap, SiblingBinaries, provider_setup,
-    workspace_setup,
+    update, workspace_setup,
 };
 
 /// Prepares local state, starts or reuses the daemon, and runs the interactive application.
@@ -31,16 +31,48 @@ pub async fn launch_interactive_at(
     repository: Option<PathBuf>,
 ) -> Result<ExitReason, LauncherError> {
     let layout = AppLayout::discover()?.prepare()?;
+    if update::offer_on_startup(&layout).await? {
+        return Ok(ExitReason::UserQuit);
+    }
     let prepared = ProductBootstrap::new(layout).prepare()?;
     let prepared = workspace_setup::ensure_configured(prepared, repository.as_deref())?;
     let prepared = provider_setup::ensure_configured(prepared)?;
     let binaries = SiblingBinaries::discover()?;
     let supervisor = DaemonSupervisor::new(Duration::from_secs(30));
-    supervisor.ensure_ready(&prepared, &binaries).await?;
     let product = product_context(&prepared)?;
-    peritus_tui::run(TuiConfig::new(prepared.endpoint_path()).with_product(product))
+    loop {
+        supervisor.ensure_ready(&prepared, &binaries).await?;
+        let outcome = peritus_tui::run(
+            TuiConfig::new(prepared.endpoint_path()).with_product(product.clone()),
+        )
         .await
-        .map_err(LauncherError::Tui)
+        .map_err(LauncherError::Tui)?;
+        match outcome {
+            ExitReason::UserQuit => return Ok(outcome),
+            ExitReason::RecoverDaemon => {}
+        }
+    }
+}
+
+/// Checks for and installs the latest public release without requiring configuration exports.
+///
+/// # Errors
+///
+/// Returns an actionable update failure when release discovery, verification, or native package
+/// installation cannot complete.
+pub async fn update_interactive() -> Result<(), LauncherError> {
+    let layout = AppLayout::discover()?.prepare()?;
+    update::run_explicit(&layout).await
+}
+
+/// Persists whether ordinary interactive startup performs a cached release check.
+///
+/// # Errors
+///
+/// Returns an actionable filesystem or terminal failure when the setting cannot be saved or shown.
+pub fn configure_update_checks(enabled: bool) -> Result<(), LauncherError> {
+    let layout = AppLayout::discover()?.prepare()?;
+    update::configure_checks(&layout, enabled)
 }
 
 fn product_context(

@@ -115,6 +115,11 @@ exact cursor for the same response. Otherwise the ambiguity remains visible to t
 not silently spend twice. Cancellation is idempotent and interrupts connection, body read, framing,
 and backoff work. Dropping an owned stream signals cancellation and does not detach background work.
 
+C5 never chooses another provider. The G4 product runner may consume C5's normalized terminal
+category after the selected provider's retry policy ends, but only when the user enabled automatic
+failover and a compatible route remains. Raw ambiguous transport, normalized ambiguous acceptance,
+safety, refusal, and cancellation are deliberately ineligible for that outer switch.
+
 Account-backed routes use the providers' official executables as credential-owning, stateless
 routers. Peritus does not read, store, refresh, or reproduce their account tokens. It supplies one
 isolated request, disables native executable tools and ambient integration surfaces, accepts only
@@ -161,11 +166,18 @@ output schema. Credential and endpoint-routing environment overrides are removed
 rejects native tool activity, malformed or oversized JSONL, and output without a proven completed
 turn, then normalizes validated text, inert tool-call proposals, usage, and terminal state.
 
+For image-capable turns, Peritus accepts only bounded inline PNG, JPEG, WebP, or GIF inputs. It
+keeps raw bytes out of the text prompt, records an attachment index, media type, and SHA-256 digest,
+then writes private temporary files for the official executable's `--image` option. The temporary
+directory is removed with the turn. Audio, documents, remote media references, unknown image types,
+and oversized media remain unsupported on this route.
+
 Codex itself owns ChatGPT login, credential persistence, and refresh; Peritus never reads its token
 store. The profile is deliberately narrower than direct Responses: stateless replay, no response
 resume or remote cancel, local best-effort child cancellation, and an advisory output limit.
 
-Reviewed sources: [Codex SDK](https://developers.openai.com/codex/sdk/) and
+Reviewed sources: [Codex non-interactive mode](https://developers.openai.com/codex/noninteractive),
+[Codex SDK](https://developers.openai.com/codex/sdk/), and
 [Codex App Server authentication](https://developers.openai.com/codex/app-server/). The delivered
 route uses the official executable directly rather than implementing OAuth or a persistent App
 Server connection.

@@ -13,3 +13,11 @@ changing or weakening the values defined here.
 Canonical plan and backend bytes are versioned and content addressed. Secret references and
 delivery destinations are represented, but secret values are deliberately absent from every plan,
 error, observation, and debug representation.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-sandbox
+```

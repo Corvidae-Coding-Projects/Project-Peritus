@@ -33,8 +33,8 @@ impl From<Option<ShutdownRequest>> for ShutdownTrigger {
 pub enum ShutdownStage {
     /// New client and worker admission has been closed.
     AdmissionClosed,
-    /// The local endpoint and its owned connection tasks have joined.
-    ConnectionsJoined,
+    /// Ordinary connections are draining while the authenticated reporter remains live.
+    ConnectionsDraining,
     /// The durable outbox owner has stopped after bounded settlement.
     OutboxSettled,
     /// Supervised worker tasks have undergone bounded shutdown and joining.
@@ -53,7 +53,7 @@ impl ShutdownStage {
     pub(crate) const fn name(self) -> &'static str {
         match self {
             Self::AdmissionClosed => "admission-closed",
-            Self::ConnectionsJoined => "connections-joined",
+            Self::ConnectionsDraining => "connections-draining",
             Self::OutboxSettled => "outbox-settled",
             Self::WorkersJoined => "workers-joined",
             Self::ProcessesReconciled => "processes-reconciled",
@@ -64,7 +64,7 @@ impl ShutdownStage {
     const fn completed_steps(self) -> u32 {
         match self {
             Self::AdmissionClosed => 1,
-            Self::ConnectionsJoined => 2,
+            Self::ConnectionsDraining => 2,
             Self::OutboxSettled => 3,
             Self::WorkersJoined => 4,
             Self::ProcessesReconciled => 5,

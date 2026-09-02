@@ -152,6 +152,10 @@ impl Probe {
             .transpose()?
             .into_iter()
             .collect::<Vec<_>>();
+        if status != 200 {
+            headers.push(header("content-type", "application/json")?);
+            headers.push(header("content-length", &bytes.len().to_string())?);
+        }
         if scenario == ProviderScenario::Interruption {
             headers.push(header("content-length", &bytes.len().to_string())?);
         }

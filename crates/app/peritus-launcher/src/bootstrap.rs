@@ -259,7 +259,29 @@ mod tests {
             ProductBootstrap::new(layout).configure_providers(selection).expect("configure");
         assert_ne!(configured.daemon_config_path(), first.daemon_config_path());
         assert_eq!(configured.daemon_config().providers().len(), 1);
+        assert!(!configured.daemon_config().product().automatic_provider_failover());
         assert!(first.daemon_config_path().is_file());
+    }
+
+    #[test]
+    fn explicit_failover_choice_reaches_the_immutable_daemon_configuration() {
+        use peritus_product_state::ProviderKind;
+
+        let temporary = tempfile::tempdir().expect("temporary root");
+        let layout = AppLayout::for_test(temporary.path()).prepare().expect("layout");
+        let selection = ProviderSelection::with_direct_profiles_and_failover(
+            vec![ProviderKind::CodexAccount, ProviderKind::ClaudeAccount],
+            Some(ProviderKind::CodexAccount),
+            Vec::new(),
+            true,
+        )
+        .expect("explicit failover selection");
+        let configured =
+            ProductBootstrap::new(layout).configure_providers(selection).expect("configure");
+
+        assert!(configured.daemon_config().product().automatic_provider_failover());
+        let text = std::fs::read_to_string(configured.daemon_config_path()).expect("configuration");
+        assert!(text.contains("[product]\nautomatic_provider_failover = true"));
     }
 
     #[test]

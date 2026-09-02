@@ -74,6 +74,7 @@ fn valid_turn(arguments: &[String], stdin: &str) -> bool {
         && system_owned
         && schema_is_inert
         && stdin.starts_with("The following JSON is the complete ordered conversation state")
+        && stdin.contains("\"peritus_tool_protocol\"")
 }
 
 fn is_file_in_working_directory(path: &std::path::Path) -> bool {

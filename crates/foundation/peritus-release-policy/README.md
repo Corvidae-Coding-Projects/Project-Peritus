@@ -57,3 +57,11 @@ if !decision.is_ready() {
 
 See `docs/h4-release-policy.md` for the evidence map, diagnostics, formal claims, and integration
 contract.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-release-policy
+```

@@ -2,8 +2,10 @@ use super::verus_commands::{
     VERUS_STRICT_BUILD_ARGS, VERUS_STRICT_VERIFY_ARGS, VERUS_WORKSPACE_BUILD_ARGS,
     VERUS_WORKSPACE_VERIFY_ARGS,
 };
+use super::workflow_command_contracts::WORKSPACE_TEST_ARGS;
 use super::workflow_command_policy;
-use super::workflow_commands::{CommandPolicy, WORKSPACE_TEST_ARGS, parse_script};
+use super::workflow_command_policy::CommandPolicy;
+use super::workflow_commands::parse_script;
 use crate::error::{Diagnostic, XtaskError};
 use std::collections::BTreeMap;
 use std::fs;

@@ -12,3 +12,11 @@ F0 promotion decisions, grant authority, waive findings, accept runs, or expose 
 default.
 
 The complete frozen contract is in [the E2 design](../../../.design/e2-debugger.md).
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-debugger
+```

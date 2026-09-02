@@ -13,11 +13,13 @@ mod approval;
 mod catalog;
 mod deserialize;
 mod paths;
+mod product;
 mod provider;
 
 pub use approval::ApprovalRegistryDeclaration;
 pub use catalog::{ProjectDeclaration, ToolPolicy, WorkspaceDeclaration};
 pub use paths::DaemonPaths;
+pub use product::ProductRunPolicy;
 pub use provider::{ProviderProfileDeclaration, ProviderRoute, ProviderRouteKind};
 
 pub const DAEMON_VERSION: &str = "0.0.0";
@@ -157,6 +159,7 @@ pub struct DaemonConfig {
     workspaces: Vec<WorkspaceDeclaration>,
     tools: ToolPolicy,
     providers: Vec<ProviderRoute>,
+    product: ProductRunPolicy,
     telemetry: TelemetryExport,
 }
 
@@ -264,6 +267,11 @@ impl DaemonConfig {
     #[must_use]
     pub fn providers(&self) -> &[ProviderRoute] {
         &self.providers
+    }
+    /// Returns explicit product-run recovery behavior.
+    #[must_use]
+    pub const fn product(&self) -> ProductRunPolicy {
+        self.product
     }
     /// Borrows telemetry export policy.
     #[must_use]

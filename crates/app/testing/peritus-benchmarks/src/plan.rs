@@ -87,6 +87,13 @@ pub enum PlannedOperation {
         /// Number of items to remove.
         count: u32,
     },
+    /// Releases every queue item retained by a final partial saturation cycle.
+    DrainQueue {
+        /// Queue being returned to its terminal empty state.
+        queue: QueueKind,
+        /// Exact number of items retained before the final plan step; zero is permitted.
+        count: u32,
+    },
     /// Measures the producer-visible wait while a queue is full.
     ObserveBackpressure {
         /// Saturated queue.
@@ -253,14 +260,12 @@ fn operation_for(
         ScenarioKind::MemoryBounds => memory_operation(parameters, sequence),
         ScenarioKind::Cancellation => process_operation(parameters, sequence, true),
         ScenarioKind::Recovery => recovery_operation(sequence),
-        ScenarioKind::QueueSaturation => {
-            queue_operation(QueueKind::Command, parameters.queue_capacity(), sequence)
-        }
+        ScenarioKind::QueueSaturation => queue_operation(QueueKind::Command, parameters, sequence),
         ScenarioKind::ExporterBackpressure => {
-            queue_operation(QueueKind::Exporter, parameters.queue_capacity(), sequence)
+            queue_operation(QueueKind::Exporter, parameters, sequence)
         }
         ScenarioKind::ProviderBackpressure => {
-            queue_operation(QueueKind::Provider, parameters.queue_capacity(), sequence)
+            queue_operation(QueueKind::Provider, parameters, sequence)
         }
         ScenarioKind::TokenFlow => provider_operation(parameters, sequence),
         ScenarioKind::DiskArtifacts => disk_operation(parameters, sequence),
@@ -326,9 +331,20 @@ const fn recovery_operation(sequence: u64) -> PlannedOperation {
     }
 }
 
-fn queue_operation(queue: QueueKind, capacity: u32, sequence: u64) -> PlannedOperation {
-    let capacity = u64::from(capacity);
+fn queue_operation(
+    queue: QueueKind,
+    parameters: crate::WorkloadParameters,
+    sequence: u64,
+) -> PlannedOperation {
+    let capacity = u64::from(parameters.queue_capacity());
     let phase = sequence % (capacity * 2 + 1);
+    if sequence.checked_add(1) == Some(parameters.operation_count()) && phase != capacity * 2 {
+        let retained = if phase <= capacity { phase } else { capacity * 2 + 1 - phase };
+        return PlannedOperation::DrainQueue {
+            queue,
+            count: u32::try_from(retained).expect("retained depth is at most u32 queue capacity"),
+        };
+    }
     match phase.cmp(&capacity) {
         Ordering::Less => PlannedOperation::Enqueue { queue, count: 1 },
         Ordering::Equal => PlannedOperation::ObserveBackpressure { queue },

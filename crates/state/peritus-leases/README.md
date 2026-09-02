@@ -10,3 +10,11 @@ the target C1/C2/C4 authorization gateway owns the private permit that can reach
 
 Authority time is epoch-bound and monotonic. An epoch change or regression is accepted only by an
 explicit fencing/reconciliation path. Expiry alone never establishes holder quiescence.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-leases
+```

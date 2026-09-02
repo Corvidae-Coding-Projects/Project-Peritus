@@ -1,8 +1,19 @@
 //! Product-level coding-run messages exposed to interactive clients.
 
-use core::fmt;
+mod control;
+mod conversation;
+mod phase;
+mod request;
 
-use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
+pub use control::*;
+pub use conversation::*;
+pub use phase::*;
+pub use request::*;
+
+use core::fmt;
+use std::path::{Component, Path};
+
+use peritus_types::{RunId, WorkspaceId};
 
 /// Maximum UTF-8 bytes accepted for one coding task.
 pub const MAX_PRODUCT_TASK_BYTES: usize = 64 * 1024;
@@ -10,215 +21,170 @@ pub const MAX_PRODUCT_TASK_BYTES: usize = 64 * 1024;
 pub const MAX_PRODUCT_DETAIL_BYTES: usize = 1024 * 1024;
 /// Maximum product runs returned by one list operation.
 pub const MAX_PRODUCT_RUNS: usize = 256;
+/// Maximum exact changed paths retained in a completion handoff.
+pub const MAX_PRODUCT_DELIVERABLE_PATHS: usize = 512;
+/// Maximum exact successful commands retained in a completion handoff.
+pub const MAX_PRODUCT_DELIVERABLE_COMMANDS: usize = 256;
 
-/// User-facing phase of one daemon-owned coding run.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub enum ProductRunPhase {
-    /// Accepted and waiting for execution.
-    Queued,
-    /// The writer is preparing and applying an implementation.
-    Writing,
-    /// Repository gates are running.
-    Checking,
-    /// An independent reviewer is inspecting the result.
-    Reviewing,
-    /// The fixer is addressing test or review findings.
-    Fixing,
-    /// Final gates and review are running.
-    Verifying,
-    /// The run completed with passing gates and no blocking findings.
-    Complete,
-    /// The run stopped with an actionable failure.
-    Failed,
-    /// The user cancelled the run.
-    Cancelled,
-    /// A daemon restart interrupted work that may be retried.
-    RecoveryRequired,
-}
-
-impl ProductRunPhase {
-    /// Stable wire tag.
-    #[must_use]
-    pub const fn tag(self) -> u16 {
-        match self {
-            Self::Queued => 1,
-            Self::Writing => 2,
-            Self::Checking => 3,
-            Self::Reviewing => 4,
-            Self::Fixing => 5,
-            Self::Verifying => 6,
-            Self::Complete => 7,
-            Self::Failed => 8,
-            Self::Cancelled => 9,
-            Self::RecoveryRequired => 10,
-        }
-    }
-
-    /// Decodes a stable wire tag.
-    #[must_use]
-    pub const fn from_tag(tag: u16) -> Option<Self> {
-        match tag {
-            1 => Some(Self::Queued),
-            2 => Some(Self::Writing),
-            3 => Some(Self::Checking),
-            4 => Some(Self::Reviewing),
-            5 => Some(Self::Fixing),
-            6 => Some(Self::Verifying),
-            7 => Some(Self::Complete),
-            8 => Some(Self::Failed),
-            9 => Some(Self::Cancelled),
-            10 => Some(Self::RecoveryRequired),
-            _ => None,
-        }
-    }
-
-    /// Returns whether no more work can run without an explicit retry.
-    #[must_use]
-    pub const fn terminal(self) -> bool {
-        matches!(self, Self::Complete | Self::Failed | Self::Cancelled | Self::RecoveryRequired)
-    }
-
-    /// Returns whether the original request may be started again.
-    #[must_use]
-    pub const fn retryable(self) -> bool {
-        matches!(self, Self::Failed | Self::Cancelled | Self::RecoveryRequired)
-    }
-}
-
-/// Checked provider roles selected for one writer-reviewer-fixer loop.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct ProductProviderSelection {
-    writer: ProviderProfileId,
-    reviewer: ProviderProfileId,
-    fixer: ProviderProfileId,
-}
-
-impl ProductProviderSelection {
-    /// Creates an explicit role selection. Reusing a provider is permitted.
-    #[must_use]
-    pub const fn new(
-        writer: ProviderProfileId,
-        reviewer: ProviderProfileId,
-        fixer: ProviderProfileId,
-    ) -> Self {
-        Self { writer, reviewer, fixer }
-    }
-
-    /// Writer profile identity.
-    #[must_use]
-    pub const fn writer(self) -> ProviderProfileId {
-        self.writer
-    }
-    /// Reviewer profile identity.
-    #[must_use]
-    pub const fn reviewer(self) -> ProviderProfileId {
-        self.reviewer
-    }
-    /// Fixer profile identity.
-    #[must_use]
-    pub const fn fixer(self) -> ProviderProfileId {
-        self.fixer
-    }
-}
-
-/// Request to begin one natural-language coding run.
+/// Durable user-facing handoff for one accepted E0 candidate.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ProductRunRequest {
-    run_id: RunId,
-    workspace_id: WorkspaceId,
-    providers: ProductProviderSelection,
-    task: String,
+pub struct ProductDeliverable {
+    workspace_path: String,
+    changed_paths: Vec<String>,
+    successful_commands: Vec<String>,
+    run_instructions: String,
+    accepted: bool,
+    commit_revision: String,
+    export_path: String,
+    discarded: bool,
 }
 
-impl ProductRunRequest {
-    /// Creates a checked run request.
+impl ProductDeliverable {
+    /// Creates a bounded pending handoff.
     ///
     /// # Errors
-    ///
-    /// Rejects an empty, whitespace-only, or oversized task.
+    /// Rejects missing paths/instructions, empty candidate paths, or oversized collections.
     pub fn new(
-        run_id: RunId,
-        workspace_id: WorkspaceId,
-        providers: ProductProviderSelection,
-        task: String,
+        workspace_path: String,
+        changed_paths: Vec<String>,
+        successful_commands: Vec<String>,
+        run_instructions: String,
     ) -> Result<Self, ProductRunMessageError> {
-        bounded_text(&task, MAX_PRODUCT_TASK_BYTES)?;
-        Ok(Self { run_id, workspace_id, providers, task })
-    }
-
-    /// Requested run identity.
-    #[must_use]
-    pub const fn run_id(&self) -> RunId {
-        self.run_id
-    }
-    /// Exact managed workspace identity.
-    #[must_use]
-    pub const fn workspace_id(&self) -> WorkspaceId {
-        self.workspace_id
-    }
-    /// Explicit role providers.
-    #[must_use]
-    pub const fn providers(&self) -> ProductProviderSelection {
-        self.providers
-    }
-    /// Natural-language task.
-    #[must_use]
-    pub fn task(&self) -> &str {
-        &self.task
-    }
-}
-
-/// User control operation for one daemon-owned run.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub enum ProductRunControlAction {
-    /// Cancel active provider and repository work.
-    Cancel,
-    /// Retry a failed, cancelled, or interrupted run from its original request.
-    Retry,
-}
-
-impl ProductRunControlAction {
-    /// Stable wire tag.
-    #[must_use]
-    pub const fn tag(self) -> u16 {
-        match self {
-            Self::Cancel => 1,
-            Self::Retry => 2,
+        bounded_text(&workspace_path, MAX_PRODUCT_DETAIL_BYTES)?;
+        bounded_text(&run_instructions, MAX_PRODUCT_DETAIL_BYTES)?;
+        if changed_paths.is_empty()
+            || changed_paths.len() > MAX_PRODUCT_DELIVERABLE_PATHS
+            || successful_commands.is_empty()
+            || successful_commands.len() > MAX_PRODUCT_DELIVERABLE_COMMANDS
+        {
+            return Err(ProductRunMessageError::TooManyDeliverableItems);
         }
-    }
-    /// Decodes a stable wire tag.
-    #[must_use]
-    pub const fn from_tag(tag: u16) -> Option<Self> {
-        match tag {
-            1 => Some(Self::Cancel),
-            2 => Some(Self::Retry),
-            _ => None,
+        for value in changed_paths.iter().chain(&successful_commands) {
+            bounded_text(value, MAX_PRODUCT_DETAIL_BYTES)?;
         }
+        if changed_paths.iter().any(|value| {
+            let path = Path::new(value);
+            path.is_absolute()
+                || path.components().any(|component| !matches!(component, Component::Normal(_)))
+                || path.starts_with(".git")
+        }) {
+            return Err(ProductRunMessageError::InvalidDeliverablePath);
+        }
+        Ok(Self {
+            workspace_path,
+            changed_paths,
+            successful_commands,
+            run_instructions,
+            accepted: false,
+            commit_revision: String::new(),
+            export_path: String::new(),
+            discarded: false,
+        })
     }
-}
 
-/// Control request for one exact coding run.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct ProductRunControl {
-    run_id: RunId,
-    action: ProductRunControlAction,
-}
+    /// Managed worktree containing the deliverable.
+    #[must_use]
+    pub fn workspace_path(&self) -> &str {
+        &self.workspace_path
+    }
 
-impl ProductRunControl {
-    /// Creates an exact run control request.
+    /// Exact task candidate paths.
     #[must_use]
-    pub const fn new(run_id: RunId, action: ProductRunControlAction) -> Self {
-        Self { run_id, action }
+    pub fn changed_paths(&self) -> &[String] {
+        &self.changed_paths
     }
-    /// Target run.
+
+    /// Exact acceptance commands that exited successfully.
     #[must_use]
-    pub const fn run_id(self) -> RunId {
-        self.run_id
+    pub fn successful_commands(&self) -> &[String] {
+        &self.successful_commands
     }
-    /// Requested action.
+
+    /// Concrete command or steps for running the result.
     #[must_use]
-    pub const fn action(self) -> ProductRunControlAction {
-        self.action
+    pub fn run_instructions(&self) -> &str {
+        &self.run_instructions
+    }
+
+    /// Whether the user explicitly accepted the handoff.
+    #[must_use]
+    pub const fn accepted(&self) -> bool {
+        self.accepted
+    }
+
+    /// Managed Git commit created for this deliverable, when requested.
+    #[must_use]
+    pub fn commit_revision(&self) -> &str {
+        &self.commit_revision
+    }
+
+    /// Exported patch path, when requested.
+    #[must_use]
+    pub fn export_path(&self) -> &str {
+        &self.export_path
+    }
+
+    /// Whether the exact deliverable was discarded.
+    #[must_use]
+    pub const fn discarded(&self) -> bool {
+        self.discarded
+    }
+
+    /// Returns an accepted handoff.
+    #[must_use]
+    pub const fn mark_accepted(mut self) -> Self {
+        self.accepted = true;
+        self
+    }
+
+    /// Returns a handoff carrying the created commit revision.
+    ///
+    /// # Errors
+    /// Rejects an empty or oversized revision string.
+    pub fn mark_committed(mut self, revision: String) -> Result<Self, ProductRunMessageError> {
+        bounded_text(&revision, MAX_PRODUCT_DETAIL_BYTES)?;
+        self.commit_revision = revision;
+        self.accepted = true;
+        Ok(self)
+    }
+
+    /// Returns a handoff carrying the exported patch path.
+    ///
+    /// # Errors
+    /// Rejects an empty or oversized export path.
+    pub fn mark_exported(mut self, path: String) -> Result<Self, ProductRunMessageError> {
+        bounded_text(&path, MAX_PRODUCT_DETAIL_BYTES)?;
+        self.export_path = path;
+        Ok(self)
+    }
+
+    /// Returns a discarded handoff.
+    #[must_use]
+    pub const fn mark_discarded(mut self) -> Self {
+        self.discarded = true;
+        self
+    }
+
+    #[allow(clippy::too_many_arguments, reason = "wire restoration keeps durable fields explicit")]
+    pub(crate) fn restore(
+        workspace_path: String,
+        changed_paths: Vec<String>,
+        successful_commands: Vec<String>,
+        run_instructions: String,
+        accepted: bool,
+        commit_revision: String,
+        export_path: String,
+        discarded: bool,
+    ) -> Result<Self, ProductRunMessageError> {
+        let mut value =
+            Self::new(workspace_path, changed_paths, successful_commands, run_instructions)?;
+        optional_bounded_text(&commit_revision, MAX_PRODUCT_DETAIL_BYTES)?;
+        optional_bounded_text(&export_path, MAX_PRODUCT_DETAIL_BYTES)?;
+        value.accepted = accepted;
+        value.commit_revision = commit_revision;
+        value.export_path = export_path;
+        value.discarded = discarded;
+        Ok(value)
     }
 }
 
@@ -260,6 +226,7 @@ pub struct ProductRunSnapshot {
     gates: String,
     review: String,
     summary: String,
+    deliverable: Option<ProductDeliverable>,
 }
 
 impl ProductRunSnapshot {
@@ -299,6 +266,7 @@ impl ProductRunSnapshot {
             gates,
             review,
             summary,
+            deliverable: None,
         })
     }
 
@@ -357,6 +325,19 @@ impl ProductRunSnapshot {
     pub fn summary(&self) -> &str {
         &self.summary
     }
+
+    /// Durable deliverable handoff after exact E0 acceptance.
+    #[must_use]
+    pub const fn deliverable(&self) -> Option<&ProductDeliverable> {
+        self.deliverable.as_ref()
+    }
+
+    /// Attaches or replaces a checked deliverable handoff.
+    #[must_use]
+    pub fn with_deliverable(mut self, deliverable: ProductDeliverable) -> Self {
+        self.deliverable = Some(deliverable);
+        self
+    }
 }
 
 /// Failure to construct a bounded product-run message.
@@ -366,6 +347,12 @@ pub enum ProductRunMessageError {
     Empty,
     /// A string exceeds its compiled protocol bound.
     TooLong,
+    /// A conversation exceeds its retained message limit.
+    TooManyMessages,
+    /// A deliverable contains too many paths or commands, or lacks either collection.
+    TooManyDeliverableItems,
+    /// A deliverable path is absolute, traversing, or targets Git metadata.
+    InvalidDeliverablePath,
 }
 
 impl fmt::Display for ProductRunMessageError {
@@ -373,6 +360,11 @@ impl fmt::Display for ProductRunMessageError {
         formatter.write_str(match self {
             Self::Empty => "product run text is empty",
             Self::TooLong => "product run text exceeds its protocol bound",
+            Self::TooManyMessages => "product run conversation has too many messages",
+            Self::TooManyDeliverableItems => {
+                "product deliverable path or command collection is invalid"
+            }
+            Self::InvalidDeliverablePath => "product deliverable contains an unsafe path",
         })
     }
 }

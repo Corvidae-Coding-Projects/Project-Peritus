@@ -9,7 +9,7 @@ fn canonical_team_workflow_retains_every_gate_and_stable_status() {
     let (action_count, diagnostics) =
         validate(PATH, DocumentKind::Workflow, &canonical_governance());
 
-    assert_eq!(action_count, 10);
+    assert_eq!(action_count, 14);
     assert!(diagnostics.is_empty(), "unexpected diagnostics: {diagnostics:?}");
 }
 
@@ -85,7 +85,7 @@ fn required_workflow_rejects_bootstrap_and_gate_weakening() {
             "lacks the exact pre-Cargo candidate bootstrap",
         ),
         (
-            canonical_governance().replace("  rust:\n", "  rust:\n    if: false\n"),
+            canonical_governance().replace("  rust-shards:\n", "  rust-shards:\n    if: false\n"),
             "does not retain every hardcoded job and final status",
         ),
         (
@@ -94,7 +94,7 @@ fn required_workflow_rejects_bootstrap_and_gate_weakening() {
             "does not retain every hardcoded job and final status",
         ),
         (
-            canonical_governance().replace("--no-cheating --rlimit 20", "--rlimit 20"),
+            canonical_governance().replace("verus-build-strict]", "verus-build]"),
             "does not retain every hardcoded job and final status",
         ),
         (
@@ -123,8 +123,8 @@ fn required_workflow_rejects_bootstrap_and_gate_weakening() {
 #[test]
 fn required_workflow_retains_the_measured_verus_timeout() {
     let altered = canonical_governance().replacen(
-        "    name: Verus\n    needs: policy\n    runs-on: ubuntu-24.04\n    timeout-minutes: 40",
-        "    name: Verus\n    needs: policy\n    runs-on: ubuntu-24.04\n    timeout-minutes: 20",
+        "    name: Verus shard ${{ matrix.operation }} ${{ matrix.shard }}\n    needs: policy\n    strategy:\n      fail-fast: false\n      matrix:\n        operation: [verus-verify, verus-verify-strict, verus-build, verus-build-strict]\n        shard: [foundation-state, runtime-tools, model-orchestration, app, edge]\n    runs-on: ubuntu-24.04\n    timeout-minutes: 10",
+        "    name: Verus shard ${{ matrix.operation }} ${{ matrix.shard }}\n    needs: policy\n    strategy:\n      fail-fast: false\n      matrix:\n        operation: [verus-verify, verus-verify-strict, verus-build, verus-build-strict]\n        shard: [foundation-state, runtime-tools, model-orchestration, app, edge]\n    runs-on: ubuntu-24.04\n    timeout-minutes: 9",
         1,
     );
 
@@ -136,8 +136,8 @@ fn required_workflow_retains_the_measured_verus_timeout() {
 #[test]
 fn required_workflow_retains_the_measured_rust_matrix_timeout() {
     let altered = canonical_governance().replacen(
-        "    name: Rust ${{ matrix.operation }} (${{ matrix.os }})\n    needs: policy\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-24.04, macos-15, windows-2025]\n        operation: [fmt, build, test, doc-test, clippy, docs]\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 30",
-        "    name: Rust ${{ matrix.operation }} (${{ matrix.os }})\n    needs: policy\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-24.04, macos-15, windows-2025]\n        operation: [fmt, build, test, doc-test, clippy, docs]\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 20",
+        "    name: Rust shard ${{ matrix.operation }} ${{ matrix.shard }} (${{ matrix.os }})\n    needs: policy\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-24.04, macos-15, windows-2025]\n        operation: [build, test, doc-test, clippy, docs]\n        shard: [foundation-state, runtime-tools, model-orchestration, app, testing, edge]\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 10",
+        "    name: Rust shard ${{ matrix.operation }} ${{ matrix.shard }} (${{ matrix.os }})\n    needs: policy\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-24.04, macos-15, windows-2025]\n        operation: [build, test, doc-test, clippy, docs]\n        shard: [foundation-state, runtime-tools, model-orchestration, app, testing, edge]\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 9",
         1,
     );
 

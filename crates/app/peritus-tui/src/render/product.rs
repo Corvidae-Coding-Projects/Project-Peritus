@@ -1,6 +1,8 @@
 //! Dashboard, diff, and review presentation for daemon-owned coding runs.
 
-use peritus_app_protocol::{ProductRunPhase, ProductRunSnapshot};
+use peritus_app_protocol::{
+    ProductConversationRole, ProductRunConversation, ProductRunPhase, ProductRunSnapshot,
+};
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -79,12 +81,31 @@ pub(super) fn dashboard(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         columns[0],
         &mut state,
     );
+    let right = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Percentage(43), Constraint::Percentage(57)])
+        .split(columns[1]);
     let detail = product.selected_run().map_or_else(empty_detail, run_detail);
     frame.render_widget(
         Paragraph::new(detail)
-            .block(Block::default().borders(Borders::ALL).title(" Progress · x cancel · r retry "))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" Progress · i inspect · a accept · c commit · p export · D discard "),
+            )
             .wrap(Wrap { trim: false }),
-        columns[1],
+        right[0],
+    );
+    frame.render_widget(
+        Paragraph::new(conversation_text(product.selected_conversation()))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(ACCENT))
+                    .title(" Conversation · Enter/m message this run "),
+            )
+            .wrap(Wrap { trim: false }),
+        right[1],
     );
 }
 
@@ -136,7 +157,7 @@ fn render_run_text(
 }
 
 fn run_detail(run: &ProductRunSnapshot) -> Text<'static> {
-    Text::from(vec![
+    let mut lines = vec![
         Line::styled(
             phase_line(run.phase()),
             phase_style(run.phase()).add_modifier(Modifier::BOLD),
@@ -156,7 +177,31 @@ fn run_detail(run: &ProductRunSnapshot) -> Text<'static> {
             },
             Style::default().fg(MUTED),
         ),
-    ])
+    ];
+    if let Some(deliverable) = run.deliverable() {
+        lines.push(Line::from(""));
+        lines.push(Line::styled(
+            "Deliverable handoff",
+            Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+        ));
+        lines.push(field("Managed path", safe(deliverable.workspace_path())));
+        lines.push(field("Changed files", deliverable.changed_paths().len().to_string()));
+        lines.push(field("Run", safe(deliverable.run_instructions())));
+        let state = if deliverable.discarded() {
+            "discarded".to_owned()
+        } else if !deliverable.commit_revision().is_empty() {
+            format!("committed {}", short_text(deliverable.commit_revision(), 12))
+        } else if deliverable.accepted() {
+            "accepted".to_owned()
+        } else {
+            "ready for inspection".to_owned()
+        };
+        lines.push(field("State", state));
+        if !deliverable.export_path().is_empty() {
+            lines.push(field("Export", safe(deliverable.export_path())));
+        }
+    }
+    Text::from(lines)
 }
 
 fn empty_detail() -> Text<'static> {
@@ -166,9 +211,34 @@ fn empty_detail() -> Text<'static> {
     ])
 }
 
+fn conversation_text(conversation: Option<&ProductRunConversation>) -> Text<'static> {
+    let Some(conversation) = conversation else {
+        return Text::from(vec![
+            Line::styled("Select a run to load its conversation.", Style::default().fg(MUTED)),
+            Line::from("Press Enter or m to send a message."),
+        ]);
+    };
+    let start = conversation.messages().len().saturating_sub(12);
+    let mut lines = Vec::new();
+    for message in &conversation.messages()[start..] {
+        let (speaker, style) = match message.role() {
+            ProductConversationRole::User => ("You", Style::default().fg(Color::White)),
+            ProductConversationRole::Agent => ("Peritus", Style::default().fg(ACCENT)),
+        };
+        lines.push(Line::styled(speaker, style.add_modifier(Modifier::BOLD)));
+        lines.extend(safe(message.content()).lines().map(|line| Line::from(line.to_owned())));
+        lines.push(Line::from(""));
+    }
+    if lines.is_empty() {
+        lines.push(Line::styled("No messages yet.", Style::default().fg(MUTED)));
+    }
+    Text::from(lines)
+}
+
 const fn phase_symbol(phase: ProductRunPhase) -> &'static str {
     match phase {
         ProductRunPhase::Queued => "○ Queued",
+        ProductRunPhase::Designing => "● Designing",
         ProductRunPhase::Writing => "● Writing",
         ProductRunPhase::Checking => "● Checking",
         ProductRunPhase::Reviewing => "● Reviewing",
@@ -178,6 +248,7 @@ const fn phase_symbol(phase: ProductRunPhase) -> &'static str {
         ProductRunPhase::Failed => "✗ Failed",
         ProductRunPhase::Cancelled => "■ Cancelled",
         ProductRunPhase::RecoveryRequired => "! Recover",
+        ProductRunPhase::WaitingForUser => "? Your reply",
     }
 }
 
@@ -189,14 +260,16 @@ fn phase_style(phase: ProductRunPhase) -> Style {
     match phase {
         ProductRunPhase::Complete => Style::default().fg(GOOD),
         ProductRunPhase::Failed | ProductRunPhase::Cancelled => Style::default().fg(BAD),
-        ProductRunPhase::RecoveryRequired => Style::default().fg(WARN),
+        ProductRunPhase::RecoveryRequired | ProductRunPhase::WaitingForUser => {
+            Style::default().fg(WARN)
+        }
         _ => Style::default().fg(ACCENT),
     }
 }
 
 fn timeline(phase: ProductRunPhase) -> String {
     let active = match phase {
-        ProductRunPhase::Queued => 0,
+        ProductRunPhase::Queued | ProductRunPhase::Designing => 0,
         ProductRunPhase::Writing => 1,
         ProductRunPhase::Checking => 2,
         ProductRunPhase::Reviewing => 3,
@@ -205,9 +278,10 @@ fn timeline(phase: ProductRunPhase) -> String {
         ProductRunPhase::Complete => 6,
         ProductRunPhase::Failed
         | ProductRunPhase::Cancelled
-        | ProductRunPhase::RecoveryRequired => 7,
+        | ProductRunPhase::RecoveryRequired
+        | ProductRunPhase::WaitingForUser => 7,
     };
-    ["Understand", "Write", "Check", "Review", "Fix", "Verify", "Complete"]
+    ["Design", "Write", "Check", "Review", "Fix", "Verify", "Complete"]
         .iter()
         .enumerate()
         .map(

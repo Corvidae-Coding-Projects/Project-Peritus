@@ -1,7 +1,7 @@
 use super::policy_file;
 use super::verus_commands::CANONICAL_VERUS_ARGS;
 use super::workflow_actionlint;
-use super::workflow_commands::{CommandPolicy, parse_script};
+use super::workflow_commands::parse_script;
 use crate::error::{Diagnostic, XtaskError};
 use std::fs;
 use std::path::Path;
@@ -19,6 +19,21 @@ retry = 2
 "#;
 const AUDITED_EXECUTABLES: [&str; 8] =
     ["actionlint", "cargo", "curl", "mkdir", "printf", "set", "sha256sum", "unzip"];
+
+#[derive(Clone, Copy)]
+pub(super) struct CommandPolicy {
+    locked_xtask_alias: bool,
+}
+
+impl CommandPolicy {
+    pub(super) const fn new(locked_xtask_alias: bool) -> Self {
+        Self { locked_xtask_alias }
+    }
+
+    pub(super) const fn permits_xtask(self) -> bool {
+        self.locked_xtask_alias
+    }
+}
 
 pub(super) fn load(
     root: &Path,
@@ -148,10 +163,12 @@ fn validate_with_mode(
     let parsed = parse_script(script);
     let actionlint_install = workflow_actionlint::is_reviewed_install(&parsed);
     let config_preflight = parsed.is_reviewed_config_preflight();
+    let ubuntu_sandbox_install = parsed.is_reviewed_ubuntu_sandbox_install();
     if !parsed.is_failure_propagating()
         && !parsed.is_reviewed_archive_install()
         && !actionlint_install
         && !config_preflight
+        && !ubuntu_sandbox_install
     {
         diagnostics.push(Diagnostic::at(
             path,
@@ -172,6 +189,8 @@ fn validate_with_mode(
             && !AUDITED_EXECUTABLES.contains(&executable)
             && !(actionlint_install && executable == "tar")
             && !(config_preflight && executable == "git")
+            && !(ubuntu_sandbox_install
+                && matches!(executable, "sudo" | "apt-get" | "apparmor_parser" | "bwrap"))
         {
             diagnostics.push(Diagnostic::at(
                 path,

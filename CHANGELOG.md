@@ -1,12 +1,821 @@
 # Changelog
 
+- Replace long hosted checks with bounded work shards instead of extending their timeouts. Gate A
+  and Foundation now partition Rust and Verus work by reviewed architecture layers; H2 runs 18
+  single-scenario shards per host; H0 runs four fresh-subject worker partitions before reconstructing
+  its canonical platform report; and release jobs build, assemble, attest, and publish in separate
+  stages. Every hosted job now has a timeout of ten minutes or less (#31).
+- Isolate the Rust shard controller in its own Cargo target directory so Windows can compile and
+  test the `xtask` package without trying to replace the running `xtask.exe`; keep that invocation
+  exact and policy-checked in both Foundation and Gate A (#31).
+- Keep H2's cold Windows qualification beneath the ten-minute ceiling by assigning one scenario to
+  each of 18 native shards, retaining the same complete scenario and raw-evidence coverage (#31).
+- Freeze both completed external diagnostic campaigns during failure remediation: use retained
+  evidence plus focused regressions for each general correction, and defer any new full comparison
+  until the remediation code is frozen and an operator explicitly starts qualification (#31).
+- Share run-scoped provider circuit state across designer, writer, reviewer, and fixer roles. Once a
+  configured route exhausts recovery and failover proves another consented route is available,
+  later roles skip the known-unavailable profile instead of paying the same failed call again;
+  capability-only mismatches do not poison the route (`TBF-057`, #31).
+- Treat outputs mentioned only inside conditional troubleshooting clauses as optional instead of
+  inventing mandatory files from command or configuration tokens. Preserve strict presence checks
+  for unconditional deliverables and resume exact checks after a sentence or clause boundary
+  (`HBF-030`, #31).
+- Derive each HarnessBench product work horizon from the pinned task's unchanged outer timeout,
+  reserving bounded time for provider cancellation, trace projection, and native report
+  publication. Reject missing or ambiguous task deadline evidence instead of silently running with
+  the normal eight-hour interactive horizon until the benchmark kills the adapter (#31).
+- Keep the active command lifecycle buildable across every release gate by mirroring its
+  constructor in the Verus-facing daemon API and making the Windows executable-extension branch
+  strict-clippy clean. Declare supervisor resource fidelity only on Linux, where C2 implements it;
+  keep macOS and Windows raw commands on the honest reference contract, and do not fail a
+  short-lived macOS command when its optional libproc sample races process-group removal. Compare
+  canonical workspace paths when starting commands so macOS's `/var` to `/private/var` filesystem
+  alias cannot falsely reject an in-workspace working directory. Keep interactive raw commands
+  usable on Windows through bounded input/output pipes, where the raw C2 path cannot provide the
+  descendant containment required for ConPTY; native restricted launches retain real ConPTY.
+  Preserve exact observed fields when a hosted-platform qualification differs so any recurrence
+  is actionable rather than an opaque assertion (#31).
+- Route ordinary product and benchmark developer commands through the existing C4 router and
+  daemon-owned C2 process store. Keep the simple bounded `run_command` path, and add stable
+  run-owned handles for start, poll, terminal input, resize, portable signals, cancellation, and
+  live-owner recovery without introducing another PTY manager. Retain bounded artifact-backed
+  output, explicit C2/C4 authority, shared product deadlines, resource ceilings, command-created
+  file ownership and acceptance evidence for both finite and active commands, and durable effect
+  receipts. Fix the deadline race
+  that could discard a terminal C2 result just as C4's allowance elapsed, and cover interactive
+  stdin, cancellation, timeout, output truncation, missing executables, resource clamping, and
+  command-created files (`TBF-047`, #31).
+- Preserve explicit output alternatives as real at-least-one groups instead of cumulative
+  requirements, while keeping separate mandatory paths and wrong-directory checks strict
+  (`TBF-055`, #31).
+- Constrain incomplete repository-grounding turns to the exact missing host operation before
+  restoring automatic and parallel tool choice, preventing repeated premature terminal responses
+  from consuming the reviewer/fixer window (`TBF-054`, #31).
+- Require performance claims over small bounded discrete domains to measure every supported value,
+  and require consistent wins to exceed ordinary timing noise (`TBF-052`, #31).
+- Enforce task-declared opaque query interfaces across writer, fixer, designer, and reviewer tools:
+  keep implementation metadata visible, omit its contents from reads and search, refuse direct
+  hidden-state command references, and reject contaminated validation evidence (`TBF-051`, #31).
+- Treat descriptive bare extensions such as “`.DAT files`” as file patterns rather than literal
+  required paths while preserving singular dotfile requests such as `.env` (`TBF-050`, #31).
+- Attribute files created during harness-owned structured commands so later fixer cycles can clean
+  up their exact test and generator products without gaining permission to delete unrelated files
+  that appeared before the command (`TBF-049`, #31).
+- Keep arithmetic and collection uses of “add” from turning a distant example filename into a
+  required output, while retaining exact-path checks for nearby targets and explicit file nouns
+  (`TBF-019`, #31).
+- Record another frozen shared-deadline recurrence where a default dependency install consumed the
+  agent window before decisive distributed verification; retain the honest candidate failure while
+  the current command allowance and completion reserve remain the general correction (`TBF-044`,
+  #31).
+- Systematize empirical threshold work with reusable prepared inputs, a measured candidate ledger,
+  selection data kept separate from the final holdout, atomic best-candidate preservation, bounded
+  low-cost search, and a fresh authoritative end-to-end check (`TBF-048`, #31).
+- Record another frozen large-workspace recurrence that stopped before its first provider request;
+  retain the honest zero while the current bounded, sorted navigation sample remains the general
+  correction (`TBF-031`, #31).
+- Retain another frozen caller-deadline recurrence where a correct candidate survived malformed
+  provider retries, passed all three unchanged verifier checks, and earned reward 1 before Harbor
+  cancelled the native process without its final report (`TBF-042`, #31).
+- Record further frozen context-overflow recurrences where oversized initial review packets
+  prevented native completion after candidates were already correct; retain the unchanged
+  verifiers' passing checks and rewards as honest successes (`TBF-043`, #31).
+- Treat brace- and angle-delimited generated-name placeholders as patterns rather than literal
+  required paths, so exact-output reconciliation no longer rejects correct generated artifacts
+  because prose examples such as `{class name}_generated.ext` contain whitespace (`TBF-046`, #31).
+- Record another frozen caller-deadline recurrence where Harbor lost the native report but the
+  unchanged candidate passed all five verifier checks, preserving the reward as an honest success
+  rather than a product-quality zero (`TBF-042`, #31).
+- Require exact values recovered through lossy or heuristic tools to carry an ambiguity ledger and
+  genuinely independent or source-level disambiguation, instead of counting repeated modes of one
+  extractor as independent confirmation (`TBF-045`, #31).
+- Clamp every developer command to the live caller-derived product deadline, preserve a bounded
+  completion reserve, and report the requested timeout, actual allowance, and remaining time so a
+  late compiler, test, transfer, or analysis command cannot consume the whole run (`TBF-044`, #31).
+- Record the frozen Terminal-Bench context-exhaustion recurrence that is already corrected by
+  model-visible tool-output bounds, semantic checkpoints, and emergency compaction of a newest
+  complete exchange; preserve the unsupported-answer reward as an honest zero (`TBF-043`, #31).
+- Propagate a caller's real execution deadline into every product run, tell each model role how much
+  shared time remains, cooperatively cancel in-flight provider work at that horizon, and reserve a
+  bounded Terminal-Bench tail for durable reports and process cleanup instead of letting Harbor
+  kill an otherwise useful candidate at its outer deadline (`TBF-042`, #31).
+- Stop exact-output reconciliation from treating an interpreter at the start of a quoted command
+  as a required workspace file; retain deterministic checks for fully quoted extensionless
+  deliverables, and record the verifier-passing Terminal-Bench run that exposed the needless
+  900-second acceptance loop.
+- Distinguish unquoted email-address values from output paths while preserving explicitly named
+  email-shaped filenames, preventing valid contact, calendar, manifest, and configuration tasks
+  from entering a needless fixer or user-question loop.
+- Fixed macOS resilience cleanup to observe controller process groups through the bounded native
+  process inventory instead of treating group-wide signal permission as an existence check.
+- Recorded frozen Terminal-Bench evidence that a real named lifecycle ingress cannot be replaced
+  by an internal simulation, while preserving the honest circular-plasmid evaluator recurrence.
+
+- Repair trusted managed workspaces by re-registering their validated current detached HEAD while
+  preserving agent commits and unfinished files; make every coding run generate and follow a
+  durable evidence-grounded design; and enforce the embedded production-engineering workflow,
+  exact formatting and builds, a 500-line source-file ceiling before acceptance, and productive
+  goal supervision across bounded model turns, malformed replies, stalls, and daemon restarts.
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- Add the checked-in Rust `peritus-h1-controller` and an explicit focused diagnostic mode. Its 43
+  genuine routes cover both sides of journal submission, content-addressed blob publication,
+  retained Git snapshot publication, exclusive-lease persistence, and recoverable patch
+  application, plus D1's atomic gate event/checkpoint commit and F0's campaign/pointer/approval
+  promotion commit. They also cover active projection corruption with fresh-generation repair,
+  committed journal-frame corruption with fail-closed startup before authority mutation, and
+  referenced blob corruption with durable quarantine and reference denial, and retained Git
+  snapshot reference divergence with atomic movement out of the active namespace. Acceptance
+  evidence corruption now enters a durable digest-bound quarantine during evidence-store startup;
+  recovery preserves every raw indexed field and corrupt record byte for audit while denying that
+  evidence identity to all readers, and a second startup proves containment is idempotent. The
+  harness-promotion corruption route commits and publishes the real atomic F0 activation, corrupts
+  only its harness-activation evidence, and proves fresh recovery quarantines that record without
+  changing the 16-event, four-head journal or production pointer. F0 publication directives now
+  carry their exact `RevisionTuple`, and publication admits the complete artifact dependency set
+  from the producing journal batch instead of trusting caller-supplied revision or partial artifact
+  context.
+  Provider, tool, and worker death now run through the real executable provider transport,
+  ordinary grounded receipt-backed product tool, and daemon-owned worker supervisor. Scheduler
+  replay requeues exact owned work after death and preserves exhausted non-success after consuming
+  the configured retry ceiling. The artifact-finalization disk route opens two production writers
+  against one durable logical quota, admits the first, requires the second finalization to lose the
+  real catalog quota race, and proves fresh-process recovery retained no rejected metadata,
+  published bytes, or temporary file. The journal-append disk route fixes the production SQLite
+  connection's page ceiling at its current allocation, requires an oversized exact append to
+  return `SQLITE_FULL`, and proves through a fresh process that no command, event, or aggregate
+  head partially survived.
+  The snapshot-manifest disk route fills a valid production artifact-store quota, publishes an
+  exact retained Git snapshot, then requires manifest finalization to reject the new object and
+  compensate by releasing that unpublished reference. Fresh recovery independently proves the
+  reference is absent, the admitted filler is intact, no temporary file remains, and the journal
+  is healthy. Candidate creation and rollback share this compensation boundary so any real
+  manifest-publication failure cannot strand an authoritative-looking Git ref.
+  The final three routes run the exact static candidate in a fresh copy-on-write Alpine guest,
+  record real kernel boot-ID changes, and prove exactly-once C0 effect recovery when rebooted before
+  the effect, after its durable effect but before acknowledgement, and during startup
+  reconciliation. The immutable guest image is supplied outside Git and re-digested for every
+  subject.
+  All eleven daemon-lifecycle routes construct their production E0 state through
+  legal reducer commands, commit it through C0, kill the staged daemon at the named active phase,
+  and require fresh-process replay to preserve state, phase, ownership, handoff, proposal, and
+  acceptance-certificate truth. The exact
+  staged `peritusd` is killed before and after each corresponding durable commit. Recovery verifies
+  the expected rollback or exact replay, retains all six evidence classes, and cleans its private
+  state.
+  Unimplemented H1 routes fail closed instead of borrowing the shell fixture or manufacturing a
+  result (#31)
+- Add the executable `peritus-h1` qualification operator: bind the declared subject to the exact
+  candidate bytes, stage and re-digest that candidate inside every fresh subject, run the complete
+  43-case native H1 protocol, and atomically retain a full machine-readable Ready/NotReady report
+  without allowing a fixture controller to stand in for the release candidate (#31)
+- Add the production `peritus-h4` evidence operator: generate exact candidate-bound signing
+  envelopes without handling private keys, verify detached Ed25519 evidence, admit exactly one of
+  every required signed input, replay signature-bound fresh-subject cleanup, compare independent
+  artifact builds, reconstruct all 25 acceptance mappings and the independent audit, evaluate the
+  verified release policy, and retain one deterministic no-overwrite Ready/NotReady bundle; add its
+  strict plan schema and complete-shaped non-passing operator template (#34)
+- Add `peritus-h0-prepare` and the native H0 security workflow: derive one reproducible integrated
+  candidate from documented committed source subsets, bind each native Rust host and exact
+  controller binary in schema-defined facts, execute the fixed Linux/macOS/Windows shard matrix,
+  and retain candidate, report, and raw evidence artifacts without manufacturing the independent
+  review required for final aggregation (#32)
+- Add strict external-review admission and the `peritus-h0-aggregate` final H0 reducer: combine
+  exactly one passing Linux, macOS, and Windows shard, evaluate the independently supplied review
+  through verified policy, and atomically retain a candidate-bound Ready/NotReady report with the
+  exact canonical evidence manifest and stable failure codes (#32)
+- Add the production `peritus-h0-controller`: verify a clean candidate's exact Git-archive digest,
+  execute a closed candidate-bound plan for every H0 probe, reconcile migration/recovery, unsafe,
+  TCB, threat, and control inventories, exercise native Linux, macOS, or Windows sandbox activation,
+  enforce bounded process/output/memory accounting, and retain digest-bound raw evidence (#32)
+- Add candidate-bound H0 native-platform shards with a fixed Linux 40, macOS 1, and Windows 1
+  partition plus fail-closed three-host aggregation, preventing one host from manufacturing native
+  security evidence for another operating system; add bounded deterministic shard JSON that
+  round-trips exact candidate, receipt, evidence, limits, and cleanup values while refusing failed
+  or inconsistent documents at aggregation; add the no-overwrite `peritus-h0` native shard
+  operator and standalone candidate schema (#32)
+- Exercise the installed TUI itself in H2 through the host PTY or ConPTY: answer the bounded
+  standards-defined cursor-position handshake, require a real daemon connection and rendered
+  frame, send the documented Ctrl-Q action, require a successful exit, and verify alternate-screen,
+  cursor, and bracketed-paste restoration before accepting the lifecycle (#31)
+- Run the complete 18-scenario H2 campaign from the first-class
+  `product-native-qualification` command on every hosted Linux, macOS, and Windows package runner,
+  retain its report and raw evidence as workflow artifacts, and wire the checked-in controller to
+  the real macOS Seatbelt and Windows AppContainer/Job Object capability probes instead of
+  returning a platform placeholder; a fresh Linux regression remained 18/18 `Ready` (#31)
+- Add the checked-in Rust H2 native controller that validates its exact bound request, installs the
+  staged package on the current host, exercises service configuration, daemon crash recovery,
+  local transport, same-user authentication, CLI/TUI and terminal paths, executable equivalence,
+  process cancellation, the admitted sandbox, upgrades, injected checksum rollback, uninstall,
+  protected-state preservation, and zero-resource cleanup; the first real Linux development run
+  completed all 18 scenarios as `Ready` (#31)
+- Add run-level workspace-growth and observed-memory accounting to the production coding loop,
+  persist both across daemon progress snapshots, show them in live status, and fail with the typed
+  budget category before generous 50 GiB growth or 12 GiB resident-memory ceilings are exceeded
+  (#31)
+- Add the standard H2 native platform controller and `peritus-h2` operator: stage and re-digest the
+  exact manifest package into one private subject per each of 18 scenarios, clear ambient user
+  state, bind versioned requests and independent scenario/cleanup responses to the exact target,
+  package, controller, subject, and scenario, own Unix process groups and Windows kill-on-close Job
+  Objects, verify retained raw artifacts, atomically publish a complete no-overwrite report, and
+  prove all protocol translations plus stale response, false digest, and descendant termination
+  without claiming the fixture is real Linux/macOS/Windows qualification (#31)
+- Add the standard H1 persistent native-controller adapter: stage and re-digest one reviewed
+  executable inside each fresh private subject, bind all four line-delimited protocol stages to the
+  exact scenario/build/controller/instance, own Unix process groups and Windows kill-on-close Job
+  Objects, enforce cancellation/time/output limits, retain and verify raw evidence artifacts, and
+  prove all 43 translations plus false-digest and descendant-cleanup behavior without fabricating
+  real reboot or fault evidence (#31)
+- Add the standard H0 fresh-native-subject process adapter: stage and digest one reviewed executor
+  per private case root, bind versioned requests and structured responses to the exact candidate,
+  enforce time/output/cancellation limits, own Unix process groups and Windows kill-on-close Job
+  Objects, preserve one subject-addressable raw-artifact root per case, verify every named artifact's
+  path, byte count, and digest, reject stale evidence, and prove complete root and descendant cleanup
+  without creating external-review evidence (#31)
+- Add a Rust-owned HarnessBench campaign publisher and versioned schema that require exact pinned
+  task coverage, retain the digest and provenance of every selected result, recompute scores, time,
+  and token/cache usage, expose legacy identity coverage, and require native build identity for the
+  final candidate campaign (#31)
+- Retain a verifier-passing DNA assembly trial whose frozen native agent still timed out after
+  discovering but not installing an available ordinary prerequisite, strengthening the general
+  disposable-environment installation diagnosis without adding task-specific behavior (#31)
+- Add a Rust-owned Terminal-Bench campaign reporter that reconciles Harbor's aggregate state with
+  directly visible child results, distinguishes in-progress snapshots from immutable final
+  reports, retains per-trial evidence paths and token/cache totals, binds the benchmark pin and
+  independently measured executable digest, infers source identity from consistent trial metadata
+  with explicit legacy coverage, and publishes versioned JSON atomically without overwriting
+  evidence (#31)
+- Add a benchmark-integrity appendix that separates real product and model failures from genuine
+  evaluator gotchas, links each retained result, and records the score-only shortcut Peritus
+  refuses (#31)
+- Add the H3 production campaign coordinator: execute short load plans sequentially and four
+  eight-hour plans concurrently against disposable public-A3 daemon subjects, enforce an exact
+  reference-machine match before launch, share one combined resource ledger, retain deterministic
+  bounded samples across the full horizon, and return one fail-closed evaluation and receipt set
+  (#35)
+- Add atomic H3 evidence publication that revalidates the exact profile, workload catalog, and
+  accepted-baseline documents; streams and verifies the subject and runner executables against
+  their campaign identities; retains private measurements, receipts, accounting, and machine
+  facts; and binds them into a content-addressed manifest and qualification report (#35)
+- Add the `peritus-h3` operator command with strict load/full modes, bounded profile/workload/
+  baseline inputs, duplicate-free arguments, automatic CPU/core/memory observation, an explicit
+  reviewed storage class, exact runner identity, fail-fast reference-machine diagnostics, atomic
+  evidence publication, and a distinct exit status for a completed `NotReady` qualification (#35)
+- Derive an inert `baseline-candidate.json` from every campaign with complete objective samples,
+  binding its entries to the exact evidence-manifest digest; require a later operator to supply
+  both that reviewed file and its exact SHA-256 before it can participate as an accepted baseline
+  (#35)
+- Add a checked-in profile for the exact Intel Core Ultra 9 275HX qualification host while
+  preserving every production resource limit, SLO, and regression threshold from the separate AMD
+  reference profile; validate that invariant in the Rust dataset contract (#35)
+- Bind every new external-benchmark invocation to the exact clean Peritus source revision, Cargo
+  package version, and SHA-256 of the native executable; make Harbor verify the uploaded binary
+  against the native report and retain both identities in its trial metadata (#31)
+- Add durable, default-off automatic provider failover for designer, writer, reviewer, and fixer
+  roles when at least two routes are selected; preserve ordinary same-provider recovery first,
+  require compatible tool or media capability, exclude safety, refusal, cancellation, and
+  ambiguous-acceptance outcomes, and retain every switch in trace, persisted progress, and live
+  status evidence (#31)
+- Add a narrow Rust release operator that turns each exact native archive into a candidate-bound
+  artifact inventory, locked Cargo-graph SPDX 2.3 SBOM, and SLSA provenance statement; sign the
+  archive and SBOM through GitHub's keyless Sigstore identity; verify the exact repository,
+  workflow, source commit, tag, predicate, artifact digest, and hosted-runner claim before retaining
+  both bundles and complete evidence checksums; and publish only after every platform job succeeds
+  (#31)
+- Add `cargo xtask docs-check` to inventory 134 maintained Markdown files, validate headings,
+  fences, line endings, local links, and crate-focused commands, and include it in the normal
+  repository policy gate (#31)
+- Add one-command POSIX and PowerShell installers backed by host-native GitHub release archives,
+  exact detached SHA-256 verification, and the existing transactional install/upgrade adapters;
+  add a retained-draft, three-platform tagged release workflow and executable bootstrap
+  qualification that proves both successful installation and checksum rejection (#31)
+- Add a six-hour cached, offline-tolerant startup release check and `peritus update`, with exact
+  semantic-version comparison, bounded streaming downloads, verified native upgrades, installed-
+  version confirmation on Unix, finish-after-exit Windows replacement, and persistent explicit
+  enable/disable commands for automatic checks (#31)
+
+### Changed
+
+- Extend the frozen Terminal-Bench evidence with an emergent cross-component validation miss, a
+  slow-source deadline recurrence, another pre-model large-inventory recurrence, and a fifth
+  independent reproduction of an unpublished verifier socket path; retain every honest zero and
+  derive only task-neutral post-campaign lessons (#31).
+- Retain bounded, sanitized native-controller stderr in supervision failures so an exited H1
+  controller reports its precise operational cause instead of only `response stream closed` (#31)
+
+- Add a production Git snapshot quarantine operation that refuses healthy references, atomically
+  moves a divergent retained value out of the active namespace, preserves it for inspection, and
+  remains idempotent after restart; exercise it through the public daemon and
+  `h1.corruption.snapshot` (#31)
+- Make artifact-store startup durably contain cataloged content corruption: add a migrated
+  integrity state, move divergent bytes out of the active namespace, retain their audit roots,
+  deny reads and new references, and prove repeated restart safety through the public daemon and
+  `h1.corruption.blob` (#31)
+- Correct the C0 operator guide to describe the production daemon's implemented migration,
+  recovery, projection, authority, outbox, and readiness startup composition instead of retaining
+  the obsolete pre-daemon limitation (#31).
+- Move the native H0 and H2 evidence uploads to the current immutable `upload-artifact` v7.0.1
+  action, removing GitHub's forced Node 20 compatibility warning without changing retained paths or
+  artifact policy (#31).
+
 ### Fixed
+
+- Guide binary and damaged-data inspection from contract-supplied stable fragments into bounded
+  neighboring byte or record windows before speculative decoding or broad parameter searches. This
+  preserves recoverable partial evidence without restoring unbounded binary dumps (`TBF-053`, #31).
+- Give an exited Unix H1 controller process group the same bounded two-second natural-drain window
+  as the Windows Job Object path before declaring that descendants leaked. Persistent descendants
+  are still killed and rejected, while loaded macOS runners no longer misclassify a just-settling
+  cleanup as a resource leak (#31).
+- Account inline images by a conservative per-image vision-token ceiling instead of treating their
+  compressed JPEG or PNG transfer bytes as text tokens. Exact bytes and digests still cross the
+  provider boundary, while legitimate multi-image work can reach the first model turn without an
+  impossible preflight estimate (`TBF-040`, #31).
+- Retain exact tool observations in the durable trace while deriving each model-visible budget from
+  one eighth of the active provider input window, clamped between 512 and 10,000 estimated tokens.
+  Preserve deterministic head/tail previews, original size, and SHA-256; keep the normal recent
+  window while requests fit, then compact a complete recent exchange only when the next request
+  would otherwise exceed the provider limit (`TBF-035`, #31).
+- Before deterministic history reduction, ask the active provider for a tool-disabled semantic
+  checkpoint that preserves completed work, decisions, constraints, failures, exact diagnostics,
+  and next steps. Keep the original system and task messages, bind the replaced transcript and
+  checkpoint by SHA-256, include checkpoint usage in run accounting, and fall back to the existing
+  deterministic compactor when the semantic turn is unavailable or unusable (#31).
+- Keep the coding run's original committed HEAD as its comparison base even when the requested
+  work legitimately creates commits, merges branches, or switches HEAD. Exact changed-target
+  discovery, review diffs, and progress detection now retain committed task effects instead of
+  rejecting them as concurrent workspace drift (`TBF-034`, #31).
+- Distinguish ordinary unquoted prose abbreviations such as “e.g.” and “i.e.” from relative output
+  paths, preventing illustrative wording from manufacturing a missing-file gate while retaining
+  deterministic checks for the request's actual explicit artifacts (`TBF-019`, #31).
+- Direct remote research through immutable manifest/index/tree and object-size preflight before
+  whole-repository, archive, or dataset transfer; after a timeout, return deterministic recovery
+  guidance against equivalent bulk wrappers without new evidence. Preserve the dated published
+  aggregate's exact semantics instead of substituting a similarly named source or leaving a
+  disproven provisional artifact in place (`TBF-010`, #31).
+- Synchronize the native process-tree cleanup conformance case on an explicit live-leaf marker
+  before cancellation. The marker is observed after the production supervisor's process-count
+  pass, so the case exercises cleanup of a genuinely live descendant tree without depending on the
+  full resource-sample event that is intentionally unavailable on macOS (#31).
+- Enforce a sampled process-count ceiling immediately even when the host does not provide the full
+  CPU, memory, disk, and handle sample. This makes macOS stop and classify an owned process-tree
+  overrun as `ResourceLimit` instead of waiting for the later wall deadline (#31).
+- Bound every initial independent-review evidence packet against the active provider's input
+  profile, retaining section-aware head/tail samples and exact SHA-256 provenance while directing
+  the reviewer to fresh workspace tools for omitted current detail. Preserve tracked edits even
+  under conventional build directories, but keep untracked Python build, package-metadata, and
+  cache trees out of candidate and diff context (`TBF-014`, `TBF-033`, #31).
+- Quiesce and reap the complete marked Terminal-Bench process family when Harbor cancels an agent,
+  including a child that detached or reparented outside the recorded PID tree, so timed-out model
+  or tool work cannot mutate the shared task container during verification (`TBF-022`, #31).
+- Preserve every parent PID while recursively walking a cancelled Terminal-Bench process tree;
+  shell recursion no longer collapses a chain to repeated copies of its leaf, and an unmarked
+  looping-tree regression independently proves complete cleanup (`TBF-022`, #31).
+- Give Gate A's cold per-operation Rust jobs the same 45-minute hosted-runner allowance as the
+  stricter Foundation matrix, preventing healthy Windows test runs from being cancelled after
+  compilation and hundreds of passing tests solely because the former 30-minute ceiling elapsed
+  (#31).
+- Preserve official Claude CLI OAuth rotation across serialized Terminal-Bench task containers by
+  validating and atomically checkpointing newer account state only when the host source has not
+  changed, preventing stale copied refresh state from disabling the fallback route (`TBF-032`, #31).
+- Treat Claude refresh expiry as a validity bound rather than a monotonic version when its official
+  CLI advances the access expiry, retaining valid rotated state instead of preserving the refresh
+  token that Claude has already invalidated; document a real minimal request as the long-campaign
+  readiness check because `claude auth status` only validates local state (`TBF-032`, #31).
+- Decline stale, malformed, empty, or unreadable task-local Claude credential candidates without
+  replacing a valid host login or erasing completed agent work; the final verifier now remains
+  authoritative when optional credential checkpointing has nothing safe to retain (`TBF-032`, #31).
+- Keep generated-artifact design deterministic on large workspaces by retaining a sorted bounded
+  navigation sample with an explicit truncation notice instead of rejecting the run before the
+  first model call (`TBF-031`, #31).
+- Correlate native C4 integration-test authority timestamps with elapsed wall time and leave the
+  outer tool deadline enough room for the enforced process deadline and cleanup, preventing loaded
+  Windows runners from converting an expected quality result into a premature generic failure (#31).
+- Ground developer commands in the actual CPU and memory envelope, including Linux cgroup-v2
+  limits; publish a conservative build-worker ceiling, apply it across common language/build
+  ecosystems, and reject recognized explicit build fan-out above it before a constrained task can
+  exhaust its deadline through swap thrashing (`TBF-030`, #31).
+- Give a native controller that closes its response stream a bounded exit grace before process-tree
+  termination, then drain its diagnostic pipe completely. This keeps fast terminal stderr visible
+  on slower hosted schedulers without weakening process ownership or deadlines (#31).
+- Add a provider-free protocol handshake between Harbor and the uploaded native benchmark agent.
+  Setup now verifies the report schema, compiled source revision, package version, and executable
+  SHA-256 before a Terminal-Bench task can spend its agent budget, so a stale portable build fails
+  one explicit preflight instead of silently invalidating a campaign (`TBF-029`, #31).
+- Exclude the dependency-failure qualification admin boundary from `verus_only` builds, matching
+  the product runner's existing effect-boundary classification while retaining the complete route
+  in ordinary release binaries. This restores full-workspace Verus verification after the real
+  provider/tool/worker H1 routes were connected (#31).
+
+- Make projection shadow installation verify the stored payload bytes before reusing an identical
+  generation, so startup repair replaces a corrupt active projection instead of reactivating it
+  (#31)
+- Validate an F0 checkpoint's producer against the exact final event from its shared C0 command
+  instead of requiring the producer to be the same aggregate's last event. This preserves strict
+  replay checks while allowing genuine multi-aggregate campaign/pointer promotion transactions to
+  recover after restart (#31)
+
+- Accept the installed TUI's stable rendered `online`, `ReadyReadWrite`, and active event-stream
+  state as native H2 connection evidence when a later subscription notice replaces the transient
+  `connected to daemon` message before Windows ConPTY renders its first frame (#31)
+- Normalize only trusted Windows paths returned by `std::fs::canonicalize` from extended-length
+  drive syntax before native sandbox path validation, keeping ordinary device paths rejected while
+  allowing packaged H2 subjects to prove their reparse-free helper identity; retain every required
+  capability fact when the host still cannot support sandbox execution (#31)
+- Serialize model-visible workspace image paths with forward slashes on every host, so Windows
+  image collections keep the same repository-relative manifest contract as Linux and macOS (#31)
+- Give a cold installed TUI up to 30 bounded seconds to complete its real daemon-connected
+  PTY/ConPTY lifecycle, and retain rendered, connected, quit, cursor-handshake, and sanitized
+  transcript-tail diagnostics if that deadline is still exceeded on a hosted runner (#31)
+- Ground image-capable runs in every bounded image beneath an explicitly named workspace
+  directory, and recognize ordinary image-file and OCR wording, so document and asset collections
+  reach the model instead of provoking wasteful hand-built binary decoders (#31)
+- Create Windows restricted primary tokens with the zeroed restricting-SID attributes required by
+  `CreateRestrictedToken`; keep AppContainer package identity in its separate process security
+  capabilities instead of misusing it as a restricting SID; and require native qualification tests
+  to observe both the restricted token and its low-integrity label (#31)
+- Resolve the nested Windows H0 Cargo linker to an absolute Visual Studio MSVC tool and propagate
+  its discovered SDK environment, preventing Git's unrelated GNU `link.exe` from being selected
+  after the native qualification boundary clears ambient process state (#32)
+- Drain the native terminal's bounded combined stream concurrently with child execution, answer
+  Windows ConPTY's cursor-position startup query, keep the input writer alive until the child exits,
+  and then close the writer and master to publish reader EOF before accepting evidence; this avoids
+  Unix wait-before-read deadlocks, unanswered ConPTY startup, and premature Windows Ctrl-C exits.
+  Validate the packaged Task Scheduler template against its exact direct-command placeholders
+  rather than a rendered path that the packaged template intentionally does not contain (#31)
+- Drain and join the persistent H1 controller's response reader after a successful cleanup exit
+  before deciding that its terminal response is missing, removing a macOS scheduling race without
+  accepting failed exits or absent response frames (#31)
+- Serialize the high-fanout native H1 integration cases within their test binary so concurrent
+  qualification fixtures cannot exhaust host process capacity and create unrelated runner flakes
+  (#31)
+- Pass conventional Windows paths to PowerShell from canonical native H2 subjects so hosted
+  qualification can use explicit private install/data roots without `Join-Path` rejecting Rust's
+  verbatim path prefix; retain the required Windows process-launch variables across the cleared
+  controller boundary (#31)
+- Preserve the complete allowlisted MSVC build environment when H0 launches its candidate-bound
+  controller, including the Visual Studio discovery roots needed after environment clearing, so
+  Rust can locate Visual C++ instead of Git's unrelated `link.exe`; run the TCB inventory against
+  the repository's documented local trust aggregate while leaving the separately authorized
+  protected-base proof-impact review outside the native shard (#32)
+- Pass explicit private Windows install and data roots through the real package lifecycle scripts,
+  retaining the ordinary `LOCALAPPDATA` default for users while making native H2 qualification
+  independent of PowerShell environment propagation on hosted runners (#31)
+- Reconcile Windows qualification cleanup from every owned Job Object PID's actual signaled exit
+  state instead of the reference-sensitive active-process accounting count, so hosted runners may
+  retain handles to exited controllers without hiding or excusing a running descendant (#31, #32)
+- Release exited Windows controller process handles before reconciling Job Object accounting, then
+  allow a bounded two-second drain for genuinely terminating descendants across H0, H1, and H2;
+  persistent descendants are still killed and fail qualification (#31, #32)
+- Retry a freshly staged native H0 executor only for the bounded Unix `ETXTBSY` launch race seen on
+  parallel workspace filesystems; persistent executable-busy errors and every other spawn failure
+  still fail the probe normally (#32)
+- Keep native H2 lifecycle children inside the outer controller's already-cleared environment and
+  override the fresh subject's private home, local application data, configuration, state, data,
+  and temporary roots without clearing Windows PowerShell's process environment a second time;
+  accept the macOS helper's reserved nonzero protocol exit without requiring stderr, and invoke
+  `sandbox-exec` with its native option-to-command syntax and a runnable allow-default activation
+  profile so the live Seatbelt compilation probe is meaningful; install Bubblewrap plus Ubuntu's
+  packaged restricted-userns AppArmor profile on the Ubuntu native qualification host while
+  retaining the probe's fail-closed functional check (#31)
+- Give the production-daemon A3 conformance client a bounded fifteen-second local-I/O window so a
+  slow hosted filesystem sync cannot turn a healthy artifact transfer into a five-second runner
+  flake (#31)
+- Preserve native H2 reports and raw artifacts from failed hosted campaigns, print the retained
+  report path and exact not-ready scenario reasons from `xtask`, and retain a bounded sanitized TUI
+  transcript tail when an interactive lifecycle fails before a scenario response (#31)
+- Resolve the H2 daemon runtime through the host's canonical temporary-directory spelling before
+  startup, so native macOS qualification uses `/private/tmp` instead of the `/tmp` alias while the
+  production daemon continues to reject genuinely aliased or symlinked state roots (#31)
+- Keep the authenticated A3 shutdown requester alive as a bounded reporting connection, release
+  its connection-owned transfers and terminal attachments before authority teardown, stream all
+  six correlated progress observations plus the truthful final disposition, and join the IPC
+  server only after delivery so `peritus shutdown --wait` no longer fails with an early EOF (#31)
+- Require parameterized deliverables derived from a supplied example to exercise an independent
+  input and prove or vary example-derived constants before the harness accepts a general interface
+  (`TBF-027`, #31)
+- Canonicalize both benchmark campaign roots and retained evidence before containment checks, then
+  serialize report-owned evidence paths as validated forward-slash relative strings; this keeps
+  HarnessBench and Terminal-Bench reports stable across macOS `/var` aliases, Windows short-name
+  roots, and Windows path separators while still rejecting actual path escape (#31)
+- Require command-driven API and structured-data exploration to select decision-relevant fields,
+  keys, counts, or bounded samples instead of filling model context with complete nested metadata
+  (`TBF-020`, #31)
+- Require empirical or heuristic algorithms calibrated from one supplied example to exercise an
+  independent segment, contract-preserving perturbations, or independently derived cases before
+  claiming generalization; the calibration sample alone is no longer sufficient evidence
+  (`TBF-026`, #31)
+- Require explicit live operational requests to retain a successful caller-authorized effect and a
+  later fresh verification even when the writer also changes supporting scripts or documentation;
+  helper artifacts alone no longer substitute for the requested running result (`TBF-025`, #31)
+- Interrupt long writer/fixer inspection spirals with at most two deterministic in-session progress
+  corrections when no workspace mutation or declared external effect occurs, directing the role to
+  use authorized standard tooling and take a concrete delivery step (`TBF-024`, #31)
+- Retain both opening context and final diagnostics when a developer command exceeds its bounded
+  output window, omitting the noisy middle so long compiler and dependency logs cannot hide the
+  actual terminal failure that a recovery turn needs (`TBF-023`, #31)
+- Supervise each Terminal-Bench native agent process tree and, when Harbor cancels the adapter,
+  terminate and reap that exact tree before allowing the shared task environment to enter verifier
+  execution; this restores phase isolation without changing task timeouts or scores (`TBF-022`, #31)
+- Put both explicitly authenticated Terminal-Bench provider routes into its bounded fallback chain,
+  preserving the default writer/reviewer assignments while allowing existing capability-aware
+  routing to move an image-grounded role to the image-capable route (`TBF-021`, #31)
+- Direct model-authored commands toward filters, bounded ranges, and summary modes before inspecting
+  large binaries, logs, databases, or generated files, while preserving the hard output cap as an
+  accuracy fallback instead of routinely filling model context (`TBF-020`, #31)
+- Reconcile explicit request-derived output paths, including quoted extensionless executable names,
+  with the actual candidate before acceptance, mapping absolute paths through the managed workspace
+  root and rejecting missing or relocated same-basename artifacts while leaving inputs and
+  command-created temporaries alone (`TBF-019`, #31)
+- Require quantitative and scientific work to establish input/output units, coordinate systems,
+  and transformations before calculating or fitting; retain a unit ledger, applied formula, and
+  dimensional or expected-range check in execution evidence, then require independent review to
+  block raw-coordinate or unevidenced results (`TBF-018`, #31)
+- Ground every model workspace listing in its exact managed root and explicit relative-path
+  convention so absolute paths from a task lose that prefix exactly once instead of being written
+  beneath a duplicated root directory (`TBF-017`, #31)
+- Make caller-authorized external-effect runs attempt ordinary scoped prerequisites, including
+  build or runtime dependency installation in disposable task environments, before asking the user
+  to supply tools that the environment can install itself; turn missing-executable failures into
+  actionable, authority-bounded guidance to install the prerequisite and retry the real command
+  instead of fabricating a stand-in deliverable (`TBF-016`, #31)
+- Prepare each external benchmark's durable developer trace before product execution so a
+  pre-stream product failure retains an honest zero-usage invocation report and its original
+  diagnosis instead of being replaced by a missing-trace adapter error (#31)
+- Include the required schema version when serializing H3 baseline manifests so a generated,
+  reviewed baseline round-trips through the accepted-baseline parser in a later campaign (#35)
+- Compile H3 campaign-only sampling and shared accounting only on its supported Unix boundary and
+  scope Linux process-status imports to Linux, keeping strict macOS and Windows Clippy builds free
+  of platform-created dead code and unused imports (#35)
+- Finish partial queue-saturation cycles with an exact planned drain so every production catalog
+  workload returns its command, exporter, or provider queue to a balanced terminal state instead of
+  failing readiness solely because its operation count ends between complete saturation cycles
+  (#35)
+- Start a bounded fresh repository-grounded invocation when designer, writer, fixer, or reviewer
+  exhausts one invocation's empty, connection, malformed, interrupted/incomplete, transient,
+  transport, rate-limit, timeout, or generic provider responses; preserve useful workspace
+  progress, keep authority and ambiguous-acceptance failures terminal, and stop after three total
+  same-provider role invocations (`TBF-009`, #31)
+- Enforce user-declared closed mutation contracts across the complete candidate diff so helpful
+  adjacent edits cannot escape exact path, value, or transformation restrictions (`TBF-028`, #31)
+- Expand dirty tracked and untracked files inside cloned nested Git repositories into the managed
+  candidate set and reviewer diff, while retaining generated-tree filtering and imported-source
+  ownership boundaries (`TBF-014`, #31)
+- Add an explicit, default-off external-effects delivery scope for authorized administration and
+  recovery tasks whose accepted result lives outside Git: require retained successful effect
+  evidence, a later fresh verification command, and independent blocker-free review while keeping
+  ordinary workspace runs' exact changed-target requirement unchanged (`TBF-013`, #31)
+- Preserve each Harbor task image's authoritative executable search path and prepend Peritus's
+  uploaded routers instead of replacing installed administrative directories such as `/usr/sbin`;
+  validate unsafe path lists and retain deterministic precedence (`TBF-012`, #31)
+- Record Terminal-Bench's unpublished PyTorch forward-interface expectation separately from product
+  defects, retain the honest lower score instead of leaking verifier or solution details into
+  Peritus behavior, and document the focused thin-bridge regression command (`TBI-005`, #31)
+- Resolve each Harbor task image's authoritative working directory instead of assuming every
+  Terminal-Bench environment uses `/app`; validate the discovered path and pass the same workspace
+  to the native Peritus runner so valid `/workspace` and other image layouts remain portable
+  (`TBF-011`, #31)
+- Require contemporaneous snapshots, source revisions, or archived records for `as of` and other
+  historical source-state requests, instead of treating current mutable data filtered by an item's
+  own date as proof of the source's earlier values, membership, ranking, or calculations
+  (`TBF-010`, #31)
+- Teach external benchmark trace projection to validate compaction, retry, and provider-switch
+  metadata in addition to response and tool frames, and use retry/switch evidence to close an
+  incomplete projected response instead of reporting a valid recovery trace as corrupt (#31)
+- Create each durable developer trace before the first provider request, without truncating prior
+  events, so a provider failure before its first response remains the reported cause instead of
+  being masked by a missing-trace filesystem error; empty traces now retain accurate zero-request
+  benchmark accounting (`TBF-008`, #31)
+- Pass Windows release archive and self-update extraction paths through explicit PowerShell
+  environment bindings, so `Compress-Archive` and `Expand-Archive` receive non-empty literal paths
+  on hosted Windows runners instead of losing positional arguments after `-Command`; compute the
+  public bootstrap checksum through the built-in .NET SHA-256 implementation so an isolated user
+  profile does not depend on PowerShell's optional module-command cache (#31)
+- Replace the root and HarnessBench chronological status walls with plain-English product,
+  qualification, benchmark, and documentation guides while retaining task-level forensic evidence
+  in the external failure journal; add focused checks to all 75 crate READMEs (#31)
+- Persist a bounded effect-receipt ledger for every writable G4 developer-tool invocation, binding
+  deterministic role/invocation/effect identity to the provider call ID and canonical request
+  digest before execution and to the exact result afterward; replay completed calls without a
+  second effect, refuse conflicting recovered actions, and classify an interrupted external
+  command as explicitly ambiguous instead of launching it again (#31)
+- Preserve the complete selected source value whenever a request requires an output component to
+  match a named authoritative source, applying only explicitly named transformations instead of
+  letting outside domain labels such as tag, wrapper, metadata, artifact, or non-native content
+  trigger speculative deletion during writer, reviewer, or fixer turns (`TBF-007`, #31)
+- Account for provider requests, retries, context compactions, application tool calls, normalized
+  token and cache usage, provider-estimated cost, and elapsed time across the complete
+  designer-writer-reviewer-fixer run; enforce generous eight-hour and cumulative runaway ceilings;
+  persist the latest counters; and show live elapsed time, last durable progress, and remaining run
+  horizon in the polled TUI status instead of making a healthy slow provider call look dead (#31)
+- Classify stable Codex account-runtime authentication, safety, rate-limit, quota, and context-limit
+  terminals without retaining untrusted provider text, and preserve non-retryable provider category
+  and diagnostic identity through the product error instead of collapsing it to an empty response
+  (#31)
+- Replace the product developer loop's fixed linear retry sleep with the shared checked
+  exponential planner, stable bounded jitter, provider `Retry-After`, cancellation-aware waiting,
+  and durable reason, attempt, elapsed-time, and delay evidence for account and direct routes (#31)
+- Resolve visual inputs from explicitly named workspace paths or direct image-inspection requests
+  instead of unrelated media mentioned only as an external verifier reference, and apply the
+  mandatory 500-line source ceiling to baseline and directly authored code without claiming
+  ownership of upstream source trees imported by commands (#31)
+- Keep developer-tool wire encoding and product-runner prompt regressions in cohesive submodules
+  below the repository's reviewed source budgets, and express command-test fixtures through the
+  ordinary formal-boundary subset so candidate policy validates the same code exercised locally
+  (#31)
+- Challenge an unchanged writer or fixer request for user input against the harness's confirmed
+  writable workspace capabilities before pausing, so missing provider-native filesystem tools
+  cannot be mistaken for a read-only managed workspace (#31)
+- Enforce the 500-line source ceiling on exact changed source files within each affected project,
+  so new and modified code remains modular without rejecting untouched vendored, generated,
+  submodule, or legacy source inherited from the baseline (#31)
+- Run external Linux task environments with a static-musl Peritus adapter, carry Codex's matching
+  inert code-mode host companion beside the credential-owning executable, parse machine reports
+  after PTY progress output, and make rootless Podman resolve Docker Hub short names without an
+  interactive prompt (#31)
+- Make partial and checkpoint result artifacts self-contained for their captured round with
+  completed results, pending or failed stop boundary, and stop reason, and preserve those snapshots
+  across later rounds unless revision is explicitly requested (#31)
+- Keep time-window accepted/seen identities disjoint from ignored or out-of-window identities while
+  allowing duplicate-observation state to reference the retained first-seen record; unchanged
+  HarnessBench task 104 improves outcome from 0.8875 to 0.98 (#31)
+- Preserve every explicitly required named artifact, identifier, field, clause, command, or path
+  literally at least once in its owning output instead of replacing traceable references with prose;
+  unchanged HarnessBench task 101 now passes all 15 outcome checks (#31)
+- Cite both requirement and failed-validity clauses for missing or invalid required items, cite
+  governing clauses and use positive scope wording in boundary documents, and preserve scalar
+  identity/name lists when sibling audit artifacts own richer issue and policy metadata (#31)
+- Keep one canonical, self-contained record per decision dimension; preserve included and excluded
+  scope, conditions, and governing gates; distinguish a decided requirement from unresolved
+  satisfaction; cite decisive rejection authorities; and retain `path#record_id` anchors for
+  evidence inside multi-entry source files (#31)
+- Require independently resolvable evidence locations using stable clause IDs, structured record
+  coordinates, exact counterexample identities, or literal missing paths; keep those locators in
+  their declared location fields, and make every not-reproducible artifact carry a decisive missing
+  prerequisite without relying on richer sibling outputs (#31)
+- Cite stale, draft, superseded, unapproved, or unsafe evidence without unnecessarily reproducing
+  the rejected actionable literal, preventing invalid contact details, credentials, prices, and
+  commands from being mistaken for an answer while retaining provenance and rejection reasons (#31)
+- Preserve an explicit empty/null applicable-authority sentinel for true insufficient evidence,
+  retain every evaluated result-affecting losing source across priority, date, expiry, scope, and
+  exceptions, and keep exact source IDs, paths, keys, and names separate from explanatory reason
+  text so downstream matching, joins, and deduplication remain reliable (#31)
+- Continue premature writer, reviewer, and fixer terminal responses inside the same tool session
+  until the executor's deterministic completion evidence is satisfied, preserving partial grounding
+  across correction instead of exhausting fresh retries before a known gate failure can be fixed
+  (#31)
+- Treat detail ledgers named for one closed classification as projections of that class unless the
+  contract explicitly allows overlap, preventing review and informational rows from leaking into
+  regression-only outputs (#31)
+- Route reconciliation identities once across primary, synthetic, and reject outputs unless dual
+  recording is explicit; preserve material status, distinguish absent references from present
+  invalid records, and reconcile exception summaries across every artifact, letting unchanged
+  HarnessBench task 091 pass all 20 outcome checks (#31)
+- Preserve typed identity when flat outputs reference records from heterogeneous source categories,
+  and aggregate semantic cause summaries by category rather than individual record; unchanged
+  HarnessBench task 090 now passes all 16 anomaly-attribution checks (#31)
+- Preserve declared aggregate semantics when a separate exclusion or adjustment ledger lacks
+  record-level membership and metric effects; the workflow, developer, and reviewer now require an
+  authoritative schema or reconstructible join before arithmetic changes and treat unresolved
+  provenance as advisory, letting unchanged HarnessBench task 089 pass all 18 checks (#31)
+- Require external pagination and retry loops to prove bounded forward progress, reject repeated
+  page or cursor tokens, retry only declared transient failures, and surface permanent client errors
+  immediately; unchanged HarnessBench task 088 now passes hidden compatibility instead of timing
+  out in a repeated-cursor loop (#31)
+- Derive nested Cargo manifest expectations with host-native path semantics and compare structured
+  list/search JSON plus image manifests without Unix-only separator assumptions, keeping production
+  behavior unchanged while allowing Windows Gate A and Foundation suites to validate native paths
+  (#31)
+- Map every explicitly requested regression behavior to a direct repository test and assertion in
+  the production workflow, writer skill, and independent reviewer; unchanged HarnessBench task 087
+  now adds the previously missing descending-sort regression and improves from good to excellent
+  while preserving perfect hidden CLI behavior (#31)
+- Require affirmative source evidence for hard eligibility, compatibility, and placement
+  constraints instead of treating a missing field as a permissive default, keeping optimization
+  inside the proven feasible set unless an authoritative input declares fallback semantics (#31)
+- Keep mandatory design proportional to the declared workspace: render explicit generated-artifact
+  designs deterministically in Rust from the exact conversation and bounded sorted inventory while
+  retaining model-authored, read-grounded architecture for source repositories; add per-role model
+  output ceilings, independent category predicates, and genuine multi-observation periodic polling
+  guidance (#31)
+- Let the structured workspace removal tool delete one explicitly listed empty directory
+  non-recursively, while rejecting the workspace root and nonempty directories and preserving the
+  existing ownership boundary for regular files (#31)
+- Isolate explicitly named staged inputs until the round that introduces them, and make change
+  reports account for changed, added, removed, and already-satisfied constraints with their literal
+  values so preserved requirements are visibly verified rather than silently omitted (#31)
+- Honor the negotiated provider parallel-tool width in the production developer loop, execute
+  batched calls in stable proposal order, report identical full-file writes as unchanged no-ops,
+  and preserve exact identifiers, enum-like values, paths, fields, and commands byte-for-byte
+  across generated artifacts instead of paraphrasing contract syntax (#31)
+- Isolate the daemon deliverable Git fixture from host `core.autocrlf` settings and compare discard
+  results with its captured baseline bytes, keeping the exact-path export/discard test portable on
+  Windows hosted runners (#31)
+- State the enforced current-turn grounding sequence in writer/fixer prompts and provider-facing
+  tool descriptions, identify harness-owned internal gates as unavailable workspace commands, and
+  require reviewers to reread every conserved finding location before repeating it after a fix
+  (#31)
+- Keep advisory findings visible without starting fixer cycles, reject circular resolution of
+  ambiguous trailing modifiers and unsupported expansion of named categories, and conserve one
+  stable review finding when later reviewers refine its free-form location evidence, including
+  fail-closed coalescing of pre-v2 duplicates during durable restore (#31)
+- Recover declared Peritus host calls when the Claude account runtime returns its schema-valid
+  outer call array empty but embeds the reserved call envelope inside application JSON; validate
+  the recovered names, arguments, and limits through the same fail-closed path, require an explicit
+  reviewer findings array before terminal admission, and keep the feature-disabled conformance
+  test target documented under ordinary `cargo test` (#31)
+- Run independent review through a fresh repository-grounded D0 loop with an executor-enforced
+  read-only tool surface, require listing before targeted reads, reject undeclared reviewer
+  mutation/process calls, and retry malformed or ungrounded typed reviews with their exact failure
+  instead of accepting a one-shot account of files the reviewer could not inspect (#31)
+- Project the complete typed Peritus host-tool catalog and selection policy into Claude account
+  requests, so the official executable returns inert structured calls for Peritus to execute while
+  Claude native tools, MCP, plugins, hooks, and session state remain disabled (#31)
+- Retain sandbox-relative workspace, trace, usage-proxy, and observation locations in external
+  invocation evidence schema 4, keeping native evidence resolvable when HarnessBench moves a
+  mixed-provider sandbox under the last observed model after execution (#31)
+- Parse every changed JSON deliverable with a bounded native exact-target gate before review, so a
+  model-authored validation command cannot be the only evidence that the generated artifact is
+  structurally valid (#31)
+- Recognize standalone changed Python production modules even without a manifest or supplied tests,
+  and require same-workload baseline/candidate measurements for performance-change claims instead
+  of inferring improvement solely from the candidate implementation (#31)
+- Require changed conventional Python dependencies to be satisfied by the real installed package
+  through a read-only offline gate, and reject test-process substitutes as compatibility evidence
+  for the dependency being added or upgraded, while retaining legitimate unrelated mocks (#31)
+- Bind changed Python production sources to their nearest conventional manifestless test project,
+  extending exact compile and pytest evidence beyond files physically located below `tests/` (#31)
+- Discover manifestless CommonJS and JavaScript modules through adjacent conventional test files
+  and execute those tests directly in stable order, so exact-target acceptance does not fall back
+  to general artifact checks merely because `package.json` is absent (#31)
+- Discover conventional Python test projects even when they have no `pyproject.toml` or
+  `pytest.ini`, represent their absent manifest honestly, and independently compile and test the
+  nearest affected package instead of accepting only general artifact checks (#31)
+- Keep constructible requested work moving when authoritative inputs expose an awkward canonical
+  identifier: treat registered identifiers as opaque contract values, preserve factual evidence,
+  ask only for genuinely material choices, make matching superseding rules own primary authority
+  fields, and stop a blocker that survives two complete fixer/reviewer attempts even when candidate
+  bytes continue changing (#31)
+- Validate every changed CSV in an artifact workspace with a native exact-target gate before
+  acceptance, rejecting ragged rows, invalid quote placement, unterminated quoted fields, invalid
+  UTF-8, and oversized inputs even when a model-authored check incorrectly reports success (#31)
+- Preserve files created by evaluators, services, hooks, and other external actors during a complete
+  writer-reviewer-fixer run; route model-requested deletion through an ownership-aware exact-file
+  tool; preserve literal requirement scope; keep artifact-only work free of unrequested package
+  scaffolding; and restrict blocking review findings to explicit requirements, failed deterministic
+  gates, or concrete contradictions (#31, #36)
+- Separate non-authoritative source text from malicious intent in every built-in role, classifying
+  supplied content by its requested effect so benign policy advice does not become a false-positive
+  quarantine while harmful actions and cross-input triggers remain isolated (#31)
+- Ground image tasks in actual bounded workspace pixels instead of filenames, carry validated
+  raster inputs through the developer loop and Codex account runtime, fail clearly for text-only
+  providers, and let HarnessBench visual rubrics use the same credential-preserving route (#31)
+- Project large assistant, tool-argument, and tool-output values into digest-labeled bounded
+  previews for external process grading while retaining every exact byte in the native trace,
+  preventing HarnessBench's rubric context cap from hiding late write and verification events (#31)
+- Stop the production fixer loop after two consecutive cycles make no candidate change while exact
+  checks or blocking findings remain, resetting the detector after real edits or new conversation
+  input; this turns benchmark deadline kills into bounded, inspectable outcomes (#31)
+- Reassemble streamed tool-call argument bytes before UTF-8 decoding and let completed external
+  benchmark attempts reach their upstream oracle even when Peritus's stricter internal review
+  rejects the candidate, preserving process grades and multi-round task continuity (#31)
+- Teach malformed design retries the exact rejected heading contract and give generic artifact
+  workspaces an explicit native gate kind, eliminating a repeated-retry failure and a 600-second
+  no-progress timeout found by unchanged HarnessBench task 001 (#31)
+- Retry recoverable malformed, empty, timeout, and transport provider turns without failing the
+  coding goal; retry malformed design, developer-terminal, and reviewer output contracts; replenish
+  bounded developer segments only after exact candidate content changes; feed rejected ungrounded
+  or malformed terminals their exact corrective context; and automatically resume interrupted
+  goals after daemon restart while stopping repeated no-progress work (#36)
+- Refuse interactive coding-run completion unless every exact changed project is discovered and
+  passes its locked native compile/test/lint commands; unrelated root checks can no longer accept a
+  broken nested target, and generated dependency/build trees no longer contaminate candidate or
+  reviewer evidence (#36)
+- Give independent review authoritative current file permissions and a bounded ledger of developer
+  command requests and observations, count permission-only edits as real candidate progress, and
+  distinguish model-run evidence from deterministic harness gates so valid behavior can be
+  verified without trusting unsupported claims (#31)
+- Bound every model-issued structured command, concurrently retain capped stdout and stderr, and
+  kill the owned process tree on deadline so a long-running program becomes a recoverable tool
+  observation instead of freezing the writer-reviewer-fixer run (#31)
+- Request portable high reasoning effort throughout the developer loop whenever the selected
+  provider advertises that control, and make both official account routers honor the negotiated
+  effort instead of silently fixing every turn at low (#31)
+- Derive review blockers from typed category and severity policy and durably conserve every finding
+  through fixer proposal and fresh reviewer confirmation instead of trusting a model-supplied
+  Boolean or losing findings across daemon restart (#36)
+- Restart a stale or unavailable packaged daemon after upgrades, wait for its process lock to be
+  released before replacement, and show `R restart/reconnect` directly in the offline TUI status
+  instead of leaving recovery hidden behind the help screen (#36)
+- Recover from malformed writer/fixer output, and turn terminal coding-run failures into
+  actionable conversations that can be corrected and resumed in the same managed worktree (#36)
 - Keep Codex Code Mode disabled without disabling its inert host feature, avoiding the current CLI
   0.149.1 nonfatal host-unavailable event that the account-runtime decoder correctly rejects
 - Give native plugin test fixtures a runner-safe process-startup allowance while preserving the
@@ -23,6 +832,141 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   hosted runner (#20)
 
 ### Added
+- Bind every production developer turn to the selected provider's C6-checked input budget;
+  deterministically compact only complete old tool exchanges with durable policy, source, and
+  replacement digests; and negotiate automatic prompt caching only for profiles that advertise it,
+  including the no-flag account-backed Codex and Claude routers (#31)
+- Add the native Harbor custom-agent boundary for Terminal-Bench 2.0, including unchanged-workspace
+  product execution, durable design/trace/observation evidence, provider and cache accounting,
+  resource-aware Podman commands, and a passing unchanged single-task qualification (#31)
+- Exercise unchanged HarnessBench task 093 across JSONL parsing, identity stitching, ordered
+  sessionization, exact inactivity boundaries, bot exclusion, deduplication, rejects, and summaries;
+  isolate unpublished campaign carryover, dual-routing, and lexical conventions from product rules
+  (#31)
+- Exercise unchanged HarnessBench task 092 across daily schema drift, row-level rejection, summary
+  reconciliation, and changelog contradiction reporting; retain complete evidence while isolating
+  unpublished severities, multi-defect priority, summary shape, and a rubric-oracle category conflict
+  from general product behavior (#31)
+- Exercise unchanged HarnessBench task 091 across FX conversion, refunds, bank fees, void and
+  missing-invoice cash, rejection routing, summary reconciliation, and close notes, improving
+  outcome/process/security/combined from 0.7705/0.9767/1.0/0.7525 to
+  1.0/0.9633/1.0/0.9633 after general ledger-semantics fixes (#31)
+- Exercise unchanged HarnessBench task 090 across thresholded anomaly detection, priority
+  attribution, typed cause lineage, impact summaries, low-volume suppression, and uncertainty notes,
+  improving outcome/process/security/combined from 0.5424/0.96/1.0/0.5207 to
+  1.0/0.9633/1.0/0.9633 after a general reference-semantics fix (#31)
+- Exercise unchanged HarnessBench task 089 across aggregate A/B metrics, exact exclusions,
+  statistical testing, and caveat reporting, improving outcome/process/security/combined from
+  0.9524/0.8633/1.0/0.8222 to 1.0/0.9933/1.0/0.9933 after a general provenance-grounding fix (#31)
+- Exercise unchanged HarnessBench task 088 against both generations of a live local API contract,
+  replacing an unbounded repeated-cursor timeout with exact normalized results, bounded 429 retries,
+  immediate 400 errors, and a perfect outcome score (#31)
+- Exercise unchanged HarnessBench tasks 081 through 087 across local DOM/form interaction, Compose
+  repair, monorepo interfaces, JavaScript state, flaky-test determinism, SQL migration/rollback, and
+  CLI parsing; tasks 083 and 085 pass every outcome check while task 087 validates a general
+  requirement-to-test traceability fix (#31)
+- Exercise unchanged HarnessBench tasks 076 through 080 across administrative claim checking,
+  nested-archive defense, cursor/retry recovery, high-cardinality batch normalization, and schema
+  round trips; task 078 passes every outcome check while unpublished lexical and schema conventions
+  remain isolated from general product behavior (#31)
+- Exercise unchanged HarnessBench tasks 071 through 075 across support routing, logistics response,
+  research reproducibility, rubric grading, and policy-amendment appeal review; preserve correct
+  grounded outputs where private identifiers, an absent fixture, a rubric contradiction, and an
+  overlapping confidence rule prevent exact hidden-ground-truth agreement (#31)
+- Exercise unchanged HarnessBench tasks 066 through 070 across rollback readiness, canary metrics,
+  launch operations, policy-governed copy remediation, and fair resume screening; task 069 passes
+  every outcome and process check, while unpublished enums, negation-blind matching, and a shortlist
+  contradiction remain recorded rather than driving benchmark-specific behavior (#31)
+- Exercise unchanged HarnessBench tasks 062 through 065 across Kubernetes audit, topology-aware
+  alert reduction, multi-source incident triage, and capacity optimization; retain two unpublished
+  evaluator conventions while a general evidence-positive constraint fix improves task 065 from
+  failing 0.6617 outcome to excellent 0.9873 with perfect process/security scores (#31)
+- Exercise unchanged HarnessBench task 061 through timed status polling, replacing two design-bound
+  deadline failures and one category/cadence miss with a 26-second multi-observation run that passes
+  all seven checks and scores outcome/process/security/combined 1.0/0.9867/1.0/0.9867 (#31)
+- Exercise unchanged HarnessBench task 058 through three durable project-state rounds: replace a
+  1,200-second Day 3 timeout with negotiated batched writes, preserve `conditional_go` across the
+  JSON and CSV artifacts, complete natively, and score outcome/process/security/combined
+  0.9375/0.9233/1.0/0.8656 while retaining one unpublished lexical oracle miss (#31)
+- Exercise unchanged HarnessBench tasks 056 and 057 through native inventory and two-round resume
+  workflows, retaining their 0.69 and 0.8077 outcomes where hidden ground truth requires an
+  explicitly contradictory SKU omission and unpublished JSON/log shapes despite correct requested
+  calculations and state reuse (#31)
+- Exercise unchanged HarnessBench task 055 before and after the grounding-protocol correction,
+  preserving 24/24 output checks while moving from three cycles, 48 requests, 808,266 tokens, and
+  process 0.76 to one cycle, 17 requests, 306,944 tokens, and process 0.9867 (#31)
+- Exercise unchanged HarnessBench tasks 053 and 054 through native first-cycle transaction-anomaly
+  and budget-variance runs, passing all 29 and 34 oracle checks respectively while retaining process
+  efficiency deductions for later longitudinal analysis instead of adding task-specific behavior
+  (#31)
+- Exercise unchanged HarnessBench task 051 through exact offline SQLite reporting with 21/21
+  checks and task 052 through a diagnostic review-convergence series whose final identity-v2 run
+  completes natively with all 17 checks and outcome/process/security/combined scores of
+  1.0/0.93/1.0/0.93; retain every regression, provider stall, and native failure without
+  benchmark-specific special cases (#31)
+- Exercise unchanged HarnessBench task 050 through six-table financial reconciliation: all 26
+  oracle checks pass and the native before/after recovery comparison moves from failure with
+  outcome/process/security/combined 1.0/0.7433/1.0/0.7433 to success at
+  1.0/0.9267/1.0/0.9267 while reducing provider requests from 36 to 31 (#31)
+- Exercise unchanged HarnessBench task 049 through exact local data cleaning and independent
+  source reconciliation: all 22 oracle checks pass, native review begins with `workspace_list` and
+  reads all three authoritative fixtures, and final outcome/process/security/combined scores are
+  1.0/0.9867/1.0/0.9867 (#31)
+- Exercise unchanged HarnessBench task 048 through exact release-note, migration, decision, and
+  audit artifacts: every named oracle check passes, three JSON outputs receive native structural
+  acceptance, and embargoed security details remain undisclosed (#31)
+- Exercise unchanged HarnessBench task 047 through a complete evidence-supported security review,
+  retaining its nine correctly classified findings while replacing generic artifact acceptance
+  with deterministic JSON parsing before independent review (#31)
+- Preserve HarnessBench task 046's perfect correctness and performance outcome while replacing
+  generic artifact acceptance with native Python syntax evidence and raising process/combined
+  quality from 0.8867 to 0.93 through comparative performance verification (#31)
+- Exercise unchanged HarnessBench task 045 against pinned `python-slugify` 8.0.4, improving its
+  false-substitute baseline from outcome 0.838/process 0.8267/combined 0.6927 to a real-dependency
+  outcome 0.98/process 0.9467/combined 0.9277 with security 1.0 (#31)
+- Exercise the pinned, unchanged HarnessBench suite through task 046, retaining task 039's excellent
+  0.9673 architecture result, task 040's complete 1.0 mutation-tested Python result, task 041's
+  0.9962 immutable-state result, task 042's official 0.4 oracle-crash result, and task 043's 0.995
+  transactional SQLite result without hiding regressions or conflating benchmark infrastructure
+  defects with Peritus defects (#31)
+- Record task 044's safe GitHub Actions repair and automatic provider-stall recovery, with an
+  unchanged 0.98 final outcome after closing its native YAML and root-level Python coverage gap
+  (#31)
+- Discover conventional SQLite migration workspaces and independently execute their schema,
+  forward migration twice, foreign-key checks, postcheck, and rollback in a disposable Rust-owned
+  database before exact-target acceptance (#31)
+- Recognize manifestless Python projects with root-level test files, parse every changed YAML file
+  through a bounded Rust-owned gate, and run Python syntax and pytest checks without leaving
+  bytecode or pytest caches in the managed workspace (#31)
+- Retain the exact last product-run diff, gates, review ledger, summary, and durable finding state
+  beside every external benchmark invocation so a strict internal rejection remains independently
+  diagnosable after the upstream scorer exits; unchanged HarnessBench task 038 proves this evidence
+  path on a successful four-artifact synthesis run with a recovered provider timeout (#31)
+- Pin the complete local HarnessBench Python and oracle environment, including pytest, so executable
+  task oracles cannot disappear from a full-suite run because of undeclared host tools (#31)
+- Add deterministic workspace image discovery with signature, count, per-file, and total-size
+  bounds; private Codex CLI image staging; and multimodal external-rubric parsing and tests (#31)
+- Add the native external-benchmark adapter and normalized trace projection, pin HarnessBench 2.0
+  at its exact upstream commit, retain a reproducible failure journal, and route its text process
+  rubric through the already-authenticated official Codex executable without copying credentials
+  (#31)
+- Embed reusable architect, developer, and reviewer skills in the ordinary product workflow;
+  require successful repository listing and targeted reads before design or mutation, append exact
+  observed paths to each design artifact, refuse mutation of an unread existing file, enforce a
+  deterministic 500-line source-file ceiling, and record exact Cargo format and build checks beside
+  compile, test, and Clippy evidence (#36)
+- Replace the one-shot complete-file JSON product runner with the production D0/D1/D2/E0
+  composition: writers and fixers now inspect, search, read, write, patch, run, test, observe, and
+  retry through bounded structured tools with append-only provider/tool traces and an aggregated
+  task-level completion summary (#36)
+- Add a durable completion handoff containing the managed path, exact changed files, exact passing
+  commands, and run instructions, with TUI actions to inspect, accept, commit, export, or discard
+  the exact deliverable. A worktree remains reserved until a pending handoff is committed or
+  discarded (#36)
+- Add durable two-way coding-run conversations across the A3 protocol, daemon persistence,
+  product runner, and Runs UI. Users can message active work, answer direct material questions,
+  redirect or continue failed/completed runs, and inspect the persisted transcript with Enter or
+  `m`; legacy stored runs migrate without data loss (#36)
 - Complete the G4 coding surface with canonical A3 start/control/query messages and generated wire
   assets; a daemon-owned, persisted product-run registry; managed-worktree and provider resolution;
   progress observation; cancellation, retry, and interrupted-run recovery; and bounded execution
@@ -1152,6 +2096,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   process cleanup regression's timing distinction with realistic hosted-runner scheduling allowance
 
 ### Changed
+- Complete all 106 pinned unchanged HarnessBench tasks, closing with a five-blocker release approval
+  package that preserves every approval role and local evidence source while making no production
+  execution claim (#31)
+- Exercise unchanged HarnessBench task 103 through a complete two-round policy replan with durable
+  state, stable decision identities, selective regional changes, a reconciled diff, plan-only
+  language, and perfect outcome/security scores (#31)
+- Qualify unchanged HarnessBench task 102 against malicious retrieved documents: exact quarantine,
+  allowed citations, refusal state, payload non-disclosure, and fixture integrity pass with perfect
+  process and security; one unpublished refusal-synonym check is retained without tuning (#31)
 - Implement complete production D2 Review Engine (#18)
 - Implement C4 tool system (#13)
 - Document production architecture for Verus-first coding harness (#1)

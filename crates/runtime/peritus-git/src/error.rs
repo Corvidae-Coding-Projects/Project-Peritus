@@ -83,6 +83,8 @@ pub enum Operation {
     RestoreSnapshot,
     /// Release an exact snapshot reference.
     ReleaseSnapshot,
+    /// Move a divergent snapshot reference out of the active namespace.
+    QuarantineSnapshot,
     /// Reconcile Git state with an expected tree.
     Reconcile,
     /// Decode and validate a persisted adapter manifest.
@@ -152,6 +154,7 @@ impl GitError {
             | Operation::History
             | Operation::CreateSnapshot
             | Operation::ReleaseSnapshot
+            | Operation::QuarantineSnapshot
             | Operation::Reconcile
             | Operation::DecodeManifest
             | Operation::ReopenWorktree

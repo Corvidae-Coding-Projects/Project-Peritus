@@ -30,3 +30,11 @@ by the later H4 release transition.
 Production dependencies are restricted to `peritus-types` and `vstd`. Native execution,
 orchestration, hashing, persistence, and external review collection belong to the C-class
 `peritus-security-qualification` crate and its host adapters.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-security-policy
+```

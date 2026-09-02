@@ -18,3 +18,11 @@ can pass it to `WorkspaceGateway::apply_patch`, and its only effect entry consum
 `AuthorizedInvocation`. The dispatcher compares the validated C4 caller/target/digest binding with
 the C1 authorization binding before effect. Successful `MutationOutcome` remains available for a
 separately authorized Git candidate operation.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-tools-fs
+```

@@ -101,12 +101,16 @@ pub fn recover_campaign(
         let observed = frame.into_state();
         let reconstructed =
             state.as_ref().ok_or_else(|| recovery("campaign checkpoint has no semantic events"))?;
-        if record.revision() != reconstructed.sequence()
-            || record.producing_position()
-                != records.last().map_or(0, peritus_journal::CommittedRecord::global_position)
-            || observed != *reconstructed
-        {
-            return Err(recovery("campaign checkpoint differs from replay"));
+        if record.revision() != reconstructed.sequence() {
+            return Err(recovery("campaign checkpoint revision differs from replay"));
+        }
+        let last =
+            records.last().ok_or_else(|| recovery("campaign checkpoint has no producing event"))?;
+        if !checkpoint_producer_matches(journal, &record, last)? {
+            return Err(recovery("campaign checkpoint position differs from replay"));
+        }
+        if observed != *reconstructed {
+            return Err(recovery("campaign checkpoint state differs from replay"));
         }
     }
     Ok(CampaignReplay { store_id: journal.store_id(), events, state })
@@ -145,15 +149,32 @@ pub fn recover_pointer(
         let observed = frame.into_state();
         let reconstructed =
             state.as_ref().ok_or_else(|| recovery("pointer checkpoint has no semantic events"))?;
+        let last =
+            records.last().ok_or_else(|| recovery("pointer checkpoint has no producing event"))?;
         if record.revision() != reconstructed.sequence()
-            || record.producing_position()
-                != records.last().map_or(0, peritus_journal::CommittedRecord::global_position)
+            || !checkpoint_producer_matches(journal, &record, last)?
             || observed != *reconstructed
         {
             return Err(recovery("pointer checkpoint differs from replay"));
         }
     }
     Ok(PointerReplay { store_id: journal.store_id(), events, state })
+}
+
+fn checkpoint_producer_matches(
+    journal: &SqliteJournal,
+    checkpoint: &peritus_journal::DurableStateRecord,
+    aggregate_event: &peritus_journal::CommittedRecord,
+) -> Result<bool, EvolutionError> {
+    let position = checkpoint.producing_position();
+    if position < aggregate_event.global_position() {
+        return Ok(false);
+    }
+    let producer =
+        journal.global_events_after(position.saturating_sub(1), 1).map_err(journal_error)?;
+    Ok(producer.records().first().is_some_and(|record| {
+        record.global_position() == position && record.command_id() == aggregate_event.command_id()
+    }))
 }
 
 fn validate_record(

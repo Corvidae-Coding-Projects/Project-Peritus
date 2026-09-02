@@ -7,9 +7,11 @@ not grant runtime authority, reinterpret a sandbox plan, or manufacture configur
 ready only after every required scenario has passed on its own fresh subject with complete cleanup.
 
 The implementation lives in `peritus-platform-qualification`. The crate contains deterministic
-contracts, manifest/checksum generation, evidence bounds, fresh-subject orchestration, and verdict
-reduction. Operating-system adapters perform effects through `FreshSubjectFactory` and
-`QualificationSubject`; native package scripts remain mechanical reviewed assets in `packaging/`.
+contracts, manifest/checksum generation, evidence bounds, fresh-subject orchestration, the shared
+native controller adapter, a retained-report operator, and verdict reduction. Platform-owned
+controller executables perform the real effects through `NativePlatformFactory`. The checked-in
+`peritus-h2-controller` is the standard Rust controller for supported native hosts; native package
+scripts remain mechanical reviewed assets in `packaging/`.
 
 ## Shipped processes and invocation
 
@@ -246,11 +248,59 @@ package manifest, scenario count, and digest of scenario and cleanup observation
 
 ## Release integration boundary
 
-Repository integration must add `peritus-platform-qualification` to the workspace and architecture
-inventory, instantiate platform adapters in the H2 runner environment, stage binaries/helpers into
-the target package paths, render the canonical manifest/checksums, authenticate the manifest
-digest, and collect native runner evidence. Linux, macOS, and Windows results are independent: a
-cross-compile or a platform-neutral test does not substitute for a fresh native packaged host.
+`NativePlatformFactory` is the common release-runner boundary. For every scenario it copies the
+reviewed controller and every manifest artifact into a new private root, re-digests those bytes,
+clears ambient user state, supplies private configuration/state/data/temp roots, owns the complete
+controller process tree, and retains raw scenario and cleanup artifacts outside scratch state.
+Responses are accepted only when they bind the exact request digest, subject, scenario, target,
+manifest, layout, package version, and controller digest. Digest evidence names portable regular
+files beneath the assigned artifact root; missing, linked, escaped, duplicated, oversized, or
+mis-digested evidence fails the run.
 
-The crate and assets define the acceptance mechanism. Their presence alone does not claim that a
-package was built, installed, or qualified.
+`peritus-h2` runs the complete 18-scenario catalog and atomically publishes a no-overwrite JSON
+report. The report contains target and manifest identity, every fresh subject, the complete bounded
+evidence set, cleanup facts, and the final ready/not-ready reduction. Its request, response,
+cleanup, and report documents have versioned schemas under `packaging/schemas/`.
+
+Hosted qualification assigns one scenario to each of 18 shards per operating system. Each shard
+performs the same exact package preparation and retains one scenario report plus its raw evidence,
+keeping cold Windows runs inside the repository's ten-minute job ceiling without reducing H2
+coverage.
+
+The checked-in fixture still proves all 18 protocol translations, exact report publication,
+false-digest rejection, stale-response rejection, and descendant termination at the deadline. It
+is separate from `peritus-h2-controller`, which validates the bound request and then performs the
+real package, process, daemon, transport, sandbox, terminal, upgrade, rollback, and uninstall
+effects on its current host. The controller reports unsupported native facilities honestly; it
+does not replace them with a fixture result.
+
+Every nested install, upgrade, and uninstall process receives the fresh subject's private home,
+local application data, configuration, state, data, and temporary directories explicitly. The
+controller does not rely on a shell to preserve those values after its own environment was cleared.
+This keeps PowerShell and Unix package effects inside the same disposable subject used by the
+report. Native sandbox probes likewise follow the installed helper protocol for denial checks and
+the host utility's actual command-line grammar when checking live backend availability. The macOS
+availability probe uses a runnable allow-default profile because its purpose is to verify that the
+host can compile and activate Seatbelt; separate helper protocol and sandbox conformance checks own
+the actual deny policy.
+
+A Linux development qualification using the native controller has completed all 18 scenarios as
+`Ready`, with complete cleanup and zero remaining resources for every fresh subject. Release
+integration must still authenticate the final manifest, run this controller against the exact
+candidate on fresh supported Linux, macOS, and Windows hosts, and retain those reports and raw
+artifacts. A development run, cross-compile, or platform-neutral fixture cannot substitute for the
+three final candidate-bound runs.
+
+`cargo run --locked --package xtask -- product-native-qualification` now builds the host package
+and controller, detects the native platform version, executes all 18 scenarios, and retains the
+report and raw evidence under `target/peritus-qualification/h2/`. The native package workflow runs
+that command on Ubuntu, macOS, and Windows and uploads each evidence directory. The sandbox scenario
+uses the live Linux namespace, macOS Seatbelt, or Windows AppContainer/Job Object probe for its host;
+missing facilities remain `Unsupported` and make the required campaign `NotReady`.
+
+The Ubuntu job installs its declared Bubblewrap host prerequisite and Ubuntu's packaged
+`bwrap-userns-restrict` AppArmor profile before qualification, then records the installed version
+in the workflow log. The profile allows Bubblewrap to create the first user namespace without
+disabling Ubuntu's system-wide unprivileged-user-namespace restriction. Installation alone is not
+evidence of support: the H2 controller still executes the native namespace and capability probe,
+and a nonfunctional binary or host configuration remains `Unsupported`.

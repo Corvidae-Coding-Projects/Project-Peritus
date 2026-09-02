@@ -71,7 +71,9 @@ controlled_source_roots = [
     { path = "fixtures/protocol/scheduler-v1", owner = "D3", kind = "generated", rationale = "D3 owns immutable schema-versioned scheduler command, event, and complete-state compatibility frames plus their SHA-256 manifest." },
     { path = "protocol/generated", owner = "B3", kind = "generated-schema", rationale = "B3 deterministically generates the reviewed protocol schema and TypeScript client declarations." },
     { path = "protocol/fixtures/v1", owner = "B3", kind = "generated", rationale = "B3 deterministically generates the immutable version-one binary compatibility corpus and digest inventory." },
+    { path = "packaging/schemas", owner = "H2", kind = "schema", rationale = "H2 owns the versioned native platform controller and retained qualification report contracts." },
     { path = "release", owner = "H4", kind = "schema", rationale = "H4 owns the reviewed release evidence schemas, incomplete-safe operator templates, and candidate artifact-layout guidance." },
+    { path = "resilience/schemas", owner = "H1", kind = "schema", rationale = "H1 owns the versioned native-controller request and response contracts used to qualify real release candidates." },
     { path = "security", owner = "H0", kind = "schema", rationale = "H0 owns the reviewed threat, control, unsafe, TCB, external-review, evidence, and qualification schema contracts." },
 ]
 
@@ -316,9 +318,23 @@ layer = "testing"
 verification_class = "C"
 
 [[packages]]
+name = "peritus-external-benchmarks"
+path = "crates/app/testing/peritus-external-benchmarks"
+owner = "H3"
+layer = "testing"
+verification_class = "C"
+
+[[packages]]
 name = "peritus-platform-qualification"
 path = "crates/app/testing/peritus-platform-qualification"
 owner = "H2"
+layer = "testing"
+verification_class = "C"
+
+[[packages]]
+name = "peritus-performance-qualification"
+path = "crates/app/testing/peritus-performance-qualification"
+owner = "H3"
 layer = "testing"
 verification_class = "C"
 
@@ -330,8 +346,22 @@ layer = "testing"
 verification_class = "C"
 
 [[packages]]
+name = "peritus-resilience-qualification"
+path = "crates/app/testing/peritus-resilience-qualification"
+owner = "H1"
+layer = "testing"
+verification_class = "C"
+
+[[packages]]
 name = "peritus-release-artifacts"
 path = "crates/app/testing/peritus-release-artifacts"
+owner = "H4"
+layer = "testing"
+verification_class = "C"
+
+[[packages]]
+name = "peritus-release-operator"
+path = "crates/app/testing/peritus-release-operator"
 owner = "H4"
 layer = "testing"
 verification_class = "C"

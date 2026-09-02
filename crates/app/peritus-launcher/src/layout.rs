@@ -128,7 +128,7 @@ impl AppLayout {
         self.logs_root().join("peritusd.log")
     }
 
-    /// Returns the local marker naming the configuration applied by the running daemon.
+    /// Returns the local marker binding the running daemon to its configuration and executable.
     #[must_use]
     pub fn daemon_applied_configuration(&self) -> PathBuf {
         self.state.join("daemon/applied-configuration")

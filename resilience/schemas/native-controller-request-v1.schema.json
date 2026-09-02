@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://peritus.invalid/schemas/resilience/native-controller-request-v1.schema.json",
+  "title": "Peritus H1 native controller request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_sha256", "request"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "request_sha256": {"$ref": "#/$defs/sha256"},
+    "request": {"$ref": "#/$defs/request"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "stable_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 96,
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "stage",
+        "sequence",
+        "instance_id",
+        "subject",
+        "executor_sha256",
+        "scenario",
+        "limits",
+        "artifact_contract"
+      ],
+      "properties": {
+        "schema_version": {"const": 1},
+        "stage": {"enum": ["prepare", "inject", "recover", "cleanup"]},
+        "sequence": {"type": "integer", "minimum": 1, "maximum": 4},
+        "instance_id": {"type": "string", "pattern": "^h1-[0-9]+-[0-9]+-[0-9]+$"},
+        "subject": {"$ref": "#/$defs/subject"},
+        "executor_sha256": {"$ref": "#/$defs/sha256"},
+        "scenario": {"$ref": "#/$defs/scenario"},
+        "limits": {"$ref": "#/$defs/limits"},
+        "artifact_contract": {"const": "peritus-h1-retained-artifacts-v1"}
+      }
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "implementation", "build_sha256"],
+      "properties": {
+        "id": {"$ref": "#/$defs/stable_id"},
+        "implementation": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "build_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "fault", "expected_recovery"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^h1\\.", "maxLength": 96},
+        "title": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "fault": {"$ref": "#/$defs/fault"},
+        "expected_recovery": {"$ref": "#/$defs/recovery"}
+      }
+    },
+    "fault": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "boundary", "timing"],
+          "properties": {
+            "kind": {"const": "commit-crash"},
+            "boundary": {"enum": ["journal", "blob", "snapshot", "lease", "patch", "gate", "promotion"]},
+            "timing": {"enum": ["before-durable-commit", "after-durable-commit-before-ack"]}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "target"],
+          "properties": {
+            "kind": {"const": "corruption"},
+            "target": {"enum": ["journal", "blob", "snapshot", "projection", "acceptance-evidence", "harness-promotion"]}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "scope"],
+          "properties": {
+            "kind": {"const": "disk-exhaustion"},
+            "scope": {"enum": ["journal-append", "blob-finalize", "snapshot-commit"]}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "dependency"],
+          "properties": {
+            "kind": {"enum": ["dependency-death", "retry-exhaustion"]},
+            "dependency": {"enum": ["provider", "tool", "worker"]}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "phase"],
+          "properties": {
+            "kind": {"const": "daemon-kill"},
+            "phase": {"enum": ["writer-pending", "writer-active", "gates-pending", "gates-active", "review-pending", "review-active", "fixer-pending", "fixer-active", "revision-advancing", "evaluating-acceptance", "kernel-acceptance-pending"]}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "phase"],
+          "properties": {
+            "kind": {"const": "host-reboot"},
+            "phase": {"enum": ["outstanding-effect", "durable-before-ack", "startup-reconciliation"]}
+          }
+        }
+      ]
+    },
+    "recovery": {
+      "enum": ["rolled-back-uncommitted", "replayed-committed", "rebuilt-projection", "quarantined-corruption", "failed-closed", "discarded-unreferenced", "reconciled-owned-work", "retry-budget-exhausted"]
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_scenarios", "max_milestones", "provider_retries", "tool_retries", "worker_restarts", "reconciliation_steps", "events", "evidence_bytes", "owned_processes", "cleanup_steps", "logical_ticks"],
+      "properties": {
+        "max_scenarios": {"type": "integer", "minimum": 1, "maximum": 128},
+        "max_milestones": {"type": "integer", "minimum": 6, "maximum": 64},
+        "provider_retries": {"type": "integer", "minimum": 1, "maximum": 32},
+        "tool_retries": {"type": "integer", "minimum": 1, "maximum": 32},
+        "worker_restarts": {"type": "integer", "minimum": 1, "maximum": 32},
+        "reconciliation_steps": {"type": "integer", "minimum": 1, "maximum": 32},
+        "events": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "evidence_bytes": {"type": "integer", "minimum": 1, "maximum": 67108864},
+        "owned_processes": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "cleanup_steps": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "logical_ticks": {"type": "integer", "minimum": 1, "maximum": 1000000000}
+      }
+    }
+  }
+}

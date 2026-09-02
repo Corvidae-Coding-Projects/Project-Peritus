@@ -150,13 +150,18 @@ impl CodexRuntimeProvider {
         cancellation: CancellationToken,
     ) -> Result<OwnedModelStream, ProviderCoreError> {
         let stream = match decoded {
-            Err(reason @ (DecodeFailure::Authentication | DecodeFailure::Reported)) => {
-                decode_failure(
-                    request.model().clone(),
-                    self.config.profile().provider().clone(),
-                    reason,
-                )?
-            }
+            Err(
+                reason @ (DecodeFailure::Authentication
+                | DecodeFailure::Safety
+                | DecodeFailure::RateLimited
+                | DecodeFailure::QuotaExhausted
+                | DecodeFailure::ContextLimit
+                | DecodeFailure::Reported),
+            ) => decode_failure(
+                request.model().clone(),
+                self.config.profile().provider().clone(),
+                reason,
+            )?,
             Err(DecodeFailure::Incomplete) if had_output => CodexRuntimeStream::failed(
                 request.model().clone(),
                 failure(

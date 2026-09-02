@@ -70,3 +70,11 @@ text can contain sensitive data. Body and framing failures are terminal for that
 
 The crate deliberately exposes no Reqwest, Tokio, `url`, `bytes`, `zeroize`, or provider SDK type.
 Those dependencies are implementation details and may change without altering adapter-facing APIs.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-provider-core
+```

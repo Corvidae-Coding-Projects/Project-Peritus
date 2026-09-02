@@ -23,3 +23,11 @@ result indeterminate rather than silently claiming restoration.
 
 This crate grants no workspace authority. `peritus-workspace` owns the B0/B1/C0 authorization
 gateway and is the product-facing mutation surface.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-patch
+```

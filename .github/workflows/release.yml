@@ -1,0 +1,205 @@
+name: Publish Peritus release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_BUILD_JOBS: "2"
+  RUST_VERSION: 1.97.1
+
+jobs:
+  create-draft:
+    name: Create exact draft release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - name: Validate tag and create retained draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: cargo run --locked --package xtask -- release-create
+
+  policy:
+    name: Release policy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - name: Enforce repository policy
+        run: cargo run --locked --package xtask -- all
+
+  bootstrap:
+    name: Release bootstrap (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - name: Qualify native package and public installer lifecycle
+        run: cargo run --locked --package xtask -- release-bootstrap-smoke
+
+  build-binary:
+    name: Release binary ${{ matrix.binary }} (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, package: peritus-cli, binary: peritus, artifact: peritus }
+          - { os: ubuntu-24.04, package: peritus-daemon, binary: peritusd, artifact: peritusd }
+          - { os: ubuntu-24.04, package: peritus-tui, binary: peritus-tui, artifact: peritus-tui }
+          - { os: ubuntu-24.04, package: peritus-sandbox-linux, binary: peritus-linux-sandbox-helper, artifact: peritus-linux-sandbox-helper }
+          - { os: macos-15, package: peritus-cli, binary: peritus, artifact: peritus }
+          - { os: macos-15, package: peritus-daemon, binary: peritusd, artifact: peritusd }
+          - { os: macos-15, package: peritus-tui, binary: peritus-tui, artifact: peritus-tui }
+          - { os: macos-15, package: peritus-sandbox-macos, binary: peritus-macos-sandbox-helper, artifact: peritus-macos-sandbox-helper }
+          - { os: windows-2025, package: peritus-cli, binary: peritus, artifact: peritus.exe }
+          - { os: windows-2025, package: peritus-daemon, binary: peritusd, artifact: peritusd.exe }
+          - { os: windows-2025, package: peritus-tui, binary: peritus-tui, artifact: peritus-tui.exe }
+          - { os: windows-2025, package: peritus-sandbox-windows, binary: peritus-windows-sandbox-helper, artifact: peritus-windows-sandbox-helper.exe }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - name: Build one release binary
+        run: >-
+          cargo build --release --locked --package ${{ matrix.package }}
+          --bin ${{ matrix.binary }}
+      - name: Retain one release binary
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-bin-${{ matrix.os }}-${{ matrix.binary }}
+          path: target/release/${{ matrix.artifact }}
+          if-no-files-found: error
+          retention-days: 1
+
+  assemble:
+    name: Assemble package (${{ matrix.os }})
+    needs: build-binary
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - name: Restore this host's release binaries
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: release-bin-${{ matrix.os }}-*
+          path: target/release
+          merge-multiple: true
+      - name: Assemble, archive, checksum, and record native package
+        run: cargo run --locked --package xtask -- release-package-assemble
+      - name: Retain assembled native package
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-package-${{ matrix.os }}
+          path: dist
+          if-no-files-found: error
+          retention-days: 1
+
+  attest:
+    name: Attest package (${{ matrix.os }})
+    needs: [create-draft, assemble]
+    permissions:
+      attestations: write
+      contents: write
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - name: Restore assembled native package
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: release-package-${{ matrix.os }}
+          path: dist
+      - name: Generate candidate-bound inventory, SBOM, and provenance
+        id: evidence
+        run: >-
+          cargo run --locked --package peritus-release-operator --
+          generate dist/peritus-native-package.json
+      - name: Sign build provenance with GitHub's release identity
+        id: build_provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ steps.evidence.outputs.archive }}
+      - name: Sign the SPDX SBOM with GitHub's release identity
+        id: sbom_attestation
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ steps.evidence.outputs.archive }}
+          sbom-path: ${{ steps.evidence.outputs.sbom }}
+      - name: Retain attestations and upload the complete native evidence set
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          cargo run --locked --package peritus-release-operator --
+          retain-and-upload dist/peritus-native-package.json
+          "${{ steps.build_provenance.outputs.bundle-path }}"
+          "${{ steps.sbom_attestation.outputs.bundle-path }}"
+
+  publish:
+    name: Publish complete release
+    needs: [policy, bootstrap, attest]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - name: Publish only after every native package succeeds
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: cargo run --locked --package xtask -- release-publish

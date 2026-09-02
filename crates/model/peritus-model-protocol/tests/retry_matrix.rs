@@ -5,11 +5,12 @@ use peritus_model_protocol::{
     plan_retry,
 };
 
-const CAUSES: [RetryCause; 13] = [
+const CAUSES: [RetryCause; 14] = [
     RetryCause::BeforeSend,
     RetryCause::Connect,
     RetryCause::RateLimited,
     RetryCause::TransientProvider,
+    RetryCause::SafeNewRequest,
     RetryCause::AmbiguousSubmission,
     RetryCause::AcceptedNoEvents,
     RetryCause::PartialStream,
@@ -62,7 +63,8 @@ const fn expected(cause: RetryCause, guarantee: IdempotencyGuarantee) -> RetryDe
         RetryCause::BeforeSend
         | RetryCause::Connect
         | RetryCause::RateLimited
-        | RetryCause::TransientProvider => RetryDecision::RetryNew { delay_millis: 100 },
+        | RetryCause::TransientProvider
+        | RetryCause::SafeNewRequest => RetryDecision::RetryNew { delay_millis: 100 },
         RetryCause::AmbiguousSubmission | RetryCause::AcceptedNoEvents => match guarantee {
             IdempotencyGuarantee::CreateDeduplicated | IdempotencyGuarantee::CreateAndResume => {
                 RetryDecision::RetryNew { delay_millis: 100 }

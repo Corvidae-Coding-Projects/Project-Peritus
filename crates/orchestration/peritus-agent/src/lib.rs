@@ -7,6 +7,8 @@
 mod canonical;
 mod command;
 mod completion;
+#[cfg(not(verus_only))]
+mod developer;
 mod error;
 mod event;
 mod identity;
@@ -27,6 +29,12 @@ pub use command::{
     ProviderRetryClass, ProviderRetryRecord,
 };
 pub use completion::{CompletionProposal, CompletionRequest, EvidenceReference, TranscriptDigests};
+#[cfg(not(verus_only))]
+pub use developer::{
+    DeveloperLoop, DeveloperLoopError, DeveloperLoopLimits, DeveloperLoopOutcome,
+    DeveloperLoopRequest, DeveloperRetryReason, DeveloperRetryRecord, DeveloperToolExecutor,
+    DeveloperToolObservation, DeveloperTrace, DeveloperTraceEvent, DeveloperUsage,
+};
 pub use error::{AgentErrorCode, AgentOperation, AgentRecovery, AgentRejection};
 pub use event::{AgentEvent, AgentEventKind};
 pub use identity::{AgentBinding, ModelCallId, ProfileRevision, SafeText, ToolOrdinal};

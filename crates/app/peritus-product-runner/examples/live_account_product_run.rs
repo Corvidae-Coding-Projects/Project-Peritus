@@ -12,7 +12,10 @@ use peritus_model_protocol::{
     CancellationKind, Capability, CapabilityMatrix, CapabilityProvenance, ModelLimits, ModelName,
     OutputLimitEnforcement, ProviderName, ProviderProfile, ResumeKind, StateMode, WireDialect,
 };
-use peritus_product_runner::{ProductRunInput, ProductRunner, RoleProviders, RunObserver};
+use peritus_product_runner::{
+    ConversationView, PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput,
+    ProductRunOutcome, ProductRunner, RoleProviders, RunObserver,
+};
 use peritus_provider_anthropic::{ClaudeExecutable, ClaudeRuntimeConfig, ClaudeRuntimeProvider};
 use peritus_provider_core::{CancellationToken, ModelProvider, ProcessLimits};
 use peritus_provider_openai::{CodexExecutable, CodexRuntimeConfig, CodexRuntimeProvider};
@@ -28,6 +31,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 async fn run() -> Result<(), Box<dyn Error>> {
     let repository = tempfile::tempdir()?;
+    let command_state = tempfile::tempdir()?;
     initialize_repository(repository.path())?;
     let cancellation = CancellationToken::new();
     let writer = codex_provider()?;
@@ -37,15 +41,34 @@ async fn run() -> Result<(), Box<dyn Error>> {
     let writer: Arc<dyn ModelProvider> = writer;
     let reviewer: Arc<dyn ModelProvider> = reviewer;
     let observer: RunObserver = Arc::new(|_| {});
+    let task = "Add a documented public function named answer that returns u32 value 42, and add a unit test that proves it. Keep the existing function.".to_owned();
+    let run_id = RunId::new([0xE4; 16]).expect("nonzero qualification run id");
+    let process_store = peritus_process::ProcessStore::open(
+        command_state.path().join("processes"),
+        repository.path(),
+    )?;
+    let command_runtime = peritus_product_runner::CommandRuntime::open(
+        command_state.path().join("router"),
+        repository.path(),
+        run_id,
+        process_store,
+    )?;
     let output = ProductRunner::run(
         ProductRunInput {
-            run_id: RunId::new([0xE4; 16]).expect("nonzero qualification run id"),
+            run_id,
             workspace_root: repository.path().to_owned(),
-            task: "Add a documented public function named answer that returns u32 value 42, and add a unit test that proves it. Keep the existing function.".to_owned(),
+            trace_path: repository.path().join("peritus-run.trace"),
+            command_runtime,
+            finding_state: String::new(),
+            task: task.clone(),
+            max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
+            delivery_scope: ProductDeliveryScope::WorkspaceChanges,
+            conversation: Arc::new(FixedConversation(task)),
             providers: RoleProviders {
                 writer: Arc::clone(&writer),
                 reviewer,
                 fixer: writer,
+                fallbacks: Vec::new(),
             },
             cancelled: Arc::new(AtomicBool::new(false)),
             provider_cancellation: cancellation,
@@ -53,14 +76,29 @@ async fn run() -> Result<(), Box<dyn Error>> {
         observer,
     )
     .await?;
+    let ProductRunOutcome::Complete(output) = output else {
+        return Err(io::Error::other("product run unexpectedly asked for clarification").into());
+    };
     let source = fs::read_to_string(repository.path().join("src/lib.rs"))?;
     if !source.contains("answer") || !source.contains("42") || output.diff.is_empty() {
         return Err(
             io::Error::other("product run did not produce the requested tested change").into()
         );
     }
-    let _ = (output.changed_files, output.fixer_cycles);
+    let _ = (output.changed_files(), output.fixer_cycles);
     Ok(())
+}
+
+struct FixedConversation(String);
+
+impl ConversationView for FixedConversation {
+    fn revision(&self) -> u64 {
+        1
+    }
+
+    fn render(&self) -> String {
+        format!("User:\n{}", self.0)
+    }
 }
 
 fn codex_provider() -> Result<Arc<CodexRuntimeProvider>, Box<dyn Error>> {

@@ -39,11 +39,33 @@ pub(super) fn decode(
         .ok_or(DecodeFailure::Incomplete)?
         .as_object()
         .ok_or(DecodeFailure::Malformed)?;
-    let content = required_string(turn, "content")?;
+    let mut content = required_string(turn, "content")?.to_owned();
+    let calls = required_calls(turn)?;
+    let mut tool_calls = decode_calls(calls, allowed_tools, max_calls)?;
+    if tool_calls.is_empty()
+        && let Some(embedded) = decode_embedded(&content, allowed_tools, max_calls)?
+    {
+        content = embedded.content;
+        tool_calls = embedded.tool_calls;
+    }
     if content.is_empty() || content.contains('\0') {
         return Err(DecodeFailure::Malformed);
     }
-    let calls = turn.get("tool_calls").and_then(Value::as_array).ok_or(DecodeFailure::Malformed)?;
+    Ok(RuntimeTurn { content, tool_calls, usage: usage(raw)? })
+}
+
+fn required_calls(turn: &Map<String, Value>) -> Result<&[Value], DecodeFailure> {
+    turn.get("tool_calls")
+        .and_then(Value::as_array)
+        .map(Vec::as_slice)
+        .ok_or(DecodeFailure::Malformed)
+}
+
+fn decode_calls(
+    calls: &[Value],
+    allowed_tools: &BTreeSet<String>,
+    max_calls: usize,
+) -> Result<Vec<RuntimeToolCall>, DecodeFailure> {
     if calls.len() > max_calls {
         return Err(DecodeFailure::Malformed);
     }
@@ -61,7 +83,33 @@ pub(super) fn decode(
             .clone();
         tool_calls.push(RuntimeToolCall { name: name.to_owned(), arguments });
     }
-    Ok(RuntimeTurn { content: content.to_owned(), tool_calls, usage: usage(raw)? })
+    Ok(tool_calls)
+}
+
+fn decode_embedded(
+    content: &str,
+    allowed_tools: &BTreeSet<String>,
+    max_calls: usize,
+) -> Result<Option<RuntimeTurnContent>, DecodeFailure> {
+    let Ok(Value::Object(mut object)) = serde_json::from_str(content) else {
+        return Ok(None);
+    };
+    let Some(calls) = object.remove("tool_calls") else {
+        return Ok(None);
+    };
+    let calls = calls.as_array().ok_or(DecodeFailure::Malformed)?;
+    let tool_calls = decode_calls(calls, allowed_tools, max_calls)?;
+    let content = if object.len() == 1 && object.contains_key("content") {
+        object.get("content").and_then(Value::as_str).ok_or(DecodeFailure::Malformed)?.to_owned()
+    } else {
+        Value::Object(object).to_string()
+    };
+    Ok(Some(RuntimeTurnContent { content, tool_calls }))
+}
+
+struct RuntimeTurnContent {
+    content: String,
+    tool_calls: Vec<RuntimeToolCall>,
 }
 
 fn usage(raw: &Map<String, Value>) -> Result<UsageCounters, DecodeFailure> {
@@ -94,4 +142,60 @@ fn optional_bool(object: &Map<String, Value>, name: &str) -> Result<Option<bool>
 
 fn optional_u64(object: &Map<String, Value>, name: &str) -> Result<Option<u64>, DecodeFailure> {
     object.get(name).map(|value| value.as_u64().ok_or(DecodeFailure::Malformed)).transpose()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn allowed() -> BTreeSet<String> {
+        let mut tools = BTreeSet::new();
+        tools.insert("workspace_read".to_owned());
+        tools
+    }
+
+    #[test]
+    fn embedded_host_call_is_promoted_and_application_content_is_preserved() {
+        let output = br#"{
+          "is_error": false,
+          "structured_output": {
+            "content": "{\"summary\":\"need one more file\",\"tool_calls\":[{\"name\":\"workspace_read\",\"arguments\":{\"path\":\"src/lib.rs\"}}]}",
+            "tool_calls": []
+          }
+        }"#;
+
+        let turn = decode(output, &allowed(), 1).expect("embedded host call");
+
+        assert_eq!(turn.content, r#"{"summary":"need one more file"}"#);
+        assert_eq!(turn.tool_calls.len(), 1);
+        assert_eq!(turn.tool_calls[0].name, "workspace_read");
+        assert_eq!(turn.tool_calls[0].arguments["path"], "src/lib.rs");
+    }
+
+    #[test]
+    fn empty_embedded_call_array_is_removed_from_terminal_application_json() {
+        let output = br#"{
+          "structured_output": {
+            "content": "{\"summary\":\"verified\",\"findings\":[],\"tool_calls\":[]}",
+            "tool_calls": []
+          }
+        }"#;
+
+        let turn = decode(output, &allowed(), 1).expect("embedded terminal content");
+
+        assert_eq!(turn.content, r#"{"findings":[],"summary":"verified"}"#);
+        assert!(turn.tool_calls.is_empty());
+    }
+
+    #[test]
+    fn embedded_undeclared_host_call_still_fails_closed() {
+        let output = br#"{
+          "structured_output": {
+            "content": "{\"summary\":\"bad call\",\"tool_calls\":[{\"name\":\"shell\",\"arguments\":{}}]}",
+            "tool_calls": []
+          }
+        }"#;
+
+        assert!(matches!(decode(output, &allowed(), 1), Err(DecodeFailure::Malformed)));
+    }
 }

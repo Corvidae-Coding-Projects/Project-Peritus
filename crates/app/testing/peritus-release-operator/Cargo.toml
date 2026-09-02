@@ -1,0 +1,28 @@
+[package]
+name = "peritus-release-operator"
+description = "Native H4 release evidence generation and publication adapter"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["release", "sbom", "provenance", "sigstore"]
+categories = ["development-tools::testing"]
+
+[dependencies]
+peritus-release-artifacts = { path = "../peritus-release-artifacts", version = "=0.0.0" }
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+toml.workspace = true
+
+[package.metadata.peritus]
+owner = "H4"
+layer = "testing"
+verification-class = "C"
+
+[lints]
+workspace = true

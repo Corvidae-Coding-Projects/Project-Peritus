@@ -1,17 +1,99 @@
 {
   "schema_version": 1,
-  "status": "incomplete",
-  "candidate_binding": null,
-  "artifact_inventory": null,
-  "spdx_sbom": null,
-  "provenance": null,
-  "artifact_signatures": [],
-  "independent_build_witnesses": [],
-  "signed_h0_h3_reports": [],
-  "fresh_subject_campaigns": [],
-  "migration_recovery_documents": [],
-  "license_notices": null,
-  "acceptance_criterion_mappings": [],
-  "acceptance_criterion_map_signature": null,
-  "independent_final_audit": null
+  "binding": {
+    "candidate_commit": "0000000000000000000000000000000000000001",
+    "version": "0.0.0",
+    "toolchain": "replace-with-exact-rust-verus-toolchain",
+    "platform": "replace-with-qualified-platform-set",
+    "source_tree_digest": "0000000000000000000000000000000000000000000000000000000000000001"
+  },
+  "evidence": [
+    { "kind": "h0-security-report", "disposition": "not-satisfied", "path": "payloads/h0-security-report.json", "key_id": "replace-h0-signer", "public_key_path": "keys/h0-security-report.pub", "signature_path": "signatures/h0-security-report.sig" },
+    { "kind": "h1-resilience-report", "disposition": "not-satisfied", "path": "payloads/h1-resilience-report.json", "key_id": "replace-h1-signer", "public_key_path": "keys/h1-resilience-report.pub", "signature_path": "signatures/h1-resilience-report.sig" },
+    { "kind": "h2-linux-report", "disposition": "not-satisfied", "path": "payloads/h2-linux-report.json", "key_id": "replace-h2-linux-signer", "public_key_path": "keys/h2-linux-report.pub", "signature_path": "signatures/h2-linux-report.sig" },
+    { "kind": "h2-macos-report", "disposition": "not-satisfied", "path": "payloads/h2-macos-report.json", "key_id": "replace-h2-macos-signer", "public_key_path": "keys/h2-macos-report.pub", "signature_path": "signatures/h2-macos-report.sig" },
+    { "kind": "h2-windows-report", "disposition": "not-satisfied", "path": "payloads/h2-windows-report.json", "key_id": "replace-h2-windows-signer", "public_key_path": "keys/h2-windows-report.pub", "signature_path": "signatures/h2-windows-report.sig" },
+    { "kind": "h3-performance-report", "disposition": "not-satisfied", "path": "payloads/h3-performance-report.json", "key_id": "replace-h3-signer", "public_key_path": "keys/h3-performance-report.pub", "signature_path": "signatures/h3-performance-report.sig" },
+    { "kind": "gate-a", "disposition": "not-satisfied", "path": "payloads/gate-a.json", "key_id": "replace-gate-a-signer", "public_key_path": "keys/gate-a.pub", "signature_path": "signatures/gate-a.sig" },
+    { "kind": "foundation", "disposition": "not-satisfied", "path": "payloads/foundation.json", "key_id": "replace-foundation-signer", "public_key_path": "keys/foundation.pub", "signature_path": "signatures/foundation.sig" },
+    { "kind": "native-linux", "disposition": "not-satisfied", "path": "payloads/native-linux.json", "key_id": "replace-native-linux-signer", "public_key_path": "keys/native-linux.pub", "signature_path": "signatures/native-linux.sig" },
+    { "kind": "native-macos", "disposition": "not-satisfied", "path": "payloads/native-macos.json", "key_id": "replace-native-macos-signer", "public_key_path": "keys/native-macos.pub", "signature_path": "signatures/native-macos.sig" },
+    { "kind": "native-windows", "disposition": "not-satisfied", "path": "payloads/native-windows.json", "key_id": "replace-native-windows-signer", "public_key_path": "keys/native-windows.pub", "signature_path": "signatures/native-windows.sig" },
+    { "kind": "soak", "disposition": "not-satisfied", "path": "payloads/soak.json", "key_id": "replace-soak-signer", "public_key_path": "keys/soak.pub", "signature_path": "signatures/soak.sig" },
+    { "kind": "representative-rust", "disposition": "not-satisfied", "path": "payloads/representative-rust.json", "key_id": "replace-rust-signer", "public_key_path": "keys/representative-rust.pub", "signature_path": "signatures/representative-rust.sig" },
+    { "kind": "representative-type-script", "disposition": "not-satisfied", "path": "payloads/representative-type-script.json", "key_id": "replace-typescript-signer", "public_key_path": "keys/representative-type-script.pub", "signature_path": "signatures/representative-type-script.sig" },
+    { "kind": "representative-python", "disposition": "not-satisfied", "path": "payloads/representative-python.json", "key_id": "replace-python-signer", "public_key_path": "keys/representative-python.pub", "signature_path": "signatures/representative-python.sig" },
+    { "kind": "representative-java", "disposition": "not-satisfied", "path": "payloads/representative-java.json", "key_id": "replace-java-signer", "public_key_path": "keys/representative-java.pub", "signature_path": "signatures/representative-java.sig" },
+    { "kind": "representative-mixed", "disposition": "not-satisfied", "path": "payloads/representative-mixed.json", "key_id": "replace-mixed-signer", "public_key_path": "keys/representative-mixed.pub", "signature_path": "signatures/representative-mixed.sig" },
+    { "kind": "artifact-inventory", "disposition": "not-satisfied", "path": "payloads/artifact-inventory.json", "key_id": "replace-inventory-signer", "public_key_path": "keys/artifact-inventory.pub", "signature_path": "signatures/artifact-inventory.sig" },
+    { "kind": "spdx-sbom", "disposition": "not-satisfied", "path": "payloads/spdx-sbom.json", "key_id": "replace-sbom-signer", "public_key_path": "keys/spdx-sbom.pub", "signature_path": "signatures/spdx-sbom.sig" },
+    { "kind": "provenance", "disposition": "not-satisfied", "path": "payloads/provenance.json", "key_id": "replace-provenance-signer", "public_key_path": "keys/provenance.pub", "signature_path": "signatures/provenance.sig" },
+    { "kind": "artifact-signatures", "disposition": "not-satisfied", "path": "payloads/artifact-signatures.json", "key_id": "replace-signature-signer", "public_key_path": "keys/artifact-signatures.pub", "signature_path": "signatures/artifact-signatures.sig" },
+    { "kind": "reproducibility", "disposition": "not-satisfied", "path": "payloads/reproducibility.json", "key_id": "replace-reproducibility-signer", "public_key_path": "keys/reproducibility.pub", "signature_path": "signatures/reproducibility.sig" },
+    { "kind": "migration-recovery", "disposition": "not-satisfied", "path": "payloads/migration-recovery.json", "key_id": "replace-migration-signer", "public_key_path": "keys/migration-recovery.pub", "signature_path": "signatures/migration-recovery.sig" },
+    { "kind": "license-notices", "disposition": "not-satisfied", "path": "payloads/license-notices.json", "key_id": "replace-license-signer", "public_key_path": "keys/license-notices.pub", "signature_path": "signatures/license-notices.sig" },
+    { "kind": "criterion-map", "disposition": "not-satisfied", "path": "payloads/criterion-map.json", "key_id": "replace-criterion-signer", "public_key_path": "keys/criterion-map.pub", "signature_path": "signatures/criterion-map.sig" }
+  ],
+  "campaigns": [
+    { "schema_version": 1, "kind": "gate-a", "subject_id": "replace-gate-a-subject", "cleanup": { "remaining_processes": 0, "remaining_mounts": 0, "remaining_worktrees": 0, "remaining_temporary_paths": 0 } },
+    { "schema_version": 1, "kind": "foundation", "subject_id": "replace-foundation-subject", "cleanup": { "remaining_processes": 0, "remaining_mounts": 0, "remaining_worktrees": 0, "remaining_temporary_paths": 0 } },
+    { "schema_version": 1, "kind": "native-linux", "subject_id": "replace-linux-subject", "cleanup": { "remaining_processes": 0, "remaining_mounts": 0, "remaining_worktrees": 0, "remaining_temporary_paths": 0 } },
+    { "schema_version": 1, "kind": "native-macos", "subject_id": "replace-macos-subject", "cleanup": { "remaining_processes": 0, "remaining_mounts": 0, "remaining_worktrees": 0, "remaining_temporary_paths": 0 } },
+    { "schema_version": 1, "kind": "native-windows", "subject_id": "replace-windows-subject", "cleanup": { "remaining_processes": 0, "remaining_mounts": 0, "remaining_worktrees": 0, "remaining_temporary_paths": 0 } },
+    { "schema_version": 1, "kind": "soak", "subject_id": "replace-soak-subject", "cleanup": { "remaining_processes": 0, "remaining_mounts": 0, "remaining_worktrees": 0, "remaining_temporary_paths": 0 } },
+    { "schema_version": 1, "kind": "representative-rust", "subject_id": "replace-rust-subject", "cleanup": { "remaining_processes": 0, "remaining_mounts": 0, "remaining_worktrees": 0, "remaining_temporary_paths": 0 } },
+    { "schema_version": 1, "kind": "representative-type-script", "subject_id": "replace-typescript-subject", "cleanup": { "remaining_processes": 0, "remaining_mounts": 0, "remaining_worktrees": 0, "remaining_temporary_paths": 0 } },
+    { "schema_version": 1, "kind": "representative-python", "subject_id": "replace-python-subject", "cleanup": { "remaining_processes": 0, "remaining_mounts": 0, "remaining_worktrees": 0, "remaining_temporary_paths": 0 } },
+    { "schema_version": 1, "kind": "representative-java", "subject_id": "replace-java-subject", "cleanup": { "remaining_processes": 0, "remaining_mounts": 0, "remaining_worktrees": 0, "remaining_temporary_paths": 0 } },
+    { "schema_version": 1, "kind": "representative-mixed", "subject_id": "replace-mixed-subject", "cleanup": { "remaining_processes": 0, "remaining_mounts": 0, "remaining_worktrees": 0, "remaining_temporary_paths": 0 } }
+  ],
+  "primary_build": {
+    "builder_id": "replace-primary-builder",
+    "artifacts": [
+      { "path": "peritus-release.tar.zst", "source_path": "builds/primary/peritus-release.tar.zst", "media_type": "application/zstd", "roles": ["distribution"] }
+    ]
+  },
+  "independent_build": {
+    "builder_id": "replace-independent-builder",
+    "artifacts": [
+      { "path": "peritus-release.tar.zst", "source_path": "builds/independent/peritus-release.tar.zst", "media_type": "application/zstd", "roles": ["distribution"] }
+    ]
+  },
+  "criteria": [
+    { "criterion": "AC-01", "evidence": [{ "kind": "native-linux", "path": "payloads/native-linux.json" }, { "kind": "native-macos", "path": "payloads/native-macos.json" }, { "kind": "native-windows", "path": "payloads/native-windows.json" }] },
+    { "criterion": "AC-02", "evidence": [{ "kind": "foundation", "path": "payloads/foundation.json" }] },
+    { "criterion": "AC-03", "evidence": [{ "kind": "foundation", "path": "payloads/foundation.json" }] },
+    { "criterion": "AC-04", "evidence": [{ "kind": "h0-security-report", "path": "payloads/h0-security-report.json" }] },
+    { "criterion": "AC-05", "evidence": [{ "kind": "h0-security-report", "path": "payloads/h0-security-report.json" }] },
+    { "criterion": "AC-06", "evidence": [{ "kind": "h1-resilience-report", "path": "payloads/h1-resilience-report.json" }] },
+    { "criterion": "AC-07", "evidence": [{ "kind": "h1-resilience-report", "path": "payloads/h1-resilience-report.json" }] },
+    { "criterion": "AC-08", "evidence": [{ "kind": "h1-resilience-report", "path": "payloads/h1-resilience-report.json" }] },
+    { "criterion": "AC-09", "evidence": [{ "kind": "h0-security-report", "path": "payloads/h0-security-report.json" }] },
+    { "criterion": "AC-10", "evidence": [{ "kind": "h2-linux-report", "path": "payloads/h2-linux-report.json" }, { "kind": "h2-macos-report", "path": "payloads/h2-macos-report.json" }, { "kind": "h2-windows-report", "path": "payloads/h2-windows-report.json" }] },
+    { "criterion": "AC-11", "evidence": [{ "kind": "h0-security-report", "path": "payloads/h0-security-report.json" }] },
+    { "criterion": "AC-12", "evidence": [{ "kind": "h0-security-report", "path": "payloads/h0-security-report.json" }] },
+    { "criterion": "AC-13", "evidence": [{ "kind": "h1-resilience-report", "path": "payloads/h1-resilience-report.json" }] },
+    { "criterion": "AC-14", "evidence": [{ "kind": "h1-resilience-report", "path": "payloads/h1-resilience-report.json" }] },
+    { "criterion": "AC-15", "evidence": [{ "kind": "h1-resilience-report", "path": "payloads/h1-resilience-report.json" }] },
+    { "criterion": "AC-16", "evidence": [{ "kind": "migration-recovery", "path": "payloads/migration-recovery.json" }] },
+    { "criterion": "AC-17", "evidence": [{ "kind": "h0-security-report", "path": "payloads/h0-security-report.json" }] },
+    { "criterion": "AC-18", "evidence": [{ "kind": "h1-resilience-report", "path": "payloads/h1-resilience-report.json" }] },
+    { "criterion": "AC-19", "evidence": [{ "kind": "h0-security-report", "path": "payloads/h0-security-report.json" }] },
+    { "criterion": "AC-20", "evidence": [{ "kind": "h3-performance-report", "path": "payloads/h3-performance-report.json" }] },
+    { "criterion": "AC-21", "evidence": [{ "kind": "representative-mixed", "path": "payloads/representative-mixed.json" }] },
+    { "criterion": "AC-22", "evidence": [{ "kind": "gate-a", "path": "payloads/gate-a.json" }] },
+    { "criterion": "AC-23", "evidence": [{ "kind": "representative-rust", "path": "payloads/representative-rust.json" }, { "kind": "representative-type-script", "path": "payloads/representative-type-script.json" }, { "kind": "representative-python", "path": "payloads/representative-python.json" }, { "kind": "representative-java", "path": "payloads/representative-java.json" }, { "kind": "representative-mixed", "path": "payloads/representative-mixed.json" }] },
+    { "criterion": "AC-24", "evidence": [{ "kind": "artifact-inventory", "path": "payloads/artifact-inventory.json" }, { "kind": "spdx-sbom", "path": "payloads/spdx-sbom.json" }, { "kind": "provenance", "path": "payloads/provenance.json" }, { "kind": "artifact-signatures", "path": "payloads/artifact-signatures.json" }, { "kind": "reproducibility", "path": "payloads/reproducibility.json" }, { "kind": "migration-recovery", "path": "payloads/migration-recovery.json" }, { "kind": "license-notices", "path": "payloads/license-notices.json" }] },
+    { "criterion": "AC-25", "evidence": [{ "kind": "gate-a", "path": "payloads/gate-a.json" }] }
+  ],
+  "audit": {
+    "auditor": "replace-independent-final-auditor",
+    "contributors": ["replace-release-producer"],
+    "findings": [],
+    "path": "payloads/final-audit.json",
+    "key_id": "replace-final-auditor-key",
+    "public_key_path": "keys/final-audit.pub",
+    "signature_path": "signatures/final-audit.sig"
+  },
+  "evaluated_at": 0
 }

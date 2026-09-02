@@ -1,8 +1,25 @@
 //! Product-run snapshot construction and state replacement.
 
-use peritus_app_protocol::{ProductRunPhase, ProductRunRequest, ProductRunSnapshot};
+use std::collections::BTreeMap;
 
-use super::ProductRunServiceError;
+use peritus_app_protocol::{ProductRunPhase, ProductRunRequest, ProductRunSnapshot};
+use peritus_types::{RunId, WorkspaceId};
+
+use super::{ProductRunServiceError, RunRecord};
+
+pub(super) fn live_snapshot(
+    record: &RunRecord,
+) -> Result<ProductRunSnapshot, ProductRunServiceError> {
+    if record.snapshot.phase().terminal() {
+        return Ok(record.snapshot.clone());
+    }
+    replace_snapshot(
+        &record.snapshot,
+        record.snapshot.phase(),
+        &record.progress.live_status(record.snapshot.status()),
+        record.snapshot.summary(),
+    )
+}
 
 pub(super) fn initial_snapshot(
     request: &ProductRunRequest,
@@ -29,7 +46,7 @@ pub(super) fn replace_snapshot(
     status: &str,
     summary: &str,
 ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
-    ProductRunSnapshot::new(
+    let snapshot = ProductRunSnapshot::new(
         current.run_id(),
         current.workspace_id(),
         current.providers(),
@@ -42,5 +59,33 @@ pub(super) fn replace_snapshot(
         current.review().to_owned(),
         summary.to_owned(),
     )
-    .map_err(|_| ProductRunServiceError::InvalidMessage)
+    .map_err(|_| ProductRunServiceError::InvalidMessage)?;
+    Ok(match current.deliverable().cloned() {
+        Some(deliverable) => snapshot.with_deliverable(deliverable),
+        None => snapshot,
+    })
+}
+
+pub(super) fn workspace_has_active_run(
+    records: &BTreeMap<RunId, RunRecord>,
+    workspace_id: WorkspaceId,
+    except: Option<RunId>,
+) -> bool {
+    records.iter().any(|(run_id, record)| {
+        if Some(*run_id) == except || record.request.workspace_id() != workspace_id {
+            return false;
+        }
+        let active = !matches!(
+            record.snapshot.phase(),
+            ProductRunPhase::Complete
+                | ProductRunPhase::Failed
+                | ProductRunPhase::Cancelled
+                | ProductRunPhase::RecoveryRequired
+        );
+        let pending_handoff = record.snapshot.phase() == ProductRunPhase::Complete
+            && record.snapshot.deliverable().is_some_and(|deliverable| {
+                deliverable.commit_revision().is_empty() && !deliverable.discarded()
+            });
+        active || pending_handoff
+    })
 }

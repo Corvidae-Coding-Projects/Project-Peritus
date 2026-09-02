@@ -1,5 +1,6 @@
 use super::workflow_commands::parse_script;
 use super::workflow_governance_jobs;
+use super::workflow_governance_shards;
 use crate::error::Diagnostic;
 use crate::model::ToolchainPolicy;
 use std::path::Path;
@@ -54,7 +55,10 @@ pub(super) fn validate(
         diagnostics,
     );
     require(
-        jobs.is_some_and(|jobs| workflow_governance_jobs::are_exact(jobs, tools)),
+        jobs.is_some_and(|jobs| {
+            workflow_governance_jobs::are_exact(jobs)
+                && workflow_governance_shards::are_exact(jobs, tools)
+        }),
         path,
         "required Gate A workflow does not retain every hardcoded job and final status",
         "restore the Rust matrix, supply-chain audit, Verus/no-cheating operations, and always-running Gate A aggregator",
@@ -92,7 +96,7 @@ fn root_is_exact(workflow: &Hash, tools: &ToolchainPolicy) -> bool {
                 "PERITUS_PROOF_IMPACT_BASE",
             ],
         )
-        && string(env, "CARGO_BUILD_JOBS") == Some("1")
+        && string(env, "CARGO_BUILD_JOBS") == Some("2")
         && string(env, "RUST_VERSION") == Some(&tools.rust)
         && string(env, "RUSTUP_TOOLCHAIN") == Some(&tools.rust)
         && string(env, "ACTIONLINT_VERSION") == Some("1.7.12")
@@ -103,7 +107,19 @@ fn root_is_exact(workflow: &Hash, tools: &ToolchainPolicy) -> bool {
         && string(env, "PERITUS_PROOF_IMPACT_BASE") == Some(PROOF_IMPACT_BASE)
         && exact_keys(
             jobs,
-            &["bootstrap", "policy", "workflow-lint", "rust", "supply-chain", "verus", "gate-a"],
+            &[
+                "bootstrap",
+                "policy",
+                "workflow-lint",
+                "rust-format",
+                "rust-shards",
+                "rust",
+                "supply-chain",
+                "verus-policy",
+                "verus-shards",
+                "verus",
+                "gate-a",
+            ],
         )
 }
 
@@ -145,7 +161,7 @@ fn exact_job(job: &Hash, name: &str, needs: &str) -> bool {
         && string(job, "name") == Some(name)
         && string(job, "needs") == Some(needs)
         && string(job, "runs-on") == Some("ubuntu-24.04")
-        && integer(job, "timeout-minutes") == Some(20)
+        && integer(job, "timeout-minutes") == Some(10)
 }
 
 pub(super) fn candidate_checkout(step: &Yaml) -> bool {

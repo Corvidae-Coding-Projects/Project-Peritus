@@ -1,5 +1,5 @@
-#![cfg(feature = "test-runtime-fake")]
 //! A2 qualification of the production `Codex` executable boundary.
+#![cfg(feature = "test-runtime-fake")]
 
 mod codex_runtime_conformance {
     mod observations;

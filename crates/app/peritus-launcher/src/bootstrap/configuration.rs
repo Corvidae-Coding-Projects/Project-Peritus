@@ -41,7 +41,7 @@ fn render_configuration(layout: &AppLayout, state: &ProductState) -> Result<Stri
         daemon_root.join("backups"),
     )?;
     let mut text = format!(
-        "version = 1\nstore_id = {:?}\n\n[paths]\nstate_root = {}\nartifact_root = {}\nevidence_root = {}\nworkspace_root = {}\nprocess_root = {}\ntransaction_root = {}\nbackup_root = {}\n\n[approval_registry]\npayload_file = {}\ngeneration = 1\n\n[human]\nactor_id = {:?}\n\n[telemetry]\nmode = \"disabled\"\n",
+        "version = 1\nstore_id = {:?}\n\n[paths]\nstate_root = {}\nartifact_root = {}\nevidence_root = {}\nworkspace_root = {}\nprocess_root = {}\ntransaction_root = {}\nbackup_root = {}\n\n[approval_registry]\npayload_file = {}\ngeneration = 1\n\n[human]\nactor_id = {:?}\n\n[product]\nautomatic_provider_failover = {}\n\n[telemetry]\nmode = \"disabled\"\n",
         state.identity().store_id(),
         toml_path(paths.state_root())?,
         toml_path(paths.artifact_root())?,
@@ -52,6 +52,7 @@ fn render_configuration(layout: &AppLayout, state: &ProductState) -> Result<Stri
         toml_path(paths.backup_root())?,
         toml_path(&layout.approval_registry())?,
         state.identity().actor_id(),
+        state.providers().automatic_failover(),
     );
     for provider in state.providers().enabled() {
         text.push_str(&render_provider(*provider, state.providers().direct_profile(*provider))?);
@@ -97,16 +98,24 @@ fn render_provider(
     provider: ProviderKind,
     direct: Option<&DirectProviderProfile>,
 ) -> Result<String, LauncherError> {
-    let (kind, profile_id, model) = match provider {
+    let (kind, profile_id, model, image_input) = match provider {
         ProviderKind::CodexAccount => {
-            ("codex-runtime", "a1000000000000000000000000000001", "gpt-5.6-sol")
+            ("codex-runtime", "a1000000000000000000000000000001", "gpt-5.6-sol", true)
         }
         ProviderKind::ClaudeAccount => {
-            ("claude-runtime", "a2000000000000000000000000000002", "opus")
+            ("claude-runtime", "a2000000000000000000000000000002", "opus", false)
         }
         _ => return render_direct_provider(provider, direct),
     };
-    Ok(provider_configuration(kind, profile_id, model, 200_000, 64_000, false))
+    let mut text = format!("\n[[providers]]\nkind = {}\n", toml_string(kind));
+    text.push_str(&profile_block(
+        profile_id,
+        model,
+        200_000,
+        64_000,
+        ProfileFeatures::account(image_input),
+    ));
+    Ok(text)
 }
 
 fn render_direct_provider(
@@ -118,7 +127,7 @@ fn render_direct_provider(
             "enabled direct provider is missing its profile".to_owned(),
         )
     })?;
-    let (kind, profile_id, input, output) = direct_route(provider, direct)?;
+    let (kind, profile_id, input, output, image_input, reasoning) = direct_route(provider, direct)?;
     let mut text = format!(
         "\n[[providers]]\nkind = {}\ncredential_reference = {}\n",
         toml_string(kind),
@@ -126,33 +135,51 @@ fn render_direct_provider(
     );
     append_optional(&mut text, "endpoint", direct.endpoint());
     append_optional(&mut text, "credential_header", direct.credential_header());
-    text.push_str(&profile_block(profile_id, direct.model(), input, output, true));
+    text.push_str(&profile_block(
+        profile_id,
+        direct.model(),
+        input,
+        output,
+        ProfileFeatures::direct(provider, image_input, reasoning),
+    ));
     Ok(text)
 }
 
 fn direct_route(
     provider: ProviderKind,
     direct: &DirectProviderProfile,
-) -> Result<(&'static str, &'static str, u64, u64), LauncherError> {
+) -> Result<(&'static str, &'static str, u64, u64, bool, bool), LauncherError> {
     match provider {
         ProviderKind::OpenAiApi => {
-            Ok(("open-ai", "a3000000000000000000000000000003", 200_000, 64_000))
+            Ok(("open-ai", "a3000000000000000000000000000003", 200_000, 64_000, true, true))
         }
         ProviderKind::AnthropicApi => {
-            Ok(("anthropic", "a4000000000000000000000000000004", 200_000, 32_000))
+            Ok(("anthropic", "a4000000000000000000000000000004", 200_000, 32_000, true, true))
         }
-        ProviderKind::GoogleGeminiApi => {
-            Ok(("google-generate-content", "a5000000000000000000000000000005", 1_000_000, 65_536))
-        }
+        ProviderKind::GoogleGeminiApi => Ok((
+            "google-generate-content",
+            "a5000000000000000000000000000005",
+            1_000_000,
+            65_536,
+            true,
+            true,
+        )),
         ProviderKind::CompatibleEndpoint => match direct.compatible_protocol() {
-            Some(CompatibleProtocol::Responses) => {
-                Ok(("compatible-responses", "a6000000000000000000000000000006", 200_000, 32_000))
-            }
+            Some(CompatibleProtocol::Responses) => Ok((
+                "compatible-responses",
+                "a6000000000000000000000000000006",
+                200_000,
+                32_000,
+                false,
+                false,
+            )),
             Some(CompatibleProtocol::ChatCompletions) => Ok((
                 "compatible-chat-completions",
                 "a6000000000000000000000000000006",
                 200_000,
                 32_000,
+                false,
+                false,
             )),
             None => Err(invalid("compatible provider is missing its wire protocol")),
         },
@@ -169,17 +196,46 @@ fn append_optional(text: &mut String, field: &str, value: Option<&str>) {
     }
 }
 
-fn provider_configuration(
-    kind: &str,
-    profile_id: &str,
-    model: &str,
-    input: u64,
-    output: u64,
-    streaming: bool,
-) -> String {
-    let mut text = format!("\n[[providers]]\nkind = {}\n", toml_string(kind));
-    text.push_str(&profile_block(profile_id, model, input, output, streaming));
-    text
+struct ProfileFeatures {
+    capabilities: Vec<&'static str>,
+    inline_media_bytes: u64,
+}
+
+impl ProfileFeatures {
+    fn account(image_input: bool) -> Self {
+        let mut capabilities = vec![
+            "parallel-tool-calls",
+            "prompt-caching",
+            "reasoning-controls",
+            "tool-calls",
+            "usage-detail",
+        ];
+        if image_input {
+            capabilities.push("image-input");
+        }
+        Self::new(capabilities, image_input)
+    }
+
+    fn direct(provider: ProviderKind, image_input: bool, reasoning: bool) -> Self {
+        let mut capabilities =
+            vec!["parallel-tool-calls", "streaming", "tool-calls", "usage-detail"];
+        if provider != ProviderKind::CompatibleEndpoint {
+            capabilities.push("prompt-caching");
+        }
+        if image_input {
+            capabilities.push("image-input");
+        }
+        if reasoning {
+            capabilities.push("reasoning-controls");
+        }
+        Self::new(capabilities, image_input)
+    }
+
+    fn new(mut capabilities: Vec<&'static str>, image_input: bool) -> Self {
+        capabilities.sort_unstable();
+        let inline_media_bytes = if image_input { 32 * 1024 * 1024 } else { 1 };
+        Self { capabilities, inline_media_bytes }
+    }
 }
 
 fn profile_block(
@@ -187,15 +243,18 @@ fn profile_block(
     model: &str,
     input: u64,
     output: u64,
-    streaming: bool,
+    features: ProfileFeatures,
 ) -> String {
-    let capabilities = if streaming {
-        "[\"parallel-tool-calls\", \"streaming\", \"tool-calls\", \"usage-detail\"]"
-    } else {
-        "[\"parallel-tool-calls\", \"tool-calls\", \"usage-detail\"]"
-    };
+    let capabilities = toml::Value::Array(
+        features
+            .capabilities
+            .into_iter()
+            .map(|value| toml::Value::String(value.to_owned()))
+            .collect(),
+    );
+    let inline_media_bytes = features.inline_media_bytes;
     format!(
-        "\n[providers.profile]\nprofile_id = {}\nrevision = 1\nmodel = {}\ncapabilities = {capabilities}\nmax_input_tokens = {input}\nmax_output_tokens = {output}\nmax_tools = 64\nmax_parallel_tool_calls = 8\nmax_inline_media_bytes = 1\n",
+        "\n[providers.profile]\nprofile_id = {}\nrevision = 1\nmodel = {}\ncapabilities = {capabilities}\nmax_input_tokens = {input}\nmax_output_tokens = {output}\nmax_tools = 64\nmax_parallel_tool_calls = 8\nmax_inline_media_bytes = {inline_media_bytes}\n",
         toml_string(profile_id),
         toml_string(model),
     )

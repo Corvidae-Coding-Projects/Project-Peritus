@@ -33,6 +33,12 @@ class, resource envelope, objectives, minimum samples, and regression thresholds
 sets `baseline_required` to true. The target values are candidate acceptance limits, not a claim
 that the current product meets them. No source baseline is established by H3 implementation work.
 
+`benchmarks/profiles/qualification-intel-core-ultra-9-275hx-v1.json` records the exact Linux host
+available for the retained local campaign. It changes only the machine identity and description;
+the production resource envelope, objectives, and regression thresholds remain unchanged. Results
+from that host are reproducible qualification evidence, not evidence that the separate AMD
+reference machine was tested.
+
 The JSON contracts in `benchmarks/schemas/` are stable interchange schemas. The Rust loader also
 rejects unknown fields, unsupported schema versions, invalid identifiers, duplicate keys, dangling
 workload references, invalid objective direction, oversized documents, and workload reservations
@@ -63,6 +69,61 @@ The G0 adapter should map, at minimum:
 The F0 adapter uses the same measurement vocabulary for representative evaluation/evolution
 campaigns. H3 must not receive the production pointer transition or promotion approval as a harness
 operation.
+
+## Executable integration status
+
+`peritus-performance-qualification` now owns a disposable integrated G0 subject. It launches an
+exact caller-selected `peritusd` executable, retains its executable digest, negotiates a persistent
+public A3 session, submits canonical fenced scheduler commands, survives intentional daemon
+restart, and performs owned terminal, cancellation, artifact, queue, and deterministic local
+provider-pressure effects. `RunContext` carries an explicit workload binding so every measurement
+is attributable when one campaign sink receives several plans.
+
+The retained operator smokes run a complete scheduler start, event, drain, and finalize lifecycle
+and a separate crash, restart, and successor-event flow against real disposable daemons. These
+smokes are integration evidence, not an H3 production verdict.
+
+The production campaign coordinator rejects a reference-machine mismatch before launch, runs load
+workloads sequentially, runs the four long-horizon workloads concurrently, shares one resource
+ledger across their subjects, and rejects subject executable-identity drift. Deterministic bounded
+reservoirs preserve representative samples without exceeding the profile's global record limit;
+the final merge assigns one contiguous, monotonic campaign sequence. A final partial queue cycle
+uses an exact drain operation so completed workloads do not retain queue ownership.
+
+The eleven load schedules total 33 minutes of declared runtime. The four soak schedules then run
+together for eight hours, so one `full` campaign takes at least eight hours and 33 minutes plus
+startup and evidence-publication overhead. Establishing a baseline and then comparing against that
+reviewed baseline requires two separate complete campaigns; the second run never reuses the first
+run's measurements.
+
+The evidence writer revalidates the exact input documents against the executed typed dataset and
+accepted baseline. It streams private copies of the exact subject and runner executables while
+recomputing their campaign-bound digests, writes measurements, receipts, accounting, and machine
+facts, then atomically publishes the primary-artifact manifest and its bound report without
+overwriting earlier evidence. The real-daemon evidence smoke exercises this complete path.
+
+`peritus-h3 load` and `peritus-h3 full` are the operator entry points. They load bounded source
+documents, probe the host without consulting expected profile values, identify their own runner
+binary, execute the coordinator, and publish the evidence bundle in one invocation. Linux reads CPU
+and memory facts from procfs; macOS uses `sysctl`. The probe retains raw CPU and memory values while
+normalizing the common AMD `N-Core Processor` suffix and usable memory to its installed power-of-two
+GiB hardware class. Storage generation is an explicit reviewed argument because common
+unprivileged interfaces do not expose it consistently. Exact profile mismatch stops before daemon
+launch and reports every mismatched field.
+
+When every objective has sufficient observations, evidence publication also writes an inert
+`baseline-candidate.json`. Its workload/metric/statistic entries come from the evaluated campaign
+and its `evidence_digest` binds the exact source manifest. The candidate is deliberately outside
+that manifest's primary-artifact list because it is derived from the manifest digest.
+
+Generation is not acceptance. A later `peritus-h3` invocation must supply both `--baseline` and the
+independently reviewed exact file SHA-256 through `--accept-baseline-sha256`. Either option alone, a
+changed byte, a different profile, or an invalid document is rejected before host probing or daemon
+launch. H3 then retains the exact accepted document in the new evidence bundle and compares every
+objective. This operator action admits comparison evidence only; H4 retains release authority.
+
+Actual eight-hour reference-machine execution evidence remains required before H3 can report
+readiness.
 
 ## Bounded accounting and backpressure
 

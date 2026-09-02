@@ -28,6 +28,9 @@ pub enum LauncherError {
     /// Interactive setup could not read or render terminal input/output.
     #[error("interactive setup failed: {0}")]
     Interaction(String),
+    /// Release discovery, download, verification, or installation failed.
+    #[error("product update failed: {0}")]
+    Update(String),
     /// Provider discovery or login failed.
     #[error("provider setup failed: {0}")]
     Provider(#[from] peritus_provider_onboarding::OnboardingError),

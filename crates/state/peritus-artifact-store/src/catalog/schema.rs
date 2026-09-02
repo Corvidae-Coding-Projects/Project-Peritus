@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS artifact_records (
     creating_event BLOB NOT NULL CHECK(length(creating_event) = 16),
     quarantine_state INTEGER NOT NULL CHECK(quarantine_state IN (1, 2)),
     quarantine_generation INTEGER CHECK(quarantine_generation IS NULL OR quarantine_generation > 0),
+    integrity_state INTEGER NOT NULL DEFAULT 1 CHECK(integrity_state IN (1, 2)),
     CHECK((quarantine_state = 1 AND quarantine_generation IS NULL)
        OR (quarantine_state = 2 AND quarantine_generation IS NOT NULL))
 ) STRICT;

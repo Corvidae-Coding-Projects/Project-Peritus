@@ -11,9 +11,13 @@ mod evidence;
 mod layout;
 mod lifecycle;
 mod manifest;
+mod native;
+mod native_controller;
 mod observation;
 mod package_builder;
 mod platform;
+mod qualification_operator;
+mod report_json;
 mod runner;
 mod sandbox;
 mod scenario;
@@ -40,6 +44,8 @@ pub use lifecycle::{
 pub use manifest::{
     ArtifactRole, ManifestArtifact, PackageManifest, PackageVersion, RelativePackagePath,
 };
+pub use native::{NativeControllerLimits, NativePlatformFactory};
+pub use native_controller::run_from_env as run_h2_native_controller;
 pub use observation::{
     CleanupObservation, ObservationOutcome, QualificationRun, ScenarioObservation,
 };
@@ -48,6 +54,7 @@ pub use platform::{
     Architecture, NativePrerequisite, Platform, PlatformContract, PlatformDelta, PlatformVersion,
     QualificationTarget,
 };
+pub use qualification_operator::{H2OperatorStatus, run_from_env as run_h2_operator};
 pub use runner::{FreshSubjectFactory, FreshSubjectRunner, QualificationSubject, ScenarioRequest};
 pub use sandbox::{
     EnforcementClaim, NativeSandboxContract, SandboxCapability, SandboxExecutionResult,

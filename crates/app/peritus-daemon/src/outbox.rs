@@ -2,7 +2,7 @@
 
 use std::{future::Future, pin::Pin};
 
-use crate::DaemonError;
+use crate::{DaemonConfig, DaemonError};
 
 mod claims;
 mod clock;
@@ -13,8 +13,40 @@ mod router;
 
 pub use claims::{CLAIM_DESTINATIONS, OrchestratorDirectiveClaim, TypedOutboxClaim, decode_claim};
 pub use pump::OutboxRuntime;
-pub use qualification::{recover_outbox_crash, stage_outbox_crash};
+pub use qualification::{
+    HostRebootPhase, recover_blob_after_crash, recover_blob_before_crash, recover_gate_after_crash,
+    recover_gate_before_crash, recover_host_reboot, recover_journal_before_crash,
+    recover_lease_after_crash, recover_lease_before_crash, recover_outbox_crash,
+    recover_patch_after_crash, recover_patch_before_crash, recover_promotion_after_crash,
+    recover_promotion_before_crash, recover_snapshot_after_crash, recover_snapshot_before_crash,
+    recover_snapshot_corruption, stage_blob_after_crash, stage_blob_before_crash,
+    stage_gate_after_crash, stage_gate_before_crash, stage_host_reboot, stage_journal_before_crash,
+    stage_lease_after_crash, stage_lease_before_crash, stage_outbox_crash, stage_patch_after_crash,
+    stage_patch_before_crash, stage_promotion_after_crash, stage_promotion_before_crash,
+    stage_snapshot_after_crash, stage_snapshot_before_crash, stage_snapshot_corruption,
+    stage_startup_reconciliation,
+};
 pub use router::DestinationRouter;
+
+#[allow(
+    clippy::redundant_pub_crate,
+    reason = "the private outbox module exposes this qualification renderer to its CLI sibling"
+)]
+pub(super) fn stage_snapshot_quota_exhaustion(
+    config: &DaemonConfig,
+) -> Result<String, DaemonError> {
+    qualification::stage_snapshot_quota_exhaustion(config)
+}
+
+#[allow(
+    clippy::redundant_pub_crate,
+    reason = "the private outbox module exposes this qualification renderer to its CLI sibling"
+)]
+pub(super) fn recover_snapshot_quota_exhaustion(
+    config: &DaemonConfig,
+) -> Result<String, DaemonError> {
+    qualification::recover_snapshot_quota_exhaustion(config)
+}
 
 pub type DurableDelivery<'a> = Pin<Box<dyn Future<Output = Result<(), DaemonError>> + Send + 'a>>;
 

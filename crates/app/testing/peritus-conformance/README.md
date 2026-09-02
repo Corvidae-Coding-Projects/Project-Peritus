@@ -133,3 +133,11 @@ qualifying C4 tools and C5 provider adapters.
 This verification-class `C` crate is std-only and belongs to the `testing` layer. Its boxed futures
 do not select or embed an async runtime. Callers poll the returned runner future with their chosen
 executor.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-conformance
+```

@@ -47,3 +47,48 @@ fn windows_installer_hashes_without_optional_command_modules() {
     assert!(script.contains("[Security.Cryptography.SHA256]::Create()"));
     assert!(!script.contains("Get-FileHash"));
 }
+
+#[test]
+fn windows_lifecycle_supports_explicit_private_roots_and_user_defaults() {
+    let assets = bundled_packaging_assets();
+    for name in ["Install-Peritus.ps1", "Upgrade-Peritus.ps1"] {
+        let script = windows_script(assets, name);
+        assert!(script.contains("[string]$InstallRoot"));
+        assert!(script.contains("$env:LOCALAPPDATA"));
+    }
+    let uninstall = windows_script(assets, "Uninstall-Peritus.ps1");
+    assert!(uninstall.contains("[string]$InstallRoot"));
+    assert!(uninstall.contains("[string]$DataRoot"));
+    assert!(uninstall.contains("$env:LOCALAPPDATA"));
+}
+
+#[test]
+fn windows_supervisor_template_keeps_exact_direct_command_placeholders() {
+    let template = bundled_packaging_assets()
+        .iter()
+        .find(|asset| asset.relative_path() == "windows/Peritus.Task.xml.in")
+        .expect("Windows supervisor template must be embedded");
+    let xml = str::from_utf8(template.bytes()).expect("Windows supervisor template must be UTF-8");
+
+    for required in [
+        "<Command>@PERITUSD@</Command>",
+        "<Arguments>serve --config &quot;@CONFIG_FILE@&quot;</Arguments>",
+        "<RestartOnFailure>",
+    ] {
+        assert!(xml.contains(required), "missing Windows supervisor control: {required}");
+    }
+    assert!(!xml.contains("cmd.exe /c"));
+    assert!(!xml.contains("powershell -Command"));
+}
+
+fn windows_script<'a>(
+    assets: &'a [peritus_platform_qualification::BundledPackagingAsset],
+    name: &str,
+) -> &'a str {
+    let relative_path = format!("windows/{name}");
+    let asset = assets
+        .iter()
+        .find(|asset| asset.relative_path() == relative_path)
+        .expect("Windows lifecycle asset must be embedded");
+    str::from_utf8(asset.bytes()).expect("Windows lifecycle asset must be UTF-8")
+}

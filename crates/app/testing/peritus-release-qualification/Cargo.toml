@@ -14,17 +14,23 @@ categories = ["development-tools::testing"]
 [dependencies]
 peritus-release-artifacts = { version = "=0.0.0", path = "../peritus-release-artifacts" }
 peritus-release-policy = { version = "=0.0.0", path = "../../../foundation/peritus-release-policy" }
+peritus-types = { version = "=0.0.0", path = "../../../foundation/peritus-types" }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+ed25519-dalek.workspace = true
 peritus-model-protocol = { version = "=0.0.0", path = "../../../model/peritus-model-protocol" }
 peritus-provider-anthropic = { version = "=0.0.0", path = "../../../model/peritus-provider-anthropic" }
 peritus-provider-core = { version = "=0.0.0", path = "../../../model/peritus-provider-core" }
 peritus-provider-openai = { version = "=0.0.0", path = "../../../model/peritus-provider-openai" }
-peritus-types = { version = "=0.0.0", path = "../../../foundation/peritus-types" }
+tempfile.workspace = true
 tokio.workspace = true
+
+[[bin]]
+name = "peritus-h4"
+path = "src/bin/peritus_h4.rs"
 
 [[example]]
 name = "codex-live-account"

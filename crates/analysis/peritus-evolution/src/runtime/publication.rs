@@ -5,7 +5,7 @@ use peritus_evidence::{
     EvidenceDraft, EvidenceKind, EvidenceRecord, EvidenceSource, EvidenceStore,
 };
 use peritus_journal::SqliteJournal;
-use peritus_types::{EvidenceId, RevisionTuple};
+use peritus_types::EvidenceId;
 
 use crate::{
     EvolutionError, EvolutionErrorKind, EvolutionOperation, EvolutionPublicationClaim,
@@ -42,7 +42,6 @@ pub fn publish_claimed_evolution(
     artifact_store: &ArtifactStore,
     claim: &EvolutionPublicationClaim,
     artifact: FinalizedEvolutionArtifact,
-    revision: RevisionTuple,
 ) -> Result<EvolutionPublication, EvolutionError> {
     let directive = claim.directive();
     if artifact.artifact_digest().sha256() != directive.artifact_digest()
@@ -52,6 +51,19 @@ pub fn publish_claimed_evolution(
         return Err(binding("publication claim, artifact, or semantic digest differs"));
     }
     artifact_store.verify(artifact.artifact_digest()).map_err(artifact_error)?;
+    let export = journal.integrity_export().map_err(journal_error)?;
+    let artifacts = export
+        .artifact_references()
+        .iter()
+        .filter(|reference| {
+            reference.first_position() <= claim.producing_position()
+                && claim.producing_position() <= reference.last_position()
+        })
+        .map(|reference| ArtifactDigest::from_sha256(reference.artifact_digest()))
+        .collect::<Vec<_>>();
+    if !artifacts.contains(&artifact.artifact_digest()) {
+        return Err(binding("publication artifact is absent from the producing journal batch"));
+    }
     let evidence_id = evidence_id(claim)?;
     let kind = match directive.kind() {
         EvolutionPublicationKind::CampaignDecision => "evolution-decision",
@@ -61,14 +73,13 @@ pub fn publish_claimed_evolution(
         evidence_id,
         EvidenceKind::new(kind).map_err(evidence_error)?,
         EvidenceSource::new("peritus-evolution").map_err(evidence_error)?,
-        revision,
+        directive.revision(),
         claim.producing_position(),
         directive.evidence_digest(),
-        vec![ArtifactDigest::from_sha256(directive.artifact_digest())],
+        artifacts,
         Vec::new(),
     )
     .map_err(evidence_error)?;
-    let export = journal.integrity_export().map_err(journal_error)?;
     let evidence = evidence_store.admit(draft, &export, artifact_store).map_err(evidence_error)?;
     journal.acknowledge_outbox(claim.id(), claim.fence()).map_err(journal_error)?;
     Ok(EvolutionPublication { evidence })

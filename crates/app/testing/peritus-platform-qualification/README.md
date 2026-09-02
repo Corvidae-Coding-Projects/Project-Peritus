@@ -6,14 +6,69 @@ checksummed package manifests, foreground-daemon supervisor definitions, local I
 native sandbox requirements, process-equivalence observations, lifecycle ownership, bounded
 evidence, and the final ready/not-ready decision.
 
-The crate performs no installation by itself. An H2 adapter implements `FreshSubjectFactory` and
-`QualificationSubject` for the selected VM or runner. `FreshSubjectRunner` creates a different
-subject for every closed scenario, requires complete cleanup, and returns evidence that
-`QualificationReport::evaluate` reduces without consulting ambient host state.
+The crate includes the shared native adapter and one-command operator used by Linux, macOS, and
+Windows qualification runners. `NativePlatformFactory` stages and re-digests the exact manifest
+artifacts into a different private subject for every closed scenario. It invokes one reviewed
+native controller under a bounded process tree and private user environment, validates exact
+request, subject, scenario, controller, package, and target bindings, verifies retained raw
+artifacts, and requires separately bound cleanup evidence. `FreshSubjectRunner` then returns the
+complete observations that `QualificationReport::evaluate` reduces without consulting ambient
+host state.
+
+`peritus-h2-controller` owns the actual platform effects: package installation, native supervisor
+and IPC exercise, interactive TUI rendering through PTY or ConPTY, process and sandbox probes,
+upgrade and rollback, uninstall, and resource cleanup. The TUI check answers only the bounded
+standard cursor-position query, then requires a real daemon connection, rendered frame, orderly
+Ctrl-Q exit, and complete terminal restoration. The controller rejects a request unless the target,
+package, manifest, staged controller, subject, and limits match its current invocation. The
+versioned request, scenario-response, and cleanup-response schemas live in `packaging/schemas/`. A
+separate fixture controller proves the adapter and operator protocol; fixture results are not
+release evidence for a real host.
 
 The reviewed assets in `../../../../packaging` are the native application layer consumed by a
 release builder. They supervise the real `peritusd serve --config <absolute-file>` invocation;
 they do not add an unimplemented daemonization or service command. Configuration, state, and logs
 remain operator/runtime owned and are preserved during upgrade, rollback, and ordinary uninstall.
 
-This crate is an H2 qualification foundation, not evidence that any package or host has passed.
+## Operator command
+
+To build a fresh host package, run every scenario, and retain the report and raw evidence under
+`target/peritus-qualification/h2/`, use:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo run --locked --package xtask -- product-native-qualification
+```
+
+For an externally assembled release candidate, build the standard native controller, create empty
+scratch and retained-artifact directories outside the repository, then run:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo build --locked \
+  --bin peritus-h2 \
+  --bin peritus-h2-controller
+target/debug/peritus-h2 \
+  --controller target/debug/peritus-h2-controller \
+  --package /path/to/peritus-package \
+  --manifest /path/to/peritus-package/manifest.toml \
+  --scratch /path/to/private-h2-scratch \
+  --artifacts /path/to/new-h2-artifacts \
+  --report /path/to/new-h2-report.json \
+  --platform linux \
+  --architecture x86_64 \
+  --version 6.6.0
+```
+
+The operator refuses to overwrite a report. It exits successfully only for `Ready`, exits 3 for a
+completed `NotReady` campaign, and reports adapter or evidence failures as errors. `xtask` prints
+the retained report path and exact scenario reasons for completed failures, and the hosted workflow
+uploads whatever report and raw evidence exists even when the qualification step fails. Linux,
+macOS, and Windows must each run the native controller on a fresh supported host. The checked-in
+fixture is protocol evidence only; no package or host is claimed qualified by its test result.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-platform-qualification
+```

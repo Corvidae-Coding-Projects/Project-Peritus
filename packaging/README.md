@@ -10,6 +10,24 @@ resource-capped release build and writes `dist/peritus-<platform>-<architecture>
 the target's per-user installer. Build outputs and assembled packages remain ignored and must never
 be committed.
 
+After the first public release, users will install through one command:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Corvidae-Coding-Projects/Project-Peritus/main/install.sh | sh
+```
+
+Windows PowerShell uses:
+
+```powershell
+irm https://raw.githubusercontent.com/Corvidae-Coding-Projects/Project-Peritus/main/install.ps1 | iex
+```
+
+Both bootstraps resolve the latest GitHub release, select the host archive, verify its published
+SHA-256 digest, and call the same native install or upgrade adapter described below. `peritus`
+checks for updates at most once every six hours without blocking offline startup; `peritus update`
+runs the check immediately. `peritus update --disable-checks` persists an opt-out, and
+`peritus update --enable-checks` turns automatic checks back on.
+
 Installation is deliberately per-user because G0 authenticates local peers as the protected state
 root owner. The installer verifies all package checksums, atomically publishes the launcher,
 daemon, TUI, helper, and optional supervisor template, and makes `peritus` the ordinary command.
@@ -25,3 +43,24 @@ these assets.
 
 The service templates are retained for a future explicitly configured always-on runner mode. They
 are not installed as active services and are not part of the ordinary single-command product path.
+
+## Native qualification protocol
+
+`peritus-h2` is the common qualification operator for fresh Linux, macOS, and Windows release
+subjects. It stages the exact package manifest into one private subject per scenario and invokes a
+reviewed platform controller. The JSON contracts under `schemas/` define the exact request,
+scenario response, cleanup response, and retained report. Raw controller evidence is stored in an
+operator-selected directory outside the repository and verified by path, byte count, and SHA-256.
+
+The checked-in tests use a small controller fixture only to prove protocol, evidence, deadline, and
+cleanup behavior. A release still needs real platform controllers and native-host runs for all 18
+scenarios on every supported target. See [H2 platform qualification](../docs/h2-platform-qualification.md)
+for the operator command and evidence boundary.
+
+`cargo xtask release-bootstrap-smoke` qualifies the native lifecycle plus the public file-download
+path and proves that a mismatched archive checksum is rejected. Tagged release automation keeps the
+GitHub release as a draft until the Linux, macOS, and Windows policy, lifecycle, packaging, and
+upload jobs all succeed.
+
+There is no public release yet. Until the exact candidate completes production qualification, use
+`cargo xtask product-install` from a source checkout.

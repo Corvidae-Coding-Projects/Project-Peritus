@@ -92,6 +92,8 @@ impl TuiConfig {
 pub enum ExitReason {
     /// The user explicitly requested orderly client exit.
     UserQuit,
+    /// The product launcher must restore daemon readiness and reopen the interface.
+    RecoverDaemon,
 }
 
 /// Runs the interactive TUI until the user exits.
@@ -143,6 +145,7 @@ pub async fn run(config: TuiConfig) -> Result<ExitReason, TuiError> {
         {
             Ok(ControlFlow::Continue) => {}
             Ok(ControlFlow::Quit) => break Ok(ExitReason::UserQuit),
+            Ok(ControlFlow::RecoverDaemon) => break Ok(ExitReason::RecoverDaemon),
             Err(error) => break Err(error),
         }
     };
@@ -158,6 +161,7 @@ pub async fn run(config: TuiConfig) -> Result<ExitReason, TuiError> {
 enum ControlFlow {
     Continue,
     Quit,
+    RecoverDaemon,
 }
 
 async fn apply_effects(
@@ -185,6 +189,9 @@ async fn apply_effects(
                 if let Some(session) = client.take() {
                     let cleanup = model.cleanup_messages();
                     let _ = session.close(cleanup).await;
+                }
+                if config.product().is_some() {
+                    return Ok(ControlFlow::RecoverDaemon);
                 }
                 connect(config, model, client, events, generation).await;
             }
@@ -363,3 +370,6 @@ impl Drop for InputPump {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

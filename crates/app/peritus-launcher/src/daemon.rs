@@ -1,12 +1,14 @@
 //! Packaged sibling-daemon resolution, startup, and bounded readiness.
 
 use std::{
-    fs::{self, OpenOptions},
-    io::Write as _,
+    fs::{self, File, OpenOptions},
+    io::{Read as _, Write as _},
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
     time::{Duration, Instant},
 };
+
+use sha2::{Digest, Sha256};
 
 use crate::{LauncherError, PreparedProduct};
 
@@ -135,7 +137,7 @@ impl DaemonSupervisor {
     ) -> Result<DaemonLaunch, LauncherError> {
         let endpoint = product.endpoint_path();
         if endpoint_ready(&endpoint).await {
-            if applied_configuration_matches(product)? {
+            if applied_configuration_matches(product, binaries)? {
                 return Ok(DaemonLaunch::Reused);
             }
             let _stopped = self.shutdown(product, binaries).await?;
@@ -146,14 +148,14 @@ impl DaemonSupervisor {
         let started = Instant::now();
         loop {
             if endpoint_ready(&endpoint).await {
-                record_applied_configuration(product)?;
+                record_applied_configuration(product, binaries)?;
                 return Ok(DaemonLaunch::Started { process_id });
             }
             if let Some(status) =
                 child.try_wait().map_err(|error| LauncherError::DaemonSpawn(error.to_string()))?
             {
                 if endpoint_ready(&endpoint).await {
-                    if !applied_configuration_matches(product)? {
+                    if !applied_configuration_matches(product, binaries)? {
                         return Err(LauncherError::DaemonSpawn(
                             "another daemon started with a different product configuration"
                                 .to_owned(),
@@ -201,7 +203,10 @@ impl DaemonSupervisor {
             )));
         }
         let started = Instant::now();
-        while endpoint_ready(&endpoint).await {
+        loop {
+            if !endpoint_ready(&endpoint).await && instance_lock_available(product)? {
+                return Ok(DaemonShutdown::Stopped);
+            }
             if started.elapsed() >= self.readiness_timeout {
                 return Err(LauncherError::DaemonTimeout {
                     seconds: self.readiness_timeout.as_secs(),
@@ -210,7 +215,27 @@ impl DaemonSupervisor {
             }
             tokio::time::sleep(Duration::from_millis(100)).await;
         }
-        Ok(DaemonShutdown::Stopped)
+    }
+}
+
+fn instance_lock_available(product: &PreparedProduct) -> Result<bool, LauncherError> {
+    let path = product.daemon_config().paths().state_root().join("daemon.lock");
+    let file = match OpenOptions::new().read(true).write(true).open(&path) {
+        Ok(file) => file,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(true),
+        Err(error) => {
+            return Err(LauncherError::filesystem("open daemon instance lock", path, error));
+        }
+    };
+    match fs4::FileExt::try_lock(&file) {
+        Ok(()) => {
+            let _ = fs4::FileExt::unlock(&file);
+            Ok(true)
+        }
+        Err(fs4::TryLockError::WouldBlock) => Ok(false),
+        Err(fs4::TryLockError::Error(error)) => {
+            Err(LauncherError::filesystem("probe daemon instance lock", path, error))
+        }
     }
 }
 
@@ -237,11 +262,14 @@ fn spawn_daemon(
     command.spawn().map_err(|error| LauncherError::DaemonSpawn(error.to_string()))
 }
 
-fn applied_configuration_matches(product: &PreparedProduct) -> Result<bool, LauncherError> {
+fn applied_configuration_matches(
+    product: &PreparedProduct,
+    binaries: &SiblingBinaries,
+) -> Result<bool, LauncherError> {
     let marker = product.layout().daemon_applied_configuration();
-    let expected = product.daemon_config_path();
+    let expected = applied_identity(&product.daemon_config_path(), binaries.daemon())?;
     match fs::read_to_string(&marker) {
-        Ok(actual) => Ok(actual.trim_end() == expected.to_string_lossy()),
+        Ok(actual) => Ok(actual == expected),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
         Err(error) => Err(LauncherError::filesystem(
             "read applied daemon configuration marker",
@@ -251,8 +279,12 @@ fn applied_configuration_matches(product: &PreparedProduct) -> Result<bool, Laun
     }
 }
 
-fn record_applied_configuration(product: &PreparedProduct) -> Result<(), LauncherError> {
+fn record_applied_configuration(
+    product: &PreparedProduct,
+    binaries: &SiblingBinaries,
+) -> Result<(), LauncherError> {
     let marker = product.layout().daemon_applied_configuration();
+    let identity = applied_identity(&product.daemon_config_path(), binaries.daemon())?;
     let mut file = OpenOptions::new()
         .create(true)
         .write(true)
@@ -262,11 +294,44 @@ fn record_applied_configuration(product: &PreparedProduct) -> Result<(), Launche
             LauncherError::filesystem("open applied daemon configuration marker", &marker, error)
         })?;
     crate::persistence::protect_file(&file, &marker)?;
-    writeln!(file, "{}", product.daemon_config_path().display())
-        .and_then(|()| file.sync_all())
-        .map_err(|error| {
-            LauncherError::filesystem("write applied daemon configuration marker", marker, error)
-        })
+    file.write_all(identity.as_bytes()).and_then(|()| file.sync_all()).map_err(|error| {
+        LauncherError::filesystem("write applied daemon configuration marker", marker, error)
+    })
+}
+
+fn applied_identity(configuration: &Path, daemon: &Path) -> Result<String, LauncherError> {
+    let digest = file_digest(daemon)?;
+    Ok(format!(
+        "peritus-applied-daemon-v2\nconfiguration={}\ndaemon-sha256={}\n",
+        configuration.display(),
+        hex_digest(digest)
+    ))
+}
+
+fn file_digest(path: &Path) -> Result<[u8; 32], LauncherError> {
+    let mut file = File::open(path)
+        .map_err(|error| LauncherError::filesystem("open packaged daemon", path, error))?;
+    let mut hasher = Sha256::new();
+    let mut buffer = vec![0_u8; 64 * 1024];
+    loop {
+        let read = file
+            .read(&mut buffer)
+            .map_err(|error| LauncherError::filesystem("hash packaged daemon", path, error))?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+    Ok(hasher.finalize().into())
+}
+
+fn hex_digest(digest: [u8; 32]) -> String {
+    let mut output = String::with_capacity(64);
+    for byte in digest {
+        use std::fmt::Write as _;
+        let _ = write!(output, "{byte:02x}");
+    }
+    output
 }
 
 #[cfg(unix)]
@@ -304,3 +369,6 @@ async fn endpoint_ready(endpoint: &Path) -> bool {
     };
     tokio::net::windows::named_pipe::ClientOptions::new().open(pipe).is_ok()
 }
+
+#[cfg(test)]
+mod tests;

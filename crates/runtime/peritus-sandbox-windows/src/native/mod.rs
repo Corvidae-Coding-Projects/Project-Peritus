@@ -14,6 +14,8 @@ mod secret;
 mod token;
 pub(crate) mod wfp;
 
+pub(crate) use token::derive_profile;
+
 use crate::{HelperManifest, NetworkIsolation, TokenProfile, WindowsError};
 
 pub(crate) struct Activation {

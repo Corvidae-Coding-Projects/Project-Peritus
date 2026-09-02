@@ -1215,7 +1215,7 @@ This registry is canonical for parallel planning. A slice may split internally o
 | G2 | `peritus-tui` |
 | G3 | `peritus-mcp`, `peritus-plugin-sdk`, `peritus-plugin-host` |
 | H0 | `peritus-security-policy`, `peritus-security-qualification` |
-| H1 | `peritus-resilience` |
+| H1 | `peritus-resilience`, `peritus-resilience-qualification` |
 | H2 | `peritus-platform-qualification` |
 | H3 | `peritus-benchmarks` |
 | H4 | `peritus-release-policy`, `peritus-release-artifacts`, `peritus-release-qualification` |

@@ -25,3 +25,11 @@ dispatch, or effect execution. Transition digests and action digests are exact c
 not authenticity claims. C0 and later target gateways own durable commit and effect permits.
 
 The production dependency set is limited to `peritus-types` and the workspace-pinned `vstd`.
+
+## Focused checks
+
+From the repository root:
+
+```sh
+CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-policy
+```

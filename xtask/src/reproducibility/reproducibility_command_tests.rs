@@ -1,5 +1,4 @@
-use super::workflow_command_policy::validate as validate_command_policy;
-use super::workflow_commands::CommandPolicy;
+use super::workflow_command_policy::{CommandPolicy, validate as validate_command_policy};
 use crate::error::Diagnostic;
 use std::path::Path;
 
@@ -41,6 +40,21 @@ fn complete_recipe_command_forms_accept_locked_inputs_before_the_boundary() {
     ] {
         let diagnostics = validate(command);
         assert!(diagnostics.is_empty(), "unexpected diagnostics: {diagnostics:?}");
+    }
+}
+
+#[test]
+fn exact_ubuntu_bubblewrap_prerequisite_is_reviewed_but_variants_fail_closed() {
+    let exact = "sudo apt-get update\nsudo apt-get install --yes --no-install-recommends apparmor-profiles bubblewrap\nsudo apparmor_parser --replace /usr/share/apparmor/extra-profiles/bwrap-userns-restrict\nbwrap --version\n";
+    assert!(validate(exact).is_empty());
+
+    for altered in [
+        exact.replace("bubblewrap", "docker.io"),
+        exact.replace("bwrap-userns-restrict", "unshare-userns-restrict"),
+        exact.replace("bwrap --version", "bwrap --help"),
+        format!("sudo sh -c 'apt-get update'\n{exact}"),
+    ] {
+        assert_message(&validate(&altered), "outside the checked command model");
     }
 }
 
