@@ -1,5 +1,11 @@
 # Changelog
 
+- Record another frozen large-workspace recurrence that stopped before its first provider request;
+  retain the honest zero while the current bounded, sorted navigation sample remains the general
+  correction (`TBF-031`, #31).
+- Retain another frozen caller-deadline recurrence where a correct candidate survived malformed
+  provider retries, passed all three unchanged verifier checks, and earned reward 1 before Harbor
+  cancelled the native process without its final report (`TBF-042`, #31).
 - Record further frozen context-overflow recurrences where oversized initial review packets
   prevented native completion after candidates were already correct; retain the unchanged
   verifiers' passing checks and rewards as honest successes (`TBF-043`, #31).

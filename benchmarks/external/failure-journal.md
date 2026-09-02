@@ -4056,7 +4056,9 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   `2026-09-01T02:42:29.027868796Z`, after 13.022 seconds and before any provider request. Its
   verifier generated 9,898 input shards, found the requested `/app/compress.py` absent, and awarded
   reward 0. The campaign executable at `d4a72e67` predates the task-neutral bounded-sample fix in
-  `7091df79`; retain the zero and rerun only in the fresh final-candidate campaign.
+  `7091df79`; retain the zero and rerun only in the fresh final-candidate campaign. A second frozen
+  attempt, `reshard-c4-data__7dPaNBu`, repeated the same zero-request repository terminal and
+  unchanged reward 0 after independently generating the same 9,898-shard workspace.
 - Frozen recurrence `fix-ocaml-gc__e6bKtb7` stopped on the same bounded-inventory error before its
   first provider request and retained the repository failure cleanly in the corrected adapter. The
   unchanged verifier cloned and built unmodified upstream OCaml, encountered a cold-start
@@ -4502,6 +4504,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   repository, fetched both required bundles, retained the requested source and mapping function,
   passed all five unchanged verifier tests, and earned reward 1. This is additional evidence for
   the caller-horizon correction, not a candidate-quality failure or a new task-specific rule.
+- Frozen recurrence `sanitize-git-repo__mY3eqAq` wrote exactly the three requested sanitation
+  changes, then reached a malformed provider response during a later turn and remained inside its
+  retry until Harbor's unchanged 900-second outer deadline. No native report survived, but all
+  three unchanged secret-removal, exact-replacement, and mutation-scope checks passed for reward 1.
+  This is further evidence for propagating the caller horizon through active provider retries and
+  preserving the reporting reserve; it does not justify credential-shaped task vocabulary or a
+  verifier-specific completion shortcut.
 - Verification: focused deadline tests cover ordinary reserve calculation, Harbor's override/cap/
   multiplier order, the eight-hour product ceiling, and missing retained evidence. All 29 Python
   adapter tests, 44 external-benchmark Rust tests, and 121 product-runner unit and integration tests
