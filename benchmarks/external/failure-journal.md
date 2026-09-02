@@ -4570,3 +4570,34 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   owned process tree is killed and reaped. The complete product-runner suite passes 125 tests,
   strict all-target/all-feature Clippy is clean, and documentation validation passes all 137
   maintained files.
+
+## TBF-045: correlated extractor modes created false confidence in one exact character
+
+- Suite and task: Terminal-Bench 2.0 frozen baseline, corrected-adapter trial
+  `gcode-to-text__2G2enxJ`.
+- Symptom: the product accepted `out.txt`, but the unchanged verifier found one exact-character
+  mismatch and awarded reward 0. File existence passed; exact content failed. The candidate used a
+  plausible capital letter where the source encoded the visually confusable digit.
+- Cause: the writer rendered one geometry reconstruction and ran four segmentation modes of the
+  same OCR engine. All four returned the same text. The reviewer called those results independent
+  corroboration even though they shared the same source, renderer, recognition engine, and likely
+  character-class failure. Rotation checks established orientation but could not distinguish the
+  ambiguous glyph. Re-reading the generated output proved only that the selected reading was copied
+  consistently.
+- General resolution: the embedded production workflow now requires an uncertainty ledger whenever
+  exact literals, identifiers, symbol sequences, or numeric values come from lossy or heuristic
+  transformations. Repeated modes of one extractor count as one correlated evidence family.
+  Materially confusable elements must be resolved from source-level structure or a genuinely
+  independent method with different failure modes; unresolved positions remain explicit instead of
+  being accepted with false certainty. Independent review treats correlated-only exactness as a
+  correctness finding. This applies to OCR, speech transcription, scanned identifiers, reverse
+  engineering, protocol recovery, and scientific digitization.
+- Integrity decision: retain reward 0. Do not place the verifier's expected literal, this task's
+  flag, its character position, or a task-name rule in product prompts, gates, or tests. The
+  improvement governs evidence independence for every exact extraction task. An unchanged
+  final-candidate rerun remains required.
+- Verification: embedded-workflow regressions require the ambiguity ledger, correlated-evidence
+  classification, and genuinely independent method language to reach architect, writer, fixer, and
+  reviewer roles. The complete product-runner suite passes 126 tests, strict all-target/all-feature
+  Clippy is clean, documentation validation passes all 137 maintained files, and the repository-wide
+  gate passes across 79 packages and 3,372 source files.

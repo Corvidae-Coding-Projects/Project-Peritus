@@ -154,6 +154,11 @@ const REQUIRED_WORKFLOW_TERMS: &[&str] = &[
     "calibration sample",
     "contract-preserving",
     "tuned constants",
+    "uncertainty ledger",
+    "visually confusable",
+    "same\n   underlying extractor",
+    "correlated evidence family",
+    "genuinely\n   independent method",
     "deliverable accepts inputs beyond the supplied example",
     "example-derived constant",
     "independently created or independently selected input",
@@ -176,4 +181,13 @@ fn embedded_workflow_carries_the_hard_source_limit_for_every_role() {
             assert!(instructions.contains(term), "missing required workflow term: {term}");
         }
     }
+}
+
+#[test]
+fn reviewer_rejects_correlated_exact_extraction_evidence() {
+    let instructions = reviewer();
+
+    assert!(instructions.contains("same engine and source as independent corroboration"));
+    assert!(instructions.contains("different failure modes"));
+    assert!(instructions.contains("concrete correctness finding"));
 }

@@ -84,4 +84,9 @@ each named behavior to a direct assertion in the repository tests and report mis
 as a `test_coverage` finding; successful implementation behavior alone is not test coverage.
 Treat an external pagination or retry loop without a finite attempt bound or repeated-token guard as
 a concrete reliability finding; do not accept a happy-path mock run as proof that the loop advances.
+When exact candidate content comes from lossy or heuristic extraction, do not count repeated modes
+of the same engine and source as independent corroboration. Require the evidence to identify
+visually confusable or low-confidence elements and resolve material ambiguity from source-level
+structure or a genuinely independent method with different failure modes. Exactness resting only on
+correlated extractor agreement is a concrete correctness finding, not optional evidence enrichment.
 ";

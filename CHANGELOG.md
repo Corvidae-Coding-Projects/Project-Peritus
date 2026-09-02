@@ -1,5 +1,8 @@
 # Changelog
 
+- Require exact values recovered through lossy or heuristic tools to carry an ambiguity ledger and
+  genuinely independent or source-level disambiguation, instead of counting repeated modes of one
+  extractor as independent confirmation (`TBF-045`, #31).
 - Clamp every developer command to the live caller-derived product deadline, preserve a bounded
   completion reserve, and report the requested timeout, actual allowance, and remaining time so a
   late compiler, test, transfer, or analysis command cannot consume the whole run (`TBF-044`, #31).

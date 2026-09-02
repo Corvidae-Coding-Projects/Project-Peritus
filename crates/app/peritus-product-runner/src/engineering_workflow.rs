@@ -242,6 +242,14 @@ requested behavior.
    inspect intermediate signals across the complete input before claiming robust behavior. If the
    available evidence cannot support generalization, report that limit instead of treating one
    successful sample as proof.
+   When an exact literal, identifier, symbol sequence, or numeric value is recovered through a
+   lossy or heuristic transformation, keep an uncertainty ledger for visually confusable or
+   low-confidence elements. Repeated modes, thresholds, prompts, or orientations of the same
+   underlying extractor and source are one correlated evidence family, not independent
+   confirmations. Resolve each material ambiguity from source-level structure or a genuinely
+   independent method with different failure modes before claiming byte-exact acceptance. If the
+   evidence cannot distinguish the alternatives, report the exact unresolved positions instead of
+   copying one plausible reading with false certainty.
    When a deliverable accepts inputs beyond the supplied example, exercise at least one
    independently created or independently selected input before claiming the interface works.
    Derive format fields, dimensions, offsets, identifiers, and defaults from the authoritative
