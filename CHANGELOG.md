@@ -1,5 +1,10 @@
 # Changelog
 
+- Keep the active command lifecycle buildable across every release gate by mirroring its
+  constructor in the Verus-facing daemon API and making the Windows executable-extension branch
+  strict-clippy clean. Preserve exact observed fields when the real dependency-death
+  qualification differs on a hosted platform so a runner recurrence is actionable rather than an
+  opaque assertion (#31).
 - Route ordinary product and benchmark developer commands through the existing C4 router and
   daemon-owned C2 process store. Keep the simple bounded `run_command` path, and add stable
   run-owned handles for start, poll, terminal input, resize, portable signals, cancellation, and

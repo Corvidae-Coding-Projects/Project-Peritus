@@ -151,7 +151,12 @@ pub fn qualify_tool_process_failure(
         || stdout.is_none_or(|value| !value.contains("dependency-child"))
         || stderr != Some("")
     {
-        return Err(qualification("bounded product tool did not retain the expected child death"));
+        return Err(qualification(format!(
+            "bounded product tool did not retain the expected child death: success={success:?} timed_out={timed_out:?} exit_code={exit_code:?} is_error={} stdout_contains_marker={} stderr_empty={}",
+            result.is_error,
+            stdout.is_some_and(|value| value.contains("dependency-child")),
+            stderr == Some(""),
+        )));
     }
     let receipt_bytes =
         fs::metadata(receipt_path).map_err(|error| qualification(error.to_string()))?.len();

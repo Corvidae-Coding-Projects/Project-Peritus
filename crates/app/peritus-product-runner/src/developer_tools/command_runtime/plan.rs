@@ -231,12 +231,12 @@ fn executable_extensions(program: &str) -> Vec<String> {
         if Path::new(program).extension().is_some() {
             return vec![String::new()];
         }
-        return std::env::var("PATHEXT")
+        std::env::var("PATHEXT")
             .unwrap_or_else(|_| ".COM;.EXE;.BAT;.CMD".to_owned())
             .split(';')
             .map(str::to_ascii_lowercase)
             .chain(std::iter::once(String::new()))
-            .collect();
+            .collect()
     }
     #[cfg(not(windows))]
     {
