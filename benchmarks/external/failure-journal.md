@@ -4628,3 +4628,34 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Verification: a regression combines concrete absolute output paths with whitespace-bearing brace
   and angle placeholders, requires the concrete files, and proves neither placeholder fragment is
   enforced as a literal path. An unchanged final-candidate rerun remains required.
+
+## TBF-047: the product loop could not retain an interactive terminal session
+
+- Suite and task: Terminal-Bench 2.0 frozen baseline, corrected-adapter trial
+  `qemu-alpine-ssh__tzUDHMQ`.
+- Symptom: Harbor cancelled the agent at the unchanged 900-second deadline before native Peritus
+  published a report. The unchanged verifier could not connect to the requested live service and
+  awarded reward 0.
+- Cause: the frozen G4 developer tool exposed only synchronous commands with closed stdin. The
+  lower C2/C4 stack already supports owned PTYs, bounded stdin, polling, resize, signals,
+  cancellation, retained output, and recovery, but the ordinary product path did not expose those
+  controls. The writer therefore spent repeated turns constructing one-shot socket programs to
+  read and drive an interactive console, including terminal-position-query handling and recovery
+  from an incomplete command. Its final 240-second interaction began too late to leave delivery and
+  verification time. `TBF-042` and `TBF-044` already correct the caller-deadline and per-command
+  reserve failures; they do not supply the missing interactive execution surface.
+- Proposed general correction: route G4 developer tools through the existing daemon-owned C4
+  active-execution lifecycle. A model-visible stable invocation handle must support bounded poll,
+  stdin, resize, portable signal, cancellation, terminal observation, and restart recovery while
+  retaining C2/C3 ownership, output limits, receipts, and caller-derived deadlines. Do not create a
+  second raw PTY owner inside the product runner.
+- Integrity decision: retain the timeout and reward 0. No virtual-machine image, guest command,
+  credential, port, kernel, task name, or verifier behavior enters product policy. Persistent
+  interactive control applies broadly to installers, REPLs, debuggers, database consoles, SSH,
+  serial consoles, and long-lived development servers.
+- Evidence: the frozen trace records 39 requests. It launched the live process, recovered a usable
+  login prompt, and observed the forwarded TCP listener, but then used multiple custom Python socket
+  drivers because no developer tool could retain and control that terminal. Harbor cancelled the
+  final interaction before a tool result, no native usage report was available, and the unchanged
+  verifier received connection refused. An unchanged final-candidate rerun remains required after
+  the general C4-to-G4 integration lands.
