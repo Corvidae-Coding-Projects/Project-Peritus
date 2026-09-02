@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1139,
+  "next_comment_id": 1140,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-09-02T00:32:44.316247509Z",
+      "updated_at": "2026-09-02T00:37:04.979070265Z",
       "labels": [
         "qualification",
         "release"
@@ -2768,6 +2768,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZZTdl9ij7UhblxKCPrV0ir8SLTTzZuYLZmDzG0B6JLOXVhOGTZMMZbG748vU3MANSBGLyeM67loEtZNCdtt/BQ=="
+        },
+        "4e188ba9-fa48-4b0a-9771-6df04e0a7277": {
+          "display_id": 1139,
+          "author": "6ME5",
+          "content": "TBF-045: frozen gcode-to-text candidate passed existence but failed exact content by one visually confusable character. Four modes of the same OCR engine were incorrectly treated as independent evidence. Added a general exact-extraction protocol: uncertainty ledger, correlated evidence-family classification, and source-level or genuinely independent disambiguation; reviewer now treats correlated-only exactness as a correctness finding. No task answer or verifier literal enters product behavior. Verification: product runner 126/126, strict Clippy, docs 137, cargo xtask all 79 packages.",
+          "created_at": "2026-09-02T00:37:04.976241702Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABANG7imYwPwR1z76YxMmwjLDh+1hHy61Tv/57vQ6d/XaYPhDRAIaqcDcRjm8Jl5pXOjH2yfZ0eO8QaqsM4JF24CQ=="
         },
         "4e9a057d-c659-4158-97b0-fa1557bfa3dd": {
           "display_id": 1013,
@@ -11007,8 +11016,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-02T00:32:44.316247509Z",
+    "timestamp": "2026-09-02T00:37:04.979070265Z",
     "agent_id": "6ME5",
-    "agent_seq": 1345
+    "agent_seq": 1346
   }
 }
