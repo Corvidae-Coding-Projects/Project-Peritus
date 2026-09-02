@@ -1,5 +1,8 @@
 # Changelog
 
+- Systematize empirical threshold work with reusable prepared inputs, a measured candidate ledger,
+  selection data kept separate from the final holdout, atomic best-candidate preservation, bounded
+  low-cost search, and a fresh authoritative end-to-end check (`TBF-048`, #31).
 - Record another frozen large-workspace recurrence that stopped before its first provider request;
   retain the honest zero while the current bounded, sorted navigation sample remains the general
   correction (`TBF-031`, #31).

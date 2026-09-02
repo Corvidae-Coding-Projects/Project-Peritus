@@ -234,6 +234,19 @@ requested behavior.
    an isolated read-only comparison. Profile when the bottleneck is not already demonstrated, and
    keep a repository-provided benchmark or threshold authoritative over a supplemental
    microbenchmark.
+   When completion depends on an empirical quality, size, speed, or resource threshold, prepare
+   reusable inputs once when the workspace permits it and keep a compact candidate ledger with the
+   parameters, elapsed time, resource use, and independently measured result of each attempt.
+   Keep search and selection data distinct from the final acceptance holdout when possible. Do not
+   repeatedly choose candidates against the only final holdout; use a training-data split or
+   cross-validation for iteration, then consult the final holdout for the selected candidate. If
+   the final holdout was already reused, report that selection bias and require a defensible margin
+   or independent evidence before claiming a threshold that lies within ordinary sampling noise.
+   Preserve the best valid candidate atomically. Start with bounded low-cost experiments that can
+   reject weak regions, then spend the remaining caller budget on materially different promising
+   candidates rather than repeatedly rebuilding identical inputs or making untracked parameter
+   changes. Re-run the winning candidate through the authoritative end-to-end measurement before
+   acceptance; a search score or training metric is not a substitute for that final check.
    When an empirical or heuristic algorithm is calibrated from one supplied example but must work
    on unseen same-class inputs, do not count rerunning the calibration sample as generalization
    evidence. Reserve an independent segment when possible and exercise contract-preserving

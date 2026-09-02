@@ -4595,6 +4595,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   answer rule. The harness improvement controls general subprocess scheduling; it neither supplies
   the solution nor changes the task, verifier, providers, acceptance gates, or frozen candidate. An
   unchanged final-candidate rerun remains required.
+- Frozen recurrence `train-fasttext__wQg7iUV` used its complete unchanged 3,600-second agent window
+  while repeated bounded training commands produced and reviewed a real candidate. A late fixer
+  training and evaluation command ended with less than a minute for synthesis, and Harbor cancelled
+  the native process before its report. The unchanged verifier still inspected the retained model
+  and awarded the honest reward 0 for its separate 0.618125 private accuracy. This is additional
+  caller-deadline evidence, not a reason to change that candidate-quality result.
 - Verification: deterministic budget tests cover an ordinary command, a late clamped command, and
   reserve exhaustion. A real process-tree regression proves a requested ten-second command is
   limited to no more than one second while preserving the final reserve; when time remains, the
@@ -4685,3 +4691,37 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   final interaction before a tool result, no native usage report was available, and the unchanged
   verifier received connection refused. An unchanged final-candidate rerun remains required after
   the general C4-to-G4 integration lands.
+
+## TBF-048: repeated selection on one holdout made a narrow empirical pass optimistic
+
+- Suite and task: Terminal-Bench 2.0 frozen baseline, corrected-adapter trial
+  `train-fasttext__wQg7iUV`.
+- Symptom: the writer trained several real candidates and eventually retained a 60,174,577-byte
+  artifact that scored 0.6228 on the supplied 10,000-row test file. Independent review blocked the
+  narrow 0.0028 margin because the same file had selected among repeated candidates. The unchanged
+  private verifier then measured 0.618125, passed the size check, failed the accuracy check, and
+  awarded reward 0.
+- Cause: the production workflow required independent generalization evidence, but did not give
+  empirical threshold work an explicit search discipline. Successive commands rebuilt the same
+  prepared inputs in temporary directories and used the only final proxy holdout both to choose
+  hyperparameters and to report acceptance. Selecting the best of those noisy measurements made
+  the near-threshold result optimistically biased even though every individual measurement was
+  honest.
+- General resolution: every empirical quality, size, speed, or resource search now prepares
+  reusable inputs once when practical and retains a compact candidate ledger containing parameters,
+  elapsed time, resource use, and independently measured results. Search and selection use a
+  training split or cross-validation rather than repeatedly consulting the final holdout. If that
+  holdout was already reused, the workflow requires the bias to be reported and a defensible margin
+  or independent evidence before a near-threshold claim. Low-cost experiments eliminate weak
+  regions first, the best valid candidate is replaced atomically, and the selected candidate still
+  receives the authoritative end-to-end measurement.
+- Integrity decision: retain reward 0. No private labels, expected answers, task name, model
+  parameters, or altered threshold enter product behavior. The correction applies to model fitting,
+  performance tuning, compression, scientific calibration, heuristic search, and other empirical
+  engineering tasks.
+- Evidence: the frozen trace retained proxy scores of 0.5721, 0.6064, 0.5977, 0.6109, 0.6089, and
+  0.6228 before review identified the selection-bias risk. The fixer then measured a different
+  candidate at 0.6161 raw and 0.5902 after quantization without replacing the better artifact.
+  Focused workflow and generated-artifact design regressions, strict all-target/all-feature Clippy,
+  formatting, and all 137 documentation checks pass for the general correction. A final-candidate
+  rerun remains required.
