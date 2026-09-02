@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1143,
+  "next_comment_id": 1144,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-09-02T01:12:20.548107423Z",
+      "updated_at": "2026-09-02T13:59:01.233744103Z",
       "labels": [
         "qualification",
         "release"
@@ -5963,6 +5963,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAFB1MODkOEC40pYJT6nnjPXaDglWY35objpqm5mZ+P3wlCsZmkubYtSeSreNQ47AgSu7WAcIt7wZr8UE7WVCqAw=="
+        },
+        "f0213584-0219-4e4f-91bd-ecffe3275469": {
+          "display_id": 1143,
+          "author": "6ME5",
+          "content": "CI repair after checkpoint e9da73a: restore Verus-facing CommandRuntime constructor parity, make the Windows PATHEXT branch strict-clippy clean, and retain exact fields for hosted dependency-death qualification mismatches. Exact local Verus, strict clippy, xtask, check, and full workspace test gates pass; the focused dependency qualification passed eight consecutive fresh runs.",
+          "created_at": "2026-09-02T13:59:01.221971554Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALsQNSbpGr7S5pbhc9FkTiOTzQhsj//GtAiogJasCZEESE5gWVT2v0JaUi6XKn9/dTpNGhw+Sy7403QkOD8AsCg=="
         },
         "f0809f53-b0d2-4960-81e5-3a48f043fe70": {
           "display_id": 551,
@@ -11043,8 +11052,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-02T01:12:20.548107423Z",
+    "timestamp": "2026-09-02T13:59:01.233744103Z",
     "agent_id": "6ME5",
-    "agent_seq": 1349
+    "agent_seq": 1350
   }
 }
