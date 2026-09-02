@@ -1,6 +1,6 @@
 {
   "next_display_id": 42,
-  "next_comment_id": 1138,
+  "next_comment_id": 1139,
   "display_id_map": {
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -1278,7 +1278,7 @@
       "priority": "critical",
       "created_by": "6ME5",
       "created_at": "2026-08-27T17:00:37.980863416Z",
-      "updated_at": "2026-09-02T00:32:39.287411157Z",
+      "updated_at": "2026-09-02T00:32:44.316247509Z",
       "labels": [
         "qualification",
         "release"
@@ -2426,6 +2426,15 @@
           "kind": "evidence",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZAGNPwHZ8OlnZqYrFF5EA5RGEyZF2VtYfV0cUPE2aVA3HODM6htBT0KsEzYYGTNmcRcO6KjDf90iTg12b77SAA=="
+        },
+        "3eac59e3-4a0d-43c3-9c06-768522e6c1c8": {
+          "display_id": 1138,
+          "author": "6ME5",
+          "content": "[action] Qualified TBF-044 live command-budget fix; all local gates green; preparing signed commit and hosted CI.",
+          "created_at": "2026-09-02T00:32:44.313812109Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA6eap9O0sqjWFWMYIablkBqh+cOsq3owCV92Ejt6EXzwXrWucsXe8hKZXCJi99gK3r9Tki7pt7d4Y0NhC61rdAQ=="
         },
         "3eadba0b-f094-4f02-9c52-e07d6a30b38c": {
           "display_id": 623,
@@ -10998,8 +11007,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-02T00:32:39.287411157Z",
+    "timestamp": "2026-09-02T00:32:44.316247509Z",
     "agent_id": "6ME5",
-    "agent_seq": 1344
+    "agent_seq": 1345
   }
 }
