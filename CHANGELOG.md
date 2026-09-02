@@ -6,9 +6,11 @@
   keep macOS and Windows raw commands on the honest reference contract, and do not fail a
   short-lived macOS command when its optional libproc sample races process-group removal. Compare
   canonical workspace paths when starting commands so macOS's `/var` to `/private/var` filesystem
-  alias cannot falsely reject an in-workspace working directory. Preserve exact observed fields
-  when the real dependency-death qualification differs on a hosted platform so any recurrence is
-  actionable rather than an opaque assertion (#31).
+  alias cannot falsely reject an in-workspace working directory. Keep interactive raw commands
+  usable on Windows through bounded input/output pipes, where the raw C2 path cannot provide the
+  descendant containment required for ConPTY; native restricted launches retain real ConPTY.
+  Preserve exact observed fields when a hosted-platform qualification differs so any recurrence
+  is actionable rather than an opaque assertion (#31).
 - Route ordinary product and benchmark developer commands through the existing C4 router and
   daemon-owned C2 process store. Keep the simple bounded `run_command` path, and add stable
   run-owned handles for start, poll, terminal input, resize, portable signals, cancellation, and

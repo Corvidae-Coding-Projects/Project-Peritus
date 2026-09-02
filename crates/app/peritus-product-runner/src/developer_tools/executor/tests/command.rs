@@ -30,7 +30,7 @@ fn active_commands_accept_terminal_input_and_reach_a_stable_result() {
     );
     assert!(!input.is_error, "{}", wire(&input));
     let terminal = poll_terminal(&mut tools, handle);
-    assert_eq!(terminal["status"], "succeeded");
+    assert_eq!(terminal["status"], "succeeded", "{terminal}");
     assert!(
         terminal["stdout"]
             .as_str()
