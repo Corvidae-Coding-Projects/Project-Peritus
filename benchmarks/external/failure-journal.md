@@ -4093,6 +4093,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   segmentation fault, and retained reward 0 because the requested patch and tests were absent. This
   independently exercises the existing large-repository correction; it does not justify changing
   the task, verifier, inventory ceiling, or frozen campaign binary.
+- Frozen recurrence `fix-ocaml-gc__ynRNnVL` repeated the same repository terminal after 1.552
+  seconds, with an empty trace and zero provider requests. The unchanged verifier proceeded against
+  unmodified OCaml while the requested patch remained absent; its generated `tests.txt` contained
+  only the testsuite make enter/leave lines rather than the required 40-pass result, so reward 0 is
+  retained. Campaign revision `d4a72e67` predates bounded-sample correction `7091df79`; schedule the
+  unchanged task only for the final-candidate campaign rather than adding an OCaml-specific
+  inventory exception.
 - Frozen recurrence `crack-7z-hash__3AnLGF2` stopped at the same artifact-inventory boundary after
   329 milliseconds and zero provider requests. The corrected adapter retained the native repository
   failure, the unchanged verifier found no requested result, and reward 0 remains authoritative.
@@ -4339,6 +4346,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   directory inventory `['main.py.c', 'cmain']` instead of `['main.py.c']`. The frozen product used
   source revision `d4a72e67` and binary SHA-256
   `ed0ef30eb5dda2817ebd8a02e46062b7c5a7400e22ee04653d5106d3e6ffb1e7`.
+- Frozen recurrence `polyglot-c-py__8kNNAB6` again produced and verified a functional arbitrary-
+  precision Python/C Fibonacci polyglot, but retained `polyglot/cmain` after compilation. Native
+  Peritus accepted both paths after 18 requests; the unchanged verifier's sole check failed only
+  because the directory contained `['main.py.c', 'cmain']`. Preserve reward 0. This campaign binary
+  predates correction commit `2d65c044`, whose focused regression rejects this exact inventory, so
+  the recurrence requires no second product fix.
 - Verification: focused regressions reject the retained compiler byproduct, accept the exact
   one-file inventory, and leave negated or multi-output requests open. All 117 product-runner unit,
   integration, provider-failover, role-recovery, and documentation tests pass; strict all-target
@@ -4650,6 +4663,14 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   and use it as additional evidence for caller-derived command allowances, completion reserves,
   reusable dependency environments, and explicit separation of setup time from candidate quality.
   Do not add pipeline-stage values, expected tensors, task names, or verifier-specific shortcuts.
+- Frozen recurrence `query-optimize__bZV4F4Q` spent the unchanged 900-second agent window inspecting
+  the full SQLite database, recovering from retryable malformed provider turns, comparing query
+  plans, and beginning an exact baseline/candidate result comparison, but was cancelled before it
+  wrote `sol.sql`. The verifier passed both database-integrity checks and failed four checks solely
+  because the requested artifact was absent; Harbor retained `AgentTimeoutError`, null official
+  reward, and verifier reward 0. Frozen revision `d4a72e67` predates caller-deadline correction
+  `389c7d10`, so this is additional evidence for the existing general completion reserve, not a
+  query-specific rewrite or permission to use the verifier's golden timing.
 - Verification: deterministic budget tests cover an ordinary command, a late clamped command, and
   reserve exhaustion. A real process-tree regression proves a requested ten-second command is
   limited to no more than one second while preserving the final reserve; when time remains, the
