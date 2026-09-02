@@ -211,24 +211,36 @@ fn output_context(words: &[&str]) -> bool {
         return false;
     };
     let negation_start = trigger.saturating_sub(2);
-    !context[negation_start..trigger].iter().any(|word| negation(word))
+    if context[negation_start..trigger].iter().any(|word| negation(word)) {
+        return false;
+    }
+    let trailing = &context[trigger + 1..];
+    !ambiguous_addition_verb(context[trigger])
+        || trailing.len() <= 3
+        || trailing.iter().any(|word| path_noun(word))
 }
 
 fn path_noun_context(words: &[&str]) -> bool {
     let start = words.len().saturating_sub(6);
-    words[start..].iter().any(|word| {
-        matches!(
-            normalized(word).as_str(),
-            "artifact"
-                | "binary"
-                | "directory"
-                | "executable"
-                | "file"
-                | "folder"
-                | "program"
-                | "script"
-        )
-    })
+    words[start..].iter().any(|word| path_noun(word))
+}
+
+fn path_noun(word: &str) -> bool {
+    matches!(
+        normalized(word).as_str(),
+        "artifact"
+            | "binary"
+            | "directory"
+            | "executable"
+            | "file"
+            | "folder"
+            | "program"
+            | "script"
+    )
+}
+
+fn ambiguous_addition_verb(word: &str) -> bool {
+    matches!(normalized(word).as_str(), "add" | "adds")
 }
 
 fn explicitly_delimited(raw: &str) -> bool {

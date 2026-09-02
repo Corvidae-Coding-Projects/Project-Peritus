@@ -3422,6 +3422,15 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   unusual filename. Seven focused path tests and all 120 product-runner unit, integration, and
   role-recovery tests pass. This general distinction applies to manifests, contact data,
   configuration, calendars, and documentation without naming any benchmark task in product code.
+- Frozen recurrence `schemelike-metacircular-eval__AKffZKy` created the requested `eval.scm`,
+  matched direct execution across all 32 supplied programs, interpreted itself, and passed all 63
+  unchanged verifier checks for reward 1. Deterministic acceptance nevertheless required a new
+  root `calculator.scm` because the later explanatory sentence “will add 7 and 8 because that is
+  what calculator.scm does” put the filename within the generic output-verb window. The parser now
+  treats `add` and `adds` as ambiguous: a nearby target or intervening file/path noun establishes
+  mutation context, while distant arithmetic and collection prose does not. The requested
+  `eval.scm` remains mandatory, and ordinary instructions such as “add src/feature.rs” or “add a
+  new configuration file settings.toml” retain their deterministic path checks.
 
 ## TBF-020: an unconstrained inspection filled model context with low-signal output
 
@@ -4601,6 +4610,17 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   the native process before its report. The unchanged verifier still inspected the retained model
   and awarded the honest reward 0 for its separate 0.618125 private accuracy. This is additional
   caller-deadline evidence, not a reason to change that candidate-quality result.
+- Frozen recurrence `torch-tensor-parallelism__CrfdDzK` spent almost ten minutes of its unchanged
+  900-second agent window on an ordinary default PyTorch install before recovering to the smaller
+  CPU-only package. Harbor then cancelled the native process before the writer could run its
+  decisive multi-rank checks or publish a report. The unchanged verifier artifacts subsequently
+  recorded 9 of 13 checks passing and an honest zero reward file: every multi-rank row-parallel
+  case exposed the same input/weight partition mismatch, while Harbor retained the official trial
+  as an agent-timeout error with null reward. The current shared command allowance would clamp the
+  first install before the completion reserve, leaving a bounded opportunity to choose the cheaper
+  dependency route, run the distributed checks, and either repair the candidate or report its real
+  limit. This is additional cross-language dependency and verification evidence for the existing
+  general correction, not a tensor, PyTorch, or expected-shape rule.
 - Verification: deterministic budget tests cover an ordinary command, a late clamped command, and
   reserve exhaustion. A real process-tree regression proves a requested ten-second command is
   limited to no more than one second while preserving the final reserve; when time remains, the
@@ -4725,3 +4745,35 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   Focused workflow and generated-artifact design regressions, strict all-target/all-feature Clippy,
   formatting, and all 137 documentation checks pass for the general correction. A final-candidate
   rerun remains required.
+
+## TBF-049: a verification-created artifact was protected from its own cleanup
+
+- Suite and task: Terminal-Bench 2.0 frozen baseline, corrected-adapter trial
+  `schemelike-metacircular-eval__AKffZKy`.
+- Symptom: the writer produced a correct self-hosting evaluator and its verification command
+  matched all 32 supplied programs. One of those programs intentionally wrote `callback-test.txt`
+  as part of its file-I/O behavior. Independent review correctly identified that temporary file as
+  outside the requested delivery, but the fixer’s exact `workspace_remove` call was refused as an
+  apparently late external file. Native Peritus exhausted 34 requests and reported a gate failure;
+  the unchanged verifier passed all 63 cases and retained reward 1.
+- Cause: the cross-invocation ownership ledger distinguished baseline files and direct
+  `workspace_write` creations from late evaluator or service evidence, but did not attribute the
+  bounded side effects of a model-requested `run_command`. A legitimate test product and an
+  unrelated file arriving before that command therefore had the same conservative removal status.
+- General resolution: the writable command executor now snapshots non-generated regular files
+  immediately before each harness-owned command and records only files that appear while that
+  command executes. Those exact command-created files may later be removed through
+  `workspace_remove`, including in a fixer cycle, while files that appeared before the command
+  remain protected. Command-generated source still does not become first-party architecture for
+  the 500-line layout gate.
+- Integrity decision: retain reward 1 and the native failure. No Scheme filename, callback content,
+  test path, or verifier behavior enters product policy. The correction applies to test fixtures,
+  compiler products, generated reports, extractors, format converters, and other ordinary commands
+  whose bounded workspace side effects need cleanup without weakening external-evidence ownership.
+- Verification: a focused executor regression creates one unrelated late file before a real
+  subprocess, has that subprocess create a second file, proves the second can be removed, and proves
+  the first remains protected. The ownership unit regression independently preserves source-layout
+  treatment for directly authored versus command-generated files. The complete product-runner
+  suite passes 130 tests, strict all-target/all-feature Clippy and formatting are clean, all 137
+  documentation checks pass, and the repository-wide gate passes across 79 packages and 3,372
+  source files.

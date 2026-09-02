@@ -160,3 +160,20 @@ fn generated_filename_placeholders_are_not_literal_output_paths() {
     assert!(!record.output.contains("name}_pb2.py"));
     assert!(!record.output.contains("name>_pb2_grpc.py"));
 }
+
+#[test]
+fn arithmetic_addition_does_not_make_a_later_example_input_an_output() {
+    let root = tempfile::tempdir().expect("root");
+    fs::write(root.path().join("eval.scm"), "candidate").expect("candidate");
+    fs::create_dir(root.path().join("test")).expect("test directory");
+    fs::write(root.path().join("test/calculator.scm"), "input").expect("input");
+    let transcript = "Write a file eval.scm that is a metacircular evaluator.\n\
+        The first example will add 7 and 8 because that is what calculator.scm does.";
+
+    let record = run(root.path(), transcript, &[PathBuf::from("eval.scm")]);
+
+    assert_eq!(record.exit_code, Some(0), "{}", record.output);
+    assert!(record.output.contains("Required explicit output paths (1):"));
+    assert!(record.output.contains("eval.scm: present"));
+    assert!(!record.output.contains("calculator.scm:"));
+}

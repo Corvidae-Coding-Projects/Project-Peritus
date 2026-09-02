@@ -311,7 +311,7 @@ impl WorkspaceDeveloperTools {
         removal::remove(&self.root, &self.grounding, &self.ownership, arguments)
     }
 
-    fn run(&self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
+    fn run(&mut self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
         let program = required_string(arguments, "program")?;
         if program.is_empty() || program.contains(['\0', '\n', '\r']) {
             return Err(tool("command program is invalid"));
@@ -348,7 +348,10 @@ impl WorkspaceDeveloperTools {
         if allowance.timeout_seconds == 0 {
             return Ok(allowance.exhausted_result());
         }
-        let output = process::run(command, Duration::from_secs(allowance.timeout_seconds))?;
+        let unowned_before = self.ownership.unowned_files(&self.root);
+        let output = process::run(command, Duration::from_secs(allowance.timeout_seconds));
+        self.ownership.record_command_creations(&self.root, &unowned_before);
+        let output = output?;
         let remaining_product_seconds = budget.remaining_seconds();
         let recovery_hint = if output.timed_out {
             Some(if allowance.deadline_limited {

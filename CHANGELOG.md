@@ -1,5 +1,15 @@
 # Changelog
 
+- Attribute files created during harness-owned structured commands so later fixer cycles can clean
+  up their exact test and generator products without gaining permission to delete unrelated files
+  that appeared before the command (`TBF-049`, #31).
+- Keep arithmetic and collection uses of “add” from turning a distant example filename into a
+  required output, while retaining exact-path checks for nearby targets and explicit file nouns
+  (`TBF-019`, #31).
+- Record another frozen shared-deadline recurrence where a default dependency install consumed the
+  agent window before decisive distributed verification; retain the honest candidate failure while
+  the current command allowance and completion reserve remain the general correction (`TBF-044`,
+  #31).
 - Systematize empirical threshold work with reusable prepared inputs, a measured candidate ledger,
   selection data kept separate from the final holdout, atomic best-candidate preservation, bounded
   low-cost search, and a fresh authoritative end-to-end check (`TBF-048`, #31).
