@@ -1,5 +1,8 @@
 # Changelog
 
+- Treat brace- and angle-delimited generated-name placeholders as patterns rather than literal
+  required paths, so exact-output reconciliation no longer rejects correct generated artifacts
+  because prose examples such as `{class name}_generated.ext` contain whitespace (`TBF-046`, #31).
 - Record another frozen caller-deadline recurrence where Harbor lost the native report but the
   unchanged candidate passed all five verifier checks, preserving the reward as an honest success
   rather than a product-quality zero (`TBF-042`, #31).

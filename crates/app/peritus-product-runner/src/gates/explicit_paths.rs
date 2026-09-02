@@ -138,7 +138,7 @@ fn parse_path(
     required_output: bool,
     quoted_bare_name: bool,
 ) -> Option<PathBuf> {
-    if prose_abbreviation(raw) {
+    if prose_abbreviation(raw) || unresolved_placeholder(raw) {
         return None;
     }
     let token = trim_delimiters(raw);
@@ -170,6 +170,10 @@ fn parse_path(
         return None;
     }
     Some(relative)
+}
+
+fn unresolved_placeholder(raw: &str) -> bool {
+    raw.contains(['{', '}', '<', '>'])
 }
 
 fn email_address(token: &str) -> bool {

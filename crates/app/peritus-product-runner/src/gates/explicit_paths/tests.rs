@@ -130,3 +130,33 @@ fn prose_abbreviation_is_not_an_output_path() {
     assert!(record.output.contains("answer.txt: present"));
     assert!(!record.output.contains("e.g"));
 }
+
+#[test]
+fn generated_filename_placeholders_are_not_literal_output_paths() {
+    let root = tempfile::tempdir().expect("root");
+    for path in ["kv-store.proto", "kv_store_pb2.py", "kv_store_pb2_grpc.py", "server.py"] {
+        fs::write(root.path().join(path), "candidate").expect("candidate");
+    }
+    let transcript = format!(
+        "Create {0}/kv-store.proto. Generate two files: {{class name}}_pb2.py and \
+         <class name>_pb2_grpc.py, and place them in {0}. Create {0}/server.py.",
+        root.path().display(),
+    );
+
+    let record = run(
+        root.path(),
+        &transcript,
+        &[
+            PathBuf::from("kv-store.proto"),
+            PathBuf::from("kv_store_pb2.py"),
+            PathBuf::from("kv_store_pb2_grpc.py"),
+            PathBuf::from("server.py"),
+        ],
+    );
+
+    assert_eq!(record.exit_code, Some(0), "{}", record.output);
+    assert!(record.output.contains("kv-store.proto: present"));
+    assert!(record.output.contains("server.py: present"));
+    assert!(!record.output.contains("name}_pb2.py"));
+    assert!(!record.output.contains("name>_pb2_grpc.py"));
+}

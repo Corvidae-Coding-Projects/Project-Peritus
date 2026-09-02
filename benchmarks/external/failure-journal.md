@@ -4606,3 +4606,25 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   reviewer roles. The complete product-runner suite passes 126 tests, strict all-target/all-feature
   Clippy is clean, documentation validation passes all 137 maintained files, and the repository-wide
   gate passes across 79 packages and 3,372 source files.
+
+## TBF-046: a generated-name placeholder became a literal required path
+
+- Suite and task: Terminal-Bench 2.0 frozen baseline, corrected-adapter trial
+  `kv-store-grpc__63mHzFg`.
+- Symptom: the candidate created every requested artifact and passed all seven unchanged verifier
+  tests, earning reward 1. Native Peritus nonetheless rejected it because the deterministic
+  explicit-output gate reported `name}_pb2.py` and `name}_pb2_grpc.py` as missing.
+- Cause: whitespace tokenization split prose placeholders such as `{class name}_pb2.py`. The first
+  token was harmless, but delimiter trimming turned the second token into a plausible literal path.
+  The gate therefore enforced an unresolved documentation pattern that could not be a concrete
+  requested filename.
+- General resolution: explicit-path extraction now excludes brace- and angle-delimited unresolved
+  placeholders before delimiter trimming. Concrete paths named elsewhere remain deterministic
+  requirements, while generated artifacts continue to be inspected through the candidate inventory
+  and ordinary build or end-to-end checks.
+- Integrity decision: retain reward 1. No task name, protocol filename, expected generated basename,
+  or verifier behavior enters the gate. The correction applies to code generators, templates,
+  manifests, migration tools, compilers, and documentation that expresses output-name patterns.
+- Verification: a regression combines concrete absolute output paths with whitespace-bearing brace
+  and angle placeholders, requires the concrete files, and proves neither placeholder fragment is
+  enforced as a literal path. An unchanged final-candidate rerun remains required.
