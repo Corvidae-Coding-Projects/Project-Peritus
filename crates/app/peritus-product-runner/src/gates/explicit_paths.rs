@@ -136,7 +136,8 @@ fn extract(root: &Path, transcript: &str) -> PathRequirements {
             if descriptive_extension(word, words.get(index + 1).copied()) {
                 continue;
             }
-            let required_output = output_context(&words[..index]);
+            let required_output =
+                output_context(&words[..index]) && !conditional_clause(&words[..index]);
             let quoted_bare_name =
                 required_output && path_noun_context(&words[..index]) && explicitly_delimited(word);
             let Some(relative) = parse_path(root, word, required_output, quoted_bare_name) else {
@@ -296,6 +297,14 @@ fn output_context(words: &[&str]) -> bool {
 fn path_noun_context(words: &[&str]) -> bool {
     let start = words.len().saturating_sub(6);
     words[start..].iter().any(|word| path_noun(word))
+}
+
+fn conditional_clause(words: &[&str]) -> bool {
+    let clause_start = words
+        .iter()
+        .rposition(|word| word.ends_with(['.', '?', '!', ';']))
+        .map_or(0, |index| index + 1);
+    words[clause_start..].iter().any(|word| matches!(normalized(word).as_str(), "if" | "unless"))
 }
 
 fn path_noun(word: &str) -> bool {

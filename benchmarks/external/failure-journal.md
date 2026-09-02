@@ -5117,3 +5117,27 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   immutable 445-trial report was then published at
   `/home/doll/.local/state/peritus/benchmarks/terminalbench/reports/frozen-baseline-445.final.json`
   with SHA-256 `d7feff820c7d38d204744f75ef9214cb7b91949cac2c8c3b5625f10c39321bc0`.
+
+## HBF-030: a conditional troubleshooting command became a required output file
+
+- Suite and task: HarnessBench 2.0 retained qualification of `009-git-pr-merge`.
+- Symptom: the agent reviewed and merged the requested branch, pushed `main`, and wrote the required
+  `out/review.txt`. The unchanged external oracle passed all four checks and awarded outcome 1. The
+  native run nevertheless failed because exact-path reconciliation reported `safe.directory` as a
+  missing output. Reviewers correctly classified the finding as advisory, but two unchanged fixer
+  cycles could not satisfy an output that the task never requested.
+- Cause: the task said that if Git emitted a particular warning, the agent could run a configuration
+  command containing `--add safe.directory`. The extractor recognized `add` as an output verb and
+  a later dotted configuration key as a path, without preserving that the entire command was
+  conditional troubleshooting guidance.
+- General resolution: output-looking tokens inside `if` and `unless` clauses are no longer
+  universal path requirements. A completed sentence or semicolon starts a fresh clause, so later
+  unconditional deliverables remain strict. The rule applies to conditional setup, recovery,
+  compatibility, and diagnostic commands without naming Git, this task, or any benchmark value.
+- Integrity decision: retain the external pass and native failure as observed. No task prompt,
+  oracle, result, workspace, provider response, or benchmark adapter was changed, and no
+  configuration-key exception was introduced.
+- Verification: focused regressions cover both a conditional configuration command followed by an
+  unconditional artifact and a genuinely conditional deliverable. The complete product-runner
+  suite passes all 144 unit and integration tests with two build jobs; repository-wide
+  qualification remains required.

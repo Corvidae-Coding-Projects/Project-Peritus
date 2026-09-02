@@ -225,3 +225,26 @@ fn arithmetic_addition_does_not_make_a_later_example_input_an_output() {
     assert!(record.output.contains("eval.scm: present"));
     assert!(!record.output.contains("calculator.scm:"));
 }
+
+#[test]
+fn conditional_troubleshooting_commands_do_not_create_output_requirements() {
+    let root = tempfile::tempdir().expect("root");
+    fs::create_dir(root.path().join("out")).expect("output directory");
+    fs::write(root.path().join("out/review.txt"), "APPROVE\n").expect("review");
+    let transcript = "If the tool warns about client.compatibility, run once `tool config \
+        --global --add client.compatibility /workspace`. Write the review to `out/review.txt`.";
+
+    let record = run(root.path(), transcript, &[PathBuf::from("out/review.txt")]);
+
+    assert_eq!(record.exit_code, Some(0), "{}", record.output);
+    assert!(record.output.contains("out/review.txt: present"));
+    assert!(!record.output.contains("client.compatibility:"));
+}
+
+#[test]
+fn conditional_deliverables_are_not_universal_requirements() {
+    let root = tempfile::tempdir().expect("root");
+    let transcript = "If input rows exist, write `out/rows.csv`. Always create `summary.md`.";
+
+    assert_eq!(required_outputs(root.path(), transcript), vec![PathBuf::from("summary.md")]);
+}

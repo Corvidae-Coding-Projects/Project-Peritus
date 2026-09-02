@@ -1,5 +1,9 @@
 # Changelog
 
+- Treat outputs mentioned only inside conditional troubleshooting clauses as optional instead of
+  inventing mandatory files from command or configuration tokens. Preserve strict presence checks
+  for unconditional deliverables and resume exact checks after a sentence or clause boundary
+  (`HBF-030`, #31).
 - Derive each HarnessBench product work horizon from the pinned task's unchanged outer timeout,
   reserving bounded time for provider cancellation, trace projection, and native report
   publication. Reject missing or ambiguous task deadline evidence instead of silently running with
