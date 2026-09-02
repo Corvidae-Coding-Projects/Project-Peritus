@@ -84,6 +84,28 @@ impl<'a> ProviderCursor<'a> {
         self.advance_with_reason("capability_mismatch")
     }
 
+    pub fn advance_past_open_circuit(
+        &mut self,
+        accounting: &RunAccounting,
+    ) -> Option<ProviderSwitch> {
+        let previous = self.current().profile().profile_id();
+        if !accounting.provider_circuit_open(previous) {
+            return None;
+        }
+        let next = self.candidates.iter().enumerate().skip(self.index + 1).find_map(
+            |(index, provider)| {
+                (!accounting.provider_circuit_open(provider.profile().profile_id()))
+                    .then_some(index)
+            },
+        )?;
+        self.index = next;
+        Some(ProviderSwitch {
+            previous,
+            next: self.current().profile().profile_id(),
+            reason: "open_circuit",
+        })
+    }
+
     fn advance_with_reason(&mut self, reason: &'static str) -> Option<ProviderSwitch> {
         let next = self.index.checked_add(1)?;
         let provider = *self.candidates.get(next)?;
@@ -166,7 +188,36 @@ pub fn record_switch(
     switch: ProviderSwitch,
 ) -> Result<(), ProductRunnerError> {
     crate::trace::record_provider_switch(&input.trace_path, role, cycle, switch)?;
+    if opens_circuit(switch.reason()) {
+        accounting.open_provider_circuit(switch.previous());
+    }
     accounting.record_provider_failover()
+}
+
+pub fn bypass_open_circuit(
+    input: &ProductRunInput,
+    role: &str,
+    cycle: u32,
+    accounting: &mut RunAccounting,
+    providers: &mut ProviderCursor<'_>,
+) -> Result<(), ProductRunnerError> {
+    if let Some(switch) = providers.advance_past_open_circuit(accounting) {
+        record_switch(input, role, cycle, accounting, switch)?;
+    }
+    Ok(())
+}
+
+pub fn record_provider_success(
+    accounting: &mut RunAccounting,
+    providers: &ProviderCursor<'_>,
+    recovery: &mut RoleRecovery,
+) {
+    recovery.reset();
+    accounting.close_provider_circuit(providers.current().profile().profile_id());
+}
+
+fn opens_circuit(reason: &str) -> bool {
+    !matches!(reason, "capability_mismatch" | "open_circuit")
 }
 
 const fn terminal_reason(category: FailureCategory) -> Option<&'static str> {
@@ -252,5 +303,13 @@ mod tests {
             }),
             None
         );
+    }
+
+    #[test]
+    fn capability_and_circuit_bypasses_do_not_reopen_provider_circuits() {
+        assert!(!opens_circuit("capability_mismatch"));
+        assert!(!opens_circuit("open_circuit"));
+        assert!(opens_circuit("authentication"));
+        assert!(opens_circuit("empty_response"));
     }
 }

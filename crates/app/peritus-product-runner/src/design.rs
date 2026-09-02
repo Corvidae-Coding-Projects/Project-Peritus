@@ -67,6 +67,7 @@ pub async fn create(
     let mut correction = None;
     loop {
         check_cancelled(input)?;
+        crate::failover::bypass_open_circuit(input, "designer", cycle, accounting, &mut providers)?;
         invocation = invocation.saturating_add(1);
         let revision = input.conversation.revision();
         let transcript = input.conversation.render();
@@ -122,7 +123,7 @@ pub async fn create(
                 return Err(crate::turn::developer_error(&error));
             }
         };
-        provider_recovery.reset();
+        crate::failover::record_provider_success(accounting, &providers, &mut provider_recovery);
         accounting.record(&result)?;
         check_cancelled(input)?;
         if input.conversation.revision() != revision {

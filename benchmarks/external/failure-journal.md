@@ -5141,3 +5141,31 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   unconditional artifact and a genuinely conditional deliverable. The complete product-runner
   suite passes all 144 unit and integration tests with two build jobs; repository-wide
   qualification remains required.
+
+## TBF-057: provider unavailability was forgotten between product roles
+
+- Suite and tasks: Terminal-Bench 2.0 complete frozen diagnostic aggregate, across designer,
+  writer, reviewer, and fixer activity.
+- Symptom: 215 retained native results ended with a provider failure, including 175 instances of
+  `provider returned no tool calls or usable final response`. One hundred one provider-failed
+  trials still earned reward 1 because useful candidates survived. Fresh-invocation recovery and
+  explicit fallback fixed the immediate role boundary, but each later role constructed a new
+  provider cursor and could call the same route after the run had already proved it unavailable.
+- Cause: provider recovery state was local to one role invocation. Cumulative run accounting
+  retained retry and failover counts but not the affected provider-profile identity, so a designer
+  failure could be repeated by the writer or a writer failure by a later fixer.
+- General resolution: run accounting now retains an in-memory circuit set keyed by exact provider
+  profile. A real provider failover opens the failed route for the remainder of that run. A later
+  role skips an open route when a healthy user-consented fallback exists, records the switch in the
+  same durable trace and counter path, and retains an unavailable route as a last chance when no
+  healthy alternative exists. Capability-only routing and an open-circuit bypass do not themselves
+  mark providers unhealthy.
+- Integrity decision: no task, provider response, score, adapter, or retry bound changed. The
+  circuit is run-scoped rather than a benchmark-wide provider blacklist, and it never routes around
+  safety, refusal, cancellation, or ambiguous-acceptance terminals.
+- Verification: the composed provider-failover regression assigns the same credential-failing
+  primary to every role. The product still completes through its consented fallbacks, retains all
+  four visible switch records, and now starts the failed primary once for the complete run instead
+  of once per role. All 146 product-runner tests, strict all-target/all-feature Clippy, and the
+  79-package repository policy gate pass with two build jobs; hosted qualification remains
+  required.

@@ -1,11 +1,13 @@
 //! Cumulative accounting and generous hard ceilings for one complete product run.
 
 use std::{
+    collections::BTreeSet,
     path::Path,
     time::{Duration, Instant},
 };
 
 use peritus_agent::DeveloperLoopOutcome;
+use peritus_types::ProviderProfileId;
 
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
@@ -146,6 +148,7 @@ pub struct RunAccounting {
     max_elapsed: Duration,
     progress: ProductRunProgress,
     resources: RunResourceProbe,
+    unavailable_providers: BTreeSet<ProviderProfileId>,
 }
 
 impl RunAccounting {
@@ -156,6 +159,7 @@ impl RunAccounting {
             max_elapsed,
             progress: ProductRunProgress::default(),
             resources: RunResourceProbe::new(workspace_root)?,
+            unavailable_providers: BTreeSet::new(),
         })
     }
 
@@ -185,6 +189,18 @@ impl RunAccounting {
     pub fn record_provider_failover(&mut self) -> Result<(), ProductRunnerError> {
         self.progress.provider_failovers = add_u32(self.progress.provider_failovers, 1)?;
         self.check()
+    }
+
+    pub fn open_provider_circuit(&mut self, profile: ProviderProfileId) {
+        self.unavailable_providers.insert(profile);
+    }
+
+    pub fn provider_circuit_open(&self, profile: ProviderProfileId) -> bool {
+        self.unavailable_providers.contains(&profile)
+    }
+
+    pub fn close_provider_circuit(&mut self, profile: ProviderProfileId) {
+        self.unavailable_providers.remove(&profile);
     }
 
     pub fn check(&mut self) -> Result<(), ProductRunnerError> {
@@ -298,6 +314,19 @@ mod tests {
         let progress = accounting.snapshot().expect("bounded progress");
         assert_eq!(progress.provider_failovers(), 1);
         assert_eq!(progress.retries(), 0);
+    }
+
+    #[test]
+    fn successful_probe_closes_a_run_scoped_provider_circuit() {
+        let temporary = tempfile::tempdir().expect("workspace");
+        let mut accounting =
+            RunAccounting::new(temporary.path(), PRODUCT_RUN_MAX_ELAPSED).expect("accounting");
+        let profile = ProviderProfileId::new([0x51; 16]).expect("profile ID");
+
+        accounting.open_provider_circuit(profile);
+        assert!(accounting.provider_circuit_open(profile));
+        accounting.close_provider_circuit(profile);
+        assert!(!accounting.provider_circuit_open(profile));
     }
 
     #[test]

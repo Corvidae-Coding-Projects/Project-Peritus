@@ -37,6 +37,7 @@ pub async fn complete(
     let mut invocation = 0_u32;
     loop {
         check_cancelled(input)?;
+        crate::failover::bypass_open_circuit(input, "reviewer", cycle, accounting, &mut providers)?;
         invocation = invocation.saturating_add(1);
         let prompt = turn::reviewer_user(&turn::ReviewerPrompt {
             transcript: evidence.conversation,
@@ -107,7 +108,7 @@ pub async fn complete(
                 return Err(turn::developer_error(&error));
             }
         };
-        provider_recovery.reset();
+        crate::failover::record_provider_success(accounting, &providers, &mut provider_recovery);
         accounting.record(&result)?;
         check_cancelled(input)?;
         let submission = tools

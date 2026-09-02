@@ -57,6 +57,7 @@ pub async fn complete_developer_turn(
     let (mut correction, mut pending_question) = (None, None);
     loop {
         check_cancelled(input)?;
+        crate::failover::bypass_open_circuit(input, role, cycle, accounting, &mut providers)?;
         invocation = invocation.saturating_add(1);
         let revision = input.conversation.revision();
         let identity = DeveloperInvocation { role, cycle, invocation };

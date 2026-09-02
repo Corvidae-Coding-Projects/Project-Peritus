@@ -7,7 +7,10 @@ use std::{
     collections::VecDeque,
     fs,
     path::Path,
-    sync::{Arc, Mutex, atomic::AtomicBool},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicBool, AtomicUsize, Ordering},
+    },
 };
 
 use peritus_model_protocol::{ModelRequest, ProviderProfile};
@@ -28,6 +31,7 @@ use support::{
 
 struct UnavailableProvider {
     profile: ProviderProfile,
+    starts: Arc<AtomicUsize>,
 }
 
 impl ModelProvider for UnavailableProvider {
@@ -40,6 +44,7 @@ impl ModelProvider for UnavailableProvider {
         _request: ModelRequest,
         _cancellation: CancellationToken,
     ) -> BoxFuture<'_, Result<OwnedModelStream, ProviderCoreError>> {
+        self.starts.fetch_add(1, Ordering::SeqCst);
         Box::pin(async {
             Err(ProviderCoreError::credential("configured account is temporarily unavailable"))
         })
@@ -73,8 +78,10 @@ mod tests {
     }
 }
 ";
+            let unavailable_starts = Arc::new(AtomicUsize::new(0));
             let unavailable: Arc<dyn ModelProvider> = Arc::new(UnavailableProvider {
                 profile: profile([0x61; 16], "unavailable-primary"),
+                starts: Arc::clone(&unavailable_starts),
             });
             let implementer: Arc<dyn ModelProvider> = Arc::new(ScriptedProvider {
                 profile: profile([0x62; 16], "implementation-fallback"),
@@ -153,6 +160,7 @@ mod tests {
                 Some(&4)
             );
             assert_eq!(trace_tags(&trace_path).into_iter().filter(|tag| *tag == 5).count(), 4);
+            assert_eq!(unavailable_starts.load(Ordering::SeqCst), 1);
         });
 }
 

@@ -1,5 +1,9 @@
 # Changelog
 
+- Share run-scoped provider circuit state across designer, writer, reviewer, and fixer roles. Once a
+  configured route exhausts recovery and failover proves another consented route is available,
+  later roles skip the known-unavailable profile instead of paying the same failed call again;
+  capability-only mismatches do not poison the route (`TBF-057`, #31).
 - Treat outputs mentioned only inside conditional troubleshooting clauses as optional instead of
   inventing mandatory files from command or configuration tokens. Preserve strict presence checks
   for unconditional deliverables and resume exact checks after a sentence or clause boundary

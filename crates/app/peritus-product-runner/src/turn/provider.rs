@@ -26,7 +26,7 @@ pub(super) fn resolve(
 ) -> Result<ProviderResolution, ProductRunnerError> {
     let error = match result {
         Ok(outcome) => {
-            recovery.reset();
+            crate::failover::record_provider_success(accounting, providers, recovery);
             return Ok(ProviderResolution::Outcome(outcome));
         }
         Err(error) => error,
