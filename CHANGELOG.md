@@ -1,5 +1,8 @@
 # Changelog
 
+- Freeze both completed external diagnostic campaigns during failure remediation: use retained
+  evidence plus focused regressions for each general correction, and defer any new full comparison
+  until the remediation code is frozen and an operator explicitly starts qualification (#31).
 - Share run-scoped provider circuit state across designer, writer, reviewer, and fixer roles. Once a
   configured route exhausts recovery and failover proves another consented route is available,
   later roles skip the known-unavailable profile instead of paying the same failed call again;
