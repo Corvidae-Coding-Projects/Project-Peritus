@@ -71,7 +71,7 @@ impl WorkspaceAccessPolicy {
                     self.authorize_path(path)?;
                 }
             }
-            "run_command" => self.authorize_command(arguments)?,
+            "run_command" | "command_start" => self.authorize_command(arguments)?,
             _ => {}
         }
         Ok(())

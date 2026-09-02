@@ -263,3 +263,15 @@ pub fn cargo(root: &Path, arguments: &[&str]) {
         .expect("cargo");
     assert!(output.status.success(), "cargo failed: {}", String::from_utf8_lossy(&output.stderr));
 }
+
+pub fn command_runtime(
+    state: &Path,
+    workspace: &Path,
+    run_id: peritus_types::RunId,
+) -> peritus_product_runner::CommandRuntime {
+    let root = state.join("command-runtime");
+    let processes = peritus_process::ProcessStore::open(root.join("processes"), workspace)
+        .expect("command process store");
+    peritus_product_runner::CommandRuntime::open(root.join("router"), workspace, run_id, processes)
+        .expect("command runtime")
+}

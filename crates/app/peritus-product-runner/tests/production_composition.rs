@@ -43,11 +43,14 @@ fn provider_failure_before_first_response_retains_an_empty_trace() {
                 responses: Mutex::new(VecDeque::new()),
             });
             let task = "Document the fixture.".to_owned();
+            let run_id = RunId::new([0x72; 16]).expect("run ID");
+            let command_runtime = support::command_runtime(state.path(), repository.path(), run_id);
             let error = ProductRunner::run(
                 ProductRunInput {
-                    run_id: RunId::new([0x72; 16]).expect("run ID"),
+                    run_id,
                     workspace_root: repository.path().to_owned(),
                     trace_path: trace_path.clone(),
+                    command_runtime,
                     finding_state: String::new(),
                     task: task.clone(),
                     max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
@@ -156,12 +159,15 @@ mod tests {
                 phase_log.lock().expect("phases").push(update.phase);
             });
             let task = "Add a tested answer function that returns 42.".to_owned();
+            let run_id = RunId::new([0x83; 16]).expect("run ID");
+            let command_runtime = support::command_runtime(state.path(), repository.path(), run_id);
 
             let outcome = ProductRunner::run(
                 ProductRunInput {
-                    run_id: RunId::new([0x83; 16]).expect("run ID"),
+                    run_id,
                     workspace_root: repository.path().to_owned(),
                     trace_path: trace_path.clone(),
+                    command_runtime,
                     finding_state: String::new(),
                     task: task.clone(),
                     max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
@@ -326,12 +332,15 @@ mod tests {
                 ])),
             });
             let task = "Add a tested answer function that returns 42.".to_owned();
+            let run_id = RunId::new([0x94; 16]).expect("run ID");
+            let command_runtime = support::command_runtime(state.path(), repository.path(), run_id);
 
             let outcome = ProductRunner::run(
                 ProductRunInput {
-                    run_id: RunId::new([0x94; 16]).expect("run ID"),
+                    run_id,
                     workspace_root: repository.path().to_owned(),
                     trace_path: state.path().join("product.trace"),
+                    command_runtime,
                     finding_state: String::new(),
                     task: task.clone(),
                     max_elapsed: PRODUCT_RUN_MAX_ELAPSED,

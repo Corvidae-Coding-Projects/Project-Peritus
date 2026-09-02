@@ -195,6 +195,10 @@ impl ProductDeliveryScope {
 }
 
 /// Fully resolved daemon input for one product run.
+#[derive(Clone, Debug)]
+pub struct CommandRuntime;
+
+/// Fully resolved daemon input for one product run.
 pub struct ProductRunInput {
     /// Stable run identity.
     pub run_id: RunId,
@@ -202,6 +206,8 @@ pub struct ProductRunInput {
     pub workspace_root: PathBuf,
     /// Durable D0 trace path owned by the daemon.
     pub trace_path: PathBuf,
+    /// Run-owned command router backed by the daemon's durable process registry.
+    pub command_runtime: CommandRuntime,
     /// Durable D2 finding ledger restored by the daemon.
     pub finding_state: String,
     /// Natural-language coding task.

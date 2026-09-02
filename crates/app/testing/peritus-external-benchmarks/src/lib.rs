@@ -2,6 +2,7 @@
 
 mod agent;
 mod args;
+mod command_runtime;
 mod dispatch;
 mod error;
 mod evidence;

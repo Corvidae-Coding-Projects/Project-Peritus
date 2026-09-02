@@ -22,6 +22,7 @@ use peritus_app_protocol::{
     ProductRunConversationQuery, ProductRunPhase, ProductRunQuery, ProductRunRequest,
     ProductRunSnapshot,
 };
+use peritus_process::ProcessStore;
 use peritus_product_runner::RoleProviders;
 use peritus_provider_core::{CancellationToken, ModelProvider};
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
@@ -47,6 +48,7 @@ struct Inner {
     providers: BTreeMap<ProviderProfileId, Arc<dyn ModelProvider>>,
     automatic_provider_failover: bool,
     workspaces: BTreeMap<WorkspaceId, PathBuf>,
+    processes: ProcessStore,
     tasks: Mutex<Vec<JoinHandle<()>>>,
 }
 
@@ -66,6 +68,7 @@ impl ProductRunService {
         components: &DaemonComponents,
         workspaces: &WorkspaceCatalog,
         automatic_provider_failover: bool,
+        processes: ProcessStore,
     ) -> Result<Self, DaemonError> {
         let directory = state_root.join("product-runs");
         fs::create_dir_all(&directory).map_err(filesystem)?;
@@ -88,6 +91,7 @@ impl ProductRunService {
                 providers,
                 automatic_provider_failover,
                 workspaces: workspaces.roots(),
+                processes,
                 tasks: Mutex::new(Vec::new()),
             }),
         })

@@ -8,7 +8,7 @@ fn rejected_terminal_correction_requires_fresh_repository_grounding() {
         "ground developer turn in repository evidence",
         "repository grounding requires a successful workspace listing",
     );
-    let correction = correction_prompt(&error);
+    let correction = correction::rejected_terminal(&error);
     let prompt = writer_user("task", "design", Some("finding"), Some(&correction));
 
     assert!(prompt.contains("Harness correction from the previous rejected turn"));
@@ -20,7 +20,7 @@ fn rejected_terminal_correction_requires_fresh_repository_grounding() {
 
 #[test]
 fn unchanged_question_is_challenged_with_confirmed_workspace_capabilities() {
-    let correction = question_confirmation_prompt("Please provide a writable workspace.");
+    let correction = correction::unverified_question("Please provide a writable workspace.");
     let prompt = writer_user("task", "design", None, Some(&correction));
 
     assert!(prompt.contains("stopped without changing the workspace"));

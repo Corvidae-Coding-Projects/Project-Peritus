@@ -23,7 +23,7 @@ pub fn exec_descriptor() -> Result<ToolDescriptor, ShellError> {
         exec_schema()?,
         vec![RiskClass::Execution],
         "peritus-tools-shell/shell.exec/v1",
-        "Execute literal structured argv through an authorized restricted native sandbox.",
+        "Execute literal structured argv through authorized C2 process ownership. Production callers select either an admitted restricted native sandbox or an explicit raw-effect boundary.",
     )
 }
 
@@ -37,7 +37,7 @@ pub fn script_descriptor() -> Result<ToolDescriptor, ShellError> {
         script_schema()?,
         vec![RiskClass::Execution, RiskClass::ExternalSideEffect],
         "peritus-tools-shell/shell.script/v1",
-        "Execute explicit interpreter and script text through an authorized restricted native sandbox.",
+        "Execute explicit interpreter and script text through authorized C2 process ownership. Production callers select either an admitted restricted native sandbox or an explicit raw-effect boundary.",
     )
 }
 

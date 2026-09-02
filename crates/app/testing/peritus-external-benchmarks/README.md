@@ -9,6 +9,11 @@ adapter. Harbor calls `peritus-benchmark-agent terminalbench` through the checke
 custom agent. Both commands use the same native product composition. The benchmark suites remain
 responsible for fixtures, timeouts, oracles, scoring, and retained workspaces.
 
+Each benchmark run also opens the production G4 command runtime against its private workspace and
+an isolated C2 state root. Benchmark tasks therefore exercise the same synchronous and active C4
+command controls as the interactive product; the Python adapters only upload and invoke the native
+binary. No benchmark-specific shell or PTY implementation substitutes for the harness.
+
 The Terminal-Bench command records a flat schema-versioned report plus the native trace, last
 product observation, generated design, conversation state, provider identities, changed paths, and
 aggregated token/cache accounting. A product rejection is still a completed benchmark attempt, so

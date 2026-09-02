@@ -13,13 +13,26 @@ categories = ["development-tools"]
 
 [dependencies]
 peritus-agent = { version = "=0.0.0", path = "../../orchestration/peritus-agent" }
+peritus-artifact-store = { version = "=0.0.0", path = "../../state/peritus-artifact-store" }
+peritus-budget = { version = "=0.0.0", path = "../../foundation/peritus-budget" }
+peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
 peritus-gates = { version = "=0.0.0", path = "../../orchestration/peritus-gates" }
+peritus-journal = { version = "=0.0.0", path = "../../state/peritus-journal" }
+peritus-kernel = { version = "=0.0.0", path = "../../foundation/peritus-kernel" }
+peritus-leases = { version = "=0.0.0", path = "../../state/peritus-leases" }
 peritus-model-protocol = { version = "=0.0.0", path = "../../model/peritus-model-protocol" }
 peritus-orchestrator = { version = "=0.0.0", path = "../../orchestration/peritus-orchestrator" }
+peritus-policy = { version = "=0.0.0", path = "../../foundation/peritus-policy" }
+peritus-process = { version = "=0.0.0", path = "../../runtime/peritus-process" }
+peritus-protocol = { version = "=0.0.0", path = "../../foundation/peritus-protocol" }
 peritus-provider-core = { version = "=0.0.0", path = "../../model/peritus-provider-core" }
 peritus-review = { version = "=0.0.0", path = "../../orchestration/peritus-review" }
+peritus-sandbox = { version = "=0.0.0", path = "../../runtime/peritus-sandbox" }
+peritus-spec = { version = "=0.0.0", path = "../../foundation/peritus-spec" }
+peritus-tool-protocol = { version = "=0.0.0", path = "../../tools/peritus-tool-protocol" }
+peritus-tool-router = { version = "=0.0.0", path = "../../tools/peritus-tool-router" }
+peritus-tools-shell = { version = "=0.0.0", path = "../../tools/peritus-tools-shell" }
 peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
-process-wrap.workspace = true
 rusqlite.workspace = true
 serde.workspace = true
 serde_json.workspace = true

@@ -1,5 +1,74 @@
 use super::*;
-use std::{io::Write as _, process::Command, time::Instant};
+use std::{
+    io::{BufRead as _, Write as _},
+    process::Command,
+    time::Instant,
+};
+
+#[test]
+fn active_commands_accept_terminal_input_and_reach_a_stable_result() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let mut tools = writable_tools(workspace.path());
+    let _ = execute(&mut tools, "workspace_list", r#"{"depth":1,"path":""}"#);
+    fs::write(workspace.path().join(".peritus-stdin-fixture"), "run").expect("fixture marker");
+    let executable = std::env::current_exe().expect("current test executable");
+    let program = serde_json::to_string(&executable).expect("program path");
+    let start = execute(
+        &mut tools,
+        "command_start",
+        &format!(
+            r#"{{"args":["--exact","developer_tools::executor::tests::command::command_stdin_fixture","--nocapture"],"cwd":".","interactive":true,"program":{program},"purpose":"verification","timeout_seconds":10}}"#
+        ),
+    );
+    assert!(!start.is_error, "{}", wire(&start));
+    let started: Value = serde_json::from_str(&wire(&start)).expect("start result");
+    let handle = started["handle"].as_str().expect("command handle");
+    let input = execute(
+        &mut tools,
+        "command_stdin",
+        &format!(r#"{{"handle":"{handle}","text":"hello from peritus\n"}}"#),
+    );
+    assert!(!input.is_error, "{}", wire(&input));
+    let terminal = poll_terminal(&mut tools, handle);
+    assert_eq!(terminal["status"], "succeeded");
+    assert!(
+        terminal["stdout"]
+            .as_str()
+            .is_some_and(|output| output.contains("received:hello from peritus")),
+        "{terminal}"
+    );
+    let repeated = execute(&mut tools, "command_poll", &format!(r#"{{"handle":"{handle}"}}"#));
+    assert!(!repeated.is_error, "{}", wire(&repeated));
+    let repeated: Value = serde_json::from_str(&wire(&repeated)).expect("repeated terminal result");
+    assert_eq!(repeated, terminal);
+    let successful = tools.successful_commands();
+    assert_eq!(successful.len(), 1);
+    assert_eq!(successful[0].purpose, crate::developer_tools::CommandPurpose::Verification);
+    assert!(successful[0].command.starts_with("command_start "));
+}
+
+#[test]
+fn active_commands_cancel_the_owned_process_tree() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let mut tools = writable_tools(workspace.path());
+    let _ = execute(&mut tools, "workspace_list", r#"{"depth":1,"path":""}"#);
+    fs::write(workspace.path().join(".peritus-timeout-fixture"), "run").expect("fixture marker");
+    let executable = std::env::current_exe().expect("current test executable");
+    let program = serde_json::to_string(&executable).expect("program path");
+    let start = execute(
+        &mut tools,
+        "command_start",
+        &format!(
+            r#"{{"args":["--exact","developer_tools::executor::tests::command::command_timeout_fixture","--nocapture"],"cwd":".","interactive":false,"program":{program},"purpose":"verification","timeout_seconds":10}}"#
+        ),
+    );
+    let started: Value = serde_json::from_str(&wire(&start)).expect("start result");
+    let handle = started["handle"].as_str().expect("command handle");
+    let cancelled = execute(&mut tools, "command_cancel", &format!(r#"{{"handle":"{handle}"}}"#));
+    assert!(!cancelled.is_error || wire(&cancelled).contains("cancelled"));
+    let terminal = poll_terminal(&mut tools, handle);
+    assert_eq!(terminal["status"], "cancelled");
+}
 
 #[test]
 fn structured_commands_time_out_without_freezing_the_agent() {
@@ -20,7 +89,7 @@ fn structured_commands_time_out_without_freezing_the_agent() {
     assert!(started.elapsed() < Duration::from_secs(10));
     let result: Value = serde_json::from_str(&wire(&command)).expect("command result JSON");
     assert_eq!(result["success"].as_bool(), Some(false));
-    assert_eq!(result["timed_out"].as_bool(), Some(true));
+    assert_eq!(result["timed_out"].as_bool(), Some(true), "{}", wire(&command));
     assert_eq!(result["requested_timeout_seconds"].as_u64(), Some(1));
     assert_eq!(result["timeout_seconds"].as_u64(), Some(1));
     assert_eq!(result["deadline_limited"].as_bool(), Some(false));
@@ -52,7 +121,9 @@ fn structured_commands_shrink_to_preserve_the_product_completion_reserve() {
     assert!(actual <= 1);
     assert_eq!(result["deadline_limited"].as_bool(), Some(true));
     assert_eq!(result["completion_reserve_seconds"].as_u64(), Some(1));
-    let recovery = result["recovery_hint"].as_str().expect("deadline recovery");
+    let recovery = result["recovery_hint"]
+        .as_str()
+        .unwrap_or_else(|| panic!("deadline recovery: {}", wire(&command)));
     if actual == 0 {
         assert_eq!(result["timed_out"].as_bool(), Some(false));
         assert!(recovery.contains("was not started"));
@@ -83,7 +154,7 @@ fn missing_executable_returns_scoped_prerequisite_recovery_guidance() {
     assert!(command.is_error);
     let result = wire(&command);
     assert!(result.contains("was not found through PATH"));
-    assert!(result.contains("authorize ordinary dependency installation"));
+    assert!(result.contains("authorize ordinary dependency installation"), "{result}");
     assert!(result.contains("retry the real command"));
     assert!(result.contains("Do not substitute a stand-in"));
 }
@@ -106,7 +177,11 @@ fn structured_commands_drain_and_bound_both_output_streams() {
     let result: Value = serde_json::from_str(&wire(&command)).expect("command result JSON");
     assert_eq!(result["timed_out"].as_bool(), Some(false));
     assert!(result["recovery_hint"].is_null());
-    assert!(result["stdout"].as_str().is_some_and(|value| value.contains("[output truncated]")));
+    assert!(
+        result["stdout"].as_str().is_some_and(|value| value.contains("[output truncated]")),
+        "{}",
+        wire(&command)
+    );
     assert!(result["stderr"].as_str().is_some_and(|value| value.contains("[output truncated]")));
     assert!(
         result["stdout"]
@@ -173,6 +248,44 @@ fn command_created_files_can_be_removed_without_owning_unrelated_late_files() {
 }
 
 #[test]
+fn active_command_created_files_are_owned_after_terminal_observation() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    fs::write(workspace.path().join("README.md"), "grounding\n").expect("grounding file");
+    let mut tools = writable_tools(workspace.path());
+    let _ = execute(&mut tools, "workspace_list", r#"{"depth":1,"path":""}"#);
+    let _ = execute(
+        &mut tools,
+        "workspace_read",
+        r#"{"end_line":10,"path":"README.md","start_line":1}"#,
+    );
+    fs::write(workspace.path().join(".peritus-create-output-fixture"), "run")
+        .expect("fixture marker");
+    let executable = std::env::current_exe().expect("current test executable");
+    let program = serde_json::to_string(&executable).expect("program path");
+    let start = execute(
+        &mut tools,
+        "command_start",
+        &format!(
+            r#"{{"args":["--exact","developer_tools::executor::tests::command::command_created_file_fixture","--nocapture"],"cwd":".","interactive":false,"program":{program},"purpose":"verification","timeout_seconds":10}}"#
+        ),
+    );
+    let started: Value = serde_json::from_str(&wire(&start)).expect("start result");
+    let handle = started["handle"].as_str().expect("command handle");
+    let terminal = poll_terminal(&mut tools, handle);
+    assert_eq!(terminal["status"], "succeeded");
+
+    let _ = execute(&mut tools, "workspace_list", r#"{"depth":1,"path":""}"#);
+    let _ = execute(
+        &mut tools,
+        "workspace_read",
+        r#"{"end_line":10,"path":"command-output.txt","start_line":1}"#,
+    );
+    let removed = execute(&mut tools, "workspace_remove", r#"{"path":"command-output.txt"}"#);
+    assert!(!removed.is_error, "{}", wire(&removed));
+    assert!(!workspace.path().join("command-output.txt").exists());
+}
+
+#[test]
 fn command_timeout_fixture() {
     if !Path::new(".peritus-timeout-fixture").is_file() {
         return;
@@ -200,4 +313,27 @@ fn command_created_file_fixture() {
         return;
     }
     fs::write("command-output.txt", "generated by command\n").expect("command output");
+}
+
+#[test]
+fn command_stdin_fixture() {
+    if !Path::new(".peritus-stdin-fixture").is_file() {
+        return;
+    }
+    let mut input = String::new();
+    std::io::stdin().lock().read_line(&mut input).expect("fixture stdin");
+    let output = format!("received:{}\n", input.trim());
+    std::io::stdout().write_all(output.as_bytes()).expect("fixture stdout");
+}
+
+fn poll_terminal(tools: &mut WorkspaceDeveloperTools, handle: &str) -> Value {
+    for _ in 0..200 {
+        let observation = execute(tools, "command_poll", &format!(r#"{{"handle":"{handle}"}}"#));
+        let value: Value = serde_json::from_str(&wire(&observation)).expect("poll result");
+        if value["state"] == "completed" {
+            return value;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    panic!("active command did not terminate")
 }

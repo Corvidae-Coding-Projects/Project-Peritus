@@ -86,12 +86,15 @@ mod tests {
             let writer: Arc<dyn ModelProvider> = writer_provider.clone();
             let reviewer: Arc<dyn ModelProvider> = reviewer_provider.clone();
             let task = "Add a tested answer function that returns 42.".to_owned();
+            let run_id = RunId::new([0xa3; 16]).expect("run ID");
+            let command_runtime = support::command_runtime(state.path(), repository.path(), run_id);
 
             let outcome = ProductRunner::run(
                 ProductRunInput {
-                    run_id: RunId::new([0xa3; 16]).expect("run ID"),
+                    run_id,
                     workspace_root: repository.path().to_owned(),
                     trace_path: state.path().join("product.trace"),
+                    command_runtime,
                     finding_state: String::new(),
                     task: task.clone(),
                     max_elapsed: PRODUCT_RUN_MAX_ELAPSED,

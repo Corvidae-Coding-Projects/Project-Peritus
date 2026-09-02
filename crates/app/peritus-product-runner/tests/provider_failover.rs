@@ -114,12 +114,15 @@ mod tests {
                     .push(update.progress.provider_failovers());
             });
             let task = "Add a tested answer function that returns 42.".to_owned();
+            let run_id = RunId::new([0x64; 16]).expect("run ID");
+            let command_runtime = support::command_runtime(state.path(), repository.path(), run_id);
 
             let outcome = ProductRunner::run(
                 ProductRunInput {
-                    run_id: RunId::new([0x64; 16]).expect("run ID"),
+                    run_id,
                     workspace_root: repository.path().to_owned(),
                     trace_path: trace_path.clone(),
+                    command_runtime,
                     finding_state: String::new(),
                     task: task.clone(),
                     max_elapsed: PRODUCT_RUN_MAX_ELAPSED,

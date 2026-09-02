@@ -54,11 +54,14 @@ pub async fn run(input: TerminalBenchInput) -> Result<TerminalBenchReport, Bench
     let cancellation = CancellationToken::new();
     let role_providers = providers::authenticated(&cancellation).await?;
     let (observer, last_observation) = observation_capture();
+    let run_id = run_id(&input.session_id, &input.task_id)?;
+    let command_runtime = crate::command_runtime::open(&baseline.root, run_id)?;
     let result = ProductRunner::run(
         ProductRunInput {
-            run_id: run_id(&input.session_id, &input.task_id)?,
+            run_id,
             workspace_root: baseline.root.clone(),
             trace_path: trace_path.clone(),
+            command_runtime,
             finding_state: String::new(),
             task,
             max_elapsed: input.max_elapsed,

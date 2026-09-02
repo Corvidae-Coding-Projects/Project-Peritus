@@ -10,8 +10,8 @@ use peritus_app_protocol::{
     ProductRunSnapshot,
 };
 use peritus_product_runner::{
-    ConversationView, PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput,
-    ProductRunOutcome, ProductRunner, RoleProviders, RunObserver,
+    CommandRuntime, ConversationView, PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope,
+    ProductRunInput, ProductRunOutcome, ProductRunner, RoleProviders, RunObserver,
 };
 use peritus_provider_core::CancellationToken;
 use peritus_types::RunId;
@@ -41,12 +41,25 @@ impl ProductRunService {
         let observer: RunObserver = Arc::new(move |update| service.observe(run_id, update));
         let service = self.clone();
         let task = tokio::spawn(async move {
+            let command_runtime = match CommandRuntime::open(
+                service.inner.directory.join("commands").join(run_hex(run_id)),
+                &workspace_root,
+                run_id,
+                service.inner.processes.clone(),
+            ) {
+                Ok(runtime) => runtime,
+                Err(error) => {
+                    service.finish(run_id, Err(error));
+                    return;
+                }
+            };
             let conversation: Arc<dyn ConversationView> = conversation;
             let result = ProductRunner::run(
                 ProductRunInput {
                     run_id,
                     workspace_root,
                     trace_path,
+                    command_runtime,
                     finding_state,
                     task: request.task().to_owned(),
                     max_elapsed: PRODUCT_RUN_MAX_ELAPSED,

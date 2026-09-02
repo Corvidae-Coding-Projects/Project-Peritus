@@ -1,6 +1,6 @@
 //! Resource-aware defaults and admission for developer commands.
 
-use std::{path::Path, process::Command, thread};
+use std::{path::Path, thread};
 
 use peritus_agent::DeveloperLoopError;
 use serde_json::Value;
@@ -42,9 +42,8 @@ impl CommandResources {
         ])
     }
 
-    pub(super) fn prepare(
+    pub(super) fn authorize(
         self,
-        command: &mut Command,
         program: &str,
         arguments: &[String],
     ) -> Result<(), DeveloperLoopError> {
@@ -61,19 +60,22 @@ impl CommandResources {
             )));
         }
 
-        let jobs = self.recommended_parallelism.to_string();
-        let cargo_jobs = self.recommended_parallelism.min(2).to_string();
-        command
-            .env("PERITUS_RECOMMENDED_PARALLELISM", &jobs)
-            .env("CARGO_BUILD_JOBS", cargo_jobs)
-            .env("CMAKE_BUILD_PARALLEL_LEVEL", &jobs)
-            .env("MAKEFLAGS", format!("-j{jobs}"))
-            .env("GOMAXPROCS", &jobs)
-            .env("RAYON_NUM_THREADS", &jobs)
-            .env("NUM_JOBS", &jobs)
-            .env("MAX_JOBS", &jobs)
-            .env("npm_config_jobs", &jobs);
         Ok(())
+    }
+
+    pub(super) fn environment_bindings(self) -> Vec<(String, String)> {
+        let jobs = self.recommended_parallelism.to_string();
+        vec![
+            ("PERITUS_RECOMMENDED_PARALLELISM".to_owned(), jobs.clone()),
+            ("CARGO_BUILD_JOBS".to_owned(), self.recommended_parallelism.min(2).to_string()),
+            ("CMAKE_BUILD_PARALLEL_LEVEL".to_owned(), jobs.clone()),
+            ("MAKEFLAGS".to_owned(), format!("-j{jobs}")),
+            ("GOMAXPROCS".to_owned(), jobs.clone()),
+            ("RAYON_NUM_THREADS".to_owned(), jobs.clone()),
+            ("NUM_JOBS".to_owned(), jobs.clone()),
+            ("MAX_JOBS".to_owned(), jobs.clone()),
+            ("npm_config_jobs".to_owned(), jobs),
+        ]
     }
 }
 
@@ -236,10 +238,8 @@ mod tests {
 
     #[test]
     fn excessive_explicit_parallelism_is_rejected_before_spawn() {
-        let mut command = Command::new("cmake");
         let error = resources(1)
-            .prepare(
-                &mut command,
+            .authorize(
                 "cmake",
                 &["--build".into(), "build".into(), "--parallel".into(), "24".into()],
             )
@@ -250,20 +250,14 @@ mod tests {
 
     #[test]
     fn admitted_commands_receive_cross_language_parallelism_defaults() {
-        let mut command = Command::new("cmake");
-        resources(3).prepare(&mut command, "cmake", &["--build".into(), "build".into()]).unwrap();
-        let environment = command
-            .get_envs()
-            .map(|(key, value)| {
-                (
-                    key.to_string_lossy().into_owned(),
-                    value.map(|value| value.to_string_lossy().into_owned()),
-                )
-            })
+        resources(3).authorize("cmake", &["--build".into(), "build".into()]).unwrap();
+        let environment = resources(3)
+            .environment_bindings()
+            .into_iter()
             .collect::<std::collections::BTreeMap<_, _>>();
-        assert_eq!(environment["CMAKE_BUILD_PARALLEL_LEVEL"].as_deref(), Some("3"));
-        assert_eq!(environment["CARGO_BUILD_JOBS"].as_deref(), Some("2"));
-        assert_eq!(environment["MAKEFLAGS"].as_deref(), Some("-j3"));
+        assert_eq!(environment["CMAKE_BUILD_PARALLEL_LEVEL"], "3");
+        assert_eq!(environment["CARGO_BUILD_JOBS"], "2");
+        assert_eq!(environment["MAKEFLAGS"], "-j3");
     }
 
     #[cfg(target_os = "linux")]

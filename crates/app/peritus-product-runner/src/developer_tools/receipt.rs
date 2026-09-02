@@ -117,7 +117,17 @@ impl EffectReceiptLedger {
                     detail: ambiguous(&self.scope, ordinal, &existing.call_id),
                     ambiguous: true,
                 }),
-                ReceiptState::Started if call.name().as_str() == "run_command" => {
+                ReceiptState::Started
+                    if matches!(
+                        call.name().as_str(),
+                        "run_command"
+                            | "command_start"
+                            | "command_stdin"
+                            | "command_resize"
+                            | "command_signal"
+                            | "command_cancel"
+                    ) =>
+                {
                     let record = ReceiptRecord {
                         state: ReceiptState::Ambiguous,
                         output: None,

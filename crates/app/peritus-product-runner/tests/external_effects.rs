@@ -119,12 +119,15 @@ fn authorized_external_effects_complete_without_a_synthetic_workspace_diff() {
                 ])),
             });
             let task = "Apply and verify the authorized external fixture state.".to_owned();
+            let run_id = RunId::new([0xA3; 16]).expect("run ID");
+            let command_runtime = support::command_runtime(state.path(), repository.path(), run_id);
 
             let outcome = ProductRunner::run(
                 ProductRunInput {
-                    run_id: RunId::new([0xA3; 16]).expect("run ID"),
+                    run_id,
                     workspace_root: repository.path().to_owned(),
                     trace_path: state.path().join("external.trace"),
+                    command_runtime,
                     finding_state: String::new(),
                     task: task.clone(),
                     max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
@@ -249,12 +252,15 @@ fn operational_request_needs_a_live_effect_even_when_supporting_files_change() {
             let task =
                 "Configure the local fixture so that I can connect to the running service."
                     .to_owned();
+            let run_id = RunId::new([0xB3; 16]).expect("run ID");
+            let command_runtime = support::command_runtime(state.path(), repository.path(), run_id);
 
             let outcome = ProductRunner::run(
                 ProductRunInput {
-                    run_id: RunId::new([0xB3; 16]).expect("run ID"),
+                    run_id,
                     workspace_root: repository.path().to_owned(),
                     trace_path: state.path().join("mixed-delivery.trace"),
+                    command_runtime,
                     finding_state: String::new(),
                     task: task.clone(),
                     max_elapsed: PRODUCT_RUN_MAX_ELAPSED,

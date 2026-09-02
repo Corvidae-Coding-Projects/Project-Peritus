@@ -101,6 +101,8 @@ pub struct ProductRunInput {
     pub workspace_root: PathBuf,
     /// Durable D0 trace path owned by the daemon.
     pub trace_path: PathBuf,
+    /// Run-owned command router backed by the daemon's durable process registry.
+    pub command_runtime: crate::CommandRuntime,
     /// Durable D2 finding ledger restored by the daemon.
     pub finding_state: String,
     /// Natural-language coding task.

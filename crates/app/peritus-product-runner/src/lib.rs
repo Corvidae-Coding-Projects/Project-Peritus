@@ -52,6 +52,8 @@ pub use budget::{
     PRODUCT_RUN_MAX_PEAK_RSS_BYTES, PRODUCT_RUN_MAX_TOOL_CALLS, PRODUCT_RUN_MAX_TOTAL_TOKENS,
     PRODUCT_RUN_MAX_WORKSPACE_GROWTH_BYTES, ProductRunProgress,
 };
+#[cfg(not(verus_only))]
+pub use developer_tools::CommandRuntime;
 pub use error::{ProductRunnerError, ProductRunnerErrorKind};
 #[cfg(not(verus_only))]
 pub use execution::{
@@ -60,7 +62,7 @@ pub use execution::{
 };
 #[cfg(verus_only)]
 pub use verified_api::{
-    ConversationView, PRODUCT_RUN_MAX_COST_MICROUNITS, PRODUCT_RUN_MAX_ELAPSED,
+    CommandRuntime, ConversationView, PRODUCT_RUN_MAX_COST_MICROUNITS, PRODUCT_RUN_MAX_ELAPSED,
     PRODUCT_RUN_MAX_MODEL_REQUESTS, PRODUCT_RUN_MAX_PEAK_RSS_BYTES, PRODUCT_RUN_MAX_TOOL_CALLS,
     PRODUCT_RUN_MAX_TOTAL_TOKENS, PRODUCT_RUN_MAX_WORKSPACE_GROWTH_BYTES, ProductDeliveryScope,
     ProductRunInput, ProductRunOutcome, ProductRunOutput, ProductRunPhase, ProductRunProgress,

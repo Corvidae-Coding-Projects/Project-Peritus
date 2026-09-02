@@ -15,6 +15,7 @@ categories = ["development-tools::testing"]
 base64.workspace = true
 peritus-model-protocol = { version = "=0.0.0", path = "../../../model/peritus-model-protocol" }
 peritus-product-runner = { version = "=0.0.0", path = "../../peritus-product-runner" }
+peritus-process = { version = "=0.0.0", path = "../../../runtime/peritus-process" }
 peritus-provider-anthropic = { version = "=0.0.0", path = "../../../model/peritus-provider-anthropic" }
 peritus-provider-core = { version = "=0.0.0", path = "../../../model/peritus-provider-core" }
 peritus-provider-openai = { version = "=0.0.0", path = "../../../model/peritus-provider-openai" }

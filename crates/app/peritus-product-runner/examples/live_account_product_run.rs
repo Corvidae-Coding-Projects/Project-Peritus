@@ -31,6 +31,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 async fn run() -> Result<(), Box<dyn Error>> {
     let repository = tempfile::tempdir()?;
+    let command_state = tempfile::tempdir()?;
     initialize_repository(repository.path())?;
     let cancellation = CancellationToken::new();
     let writer = codex_provider()?;
@@ -41,11 +42,23 @@ async fn run() -> Result<(), Box<dyn Error>> {
     let reviewer: Arc<dyn ModelProvider> = reviewer;
     let observer: RunObserver = Arc::new(|_| {});
     let task = "Add a documented public function named answer that returns u32 value 42, and add a unit test that proves it. Keep the existing function.".to_owned();
+    let run_id = RunId::new([0xE4; 16]).expect("nonzero qualification run id");
+    let process_store = peritus_process::ProcessStore::open(
+        command_state.path().join("processes"),
+        repository.path(),
+    )?;
+    let command_runtime = peritus_product_runner::CommandRuntime::open(
+        command_state.path().join("router"),
+        repository.path(),
+        run_id,
+        process_store,
+    )?;
     let output = ProductRunner::run(
         ProductRunInput {
-            run_id: RunId::new([0xE4; 16]).expect("nonzero qualification run id"),
+            run_id,
             workspace_root: repository.path().to_owned(),
             trace_path: repository.path().join("peritus-run.trace"),
+            command_runtime,
             finding_state: String::new(),
             task: task.clone(),
             max_elapsed: PRODUCT_RUN_MAX_ELAPSED,

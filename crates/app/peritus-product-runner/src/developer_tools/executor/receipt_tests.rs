@@ -24,6 +24,7 @@ fn completed_workspace_effect_replays_without_a_second_write() {
         receipts.clone(),
         scope.to_owned(),
         Duration::from_secs(30),
+        super::test_command_runtime(workspace.path()),
     );
     let list = completed_call("list", "workspace_list", r#"{"depth":1,"path":""}"#);
     let _ = first.execute(&list).expect("workspace list");
@@ -37,6 +38,7 @@ fn completed_workspace_effect_replays_without_a_second_write() {
         receipts,
         scope.to_owned(),
         Duration::from_secs(30),
+        first.command_runtime.as_ref().expect("command runtime").clone(),
     );
     let replay = recovered.execute(&call).expect("receipt replay");
 

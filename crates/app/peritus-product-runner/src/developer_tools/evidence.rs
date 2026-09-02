@@ -35,6 +35,10 @@ pub(super) struct CommandEvidence {
 
 impl CommandEvidence {
     pub(super) fn record(&mut self, arguments: &Value, result: &Value) {
+        self.record_named("run_command", arguments, result);
+    }
+
+    pub(super) fn record_named(&mut self, tool: &str, arguments: &Value, result: &Value) {
         let request = serde_json::to_string(arguments).unwrap_or_else(|_| "<invalid JSON>".into());
         let rendered_result =
             serde_json::to_string(result).unwrap_or_else(|_| "<invalid JSON>".into());
@@ -54,10 +58,8 @@ impl CommandEvidence {
         if result.get("success").and_then(Value::as_bool) == Some(true)
             && let Some(purpose) = CommandPurpose::from_arguments(arguments)
         {
-            self.successful.push_back(SuccessfulCommand {
-                command: format!("run_command {request}"),
-                purpose,
-            });
+            self.successful
+                .push_back(SuccessfulCommand { command: format!("{tool} {request}"), purpose });
             while self.successful.len() > MAX_RECORDS {
                 self.successful.pop_front();
             }

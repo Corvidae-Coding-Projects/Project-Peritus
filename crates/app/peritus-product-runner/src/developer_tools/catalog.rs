@@ -40,8 +40,43 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
         ),
         (
             "run_command",
-            "Run a non-destructive structured executable and argv after current-turn workspace_list and workspace_read grounding; use it to build, test, lint, inspect Git, apply caller-authorized external effects, and observe failures. Keep build/test worker counts at or below workspace_list.execution_resources.recommended_parallelism. The harness supplies cross-language concurrency defaults and rejects recognized explicit build fan-out above that observed ceiling with a retryable diagnostic. If a required executable is absent, verify its path and inspect available package or runtime managers; in an authorized disposable software or system task, install the ordinary prerequisite and retry the real command instead of fabricating a stand-in deliverable. Before inspecting a large binary, log, database, or generated file, prefer purpose-built filters, bounded ranges, or summary modes so only decision-relevant output enters model context. For binary, deleted, damaged, or truncated data, search for the strongest contract-supplied stable fragment and inspect a bounded neighboring byte or record window before speculative transforms or broad parameter searches; validate the reconstructed whole value against every declared constraint. When a command queries an API or parses structured data, print only the fields needed for the current decision; if the shape is unknown, begin with keys, counts, or a bounded sample instead of dumping nested metadata. Before transferring a whole remote repository, archive, or dataset, inspect an immutable manifest, index, tree, content length, or object-size summary and prefer targeted pinned records. After a bulk transfer times out, do not retry the same collection through a different bulk wrapper without new evidence that it fits the available command budget. The hard output cap is a fallback, not a target. When output still exceeds that cap, the result preserves both its opening context and final diagnostics while omitting the noisy middle. Label each command as external_effect when it performs the requested action or verification when it freshly inspects the completed outcome. Commands default to a 120-second deadline; request 1 through 600 seconds for a known longer build or test. Each request is also clamped to the live shared product deadline while preserving a completion reserve; results report the requested timeout, actual allowance, remaining product seconds, and whether the deadline limited the command. A timeout kills the owned process tree and returns captured output plus recovery guidance so the run can choose a materially bounded strategy. Harness-owned peritus-internal gates are unavailable here and run independently after the turn. Use workspace_remove for intentional file deletion.",
+            "Run a non-destructive structured executable and argv to completion through the harness-owned C4 router and C2 process lifecycle after current-turn workspace_list and workspace_read grounding; use it to build, test, lint, inspect Git, apply caller-authorized external effects, and observe failures. Keep build/test worker counts at or below workspace_list.execution_resources.recommended_parallelism. The harness supplies cross-language concurrency defaults and rejects recognized explicit build fan-out above that observed ceiling with a retryable diagnostic. If a required executable is absent, verify its path and inspect available package or runtime managers; in an authorized disposable software or system task, install the ordinary prerequisite and retry the real command instead of fabricating a stand-in deliverable. Before inspecting a large binary, log, database, or generated file, prefer purpose-built filters, bounded ranges, or summary modes so only decision-relevant output enters model context. For binary, deleted, damaged, or truncated data, search for the strongest contract-supplied stable fragment and inspect a bounded neighboring byte or record window before speculative transforms or broad parameter searches; validate the reconstructed whole value against every declared constraint. When a command queries an API or parses structured data, print only the fields needed for the current decision; if the shape is unknown, begin with keys, counts, or a bounded sample instead of dumping nested metadata. Before transferring a whole remote repository, archive, or dataset, inspect an immutable manifest, index, tree, content length, or object-size summary and prefer targeted pinned records. After a bulk transfer times out, do not retry the same collection through a different bulk wrapper without new evidence that it fits the available command budget. The hard output cap is a fallback, not a target. When output still exceeds that cap, the result preserves both its opening context and final diagnostics while omitting the noisy middle. Label each command as external_effect when it performs the requested action or verification when it freshly inspects the completed outcome. Commands default to a 120-second deadline; request 1 through 600 seconds for a known longer build or test. Each request is also clamped to the live shared product deadline while preserving a completion reserve; results report the requested timeout, actual allowance, remaining product seconds, and whether the deadline limited the command. A timeout kills the owned process tree and returns captured output plus recovery guidance so the run can choose a materially bounded strategy. Harness-owned peritus-internal gates are unavailable here and run independently after the turn. Use workspace_remove for intentional file deletion.",
             r#"{"additionalProperties":false,"properties":{"args":{"items":{"type":"string"},"type":"array"},"cwd":{"type":"string"},"program":{"type":"string"},"purpose":{"enum":["external_effect","verification"],"type":"string"},"timeout_seconds":{"default":120,"maximum":600,"minimum":1,"type":"integer"}},"required":["args","program","purpose"],"type":"object"}"#,
+        ),
+        (
+            "command_start",
+            "Start a structured command through the same C4/C2 ownership as run_command and return a stable handle immediately. Use interactive=true for programs that need terminal input; otherwise use false for a background pipe process. Follow with command_poll, command_stdin, command_resize, command_signal, command_cancel, or command_recover. The same grounding, resource, timeout, and non-destructive-command rules as run_command apply.",
+            r#"{"additionalProperties":false,"properties":{"args":{"items":{"type":"string"},"type":"array"},"columns":{"default":80,"maximum":65535,"minimum":1,"type":"integer"},"cwd":{"type":"string"},"interactive":{"default":true,"type":"boolean"},"program":{"type":"string"},"purpose":{"enum":["external_effect","verification"],"type":"string"},"rows":{"default":24,"maximum":65535,"minimum":1,"type":"integer"},"timeout_seconds":{"default":120,"maximum":600,"minimum":1,"type":"integer"}},"required":["args","program","purpose"],"type":"object"}"#,
+        ),
+        (
+            "command_poll",
+            "Poll a command_start handle. Returns bounded progress while running or the stable terminal result with captured output.",
+            r#"{"additionalProperties":false,"properties":{"handle":{"type":"string"}},"required":["handle"],"type":"object"}"#,
+        ),
+        (
+            "command_stdin",
+            "Write non-empty UTF-8 text to an active interactive command handle, then return its latest state.",
+            r#"{"additionalProperties":false,"properties":{"handle":{"type":"string"},"text":{"maxLength":65536,"minLength":1,"type":"string"}},"required":["handle","text"],"type":"object"}"#,
+        ),
+        (
+            "command_resize",
+            "Resize the terminal attached to an active interactive command handle.",
+            r#"{"additionalProperties":false,"properties":{"columns":{"maximum":65535,"minimum":1,"type":"integer"},"handle":{"type":"string"},"rows":{"maximum":65535,"minimum":1,"type":"integer"}},"required":["columns","handle","rows"],"type":"object"}"#,
+        ),
+        (
+            "command_signal",
+            "Send a supported stable signal name to an active command handle, then return its latest state.",
+            r#"{"additionalProperties":false,"properties":{"handle":{"type":"string"},"signal":{"type":"string"}},"required":["handle","signal"],"type":"object"}"#,
+        ),
+        (
+            "command_cancel",
+            "Cancel an active command and its owned process tree, then return its latest state.",
+            r#"{"additionalProperties":false,"properties":{"handle":{"type":"string"}},"required":["handle"],"type":"object"}"#,
+        ),
+        (
+            "command_recover",
+            "Reconcile an active command handle with its durable C2 process state after an interrupted poll or control operation.",
+            r#"{"additionalProperties":false,"properties":{"handle":{"type":"string"}},"required":["handle"],"type":"object"}"#,
         ),
     ])
 }
@@ -145,5 +180,18 @@ mod tests {
         assert!(description("run_command").contains("instead of fabricating a stand-in"));
         assert!(description("run_command").contains("external_effect"));
         assert!(description("run_command").contains("verification"));
+        assert!(description("run_command").contains("C4 router and C2 process lifecycle"));
+        assert!(description("command_start").contains("stable handle"));
+        assert!(description("command_start").contains("command_recover"));
+        for name in [
+            "command_poll",
+            "command_stdin",
+            "command_resize",
+            "command_signal",
+            "command_cancel",
+            "command_recover",
+        ] {
+            assert!(tools.iter().any(|tool| tool.name().as_str() == name), "missing {name}");
+        }
     }
 }

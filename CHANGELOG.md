@@ -1,5 +1,15 @@
 # Changelog
 
+- Route ordinary product and benchmark developer commands through the existing C4 router and
+  daemon-owned C2 process store. Keep the simple bounded `run_command` path, and add stable
+  run-owned handles for start, poll, terminal input, resize, portable signals, cancellation, and
+  live-owner recovery without introducing another PTY manager. Retain bounded artifact-backed
+  output, explicit C2/C4 authority, shared product deadlines, resource ceilings, command-created
+  file ownership and acceptance evidence for both finite and active commands, and durable effect
+  receipts. Fix the deadline race
+  that could discard a terminal C2 result just as C4's allowance elapsed, and cover interactive
+  stdin, cancellation, timeout, output truncation, missing executables, resource clamping, and
+  command-created files (`TBF-047`, #31).
 - Preserve explicit output alternatives as real at-least-one groups instead of cumulative
   requirements, while keeping separate mandatory paths and wrong-directory checks strict
   (`TBF-055`, #31).

@@ -20,7 +20,23 @@ verification, and explicit risks or non-goals. The adapter then joins:
 - `peritus-review` typed policy-derived findings conserved through fixer and fresh-review cycles;
 - `peritus-orchestrator` fail-closed E0 accept/fix/exhaust decisions; and
 - a durable task candidate, provider/tool trace, synced effect-receipt ledger, task-level summary,
-and explicit deliverable handoff consumed by the daemon.
+  and explicit deliverable handoff consumed by the daemon.
+
+Developer commands use the same command path as the rest of Peritus. `run_command` starts a
+structured command through C4 and the daemon-owned C2 process store, waits for it, and returns a
+bounded terminal result. Programs that need interaction or background progress use
+`command_start`; the model can then poll the stable run-owned handle, write bounded terminal input,
+resize the terminal, send a supported signal, cancel the owned process tree, or reconcile an
+interrupted observation. Output is retained as C2/C4 artifacts and projected with both its opening
+context and final diagnostics when it is too large. A terminal active result enters the same
+review, acceptance, handoff, and command-created-file ownership ledgers as a finite command. The
+product runner does not contain a second PTY implementation or call `std::process::Command` for
+developer tools.
+
+An active handle belongs to the live product run. `command_recover` reconciles interrupted polling
+or control with the existing C4/C2 owner; it does not promise to recreate an arbitrary terminal
+after a daemon process restart. Startup recovery separately reconciles durable C2 process state and
+the durable product run remains explicitly recoverable.
 
 When the launcher supplied explicit automatic-failover consent, every designer, writer, reviewer,
 and fixer invocation owns a deterministic provider cursor. The selected provider keeps its normal

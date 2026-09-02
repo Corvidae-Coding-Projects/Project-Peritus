@@ -65,11 +65,18 @@ The Runs view is the ordinary work surface:
    genuine no-progress stop rather than an arbitrary total-work limit. A malformed or ungrounded
    task-level terminal receives its exact harness rejection on the next bounded attempt, so a model
    can correct the contract rather than blindly repeat the same response.
+   Ordinary finite commands use `run_command`. A program that needs terminal input or background
+   progress uses `command_start`, which returns a stable run-owned handle. The writer can poll it,
+   write bounded input, resize its PTY, signal it, cancel its owned process tree, or reconcile an
+   interrupted observation. These controls route through the existing C4 router and daemon-owned
+   C2 process store; G4 does not carry a second shell or PTY manager. Output remains bounded and
+   artifact-backed. Live-handle recovery does not claim to recreate a lost terminal after a daemon
+   process restart; startup instead reconciles C2 state and exposes the product run as recoverable.
 5. D1 maps every exact changed file to its nearest Rust, Node, Python, or Go project manifest and
-   runs its source-layout policy and explicit format/compile/build/test/lint commands. Production source
-   files over 500 lines fail deterministically. Uncovered files, missing commands, failed commands,
-   or an empty candidate all refuse acceptance; an unrelated root project cannot satisfy a nested
-   game or package.
+   runs its source-layout policy and explicit format/compile/build/test/lint commands. Production
+   source files over 500 lines fail deterministically. Uncovered files, missing commands, failed
+   commands, or an empty candidate all refuse acceptance; an unrelated root project cannot satisfy
+   a nested game or package.
 6. The independent D2 reviewer returns typed findings. Policy derives blocker status, so
    correctness, requested-behavior, build-coverage, test-coverage, and security findings block
    regardless of the reviewer's severity wording. Findings remain open across daemon persistence

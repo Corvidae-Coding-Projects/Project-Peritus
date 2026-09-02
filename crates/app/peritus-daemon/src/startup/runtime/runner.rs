@@ -109,6 +109,7 @@ impl DaemonRuntime {
             &components,
             &workspaces,
             config.product().automatic_provider_failover(),
+            processes.clone(),
         )?;
         progress.complete(StartupPhase::DomainRecovery)?;
         let diagnostic = reconcile_processes(&processes)?;

@@ -25,7 +25,10 @@ const TOOLS_WITHOUT_DELIVERY_PROGRESS: u16 = 12;
 const MAX_PROGRESS_NUDGES: u8 = 2;
 const PROGRESS_FEEDBACK: &str = "The harness observed a long inspection sequence without a workspace mutation or successful declared external effect. Choose the shortest concrete delivery step now. If a standard capability is missing and the active disposable task authorizes installation, use the available package or runtime manager before hand-writing a substitute. Otherwise write or apply the requested result, then verify it. Continue inspecting only when a specific unresolved requirement still needs evidence.";
 
+mod active;
 mod command;
+
+use active::ActiveCommandLedger;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum WorkspaceToolMode {
@@ -44,6 +47,8 @@ pub struct WorkspaceDeveloperTools {
     command_budget: Option<CommandBudget>,
     receipts: Option<EffectReceiptLedger>,
     resources: CommandResources,
+    command_runtime: Option<crate::CommandRuntime>,
+    active_commands: ActiveCommandLedger,
     tools_without_delivery_progress: u16,
     progress_nudges: u8,
     progress_feedback_pending: bool,
@@ -65,6 +70,8 @@ impl WorkspaceDeveloperTools {
             command_budget: None,
             receipts: None,
             resources: CommandResources::observe(),
+            command_runtime: None,
+            active_commands: ActiveCommandLedger::default(),
             tools_without_delivery_progress: 0,
             progress_nudges: 0,
             progress_feedback_pending: false,
@@ -77,6 +84,7 @@ impl WorkspaceDeveloperTools {
         receipt_path: PathBuf,
         receipt_scope: String,
         command_horizon: Duration,
+        command_runtime: crate::CommandRuntime,
     ) -> Self {
         Self {
             root,
@@ -88,6 +96,8 @@ impl WorkspaceDeveloperTools {
             command_budget: Some(CommandBudget::new(command_horizon)),
             receipts: Some(EffectReceiptLedger::new(receipt_path, receipt_scope)),
             resources: CommandResources::observe(),
+            command_runtime: Some(command_runtime),
+            active_commands: ActiveCommandLedger::default(),
             tools_without_delivery_progress: 0,
             progress_nudges: 0,
             progress_feedback_pending: false,
@@ -111,6 +121,19 @@ impl WorkspaceDeveloperTools {
     }
 }
 
+#[cfg(test)]
+fn test_command_runtime(root: &std::path::Path) -> crate::CommandRuntime {
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    static NEXT: AtomicU64 = AtomicU64::new(1);
+    let mut bytes = [0_u8; 16];
+    bytes[..8].copy_from_slice(&NEXT.fetch_add(1, Ordering::Relaxed).to_le_bytes());
+    crate::CommandRuntime::open_for_test(
+        root,
+        peritus_types::RunId::new(bytes).expect("test command run ID"),
+    )
+}
+
 impl DeveloperToolExecutor for WorkspaceDeveloperTools {
     fn required_tool_name(&self) -> Option<&str> {
         self.grounding.required_tool_name()
@@ -127,7 +150,15 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
         }
         let effect = matches!(
             call.name().as_str(),
-            "workspace_write" | "workspace_patch" | "workspace_remove" | "run_command"
+            "workspace_write"
+                | "workspace_patch"
+                | "workspace_remove"
+                | "run_command"
+                | "command_start"
+                | "command_stdin"
+                | "command_resize"
+                | "command_signal"
+                | "command_cancel"
         ) && self.mode == WorkspaceToolMode::ReadWrite;
         if effect {
             let decision = self
@@ -159,6 +190,8 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
             "workspace_search" => inspection::search(&self.root, &arguments, &self.access_policy),
             "workspace_read" => inspection::read(&self.root, &arguments),
             "workspace_write" | "workspace_patch" | "workspace_remove" | "run_command"
+            | "command_start" | "command_stdin" | "command_resize" | "command_signal"
+            | "command_cancel" | "command_poll" | "command_recover"
                 if self.mode == WorkspaceToolMode::ReadOnly =>
             {
                 Err(tool("this role has read-only workspace access"))
@@ -166,10 +199,17 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
             "workspace_write" => self.write(&arguments),
             "workspace_patch" => self.patch(&arguments),
             "workspace_remove" => self.remove(&arguments),
-            "run_command" => self.run(&arguments),
+            "run_command" => self.run_command(&arguments, call.id().expose_for_wire()),
+            "command_start" => self.start_command(&arguments, call.id().expose_for_wire()),
+            "command_poll" => self.poll_command(&arguments),
+            "command_stdin" => self.write_command_stdin(&arguments),
+            "command_resize" => self.resize_command(&arguments),
+            "command_signal" => self.signal_command(&arguments),
+            "command_cancel" => self.cancel_command(&arguments),
+            "command_recover" => self.recover_command(&arguments),
             _ => return Err(tool("model requested an undeclared developer tool")),
         };
-        let (value, is_error, accepted) = match result {
+        let (mut value, is_error, accepted) = match result {
             Ok(value) => {
                 let is_error = value.get("success").and_then(Value::as_bool) == Some(false);
                 (value, is_error, true)
@@ -179,6 +219,14 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
                 (value, true, false)
             }
         };
+        if accepted {
+            self.active_commands.observe(
+                &self.root,
+                &mut value,
+                &mut self.ownership,
+                &mut self.command_evidence,
+            )?;
+        }
         if effect {
             self.receipts
                 .as_mut()
@@ -217,9 +265,18 @@ impl WorkspaceDeveloperTools {
         }
         let workspace_mutation =
             accepted && matches!(name, "workspace_write" | "workspace_patch" | "workspace_remove");
-        let external_effect = name == "run_command"
-            && result.get("success").and_then(Value::as_bool) == Some(true)
-            && string(arguments, "purpose") == Some("external_effect");
+        let external_effect = matches!(
+            name,
+            "run_command"
+                | "command_poll"
+                | "command_stdin"
+                | "command_resize"
+                | "command_signal"
+                | "command_cancel"
+                | "command_recover"
+        ) && result.get("success").and_then(Value::as_bool) == Some(true)
+            && (string(arguments, "purpose") == Some("external_effect")
+                || result.get("purpose").and_then(Value::as_str) == Some("external_effect"));
         if workspace_mutation || external_effect {
             self.tools_without_delivery_progress = 0;
             self.progress_feedback_pending = false;

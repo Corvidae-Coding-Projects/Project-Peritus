@@ -51,6 +51,10 @@ impl ToolProcessFailureObservation {
 ///
 /// Returns a typed product-runner failure if setup, grounding, execution, result decoding, or
 /// durable receipt verification differs from the qualification contract.
+#[allow(
+    clippy::too_many_lines,
+    reason = "the release probe keeps setup, execution, and exact retained observations together"
+)]
 pub fn qualify_tool_process_failure(
     workspace: &Path,
     receipt_path: PathBuf,
@@ -68,12 +72,27 @@ pub fn qualify_tool_process_failure(
         .to_str()
         .ok_or_else(|| qualification("candidate executable path is not Unicode"))?;
     let scope = format!("h1-{dependency}-attempt-{attempt}");
+    let state_root = receipt_path
+        .parent()
+        .ok_or_else(|| qualification("tool receipt path has no parent"))?
+        .join(format!("command-runtime-{attempt}"));
+    let process_store =
+        peritus_process::ProcessStore::open(state_root.join("processes"), workspace)
+            .map_err(|error| qualification(error.to_string()))?;
+    let digest = sha256(scope.as_bytes());
+    let mut run_bytes = [0_u8; 16];
+    run_bytes.copy_from_slice(&digest.as_bytes()[..16]);
+    let run_id = peritus_types::RunId::new(run_bytes)
+        .map_err(|error| qualification(format!("construct qualification run: {error:?}")))?;
+    let command_runtime =
+        crate::CommandRuntime::open(state_root.join("router"), workspace, run_id, process_store)?;
     let mut tools = WorkspaceDeveloperTools::with_ownership(
         workspace.to_path_buf(),
         WorkspaceOwnership::capture(workspace),
         receipt_path.clone(),
         scope,
         Duration::from_secs(30),
+        command_runtime,
     );
     require_success(
         &tools
