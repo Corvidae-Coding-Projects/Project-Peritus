@@ -97,7 +97,10 @@ pub(crate) fn process_group_count(
     let count =
         unsafe { libc::proc_listpgrppids(group, pids.as_mut_ptr().cast::<c_void>(), buffer_bytes) };
     if count < 0 {
-        return Err(sample_error("process group cannot be enumerated"));
+        // macOS can remove a short-lived child's process-group entry before the supervisor's
+        // first optional libproc sample. The root handle remains the exit authority, so an
+        // unavailable sample is not an execution failure.
+        return Ok(None);
     }
     let count = usize::try_from(count)
         .map_err(|_| sample_error("process-group count exceeds platform capacity"))?;

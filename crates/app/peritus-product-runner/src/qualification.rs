@@ -144,6 +144,11 @@ pub fn qualify_tool_process_failure(
         value.get("exit_code").and_then(Value::as_i64).and_then(|code| i32::try_from(code).ok());
     let stdout = value.get("stdout").and_then(Value::as_str);
     let stderr = value.get("stderr").and_then(Value::as_str);
+    let disposition = value.get("disposition").and_then(Value::as_str);
+    let os_exit =
+        value.get("tool_result").and_then(|result| result.get("os_exit")).and_then(Value::as_str);
+    let failure_code =
+        value.get("failure").and_then(|failure| failure.get("code")).and_then(Value::as_str);
     if success != Some(false)
         || timed_out != Some(false)
         || exit_code != Some(17)
@@ -152,7 +157,7 @@ pub fn qualify_tool_process_failure(
         || stderr != Some("")
     {
         return Err(qualification(format!(
-            "bounded product tool did not retain the expected child death: success={success:?} timed_out={timed_out:?} exit_code={exit_code:?} is_error={} stdout_contains_marker={} stderr_empty={}",
+            "bounded product tool did not retain the expected child death: success={success:?} timed_out={timed_out:?} exit_code={exit_code:?} disposition={disposition:?} os_exit={os_exit:?} failure_code={failure_code:?} is_error={} stdout_contains_marker={} stderr_empty={}",
             result.is_error,
             stdout.is_some_and(|value| value.contains("dependency-child")),
             stderr == Some(""),
