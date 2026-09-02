@@ -1,6 +1,6 @@
 //! Black-box native H0 shard-operator lifecycle.
 
-#![cfg(unix)]
+#![cfg(target_os = "linux")]
 
 use std::fs;
 use std::os::unix::fs::PermissionsExt as _;

@@ -142,8 +142,8 @@ fn workflow_root_controls_are_exact_and_automatic() {
 fn ci_cargo_steps_reject_wrapper_and_path_assignments() {
     for (needle, replacement) in [
         (
-            "run: cargo run --locked --package xtask -- ci-shard ${{ matrix.operation }} ${{ matrix.shard }}",
-            "run: RUSTC_WRAPPER=./evil cargo run --locked --package xtask -- ci-shard ${{ matrix.operation }} ${{ matrix.shard }}",
+            "run: cargo run --locked --target-dir target/xtask-bootstrap --package xtask -- ci-shard ${{ matrix.operation }} ${{ matrix.shard }}",
+            "run: RUSTC_WRAPPER=./evil cargo run --locked --target-dir target/xtask-bootstrap --package xtask -- ci-shard ${{ matrix.operation }} ${{ matrix.shard }}",
         ),
         ("run: cargo deny --locked check", "run: PATH=./attacker cargo deny --locked check"),
     ] {

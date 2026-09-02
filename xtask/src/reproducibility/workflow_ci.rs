@@ -185,7 +185,7 @@ fn rust_job_is_exact(job: &Yaml) -> bool {
                 && rust_step(&steps[1], Some("clippy,rustfmt"))
                 && ci_shard_step(
                     &steps[2],
-                    "cargo run --locked --package xtask -- ci-shard ${{ matrix.operation }} ${{ matrix.shard }}",
+                    "cargo run --locked --target-dir target/xtask-bootstrap --package xtask -- ci-shard ${{ matrix.operation }} ${{ matrix.shard }}",
                 )
         })
 }

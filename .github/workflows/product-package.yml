@@ -48,7 +48,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, macos-15, windows-2025]
-        shard: [0, 1, 2, 3, 4, 5]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
@@ -65,7 +65,7 @@ jobs:
           sudo apt-get install --yes --no-install-recommends apparmor-profiles bubblewrap
           sudo apparmor_parser --replace /usr/share/apparmor/extra-profiles/bwrap-userns-restrict
           bwrap --version
-      - name: Qualify three native H2 package scenarios
+      - name: Qualify one native H2 package scenario
         run: >-
           cargo run --locked --package xtask --
           product-native-qualification-shard ${{ matrix.shard }}

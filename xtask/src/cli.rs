@@ -31,7 +31,7 @@ Commands:
   product-install        Build and install Peritus for the current user
   product-package-smoke  Qualify native install, repeat launch, upgrade, and uninstall
   product-native-qualification Run and retain all 18 native H2 package scenarios
-  product-native-qualification-shard INDEX Run one of six three-scenario H2 shards
+  product-native-qualification-shard INDEX Run one of 18 single-scenario H2 shards
   release-bootstrap-smoke Qualify the public download, checksum, and install entry point
   release-create         Validate a tag and create its retained draft GitHub release
   release-package-stage Build, archive, checksum, and record this host's native package

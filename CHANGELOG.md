@@ -1,10 +1,15 @@
 # Changelog
 
 - Replace long hosted checks with bounded work shards instead of extending their timeouts. Gate A
-  and Foundation now partition Rust and Verus work by reviewed architecture layers; H2 runs six
-  three-scenario shards per host; H0 runs four fresh-subject worker partitions before reconstructing
+  and Foundation now partition Rust and Verus work by reviewed architecture layers; H2 runs 18
+  single-scenario shards per host; H0 runs four fresh-subject worker partitions before reconstructing
   its canonical platform report; and release jobs build, assemble, attest, and publish in separate
   stages. Every hosted job now has a timeout of ten minutes or less (#31).
+- Isolate the Rust shard controller in its own Cargo target directory so Windows can compile and
+  test the `xtask` package without trying to replace the running `xtask.exe`; keep that invocation
+  exact and policy-checked in both Foundation and Gate A (#31).
+- Keep H2's cold Windows qualification beneath the ten-minute ceiling by assigning one scenario to
+  each of 18 native shards, retaining the same complete scenario and raw-evidence coverage (#31).
 - Freeze both completed external diagnostic campaigns during failure remediation: use retained
   evidence plus focused regressions for each general correction, and defer any new full comparison
   until the remediation code is frozen and an operator explicitly starts qualification (#31).

@@ -42,9 +42,10 @@ fn parse_h2(arguments: &mut impl Iterator<Item = OsString>) -> Result<Command, X
         .and_then(|value| value.parse::<usize>().ok())
         .filter(|index| *index < crate::product_package::H2_SHARD_COUNT)
         .ok_or_else(|| {
-            XtaskError::invocation(
-                "product-native-qualification-shard requires an index from 0 through 5",
-            )
+            XtaskError::invocation(format!(
+                "product-native-qualification-shard requires an index from 0 through {}",
+                crate::product_package::H2_SHARD_COUNT - 1
+            ))
         })?;
     if arguments.next().is_some() {
         return Err(XtaskError::invocation(
@@ -65,14 +66,14 @@ mod tests {
             parse(Some(&OsString::from("ci-shard")), &mut ci).expect("CI shard").unwrap(),
             Command::CiShard { operation: crate::ci_shard::Operation::Test, shard: "app" }
         );
-        let mut h2 = std::iter::once(OsString::from("5"));
+        let mut h2 = std::iter::once(OsString::from("17"));
         assert_eq!(
             parse(Some(&OsString::from("product-native-qualification-shard")), &mut h2)
                 .expect("H2 shard")
                 .unwrap(),
-            Command::ProductNativeQualificationShard { index: 5 }
+            Command::ProductNativeQualificationShard { index: 17 }
         );
-        let mut invalid = std::iter::once(OsString::from("6"));
+        let mut invalid = std::iter::once(OsString::from("18"));
         assert!(
             parse(Some(&OsString::from("product-native-qualification-shard")), &mut invalid,)
                 .is_err()

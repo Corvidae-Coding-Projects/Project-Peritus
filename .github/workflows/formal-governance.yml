@@ -149,7 +149,7 @@ jobs:
           components: clippy,rustfmt
       - name: Run reviewed package shard
         working-directory: candidate
-        run: cargo run --locked --package xtask -- ci-shard ${{ matrix.operation }} ${{ matrix.shard }}
+        run: cargo run --locked --target-dir target/xtask-bootstrap --package xtask -- ci-shard ${{ matrix.operation }} ${{ matrix.shard }}
 
   rust:
     name: Rust ${{ matrix.operation }} (${{ matrix.os }})

@@ -96,7 +96,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
           components: clippy,rustfmt
       - name: Run reviewed package shard
-        run: cargo run --locked --package xtask -- ci-shard ${{ matrix.operation }} ${{ matrix.shard }}
+        run: cargo run --locked --target-dir target/xtask-bootstrap --package xtask -- ci-shard ${{ matrix.operation }} ${{ matrix.shard }}
 
   supply-chain:
     name: Licenses and dependency policy

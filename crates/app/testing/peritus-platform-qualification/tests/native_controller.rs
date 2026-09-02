@@ -55,7 +55,7 @@ fn one_command_operator_runs_all_scenarios_and_publishes_a_bound_report() {
 }
 
 #[test]
-fn scenario_shard_runs_exactly_three_fresh_subjects_and_retains_each_report() {
+fn scenario_shard_runs_exactly_one_fresh_subject_and_retains_its_report() {
     let fixture = NativeFixture::new(Binding::Exact, NativeControllerLimits::default());
     let (_, manifest) = fixture.manifest();
     let manifest_path = fixture.root.path().join("manifest.toml");
@@ -72,7 +72,7 @@ fn scenario_shard_runs_exactly_three_fresh_subjects_and_retains_each_report() {
         .expect("shard reports")
         .map(|entry| entry.expect("report entry").path())
         .collect::<Vec<_>>();
-    assert_eq!(reports.len(), 3);
+    assert_eq!(reports.len(), 1);
     for report in reports {
         let document: serde_json::Value =
             serde_json::from_slice(&fs::read(report).expect("report")).expect("report JSON");
@@ -81,7 +81,7 @@ fn scenario_shard_runs_exactly_three_fresh_subjects_and_retains_each_report() {
         assert_eq!(document["manifest_sha256"], manifest.digest().to_hex());
     }
     assert_eq!(fs::read_dir(&fixture.scratch).expect("scratch").count(), 0);
-    assert_retained_evidence(&fixture.artifacts, 3);
+    assert_retained_evidence(&fixture.artifacts, 1);
 }
 
 fn operator_command(fixture: &NativeFixture, manifest: &Path, report: &Path) -> Command {

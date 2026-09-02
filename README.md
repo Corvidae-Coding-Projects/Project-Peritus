@@ -125,7 +125,7 @@ Cross-host aggregation and a separately supplied independent review remain manda
 cannot manufacture either one.
 
 All hosted jobs are capped at ten minutes. Rust and Verus checks are partitioned by the reviewed
-architecture layers, H2 assigns three of its 18 scenarios to each shard, and tagged releases build
+architecture layers, H2 assigns one of its 18 scenarios to each shard, and tagged releases build
 each native binary separately before package assembly and attestation. Required Gate A check names
 remain stable and aggregate the complete shard set.
 

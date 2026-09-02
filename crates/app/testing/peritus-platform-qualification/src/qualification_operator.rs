@@ -13,8 +13,7 @@ use crate::{
 };
 
 const MAX_MANIFEST_BYTES: u64 = 256 * 1024;
-const SCENARIOS_PER_SHARD: usize = 3;
-const H2_SHARD_COUNT: usize = 6;
+const H2_SHARD_COUNT: usize = crate::ScenarioId::all().len();
 
 /// Terminal status of a successfully executed native H2 campaign.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -51,21 +50,13 @@ fn run(arguments: &[OsString]) -> Result<H2OperatorStatus, Box<dyn std::error::E
             return Err("H2 shard report directory already exists".into());
         }
         fs::create_dir_all(&options.report)?;
-        let first = shard * SCENARIOS_PER_SHARD;
-        let scenarios = &crate::ScenarioId::all()[first..first + SCENARIOS_PER_SHARD];
-        let mut ready = true;
-        for scenario in scenarios {
-            let observation =
-                FreshSubjectRunner.run_scenario(&mut factory, target, &manifest, scenario.id())?;
-            let scenario_ready = observation.outcome() == crate::ObservationOutcome::Passed
-                && observation.cleanup().is_some_and(crate::CleanupObservation::complete);
-            ready &= scenario_ready;
-            let bytes = super::report_json::render_shard(target, manifest.digest(), &observation)?;
-            publish_report(
-                &options.report.join(format!("{}.json", scenario.id().as_str())),
-                &bytes,
-            )?;
-        }
+        let scenario = crate::ScenarioId::all()[shard];
+        let observation =
+            FreshSubjectRunner.run_scenario(&mut factory, target, &manifest, scenario.id())?;
+        let ready = observation.outcome() == crate::ObservationOutcome::Passed
+            && observation.cleanup().is_some_and(crate::CleanupObservation::complete);
+        let bytes = super::report_json::render_shard(target, manifest.digest(), &observation)?;
+        publish_report(&options.report.join(format!("{}.json", scenario.id().as_str())), &bytes)?;
         return Ok(if ready { H2OperatorStatus::Ready } else { H2OperatorStatus::NotReady });
     }
     if let Some(scenario) = options.scenario {
@@ -228,5 +219,5 @@ fn publish_report(path: &Path, bytes: &[u8]) -> Result<(), Box<dyn std::error::E
 }
 
 const fn usage() -> &'static str {
-    "usage: peritus-h2 --controller PATH --package DIR --manifest FILE --scratch DIR --artifacts DIR --report FILE --platform linux|macos|windows --architecture x86_64|aarch64 --version MAJOR.MINOR.PATCH[.BUILD] [--scenario ID|--shard 0..5]"
+    "usage: peritus-h2 --controller PATH --package DIR --manifest FILE --scratch DIR --artifacts DIR --report FILE --platform linux|macos|windows --architecture x86_64|aarch64 --version MAJOR.MINOR.PATCH[.BUILD] [--scenario ID|--shard 0..17]"
 }

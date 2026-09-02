@@ -262,6 +262,11 @@ report. The report contains target and manifest identity, every fresh subject, t
 evidence set, cleanup facts, and the final ready/not-ready reduction. Its request, response,
 cleanup, and report documents have versioned schemas under `packaging/schemas/`.
 
+Hosted qualification assigns one scenario to each of 18 shards per operating system. Each shard
+performs the same exact package preparation and retains one scenario report plus its raw evidence,
+keeping cold Windows runs inside the repository's ten-minute job ceiling without reducing H2
+coverage.
+
 The checked-in fixture still proves all 18 protocol translations, exact report publication,
 false-digest rejection, stale-response rejection, and descendant termination at the deadline. It
 is separate from `peritus-h2-controller`, which validates the bound request and then performs the

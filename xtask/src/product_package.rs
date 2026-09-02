@@ -12,7 +12,7 @@ use std::{
 
 use crate::XtaskError;
 
-pub(crate) const H2_SHARD_COUNT: usize = 6;
+pub(crate) const H2_SHARD_COUNT: usize = 18;
 
 pub(crate) fn build(root: &Path) -> Result<PathBuf, XtaskError> {
     assemble(root, false)?;
@@ -83,9 +83,10 @@ pub(crate) fn qualify(root: &Path) -> Result<PathBuf, XtaskError> {
 
 pub(crate) fn qualify_shard(root: &Path, index: usize) -> Result<PathBuf, XtaskError> {
     if index >= H2_SHARD_COUNT {
-        return Err(XtaskError::invocation(
-            "H2 qualification shard index must be from 0 through 5",
-        ));
+        return Err(XtaskError::invocation(format!(
+            "H2 qualification shard index must be from 0 through {}",
+            H2_SHARD_COUNT - 1
+        )));
     }
     let qualification = prepare_qualification(root)?;
     let reports = qualification.run_root.join(format!("shard-{index}"));
@@ -100,9 +101,9 @@ pub(crate) fn qualify_shard(root: &Path, index: usize) -> Result<PathBuf, XtaskE
         .filter_map(Result::ok)
         .filter(|entry| entry.path().extension().and_then(|value| value.to_str()) == Some("json"))
         .count();
-    if report_count != 3 {
+    if report_count != 1 {
         return Err(XtaskError::metadata(format!(
-            "native H2 shard {index} retained {report_count} reports instead of 3 at {}",
+            "native H2 shard {index} retained {report_count} reports instead of 1 at {}",
             reports.display()
         )));
     }
