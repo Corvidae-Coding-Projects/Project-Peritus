@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, time::Duration};
 
 use peritus_agent::{DeveloperToolExecutor, DeveloperToolObservation};
 use peritus_model_protocol::{
@@ -23,6 +23,7 @@ fn completed_workspace_effect_replays_without_a_second_write() {
         WorkspaceOwnership::capture(workspace.path()),
         receipts.clone(),
         scope.to_owned(),
+        Duration::from_secs(30),
     );
     let list = completed_call("list", "workspace_list", r#"{"depth":1,"path":""}"#);
     let _ = first.execute(&list).expect("workspace list");
@@ -35,6 +36,7 @@ fn completed_workspace_effect_replays_without_a_second_write() {
         first.ownership().clone(),
         receipts,
         scope.to_owned(),
+        Duration::from_secs(30),
     );
     let replay = recovered.execute(&call).expect("receipt replay");
 

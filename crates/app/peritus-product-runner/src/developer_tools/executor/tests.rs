@@ -270,6 +270,7 @@ fn exact_remove_preserves_late_external_evidence_and_blocks_shell_deletion() {
         ownership,
         receipt_path(workspace.path()),
         "fixer-test".to_owned(),
+        Duration::from_secs(30),
     );
     let _ = execute(&mut fixer, "workspace_list", r#"{"depth":1,"path":""}"#);
     let _ = execute(
@@ -342,11 +343,16 @@ fn wire(observation: &DeveloperToolObservation) -> String {
 }
 
 fn writable_tools(root: &Path) -> WorkspaceDeveloperTools {
+    writable_tools_with_horizon(root, Duration::from_secs(30))
+}
+
+fn writable_tools_with_horizon(root: &Path, horizon: Duration) -> WorkspaceDeveloperTools {
     WorkspaceDeveloperTools::with_ownership(
         root.to_owned(),
         WorkspaceOwnership::capture(root),
         receipt_path(root),
         "writer-test".to_owned(),
+        horizon,
     )
 }
 

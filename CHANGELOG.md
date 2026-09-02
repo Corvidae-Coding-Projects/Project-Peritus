@@ -1,5 +1,8 @@
 # Changelog
 
+- Clamp every developer command to the live caller-derived product deadline, preserve a bounded
+  completion reserve, and report the requested timeout, actual allowance, and remaining time so a
+  late compiler, test, transfer, or analysis command cannot consume the whole run (`TBF-044`, #31).
 - Record the frozen Terminal-Bench context-exhaustion recurrence that is already corrected by
   model-visible tool-output bounds, semantic checkpoints, and emergency compaction of a newest
   complete exchange; preserve the unsupported-answer reward as an honest zero (`TBF-043`, #31).

@@ -1,7 +1,10 @@
 //! Narrow production-tool qualification used by release resilience campaigns.
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    time::Duration,
+};
 
 use peritus_agent::DeveloperToolExecutor as _;
 use peritus_model_protocol::{
@@ -70,6 +73,7 @@ pub fn qualify_tool_process_failure(
         WorkspaceOwnership::capture(workspace),
         receipt_path.clone(),
         scope,
+        Duration::from_secs(30),
     );
     require_success(
         &tools

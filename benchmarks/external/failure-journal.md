@@ -4539,3 +4539,34 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   semantically compacted, a 120,014-byte exact observation is bounded before model history, an
   impossible newest complete exchange is compacted, and unusable semantic compaction falls back to
   deterministic compaction. An unchanged final-candidate rerun remains required.
+
+## TBF-044: repeated long commands consumed the enclosing run deadline
+
+- Suite and task: Terminal-Bench 2.0 frozen baseline, corrected-adapter trial
+  `extract-moves-from-video__gLP7k2n`.
+- Symptom: the agent gathered useful source media and OCR evidence but Harbor cancelled the native
+  process at the unchanged 1,800-second outer deadline. The trial produced no native report and no
+  required solution artifact; the unchanged verifier therefore awarded reward 0.
+- Cause: individual structured commands were bounded to 600 seconds, but those bounds were
+  independent of the enclosing product horizon. A synchronous command could keep the developer
+  loop from observing outer cancellation until the child returned, and multiple individually valid
+  commands could consume all remaining time. This trial ran a dense OCR pass to its 600-second
+  timeout, inspected the partial 2,281-frame output, then requested another 600-second sparse OCR
+  pass. No deterministic command allowance preserved time for synthesis and delivery.
+- General resolution: each writable developer-tool executor now starts with the caller-derived
+  remaining product horizon. Before every command, it subtracts elapsed time and a bounded
+  completion reserve, then clamps the requested timeout to the live allowance. Once only the
+  reserve remains, the command is not spawned. Every result reports the requested timeout, actual
+  allowance, remaining product seconds, completion reserve, and whether the shared deadline limited
+  execution. This applies uniformly to builds, tests, compilers, media processing, dependency
+  installation, data conversion, and repository inspection in every supported language.
+- Integrity decision: retain reward 0 and do not add a video, OCR, task-name, move-list, or expected
+  answer rule. The harness improvement controls general subprocess scheduling; it neither supplies
+  the solution nor changes the task, verifier, providers, acceptance gates, or frozen candidate. An
+  unchanged final-candidate rerun remains required.
+- Verification: deterministic budget tests cover an ordinary command, a late clamped command, and
+  reserve exhaustion. A real process-tree regression proves a requested ten-second command is
+  limited to no more than one second while preserving the final reserve; when time remains, the
+  owned process tree is killed and reaped. The complete product-runner suite passes 125 tests,
+  strict all-target/all-feature Clippy is clean, and documentation validation passes all 137
+  maintained files.

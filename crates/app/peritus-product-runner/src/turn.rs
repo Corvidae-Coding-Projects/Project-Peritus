@@ -232,6 +232,7 @@ async fn run_developer_invocation(
         context.ownership.clone(),
         input.trace_path.with_extension("effects.bin"),
         request_prefix.clone(),
+        context.remaining,
     );
     let mut trace = FileDeveloperTrace::new(input.trace_path.clone());
     let result = DeveloperLoop::run(

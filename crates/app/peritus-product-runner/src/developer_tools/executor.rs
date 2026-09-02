@@ -7,6 +7,7 @@ use peritus_model_protocol::CompletedToolCall;
 use serde_json::Value;
 
 use super::{
+    command_budget::CommandBudget,
     effect::{atomic_write, atomic_write_if_changed, reject_destructive_command},
     evidence::CommandEvidence,
     grounding::GroundingEvidence,
@@ -39,6 +40,7 @@ pub struct WorkspaceDeveloperTools {
     ownership: WorkspaceOwnership,
     mode: WorkspaceToolMode,
     command_evidence: CommandEvidence,
+    command_budget: Option<CommandBudget>,
     receipts: Option<EffectReceiptLedger>,
     resources: CommandResources,
     tools_without_delivery_progress: u16,
@@ -58,6 +60,7 @@ impl WorkspaceDeveloperTools {
             ownership,
             mode: WorkspaceToolMode::ReadOnly,
             command_evidence: CommandEvidence::default(),
+            command_budget: None,
             receipts: None,
             resources: CommandResources::observe(),
             tools_without_delivery_progress: 0,
@@ -71,6 +74,7 @@ impl WorkspaceDeveloperTools {
         ownership: WorkspaceOwnership,
         receipt_path: PathBuf,
         receipt_scope: String,
+        command_horizon: Duration,
     ) -> Self {
         Self {
             root,
@@ -78,6 +82,7 @@ impl WorkspaceDeveloperTools {
             ownership,
             mode: WorkspaceToolMode::ReadWrite,
             command_evidence: CommandEvidence::default(),
+            command_budget: Some(CommandBudget::new(command_horizon)),
             receipts: Some(EffectReceiptLedger::new(receipt_path, receipt_scope)),
             resources: CommandResources::observe(),
             tools_without_delivery_progress: 0,
@@ -328,26 +333,47 @@ impl WorkspaceDeveloperTools {
         let mut command = Command::new(program);
         command.args(&args).current_dir(current_dir);
         self.resources.prepare(&mut command, program, &args)?;
-        let timeout_seconds = bounded_u64(
+        let requested_timeout_seconds = bounded_u64(
             arguments,
             "timeout_seconds",
             DEFAULT_COMMAND_TIMEOUT_SECONDS,
             1,
             MAX_COMMAND_TIMEOUT_SECONDS,
         );
-        let output = process::run(command, Duration::from_secs(timeout_seconds))?;
-        let recovery_hint = output.timed_out.then_some(
-            "Do not retry an equivalent command with a longer timeout or another bulk-transfer \
-             wrapper without new size or progress evidence. Preserve the task deadline and choose \
-             a materially bounded or resumable strategy.",
-        );
+        let budget = self
+            .command_budget
+            .as_ref()
+            .ok_or_else(|| tool("writable tools have no command budget"))?;
+        let allowance = budget.allowance(requested_timeout_seconds);
+        if allowance.timeout_seconds == 0 {
+            return Ok(allowance.exhausted_result());
+        }
+        let output = process::run(command, Duration::from_secs(allowance.timeout_seconds))?;
+        let remaining_product_seconds = budget.remaining_seconds();
+        let recovery_hint = if output.timed_out {
+            Some(if allowance.deadline_limited {
+                "The command reached the live product-budget allowance. Do not start another long \
+                 command: preserve the completion reserve, use existing evidence, and deliver the \
+                 best verified result now."
+            } else {
+                "Do not retry an equivalent command with a longer timeout or another bulk-transfer \
+                 wrapper without new size or progress evidence. Preserve the task deadline and \
+                 choose a materially bounded or resumable strategy."
+            })
+        } else {
+            None
+        };
         let result = object(vec![
             ("success", Value::Bool(output.status.success() && !output.timed_out)),
             ("exit_code", output.status.code().map_or(Value::Null, Value::from)),
             ("stdout", Value::String(output.stdout)),
             ("stderr", Value::String(output.stderr)),
             ("timed_out", Value::Bool(output.timed_out)),
-            ("timeout_seconds", Value::from(timeout_seconds)),
+            ("requested_timeout_seconds", Value::from(allowance.requested_seconds)),
+            ("timeout_seconds", Value::from(allowance.timeout_seconds)),
+            ("deadline_limited", Value::Bool(allowance.deadline_limited)),
+            ("remaining_product_seconds", Value::from(remaining_product_seconds)),
+            ("completion_reserve_seconds", Value::from(allowance.completion_reserve_seconds)),
             (
                 "recovery_hint",
                 recovery_hint.map_or(Value::Null, |value| Value::String(value.to_owned())),
