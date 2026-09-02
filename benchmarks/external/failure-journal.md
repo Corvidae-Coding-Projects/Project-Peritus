@@ -1885,6 +1885,29 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   outcome/process/security/combined are 0.8896/0.9867/1.0/0.8777. Evidence is retained at
   `reports/106-release-approval-gate-plan-final.json`.
 
+## HBF-029: HarnessBench outer deadlines were not propagated into Peritus
+
+- Suite and task: HarnessBench 2.0 final-candidate attempt, first observed on
+  `009-git-pr-merge`.
+- Symptom: the native run continued making durable trace and effect progress until HarnessBench's
+  unchanged 600-second adapter timeout killed it. The requested workspace work and native evidence
+  remained inspectable, but `invocation.json` and the scored result could not be published before
+  termination. The suite advanced with no result file for task 009.
+- Cause: the HarnessBench entrypoint supplied Peritus's normal eight-hour interactive horizon even
+  though the current benchmark task had a much shorter outer deadline. Unlike the Terminal-Bench
+  bridge, it retained no caller-derived cancellation and report-publication reserve.
+- General resolution: the native adapter now resolves the exact current task's top-level
+  `timeout_sec` from the pinned unchanged catalog, reserves ten percent bounded between 90 and 300
+  seconds, caps the work horizon at the product maximum, and fails before provider work when the
+  catalog, task identity, timeout, or uniqueness evidence is invalid. This is general deadline
+  propagation for every HarnessBench task, not a task-specific timeout or answer.
+- Integrity decision: the timed-out attempt remains unscored and is not converted into a candidate
+  zero. Its external evidence is retained under
+  `final-d70643d5899f/workspaces/peritus-codex-claude/gpt-5.6-sol/oc-bench-v2-009-git-pr-merge-gpt-5.6-sol-20260902-113316-ce515773`.
+- Verification: focused Rust tests cover short, ordinary, long, capped, duplicate, missing, and
+  path-escaping deadline evidence. A fresh unchanged task 009 run and the complete final campaign
+  remain required on the resulting exact binary.
+
 ## TBI-001: rootless Podman required an interactive short-name choice
 
 - Suite and task: Terminal-Bench 2.0, `openssl-selfsigned-cert`, adapter qualification.

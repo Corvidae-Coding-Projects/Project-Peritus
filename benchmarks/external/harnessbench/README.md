@@ -52,6 +52,13 @@ python3 /absolute/path/to/Project-Peritus/benchmarks/external/harnessbench/rubri
 The bridge forwards bounded rubric requests to the native Rust adapter, which uses the logged-in
 official `codex` executable as a model router. The bridge does not read or copy account credentials.
 
+HarnessBench gives each task its own outer adapter timeout but its generic CLI does not pass that
+number as an argument. Point Peritus at the pinned unchanged task catalog with
+`PERITUS_HARNESSBENCH_TASKS_DIR`. The native adapter reads the current task's top-level
+`timeout_sec`, reserves ten percent (between 90 and 300 seconds) for cancellation and durable report
+publication, and fails visibly when deadline evidence is missing instead of silently using the
+normal eight-hour interactive horizon.
+
 ## Run an unchanged task
 
 From the HarnessBench checkout:
@@ -60,6 +67,7 @@ From the HarnessBench checkout:
 PATH=/absolute/path/to/benchmark-state/.venv/bin:/absolute/path/to/Project-Peritus/target/debug:$PATH \
 HARNESSBENCH_APP_CONFIG=/absolute/path/to/local-app.json \
 HARNESSBENCH_HARNESS_CONFIG=/absolute/path/to/Project-Peritus/benchmarks/external/harnessbench/harness.json \
+PERITUS_HARNESSBENCH_TASKS_DIR=/absolute/path/to/harness-bench/tasks \
 HARNESSBENCH_PUBLIC_URL_TEMPLATE='{local_url}' \
 RUBRIC_API_KEY=peritus-local-rubric \
 RUBRIC_BASE_URL=http://127.0.0.1:8765/v1 \

@@ -1,5 +1,9 @@
 # Changelog
 
+- Derive each HarnessBench product work horizon from the pinned task's unchanged outer timeout,
+  reserving bounded time for provider cancellation, trace projection, and native report
+  publication. Reject missing or ambiguous task deadline evidence instead of silently running with
+  the normal eight-hour interactive horizon until the benchmark kills the adapter (#31).
 - Keep the active command lifecycle buildable across every release gate by mirroring its
   constructor in the Verus-facing daemon API and making the Windows executable-extension branch
   strict-clippy clean. Declare supervisor resource fidelity only on Linux, where C2 implements it;

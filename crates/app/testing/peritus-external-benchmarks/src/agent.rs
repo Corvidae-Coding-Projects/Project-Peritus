@@ -8,8 +8,8 @@ use std::{
 };
 
 use peritus_product_runner::{
-    PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput, ProductRunOutcome,
-    ProductRunUpdate, ProductRunner, RunObserver,
+    ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunUpdate, ProductRunner,
+    RunObserver,
 };
 use peritus_provider_core::CancellationToken;
 use peritus_types::RunId;
@@ -25,6 +25,7 @@ use crate::{
 
 pub async fn run_harnessbench(input: HarnessBenchInput) -> Result<RunReport, BenchmarkError> {
     let started = Instant::now();
+    let max_elapsed = crate::deadline::harnessbench_horizon(&input.task_id)?;
     let agent_identity = BenchmarkAgentIdentity::current()?;
     let baseline = workspace::prepare(&input.workspace)?;
     let sandbox = input.sandbox.canonicalize().map_err(|error| {
@@ -60,7 +61,7 @@ pub async fn run_harnessbench(input: HarnessBenchInput) -> Result<RunReport, Ben
             command_runtime,
             finding_state: String::new(),
             task: prompt.clone(),
-            max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
+            max_elapsed,
             delivery_scope: ProductDeliveryScope::WorkspaceChanges,
             conversation: Arc::new(conversation.clone()),
             providers: role_providers,

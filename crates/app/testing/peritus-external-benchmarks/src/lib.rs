@@ -3,6 +3,7 @@
 mod agent;
 mod args;
 mod command_runtime;
+mod deadline;
 mod dispatch;
 mod error;
 mod evidence;
