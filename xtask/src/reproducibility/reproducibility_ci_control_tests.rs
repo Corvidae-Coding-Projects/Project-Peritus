@@ -28,6 +28,19 @@ fn rust_and_supply_chain_jobs_cannot_be_skipped_or_gutted() {
 }
 
 #[test]
+fn rust_job_retains_the_hosted_windows_timeout() {
+    let altered = canonical_ci().replacen(
+        "    name: Rust (${{ matrix.os }})\n    needs: bootstrap\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-24.04, macos-15, windows-2025]\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 60",
+        "    name: Rust (${{ matrix.os }})\n    needs: bootstrap\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-24.04, macos-15, windows-2025]\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 45",
+        1,
+    );
+
+    assert_ne!(altered, canonical_ci(), "fixture mutation must change canonical CI");
+    let (_, diagnostics) = validate(".github/workflows/ci.yml", DocumentKind::Workflow, &altered);
+    assert_message(&diagnostics, "exact unconditional Rust matrix gate");
+}
+
+#[test]
 fn verus_job_rejects_needs_runner_shell_env_and_intervening_steps() {
     for altered in [
         canonical_ci().replace(
