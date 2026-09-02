@@ -49,27 +49,35 @@ useful behavior only when it fits its own local-first and evidence-driven design
 | Configuration migration, compatibility, diagnostics, and rollback | Working with final-campaign evidence pending | C0/G0/H2/H4 provide versioned state, recovery, package layout, migration, diagnostics, and rollback contracts. The public bootstraps use those same native transactional adapters, whose repeat install, upgrade, rollback, state preservation, and uninstall paths are exercised on all hosted platforms. | Re-run the complete lifecycle against the exact release candidate and retain the H2/H4 evidence. |
 | One-command install and safe startup updates | Working with first-release evidence pending | Root POSIX and PowerShell bootstraps resolve native GitHub release assets and reject checksum mismatch. G4 performs a nonblocking six-hour cached startup check, offers an update, exposes `peritus update`, and persists explicit enable/disable commands; downloads are streamed within a 1 GiB bound, verified, and installed through native rollback adapters. Windows finishes after the running executable exits. The release workflow retains a draft until all three native jobs pass. | Publish and exercise the first exact release, including hosted offline-startup and interrupted-update cases, before a production-ready claim. |
 
-## Interim Terminal-Bench control-flow evidence
+## Completed frozen Terminal-Bench control-flow evidence
 
-The frozen campaign had completed 202 trials when this audit was refreshed. Harbor had awarded
-111 rewards of 1.0, but only 19 of those trials reached a clean native Peritus terminal. Eighty
-passing artifacts were followed by a native provider failure, six by a native no-progress gate, and
-six by an external deadline or setup failure before a native report was published. The same snapshot
-contained 62 reward-zero provider terminals and three unscored provider terminals.
+The serialized frozen diagnostic campaign completed all 445 trials. The unchanged verifiers
+awarded 239 rewards of 1, 151 rewards of 0, and left 55 trials unscored. Scored accuracy is
+0.6128205128 and completed-trial success is 0.5370786517. Harbor's 108 errored trials are a subset
+of the 445 completed trials, not an additional population.
 
-Those counts do not turn failed tasks into passes, and they do not prove that every zero is
-recoverable. They do show that exhausted role recovery and terminal handoff are broad product
-problems rather than isolated task behavior. The final campaign must improve native completion as
-well as external accuracy; preserving a valid artifact while falsely reporting failure is not a
-production-quality result.
+Peritus retained 379 native reports: 134 accepted candidates and 245 rejected candidates. Sixty-six
+trials ended before a native report was available. Of the natively accepted results, 98 received
+reward 1, 27 received reward 0, and nine were unscored. Of the natively rejected results, 118 still
+received reward 1, 98 received reward 0, and 29 were unscored. This confirms that external artifact
+success and the harness's own terminal truth are distinct dimensions: a passing artifact can still
+expose a provider, recovery, grounding, or acceptance defect, while native acceptance cannot
+override an unchanged verifier failure.
+
+The normalized report is retained outside Git at
+`/home/doll/.local/state/peritus/benchmarks/terminalbench/reports/frozen-baseline-445.final.json`
+with SHA-256 `d7feff820c7d38d204744f75ef9214cb7b91949cac2c8c3b5625f10c39321bc0`.
+It preserves 4,872 native provider requests, 165,174,101 input tokens, 66,684,023 cached input
+tokens, and 5,117,689 output tokens. This is a multi-checkpoint diagnostic baseline; the exact
+single-binary final campaign remains mandatory.
 
 ## Material implementation queue
 
 The following items are accepted because they affect ordinary long coding runs or the release
 experience. They are ordered to avoid invalidating benchmark evidence more often than necessary.
 
-1. Finish the Terminal-Bench baseline and classify every failure without changing the running
-   binary.
+1. Completed: the frozen Terminal-Bench baseline finished all 445 trials without changing its
+   running binary, and the failure journal retains the classifications and general corrections.
 2. Completed on the draft qualification branch: G4 context accounting, deterministic compaction,
    preservation rules, digest-bound trace records, and focused regression coverage.
 3. Completed on the draft qualification branch: negotiated automatic prompt caching while

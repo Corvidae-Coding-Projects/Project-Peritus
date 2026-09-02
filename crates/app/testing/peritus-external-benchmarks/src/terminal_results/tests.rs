@@ -123,6 +123,14 @@ impl Fixture {
         write_json(&path, &value);
     }
 
+    fn remove_trial_usage(&self, name: &str) {
+        let path = self.job.join(name).join("result.json");
+        let mut value: Value = serde_json::from_slice(&fs::read(&path).expect("trial result"))
+            .expect("trial result JSON");
+        value["agent_result"] = Value::Null;
+        write_json(&path, &value);
+    }
+
     fn request(
         &self,
         mode: CampaignMode,
@@ -238,6 +246,22 @@ fn legacy_policy_exposes_missing_source_identity_without_inventing_it() {
     let error = build(&fixture.request(CampaignMode::Final, 1, IdentityPolicy::RequireNative))
         .expect_err("strict identity policy");
     assert!(error.to_string().contains("has no source revision"));
+}
+
+#[test]
+fn legacy_report_preserves_null_harbor_usage() {
+    let fixture = Fixture::new(1, 1, true);
+    fixture.add_trial("example__one", None);
+    fixture.remove_trial_usage("example__one");
+
+    let report = build(&fixture.request(CampaignMode::Final, 1, IdentityPolicy::AllowLegacy))
+        .expect("legacy report with null usage");
+    let value = serde_json::to_value(report).expect("serialized report");
+
+    assert_eq!(value["trials"][0]["usage"], Value::Null);
+    assert_eq!(value["aggregate"]["native_requests"], 0);
+    assert_eq!(value["aggregate"]["input_tokens"], 0);
+    assert_eq!(value["aggregate"]["native_accepted"], 1);
 }
 
 fn write_json(path: &std::path::Path, value: &Value) {

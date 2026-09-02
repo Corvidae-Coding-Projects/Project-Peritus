@@ -3,7 +3,8 @@
 This appendix records benchmark cases where a higher score would not demonstrate a better coding
 harness. It is a living companion to the exact evidence in the
 [failure journal](../benchmarks/external/failure-journal.md). Final aggregates will be added only
-after the frozen baseline and final-candidate campaigns finish.
+after the final-candidate campaign finishes; the completed frozen diagnostic aggregate is retained
+below.
 
 ## The rule
 
@@ -23,6 +24,16 @@ or scoring.
 
 Each entry below links to its published contract, hidden or contradictory expectation, exact
 retained result, and evidence. The text here names the score-only shortcut Peritus refused.
+
+## Frozen diagnostic aggregate
+
+The completed serialized baseline contains all 445 trials: 239 reward-1, 151 reward-0, and 55
+unscored. Accuracy is 0.6128205128 across 390 scored trials and 0.5370786517 across all completed
+trials. The no-overwrite normalized report is retained outside Git at
+`/home/doll/.local/state/peritus/benchmarks/terminalbench/reports/frozen-baseline-445.final.json`
+with SHA-256 `d7feff820c7d38d204744f75ef9214cb7b91949cac2c8c3b5625f10c39321bc0`.
+It preserves the official results; the categories below explain evidence without adjusting scores.
+Because general fixes landed during this diagnostic campaign, it is not the final-candidate result.
 
 ## Broken or internally inconsistent evaluators
 
@@ -97,6 +108,7 @@ ordinary, evidence-grounded result instead.
 - [HBI-063](../benchmarks/external/failure-journal.md#hbi-063-task-102-refusal-vocabulary-excludes-an-ordinary-supported-phrase): private refusal synonym set.
 - [HBI-066](../benchmarks/external/failure-journal.md#hbi-066-task-105-partial-snapshot-and-ledger-shapes-are-unpublished): private partial-snapshot and ledger shapes.
 - [HBI-067](../benchmarks/external/failure-journal.md#hbi-067-task-106-pending-action-alias-repetition-is-unpublished): private repeated alias convention.
+- [TBI-010](../benchmarks/external/failure-journal.md#tbi-010-the-embedding-rank-depends-on-an-unpublished-mteb-task-prompt): private MTEB task and query/passage prompt convention that changes the requested embedding rank.
 
 ## Hidden runtime and effect conventions
 
@@ -115,6 +127,6 @@ control tasks remain unchanged. Infrastructure failures such as unavailable depe
 terminals, container failures, and verifier timeouts are reported separately and never converted
 into an inferred score.
 
-The final delivery report will add the frozen before/after aggregates and link each demonstrated
+The final delivery report will add the final-candidate comparison and link each demonstrated
 general correction to its unchanged rerun. It will not delete, reclassify, or rewrite a retained
 failure merely because a later candidate performs better.

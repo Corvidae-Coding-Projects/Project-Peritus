@@ -24,7 +24,8 @@ source fixture, and must never be written into this tree.
 - [HarnessBench](external/harnessbench/README.md) measures orchestration, recovery, state, tool use,
   and verification. Its 106-task retained campaign is complete.
 - [Terminal-Bench 2.0](external/terminalbench/README.md) measures end-to-end work in isolated Unix
-  environments. Its 89-task, five-attempt campaign is running serially to protect host memory.
+  environments. Its 89-task, five-attempt frozen diagnostic campaign completed all 445 serialized
+  trials; broadly useful repairs and the exact final-candidate rerun remain.
 - The [failure journal](external/failure-journal.md) records every reproduced defect, diagnosis,
   broadly useful fix, unchanged rerun, retained benchmark mismatch, and evidence locator.
 

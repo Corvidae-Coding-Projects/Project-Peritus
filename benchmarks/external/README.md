@@ -13,7 +13,9 @@ workspaces and results are deliberately stored outside Git. Run heavy suites one
 Terminal-Bench campaign evidence is normalized by the Rust-owned
 `peritus-terminalbench-report` command. Its versioned output follows
 `../schemas/terminalbench-campaign-report-v1.schema.json`; it rejects a transient Harbor state in
-which the root aggregate has advanced before the matching child result is visible.
+which the root aggregate has advanced before the matching child result is visible. The completed
+frozen diagnostic baseline contains all 445 trials and is described in
+`terminalbench/README.md`; its final-candidate comparison has not run yet.
 
 See `harnessbench/README.md` and `terminalbench/README.md` for pinned inputs, adapter boundaries,
 resource-aware commands, and current qualification evidence.

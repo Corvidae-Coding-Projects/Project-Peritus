@@ -172,7 +172,7 @@
         "started_at": {"type": "string", "minLength": 1},
         "finished_at": {"type": "string", "minLength": 1},
         "agent": {"$ref": "#/$defs/harbor_agent"},
-        "usage": {"$ref": "#/$defs/usage"},
+        "usage": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/usage"}]},
         "exception": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/exception"}]},
         "native": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/native"}]},
         "evidence": {"$ref": "#/$defs/evidence"}

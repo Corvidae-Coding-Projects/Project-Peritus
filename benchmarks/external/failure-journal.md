@@ -3793,6 +3793,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   failed for verifier reward 0. Nine native requests used 176,219 input, 47,616 cached input, and
   2,344 output tokens; a later reviewer provider terminal made native acceptance false but did not
   change the independently decisive hidden-prompt mismatch. No product change is warranted.
+- Frozen-campaign recurrence: `mteb-retrieve__VHRKdAd` was natively accepted after both the writer
+  and independent reviewer recomputed the exact pinned-model cosine ranking and observed the same
+  `HumanEval` line at rank five. The unchanged verifier spent about twelve minutes installing a
+  CUDA-enabled Torch dependency set, then performed only a literal expected-string comparison and
+  again required the unpublished SciFact query/passage convention. It passed file existence, failed
+  that hidden-value check, and recorded reward 0. Retain the zero and the native acceptance as
+  separate facts; teaching Peritus the hidden prompt or expected line would be benchmark cooking.
 
 ## TBF-025: supporting files substituted for a requested live service
 
@@ -4228,6 +4235,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   hash and awarded reward 0, so the context failure is not presented as the sole cause of the
   score. The frozen executable predates the provider-aware reviewer projection above; this is
   independent evidence for that task-neutral correction, not a POV-Ray-specific fix.
+- Frozen-campaign recurrence: `large-scale-text-editing__BoiBfsz` correctly transformed all one
+  million rows and passed all five unchanged verifier checks, but its 38,066,688-byte modified CSV
+  produced an initial reviewer estimate of 364,415 tokens. Frozen Peritus stopped after eight
+  requests before review and Harbor retained a null aggregate result despite `reward.txt` recording
+  1. Current source already bounds each reviewer evidence section with digest-addressed head/tail
+  projections, so this verifier-perfect recurrence requires no task-specific product change.
 - Verification: focused projection tests exercise both a 200,000-token profile and a smaller
   64,000-token profile, preserve literal task and small evidence sections, retain head/tail and
   digest provenance for large sections, and bound the complete first reviewer prompt. All 110
@@ -4320,6 +4333,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   size check but found the same three functional failures and retained reward 0. This confirms both
   the general recent-observation defect and that context repair alone must not erase the candidate's
   independent correctness failures.
+- Frozen-campaign recurrence: `mcmc-sampling-stan__nNAaDtz` retained 559,041 bytes of dependency
+  installation diagnostics, then stopped after five requests at an estimated 201,970 input tokens
+  without creating the requested model or analysis files. Harbor retained a null native result and
+  the unchanged verifier passed two of six checks for reward 0. This is a second independent Stan
+  recurrence covered by the same exact-trace/model-visible-observation split; it adds no reason to
+  weaken dependency verification or add task-specific installation behavior.
 - Verification: one regression gives a 32,768-token provider a 120,014-byte exact tool observation
   and proves that the trace retains all of it while model history receives a digest-bound value no
   larger than 12,288 bytes. A separate regression supplies a 120,000-byte tool-call argument, which
@@ -4488,6 +4507,11 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
 - Integrity decision: retain reward 0. The correction contains no invoice fields, expected
   classifications, filenames, task identity, or verifier behavior; it applies to screenshots,
   diagrams, scanned forms, visual regression sets, and other legitimate multi-image coding work.
+- Frozen-campaign recurrence: `financial-document-processor__5jkyPMr` discovered the same 11 JPEG
+  inputs and stopped before its first provider request at the identical 1,343,398-token estimate.
+  Its 6,304-byte design and zero-byte trace again isolate compressed-image context accounting as the
+  cause. Harbor retained a null native result; the unchanged verifier failed all seven checks for
+  reward 0. Current source already contains the provider-neutral bounded image accounting fix.
 - Verification: a regression gives a 32,768-token image-capable provider two exact 200,000-byte
   JPEG inputs and proves that one valid request retains both attachments instead of failing the
   text-context check. All 38 `peritus-agent` tests, all 118 product-runner tests, and strict
@@ -5001,6 +5025,21 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   after grounding. Product-runner grounding coverage proves the exact list/read sequence and empty
   root spelling. All `peritus-agent` and `peritus-product-runner` tests pass with two build jobs;
   strict repository and hosted qualification remain required.
+- Frozen-campaign recurrence: `gpt2-codegolf__ndEsFdm` completed one initial repository listing,
+  then spent several independent-review turns requesting unavailable or malformed grounding calls
+  while correctly preserving the unresolved need for a real executable test. The fixer eventually
+  ran the compiled artifact twice and exposed repetitive garbage output, but too little of Harbor's
+  unchanged 900-second window remained to repair the dense numerical implementation. Harbor
+  retained a null result with `AgentTimeoutError`; the unchanged verifier compiled the 4,225-byte
+  source, ran it successfully, rejected the wrong continuation, and recorded reward 0. This is an
+  honest candidate defect plus independent evidence for deterministic grounding and the existing
+  live completion reserve, not a reason to encode the verifier prompt or expected continuation.
+- Frozen-campaign corroboration: `llm-inference-batching-scheduler__pgkwVxi` was natively accepted
+  and passed all six unchanged verifier checks for reward 1. Its independent reviewer still
+  reported intermittent `No such tool available` results between successful workspace calls. The
+  final verdict remained grounded in current files and independent cost-model recomputation, so the
+  score is valid; the inconsistent calls independently support provider-level required-tool
+  selection without turning that general correction into a task-specific compatibility rule.
 
 ## TBF-055: alternative output paths became cumulative requirements
 
@@ -5031,3 +5070,27 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   excludes alternatives. All 127 product-runner unit tests, integration tests, doc tests, and strict
   all-target/all-feature Clippy pass with two build jobs; repository and hosted qualification remain
   required.
+
+## TBF-056: null Harbor usage blocked publication of a complete campaign
+
+- Suite and task: Terminal-Bench 2.0 frozen diagnostic report publication after all 445 trials.
+- Symptom: the Rust-owned report command rejected the retained Harbor tree with `invalid type:
+  null, expected struct HarborUsage`. Three infrastructure-failed trials legitimately stored
+  `agent_result: null`, so the complete campaign could not be normalized even though its root and
+  all 445 child results were durable and consistent.
+- Cause: the report input model assumed every completed Harbor trial had an agent-usage object.
+  Harbor instead uses null when an attempt ends before agent usage can be measured. The report
+  schema repeated the same incorrect non-null assumption.
+- General resolution: Harbor usage is now explicitly optional in the Rust input and normalized
+  report models, and the versioned schema admits either the complete usage object or null.
+  Aggregation skips unavailable counters instead of inventing zero-valued trial evidence; identity
+  validation continues to expose absent metadata under the selected legacy policy.
+- Integrity decision: no task reward, exception, native result, token value, or trial file was
+  changed. Missing usage remains null in the report. The correction applies to any complete
+  campaign containing setup, container, provider, or cancellation failures before usage exists.
+- Evidence: the affected trials are `cancel-async-tasks__nHxaBpG`,
+  `merge-diff-arc-agi-task__vZyK6fA`, and `multi-source-data-merger__gcA3mNH`. The focused report
+  suite passes all ten Terminal-Bench report tests, including the new null-usage regression. The
+  immutable 445-trial report was then published at
+  `/home/doll/.local/state/peritus/benchmarks/terminalbench/reports/frozen-baseline-445.final.json`
+  with SHA-256 `d7feff820c7d38d204744f75ef9214cb7b91949cac2c8c3b5625f10c39321bc0`.

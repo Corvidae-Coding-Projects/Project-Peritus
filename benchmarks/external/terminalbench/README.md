@@ -245,3 +245,36 @@ the independently measured executable digest, Harbor agent/model identity, nativ
 token/cache totals, exceptions, and relative paths to each trial's Harbor result, native
 invocation, trace, last observation, and verifier output. The schema is
 `../../schemas/terminalbench-campaign-report-v1.schema.json`.
+
+## Completed frozen diagnostic baseline
+
+The serialized frozen campaign completed all 445 trials on 2026-09-02. Harbor recorded 108
+errored trials as a subset of those completed trials, not an additional count. The immutable
+normalized report is retained outside Git at
+`/home/doll/.local/state/peritus/benchmarks/terminalbench/reports/frozen-baseline-445.final.json`
+with SHA-256 `d7feff820c7d38d204744f75ef9214cb7b91949cac2c8c3b5625f10c39321bc0`.
+
+| Measure | Result |
+| --- | ---: |
+| Completed trials | 445 |
+| Scored trials | 390 |
+| Reward 1 | 239 |
+| Reward 0 | 151 |
+| Unscored | 55 |
+| Scored accuracy | 0.6128205128 |
+| Completed success rate | 0.5370786517 |
+| Native reports | 379 |
+| Native accepted / rejected / missing | 134 / 245 / 66 |
+| Native provider requests | 4,872 |
+| Input / cached input / output tokens | 165,174,101 / 66,684,023 / 5,117,689 |
+
+Three infrastructure-failed trials have a legitimate Harbor `agent_result: null`. The report
+preserves their usage as null and does not invent token or identity data. Because the campaign
+predates complete native identity metadata, it correctly reports zero native source/binary
+identity coverage while binding the independently measured uploaded executable SHA-256
+`ed0ef30eb5dda2817ebd8a02e46062b7c5a7400e22ee04653d5106d3e6ffb1e7`.
+
+This campaign intentionally contains successive development checkpoints. It is the diagnostic
+before-state used to find general product defects, not a final release-candidate score. The final
+qualification must run the same 89 tasks five times with one exact revision-bound binary and
+`require-native` identity policy.

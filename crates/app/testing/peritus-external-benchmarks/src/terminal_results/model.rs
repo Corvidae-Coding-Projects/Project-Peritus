@@ -130,7 +130,7 @@ pub(super) struct TrialReport {
     pub(super) started_at: String,
     pub(super) finished_at: String,
     pub(super) agent: HarborAgent,
-    pub(super) usage: HarborUsage,
+    pub(super) usage: Option<HarborUsage>,
     pub(super) exception: Option<ExceptionSummary>,
     pub(super) native: Option<NativeInvocation>,
     pub(super) evidence: TrialEvidencePaths,
@@ -240,7 +240,7 @@ pub(super) struct HarborTrial {
     pub(super) source: String,
     pub(super) task_checksum: String,
     pub(super) agent_info: HarborAgent,
-    pub(super) agent_result: HarborUsage,
+    pub(super) agent_result: Option<HarborUsage>,
     pub(super) verifier_result: Option<VerifierResult>,
     pub(super) exception_info: Option<ExceptionSummary>,
     pub(super) started_at: String,
@@ -340,13 +340,16 @@ impl Aggregate {
                 Some(false) => result.native_rejected += 1,
                 None => result.native_report_missing += 1,
             }
+            let Some(usage) = &trial.usage else {
+                continue;
+            };
             add(
                 &mut result.native_requests,
-                trial.usage.metadata.as_ref().and_then(|metadata| metadata.requests),
+                usage.metadata.as_ref().and_then(|metadata| metadata.requests),
             )?;
-            add(&mut result.input_tokens, trial.usage.n_input_tokens)?;
-            add(&mut result.cached_input_tokens, trial.usage.n_cache_tokens)?;
-            add(&mut result.output_tokens, trial.usage.n_output_tokens)?;
+            add(&mut result.input_tokens, usage.n_input_tokens)?;
+            add(&mut result.cached_input_tokens, usage.n_cache_tokens)?;
+            add(&mut result.output_tokens, usage.n_output_tokens)?;
         }
         result.scored_accuracy = ratio(result.reward_sum, result.scored_trials)?;
         result.completed_success_rate = ratio(result.reward_sum, result.completed_trials)?;

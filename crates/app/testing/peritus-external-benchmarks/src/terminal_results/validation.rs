@@ -65,7 +65,7 @@ pub(super) fn trial_identity(
     let mut native_reports_with_binary_identity = 0;
     for trial in trials {
         native_reports += usize::from(trial.native.is_some());
-        let Some(metadata) = &trial.usage.metadata else {
+        let Some(metadata) = trial.usage.as_ref().and_then(|usage| usage.metadata.as_ref()) else {
             require_native_identity(request, trial, "has no Harbor identity metadata")?;
             continue;
         };

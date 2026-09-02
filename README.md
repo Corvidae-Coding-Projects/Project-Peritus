@@ -47,8 +47,9 @@ documentation are accepted only alongside a successful effect and a later fresh 
 
 The implementation is not the release decision. Production readiness still requires:
 
-1. completing the serialized Terminal-Bench 2.0 diagnostic campaign;
-2. applying only broadly useful fixes found by that campaign and rerunning affected unchanged tasks;
+1. completing the accepted broadly useful repairs found by the finished Terminal-Bench 2.0
+   diagnostic campaign;
+2. rerunning affected unchanged tasks after those general repairs;
 3. rerunning both complete benchmark suites with one exact, revision-bound final binary;
 4. running H0-H4 against the exact final commit on Linux, macOS, and Windows;
 5. retaining the eight-hour soak, signature, provenance, reproducibility, migration, and recovery evidence;
@@ -156,8 +157,12 @@ Because general fixes were intentionally made as failures were diagnosed, those 
 successive development checkpoints. They are the retained diagnostic baseline. The final report
 will compare them with a second complete run made by one frozen, revision-bound release candidate.
 
-The official 89-task Terminal-Bench 2.0 campaign runs five attempts per task at concurrency one to
-protect system memory. It is still in progress against a frozen adapter binary. Setup, commands,
+The frozen Terminal-Bench 2.0 diagnostic campaign is complete: all 445 serialized trials finished,
+with 239 rewards of 1, 151 rewards of 0, and 55 unscored trials. Accuracy across the 390 scored
+trials is 0.6128; success across all completed trials is 0.5371. This retained baseline spans
+successive development checkpoints and therefore is diagnostic evidence, not the final-candidate
+score. Its immutable normalized report has SHA-256
+`d7feff820c7d38d204744f75ef9214cb7b91949cac2c8c3b5625f10c39321bc0`. Setup, exact evidence,
 results, and reproduced failures are documented under [external benchmarks](benchmarks/README.md).
 
 ## Install and run
