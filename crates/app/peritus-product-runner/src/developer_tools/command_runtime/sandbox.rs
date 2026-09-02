@@ -110,7 +110,7 @@ pub(super) fn raw_effect(
             .map_err(|error| format!("construct command backend version: {error}"))?,
         BackendKind::ReferenceOnly,
         native_path_semantics(),
-        ResourceFidelity::Supervisor,
+        raw_resource_fidelity(),
         FeatureSet::all(),
     );
     let admission = admit_backend(&checked, &descriptor, AdmissionProfile::Conformance)
@@ -216,5 +216,16 @@ const fn native_path_semantics() -> PathSemantics {
     #[cfg(windows)]
     {
         PathSemantics::WindowsNative
+    }
+}
+
+const fn raw_resource_fidelity() -> ResourceFidelity {
+    #[cfg(target_os = "linux")]
+    {
+        ResourceFidelity::Supervisor
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        ResourceFidelity::Reference
     }
 }
