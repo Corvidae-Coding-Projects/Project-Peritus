@@ -1,5 +1,7 @@
 # Changelog
 
+- Require performance claims over small bounded discrete domains to measure every supported value,
+  and require consistent wins to exceed ordinary timing noise (`TBF-052`, #31).
 - Enforce task-declared opaque query interfaces across writer, fixer, designer, and reviewer tools:
   keep implementation metadata visible, omit its contents from reads and search, refuse direct
   hidden-state command references, and reject contaminated validation evidence (`TBF-051`, #31).

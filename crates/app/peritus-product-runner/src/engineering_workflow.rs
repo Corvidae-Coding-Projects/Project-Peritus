@@ -244,6 +244,12 @@ requested behavior.
    an isolated read-only comparison. Profile when the bottleneck is not already demonstrated, and
    keep a repository-provided benchmark or threshold authoritative over a supplemental
    microbenchmark.
+   When the performance contract spans a bounded discrete input range that is small enough to
+   enumerate within the task budget, measure every supported value instead of sampling a convenient
+   stride. For a larger range, cover both boundaries, stratified interior values, and distinct
+   algorithmic regimes. A claim such as consistently faster requires every measured class to win
+   by more than ordinary run-to-run timing noise; otherwise report the uncertainty or continue with
+   a materially different candidate.
    When completion depends on an empirical quality, size, speed, or resource threshold, prepare
    reusable inputs once when the workspace permits it and keep a compact candidate ledger with the
    parameters, elapsed time, resource use, and independently measured result of each attempt.

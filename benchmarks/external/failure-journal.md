@@ -3325,6 +3325,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   independently justifying reward 0 under `TBM-002`. Harbor recorded the exact 1,800-second agent
   timeout and then completed the unchanged verifier. Retain the zero without normalizing unrelated
   clean bytes, copying the reference, or weakening the browser evidence.
+- Corrected-adapter recurrence `filter-js-from-html__gfhnTf4` reproduced the same five false clean-
+  document failures: the candidate kept every clean byte intact while the verifier reordered
+  attributes, rewrote entities and void tags, and removed indentation only on its expected side.
+  Seven completed browser batches separately produced real alerts, so the unchanged reward 0 remains
+  valid for the independent `TBM-002` failures. The agent completed normally and Harbor retained the
+  full verifier result; no infrastructure exception affected this attempt.
 
 ## TBM-002: a byte-preserving hand parser did not match browser error recovery
 
@@ -3348,6 +3354,12 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   encoded URL, and parser-recovery cases. The clean-document evaluator contradiction remains
   separately recorded in `TBI-008`, but these alerts are genuine candidate failures and reward 0
   remains authoritative. This is not evidence for task-specific vectors or verifier access.
+- Corrected-adapter recurrence `filter-js-from-html__gfhnTf4` produced a grounded 295-line byte
+  scanner, passed representative public-interface checks and independent review, then failed seven
+  completed browser batches spanning malformed quotes and separators, browser recovery, legacy
+  execution features, and encoded constructs. Preserve reward 0. This strengthens the general
+  architectural conclusion that browser-equivalent sanitization needs a browser-grade tokenizer and
+  tree-construction boundary; it does not justify embedding this verifier's downloaded vectors.
 
 ## TBF-019: exact output paths were advisory to deterministic acceptance
 
@@ -4859,3 +4871,34 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   Clippy and formatting are clean, and all 137 documentation checks pass. The repository-wide gate
   passes across 79 packages and 3,374 source files. An unchanged task rerun with a newly built
   candidate remains required.
+
+## TBF-052: a strided performance sample missed a supported input class
+
+- Suite and task: Terminal-Bench 2.0 frozen baseline, corrected-adapter trial
+  `largest-eigenval__owrfP9W`.
+- Symptom: the writer replaced NumPy's general eigensolver with SciPy's direct LAPACK `dgeev`
+  binding, checked eigenpair correctness on 504 independently generated matrices, and measured the
+  candidate faster at public sizes 2, 4, 6, 8, and 10. The request covered every square matrix size
+  through 10 and required consistent speed, but the performance loop used an even-number stride.
+  The unchanged verifier passed every correctness check and speed checks for sizes 2 through 8 and
+  10, then measured size 9 at 21.09 microseconds against the reference's 19.04 microseconds. Twenty-
+  six checks passed, one failed, and reward 0 is retained.
+- Cause: the workflow required representative same-workload comparisons but did not say when a
+  small public discrete domain should be exhausted. The writer exhaustively varied correctness
+  inputs while inheriting the supplied evaluator's even-only performance stride, and independent
+  review accepted those samples as proof of a claim covering every supported size.
+- General resolution: when a performance contract spans a bounded discrete range small enough to
+  enumerate within the task budget, all supported values must receive comparable baseline and
+  candidate measurements. Larger domains require boundaries, stratified interiors, and distinct
+  algorithmic regimes. A claim such as consistently faster also needs every measured class to win
+  by more than ordinary run-to-run timing noise; otherwise the harness reports uncertainty or keeps
+  searching for a materially different candidate.
+- Integrity decision: retain reward 0. No matrix size, timing threshold, SciPy function, evaluator
+  loop, hidden measurement, or task identity enters product behavior. This applies broadly to
+  latency, throughput, memory, compression, numerical kernels, database queries, and any other
+  optimization promised across a parameterized public domain.
+- Evidence: native Peritus accepted after 14 provider requests, 227,840 input tokens, 169,109 cache
+  tokens, and 11,400 output tokens using frozen source revision `d4a72e67` and binary SHA-256
+  `ed0ef30eb5dda2817ebd8a02e46062b7c5a7400e22ee04653d5106d3e6ffb1e7`. The focused workflow
+  regression requires exhaustive small-domain coverage, stratified larger-domain coverage, and a
+  timing-noise margin to reach every role. Full local and hosted qualification remain required.

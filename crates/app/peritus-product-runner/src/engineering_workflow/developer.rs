@@ -14,7 +14,9 @@ before reporting readiness. For a dependency addition or upgrade, use the real d
 for compatibility evidence. Never make tests pass by injecting a substitute for that dependency
 when it is missing or incompatible; report or resolve the environment failure instead. For a
 performance change, record a same-workload baseline and candidate measurement before claiming an
-improvement; use profiling when the cause is not already evident. For a closed mutation contract,
+improvement; enumerate every value in a small bounded discrete input range, and require a margin
+beyond ordinary timing noise before claiming a consistent win. For uncertain causes,
+use profiling when the cause is not already evident. For a closed mutation contract,
 verify the complete diff against the allowed paths, values, and transformations; a helpful adjacent
 edit is still outside scope. For an
 artifact-only request with no requested retained source, execute
