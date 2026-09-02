@@ -119,9 +119,15 @@ three focused reboot diagnostics passed with exact single-effect and cleanup evi
 
 H0 also has a Rust-owned exact-candidate preparer and a three-host native workflow. The preparer
 derives the common candidate identity from committed source, binds the controller and native host
-facts, and refuses dirty or cross-platform inputs. Each hosted shard retains its canonical report
-and raw evidence. Cross-host aggregation and a separately supplied independent review remain
-mandatory; the workflow cannot manufacture either one.
+facts, and refuses dirty or cross-platform inputs. Each host runs four isolated worker partitions,
+reassembles them in catalog order, and retains the same canonical platform report and raw evidence.
+Cross-host aggregation and a separately supplied independent review remain mandatory; the workflow
+cannot manufacture either one.
+
+All hosted jobs are capped at ten minutes. Rust and Verus checks are partitioned by the reviewed
+architecture layers, H2 assigns three of its 18 scenarios to each shard, and tagged releases build
+each native binary separately before package assembly and attestation. Required Gate A check names
+remain stable and aggregate the complete shard set.
 
 The tagged release workflow now stages each native archive, generates a candidate-bound inventory,
 SPDX SBOM, and SLSA provenance document in Rust, and retains GitHub keyless Sigstore attestations.

@@ -7,7 +7,7 @@ fn rust_and_supply_chain_jobs_cannot_be_skipped_or_gutted() {
     for (altered, expected) in [
         (
             canonical_ci().replace("  rust:\n", "  rust:\n    if: false\n"),
-            "exact unconditional Rust matrix gate",
+            "exact unconditional Rust shard matrix",
         ),
         (
             canonical_ci().replace("  supply-chain:\n", "  supply-chain:\n    if: false\n"),
@@ -28,28 +28,28 @@ fn rust_and_supply_chain_jobs_cannot_be_skipped_or_gutted() {
 }
 
 #[test]
-fn rust_job_retains_the_hosted_windows_timeout() {
+fn rust_shards_retain_the_ten_minute_ceiling() {
     let altered = canonical_ci().replacen(
-        "    name: Rust (${{ matrix.os }})\n    needs: bootstrap\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-24.04, macos-15, windows-2025]\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 60",
-        "    name: Rust (${{ matrix.os }})\n    needs: bootstrap\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-24.04, macos-15, windows-2025]\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 45",
+        "    name: Foundation Rust ${{ matrix.operation }} ${{ matrix.shard }} (${{ matrix.os }})\n    needs: bootstrap\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-24.04, macos-15, windows-2025]\n        operation: [build, test, doc-test, clippy, docs]\n        shard: [foundation-state, runtime-tools, model-orchestration, app, testing, edge]\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 10",
+        "    name: Foundation Rust ${{ matrix.operation }} ${{ matrix.shard }} (${{ matrix.os }})\n    needs: bootstrap\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-24.04, macos-15, windows-2025]\n        operation: [build, test, doc-test, clippy, docs]\n        shard: [foundation-state, runtime-tools, model-orchestration, app, testing, edge]\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 11",
         1,
     );
 
     assert_ne!(altered, canonical_ci(), "fixture mutation must change canonical CI");
     let (_, diagnostics) = validate(".github/workflows/ci.yml", DocumentKind::Workflow, &altered);
-    assert_message(&diagnostics, "exact unconditional Rust matrix gate");
+    assert_message(&diagnostics, "exact unconditional Rust shard matrix");
 }
 
 #[test]
-fn verus_job_rejects_needs_runner_shell_env_and_intervening_steps() {
+fn verus_jobs_reject_needs_runner_shell_env_and_intervening_steps() {
     for altered in [
         canonical_ci().replace(
-            "  verus:\n    name: Locked Verus workspace\n    needs: bootstrap",
-            "  verus:\n    name: Locked Verus workspace\n    needs: rust",
+            "  verus-policy:\n    name: Foundation Verus policy\n    needs: bootstrap",
+            "  verus-policy:\n    name: Foundation Verus policy\n    needs: rust",
         ),
         canonical_ci().replace(
-            "  verus:\n    name: Locked Verus workspace\n    needs: bootstrap\n    runs-on: ubuntu-24.04",
-            "  verus:\n    name: Locked Verus workspace\n    needs: bootstrap\n    runs-on: ubuntu-latest",
+            "  verus-policy:\n    name: Foundation Verus policy\n    needs: bootstrap\n    runs-on: ubuntu-24.04",
+            "  verus-policy:\n    name: Foundation Verus policy\n    needs: bootstrap\n    runs-on: ubuntu-latest",
         ),
         canonical_ci().replace(
             "      - name: Probe every pinned tool component\n        run:",
@@ -73,16 +73,16 @@ fn verus_job_rejects_needs_runner_shell_env_and_intervening_steps() {
 }
 
 #[test]
-fn verus_job_retains_the_measured_workspace_timeout() {
+fn verus_shards_retain_the_ten_minute_ceiling() {
     let altered = canonical_ci().replacen(
-        "    name: Locked Verus workspace\n    needs: bootstrap\n    runs-on: ubuntu-24.04\n    timeout-minutes: 40",
-        "    name: Locked Verus workspace\n    needs: bootstrap\n    runs-on: ubuntu-24.04\n    timeout-minutes: 30",
+        "    name: Foundation Verus ${{ matrix.operation }} ${{ matrix.shard }}\n    needs: bootstrap\n    strategy:\n      fail-fast: false\n      matrix:\n        operation: [verus-verify, verus-verify-strict, verus-build, verus-build-strict]\n        shard: [foundation-state, runtime-tools, model-orchestration, app, edge]\n    runs-on: ubuntu-24.04\n    timeout-minutes: 10",
+        "    name: Foundation Verus ${{ matrix.operation }} ${{ matrix.shard }}\n    needs: bootstrap\n    strategy:\n      fail-fast: false\n      matrix:\n        operation: [verus-verify, verus-verify-strict, verus-build, verus-build-strict]\n        shard: [foundation-state, runtime-tools, model-orchestration, app, edge]\n    runs-on: ubuntu-24.04\n    timeout-minutes: 11",
         1,
     );
 
     assert_ne!(altered, canonical_ci(), "fixture mutation must change canonical CI");
     let (_, diagnostics) = validate(".github/workflows/ci.yml", DocumentKind::Workflow, &altered);
-    assert_message(&diagnostics, "full locked Verus workspace verification");
+    assert_message(&diagnostics, "exact Verus shard matrix");
 }
 
 #[test]
@@ -99,8 +99,8 @@ fn pre_cargo_bootstrap_and_needs_graph_are_exact() {
             "      - name: Unreviewed bootstrap step\n        run: printf ignored\n      - name: Verify reviewed pre-Cargo policy",
         ),
         canonical_ci().replace(
-            "  rust:\n    name: Rust (${{ matrix.os }})\n    needs: bootstrap",
-            "  rust:\n    name: Rust (${{ matrix.os }})",
+            "  rust:\n    name: Foundation Rust ${{ matrix.operation }} ${{ matrix.shard }} (${{ matrix.os }})\n    needs: bootstrap",
+            "  rust:\n    name: Foundation Rust ${{ matrix.operation }} ${{ matrix.shard }} (${{ matrix.os }})",
         ),
     ] {
         assert_ne!(altered, canonical_ci(), "fixture mutation must change canonical CI");
@@ -109,7 +109,7 @@ fn pre_cargo_bootstrap_and_needs_graph_are_exact() {
         assert!(
             diagnostics.iter().any(|diagnostic| {
                 diagnostic.message().contains("pre-Cargo configuration bootstrap")
-                    || diagnostic.message().contains("exact unconditional Rust matrix gate")
+                    || diagnostic.message().contains("exact unconditional Rust shard matrix")
             }),
             "expected bootstrap/needs diagnostic, got {diagnostics:?}"
         );
@@ -142,8 +142,8 @@ fn workflow_root_controls_are_exact_and_automatic() {
 fn ci_cargo_steps_reject_wrapper_and_path_assignments() {
     for (needle, replacement) in [
         (
-            "run: cargo test --workspace --all-targets --all-features --locked -- --test-threads=1",
-            "run: RUSTC_WRAPPER=./evil cargo test --workspace --all-targets --all-features --locked -- --test-threads=1",
+            "run: cargo run --locked --package xtask -- ci-shard ${{ matrix.operation }} ${{ matrix.shard }}",
+            "run: RUSTC_WRAPPER=./evil cargo run --locked --package xtask -- ci-shard ${{ matrix.operation }} ${{ matrix.shard }}",
         ),
         ("run: cargo deny --locked check", "run: PATH=./attacker cargo deny --locked check"),
     ] {

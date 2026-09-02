@@ -1,10 +1,6 @@
+mod root;
 mod yaml;
 
-use super::verus_commands::{
-    VERUS_STRICT_BUILD_ARGS, VERUS_STRICT_VERIFY_ARGS, VERUS_WORKSPACE_BUILD_ARGS,
-    VERUS_WORKSPACE_VERIFY_ARGS,
-};
-use super::workflow_command_contracts::WORKSPACE_TEST_ARGS;
 use super::workflow_commands::{ParsedScript, parse_script};
 use crate::error::Diagnostic;
 use crate::model::ToolchainPolicy;
@@ -29,14 +25,14 @@ pub(super) fn validate(
 ) {
     let jobs = mapping_value(workflow, "jobs").and_then(Yaml::as_hash);
     require(
-        root_controls_are_exact(workflow),
+        root::controls_are_exact(workflow),
         path,
         "canonical CI root triggers, permissions, or concurrency differ from the reviewed gate",
         "retain push to main, pull_request, workflow_dispatch, contents:read, and failure-propagating canonical concurrency",
         diagnostics,
     );
     require(
-        root_env_is_exact(workflow, tools),
+        root::env_is_exact(workflow, tools),
         path,
         "canonical CI environment is not the exact reviewed toolchain-pin set",
         "define only the three toolchain pins and immutable PERITUS_PROOF_IMPACT_BASE event binding",
@@ -44,8 +40,18 @@ pub(super) fn validate(
     );
     require(
         jobs.is_some_and(|jobs| {
-            exact_keys(jobs, &["bootstrap", "rust", "supply-chain", "verus"])
-                && mapping_value(jobs, "bootstrap").is_some_and(bootstrap_job_is_exact)
+            exact_keys(
+                jobs,
+                &[
+                    "bootstrap",
+                    "policy",
+                    "rust-format",
+                    "rust",
+                    "supply-chain",
+                    "verus-policy",
+                    "verus",
+                ],
+            ) && mapping_value(jobs, "bootstrap").is_some_and(bootstrap_job_is_exact)
         }),
         path,
         "canonical CI does not retain the exact pre-Cargo configuration bootstrap",
@@ -53,10 +59,24 @@ pub(super) fn validate(
         diagnostics,
     );
     require(
+        jobs.and_then(|jobs| mapping_value(jobs, "policy")).is_some_and(policy_job_is_exact),
+        path,
+        "canonical CI does not retain the exact workspace policy gate",
+        "restore the reviewed locked xtask policy job",
+        diagnostics,
+    );
+    require(
+        jobs.and_then(|jobs| mapping_value(jobs, "rust-format")).is_some_and(format_job_is_exact),
+        path,
+        "canonical CI does not retain the exact Rust format gate",
+        "restore the reviewed single-host format job",
+        diagnostics,
+    );
+    require(
         jobs.and_then(|jobs| mapping_value(jobs, "rust")).is_some_and(rust_job_is_exact),
         path,
-        "canonical CI does not retain the exact unconditional Rust matrix gate",
-        "restore the reviewed Linux, macOS, and Windows fmt/build/test/doc/Clippy/rustdoc/xtask job",
+        "canonical CI does not retain the exact unconditional Rust shard matrix",
+        "restore the reviewed Linux, macOS, and Windows package shards",
         diagnostics,
     );
     require(
@@ -67,10 +87,10 @@ pub(super) fn validate(
         "restore the ubuntu-24.04 cargo-deny install and full cargo deny --locked check job",
         diagnostics,
     );
-    let verus = jobs
-        .and_then(|jobs| mapping_value(jobs, "verus"))
-        .is_some_and(|job| verus_job_is_exact(job, tools));
-    if !verus {
+    let verus_policy = jobs
+        .and_then(|jobs| mapping_value(jobs, "verus-policy"))
+        .is_some_and(|job| verus_policy_job_is_exact(job, tools));
+    if !verus_policy {
         for (message, help) in [
             (
                 "canonical CI does not install RUST_VERSION with the official pinned Rust action in its required Verus gate",
@@ -88,26 +108,18 @@ pub(super) fn validate(
                 "canonical CI does not run the direct ordinary-Rust formal API contract check",
                 "restore cargo run --locked --package xtask -- ordinary-api-check before Verus verification",
             ),
-            (
-                "canonical CI does not run the full locked Verus workspace verification",
-                "run the exact all-feature TCB-aware cargo-verus workspace verification with pinned solver limits",
-            ),
-            (
-                "canonical CI does not enforce no-cheating for every V/H verification root",
-                "run the exact all-V/H no-cheating verification after workspace verification",
-            ),
-            (
-                "canonical CI does not run the locked verified release build",
-                "run the exact all-feature TCB-aware cargo-verus release build with pinned solver limits",
-            ),
-            (
-                "canonical CI does not enforce no-cheating for every V/H release build root",
-                "run the exact all-V/H no-cheating release build after the workspace build",
-            ),
         ] {
             diagnostics.push(Diagnostic::at(path, message, help));
         }
     }
+    require(
+        jobs.and_then(|jobs| mapping_value(jobs, "verus"))
+            .is_some_and(|job| verus_job_is_exact(job, tools)),
+        path,
+        "canonical CI does not retain the exact Verus shard matrix",
+        "restore all reviewed Verus verification and release-build package shards",
+        diagnostics,
+    );
 }
 
 fn bootstrap_job_is_exact(job: &Yaml) -> bool {
@@ -131,52 +143,56 @@ fn pre_cargo_policy_step(step: &Yaml) -> bool {
             .is_some_and(|script| script.is_reviewed_root_config_preflight())
 }
 
-fn rust_job_is_exact(job: &Yaml) -> bool {
+fn policy_job_is_exact(job: &Yaml) -> bool {
     let Some(job) = job.as_hash() else { return false };
-    exact_keys(job, &["name", "needs", "strategy", "runs-on", "timeout-minutes", "steps"])
-        && string(job, "name") == Some("Rust (${{ matrix.os }})")
-        && string(job, "needs") == Some("bootstrap")
-        && string(job, "runs-on") == Some("${{ matrix.os }}")
-        && integer(job, "timeout-minutes") == Some(60)
-        && rust_matrix(mapping_value(job, "strategy"))
+    common_job(job, "Foundation policy", "ubuntu-24.04", 10)
         && mapping_value(job, "steps").and_then(Yaml::as_vec).is_some_and(|steps| {
-            steps.len() == 9
+            steps.len() == 3
                 && checkout_step(&steps[0])
-                && rust_step(&steps[1], Some("clippy,rustfmt"))
+                && rust_step(&steps[1], None)
+                && cargo_step(&steps[2], &["run", "--locked", "--package", "xtask", "--", "all"])
+        })
+}
+
+fn format_job_is_exact(job: &Yaml) -> bool {
+    let Some(job) = job.as_hash() else { return false };
+    common_job(job, "Rust format source", "ubuntu-24.04", 10)
+        && mapping_value(job, "steps").and_then(Yaml::as_vec).is_some_and(|steps| {
+            steps.len() == 3
+                && checkout_step(&steps[0])
+                && rust_step(&steps[1], Some("rustfmt"))
                 && cargo_step(
                     &steps[2],
                     &["run", "--locked", "--package", "xtask", "--", "format-check"],
                 )
-                && cargo_step(
-                    &steps[3],
-                    &["build", "--workspace", "--all-targets", "--all-features", "--locked"],
+        })
+}
+
+fn rust_job_is_exact(job: &Yaml) -> bool {
+    let Some(job) = job.as_hash() else { return false };
+    exact_keys(job, &["name", "needs", "strategy", "runs-on", "timeout-minutes", "steps"])
+        && string(job, "name")
+            == Some(
+                "Foundation Rust ${{ matrix.operation }} ${{ matrix.shard }} (${{ matrix.os }})",
+            )
+        && string(job, "needs") == Some("bootstrap")
+        && string(job, "runs-on") == Some("${{ matrix.os }}")
+        && integer(job, "timeout-minutes") == Some(10)
+        && rust_matrix(mapping_value(job, "strategy"))
+        && mapping_value(job, "steps").and_then(Yaml::as_vec).is_some_and(|steps| {
+            steps.len() == 3
+                && checkout_step(&steps[0])
+                && rust_step(&steps[1], Some("clippy,rustfmt"))
+                && ci_shard_step(
+                    &steps[2],
+                    "cargo run --locked --package xtask -- ci-shard ${{ matrix.operation }} ${{ matrix.shard }}",
                 )
-                && cargo_step(&steps[4], WORKSPACE_TEST_ARGS)
-                && cargo_step(
-                    &steps[5],
-                    &["test", "--doc", "--workspace", "--all-features", "--locked"],
-                )
-                && cargo_step(
-                    &steps[6],
-                    &[
-                        "clippy",
-                        "--workspace",
-                        "--all-targets",
-                        "--all-features",
-                        "--locked",
-                        "--",
-                        "-D",
-                        "warnings",
-                    ],
-                )
-                && docs_step(&steps[7])
-                && cargo_step(&steps[8], &["run", "--locked", "--package", "xtask", "--", "all"])
         })
 }
 
 fn supply_chain_job_is_exact(job: &Yaml) -> bool {
     let Some(job) = job.as_hash() else { return false };
-    common_job(job, "Licenses and dependency policy", "ubuntu-24.04", 20)
+    common_job(job, "Licenses and dependency policy", "ubuntu-24.04", 10)
         && mapping_value(job, "steps").and_then(Yaml::as_vec).is_some_and(|steps| {
             steps.len() == 4
                 && checkout_step(&steps[0])
@@ -189,11 +205,11 @@ fn supply_chain_job_is_exact(job: &Yaml) -> bool {
         })
 }
 
-fn verus_job_is_exact(job: &Yaml, tools: &ToolchainPolicy) -> bool {
+fn verus_policy_job_is_exact(job: &Yaml, tools: &ToolchainPolicy) -> bool {
     let Some(job) = job.as_hash() else { return false };
-    common_job(job, "Locked Verus workspace", "ubuntu-24.04", 40)
+    common_job(job, "Foundation Verus policy", "ubuntu-24.04", 10)
         && mapping_value(job, "steps").and_then(Yaml::as_vec).is_some_and(|steps| {
-            steps.len() == 9
+            steps.len() == 5
                 && checkout_step(&steps[0])
                 && rust_step(&steps[1], None)
                 && archive_step(&steps[2], tools)
@@ -205,10 +221,27 @@ fn verus_job_is_exact(job: &Yaml, tools: &ToolchainPolicy) -> bool {
                     &steps[4],
                     &["run", "--locked", "--package", "xtask", "--", "ordinary-api-check"],
                 )
-                && cargo_step(&steps[5], VERUS_WORKSPACE_VERIFY_ARGS)
-                && cargo_step(&steps[6], VERUS_STRICT_VERIFY_ARGS)
-                && cargo_step(&steps[7], VERUS_WORKSPACE_BUILD_ARGS)
-                && cargo_step(&steps[8], VERUS_STRICT_BUILD_ARGS)
+        })
+}
+
+fn verus_job_is_exact(job: &Yaml, tools: &ToolchainPolicy) -> bool {
+    let Some(job) = job.as_hash() else { return false };
+    exact_keys(job, &["name", "needs", "strategy", "runs-on", "timeout-minutes", "steps"])
+        && string(job, "name")
+            == Some("Foundation Verus ${{ matrix.operation }} ${{ matrix.shard }}")
+        && string(job, "needs") == Some("bootstrap")
+        && string(job, "runs-on") == Some("ubuntu-24.04")
+        && integer(job, "timeout-minutes") == Some(10)
+        && verus_matrix(mapping_value(job, "strategy"))
+        && mapping_value(job, "steps").and_then(Yaml::as_vec).is_some_and(|steps| {
+            steps.len() == 4
+                && checkout_step(&steps[0])
+                && rust_step(&steps[1], None)
+                && archive_step(&steps[2], tools)
+                && ci_shard_step(
+                    &steps[3],
+                    "cargo run --locked --package xtask -- ci-shard ${{ matrix.operation }} ${{ matrix.shard }}",
+                )
         })
 }
 
@@ -227,74 +260,42 @@ fn rust_matrix(strategy: Option<&Yaml>) -> bool {
     };
     exact_keys(strategy, &["fail-fast", "matrix"])
         && mapping_value(strategy, "fail-fast").and_then(Yaml::as_bool) == Some(false)
-        && exact_keys(matrix, &["os"])
+        && exact_keys(matrix, &["os", "operation", "shard"])
         && mapping_value(matrix, "os").and_then(Yaml::as_vec).is_some_and(|values| {
             values.iter().filter_map(Yaml::as_str).eq(["ubuntu-24.04", "macos-15", "windows-2025"])
         })
+        && string_sequence(
+            mapping_value(matrix, "operation"),
+            &["build", "test", "doc-test", "clippy", "docs"],
+        )
+        && string_sequence(
+            mapping_value(matrix, "shard"),
+            &["foundation-state", "runtime-tools", "model-orchestration", "app", "testing", "edge"],
+        )
 }
 
-fn root_env_is_exact(workflow: &Hash, tools: &ToolchainPolicy) -> bool {
-    let Some(env) = mapping_value(workflow, "env").and_then(Yaml::as_hash) else { return false };
-    exact_keys(
-        env,
-        &[
-            "CARGO_BUILD_JOBS",
-            "RUST_VERSION",
-            "VERUS_VERSION",
-            "VERUS_LINUX_SHA256",
-            "PERITUS_PROOF_IMPACT_BASE",
-        ],
-    ) && string(env, "CARGO_BUILD_JOBS") == Some("1")
-        && string(env, "RUST_VERSION") == Some(&tools.rust)
-        && string(env, "VERUS_VERSION") == Some(&tools.verus)
-        && string(env, "VERUS_LINUX_SHA256") == Some(&tools.archives.linux_x86_64.sha256)
-        && string(env, "PERITUS_PROOF_IMPACT_BASE") == Some(PROOF_IMPACT_BASE_REFERENCE)
+fn verus_matrix(strategy: Option<&Yaml>) -> bool {
+    let Some(strategy) = strategy.and_then(Yaml::as_hash) else { return false };
+    let Some(matrix) = mapping_value(strategy, "matrix").and_then(Yaml::as_hash) else {
+        return false;
+    };
+    exact_keys(strategy, &["fail-fast", "matrix"])
+        && mapping_value(strategy, "fail-fast").and_then(Yaml::as_bool) == Some(false)
+        && exact_keys(matrix, &["operation", "shard"])
+        && string_sequence(
+            mapping_value(matrix, "operation"),
+            &["verus-verify", "verus-verify-strict", "verus-build", "verus-build-strict"],
+        )
+        && string_sequence(
+            mapping_value(matrix, "shard"),
+            &["foundation-state", "runtime-tools", "model-orchestration", "app", "edge"],
+        )
 }
 
-fn root_controls_are_exact(workflow: &Hash) -> bool {
-    let Some(triggers) = mapping_value(workflow, "on").and_then(Yaml::as_hash) else {
-        return false;
-    };
-    let Some(push) = mapping_value(triggers, "push").and_then(Yaml::as_hash) else {
-        return false;
-    };
-    let Some(permissions) = mapping_value(workflow, "permissions").and_then(Yaml::as_hash) else {
-        return false;
-    };
-    let Some(concurrency) = mapping_value(workflow, "concurrency").and_then(Yaml::as_hash) else {
-        return false;
-    };
-    exact_keys(workflow, &["name", "on", "permissions", "concurrency", "env", "jobs"])
-        && string(workflow, "name") == Some("Foundation verification")
-        && exact_keys(triggers, &["push", "pull_request", "workflow_dispatch"])
-        && exact_keys(push, &["branches"])
-        && mapping_value(push, "branches")
-            .and_then(Yaml::as_vec)
-            .is_some_and(|branches| branches.len() == 1 && branches[0].as_str() == Some("main"))
-        && mapping_value(triggers, "pull_request") == Some(&Yaml::Null)
-        && workflow_dispatch_is_exact(mapping_value(triggers, "workflow_dispatch"))
-        && exact_keys(permissions, &["contents"])
-        && string(permissions, "contents") == Some("read")
-        && exact_keys(concurrency, &["group", "cancel-in-progress"])
-        && string(concurrency, "group")
-            == Some("foundation-${{ github.workflow }}-${{ github.ref }}")
-        && mapping_value(concurrency, "cancel-in-progress").and_then(Yaml::as_bool) == Some(true)
-}
-
-fn workflow_dispatch_is_exact(dispatch: Option<&Yaml>) -> bool {
-    let Some(dispatch) = dispatch.and_then(Yaml::as_hash) else { return false };
-    let Some(inputs) = mapping_value(dispatch, "inputs").and_then(Yaml::as_hash) else {
-        return false;
-    };
-    let Some(base) = mapping_value(inputs, "proof_impact_base").and_then(Yaml::as_hash) else {
-        return false;
-    };
-    exact_keys(dispatch, &["inputs"])
-        && exact_keys(inputs, &["proof_impact_base"])
-        && exact_keys(base, &["description", "required", "type"])
-        && string(base, "description") == Some("Immutable base commit for proof-impact comparison")
-        && mapping_value(base, "required").and_then(Yaml::as_bool) == Some(true)
-        && string(base, "type") == Some("string")
+fn string_sequence(value: Option<&Yaml>, expected: &[&str]) -> bool {
+    value
+        .and_then(Yaml::as_vec)
+        .is_some_and(|values| values.iter().filter_map(Yaml::as_str).eq(expected.iter().copied()))
 }
 
 fn checkout_step(step: &Yaml) -> bool {
@@ -327,16 +328,12 @@ fn cargo_step(step: &Yaml, expected: &[&str]) -> bool {
     })
 }
 
-fn docs_step(step: &Yaml) -> bool {
-    let Some(step) = step.as_hash() else { return false };
-    let Some(env) = mapping_value(step, "env").and_then(Yaml::as_hash) else { return false };
-    exact_keys(step, &["name", "run", "env"])
-        && exact_keys(env, &["RUSTDOCFLAGS"])
-        && string(env, "RUSTDOCFLAGS") == Some("-D warnings")
-        && cargo_script(
-            string(step, "run"),
-            &["doc", "--workspace", "--all-features", "--no-deps", "--locked"],
-        )
+fn ci_shard_step(step: &Yaml, expected: &str) -> bool {
+    step.as_hash().is_some_and(|step| {
+        exact_keys(step, &["name", "run"])
+            && string(step, "name").is_some_and(|name| name.contains("reviewed"))
+            && string(step, "run") == Some(expected)
+    })
 }
 
 fn archive_step(step: &Yaml, tools: &ToolchainPolicy) -> bool {
@@ -379,10 +376,6 @@ fn archive_script(script: &str, tools: &ToolchainPolicy) -> bool {
             ">>",
             "$GITHUB_PATH",
         ])
-}
-
-fn cargo_script(script: Option<&str>, expected: &[&str]) -> bool {
-    script.map(parse_script).is_some_and(|parsed| parsed.exact_cargo_command(expected))
 }
 
 fn require(valid: bool, path: &Path, message: &str, help: &str, diagnostics: &mut Vec<Diagnostic>) {

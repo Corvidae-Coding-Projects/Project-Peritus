@@ -237,7 +237,9 @@ state remains not ready.
 
 ## Public release evidence pipeline
 
-The tagged GitHub workflow stages each Linux, macOS, and Windows archive before publication. The
+The tagged GitHub workflow builds each required native binary in its own bounded job, reassembles
+the four host binaries into each Linux, macOS, and Windows package, and stages each archive before
+publication. The
 `peritus-release-operator` binary then observes the exact archive and checksum bytes, the pinned
 Rust, Verus, and vstd identities, the checked-out commit, a deterministic digest of its Git source
 archive, the native runner platform, and the locked Cargo dependency graph. It emits a canonical
@@ -251,7 +253,9 @@ workflow, source commit, tag reference, predicate type, archive digest, and host
 then copies both bundles to deterministic release-asset names, writes a checksum inventory covering
 the archive and all retained evidence, and uploads the complete set to the still-draft release. The
 workflow receives only the minimum content, identity-token, and attestation permissions needed by
-each job. It publishes the draft only after all three native jobs succeed.
+each job. Every job has a ten-minute ceiling, and the draft is published only after policy, public
+installer qualification, all binary builds, all package assemblies, and all three native
+attestation jobs succeed.
 
 These public artifacts make a release inspectable; they do not make it qualified. H4 still requires
 the exact-candidate native campaigns, soak evidence, independent rebuild comparison, completed

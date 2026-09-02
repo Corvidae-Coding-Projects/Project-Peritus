@@ -57,11 +57,13 @@ validated as execution structures, including triggers, runners, step order, shel
 semantics, and the full advisory/license/source gate—not merely searched for command text.
 
 The checked `.github/workflows/formal-governance.yml` emits the stable `Gate A` status required by
-the GitHub Team repository ruleset. Candidate-code-executing Rust operations remain isolated into
-clean matrix jobs. A final always-running aggregation job fails unless policy, workflow lint, every
-Rust matrix entry, supply-chain policy, and Verus/no-cheating verification and builds all succeed.
-Every checkout is explicit and credential-free, every Cargo-bearing job verifies the signed
-pre-Cargo authority first, and workflow lint uses a separately digest-checked actionlint archive.
+the GitHub Team repository ruleset. Candidate-code-executing Rust and Verus operations are split by
+reviewed architecture layer, and every worker has a ten-minute ceiling. Small always-running
+aggregation jobs preserve the required Rust and Verus status names and fail unless every package
+shard succeeds. The final Gate A aggregation then requires policy, workflow lint, all Rust work,
+supply-chain policy, and all Verus/no-cheating verification and builds. Every checkout is explicit
+and credential-free, every Cargo-bearing job verifies the signed pre-Cargo authority first, and
+workflow lint uses a separately digest-checked actionlint archive.
 
 The repository locks both the complete workflow and the exact repository-ruleset payload template,
 but cannot attest to live GitHub state. Gate A therefore also requires the activation and API

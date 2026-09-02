@@ -40,29 +40,8 @@ fn one_command_operator_runs_all_scenarios_and_publishes_a_bound_report() {
     let report_path = fixture.root.path().join("h2-report.json");
     fs::write(&manifest_path, manifest.canonical_bytes()).expect("manifest file");
 
-    let status = Command::new(env!("CARGO_BIN_EXE_peritus-h2"))
-        .args([
-            "--controller",
-            fixture.controller.to_str().expect("controller path"),
-            "--package",
-            fixture.package.to_str().expect("package path"),
-            "--manifest",
-            manifest_path.to_str().expect("manifest path"),
-            "--scratch",
-            fixture.scratch.to_str().expect("scratch path"),
-            "--artifacts",
-            fixture.artifacts.to_str().expect("artifact path"),
-            "--report",
-            report_path.to_str().expect("report path"),
-            "--platform",
-            "linux",
-            "--architecture",
-            "x86_64",
-            "--version",
-            "6.6.0",
-        ])
-        .status()
-        .expect("run peritus-h2");
+    let status =
+        operator_command(&fixture, &manifest_path, &report_path).status().expect("run peritus-h2");
 
     assert!(status.success());
     let report: serde_json::Value =
@@ -73,6 +52,61 @@ fn one_command_operator_runs_all_scenarios_and_publishes_a_bound_report() {
     assert_eq!(report["scenarios"].as_array().expect("scenarios").len(), 18);
     assert_eq!(fs::read_dir(&fixture.scratch).expect("scratch").count(), 0);
     assert_retained_evidence(&fixture.artifacts, 18);
+}
+
+#[test]
+fn scenario_shard_runs_exactly_three_fresh_subjects_and_retains_each_report() {
+    let fixture = NativeFixture::new(Binding::Exact, NativeControllerLimits::default());
+    let (_, manifest) = fixture.manifest();
+    let manifest_path = fixture.root.path().join("manifest.toml");
+    let report_path = fixture.root.path().join("h2-shard-4");
+    fs::write(&manifest_path, manifest.canonical_bytes()).expect("manifest file");
+
+    let status = operator_command(&fixture, &manifest_path, &report_path)
+        .args(["--shard", "4"])
+        .status()
+        .expect("run peritus-h2 shard");
+
+    assert!(status.success());
+    let reports = fs::read_dir(&report_path)
+        .expect("shard reports")
+        .map(|entry| entry.expect("report entry").path())
+        .collect::<Vec<_>>();
+    assert_eq!(reports.len(), 3);
+    for report in reports {
+        let document: serde_json::Value =
+            serde_json::from_slice(&fs::read(report).expect("report")).expect("report JSON");
+        assert_eq!(document["kind"], "h2-scenario-shard");
+        assert_eq!(document["verdict"], "ready");
+        assert_eq!(document["manifest_sha256"], manifest.digest().to_hex());
+    }
+    assert_eq!(fs::read_dir(&fixture.scratch).expect("scratch").count(), 0);
+    assert_retained_evidence(&fixture.artifacts, 3);
+}
+
+fn operator_command(fixture: &NativeFixture, manifest: &Path, report: &Path) -> Command {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_peritus-h2"));
+    command.args([
+        "--controller",
+        fixture.controller.to_str().expect("controller path"),
+        "--package",
+        fixture.package.to_str().expect("package path"),
+        "--manifest",
+        manifest.to_str().expect("manifest path"),
+        "--scratch",
+        fixture.scratch.to_str().expect("scratch path"),
+        "--artifacts",
+        fixture.artifacts.to_str().expect("artifact path"),
+        "--report",
+        report.to_str().expect("report path"),
+        "--platform",
+        "linux",
+        "--architecture",
+        "x86_64",
+        "--version",
+        "6.6.0",
+    ]);
+    command
 }
 
 #[test]

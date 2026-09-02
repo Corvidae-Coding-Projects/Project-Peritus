@@ -106,6 +106,15 @@ impl ScenarioSpec {
 }
 
 impl ScenarioId {
+    /// Parses one canonical protocol spelling.
+    #[must_use]
+    pub fn parse(value: &str) -> Option<Self> {
+        Self::all()
+            .iter()
+            .find(|scenario| scenario.id().as_str() == value)
+            .map(|scenario| scenario.id())
+    }
+
     /// Returns the canonical protocol spelling.
     #[must_use]
     pub const fn as_str(self) -> &'static str {

@@ -12,8 +12,15 @@ use std::{
 
 use crate::XtaskError;
 
+pub(crate) const H2_SHARD_COUNT: usize = 6;
+
 pub(crate) fn build(root: &Path) -> Result<PathBuf, XtaskError> {
     assemble(root, false)?;
+    Ok(package_path(root))
+}
+
+pub(crate) fn build_from_release_artifacts(root: &Path) -> Result<PathBuf, XtaskError> {
+    assemble_prepared_release(root)?;
     Ok(package_path(root))
 }
 
@@ -53,40 +60,11 @@ pub(crate) fn smoke(root: &Path) -> Result<PathBuf, XtaskError> {
 }
 
 pub(crate) fn qualify(root: &Path) -> Result<PathBuf, XtaskError> {
-    build_debug_binaries(root)?;
-    build_h2_binaries(root)?;
-    assemble(root, true)?;
-    let package = package_path(root);
-    let run_root = qualification_run_root(root)?;
-    let scratch = run_root.join("scratch");
-    let artifacts = run_root.join("artifacts");
-    let report = run_root.join("report.json");
-    fs::create_dir_all(&scratch).map_err(|error| {
-        XtaskError::io("create H2 qualification scratch root at", &scratch, error)
+    let qualification = prepare_qualification(root)?;
+    let report = qualification.run_root.join("report.json");
+    let status = h2_command(root, &qualification, &report)?.status().map_err(|error| {
+        XtaskError::io("run complete native H2 qualification from", &qualification.package, error)
     })?;
-    fs::create_dir_all(&artifacts).map_err(|error| {
-        XtaskError::io("create H2 qualification artifact root at", &artifacts, error)
-    })?;
-    let status = Command::new(debug_binary(root, "peritus-h2"))
-        .current_dir(root)
-        .args(["--controller"])
-        .arg(debug_binary(root, "peritus-h2-controller"))
-        .args(["--package"])
-        .arg(&package)
-        .args(["--manifest"])
-        .arg(package.join("manifest.toml"))
-        .args(["--scratch"])
-        .arg(&scratch)
-        .args(["--artifacts"])
-        .arg(&artifacts)
-        .args(["--report"])
-        .arg(&report)
-        .args(["--platform", host_os(), "--architecture", std::env::consts::ARCH])
-        .args(["--version", &host_version::detect(host_os())?])
-        .status()
-        .map_err(|error| {
-            XtaskError::io("run complete native H2 qualification from", &package, error)
-        })?;
     if !report.is_file() {
         return Err(XtaskError::metadata(format!(
             "native H2 qualification exited with {status} without retaining its report at {}",
@@ -101,6 +79,84 @@ pub(crate) fn qualify(root: &Path) -> Result<PathBuf, XtaskError> {
         )));
     }
     Ok(report)
+}
+
+pub(crate) fn qualify_shard(root: &Path, index: usize) -> Result<PathBuf, XtaskError> {
+    if index >= H2_SHARD_COUNT {
+        return Err(XtaskError::invocation(
+            "H2 qualification shard index must be from 0 through 5",
+        ));
+    }
+    let qualification = prepare_qualification(root)?;
+    let reports = qualification.run_root.join(format!("shard-{index}"));
+    let status = h2_command(root, &qualification, &reports)?
+        .args(["--shard", &index.to_string()])
+        .status()
+        .map_err(|error| {
+            XtaskError::io("run native H2 qualification shard from", &qualification.package, error)
+        })?;
+    let report_count = fs::read_dir(&reports)
+        .map_err(|error| XtaskError::io("read H2 shard reports from", &reports, error))?
+        .filter_map(Result::ok)
+        .filter(|entry| entry.path().extension().and_then(|value| value.to_str()) == Some("json"))
+        .count();
+    if report_count != 3 {
+        return Err(XtaskError::metadata(format!(
+            "native H2 shard {index} retained {report_count} reports instead of 3 at {}",
+            reports.display()
+        )));
+    }
+    require_success(status.success(), "native H2 qualification shard did not reach Ready")?;
+    Ok(reports)
+}
+
+struct PreparedQualification {
+    package: PathBuf,
+    run_root: PathBuf,
+    scratch: PathBuf,
+    artifacts: PathBuf,
+}
+
+fn prepare_qualification(root: &Path) -> Result<PreparedQualification, XtaskError> {
+    build_debug_binaries(root)?;
+    build_h2_binaries(root)?;
+    assemble(root, true)?;
+    let package = package_path(root);
+    let run_root = qualification_run_root(root)?;
+    let scratch = run_root.join("scratch");
+    let artifacts = run_root.join("artifacts");
+    fs::create_dir_all(&scratch).map_err(|error| {
+        XtaskError::io("create H2 qualification scratch root at", &scratch, error)
+    })?;
+    fs::create_dir_all(&artifacts).map_err(|error| {
+        XtaskError::io("create H2 qualification artifact root at", &artifacts, error)
+    })?;
+    Ok(PreparedQualification { package, run_root, scratch, artifacts })
+}
+
+fn h2_command(
+    root: &Path,
+    qualification: &PreparedQualification,
+    report: &Path,
+) -> Result<Command, XtaskError> {
+    let mut command = Command::new(debug_binary(root, "peritus-h2"));
+    command
+        .current_dir(root)
+        .args(["--controller"])
+        .arg(debug_binary(root, "peritus-h2-controller"))
+        .args(["--package"])
+        .arg(&qualification.package)
+        .args(["--manifest"])
+        .arg(qualification.package.join("manifest.toml"))
+        .args(["--scratch"])
+        .arg(&qualification.scratch)
+        .args(["--artifacts"])
+        .arg(&qualification.artifacts)
+        .args(["--report"])
+        .arg(report)
+        .args(["--platform", host_os(), "--architecture", std::env::consts::ARCH])
+        .args(["--version", &host_version::detect(host_os())?]);
+    Ok(command)
 }
 
 fn build_debug_binaries(root: &Path) -> Result<(), XtaskError> {
@@ -167,6 +223,25 @@ fn assemble(root: &Path, use_debug_artifacts: bool) -> Result<(), XtaskError> {
         .status()
         .map_err(|error| XtaskError::io("start product package builder in", root, error))?;
     require_success(status.success(), "product package builder failed")
+}
+
+fn assemble_prepared_release(root: &Path) -> Result<(), XtaskError> {
+    let status = Command::new("cargo")
+        .current_dir(root)
+        .env("CARGO_BUILD_JOBS", "2")
+        .args([
+            "run",
+            "--locked",
+            "-p",
+            "peritus-platform-qualification",
+            "--bin",
+            "peritus-package",
+            "--",
+            "--use-release-artifacts",
+        ])
+        .status()
+        .map_err(|error| XtaskError::io("assemble prepared release package in", root, error))?;
+    require_success(status.success(), "prepared release package assembly failed")
 }
 
 #[derive(Clone, Copy)]

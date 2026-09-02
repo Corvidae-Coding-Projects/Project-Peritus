@@ -145,6 +145,24 @@ impl QualificationRunner {
         QualificationShard::new(candidate, limits, platform, cases)
     }
 
+    pub(crate) fn run_shard_partition(
+        factory: &mut dyn FreshSubjectFactory,
+        candidate: IntegratedCandidate,
+        limits: QualificationLimits,
+        cancellation: &CancellationToken,
+        platform: QualificationPlatform,
+        partition: usize,
+        partition_count: usize,
+    ) -> Vec<CaseReport> {
+        let specs = ProbeSpec::h0_production()
+            .iter()
+            .copied()
+            .filter(|spec| platform.owns(spec.target()))
+            .enumerate()
+            .filter_map(|(index, spec)| (index % partition_count == partition).then_some(spec));
+        run_specs(factory, candidate, limits, cancellation, specs)
+    }
+
     /// Combines exactly one canonical shard from every native platform.
     ///
     /// # Errors

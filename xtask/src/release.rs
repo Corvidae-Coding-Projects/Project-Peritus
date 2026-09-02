@@ -103,13 +103,27 @@ pub(crate) fn create(root: &Path) -> Result<(), XtaskError> {
 pub(crate) fn package_stage(root: &Path) -> Result<(), XtaskError> {
     let build_started_unix = unix_seconds()?;
     let package = crate::product_package::build(root)?;
+    write_package_stage(root, &package, build_started_unix)
+}
+
+pub(crate) fn package_assemble(root: &Path) -> Result<(), XtaskError> {
+    let build_started_unix = unix_seconds()?;
+    let package = crate::product_package::build_from_release_artifacts(root)?;
+    write_package_stage(root, &package, build_started_unix)
+}
+
+fn write_package_stage(
+    root: &Path,
+    package: &Path,
+    build_started_unix: u64,
+) -> Result<(), XtaskError> {
     let name = package
         .file_name()
         .and_then(|value| value.to_str())
         .ok_or_else(|| XtaskError::metadata("native package directory has no UTF-8 name"))?;
     let extension = if cfg!(windows) { "zip" } else { "tar.gz" };
     let archive = root.join("dist").join(format!("{name}.{extension}"));
-    archive_package(root, &package, &archive)?;
+    archive_package(root, package, &archive)?;
     let checksum = archive.with_file_name(format!("{name}.{extension}.sha256"));
     fs::write(&checksum, format!("{}\n", digest(&archive)?))
         .map_err(|error| XtaskError::io("write release archive checksum at", &checksum, error))?;

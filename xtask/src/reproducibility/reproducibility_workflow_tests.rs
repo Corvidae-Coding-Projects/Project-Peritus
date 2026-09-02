@@ -63,8 +63,7 @@ jobs:
     assert_message(&diagnostics, "does not download and verify the exact pinned Verus archive");
     assert_message(&diagnostics, "does not run the direct locked xtask toolchain check");
     assert_message(&diagnostics, "does not run the direct ordinary-Rust formal API contract check");
-    assert_message(&diagnostics, "does not run the full locked Verus workspace verification");
-    assert_message(&diagnostics, "does not run the locked verified release build");
+    assert_message(&diagnostics, "does not retain the exact Verus shard matrix");
 }
 
 #[test]
@@ -73,7 +72,7 @@ fn canonical_ci_retains_pin_consumption_and_all_required_operations() {
 
     let (count, diagnostics) = validate(".github/workflows/ci.yml", DocumentKind::Workflow, &yaml);
 
-    assert_eq!(count, 7);
+    assert_eq!(count, 13);
     assert!(diagnostics.is_empty(), "unexpected diagnostics: {diagnostics:?}");
 }
 
@@ -111,22 +110,22 @@ fn archive_evidence_binds_exact_url_digest_operand_and_order() {
 fn required_steps_must_be_ordered_unconditional_and_failure_propagating() {
     for altered in [
         canonical_ci().replace(
-            "      - name: Verify the full applicable workspace\n        run:",
-            "      - name: Verify the full applicable workspace\n        continue-on-error: true\n        run:",
+            "      - name: Run reviewed Verus package shard\n        run:",
+            "      - name: Run reviewed Verus package shard\n        continue-on-error: true\n        run:",
         ),
         canonical_ci().replace(
-            "      - name: Verify the full applicable workspace\n        run:",
-            "      - name: Verify the full applicable workspace\n        background: true\n        id: verify\n        run:",
+            "      - name: Run reviewed Verus package shard\n        run:",
+            "      - name: Run reviewed Verus package shard\n        background: true\n        id: verify\n        run:",
         ),
         canonical_ci().replace(
-            "cargo verus verify --workspace --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --rlimit 20",
-            "cargo verus verify --workspace --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --rlimit 20 &",
+            "cargo run --locked --package xtask -- ci-shard ${{ matrix.operation }} ${{ matrix.shard }}",
+            "cargo run --locked --package xtask -- ci-shard ${{ matrix.operation }} ${{ matrix.shard }} &",
         ),
     ] {
         assert_ne!(altered, canonical_ci(), "adversarial fixture mutation must change CI");
         let (_, diagnostics) =
             validate(".github/workflows/ci.yml", DocumentKind::Workflow, &altered);
-        assert_message(&diagnostics, "does not run the full locked Verus workspace verification");
+        assert_message(&diagnostics, "does not retain the exact Verus shard matrix");
     }
 }
 
@@ -171,6 +170,23 @@ jobs:
     let (_, diagnostics) = validate(".github/workflows/extra.yaml", DocumentKind::Workflow, yaml);
 
     assert_message(&diagnostics, "without --locked");
+}
+
+#[test]
+fn every_hosted_job_requires_a_ten_minute_or_shorter_timeout() {
+    let yaml = r"
+name: slow runner
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 11
+    steps:
+      - run: cargo test --workspace --locked
+";
+
+    let (_, diagnostics) = validate(".github/workflows/extra.yaml", DocumentKind::Workflow, yaml);
+
+    assert_message(&diagnostics, "timeout from 1 through 10 minutes");
 }
 
 #[test]
@@ -248,7 +264,7 @@ fn extra_workflow_and_nested_composite_action_are_both_discovered() {
         validate_repository(fixture.path(), &policy(), CommandPolicy::new(true), &mut diagnostics)
             .expect("fixture files must be readable");
 
-    assert_eq!(count, 8);
+    assert_eq!(count, 14);
     assert_message(&diagnostics, "without --locked");
     assert_message(&diagnostics, "without an immutable commit SHA");
 }

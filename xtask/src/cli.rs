@@ -26,13 +26,16 @@ Commands:
   reproducibility-check  Validate toolchain pins, lock policy, and immutable CI inputs
   toolchain-check        Probe installed Rust, Verus, vstd metadata, and bundled Z3
   verify-trust           Reject trusted Verus constructs outside approved roots
+  ci-shard OPERATION SHARD Run one reviewed package shard for hosted Rust or Verus CI
   product-package        Build a host-native checked Peritus package in dist/
   product-install        Build and install Peritus for the current user
   product-package-smoke  Qualify native install, repeat launch, upgrade, and uninstall
   product-native-qualification Run and retain all 18 native H2 package scenarios
+  product-native-qualification-shard INDEX Run one of six three-scenario H2 shards
   release-bootstrap-smoke Qualify the public download, checksum, and install entry point
   release-create         Validate a tag and create its retained draft GitHub release
   release-package-stage Build, archive, checksum, and record this host's native package
+  release-package-assemble Assemble a native package from separately built release binaries
   release-publish        Publish a draft only after every native package job passes
   help                   Print this help
 ";
@@ -48,13 +51,16 @@ enum Command {
     Reproducibility,
     Toolchain,
     Trust,
+    CiShard { operation: crate::ci_shard::Operation, shard: &'static str },
     ProductPackage,
     ProductInstall,
     ProductPackageSmoke,
     ProductNativeQualification,
+    ProductNativeQualificationShard { index: usize },
     ReleaseBootstrapSmoke,
     ReleaseCreate,
     ReleasePackageStage,
+    ReleasePackageAssemble,
     ReleasePublish,
     Help,
 }
@@ -197,10 +203,18 @@ pub(crate) fn execute(
                 &format!("verify-trust passed: {files} source file(s) scanned\n"),
             )?;
         }
+        Command::CiShard { operation, shard } => {
+            let packages = crate::ci_shard::run(root, operation, shard)?;
+            write_output(
+                output,
+                &format!("CI shard `{shard}` passed {operation:?} for {packages} package(s)\n"),
+            )?;
+        }
         Command::ProductPackage
         | Command::ProductInstall
         | Command::ProductPackageSmoke
-        | Command::ProductNativeQualification => {
+        | Command::ProductNativeQualification
+        | Command::ProductNativeQualificationShard { .. } => {
             execute_product(command, root, output)?;
         }
         Command::ReleaseCreate => crate::release::create(root)?,
@@ -212,6 +226,7 @@ pub(crate) fn execute(
             )?;
         }
         Command::ReleasePackageStage => crate::release::package_stage(root)?,
+        Command::ReleasePackageAssemble => crate::release::package_assemble(root)?,
         Command::ReleasePublish => crate::release::publish()?,
         Command::Help => {}
     }
@@ -255,6 +270,10 @@ fn execute_product(
             crate::product_package::qualify(root)?,
             "native H2 qualification passed; retained report",
         ),
+        Command::ProductNativeQualificationShard { index } => (
+            crate::product_package::qualify_shard(root, index)?,
+            "native H2 qualification shard passed; retained reports",
+        ),
         _ => return Err(XtaskError::invocation("command is not a product packaging operation")),
     };
     write_output(output, &format!("{message}: {}\n", package.display()))
@@ -263,6 +282,9 @@ fn execute_product(
 fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError> {
     let mut args = args.into_iter();
     let first = args.next();
+    if let Some(command) = shard_args::parse(first.as_ref(), &mut args)? {
+        return Ok(command);
+    }
     if args.next().is_some() {
         return Err(XtaskError::invocation(
             "expected exactly one command; run `cargo xtask help` for the supported interface",
@@ -285,6 +307,7 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
         Some("release-bootstrap-smoke") => Ok(Command::ReleaseBootstrapSmoke),
         Some("release-create") => Ok(Command::ReleaseCreate),
         Some("release-package-stage") => Ok(Command::ReleasePackageStage),
+        Some("release-package-assemble") => Ok(Command::ReleasePackageAssemble),
         Some("release-publish") => Ok(Command::ReleasePublish),
         Some("help" | "-h" | "--help") | None => Ok(Command::Help),
         Some(command) => Err(XtaskError::invocation(format!(
@@ -356,3 +379,4 @@ mod tests {
         ));
     }
 }
+mod shard_args;

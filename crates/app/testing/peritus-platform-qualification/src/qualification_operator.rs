@@ -13,6 +13,8 @@ use crate::{
 };
 
 const MAX_MANIFEST_BYTES: u64 = 256 * 1024;
+const SCENARIOS_PER_SHARD: usize = 3;
+const H2_SHARD_COUNT: usize = 6;
 
 /// Terminal status of a successfully executed native H2 campaign.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -44,6 +46,37 @@ fn run(arguments: &[OsString]) -> Result<H2OperatorStatus, Box<dyn std::error::E
         &options.artifacts,
         NativeControllerLimits::default(),
     )?;
+    if let Some(shard) = options.shard {
+        if options.report.exists() {
+            return Err("H2 shard report directory already exists".into());
+        }
+        fs::create_dir_all(&options.report)?;
+        let first = shard * SCENARIOS_PER_SHARD;
+        let scenarios = &crate::ScenarioId::all()[first..first + SCENARIOS_PER_SHARD];
+        let mut ready = true;
+        for scenario in scenarios {
+            let observation =
+                FreshSubjectRunner.run_scenario(&mut factory, target, &manifest, scenario.id())?;
+            let scenario_ready = observation.outcome() == crate::ObservationOutcome::Passed
+                && observation.cleanup().is_some_and(crate::CleanupObservation::complete);
+            ready &= scenario_ready;
+            let bytes = super::report_json::render_shard(target, manifest.digest(), &observation)?;
+            publish_report(
+                &options.report.join(format!("{}.json", scenario.id().as_str())),
+                &bytes,
+            )?;
+        }
+        return Ok(if ready { H2OperatorStatus::Ready } else { H2OperatorStatus::NotReady });
+    }
+    if let Some(scenario) = options.scenario {
+        let observation =
+            FreshSubjectRunner.run_scenario(&mut factory, target, &manifest, scenario)?;
+        let ready = observation.outcome() == crate::ObservationOutcome::Passed
+            && observation.cleanup().is_some_and(crate::CleanupObservation::complete);
+        let bytes = super::report_json::render_shard(target, manifest.digest(), &observation)?;
+        publish_report(&options.report, &bytes)?;
+        return Ok(if ready { H2OperatorStatus::Ready } else { H2OperatorStatus::NotReady });
+    }
     let run = FreshSubjectRunner.run(&mut factory, target, &manifest)?;
     let report = QualificationReport::evaluate(run);
     let bytes = super::report_json::render(&report)?;
@@ -64,11 +97,13 @@ struct Options {
     platform: Platform,
     architecture: Architecture,
     version: PlatformVersion,
+    scenario: Option<crate::ScenarioId>,
+    shard: Option<usize>,
 }
 
 impl Options {
     fn parse(arguments: &[OsString]) -> Result<Self, Box<dyn std::error::Error>> {
-        if arguments.len() != 18 {
+        if arguments.len() != 18 && arguments.len() != 20 {
             return Err(usage().into());
         }
         let mut controller = None;
@@ -80,6 +115,8 @@ impl Options {
         let mut platform = None;
         let mut architecture = None;
         let mut version = None;
+        let mut scenario = None;
+        let mut shard = None;
         for pair in arguments.chunks_exact(2) {
             let name = pair[0].to_str().ok_or_else(usage)?;
             match name {
@@ -94,8 +131,13 @@ impl Options {
                     set_once(&mut architecture, parse_architecture(&pair[1])?)?;
                 }
                 "--version" => set_once(&mut version, parse_version(&pair[1])?)?,
+                "--scenario" => set_once(&mut scenario, parse_scenario(&pair[1])?)?,
+                "--shard" => set_once(&mut shard, parse_shard(&pair[1])?)?,
                 _ => return Err(usage().into()),
             }
+        }
+        if scenario.is_some() && shard.is_some() {
+            return Err(usage().into());
         }
         Ok(Self {
             controller: controller.ok_or_else(usage)?,
@@ -107,8 +149,22 @@ impl Options {
             platform: platform.ok_or_else(usage)?,
             architecture: architecture.ok_or_else(usage)?,
             version: version.ok_or_else(usage)?,
+            scenario,
+            shard,
         })
     }
+}
+
+fn parse_scenario(value: &OsString) -> Result<crate::ScenarioId, &'static str> {
+    value.to_str().and_then(crate::ScenarioId::parse).ok_or_else(usage)
+}
+
+fn parse_shard(value: &OsString) -> Result<usize, &'static str> {
+    value
+        .to_str()
+        .and_then(|value| value.parse().ok())
+        .filter(|shard| *shard < H2_SHARD_COUNT)
+        .ok_or_else(usage)
 }
 
 fn set_once<T>(slot: &mut Option<T>, value: T) -> Result<(), &'static str> {
@@ -172,5 +228,5 @@ fn publish_report(path: &Path, bytes: &[u8]) -> Result<(), Box<dyn std::error::E
 }
 
 const fn usage() -> &'static str {
-    "usage: peritus-h2 --controller PATH --package DIR --manifest FILE --scratch DIR --artifacts DIR --report FILE --platform linux|macos|windows --architecture x86_64|aarch64 --version MAJOR.MINOR.PATCH[.BUILD]"
+    "usage: peritus-h2 --controller PATH --package DIR --manifest FILE --scratch DIR --artifacts DIR --report FILE --platform linux|macos|windows --architecture x86_64|aarch64 --version MAJOR.MINOR.PATCH[.BUILD] [--scenario ID|--shard 0..5]"
 }

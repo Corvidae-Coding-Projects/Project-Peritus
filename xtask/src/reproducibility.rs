@@ -48,6 +48,7 @@ mod workflow_commands;
 mod workflow_files;
 mod workflow_governance;
 mod workflow_governance_jobs;
+mod workflow_governance_shards;
 mod workflow_local;
 mod workflow_pins;
 mod workflow_policy;

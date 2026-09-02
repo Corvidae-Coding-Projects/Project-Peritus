@@ -8,11 +8,12 @@ use std::env;
 use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{Read as _, Write as _};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::{
-    CancellationToken, HostFingerprint, NativeProbeFactory, QualificationLimits,
-    QualificationRunner, parse_candidate_json,
+    CancellationToken, CaseReport, HostFingerprint, IntegratedCandidate, NativeProbeFactory,
+    QualificationLimits, QualificationPlatform, QualificationRunner, QualificationShard,
+    parse_candidate_json,
 };
 
 use self::args::Options;
@@ -21,6 +22,7 @@ pub use aggregate::{H0AggregateStatus, run_from_env as run_aggregate_from_env};
 
 const MAX_HOST_FACT_BYTES: u64 = 1024 * 1024;
 const MAX_CANDIDATE_BYTES: u64 = 256 * 1024;
+const H0_WORKER_PARTITIONS: usize = 4;
 
 /// Terminal status of a successfully executed native H0 shard.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -46,23 +48,79 @@ fn run(arguments: &[OsString]) -> Result<H0OperatorStatus, Box<dyn std::error::E
     let candidate_bytes = read_bounded(&options.candidate, MAX_CANDIDATE_BYTES, "candidate")?;
     let host_facts = read_bounded(&options.host_facts, MAX_HOST_FACT_BYTES, "host facts")?;
     let candidate = parse_candidate_json(&candidate_bytes)?;
-    let mut factory = NativeProbeFactory::new(
-        &options.controller,
-        &options.candidate_root,
-        &options.scratch,
-        &options.artifacts,
-        HostFingerprint::from_document(&host_facts),
-    )?;
-    let shard = QualificationRunner.run_shard(
-        &mut factory,
+    let shard = run_parallel_shard(&ParallelShardInputs {
         candidate,
-        QualificationLimits::production(),
-        &CancellationToken::new(),
-        options.platform,
-    )?;
+        limits: QualificationLimits::production(),
+        platform: options.platform,
+        controller: &options.controller,
+        candidate_root: &options.candidate_root,
+        scratch: &options.scratch,
+        artifacts: &options.artifacts,
+        host: HostFingerprint::from_document(&host_facts),
+    })?;
     let passed = shard.cases().iter().all(|case| case.outcome() == crate::CaseOutcome::Passed);
     publish_report(&options.report, &shard.canonical_json()?)?;
     Ok(if passed { H0OperatorStatus::Passed } else { H0OperatorStatus::Failed })
+}
+
+struct ParallelShardInputs<'a> {
+    candidate: IntegratedCandidate,
+    limits: QualificationLimits,
+    platform: QualificationPlatform,
+    controller: &'a Path,
+    candidate_root: &'a Path,
+    scratch: &'a Path,
+    artifacts: &'a Path,
+    host: HostFingerprint,
+}
+
+fn run_parallel_shard(
+    inputs: &ParallelShardInputs<'_>,
+) -> Result<QualificationShard, Box<dyn std::error::Error>> {
+    let controller = PathBuf::from(inputs.controller);
+    let candidate_root = PathBuf::from(inputs.candidate_root);
+    let scratch = PathBuf::from(inputs.scratch);
+    let artifacts = PathBuf::from(inputs.artifacts);
+    let candidate = inputs.candidate;
+    let limits = inputs.limits;
+    let platform = inputs.platform;
+    let host = inputs.host;
+    let partitions = std::thread::scope(|scope| {
+        let mut handles = Vec::with_capacity(H0_WORKER_PARTITIONS);
+        for partition in 0..H0_WORKER_PARTITIONS {
+            let controller = controller.clone();
+            let candidate_root = candidate_root.clone();
+            let scratch = scratch.clone();
+            let artifacts = artifacts.clone();
+            handles.push(scope.spawn(move || {
+                let mut factory =
+                    NativeProbeFactory::new(controller, candidate_root, scratch, artifacts, host)?;
+                Ok::<Vec<CaseReport>, crate::QualificationError>(
+                    QualificationRunner::run_shard_partition(
+                        &mut factory,
+                        candidate,
+                        limits,
+                        &CancellationToken::new(),
+                        platform,
+                        partition,
+                        H0_WORKER_PARTITIONS,
+                    ),
+                )
+            }));
+        }
+        handles
+            .into_iter()
+            .map(|handle| {
+                handle
+                    .join()
+                    .map_err(|_| "H0 worker partition panicked")?
+                    .map_err(Box::<dyn std::error::Error>::from)
+            })
+            .collect::<Result<Vec<_>, Box<dyn std::error::Error>>>()
+    })?;
+    let mut cases = partitions.into_iter().flatten().collect::<Vec<_>>();
+    cases.sort_by_key(|case| case.spec().id());
+    Ok(QualificationShard::new(candidate, limits, platform, cases)?)
 }
 
 fn read_bounded(

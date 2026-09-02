@@ -3,7 +3,8 @@
 use serde::Serialize;
 
 use crate::{
-    EvidenceKind, NotReadyReason, QualificationReport, ReadinessVerdict, ScenarioObservation,
+    EvidenceKind, NotReadyReason, ObservationOutcome, QualificationReport, QualificationTarget,
+    ReadinessVerdict, ScenarioObservation, Sha256Digest,
 };
 
 #[derive(Serialize)]
@@ -13,6 +14,16 @@ struct ReportDocument<'a> {
     manifest_sha256: String,
     verdict: VerdictDocument,
     scenarios: Vec<ScenarioDocument<'a>>,
+}
+
+#[derive(Serialize)]
+struct ShardReportDocument<'a> {
+    schema_version: u8,
+    kind: &'static str,
+    target: TargetDocument,
+    manifest_sha256: String,
+    verdict: &'static str,
+    scenario: ScenarioDocument<'a>,
 }
 
 #[derive(Serialize)]
@@ -95,6 +106,41 @@ pub fn render(report: &QualificationReport) -> Result<Vec<u8>, serde_json::Error
     Ok(bytes)
 }
 
+pub fn render_shard(
+    target: QualificationTarget,
+    manifest_digest: Sha256Digest,
+    observation: &ScenarioObservation,
+) -> Result<Vec<u8>, serde_json::Error> {
+    let version = target.version();
+    let cleanup = observation
+        .cleanup()
+        .expect("FreshSubjectRunner guarantees cleanup for a completed scenario");
+    let document = ShardReportDocument {
+        schema_version: 1,
+        kind: "h2-scenario-shard",
+        target: TargetDocument {
+            platform: target.platform().as_str(),
+            architecture: target.architecture().as_str(),
+            version: VersionDocument {
+                major: version.major(),
+                minor: version.minor(),
+                patch: version.patch(),
+                build: version.build(),
+            },
+        },
+        manifest_sha256: manifest_digest.to_hex(),
+        verdict: if observation.outcome() == ObservationOutcome::Passed && cleanup.complete() {
+            "ready"
+        } else {
+            "not-ready"
+        },
+        scenario: scenario(observation),
+    };
+    let mut bytes = serde_json::to_vec_pretty(&document)?;
+    bytes.push(b'\n');
+    Ok(bytes)
+}
+
 fn verdict(verdict: &ReadinessVerdict) -> VerdictDocument {
     match verdict {
         ReadinessVerdict::Ready(evidence) => VerdictDocument::Ready {
@@ -128,9 +174,9 @@ fn scenario(observation: &ScenarioObservation) -> ScenarioDocument<'_> {
         scenario_id: observation.scenario().as_str(),
         subject_id: observation.subject_id(),
         outcome: match observation.outcome() {
-            crate::ObservationOutcome::Passed => "passed",
-            crate::ObservationOutcome::Failed => "failed",
-            crate::ObservationOutcome::Unsupported => "unsupported",
+            ObservationOutcome::Passed => "passed",
+            ObservationOutcome::Failed => "failed",
+            ObservationOutcome::Unsupported => "unsupported",
         },
         evidence_sha256: observation.evidence().digest().to_hex(),
         evidence: observation

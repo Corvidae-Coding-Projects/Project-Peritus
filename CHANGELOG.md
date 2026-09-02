@@ -1,8 +1,10 @@
 # Changelog
 
-- Give the cross-platform foundation Rust job a 60-minute allowance so the slower hosted Windows
-  runner can finish workspace-policy enforcement after build, tests, Clippy, and rustdoc pass,
-  instead of being cancelled at the former 45-minute boundary (#31).
+- Replace long hosted checks with bounded work shards instead of extending their timeouts. Gate A
+  and Foundation now partition Rust and Verus work by reviewed architecture layers; H2 runs six
+  three-scenario shards per host; H0 runs four fresh-subject worker partitions before reconstructing
+  its canonical platform report; and release jobs build, assemble, attest, and publish in separate
+  stages. Every hosted job now has a timeout of ten minutes or less (#31).
 - Freeze both completed external diagnostic campaigns during failure remediation: use retained
   evidence plus focused regressions for each general correction, and defer any new full comparison
   until the remediation code is frozen and an operator explicitly starts qualification (#31).
