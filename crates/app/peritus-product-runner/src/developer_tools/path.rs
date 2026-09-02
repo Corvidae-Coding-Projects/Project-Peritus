@@ -40,6 +40,16 @@ pub fn checked(
     Ok(current)
 }
 
+pub fn canonical_command_cwd(root: &Path, cwd: &Path) -> Result<PathBuf, DeveloperLoopError> {
+    let cwd = cwd
+        .canonicalize()
+        .map_err(|error| tool(format!("open command working directory: {error}")))?;
+    if !cwd.starts_with(root) {
+        return Err(tool("command working directory escaped the managed workspace"));
+    }
+    Ok(cwd)
+}
+
 pub fn tool(detail: impl Into<String>) -> DeveloperLoopError {
     DeveloperLoopError::Tool(detail.into())
 }

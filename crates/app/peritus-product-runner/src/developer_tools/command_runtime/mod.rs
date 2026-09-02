@@ -32,7 +32,7 @@ use peritus_tools_shell::{RawShellDispatcher, exec_descriptor};
 use peritus_types::RunId;
 use serde_json::Value;
 
-use super::path::tool;
+use super::path::{canonical_command_cwd, tool};
 
 const ARTIFACT_QUOTA_BYTES: u64 = 1024 * 1_024 * 1_024;
 const POLL_INTERVAL: Duration = Duration::from_millis(20);
@@ -211,9 +211,7 @@ impl CommandRuntime {
     }
 
     fn start_owned(&self, request: StartCommand<'_>) -> Result<String, DeveloperLoopError> {
-        if !request.cwd.starts_with(&self.inner.workspace_root) {
-            return Err(tool("command working directory escaped the managed workspace"));
-        }
+        let cwd = canonical_command_cwd(&self.inner.workspace_root, request.cwd)?;
         let timeout_millis =
             u64::try_from(request.timeout.as_millis()).unwrap_or(u64::MAX).clamp(1, 600_000);
         let mut state = self.inner.state.lock().map_err(|_| tool("command runtime is poisoned"))?;
@@ -230,7 +228,7 @@ impl CommandRuntime {
             plan::CommandRequest {
                 program: request.program,
                 arguments: request.arguments,
-                cwd: request.cwd,
+                cwd: &cwd,
                 timeout_millis,
                 interactive: request.interactive,
                 rows: request.rows,

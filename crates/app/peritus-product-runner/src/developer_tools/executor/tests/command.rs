@@ -159,6 +159,26 @@ fn missing_executable_returns_scoped_prerequisite_recovery_guidance() {
     assert!(result.contains("Do not substitute a stand-in"));
 }
 
+#[cfg(unix)]
+#[test]
+fn commands_accept_a_workspace_reached_through_a_filesystem_alias() {
+    use std::os::unix::fs::symlink;
+
+    let parent = tempfile::tempdir().expect("workspace parent");
+    let workspace = parent.path().join("workspace");
+    let alias = parent.path().join("workspace-alias");
+    fs::create_dir(&workspace).expect("workspace");
+    symlink(&workspace, &alias).expect("workspace alias");
+    let mut tools = writable_tools(&alias);
+    let _ = execute(&mut tools, "workspace_list", r#"{"depth":1,"path":""}"#);
+
+    let command =
+        execute(&mut tools, "run_command", r#"{"args":["--version"],"cwd":".","program":"rustc"}"#);
+
+    assert!(!command.is_error, "{}", wire(&command));
+    assert!(wire(&command).contains(r#""success":true"#));
+}
+
 #[test]
 fn structured_commands_drain_and_bound_both_output_streams() {
     let workspace = tempfile::tempdir().expect("workspace");

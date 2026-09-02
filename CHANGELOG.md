@@ -4,9 +4,11 @@
   constructor in the Verus-facing daemon API and making the Windows executable-extension branch
   strict-clippy clean. Declare supervisor resource fidelity only on Linux, where C2 implements it;
   keep macOS and Windows raw commands on the honest reference contract, and do not fail a
-  short-lived macOS command when its optional libproc sample races process-group removal. Preserve
-  exact observed fields when the real dependency-death qualification differs on a hosted platform
-  so any recurrence is actionable rather than an opaque assertion (#31).
+  short-lived macOS command when its optional libproc sample races process-group removal. Compare
+  canonical workspace paths when starting commands so macOS's `/var` to `/private/var` filesystem
+  alias cannot falsely reject an in-workspace working directory. Preserve exact observed fields
+  when the real dependency-death qualification differs on a hosted platform so any recurrence is
+  actionable rather than an opaque assertion (#31).
 - Route ordinary product and benchmark developer commands through the existing C4 router and
   daemon-owned C2 process store. Keep the simple bounded `run_command` path, and add stable
   run-owned handles for start, poll, terminal input, resize, portable signals, cancellation, and
