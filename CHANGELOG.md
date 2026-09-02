@@ -1,5 +1,8 @@
 # Changelog
 
+- Record further frozen context-overflow recurrences where oversized initial review packets
+  prevented native completion after candidates were already correct; retain the unchanged
+  verifiers' passing checks and rewards as honest successes (`TBF-043`, #31).
 - Treat brace- and angle-delimited generated-name placeholders as patterns rather than literal
   required paths, so exact-output reconciliation no longer rejects correct generated artifacts
   because prose examples such as `{class name}_generated.ext` contain whitespace (`TBF-046`, #31).

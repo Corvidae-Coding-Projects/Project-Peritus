@@ -4544,6 +4544,23 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   semantically compacted, a 120,014-byte exact observation is bounded before model history, an
   impossible newest complete exchange is compacted, and unusable semantic compaction falls back to
   deterministic compaction. An unchanged final-candidate rerun remains required.
+- Frozen recurrence `build-pmars__5XnJWFC` produced, installed, and exercised the requested binary,
+  then entered independent review with a 1,096,614-byte retained product observation and 110
+  candidate paths. The frozen product rejected the initial reviewer request because its estimated
+  376,557 input tokens still exceeded the provider's 200,000-token limit after the old compaction
+  pass. Native Peritus therefore reported a provider failure despite the unchanged verifier passing
+  all four source, build, dependency, and behavior checks and awarding reward 1. Current review
+  evidence projection already bounds the initial diff, gates, and developer observations against
+  the selected provider profile while preserving every section and directing the reviewer to fresh
+  read-only inspection. This is additional evidence for the existing general correction, not a
+  candidate failure or a task-specific rule.
+- Frozen recurrence `sqlite-with-gcov__oVCSMPT` reached the same boundary after building and
+  installing the requested instrumented executable. Its initial review packet contained a
+  1,048,595-byte diff and 72,679 bytes of gate evidence, and the frozen product rejected the
+  estimated 395,159-token request against the same 200,000-token provider limit. The unchanged
+  verifier passed all three build, installation, and instrumentation checks and awarded reward 1.
+  This independently exercises the current provider-aware initial-review projection with another
+  large generated source tree; it does not justify a source-build or benchmark-specific rule.
 
 ## TBF-044: repeated long commands consumed the enclosing run deadline
 
