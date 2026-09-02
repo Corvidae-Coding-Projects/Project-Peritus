@@ -1,5 +1,8 @@
 # Changelog
 
+- Record another frozen caller-deadline recurrence where Harbor lost the native report but the
+  unchanged candidate passed all five verifier checks, preserving the reward as an honest success
+  rather than a product-quality zero (`TBF-042`, #31).
 - Require exact values recovered through lossy or heuristic tools to carry an ambiguity ledger and
   genuinely independent or source-level disambiguation, instead of counting repeated modes of one
   extractor as independent confirmation (`TBF-045`, #31).

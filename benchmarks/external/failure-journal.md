@@ -4497,6 +4497,11 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   no native usage report. The unchanged verifier passed opponent integrity, candidate existence,
   and performance. It measured 96/100 wins against stone, 99/100 against vampire, 82/100 against
   paper, 45/100 against snake, and 63/100 against g2-clear.
+- Frozen recurrence `merge-diff-arc-agi-task__hRvqJrw` reached Harbor's unchanged 900-second outer
+  deadline before publishing any native usage report. The candidate nonetheless initialized the
+  repository, fetched both required bundles, retained the requested source and mapping function,
+  passed all five unchanged verifier tests, and earned reward 1. This is additional evidence for
+  the caller-horizon correction, not a candidate-quality failure or a new task-specific rule.
 - Verification: focused deadline tests cover ordinary reserve calculation, Harbor's override/cap/
   multiplier order, the eight-hour product ceiling, and missing retained evidence. All 29 Python
   adapter tests, 44 external-benchmark Rust tests, and 121 product-runner unit and integration tests
