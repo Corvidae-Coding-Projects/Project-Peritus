@@ -132,6 +132,25 @@ fn prose_abbreviation_is_not_an_output_path() {
 }
 
 #[test]
+fn descriptive_extension_is_not_a_literal_path_but_a_dotfile_is() {
+    let root = tempfile::tempdir().expect("root");
+    fs::write(root.path().join("program.py"), "candidate").expect("program");
+    fs::write(root.path().join(".env"), "MODE=test\n").expect("dotfile");
+    let transcript = format!(
+        "Create {0}/program.py to modify the .DAT files. Create the .env file.",
+        root.path().display(),
+    );
+
+    let record =
+        run(root.path(), &transcript, &[PathBuf::from("program.py"), PathBuf::from(".env")]);
+
+    assert_eq!(record.exit_code, Some(0), "{}", record.output);
+    assert!(record.output.contains("program.py: present"));
+    assert!(record.output.contains(".env: present"));
+    assert!(!record.output.contains(".DAT:"));
+}
+
+#[test]
 fn generated_filename_placeholders_are_not_literal_output_paths() {
     let root = tempfile::tempdir().expect("root");
     for path in ["kv-store.proto", "kv_store_pb2.py", "kv_store_pb2_grpc.py", "server.py"] {

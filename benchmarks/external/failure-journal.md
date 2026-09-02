@@ -3394,6 +3394,13 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   unchanged verifier awarded reward 1.0. Output-path extraction now ignores ordinary unquoted prose
   abbreviations while retaining explicitly delimited unusual filenames and the actual absolute
   output path. This is general request-language parsing, not a dataset or answer-specific rule.
+- Frozen recurrence `count-dataset-tokens__HLV8ssn` independently computed the requested total from
+  the live dataset metadata and exact named tokenizer, wrote the five-byte `answer.txt`, and passed
+  the unchanged verifier for reward 1. Native Peritus again rejected only a phantom required path
+  named `e.g`, after independent review had identified the parser error and confirmed the real
+  artifact. Preserve the successful reward and native gate failure: this validates the current
+  abbreviation filter against a separate provider run without introducing any dataset field,
+  tokenizer result, expected number, or task-name behavior.
 - Verification: focused product-runner tests reproduce the misplaced same-basename candidate,
   prove exact placement passes, keep input, negated, compiler-output, and prose-abbreviation tokens
   out of the required-output set, and require the real explicit path to remain authoritative. The
@@ -4621,6 +4628,16 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   dependency route, run the distributed checks, and either repair the candidate or report its real
   limit. This is additional cross-language dependency and verification evidence for the existing
   general correction, not a tensor, PyTorch, or expected-shape rule.
+- Frozen recurrence `torch-pipeline-parallelism__4w6bFRU` independently exhausted both unchanged
+  900-second phases. The agent timed out after spending its delivery window installing the default
+  CUDA-enabled Torch and Transformers dependency set, so Harbor retained an `AgentTimeoutError`,
+  null reward, and no artifact bundle. The unchanged verifier then repeated the same multi-gigabyte
+  environment setup and reached two of four tests before its own deadline, leaving no verifier
+  result. Container memory remained within its explicit cap; package acquisition and insufficient
+  shared-deadline planning were the limiting factors. Preserve the infrastructure-invalid result
+  and use it as additional evidence for caller-derived command allowances, completion reserves,
+  reusable dependency environments, and explicit separation of setup time from candidate quality.
+  Do not add pipeline-stage values, expected tensors, task names, or verifier-specific shortcuts.
 - Verification: deterministic budget tests cover an ordinary command, a late clamped command, and
   reserve exhaustion. A real process-tree regression proves a requested ten-second command is
   limited to no more than one second while preserving the final reserve; when time remains, the
@@ -4777,3 +4794,30 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   suite passes 130 tests, strict all-target/all-feature Clippy and formatting are clean, all 137
   documentation checks pass, and the repository-wide gate passes across 79 packages and 3,372
   source files.
+
+## TBF-050: a descriptive bare extension became a literal required path
+
+- Suite and task: Terminal-Bench 2.0 frozen baseline, corrected-adapter trial
+  `cobol-modernization__XSrd27K`.
+- Symptom: the writer produced `program.py` and differentially verified it against the compiled
+  GnuCOBOL program across the supplied state and additional valid, invalid, empty, same-party,
+  zero-amount, and underflow scenarios. Native review confirmed the requested paths and behavior,
+  but deterministic acceptance required a nonexistent file literally named `.DAT`. Repeated
+  review and fixer cycles exhausted Harbor's unchanged 900-second agent window. The unchanged
+  verifier passed all three artifact and behavior checks and retained reward 1.
+- Cause: request phrases such as “one or more .DAT files” and “modify the .DAT files” placed a bare
+  extension token near an output verb. The parser correctly recognized its dot but lacked the
+  distinction between a plural file-type pattern and a concrete dotfile path.
+- General resolution: explicit-path extraction now ignores an unquoted dot-prefixed extension when
+  it directly qualifies plural “files”. Concrete absolute and relative filenames remain required,
+  and a singular requested dotfile such as `.env` remains a literal deliverable. This applies to
+  source migrations, format converters, generated asset families, and any request that describes
+  outputs by extension.
+- Integrity decision: preserve the agent timeout and verifier reward 1. No COBOL filename, fixture,
+  expected output, task name, or verifier behavior enters the parser. The correction is based only
+  on general request grammar and is covered independently of the benchmark candidate.
+- Verification: a focused product-runner regression combines a descriptive `.DAT files` phrase,
+  an absolute requested script, and a real `.env` dotfile; it requires both concrete artifacts and
+  proves the extension pattern is not enforced. The complete product-runner suite passes 131 tests,
+  strict all-target/all-feature Clippy and formatting are clean, and all 137 documentation checks
+  pass. The repository-wide gate remains required before release.

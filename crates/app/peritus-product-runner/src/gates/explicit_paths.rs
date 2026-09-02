@@ -89,6 +89,9 @@ fn extract(root: &Path, transcript: &str) -> Vec<PathMention> {
     for line in transcript.lines() {
         let words = line.split_whitespace().collect::<Vec<_>>();
         for (index, word) in words.iter().enumerate() {
+            if descriptive_extension(word, words.get(index + 1).copied()) {
+                continue;
+            }
             let required_output = output_context(&words[..index]);
             let quoted_bare_name =
                 required_output && path_noun_context(&words[..index]) && explicitly_delimited(word);
@@ -193,6 +196,18 @@ fn prose_abbreviation(raw: &str) -> bool {
         })
         .to_ascii_lowercase();
     matches!(token.as_str(), "e.g." | "i.e.")
+}
+
+fn descriptive_extension(raw: &str, next: Option<&str>) -> bool {
+    if explicitly_delimited(raw) || next.is_none_or(|word| normalized(word) != "files") {
+        return false;
+    }
+    let token = trim_delimiters(raw);
+    let Some(extension) = token.strip_prefix('.') else {
+        return false;
+    };
+    !extension.is_empty()
+        && extension.chars().all(|character| character.is_ascii_alphanumeric() || character == '.')
 }
 
 fn trim_delimiters(raw: &str) -> &str {

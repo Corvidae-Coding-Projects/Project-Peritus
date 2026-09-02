@@ -1,5 +1,7 @@
 # Changelog
 
+- Treat descriptive bare extensions such as “`.DAT files`” as file patterns rather than literal
+  required paths while preserving singular dotfile requests such as `.env` (`TBF-050`, #31).
 - Attribute files created during harness-owned structured commands so later fixer cycles can clean
   up their exact test and generator products without gaining permission to delete unrelated files
   that appeared before the command (`TBF-049`, #31).
