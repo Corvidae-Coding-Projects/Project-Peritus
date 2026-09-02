@@ -68,7 +68,8 @@ pub async fn complete(
             Err(error) => return Err(error),
         };
         let (prompt, attachments) = media.into_parts(prompt);
-        let mut tools = WorkspaceDeveloperTools::read_only(input.workspace_root.clone());
+        let mut tools = WorkspaceDeveloperTools::read_only(input.workspace_root.clone())
+            .with_task_contract(evidence.conversation);
         let mut trace = FileDeveloperTrace::new(input.trace_path.clone());
         let result = DeveloperLoop::run(
             providers.current(),

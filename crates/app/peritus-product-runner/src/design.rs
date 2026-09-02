@@ -84,7 +84,8 @@ pub async fn create(
         };
         let (prompt, attachments) =
             media.into_parts(user_prompt(&transcript, correction.as_deref()));
-        let mut tools = WorkspaceDeveloperTools::read_only(input.workspace_root.clone());
+        let mut tools = WorkspaceDeveloperTools::read_only(input.workspace_root.clone())
+            .with_task_contract(&transcript);
         let mut trace = FileDeveloperTrace::new(input.trace_path.clone());
         let result = DeveloperLoop::run(
             providers.current(),

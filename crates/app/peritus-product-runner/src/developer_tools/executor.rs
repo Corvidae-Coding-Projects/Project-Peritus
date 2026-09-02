@@ -7,6 +7,7 @@ use peritus_model_protocol::CompletedToolCall;
 use serde_json::Value;
 
 use super::{
+    access_policy::WorkspaceAccessPolicy,
     command_budget::CommandBudget,
     effect::{atomic_write, atomic_write_if_changed, reject_destructive_command},
     evidence::CommandEvidence,
@@ -35,7 +36,8 @@ enum WorkspaceToolMode {
 
 /// Concrete tool executor scoped to one managed workspace.
 pub struct WorkspaceDeveloperTools {
-    root: PathBuf,
+    pub(super) root: PathBuf,
+    pub(super) access_policy: WorkspaceAccessPolicy,
     grounding: GroundingEvidence,
     ownership: WorkspaceOwnership,
     mode: WorkspaceToolMode,
@@ -56,6 +58,7 @@ impl WorkspaceDeveloperTools {
         let ownership = WorkspaceOwnership::capture(&root);
         Self {
             root,
+            access_policy: WorkspaceAccessPolicy::default(),
             grounding: GroundingEvidence::default(),
             ownership,
             mode: WorkspaceToolMode::ReadOnly,
@@ -78,6 +81,7 @@ impl WorkspaceDeveloperTools {
     ) -> Self {
         Self {
             root,
+            access_policy: WorkspaceAccessPolicy::default(),
             grounding: GroundingEvidence::default(),
             ownership,
             mode: WorkspaceToolMode::ReadWrite,
@@ -115,6 +119,9 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
     ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
         let arguments: Value = serde_json::from_slice(call.arguments().canonical_bytes())
             .map_err(|error| tool(error.to_string()))?;
+        if let Err(detail) = self.access_policy.authorize(call.name().as_str(), &arguments) {
+            return observation(&object(vec![("error", Value::String(detail))]), true);
+        }
         let effect = matches!(
             call.name().as_str(),
             "workspace_write" | "workspace_patch" | "workspace_remove" | "run_command"
@@ -146,7 +153,7 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
         }
         let result = match call.name().as_str() {
             "workspace_list" => inspection::list(&self.root, &arguments, self.resources),
-            "workspace_search" => inspection::search(&self.root, &arguments),
+            "workspace_search" => inspection::search(&self.root, &arguments, &self.access_policy),
             "workspace_read" => inspection::read(&self.root, &arguments),
             "workspace_write" | "workspace_patch" | "workspace_remove" | "run_command"
                 if self.mode == WorkspaceToolMode::ReadOnly =>

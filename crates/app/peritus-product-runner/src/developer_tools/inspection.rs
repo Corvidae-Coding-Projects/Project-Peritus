@@ -6,6 +6,7 @@ use peritus_agent::DeveloperLoopError;
 use serde_json::Value;
 
 use super::{
+    access_policy::WorkspaceAccessPolicy,
     effect::limit,
     path::{checked, ignored, tool},
     resources::CommandResources,
@@ -76,7 +77,11 @@ fn listing(
     ])
 }
 
-pub(super) fn search(root: &Path, arguments: &Value) -> Result<Value, DeveloperLoopError> {
+pub(super) fn search(
+    root: &Path,
+    arguments: &Value,
+    access_policy: &WorkspaceAccessPolicy,
+) -> Result<Value, DeveloperLoopError> {
     let query = required_string(arguments, "query")?;
     if query.is_empty() {
         return Err(tool("search query is empty"));
@@ -105,6 +110,10 @@ pub(super) fn search(root: &Path, arguments: &Value) -> Result<Value, DeveloperL
             continue;
         }
         if !metadata.is_file() || metadata.len() > MAX_FILE_BYTES as u64 {
+            continue;
+        }
+        let relative = path.strip_prefix(root).unwrap_or(&path);
+        if !access_policy.permits_search_result(relative) {
             continue;
         }
         let Ok(content) = fs::read_to_string(&path) else {

@@ -4821,3 +4821,41 @@ checked-in entries keep enough exact detail to find that evidence and reproduce 
   proves the extension pattern is not enforced. The complete product-runner suite passes 131 tests,
   strict all-target/all-feature Clippy and formatting are clean, and all 137 documentation checks
   pass. The repository-wide gate remains required before release.
+
+## TBF-051: reality grounding crossed a declared opaque interface
+
+- Suite and task: Terminal-Bench 2.0 frozen baseline, corrected-adapter trial
+  `model-extraction-relu-logits__FT8yCrj`.
+- Symptom: the final `steal.py` used a real finite-difference and ReLU-boundary query method and the
+  unchanged verifier accepted its recovered matrix for reward 1. However, the request exposed the
+  network only by importing `forward.py` and calling `forward(x)`, and explicitly said that A1's
+  shape was unknown. The writer first read `forward.py`, then repeatedly imported `forward.A1` to
+  measure recovered row count and error while tuning the algorithm. The final artifact no longer
+  accessed A1 directly, but its selection evidence was already contaminated. Harbor separately
+  retained an agent timeout after review consumed the unchanged 900-second window.
+- Cause: the ordinary reality-grounding rule required source inspection and the workspace tools
+  treated every visible input as readable. Neither tool authorization nor independent review
+  distinguished an authoritative implementation from an authoritative public query interface.
+  The harness therefore encouraged the role to inspect precisely the state the task declared
+  unknown.
+- General resolution: task contracts that combine an explicit black-box or unknown-state boundary
+  with a named query/import/call interface now derive a scoped workspace access policy. All roles
+  may list opaque inputs as metadata, but direct reads and mutations are refused, workspace search
+  omits their contents, and structured commands reject direct references to declared hidden
+  identifiers or implementation paths. The shared engineering workflow requires design,
+  development, and review to use only the named public interface and treats retained hidden-state
+  observations as acceptance-blocking contamination.
+- Integrity decision: preserve Harbor's official reward 1 and agent-timeout record, but classify
+  this attempt as method-invalid in Peritus's benchmark analysis. Do not count the verifier pass as
+  clean evidence of black-box extraction quality. No layer count, weight shape, seed, expected
+  matrix, error tolerance, task name, or verifier behavior enters the correction. The same boundary
+  applies to plugins, proprietary libraries, remote APIs, challenge fixtures, and hardware or
+  service interfaces whose internals are explicitly outside the task's evidence contract.
+- Verification: policy-unit regressions distinguish an ordinary repository request from an opaque
+  query contract, refuse direct source and hidden-identifier access, allow the named public import,
+  and filter opaque contents from search. An executor regression proves the policy is active in the
+  model-visible tool path. Workflow regressions require every role to preserve the epistemic
+  boundary. The complete product-runner suite passes 134 tests, strict all-target/all-feature
+  Clippy and formatting are clean, and all 137 documentation checks pass. The repository-wide gate
+  passes across 79 packages and 3,374 source files. An unchanged task rerun with a newly built
+  candidate remains required.

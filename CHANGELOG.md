@@ -1,5 +1,8 @@
 # Changelog
 
+- Enforce task-declared opaque query interfaces across writer, fixer, designer, and reviewer tools:
+  keep implementation metadata visible, omit its contents from reads and search, refuse direct
+  hidden-state command references, and reject contaminated validation evidence (`TBF-051`, #31).
 - Treat descriptive bare extensions such as “`.DAT files`” as file patterns rather than literal
   required paths while preserving singular dotfile requests such as `.env` (`TBF-050`, #31).
 - Attribute files created during harness-owned structured commands so later fixer cycles can clean

@@ -1,5 +1,6 @@
 //! Managed-workspace tools exposed to the D0 developer loop.
 
+mod access_policy;
 mod catalog;
 mod command_budget;
 mod effect;

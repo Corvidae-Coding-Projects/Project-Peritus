@@ -25,7 +25,6 @@ mod terminal;
 
 pub use evidence::ReviewerPrompt;
 use terminal::TerminalTurn;
-
 const MAX_UNPRODUCTIVE_TERMINALS: u8 = 3;
 
 pub fn request_name(run_id: RunId, role: &str, cycle: u32) -> String {
@@ -233,7 +232,8 @@ async fn run_developer_invocation(
         input.trace_path.with_extension("effects.bin"),
         request_prefix.clone(),
         context.remaining,
-    );
+    )
+    .with_task_contract(&transcript);
     let mut trace = FileDeveloperTrace::new(input.trace_path.clone());
     let result = DeveloperLoop::run(
         model,
