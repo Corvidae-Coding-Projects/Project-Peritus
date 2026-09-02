@@ -32,7 +32,9 @@ Those executables own login and model transport; Peritus retains conversation, t
 review, and policy authority. When two or more providers are selected, provider settings offer
 explicit automatic-failover consent. A role switches only after its selected provider exhausts
 ordinary recovery, never for safety, refusal, cancellation, or ambiguous-acceptance outcomes, and
-records the exact switch in durable trace and live progress evidence.
+records the exact switch in durable trace and live progress evidence. Once a route fails over, a
+run-scoped circuit keeps later roles from repeatedly calling that same unavailable provider when a
+healthy consented fallback exists.
 
 Long-running coding tasks persist their conversation, design, candidate changes, findings, trace,
 and handoff state. Productive work can continue across bounded segments and daemon restarts.
@@ -49,8 +51,10 @@ The implementation is not the release decision. Production readiness still requi
 
 1. completing the accepted broadly useful repairs found by the finished Terminal-Bench 2.0
    diagnostic campaign;
-2. rerunning affected unchanged tasks after those general repairs;
-3. rerunning both complete benchmark suites with one exact, revision-bound final binary;
+2. freezing the remediation candidate after every retained failure has an honest systemic,
+   evaluator-integrity, or candidate-quality disposition;
+3. only then, under an explicit qualification start, running both complete benchmark suites once
+   with one exact, revision-bound final binary;
 4. running H0-H4 against the exact final commit on Linux, macOS, and Windows;
 5. retaining the eight-hour soak, signature, provenance, reproducibility, migration, and recovery evidence;
 6. receiving an independent final audit and an H4 `Ready` result; and

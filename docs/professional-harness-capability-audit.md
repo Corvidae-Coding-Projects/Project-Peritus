@@ -64,6 +64,21 @@ success and the harness's own terminal truth are distinct dimensions: a passing 
 expose a provider, recovery, grounding, or acceptance defect, while native acceptance cannot
 override an unchanged verifier failure.
 
+The remediation pass uses those two dimensions instead of treating every zero as the same defect:
+
+| Native terminal | Trials | Reward 1 / 0 / unscored | Systemic disposition |
+| --- | ---: | ---: | --- |
+| Accepted | 134 | 98 / 27 / 9 | Inspect verifier disagreement. Preserve genuine candidate errors and integrity gotchas; strengthen general validation only where the request supplied enough evidence. |
+| Provider failure | 215 | 101 / 88 / 26 | Bounded fresh-role recovery, consented fallback, credential lifecycle repair, context bounds, and run-scoped cross-role circuits (`TBF-009`, `TBF-032`, `TBF-033`, `TBF-035`, `TBF-057`). |
+| Gate failure | 18 | 14 / 1 / 3 | Separate workspace artifacts from authorized live effects and make exact-path extraction understand examples, patterns, alternatives, and conditional clauses (`TBF-013`, `TBF-046`, `TBF-050`, `TBF-055`, `HBF-030`). |
+| Repository failure | 8 | 2 / 6 / 0 | Bound large inventories and preserve task-authorized nested Git mutations without losing the managed baseline (`TBF-031`, `TBF-034`). |
+| Waiting for user | 4 | 1 / 3 / 0 | Attempt ordinary disposable prerequisites, distinguish pre-existing failures, and prevent prose values from becoming fake deliverables (`TBF-016`, `TBF-038`, `TBF-050`). |
+| No native report: timeout | 50 | 23 / 26 / 1 | Propagate caller deadlines, reserve publication time, bound command horizons, and reap active process trees (`TBF-022`, `TBF-042`, `TBF-044`, `HBF-029`). |
+| No native report: runner error | 16 | 0 / 0 / 16 | Prepare evidence paths before execution, resolve the task image's real workdir, qualify live provider routes, preserve credential rotation, and publish nullable infrastructure usage honestly. |
+
+This table is a disposition inventory, not an adjusted score. During remediation the complete
+campaigns remain stopped; focused regressions and repository gates validate the product changes.
+
 The normalized report is retained outside Git at
 `/home/doll/.local/state/peritus/benchmarks/terminalbench/reports/frozen-baseline-445.final.json`
 with SHA-256 `d7feff820c7d38d204744f75ef9214cb7b91949cac2c8c3b5625f10c39321bc0`.
