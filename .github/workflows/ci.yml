@@ -82,7 +82,7 @@ jobs:
       matrix:
         os: [ubuntu-24.04, macos-15, windows-2025]
         operation: [build, test, doc-test, clippy, docs]
-        shard: [foundation-state, runtime-tools, model-orchestration, app, testing, edge]
+        shard: [foundation-state, runtime-tools, model-orchestration, app-runner, app-shell, testing, edge]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
@@ -156,7 +156,7 @@ jobs:
       fail-fast: false
       matrix:
         operation: [verus-verify, verus-verify-strict, verus-build, verus-build-strict]
-        shard: [foundation-state, runtime-tools, model-orchestration, app, edge]
+        shard: [foundation-state, runtime-tools, model-orchestration, app-runner, app-shell, edge]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:

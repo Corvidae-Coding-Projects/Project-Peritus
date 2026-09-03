@@ -27,7 +27,9 @@
   and Foundation now partition Rust and Verus work by reviewed architecture layers; H2 runs 18
   single-scenario shards per host; H0 runs four fresh-subject worker partitions before reconstructing
   its canonical platform report; and release jobs build, assemble, attest, and publish in separate
-  stages. Every hosted job now has a timeout of ten minutes or less (#31).
+  stages. The growing product-runner test and proof surface has its own app shard so the remaining
+  application crates no longer share its Windows critical path. Every hosted job retains a timeout
+  of ten minutes or less (#31, #51).
 - Isolate the Rust shard controller in its own Cargo target directory so Windows can compile and
   test the `xtask` package without trying to replace the running `xtask.exe`; keep that invocation
   exact and policy-checked in both Foundation and Gate A (#31).
