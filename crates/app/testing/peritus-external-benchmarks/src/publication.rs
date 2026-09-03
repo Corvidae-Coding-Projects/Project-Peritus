@@ -134,10 +134,27 @@ fn write_atomic(path: &Path, value: &InvocationReport) -> Result<(), BenchmarkEr
         .map_err(|error| BenchmarkError::filesystem("write report temporary", &temporary, error))?;
     fs::rename(&temporary, path)
         .map_err(|error| BenchmarkError::filesystem("publish report", path, error))?;
-    fs::File::open(parent)
-        .and_then(|directory| directory.sync_all())
+    sync_directory(parent)
         .map_err(|error| BenchmarkError::filesystem("sync report directory", parent, error))?;
     Ok(())
+}
+
+#[cfg(not(windows))]
+fn sync_directory(directory: &Path) -> std::io::Result<()> {
+    fs::File::open(directory)?.sync_all()
+}
+
+#[cfg(windows)]
+fn sync_directory(directory: &Path) -> std::io::Result<()> {
+    use std::os::windows::fs::OpenOptionsExt as _;
+
+    const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
+
+    OpenOptions::new()
+        .write(true)
+        .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
+        .open(directory)?
+        .sync_all()
 }
 
 #[cfg(test)]
