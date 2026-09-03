@@ -176,6 +176,12 @@ owner = "E0"
 layer = "orchestration"
 verification_class = "H"
 [[packages]]
+name = "peritus-run-settlement"
+path = "crates/orchestration/peritus-run-settlement"
+owner = "E0"
+layer = "orchestration"
+verification_class = "V"
+[[packages]]
 name = "peritus-patch"
 path = "crates/runtime/peritus-patch"
 owner = "C1"

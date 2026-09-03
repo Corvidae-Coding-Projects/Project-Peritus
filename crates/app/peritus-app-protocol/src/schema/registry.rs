@@ -79,6 +79,8 @@ const RESPONSES: &[AppPayloadDescriptor] = &[
     AppPayloadDescriptor { tag: 10, name: "product-run-accepted" },
     AppPayloadDescriptor { tag: 11, name: "product-runs" },
     AppPayloadDescriptor { tag: 12, name: "product-run-conversation" },
+    AppPayloadDescriptor { tag: 13, name: "product-run-settled" },
+    AppPayloadDescriptor { tag: 14, name: "product-run-settlements" },
 ];
 
 const EVENTS: &[AppPayloadDescriptor] = &[

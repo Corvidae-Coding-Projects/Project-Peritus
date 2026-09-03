@@ -18,8 +18,9 @@ use super::{
     error::{read_app_error, write_app_error},
     primitive::{read_context, read_id, unknown, write_context, write_id},
     product::{
-        read_conversation, read_snapshot, read_snapshots, write_conversation, write_snapshot,
-        write_snapshots,
+        read_conversation, read_settlement_snapshot, read_settlement_snapshots, read_snapshot,
+        read_snapshots, write_conversation, write_settlement_snapshot, write_settlement_snapshots,
+        write_snapshot, write_snapshots,
     },
     terminal::{read_terminal_binding, write_terminal_binding},
 };
@@ -82,6 +83,14 @@ impl CanonicalEncode for AppResponseEnvelope {
                 writer.write_u16(12)?;
                 write_conversation(writer, value)
             }
+            AppResponsePayload::ProductRunSettled(value) => {
+                writer.write_u16(13)?;
+                write_settlement_snapshot(writer, value)
+            }
+            AppResponsePayload::ProductRunSettlements(value) => {
+                writer.write_u16(14)?;
+                write_settlement_snapshots(writer, value)
+            }
         }
     }
 }
@@ -120,6 +129,8 @@ pub(super) fn read_response(
         10 => AppResponsePayload::ProductRunAccepted(read_snapshot(reader)?),
         11 => AppResponsePayload::ProductRuns(read_snapshots(reader)?),
         12 => AppResponsePayload::ProductRunConversation(read_conversation(reader)?),
+        13 => AppResponsePayload::ProductRunSettled(read_settlement_snapshot(reader)?),
+        14 => AppResponsePayload::ProductRunSettlements(read_settlement_snapshots(reader)?),
         _ => return unknown(tag_offset),
     };
     let response = AppResponseEnvelope::new(context, request_id, correlation_id, payload);

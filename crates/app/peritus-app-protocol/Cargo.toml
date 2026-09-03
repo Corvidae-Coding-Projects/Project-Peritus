@@ -14,6 +14,7 @@ categories = ["development-tools"]
 [dependencies]
 peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
 peritus-protocol = { version = "=0.0.0", path = "../../foundation/peritus-protocol" }
+peritus-run-settlement = { version = "=0.0.0", path = "../../orchestration/peritus-run-settlement" }
 peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
 vstd.workspace = true
 

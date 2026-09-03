@@ -1925,6 +1925,7 @@ dependencies = [
  "peritus-codec",
  "peritus-conformance",
  "peritus-protocol",
+ "peritus-run-settlement",
  "peritus-test-support",
  "peritus-types",
  "tempfile",
@@ -2814,6 +2815,14 @@ version = "0.0.0"
 dependencies = [
  "peritus-policy",
  "peritus-spec",
+ "vstd",
+]
+
+[[package]]
+name = "peritus-run-settlement"
+version = "0.0.0"
+dependencies = [
+ "peritus-types",
  "vstd",
 ]
 

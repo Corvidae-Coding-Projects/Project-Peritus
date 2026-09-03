@@ -174,6 +174,18 @@ impl AppModel {
             AppResponsePayload::ProductRuns(snapshots) => {
                 self.accept_product_runs(snapshots.clone());
             }
+            AppResponsePayload::ProductRunSettled(settled) => {
+                self.accept_product_run(settled.snapshot().clone());
+                self.notice(
+                    NoticeLevel::Info,
+                    format!("coding run settled: {:?}", settled.settlement().disposition()),
+                );
+            }
+            AppResponsePayload::ProductRunSettlements(settled) => {
+                self.accept_product_runs(
+                    settled.iter().map(|value| value.snapshot().clone()).collect(),
+                );
+            }
             AppResponsePayload::ProductRunConversation(conversation) => {
                 self.accept_product_conversation(conversation.clone());
             }

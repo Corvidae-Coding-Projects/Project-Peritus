@@ -1,6 +1,14 @@
 //! Canonical product-run request and observation encoding.
 
+mod settlement;
+
+pub(super) use settlement::{
+    read_settlement_snapshot, read_settlement_snapshots, write_settlement_snapshot,
+    write_settlement_snapshots,
+};
+
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
+use peritus_run_settlement::CandidateStage;
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 
 use crate::{
@@ -147,6 +155,14 @@ pub(super) fn write_snapshot(
     writer: &mut CanonicalWriter,
     value: &ProductRunSnapshot,
 ) -> Result<(), CodecError> {
+    write_snapshot_inner(writer, value, false)
+}
+
+fn write_snapshot_inner(
+    writer: &mut CanonicalWriter,
+    value: &ProductRunSnapshot,
+    allow_unqualified: bool,
+) -> Result<(), CodecError> {
     write_id(writer, value.run_id().as_bytes())?;
     write_id(writer, value.workspace_id().as_bytes())?;
     write_providers(writer, value.providers())?;
@@ -159,13 +175,20 @@ pub(super) fn write_snapshot(
     }
     writer.write_option_tag(value.deliverable().is_some())?;
     if let Some(deliverable) = value.deliverable() {
-        write_deliverable(writer, deliverable)?;
+        write_deliverable(writer, deliverable, allow_unqualified)?;
     }
     Ok(())
 }
 
 pub(super) fn read_snapshot(
     reader: &mut CanonicalReader<'_>,
+) -> Result<ProductRunSnapshot, CodecError> {
+    read_snapshot_inner(reader, false)
+}
+
+fn read_snapshot_inner(
+    reader: &mut CanonicalReader<'_>,
+    allow_unqualified: bool,
 ) -> Result<ProductRunSnapshot, CodecError> {
     let offset = reader.offset();
     let run_id = read_id(reader, RunId::new)?;
@@ -198,7 +221,7 @@ pub(super) fn read_snapshot(
         ),
     )?;
     if reader.read_option_tag()? {
-        Ok(snapshot.with_deliverable(read_deliverable(reader)?))
+        Ok(snapshot.with_deliverable(read_deliverable(reader, allow_unqualified)?))
     } else {
         Ok(snapshot)
     }
@@ -207,7 +230,11 @@ pub(super) fn read_snapshot(
 fn write_deliverable(
     writer: &mut CanonicalWriter,
     value: &ProductDeliverable,
+    allow_unqualified: bool,
 ) -> Result<(), CodecError> {
+    if !allow_unqualified && value.qualification() != CandidateStage::Qualified {
+        return Err(CodecError::at(CodecErrorKind::InvalidDomainValue, writer.len()));
+    }
     writer.write_str(value.workspace_path())?;
     writer.write_collection_len(value.changed_paths().len())?;
     for path in value.changed_paths() {
@@ -224,7 +251,10 @@ fn write_deliverable(
     writer.write_bool(value.discarded())
 }
 
-fn read_deliverable(reader: &mut CanonicalReader<'_>) -> Result<ProductDeliverable, CodecError> {
+fn read_deliverable(
+    reader: &mut CanonicalReader<'_>,
+    allow_unqualified: bool,
+) -> Result<ProductDeliverable, CodecError> {
     let offset = reader.offset();
     let workspace_path = reader.read_str()?.to_owned();
     let path_count = reader.read_collection_len()?;
@@ -241,19 +271,35 @@ fn read_deliverable(reader: &mut CanonicalReader<'_>) -> Result<ProductDeliverab
     let successful_commands = (0..command_count)
         .map(|_| reader.read_str().map(str::to_owned))
         .collect::<Result<Vec<_>, _>>()?;
-    invalid(
-        offset,
+    let run_instructions = reader.read_str()?.to_owned();
+    let accepted = reader.read_bool()?;
+    let commit_revision = reader.read_str()?.to_owned();
+    let export_path = reader.read_str()?.to_owned();
+    let discarded = reader.read_bool()?;
+    let deliverable = if allow_unqualified {
+        ProductDeliverable::restore_candidate(
+            workspace_path,
+            changed_paths,
+            successful_commands,
+            run_instructions,
+            accepted,
+            commit_revision,
+            export_path,
+            discarded,
+        )
+    } else {
         ProductDeliverable::restore(
             workspace_path,
             changed_paths,
             successful_commands,
-            reader.read_str()?.to_owned(),
-            reader.read_bool()?,
-            reader.read_str()?.to_owned(),
-            reader.read_str()?.to_owned(),
-            reader.read_bool()?,
-        ),
-    )
+            run_instructions,
+            accepted,
+            commit_revision,
+            export_path,
+            discarded,
+        )
+    };
+    invalid(offset, deliverable)
 }
 
 pub(super) fn write_snapshots(

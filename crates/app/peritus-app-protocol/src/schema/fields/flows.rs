@@ -3,8 +3,13 @@
 use super::AppTypeDescriptor;
 
 mod daemon;
+mod product;
 mod prompt_terminal;
 
 /// Stateful flow metadata groups in dependency-before-consumer order.
-pub const APP_FLOW_TYPES: &[&[AppTypeDescriptor]] =
-    &[prompt_terminal::PROMPT_TERMINAL_TYPES, daemon::DAEMON_TYPES];
+pub const APP_FLOW_TYPES: &[&[AppTypeDescriptor]] = &[
+    prompt_terminal::PROMPT_TERMINAL_TYPES,
+    daemon::DAEMON_TYPES,
+    product::PRODUCT_TYPES,
+    product::SETTLEMENT_TYPES,
+];
