@@ -1,5 +1,5 @@
 {
-  "next_display_id": 46,
+  "next_display_id": 47,
   "next_comment_id": 1159,
   "display_id_map": {
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10,6 +10,7 @@
     "14d2332f-63ae-4030-a3b7-5bd440b04f6c": 30,
     "18d12d2e-08fd-450f-bee1-5894f79e83a7": 29,
     "19b7b53a-b2fb-41c1-835d-ffd6ce605c08": 14,
+    "2194b9c5-c19f-47a2-9c91-d84a6c3c7b84": 46,
     "27633189-3dec-4781-9940-42a3e8eb9e60": 24,
     "2b288a30-b5b1-4452-81bd-20950bebd2d3": 9,
     "2c2c3fa4-13c7-40a8-abe4-66acc32fc61c": 31,
@@ -1151,6 +1152,17 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9hvYVeEpaJvWp215yPjNpzfPkd74D8bN4UbvbxRNCMNU6qgs6GNduD72sTyXNawilRpDw32eWL59Ef5+j2zfCw=="
         }
       }
+    },
+    "2194b9c5-c19f-47a2-9c91-d84a6c3c7b84": {
+      "uuid": "2194b9c5-c19f-47a2-9c91-d84a6c3c7b84",
+      "display_id": 46,
+      "title": "S3-S4 external settlement and recovery",
+      "description": "Implement both S3 external adapter handshake/terminal reporting and S4 provider, credential, context, and command recovery on one branch; include benchmark README changes in the draft PR while preserving the product-runner exclusion.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "6ME5",
+      "created_at": "2026-09-03T07:24:18.756359126Z",
+      "updated_at": "2026-09-03T07:24:18.756359126Z"
     },
     "27633189-3dec-4781-9940-42a3e8eb9e60": {
       "uuid": "27633189-3dec-4781-9940-42a3e8eb9e60",
@@ -11243,8 +11255,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-03T05:21:53.517904335Z",
+    "timestamp": "2026-09-03T07:24:18.756359126Z",
     "agent_id": "6ME5",
-    "agent_seq": 1379
+    "agent_seq": 1380
   }
 }
