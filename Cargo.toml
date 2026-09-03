@@ -67,6 +67,7 @@ members = [
     "crates/orchestration/peritus-memory",
     "crates/orchestration/peritus-harness",
     "crates/orchestration/peritus-orchestrator",
+    "crates/orchestration/peritus-run-knowledge",
     "crates/orchestration/peritus-run-settlement",
     "crates/orchestration/peritus-review",
     "crates/orchestration/peritus-role",

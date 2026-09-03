@@ -2029,6 +2029,7 @@ dependencies = [
  "peritus-codec",
  "peritus-policy",
  "peritus-role",
+ "peritus-run-knowledge",
  "peritus-types",
  "vstd",
 ]
@@ -2815,6 +2816,16 @@ version = "0.0.0"
 dependencies = [
  "peritus-policy",
  "peritus-spec",
+ "vstd",
+]
+
+[[package]]
+name = "peritus-run-knowledge"
+version = "0.0.0"
+dependencies = [
+ "peritus-role",
+ "peritus-run-settlement",
+ "peritus-types",
  "vstd",
 ]
 
