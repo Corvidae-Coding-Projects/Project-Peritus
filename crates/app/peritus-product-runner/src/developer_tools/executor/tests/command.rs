@@ -5,6 +5,10 @@ use std::{
     time::Instant,
 };
 
+mod control;
+#[cfg(unix)]
+mod signal;
+
 #[test]
 fn active_commands_accept_terminal_input_and_reach_a_stable_result() {
     let workspace = tempfile::tempdir().expect("workspace");
@@ -23,6 +27,27 @@ fn active_commands_accept_terminal_input_and_reach_a_stable_result() {
     assert!(!start.is_error, "{}", wire(&start));
     let started: Value = serde_json::from_str(&wire(&start)).expect("start result");
     let handle = started["handle"].as_str().expect("command handle");
+    let resized = execute(
+        &mut tools,
+        "command_resize",
+        &format!(r#"{{"columns":100,"handle":"{handle}","rows":30}}"#),
+    );
+    #[cfg(not(windows))]
+    assert!(!resized.is_error, "{}", wire(&resized));
+    #[cfg(windows)]
+    {
+        assert!(resized.is_error, "{}", wire(&resized));
+        assert!(
+            wire(&resized)
+                .contains("terminal resize was not authorized by the checked execution plan"),
+            "{}",
+            wire(&resized)
+        );
+    }
+    let recovered = execute(&mut tools, "command_recover", &format!(r#"{{"handle":"{handle}"}}"#));
+    assert!(!recovered.is_error, "{}", wire(&recovered));
+    let recovered: Value = serde_json::from_str(&wire(&recovered)).expect("recovery result");
+    assert_eq!(recovered["handle"], handle);
     let input = execute(
         &mut tools,
         "command_stdin",

@@ -63,6 +63,24 @@ def checkpoint_claude_credentials(
     return True
 
 
+def checkpoint_claude_credentials_and_advance(
+    host_path: Path,
+    uploaded_digest: str,
+    candidate_path: Path,
+    *,
+    now_ms: int | None = None,
+) -> str:
+    """Checkpoint one rotation and return the identity to use for its successor."""
+
+    changed = checkpoint_claude_credentials(
+        host_path,
+        uploaded_digest,
+        candidate_path,
+        now_ms=now_ms,
+    )
+    return credential_digest(host_path) if changed else uploaded_digest
+
+
 def _decode(document: bytes) -> ClaudeCredentialState:
     try:
         value: Any = json.loads(document)

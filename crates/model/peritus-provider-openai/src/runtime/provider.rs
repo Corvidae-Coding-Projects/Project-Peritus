@@ -4,13 +4,15 @@ mod failure;
 mod invocation;
 
 use core::fmt;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use peritus_model_protocol::{
     FailureCategory, ModelRequest, OutcomeCertainty, Retryability, TransportPhase,
 };
 use peritus_provider_core::{
     BoxFuture, CancellationToken, ModelProvider, OwnedModelStream, ProcessTransport,
-    ProviderCoreError, ProviderCoreErrorKind, TokioProcessTransport, validate_request_profile,
+    ProviderAvailability, ProviderCoreError, ProviderCoreErrorKind, TokioProcessTransport,
+    validate_request_profile,
 };
 
 use super::CodexRuntimeConfig;
@@ -22,6 +24,7 @@ use failure::{decode_failure, failure};
 pub struct CodexRuntimeProvider {
     config: CodexRuntimeConfig,
     transport: Box<dyn ProcessTransport>,
+    authenticated: AtomicBool,
 }
 
 /// Conventional client name for the account-backed Codex runtime provider.
@@ -31,7 +34,11 @@ impl CodexRuntimeProvider {
     /// Creates a production provider backed by the pinned official executable.
     #[must_use]
     pub fn new(config: CodexRuntimeConfig) -> Self {
-        Self { config, transport: Box::new(TokioProcessTransport) }
+        Self {
+            config,
+            transport: Box::new(TokioProcessTransport),
+            authenticated: AtomicBool::new(false),
+        }
     }
 
     /// Returns the exact immutable runtime profile.
@@ -53,7 +60,16 @@ impl CodexRuntimeProvider {
         &'a self,
         cancellation: &'a CancellationToken,
     ) -> BoxFuture<'a, Result<(), ProviderCoreError>> {
-        invocation::require_authenticated(&self.config, self.transport.as_ref(), cancellation)
+        Box::pin(async move {
+            let result = invocation::require_authenticated(
+                &self.config,
+                self.transport.as_ref(),
+                cancellation,
+            )
+            .await;
+            self.authenticated.store(result.is_ok(), Ordering::Release);
+            result
+        })
     }
 
     fn start_inner(
@@ -154,6 +170,7 @@ impl CodexRuntimeProvider {
                 reason @ (DecodeFailure::Authentication
                 | DecodeFailure::Safety
                 | DecodeFailure::RateLimited
+                | DecodeFailure::Capacity
                 | DecodeFailure::QuotaExhausted
                 | DecodeFailure::ContextLimit
                 | DecodeFailure::Reported),
@@ -200,6 +217,14 @@ impl ModelProvider for CodexRuntimeProvider {
         self.profile()
     }
 
+    fn availability(&self) -> ProviderAvailability {
+        if self.authenticated.load(Ordering::Acquire) {
+            ProviderAvailability::CredentialPresent
+        } else {
+            ProviderAvailability::Unchecked
+        }
+    }
+
     fn start(
         &self,
         request: ModelRequest,
@@ -214,6 +239,7 @@ impl fmt::Debug for CodexRuntimeProvider {
         formatter
             .debug_struct("CodexRuntimeProvider")
             .field("config", &self.config)
+            .field("authenticated", &self.authenticated.load(Ordering::Acquire))
             .field("transport", &"[private owned process transport]")
             .finish()
     }

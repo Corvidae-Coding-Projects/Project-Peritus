@@ -42,49 +42,76 @@ pub(super) fn normalize(
     }
     let turn = match decode(output.stdout(), &runtime.allowed_tools, runtime.max_calls) {
         Ok(turn) => turn,
-        Err(DecodeFailure::Reported) => {
-            return failed(
-                request,
-                runtime_failure(
-                    provider,
-                    FailureCategory::Provider,
-                    OutcomeCertainty::Terminal,
-                    "anthropic.claude_runtime.result_error",
-                )?,
-                b"claude-runtime-result-error",
-                cancellation,
-            );
-        }
-        Err(DecodeFailure::Incomplete) => {
-            return failed(
-                request,
-                failure(
-                    provider,
-                    FailureCategory::IncompleteStream,
-                    TransportPhase::ReadingBody,
-                    OutcomeCertainty::AcceptedPartial,
-                    "anthropic.claude_runtime.incomplete",
-                )?,
-                b"claude-runtime-incomplete",
-                cancellation,
-            );
-        }
-        Err(DecodeFailure::Malformed) => {
-            return failed(
-                request,
-                runtime_failure(
-                    provider,
-                    FailureCategory::MalformedPayload,
-                    OutcomeCertainty::MaybeAccepted,
-                    "anthropic.claude_runtime.malformed",
-                )?,
-                b"claude-runtime-malformed",
-                cancellation,
-            );
-        }
+        Err(error) => return decode_failure(request, provider, cancellation, error),
     };
     let stream = ClaudeRuntimeStream::completed(request, turn, output.stdout())?;
     Ok(OwnedModelStream::new(stream, cancellation))
+}
+
+fn decode_failure(
+    request: &ModelRequest,
+    provider: ProviderName,
+    cancellation: CancellationToken,
+    error: DecodeFailure,
+) -> Result<OwnedModelStream, ProviderCoreError> {
+    let (failure, digest) = match error {
+        DecodeFailure::Authentication => (
+            runtime_failure(
+                provider,
+                FailureCategory::Authentication,
+                OutcomeCertainty::Terminal,
+                "anthropic.claude_runtime.authentication",
+            )?,
+            b"claude-runtime-authentication".as_slice(),
+        ),
+        DecodeFailure::Capacity => (
+            runtime_failure(
+                provider,
+                FailureCategory::TransientProvider,
+                OutcomeCertainty::DefinitelyNotAccepted,
+                "anthropic.claude_runtime.capacity",
+            )?,
+            b"claude-runtime-capacity".as_slice(),
+        ),
+        DecodeFailure::ContextLimit => (
+            runtime_failure(
+                provider,
+                FailureCategory::InvalidRequest,
+                OutcomeCertainty::DefinitelyNotAccepted,
+                "anthropic.claude_runtime.context_limit",
+            )?,
+            b"claude-runtime-context-limit".as_slice(),
+        ),
+        DecodeFailure::Reported => (
+            runtime_failure(
+                provider,
+                FailureCategory::Provider,
+                OutcomeCertainty::Terminal,
+                "anthropic.claude_runtime.result_error",
+            )?,
+            b"claude-runtime-result-error".as_slice(),
+        ),
+        DecodeFailure::Incomplete => (
+            failure(
+                provider,
+                FailureCategory::IncompleteStream,
+                TransportPhase::ReadingBody,
+                OutcomeCertainty::AcceptedPartial,
+                "anthropic.claude_runtime.incomplete",
+            )?,
+            b"claude-runtime-incomplete".as_slice(),
+        ),
+        DecodeFailure::Malformed => (
+            runtime_failure(
+                provider,
+                FailureCategory::MalformedPayload,
+                OutcomeCertainty::MaybeAccepted,
+                "anthropic.claude_runtime.malformed",
+            )?,
+            b"claude-runtime-malformed".as_slice(),
+        ),
+    };
+    failed(request, failure, digest, cancellation)
 }
 
 fn failed(

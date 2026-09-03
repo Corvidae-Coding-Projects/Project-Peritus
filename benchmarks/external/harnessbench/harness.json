@@ -18,7 +18,11 @@
         "--task-id",
         "{task_id}",
         "--model-id",
-        "{model_id}"
+        "{model_id}",
+        "--adapter-schema-version",
+        "6",
+        "--suite-revision",
+        "1025086a446653702b80cfb48babbeec35db6b2c"
       ]
     }
   }

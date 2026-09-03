@@ -32,3 +32,14 @@ resource-aware commands, and current qualification evidence.
 `failure-journal.md` records each reproduced benchmark failure, its product cause, the general
 change made, focused regression evidence, and any later unchanged benchmark observation that
 already exists.
+
+The [diagnostic failure report](uncorrected-failures-report.md) gives the current decision-oriented
+view without altering official scores. Its
+[HarnessBench inventory](harnessbench-failure-inventory.md) accounts for all 106 tasks, and its
+[Terminal-Bench inventory](terminalbench-failure-inventory.md) accounts for all 445 trials. The
+[adverse-trial ledger](terminalbench-adverse-trials.md) names every individual trial with an
+official, native, or exception failure signal.
+
+The codebase-grounded [remediation design](../../.design/benchmark-failure-remediation.md) maps
+every remediable failure class to a general product correction, explicit non-cooking boundary,
+parallel implementation slice, and fixed-build acceptance criterion.

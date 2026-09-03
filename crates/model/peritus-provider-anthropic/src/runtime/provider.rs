@@ -5,6 +5,7 @@ mod result;
 use core::fmt;
 use std::io::Write as _;
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use peritus_model_protocol::{
@@ -13,8 +14,8 @@ use peritus_model_protocol::{
 };
 use peritus_provider_core::{
     BoxFuture, CancellationToken, EnvironmentName, ModelProvider, OwnedModelStream, ProcessLimits,
-    ProcessRequest, ProcessTransport, ProviderCoreError, ProviderCoreErrorKind,
-    TokioProcessTransport, validate_request_profile,
+    ProcessRequest, ProcessTransport, ProviderAvailability, ProviderCoreError,
+    ProviderCoreErrorKind, TokioProcessTransport, validate_request_profile,
 };
 
 use super::config::ClaudeRuntimeConfig;
@@ -27,13 +28,18 @@ const EMPTY_MCP_CONFIG: &str = r#"{"mcpServers":{}}"#;
 pub struct ClaudeRuntimeProvider {
     config: ClaudeRuntimeConfig,
     transport: Box<dyn ProcessTransport>,
+    authenticated: AtomicBool,
 }
 
 impl ClaudeRuntimeProvider {
     /// Creates a production provider backed by the pinned official executable.
     #[must_use]
     pub fn new(config: ClaudeRuntimeConfig) -> Self {
-        Self { config, transport: Box::new(TokioProcessTransport) }
+        Self {
+            config,
+            transport: Box::new(TokioProcessTransport),
+            authenticated: AtomicBool::new(false),
+        }
     }
 
     #[cfg(test)]
@@ -41,7 +47,7 @@ impl ClaudeRuntimeProvider {
         config: ClaudeRuntimeConfig,
         transport: Box<dyn ProcessTransport>,
     ) -> Self {
-        Self { config, transport }
+        Self { config, transport, authenticated: AtomicBool::new(false) }
     }
 
     /// Returns the exact immutable runtime profile.
@@ -64,30 +70,36 @@ impl ClaudeRuntimeProvider {
         cancellation: &'a CancellationToken,
     ) -> BoxFuture<'a, Result<(), ProviderCoreError>> {
         Box::pin(async move {
-            let request = ProcessRequest::new(
-                self.config.executable().process_executable().clone(),
-                vec!["auth".to_owned(), "status".to_owned(), "--json".to_owned()],
-                Vec::new(),
-                None,
-                credential_environment()?,
-                auth_limits()?,
-            )?;
-            let output = self.transport.run(request, cancellation).await?;
-            if !output.exit().success() {
-                return Err(not_authenticated());
-            }
-            let status: serde_json::Value =
-                serde_json::from_slice(output.stdout()).map_err(|_| not_authenticated())?;
-            let logged_in = status
-                .as_object()
-                .and_then(|status| status.get("loggedIn").or_else(|| status.get("logged_in")))
-                .and_then(serde_json::Value::as_bool)
-                .unwrap_or(false);
-            if !logged_in {
-                return Err(not_authenticated());
-            }
-            Ok(())
+            let result = self.check_authenticated(cancellation).await;
+            self.authenticated.store(result.is_ok(), Ordering::Release);
+            result
         })
+    }
+
+    async fn check_authenticated(
+        &self,
+        cancellation: &CancellationToken,
+    ) -> Result<(), ProviderCoreError> {
+        let request = ProcessRequest::new(
+            self.config.executable().process_executable().clone(),
+            vec!["auth".to_owned(), "status".to_owned(), "--json".to_owned()],
+            Vec::new(),
+            None,
+            credential_environment()?,
+            auth_limits()?,
+        )?;
+        let output = self.transport.run(request, cancellation).await?;
+        if !output.exit().success() {
+            return Err(not_authenticated());
+        }
+        let status: serde_json::Value =
+            serde_json::from_slice(output.stdout()).map_err(|_| not_authenticated())?;
+        let logged_in = status
+            .as_object()
+            .and_then(|status| status.get("loggedIn").or_else(|| status.get("logged_in")))
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false);
+        if logged_in { Ok(()) } else { Err(not_authenticated()) }
     }
 
     fn start_inner(
@@ -201,6 +213,14 @@ impl ModelProvider for ClaudeRuntimeProvider {
         self.profile()
     }
 
+    fn availability(&self) -> ProviderAvailability {
+        if self.authenticated.load(Ordering::Acquire) {
+            ProviderAvailability::CredentialPresent
+        } else {
+            ProviderAvailability::Unchecked
+        }
+    }
+
     fn start(
         &self,
         request: ModelRequest,
@@ -215,6 +235,7 @@ impl fmt::Debug for ClaudeRuntimeProvider {
         formatter
             .debug_struct("ClaudeRuntimeProvider")
             .field("config", &self.config)
+            .field("authenticated", &self.authenticated.load(Ordering::Acquire))
             .field("transport", &"[private owned process transport]")
             .finish()
     }

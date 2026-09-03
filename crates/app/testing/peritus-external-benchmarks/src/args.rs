@@ -5,8 +5,8 @@ use std::{collections::BTreeMap, ffi::OsString, path::PathBuf, time::Duration};
 use crate::BenchmarkError;
 use peritus_product_runner::PRODUCT_RUN_MAX_ELAPSED;
 
-const HARNESSBENCH_USAGE: &str = "peritus-benchmark-agent harnessbench --workspace PATH --sandbox PATH --prompt-file PATH --session-id ID --task-id ID --model-id ID";
-const TERMINALBENCH_USAGE: &str = "peritus-benchmark-agent terminalbench --workspace PATH --evidence-dir PATH --prompt-file PATH --session-id ID --task-id ID --model-id ID --max-elapsed-seconds SECONDS";
+const HARNESSBENCH_USAGE: &str = "peritus-benchmark-agent harnessbench --workspace PATH --sandbox PATH --prompt-file PATH --session-id ID --task-id ID --model-id ID --adapter-schema-version VERSION --suite-revision REVISION";
+const TERMINALBENCH_USAGE: &str = "peritus-benchmark-agent terminalbench --workspace PATH --evidence-dir PATH --prompt-file PATH --session-id ID --task-id ID --model-id ID --max-elapsed-seconds SECONDS --adapter-schema-version VERSION --suite-revision REVISION";
 
 pub enum Command {
     HarnessBench(HarnessBenchInput),
@@ -21,6 +21,8 @@ pub struct HarnessBenchInput {
     pub session_id: String,
     pub task_id: String,
     pub model_id: String,
+    pub adapter_schema_version: u32,
+    pub suite_revision: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -32,6 +34,8 @@ pub struct TerminalBenchInput {
     pub task_id: String,
     pub model_id: String,
     pub max_elapsed: Duration,
+    pub adapter_schema_version: u32,
+    pub suite_revision: String,
 }
 
 impl Command {
@@ -56,7 +60,16 @@ impl Command {
 fn parse_harnessbench(values: &[OsString]) -> Result<HarnessBenchInput, BenchmarkError> {
     let mut fields = parse_fields(
         values,
-        &["--workspace", "--sandbox", "--prompt-file", "--session-id", "--task-id", "--model-id"],
+        &[
+            "--workspace",
+            "--sandbox",
+            "--prompt-file",
+            "--session-id",
+            "--task-id",
+            "--model-id",
+            "--adapter-schema-version",
+            "--suite-revision",
+        ],
         HARNESSBENCH_USAGE,
     )?;
     Ok(HarnessBenchInput {
@@ -66,6 +79,12 @@ fn parse_harnessbench(values: &[OsString]) -> Result<HarnessBenchInput, Benchmar
         session_id: required(&mut fields, "--session-id", HARNESSBENCH_USAGE)?,
         task_id: required(&mut fields, "--task-id", HARNESSBENCH_USAGE)?,
         model_id: required(&mut fields, "--model-id", HARNESSBENCH_USAGE)?,
+        adapter_schema_version: required_u32(
+            &mut fields,
+            "--adapter-schema-version",
+            HARNESSBENCH_USAGE,
+        )?,
+        suite_revision: required(&mut fields, "--suite-revision", HARNESSBENCH_USAGE)?,
     })
 }
 
@@ -80,6 +99,8 @@ fn parse_terminalbench(values: &[OsString]) -> Result<TerminalBenchInput, Benchm
             "--task-id",
             "--model-id",
             "--max-elapsed-seconds",
+            "--adapter-schema-version",
+            "--suite-revision",
         ],
         TERMINALBENCH_USAGE,
     )?;
@@ -91,6 +112,12 @@ fn parse_terminalbench(values: &[OsString]) -> Result<TerminalBenchInput, Benchm
         task_id: required(&mut fields, "--task-id", TERMINALBENCH_USAGE)?,
         model_id: required(&mut fields, "--model-id", TERMINALBENCH_USAGE)?,
         max_elapsed: required_duration(&mut fields, "--max-elapsed-seconds", TERMINALBENCH_USAGE)?,
+        adapter_schema_version: required_u32(
+            &mut fields,
+            "--adapter-schema-version",
+            TERMINALBENCH_USAGE,
+        )?,
+        suite_revision: required(&mut fields, "--suite-revision", TERMINALBENCH_USAGE)?,
     })
 }
 
@@ -142,6 +169,16 @@ fn required_duration(
     Ok(duration)
 }
 
+fn required_u32(
+    fields: &mut BTreeMap<String, String>,
+    name: &'static str,
+    usage: &str,
+) -> Result<u32, BenchmarkError> {
+    required(fields, name, usage)?
+        .parse::<u32>()
+        .map_err(|_| invalid(format!("{name} must be an unsigned integer")))
+}
+
 fn required(
     fields: &mut BTreeMap<String, String>,
     name: &'static str,
@@ -185,6 +222,10 @@ mod tests {
                 "001-file",
                 "--model-id",
                 "peritus",
+                "--adapter-schema-version",
+                "6",
+                "--suite-revision",
+                "0123456789abcdef0123456789abcdef01234567",
             ]
             .into_iter()
             .map(OsString::from),
@@ -195,6 +236,7 @@ mod tests {
         };
         assert_eq!(input.task_id, "001-file");
         assert_eq!(input.workspace, PathBuf::from("/tmp/workspace"));
+        assert_eq!(input.adapter_schema_version, 6);
     }
 
     #[test]
@@ -217,6 +259,10 @@ mod tests {
                 "peritus",
                 "--max-elapsed-seconds",
                 "720",
+                "--adapter-schema-version",
+                "6",
+                "--suite-revision",
+                "0123456789abcdef0123456789abcdef01234567",
             ]
             .into_iter()
             .map(OsString::from),
@@ -228,6 +274,7 @@ mod tests {
         assert_eq!(input.workspace, PathBuf::from("/app"));
         assert_eq!(input.evidence_dir, PathBuf::from("/logs/agent/peritus"));
         assert_eq!(input.max_elapsed, Duration::from_mins(12));
+        assert_eq!(input.adapter_schema_version, 6);
     }
 
     #[test]

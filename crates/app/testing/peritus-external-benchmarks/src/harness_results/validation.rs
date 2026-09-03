@@ -71,7 +71,12 @@ pub(super) fn identities(
             require_identity(request, &result.report.task_id, "has no native build identity")?;
             continue;
         };
-        validate_hex("source revision", &identity.source_revision, &[40, 64])?;
+        if let Some(revision) = &identity.source_revision {
+            validate_hex("source revision", revision, &[40, 64])?;
+            source_revisions.insert(revision.clone());
+        } else {
+            require_identity(request, &result.report.task_id, "has no native source revision")?;
+        }
         validate_hex("binary SHA-256", &identity.binary_sha256, &[64])?;
         if identity.package_version.trim().is_empty() {
             return Err(BenchmarkError::Identity(format!(
@@ -80,7 +85,6 @@ pub(super) fn identities(
             )));
         }
         native_invocations_with_identity += 1;
-        source_revisions.insert(identity.source_revision.clone());
         binary_sha256s.insert(identity.binary_sha256.clone());
     }
     Ok(AgentEvidence {

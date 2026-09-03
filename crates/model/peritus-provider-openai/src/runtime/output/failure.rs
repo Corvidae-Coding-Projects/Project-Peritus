@@ -26,6 +26,11 @@ pub(super) fn reported_failure(event: &Value) -> DecodeFailure {
         || message.contains("safety policy")
     {
         DecodeFailure::Safety
+    } else if message.contains("at capacity")
+        || message.contains("model capacity")
+        || message.contains("temporarily overloaded")
+    {
+        DecodeFailure::Capacity
     } else if matches!(code, Some("rate_limit_exceeded" | "rate_limited"))
         || message.contains("rate limit")
         || message.contains("too many requests")

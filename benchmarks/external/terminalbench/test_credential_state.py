@@ -10,6 +10,7 @@ from tempfile import TemporaryDirectory
 
 from benchmarks.external.terminalbench.credential_state import (
     checkpoint_claude_credentials,
+    checkpoint_claude_credentials_and_advance,
     credential_digest,
 )
 
@@ -143,6 +144,28 @@ class CredentialCheckpointTests(unittest.TestCase):
 
             self.assertFalse(changed)
             self.assertEqual(host.read_bytes(), original)
+
+    def test_successive_cli_rotations_advance_the_expected_host_identity(self) -> None:
+        with TemporaryDirectory() as raw:
+            root = Path(raw)
+            host = root / "credentials.json"
+            candidate = root / "candidate.json"
+            host.write_bytes(_document(100, 3_000, "initial"))
+            expected = credential_digest(host)
+
+            candidate.write_bytes(_document(200, 3_000, "first"))
+            expected = checkpoint_claude_credentials_and_advance(
+                host, expected, candidate, now_ms=50
+            )
+            self.assertEqual(expected, credential_digest(host))
+
+            candidate.write_bytes(_document(300, 3_000, "second"))
+            expected = checkpoint_claude_credentials_and_advance(
+                host, expected, candidate, now_ms=50
+            )
+
+            self.assertEqual(expected, credential_digest(host))
+            self.assertEqual(host.read_bytes(), candidate.read_bytes())
 
 
 if __name__ == "__main__":

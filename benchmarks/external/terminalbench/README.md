@@ -59,7 +59,7 @@ PERITUS_SOURCE_REVISION="$(git rev-parse --verify HEAD)" \
   --bin peritus-benchmark-agent
 ```
 
-The first command refuses tracked source changes. The native schema-version-2 report retains that
+The first command refuses tracked source changes. The native schema-version-6 report retains that
 full source revision, the Cargo package version, and the executable SHA-256. The Harbor bridge
 independently hashes the uploaded executable, runs its provider-free `protocol` handshake during
 setup, rejects a report-schema or digest mismatch before task execution, and copies both identities
@@ -78,14 +78,17 @@ rotation may replace a longer-lived refresh credential with a shorter-lived one 
 access expiry; the adapter retains that CLI-owned state. A concurrent host login always wins. Token
 values never enter adapter output or retained evidence. The official executables remain credential
 owners and act only as model routers; Peritus retains conversation, tool, workspace, and policy
-authority. `claude auth status` is only a local-state check. Before a long campaign or resume, prove
-the session with one minimal real request:
+authority. A status command is not accepted as proof that the route can complete a turn. During
+container setup the adapter runs the native live qualification command, which sends one minimal
+real request through each exact configured route:
 
 ```bash
-claude -p --output-format json --model sonnet --effort low --tools '' \
-  --disallowedTools 'mcp__*' --disable-slash-commands --no-chrome \
-  --no-session-persistence --safe-mode 'Return exactly the single word READY.'
+peritus-benchmark-agent qualify-providers
 ```
+
+The adapter also advances its expected host credential digest after each accepted Claude OAuth
+rotation, so later serialized trials may retain another future-valid rotation. An independent host
+login still wins and is never overwritten.
 
 Those two authenticated routes are the benchmark run's explicit provider set. Codex remains the
 default writer and fixer, and Claude remains the default reviewer. After ordinary same-route

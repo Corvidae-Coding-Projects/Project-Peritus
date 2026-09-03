@@ -8,9 +8,9 @@ use peritus_model_protocol::{
 };
 use peritus_provider_core::{
     BoxFuture, CancellationToken, CredentialSource, Header, HeaderName, HttpHeaders, HttpMethod,
-    HttpRequest, HttpResponse, HttpTransport, ModelProvider, OwnedModelStream, ProviderCoreError,
-    ProviderCoreErrorKind, ReqwestTransport, RetryAction, RetryFailure, RetryObservation,
-    SubmissionState, validate_request_profile, wait_for_backoff,
+    HttpRequest, HttpResponse, HttpTransport, ModelProvider, OwnedModelStream,
+    ProviderAvailability, ProviderCoreError, ProviderCoreErrorKind, ReqwestTransport, RetryAction,
+    RetryFailure, RetryObservation, SubmissionState, validate_request_profile, wait_for_backoff,
 };
 
 use crate::config::AnthropicConfig;
@@ -197,6 +197,14 @@ impl AnthropicClient {
 impl ModelProvider for AnthropicClient {
     fn profile(&self) -> &ProviderProfile {
         self.profile()
+    }
+
+    fn availability(&self) -> ProviderAvailability {
+        if self.credentials.resolve(self.config.credential()).is_ok() {
+            ProviderAvailability::CredentialPresent
+        } else {
+            ProviderAvailability::Unavailable
+        }
     }
 
     fn start(

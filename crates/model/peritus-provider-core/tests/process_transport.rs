@@ -83,7 +83,7 @@ fn output_limit_and_cancellation_terminate_and_observe_the_child() {
             b"spin".to_vec(),
             Some(directory.path().to_path_buf()),
             Vec::new(),
-            limits(32, Duration::from_secs(10)),
+            limits(4_096, Duration::from_secs(10)),
         )
         .expect("request");
         let cancellation = CancellationToken::new();

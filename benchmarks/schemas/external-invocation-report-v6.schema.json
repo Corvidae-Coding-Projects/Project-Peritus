@@ -1,0 +1,406 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://peritus.local/schemas/external-invocation-report-v6.schema.json",
+  "title": "Peritus external invocation report v6",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "suite",
+    "handshake",
+    "agent_identity",
+    "success",
+    "disposition",
+    "terminal_cause",
+    "candidate",
+    "qualification",
+    "provider_routes",
+    "external_evaluation",
+    "task_id",
+    "session_id",
+    "harness_model_id",
+    "workspace",
+    "baseline_head",
+    "initialized_repository",
+    "created_artifact_manifest",
+    "writer",
+    "reviewer",
+    "elapsed_ms",
+    "trace_path",
+    "conversation_turn",
+    "session_trace_paths",
+    "usage_proxy",
+    "projected_responses",
+    "usage",
+    "resources",
+    "last_observation_path",
+    "relocatable_paths",
+    "summary",
+    "changed_paths",
+    "failure_kind",
+    "failure"
+  ],
+  "properties": {
+    "schema_version": { "const": 6 },
+    "suite": { "enum": ["harness_bench", "terminal_bench"] },
+    "handshake": { "$ref": "#/$defs/handshake" },
+    "agent_identity": { "$ref": "#/$defs/agent_identity" },
+    "success": { "type": "boolean" },
+    "disposition": {
+      "enum": [
+        "accepted",
+        "candidate_available",
+        "waiting_for_user",
+        "failed_no_candidate",
+        "cancelled",
+        "recovery_required"
+      ]
+    },
+    "terminal_cause": {
+      "enum": [
+        "completed",
+        "user_wait",
+        "cancellation",
+        "deadline",
+        "provider",
+        "context",
+        "gate",
+        "review",
+        "repository",
+        "adapter",
+        "recovery",
+        "internal_invariant"
+      ]
+    },
+    "candidate": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/candidate" }
+      ]
+    },
+    "qualification": { "$ref": "#/$defs/qualification" },
+    "provider_routes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/provider_route" }
+    },
+    "external_evaluation": { "$ref": "#/$defs/external_evaluation" },
+    "task_id": { "$ref": "#/$defs/nonempty" },
+    "session_id": { "$ref": "#/$defs/nonempty" },
+    "harness_model_id": { "$ref": "#/$defs/nonempty" },
+    "workspace": { "$ref": "#/$defs/path" },
+    "baseline_head": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/git_revision" }
+      ]
+    },
+    "initialized_repository": { "type": "boolean" },
+    "created_artifact_manifest": { "type": "boolean" },
+    "writer": { "$ref": "#/$defs/nonempty" },
+    "reviewer": { "$ref": "#/$defs/nonempty" },
+    "elapsed_ms": { "type": "integer", "minimum": 0 },
+    "trace_path": { "$ref": "#/$defs/path" },
+    "conversation_turn": { "type": "integer", "minimum": 1 },
+    "session_trace_paths": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/path" }
+    },
+    "usage_proxy": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/path" }
+      ]
+    },
+    "projected_responses": { "type": "integer", "minimum": 0 },
+    "usage": { "$ref": "#/$defs/usage" },
+    "resources": { "$ref": "#/$defs/resources" },
+    "last_observation_path": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/path" }
+      ]
+    },
+    "relocatable_paths": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/relocatable_paths" }
+      ]
+    },
+    "summary": { "$ref": "#/$defs/nullable_text" },
+    "changed_paths": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/path" }
+    },
+    "failure_kind": { "$ref": "#/$defs/nullable_text" },
+    "failure": { "$ref": "#/$defs/nullable_text" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "success": { "const": true } },
+        "required": ["success"]
+      },
+      "then": {
+        "properties": {
+          "disposition": { "const": "accepted" },
+          "terminal_cause": { "const": "completed" },
+          "candidate": { "$ref": "#/$defs/candidate" },
+          "qualification": {
+            "properties": {
+              "stage": { "const": "qualified" },
+              "gates": { "const": "satisfied" },
+              "obligations": { "const": "satisfied" },
+              "review": { "const": "satisfied" }
+            }
+          },
+          "failure_kind": { "type": "null" },
+          "failure": { "type": "null" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "disposition": { "const": "accepted" } },
+        "required": ["disposition"]
+      },
+      "then": {
+        "properties": { "success": { "const": true } }
+      }
+    },
+    {
+      "if": {
+        "properties": { "disposition": { "const": "candidate_available" } },
+        "required": ["disposition"]
+      },
+      "then": {
+        "properties": {
+          "success": { "const": false },
+          "candidate": { "$ref": "#/$defs/candidate" }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "nonempty": { "type": "string", "minLength": 1 },
+    "path": { "type": "string", "minLength": 1 },
+    "nullable_text": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string" }
+      ]
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "git_revision": {
+      "type": "string",
+      "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$"
+    },
+    "handshake": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapter_schema_version",
+        "product_protocol_version",
+        "suite_revision",
+        "config_digest",
+        "workspace_available",
+        "workspace",
+        "trace_path",
+        "evidence_path",
+        "recovery_path",
+        "agent_identity",
+        "provider_routes"
+      ],
+      "properties": {
+        "adapter_schema_version": { "const": 6 },
+        "product_protocol_version": { "const": 1 },
+        "suite_revision": { "$ref": "#/$defs/git_revision" },
+        "config_digest": { "$ref": "#/$defs/sha256" },
+        "workspace_available": { "const": true },
+        "workspace": { "$ref": "#/$defs/path" },
+        "trace_path": { "$ref": "#/$defs/path" },
+        "evidence_path": { "$ref": "#/$defs/path" },
+        "recovery_path": { "$ref": "#/$defs/path" },
+        "agent_identity": { "$ref": "#/$defs/agent_identity" },
+        "provider_routes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/provider_route" }
+        }
+      }
+    },
+    "agent_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["package_version", "source_revision", "binary_sha256"],
+      "properties": {
+        "package_version": { "$ref": "#/$defs/nonempty" },
+        "source_revision": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/git_revision" }
+          ]
+        },
+        "binary_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage", "digest", "changed_paths"],
+      "properties": {
+        "stage": {
+          "enum": [
+            "observed",
+            "changed",
+            "self_checked",
+            "gates_passed",
+            "review_pending",
+            "qualified"
+          ]
+        },
+        "digest": { "$ref": "#/$defs/sha256" },
+        "changed_paths": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/path" }
+        }
+      }
+    },
+    "qualification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage",
+        "gates",
+        "obligations",
+        "review",
+        "gate_detail",
+        "review_detail"
+      ],
+      "properties": {
+        "stage": { "type": "string" },
+        "gates": { "enum": ["missing", "incomplete", "satisfied"] },
+        "obligations": { "enum": ["missing", "incomplete", "satisfied"] },
+        "review": { "enum": ["missing", "incomplete", "satisfied"] },
+        "gate_detail": { "$ref": "#/$defs/nullable_text" },
+        "review_detail": { "$ref": "#/$defs/nullable_text" }
+      }
+    },
+    "provider_route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "provider",
+        "model",
+        "route",
+        "availability",
+        "text",
+        "image_input",
+        "maximum_context_tokens",
+        "tool_protocol"
+      ],
+      "properties": {
+        "role": { "enum": ["writer", "reviewer"] },
+        "provider": { "$ref": "#/$defs/nonempty" },
+        "model": { "$ref": "#/$defs/nonempty" },
+        "route": { "enum": ["first_party_api", "compatible_api", "account_runtime"] },
+        "availability": { "enum": ["unchecked", "credential_present", "live_canary", "unavailable"] },
+        "text": { "type": "boolean" },
+        "image_input": { "type": "boolean" },
+        "maximum_context_tokens": { "type": "integer", "minimum": 1 },
+        "tool_protocol": { "type": "boolean" }
+      }
+    },
+    "external_evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reward", "verifier_exception"],
+      "properties": {
+        "reward": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "number" }
+          ]
+        },
+        "verifier_exception": { "$ref": "#/$defs/nullable_text" }
+      }
+    },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requests",
+        "input_tokens",
+        "cached_input_tokens",
+        "output_tokens",
+        "total_tokens",
+        "provider_cost_microunits"
+      ],
+      "properties": {
+        "requests": { "type": "integer", "minimum": 0 },
+        "input_tokens": { "type": "integer", "minimum": 0 },
+        "cached_input_tokens": { "type": "integer", "minimum": 0 },
+        "output_tokens": { "type": "integer", "minimum": 0 },
+        "total_tokens": { "type": "integer", "minimum": 0 },
+        "provider_cost_microunits": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model_requests",
+        "tool_calls",
+        "retries",
+        "provider_failovers",
+        "compactions",
+        "elapsed_millis",
+        "workspace_bytes",
+        "workspace_growth_bytes",
+        "peak_rss_bytes"
+      ],
+      "properties": {
+        "model_requests": { "type": "integer", "minimum": 0 },
+        "tool_calls": { "type": "integer", "minimum": 0 },
+        "retries": { "type": "integer", "minimum": 0 },
+        "provider_failovers": { "type": "integer", "minimum": 0 },
+        "compactions": { "type": "integer", "minimum": 0 },
+        "elapsed_millis": { "type": "integer", "minimum": 0 },
+        "workspace_bytes": { "type": "integer", "minimum": 0 },
+        "workspace_growth_bytes": { "type": "integer", "minimum": 0 },
+        "peak_rss_bytes": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "relocatable_paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base",
+        "workspace",
+        "trace_path",
+        "session_trace_paths",
+        "usage_proxy",
+        "last_observation_path"
+      ],
+      "properties": {
+        "base": { "const": "sandbox" },
+        "workspace": { "$ref": "#/$defs/path" },
+        "trace_path": { "$ref": "#/$defs/path" },
+        "session_trace_paths": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/path" }
+        },
+        "usage_proxy": { "$ref": "#/$defs/path" },
+        "last_observation_path": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/path" }
+          ]
+        }
+      }
+    }
+  }
+}

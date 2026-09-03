@@ -23,6 +23,13 @@ interfaces expose only Peritus-owned values and standard-library futures.
 - `ModelProvider` binds one adapter instance to an immutable `ProviderProfile`; requests are checked
   again at the effect boundary. `OwnedModelStream` owns cancellation, cancels live work on drop,
   and rejects end-of-stream before an explicit normalized terminal event.
+- `ProviderRequirement` checks text, image, context-window, and tool-protocol needs before a turn.
+  Provider routes distinguish direct first-party APIs, reviewed compatible APIs, and official
+  account runtimes. Fallback selection considers only capable, currently available routes that the
+  user explicitly authorized.
+- `verify_live_provider` sends one bounded real request after login or credential repair. Empty,
+  malformed, context-overflow, ambiguous-acceptance, authentication, capacity, timeout, and
+  cancellation terminals retain distinct causes and phase-local recovery decisions.
 - `CancellationToken` is cloneable, idempotent, race-free, and runtime-neutral at its public
   boundary. Backoff, connection, response-header, and body-read waits observe it directly.
 - `SseParser` and `NdjsonParser` accept arbitrary byte fragmentation, including split UTF-8. They

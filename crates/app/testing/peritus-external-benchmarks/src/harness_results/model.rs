@@ -148,7 +148,7 @@ pub(super) struct TaskEvidence {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub(super) struct NativeIdentity {
     pub(super) package_version: String,
-    pub(super) source_revision: String,
+    pub(super) source_revision: Option<String>,
     pub(super) binary_sha256: String,
 }
 

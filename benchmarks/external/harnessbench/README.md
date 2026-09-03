@@ -21,7 +21,7 @@ PERITUS_SOURCE_REVISION="$(git rev-parse --verify HEAD)" \
 ```
 
 The first command refuses tracked source changes. The compiled revision and the executable's
-runtime SHA-256 are retained in every schema-version-5 invocation report.
+runtime SHA-256 are retained in every schema-version-6 invocation report.
 
 Clone or reset HarnessBench to the pinned commit. Create a virtual environment outside the
 repository so the suite and its unchanged task oracles use the same dependencies:
@@ -132,7 +132,7 @@ task-specific answers or weaken validation to raise the score.
 
 This aggregate was collected while those general fixes were being implemented, so its task reports
 bind different development checkpoints. It is the honest diagnostic baseline, not the frozen final
-candidate result. A second complete run with one schema-version-5 binary built from the exact final
+candidate result. A second complete run with one schema-version-6 binary built from the exact final
 commit remains required for the final comparison.
 
 The diagnostic invocations all have native reports, but they predate embedded source and executable
@@ -145,5 +145,5 @@ fix is recorded in the [external failure journal](../failure-journal.md). That j
 for task-level detail; this guide stays focused on setup, operation, and the final result.
 
 HarnessBench may move a multi-provider sandbox after the adapter exits. Invocation evidence schema
-4 therefore includes `relocatable_paths`, all rooted at the final sandbox printed by HarnessBench.
+6 includes `relocatable_paths`, all rooted at the final sandbox printed by HarnessBench.
 Use those paths when locating retained external evidence.

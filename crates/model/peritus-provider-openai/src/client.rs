@@ -13,9 +13,10 @@ use peritus_model_protocol::{
 };
 use peritus_provider_core::{
     BoxFuture, CancellationToken, ContinuationRestoreOutcome, CredentialSource, HttpTransport,
-    ModelProvider, OwnedModelStream, PersistedContinuation, ProviderCoreError,
-    ProviderCoreErrorKind, ReqwestTransport, ResponseCancellationOutcome, RetryAction,
-    RetryFailure, RetryObservation, SubmissionState, validate_request_profile, wait_for_backoff,
+    ModelProvider, OwnedModelStream, PersistedContinuation, ProviderAvailability,
+    ProviderCoreError, ProviderCoreErrorKind, ReqwestTransport, ResponseCancellationOutcome,
+    RetryAction, RetryFailure, RetryObservation, SubmissionState, validate_request_profile,
+    wait_for_backoff,
 };
 
 use crate::config::OpenAiConfig;
@@ -112,6 +113,14 @@ impl OpenAiProvider {
 impl ModelProvider for OpenAiProvider {
     fn profile(&self) -> &ProviderProfile {
         &self.profile
+    }
+
+    fn availability(&self) -> ProviderAvailability {
+        if self.credentials.resolve(self.config.credential()).is_ok() {
+            ProviderAvailability::CredentialPresent
+        } else {
+            ProviderAvailability::Unavailable
+        }
     }
 
     #[allow(
