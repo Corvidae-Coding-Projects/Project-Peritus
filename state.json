@@ -1,6 +1,6 @@
 {
   "next_display_id": 50,
-  "next_comment_id": 1165,
+  "next_comment_id": 1166,
   "display_id_map": {
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
@@ -7311,10 +7311,21 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-03T07:24:29.074211459Z",
-      "updated_at": "2026-09-03T07:25:14.973653122Z",
+      "updated_at": "2026-09-03T08:54:00.277433465Z",
       "related": [
         "2194b9c5-c19f-47a2-9c91-d84a6c3c7b84"
-      ]
+      ],
+      "comments": {
+        "e974519a-fc3e-4b21-8ff5-9fdd7534b899": {
+          "display_id": 1165,
+          "author": "6ME5",
+          "content": "Implemented the S3 native external-invocation contract: schema-v6 handshake and admission, preflighted workspace/trace/report paths, unconditional exactly-once settlement guard, atomic primary publication with durable recovery fallback, baseline-bound candidate identity including committed work, independent upstream evaluation facts, and distinct adapter terminal classifications. Focused 60-test external suite, full workspace tests, strict Clippy/rustdoc, aggregate policy, and ordinary plus Verus builds pass locally.",
+          "created_at": "2026-09-03T08:54:00.274260858Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAYL+j9/qsjc27Ayv6vbuuO5OMmo7aPMA3BHauUhJObvpF/RbFSIFno+q6q8NYQA4FUGcCLosflHjX8gbjJT2ZBg=="
+        }
+      }
     },
     "5451d33a-0a54-49ff-98d0-eec32c2b67a5": {
       "uuid": "5451d33a-0a54-49ff-98d0-eec32c2b67a5",
@@ -11364,8 +11375,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-03T08:53:46.208506728Z",
+    "timestamp": "2026-09-03T08:54:00.277433465Z",
     "agent_id": "6ME5",
-    "agent_seq": 1394
+    "agent_seq": 1395
   }
 }
