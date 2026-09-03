@@ -1,6 +1,6 @@
 {
   "next_display_id": 56,
-  "next_comment_id": 1193,
+  "next_comment_id": 1194,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11652,7 +11652,7 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-09-03T22:00:44.003844404Z",
-      "updated_at": "2026-09-03T23:50:28.013948135Z",
+      "updated_at": "2026-09-03T23:50:34.255981370Z",
       "labels": [
         "feature"
       ],
@@ -11693,6 +11693,15 @@
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZxz4eJucbxfmhDUHgFXbm97wR94q2ekI+hGWX1tK3HzeFbL/ypl4uGlE7YLpyGFSZdzmQFRmn9c9DokpVmeRBQ=="
         },
+        "ac90656a-45c0-4f05-b692-216afb3e3be4": {
+          "display_id": 1193,
+          "author": "6ME5",
+          "content": "Runner follow-up: Gate A's Windows test/app job hit the enforced 10-minute ceiling after 179 passing tests, during product-runner integrations. Root-cause repair splits peritus-product-runner into the reviewed app-runner shard and keeps the other seven app crates in app-shell across Foundation and Gate A Rust/Verus matrices. No tests or gates were removed and the timeout remains 10 minutes. Verified both test shards, both strict Verus shards, xtask reproducibility tests, strict xtask Clippy, formatting, diff, and cargo xtask all.",
+          "created_at": "2026-09-03T23:50:34.252069128Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA0dCtVs9xA+gXADtODMETSbYGOb2+2bhiDPSm66tKgS0P2ljm6c7/CYiih9CArVruN4yfF6zhgxUqmrWT7MB+AA=="
+        },
         "bc6804be-ebf0-4e1c-81fd-9b1fecd850c4": {
           "display_id": 1188,
           "author": "6ME5",
@@ -11716,8 +11725,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-03T23:50:28.013948135Z",
+    "timestamp": "2026-09-03T23:50:34.255981370Z",
     "agent_id": "6ME5",
-    "agent_seq": 1438
+    "agent_seq": 1439
   }
 }
