@@ -1,7 +1,8 @@
 {
-  "next_display_id": 52,
+  "next_display_id": 53,
   "next_comment_id": 1188,
   "display_id_map": {
+    "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
@@ -65,6 +66,18 @@
     }
   },
   "issues": {
+    "046a66c7-ba7d-4c93-8639-e0f4c737c855": {
+      "uuid": "046a66c7-ba7d-4c93-8639-e0f4c737c855",
+      "display_id": 52,
+      "title": "S6a durable product-run checkpoint and resume records",
+      "description": "Persist settlement, checkpoint, remaining work, interruption cause, qualification, and a versioned opaque runner resume payload; restore and validate on daemon restart.",
+      "status": "open",
+      "priority": "medium",
+      "parent_uuid": "ff9ea321-1b6b-4331-9389-9566ca58b586",
+      "created_by": "6ME5",
+      "created_at": "2026-09-03T22:05:36.289964869Z",
+      "updated_at": "2026-09-03T22:05:36.289964869Z"
+    },
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": {
       "uuid": "0dd9db9c-2d56-4022-bb25-2d97a132a6a1",
       "display_id": 44,
@@ -11607,8 +11620,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-03T22:04:20.441747033Z",
+    "timestamp": "2026-09-03T22:05:36.289964869Z",
     "agent_id": "6ME5",
-    "agent_seq": 1425
+    "agent_seq": 1426
   }
 }
