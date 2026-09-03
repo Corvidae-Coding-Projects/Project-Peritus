@@ -1,5 +1,5 @@
 {
-  "next_display_id": 45,
+  "next_display_id": 46,
   "next_comment_id": 1154,
   "display_id_map": {
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -28,6 +28,7 @@
     "5e103ed6-e70e-4298-aee2-4edda920cacc": 26,
     "6e8845fe-4835-478b-80d0-18135c12bc4d": 43,
     "79bb0f68-384c-454b-9302-eb88b692c28f": 18,
+    "8bbbda45-2e84-44e1-87fb-033729ad7029": 45,
     "8d3b149c-50c3-4887-9973-8bea59b5f6a2": 15,
     "92b485c0-34af-4248-b792-21bc54e81c70": 35,
     "941c4cb4-2cc2-46e7-b156-262ce7712d9f": 4,
@@ -8305,6 +8306,17 @@
         }
       }
     },
+    "8bbbda45-2e84-44e1-87fb-033729ad7029": {
+      "uuid": "8bbbda45-2e84-44e1-87fb-033729ad7029",
+      "display_id": 45,
+      "title": "Typed requirements, evidence obligations, and failure ownership",
+      "description": "Implement S2 from the benchmark remediation plan: new V-class peritus-obligations crate, pure obligation/evidence additions in peritus-gates, generic fixtures, Verus qualification and failure-transition proofs, and the specified failure matrix. Product-runner integration remains deferred to S5.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "6ME5",
+      "created_at": "2026-09-03T03:34:30.318291174Z",
+      "updated_at": "2026-09-03T03:34:30.318291174Z"
+    },
     "8d3b149c-50c3-4887-9973-8bea59b5f6a2": {
       "uuid": "8d3b149c-50c3-4887-9973-8bea59b5f6a2",
       "display_id": 15,
@@ -11184,8 +11196,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-03T03:32:17.190482202Z",
+    "timestamp": "2026-09-03T03:34:30.318291174Z",
     "agent_id": "6ME5",
-    "agent_seq": 1371
+    "agent_seq": 1372
   }
 }
