@@ -1,5 +1,5 @@
 {
-  "next_display_id": 47,
+  "next_display_id": 48,
   "next_comment_id": 1159,
   "display_id_map": {
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -22,6 +22,7 @@
     "47cec64d-270a-4ee4-8aea-3dd626c1447e": 40,
     "4f2ebc95-0b8b-4acb-b8c0-eba2775c3f7b": 10,
     "4fb07c6c-0d6b-4458-8aa8-0ae9d6bd810a": 38,
+    "52028605-f0c2-43fe-b0ae-0e0db829553f": 47,
     "5451d33a-0a54-49ff-98d0-eec32c2b67a5": 28,
     "5542a0ec-9091-4c82-b341-df0b119bc0b1": 3,
     "566b1c8e-fb61-4b2e-bc9b-8a781b362f04": 19,
@@ -7230,6 +7231,17 @@
         }
       }
     },
+    "52028605-f0c2-43fe-b0ae-0e0db829553f": {
+      "uuid": "52028605-f0c2-43fe-b0ae-0e0db829553f",
+      "display_id": 47,
+      "title": "S3 external adapter handshake and terminal reporting",
+      "description": "Implement every S3 item, fixtures, schema, fault classifications, atomic exactly-once terminal report, and durable publication-failure recovery record in the external benchmark adapters only.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "6ME5",
+      "created_at": "2026-09-03T07:24:29.074211459Z",
+      "updated_at": "2026-09-03T07:24:29.074211459Z"
+    },
     "5451d33a-0a54-49ff-98d0-eec32c2b67a5": {
       "uuid": "5451d33a-0a54-49ff-98d0-eec32c2b67a5",
       "display_id": 28,
@@ -11255,8 +11267,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-03T07:24:18.756359126Z",
+    "timestamp": "2026-09-03T07:24:29.074211459Z",
     "agent_id": "6ME5",
-    "agent_seq": 1380
+    "agent_seq": 1381
   }
 }
