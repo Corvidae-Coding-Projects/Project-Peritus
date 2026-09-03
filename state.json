@@ -1,6 +1,6 @@
 {
   "next_display_id": 51,
-  "next_comment_id": 1178,
+  "next_comment_id": 1179,
   "display_id_map": {
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
@@ -7796,11 +7796,20 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-09-03T17:29:09.334036408Z",
-      "updated_at": "2026-09-03T17:29:30.415801729Z",
+      "updated_at": "2026-09-03T17:35:32.464777399Z",
       "labels": [
         "feature"
       ],
       "comments": {
+        "9efa2910-76a9-4a02-9073-3e93c1469b95": {
+          "display_id": 1178,
+          "author": "6ME5",
+          "content": "[action] S5 preflight complete: runner currently loses partial candidates and repeats design/writer; integrating S0 settlement, S1 knowledge freshness, S2 obligations, S4 cause ownership via five focused execution modules. Mechanical caller adaptation only; S6 UX deferred.",
+          "created_at": "2026-09-03T17:35:32.461287283Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAtUCiNQRDe/Hg8eGKBkwccNjxMLSoz0wrLGWylAVimmH/LVj+wsVMvKdjwm6da4zXWTstvB6vIH50WS4J6ZVABw=="
+        },
         "d6bedde7-0466-4b07-a1d9-5fbada1fd0cc": {
           "display_id": 1177,
           "author": "6ME5",
@@ -11501,8 +11510,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-03T17:29:30.415801729Z",
+    "timestamp": "2026-09-03T17:35:32.464777399Z",
     "agent_id": "6ME5",
-    "agent_seq": 1411
+    "agent_seq": 1412
   }
 }
