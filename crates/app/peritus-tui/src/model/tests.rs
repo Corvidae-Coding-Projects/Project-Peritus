@@ -9,6 +9,8 @@ use super::{AppModel, ConnectionStatus, View};
 use crate::action::{Action, Effect};
 use crate::runtime::{ProductLaunchContext, ProductProviderOption};
 
+mod product;
+
 fn context() -> ProtocolContext {
     ProtocolContext::new(
         ProtocolId::new([1; 16]).expect("protocol"),
@@ -270,4 +272,77 @@ fn completed_product_run_exposes_all_four_handoff_controls() {
                 )
         )));
     }
+}
+
+#[test]
+fn completed_product_run_exposes_foreground_run_action() {
+    use peritus_app_protocol::{
+        ProductDeliverable, ProductProviderSelection, ProductRunPhase,
+        ProductRunSettlementSnapshot, ProductRunSnapshot,
+    };
+    use peritus_run_settlement::{
+        CandidateCheckpoint, CandidateIdentity, CandidateStage, EvidenceRecord, EvidenceStatus,
+        QualificationEvidence, SettlementCause, SettlementReducer,
+    };
+    use peritus_types::{RunId, Sha256Digest};
+
+    let provider_id = ProviderProfileId::new([75; 16]).expect("provider");
+    let workspace_id = WorkspaceId::new([76; 16]).expect("workspace");
+    let product = ProductLaunchContext::new(
+        workspace_id,
+        "/managed/project".to_owned(),
+        vec![ProductProviderOption::new(provider_id, "Codex")],
+        Some(0),
+    )
+    .expect("product context");
+    let mut model = AppModel::with_product([77; 32], Some(product));
+    let run_id = RunId::new([78; 16]).expect("run");
+    let digest = Sha256Digest::new([79; 32]);
+    let identity = CandidateIdentity::new(run_id, workspace_id, digest, 1, 1).expect("identity");
+    let passed =
+        EvidenceStatus::Current(EvidenceRecord::new(identity, QualificationEvidence::Satisfied));
+    let checkpoint =
+        CandidateCheckpoint::new(identity, CandidateStage::Qualified, passed, passed, passed)
+            .expect("checkpoint");
+    let mut reducer = SettlementReducer::new();
+    reducer.observe(checkpoint).expect("checkpoint observation");
+    let settlement = reducer.settle(SettlementCause::Completed).expect("settlement");
+    let snapshot = ProductRunSnapshot::new(
+        run_id,
+        workspace_id,
+        ProductProviderSelection::new(provider_id, provider_id, provider_id),
+        ProductRunPhase::Complete,
+        1,
+        "build tetris".to_owned(),
+        "passing".to_owned(),
+        String::new(),
+        String::new(),
+        String::new(),
+        "completed".to_owned(),
+    )
+    .expect("snapshot")
+    .with_deliverable(
+        ProductDeliverable::new(
+            "/managed/project".to_owned(),
+            vec!["game/src/main.rs".to_owned()],
+            vec!["cargo test --manifest-path game/Cargo.toml".to_owned()],
+            "cargo run --manifest-path game/Cargo.toml".to_owned(),
+        )
+        .expect("deliverable"),
+    );
+    model.accept_product_settlement(
+        &ProductRunSettlementSnapshot::new(snapshot, settlement).expect("settled snapshot"),
+    );
+
+    let effects = model.update(Action::TerminalEvent(Event::Key(KeyEvent::new(
+        KeyCode::Char('v'),
+        KeyModifiers::NONE,
+    ))));
+    assert!(matches!(
+        effects.as_slice(),
+        [Effect::RunCandidate { workspace, instruction, candidate_digest }]
+            if workspace == std::path::Path::new("/managed/project")
+                && instruction == "cargo run --manifest-path game/Cargo.toml"
+                && *candidate_digest == digest
+    ));
 }

@@ -2,10 +2,47 @@
 
 use std::collections::BTreeMap;
 
-use peritus_app_protocol::{ProductRunPhase, ProductRunRequest, ProductRunSnapshot};
+use peritus_app_protocol::{
+    AppResponsePayload, ProductRunPhase, ProductRunRequest, ProductRunSettlementSnapshot,
+    ProductRunSnapshot,
+};
 use peritus_types::{RunId, WorkspaceId};
 
 use super::{ProductRunServiceError, RunRecord};
+
+pub(super) fn project_snapshot(
+    record: &RunRecord,
+    snapshot: ProductRunSnapshot,
+) -> Result<AppResponsePayload, ProductRunServiceError> {
+    match record.settlement {
+        Some(settlement) => ProductRunSettlementSnapshot::new(snapshot, settlement)
+            .map(AppResponsePayload::ProductRunSettled)
+            .map_err(|_| ProductRunServiceError::InvalidState),
+        None => Ok(AppResponsePayload::ProductRunAccepted(snapshot)),
+    }
+}
+
+pub(super) fn project_collection(
+    records: &BTreeMap<RunId, RunRecord>,
+    snapshots: Vec<ProductRunSnapshot>,
+) -> Result<AppResponsePayload, ProductRunServiceError> {
+    let settled = snapshots
+        .iter()
+        .map(|snapshot| {
+            records
+                .get(&snapshot.run_id())
+                .and_then(|record| record.settlement)
+                .map(|settlement| ProductRunSettlementSnapshot::new(snapshot.clone(), settlement))
+                .transpose()
+        })
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|_| ProductRunServiceError::InvalidState)?;
+    if settled.iter().all(Option::is_some) {
+        Ok(AppResponsePayload::ProductRunSettlements(settled.into_iter().flatten().collect()))
+    } else {
+        Ok(AppResponsePayload::ProductRuns(snapshots))
+    }
+}
 
 pub(super) fn live_snapshot(
     record: &RunRecord,

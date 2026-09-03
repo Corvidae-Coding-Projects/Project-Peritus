@@ -121,21 +121,21 @@ where
         }
         AppRequestPayload::StartProductRun(value) => {
             match product_runs.start(value.clone()).await {
-                Ok(snapshot) => AppResponsePayload::ProductRunAccepted(snapshot),
+                Ok(snapshot) => product_run_projection(product_runs.project(snapshot)),
                 Err(error) => product_run_error(error),
             }
         }
         AppRequestPayload::ControlProductRun(value) => match product_runs.control(*value).await {
-            Ok(snapshot) => AppResponsePayload::ProductRunAccepted(snapshot),
+            Ok(snapshot) => product_run_projection(product_runs.project(snapshot)),
             Err(error) => product_run_error(error),
         },
         AppRequestPayload::QueryProductRuns(value) => match product_runs.query(*value) {
-            Ok(snapshots) => AppResponsePayload::ProductRuns(snapshots),
+            Ok(snapshots) => product_run_collection(product_runs.project_many(snapshots)),
             Err(error) => product_run_error(error),
         },
         AppRequestPayload::ContinueProductRun(value) => {
             match product_runs.continue_run(value).await {
-                Ok(snapshot) => AppResponsePayload::ProductRunAccepted(snapshot),
+                Ok(snapshot) => product_run_projection(product_runs.project(snapshot)),
                 Err(error) => product_run_error(error),
             }
         }
@@ -281,6 +281,24 @@ const fn product_run_error(error: ProductRunServiceError) -> AppResponsePayload 
         ProductRunServiceError::Unavailable => AppErrorCode::Backpressure,
     };
     AppResponsePayload::Error(AppProtocolError::new(code, None))
+}
+
+fn product_run_projection(
+    result: Result<AppResponsePayload, ProductRunServiceError>,
+) -> AppResponsePayload {
+    match result {
+        Ok(payload) => payload,
+        Err(error) => product_run_error(error),
+    }
+}
+
+fn product_run_collection(
+    result: Result<AppResponsePayload, ProductRunServiceError>,
+) -> AppResponsePayload {
+    match result {
+        Ok(payload) => payload,
+        Err(error) => product_run_error(error),
+    }
 }
 
 const fn acknowledged(request: &AppRequestEnvelope) -> AppResponsePayload {

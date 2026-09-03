@@ -1,5 +1,13 @@
 # Changelog
 
+- Persist complete product-run checkpoints, settlements, continuation state, remaining work, and
+  interruption causes in the daemon. Validate retained terminal candidates against their managed
+  workspaces on startup, mark superseded evidence stale, and resume interrupted candidates from
+  the first reusable phase. Add exact candidate inspection and run support plus continue, export,
+  accept, commit, and discard actions to both the terminal product and scriptable CLI; unqualified
+  accept or commit requires explicit evidence-naming confirmation. Cover checkpoint restoration,
+  migration, stale workspaces, digest-targeted/idempotent actions, TUI state and evidence rendering,
+  foreground execution, and an end-to-end candidate-to-continuation-to-acceptance path (#51).
 - Integrate verified run settlement throughout the production writer-reviewer-fixer loop. Capture
   digest-bound candidate checkpoints after mutations, verification, gates, review, and fixes;
   preserve incomplete candidates across provider failure, cancellation, deadlines, and recovery;

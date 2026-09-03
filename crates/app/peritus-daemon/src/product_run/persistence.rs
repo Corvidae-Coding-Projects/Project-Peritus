@@ -11,7 +11,9 @@ use peritus_app_protocol::{
     ProductConversationMessage, ProductConversationRole, ProductDeliverable,
     ProductProviderSelection, ProductRunPhase, ProductRunRequest, ProductRunSnapshot,
 };
+use peritus_product_runner::{ConversationView, ProductRunResume};
 use peritus_provider_core::CancellationToken;
+use peritus_run_settlement::CandidateStage;
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 use serde::Deserialize;
 use serde::Serialize;
@@ -19,6 +21,11 @@ use serde::Serialize;
 use super::progress::RunProgress;
 use super::{ProductRunServiceError, RunRecord, SharedConversation, filesystem, invalid};
 use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
+
+mod progress;
+mod settlement;
+
+use settlement::{PersistedCheckpoint, restore_settlement};
 
 #[derive(Serialize, Deserialize)]
 struct PersistedRecord {
@@ -43,6 +50,18 @@ struct PersistedRecord {
     messages: Vec<PersistedMessage>,
     #[serde(default)]
     progress: PersistedProgress,
+    #[serde(default)]
+    checkpoint: Option<PersistedCheckpoint>,
+    #[serde(default)]
+    settlement_cause: Option<u16>,
+    #[serde(default)]
+    resume_state: Option<Vec<u8>>,
+    #[serde(default)]
+    remaining_work: Vec<String>,
+    #[serde(default)]
+    interruption_cause: String,
+    #[serde(default)]
+    candidate_actionable: Option<bool>,
 }
 
 #[derive(Default, Serialize, Deserialize)]
@@ -81,6 +100,8 @@ struct PersistedDeliverable {
     changed_paths: Vec<String>,
     successful_commands: Vec<String>,
     run_instructions: String,
+    #[serde(default)]
+    qualification: Option<u16>,
     accepted: bool,
     commit_revision: String,
     export_path: String,
@@ -156,6 +177,17 @@ impl PersistedRecord {
             deliverable: snapshot.deliverable().map(PersistedDeliverable::from_deliverable),
             messages,
             progress: PersistedProgress::from_run(&record.progress),
+            checkpoint: record.checkpoint.as_ref().map(PersistedCheckpoint::from_checkpoint),
+            settlement_cause: record.settlement.as_ref().map(|value| value.cause().tag()),
+            resume_state: record
+                .resume
+                .as_ref()
+                .map(ProductRunResume::encode_durable)
+                .transpose()
+                .map_err(|_| ProductRunServiceError::Unavailable)?,
+            remaining_work: record.remaining_work.clone(),
+            interruption_cause: record.interruption_cause.clone(),
+            candidate_actionable: Some(record.candidate_actionable),
         })
     }
 
@@ -207,6 +239,21 @@ impl PersistedRecord {
             }
         }
         let conversation = SharedConversation::new(run_id, messages)?;
+        let checkpoint = self.checkpoint.map(PersistedCheckpoint::into_checkpoint).transpose()?;
+        let settlement = restore_settlement(checkpoint, self.settlement_cause)?;
+        let resume = self
+            .resume_state
+            .map(|bytes| ProductRunResume::decode_durable(&bytes, &conversation.render()))
+            .transpose()
+            .map_err(|_| ProductRunServiceError::InvalidMessage)?;
+        let invalid_lineage = checkpoint.is_some_and(|value| {
+            value.identity().run_id() != run_id || value.identity().workspace_id() != workspace_id
+        });
+        let resume_mismatch =
+            resume.as_ref().is_some_and(|value| Some(value.checkpoint()) != checkpoint.as_ref());
+        if invalid_lineage || resume_mismatch {
+            return Err(ProductRunServiceError::InvalidMessage);
+        }
         let mut snapshot = ProductRunSnapshot::new(
             run_id,
             workspace_id,
@@ -232,54 +279,13 @@ impl PersistedRecord {
             conversation,
             finding_state: self.finding_state,
             progress: self.progress.into_run(),
+            checkpoint,
+            settlement,
+            resume,
+            remaining_work: self.remaining_work,
+            interruption_cause: self.interruption_cause,
+            candidate_actionable: self.candidate_actionable.unwrap_or(true),
         })
-    }
-}
-
-impl PersistedProgress {
-    const fn from_run(value: &RunProgress) -> Self {
-        Self {
-            started_unix_millis: value.started_unix_millis,
-            last_effect_unix_millis: value.last_effect_unix_millis,
-            model_requests: value.model_requests,
-            tool_calls: value.tool_calls,
-            retries: value.retries,
-            provider_failovers: value.provider_failovers,
-            compactions: value.compactions,
-            input_tokens: value.input_tokens,
-            cached_input_tokens: value.cached_input_tokens,
-            output_tokens: value.output_tokens,
-            total_tokens: value.total_tokens,
-            provider_cost_microunits: value.provider_cost_microunits,
-            usage_observations: value.usage_observations,
-            workspace_bytes: value.workspace_bytes,
-            workspace_growth_bytes: value.workspace_growth_bytes,
-            peak_rss_bytes: value.peak_rss_bytes,
-        }
-    }
-
-    fn into_run(self) -> RunProgress {
-        if self.started_unix_millis == 0 || self.last_effect_unix_millis == 0 {
-            return RunProgress::default();
-        }
-        RunProgress {
-            started_unix_millis: self.started_unix_millis,
-            last_effect_unix_millis: self.last_effect_unix_millis,
-            model_requests: self.model_requests,
-            tool_calls: self.tool_calls,
-            retries: self.retries,
-            provider_failovers: self.provider_failovers,
-            compactions: self.compactions,
-            input_tokens: self.input_tokens,
-            cached_input_tokens: self.cached_input_tokens,
-            output_tokens: self.output_tokens,
-            total_tokens: self.total_tokens,
-            provider_cost_microunits: self.provider_cost_microunits,
-            usage_observations: self.usage_observations,
-            workspace_bytes: self.workspace_bytes,
-            workspace_growth_bytes: self.workspace_growth_bytes,
-            peak_rss_bytes: self.peak_rss_bytes,
-        }
     }
 }
 
@@ -290,6 +296,7 @@ impl PersistedDeliverable {
             changed_paths: value.changed_paths().to_vec(),
             successful_commands: value.successful_commands().to_vec(),
             run_instructions: value.run_instructions().to_owned(),
+            qualification: Some(value.qualification().tag()),
             accepted: value.accepted(),
             commit_revision: value.commit_revision().to_owned(),
             export_path: value.export_path().to_owned(),
@@ -298,11 +305,16 @@ impl PersistedDeliverable {
     }
 
     fn into_deliverable(self) -> Result<ProductDeliverable, ProductRunServiceError> {
-        let mut value = ProductDeliverable::new(
+        let qualification = self
+            .qualification
+            .map_or(Some(CandidateStage::Qualified), CandidateStage::from_tag)
+            .ok_or(ProductRunServiceError::InvalidMessage)?;
+        let mut value = ProductDeliverable::candidate(
             self.workspace_path,
             self.changed_paths,
             self.successful_commands,
             self.run_instructions,
+            qualification,
         )
         .map_err(|_| ProductRunServiceError::InvalidMessage)?;
         if self.accepted {

@@ -1,8 +1,10 @@
 use std::{fs, path::Path, process::Command};
 
 use super::*;
-use peritus_run_settlement::{CandidateStage, EvidenceStatus};
-use peritus_types::{RunId, WorkspaceId};
+use peritus_run_settlement::{CandidateIdentity, CandidateStage, EvidenceStatus};
+use peritus_types::{RunId, Sha256Digest, WorkspaceId};
+
+use crate::ProductRunnerErrorKind;
 
 #[test]
 fn provider_retry_reuses_valid_design_and_resumes_review() {
@@ -40,6 +42,38 @@ fn report_retry_reuses_every_completed_execution_phase() {
         resume.plan(*checkpoint.identity(), "User:\nBuild it.").expect("plan"),
         ProductRunPhase::Finalizing,
     );
+}
+
+#[test]
+fn durable_resume_retains_candidate_and_reacquires_effectful_gates() {
+    let checkpoint = checkpoint(1, 7);
+    let resume = fixture(&checkpoint, ProductRunPhase::Reviewing);
+
+    let bytes = resume.encode_durable().expect("encode durable continuation");
+    let restored =
+        ProductRunResume::decode_durable(&bytes, "User:\nBuild it.").expect("restore continuation");
+
+    assert_eq!(restored.checkpoint(), &checkpoint);
+    assert_eq!(restored.next_phase(), ProductRunPhase::Checking);
+    assert_eq!(restored.design_markdown(), "# Design\n\n## Objective\nBuild it.\n");
+    assert_eq!(restored.task_summary(), "candidate");
+    assert_eq!(restored.diff(), "candidate diff");
+    assert!(restored.gate_report().is_none());
+}
+
+#[test]
+fn durable_resume_rejects_an_unknown_version() {
+    let checkpoint = checkpoint(1, 7);
+    let resume = fixture(&checkpoint, ProductRunPhase::Checking);
+    let mut value: serde_json::Value =
+        serde_json::from_slice(&resume.encode_durable().expect("encode")).expect("JSON");
+    value["version"] = serde_json::Value::from(99);
+
+    let bytes = serde_json::to_vec(&value).expect("modified JSON");
+    let error = ProductRunResume::decode_durable(&bytes, "User:\nBuild it.")
+        .expect_err("unknown version must fail closed");
+
+    assert_eq!(error.kind(), ProductRunnerErrorKind::InvalidPrecondition);
 }
 
 fn fixture(checkpoint: &CandidateCheckpoint, phase: ProductRunPhase) -> ProductRunResume {

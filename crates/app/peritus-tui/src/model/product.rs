@@ -1,10 +1,19 @@
 //! Interactive product-run composer and daemon-observation projection.
 
+mod interaction;
+mod observation;
+
+use std::collections::BTreeMap;
+use std::path::PathBuf;
+
 use peritus_app_protocol::{
     AppRequestPayload, ProductProviderSelection, ProductRunContinuation, ProductRunControl,
-    ProductRunControlAction, ProductRunConversation, ProductRunConversationQuery, ProductRunQuery,
-    ProductRunRequest, ProductRunSnapshot,
+    ProductRunControlAction, ProductRunConversation, ProductRunRequest, ProductRunSnapshot,
 };
+use peritus_run_settlement::{
+    CandidateCheckpoint, CandidateStage, EvidenceStatus, QualificationEvidence, RunSettlement,
+};
+use peritus_types::RunId;
 
 use super::{AppModel, Editor, EditorKind, Effect, NoticeLevel, PendingRequest};
 use crate::runtime::ProductLaunchContext;
@@ -15,6 +24,8 @@ pub struct ProductUi {
     pub runs: Vec<ProductRunSnapshot>,
     pub selected: usize,
     pub conversation: Option<ProductRunConversation>,
+    pub settlements: BTreeMap<RunId, RunSettlement>,
+    pub confirmation: Option<CandidateConfirmation>,
     writer: usize,
     reviewer: usize,
     fixer: usize,
@@ -28,6 +39,8 @@ impl ProductUi {
             runs: Vec::new(),
             selected: 0,
             conversation: None,
+            settlements: BTreeMap::new(),
+            confirmation: None,
             writer: default,
             reviewer: default,
             fixer: default,
@@ -40,6 +53,9 @@ impl ProductUi {
     pub fn selected_conversation(&self) -> Option<&ProductRunConversation> {
         let selected = self.selected_run()?.run_id();
         self.conversation.as_ref().filter(|conversation| conversation.run_id() == selected)
+    }
+    pub fn selected_settlement(&self) -> Option<&RunSettlement> {
+        self.settlements.get(&self.selected_run()?.run_id())
     }
     pub fn writer_label(&self) -> &str {
         self.launch.providers().get(self.writer).map_or("No provider", |provider| provider.label())
@@ -75,6 +91,13 @@ impl ProductUi {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CandidateConfirmation {
+    pub run_id: RunId,
+    pub action: ProductRunControlAction,
+    pub warning: String,
+}
+
 #[derive(Clone, Copy)]
 pub(super) enum ProviderRole {
     Writer,
@@ -83,6 +106,35 @@ pub(super) enum ProviderRole {
 }
 
 impl AppModel {
+    pub(super) fn run_selected_product_candidate(&mut self) -> Vec<Effect> {
+        let Some((workspace, instruction, candidate_digest)) =
+            self.product.as_ref().and_then(|product| {
+                let run = product.selected_run().filter(|run| run.phase().terminal())?;
+                let deliverable = run.deliverable()?;
+                let checkpoint = product.selected_settlement()?.checkpoint()?;
+                Some((
+                    PathBuf::from(deliverable.workspace_path()),
+                    deliverable.run_instructions().to_owned(),
+                    checkpoint.identity().candidate_digest(),
+                ))
+            })
+        else {
+            self.notice(
+                NoticeLevel::Warning,
+                "run is available after the coding run stops with an exact candidate identity",
+            );
+            return Vec::new();
+        };
+        vec![Effect::RunCandidate { workspace, instruction, candidate_digest }]
+    }
+
+    pub(crate) fn candidate_run_finished(&mut self, result: Result<(), String>) {
+        match result {
+            Ok(()) => self.notice(NoticeLevel::Info, "candidate command completed successfully"),
+            Err(error) => self.notice(NoticeLevel::Error, error),
+        }
+    }
+
     pub(super) fn open_task_composer(&mut self) {
         if self.product.is_none() {
             self.notice(
@@ -142,11 +194,7 @@ impl AppModel {
         });
     }
 
-    pub(super) fn submit_product_message(
-        &mut self,
-        run_id: peritus_types::RunId,
-        message: String,
-    ) -> Vec<Effect> {
+    pub(super) fn submit_product_message(&mut self, run_id: RunId, message: String) -> Vec<Effect> {
         let continuation = match ProductRunContinuation::new(run_id, message) {
             Ok(continuation) => continuation,
             Err(error) => {
@@ -162,76 +210,19 @@ impl AppModel {
         .collect()
     }
 
-    pub(super) fn poll_product_runs(&mut self) -> Vec<Effect> {
-        if self.product.is_none()
-            || self.context.is_none()
-            || self.pending.values().any(|pending| matches!(pending, PendingRequest::ProductQuery))
-        {
-            return Vec::new();
-        }
-        let mut effects: Vec<Effect> = self
-            .request(
-                AppRequestPayload::QueryProductRuns(ProductRunQuery::recent()),
-                PendingRequest::ProductQuery,
-            )
-            .into_iter()
-            .collect();
-        if !self
-            .pending
-            .values()
-            .any(|pending| matches!(pending, PendingRequest::ProductConversationQuery))
-            && let Some(run_id) = self
-                .product
-                .as_ref()
-                .and_then(ProductUi::selected_run)
-                .map(ProductRunSnapshot::run_id)
-            && let Some(effect) = self.request(
-                AppRequestPayload::QueryProductRunConversation(ProductRunConversationQuery::new(
-                    run_id,
-                )),
-                PendingRequest::ProductConversationQuery,
-            )
-        {
-            effects.push(effect);
-        }
-        effects
-    }
-
-    pub(super) fn accept_product_runs(&mut self, snapshots: Vec<ProductRunSnapshot>) {
-        if let Some(product) = &mut self.product {
-            product.runs = snapshots;
-            product.selected = product.selected.min(product.runs.len().saturating_sub(1));
-        }
-    }
-
-    pub(super) fn accept_product_run(&mut self, snapshot: ProductRunSnapshot) {
-        let Some(product) = &mut self.product else { return };
-        if let Some(existing) =
-            product.runs.iter_mut().find(|run| run.run_id() == snapshot.run_id())
-        {
-            *existing = snapshot;
-        } else {
-            product.runs.insert(0, snapshot);
-            product.selected = 0;
-        }
-    }
-
-    pub(super) fn accept_product_conversation(&mut self, conversation: ProductRunConversation) {
-        let Some(product) = &mut self.product else { return };
-        if product.selected_run().is_some_and(|run| run.run_id() == conversation.run_id()) {
-            product.conversation = Some(conversation);
-        }
-    }
-
     pub(super) fn control_selected_product_run(
         &mut self,
         action: ProductRunControlAction,
     ) -> Vec<Effect> {
-        let Some((run_id, phase)) = self
-            .product
-            .as_ref()
-            .and_then(ProductUi::selected_run)
-            .map(|run| (run.run_id(), run.phase()))
+        let Some((run_id, phase, qualification, has_deliverable)) =
+            self.product.as_ref().and_then(ProductUi::selected_run).map(|run| {
+                (
+                    run.run_id(),
+                    run.phase(),
+                    run.deliverable().map(peritus_app_protocol::ProductDeliverable::qualification),
+                    run.deliverable().is_some(),
+                )
+            })
         else {
             self.notice(NoticeLevel::Warning, "no coding run is selected");
             return Vec::new();
@@ -250,19 +241,41 @@ impl AppModel {
             );
             return Vec::new();
         }
-        if matches!(
+        let deliverable_action = matches!(
             action,
             ProductRunControlAction::Accept
                 | ProductRunControlAction::Commit
                 | ProductRunControlAction::Export
                 | ProductRunControlAction::Discard
-        ) && phase != peritus_app_protocol::ProductRunPhase::Complete
-        {
+        );
+        if deliverable_action && (!phase.terminal() || !has_deliverable) {
             self.notice(
                 NoticeLevel::Warning,
-                "deliverable actions are available after exact acceptance completes",
+                "deliverable actions are available after the run stops with a candidate",
             );
             return Vec::new();
+        }
+        if matches!(action, ProductRunControlAction::Accept | ProductRunControlAction::Commit)
+            && has_deliverable
+            && qualification != Some(CandidateStage::Qualified)
+        {
+            let warning = self.unqualified_warning(run_id, action);
+            let confirmed = self
+                .product
+                .as_ref()
+                .and_then(|product| product.confirmation.as_ref())
+                .is_some_and(|pending| pending.run_id == run_id && pending.action == action);
+            if !confirmed {
+                if let Some(product) = &mut self.product {
+                    product.confirmation =
+                        Some(CandidateConfirmation { run_id, action, warning: warning.clone() });
+                }
+                self.notice(NoticeLevel::Warning, warning);
+                return Vec::new();
+            }
+        }
+        if let Some(product) = &mut self.product {
+            product.confirmation = None;
         }
         self.request(
             AppRequestPayload::ControlProductRun(ProductRunControl::new(run_id, action)),
@@ -270,6 +283,23 @@ impl AppModel {
         )
         .into_iter()
         .collect()
+    }
+
+    fn unqualified_warning(&self, run_id: RunId, action: ProductRunControlAction) -> String {
+        let action = match action {
+            ProductRunControlAction::Accept => "accept",
+            ProductRunControlAction::Commit => "commit",
+            _ => "use",
+        };
+        let evidence = self
+            .product
+            .as_ref()
+            .and_then(|product| product.settlements.get(&run_id))
+            .and_then(RunSettlement::checkpoint)
+            .map_or_else(|| "qualification evidence is incomplete".to_owned(), missing_evidence);
+        format!(
+            "Unqualified candidate: {evidence}. Press the {action} key again to confirm {action}."
+        )
     }
 
     pub(super) fn cycle_product_provider(&mut self, role: ProviderRole) {
@@ -282,6 +312,7 @@ impl AppModel {
         let Some(product) = &mut self.product else { return false };
         product.selected = product.selected.saturating_sub(1);
         product.conversation = None;
+        product.confirmation = None;
         true
     }
 
@@ -289,6 +320,32 @@ impl AppModel {
         let Some(product) = &mut self.product else { return false };
         product.selected = (product.selected + 1).min(product.runs.len().saturating_sub(1));
         product.conversation = None;
+        product.confirmation = None;
         true
+    }
+}
+
+fn missing_evidence(checkpoint: &CandidateCheckpoint) -> String {
+    let mut missing = Vec::new();
+    append_evidence("deterministic checks", checkpoint.gates(), &mut missing);
+    append_evidence("public requirements", checkpoint.obligations(), &mut missing);
+    append_evidence("independent review", checkpoint.review(), &mut missing);
+    if missing.is_empty() { "qualification is incomplete".to_owned() } else { missing.join(", ") }
+}
+
+fn append_evidence(
+    name: &str,
+    evidence: &EvidenceStatus<QualificationEvidence>,
+    missing: &mut Vec<String>,
+) {
+    let state = match evidence {
+        EvidenceStatus::Missing => Some("missing"),
+        EvidenceStatus::Failed(_) => Some("failed"),
+        EvidenceStatus::Stale(_) => Some("stale"),
+        EvidenceStatus::Current(record) if !record.value().satisfied() => Some("failed"),
+        EvidenceStatus::Current(_) => None,
+    };
+    if let Some(state) = state {
+        missing.push(format!("{name} {state}"));
     }
 }

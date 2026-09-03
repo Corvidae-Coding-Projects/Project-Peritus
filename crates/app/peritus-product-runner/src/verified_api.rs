@@ -15,7 +15,9 @@ use peritus_provider_core::{CancellationToken, ModelProvider};
 use peritus_run_settlement::{CandidateCheckpoint, RunSettlement};
 use peritus_types::{RunId, WorkspaceId};
 
-use crate::{ProductRunnerError, ProductRunnerErrorKind};
+use crate::ProductRunnerError;
+
+mod effect_stubs;
 
 /// Maximum wall-clock duration of one uninterrupted product-run attempt.
 pub const PRODUCT_RUN_MAX_ELAPSED: Duration = Duration::from_hours(8);
@@ -384,7 +386,7 @@ impl ProductRunner {
         _observe: RunObserver,
     ) -> Result<ProductRunOutcome, ProductRunnerError> {
         Err(ProductRunnerError::new(
-            ProductRunnerErrorKind::InvalidPrecondition,
+            crate::ProductRunnerErrorKind::InvalidPrecondition,
             "execute verification-only product runner",
             "production effects are unavailable in a verus_only build",
         ))

@@ -23,6 +23,17 @@ pub fn parse_hex_id(value: &str, name: &str) -> Result<[u8; 16], CliError> {
     Ok(bytes)
 }
 
+pub fn parse_hex_digest(value: &str, name: &str) -> Result<[u8; 32], CliError> {
+    if value.len() != 64 || !value.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err(CliError::usage(format!("{name} must be exactly 64 hexadecimal characters")));
+    }
+    let mut bytes = [0_u8; 32];
+    for (index, pair) in value.as_bytes().chunks_exact(2).enumerate() {
+        bytes[index] = (hex_digit(pair[0]) << 4) | hex_digit(pair[1]);
+    }
+    Ok(bytes)
+}
+
 pub fn generated_id(domain: &[u8]) -> [u8; 16] {
     let timestamp =
         SystemTime::now().duration_since(UNIX_EPOCH).map_or(1_u128, |duration| duration.as_nanos());

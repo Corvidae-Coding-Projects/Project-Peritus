@@ -9,6 +9,7 @@ pub(crate) mod events;
 pub(crate) mod id;
 pub(crate) mod operation;
 pub(crate) mod output;
+pub(crate) mod product_run;
 pub(crate) mod prompt;
 mod runner;
 pub(crate) mod terminal;

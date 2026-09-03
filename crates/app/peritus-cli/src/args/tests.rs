@@ -1,6 +1,7 @@
 use std::ffi::OsString;
 
-use super::{Cli, Command, PromptValue};
+use super::{Cli, Command, ProductRunArgs, PromptValue};
+use peritus_app_protocol::ProductRunControlAction;
 
 fn parse(arguments: &[&str]) -> Result<Cli, crate::error::CliError> {
     Cli::parse(arguments.iter().map(OsString::from))
@@ -130,5 +131,29 @@ fn identifiers_and_positive_limits_fail_before_transport() {
             "24",
         ])
         .is_err()
+    );
+}
+
+#[test]
+fn product_run_commands_parse_exact_targets_and_confirmation_digests() {
+    let run = "41414141414141414141414141414141";
+    let digest = "42".repeat(32);
+    let cli = parse(&["peritus", "runs", "commit", "--run", run, "--confirm-unqualified", &digest])
+        .expect("candidate commit");
+    assert!(matches!(
+        cli.command,
+        Command::ProductRuns(ProductRunArgs::Control {
+            action: ProductRunControlAction::Commit,
+            confirmed_digest: Some(_),
+            ..
+        })
+    ));
+
+    assert!(
+        parse(&["peritus", "runs", "export", "--run", run, "--confirm-unqualified", &digest,])
+            .is_err()
+    );
+    assert!(
+        parse(&["peritus", "runs", "accept", "--run", run, "--confirm-unqualified", "00"]).is_err()
     );
 }
