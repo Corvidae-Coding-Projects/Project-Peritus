@@ -11,6 +11,10 @@ permits, every engine is bound to one durable journal `StoreId`, and evidence re
 one authoritative-journal result-publication manifest with one distinct admitted record per
 requirement.
 
+Public task acceptance can also be evaluated through the pure `GateObligationAssessment` bridge.
+It admits a gate pass only when `peritus-obligations` qualifies every active, current requirement;
+failure ownership is routed separately so only candidate defects request another fixer cycle.
+
 The production-facing `TargetGatePlan` maps every changed path to the nearest Cargo, Node, Python,
 Go, conventional SQLite, or explicit artifact project. Manifestless Python and Node projects are
 recognized from ordinary test layouts, and standalone Python modules still receive syntax checks.

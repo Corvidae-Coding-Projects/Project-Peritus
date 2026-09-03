@@ -170,6 +170,12 @@ owner = "C3"
 layer = "runtime"
 verification_class = "H"
 [[packages]]
+name = "peritus-obligations"
+path = "crates/orchestration/peritus-obligations"
+owner = "D1"
+layer = "orchestration"
+verification_class = "V"
+[[packages]]
 name = "peritus-orchestrator"
 path = "crates/orchestration/peritus-orchestrator"
 owner = "E0"

@@ -2217,7 +2217,9 @@ dependencies = [
  "peritus-codec",
  "peritus-evidence",
  "peritus-journal",
+ "peritus-obligations",
  "peritus-quality-policy",
+ "peritus-run-settlement",
  "peritus-spec",
  "peritus-tool-protocol",
  "peritus-tools-quality",
@@ -2387,6 +2389,17 @@ dependencies = [
  "tempfile",
  "vstd",
  "zeroize",
+]
+
+[[package]]
+name = "peritus-obligations"
+version = "0.0.0"
+dependencies = [
+ "peritus-run-settlement",
+ "peritus-spec",
+ "peritus-types",
+ "sha2 0.11.0",
+ "vstd",
 ]
 
 [[package]]

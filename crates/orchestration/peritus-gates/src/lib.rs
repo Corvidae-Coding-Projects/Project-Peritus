@@ -12,6 +12,7 @@ mod engine;
 mod error;
 mod event;
 mod evidence;
+mod obligation;
 mod outcome;
 #[cfg(not(verus_only))]
 mod product;
@@ -41,6 +42,7 @@ pub use event::{GateEvent, GateEventKind, GateTransition};
 pub use evidence::{
     EvidencePublication, GateEvidencePublisher, GateEvidenceReceipt, PublishedGateEvidence,
 };
+pub use obligation::{GateObligationAssessment, route_failure};
 pub use outcome::{
     GateArtifact, GateAttemptResult, GateOutcomeKind, RecoveryRequirement, RetryPermission,
 };
