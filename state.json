@@ -1,6 +1,6 @@
 {
   "next_display_id": 50,
-  "next_comment_id": 1170,
+  "next_comment_id": 1171,
   "display_id_map": {
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
@@ -1169,7 +1169,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-03T07:24:18.756359126Z",
-      "updated_at": "2026-09-03T09:16:05.752587990Z",
+      "updated_at": "2026-09-03T09:31:50.343489691Z",
       "related": [
         "39341321-25d6-4cd4-8e10-ad806ddefb0d",
         "52028605-f0c2-43fe-b0ae-0e0db829553f"
@@ -1228,6 +1228,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAk6IB/j3Ot0nhi3+oWmw3V66fODRgHzmVcC9WWMEqxZu0UW6UTy3Ub8gp1BTfiF3fNeunWOoyPUNZyd064i2/CA=="
+        },
+        "c2aa12d7-b4f1-4a35-85ad-4d92a6eafe72": {
+          "display_id": 1170,
+          "author": "6ME5",
+          "content": "Commit fb293887 corrects the cross-platform command-control regression: PTY platforms require resize success; Windows raw pipe commands require typed resize refusal, then recovery, stdin, and successful completion on the same handle. Verified: focused test 5x; all 147 product-runner tests; strict package Clippy; cargo fmt/diff check; Windows cross-target tests compile.",
+          "created_at": "2026-09-03T09:31:50.340355854Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAdAsTaHuwUweF8bF1tvFuNd7Sq0sgCJf6JLr9PF94x5WFLjHKsc67/KR0347sVZuOWdFepzTTLIF23maftBx4Cw=="
         },
         "e3974a05-8cac-4201-af55-cb05ec3c3c87": {
           "display_id": 1162,
@@ -11413,8 +11422,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-03T09:16:05.752587990Z",
+    "timestamp": "2026-09-03T09:31:50.343489691Z",
     "agent_id": "6ME5",
-    "agent_seq": 1399
+    "agent_seq": 1400
   }
 }
