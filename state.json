@@ -1,6 +1,6 @@
 {
   "next_display_id": 50,
-  "next_comment_id": 1176,
+  "next_comment_id": 1177,
   "display_id_map": {
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
@@ -1165,7 +1165,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-03T07:24:18.756359126Z",
-      "updated_at": "2026-09-03T11:17:40.554069670Z",
+      "updated_at": "2026-09-03T11:17:51.128079054Z",
       "related": [
         "39341321-25d6-4cd4-8e10-ad806ddefb0d",
         "52028605-f0c2-43fe-b0ae-0e0db829553f"
@@ -1215,6 +1215,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABARG+d9f96swzLiJ6XZ1dH6S0sGuKTrNJbQNTIfSJy9vVSLlLuAebFJbwk5nKveSmE/Tn3Ll3iszk/pYXCJZI4AQ=="
+        },
+        "93b04195-a93b-440f-8781-09ebdcd60426": {
+          "display_id": 1176,
+          "author": "6ME5",
+          "content": "S3-S4 delivered on feature/external-adapter-provider-recovery in four signed commits through bd11075d. Draft PR #42 is merge-clean and all 311 checks pass. CI-driven fixes added Windows durable directory sync and preserved active command handles after rejected controls. Local provider configs and Crosslink state remain intentionally untracked; issues #46-#48 remain open for PR merge closure.",
+          "created_at": "2026-09-03T11:17:51.124707617Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAG/rmjcjK+RAcxNgBnhPSwTGT2Up3LQpkosVYhvjL2K4JcjOL7CgMg0Bknw2TtTZA0kdwDyAmlUu362LXYB5WDg=="
         },
         "af1fb15e-8ded-4283-a8df-f49a76f51902": {
           "display_id": 1173,
@@ -11463,8 +11472,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-03T11:17:45.938188176Z",
+    "timestamp": "2026-09-03T11:17:51.128079054Z",
     "agent_id": "6ME5",
-    "agent_seq": 1406
+    "agent_seq": 1407
   }
 }
