@@ -22,11 +22,15 @@ peritus-kernel = { version = "=0.0.0", path = "../../foundation/peritus-kernel" 
 peritus-leases = { version = "=0.0.0", path = "../../state/peritus-leases" }
 peritus-model-protocol = { version = "=0.0.0", path = "../../model/peritus-model-protocol" }
 peritus-orchestrator = { version = "=0.0.0", path = "../../orchestration/peritus-orchestrator" }
+peritus-obligations = { version = "=0.0.0", path = "../../orchestration/peritus-obligations" }
 peritus-policy = { version = "=0.0.0", path = "../../foundation/peritus-policy" }
 peritus-process = { version = "=0.0.0", path = "../../runtime/peritus-process" }
 peritus-protocol = { version = "=0.0.0", path = "../../foundation/peritus-protocol" }
 peritus-provider-core = { version = "=0.0.0", path = "../../model/peritus-provider-core" }
 peritus-review = { version = "=0.0.0", path = "../../orchestration/peritus-review" }
+peritus-role = { version = "=0.0.0", path = "../../orchestration/peritus-role" }
+peritus-run-knowledge = { version = "=0.0.0", path = "../../orchestration/peritus-run-knowledge" }
+peritus-run-settlement = { version = "=0.0.0", path = "../../orchestration/peritus-run-settlement" }
 peritus-sandbox = { version = "=0.0.0", path = "../../runtime/peritus-sandbox" }
 peritus-spec = { version = "=0.0.0", path = "../../foundation/peritus-spec" }
 peritus-tool-protocol = { version = "=0.0.0", path = "../../tools/peritus-tool-protocol" }

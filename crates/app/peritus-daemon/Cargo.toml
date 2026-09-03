@@ -43,6 +43,7 @@ peritus-provider-openai = { version = "=0.0.0", path = "../../model/peritus-prov
 peritus-orchestrator = { version = "=0.0.0", path = "../../orchestration/peritus-orchestrator" }
 peritus-patch = { version = "=0.0.0", path = "../../runtime/peritus-patch" }
 peritus-review = { version = "=0.0.0", path = "../../orchestration/peritus-review" }
+peritus-run-settlement = { version = "=0.0.0", path = "../../orchestration/peritus-run-settlement" }
 peritus-scheduler = { version = "=0.0.0", path = "../../orchestration/peritus-scheduler" }
 peritus-sandbox = { version = "=0.0.0", path = "../../runtime/peritus-sandbox" }
 peritus-secrets = { version = "=0.0.0", path = "../../runtime/peritus-secrets" }

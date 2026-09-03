@@ -10,7 +10,7 @@ use peritus_product_runner::{
     ProductRunnerError, ProductRunnerErrorKind, RunObserver,
 };
 use peritus_provider_core::CancellationToken;
-use peritus_run_settlement::SettlementCause;
+use peritus_run_settlement::{CandidateStage, SettlementCause};
 use peritus_types::RunId;
 use sha2::{Digest, Sha256};
 
@@ -70,6 +70,7 @@ pub async fn execute(
     let result = ProductRunner::run(
         ProductRunInput {
             run_id: guard.seed().run_id,
+            workspace_id: guard.seed().workspace_id,
             workspace_root: baseline.root.clone(),
             trace_path: guard.seed().trace_path.clone(),
             command_runtime,
@@ -81,6 +82,7 @@ pub async fn execute(
             providers: authenticated.roles,
             cancelled: Arc::new(AtomicBool::new(false)),
             provider_cancellation: cancellation,
+            resume: None,
         },
         observer,
     )
@@ -167,33 +169,7 @@ fn settle_product_result(
     snapshot: candidate::CandidateSnapshot,
 ) -> Result<crate::evidence::InvocationReport, BenchmarkError> {
     match result {
-        Ok(ProductRunOutcome::Complete(output)) => {
-            guard.finalize(crate::settlement::TerminalFacts {
-                cause: SettlementCause::Completed,
-                snapshot: Some(snapshot),
-                qualified: true,
-                qualification: QualificationReport::accepted(output.gates, output.review),
-                summary: Some(output.summary),
-                failure_kind: None,
-                failure: None,
-            })
-        }
-        Ok(ProductRunOutcome::WaitingForUser { question, .. }) => {
-            let snapshot = (!snapshot.changed_paths.is_empty()).then_some(snapshot);
-            guard.finalize(crate::settlement::TerminalFacts {
-                cause: SettlementCause::UserWait,
-                snapshot,
-                qualified: false,
-                qualification: QualificationReport::candidate(
-                    "changed",
-                    observation_text(guard, true),
-                    observation_text(guard, false),
-                ),
-                summary: None,
-                failure_kind: Some("waiting_for_user".to_owned()),
-                failure: Some(question),
-            })
-        }
+        Ok(outcome) => settle_verified_outcome(guard, &outcome, snapshot),
         Err(error) => {
             let cause = product_error_cause(&error);
             let snapshot = (!snapshot.changed_paths.is_empty()).then_some(snapshot);
@@ -203,6 +179,63 @@ fn settle_product_result(
             facts.failure_kind = Some(format!("{:?}", error.kind()).to_lowercase());
             guard.finalize(facts)
         }
+    }
+}
+
+fn settle_verified_outcome(
+    guard: &mut crate::settlement::InvocationGuard,
+    outcome: &ProductRunOutcome,
+    snapshot: candidate::CandidateSnapshot,
+) -> Result<crate::evidence::InvocationReport, BenchmarkError> {
+    let settlement = outcome.settlement();
+    let candidate = settlement.checkpoint().map(|_| snapshot);
+    let qualification = if settlement.is_accepted() {
+        outcome.candidate().map_or_else(QualificationReport::missing, |output| {
+            QualificationReport::accepted(output.gates.clone(), output.review.clone())
+        })
+    } else if let Some(checkpoint) = settlement.checkpoint() {
+        QualificationReport::candidate(
+            candidate_stage_name(checkpoint.stage()),
+            outcome
+                .candidate()
+                .map(|output| output.gates.clone())
+                .or_else(|| observation_text(guard, true)),
+            outcome
+                .candidate()
+                .map(|output| output.review.clone())
+                .or_else(|| observation_text(guard, false)),
+        )
+    } else {
+        QualificationReport::missing()
+    };
+    let failure = outcome.question().map(|question| question.message().to_owned()).or_else(|| {
+        let mut detail = outcome.detail().map(str::to_owned)?;
+        if !outcome.remaining_work().is_empty() {
+            detail.push_str(" Remaining work: ");
+            detail.push_str(&outcome.remaining_work().join("; "));
+        }
+        Some(detail)
+    });
+    guard.finalize(crate::settlement::TerminalFacts {
+        cause: settlement.cause(),
+        snapshot: candidate,
+        qualified: settlement.is_accepted(),
+        qualification,
+        summary: outcome.candidate().map(|output| output.summary.clone()),
+        failure_kind: (!settlement.is_accepted())
+            .then(|| format!("{:?}", settlement.disposition()).to_ascii_lowercase()),
+        failure,
+    })
+}
+
+const fn candidate_stage_name(stage: CandidateStage) -> &'static str {
+    match stage {
+        CandidateStage::Observed => "observed",
+        CandidateStage::Changed => "changed",
+        CandidateStage::SelfChecked => "self_checked",
+        CandidateStage::GatesPassed => "gates_passed",
+        CandidateStage::ReviewPending => "review_pending",
+        CandidateStage::Qualified => "qualified",
     }
 }
 
@@ -223,6 +256,9 @@ fn product_error_cause(error: &ProductRunnerError) -> SettlementCause {
         return SettlementCause::Deadline;
     }
     match error.kind() {
+        ProductRunnerErrorKind::InvalidPrecondition | ProductRunnerErrorKind::InternalInvariant => {
+            SettlementCause::Adapter
+        }
         ProductRunnerErrorKind::Repository => SettlementCause::Repository,
         ProductRunnerErrorKind::Provider => SettlementCause::Provider,
         ProductRunnerErrorKind::Gate => SettlementCause::Gate,

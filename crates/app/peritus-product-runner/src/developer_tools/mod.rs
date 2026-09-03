@@ -19,6 +19,7 @@ mod wire;
 pub use catalog::{definitions, read_only_definitions};
 pub use command_runtime::CommandRuntime;
 pub use evidence::{CommandPurpose, SuccessfulCommand, merge_successful};
+pub use executor::ToolCheckpointBoundary;
 pub use executor::WorkspaceDeveloperTools;
 pub use ownership::WorkspaceOwnership;
 

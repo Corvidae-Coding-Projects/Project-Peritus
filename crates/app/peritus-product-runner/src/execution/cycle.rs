@@ -1,18 +1,21 @@
 //! One inspect-review-fix cycle of a product run.
 
 use peritus_review::ProductFindingLedger;
+use peritus_run_settlement::CandidateStage;
 
 use super::{
-    AppliedTurn, ProductRunInput, ProductRunOutcome, ProductRunPhase, ProductRunUpdate,
-    RunObserver, RunState, check_cancelled,
+    AppliedTurn, ProductRunInput, ProductRunPhase, ProductRunUpdate, RunObserver, RunState,
+    check_cancelled,
+    checkpoint::{CandidateRecorder, CheckpointEvidence},
+    deadline::{self, OpenEndedPhase},
+    obligations::{QualificationState, RunObligations},
 };
 use crate::{
     ProductRunnerError, ProductRunnerErrorKind, budget::RunAccounting, bundle,
     candidate::CandidateBaseline, design, developer_tools::WorkspaceOwnership, gates, review,
-    reviewer_turn,
 };
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(super) struct RunEvidence {
     pub(super) diff: String,
     pub(super) gates: String,
@@ -24,6 +27,57 @@ pub(super) struct CycleInspection {
     pub(super) gates: gates::GateReport,
     pub(super) evidence: RunEvidence,
     pub(super) conversation_changed: bool,
+    pub(super) qualification: QualificationState,
+}
+
+impl CycleInspection {
+    pub(super) fn conversation_changed(checked: GateInspection) -> Self {
+        Self {
+            gates: checked.gates,
+            evidence: checked.evidence,
+            conversation_changed: true,
+            qualification: QualificationState::new(false, false, false),
+        }
+    }
+}
+
+pub(super) fn retained_inspection(
+    gate_report: Option<&gates::GateReport>,
+    evidence: &RunEvidence,
+    recorder: &CandidateRecorder,
+) -> Result<CycleInspection, ProductRunnerError> {
+    let gates = gate_report.cloned().ok_or_else(|| {
+        ProductRunnerError::new(
+            ProductRunnerErrorKind::InternalInvariant,
+            "resume fixer phase",
+            "fixer phase has no retained exact-target gate report",
+        )
+    })?;
+    let checkpoint = recorder.checkpoint()?.ok_or_else(|| {
+        ProductRunnerError::new(
+            ProductRunnerErrorKind::InternalInvariant,
+            "resume fixer phase",
+            "fixer phase has no exact candidate checkpoint",
+        )
+    })?;
+    let identity = checkpoint.identity();
+    Ok(CycleInspection {
+        gates,
+        evidence: evidence.clone(),
+        conversation_changed: false,
+        qualification: QualificationState::new(
+            checkpoint.gates().is_current_and_satisfied(identity),
+            checkpoint.obligations().is_current_and_satisfied(identity),
+            checkpoint.review().is_current_and_satisfied(identity),
+        ),
+    })
+}
+
+pub(super) struct GateInspection {
+    pub(super) gates: gates::GateReport,
+    pub(super) gates_satisfied: bool,
+    pub(super) evidence: RunEvidence,
+    pub(super) conversation_changed: bool,
 }
 
 pub(super) async fn initial_write(
@@ -33,7 +87,13 @@ pub(super) async fn initial_write(
     findings: Option<&str>,
     ownership: &mut WorkspaceOwnership,
     accounting: &mut RunAccounting,
+    recorder: &CandidateRecorder,
 ) -> Result<AppliedTurn, ProductRunnerError> {
+    deadline::require_phase_window(
+        input.max_elapsed,
+        accounting.remaining(),
+        OpenEndedPhase::Writer,
+    )?;
     check_cancelled(input)?;
     emit(
         observe,
@@ -54,6 +114,7 @@ pub(super) async fn initial_write(
         findings,
         ownership,
         accounting,
+        recorder,
     )
     .await
 }
@@ -64,6 +125,11 @@ pub(super) async fn create_design(
     cycle: u32,
     accounting: &mut RunAccounting,
 ) -> Result<design::DesignDocument, ProductRunnerError> {
+    deadline::require_phase_window(
+        input.max_elapsed,
+        accounting.remaining(),
+        OpenEndedPhase::Design,
+    )?;
     check_cancelled(input)?;
     emit(
         observe,
@@ -101,14 +167,17 @@ pub(super) async fn create_design(
     Ok(document)
 }
 
-pub(super) async fn inspect_cycle(
+#[allow(clippy::too_many_arguments, reason = "gate execution binds one exact run boundary")]
+pub(super) fn inspect_gates(
     input: &ProductRunInput,
     observe: &RunObserver,
     baseline: &CandidateBaseline,
-    state: &mut RunState,
+    state: &RunState,
     ownership: &WorkspaceOwnership,
     accounting: &mut RunAccounting,
-) -> Result<CycleInspection, ProductRunnerError> {
+    recorder: &CandidateRecorder,
+    obligations: &RunObligations,
+) -> Result<GateInspection, ProductRunnerError> {
     let phase = if state.coordinator.completed_fixer_cycles() == 0 {
         ProductRunPhase::Checking
     } else {
@@ -140,68 +209,39 @@ pub(super) async fn inspect_cycle(
         &conversation,
     )?;
     let mut gate_output = gate_report.output.clone();
+    gate_output.push('\n');
+    gate_output.push_str(&obligations.render());
     if input.delivery_scope.allows_external_effects()
         && (effect_requirement.is_required() || gate_report.report.changed_paths().is_empty())
     {
         super::acceptance::ExternalEffectEvidence::from_commands(&state.successful_commands)
             .append_report(&mut gate_output, effect_requirement);
     }
-    let mut evidence = RunEvidence {
+    let gates_satisfied = super::acceptance::qualification_ready(
+        input.delivery_scope,
+        effect_requirement,
+        &gate_report,
+        &state.successful_commands,
+    );
+    let evidence = RunEvidence {
         diff: bundle::diff(&input.workspace_root, baseline)?,
         gates: gate_output,
         review: review::render(&state.findings),
         developer_commands: state.developer_evidence.clone(),
     };
-    emit(
-        observe,
-        ProductRunPhase::Reviewing,
-        cycle,
-        "Reviewer is checking the diff and gates; recoverable attempts retry automatically",
-        &evidence,
-        &state.task_summary,
-        Some(&state.findings),
-        accounting,
+    let gate_stage =
+        if gates_satisfied { CandidateStage::GatesPassed } else { CandidateStage::SelfChecked };
+    let _ = recorder.record(
+        gate_stage,
+        state.conversation_revision,
+        CheckpointEvidence::Gates(gates_satisfied),
     )?;
-    if input.conversation.revision() != state.conversation_revision {
-        return Ok(CycleInspection { gates: gate_report, evidence, conversation_changed: true });
-    }
-    let review_cycle = state.findings.cycle().saturating_add(1);
-    let submission = reviewer_turn::complete(
-        input,
-        cycle,
-        review_cycle,
-        reviewer_turn::ReviewEvidence {
-            conversation: &conversation,
-            diff: &evidence.diff,
-            gates: &evidence.gates,
-            developer_commands: &evidence.developer_commands,
-            prior: &evidence.review,
-        },
-        accounting,
-    )
-    .await?;
-    if input.conversation.revision() != state.conversation_revision {
-        return Ok(CycleInspection { gates: gate_report, evidence, conversation_changed: true });
-    }
-    state.findings.admit_review(review_cycle, submission).map_err(|error| {
-        ProductRunnerError::new(
-            ProductRunnerErrorKind::InvalidModelOutput,
-            "admit D2 reviewer findings",
-            error.to_string(),
-        )
-    })?;
-    evidence.review = review::render(&state.findings);
-    emit(
-        observe,
-        ProductRunPhase::Reviewing,
-        cycle,
-        "Fresh typed review completed",
-        &evidence,
-        &state.task_summary,
-        Some(&state.findings),
-        accounting,
-    )?;
-    Ok(CycleInspection { gates: gate_report, evidence, conversation_changed: false })
+    Ok(GateInspection {
+        gates: gate_report,
+        gates_satisfied,
+        evidence,
+        conversation_changed: input.conversation.revision() != state.conversation_revision,
+    })
 }
 
 pub(super) async fn apply_fix(
@@ -211,7 +251,13 @@ pub(super) async fn apply_fix(
     state: &mut RunState,
     ownership: &mut WorkspaceOwnership,
     accounting: &mut RunAccounting,
-) -> Result<Option<ProductRunOutcome>, ProductRunnerError> {
+    recorder: &CandidateRecorder,
+) -> Result<Option<(String, u64)>, ProductRunnerError> {
+    deadline::require_phase_window(
+        input.max_elapsed,
+        accounting.remaining(),
+        OpenEndedPhase::Fixer,
+    )?;
     let fixer_cycle = state.coordinator.completed_fixer_cycles() + 1;
     emit(
         observe,
@@ -237,6 +283,7 @@ pub(super) async fn apply_fix(
         Some(&findings),
         ownership,
         accounting,
+        recorder,
     )
     .await?;
     match turn {
@@ -265,16 +312,21 @@ pub(super) async fn apply_fix(
                 Some(&state.findings),
                 accounting,
             )?;
+            let _ = recorder.record(
+                CandidateStage::Changed,
+                state.conversation_revision,
+                CheckpointEvidence::None,
+            )?;
             Ok(None)
         }
         AppliedTurn::Waiting { question, conversation_revision } => {
-            Ok(Some(ProductRunOutcome::WaitingForUser { question, conversation_revision }))
+            Ok(Some((question, conversation_revision)))
         }
     }
 }
 
 #[allow(clippy::too_many_arguments, reason = "one effect boundary retains its complete projection")]
-fn emit(
+pub(super) fn emit(
     observer: &RunObserver,
     phase: ProductRunPhase,
     cycle: u32,
@@ -295,6 +347,8 @@ fn emit(
         summary: summary.to_owned(),
         finding_state,
         progress: accounting.snapshot()?,
+        checkpoint: None,
+        remaining_work: Vec::new(),
     });
     Ok(())
 }

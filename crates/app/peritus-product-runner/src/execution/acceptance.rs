@@ -59,6 +59,19 @@ impl ExternalEffectEvidence {
     }
 }
 
+pub(super) fn qualification_ready(
+    scope: ProductDeliveryScope,
+    requirement: ExternalEffectRequirement,
+    gates: &gates::GateReport,
+    commands: &[SuccessfulCommand],
+) -> bool {
+    let workspace_ready = gates.report.passed()
+        || (scope.allows_external_effects() && gates.report.changed_paths().is_empty());
+    let external_ready = !external_evidence_required(scope, requirement, gates)
+        || ExternalEffectEvidence::from_commands(commands).complete();
+    workspace_ready && external_ready
+}
+
 pub(super) fn decide(
     scope: ProductDeliveryScope,
     requirement: ExternalEffectRequirement,
@@ -169,5 +182,17 @@ mod tests {
             ),
             ProductionDecision::Accept,
         );
+        assert!(!qualification_ready(
+            ProductDeliveryScope::WorkspaceChanges,
+            ExternalEffectRequirement::Optional,
+            &gates,
+            &commands,
+        ));
+        assert!(qualification_ready(
+            ProductDeliveryScope::AuthorizedExternalEffects,
+            ExternalEffectRequirement::Optional,
+            &gates,
+            &commands,
+        ));
     }
 }

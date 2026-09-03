@@ -1,5 +1,14 @@
 # Changelog
 
+- Integrate verified run settlement throughout the production writer-reviewer-fixer loop. Capture
+  digest-bound candidate checkpoints after mutations, verification, gates, review, and fixes;
+  preserve incomplete candidates across provider failure, cancellation, deadlines, and recovery;
+  report stale or missing acceptance evidence with concrete remaining work; and reserve protected
+  time for finalization. Add exact run/workspace/conversation resume validation, S1 knowledge-based
+  phase reuse, S2 obligation qualification and fixer routing, typed S4 terminal causes, and
+  counter-based failure-injection coverage proving that valid design, writer, gate, and reviewer
+  phases are not repeated. Fresh finalization now clears fully reverted workspace candidates while
+  retaining explicitly authorized external-effect candidates (#50).
 - Unify HarnessBench and Terminal-Bench behind a schema-version-6 native admission and settlement
   boundary. Require adapter and pinned-suite handshakes, real provider canaries, exact candidate and
   resource evidence, strict verified acceptance, and exactly-once atomic report publication with a

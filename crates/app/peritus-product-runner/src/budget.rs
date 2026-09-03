@@ -218,6 +218,12 @@ impl RunAccounting {
         Ok(self.progress)
     }
 
+    /// Latest successfully recorded counters without performing another fallible host probe.
+    #[must_use]
+    pub const fn latest_snapshot(&self) -> ProductRunProgress {
+        self.progress
+    }
+
     pub fn remaining(&self) -> Duration {
         self.max_elapsed.saturating_sub(self.started.elapsed())
     }
@@ -274,7 +280,11 @@ fn exhausted(detail: &'static str) -> ProductRunnerError {
 }
 
 fn invalid_horizon(detail: &'static str) -> ProductRunnerError {
-    ProductRunnerError::new(ProductRunnerErrorKind::Budget, "configure coding run horizon", detail)
+    ProductRunnerError::new(
+        ProductRunnerErrorKind::InvalidPrecondition,
+        "configure coding run horizon",
+        detail,
+    )
 }
 
 #[cfg(test)]

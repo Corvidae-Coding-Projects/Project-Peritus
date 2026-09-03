@@ -14,6 +14,7 @@ use peritus_product_runner::{
     ProductRunInput, ProductRunOutcome, ProductRunner, RoleProviders, RunObserver,
 };
 use peritus_provider_core::CancellationToken;
+use peritus_run_settlement::RunDisposition;
 use peritus_types::RunId;
 
 use super::persistence::persist_record;
@@ -57,6 +58,7 @@ impl ProductRunService {
             let result = ProductRunner::run(
                 ProductRunInput {
                     run_id,
+                    workspace_id: request.workspace_id(),
                     workspace_root,
                     trace_path,
                     command_runtime,
@@ -68,6 +70,7 @@ impl ProductRunService {
                     providers,
                     cancelled,
                     provider_cancellation,
+                    resume: None,
                 },
                 observer,
             )
@@ -96,6 +99,7 @@ impl ProductRunService {
             peritus_product_runner::ProductRunPhase::Reviewing => ProductRunPhase::Reviewing,
             peritus_product_runner::ProductRunPhase::Fixing => ProductRunPhase::Fixing,
             peritus_product_runner::ProductRunPhase::Verifying => ProductRunPhase::Verifying,
+            peritus_product_runner::ProductRunPhase::Finalizing => ProductRunPhase::Verifying,
             peritus_product_runner::ProductRunPhase::Complete => ProductRunPhase::Complete,
         };
         if let Ok(snapshot) = ProductRunSnapshot::new(
@@ -128,22 +132,14 @@ impl ProductRunService {
             return;
         }
         match result {
-            Ok(ProductRunOutcome::Complete(output)) => {
+            Ok(outcome) if outcome.settlement().disposition() == RunDisposition::Accepted => {
+                let Some(output) = outcome.candidate() else {
+                    fail_handoff(record);
+                    let _ = persist_record(&self.inner.directory, record);
+                    return;
+                };
                 let completion_message = format!("Completed: {}", output.summary);
-                let deliverable =
-                    self.inner.workspaces.get(&record.request.workspace_id()).and_then(|path| {
-                        ProductDeliverable::new(
-                            path.to_string_lossy().into_owned(),
-                            output
-                                .changed_paths
-                                .iter()
-                                .map(|path| path.to_string_lossy().into_owned())
-                                .collect(),
-                            output.successful_commands.clone(),
-                            output.run_instructions.clone(),
-                        )
-                        .ok()
-                    });
+                let deliverable = self.project_deliverable(record, &outcome);
                 let Some(deliverable) = deliverable else {
                     fail_handoff(record);
                     let _ = persist_record(&self.inner.directory, record);
@@ -157,10 +153,10 @@ impl ProductRunService {
                     output.fixer_cycles + 1,
                     record.request.task().to_owned(),
                     "Run completed with passing checks".to_owned(),
-                    output.diff,
-                    output.gates,
-                    output.review,
-                    output.summary,
+                    output.diff.clone(),
+                    output.gates.clone(),
+                    output.review.clone(),
+                    output.summary.clone(),
                 ) {
                     record.snapshot = snapshot.with_deliverable(deliverable);
                 } else {
@@ -171,18 +167,25 @@ impl ProductRunService {
                 let _ =
                     record.conversation.append(ProductConversationRole::Agent, completion_message);
             }
-            Ok(ProductRunOutcome::WaitingForUser { question, .. }) => {
-                let _ =
-                    record.conversation.append(ProductConversationRole::Agent, question.clone());
+            Ok(outcome) if outcome.settlement().disposition() == RunDisposition::WaitingForUser => {
+                let Some(question) = outcome.question() else {
+                    fail_handoff(record);
+                    let _ = persist_record(&self.inner.directory, record);
+                    return;
+                };
+                let _ = record
+                    .conversation
+                    .append(ProductConversationRole::Agent, question.message().to_owned());
                 if let Ok(snapshot) = replace_snapshot(
                     &record.snapshot,
                     ProductRunPhase::WaitingForUser,
                     "Waiting for your reply",
-                    &question,
+                    question.message(),
                 ) {
-                    record.snapshot = snapshot;
+                    record.snapshot = self.with_candidate(record, &outcome, snapshot);
                 }
             }
+            Ok(outcome) => self.finish_nonaccepted(record, &outcome),
             Err(error) => {
                 let phase =
                     if error.kind() == peritus_product_runner::ProductRunnerErrorKind::Cancelled {
@@ -209,6 +212,65 @@ impl ProductRunService {
             }
         }
         let _ = persist_record(&self.inner.directory, record);
+    }
+
+    fn finish_nonaccepted(&self, record: &mut super::RunRecord, outcome: &ProductRunOutcome) {
+        let phase = match outcome.settlement().disposition() {
+            RunDisposition::Cancelled => ProductRunPhase::Cancelled,
+            RunDisposition::RecoveryRequired => ProductRunPhase::RecoveryRequired,
+            RunDisposition::CandidateAvailable | RunDisposition::FailedNoCandidate => {
+                ProductRunPhase::Failed
+            }
+            RunDisposition::Accepted | RunDisposition::WaitingForUser => return,
+        };
+        let status = match outcome.settlement().disposition() {
+            RunDisposition::CandidateAvailable => "Run stopped with a candidate available",
+            RunDisposition::RecoveryRequired => "Run requires recovery before it can continue",
+            RunDisposition::Cancelled => "Run cancelled",
+            _ => "Run stopped before producing a candidate",
+        };
+        let detail = outcome.detail().unwrap_or(status);
+        if let Ok(snapshot) = replace_snapshot(&record.snapshot, phase, status, detail) {
+            record.snapshot = self.with_candidate(record, outcome, snapshot);
+        }
+        let remaining = if outcome.remaining_work().is_empty() {
+            String::new()
+        } else {
+            format!(" Remaining work: {}.", outcome.remaining_work().join("; "))
+        };
+        let _ = record
+            .conversation
+            .append(ProductConversationRole::Agent, format!("{status}: {detail}.{remaining}"));
+    }
+
+    fn with_candidate(
+        &self,
+        record: &super::RunRecord,
+        outcome: &ProductRunOutcome,
+        snapshot: ProductRunSnapshot,
+    ) -> ProductRunSnapshot {
+        match self.project_deliverable(record, outcome) {
+            Some(deliverable) => snapshot.with_deliverable(deliverable),
+            None => snapshot,
+        }
+    }
+
+    fn project_deliverable(
+        &self,
+        record: &super::RunRecord,
+        outcome: &ProductRunOutcome,
+    ) -> Option<ProductDeliverable> {
+        let output = outcome.candidate()?;
+        let stage = outcome.settlement().checkpoint()?.stage();
+        let workspace = self.inner.workspaces.get(&record.request.workspace_id())?;
+        ProductDeliverable::candidate(
+            workspace.to_string_lossy().into_owned(),
+            output.changed_paths.iter().map(|path| path.to_string_lossy().into_owned()).collect(),
+            output.successful_commands.clone(),
+            output.run_instructions.clone(),
+            stage,
+        )
+        .ok()
     }
 }
 

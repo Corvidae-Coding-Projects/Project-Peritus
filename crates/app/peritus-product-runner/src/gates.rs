@@ -21,6 +21,7 @@ use crate::{
 };
 
 /// Rendered exact-target gate evidence and typed D1 report.
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GateReport {
     pub report: TargetGateReport,
     pub output: String,

@@ -12,11 +12,10 @@ use std::{
 };
 
 use peritus_product_runner::{
-    PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput, ProductRunOutcome,
-    ProductRunner, RoleProviders,
+    PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput, ProductRunner, RoleProviders,
 };
 use peritus_provider_core::{CancellationToken, ModelProvider};
-use peritus_types::RunId;
+use peritus_types::{RunId, WorkspaceId};
 
 use support::{
     FixedConversation, ScriptedProvider, design_response, git, list_arguments, named_tool_response,
@@ -125,6 +124,7 @@ fn authorized_external_effects_complete_without_a_synthetic_workspace_diff() {
             let outcome = ProductRunner::run(
                 ProductRunInput {
                     run_id,
+                    workspace_id: WorkspaceId::new([0xA4; 16]).expect("workspace ID"),
                     workspace_root: repository.path().to_owned(),
                     trace_path: state.path().join("external.trace"),
                     command_runtime,
@@ -141,14 +141,17 @@ fn authorized_external_effects_complete_without_a_synthetic_workspace_diff() {
                     },
                     cancelled: Arc::new(AtomicBool::new(false)),
                     provider_cancellation: CancellationToken::new(),
+                    resume: None,
                 },
                 Arc::new(|_| {}),
             )
             .await
             .expect("external-effect run");
-            let ProductRunOutcome::Complete(output) = outcome else {
-                panic!("run asked for unexpected user input");
-            };
+            assert!(
+                outcome.settlement().is_accepted(),
+                "unexpected settlement: {outcome:?}"
+            );
+            let output = outcome.candidate().expect("accepted candidate");
 
             assert!(output.changed_paths.is_empty());
             assert_eq!(output.successful_commands.len(), 2);
@@ -258,6 +261,7 @@ fn operational_request_needs_a_live_effect_even_when_supporting_files_change() {
             let outcome = ProductRunner::run(
                 ProductRunInput {
                     run_id,
+                    workspace_id: WorkspaceId::new([0xB4; 16]).expect("workspace ID"),
                     workspace_root: repository.path().to_owned(),
                     trace_path: state.path().join("mixed-delivery.trace"),
                     command_runtime,
@@ -274,14 +278,17 @@ fn operational_request_needs_a_live_effect_even_when_supporting_files_change() {
                     },
                     cancelled: Arc::new(AtomicBool::new(false)),
                     provider_cancellation: CancellationToken::new(),
+                    resume: None,
                 },
                 Arc::new(|_| {}),
             )
             .await
             .expect("mixed-delivery run");
-            let ProductRunOutcome::Complete(output) = outcome else {
-                panic!("run asked for unexpected user input");
-            };
+            assert!(
+                outcome.settlement().is_accepted(),
+                "unexpected settlement: {outcome:?}"
+            );
+            let output = outcome.candidate().expect("accepted candidate");
 
             assert_eq!(output.changed_paths, [Path::new("setup-service.sh")]);
             assert!(output.successful_commands.len() >= 2);

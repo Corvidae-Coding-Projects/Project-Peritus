@@ -10,6 +10,7 @@ use crate::workspace_filter;
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
 /// Validated managed-worktree candidate reference.
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CandidateBaseline {
     head: String,
 }

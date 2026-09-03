@@ -347,6 +347,7 @@ const fn phase_name(phase: ProductRunPhase) -> &'static str {
         ProductRunPhase::Reviewing => "reviewing",
         ProductRunPhase::Fixing => "fixing",
         ProductRunPhase::Verifying => "verifying",
+        ProductRunPhase::Finalizing => "finalizing",
         ProductRunPhase::Complete => "complete",
     }
 }

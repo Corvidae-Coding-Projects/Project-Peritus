@@ -22,6 +22,20 @@ verification, and explicit risks or non-goals. The adapter then joins:
 - a durable task candidate, provider/tool trace, synced effect-receipt ledger, task-level summary,
   and explicit deliverable handoff consumed by the daemon.
 
+The terminal contract is a verified `RunSettlement`, not success-or-error collapse. The runner
+records a digest-bound checkpoint after each material mutation, successful verification command,
+deterministic gate result, admitted review, and fixer cycle. Ordinary provider, repository, gate,
+budget, cancellation, and recovery terminals therefore retain the strongest candidate and name its
+remaining evidence. A fresh finalization observation clears a candidate that was completely
+reverted, while an explicitly authorized external effect remains a valid candidate boundary.
+
+Continuation state is bound to the exact run, managed-workspace lineage, candidate digest,
+conversation revision, and checkpoint sequence. S1 knowledge invalidation selects the first stale
+phase; S2 obligation evidence participates in gates, reviewer input, acceptance, and fixer routing.
+Provider recovery during review repeats review only, candidate changes repeat qualification, and a
+conversation revision returns to design. Phase admission preserves a protected finalization reserve
+so an open-ended model turn cannot consume the time needed to return an honest handoff.
+
 Developer commands use the same command path as the rest of Peritus. `run_command` starts a
 structured command through C4 and the daemon-owned C2 process store, waits for it, and returns a
 bounded terminal result. Programs that need interaction or background progress use

@@ -12,11 +12,10 @@ use std::{
 };
 
 use peritus_product_runner::{
-    PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput, ProductRunOutcome,
-    ProductRunner, RoleProviders,
+    PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput, ProductRunner, RoleProviders,
 };
 use peritus_provider_core::{CancellationToken, ModelProvider};
-use peritus_types::RunId;
+use peritus_types::{RunId, WorkspaceId};
 
 use support::{
     FixedConversation, ScriptedProvider, cargo, design_response, empty_response, git,
@@ -92,6 +91,7 @@ mod tests {
             let outcome = ProductRunner::run(
                 ProductRunInput {
                     run_id,
+                    workspace_id: WorkspaceId::new([0xa4; 16]).expect("workspace ID"),
                     workspace_root: repository.path().to_owned(),
                     trace_path: state.path().join("product.trace"),
                     command_runtime,
@@ -108,14 +108,14 @@ mod tests {
                     },
                     cancelled: Arc::new(AtomicBool::new(false)),
                     provider_cancellation: CancellationToken::new(),
+                    resume: None,
                 },
                 Arc::new(|_| {}),
             )
             .await
             .expect("fresh role invocations recover");
-            let ProductRunOutcome::Complete(output) = outcome else {
-                panic!("run asked for unexpected user input");
-            };
+            assert!(outcome.settlement().is_accepted());
+            let output = outcome.candidate().expect("accepted candidate");
 
             assert_eq!(output.changed_paths, vec![Path::new("src/lib.rs").to_owned()]);
             assert!(output.summary.contains("Recovered and implemented"));
