@@ -5,6 +5,8 @@ use core::fmt;
 /// Stable product-run failure category.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum ProductRunnerErrorKind {
+    /// Caller input or a required initial authority binding was invalid.
+    InvalidPrecondition,
     /// Managed repository inspection failed.
     Repository,
     /// A provider request or response failed.
@@ -19,6 +21,8 @@ pub enum ProductRunnerErrorKind {
     Budget,
     /// The user cancelled the run.
     Cancelled,
+    /// A supposedly impossible internal state transition was rejected.
+    InternalInvariant,
 }
 
 /// Redaction-safe product runner error.

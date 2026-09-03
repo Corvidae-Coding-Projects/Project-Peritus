@@ -45,6 +45,14 @@ declared external effect receives a finite in-session correction toward a concre
 When a caller-authorized operational request asks for a live result, supporting scripts and
 documentation are accepted only alongside a successful effect and a later fresh verification.
 
+The product runner now checkpoints the exact workspace and conversation after mutations,
+verification commands, gates, review, and fixer work. Provider failure, cancellation, or a deadline
+after useful work returns the strongest candidate with its current, stale, or missing acceptance
+evidence and concrete remaining work. A continuation validates the workspace and conversation
+identity and resumes at the first incomplete phase, so a reviewer retry does not repeat design,
+writing, or already-current gates. Every ordinary exit has protected finalization time; only an
+invalid initial request or an impossible internal invariant escapes the settlement boundary.
+
 ## What remains before release
 
 The implementation is not the release decision. Production readiness still requires:

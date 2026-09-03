@@ -6,6 +6,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use peritus_types::Sha256Digest;
 use sha2::{Digest as _, Sha256};
 
 use crate::{
@@ -13,13 +14,13 @@ use crate::{
 };
 
 /// Exact content and committed-HEAD identity of the current workspace state.
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct WorkspaceCheckpoint {
     head: String,
     entries: Vec<CheckpointEntry>,
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct CheckpointEntry {
     path: PathBuf,
     digest: Option<[u8; 32]>,
@@ -37,6 +38,36 @@ impl WorkspaceCheckpoint {
             .collect::<Result<Vec<_>, _>>()?;
         Ok(Self { head: baseline.head().to_owned(), entries })
     }
+
+    /// Returns a canonical digest of HEAD, every changed path, its content kind, and permissions.
+    #[must_use]
+    pub fn digest(&self) -> Sha256Digest {
+        let mut hasher = Sha256::new();
+        hash_bytes(&mut hasher, self.head.as_bytes());
+        for entry in &self.entries {
+            hash_bytes(&mut hasher, entry.path.to_string_lossy().as_bytes());
+            match entry.digest {
+                Some(digest) => {
+                    hasher.update([1]);
+                    hasher.update(digest);
+                }
+                None => hasher.update([0]),
+            }
+            match entry.permissions {
+                Some(permissions) => {
+                    hasher.update([1]);
+                    hasher.update(permissions.to_le_bytes());
+                }
+                None => hasher.update([0]),
+            }
+        }
+        Sha256Digest::new(hasher.finalize().into())
+    }
+}
+
+fn hash_bytes(hasher: &mut Sha256, bytes: &[u8]) {
+    hasher.update(u64::try_from(bytes.len()).unwrap_or(u64::MAX).to_le_bytes());
+    hasher.update(bytes);
 }
 
 fn checkpoint_entry(root: &Path, path: PathBuf) -> Result<CheckpointEntry, ProductRunnerError> {
@@ -94,15 +125,15 @@ mod tests {
 
         let clean = WorkspaceCheckpoint::capture(root.path()).expect("clean");
         let same = WorkspaceCheckpoint::capture(root.path()).expect("same");
-        assert!(clean == same);
+        assert_eq!(clean, same);
 
         fs::write(root.path().join("tracked.txt"), "changed").expect("write change");
         let changed = WorkspaceCheckpoint::capture(root.path()).expect("changed");
-        assert!(clean != changed);
+        assert_ne!(clean, changed);
 
         fs::write(root.path().join("new.txt"), "untracked").expect("write untracked");
         let untracked = WorkspaceCheckpoint::capture(root.path()).expect("untracked");
-        assert!(changed != untracked);
+        assert_ne!(changed, untracked);
     }
 
     #[test]
@@ -117,7 +148,7 @@ mod tests {
         run(root.path(), &["commit", "--quiet", "--allow-empty", "-m", "task effect"]);
         let after = WorkspaceCheckpoint::capture(root.path()).expect("after commit");
 
-        assert!(before != after);
+        assert_ne!(before, after);
     }
 
     #[cfg(unix)]
@@ -142,7 +173,7 @@ mod tests {
             .expect("fixed permissions");
         let after = WorkspaceCheckpoint::capture(root.path()).expect("after permissions");
 
-        assert!(before != after);
+        assert_ne!(before, after);
     }
 
     fn run(root: &Path, arguments: &[&str]) {

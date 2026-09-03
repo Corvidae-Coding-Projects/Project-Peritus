@@ -28,10 +28,10 @@ where
     let command = args::Command::parse(arguments)?;
     match command {
         args::Command::HarnessBench(input) => {
-            agent::run_harnessbench(input).await.map(BenchmarkReport::HarnessBench)
+            Box::pin(agent::run_harnessbench(input)).await.map(BenchmarkReport::HarnessBench)
         }
         args::Command::TerminalBench(input) => {
-            terminal_agent::run(input).await.map(BenchmarkReport::TerminalBench)
+            Box::pin(terminal_agent::run(input)).await.map(BenchmarkReport::TerminalBench)
         }
     }
 }

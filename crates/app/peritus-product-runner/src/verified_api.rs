@@ -12,7 +12,8 @@ use std::{
 
 use peritus_process::ProcessStore;
 use peritus_provider_core::{CancellationToken, ModelProvider};
-use peritus_types::RunId;
+use peritus_run_settlement::{CandidateCheckpoint, RunSettlement};
+use peritus_types::{RunId, WorkspaceId};
 
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
@@ -129,6 +130,8 @@ pub enum ProductRunPhase {
     Fixing,
     /// Fresh exact-target checks after a fix.
     Verifying,
+    /// Final candidate refresh, evidence classification, and handoff construction.
+    Finalizing,
     /// Passing terminal state.
     Complete,
 }
@@ -153,6 +156,10 @@ pub struct ProductRunUpdate {
     pub finding_state: String,
     /// Cumulative resource accounting at this completed effect boundary.
     pub progress: ProductRunProgress,
+    /// Strongest exact candidate checkpoint observed at this boundary.
+    pub checkpoint: Option<CandidateCheckpoint>,
+    /// Concrete phases or evidence still needed for strict acceptance.
+    pub remaining_work: Vec<String>,
 }
 
 /// Synchronous observer for a completed effect boundary.
@@ -223,6 +230,8 @@ impl CommandRuntime {
 pub struct ProductRunInput {
     /// Stable run identity.
     pub run_id: RunId,
+    /// Stable managed-workspace lineage supplied by the daemon authority boundary.
+    pub workspace_id: WorkspaceId,
     /// Canonical managed-worktree root.
     pub workspace_root: PathBuf,
     /// Durable D0 trace path owned by the daemon.
@@ -245,9 +254,12 @@ pub struct ProductRunInput {
     pub cancelled: Arc<AtomicBool>,
     /// Provider cancellation token.
     pub provider_cancellation: CancellationToken,
+    /// Prior S5 handoff to validate and resume without repeating current phases.
+    pub resume: Option<ProductRunResume>,
 }
 
 /// Exact deliverable evidence from a successful production run.
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProductRunOutput {
     /// Durable detailed implementation design generated before coding.
     pub design_path: PathBuf,
@@ -271,17 +283,95 @@ pub struct ProductRunOutput {
     pub conversation_revision: u64,
 }
 
-/// Terminal product-run result.
-pub enum ProductRunOutcome {
-    /// Passing implementation and review evidence.
-    Complete(ProductRunOutput),
-    /// The writer cannot proceed without one material user choice.
-    WaitingForUser {
-        /// Direct question to present in the run conversation.
-        question: String,
-        /// Conversation revision on which the question was based.
-        conversation_revision: u64,
-    },
+/// Opaque digest-bound continuation state for an interrupted product run.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProductRunResume {
+    checkpoint: CandidateCheckpoint,
+    next_phase: ProductRunPhase,
+}
+
+impl ProductRunResume {
+    /// Exact candidate checkpoint at the interruption boundary.
+    #[must_use]
+    pub const fn checkpoint(&self) -> &CandidateCheckpoint {
+        &self.checkpoint
+    }
+
+    /// First phase that was stale or incomplete when the run stopped.
+    #[must_use]
+    pub const fn next_phase(&self) -> ProductRunPhase {
+        self.next_phase
+    }
+}
+
+/// One material question retained alongside a waiting settlement.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProductRunQuestion {
+    message: String,
+    conversation_revision: u64,
+}
+
+impl ProductRunQuestion {
+    /// Direct question to present in the run conversation.
+    #[must_use]
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+
+    /// Conversation revision on which the question was based.
+    #[must_use]
+    pub const fn conversation_revision(&self) -> u64 {
+        self.conversation_revision
+    }
+}
+
+/// Verified terminal settlement plus its exact candidate and continuation handoff.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProductRunOutcome {
+    settlement: RunSettlement,
+    candidate: Option<ProductRunOutput>,
+    question: Option<ProductRunQuestion>,
+    detail: Option<String>,
+    remaining_work: Vec<String>,
+    resume: Option<ProductRunResume>,
+}
+
+impl ProductRunOutcome {
+    /// Verified terminal truth for this run.
+    #[must_use]
+    pub const fn settlement(&self) -> &RunSettlement {
+        &self.settlement
+    }
+
+    /// Strongest candidate handoff, including incomplete evidence when present.
+    #[must_use]
+    pub const fn candidate(&self) -> Option<&ProductRunOutput> {
+        self.candidate.as_ref()
+    }
+
+    /// Material user question when the disposition is waiting.
+    #[must_use]
+    pub const fn question(&self) -> Option<&ProductRunQuestion> {
+        self.question.as_ref()
+    }
+
+    /// Redaction-safe terminal diagnostic independent of candidate quality.
+    #[must_use]
+    pub fn detail(&self) -> Option<&str> {
+        self.detail.as_deref()
+    }
+
+    /// Concrete phases or evidence still needed for strict acceptance.
+    #[must_use]
+    pub const fn remaining_work(&self) -> &[String] {
+        self.remaining_work.as_slice()
+    }
+
+    /// Digest-bound continuation state when an exact candidate is available.
+    #[must_use]
+    pub const fn resume(&self) -> Option<&ProductRunResume> {
+        self.resume.as_ref()
+    }
 }
 
 /// Verus-facing runner boundary. Real effects exist only in the ordinary implementation.
@@ -294,7 +384,7 @@ impl ProductRunner {
         _observe: RunObserver,
     ) -> Result<ProductRunOutcome, ProductRunnerError> {
         Err(ProductRunnerError::new(
-            ProductRunnerErrorKind::Gate,
+            ProductRunnerErrorKind::InvalidPrecondition,
             "execute verification-only product runner",
             "production effects are unavailable in a verus_only build",
         ))

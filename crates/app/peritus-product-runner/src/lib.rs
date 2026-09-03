@@ -58,7 +58,8 @@ pub use error::{ProductRunnerError, ProductRunnerErrorKind};
 #[cfg(not(verus_only))]
 pub use execution::{
     ConversationView, ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunOutput,
-    ProductRunPhase, ProductRunUpdate, ProductRunner, RoleProviders, RunObserver,
+    ProductRunPhase, ProductRunQuestion, ProductRunResume, ProductRunUpdate, ProductRunner,
+    RoleProviders, RunObserver,
 };
 #[cfg(verus_only)]
 pub use verified_api::{
@@ -66,5 +67,6 @@ pub use verified_api::{
     PRODUCT_RUN_MAX_MODEL_REQUESTS, PRODUCT_RUN_MAX_PEAK_RSS_BYTES, PRODUCT_RUN_MAX_TOOL_CALLS,
     PRODUCT_RUN_MAX_TOTAL_TOKENS, PRODUCT_RUN_MAX_WORKSPACE_GROWTH_BYTES, ProductDeliveryScope,
     ProductRunInput, ProductRunOutcome, ProductRunOutput, ProductRunPhase, ProductRunProgress,
-    ProductRunUpdate, ProductRunner, RoleProviders, RunObserver,
+    ProductRunQuestion, ProductRunResume, ProductRunUpdate, ProductRunner, RoleProviders,
+    RunObserver,
 };

@@ -28,6 +28,7 @@ enum DesignScope {
 }
 
 /// Detailed design artifact and conversation revision it covers.
+#[derive(Clone)]
 pub struct DesignDocument {
     path: PathBuf,
     markdown: String,
@@ -45,6 +46,14 @@ impl DesignDocument {
 
     pub const fn conversation_revision(&self) -> u64 {
         self.conversation_revision
+    }
+
+    pub(crate) const fn restored(
+        path: PathBuf,
+        markdown: String,
+        conversation_revision: u64,
+    ) -> Self {
+        Self { path, markdown, conversation_revision }
     }
 }
 

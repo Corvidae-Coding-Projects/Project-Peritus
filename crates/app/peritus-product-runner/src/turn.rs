@@ -13,6 +13,7 @@ use crate::budget::RunAccounting;
 use crate::developer_tools::{
     WorkspaceDeveloperTools, WorkspaceOwnership, definitions, merge_rendered,
 };
+use crate::execution::CandidateRecorder;
 use crate::execution::{AppliedTurn, AppliedWrite, ProductRunInput, check_cancelled};
 use crate::progress::WorkspaceCheckpoint;
 use crate::trace::FileDeveloperTrace;
@@ -46,6 +47,7 @@ pub async fn complete_developer_turn(
     findings: Option<&str>,
     ownership: &mut WorkspaceOwnership,
     accounting: &mut RunAccounting,
+    recorder: &CandidateRecorder,
 ) -> Result<AppliedTurn, ProductRunnerError> {
     let mut providers = crate::failover::ProviderCursor::new(primary, &input.providers.fallbacks);
     let mut checkpoint = WorkspaceCheckpoint::capture(&input.workspace_root)?;
@@ -72,6 +74,7 @@ pub async fn complete_developer_turn(
                 correction: correction.as_deref(),
                 ownership,
                 remaining,
+                recorder,
             },
             accounting,
         )
@@ -183,6 +186,7 @@ struct InvocationContext<'a> {
     correction: Option<&'a str>,
     ownership: &'a WorkspaceOwnership,
     remaining: Duration,
+    recorder: &'a CandidateRecorder,
 }
 
 async fn run_selected_invocation(
@@ -236,6 +240,7 @@ async fn run_developer_invocation(
         context.remaining,
         input.command_runtime.clone(),
     )
+    .with_checkpoint_observer(context.recorder.tool_observer(Arc::clone(&input.conversation)))
     .with_task_contract(&transcript);
     let mut trace = FileDeveloperTrace::new(input.trace_path.clone());
     let result = DeveloperLoop::run(

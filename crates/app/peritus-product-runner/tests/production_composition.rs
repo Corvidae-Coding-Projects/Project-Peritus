@@ -11,11 +11,12 @@ use std::{
 };
 
 use peritus_product_runner::{
-    PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput, ProductRunOutcome,
-    ProductRunPhase, ProductRunner, ProductRunnerErrorKind, RoleProviders, RunObserver,
+    PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput, ProductRunPhase, ProductRunner,
+    RoleProviders, RunObserver,
 };
 use peritus_provider_core::{CancellationToken, ModelProvider};
-use peritus_types::RunId;
+use peritus_run_settlement::{RunDisposition, SettlementCause};
+use peritus_types::{RunId, WorkspaceId};
 
 use support::{
     FixedConversation, ScriptedProvider, cargo, design_response, git, list_arguments,
@@ -45,9 +46,10 @@ fn provider_failure_before_first_response_retains_an_empty_trace() {
             let task = "Document the fixture.".to_owned();
             let run_id = RunId::new([0x72; 16]).expect("run ID");
             let command_runtime = support::command_runtime(state.path(), repository.path(), run_id);
-            let error = ProductRunner::run(
+            let outcome = ProductRunner::run(
                 ProductRunInput {
                     run_id,
+                    workspace_id: WorkspaceId::new([0x73; 16]).expect("workspace ID"),
                     workspace_root: repository.path().to_owned(),
                     trace_path: trace_path.clone(),
                     command_runtime,
@@ -64,13 +66,16 @@ fn provider_failure_before_first_response_retains_an_empty_trace() {
                     },
                     cancelled: Arc::new(AtomicBool::new(false)),
                     provider_cancellation: CancellationToken::new(),
+                    resume: None,
                 },
                 Arc::new(|_| {}),
             )
             .await
-            .expect_err("provider must fail before returning a response");
+            .expect("provider exhaustion is an ordinary terminal settlement");
 
-            assert_eq!(error.kind(), ProductRunnerErrorKind::Provider);
+            assert_eq!(outcome.settlement().disposition(), RunDisposition::FailedNoCandidate);
+            assert_eq!(outcome.settlement().cause(), SettlementCause::Provider);
+            assert!(outcome.candidate().is_none());
             assert!(trace_path.is_file());
             assert_eq!(fs::metadata(trace_path).expect("trace metadata").len(), 0);
         },
@@ -165,6 +170,7 @@ mod tests {
             let outcome = ProductRunner::run(
                 ProductRunInput {
                     run_id,
+                    workspace_id: WorkspaceId::new([0x84; 16]).expect("workspace ID"),
                     workspace_root: repository.path().to_owned(),
                     trace_path: trace_path.clone(),
                     command_runtime,
@@ -181,14 +187,14 @@ mod tests {
                     },
                     cancelled: Arc::new(AtomicBool::new(false)),
                     provider_cancellation: CancellationToken::new(),
+                    resume: None,
                 },
                 observer,
             )
             .await
             .expect("production run");
-            let ProductRunOutcome::Complete(output) = outcome else {
-                panic!("run asked for unexpected user input");
-            };
+            assert!(outcome.settlement().is_accepted());
+            let output = outcome.candidate().expect("accepted candidate");
 
             assert_eq!(output.changed_paths, vec![Path::new("src/lib.rs").to_owned()]);
             assert_eq!(output.successful_commands.len(), 8);
@@ -236,7 +242,8 @@ mod tests {
                 phases.lock().expect("phases").as_slice(),
                 [ProductRunPhase::Designing, ProductRunPhase::Designing,
                  ProductRunPhase::Writing, ProductRunPhase::Checking,
-                 ProductRunPhase::Reviewing, ProductRunPhase::Reviewing]
+                 ProductRunPhase::Reviewing, ProductRunPhase::Reviewing,
+                 ProductRunPhase::Finalizing]
             );
         });
 }
@@ -338,6 +345,7 @@ mod tests {
             let outcome = ProductRunner::run(
                 ProductRunInput {
                     run_id,
+                    workspace_id: WorkspaceId::new([0x95; 16]).expect("workspace ID"),
                     workspace_root: repository.path().to_owned(),
                     trace_path: state.path().join("product.trace"),
                     command_runtime,
@@ -354,14 +362,14 @@ mod tests {
                     },
                     cancelled: Arc::new(AtomicBool::new(false)),
                     provider_cancellation: CancellationToken::new(),
+                    resume: None,
                 },
                 Arc::new(|_| {}),
             )
             .await
             .expect("production run");
-            let ProductRunOutcome::Complete(output) = outcome else {
-                panic!("run asked for unexpected user input");
-            };
+            assert!(outcome.settlement().is_accepted());
+            let output = outcome.candidate().expect("accepted candidate");
 
             assert_eq!(output.fixer_cycles, 1);
             assert!(output.summary.contains("Added an answer API and test"));

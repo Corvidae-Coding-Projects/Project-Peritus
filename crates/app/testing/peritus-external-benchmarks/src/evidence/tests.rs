@@ -13,6 +13,8 @@ fn last_observation_retains_gate_review_and_resource_diagnostics() {
         summary: "candidate retained".to_owned(),
         finding_state: "{\"cycle\":3}".to_owned(),
         progress: ProductRunProgress::default(),
+        checkpoint: None,
+        remaining_work: Vec::new(),
     });
     let path = observation.publish(directory.path()).expect("publish observation");
     let value: serde_json::Value =

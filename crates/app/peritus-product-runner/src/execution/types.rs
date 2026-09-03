@@ -7,9 +7,10 @@ use std::{
 };
 
 use peritus_provider_core::{CancellationToken, ModelProvider};
-use peritus_types::RunId;
+use peritus_run_settlement::{CandidateCheckpoint, RunSettlement};
+use peritus_types::{RunId, WorkspaceId};
 
-use crate::ProductRunProgress;
+use crate::{ProductRunProgress, execution::resume::ProductRunResume};
 
 /// Concrete product-run phase emitted to the daemon.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -26,6 +27,8 @@ pub enum ProductRunPhase {
     Fixing,
     /// Fresh exact-target checks after a fix.
     Verifying,
+    /// Final candidate refresh, evidence classification, and handoff construction.
+    Finalizing,
     /// Passing terminal state.
     Complete,
 }
@@ -51,6 +54,10 @@ pub struct ProductRunUpdate {
     pub finding_state: String,
     /// Cumulative resource accounting at this completed effect boundary.
     pub progress: ProductRunProgress,
+    /// Strongest exact candidate checkpoint observed at this boundary.
+    pub checkpoint: Option<CandidateCheckpoint>,
+    /// Concrete phases or evidence still needed for strict acceptance.
+    pub remaining_work: Vec<String>,
 }
 
 /// Observer invoked synchronously after each daemon-visible boundary.
@@ -97,6 +104,8 @@ impl ProductDeliveryScope {
 pub struct ProductRunInput {
     /// Stable run identity.
     pub run_id: RunId,
+    /// Stable managed-workspace lineage supplied by the daemon authority boundary.
+    pub workspace_id: WorkspaceId,
     /// Canonical managed-worktree root.
     pub workspace_root: PathBuf,
     /// Durable D0 trace path owned by the daemon.
@@ -119,9 +128,11 @@ pub struct ProductRunInput {
     pub cancelled: Arc<AtomicBool>,
     /// Provider cancellation token.
     pub provider_cancellation: CancellationToken,
+    /// Prior S5 handoff to validate and resume without repeating current phases.
+    pub resume: Option<ProductRunResume>,
 }
 
-/// Successful terminal result and exact deliverable evidence.
+/// Strongest exact candidate handoff, whether qualified or incomplete.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProductRunOutput {
     /// Durable detailed implementation design generated before coding.
@@ -154,16 +165,72 @@ impl ProductRunOutput {
     }
 }
 
-/// A completed run or a material question that needs a user reply.
+/// One material question retained alongside a waiting settlement.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum ProductRunOutcome {
-    /// Passing implementation and review evidence.
-    Complete(ProductRunOutput),
-    /// The writer cannot proceed without one material user choice.
-    WaitingForUser {
-        /// Direct question to present in the run conversation.
-        question: String,
-        /// Conversation revision on which the question was based.
-        conversation_revision: u64,
-    },
+pub struct ProductRunQuestion {
+    pub(super) message: String,
+    pub(super) conversation_revision: u64,
+}
+
+impl ProductRunQuestion {
+    /// Direct question to present in the run conversation.
+    #[must_use]
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+
+    /// Conversation revision on which the question was based.
+    #[must_use]
+    pub const fn conversation_revision(&self) -> u64 {
+        self.conversation_revision
+    }
+}
+
+/// Verified terminal settlement plus its exact candidate, continuation, and diagnostic handoff.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProductRunOutcome {
+    pub(super) settlement: RunSettlement,
+    pub(super) candidate: Option<ProductRunOutput>,
+    pub(super) question: Option<ProductRunQuestion>,
+    pub(super) detail: Option<String>,
+    pub(super) remaining_work: Vec<String>,
+    pub(super) resume: Option<ProductRunResume>,
+}
+
+impl ProductRunOutcome {
+    /// Verified terminal truth for this run.
+    #[must_use]
+    pub const fn settlement(&self) -> &RunSettlement {
+        &self.settlement
+    }
+
+    /// Strongest candidate handoff, including incomplete evidence when present.
+    #[must_use]
+    pub const fn candidate(&self) -> Option<&ProductRunOutput> {
+        self.candidate.as_ref()
+    }
+
+    /// Material user question when the disposition is waiting.
+    #[must_use]
+    pub const fn question(&self) -> Option<&ProductRunQuestion> {
+        self.question.as_ref()
+    }
+
+    /// Redaction-safe terminal diagnostic independent of candidate quality.
+    #[must_use]
+    pub fn detail(&self) -> Option<&str> {
+        self.detail.as_deref()
+    }
+
+    /// Concrete phases or evidence still needed for strict acceptance.
+    #[must_use]
+    pub const fn remaining_work(&self) -> &[String] {
+        self.remaining_work.as_slice()
+    }
+
+    /// Digest-bound continuation state when an exact candidate is available.
+    #[must_use]
+    pub const fn resume(&self) -> Option<&ProductRunResume> {
+        self.resume.as_ref()
+    }
 }

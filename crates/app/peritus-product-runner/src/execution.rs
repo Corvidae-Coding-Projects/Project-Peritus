@@ -1,36 +1,45 @@
 //! E0 production writer-gates-review-fixer composition.
 
 mod acceptance;
+mod cancellation;
+mod checkpoint;
 mod cycle;
+mod deadline;
 mod fix_progress;
+mod obligations;
+mod resume;
+mod review_phase;
+mod settlement;
+mod state;
 mod summary;
+mod terminal_exit;
+mod turn_result;
 mod types;
 
+pub use cancellation::check_cancelled;
+pub use checkpoint::CandidateRecorder;
+pub use resume::ProductRunResume;
+pub use turn_result::{AppliedTurn, AppliedWrite};
 pub use types::{
     ConversationView, ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunOutput,
-    ProductRunPhase, ProductRunUpdate, RoleProviders, RunObserver,
+    ProductRunPhase, ProductRunQuestion, ProductRunUpdate, RoleProviders, RunObserver,
 };
 
-use std::{
-    sync::{
-        Arc,
-        atomic::{AtomicBool, Ordering},
-    },
-    time::Duration,
-};
+use std::sync::{Arc, atomic::Ordering};
 
-use peritus_orchestrator::{ProductionDecision, ProductionRunCoordinator};
-use peritus_review::ProductFindingLedger;
+use peritus_obligations::FailureDisposition;
+use peritus_orchestrator::ProductionDecision;
+use peritus_run_settlement::SettlementCause;
 
 use crate::{
     ProductRunnerError, ProductRunnerErrorKind, budget::RunAccounting,
-    candidate::CandidateBaseline, design, developer_tools::WorkspaceOwnership, review,
+    developer_tools::WorkspaceOwnership, review,
 };
-use cycle::{apply_fix, create_design, initial_write, inspect_cycle};
-use fix_progress::{FixProgress, FixProgressObservation};
+use cycle::{GateInspection, apply_fix, create_design, inspect_gates, retained_inspection};
+use fix_progress::FixProgressObservation;
+use state::{ExecutionContext, RunState};
 use summary::completion_summary;
-
-const MAX_FIX_CYCLES: u32 = 8;
+use terminal_exit::{ActiveExit, fatal};
 
 /// Stateless product-run entry point using the D0/D1/D2/E0 production composition.
 pub struct ProductRunner;
@@ -39,120 +48,147 @@ impl ProductRunner {
     /// Executes a complete writer-reviewer-fixer loop.
     ///
     /// # Errors
-    /// Returns a typed failure for provider, model-contract, repository, gate, trace, tool, or
-    /// cancellation failures. A candidate is never complete without exact changed-target evidence.
+    /// Returns an error only for invalid initial input or an impossible internal invariant. Every
+    /// ordinary terminal path is represented by the returned verified settlement.
     #[allow(clippy::too_many_lines, reason = "the E0 effect and decision order remains explicit")]
     pub async fn run(
         input: ProductRunInput,
         observe: RunObserver,
     ) -> Result<ProductRunOutcome, ProductRunnerError> {
         crate::budget::validate_run_horizon(input.max_elapsed)?;
+        let mut accounting = match RunAccounting::new(&input.workspace_root, input.max_elapsed) {
+            Ok(accounting) => accounting,
+            Err(error) => return settlement::from_initial_error(&input, &error),
+        };
+        if let Err(error) = accounting.check() {
+            return settlement::from_initial_error(&input, &error);
+        }
+        if let Err(error) = crate::trace::prepare(&input.trace_path) {
+            return settlement::from_initial_error(&input, &error);
+        }
+        let mut execution = match ExecutionContext::prepare(&input) {
+            Ok(execution) => execution,
+            Err(error) => return settlement::from_initial_error(&input, &error),
+        };
         let max_elapsed = input.max_elapsed;
         let cancelled = Arc::clone(&input.cancelled);
         let provider_cancellation = input.provider_cancellation.clone();
-        let deadline_reached = Arc::new(AtomicBool::new(false));
+        let deadline_reached = Arc::new(std::sync::atomic::AtomicBool::new(false));
         let timer_reached = Arc::clone(&deadline_reached);
         let timer_cancelled = Arc::clone(&cancelled);
         let timer_provider_cancellation = provider_cancellation.clone();
         let timer = tokio::spawn(async move {
-            tokio::time::sleep(max_elapsed).await;
+            tokio::time::sleep(deadline::active_window(max_elapsed)).await;
             timer_reached.store(true, Ordering::SeqCst);
             timer_cancelled.store(true, Ordering::SeqCst);
             let _ = timer_provider_cancellation.cancel();
         });
         let result = tokio::time::timeout(
-            max_elapsed.saturating_add(Duration::from_secs(5)),
-            Self::run_until_complete(input, observe),
+            max_elapsed,
+            Self::run_until_terminal(&input, &observe, &mut execution, &mut accounting),
         )
         .await;
         timer.abort();
         let _ = timer.await;
-        match result {
-            Ok(result) if !deadline_reached.load(Ordering::SeqCst) => result,
-            Ok(_) | Err(_) => {
+        let reached = deadline_reached.load(Ordering::SeqCst);
+        let terminal = match result {
+            Ok(Ok(exit)) => exit.with_deadline(reached),
+            Ok(Err(error)) if fatal(&error) => return Err(error),
+            Ok(Err(error)) => ActiveExit::from_error(&error, reached, execution.next_phase),
+            Err(_) => {
                 cancelled.store(true, Ordering::SeqCst);
                 let _ = provider_cancellation.cancel();
-                Err(ProductRunnerError::new(
-                    ProductRunnerErrorKind::Budget,
-                    "complete coding run before caller deadline",
-                    "the configured run horizon was exhausted",
-                ))
+                ActiveExit::deadline(execution.next_phase)
             }
-        }
+        };
+        let checkpoint = execution.recorder.checkpoint()?;
+        observe(ProductRunUpdate {
+            phase: ProductRunPhase::Finalizing,
+            cycle: execution.completed_cycles().saturating_add(1),
+            status: "Refreshing the exact candidate and constructing its terminal handoff"
+                .to_owned(),
+            diff: execution.evidence.diff.clone(),
+            gates: execution.evidence.gates.clone(),
+            review: execution.evidence.review.clone(),
+            summary: execution
+                .state
+                .as_ref()
+                .map_or_else(String::new, |state| state.task_summary.clone()),
+            finding_state: execution
+                .state
+                .as_ref()
+                .map(|state| review::encode_ledger(&state.findings))
+                .transpose()?
+                .unwrap_or_default(),
+            progress: accounting.latest_snapshot(),
+            checkpoint,
+            remaining_work: Vec::new(),
+        });
+        settlement::finalize(settlement::FinalizationInput {
+            input: &input,
+            baseline: &execution.baseline,
+            recorder: &execution.recorder,
+            design: execution.design.as_ref(),
+            state: execution.state.as_ref(),
+            diff: &execution.evidence.diff,
+            gates: &execution.evidence.gates,
+            review: &execution.evidence.review,
+            gate_report: execution.gate_report.as_ref(),
+            cause: terminal.cause,
+            question: terminal.question,
+            detail: terminal.detail,
+            next_phase: terminal.next_phase,
+        })
     }
 
     #[allow(clippy::too_many_lines, reason = "the E0 effect and decision order remains explicit")]
-    async fn run_until_complete(
-        input: ProductRunInput,
-        observe: RunObserver,
-    ) -> Result<ProductRunOutcome, ProductRunnerError> {
-        let mut accounting = RunAccounting::new(&input.workspace_root, input.max_elapsed)?;
-        accounting.check()?;
-        let baseline = CandidateBaseline::capture(&input.workspace_root)?;
-        let effect_requirement = crate::delivery_requirement::ExternalEffectRequirement::from_task(
-            input.delivery_scope,
-            &input.task,
-        );
-        crate::trace::prepare(&input.trace_path)?;
+    async fn run_until_terminal(
+        input: &ProductRunInput,
+        observe: &RunObserver,
+        execution: &mut ExecutionContext,
+        accounting: &mut RunAccounting,
+    ) -> Result<ActiveExit, ProductRunnerError> {
         let mut workspace_ownership = WorkspaceOwnership::capture(&input.workspace_root);
-        let design = create_design(&input, &observe, 1, &mut accounting).await?;
-        let restored_findings = review::restore_ledger(&input.finding_state)?;
-        let prior_findings =
-            (restored_findings.cycle() > 0).then(|| review::render(&restored_findings));
-        let applied = match initial_write(
-            &input,
-            &observe,
-            design.markdown(),
-            prior_findings.as_deref(),
-            &mut workspace_ownership,
-            &mut accounting,
-        )
-        .await?
+        if let Some((question, revision)) = execution
+            .prepare_active_state(input, observe, &mut workspace_ownership, accounting)
+            .await?
         {
-            AppliedTurn::Applied(applied) => applied,
-            AppliedTurn::Waiting { question, conversation_revision } => {
-                return Ok(ProductRunOutcome::WaitingForUser { question, conversation_revision });
-            }
-        };
-        let mut state = RunState {
-            task_summary: applied.summary,
-            run_instructions: applied.run_instructions,
-            design,
-            fix_summaries: Vec::new(),
-            tool_calls: applied.tool_calls,
-            conversation_revision: applied.conversation_revision,
-            findings: restored_findings,
-            fix_progress: FixProgress::capture(&input.workspace_root)?,
-            coordinator: ProductionRunCoordinator::new(MAX_FIX_CYCLES).map_err(|detail| {
-                ProductRunnerError::new(
-                    ProductRunnerErrorKind::Gate,
-                    "start E0 production coordinator",
-                    detail,
-                )
-            })?,
-            developer_evidence: applied.verification_evidence,
-            successful_commands: applied.successful_commands,
-        };
+            return Ok(ActiveExit::waiting(question, revision, ProductRunPhase::Writing));
+        }
 
         loop {
+            if execution.next_phase == ProductRunPhase::Finalizing {
+                return Ok(ActiveExit::completed());
+            }
+            let state = execution.state.as_mut().ok_or_else(|| {
+                ProductRunnerError::new(
+                    ProductRunnerErrorKind::InternalInvariant,
+                    "resume product run",
+                    "an executable phase has no retained run state",
+                )
+            })?;
             if input.conversation.revision() != state.conversation_revision {
+                execution.next_phase = ProductRunPhase::Designing;
                 state.design = create_design(
-                    &input,
-                    &observe,
+                    input,
+                    observe,
                     state.coordinator.completed_fixer_cycles() + 2,
-                    &mut accounting,
+                    accounting,
                 )
                 .await?;
+                execution.design = Some(state.design.clone());
+                execution.next_phase = ProductRunPhase::Writing;
                 let prior = review::render(&state.findings);
                 match crate::turn::complete_developer_turn(
-                    &input,
+                    input,
                     &input.providers.writer,
                     "writer-follow-up",
                     state.coordinator.completed_fixer_cycles() + 2,
                     state.design.markdown(),
                     Some(&prior),
                     &mut workspace_ownership,
-                    &mut accounting,
+                    accounting,
+                    &execution.recorder,
                 )
                 .await?
                 {
@@ -175,42 +211,139 @@ impl ProductRunner {
                             &applied.successful_commands,
                         );
                         state.fix_progress.reset(&input.workspace_root)?;
+                        execution.next_phase = ProductRunPhase::Checking;
                     }
                     AppliedTurn::Waiting { question, conversation_revision } => {
-                        return Ok(ProductRunOutcome::WaitingForUser {
+                        return Ok(ActiveExit::waiting(
                             question,
                             conversation_revision,
-                        });
+                            ProductRunPhase::Writing,
+                        ));
                     }
                 }
-            }
-            let inspected = inspect_cycle(
-                &input,
-                &observe,
-                &baseline,
-                &mut state,
-                &workspace_ownership,
-                &mut accounting,
-            )
-            .await?;
-            if inspected.conversation_changed {
                 continue;
             }
+            let inspected = match execution.next_phase {
+                ProductRunPhase::Checking | ProductRunPhase::Verifying => {
+                    let checked = inspect_gates(
+                        input,
+                        observe,
+                        &execution.baseline,
+                        state,
+                        &workspace_ownership,
+                        accounting,
+                        &execution.recorder,
+                        &execution.obligations,
+                    )?;
+                    execution.gate_report = Some(checked.gates.clone());
+                    execution.evidence = checked.evidence.clone();
+                    if checked.conversation_changed {
+                        execution.next_phase = ProductRunPhase::Designing;
+                    } else {
+                        execution.next_phase = ProductRunPhase::Reviewing;
+                    }
+                    continue;
+                }
+                ProductRunPhase::Reviewing => {
+                    let checked = GateInspection {
+                        gates: execution.gate_report.clone().ok_or_else(|| {
+                            ProductRunnerError::new(
+                                ProductRunnerErrorKind::InternalInvariant,
+                                "resume reviewer phase",
+                                "reviewer phase has no retained exact-target gate report",
+                            )
+                        })?,
+                        gates_satisfied: execution.recorder.checkpoint()?.is_some_and(
+                            |checkpoint| {
+                                checkpoint.gates().is_current_and_satisfied(checkpoint.identity())
+                            },
+                        ),
+                        evidence: execution.evidence.clone(),
+                        conversation_changed: false,
+                    };
+                    let inspected = review_phase::complete(
+                        input,
+                        observe,
+                        state,
+                        accounting,
+                        &execution.recorder,
+                        &execution.obligations,
+                        checked,
+                    )
+                    .await?;
+                    execution.evidence = inspected.evidence.clone();
+                    if inspected.conversation_changed {
+                        execution.next_phase = ProductRunPhase::Designing;
+                        continue;
+                    }
+                    inspected
+                }
+                ProductRunPhase::Fixing => {
+                    let inspected = retained_inspection(
+                        execution.gate_report.as_ref(),
+                        &execution.evidence,
+                        &execution.recorder,
+                    )?;
+                    if let Some((question, revision)) = apply_fix(
+                        input,
+                        observe,
+                        &inspected,
+                        state,
+                        &mut workspace_ownership,
+                        accounting,
+                        &execution.recorder,
+                    )
+                    .await?
+                    {
+                        return Ok(ActiveExit::waiting(
+                            question,
+                            revision,
+                            ProductRunPhase::Fixing,
+                        ));
+                    }
+                    execution.next_phase = ProductRunPhase::Verifying;
+                    if state.fix_progress.observe(&input.workspace_root)?
+                        == FixProgressObservation::Exhausted
+                    {
+                        return Ok(ActiveExit::stopped(
+                            SettlementCause::Gate,
+                            "two consecutive fixer cycles made no candidate change while exact checks or blocking findings remained".to_owned(),
+                            ProductRunPhase::Fixing,
+                        ));
+                    }
+                    continue;
+                }
+                ProductRunPhase::Finalizing => return Ok(ActiveExit::completed()),
+                ProductRunPhase::Designing
+                | ProductRunPhase::Writing
+                | ProductRunPhase::Complete => {
+                    return Err(ProductRunnerError::new(
+                        ProductRunnerErrorKind::InternalInvariant,
+                        "advance product run",
+                        "active loop entered a phase without its required transition",
+                    ));
+                }
+            };
             if let Some(finding) = state.fix_progress.observe_findings(&state.findings) {
                 let location = if finding.location.trim().is_empty() {
                     String::new()
                 } else {
                     format!(" at {}", finding.location)
                 };
-                return Err(ProductRunnerError::new(
-                    ProductRunnerErrorKind::Gate,
-                    "verify coding run",
+                return Ok(ActiveExit::stopped(
+                    SettlementCause::Review,
                     format!(
-                        "blocking review finding remained after two fresh fixer/reviewer cycles: {}{location}; the latest candidate and review evidence were retained for correction or continuation",
+                        "blocking review finding remained after two fresh fixer/reviewer cycles: {}{location}",
                         finding.title,
                     ),
+                    ProductRunPhase::Fixing,
                 ));
             }
+            let effect_requirement =
+                crate::delivery_requirement::ExternalEffectRequirement::from_task(
+                    input.delivery_scope,
+                    &input.task,
+                );
             match acceptance::decide(
                 input.delivery_scope,
                 effect_requirement,
@@ -219,7 +352,7 @@ impl ProductRunner {
                 &state.findings,
                 &state.successful_commands,
             ) {
-                ProductionDecision::Accept => {
+                ProductionDecision::Accept if inspected.qualification.all_satisfied() => {
                     let changed_paths = inspected.gates.report.changed_paths().to_vec();
                     let successful_commands = acceptance::successful_command_lines(
                         input.delivery_scope,
@@ -227,7 +360,7 @@ impl ProductRunner {
                         &inspected.gates,
                         &state.successful_commands,
                     );
-                    let completion = completion_summary(
+                    state.task_summary = completion_summary(
                         &input.task,
                         &state.task_summary,
                         &state.fix_summaries,
@@ -236,107 +369,29 @@ impl ProductRunner {
                         input.delivery_scope,
                         effect_requirement,
                     );
-                    let summary = format!(
-                        "{completion}\n\nDetailed design: {}",
-                        state.design.path().display()
-                    );
-                    return Ok(ProductRunOutcome::Complete(ProductRunOutput {
-                        design_path: state.design.path().to_owned(),
-                        summary,
-                        diff: inspected.evidence.diff,
-                        gates: inspected.evidence.gates,
-                        review: inspected.evidence.review,
-                        changed_paths,
-                        successful_commands,
-                        run_instructions: state.run_instructions,
-                        fixer_cycles: state.coordinator.completed_fixer_cycles(),
-                        conversation_revision: state.conversation_revision,
-                    }));
+                    execution.next_phase = ProductRunPhase::Finalizing;
+                    return Ok(ActiveExit::completed());
                 }
-                ProductionDecision::Fix => {
-                    if let Some(waiting) = apply_fix(
-                        &input,
-                        &observe,
-                        &inspected,
-                        &mut state,
-                        &mut workspace_ownership,
-                        &mut accounting,
-                    )
-                    .await?
+                ProductionDecision::Accept | ProductionDecision::Fix => {
+                    if inspected.qualification.fixer_disposition(false)
+                        != FailureDisposition::RequestFixer
                     {
-                        return Ok(waiting);
-                    }
-                    if state.fix_progress.observe(&input.workspace_root)?
-                        == FixProgressObservation::Exhausted
-                    {
-                        return Err(ProductRunnerError::new(
-                            ProductRunnerErrorKind::Gate,
-                            "verify coding run",
-                            "two consecutive fixer cycles made no candidate change while exact checks or blocking findings remained",
+                        return Ok(ActiveExit::stopped(
+                            SettlementCause::InternalInvariant,
+                            "non-candidate failure was refused fixer routing".to_owned(),
+                            execution.next_phase,
                         ));
                     }
+                    execution.next_phase = ProductRunPhase::Fixing;
                 }
                 ProductionDecision::Exhausted => {
-                    return Err(ProductRunnerError::new(
-                        ProductRunnerErrorKind::Gate,
-                        "verify coding run",
-                        "exact-target checks or conserved blocking findings remain after the configured fixer cycles",
+                    return Ok(ActiveExit::stopped(
+                        SettlementCause::Gate,
+                        "exact-target checks or conserved blocking findings remain after the configured fixer cycles".to_owned(),
+                        ProductRunPhase::Fixing,
                     ));
                 }
             }
         }
-    }
-}
-
-struct RunState {
-    task_summary: String,
-    run_instructions: String,
-    design: design::DesignDocument,
-    fix_summaries: Vec<String>,
-    tool_calls: u32,
-    conversation_revision: u64,
-    findings: ProductFindingLedger,
-    fix_progress: FixProgress,
-    coordinator: ProductionRunCoordinator,
-    developer_evidence: String,
-    successful_commands: Vec<crate::developer_tools::SuccessfulCommand>,
-}
-
-pub struct AppliedWrite {
-    /// Task-level summary returned by this developer turn.
-    pub summary: String,
-    /// Concrete command or steps for running the result.
-    pub run_instructions: String,
-    /// Number of actual developer-tool calls executed.
-    pub tool_calls: u32,
-    /// Conversation revision incorporated by the turn.
-    pub conversation_revision: u64,
-    /// Bounded structured command requests and observations from this developer turn.
-    pub verification_evidence: String,
-    /// Successful, explicitly classified developer commands retained for delivery evidence.
-    pub(crate) successful_commands: Vec<crate::developer_tools::SuccessfulCommand>,
-}
-
-pub enum AppliedTurn {
-    /// The model performed work and returned a terminal summary.
-    Applied(AppliedWrite),
-    /// The model requires one material answer before continuing.
-    Waiting {
-        /// Direct question for the user.
-        question: String,
-        /// Conversation revision on which the question was based.
-        conversation_revision: u64,
-    },
-}
-
-pub fn check_cancelled(input: &ProductRunInput) -> Result<(), ProductRunnerError> {
-    if input.cancelled.load(Ordering::Acquire) || input.provider_cancellation.is_cancelled() {
-        Err(ProductRunnerError::new(
-            ProductRunnerErrorKind::Cancelled,
-            "execute coding run",
-            "run was cancelled",
-        ))
-    } else {
-        Ok(())
     }
 }

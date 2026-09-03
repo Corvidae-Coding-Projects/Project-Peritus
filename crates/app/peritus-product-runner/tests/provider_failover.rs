@@ -15,13 +15,13 @@ use std::{
 
 use peritus_model_protocol::{ModelRequest, ProviderProfile};
 use peritus_product_runner::{
-    PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput, ProductRunOutcome,
-    ProductRunner, RoleProviders, RunObserver,
+    PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput, ProductRunner, RoleProviders,
+    RunObserver,
 };
 use peritus_provider_core::{
     BoxFuture, CancellationToken, ModelProvider, OwnedModelStream, ProviderCoreError,
 };
-use peritus_types::RunId;
+use peritus_types::{RunId, WorkspaceId};
 
 use support::{
     FixedConversation, ScriptedProvider, cargo, design_response, git, list_arguments,
@@ -127,6 +127,7 @@ mod tests {
             let outcome = ProductRunner::run(
                 ProductRunInput {
                     run_id,
+                    workspace_id: WorkspaceId::new([0x65; 16]).expect("workspace ID"),
                     workspace_root: repository.path().to_owned(),
                     trace_path: trace_path.clone(),
                     command_runtime,
@@ -143,14 +144,14 @@ mod tests {
                     },
                     cancelled: Arc::new(AtomicBool::new(false)),
                     provider_cancellation: CancellationToken::new(),
+                    resume: None,
                 },
                 observer,
             )
             .await
             .expect("fallback-backed production run");
-            let ProductRunOutcome::Complete(output) = outcome else {
-                panic!("run asked for unexpected user input");
-            };
+            assert!(outcome.settlement().is_accepted());
+            let output = outcome.candidate().expect("accepted candidate");
 
             assert_eq!(output.changed_paths, vec![Path::new("src/lib.rs").to_owned()]);
             assert!(output.gates.contains("Exact-target acceptance: PASS"));

@@ -14,12 +14,12 @@ use peritus_model_protocol::{
 };
 use peritus_product_runner::{
     ConversationView, PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput,
-    ProductRunOutcome, ProductRunner, RoleProviders, RunObserver,
+    ProductRunner, RoleProviders, RunObserver,
 };
 use peritus_provider_anthropic::{ClaudeExecutable, ClaudeRuntimeConfig, ClaudeRuntimeProvider};
 use peritus_provider_core::{CancellationToken, ModelProvider, ProcessLimits};
 use peritus_provider_openai::{CodexExecutable, CodexRuntimeConfig, CodexRuntimeProvider};
-use peritus_types::{ProviderProfileId, RunId};
+use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 
 fn main() -> Result<(), Box<dyn Error>> {
     tokio::runtime::Builder::new_multi_thread()
@@ -56,6 +56,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
     let output = ProductRunner::run(
         ProductRunInput {
             run_id,
+            workspace_id: WorkspaceId::new([0xE5; 16]).expect("nonzero workspace id"),
             workspace_root: repository.path().to_owned(),
             trace_path: repository.path().join("peritus-run.trace"),
             command_runtime,
@@ -72,13 +73,21 @@ async fn run() -> Result<(), Box<dyn Error>> {
             },
             cancelled: Arc::new(AtomicBool::new(false)),
             provider_cancellation: cancellation,
+            resume: None,
         },
         observer,
     )
     .await?;
-    let ProductRunOutcome::Complete(output) = output else {
-        return Err(io::Error::other("product run unexpectedly asked for clarification").into());
-    };
+    if !output.settlement().is_accepted() {
+        return Err(io::Error::other(format!(
+            "product run was not accepted: {:?}",
+            output.settlement().disposition()
+        ))
+        .into());
+    }
+    let output = output
+        .candidate()
+        .ok_or_else(|| io::Error::other("accepted product run had no candidate"))?;
     let source = fs::read_to_string(repository.path().join("src/lib.rs"))?;
     if !source.contains("answer") || !source.contains("42") || output.diff.is_empty() {
         return Err(

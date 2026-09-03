@@ -26,9 +26,12 @@ const MAX_PROGRESS_NUDGES: u8 = 2;
 const PROGRESS_FEEDBACK: &str = "The harness observed a long inspection sequence without a workspace mutation or successful declared external effect. Choose the shortest concrete delivery step now. If a standard capability is missing and the active disposable task authorizes installation, use the available package or runtime manager before hand-writing a substitute. Otherwise write or apply the requested result, then verify it. Continue inspecting only when a specific unresolved requirement still needs evidence.";
 
 mod active;
+mod checkpoint_observer;
 mod command;
 
 use active::ActiveCommandLedger;
+pub use checkpoint_observer::ToolCheckpointBoundary;
+use checkpoint_observer::ToolCheckpointObserver;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum WorkspaceToolMode {
@@ -52,6 +55,7 @@ pub struct WorkspaceDeveloperTools {
     tools_without_delivery_progress: u16,
     progress_nudges: u8,
     progress_feedback_pending: bool,
+    checkpoint_observer: Option<ToolCheckpointObserver>,
 }
 
 impl WorkspaceDeveloperTools {
@@ -75,6 +79,7 @@ impl WorkspaceDeveloperTools {
             tools_without_delivery_progress: 0,
             progress_nudges: 0,
             progress_feedback_pending: false,
+            checkpoint_observer: None,
         }
     }
 
@@ -101,7 +106,13 @@ impl WorkspaceDeveloperTools {
             tools_without_delivery_progress: 0,
             progress_nudges: 0,
             progress_feedback_pending: false,
+            checkpoint_observer: None,
         }
+    }
+
+    pub(crate) fn with_checkpoint_observer(mut self, observer: ToolCheckpointObserver) -> Self {
+        self.checkpoint_observer = Some(observer);
+        self
     }
 
     pub const fn grounding(&self) -> &GroundingEvidence {
@@ -232,6 +243,9 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
                 .as_mut()
                 .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
                 .complete(&value, is_error)?;
+        }
+        if accepted {
+            self.record_checkpoint(call.name().as_str(), &arguments, &value)?;
         }
         if accepted {
             self.record_success(call.name().as_str(), &arguments, &value);
