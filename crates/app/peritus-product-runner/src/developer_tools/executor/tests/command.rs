@@ -5,6 +5,7 @@ use std::{
     time::Instant,
 };
 
+mod control;
 #[cfg(unix)]
 mod signal;
 

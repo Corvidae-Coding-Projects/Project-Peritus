@@ -2,6 +2,7 @@
 
 mod authority;
 mod contract;
+mod control;
 mod identity;
 mod journal;
 mod kernel;
@@ -22,9 +23,7 @@ use peritus_agent::DeveloperLoopError;
 use peritus_artifact_store::{ArtifactStore, StoreConfig};
 use peritus_policy::{AuthorityInstant, OperationDescriptor, OperationRegistry, RiskSet};
 use peritus_process::{ExecutionGateway, ProcessStore};
-use peritus_tool_protocol::{
-    BoundedText, CancellationReason, ToolControl, ToolProgress, ToolResult,
-};
+use peritus_tool_protocol::{CancellationReason, ToolControl, ToolProgress, ToolResult};
 use peritus_tool_router::{
     DispatchOutcome, InvocationHandle, RecoveryOutcome, RouterLimits, ToolRegistry, ToolRouter,
 };
@@ -65,6 +64,7 @@ struct RuntimeState {
 struct ActiveCommand {
     invocation: InvocationHandle,
     started: Instant,
+    interactive: bool,
 }
 
 struct TerminalCommand {
@@ -181,35 +181,6 @@ impl CommandRuntime {
         self.observe(handle, Observation::Poll)
     }
 
-    pub(super) fn stdin(&self, handle: &str, bytes: Vec<u8>) -> Result<Value, DeveloperLoopError> {
-        let control = ToolControl::stdin(bytes, 65_536).map_err(|error| tool(error.to_string()))?;
-        self.observe(handle, Observation::Control(control))
-    }
-
-    pub(super) fn resize(
-        &self,
-        handle: &str,
-        rows: u16,
-        columns: u16,
-    ) -> Result<Value, DeveloperLoopError> {
-        let control =
-            ToolControl::resize(rows, columns).map_err(|error| tool(error.to_string()))?;
-        self.observe(handle, Observation::Control(control))
-    }
-
-    pub(super) fn signal(&self, handle: &str, signal: String) -> Result<Value, DeveloperLoopError> {
-        let signal = BoundedText::new(signal).map_err(|error| tool(error.to_string()))?;
-        self.observe(handle, Observation::Control(ToolControl::Signal(signal)))
-    }
-
-    pub(super) fn cancel(&self, handle: &str) -> Result<Value, DeveloperLoopError> {
-        self.observe(handle, Observation::Cancel)
-    }
-
-    pub(super) fn recover(&self, handle: &str) -> Result<Value, DeveloperLoopError> {
-        self.observe(handle, Observation::Recover)
-    }
-
     fn start_owned(&self, request: StartCommand<'_>) -> Result<String, DeveloperLoopError> {
         let cwd = canonical_command_cwd(&self.inner.workspace_root, request.cwd)?;
         let timeout_millis =
@@ -274,9 +245,14 @@ impl CommandRuntime {
         let handle = identity::action_hex(ids.action);
         match outcome {
             DispatchOutcome::Active(invocation) => {
-                state
-                    .active
-                    .insert(handle.clone(), ActiveCommand { invocation, started: Instant::now() });
+                state.active.insert(
+                    handle.clone(),
+                    ActiveCommand {
+                        invocation,
+                        started: Instant::now(),
+                        interactive: request.interactive,
+                    },
+                );
             }
             DispatchOutcome::Completed(result) | DispatchOutcome::Replayed(result) => {
                 state
