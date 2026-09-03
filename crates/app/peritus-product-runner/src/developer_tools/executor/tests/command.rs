@@ -31,7 +31,18 @@ fn active_commands_accept_terminal_input_and_reach_a_stable_result() {
         "command_resize",
         &format!(r#"{{"columns":100,"handle":"{handle}","rows":30}}"#),
     );
+    #[cfg(not(windows))]
     assert!(!resized.is_error, "{}", wire(&resized));
+    #[cfg(windows)]
+    {
+        assert!(resized.is_error, "{}", wire(&resized));
+        assert!(
+            wire(&resized)
+                .contains("terminal resize was not authorized by the checked execution plan"),
+            "{}",
+            wire(&resized)
+        );
+    }
     let recovered = execute(&mut tools, "command_recover", &format!(r#"{{"handle":"{handle}"}}"#));
     assert!(!recovered.is_error, "{}", wire(&recovered));
     let recovered: Value = serde_json::from_str(&wire(&recovered)).expect("recovery result");
