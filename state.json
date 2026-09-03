@@ -1,5 +1,5 @@
 {
-  "next_display_id": 54,
+  "next_display_id": 55,
   "next_comment_id": 1188,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -42,6 +42,7 @@
     "98cfa726-8e8c-417c-8fa5-3bd3eec94363": 27,
     "9de8dfc7-1d53-4ac4-a7a1-98aaf6dd354d": 21,
     "ab24c7bc-0720-480b-b39f-23f603a8b11f": 11,
+    "addf9afe-e336-42bb-bba7-213bbc0e4611": 54,
     "b46fadc4-8cd4-48dc-8f36-bd78e9ee2e8c": 13,
     "be287235-44b0-49cd-b238-d64fe12e32f1": 37,
     "d232751e-0c18-4e60-a858-6c3cb8ad26f1": 25,
@@ -10246,6 +10247,18 @@
         }
       }
     },
+    "addf9afe-e336-42bb-bba7-213bbc0e4611": {
+      "uuid": "addf9afe-e336-42bb-bba7-213bbc0e4611",
+      "display_id": 54,
+      "title": "S6c candidate-handoff TUI and CLI experience",
+      "description": "Render plain-language terminal states and exact candidate evidence, with inspect/run/continue/export/accept/commit/discard flows and unqualified confirmation.",
+      "status": "open",
+      "priority": "medium",
+      "parent_uuid": "ff9ea321-1b6b-4331-9389-9566ca58b586",
+      "created_by": "6ME5",
+      "created_at": "2026-09-03T22:05:56.864002530Z",
+      "updated_at": "2026-09-03T22:05:56.864002530Z"
+    },
     "b46fadc4-8cd4-48dc-8f36-bd78e9ee2e8c": {
       "uuid": "b46fadc4-8cd4-48dc-8f36-bd78e9ee2e8c",
       "display_id": 13,
@@ -11639,8 +11652,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-03T22:05:51.704276213Z",
+    "timestamp": "2026-09-03T22:05:56.864002530Z",
     "agent_id": "6ME5",
-    "agent_seq": 1429
+    "agent_seq": 1430
   }
 }
