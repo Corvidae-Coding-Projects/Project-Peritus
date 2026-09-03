@@ -17,7 +17,7 @@ pub(super) struct Frame {
 
 pub(super) fn read(path: &Path) -> Result<Vec<Frame>, BenchmarkError> {
     let file = File::open(path)
-        .map_err(|error| BenchmarkError::filesystem("open developer trace", path, error))?;
+        .map_err(|error| BenchmarkError::trace(path, format!("open developer trace: {error}")))?;
     let mut reader = BufReader::new(file);
     let mut frames = Vec::new();
     loop {

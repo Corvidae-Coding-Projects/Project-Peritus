@@ -1,164 +1,241 @@
-//! Real product-run composition for one `HarnessBench` adapter invocation.
+//! Shared real-product composition for admitted external benchmark invocations.
 
 use std::{
-    fs,
     path::{Path, PathBuf},
     sync::{Arc, Mutex, atomic::AtomicBool},
-    time::Instant,
 };
 
 use peritus_product_runner::{
-    ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunUpdate, ProductRunner,
-    RunObserver,
+    ConversationView, ProductRunInput, ProductRunOutcome, ProductRunUpdate, ProductRunner,
+    ProductRunnerError, ProductRunnerErrorKind, RunObserver,
 };
 use peritus_provider_core::CancellationToken;
+use peritus_run_settlement::SettlementCause;
 use peritus_types::RunId;
 use sha2::{Digest, Sha256};
 
 use crate::{
     BenchmarkError,
+    admission::{self, AdmittedInvocation},
     args::HarnessBenchInput,
-    evidence::{ProductObservation, RelocatablePaths, RunReport},
-    identity::BenchmarkAgentIdentity,
-    providers, session, trace, workspace,
+    candidate,
+    evidence::{
+        BenchmarkSuite, ProductObservation, QualificationReport, RelocatablePaths, ResourceReport,
+    },
+    providers, trace, workspace,
 };
 
-pub async fn run_harnessbench(input: HarnessBenchInput) -> Result<RunReport, BenchmarkError> {
-    let started = Instant::now();
-    let max_elapsed = crate::deadline::harnessbench_horizon(&input.task_id)?;
-    let agent_identity = BenchmarkAgentIdentity::current()?;
-    let baseline = workspace::prepare(&input.workspace)?;
-    let sandbox = input.sandbox.canonicalize().map_err(|error| {
-        BenchmarkError::filesystem("canonicalize sandbox", &input.sandbox, error)
-    })?;
-    let prompt = fs::read_to_string(&input.prompt_file).map_err(|error| {
-        BenchmarkError::filesystem("read benchmark prompt", &input.prompt_file, error)
-    })?;
-    let evidence_dir = sandbox.join("peritus-benchmark");
-    fs::create_dir_all(&evidence_dir).map_err(|error| {
-        BenchmarkError::filesystem("create benchmark evidence directory", &evidence_dir, error)
-    })?;
-    let conversation = session::BenchmarkSession::open(
-        &evidence_dir,
-        &input.session_id,
-        &input.task_id,
-        &input.prompt_file,
-        prompt.clone(),
-    )?;
-    let trace_path = conversation.current_trace_path();
-    trace::prepare(&trace_path)?;
-    let usage_proxy = sandbox.join("usage-proxy");
+pub async fn run_harnessbench(
+    input: HarnessBenchInput,
+) -> Result<crate::RunReport, BenchmarkError> {
+    execute(admission::harnessbench(input)?).await
+}
+
+pub async fn execute(
+    admitted: AdmittedInvocation,
+) -> Result<crate::evidence::InvocationReport, BenchmarkError> {
+    let AdmittedInvocation {
+        mut guard,
+        prompt,
+        conversation,
+        evidence_dir,
+        sandbox,
+        max_elapsed,
+        delivery_scope,
+    } = admitted;
+    if guard.seed().agent_identity.source_revision.is_none() {
+        let error = BenchmarkError::Identity(
+            "compiled source revision is absent; rebuild the benchmark agent from a clean revision"
+                .to_owned(),
+        );
+        return guard.fail(SettlementCause::Adapter, &error);
+    }
+    let baseline = match workspace::prepare(&guard.seed().workspace) {
+        Ok(value) => value,
+        Err(error) => return guard.fail(SettlementCause::Repository, &error),
+    };
+    guard.seed_mut().baseline = Some(baseline.clone());
+
     let cancellation = CancellationToken::new();
-    let role_providers = providers::authenticated(&cancellation).await?;
-    let (observer, last_observation) = observation_capture();
-    let run_id = run_id(&input.session_id, &input.task_id)?;
-    let command_runtime = crate::command_runtime::open(&baseline.root, run_id)?;
+    let authenticated = match providers::authenticated(&cancellation).await {
+        Ok(value) => value,
+        Err(error) => return guard.fail(SettlementCause::Provider, &error),
+    };
+    guard.seed_mut().provider_routes = authenticated.routes;
+    let (observer, observations) = observation_capture();
+    let command_runtime = match crate::command_runtime::open(&baseline.root, guard.seed().run_id) {
+        Ok(value) => value,
+        Err(error) => return guard.fail(SettlementCause::Repository, &error),
+    };
     let result = ProductRunner::run(
         ProductRunInput {
-            run_id,
+            run_id: guard.seed().run_id,
             workspace_root: baseline.root.clone(),
-            trace_path: trace_path.clone(),
+            trace_path: guard.seed().trace_path.clone(),
             command_runtime,
             finding_state: String::new(),
-            task: prompt.clone(),
+            task: prompt,
             max_elapsed,
-            delivery_scope: ProductDeliveryScope::WorkspaceChanges,
+            delivery_scope,
             conversation: Arc::new(conversation.clone()),
-            providers: role_providers,
+            providers: authenticated.roles,
             cancelled: Arc::new(AtomicBool::new(false)),
             provider_cancellation: cancellation,
         },
         observer,
     )
     .await;
-    let trace_inputs = conversation.trace_inputs();
-    let projected_responses = trace::publish_harnessbench(
-        &trace_inputs,
-        &usage_proxy,
-        &input.task_id,
-        &input.session_id,
-        &input.model_id,
-    )?;
-    let last_observation_path = publish_last_observation(&last_observation, &evidence_dir)?;
-    let (session_trace_paths, relocatable_paths) = retained_paths(
-        &sandbox,
-        &baseline.root,
-        &trace_path,
-        &trace_inputs,
-        &usage_proxy,
-        last_observation_path.as_deref(),
-    )?;
-    let (success, summary, changed_paths, failure_kind, failure) = outcome_fields(result);
-    let report = RunReport {
-        schema_version: 5,
-        agent_identity,
-        success,
-        task_id: input.task_id,
-        session_id: input.session_id,
-        harness_model_id: input.model_id,
-        workspace: baseline.root,
-        baseline_head: baseline.head,
-        initialized_repository: baseline.initialized_repository,
-        created_artifact_manifest: baseline.created_artifact_manifest,
-        writer: format!("openai/{}", providers::WRITER_MODEL),
-        reviewer: format!("anthropic/{}", providers::REVIEWER_MODEL),
-        elapsed_ms: started.elapsed().as_millis(),
-        trace_path,
-        conversation_turn: conversation.turn_number(),
-        session_trace_paths,
-        usage_proxy,
-        projected_responses,
-        last_observation_path,
-        relocatable_paths,
-        summary,
-        changed_paths,
-        failure_kind,
-        failure,
+
+    let snapshot = match candidate::capture(&baseline.root, Some(&baseline.head)) {
+        Ok(value) => value,
+        Err(error) => return guard.fail(SettlementCause::Adapter, &error),
     };
-    report.publish(&evidence_dir)?;
-    Ok(report)
+    if let Err(error) =
+        retain_evidence(&mut guard, &conversation, &observations, &evidence_dir, sandbox.as_deref())
+    {
+        return guard.finalize(crate::settlement::TerminalFacts::failure(
+            SettlementCause::Adapter,
+            Some(snapshot),
+            &error,
+        ));
+    }
+    settle_product_result(&mut guard, result, snapshot)
 }
 
-type OutcomeFields = (bool, Option<String>, Vec<PathBuf>, Option<String>, Option<String>);
-
-fn outcome_fields(
-    result: Result<ProductRunOutcome, peritus_product_runner::ProductRunnerError>,
-) -> OutcomeFields {
-    match result {
-        Ok(ProductRunOutcome::Complete(output)) => {
-            (true, Some(output.summary), output.changed_paths, None, None)
+fn retain_evidence(
+    guard: &mut crate::settlement::InvocationGuard,
+    conversation: &crate::session::BenchmarkSession,
+    observations: &ObservationCapture,
+    evidence_dir: &Path,
+    sandbox: Option<&Path>,
+) -> Result<(), BenchmarkError> {
+    let last_update = observations.lock().ok().and_then(|mut value| value.take());
+    if let Some(update) = last_update {
+        guard.seed_mut().resources = ResourceReport::from(update.progress);
+        guard.seed_mut().last_observation_path =
+            Some(ProductObservation::from_update(update).publish(evidence_dir)?);
+    }
+    let trace_inputs = conversation.trace_inputs();
+    guard.seed_mut().session_trace_paths =
+        trace_inputs.iter().map(|(path, _)| path.clone()).collect();
+    match guard.seed().suite {
+        BenchmarkSuite::HarnessBench => retain_harness_evidence(guard, &trace_inputs, sandbox),
+        BenchmarkSuite::TerminalBench => {
+            guard.seed_mut().usage =
+                trace::summarize_usage(&guard.seed().trace_path, &conversation.render())?;
+            Ok(())
         }
-        Ok(ProductRunOutcome::WaitingForUser { question, .. }) => {
-            (false, None, Vec::new(), Some("waiting_for_user".to_owned()), Some(question))
-        }
-        Err(error) => (
-            false,
-            None,
-            Vec::new(),
-            Some(format!("{:?}", error.kind()).to_lowercase()),
-            Some(error.to_string()),
-        ),
     }
 }
 
-fn retained_paths(
-    sandbox: &Path,
-    workspace: &Path,
-    trace_path: &Path,
+fn retain_harness_evidence(
+    guard: &mut crate::settlement::InvocationGuard,
     trace_inputs: &[(PathBuf, String)],
-    usage_proxy: &Path,
-    last_observation_path: Option<&Path>,
-) -> Result<(Vec<PathBuf>, RelocatablePaths), BenchmarkError> {
-    let session = trace_inputs.iter().map(|(path, _)| path.clone()).collect::<Vec<_>>();
-    let relocatable = RelocatablePaths::new(
-        sandbox,
-        workspace,
-        trace_path,
-        &session,
-        usage_proxy,
-        last_observation_path,
+    sandbox: Option<&Path>,
+) -> Result<(), BenchmarkError> {
+    let usage_proxy = guard.seed().usage_proxy.clone().ok_or_else(|| {
+        BenchmarkError::Workspace("Harness-Bench usage proxy was not admitted".to_owned())
+    })?;
+    guard.seed_mut().projected_responses = trace::publish_harnessbench(
+        trace_inputs,
+        &usage_proxy,
+        &guard.seed().task_id,
+        &guard.seed().session_id,
+        &guard.seed().harness_model_id,
     )?;
-    Ok((session, relocatable))
+    guard.seed_mut().usage = trace::summarize_usage(
+        &guard.seed().trace_path,
+        &trace_inputs.last().map_or_else(String::new, |(_, prompt)| prompt.clone()),
+    )?;
+    let sandbox = sandbox.ok_or_else(|| {
+        BenchmarkError::Workspace("Harness-Bench sandbox was not admitted".to_owned())
+    })?;
+    guard.seed_mut().relocatable_paths = Some(RelocatablePaths::new(
+        sandbox,
+        &guard.seed().workspace,
+        &guard.seed().trace_path,
+        &guard.seed().session_trace_paths,
+        &usage_proxy,
+        guard.seed().last_observation_path.as_deref(),
+    )?);
+    Ok(())
+}
+
+fn settle_product_result(
+    guard: &mut crate::settlement::InvocationGuard,
+    result: Result<ProductRunOutcome, ProductRunnerError>,
+    snapshot: candidate::CandidateSnapshot,
+) -> Result<crate::evidence::InvocationReport, BenchmarkError> {
+    match result {
+        Ok(ProductRunOutcome::Complete(output)) => {
+            guard.finalize(crate::settlement::TerminalFacts {
+                cause: SettlementCause::Completed,
+                snapshot: Some(snapshot),
+                qualified: true,
+                qualification: QualificationReport::accepted(output.gates, output.review),
+                summary: Some(output.summary),
+                failure_kind: None,
+                failure: None,
+            })
+        }
+        Ok(ProductRunOutcome::WaitingForUser { question, .. }) => {
+            let snapshot = (!snapshot.changed_paths.is_empty()).then_some(snapshot);
+            guard.finalize(crate::settlement::TerminalFacts {
+                cause: SettlementCause::UserWait,
+                snapshot,
+                qualified: false,
+                qualification: QualificationReport::candidate(
+                    "changed",
+                    observation_text(guard, true),
+                    observation_text(guard, false),
+                ),
+                summary: None,
+                failure_kind: Some("waiting_for_user".to_owned()),
+                failure: Some(question),
+            })
+        }
+        Err(error) => {
+            let cause = product_error_cause(&error);
+            let snapshot = (!snapshot.changed_paths.is_empty()).then_some(snapshot);
+            let benchmark_error = BenchmarkError::Workspace(error.to_string());
+            let mut facts =
+                crate::settlement::TerminalFacts::failure(cause, snapshot, &benchmark_error);
+            facts.failure_kind = Some(format!("{:?}", error.kind()).to_lowercase());
+            guard.finalize(facts)
+        }
+    }
+}
+
+fn observation_text(guard: &crate::settlement::InvocationGuard, gates: bool) -> Option<String> {
+    let path = guard.seed().last_observation_path.as_ref()?;
+    let value: serde_json::Value = serde_json::from_slice(&std::fs::read(path).ok()?).ok()?;
+    value[if gates { "gates" } else { "review" }].as_str().map(str::to_owned)
+}
+
+fn product_error_cause(error: &ProductRunnerError) -> SettlementCause {
+    let detail = error.detail().to_ascii_lowercase();
+    if detail.contains("context window") || detail.contains("context limit") {
+        return SettlementCause::Context;
+    }
+    if matches!(error.kind(), ProductRunnerErrorKind::Budget)
+        && (detail.contains("elapsed") || detail.contains("deadline") || detail.contains("horizon"))
+    {
+        return SettlementCause::Deadline;
+    }
+    match error.kind() {
+        ProductRunnerErrorKind::Repository => SettlementCause::Repository,
+        ProductRunnerErrorKind::Provider => SettlementCause::Provider,
+        ProductRunnerErrorKind::Gate => SettlementCause::Gate,
+        ProductRunnerErrorKind::Cancelled => SettlementCause::Cancellation,
+        ProductRunnerErrorKind::InvalidModelOutput
+            if error.operation().to_ascii_lowercase().contains("review") =>
+        {
+            SettlementCause::Review
+        }
+        ProductRunnerErrorKind::InvalidModelOutput
+        | ProductRunnerErrorKind::Apply
+        | ProductRunnerErrorKind::Budget => SettlementCause::Adapter,
+    }
 }
 
 pub type ObservationCapture = Arc<Mutex<Option<ProductRunUpdate>>>;
@@ -176,19 +253,6 @@ pub fn observation_capture() -> (RunObserver, ObservationCapture) {
         }
     });
     (observer, capture)
-}
-
-pub fn publish_last_observation(
-    capture: &ObservationCapture,
-    directory: &Path,
-) -> Result<Option<PathBuf>, BenchmarkError> {
-    capture
-        .lock()
-        .ok()
-        .and_then(|mut observation| observation.take())
-        .map(ProductObservation::from_update)
-        .map(|observation| observation.publish(directory))
-        .transpose()
 }
 
 pub fn run_id(session_id: &str, task_id: &str) -> Result<RunId, BenchmarkError> {

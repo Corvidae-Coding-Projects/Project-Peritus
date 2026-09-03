@@ -2201,6 +2201,7 @@ dependencies = [
  "peritus-provider-anthropic",
  "peritus-provider-core",
  "peritus-provider-openai",
+ "peritus-run-settlement",
  "peritus-types",
  "serde",
  "serde_json",

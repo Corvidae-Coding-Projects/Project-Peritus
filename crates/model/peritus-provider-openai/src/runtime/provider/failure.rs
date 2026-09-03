@@ -54,6 +54,15 @@ pub(super) fn decode_failure(
             None,
             false,
         ),
+        DecodeFailure::Capacity => (
+            FailureCategory::TransientProvider,
+            TransportPhase::Completed,
+            OutcomeCertainty::DefinitelyNotAccepted,
+            Retryability::SafeNewRequest,
+            "openai.codex_runtime.capacity",
+            None,
+            false,
+        ),
         DecodeFailure::QuotaExhausted => (
             FailureCategory::QuotaExhausted,
             TransportPhase::Completed,

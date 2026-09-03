@@ -6,90 +6,154 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use peritus_product_runner::{ProductRunPhase, ProductRunUpdate};
+use peritus_product_runner::{ProductRunPhase, ProductRunProgress, ProductRunUpdate};
 use serde::Serialize;
 
-use crate::{BenchmarkAgentIdentity, BenchmarkError};
+use crate::{BenchmarkAgentIdentity, BenchmarkError, candidate::CandidateSnapshot};
 
-/// Sandbox-relative evidence locations that remain valid if a benchmark runner relocates the
-/// completed sandbox after inspecting provider metadata.
-#[derive(Clone, Debug, Serialize)]
-pub struct RelocatablePaths {
-    /// Base directory against which every path in this object resolves.
-    pub base: &'static str,
-    /// Benchmark workspace below the sandbox.
-    pub workspace: PathBuf,
-    /// Current durable D0 trace below the sandbox.
-    pub trace_path: PathBuf,
-    /// Ordered D0 traces below the sandbox.
-    pub session_trace_paths: Vec<PathBuf>,
-    /// `HarnessBench` usage-proxy directory below the sandbox.
-    pub usage_proxy: PathBuf,
-    /// Last product observation below the sandbox, when present.
-    pub last_observation_path: Option<PathBuf>,
+/// External suite entering the native adapter boundary.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BenchmarkSuite {
+    /// Qihoo360 Harness-Bench.
+    HarnessBench,
+    /// Harbor Terminal-Bench 2.
+    TerminalBench,
 }
 
-/// Machine-readable result from one native benchmark-agent invocation.
+/// Pre-run contract retained with the terminal report.
 #[derive(Clone, Debug, Serialize)]
-pub struct RunReport {
-    /// Evidence schema version.
-    pub schema_version: u32,
-    /// Exact source, package, and executable identity for this native invocation.
+pub struct HandshakeReport {
+    pub adapter_schema_version: u32,
+    pub product_protocol_version: u32,
+    pub suite_revision: String,
+    pub config_digest: String,
+    pub workspace_available: bool,
+    pub workspace: PathBuf,
+    pub trace_path: PathBuf,
+    pub evidence_path: PathBuf,
+    pub recovery_path: PathBuf,
     pub agent_identity: BenchmarkAgentIdentity,
-    /// Whether the real Peritus product composition completed successfully.
-    pub success: bool,
-    /// Upstream benchmark task identity.
-    pub task_id: String,
-    /// Upstream benchmark session identity.
-    pub session_id: String,
-    /// Harness configuration identity.
-    pub harness_model_id: String,
-    /// Canonical benchmark workspace.
-    pub workspace: PathBuf,
-    /// Exact Git baseline used by Peritus.
-    pub baseline_head: String,
-    /// Whether the adapter established a new local fixture repository.
-    pub initialized_repository: bool,
-    /// Whether the adapter declared a new explicit artifact workspace contract.
-    pub created_artifact_manifest: bool,
-    /// Writer/fixer provider and model.
-    pub writer: String,
-    /// Independent reviewer provider and model.
-    pub reviewer: String,
-    /// Elapsed wall-clock milliseconds.
-    pub elapsed_ms: u128,
-    /// Original durable D0 trace.
-    pub trace_path: PathBuf,
-    /// One-based durable conversation turn represented by this invocation.
-    pub conversation_turn: usize,
-    /// Ordered D0 trace paths for every completed session turn.
-    pub session_trace_paths: Vec<PathBuf>,
-    /// `HarnessBench` usage-proxy directory.
-    pub usage_proxy: PathBuf,
-    /// Number of projected provider response records.
-    pub projected_responses: usize,
-    /// Durable exact last product observation when the runner emitted one.
-    pub last_observation_path: Option<PathBuf>,
-    /// Relocation-safe paths rooted at the final sandbox reported by the benchmark runner.
-    pub relocatable_paths: RelocatablePaths,
-    /// Product-level completion summary when successful.
-    pub summary: Option<String>,
-    /// Exact changed paths accepted by the product runner.
-    pub changed_paths: Vec<PathBuf>,
-    /// Stable product-run failure category when unsuccessful.
-    pub failure_kind: Option<String>,
-    /// Redaction-safe product-run failure detail when unsuccessful.
-    pub failure: Option<String>,
+    pub provider_routes: Vec<ProviderRouteReport>,
 }
 
-/// Report returned by either supported external benchmark protocol.
+/// Declared and live-qualified route for one model role.
 #[derive(Clone, Debug, Serialize)]
-#[serde(untagged)]
-pub enum BenchmarkReport {
-    /// `HarnessBench` invocation evidence.
-    HarnessBench(RunReport),
-    /// Terminal-Bench invocation evidence.
-    TerminalBench(TerminalBenchReport),
+pub struct ProviderRouteReport {
+    pub role: &'static str,
+    pub provider: String,
+    pub model: String,
+    pub route: &'static str,
+    pub availability: &'static str,
+    pub text: bool,
+    pub image_input: bool,
+    pub maximum_context_tokens: u64,
+    pub tool_protocol: bool,
+}
+
+/// Current candidate-bound acceptance evidence.
+#[derive(Clone, Debug, Serialize)]
+pub struct QualificationReport {
+    pub stage: &'static str,
+    pub gates: &'static str,
+    pub obligations: &'static str,
+    pub review: &'static str,
+    pub gate_detail: Option<String>,
+    pub review_detail: Option<String>,
+}
+
+impl QualificationReport {
+    pub(crate) const fn missing() -> Self {
+        Self {
+            stage: "not_observed",
+            gates: "missing",
+            obligations: "missing",
+            review: "missing",
+            gate_detail: None,
+            review_detail: None,
+        }
+    }
+
+    pub(crate) const fn candidate(
+        stage: &'static str,
+        gate_detail: Option<String>,
+        review_detail: Option<String>,
+    ) -> Self {
+        Self {
+            stage,
+            gates: "incomplete",
+            obligations: "incomplete",
+            review: "incomplete",
+            gate_detail,
+            review_detail,
+        }
+    }
+
+    pub(crate) const fn accepted(gates: String, review: String) -> Self {
+        Self {
+            stage: "qualified",
+            gates: "satisfied",
+            obligations: "satisfied",
+            review: "satisfied",
+            gate_detail: Some(gates),
+            review_detail: Some(review),
+        }
+    }
+}
+
+/// Exact candidate details retained independently of benchmark reward.
+#[derive(Clone, Debug, Serialize)]
+pub struct CandidateReport {
+    pub stage: &'static str,
+    pub digest: String,
+    pub changed_paths: Vec<PathBuf>,
+}
+
+impl CandidateReport {
+    pub(crate) fn from_snapshot(snapshot: &CandidateSnapshot, stage: &'static str) -> Self {
+        Self {
+            stage,
+            digest: snapshot.digest.clone(),
+            changed_paths: snapshot.changed_paths.clone(),
+        }
+    }
+}
+
+/// Benchmark-owned scoring facts. Native settlement never reads these values.
+#[derive(Clone, Debug, Default, Serialize)]
+pub struct ExternalEvaluation {
+    pub reward: Option<f64>,
+    pub verifier_exception: Option<String>,
+}
+
+/// Bounded resource accounting at the last completed product effect boundary.
+#[derive(Clone, Copy, Debug, Default, Serialize)]
+pub struct ResourceReport {
+    pub model_requests: u32,
+    pub tool_calls: u32,
+    pub retries: u32,
+    pub provider_failovers: u32,
+    pub compactions: u32,
+    pub elapsed_millis: u64,
+    pub workspace_bytes: u64,
+    pub workspace_growth_bytes: u64,
+    pub peak_rss_bytes: u64,
+}
+
+impl From<ProductRunProgress> for ResourceReport {
+    fn from(progress: ProductRunProgress) -> Self {
+        Self {
+            model_requests: progress.model_requests(),
+            tool_calls: progress.tool_calls(),
+            retries: progress.retries(),
+            provider_failovers: progress.provider_failovers(),
+            compactions: progress.compactions(),
+            elapsed_millis: progress.elapsed_millis(),
+            workspace_bytes: progress.workspace_bytes(),
+            workspace_growth_bytes: progress.workspace_growth_bytes(),
+            peak_rss_bytes: progress.peak_rss_bytes(),
+        }
+    }
 }
 
 /// Aggregate provider accounting reconstructed from the native trace.
@@ -99,64 +163,92 @@ pub struct TraceUsage {
     pub requests: usize,
     /// Provider-reported input tokens.
     pub input_tokens: u64,
-    /// Provider-reported or observed cached input tokens.
+    /// Provider-reported cached input tokens.
     pub cached_input_tokens: u64,
     /// Provider-reported output tokens.
     pub output_tokens: u64,
-    /// Provider-reported totals, or derived input-plus-output totals.
+    /// Provider-reported or conservatively derived total tokens.
     pub total_tokens: u64,
-    /// Provider-reported cost in millionths of the provider currency unit.
+    /// Provider-reported cost in millionths of its currency unit.
     pub provider_cost_microunits: u64,
 }
 
-/// Machine-readable result from one Peritus run inside a Harbor task environment.
+/// Sandbox-relative evidence locations preserved for Harness-Bench relocation.
 #[derive(Clone, Debug, Serialize)]
-pub struct TerminalBenchReport {
-    /// Evidence schema version.
-    pub schema_version: u32,
-    /// Exact source, package, and executable identity for this native invocation.
-    pub agent_identity: BenchmarkAgentIdentity,
-    /// Whether the native Peritus product composition accepted the candidate.
-    pub success: bool,
-    /// Upstream task identity.
-    pub task_id: String,
-    /// Harbor trial identity.
-    pub session_id: String,
-    /// Model label recorded by Harbor.
-    pub harness_model_id: String,
-    /// Canonical task workspace.
+pub struct RelocatablePaths {
+    pub base: &'static str,
     pub workspace: PathBuf,
-    /// Exact Git baseline used by Peritus.
-    pub baseline_head: String,
-    /// Whether Peritus initialized the task workspace as a Git repository.
-    pub initialized_repository: bool,
-    /// Whether Peritus created its artifact workspace contract.
-    pub created_artifact_manifest: bool,
-    /// Writer and fixer provider/model identity.
-    pub writer: String,
-    /// Independent reviewer provider/model identity.
-    pub reviewer: String,
-    /// Elapsed wall-clock milliseconds.
-    pub elapsed_ms: u128,
-    /// Durable native provider/tool trace in Harbor's agent logs.
     pub trace_path: PathBuf,
-    /// One-based conversation turn represented by this invocation.
-    pub conversation_turn: usize,
-    /// Aggregate accounting reconstructed from the native trace.
-    pub usage: TraceUsage,
-    /// Last complete product observation, when one was emitted.
+    pub session_trace_paths: Vec<PathBuf>,
+    pub usage_proxy: PathBuf,
     pub last_observation_path: Option<PathBuf>,
-    /// Product completion summary when accepted.
+}
+
+/// Universal native report emitted by both external adapters.
+#[derive(Clone, Debug, Serialize)]
+pub struct InvocationReport {
+    pub schema_version: u32,
+    pub suite: BenchmarkSuite,
+    pub handshake: HandshakeReport,
+    pub agent_identity: BenchmarkAgentIdentity,
+    pub success: bool,
+    pub disposition: &'static str,
+    pub terminal_cause: &'static str,
+    pub candidate: Option<CandidateReport>,
+    pub qualification: QualificationReport,
+    pub provider_routes: Vec<ProviderRouteReport>,
+    pub external_evaluation: ExternalEvaluation,
+    pub task_id: String,
+    pub session_id: String,
+    pub harness_model_id: String,
+    pub workspace: PathBuf,
+    pub baseline_head: Option<String>,
+    pub initialized_repository: bool,
+    pub created_artifact_manifest: bool,
+    pub writer: String,
+    pub reviewer: String,
+    pub elapsed_ms: u128,
+    pub trace_path: PathBuf,
+    pub conversation_turn: usize,
+    pub session_trace_paths: Vec<PathBuf>,
+    pub usage_proxy: Option<PathBuf>,
+    pub projected_responses: usize,
+    pub usage: TraceUsage,
+    pub resources: ResourceReport,
+    pub last_observation_path: Option<PathBuf>,
+    pub relocatable_paths: Option<RelocatablePaths>,
     pub summary: Option<String>,
-    /// Exact changed paths accepted by the product runner.
     pub changed_paths: Vec<PathBuf>,
-    /// Stable product failure category when not accepted.
     pub failure_kind: Option<String>,
-    /// Redaction-safe product failure detail when not accepted.
     pub failure: Option<String>,
 }
 
-/// Last daemon-visible product observation, retained outside the benchmark result payload.
+/// Harness-Bench name for the universal invocation report.
+pub type RunReport = InvocationReport;
+/// Terminal-Bench name for the universal invocation report.
+pub type TerminalBenchReport = InvocationReport;
+
+/// Report returned by either supported external benchmark protocol.
+#[derive(Clone, Debug, Serialize)]
+#[serde(untagged)]
+pub enum BenchmarkReport {
+    /// Harness-Bench invocation evidence.
+    HarnessBench(RunReport),
+    /// Terminal-Bench invocation evidence.
+    TerminalBench(TerminalBenchReport),
+}
+
+impl BenchmarkReport {
+    /// Whether strict native settlement accepted the exact candidate.
+    #[must_use]
+    pub const fn success(&self) -> bool {
+        match self {
+            Self::HarnessBench(report) | Self::TerminalBench(report) => report.success,
+        }
+    }
+}
+
+/// Last daemon-visible product observation retained outside the result payload.
 #[derive(Clone, Debug, Serialize)]
 pub struct ProductObservation {
     schema_version: u32,
@@ -168,12 +260,13 @@ pub struct ProductObservation {
     review: String,
     summary: String,
     finding_state: String,
+    resources: ResourceReport,
 }
 
 impl ProductObservation {
     pub fn from_update(update: ProductRunUpdate) -> Self {
         Self {
-            schema_version: 1,
+            schema_version: 2,
             phase: phase_name(update.phase),
             cycle: update.cycle,
             status: update.status,
@@ -182,34 +275,12 @@ impl ProductObservation {
             review: update.review,
             summary: update.summary,
             finding_state: update.finding_state,
+            resources: update.progress.into(),
         }
     }
 
     pub fn publish(&self, directory: &Path) -> Result<PathBuf, BenchmarkError> {
         publish_json(directory, "last-product-observation.json", self)
-    }
-}
-
-impl RunReport {
-    pub(crate) fn publish(&self, directory: &Path) -> Result<PathBuf, BenchmarkError> {
-        publish_json(directory, "invocation.json", self)
-    }
-}
-
-impl BenchmarkReport {
-    /// Returns the product-level acceptance recorded by either report shape.
-    #[must_use]
-    pub const fn success(&self) -> bool {
-        match self {
-            Self::HarnessBench(report) => report.success,
-            Self::TerminalBench(report) => report.success,
-        }
-    }
-}
-
-impl TerminalBenchReport {
-    pub(crate) fn publish(&self, directory: &Path) -> Result<PathBuf, BenchmarkError> {
-        publish_json(directory, "invocation.json", self)
     }
 }
 
@@ -260,11 +331,9 @@ fn publish_json(
     let mut file = fs::File::create(&temporary)
         .map_err(|error| BenchmarkError::filesystem("create evidence file", &temporary, error))?;
     file.write_all(&bytes)
+        .and_then(|()| file.write_all(b"\n"))
+        .and_then(|()| file.sync_all())
         .map_err(|error| BenchmarkError::filesystem("write evidence file", &temporary, error))?;
-    file.write_all(b"\n")
-        .map_err(|error| BenchmarkError::filesystem("finish evidence file", &temporary, error))?;
-    file.sync_all()
-        .map_err(|error| BenchmarkError::filesystem("sync evidence file", &temporary, error))?;
     fs::rename(&temporary, &path)
         .map_err(|error| BenchmarkError::filesystem("publish evidence file", &path, error))?;
     Ok(path)
@@ -283,61 +352,4 @@ const fn phase_name(phase: ProductRunPhase) -> &'static str {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn last_observation_retains_gate_and_review_diagnostics() {
-        let directory = tempfile::tempdir().expect("evidence directory");
-        let observation = ProductObservation::from_update(ProductRunUpdate {
-            phase: ProductRunPhase::Reviewing,
-            cycle: 3,
-            status: "Fresh typed review completed".to_owned(),
-            diff: "exact diff".to_owned(),
-            gates: "Exact-target acceptance: PASS".to_owned(),
-            review: "Canonical reason remains contradictory".to_owned(),
-            summary: "candidate retained".to_owned(),
-            finding_state: "{\"cycle\":3}".to_owned(),
-            progress: peritus_product_runner::ProductRunProgress::default(),
-        });
-
-        let path = observation.publish(directory.path()).expect("publish observation");
-        let value: serde_json::Value =
-            serde_json::from_slice(&fs::read(path).expect("read observation"))
-                .expect("parse observation");
-
-        assert_eq!(value["phase"], "reviewing");
-        assert_eq!(value["cycle"], 3);
-        assert_eq!(value["diff"], "exact diff");
-        assert_eq!(value["gates"], "Exact-target acceptance: PASS");
-        assert_eq!(value["review"], "Canonical reason remains contradictory");
-        assert_eq!(value["finding_state"], "{\"cycle\":3}");
-    }
-
-    #[test]
-    fn relocatable_paths_survive_a_sandbox_directory_move() {
-        let sandbox = Path::new("/state/workspaces/model/task-before");
-        let trace = sandbox.join("peritus-benchmark/developer-round-0001.trace");
-        let observation = sandbox.join("peritus-benchmark/last-product-observation.json");
-        let paths = RelocatablePaths::new(
-            sandbox,
-            &sandbox.join("workspace"),
-            &trace,
-            std::slice::from_ref(&trace),
-            &sandbox.join("usage-proxy"),
-            Some(&observation),
-        )
-        .expect("sandbox-relative paths");
-
-        assert_eq!(paths.base, "sandbox");
-        assert_eq!(paths.workspace, Path::new("workspace"));
-        assert_eq!(paths.trace_path, Path::new("peritus-benchmark/developer-round-0001.trace"));
-        assert_eq!(paths.usage_proxy, Path::new("usage-proxy"));
-        assert_eq!(
-            Path::new("/state/workspaces/model/task-after").join(&paths.trace_path),
-            Path::new(
-                "/state/workspaces/model/task-after/peritus-benchmark/developer-round-0001.trace"
-            )
-        );
-    }
-}
+mod tests;

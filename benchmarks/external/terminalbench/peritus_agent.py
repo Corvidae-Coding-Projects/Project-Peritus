@@ -16,7 +16,7 @@ from harbor.environments.base import BaseEnvironment, ExecResult
 from harbor.models.agent.context import AgentContext
 
 from benchmarks.external.terminalbench.credential_state import (
-    checkpoint_claude_credentials,
+    checkpoint_claude_credentials_and_advance,
     credential_digest,
 )
 from benchmarks.external.terminalbench.deadline import product_budget_seconds
@@ -30,6 +30,8 @@ _PORTABLE_PERITUS = (
 _REMOTE_BIN = PurePosixPath("/opt/peritus/bin")
 _REMOTE_HOME = PurePosixPath("/tmp/peritus-home")
 _REMOTE_PROMPTS = PurePosixPath("/tmp/peritus-prompts")
+_ADAPTER_SCHEMA_VERSION = 6
+_TERMINAL_BENCH_REVISION = "ab3575606830479be548b69e9961815e83c6f5e7"
 
 
 class PeritusAgent(BaseAgent):
@@ -169,8 +171,7 @@ fi
             (
                 "codex --version >/dev/null",
                 "claude --version >/dev/null",
-                "codex login status >/dev/null 2>&1",
-                "claude auth status --json >/dev/null 2>&1",
+                "peritus-benchmark-agent qualify-providers",
             )
         )
         result = await environment.exec(command, env=runtime_env, timeout_sec=60)
@@ -214,6 +215,10 @@ fi
                 self.model_name or "peritus-native",
                 "--max-elapsed-seconds",
                 str(max_elapsed_seconds),
+                "--adapter-schema-version",
+                str(_ADAPTER_SCHEMA_VERSION),
+                "--suite-revision",
+                _TERMINAL_BENCH_REVISION,
             )
         )
         runtime_env = await self._runtime_env(environment)
@@ -242,8 +247,8 @@ fi
             "peritus_product_accepted": report.get("success") is True,
             "peritus_failure_kind": report.get("failure_kind"),
             "peritus_requests": _integer(usage.get("requests")) or 0,
-            "peritus_source_revision": identity["source_revision"],
-            "peritus_binary_sha256": identity["binary_sha256"],
+            "peritus_agent_source_revision": identity["source_revision"],
+            "peritus_agent_binary_sha256": identity["binary_sha256"],
         }
 
     async def _checkpoint_claude_credentials(self, environment: BaseEnvironment) -> None:
@@ -255,7 +260,7 @@ fi
             await environment.download_file(
                 str(_REMOTE_HOME / ".claude/.credentials.json"), candidate
             )
-            checkpoint_claude_credentials(
+            self._uploaded_claude_digest = checkpoint_claude_credentials_and_advance(
                 self._claude_credentials,
                 uploaded_digest,
                 candidate,
@@ -343,7 +348,7 @@ def _parse_report(stdout: str) -> dict[str, Any]:
         except json.JSONDecodeError as error:
             malformed = error
             continue
-        if not isinstance(report, dict) or report.get("schema_version") != 2:
+        if not isinstance(report, dict) or report.get("schema_version") != _ADAPTER_SCHEMA_VERSION:
             raise RuntimeError("Peritus returned an unsupported Terminal-Bench report")
         return report
     raise RuntimeError("Peritus returned a malformed invocation report") from malformed
@@ -357,7 +362,8 @@ def _parse_protocol(stdout: str, expected_digest: str) -> dict[str, Any]:
     if (
         not isinstance(protocol, dict)
         or protocol.get("schema_version") != 1
-        or protocol.get("terminalbench_report_schema_version") != 2
+        or protocol.get("invocation_report_schema_version") != _ADAPTER_SCHEMA_VERSION
+        or protocol.get("terminalbench_report_schema_version") != _ADAPTER_SCHEMA_VERSION
     ):
         raise RuntimeError("native Peritus executable and Harbor adapter are incompatible")
     _report_identity(protocol, expected_digest)

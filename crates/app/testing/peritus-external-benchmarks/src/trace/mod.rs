@@ -20,7 +20,7 @@ pub fn prepare(trace_path: &Path) -> Result<(), BenchmarkError> {
         .open(trace_path)
         .and_then(|file| file.sync_all())
         .map_err(|error| {
-            BenchmarkError::filesystem("prepare durable developer trace", trace_path, error)
+            BenchmarkError::trace(trace_path, format!("prepare durable developer trace: {error}"))
         })
 }
 
@@ -84,6 +84,25 @@ mod tests {
         assert_eq!(usage.output_tokens, 0);
         assert_eq!(usage.total_tokens, 0);
         assert_eq!(usage.provider_cost_microunits, 0);
+    }
+
+    #[test]
+    fn missing_trace_has_a_distinct_stable_failure_kind() {
+        let directory = tempfile::tempdir().expect("trace directory");
+        let path = directory.path().join("missing.trace");
+        let error = summarize_usage(&path, "task").expect_err("missing trace");
+        assert_eq!(error.stable_kind(), "trace");
+    }
+
+    #[test]
+    fn unwritable_trace_target_has_a_distinct_stable_failure_kind() {
+        let directory = tempfile::tempdir().expect("trace directory");
+        let path = directory.path().join("trace-is-a-directory");
+        fs::create_dir(&path).expect("blocking directory");
+
+        let error = prepare(&path).expect_err("directory cannot be opened as a trace file");
+
+        assert_eq!(error.stable_kind(), "trace");
     }
 
     #[test]

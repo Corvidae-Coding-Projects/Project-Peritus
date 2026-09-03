@@ -28,6 +28,10 @@ pub enum ProviderCoreErrorKind {
     InvalidRetry,
     /// The production transport could not be configured.
     Configuration,
+    /// The route cannot satisfy the declared role capability envelope.
+    UnsupportedCapability,
+    /// The route has no currently usable credential or verified account session.
+    Unavailable,
 }
 
 impl ProviderCoreErrorKind {
@@ -46,6 +50,8 @@ impl ProviderCoreErrorKind {
             Self::MalformedStream => "PERITUS-PROVIDER-CORE-007",
             Self::InvalidRetry => "PERITUS-PROVIDER-CORE-008",
             Self::Configuration => "PERITUS-PROVIDER-CORE-009",
+            Self::UnsupportedCapability => "PERITUS-PROVIDER-CORE-012",
+            Self::Unavailable => "PERITUS-PROVIDER-CORE-013",
         }
     }
 }
@@ -113,6 +119,18 @@ impl ProviderCoreError {
     #[must_use]
     pub const fn configuration(operation: &'static str, detail: &'static str) -> Self {
         Self::new(ProviderCoreErrorKind::Configuration, operation, detail)
+    }
+
+    /// Creates a redaction-safe route-capability mismatch.
+    #[must_use]
+    pub const fn unsupported_capability(detail: &'static str) -> Self {
+        Self::new(ProviderCoreErrorKind::UnsupportedCapability, "provider_qualification", detail)
+    }
+
+    /// Creates a redaction-safe provider-availability failure.
+    #[must_use]
+    pub const fn unavailable(detail: &'static str) -> Self {
+        Self::new(ProviderCoreErrorKind::Unavailable, "provider_qualification", detail)
     }
 
     /// Returns the stable failure category.

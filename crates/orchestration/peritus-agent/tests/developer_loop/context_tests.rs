@@ -1,8 +1,8 @@
 //! Context accounting and caching behavior of the production developer loop.
 
 use super::fixtures::{
-    caching_profile, image_profile, oversized_tool_argument_response, profile, read_tool,
-    text_response, tool_response,
+    caching_profile, constrained_profile, image_profile, oversized_tool_argument_response, profile,
+    read_tool, text_response, tool_response,
 };
 use super::*;
 use peritus_model_protocol::{CachePolicy, MediaInput, MediaKind, MediaType};
@@ -330,5 +330,40 @@ fn developer_loop_falls_back_when_semantic_compaction_is_unusable() {
             })
         }));
         drop(requests);
+    });
+}
+
+#[test]
+fn developer_loop_returns_context_when_compaction_cannot_fit_the_request() {
+    block_on(async {
+        let provider = ScriptedProvider {
+            profile: constrained_profile(),
+            responses: Mutex::new(VecDeque::from([text_response()])),
+            requests: Mutex::new(Vec::new()),
+        };
+        let mut tools = RecordingTool::default();
+        let mut trace = RecordingTrace::default();
+        let result = DeveloperLoop::run(
+            &provider,
+            DeveloperLoopRequest {
+                request_prefix: "over-limit-compaction-test".to_owned(),
+                system: "Complete the task.".to_owned(),
+                prompt: "x".repeat(12_000),
+                attachments: Vec::new(),
+                tools: vec![read_tool()],
+                limits: DeveloperLoopLimits::new(2, 2).expect("limits"),
+                cancellation: CancellationToken::new(),
+            },
+            &mut tools,
+            &mut trace,
+        )
+        .await;
+        let Err(error) = result else {
+            panic!("uncompactable request must remain phase-local");
+        };
+
+        assert!(matches!(error, peritus_agent::DeveloperLoopError::Context(_)));
+        assert!(error.to_string().contains("after deterministic compaction"));
+        assert!(provider.requests.lock().expect("requests").is_empty());
     });
 }

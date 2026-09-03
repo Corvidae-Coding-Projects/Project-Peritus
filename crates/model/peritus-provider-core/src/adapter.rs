@@ -4,7 +4,8 @@ use peritus_model_protocol::{ModelRequest, ProviderProfile, ResponseId};
 
 use crate::{
     BoxFuture, CancellationToken, ContinuationRestoreOutcome, OwnedModelStream,
-    PersistedContinuation, ProviderCoreError, ProviderCoreErrorKind,
+    PersistedContinuation, ProviderAvailability, ProviderCoreError, ProviderCoreErrorKind,
+    ProviderRoute,
 };
 
 /// Provider-side result of requesting cancellation for one known response identity.
@@ -26,6 +27,20 @@ pub enum ResponseCancellationOutcome {
 pub trait ModelProvider: Send + Sync {
     /// Returns the exact profile implemented by this provider instance.
     fn profile(&self) -> &ProviderProfile;
+
+    /// Declares whether this provider uses a first-party API, compatible API, or account runtime.
+    fn route(&self) -> ProviderRoute {
+        ProviderRoute::from_dialect(self.profile().dialect())
+    }
+
+    /// Returns the strongest current credential/readiness observation held by this instance.
+    ///
+    /// Account runtimes remain `Unchecked` until a real canary or successful model turn proves the
+    /// session. API adapters may report `CredentialPresent` after resolving their configured
+    /// credential source without exposing the credential.
+    fn availability(&self) -> ProviderAvailability {
+        ProviderAvailability::Unchecked
+    }
 
     /// Starts one already-negotiated request and returns its owned normalized event stream.
     ///

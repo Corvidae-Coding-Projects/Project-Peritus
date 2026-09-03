@@ -96,8 +96,8 @@ class RuntimePathTests(unittest.IsolatedAsyncioTestCase):
 
 
 class ReportIdentityTests(unittest.TestCase):
-    def test_parses_schema_two_after_progress_output(self) -> None:
-        report = _parse_report('progress\n{"schema_version":2,"success":true}\n')
+    def test_parses_current_schema_after_progress_output(self) -> None:
+        report = _parse_report('progress\n{"schema_version":6,"success":true}\n')
 
         self.assertTrue(report["success"])
 
@@ -124,7 +124,8 @@ class ReportIdentityTests(unittest.TestCase):
         digest = "a" * 64
         protocol = {
             "schema_version": 1,
-            "terminalbench_report_schema_version": 2,
+            "invocation_report_schema_version": 6,
+            "terminalbench_report_schema_version": 6,
             "agent_identity": {
                 "package_version": "0.0.0",
                 "source_revision": "0123456789abcdef0123456789abcdef01234567",
@@ -134,11 +135,12 @@ class ReportIdentityTests(unittest.TestCase):
 
         parsed = _parse_protocol(json.dumps(protocol), digest)
 
-        self.assertEqual(parsed["terminalbench_report_schema_version"], 2)
+        self.assertEqual(parsed["terminalbench_report_schema_version"], 6)
 
     def test_protocol_rejects_stale_report_schema_before_a_trial(self) -> None:
         protocol = {
             "schema_version": 1,
+            "invocation_report_schema_version": 1,
             "terminalbench_report_schema_version": 1,
             "agent_identity": {},
         }

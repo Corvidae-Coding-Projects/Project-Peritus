@@ -9,13 +9,14 @@ use crate::BenchmarkError;
 
 const COMPILED_SOURCE_REVISION: Option<&str> = option_env!("PERITUS_SOURCE_REVISION");
 
-/// Report schema emitted by the native Terminal-Bench composition.
-pub const TERMINALBENCH_REPORT_SCHEMA_VERSION: u32 = 2;
+/// Report schema emitted by both native external-benchmark compositions.
+pub const INVOCATION_REPORT_SCHEMA_VERSION: u32 = 6;
 
 /// Provider-free executable contract used before an external trial starts.
 #[derive(Debug, Eq, PartialEq, Serialize)]
 pub struct BenchmarkAgentProtocol {
     schema_version: u32,
+    invocation_report_schema_version: u32,
     terminalbench_report_schema_version: u32,
     agent_identity: BenchmarkAgentIdentity,
 }
@@ -26,7 +27,7 @@ pub struct BenchmarkAgentIdentity {
     /// Cargo package version compiled into the native agent.
     pub package_version: &'static str,
     /// Exact clean Git source revision supplied to the compiler.
-    pub source_revision: &'static str,
+    pub source_revision: Option<&'static str>,
     /// SHA-256 of the executable bytes used for this invocation.
     pub binary_sha256: String,
 }
@@ -34,7 +35,7 @@ pub struct BenchmarkAgentIdentity {
 impl BenchmarkAgentIdentity {
     /// Inspects the current executable and returns its immutable benchmark identity.
     pub(super) fn current() -> Result<Self, BenchmarkError> {
-        let source_revision = required_source_revision(COMPILED_SOURCE_REVISION)?;
+        let source_revision = optional_source_revision(COMPILED_SOURCE_REVISION)?;
         let executable = std::env::current_exe().map_err(|error| {
             BenchmarkError::filesystem(
                 "resolve current benchmark executable",
@@ -69,21 +70,17 @@ impl BenchmarkAgentProtocol {
     pub(crate) fn current() -> Result<Self, BenchmarkError> {
         Ok(Self {
             schema_version: 1,
-            terminalbench_report_schema_version: TERMINALBENCH_REPORT_SCHEMA_VERSION,
+            invocation_report_schema_version: INVOCATION_REPORT_SCHEMA_VERSION,
+            terminalbench_report_schema_version: INVOCATION_REPORT_SCHEMA_VERSION,
             agent_identity: BenchmarkAgentIdentity::current()?,
         })
     }
 }
 
-fn required_source_revision(value: Option<&'static str>) -> Result<&'static str, BenchmarkError> {
-    let revision = value.ok_or_else(|| {
-        BenchmarkError::Identity(
-            "PERITUS_SOURCE_REVISION was not supplied when the benchmark agent was built"
-                .to_owned(),
-        )
-    })?;
-    validate_source_revision(revision)?;
-    Ok(revision)
+fn optional_source_revision(
+    value: Option<&'static str>,
+) -> Result<Option<&'static str>, BenchmarkError> {
+    value.map(|revision| validate_source_revision(revision).map(|()| revision)).transpose()
 }
 
 fn lowercase_hex(bytes: &[u8]) -> String {
@@ -121,10 +118,8 @@ mod tests {
     }
 
     #[test]
-    fn requires_a_compiled_source_revision() {
-        let error = required_source_revision(None).unwrap_err();
-
-        assert!(error.to_string().contains("PERITUS_SOURCE_REVISION was not supplied"));
+    fn records_an_absent_compiled_source_revision() {
+        assert_eq!(optional_source_revision(None).unwrap(), None);
     }
 
     #[test]
@@ -147,16 +142,18 @@ mod tests {
     fn protocol_declares_the_terminalbench_report_contract() {
         let protocol = BenchmarkAgentProtocol {
             schema_version: 1,
-            terminalbench_report_schema_version: TERMINALBENCH_REPORT_SCHEMA_VERSION,
+            invocation_report_schema_version: INVOCATION_REPORT_SCHEMA_VERSION,
+            terminalbench_report_schema_version: INVOCATION_REPORT_SCHEMA_VERSION,
             agent_identity: BenchmarkAgentIdentity {
                 package_version: "0.0.0",
-                source_revision: "0123456789abcdef0123456789abcdef01234567",
+                source_revision: Some("0123456789abcdef0123456789abcdef01234567"),
                 binary_sha256: "a".repeat(64),
             },
         };
 
         let document = serde_json::to_value(protocol).expect("protocol JSON");
         assert_eq!(document["schema_version"], 1);
-        assert_eq!(document["terminalbench_report_schema_version"], 2);
+        assert_eq!(document["invocation_report_schema_version"], 6);
+        assert_eq!(document["terminalbench_report_schema_version"], 6);
     }
 }

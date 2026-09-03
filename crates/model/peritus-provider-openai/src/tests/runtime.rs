@@ -112,6 +112,12 @@ fn decoder_classifies_common_runtime_failures_without_retaining_provider_text() 
             DecodeFailure::RateLimited,
         ),
         (
+            br#"{"type":"turn.failed","error":{"message":"Selected model is at capacity"}}
+"#
+            .as_slice(),
+            DecodeFailure::Capacity,
+        ),
+        (
             br#"{"type":"turn.failed","error":{"message":"current quota exceeded"}}
 "#
             .as_slice(),

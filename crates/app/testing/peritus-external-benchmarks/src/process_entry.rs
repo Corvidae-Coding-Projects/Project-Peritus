@@ -19,6 +19,9 @@ pub fn main_entry() -> ExitCode {
     if std::env::args_os().nth(1).as_deref() == Some(std::ffi::OsStr::new("rubric")) {
         return rubric(&runtime);
     }
+    if std::env::args_os().nth(1).as_deref() == Some(std::ffi::OsStr::new("qualify-providers")) {
+        return qualify_providers(&runtime);
+    }
     match runtime.block_on(crate::run(std::env::args_os())) {
         Ok(report) => {
             match serde_json::to_string_pretty(&report) {
@@ -32,6 +35,30 @@ pub fn main_entry() -> ExitCode {
         }
         Err(error) => {
             eprintln!("peritus-benchmark-agent: {error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn qualify_providers(runtime: &tokio::runtime::Runtime) -> ExitCode {
+    if std::env::args_os().count() != 2 {
+        eprintln!("peritus-benchmark-agent: qualify-providers does not accept arguments");
+        return ExitCode::FAILURE;
+    }
+    let cancellation = peritus_provider_core::CancellationToken::new();
+    match runtime.block_on(crate::providers::authenticated(&cancellation)) {
+        Ok(qualified) => match serde_json::to_string(&qualified.routes) {
+            Ok(json) => {
+                println!("{json}");
+                ExitCode::SUCCESS
+            }
+            Err(error) => {
+                eprintln!("peritus-benchmark-agent: encode provider qualifications: {error}");
+                ExitCode::FAILURE
+            }
+        },
+        Err(error) => {
+            eprintln!("peritus-benchmark-agent: qualify providers: {error}");
             ExitCode::FAILURE
         }
     }

@@ -14,18 +14,24 @@ an isolated C2 state root. Benchmark tasks therefore exercise the same synchrono
 command controls as the interactive product; the Python adapters only upload and invoke the native
 binary. No benchmark-specific shell or PTY implementation substitutes for the harness.
 
-The Terminal-Bench command records a flat schema-versioned report plus the native trace, last
-product observation, generated design, conversation state, provider identities, changed paths, and
-aggregated token/cache accounting. A product rejection is still a completed benchmark attempt, so
-Harbor's independent verifier—not the adapter—owns the external score.
+Both commands emit the same schema-version-6 invocation report. It records the adapter handshake,
+source and binary identity, suite revision, provider routes and live-canary status, exact candidate
+digest and changed paths, verified native disposition, gates, obligations, review, terminal cause,
+trace, resource use, and token/cache accounting. Upstream reward and verifier exceptions remain
+separate fields that never influence native acceptance.
 
-Every live invocation requires `PERITUS_SOURCE_REVISION` at compile time. The report binds that
-full Git object ID to the Cargo package version and the SHA-256 of the executable that actually ran.
-`peritus-benchmark-agent protocol` exposes those identities and the supported Terminal-Bench report
-schema without contacting a provider. Harbor runs that handshake immediately after upload and
-rejects a stale adapter, schema, source revision, or executable before task execution. Ordinary
-workspace builds can compile the crate without this variable, but such a binary refuses to run an
-external benchmark rather than publishing unattributable evidence.
+Every attributable live invocation requires `PERITUS_SOURCE_REVISION` at compile time. Ordinary
+workspace builds may omit it, but an admitted run then emits an explicit failed identity report
+instead of disappearing. `peritus-benchmark-agent protocol` exposes the source, executable digest,
+and report schema without contacting a provider. `peritus-benchmark-agent qualify-providers` then
+sends one minimal real request through both configured account runtimes before expensive work.
+
+Admission prepares the workspace, trace, evidence, and separate recovery paths before model work.
+After admission an unconditional settlement guard emits exactly one atomic `invocation.json`, or a
+recovery report if primary publication fails. Product errors, timeouts, cancellation, trace
+projection failures, and unwinds therefore remain scoreable. Only the verified `accepted`
+disposition sets `success=true`; a retained candidate never becomes native or upstream success by
+itself.
 
 Trace projection validates response, tool, compaction, retry, and provider-switch frames. Retry or
 switch metadata closes an incomplete projected response while remaining separate from the

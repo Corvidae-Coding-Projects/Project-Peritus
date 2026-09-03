@@ -10,8 +10,8 @@ use std::time::{Duration, Instant};
 use peritus_model_protocol::{ModelRequest, ProviderProfile, StructuredOutput};
 use peritus_provider_core::{
     BoxFuture, CancellationToken, CredentialSource, HttpTransport, ModelProvider, OwnedModelStream,
-    ProviderCoreError, ProviderCoreErrorKind, ReqwestTransport, RetryAction, RetryFailure,
-    RetryObservation, SubmissionState, validate_request_profile, wait_for_backoff,
+    ProviderAvailability, ProviderCoreError, ProviderCoreErrorKind, ReqwestTransport, RetryAction,
+    RetryFailure, RetryObservation, SubmissionState, validate_request_profile, wait_for_backoff,
 };
 
 use crate::{CompatibleConfig, CompatibleProfile, request, stream::CompatibleStream};
@@ -71,6 +71,14 @@ impl CompatibleClient {
 impl ModelProvider for CompatibleClient {
     fn profile(&self) -> &ProviderProfile {
         self.profile.provider_profile()
+    }
+
+    fn availability(&self) -> ProviderAvailability {
+        if self.credentials.resolve(self.config.auth().credential()).is_ok() {
+            ProviderAvailability::CredentialPresent
+        } else {
+            ProviderAvailability::Unavailable
+        }
     }
 
     #[allow(

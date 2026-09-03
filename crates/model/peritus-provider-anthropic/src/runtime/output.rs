@@ -7,6 +7,9 @@ use serde_json::{Map, Value};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum DecodeFailure {
+    Authentication,
+    Capacity,
+    ContextLimit,
     Reported,
     Incomplete,
     Malformed,
@@ -31,7 +34,7 @@ pub(super) fn decode(
     let value: Value = serde_json::from_slice(bytes).map_err(|_| DecodeFailure::Malformed)?;
     let raw = value.as_object().ok_or(DecodeFailure::Malformed)?;
     if optional_bool(raw, "is_error")?.unwrap_or(false) {
-        return Err(DecodeFailure::Reported);
+        return Err(classify_reported(raw));
     }
     let turn = raw
         .get("structured_output")
@@ -52,6 +55,31 @@ pub(super) fn decode(
         return Err(DecodeFailure::Malformed);
     }
     Ok(RuntimeTurn { content, tool_calls, usage: usage(raw)? })
+}
+
+fn classify_reported(raw: &Map<String, Value>) -> DecodeFailure {
+    let message = raw
+        .get("result")
+        .or_else(|| raw.get("error"))
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    if message.contains("oauth")
+        || message.contains("authentication")
+        || message.contains("not logged in")
+        || message.contains("unauthorized")
+    {
+        DecodeFailure::Authentication
+    } else if message.contains("at capacity")
+        || message.contains("model capacity")
+        || message.contains("overloaded")
+    {
+        DecodeFailure::Capacity
+    } else if message.contains("context window") || message.contains("context length") {
+        DecodeFailure::ContextLimit
+    } else {
+        DecodeFailure::Reported
+    }
 }
 
 fn required_calls(turn: &Map<String, Value>) -> Result<&[Value], DecodeFailure> {
@@ -147,6 +175,26 @@ fn optional_u64(object: &Map<String, Value>, name: &str) -> Result<Option<u64>, 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reported_runtime_failures_keep_recovery_relevant_causes() {
+        let allowed = BTreeSet::new();
+        for (message, expected) in [
+            ("OAuth session expired", DecodeFailure::Authentication),
+            ("Selected model is at capacity", DecodeFailure::Capacity),
+            ("prompt exceeds context window", DecodeFailure::ContextLimit),
+            ("provider rejected the turn", DecodeFailure::Reported),
+        ] {
+            let mut value = Map::new();
+            value.insert("is_error".to_owned(), Value::Bool(true));
+            value.insert("result".to_owned(), Value::String(message.to_owned()));
+            let bytes = serde_json::to_vec(&Value::Object(value)).expect("fixture JSON");
+            match decode(&bytes, &allowed, 0) {
+                Err(observed) => assert_eq!(observed, expected),
+                Ok(_) => panic!("reported provider failure decoded as a successful turn"),
+            }
+        }
+    }
 
     fn allowed() -> BTreeSet<String> {
         let mut tools = BTreeSet::new();

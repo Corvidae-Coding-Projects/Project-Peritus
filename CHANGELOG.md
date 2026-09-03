@@ -1,5 +1,11 @@
 # Changelog
 
+- Unify HarnessBench and Terminal-Bench behind a schema-version-6 native admission and settlement
+  boundary. Require adapter and pinned-suite handshakes, real provider canaries, exact candidate and
+  resource evidence, strict verified acceptance, and exactly-once atomic report publication with a
+  separately prepared recovery path. Add typed provider route, availability, capability, and
+  terminal-recovery contracts; preserve successive future-valid Claude credential rotations; and
+  keep external verifier rewards independent of native disposition (#46, #47, #48).
 - Replace long hosted checks with bounded work shards instead of extending their timeouts. Gate A
   and Foundation now partition Rust and Verus work by reviewed architecture layers; H2 runs 18
   single-scenario shards per host; H0 runs four fresh-subject worker partitions before reconstructing

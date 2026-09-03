@@ -175,6 +175,12 @@ score. Its immutable normalized report has SHA-256
 `d7feff820c7d38d204744f75ef9214cb7b91949cac2c8c3b5625f10c39321bc0`. Setup, exact evidence,
 results, and reproduced failures are documented under [external benchmarks](benchmarks/README.md).
 
+The remediation branch now gives both external suites one versioned admission and settlement
+boundary. It performs real provider canaries before expensive work, retains exact candidate and
+qualification evidence, and atomically publishes one native report or a separate recovery report
+for every admitted attempt. External verifier rewards remain independent of the product's strict
+accepted/candidate/failed disposition.
+
 ## Install and run
 
 No public release exists yet. From a source checkout, build and install the current native package

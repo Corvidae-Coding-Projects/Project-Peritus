@@ -28,6 +28,24 @@ pub fn profile() -> ProviderProfile {
     .expect("profile")
 }
 
+pub fn constrained_profile() -> ProviderProfile {
+    ProviderProfile::new(
+        ProviderProfileId::new([0x79; 16]).expect("profile ID"),
+        1,
+        ProviderName::new("constrained-provider".to_owned()).expect("provider"),
+        ModelName::new("constrained-model".to_owned()).expect("model"),
+        WireDialect::CompatibleResponses,
+        CapabilityMatrix::new(&[Capability::ToolCalls], &[]).expect("capabilities"),
+        CapabilityProvenance::Probed,
+        ModelLimits::new(512, 128, 16, 1, 256 * 1024).expect("limits"),
+        OutputLimitEnforcement::ProviderEnforced,
+        StateMode::StatelessReplay,
+        ResumeKind::Unsupported,
+        CancellationKind::BestEffortLocalAbort,
+    )
+    .expect("profile")
+}
+
 pub fn image_profile() -> ProviderProfile {
     ProviderProfile::new(
         ProviderProfileId::new([0x7D; 16]).expect("profile ID"),

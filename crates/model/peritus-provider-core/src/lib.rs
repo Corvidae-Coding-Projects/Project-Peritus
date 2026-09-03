@@ -16,6 +16,8 @@ mod error;
 mod framing;
 mod http;
 mod process;
+mod qualification;
+mod recovery;
 mod redaction;
 mod reqwest_transport;
 mod retry;
@@ -41,6 +43,11 @@ pub use process::{
     EnvironmentName, ProcessExecutable, ProcessExit, ProcessLimits, ProcessOutput, ProcessRequest,
     ProcessTransport, TokioProcessTransport,
 };
+pub use qualification::{
+    ProviderAvailability, ProviderCanaryError, ProviderCandidate, ProviderQualification,
+    ProviderRequirement, ProviderRoute, select_qualified_provider, verify_live_provider,
+};
+pub use recovery::{ProviderRecoveryDisposition, ProviderTerminal, ProviderTerminalCause};
 pub use redaction::RedactedValue;
 pub use reqwest_transport::ReqwestTransport;
 pub use retry::{
