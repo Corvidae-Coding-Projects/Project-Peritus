@@ -1,6 +1,6 @@
 {
   "next_display_id": 51,
-  "next_comment_id": 1182,
+  "next_comment_id": 1183,
   "display_id_map": {
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
@@ -7796,7 +7796,7 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-09-03T17:29:09.334036408Z",
-      "updated_at": "2026-09-03T18:40:34.710984018Z",
+      "updated_at": "2026-09-03T18:57:22.278162219Z",
       "labels": [
         "feature"
       ],
@@ -7818,6 +7818,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAdRyO9DXEYV+DQbDEYQfO3+IXY95/SnpqJSDs6RubRNtJpTgnPz7uDiw9dTGorVYoH4+Kk3TtspAzKOiqmrRXCg=="
+        },
+        "63250170-5def-4603-a3da-053370aeb2cb": {
+          "display_id": 1182,
+          "author": "6ME5",
+          "content": "Hosted Windows Clippy found platform-sized benchmark dispatch futures (16.6 KiB). Boxed both suite futures at the typed dispatch boundary. Verified with the exact testing Clippy shard and all 60 peritus-external-benchmarks tests; committed as e4812f2b.",
+          "created_at": "2026-09-03T18:57:22.274718245Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAK2fF8y6burXENRLrmbR2Y3lncaCa/IqacDeKPtqQfCKs1/ESk/s+CnQZRZW1bAYNZERUPLHfVVALaRoSKCPrAA=="
         },
         "687734aa-3fdc-4e5b-9d05-e46f83e189f9": {
           "display_id": 1181,
@@ -11537,8 +11546,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-03T18:40:34.710984018Z",
+    "timestamp": "2026-09-03T18:57:22.278162219Z",
     "agent_id": "6ME5",
-    "agent_seq": 1415
+    "agent_seq": 1416
   }
 }
