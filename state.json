@@ -11243,8 +11243,8 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-03T07:24:44.088174853Z",
-      "updated_at": "2026-09-03T07:25:09.305088501Z",
-      "closed_at": "2026-09-03T07:25:09.304344490Z",
+      "updated_at": "2026-09-03T07:25:36.146513822Z",
+      "closed_at": "2026-09-03T07:25:36.145771995Z",
       "comments": {
         "fc72a273-fa46-4763-8910-482d9a152535": {
           "display_id": 1159,
@@ -11328,8 +11328,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-03T07:25:31.114546068Z",
+    "timestamp": "2026-09-03T07:25:36.146513822Z",
     "agent_id": "6ME5",
-    "agent_seq": 1389
+    "agent_seq": 1390
   }
 }
