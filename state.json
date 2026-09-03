@@ -1,6 +1,6 @@
 {
   "next_display_id": 50,
-  "next_comment_id": 1160,
+  "next_comment_id": 1161,
   "display_id_map": {
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
@@ -1169,11 +1169,22 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-03T07:24:18.756359126Z",
-      "updated_at": "2026-09-03T07:25:20.166381340Z",
+      "updated_at": "2026-09-03T07:25:31.114546068Z",
       "related": [
         "39341321-25d6-4cd4-8e10-ad806ddefb0d",
         "52028605-f0c2-43fe-b0ae-0e0db829553f"
-      ]
+      ],
+      "comments": {
+        "08353d53-bad6-483d-a0a4-5fcd60d5742f": {
+          "display_id": 1160,
+          "author": "6ME5",
+          "content": "[action] Created feature/external-adapter-provider-recovery from main 3528613c; parent #46 with related S3 #47 and S4 #48; preserving existing benchmark README diff for inclusion",
+          "created_at": "2026-09-03T07:25:31.111354017Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAs/UrCH9upMN/AaQctu6oUfrGJ3c/Vdg7pdtobOxtMOZKpOJ84ZkuT6F1Qisw/lwKBpmMFegn6AjssywCWdJcDA=="
+        }
+      }
     },
     "27633189-3dec-4781-9940-42a3e8eb9e60": {
       "uuid": "27633189-3dec-4781-9940-42a3e8eb9e60",
@@ -11317,8 +11328,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-03T07:25:25.109473459Z",
+    "timestamp": "2026-09-03T07:25:31.114546068Z",
     "agent_id": "6ME5",
-    "agent_seq": 1388
+    "agent_seq": 1389
   }
 }
