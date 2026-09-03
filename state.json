@@ -1,7 +1,8 @@
 {
-  "next_display_id": 44,
+  "next_display_id": 45,
   "next_comment_id": 1147,
   "display_id_map": {
+    "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
     "0e2f54b8-fe27-4bbd-a983-9644f1da6f71": 1,
     "1384f136-8a99-4b49-838f-841a017d1ff4": 17,
@@ -53,6 +54,17 @@
     }
   },
   "issues": {
+    "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": {
+      "uuid": "0dd9db9c-2d56-4022-bb25-2d97a132a6a1",
+      "display_id": 44,
+      "title": "Digest-bound grounded run knowledge",
+      "description": "Implement S1 from the benchmark remediation plan: V-class run knowledge, provenance-bound context selection, invalidation and role deltas, proofs, and focused tests; no product-runner edits.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "6ME5",
+      "created_at": "2026-09-03T01:44:58.285507979Z",
+      "updated_at": "2026-09-03T01:44:58.285507979Z"
+    },
     "0e00da18-d530-4916-8b3a-05d63719de2b": {
       "uuid": "0e00da18-d530-4916-8b3a-05d63719de2b",
       "display_id": 33,
@@ -11104,8 +11116,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-03T01:41:26.714328086Z",
+    "timestamp": "2026-09-03T01:44:58.285507979Z",
     "agent_id": "6ME5",
-    "agent_seq": 1358
+    "agent_seq": 1359
   }
 }
