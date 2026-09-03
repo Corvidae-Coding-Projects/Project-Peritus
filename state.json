@@ -1,6 +1,6 @@
 {
   "next_display_id": 52,
-  "next_comment_id": 1187,
+  "next_comment_id": 1188,
   "display_id_map": {
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
@@ -11588,16 +11588,27 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-09-03T22:00:44.003844404Z",
-      "updated_at": "2026-09-03T22:00:48.886492622Z",
+      "updated_at": "2026-09-03T22:04:20.441747033Z",
       "labels": [
         "feature"
-      ]
+      ],
+      "comments": {
+        "699c9fe5-c471-4162-a4f0-8c8023d8c8e3": {
+          "display_id": 1187,
+          "author": "6ME5",
+          "content": "[action] Resumed S6 after compaction; resolving durable resume API boundary before implementation",
+          "created_at": "2026-09-03T22:04:20.437818052Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAFNiayxaXp5gJkt0okibxUBWgsYjznQG3KwrDNWYXP4+sT2ixta0AbWlzNyS5ughCiRpvb+XacTUOSTje7uynBw=="
+        }
+      }
     }
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-03T22:00:58.500670229Z",
+    "timestamp": "2026-09-03T22:04:20.441747033Z",
     "agent_id": "6ME5",
-    "agent_seq": 1424
+    "agent_seq": 1425
   }
 }
