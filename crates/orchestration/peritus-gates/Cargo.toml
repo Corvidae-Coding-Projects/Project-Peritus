@@ -13,7 +13,9 @@ readme = "README.md"
 peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
 peritus-evidence = { version = "=0.0.0", path = "../../state/peritus-evidence" }
 peritus-journal = { version = "=0.0.0", path = "../../state/peritus-journal" }
+peritus-obligations = { version = "=0.0.0", path = "../peritus-obligations" }
 peritus-quality-policy = { version = "=0.0.0", path = "../../foundation/peritus-quality-policy" }
+peritus-run-settlement = { version = "=0.0.0", path = "../peritus-run-settlement" }
 peritus-spec = { version = "=0.0.0", path = "../../foundation/peritus-spec" }
 peritus-tool-protocol = { version = "=0.0.0", path = "../../tools/peritus-tool-protocol" }
 peritus-tools-quality = { version = "=0.0.0", path = "../../tools/peritus-tools-quality" }
