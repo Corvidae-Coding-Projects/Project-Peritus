@@ -6,11 +6,13 @@ use std::{
     time::Duration,
 };
 
-use peritus_model_protocol::EventEnvelope;
+use peritus_model_protocol::{EventEnvelope, ModelRequest, ProviderProfile};
 use peritus_product_runner::{
     ProductDeliveryScope, ProductRunInput, ProductRunResume, RoleProviders,
 };
-use peritus_provider_core::{CancellationToken, ModelProvider};
+use peritus_provider_core::{
+    BoxFuture, CancellationToken, ModelProvider, OwnedModelStream, ProviderCoreError,
+};
 use peritus_types::{RunId, WorkspaceId};
 
 use super::support::{
@@ -63,6 +65,35 @@ pub fn roles(
     let reviewer: Arc<dyn ModelProvider> = reviewer;
     let fixer: Arc<dyn ModelProvider> = fixer;
     RoleProviders { writer, reviewer, fixer, fallbacks: Vec::new() }
+}
+
+struct StalledProvider {
+    profile: ProviderProfile,
+}
+
+impl ModelProvider for StalledProvider {
+    fn profile(&self) -> &ProviderProfile {
+        &self.profile
+    }
+
+    fn start(
+        &self,
+        _request: ModelRequest,
+        _cancellation: CancellationToken,
+    ) -> BoxFuture<'_, Result<OwnedModelStream, ProviderCoreError>> {
+        Box::pin(std::future::pending())
+    }
+}
+
+pub fn stalled_roles(id: u8) -> RoleProviders {
+    let provider: Arc<dyn ModelProvider> =
+        Arc::new(StalledProvider { profile: profile([id; 16], "stalled") });
+    RoleProviders {
+        writer: Arc::clone(&provider),
+        reviewer: Arc::clone(&provider),
+        fixer: provider,
+        fallbacks: Vec::new(),
+    }
 }
 
 pub fn scripted(

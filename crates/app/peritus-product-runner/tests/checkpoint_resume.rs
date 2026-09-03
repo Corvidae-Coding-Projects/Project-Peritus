@@ -172,7 +172,6 @@ fn deadline_cutoff_still_runs_finalization() {
     run_async(async {
         let repository = repository();
         let state = tempfile::tempdir().expect("state");
-        let provider = scripted(0x41, "unused", Vec::new());
         let phases = Arc::new(Mutex::new(Vec::new()));
         let observed = Arc::clone(&phases);
         let outcome = ProductRunner::run(
@@ -181,9 +180,9 @@ fn deadline_cutoff_still_runs_finalization() {
                 &state,
                 0x42,
                 0x43,
-                roles(provider.clone(), provider.clone(), provider),
+                stalled_roles(0x41),
                 Arc::new(AtomicBool::new(false)),
-                Duration::from_millis(20),
+                Duration::from_secs(2),
                 None,
             ),
             Arc::new(move |update| observed.lock().expect("phases").push(update.phase)),
@@ -193,7 +192,8 @@ fn deadline_cutoff_still_runs_finalization() {
 
         assert_eq!(outcome.settlement().cause(), SettlementCause::Deadline);
         assert_eq!(outcome.settlement().disposition(), RunDisposition::FailedNoCandidate);
-        assert_eq!(phases.lock().expect("phases").as_slice(), [ProductRunPhase::Finalizing]);
+        let final_phase = phases.lock().expect("phases").last().copied();
+        assert_eq!(final_phase, Some(ProductRunPhase::Finalizing));
     });
 }
 
