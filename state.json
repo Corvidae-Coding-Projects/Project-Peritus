@@ -1,6 +1,6 @@
 {
   "next_display_id": 51,
-  "next_comment_id": 1180,
+  "next_comment_id": 1181,
   "display_id_map": {
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
@@ -7796,7 +7796,7 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-09-03T17:29:09.334036408Z",
-      "updated_at": "2026-09-03T18:39:30.772552600Z",
+      "updated_at": "2026-09-03T18:39:36.329911631Z",
       "labels": [
         "feature"
       ],
@@ -7809,6 +7809,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAcCGY6NBQGE/myQZyMV1tmU9dETCAUqItQzg2gLtjWhG1ew9E+yuaz+ogpeX66xnVp4HSenOxOpU3XKagFYE6CA=="
+        },
+        "61c0d568-25bf-4cfd-bf92-42e11d406bda": {
+          "display_id": 1180,
+          "author": "6ME5",
+          "content": "Implemented the S5 product-runner integration. Ordinary terminals now return S0 RunSettlement plus the strongest candidate, remaining work, and an exact resume handoff; invalid preconditions and internal invariants remain errors. Added mutation/verification/gate/review/fixer checkpoints, S1 phase invalidation, S2 obligations, S4 causes, protected finalization, caller projections, and counter-based failure tests. Local evidence: xtask all passes; app and testing build/test/doc-test/clippy/docs shards pass; app verus verify/strict/build/strict shards pass; cargo deny passes.",
+          "created_at": "2026-09-03T18:39:36.326203163Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAdRyO9DXEYV+DQbDEYQfO3+IXY95/SnpqJSDs6RubRNtJpTgnPz7uDiw9dTGorVYoH4+Kk3TtspAzKOiqmrRXCg=="
         },
         "9efa2910-76a9-4a02-9073-3e93c1469b95": {
           "display_id": 1178,
@@ -11519,8 +11528,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-03T18:39:30.772552600Z",
+    "timestamp": "2026-09-03T18:39:36.329911631Z",
     "agent_id": "6ME5",
-    "agent_seq": 1413
+    "agent_seq": 1414
   }
 }
