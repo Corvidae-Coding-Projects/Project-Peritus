@@ -1,6 +1,6 @@
 {
   "next_display_id": 51,
-  "next_comment_id": 1183,
+  "next_comment_id": 1184,
   "display_id_map": {
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
@@ -7796,7 +7796,7 @@
       "priority": "medium",
       "created_by": "6ME5",
       "created_at": "2026-09-03T17:29:09.334036408Z",
-      "updated_at": "2026-09-03T18:57:22.278162219Z",
+      "updated_at": "2026-09-03T19:20:09.189241387Z",
       "labels": [
         "feature"
       ],
@@ -7854,6 +7854,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAyhPBsri7P9qlAXZhAQcEtQ4N8e6gprYmXF0jPJ2qGvIJGoXrGT3Hcm7HDQZ3+VuUePiCIPZjVKYgHf2F49eWCA=="
+        },
+        "f01722e0-14ff-47a2-a947-0302c6768a40": {
+          "display_id": 1183,
+          "author": "6ME5",
+          "content": "Hosted Windows app tests exposed a 20 ms deadline race before active-run admission. Replaced the race with a deliberately stalled provider and a 2-second bounded horizon, then asserted finalization is the terminal observed phase. Exact app Clippy, exact app tests, and repository policy pass; committed as 67ec8a42.",
+          "created_at": "2026-09-03T19:20:09.184904005Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA6/ThjyDhOfIaWhgIfINocV/tDpAvHGYv5jOGruNbqPGyI6jhVKqZxzMoASJAIWu/qgbnPlZlTZkLIo3xdnfXBQ=="
         }
       }
     },
@@ -11546,8 +11555,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-03T18:57:22.278162219Z",
+    "timestamp": "2026-09-03T19:20:09.189241387Z",
     "agent_id": "6ME5",
-    "agent_seq": 1416
+    "agent_seq": 1417
   }
 }
