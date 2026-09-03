@@ -1,5 +1,5 @@
 {
-  "next_display_id": 49,
+  "next_display_id": 50,
   "next_comment_id": 1159,
   "display_id_map": {
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -48,6 +48,7 @@
     "ec4c6d0c-2cbb-40b9-8be2-4ac69e7fc750": 32,
     "ef6ed3ab-52cd-436a-aa6e-d5d098c89f6c": 8,
     "f27888a7-5366-4703-a68a-9f17b1adad81": 20,
+    "f350243c-7824-4375-a9c4-63dd3e976f1a": 49,
     "f54d84d8-827f-4eec-8d4c-89097b5214a2": 42,
     "f68244a3-b4ed-4597-a8e1-330360aa4bb1": 39
   },
@@ -11208,6 +11209,17 @@
         }
       }
     },
+    "f350243c-7824-4375-a9c4-63dd3e976f1a": {
+      "uuid": "f350243c-7824-4375-a9c4-63dd3e976f1a",
+      "display_id": 49,
+      "title": "S4 provider credential context and command recovery",
+      "description": "Implement every S4 item across provider-core/provider adapters and existing active-command qualification without duplicating the PTY stack or composing product-runner behavior.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "6ME5",
+      "created_at": "2026-09-03T07:24:44.088174853Z",
+      "updated_at": "2026-09-03T07:24:44.088174853Z"
+    },
     "f54d84d8-827f-4eec-8d4c-89097b5214a2": {
       "uuid": "f54d84d8-827f-4eec-8d4c-89097b5214a2",
       "display_id": 42,
@@ -11279,8 +11291,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-03T07:24:34.479098299Z",
+    "timestamp": "2026-09-03T07:24:44.088174853Z",
     "agent_id": "6ME5",
-    "agent_seq": 1382
+    "agent_seq": 1383
   }
 }
