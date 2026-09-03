@@ -1,5 +1,5 @@
 {
-  "next_display_id": 55,
+  "next_display_id": 56,
   "next_comment_id": 1188,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -53,6 +53,7 @@
     "ef6ed3ab-52cd-436a-aa6e-d5d098c89f6c": 8,
     "f27888a7-5366-4703-a68a-9f17b1adad81": 20,
     "f350243c-7824-4375-a9c4-63dd3e976f1a": 49,
+    "f442c009-255b-4800-a118-169b6debf529": 55,
     "f54d84d8-827f-4eec-8d4c-89097b5214a2": 42,
     "f68244a3-b4ed-4597-a8e1-330360aa4bb1": 39,
     "ff9ea321-1b6b-4331-9389-9566ca58b586": 51
@@ -11560,6 +11561,18 @@
         }
       }
     },
+    "f442c009-255b-4800-a118-169b6debf529": {
+      "uuid": "f442c009-255b-4800-a118-169b6debf529",
+      "display_id": 55,
+      "title": "S6d product-run recovery and handoff qualification",
+      "description": "Add legacy migration, checkpoint-stage restart, stale workspace, candidate interruption, digest targeting, double-action, rendering, and continue-to-accept coverage.",
+      "status": "open",
+      "priority": "medium",
+      "parent_uuid": "ff9ea321-1b6b-4331-9389-9566ca58b586",
+      "created_by": "6ME5",
+      "created_at": "2026-09-03T22:06:07.031860299Z",
+      "updated_at": "2026-09-03T22:06:07.031860299Z"
+    },
     "f54d84d8-827f-4eec-8d4c-89097b5214a2": {
       "uuid": "f54d84d8-827f-4eec-8d4c-89097b5214a2",
       "display_id": 42,
@@ -11655,8 +11668,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-03T22:06:01.765199506Z",
+    "timestamp": "2026-09-03T22:06:07.031860299Z",
     "agent_id": "6ME5",
-    "agent_seq": 1431
+    "agent_seq": 1432
   }
 }
