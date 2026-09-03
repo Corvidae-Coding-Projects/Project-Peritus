@@ -1,6 +1,6 @@
 {
   "next_display_id": 50,
-  "next_comment_id": 1168,
+  "next_comment_id": 1169,
   "display_id_map": {
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
     "0e00da18-d530-4916-8b3a-05d63719de2b": 33,
@@ -1169,7 +1169,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-03T07:24:18.756359126Z",
-      "updated_at": "2026-09-03T08:58:01.172888586Z",
+      "updated_at": "2026-09-03T09:16:00.658745776Z",
       "related": [
         "39341321-25d6-4cd4-8e10-ad806ddefb0d",
         "52028605-f0c2-43fe-b0ae-0e0db829553f"
@@ -1183,6 +1183,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAs/UrCH9upMN/AaQctu6oUfrGJ3c/Vdg7pdtobOxtMOZKpOJ84ZkuT6F1Qisw/lwKBpmMFegn6AjssywCWdJcDA=="
+        },
+        "58f636a7-b3eb-43cf-ae17-d5d074fc148f": {
+          "display_id": 1168,
+          "author": "6ME5",
+          "content": "Commit 46e651df fixes Windows benchmark-report durability by opening report directories with FILE_FLAG_BACKUP_SEMANTICS before sync. Verified: 60/60 peritus-external-benchmarks tests; strict package Clippy; cargo fmt and diff check; x86_64-pc-windows-gnu cross-target cargo check. CI failure was Windows AccessDenied during post-rename directory sync.",
+          "created_at": "2026-09-03T09:16:00.655502974Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAOnQwtaxbZqPDwfYPDkIyYnJ2ioIB+bTS9xlalfIM1+wCbQh81KK+rPvA4n8CNe+vv34a+d3nMzCj0q0MPmy3AA=="
         },
         "71433da4-de30-48af-9f15-1e7d4817ac71": {
           "display_id": 1164,
@@ -11395,8 +11404,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-03T08:58:01.172888586Z",
+    "timestamp": "2026-09-03T09:16:00.658745776Z",
     "agent_id": "6ME5",
-    "agent_seq": 1397
+    "agent_seq": 1398
   }
 }
