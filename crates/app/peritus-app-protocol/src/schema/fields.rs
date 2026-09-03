@@ -86,6 +86,16 @@ pub enum FieldBound {
     DiagnosticBytes,
     /// The negotiated remaining-work ceiling applies.
     RemainingWorkItems,
+    /// The product-run list ceiling applies.
+    ProductRuns,
+    /// The product task byte ceiling applies.
+    ProductTaskBytes,
+    /// The product detail byte ceiling applies.
+    ProductDetailBytes,
+    /// The product deliverable changed-path ceiling applies.
+    ProductDeliverablePaths,
+    /// The product deliverable successful-command ceiling applies.
+    ProductDeliverableCommands,
     /// Items must be strictly sorted and unique.
     SortedUnique,
     /// Cursors, offsets, or sequence numbers must be contiguous.
@@ -116,6 +126,11 @@ impl FieldBound {
             Self::TerminalChunkBytes => "app.max-terminal-chunk-bytes",
             Self::DiagnosticBytes => "app.max-diagnostic-bytes",
             Self::RemainingWorkItems => "app.max-remaining-work-items",
+            Self::ProductRuns => "product.max-runs",
+            Self::ProductTaskBytes => "product.max-task-bytes",
+            Self::ProductDetailBytes => "product.max-detail-bytes",
+            Self::ProductDeliverablePaths => "product.max-deliverable-paths",
+            Self::ProductDeliverableCommands => "product.max-deliverable-commands",
             Self::SortedUnique => "strictly-sorted-unique",
             Self::Contiguous => "contiguous",
             Self::DeclaredArtifactSize => "declared-artifact-size",

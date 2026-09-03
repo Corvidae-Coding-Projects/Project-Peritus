@@ -127,6 +127,26 @@ Shutdown request, accepted, draining/progress, and completed are separate facts.
 clean or unclean disposition and bounded remaining external work. Accepting a request is never
 presented as completed shutdown.
 
+## Product candidate settlement
+
+Response tags 13 (`product-run-settled`) and 14 (`product-run-settlements`) add an append-only
+terminal contract without changing tags 1 through 12 or the legacy `ProductDeliverable` byte
+layout. Each settlement binds a candidate to its run, workspace, content digest, incorporated
+conversation revision, and strictly increasing checkpoint sequence.
+
+The qualification stages are observed, changed, self-checked, gates-passed, review-pending, and
+qualified. Gate, public-obligation, and independent-review evidence is separately missing, current,
+failed, or stale, and every retained record carries its producing candidate identity. Only a
+qualified candidate with current satisfied evidence for all three obligations can produce the
+automated `accepted` disposition. Candidate work that exists without those premises is
+`candidate-available`; user wait, cancellation, recovery, and no-candidate failure remain distinct.
+
+Automated qualification does not replace `ProductDeliverable::accepted`. That existing field still
+records the user's handoff decision. Old product payloads decode their deliverables as qualified,
+while partially checked candidates are encoded only inside the new settlement payloads. The
+`peritus-run-settlement` V-class reducer owns these pure rules; A3 owns only their stable bounded wire
+representation.
+
 ## Stable errors
 
 Every application failure separates:
@@ -162,9 +182,10 @@ generated outputs. Valid released bytes remain decodable; invalid fixtures remai
 ## Formal scope
 
 Executable Verus predicates and proofs cover negotiation safety, monotonic cursor and legal ack
-relations, redelivery identity, chunk conservation, completion size, terminal ordering, and
-independent bounds. Ordinary-Rust refinement tests exercise the same predicates through public
-constructors and state machines.
+relations, redelivery identity, chunk conservation, completion size, terminal ordering, independent
+bounds, candidate evidence freshness, checkpoint monotonicity, exactly-once settlement, and the
+complete acceptance premises. Ordinary-Rust refinement tests exercise the same predicates through
+public constructors and state machines.
 
 The proofs do not claim SHA-256 collision resistance, operating-system transport behavior, peer
 identity, durable storage, scheduler fairness, PTY behavior, or daemon effects. Those observations

@@ -9,7 +9,7 @@ Generated from Rust metadata. Numeric and semantic allocations are append-only.
 | 94 | `app-client-hello` | 1 | `1:client-hello` |
 | 95 | `app-server-hello` | 1 | `1:compatible`, `2:downgraded`, `3:incompatible` |
 | 96 | `app-request` | 1 | `1:submit-command`, `2:subscribe`, `3:open-artifact`, `4:cancel-artifact`, `5:answer-prompt`, `6:cancel-prompt`, `7:attach-terminal`, `8:terminal-input`, `9:terminal-resize`, `10:detach-terminal`, `11:cancel-terminal`, `12:daemon-status`, `13:shutdown`, `14:begin-artifact-upload`, `15:upload-artifact-chunk`, `16:complete-artifact-upload`, `17:start-product-run`, `18:control-product-run`, `19:query-product-runs`, `20:continue-product-run`, `21:query-product-run-conversation` |
-| 97 | `app-response` | 1 | `1:command-result`, `2:subscription-started`, `3:artifact-opened`, `4:prompt-accepted`, `5:terminal-attached`, `6:acknowledged`, `7:daemon-status`, `8:shutdown-accepted`, `9:error`, `10:product-run-accepted`, `11:product-runs`, `12:product-run-conversation` |
+| 97 | `app-response` | 1 | `1:command-result`, `2:subscription-started`, `3:artifact-opened`, `4:prompt-accepted`, `5:terminal-attached`, `6:acknowledged`, `7:daemon-status`, `8:shutdown-accepted`, `9:error`, `10:product-run-accepted`, `11:product-runs`, `12:product-run-conversation`, `13:product-run-settled`, `14:product-run-settlements` |
 | 98 | `app-event` | 1 | `1:domain-event`, `2:subscription-gap`, `3:backpressure`, `4:artifact-metadata`, `5:artifact-chunk`, `6:artifact-complete`, `7:prompt-requested`, `8:terminal-output`, `9:terminal-exited`, `10:readiness-changed`, `11:diagnostic`, `12:heartbeat`, `13:shutdown-progress`, `14:shutdown-complete` |
 | 99 | `app-control` | 1 | `1:acknowledge`, `2:cancel-subscription`, `3:cancel-artifact`, `4:cancel-prompt`, `5:cancel-terminal`, `6:subscription`, `7:heartbeat-reply` |
 
@@ -603,6 +603,111 @@ Rust type: `HeartbeatReply`
 |---|:---:|---|---|---|---|
 | `heartbeatId` | yes | `fixed[16]` | `HeartbeatId` | `HeartbeatId` | `nonzero` |
 | `sequence` | yes | `u64-be` | `u64` | `UInt64` | `contiguous` |
+
+### `ProductProviderSelection`
+
+Rust type: `ProductProviderSelection`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `writer` | yes | `fixed[16]` | `ProviderProfileId` | `ProviderProfileId` | `nonzero` |
+| `reviewer` | yes | `fixed[16]` | `ProviderProfileId` | `ProviderProfileId` | `nonzero` |
+| `fixer` | yes | `fixed[16]` | `ProviderProfileId` | `ProviderProfileId` | `nonzero` |
+
+### `ProductDeliverable`
+
+Rust type: `ProductDeliverable`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `workspacePath` | yes | `len+utf8` | `String` | `string` | `product.max-detail-bytes` |
+| `changedPaths` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `product.max-deliverable-paths`, `product.max-detail-bytes` |
+| `successfulCommands` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `product.max-deliverable-commands`, `product.max-detail-bytes` |
+| `runInstructions` | yes | `len+utf8` | `String` | `string` | `product.max-detail-bytes` |
+| `accepted` | yes | `bool/u8` | `bool` | `boolean` | — |
+| `commitRevision` | yes | `len+utf8` | `String` | `string` | `product.max-detail-bytes` |
+| `exportPath` | yes | `len+utf8` | `String` | `string` | `product.max-detail-bytes` |
+| `discarded` | yes | `bool/u8` | `bool` | `boolean` | — |
+
+### `ProductRunSnapshot`
+
+Rust type: `ProductRunSnapshot`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `runId` | yes | `fixed[16]` | `RunId` | `RunId` | `nonzero` |
+| `workspaceId` | yes | `fixed[16]` | `WorkspaceId` | `WorkspaceId` | `nonzero` |
+| `providers` | yes | `ordered-fields` | `ProductProviderSelection` | `ProductProviderSelection` | — |
+| `phase` | yes | `u16-be` | `ProductRunPhase` | `ProductRunPhase` | — |
+| `cycle` | yes | `u32-be` | `u32` | `number` | — |
+| `task` | yes | `len+utf8` | `String` | `string` | `product.max-task-bytes` |
+| `status` | yes | `len+utf8` | `String` | `string` | `product.max-detail-bytes` |
+| `diff` | yes | `len+utf8` | `String` | `string` | `product.max-detail-bytes` |
+| `gates` | yes | `len+utf8` | `String` | `string` | `product.max-detail-bytes` |
+| `review` | yes | `len+utf8` | `String` | `string` | `product.max-detail-bytes` |
+| `summary` | yes | `len+utf8` | `String` | `string` | `product.max-detail-bytes` |
+| `deliverable` | no | `option+value` | `Option<ProductDeliverable>` | `ProductDeliverable` | — |
+
+### `CandidateIdentity`
+
+Rust type: `CandidateIdentity`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `runId` | yes | `fixed[16]` | `RunId` | `RunId` | `nonzero` |
+| `workspaceId` | yes | `fixed[16]` | `WorkspaceId` | `WorkspaceId` | `nonzero` |
+| `candidateDigest` | yes | `fixed[32]` | `Sha256Digest` | `Sha256Digest` | — |
+| `conversationRevision` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `checkpointSequence` | yes | `u64-be` | `u64` | `UInt64` | `nonzero`, `contiguous` |
+
+### `QualificationEvidenceRecord`
+
+Rust type: `EvidenceRecord<QualificationEvidence>`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `provenance` | yes | `ordered-fields` | `CandidateIdentity` | `CandidateIdentity` | — |
+| `result` | yes | `u16-be` | `QualificationEvidence` | `QualificationEvidence` | — |
+
+### `QualificationEvidenceStatus`
+
+Rust type: `EvidenceStatus<QualificationEvidence>`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `status` | yes | `u16-be` | `EvidenceStatus` | `EvidenceStatus` | — |
+| `record` | no | `ordered-fields` | `EvidenceRecord<QualificationEvidence>` | `QualificationEvidenceRecord` | — |
+
+### `CandidateCheckpoint`
+
+Rust type: `CandidateCheckpoint`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `identity` | yes | `ordered-fields` | `CandidateIdentity` | `CandidateIdentity` | — |
+| `stage` | yes | `u16-be` | `CandidateStage` | `CandidateStage` | — |
+| `gates` | yes | `ordered-fields` | `EvidenceStatus<QualificationEvidence>` | `QualificationEvidenceStatus` | — |
+| `obligations` | yes | `ordered-fields` | `EvidenceStatus<QualificationEvidence>` | `QualificationEvidenceStatus` | — |
+| `review` | yes | `ordered-fields` | `EvidenceStatus<QualificationEvidence>` | `QualificationEvidenceStatus` | — |
+
+### `RunSettlement`
+
+Rust type: `RunSettlement`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `disposition` | yes | `u16-be` | `RunDisposition` | `RunDisposition` | — |
+| `cause` | yes | `u16-be` | `SettlementCause` | `SettlementCause` | — |
+| `checkpoint` | no | `option+value` | `Option<CandidateCheckpoint>` | `CandidateCheckpoint` | — |
+
+### `ProductRunSettlementSnapshot`
+
+Rust type: `ProductRunSettlementSnapshot`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `snapshot` | yes | `ordered-fields` | `ProductRunSnapshot` | `ProductRunSnapshot` | — |
+| `settlement` | yes | `ordered-fields` | `RunSettlement` | `RunSettlement` | — |
 
 ## Stable errors
 

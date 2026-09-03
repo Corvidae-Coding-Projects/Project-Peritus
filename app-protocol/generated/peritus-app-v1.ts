@@ -19,6 +19,7 @@ export type PromptId = OpaqueId<"PromptId">;
 export type ProtocolId = OpaqueId<"ProtocolId">;
 export type ProviderProfileId = OpaqueId<"ProviderProfileId">;
 export type RequestId = OpaqueId<"RequestId">;
+export type RunId = OpaqueId<"RunId">;
 export type SessionId = OpaqueId<"SessionId">;
 export type SubscriptionId = OpaqueId<"SubscriptionId">;
 export type TerminalAttachmentId = OpaqueId<"TerminalAttachmentId">;
@@ -64,6 +65,8 @@ export type AppPayloadKind =
   | "product-run-accepted"
   | "product-runs"
   | "product-run-conversation"
+  | "product-run-settled"
+  | "product-run-settlements"
   | "domain-event"
   | "subscription-gap"
   | "backpressure"
@@ -489,6 +492,75 @@ export interface ShutdownComplete {
 export interface HeartbeatReply {
   readonly heartbeatId: HeartbeatId;
   readonly sequence: UInt64;
+}
+
+export interface ProductProviderSelection {
+  readonly writer: ProviderProfileId;
+  readonly reviewer: ProviderProfileId;
+  readonly fixer: ProviderProfileId;
+}
+
+export interface ProductDeliverable {
+  readonly workspacePath: string;
+  readonly changedPaths: readonly string[];
+  readonly successfulCommands: readonly string[];
+  readonly runInstructions: string;
+  readonly accepted: boolean;
+  readonly commitRevision: string;
+  readonly exportPath: string;
+  readonly discarded: boolean;
+}
+
+export interface ProductRunSnapshot {
+  readonly runId: RunId;
+  readonly workspaceId: WorkspaceId;
+  readonly providers: ProductProviderSelection;
+  readonly phase: ProductRunPhase;
+  readonly cycle: number;
+  readonly task: string;
+  readonly status: string;
+  readonly diff: string;
+  readonly gates: string;
+  readonly review: string;
+  readonly summary: string;
+  readonly deliverable?: ProductDeliverable;
+}
+
+export interface CandidateIdentity {
+  readonly runId: RunId;
+  readonly workspaceId: WorkspaceId;
+  readonly candidateDigest: Sha256Digest;
+  readonly conversationRevision: UInt64;
+  readonly checkpointSequence: UInt64;
+}
+
+export interface QualificationEvidenceRecord {
+  readonly provenance: CandidateIdentity;
+  readonly result: QualificationEvidence;
+}
+
+export interface QualificationEvidenceStatus {
+  readonly status: EvidenceStatus;
+  readonly record?: QualificationEvidenceRecord;
+}
+
+export interface CandidateCheckpoint {
+  readonly identity: CandidateIdentity;
+  readonly stage: CandidateStage;
+  readonly gates: QualificationEvidenceStatus;
+  readonly obligations: QualificationEvidenceStatus;
+  readonly review: QualificationEvidenceStatus;
+}
+
+export interface RunSettlement {
+  readonly disposition: RunDisposition;
+  readonly cause: SettlementCause;
+  readonly checkpoint?: CandidateCheckpoint;
+}
+
+export interface ProductRunSettlementSnapshot {
+  readonly snapshot: ProductRunSnapshot;
+  readonly settlement: RunSettlement;
 }
 
 export interface CanonicalAppMessage {

@@ -13,6 +13,7 @@ readme = "README.md"
 peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
 peritus-policy = { version = "=0.0.0", path = "../../foundation/peritus-policy" }
 peritus-role = { version = "=0.0.0", path = "../peritus-role" }
+peritus-run-knowledge = { version = "=0.0.0", path = "../peritus-run-knowledge" }
 peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
 vstd.workspace = true
 

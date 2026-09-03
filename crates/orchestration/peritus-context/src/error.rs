@@ -90,6 +90,14 @@ pub enum ContextErrorKind {
     RequiredCompactionSource,
     /// A source's content or security/dependency metadata changed after validation.
     CompactionSourceChanged,
+    /// A delta packet named a knowledge section absent from its current snapshot.
+    KnowledgeSectionMissing,
+    /// A delta packet section had no context-node binding.
+    KnowledgeContextLinkMissing,
+    /// A context node did not contain the exact knowledge-section bytes.
+    KnowledgeContextDigestMismatch,
+    /// Snapshot, delta packet, context visibility, or delivery authority crossed role boundaries.
+    KnowledgeRoleMismatch,
 }
 
 /// Comparable context error with optional node and numeric detail.

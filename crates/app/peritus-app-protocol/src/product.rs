@@ -2,18 +2,26 @@
 
 mod control;
 mod conversation;
+mod error;
 mod phase;
 mod request;
+mod settlement;
+mod snapshot;
 
 pub use control::*;
 pub use conversation::*;
+pub use error::ProductRunMessageError;
 pub use phase::*;
 pub use request::*;
+pub use settlement::*;
+pub use snapshot::*;
 
-use core::fmt;
 use std::path::{Component, Path};
 
-use peritus_types::{RunId, WorkspaceId};
+use peritus_run_settlement::CandidateStage;
+use peritus_types::RunId;
+
+use error::{bounded_text, optional_bounded_text};
 
 /// Maximum UTF-8 bytes accepted for one coding task.
 pub const MAX_PRODUCT_TASK_BYTES: usize = 64 * 1024;
@@ -26,13 +34,14 @@ pub const MAX_PRODUCT_DELIVERABLE_PATHS: usize = 512;
 /// Maximum exact successful commands retained in a completion handoff.
 pub const MAX_PRODUCT_DELIVERABLE_COMMANDS: usize = 256;
 
-/// Durable user-facing handoff for one accepted E0 candidate.
+/// Durable user-facing handoff for one exact E0 candidate.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProductDeliverable {
     workspace_path: String,
     changed_paths: Vec<String>,
     successful_commands: Vec<String>,
     run_instructions: String,
+    qualification: CandidateStage,
     accepted: bool,
     commit_revision: String,
     export_path: String,
@@ -50,11 +59,29 @@ impl ProductDeliverable {
         successful_commands: Vec<String>,
         run_instructions: String,
     ) -> Result<Self, ProductRunMessageError> {
+        Self::checked(
+            workspace_path,
+            changed_paths,
+            successful_commands,
+            run_instructions,
+            CandidateStage::Qualified,
+            true,
+        )
+    }
+
+    fn checked(
+        workspace_path: String,
+        changed_paths: Vec<String>,
+        successful_commands: Vec<String>,
+        run_instructions: String,
+        qualification: CandidateStage,
+        require_successful_command: bool,
+    ) -> Result<Self, ProductRunMessageError> {
         bounded_text(&workspace_path, MAX_PRODUCT_DETAIL_BYTES)?;
         bounded_text(&run_instructions, MAX_PRODUCT_DETAIL_BYTES)?;
         if changed_paths.is_empty()
             || changed_paths.len() > MAX_PRODUCT_DELIVERABLE_PATHS
-            || successful_commands.is_empty()
+            || require_successful_command && successful_commands.is_empty()
             || successful_commands.len() > MAX_PRODUCT_DELIVERABLE_COMMANDS
         {
             return Err(ProductRunMessageError::TooManyDeliverableItems);
@@ -75,6 +102,7 @@ impl ProductDeliverable {
             changed_paths,
             successful_commands,
             run_instructions,
+            qualification,
             accepted: false,
             commit_revision: String::new(),
             export_path: String::new(),
@@ -104,6 +132,37 @@ impl ProductDeliverable {
     #[must_use]
     pub fn run_instructions(&self) -> &str {
         &self.run_instructions
+    }
+
+    /// Strongest automated qualification stage for the exact candidate.
+    #[must_use]
+    pub const fn qualification(&self) -> CandidateStage {
+        self.qualification
+    }
+
+    /// Creates a bounded handoff at an explicit automated qualification stage.
+    ///
+    /// This constructor is used by the settlement protocol. [`Self::new`] remains the legacy
+    /// accepted-E0 constructor and therefore defaults to [`CandidateStage::Qualified`].
+    ///
+    /// # Errors
+    ///
+    /// Applies the same path, command, and text validation as [`Self::new`].
+    pub fn candidate(
+        workspace_path: String,
+        changed_paths: Vec<String>,
+        successful_commands: Vec<String>,
+        run_instructions: String,
+        qualification: CandidateStage,
+    ) -> Result<Self, ProductRunMessageError> {
+        Self::checked(
+            workspace_path,
+            changed_paths,
+            successful_commands,
+            run_instructions,
+            qualification,
+            false,
+        )
     }
 
     /// Whether the user explicitly accepted the handoff.
@@ -176,8 +235,63 @@ impl ProductDeliverable {
         export_path: String,
         discarded: bool,
     ) -> Result<Self, ProductRunMessageError> {
-        let mut value =
-            Self::new(workspace_path, changed_paths, successful_commands, run_instructions)?;
+        Self::restore_inner(
+            workspace_path,
+            changed_paths,
+            successful_commands,
+            run_instructions,
+            accepted,
+            commit_revision,
+            export_path,
+            discarded,
+            true,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments, reason = "wire restoration keeps durable fields explicit")]
+    pub(crate) fn restore_candidate(
+        workspace_path: String,
+        changed_paths: Vec<String>,
+        successful_commands: Vec<String>,
+        run_instructions: String,
+        accepted: bool,
+        commit_revision: String,
+        export_path: String,
+        discarded: bool,
+    ) -> Result<Self, ProductRunMessageError> {
+        Self::restore_inner(
+            workspace_path,
+            changed_paths,
+            successful_commands,
+            run_instructions,
+            accepted,
+            commit_revision,
+            export_path,
+            discarded,
+            false,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments, reason = "wire restoration keeps durable fields explicit")]
+    fn restore_inner(
+        workspace_path: String,
+        changed_paths: Vec<String>,
+        successful_commands: Vec<String>,
+        run_instructions: String,
+        accepted: bool,
+        commit_revision: String,
+        export_path: String,
+        discarded: bool,
+        require_successful_command: bool,
+    ) -> Result<Self, ProductRunMessageError> {
+        let mut value = Self::checked(
+            workspace_path,
+            changed_paths,
+            successful_commands,
+            run_instructions,
+            CandidateStage::Qualified,
+            require_successful_command,
+        )?;
         optional_bounded_text(&commit_revision, MAX_PRODUCT_DETAIL_BYTES)?;
         optional_bounded_text(&export_path, MAX_PRODUCT_DETAIL_BYTES)?;
         value.accepted = accepted;
@@ -185,6 +299,11 @@ impl ProductDeliverable {
         value.export_path = export_path;
         value.discarded = discarded;
         Ok(value)
+    }
+
+    pub(crate) const fn restore_qualification(mut self, qualification: CandidateStage) -> Self {
+        self.qualification = qualification;
+        self
     }
 }
 
@@ -210,175 +329,4 @@ impl ProductRunQuery {
     pub const fn run_id(self) -> Option<RunId> {
         self.run_id
     }
-}
-
-/// Complete bounded observation of one product run.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ProductRunSnapshot {
-    run_id: RunId,
-    workspace_id: WorkspaceId,
-    providers: ProductProviderSelection,
-    phase: ProductRunPhase,
-    cycle: u32,
-    task: String,
-    status: String,
-    diff: String,
-    gates: String,
-    review: String,
-    summary: String,
-    deliverable: Option<ProductDeliverable>,
-}
-
-impl ProductRunSnapshot {
-    /// Creates one checked run observation.
-    ///
-    /// # Errors
-    ///
-    /// Rejects empty primary fields or any field above its protocol bound.
-    #[allow(clippy::too_many_arguments, reason = "snapshot fields are independently rendered")]
-    pub fn new(
-        run_id: RunId,
-        workspace_id: WorkspaceId,
-        providers: ProductProviderSelection,
-        phase: ProductRunPhase,
-        cycle: u32,
-        task: String,
-        status: String,
-        diff: String,
-        gates: String,
-        review: String,
-        summary: String,
-    ) -> Result<Self, ProductRunMessageError> {
-        bounded_text(&task, MAX_PRODUCT_TASK_BYTES)?;
-        bounded_text(&status, MAX_PRODUCT_DETAIL_BYTES)?;
-        for value in [&diff, &gates, &review, &summary] {
-            optional_bounded_text(value, MAX_PRODUCT_DETAIL_BYTES)?;
-        }
-        Ok(Self {
-            run_id,
-            workspace_id,
-            providers,
-            phase,
-            cycle,
-            task,
-            status,
-            diff,
-            gates,
-            review,
-            summary,
-            deliverable: None,
-        })
-    }
-
-    /// Run identity.
-    #[must_use]
-    pub const fn run_id(&self) -> RunId {
-        self.run_id
-    }
-    /// Workspace identity.
-    #[must_use]
-    pub const fn workspace_id(&self) -> WorkspaceId {
-        self.workspace_id
-    }
-    /// Role provider identities.
-    #[must_use]
-    pub const fn providers(&self) -> ProductProviderSelection {
-        self.providers
-    }
-    /// Current phase.
-    #[must_use]
-    pub const fn phase(&self) -> ProductRunPhase {
-        self.phase
-    }
-    /// One-based writer/fixer cycle.
-    #[must_use]
-    pub const fn cycle(&self) -> u32 {
-        self.cycle
-    }
-    /// Original task.
-    #[must_use]
-    pub fn task(&self) -> &str {
-        &self.task
-    }
-    /// Current human-readable operation.
-    #[must_use]
-    pub fn status(&self) -> &str {
-        &self.status
-    }
-    /// Current repository diff.
-    #[must_use]
-    pub fn diff(&self) -> &str {
-        &self.diff
-    }
-    /// Latest gate output.
-    #[must_use]
-    pub fn gates(&self) -> &str {
-        &self.gates
-    }
-    /// Latest independent review.
-    #[must_use]
-    pub fn review(&self) -> &str {
-        &self.review
-    }
-    /// Terminal or interim summary.
-    #[must_use]
-    pub fn summary(&self) -> &str {
-        &self.summary
-    }
-
-    /// Durable deliverable handoff after exact E0 acceptance.
-    #[must_use]
-    pub const fn deliverable(&self) -> Option<&ProductDeliverable> {
-        self.deliverable.as_ref()
-    }
-
-    /// Attaches or replaces a checked deliverable handoff.
-    #[must_use]
-    pub fn with_deliverable(mut self, deliverable: ProductDeliverable) -> Self {
-        self.deliverable = Some(deliverable);
-        self
-    }
-}
-
-/// Failure to construct a bounded product-run message.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub enum ProductRunMessageError {
-    /// A required string is empty or whitespace-only.
-    Empty,
-    /// A string exceeds its compiled protocol bound.
-    TooLong,
-    /// A conversation exceeds its retained message limit.
-    TooManyMessages,
-    /// A deliverable contains too many paths or commands, or lacks either collection.
-    TooManyDeliverableItems,
-    /// A deliverable path is absolute, traversing, or targets Git metadata.
-    InvalidDeliverablePath,
-}
-
-impl fmt::Display for ProductRunMessageError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str(match self {
-            Self::Empty => "product run text is empty",
-            Self::TooLong => "product run text exceeds its protocol bound",
-            Self::TooManyMessages => "product run conversation has too many messages",
-            Self::TooManyDeliverableItems => {
-                "product deliverable path or command collection is invalid"
-            }
-            Self::InvalidDeliverablePath => "product deliverable contains an unsafe path",
-        })
-    }
-}
-
-impl std::error::Error for ProductRunMessageError {}
-
-fn bounded_text(value: &str, maximum: usize) -> Result<(), ProductRunMessageError> {
-    if value.trim().is_empty() {
-        Err(ProductRunMessageError::Empty)
-    } else {
-        optional_bounded_text(value, maximum)
-    }
-}
-
-const fn optional_bounded_text(value: &str, maximum: usize) -> Result<(), ProductRunMessageError> {
-    if value.len() > maximum { Err(ProductRunMessageError::TooLong) } else { Ok(()) }
 }

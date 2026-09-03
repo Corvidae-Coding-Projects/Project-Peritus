@@ -1,0 +1,27 @@
+[package]
+name = "peritus-run-knowledge"
+description = "Verified digest-bound run knowledge and delta planning for Peritus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+
+[dependencies]
+peritus-role = { version = "=0.0.0", path = "../peritus-role" }
+peritus-run-settlement = { version = "=0.0.0", path = "../peritus-run-settlement" }
+peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+vstd.workspace = true
+
+[package.metadata.peritus]
+owner = "C6"
+layer = "orchestration"
+verification-class = "V"
+
+[package.metadata.verus]
+verify = true
+
+[lints]
+workspace = true
