@@ -1,5 +1,5 @@
 {
-  "next_display_id": 51,
+  "next_display_id": 52,
   "next_comment_id": 1187,
   "display_id_map": {
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -51,7 +51,8 @@
     "f27888a7-5366-4703-a68a-9f17b1adad81": 20,
     "f350243c-7824-4375-a9c4-63dd3e976f1a": 49,
     "f54d84d8-827f-4eec-8d4c-89097b5214a2": 42,
-    "f68244a3-b4ed-4597-a8e1-330360aa4bb1": 39
+    "f68244a3-b4ed-4597-a8e1-330360aa4bb1": 39,
+    "ff9ea321-1b6b-4331-9389-9566ca58b586": 51
   },
   "locks": {
     "35": {
@@ -11574,12 +11575,22 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgmuiChqHxrMH8nicBvsKr3z1JEgjcUOEEH/DcxL6kdeEAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAHQVb+KP1yHghG55123e0kAP09+dvokRWkphqqY7HcyhFGa7Gn/qZz8A+GIQH4RFeSnh8Y+ZJyPh7yW7tyw5VBA=="
         }
       }
+    },
+    "ff9ea321-1b6b-4331-9389-9566ca58b586": {
+      "uuid": "ff9ea321-1b6b-4331-9389-9566ca58b586",
+      "display_id": 51,
+      "title": "S6 durable daemon state and candidate-handoff UX",
+      "status": "open",
+      "priority": "medium",
+      "created_by": "6ME5",
+      "created_at": "2026-09-03T22:00:44.003844404Z",
+      "updated_at": "2026-09-03T22:00:44.003844404Z"
     }
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-03T20:27:49.264717389Z",
+    "timestamp": "2026-09-03T22:00:44.003844404Z",
     "agent_id": "6ME5",
-    "agent_seq": 1421
+    "agent_seq": 1422
   }
 }
