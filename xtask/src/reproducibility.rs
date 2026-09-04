@@ -53,6 +53,7 @@ mod workflow_local;
 mod workflow_pins;
 mod workflow_policy;
 mod workflow_run;
+mod workflow_rust_matrix;
 
 pub(crate) use evidence_command::is_exact_package_gate as is_exact_evidence_command;
 

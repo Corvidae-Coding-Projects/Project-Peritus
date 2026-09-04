@@ -259,7 +259,7 @@ fn rust_matrix(strategy: Option<&Yaml>) -> bool {
     };
     exact_keys(strategy, &["fail-fast", "matrix"])
         && mapping_value(strategy, "fail-fast").and_then(Yaml::as_bool) == Some(false)
-        && exact_keys(matrix, &["os", "operation", "shard"])
+        && exact_keys(matrix, &["os", "operation", "shard", "include"])
         && mapping_value(matrix, "os").and_then(Yaml::as_vec).is_some_and(|values| {
             values.iter().filter_map(Yaml::as_str).eq(["ubuntu-24.04", "macos-15", "windows-2025"])
         })
@@ -268,6 +268,9 @@ fn rust_matrix(strategy: Option<&Yaml>) -> bool {
             &["build", "test", "doc-test", "clippy", "docs"],
         )
         && string_sequence(mapping_value(matrix, "shard"), &crate::ci_shard::SHARD_NAMES)
+        && super::workflow_rust_matrix::has_platform_terminal_includes(mapping_value(
+            matrix, "include",
+        ))
 }
 
 fn verus_matrix(strategy: Option<&Yaml>) -> bool {
