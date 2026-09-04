@@ -13,6 +13,7 @@ const CANONICAL: &str = include_str!("../../../.github/workflows/formal-governan
 const CHECKOUT: &str = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1";
 const RUST_ACTION: &str = "dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772";
 const RUST_REFERENCE: &str = "${{ env.RUST_VERSION }}";
+const RUSTUP_MAX_RETRIES: &str = "10";
 const CANDIDATE_REPOSITORY: &str = "${{ github.repository }}";
 const CANDIDATE_REFERENCE: &str = "${{ github.sha }}";
 const PROOF_IMPACT_BASE: &str = "${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}";
@@ -190,11 +191,16 @@ pub(super) fn config_step(step: &Yaml) -> bool {
 
 pub(super) fn rust_step(step: &Yaml, components: Option<&str>) -> bool {
     let Some(step) = step.as_hash() else { return false };
+    let Some(environment) = mapping_value(step, "env").and_then(Yaml::as_hash) else {
+        return false;
+    };
     let Some(inputs) = mapping_value(step, "with").and_then(Yaml::as_hash) else { return false };
     let keys =
         if components.is_some() { &["toolchain", "components"][..] } else { &["toolchain"][..] };
-    exact_keys(step, &["name", "uses", "with"])
+    exact_keys(step, &["name", "uses", "env", "with"])
         && string(step, "uses") == Some(RUST_ACTION)
+        && exact_keys(environment, &["RUSTUP_MAX_RETRIES"])
+        && string(environment, "RUSTUP_MAX_RETRIES") == Some(RUSTUP_MAX_RETRIES)
         && exact_keys(inputs, keys)
         && string(inputs, "toolchain") == Some(RUST_REFERENCE)
         && components.is_none_or(|expected| string(inputs, "components") == Some(expected))

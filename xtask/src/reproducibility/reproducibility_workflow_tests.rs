@@ -77,6 +77,19 @@ fn canonical_ci_retains_pin_consumption_and_all_required_operations() {
 }
 
 #[test]
+fn canonical_ci_rejects_weakened_rust_download_retries() {
+    let altered = canonical_ci().replacen(
+        "          RUSTUP_MAX_RETRIES: \"10\"",
+        "          RUSTUP_MAX_RETRIES: \"3\"",
+        1,
+    );
+
+    assert_ne!(altered, canonical_ci());
+    let (_, diagnostics) = validate(".github/workflows/ci.yml", DocumentKind::Workflow, &altered);
+    assert_message(&diagnostics, "does not retain the exact workspace policy gate");
+}
+
+#[test]
 fn conditional_fake_and_failure_masked_steps_cannot_supply_ci_evidence() {
     let yaml = canonical_ci()
         .replace("  verus:\n", "  verus:\n    if: false\n")

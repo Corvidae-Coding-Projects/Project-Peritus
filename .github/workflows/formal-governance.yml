@@ -56,6 +56,8 @@ jobs:
         run: git -C candidate diff --no-ext-diff --no-textconv --exit-code 6ca5f56d2ab12e93f155d684b33f4a86c2f877b8 -- .cargo/config.toml .gitattributes
       - name: Install pinned Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        env:
+          RUSTUP_MAX_RETRIES: "10"
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - name: Evaluate candidate policy
@@ -112,6 +114,8 @@ jobs:
         run: git -C candidate diff --no-ext-diff --no-textconv --exit-code 6ca5f56d2ab12e93f155d684b33f4a86c2f877b8 -- .cargo/config.toml .gitattributes
       - name: Install pinned Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        env:
+          RUSTUP_MAX_RETRIES: "10"
         with:
           toolchain: ${{ env.RUST_VERSION }}
           components: rustfmt
@@ -154,6 +158,8 @@ jobs:
         run: git -C candidate diff --no-ext-diff --no-textconv --exit-code 6ca5f56d2ab12e93f155d684b33f4a86c2f877b8 -- .cargo/config.toml .gitattributes
       - name: Install pinned Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        env:
+          RUSTUP_MAX_RETRIES: "10"
         with:
           toolchain: ${{ env.RUST_VERSION }}
           components: clippy,rustfmt
@@ -201,6 +207,8 @@ jobs:
         run: git -C candidate diff --no-ext-diff --no-textconv --exit-code 6ca5f56d2ab12e93f155d684b33f4a86c2f877b8 -- .cargo/config.toml .gitattributes
       - name: Install pinned Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        env:
+          RUSTUP_MAX_RETRIES: "10"
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - name: Install pinned cargo-deny
@@ -229,6 +237,8 @@ jobs:
         run: git -C candidate diff --no-ext-diff --no-textconv --exit-code 6ca5f56d2ab12e93f155d684b33f4a86c2f877b8 -- .cargo/config.toml .gitattributes
       - name: Install pinned Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        env:
+          RUSTUP_MAX_RETRIES: "10"
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - name: Install digest-checked Verus archive
@@ -275,6 +285,8 @@ jobs:
         run: git -C candidate diff --no-ext-diff --no-textconv --exit-code 6ca5f56d2ab12e93f155d684b33f4a86c2f877b8 -- .cargo/config.toml .gitattributes
       - name: Install pinned Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        env:
+          RUSTUP_MAX_RETRIES: "10"
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - name: Install digest-checked Verus archive

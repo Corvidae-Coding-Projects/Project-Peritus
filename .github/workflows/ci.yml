@@ -51,6 +51,8 @@ jobs:
           fetch-depth: 0
       - name: Install pinned Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        env:
+          RUSTUP_MAX_RETRIES: "10"
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - name: Enforce workspace policy
@@ -68,6 +70,8 @@ jobs:
           fetch-depth: 0
       - name: Install pinned Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        env:
+          RUSTUP_MAX_RETRIES: "10"
         with:
           toolchain: ${{ env.RUST_VERSION }}
           components: rustfmt
@@ -102,6 +106,8 @@ jobs:
           fetch-depth: 0
       - name: Install pinned Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        env:
+          RUSTUP_MAX_RETRIES: "10"
         with:
           toolchain: ${{ env.RUST_VERSION }}
           components: clippy,rustfmt
@@ -120,6 +126,8 @@ jobs:
           fetch-depth: 0
       - name: Install pinned Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        env:
+          RUSTUP_MAX_RETRIES: "10"
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - name: Install pinned cargo-deny
@@ -139,6 +147,8 @@ jobs:
           fetch-depth: 0
       - name: Install pinned Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        env:
+          RUSTUP_MAX_RETRIES: "10"
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - name: Install digest-checked Verus archive
@@ -176,6 +186,8 @@ jobs:
           fetch-depth: 0
       - name: Install pinned Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        env:
+          RUSTUP_MAX_RETRIES: "10"
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - name: Install digest-checked Verus archive

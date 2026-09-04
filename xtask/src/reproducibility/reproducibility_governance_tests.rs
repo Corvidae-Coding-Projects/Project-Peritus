@@ -14,6 +14,19 @@ fn canonical_team_workflow_retains_every_gate_and_stable_status() {
 }
 
 #[test]
+fn required_workflow_rejects_weakened_rust_download_retries() {
+    let altered = canonical_governance().replacen(
+        "          RUSTUP_MAX_RETRIES: \"10\"",
+        "          RUSTUP_MAX_RETRIES: \"3\"",
+        1,
+    );
+
+    assert_ne!(altered, canonical_governance());
+    let (_, diagnostics) = validate(PATH, DocumentKind::Workflow, &altered);
+    assert_message(&diagnostics, "does not evaluate the candidate policy exactly");
+}
+
+#[test]
 fn required_workflow_rejects_trigger_permission_and_environment_drift() {
     for altered in [
         canonical_governance().replace("  pull_request:\n", "  pull_request_target:\n"),
