@@ -130,21 +130,38 @@ fn interactive_round_trip() -> ObservationOutcome {
     drop(initial_reader);
     let mut recovered_reader = pair.master.try_clone_reader().expect("recover same PTY reader");
     let mut writer = pair.master.take_writer().expect("terminal writer");
+    let reader_thread = std::thread::Builder::new()
+        .name("peritus-general-capability-reader".to_owned())
+        .spawn(move || {
+            let mut output = String::new();
+            recovered_reader.read_to_string(&mut output).map(|_| output)
+        })
+        .expect("start terminal reader");
+    initialize_terminal_input(&mut writer);
     writer.write_all(b"hello from fixture\n").expect("terminal input");
     writer.flush().expect("flush terminal input");
-    drop(writer);
 
     let status = child.wait().expect("wait and reap interactive child");
-    // ConPTY retains the output stream until the master closes, even after the child exits.
+    drop(child);
+    drop(writer);
+    // ConPTY publishes reader EOF only after the writer and master owner close.
     drop(pair.master);
-    let mut output = String::new();
-    recovered_reader.read_to_string(&mut output).expect("terminal output");
+    let output = reader_thread.join().expect("terminal reader thread").expect("terminal output");
     if status.success() && output.contains("received:hello from fixture") {
         ObservationOutcome::Passed
     } else {
         ObservationOutcome::Failed
     }
 }
+
+#[cfg(windows)]
+fn initialize_terminal_input(writer: &mut Box<dyn std::io::Write + Send>) {
+    // portable-pty 0.9 requests the inherited cursor position before launching the child.
+    writer.write_all(b"\x1b[1;1R").expect("initialize Windows terminal input");
+}
+
+#[cfg(not(windows))]
+fn initialize_terminal_input(_writer: &mut Box<dyn std::io::Write + Send>) {}
 
 const fn noninteractive_control_claim() -> ObservationOutcome {
     ObservationOutcome::Unsupported
