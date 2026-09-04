@@ -127,7 +127,7 @@ jobs:
       matrix:
         os: [ubuntu-24.04, macos-15, windows-2025]
         operation: [build, test, doc-test, clippy, docs]
-        shard: [foundation-state, runtime-tools, model-orchestration, app-runner, app-shell, testing, testing-external, edge]
+        shard: [foundation-state, runtime-tools, model-orchestration, app-runner, app-shell, testing, testing-platform, testing-external, edge]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:

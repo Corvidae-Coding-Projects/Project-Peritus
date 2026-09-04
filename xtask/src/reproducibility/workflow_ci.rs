@@ -267,19 +267,7 @@ fn rust_matrix(strategy: Option<&Yaml>) -> bool {
             mapping_value(matrix, "operation"),
             &["build", "test", "doc-test", "clippy", "docs"],
         )
-        && string_sequence(
-            mapping_value(matrix, "shard"),
-            &[
-                "foundation-state",
-                "runtime-tools",
-                "model-orchestration",
-                "app-runner",
-                "app-shell",
-                "testing",
-                "testing-external",
-                "edge",
-            ],
-        )
+        && string_sequence(mapping_value(matrix, "shard"), &crate::ci_shard::SHARD_NAMES)
 }
 
 fn verus_matrix(strategy: Option<&Yaml>) -> bool {
