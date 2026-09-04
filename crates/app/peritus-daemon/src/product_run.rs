@@ -290,11 +290,16 @@ impl ProductRunService {
                 let token = CancellationToken::new();
                 record.cancelled = Arc::clone(&cancelled);
                 record.provider_cancellation = token.clone();
+                // A follow-up changes the governing conversation revision, so the prior
+                // deliverable and its qualification cannot be projected as current while the
+                // replacement run is active. The checkpoint and resume state remain durable for
+                // phase planning and failure settlement.
+                record.snapshot = initial_snapshot(&record.request)?;
                 record.snapshot = replace_snapshot(
                     &record.snapshot,
                     ProductRunPhase::Queued,
                     "Follow-up queued for the writer",
-                    record.snapshot.summary(),
+                    "",
                 )?;
                 record.progress = RunProgress::default();
                 record.settlement = None;
