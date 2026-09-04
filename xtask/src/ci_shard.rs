@@ -7,13 +7,14 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::process::Command;
 
-pub(crate) const SHARD_NAMES: [&str; 7] = [
+pub(crate) const SHARD_NAMES: [&str; 8] = [
     "foundation-state",
     "runtime-tools",
     "model-orchestration",
     "app-runner",
     "app-shell",
     "testing",
+    "testing-external",
     "edge",
 ];
 
@@ -223,6 +224,8 @@ fn shard_for_layer(layer: &str) -> Option<&'static str> {
 fn shard_for_package(name: &str, layer: &str) -> Option<&'static str> {
     if layer == "app" && name == "peritus-product-runner" {
         Some("app-runner")
+    } else if layer == "testing" && name == "peritus-external-benchmarks" {
+        Some("testing-external")
     } else {
         shard_for_layer(layer)
     }
@@ -265,6 +268,15 @@ mod tests {
     fn product_runner_has_an_independent_bounded_app_shard() {
         assert_eq!(shard_for_package("peritus-product-runner", "app"), Some("app-runner"));
         assert_eq!(shard_for_package("peritus-daemon", "app"), Some("app-shell"));
+    }
+
+    #[test]
+    fn external_benchmarks_has_an_independent_bounded_testing_shard() {
+        assert_eq!(
+            shard_for_package("peritus-external-benchmarks", "testing"),
+            Some("testing-external")
+        );
+        assert_eq!(shard_for_package("peritus-platform-qualification", "testing"), Some("testing"));
     }
 
     #[test]

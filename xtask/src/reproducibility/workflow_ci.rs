@@ -139,8 +139,7 @@ fn pre_cargo_policy_step(step: &Yaml) -> bool {
         && string(step, "name") == Some("Verify reviewed pre-Cargo policy")
         && string(step, "shell") == Some("bash")
         && string(step, "run")
-            .map(parse_script)
-            .is_some_and(|script| script.is_reviewed_root_config_preflight())
+            .is_some_and(|script| parse_script(script).is_reviewed_root_config_preflight())
 }
 
 fn policy_job_is_exact(job: &Yaml) -> bool {
@@ -277,6 +276,7 @@ fn rust_matrix(strategy: Option<&Yaml>) -> bool {
                 "app-runner",
                 "app-shell",
                 "testing",
+                "testing-external",
                 "edge",
             ],
         )

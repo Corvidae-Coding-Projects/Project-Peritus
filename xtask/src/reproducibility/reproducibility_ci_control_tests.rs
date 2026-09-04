@@ -30,8 +30,8 @@ fn rust_and_supply_chain_jobs_cannot_be_skipped_or_gutted() {
 #[test]
 fn rust_shards_retain_the_ten_minute_ceiling() {
     let altered = canonical_ci().replacen(
-        "    name: Foundation Rust ${{ matrix.operation }} ${{ matrix.shard }} (${{ matrix.os }})\n    needs: bootstrap\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-24.04, macos-15, windows-2025]\n        operation: [build, test, doc-test, clippy, docs]\n        shard: [foundation-state, runtime-tools, model-orchestration, app-runner, app-shell, testing, edge]\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 10",
-        "    name: Foundation Rust ${{ matrix.operation }} ${{ matrix.shard }} (${{ matrix.os }})\n    needs: bootstrap\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-24.04, macos-15, windows-2025]\n        operation: [build, test, doc-test, clippy, docs]\n        shard: [foundation-state, runtime-tools, model-orchestration, app-runner, app-shell, testing, edge]\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 11",
+        "    name: Foundation Rust ${{ matrix.operation }} ${{ matrix.shard }} (${{ matrix.os }})\n    needs: bootstrap\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-24.04, macos-15, windows-2025]\n        operation: [build, test, doc-test, clippy, docs]\n        shard: [foundation-state, runtime-tools, model-orchestration, app-runner, app-shell, testing, testing-external, edge]\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 10",
+        "    name: Foundation Rust ${{ matrix.operation }} ${{ matrix.shard }} (${{ matrix.os }})\n    needs: bootstrap\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-24.04, macos-15, windows-2025]\n        operation: [build, test, doc-test, clippy, docs]\n        shard: [foundation-state, runtime-tools, model-orchestration, app-runner, app-shell, testing, testing-external, edge]\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 11",
         1,
     );
 

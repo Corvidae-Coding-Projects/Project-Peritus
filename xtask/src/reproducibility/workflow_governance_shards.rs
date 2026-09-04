@@ -8,13 +8,14 @@ use crate::model::ToolchainPolicy;
 use yaml_rust2::Yaml;
 use yaml_rust2::yaml::Hash;
 
-const PACKAGE_SHARDS: [&str; 7] = [
+const PACKAGE_SHARDS: [&str; 8] = [
     "foundation-state",
     "runtime-tools",
     "model-orchestration",
     "app-runner",
     "app-shell",
     "testing",
+    "testing-external",
     "edge",
 ];
 const VERUS_SHARDS: [&str; 6] =
