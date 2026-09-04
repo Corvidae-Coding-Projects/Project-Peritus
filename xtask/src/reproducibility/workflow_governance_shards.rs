@@ -8,13 +8,15 @@ use crate::model::ToolchainPolicy;
 use yaml_rust2::Yaml;
 use yaml_rust2::yaml::Hash;
 
-const PACKAGE_SHARDS: [&str; 7] = [
+const PACKAGE_SHARDS: [&str; 9] = [
     "foundation-state",
     "runtime-tools",
     "model-orchestration",
     "app-runner",
     "app-shell",
     "testing",
+    "testing-platform",
+    "testing-external",
     "edge",
 ];
 const VERUS_SHARDS: [&str; 6] =
@@ -63,10 +65,13 @@ fn rust_shards_are_exact(job: &Yaml) -> bool {
         10,
     ) && exact_keys(strategy, &["fail-fast", "matrix"])
         && mapping_value(strategy, "fail-fast").and_then(Yaml::as_bool) == Some(false)
-        && exact_keys(matrix, &["os", "operation", "shard"])
+        && exact_keys(matrix, &["os", "operation", "shard", "include"])
         && sequence(matrix, "os", &["ubuntu-24.04", "macos-15", "windows-2025"])
         && sequence(matrix, "operation", &RUST_OPERATIONS)
         && sequence(matrix, "shard", &PACKAGE_SHARDS)
+        && super::workflow_rust_matrix::has_platform_terminal_includes(mapping_value(
+            matrix, "include",
+        ))
         && mapping_value(job, "steps").and_then(Yaml::as_vec).is_some_and(|steps| {
             steps.len() == 4
                 && candidate_checkout(&steps[0])

@@ -104,10 +104,12 @@ fs4 = "=1.1.0"
 futures-core = "=0.3.34"
 getrandom = "=0.4.3"
 half = { version = "=2.4.1", default-features = false, features = ["std"] }
+html5ever = "=0.39.0"
 futures-util = "=0.3.34"
 keyring = { version = "=4.1.6", default-features = false }
 landlock = { version = "=0.4.7", default-features = false }
 libc = "=0.2.189"
+markup5ever_rcdom = "=0.39.0"
 nix = { version = "=0.31.3", default-features = false, features = ["signal", "term"] }
 portable-pty = { version = "=0.9.0", default-features = false }
 process-wrap = { version = "=9.1.0", default-features = false, features = ["creation-flags", "job-object", "process-group", "process-session", "std"] }

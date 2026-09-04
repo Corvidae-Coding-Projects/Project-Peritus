@@ -61,6 +61,13 @@ CLI show the exact candidate paths, checks, review, run command, and remaining w
 inspect, run, continue, export, accept, commit, or discard the retained candidate; accepting or
 committing an unqualified candidate requires an explicit evidence-naming confirmation.
 
+The generic capability matrix now covers all eleven remediable failure families: completion,
+selective resume, measured performance, real lifecycle ingress, directional schemas, browser
+semantics, provider recovery, repository drift, ordinary prerequisites, terminal control, and
+external-adapter settlement. Every family has passing, honestly incomplete, and failing fixtures
+bound to typed product evidence or directly observed process behavior. None uses benchmark task
+identities, hidden verifier answers, paid provider calls, or an external benchmark run.
+
 ## What remains before release
 
 The implementation is not the release decision. Production readiness still requires:
@@ -135,8 +142,10 @@ three focused reboot diagnostics passed with exact single-effect and cleanup evi
 
 H0 also has a Rust-owned exact-candidate preparer and a three-host native workflow. The preparer
 derives the common candidate identity from committed source, binds the controller and native host
-facts, and refuses dirty or cross-platform inputs. Each host runs four isolated worker partitions,
-reassembles them in catalog order, and retains the same canonical platform report and raw evidence.
+facts, and refuses dirty or cross-platform inputs. Linux first runs its workspace-wide compiler
+probe alone with four build jobs so it cannot starve bounded native subjects; then eight isolated
+workers dynamically consume single-probe work units from alternating catalog edges. The operator
+reassembles results in catalog order and retains the same canonical platform report and raw evidence.
 Cross-host aggregation and a separately supplied independent review remain mandatory; the workflow
 cannot manufacture either one.
 

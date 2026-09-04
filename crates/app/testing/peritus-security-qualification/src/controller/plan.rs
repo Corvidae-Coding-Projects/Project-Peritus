@@ -2,6 +2,9 @@
 
 use crate::ProbeId;
 
+const DEFAULT_CARGO_BUILD_JOBS: u8 = 2;
+const SERIAL_COMPILER_BUILD_JOBS: u8 = 4;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum SourceCheck {
     MigrationRecovery,
@@ -21,6 +24,7 @@ pub(super) enum NativeCheck {
 pub(super) struct CommandCheck {
     pub(super) label: &'static str,
     pub(super) arguments: Vec<String>,
+    pub(super) build_jobs: u8,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -250,7 +254,7 @@ fn governance(probe: ProbeId) -> Vec<Check> {
     match probe {
         P::UnsafeInventory => vec![
             source(SourceCheck::UnsafeInventory),
-            cargo(
+            cargo_with_build_jobs(
                 "workspace-strict-clippy",
                 &[
                     "clippy",
@@ -261,6 +265,7 @@ fn governance(probe: ProbeId) -> Vec<Check> {
                     "-D",
                     "warnings",
                 ],
+                SERIAL_COMPILER_BUILD_JOBS,
             ),
         ],
         P::TcbInventory => vec![source(SourceCheck::TcbInventory), xtask("all")],
@@ -302,13 +307,22 @@ fn test(package: &'static str, target: &'static str, filter: Option<&'static str
     if let Some(filter) = filter {
         arguments.extend([filter.to_owned(), "--".to_owned(), "--exact".to_owned()]);
     }
-    Check::Command(CommandCheck { label: "candidate-regression", arguments })
+    Check::Command(CommandCheck {
+        label: "candidate-regression",
+        arguments,
+        build_jobs: DEFAULT_CARGO_BUILD_JOBS,
+    })
 }
 
 fn cargo(label: &'static str, arguments: &[&str]) -> Check {
+    cargo_with_build_jobs(label, arguments, DEFAULT_CARGO_BUILD_JOBS)
+}
+
+fn cargo_with_build_jobs(label: &'static str, arguments: &[&str], build_jobs: u8) -> Check {
     Check::Command(CommandCheck {
         label,
         arguments: arguments.iter().map(|value| (*value).to_owned()).collect(),
+        build_jobs,
     })
 }
 
@@ -325,6 +339,23 @@ mod tests {
                 "missing plan for {}",
                 spec.id().as_str()
             );
+        }
+    }
+
+    #[test]
+    fn only_the_serial_compiler_probe_uses_four_build_jobs() {
+        for spec in ProbeSpec::h0_production() {
+            for check in for_probe(spec.id()).checks {
+                if let Check::Command(command) = check {
+                    let expected = if command.label == "workspace-strict-clippy" {
+                        assert_eq!(spec.id(), ProbeId::UnsafeInventory);
+                        SERIAL_COMPILER_BUILD_JOBS
+                    } else {
+                        DEFAULT_CARGO_BUILD_JOBS
+                    };
+                    assert_eq!(command.build_jobs, expected, "{}", spec.id().as_str());
+                }
+            }
         }
     }
 }

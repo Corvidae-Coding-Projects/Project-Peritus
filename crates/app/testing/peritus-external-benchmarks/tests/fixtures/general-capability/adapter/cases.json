@@ -1,0 +1,16 @@
+{
+  "cases": [
+    {
+      "name": "valid-report-publishes-once-at-primary-path",
+      "expected": "success"
+    },
+    {
+      "name": "primary-publication-failure-uses-prepared-recovery-path",
+      "expected": "partial"
+    },
+    {
+      "name": "stale-schema-missing-path-timeout-and-double-publication-fail-closed",
+      "expected": "failure"
+    }
+  ]
+}

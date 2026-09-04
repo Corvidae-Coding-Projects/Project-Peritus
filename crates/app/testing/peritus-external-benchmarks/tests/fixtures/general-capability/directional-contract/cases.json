@@ -1,0 +1,22 @@
+{
+  "cases": [
+    {
+      "name": "request-value-response-val-exact",
+      "request_fields": ["value"],
+      "response_fields": ["val"],
+      "expected": "success"
+    },
+    {
+      "name": "response-direction-missing-is-partial",
+      "request_fields": ["value"],
+      "response_fields": [],
+      "expected": "partial"
+    },
+    {
+      "name": "directionally-swapped-fields-fail",
+      "request_fields": ["val"],
+      "response_fields": ["value"],
+      "expected": "failure"
+    }
+  ]
+}

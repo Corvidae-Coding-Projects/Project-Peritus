@@ -1,0 +1,22 @@
+{
+  "cases": [
+    {
+      "name": "public-termination-is-observed-and-reaped",
+      "observation": "public_ingress",
+      "final_state": "reaped",
+      "expected": true
+    },
+    {
+      "name": "internal-cancellation-simulation-is-honest-partial-evidence",
+      "observation": "internal_simulation",
+      "final_state": "reaped",
+      "expected": false
+    },
+    {
+      "name": "public-ingress-with-wrong-final-state-fails",
+      "observation": "public_ingress",
+      "final_state": "still_running",
+      "expected": false
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "cases": [
+    {
+      "name": "capable-authorized-fallback-completes-after-primary-failure",
+      "expected": "success"
+    },
+    {
+      "name": "empty-context-and-auth-terminals-retain-distinct-recovery",
+      "expected": "partial"
+    },
+    {
+      "name": "image-mismatch-and-unauthorized-fallback-are-rejected",
+      "expected": "failure"
+    }
+  ]
+}

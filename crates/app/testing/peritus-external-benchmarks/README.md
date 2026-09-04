@@ -38,6 +38,14 @@ switch metadata closes an incomplete projected response while remaining separate
 conversation transcript, so diagnostics stay readable without fabricating a successful model
 round.
 
+## Generic capability regressions
+
+The test-only `tests/fixtures/general-capability/` tree reproduces completion, selective resume,
+schema, malformed-HTML, provider, repository, and adapter failure classes without naming an
+upstream benchmark task or encoding a hidden verifier answer. Every family includes a successful
+case, an honestly incomplete case, and a terminal failure. The assertions use native settlement,
+provider, obligation, workspace, and publication values rather than matching model prose.
+
 Generated traces and benchmark workspaces belong in local state outside Git. See
 `benchmarks/external/README.md` for pinned upstream revisions and run commands.
 

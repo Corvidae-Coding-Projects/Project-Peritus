@@ -9,6 +9,8 @@ mod deadline;
 mod dispatch;
 mod error;
 mod evidence;
+#[cfg(test)]
+mod general_capability;
 pub mod harness_results;
 mod identity;
 mod process_entry;

@@ -13,6 +13,7 @@ use self::yaml::{exact_keys, integer, mapping_value, string};
 const CHECKOUT: &str = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1";
 const RUST_ACTION: &str = "dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772";
 const RUST_REFERENCE: &str = "${{ env.RUST_VERSION }}";
+const RUSTUP_MAX_RETRIES: &str = "10";
 const PROOF_IMPACT_BASE_REFERENCE: &str =
     "${{ github.event.pull_request.base.sha || github.event.before || inputs.proof_impact_base }}";
 
@@ -139,8 +140,7 @@ fn pre_cargo_policy_step(step: &Yaml) -> bool {
         && string(step, "name") == Some("Verify reviewed pre-Cargo policy")
         && string(step, "shell") == Some("bash")
         && string(step, "run")
-            .map(parse_script)
-            .is_some_and(|script| script.is_reviewed_root_config_preflight())
+            .is_some_and(|script| parse_script(script).is_reviewed_root_config_preflight())
 }
 
 fn policy_job_is_exact(job: &Yaml) -> bool {
@@ -260,7 +260,7 @@ fn rust_matrix(strategy: Option<&Yaml>) -> bool {
     };
     exact_keys(strategy, &["fail-fast", "matrix"])
         && mapping_value(strategy, "fail-fast").and_then(Yaml::as_bool) == Some(false)
-        && exact_keys(matrix, &["os", "operation", "shard"])
+        && exact_keys(matrix, &["os", "operation", "shard", "include"])
         && mapping_value(matrix, "os").and_then(Yaml::as_vec).is_some_and(|values| {
             values.iter().filter_map(Yaml::as_str).eq(["ubuntu-24.04", "macos-15", "windows-2025"])
         })
@@ -268,18 +268,10 @@ fn rust_matrix(strategy: Option<&Yaml>) -> bool {
             mapping_value(matrix, "operation"),
             &["build", "test", "doc-test", "clippy", "docs"],
         )
-        && string_sequence(
-            mapping_value(matrix, "shard"),
-            &[
-                "foundation-state",
-                "runtime-tools",
-                "model-orchestration",
-                "app-runner",
-                "app-shell",
-                "testing",
-                "edge",
-            ],
-        )
+        && string_sequence(mapping_value(matrix, "shard"), &crate::ci_shard::SHARD_NAMES)
+        && super::workflow_rust_matrix::has_platform_terminal_includes(mapping_value(
+            matrix, "include",
+        ))
 }
 
 fn verus_matrix(strategy: Option<&Yaml>) -> bool {
@@ -324,11 +316,16 @@ fn checkout_step(step: &Yaml) -> bool {
 
 fn rust_step(step: &Yaml, components: Option<&str>) -> bool {
     let Some(step) = step.as_hash() else { return false };
+    let Some(environment) = mapping_value(step, "env").and_then(Yaml::as_hash) else {
+        return false;
+    };
     let Some(inputs) = mapping_value(step, "with").and_then(Yaml::as_hash) else { return false };
     let keys =
         if components.is_some() { &["toolchain", "components"][..] } else { &["toolchain"][..] };
-    exact_keys(step, &["name", "uses", "with"])
+    exact_keys(step, &["name", "uses", "env", "with"])
         && string(step, "uses") == Some(RUST_ACTION)
+        && exact_keys(environment, &["RUSTUP_MAX_RETRIES"])
+        && string(environment, "RUSTUP_MAX_RETRIES") == Some(RUSTUP_MAX_RETRIES)
         && exact_keys(inputs, keys)
         && string(inputs, "toolchain") == Some(RUST_REFERENCE)
         && components.is_none_or(|expected| string(inputs, "components") == Some(expected))

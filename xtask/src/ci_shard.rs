@@ -7,13 +7,21 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::process::Command;
 
-pub(crate) const SHARD_NAMES: [&str; 7] = [
+const PLATFORM_PACKAGE: &str = "peritus-platform-qualification";
+const PLATFORM_TERMINAL_INTERACTIVE: &str =
+    "terminal_interactive_round_trip_is_observed_and_reaped";
+const PLATFORM_TERMINAL_SIGNAL: &str = "terminal_control_signal_is_observed_and_reaped";
+const PLATFORM_TERMINAL_CANCEL: &str = "terminal_cancellation_is_observed_and_reaped";
+
+pub(crate) const SHARD_NAMES: [&str; 9] = [
     "foundation-state",
     "runtime-tools",
     "model-orchestration",
     "app-runner",
     "app-shell",
     "testing",
+    "testing-platform",
+    "testing-external",
     "edge",
 ];
 
@@ -24,6 +32,9 @@ pub(crate) enum Operation {
     DocTest,
     Clippy,
     Docs,
+    TestPlatformTerminalInteractive,
+    TestPlatformTerminalSignal,
+    TestPlatformTerminalCancel,
     VerusVerify,
     VerusVerifyStrict,
     VerusBuild,
@@ -38,6 +49,9 @@ impl Operation {
             "doc-test" => Some(Self::DocTest),
             "clippy" => Some(Self::Clippy),
             "docs" => Some(Self::Docs),
+            "test-platform-terminal-interactive" => Some(Self::TestPlatformTerminalInteractive),
+            "test-platform-terminal-signal" => Some(Self::TestPlatformTerminalSignal),
+            "test-platform-terminal-cancel" => Some(Self::TestPlatformTerminalCancel),
             "verus-verify" => Some(Self::VerusVerify),
             "verus-verify-strict" => Some(Self::VerusVerifyStrict),
             "verus-build" => Some(Self::VerusBuild),
@@ -55,6 +69,19 @@ impl Operation {
 
     const fn is_strict(self) -> bool {
         matches!(self, Self::VerusVerifyStrict | Self::VerusBuildStrict)
+    }
+
+    const fn is_platform_terminal(self) -> bool {
+        self.platform_terminal_test().is_some()
+    }
+
+    const fn platform_terminal_test(self) -> Option<&'static str> {
+        match self {
+            Self::TestPlatformTerminalInteractive => Some(PLATFORM_TERMINAL_INTERACTIVE),
+            Self::TestPlatformTerminalSignal => Some(PLATFORM_TERMINAL_SIGNAL),
+            Self::TestPlatformTerminalCancel => Some(PLATFORM_TERMINAL_CANCEL),
+            _ => None,
+        }
     }
 }
 
@@ -102,6 +129,7 @@ fn selected_packages<'a>(
         .filter(|package| {
             verus_eligible(package, policy_by_name.get(package.name.as_str()), operation)
         })
+        .filter(|package| !operation.is_platform_terminal() || package.name == PLATFORM_PACKAGE)
         .map(|package| package.name.as_str())
         .collect::<Vec<_>>();
     selected.sort_unstable();
@@ -137,6 +165,11 @@ fn cargo_command(root: &Path, operation: Operation, packages: &[&str]) -> Comman
         Operation::Test => {
             command.args(["test", "--locked", "--all-targets", "--all-features"]);
         }
+        Operation::TestPlatformTerminalInteractive
+        | Operation::TestPlatformTerminalSignal
+        | Operation::TestPlatformTerminalCancel => {
+            command.args(["test", "--locked", "--all-features"]);
+        }
         Operation::DocTest => {
             command.args(["test", "--locked", "--doc", "--all-features"]);
         }
@@ -170,8 +203,17 @@ fn cargo_command(root: &Path, operation: Operation, packages: &[&str]) -> Comman
             command.arg("--no-cheating");
         }
         command.args(["--rlimit", "20"]);
+    } else if let Some(test) = operation.platform_terminal_test() {
+        command.args(["--test", "general_capability", test, "--", "--exact", "--test-threads=1"]);
     } else if matches!(operation, Operation::Test) {
         command.args(["--", "--test-threads=1"]);
+        if packages == [PLATFORM_PACKAGE] {
+            for test in
+                [PLATFORM_TERMINAL_INTERACTIVE, PLATFORM_TERMINAL_SIGNAL, PLATFORM_TERMINAL_CANCEL]
+            {
+                command.args(["--skip", test]);
+            }
+        }
     } else if matches!(operation, Operation::Clippy) {
         command.args(["--", "-D", "warnings"]);
     }
@@ -223,6 +265,12 @@ fn shard_for_layer(layer: &str) -> Option<&'static str> {
 fn shard_for_package(name: &str, layer: &str) -> Option<&'static str> {
     if layer == "app" && name == "peritus-product-runner" {
         Some("app-runner")
+    } else if layer == "testing" {
+        match name {
+            "peritus-platform-qualification" => Some("testing-platform"),
+            "peritus-external-benchmarks" => Some("testing-external"),
+            _ => Some("testing"),
+        }
     } else {
         shard_for_layer(layer)
     }
@@ -230,12 +278,19 @@ fn shard_for_package(name: &str, layer: &str) -> Option<&'static str> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Operation, SHARD_NAMES, cargo_command, shard_for_layer, shard_for_package};
+    use super::{
+        Operation, PLATFORM_PACKAGE, PLATFORM_TERMINAL_CANCEL, PLATFORM_TERMINAL_INTERACTIVE,
+        PLATFORM_TERMINAL_SIGNAL, SHARD_NAMES, cargo_command, shard_for_layer, shard_for_package,
+    };
     use std::path::Path;
 
     #[test]
     fn operation_parser_is_closed() {
         assert_eq!(Operation::parse("test"), Some(Operation::Test));
+        assert_eq!(
+            Operation::parse("test-platform-terminal-interactive"),
+            Some(Operation::TestPlatformTerminalInteractive)
+        );
         assert_eq!(Operation::parse("verus-build-strict"), Some(Operation::VerusBuildStrict));
         assert_eq!(Operation::parse("bench"), None);
     }
@@ -268,6 +323,22 @@ mod tests {
     }
 
     #[test]
+    fn long_running_testing_packages_have_independent_bounded_shards() {
+        assert_eq!(
+            shard_for_package("peritus-platform-qualification", "testing"),
+            Some("testing-platform")
+        );
+        assert_eq!(
+            shard_for_package("peritus-external-benchmarks", "testing"),
+            Some("testing-external")
+        );
+        assert_eq!(
+            shard_for_package("peritus-performance-qualification", "testing"),
+            Some("testing")
+        );
+    }
+
+    #[test]
     fn strict_verus_shards_always_request_no_cheating() {
         let command =
             cargo_command(Path::new("."), Operation::VerusBuildStrict, &["peritus-types"]);
@@ -277,5 +348,35 @@ mod tests {
             .collect::<Vec<_>>();
         assert!(arguments.iter().any(|argument| argument == "--no-cheating"));
         assert!(arguments.windows(2).any(|pair| pair == ["--rlimit", "20"]));
+    }
+
+    #[test]
+    fn platform_test_operations_partition_the_terminal_case_exactly_once() {
+        let regular = cargo_command(Path::new("."), Operation::Test, &[PLATFORM_PACKAGE]);
+        let regular = regular
+            .get_args()
+            .map(|value| value.to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+        for test in
+            [PLATFORM_TERMINAL_INTERACTIVE, PLATFORM_TERMINAL_SIGNAL, PLATFORM_TERMINAL_CANCEL]
+        {
+            assert!(regular.windows(2).any(|pair| pair == ["--skip", test]));
+        }
+
+        for (operation, test) in [
+            (Operation::TestPlatformTerminalInteractive, PLATFORM_TERMINAL_INTERACTIVE),
+            (Operation::TestPlatformTerminalSignal, PLATFORM_TERMINAL_SIGNAL),
+            (Operation::TestPlatformTerminalCancel, PLATFORM_TERMINAL_CANCEL),
+        ] {
+            let terminal = cargo_command(Path::new("."), operation, &[PLATFORM_PACKAGE]);
+            let terminal = terminal
+                .get_args()
+                .map(|value| value.to_string_lossy().into_owned())
+                .collect::<Vec<_>>();
+            assert!(terminal.windows(2).any(|pair| pair == ["--test", "general_capability"]));
+            assert!(terminal.iter().any(|argument| argument == test));
+            assert!(terminal.iter().any(|argument| argument == "--exact"));
+            assert!(!terminal.iter().any(|argument| argument == "--skip"));
+        }
     }
 }

@@ -34,6 +34,11 @@ streams copies of `peritusd` and the qualification runner while recomputing thei
 identities, then retains measurements, receipts, accounting, machine facts, the content-addressed
 manifest, and its bound report. A failure never creates the requested final bundle path.
 
+The test-only `tests/fixtures/general-capability/performance/` matrix checks a measured
+improvement, missing comparison evidence, and a plausible change that is measurably slower. The
+same qualification evaluator used by H3 must block the regression even when its absolute SLO still
+passes.
+
 ## Operator commands
 
 Build `peritusd` and the H3 operator, then run the first complete campaign without a baseline:

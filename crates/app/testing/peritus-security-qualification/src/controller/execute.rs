@@ -92,7 +92,7 @@ fn run_cargo(check: &CommandCheck, root: &Path, capture_limit: usize) -> (CheckR
     let output = Command::new("cargo")
         .current_dir(root)
         .args(&check.arguments)
-        .env("CARGO_BUILD_JOBS", "2")
+        .env("CARGO_BUILD_JOBS", check.build_jobs.to_string())
         .env("CARGO_NET_OFFLINE", "true")
         .env("RUST_BACKTRACE", "0")
         .output();

@@ -9,11 +9,12 @@ use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{Read as _, Write as _};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::{
     CancellationToken, CaseReport, HostFingerprint, IntegratedCandidate, NativeProbeFactory,
-    QualificationLimits, QualificationPlatform, QualificationRunner, QualificationShard,
-    parse_candidate_json,
+    ProbeId, ProbeSpec, QualificationLimits, QualificationPlatform, QualificationRunner,
+    QualificationShard, parse_candidate_json,
 };
 
 use self::args::Options;
@@ -22,7 +23,32 @@ pub use aggregate::{H0AggregateStatus, run_from_env as run_aggregate_from_env};
 
 const MAX_HOST_FACT_BYTES: u64 = 1024 * 1024;
 const MAX_CANDIDATE_BYTES: u64 = 256 * 1024;
-const H0_WORKER_PARTITIONS: usize = 4;
+const H0_WORKER_COUNT: usize = 8;
+
+struct WorkUnitQueue {
+    next: AtomicUsize,
+    order: Vec<usize>,
+}
+
+impl WorkUnitQueue {
+    fn new(work_units: impl IntoIterator<Item = usize>) -> Self {
+        let work_units = work_units.into_iter().collect::<Vec<_>>();
+        let mut order = Vec::with_capacity(work_units.len());
+        for front in 0..work_units.len().div_ceil(2) {
+            order.push(work_units[front]);
+            let back = work_units.len() - front - 1;
+            if back != front {
+                order.push(work_units[back]);
+            }
+        }
+        Self { next: AtomicUsize::new(0), order }
+    }
+
+    fn claim(&self) -> Option<usize> {
+        let position = self.next.fetch_add(1, Ordering::Relaxed);
+        self.order.get(position).copied()
+    }
+}
 
 /// Terminal status of a successfully executed native H0 shard.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -85,27 +111,54 @@ fn run_parallel_shard(
     let limits = inputs.limits;
     let platform = inputs.platform;
     let host = inputs.host;
+    let work_unit_count =
+        ProbeSpec::h0_production().iter().filter(|spec| platform.owns(spec.target())).count();
+    let warmup_work_unit = serial_warmup_work_unit(platform);
+    let mut cases = Vec::new();
+    if let Some(work_unit) = warmup_work_unit {
+        let mut factory = NativeProbeFactory::new(
+            controller.clone(),
+            candidate_root.clone(),
+            scratch.clone(),
+            artifacts.clone(),
+            host,
+        )?;
+        cases.extend(QualificationRunner::run_shard_partition(
+            &mut factory,
+            candidate,
+            limits,
+            &CancellationToken::new(),
+            platform,
+            work_unit,
+            work_unit_count,
+        ));
+    }
+    let work_units =
+        WorkUnitQueue::new((0..work_unit_count).filter(|unit| Some(*unit) != warmup_work_unit));
     let partitions = std::thread::scope(|scope| {
-        let mut handles = Vec::with_capacity(H0_WORKER_PARTITIONS);
-        for partition in 0..H0_WORKER_PARTITIONS {
+        let mut handles = Vec::with_capacity(H0_WORKER_COUNT);
+        for _ in 0..H0_WORKER_COUNT {
             let controller = controller.clone();
             let candidate_root = candidate_root.clone();
             let scratch = scratch.clone();
             let artifacts = artifacts.clone();
+            let work_units = &work_units;
             handles.push(scope.spawn(move || {
                 let mut factory =
                     NativeProbeFactory::new(controller, candidate_root, scratch, artifacts, host)?;
-                Ok::<Vec<CaseReport>, crate::QualificationError>(
-                    QualificationRunner::run_shard_partition(
+                let mut cases = Vec::new();
+                while let Some(work_unit) = work_units.claim() {
+                    cases.extend(QualificationRunner::run_shard_partition(
                         &mut factory,
                         candidate,
                         limits,
                         &CancellationToken::new(),
                         platform,
-                        partition,
-                        H0_WORKER_PARTITIONS,
-                    ),
-                )
+                        work_unit,
+                        work_unit_count,
+                    ));
+                }
+                Ok::<Vec<CaseReport>, crate::QualificationError>(cases)
             }));
         }
         handles
@@ -118,9 +171,16 @@ fn run_parallel_shard(
             })
             .collect::<Result<Vec<_>, Box<dyn std::error::Error>>>()
     })?;
-    let mut cases = partitions.into_iter().flatten().collect::<Vec<_>>();
+    cases.extend(partitions.into_iter().flatten());
     cases.sort_by_key(|case| case.spec().id());
     Ok(QualificationShard::new(candidate, limits, platform, cases)?)
+}
+
+fn serial_warmup_work_unit(platform: QualificationPlatform) -> Option<usize> {
+    ProbeSpec::h0_production()
+        .iter()
+        .filter(|spec| platform.owns(spec.target()))
+        .position(|spec| spec.id() == ProbeId::UnsafeInventory)
 }
 
 fn read_bounded(
@@ -151,4 +211,78 @@ fn publish_report(path: &Path, bytes: &[u8]) -> Result<(), Box<dyn std::error::E
     temporary.as_file().sync_all()?;
     temporary.persist_noclobber(path)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{H0_WORKER_COUNT, WorkUnitQueue, serial_warmup_work_unit};
+    use crate::{ProbeId, ProbeSpec, QualificationPlatform};
+
+    #[test]
+    fn work_units_alternate_between_catalog_edges() {
+        let even = WorkUnitQueue::new(0..6);
+        assert_eq!((0..6).map(|_| even.claim()).collect::<Vec<_>>(), [0, 5, 1, 4, 2, 3].map(Some));
+
+        let odd = WorkUnitQueue::new(0..5);
+        assert_eq!((0..5).map(|_| odd.claim()).collect::<Vec<_>>(), [0, 4, 1, 3, 2].map(Some));
+    }
+
+    #[test]
+    fn only_linux_serializes_the_workspace_compiler_probe() {
+        let work_unit = serial_warmup_work_unit(QualificationPlatform::Linux)
+            .expect("Linux owns the tier-one unsafe inventory probe");
+        let spec = ProbeSpec::h0_production()
+            .iter()
+            .filter(|spec| QualificationPlatform::Linux.owns(spec.target()))
+            .nth(work_unit)
+            .expect("warm-up work unit");
+        assert_eq!(spec.id(), ProbeId::UnsafeInventory);
+        assert_eq!(serial_warmup_work_unit(QualificationPlatform::Macos), None);
+        assert_eq!(serial_warmup_work_unit(QualificationPlatform::Windows), None);
+    }
+
+    #[test]
+    fn linux_warmup_and_parallel_queue_cover_every_work_unit_once() {
+        let count = ProbeSpec::h0_production()
+            .iter()
+            .filter(|spec| QualificationPlatform::Linux.owns(spec.target()))
+            .count();
+        let warmup = serial_warmup_work_unit(QualificationPlatform::Linux)
+            .expect("Linux compiler warm-up work unit");
+        let work_units = WorkUnitQueue::new((0..count).filter(|unit| *unit != warmup));
+        let mut claimed = vec![warmup];
+        while let Some(work_unit) = work_units.claim() {
+            claimed.push(work_unit);
+        }
+        claimed.sort_unstable();
+        assert_eq!(claimed, (0..count).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn concurrent_workers_claim_every_linux_probe_exactly_once() {
+        let count = ProbeSpec::h0_production()
+            .iter()
+            .filter(|spec| QualificationPlatform::Linux.owns(spec.target()))
+            .count();
+        let work_units = WorkUnitQueue::new(0..count);
+        let mut claimed = std::thread::scope(|scope| {
+            let mut handles = Vec::with_capacity(H0_WORKER_COUNT);
+            for _ in 0..H0_WORKER_COUNT {
+                let work_units = &work_units;
+                handles.push(scope.spawn(move || {
+                    let mut claimed = Vec::new();
+                    while let Some(index) = work_units.claim() {
+                        claimed.push(index);
+                    }
+                    claimed
+                }));
+            }
+            handles
+                .into_iter()
+                .flat_map(|handle| handle.join().expect("work-unit worker"))
+                .collect::<Vec<_>>()
+        });
+        claimed.sort_unstable();
+        assert_eq!(claimed, (0..count).collect::<Vec<_>>());
+    }
 }

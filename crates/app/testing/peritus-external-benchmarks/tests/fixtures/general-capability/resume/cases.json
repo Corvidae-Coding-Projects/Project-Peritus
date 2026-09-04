@@ -1,0 +1,16 @@
+{
+  "cases": [
+    {
+      "name": "resume-runs-only-review-and-finalization",
+      "expected": "success"
+    },
+    {
+      "name": "review-pending-checkpoint-retains-the-exact-candidate",
+      "expected": "partial"
+    },
+    {
+      "name": "foreign-workspace-resume-is-rejected",
+      "expected": "failure"
+    }
+  ]
+}

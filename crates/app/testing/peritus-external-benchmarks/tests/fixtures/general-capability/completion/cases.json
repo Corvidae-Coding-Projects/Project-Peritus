@@ -1,0 +1,16 @@
+{
+  "cases": [
+    {
+      "name": "reviewed-candidate-is-accepted",
+      "expected": "success"
+    },
+    {
+      "name": "artifact-survives-unavailable-reviewer",
+      "expected": "partial"
+    },
+    {
+      "name": "provider-failure-before-artifact-has-no-candidate",
+      "expected": "failure"
+    }
+  ]
+}

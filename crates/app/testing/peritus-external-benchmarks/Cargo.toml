@@ -28,6 +28,10 @@ thiserror.workspace = true
 tokio.workspace = true
 
 [dev-dependencies]
+html5ever.workspace = true
+markup5ever_rcdom.workspace = true
+peritus-obligations = { version = "=0.0.0", path = "../../../orchestration/peritus-obligations" }
+peritus-spec = { version = "=0.0.0", path = "../../../foundation/peritus-spec" }
 tempfile.workspace = true
 
 [[bin]]

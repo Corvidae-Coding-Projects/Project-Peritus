@@ -1,0 +1,24 @@
+{
+  "html": "<table><p id=lead>alpha<tr><td>beta</table>",
+  "standards_output": "<html><head></head><body><p id=\"lead\">alpha</p><table><tbody><tr><td>beta</td></tr></tbody></table></body></html>",
+  "cases": [
+    {
+      "name": "standards-parser-matches-oracle",
+      "implementation": "standards_compliant",
+      "oracle_passed": true,
+      "expected": "success"
+    },
+    {
+      "name": "hand-parser-result-is-only-partial-evidence",
+      "implementation": "parser_only",
+      "oracle_passed": true,
+      "expected": "partial"
+    },
+    {
+      "name": "standards-parser-oracle-mismatch-fails",
+      "implementation": "standards_compliant",
+      "oracle_passed": false,
+      "expected": "failure"
+    }
+  ]
+}

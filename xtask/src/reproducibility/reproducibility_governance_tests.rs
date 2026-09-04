@@ -14,6 +14,19 @@ fn canonical_team_workflow_retains_every_gate_and_stable_status() {
 }
 
 #[test]
+fn required_workflow_rejects_weakened_rust_download_retries() {
+    let altered = canonical_governance().replacen(
+        "          RUSTUP_MAX_RETRIES: \"10\"",
+        "          RUSTUP_MAX_RETRIES: \"3\"",
+        1,
+    );
+
+    assert_ne!(altered, canonical_governance());
+    let (_, diagnostics) = validate(PATH, DocumentKind::Workflow, &altered);
+    assert_message(&diagnostics, "does not evaluate the candidate policy exactly");
+}
+
+#[test]
 fn required_workflow_rejects_trigger_permission_and_environment_drift() {
     for altered in [
         canonical_governance().replace("  pull_request:\n", "  pull_request_target:\n"),
@@ -136,8 +149,8 @@ fn required_workflow_retains_the_measured_verus_timeout() {
 #[test]
 fn required_workflow_retains_the_measured_rust_matrix_timeout() {
     let altered = canonical_governance().replacen(
-        "    name: Rust shard ${{ matrix.operation }} ${{ matrix.shard }} (${{ matrix.os }})\n    needs: policy\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-24.04, macos-15, windows-2025]\n        operation: [build, test, doc-test, clippy, docs]\n        shard: [foundation-state, runtime-tools, model-orchestration, app-runner, app-shell, testing, edge]\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 10",
-        "    name: Rust shard ${{ matrix.operation }} ${{ matrix.shard }} (${{ matrix.os }})\n    needs: policy\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-24.04, macos-15, windows-2025]\n        operation: [build, test, doc-test, clippy, docs]\n        shard: [foundation-state, runtime-tools, model-orchestration, app-runner, app-shell, testing, edge]\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 9",
+        "    name: Rust shard ${{ matrix.operation }} ${{ matrix.shard }} (${{ matrix.os }})\n    needs: policy\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-24.04, macos-15, windows-2025]\n        operation: [build, test, doc-test, clippy, docs]\n        shard: [foundation-state, runtime-tools, model-orchestration, app-runner, app-shell, testing, testing-platform, testing-external, edge]\n        include:\n          - { os: ubuntu-24.04, operation: test-platform-terminal-interactive, shard: testing-platform }\n          - { os: ubuntu-24.04, operation: test-platform-terminal-signal, shard: testing-platform }\n          - { os: ubuntu-24.04, operation: test-platform-terminal-cancel, shard: testing-platform }\n          - { os: macos-15, operation: test-platform-terminal-interactive, shard: testing-platform }\n          - { os: macos-15, operation: test-platform-terminal-signal, shard: testing-platform }\n          - { os: macos-15, operation: test-platform-terminal-cancel, shard: testing-platform }\n          - { os: windows-2025, operation: test-platform-terminal-interactive, shard: testing-platform }\n          - { os: windows-2025, operation: test-platform-terminal-signal, shard: testing-platform }\n          - { os: windows-2025, operation: test-platform-terminal-cancel, shard: testing-platform }\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 10",
+        "    name: Rust shard ${{ matrix.operation }} ${{ matrix.shard }} (${{ matrix.os }})\n    needs: policy\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-24.04, macos-15, windows-2025]\n        operation: [build, test, doc-test, clippy, docs]\n        shard: [foundation-state, runtime-tools, model-orchestration, app-runner, app-shell, testing, testing-platform, testing-external, edge]\n        include:\n          - { os: ubuntu-24.04, operation: test-platform-terminal-interactive, shard: testing-platform }\n          - { os: ubuntu-24.04, operation: test-platform-terminal-signal, shard: testing-platform }\n          - { os: ubuntu-24.04, operation: test-platform-terminal-cancel, shard: testing-platform }\n          - { os: macos-15, operation: test-platform-terminal-interactive, shard: testing-platform }\n          - { os: macos-15, operation: test-platform-terminal-signal, shard: testing-platform }\n          - { os: macos-15, operation: test-platform-terminal-cancel, shard: testing-platform }\n          - { os: windows-2025, operation: test-platform-terminal-interactive, shard: testing-platform }\n          - { os: windows-2025, operation: test-platform-terminal-signal, shard: testing-platform }\n          - { os: windows-2025, operation: test-platform-terminal-cancel, shard: testing-platform }\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 9",
         1,
     );
 

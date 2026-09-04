@@ -3,7 +3,7 @@ use crate::model::CargoMetadata;
 use std::collections::BTreeSet;
 use std::path::Path;
 
-const REVIEWED_BUILD_SCRIPT_PACKAGES: [&str; 57] = [
+const REVIEWED_BUILD_SCRIPT_PACKAGES: [&str; 58] = [
     "registry+https://github.com/rust-lang/crates.io-index#alloca@0.4.0",
     "registry+https://github.com/rust-lang/crates.io-index#anyhow@1.0.104",
     "registry+https://github.com/rust-lang/crates.io-index#async-io@2.6.0",
@@ -45,6 +45,7 @@ const REVIEWED_BUILD_SCRIPT_PACKAGES: [&str; 57] = [
     "registry+https://github.com/rust-lang/crates.io-index#thiserror@2.0.20",
     "registry+https://github.com/rust-lang/crates.io-index#wasm-bindgen@0.2.127",
     "registry+https://github.com/rust-lang/crates.io-index#wasm-bindgen-shared@0.2.127",
+    "registry+https://github.com/rust-lang/crates.io-index#web_atoms@0.2.6",
     "git+https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#verus_prettyplease@0.0.0-2026-08-09-0044",
     "git+https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#verus_syn@0.0.0-2026-08-02-0125",
     "git+https://github.com/verus-lang/verus.git?rev=92f466f247f45128c630d1c843fd6e27d2115587#vstd@0.0.0-2026-08-09-0044",
@@ -248,6 +249,11 @@ mod tests {
                     "registry+https://github.com/rust-lang/crates.io-index#thiserror-impl@1.0.69",
                     "thiserror-impl",
                     "proc-macro",
+                ),
+                package(
+                    "registry+https://github.com/rust-lang/crates.io-index#web_atoms@0.2.6",
+                    "web_atoms",
+                    "custom-build",
                 ),
                 package(
                     "registry+https://github.com/rust-lang/crates.io-index#winapi@0.3.9",
