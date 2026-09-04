@@ -8,7 +8,10 @@ use std::path::Path;
 use std::process::Command;
 
 const PLATFORM_PACKAGE: &str = "peritus-platform-qualification";
-const PLATFORM_TERMINAL_TEST: &str = "terminal_controls_use_one_pty_and_reap_every_child";
+const PLATFORM_TERMINAL_INTERACTIVE: &str =
+    "terminal_interactive_round_trip_is_observed_and_reaped";
+const PLATFORM_TERMINAL_SIGNAL: &str = "terminal_control_signal_is_observed_and_reaped";
+const PLATFORM_TERMINAL_CANCEL: &str = "terminal_cancellation_is_observed_and_reaped";
 
 pub(crate) const SHARD_NAMES: [&str; 9] = [
     "foundation-state",
@@ -29,7 +32,9 @@ pub(crate) enum Operation {
     DocTest,
     Clippy,
     Docs,
-    TestPlatformTerminal,
+    TestPlatformTerminalInteractive,
+    TestPlatformTerminalSignal,
+    TestPlatformTerminalCancel,
     VerusVerify,
     VerusVerifyStrict,
     VerusBuild,
@@ -44,7 +49,9 @@ impl Operation {
             "doc-test" => Some(Self::DocTest),
             "clippy" => Some(Self::Clippy),
             "docs" => Some(Self::Docs),
-            "test-platform-terminal" => Some(Self::TestPlatformTerminal),
+            "test-platform-terminal-interactive" => Some(Self::TestPlatformTerminalInteractive),
+            "test-platform-terminal-signal" => Some(Self::TestPlatformTerminalSignal),
+            "test-platform-terminal-cancel" => Some(Self::TestPlatformTerminalCancel),
             "verus-verify" => Some(Self::VerusVerify),
             "verus-verify-strict" => Some(Self::VerusVerifyStrict),
             "verus-build" => Some(Self::VerusBuild),
@@ -65,7 +72,16 @@ impl Operation {
     }
 
     const fn is_platform_terminal(self) -> bool {
-        matches!(self, Self::TestPlatformTerminal)
+        self.platform_terminal_test().is_some()
+    }
+
+    const fn platform_terminal_test(self) -> Option<&'static str> {
+        match self {
+            Self::TestPlatformTerminalInteractive => Some(PLATFORM_TERMINAL_INTERACTIVE),
+            Self::TestPlatformTerminalSignal => Some(PLATFORM_TERMINAL_SIGNAL),
+            Self::TestPlatformTerminalCancel => Some(PLATFORM_TERMINAL_CANCEL),
+            _ => None,
+        }
     }
 }
 
@@ -149,7 +165,9 @@ fn cargo_command(root: &Path, operation: Operation, packages: &[&str]) -> Comman
         Operation::Test => {
             command.args(["test", "--locked", "--all-targets", "--all-features"]);
         }
-        Operation::TestPlatformTerminal => {
+        Operation::TestPlatformTerminalInteractive
+        | Operation::TestPlatformTerminalSignal
+        | Operation::TestPlatformTerminalCancel => {
             command.args(["test", "--locked", "--all-features"]);
         }
         Operation::DocTest => {
@@ -185,19 +203,16 @@ fn cargo_command(root: &Path, operation: Operation, packages: &[&str]) -> Comman
             command.arg("--no-cheating");
         }
         command.args(["--rlimit", "20"]);
-    } else if operation.is_platform_terminal() {
-        command.args([
-            "--test",
-            "general_capability",
-            PLATFORM_TERMINAL_TEST,
-            "--",
-            "--exact",
-            "--test-threads=1",
-        ]);
+    } else if let Some(test) = operation.platform_terminal_test() {
+        command.args(["--test", "general_capability", test, "--", "--exact", "--test-threads=1"]);
     } else if matches!(operation, Operation::Test) {
         command.args(["--", "--test-threads=1"]);
         if packages == [PLATFORM_PACKAGE] {
-            command.args(["--skip", PLATFORM_TERMINAL_TEST]);
+            for test in
+                [PLATFORM_TERMINAL_INTERACTIVE, PLATFORM_TERMINAL_SIGNAL, PLATFORM_TERMINAL_CANCEL]
+            {
+                command.args(["--skip", test]);
+            }
         }
     } else if matches!(operation, Operation::Clippy) {
         command.args(["--", "-D", "warnings"]);
@@ -264,8 +279,8 @@ fn shard_for_package(name: &str, layer: &str) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::{
-        Operation, PLATFORM_PACKAGE, PLATFORM_TERMINAL_TEST, SHARD_NAMES, cargo_command,
-        shard_for_layer, shard_for_package,
+        Operation, PLATFORM_PACKAGE, PLATFORM_TERMINAL_CANCEL, PLATFORM_TERMINAL_INTERACTIVE,
+        PLATFORM_TERMINAL_SIGNAL, SHARD_NAMES, cargo_command, shard_for_layer, shard_for_package,
     };
     use std::path::Path;
 
@@ -273,8 +288,8 @@ mod tests {
     fn operation_parser_is_closed() {
         assert_eq!(Operation::parse("test"), Some(Operation::Test));
         assert_eq!(
-            Operation::parse("test-platform-terminal"),
-            Some(Operation::TestPlatformTerminal)
+            Operation::parse("test-platform-terminal-interactive"),
+            Some(Operation::TestPlatformTerminalInteractive)
         );
         assert_eq!(Operation::parse("verus-build-strict"), Some(Operation::VerusBuildStrict));
         assert_eq!(Operation::parse("bench"), None);
@@ -342,17 +357,26 @@ mod tests {
             .get_args()
             .map(|value| value.to_string_lossy().into_owned())
             .collect::<Vec<_>>();
-        assert!(regular.windows(2).any(|pair| pair == ["--skip", PLATFORM_TERMINAL_TEST]));
+        for test in
+            [PLATFORM_TERMINAL_INTERACTIVE, PLATFORM_TERMINAL_SIGNAL, PLATFORM_TERMINAL_CANCEL]
+        {
+            assert!(regular.windows(2).any(|pair| pair == ["--skip", test]));
+        }
 
-        let terminal =
-            cargo_command(Path::new("."), Operation::TestPlatformTerminal, &[PLATFORM_PACKAGE]);
-        let terminal = terminal
-            .get_args()
-            .map(|value| value.to_string_lossy().into_owned())
-            .collect::<Vec<_>>();
-        assert!(terminal.windows(2).any(|pair| pair == ["--test", "general_capability"]));
-        assert!(terminal.iter().any(|argument| argument == PLATFORM_TERMINAL_TEST));
-        assert!(terminal.iter().any(|argument| argument == "--exact"));
-        assert!(!terminal.iter().any(|argument| argument == "--skip"));
+        for (operation, test) in [
+            (Operation::TestPlatformTerminalInteractive, PLATFORM_TERMINAL_INTERACTIVE),
+            (Operation::TestPlatformTerminalSignal, PLATFORM_TERMINAL_SIGNAL),
+            (Operation::TestPlatformTerminalCancel, PLATFORM_TERMINAL_CANCEL),
+        ] {
+            let terminal = cargo_command(Path::new("."), operation, &[PLATFORM_PACKAGE]);
+            let terminal = terminal
+                .get_args()
+                .map(|value| value.to_string_lossy().into_owned())
+                .collect::<Vec<_>>();
+            assert!(terminal.windows(2).any(|pair| pair == ["--test", "general_capability"]));
+            assert!(terminal.iter().any(|argument| argument == test));
+            assert!(terminal.iter().any(|argument| argument == "--exact"));
+            assert!(!terminal.iter().any(|argument| argument == "--skip"));
+        }
     }
 }

@@ -72,16 +72,46 @@ fn ordinary_prerequisites_are_classified_from_real_process_results() {
 }
 
 #[test]
-fn terminal_controls_use_one_pty_and_reap_every_child() {
+fn terminal_interactive_round_trip_is_observed_and_reaped() {
+    assert_terminal_outcome(
+        "interactive-input-resize-recovery-and-reaping",
+        interactive_round_trip(),
+    );
+}
+
+#[test]
+fn terminal_noninteractive_control_claim_is_unsupported() {
+    assert_terminal_outcome(
+        "non-interactive-session-cannot-claim-terminal-controls",
+        noninteractive_control_claim(),
+    );
+}
+
+#[test]
+fn terminal_control_signal_is_observed_and_reaped() {
+    assert_terminal_outcome(
+        "controlled-termination-is-observed-and-reaped",
+        controlled_signal_termination(),
+    );
+}
+
+#[test]
+fn terminal_cancellation_is_observed_and_reaped() {
+    assert_terminal_outcome(
+        "controlled-termination-is-observed-and-reaped",
+        cancelled_termination(),
+    );
+}
+
+fn assert_terminal_outcome(name: &str, observed: ObservationOutcome) {
     let fixtures: FixtureSet<TerminalCase> =
         serde_json::from_str(TERMINAL).expect("terminal fixtures");
-    let mut observed = Vec::new();
-    observed.push(interactive_round_trip());
-    observed.push(noninteractive_control_claim());
-    observed.push(controlled_termination());
-    for (fixture, outcome) in fixtures.cases.iter().zip(observed) {
-        assert_eq!(outcome, fixture.expected.outcome(), "{}", fixture.name);
-    }
+    let fixture = fixtures
+        .cases
+        .iter()
+        .find(|fixture| fixture.name == name)
+        .unwrap_or_else(|| panic!("missing terminal fixture {name}"));
+    assert_eq!(observed, fixture.expected.outcome(), "{}", fixture.name);
 }
 
 fn interactive_round_trip() -> ObservationOutcome {
@@ -118,7 +148,7 @@ const fn noninteractive_control_claim() -> ObservationOutcome {
     ObservationOutcome::Unsupported
 }
 
-fn controlled_termination() -> ObservationOutcome {
+fn controlled_signal_termination() -> ObservationOutcome {
     let (pair, mut signalled) = long_lived_child();
     #[cfg(unix)]
     send_control(&*signalled);
@@ -127,7 +157,10 @@ fn controlled_termination() -> ObservationOutcome {
     let _status = signalled.wait().expect("observe and reap signalled child");
     assert!(signalled.try_wait().expect("post-signal reap observation").is_some());
     drop(pair);
+    ObservationOutcome::Failed
+}
 
+fn cancelled_termination() -> ObservationOutcome {
     let (pair, mut cancelled) = long_lived_child();
     cancelled.kill().expect("cancel terminal child");
     let _status = cancelled.wait().expect("observe and reap cancelled child");
