@@ -58,7 +58,7 @@ pub fn fixture_report(root: &Path) -> InvocationReport {
     }
 }
 
-fn seed(root: &Path) -> ReportSeed {
+pub fn seed(root: &Path) -> ReportSeed {
     ReportSeed {
         suite: BenchmarkSuite::TerminalBench,
         handshake: HandshakeReport {

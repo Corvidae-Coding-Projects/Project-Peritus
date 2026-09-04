@@ -4,6 +4,10 @@ This crate owns the executable H1 release operator and the platform effect bound
 exercise a real Peritus release candidate. The runtime-neutral catalog, observations, invariants,
 and verdict stay in `peritus-resilience`.
 
+The test-only `tests/fixtures/general-capability/lifecycle/` matrix distinguishes a real public
+process termination followed by an observed reap from an internal cancellation simulation and a
+wrong final-state claim. Only the exact public observation satisfies the lifecycle obligation.
+
 `peritus-h1` digests the exact candidate executable, stages that same executable into every fresh
 subject, runs all 43 scenarios through the reviewed controller, and atomically publishes the full
 JSON report. A report path is never overwritten.

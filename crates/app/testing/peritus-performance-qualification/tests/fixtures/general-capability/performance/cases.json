@@ -1,0 +1,25 @@
+{
+  "cases": [
+    {
+      "name": "measured-improvement",
+      "candidate": 80,
+      "baseline": 100,
+      "include_baseline": true,
+      "expected": "ready"
+    },
+    {
+      "name": "honest-missing-comparison",
+      "candidate": 80,
+      "baseline": 100,
+      "include_baseline": false,
+      "expected": "not_ready"
+    },
+    {
+      "name": "plausible-change-is-measurably-slower",
+      "candidate": 120,
+      "baseline": 100,
+      "include_baseline": true,
+      "expected": "blocking_regression"
+    }
+  ]
+}

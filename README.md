@@ -61,6 +61,13 @@ CLI show the exact candidate paths, checks, review, run command, and remaining w
 inspect, run, continue, export, accept, commit, or discard the retained candidate; accepting or
 committing an unqualified candidate requires an explicit evidence-naming confirmation.
 
+The generic capability matrix now covers all eleven remediable failure families: completion,
+selective resume, measured performance, real lifecycle ingress, directional schemas, browser
+semantics, provider recovery, repository drift, ordinary prerequisites, terminal control, and
+external-adapter settlement. Every family has passing, honestly incomplete, and failing fixtures
+bound to typed product evidence or directly observed process behavior. None uses benchmark task
+identities, hidden verifier answers, paid provider calls, or an external benchmark run.
+
 ## What remains before release
 
 The implementation is not the release decision. Production readiness still requires:

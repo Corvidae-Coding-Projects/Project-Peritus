@@ -1,0 +1,22 @@
+{
+  "cases": [
+    {
+      "name": "ordinary-compiler-present",
+      "program": "rustc",
+      "args": ["--version"],
+      "expected": "passed"
+    },
+    {
+      "name": "ordinary-runtime-missing-is-honest-partial",
+      "program": "peritus-definitely-missing-runtime",
+      "args": [],
+      "expected": "unsupported"
+    },
+    {
+      "name": "present-prerequisite-that-fails-is-not-accepted",
+      "program": "rustc",
+      "args": ["--definitely-not-a-rustc-option"],
+      "expected": "failed"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "inventory_files": 256,
+  "cases": [
+    {
+      "name": "large-inventory-nested-repository-and-authorized-head-change",
+      "expected": "success"
+    },
+    {
+      "name": "external-worktree-drift-is-returned-as-candidate-evidence",
+      "expected": "partial"
+    },
+    {
+      "name": "unknown-baseline-is-a-typed-command-failure",
+      "expected": "failure"
+    }
+  ]
+}

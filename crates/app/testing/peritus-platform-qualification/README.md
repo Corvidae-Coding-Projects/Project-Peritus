@@ -25,6 +25,11 @@ versioned request, scenario-response, and cleanup-response schemas live in `pack
 separate fixture controller proves the adapter and operator protocol; fixture results are not
 release evidence for a real host.
 
+The test-only `tests/fixtures/general-capability/` tree exercises ordinary prerequisite outcomes
+and the terminal-control substrate. Its terminal case uses one PTY for input, resize, reader
+recovery, exit observation, and reaping; separate incomplete and controlled-termination cases stay
+non-passing instead of manufacturing success.
+
 The reviewed assets in `../../../../packaging` are the native application layer consumed by a
 release builder. They supervise the real `peritusd serve --config <absolute-file>` invocation;
 they do not add an unimplemented daemonization or service command. Configuration, state, and logs

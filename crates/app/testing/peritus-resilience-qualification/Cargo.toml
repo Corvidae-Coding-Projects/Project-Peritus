@@ -22,6 +22,14 @@ sha2.workspace = true
 tempfile.workspace = true
 tokio.workspace = true
 
+[dev-dependencies]
+peritus-obligations = { version = "=0.0.0", path = "../../../orchestration/peritus-obligations" }
+peritus-run-settlement = { version = "=0.0.0", path = "../../../orchestration/peritus-run-settlement" }
+peritus-spec = { version = "=0.0.0", path = "../../../foundation/peritus-spec" }
+
+[target.'cfg(unix)'.dev-dependencies]
+nix.workspace = true
+
 [[bin]]
 name = "peritus-h1"
 path = "src/bin/peritus-h1.rs"

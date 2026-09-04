@@ -1,0 +1,16 @@
+{
+  "cases": [
+    {
+      "name": "interactive-input-resize-recovery-and-reaping",
+      "expected": "passed"
+    },
+    {
+      "name": "non-interactive-session-cannot-claim-terminal-controls",
+      "expected": "unsupported"
+    },
+    {
+      "name": "controlled-termination-is-observed-and-reaped",
+      "expected": "failed"
+    }
+  ]
+}
