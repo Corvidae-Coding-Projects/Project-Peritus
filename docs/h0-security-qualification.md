@@ -81,7 +81,7 @@ candidate, canonical source root for that candidate, reviewed host-fact document
 and retained-artifact roots, no-overwrite report path, and current platform. The production
 controller recomputes the source archive digest before making probe assertions. On Linux it first
 runs the workspace-wide compiler probe alone so compiler contention cannot starve another bounded
-native subject. It runs the remaining canonical subset through eight same-host workers that
+native subject. It runs the remaining canonical subset through twelve same-host workers that
 dynamically claim single-probe work units from alternating catalog edges. The operator restores
 canonical order and publishes the shard even when cases fail. A successful exit means the shard
 passed; it is not a complete H0 verdict and does not replace cross-host aggregation or independent

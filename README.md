@@ -143,7 +143,7 @@ three focused reboot diagnostics passed with exact single-effect and cleanup evi
 H0 also has a Rust-owned exact-candidate preparer and a three-host native workflow. The preparer
 derives the common candidate identity from committed source, binds the controller and native host
 facts, and refuses dirty or cross-platform inputs. Linux first runs its workspace-wide compiler
-probe alone so it cannot starve bounded native subjects; then eight isolated workers dynamically
+probe alone so it cannot starve bounded native subjects; then twelve isolated workers dynamically
 consume single-probe work units from alternating catalog edges. The operator reassembles results in
 catalog order and retains the same canonical platform report and raw evidence. Cross-host
 aggregation and a separately supplied independent review remain mandatory; the workflow cannot
