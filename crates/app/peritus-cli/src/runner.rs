@@ -10,7 +10,7 @@ use crate::{
     args::{Cli, Command},
     artifact, completion,
     error::CliError,
-    events, operation, output, prompt, terminal,
+    events, operation, output, product_run, prompt, terminal,
 };
 
 /// Parses the process arguments, executes one command, and returns its stable exit category.
@@ -214,6 +214,9 @@ async fn execute(cli: Cli) -> Result<(), CliError> {
         }
         Command::TerminalCancel(arguments) => {
             terminal::cancel(&endpoint, cli.session, cli.timeout, arguments, &output).await
+        }
+        Command::ProductRuns(arguments) => {
+            product_run::execute(&endpoint, cli.session, cli.timeout, arguments, &output).await
         }
         Command::Help { .. }
         | Command::Version

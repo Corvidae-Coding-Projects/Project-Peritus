@@ -7,8 +7,15 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::process::Command;
 
-pub(crate) const SHARD_NAMES: [&str; 6] =
-    ["foundation-state", "runtime-tools", "model-orchestration", "app", "testing", "edge"];
+pub(crate) const SHARD_NAMES: [&str; 7] = [
+    "foundation-state",
+    "runtime-tools",
+    "model-orchestration",
+    "app-runner",
+    "app-shell",
+    "testing",
+    "edge",
+];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum Operation {
@@ -90,7 +97,7 @@ fn selected_packages<'a>(
         .filter(|package| {
             policy_by_name
                 .get(package.name.as_str())
-                .is_some_and(|entry| shard_for_layer(&entry.layer) == Some(shard))
+                .is_some_and(|entry| shard_for_package(&package.name, &entry.layer) == Some(shard))
         })
         .filter(|package| {
             verus_eligible(package, policy_by_name.get(package.name.as_str()), operation)
@@ -206,16 +213,24 @@ fn shard_for_layer(layer: &str) -> Option<&'static str> {
         "foundation" | "state" => Some("foundation-state"),
         "runtime" | "tools" => Some("runtime-tools"),
         "model" | "orchestration" => Some("model-orchestration"),
-        "app" => Some("app"),
+        "app" => Some("app-shell"),
         "testing" => Some("testing"),
         "analysis" | "observe" | "extensions" | "engineering" => Some("edge"),
         _ => None,
     }
 }
 
+fn shard_for_package(name: &str, layer: &str) -> Option<&'static str> {
+    if layer == "app" && name == "peritus-product-runner" {
+        Some("app-runner")
+    } else {
+        shard_for_layer(layer)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{Operation, SHARD_NAMES, cargo_command, shard_for_layer};
+    use super::{Operation, SHARD_NAMES, cargo_command, shard_for_layer, shard_for_package};
     use std::path::Path;
 
     #[test]
@@ -244,6 +259,12 @@ mod tests {
             assert!(SHARD_NAMES.contains(&shard_for_layer(layer).expect("known layer")));
         }
         assert_eq!(shard_for_layer("unknown"), None);
+    }
+
+    #[test]
+    fn product_runner_has_an_independent_bounded_app_shard() {
+        assert_eq!(shard_for_package("peritus-product-runner", "app"), Some("app-runner"));
+        assert_eq!(shard_for_package("peritus-daemon", "app"), Some("app-shell"));
     }
 
     #[test]

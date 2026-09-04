@@ -35,6 +35,9 @@ phase; S2 obligation evidence participates in gates, reviewer input, acceptance,
 Provider recovery during review repeats review only, candidate changes repeat qualification, and a
 conversation revision returns to design. Phase admission preserves a protected finalization reserve
 so an open-ended model turn cannot consume the time needed to return an honest handoff.
+The opaque continuation has a versioned durable encoding for the daemon. Restoring it rebuilds
+role knowledge from the current conversation and deliberately reacquires effectful gate reports
+instead of pretending an in-process runtime object survived restart.
 
 Developer commands use the same command path as the rest of Peritus. `run_command` starts a
 structured command through C4 and the daemon-owned C2 process store, waits for it, and returns a

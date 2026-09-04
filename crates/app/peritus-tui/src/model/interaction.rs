@@ -118,92 +118,6 @@ impl AppModel {
         Vec::new()
     }
 
-    fn handle_product_key(&mut self, key: KeyEvent) -> Option<Vec<Effect>> {
-        if self.view != View::Runs {
-            return None;
-        }
-        match key.code {
-            KeyCode::Char('n') => self.open_task_composer(),
-            KeyCode::Enter | KeyCode::Char('m') => self.open_product_message_composer(),
-            KeyCode::Char('i') => self.view = View::Diff,
-            KeyCode::Char('a') => {
-                return Some(self.control_selected_product_run(
-                    peritus_app_protocol::ProductRunControlAction::Accept,
-                ));
-            }
-            KeyCode::Char('c') => {
-                return Some(self.control_selected_product_run(
-                    peritus_app_protocol::ProductRunControlAction::Commit,
-                ));
-            }
-            KeyCode::Char('p') => {
-                return Some(self.control_selected_product_run(
-                    peritus_app_protocol::ProductRunControlAction::Export,
-                ));
-            }
-            KeyCode::Char('D') => {
-                return Some(self.control_selected_product_run(
-                    peritus_app_protocol::ProductRunControlAction::Discard,
-                ));
-            }
-            KeyCode::Char('x') => {
-                return Some(self.control_selected_product_run(
-                    peritus_app_protocol::ProductRunControlAction::Cancel,
-                ));
-            }
-            KeyCode::Char('r') if self.product.is_some() => {
-                return Some(self.control_selected_product_run(
-                    peritus_app_protocol::ProductRunControlAction::Retry,
-                ));
-            }
-            KeyCode::Char('w') => self.cycle_product_provider(ProviderRole::Writer),
-            KeyCode::Char('e') => self.cycle_product_provider(ProviderRole::Reviewer),
-            KeyCode::Char('f') => self.cycle_product_provider(ProviderRole::Fixer),
-            _ => return None,
-        }
-        Some(Vec::new())
-    }
-
-    fn handle_editor_key(&mut self, key: KeyEvent) -> Vec<Effect> {
-        if key.code == KeyCode::Esc {
-            self.editor = None;
-            return Vec::new();
-        }
-        if key.code == KeyCode::Enter && key.modifiers.contains(KeyModifiers::SHIFT) {
-            if let Some(editor) = &mut self.editor
-                && matches!(editor.kind, EditorKind::ProductTask | EditorKind::ProductMessage(_))
-            {
-                editor.buffer.insert(editor.cursor, '\n');
-                editor.cursor += 1;
-            }
-            return Vec::new();
-        }
-        if key.code == KeyCode::Enter {
-            let Some(editor) = self.editor.take() else {
-                return Vec::new();
-            };
-            return self.submit_editor(editor);
-        }
-        if let Some(editor) = &mut self.editor {
-            let _ = edit_text(&mut editor.buffer, &mut editor.cursor, key);
-        }
-        Vec::new()
-    }
-
-    fn submit_editor(&mut self, editor: Editor) -> Vec<Effect> {
-        match editor.kind {
-            EditorKind::ProcessId => self.attach_terminal(&editor.buffer),
-            EditorKind::ApprovalSignature(prompt_id) => {
-                self.submit_signed_approval(prompt_id, &editor.buffer)
-            }
-            EditorKind::PromptAnswer(prompt_id) => self.submit_user_input(prompt_id, editor.buffer),
-            EditorKind::ProductTask => self.submit_product_task(editor.buffer),
-            EditorKind::ProductMessage(run_id) => {
-                self.submit_product_message(run_id, editor.buffer)
-            }
-        }
-    }
-
     fn open_prompt_editor(&mut self) {
         let Some(item) = self.selected_prompt_item() else {
             return;
@@ -230,7 +144,11 @@ impl AppModel {
         });
     }
 
-    fn submit_signed_approval(&mut self, prompt_id: PromptId, encoded: &str) -> Vec<Effect> {
+    pub(super) fn submit_signed_approval(
+        &mut self,
+        prompt_id: PromptId,
+        encoded: &str,
+    ) -> Vec<Effect> {
         let decoded = match BASE64.decode(encoded.trim()) {
             Ok(decoded) => decoded,
             Err(error) => {
@@ -260,7 +178,7 @@ impl AppModel {
         self.submit_prompt_answer(prompt_id, payload)
     }
 
-    fn submit_user_input(&mut self, prompt_id: PromptId, value: String) -> Vec<Effect> {
+    pub(super) fn submit_user_input(&mut self, prompt_id: PromptId, value: String) -> Vec<Effect> {
         let Some(item) = self.prompt(prompt_id) else {
             return Vec::new();
         };
@@ -356,7 +274,7 @@ impl AppModel {
         vec![Effect::Send(AppMessage::Request(envelope))]
     }
 
-    fn attach_terminal(&mut self, process_text: &str) -> Vec<Effect> {
+    pub(super) fn attach_terminal(&mut self, process_text: &str) -> Vec<Effect> {
         let Some(context) = self.context else {
             return Vec::new();
         };

@@ -2,6 +2,8 @@
 
 use crossterm::event::Event;
 use peritus_app_protocol::{AppMessage, AppProtocolLimits, ProtocolContext};
+use peritus_types::Sha256Digest;
+use std::path::PathBuf;
 
 /// One external observation consumed by the UI reducer.
 #[allow(
@@ -31,6 +33,7 @@ pub enum Action {
 #[derive(Clone, Debug)]
 pub enum Effect {
     Send(AppMessage),
+    RunCandidate { workspace: PathBuf, instruction: String, candidate_digest: Sha256Digest },
     Reconnect,
     Quit,
 }

@@ -41,6 +41,16 @@ impl CandidateBaseline {
         Ok(Self { head })
     }
 
+    pub(crate) fn restored(head: String) -> Result<Self, ProductRunnerError> {
+        if !matches!(head.len(), 40 | 64) || !head.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+            return Err(repository(
+                "restore candidate base",
+                "durable candidate base is not a Git object identifier",
+            ));
+        }
+        Ok(Self { head })
+    }
+
     /// Returns every tracked modification/deletion and nonignored untracked file against the
     /// captured run baseline.
     ///

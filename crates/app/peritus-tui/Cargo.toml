@@ -16,11 +16,16 @@ crossterm.workspace = true
 peritus-app-protocol = { version = "=0.0.0", path = "../peritus-app-protocol" }
 peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
 peritus-protocol = { version = "=0.0.0", path = "../../foundation/peritus-protocol" }
+peritus-product-runner = { version = "=0.0.0", path = "../peritus-product-runner" }
+peritus-run-settlement = { version = "=0.0.0", path = "../../orchestration/peritus-run-settlement" }
 peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
 ratatui.workspace = true
 sha2.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [[bin]]
 name = "peritus-tui"

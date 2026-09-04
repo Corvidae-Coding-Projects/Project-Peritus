@@ -15,6 +15,12 @@ configuration, lifecycle status, and a bounded authority client. Product-run con
 default-off provider-failover consent into the runner. Provider switches are counted in durable run
 progress and shown in live status without changing the A3 role-selection protocol.
 
+Product-run records also retain candidate checkpoints, typed settlements, opaque continuation
+state, remaining work, and interruption causes. Startup validates settled candidates against their
+configured managed workspace, marks changed candidates stale, and automatically resumes
+interrupted runs. Accept, commit, export, and discard remain separate durable user decisions, and
+every mutating handoff action is revalidated against the exact candidate digest.
+
 The [G0 daemon guide](../../../docs/g0-daemon.md) documents strict configuration, startup and
 recovery order, protected A3 IPC, durable service composition, outbox delivery, worker ownership,
 shutdown, and the resource-aware verification commands. Operational procedures live in the

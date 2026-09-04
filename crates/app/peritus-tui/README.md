@@ -9,6 +9,12 @@ bounded transcript sanitization, and orderly connection shutdown. It depends on 
 protocol and foundation contracts plus Crossterm and Ratatui for presentation. All authorization,
 durable state, and acceptance decisions remain in G0 and the verified lower layers.
 
+The Runs dashboard presents accepted, candidate-available, waiting, cancelled, stopped, and
+recovery-required states directly. Its handoff panel exposes exact paths, checks, review evidence,
+remaining work, and run instructions. Users can inspect, continue, run, export, accept, commit, or
+discard a candidate without finding an internal worktree or log. Foreground run commands temporarily
+return terminal ownership to the candidate and restore the full-screen interface afterward.
+
 ## Focused checks
 
 From the repository root:

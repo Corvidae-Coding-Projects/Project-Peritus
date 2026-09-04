@@ -1,27 +1,16 @@
 //! Orderly terminal ownership and asynchronous application runtime.
 
+mod candidate;
 mod product;
+mod terminal;
 
 use std::{
-    io::{self, Stdout},
     path::{Path, PathBuf},
-    sync::{
-        Arc,
-        atomic::{AtomicBool, Ordering},
-    },
-    thread,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use crossterm::{
-    cursor::{Hide, Show},
-    event::{self, DisableBracketedPaste, EnableBracketedPaste, Event},
-    execute,
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
-};
 use peritus_app_protocol::ProtocolId;
 use peritus_types::SessionId;
-use ratatui::{Terminal, backend::CrosstermBackend};
 use sha2::{Digest, Sha256};
 use tokio::sync::mpsc;
 
@@ -30,12 +19,11 @@ use crate::{
     action::{Action, Effect},
     client::{ClientEvent, ClientSession},
     model::AppModel,
-    render,
 };
+use terminal::{InputPump, TerminalOwner};
 
 pub use product::{ProductLaunchContext, ProductProviderOption};
 
-const INPUT_POLL: Duration = Duration::from_millis(100);
 const UI_TICK: Duration = Duration::from_millis(250);
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(8);
 
@@ -107,7 +95,7 @@ pub async fn run(config: TuiConfig) -> Result<ExitReason, TuiError> {
     let seed = process_seed(config.endpoint());
     let mut terminal = TerminalOwner::enter()?;
     let (input_tx, mut input_rx) = mpsc::channel(128);
-    let input = InputPump::start(input_tx)?;
+    let mut input = InputPump::start(input_tx.clone())?;
     let (client_events_tx, mut client_events_rx) = mpsc::channel(512);
     let mut model = AppModel::with_product(seed, config.product().cloned());
     let mut client = None;
@@ -144,6 +132,14 @@ pub async fn run(config: TuiConfig) -> Result<ExitReason, TuiError> {
         .await
         {
             Ok(ControlFlow::Continue) => {}
+            Ok(ControlFlow::RunCandidate { workspace, instruction, candidate_digest }) => {
+                input.stop()?;
+                terminal.suspend()?;
+                let outcome = candidate::execute(workspace, instruction, candidate_digest).await;
+                terminal.resume()?;
+                input = InputPump::start(input_tx.clone())?;
+                model.candidate_run_finished(outcome);
+            }
             Ok(ControlFlow::Quit) => break Ok(ExitReason::UserQuit),
             Ok(ControlFlow::RecoverDaemon) => break Ok(ExitReason::RecoverDaemon),
             Err(error) => break Err(error),
@@ -160,6 +156,11 @@ pub async fn run(config: TuiConfig) -> Result<ExitReason, TuiError> {
 
 enum ControlFlow {
     Continue,
+    RunCandidate {
+        workspace: PathBuf,
+        instruction: String,
+        candidate_digest: peritus_types::Sha256Digest,
+    },
     Quit,
     RecoverDaemon,
 }
@@ -194,6 +195,9 @@ async fn apply_effects(
                     return Ok(ControlFlow::RecoverDaemon);
                 }
                 connect(config, model, client, events, generation).await;
+            }
+            Effect::RunCandidate { workspace, instruction, candidate_digest } => {
+                return Ok(ControlFlow::RunCandidate { workspace, instruction, candidate_digest });
             }
             Effect::Quit => return Ok(ControlFlow::Quit),
         }
@@ -275,100 +279,6 @@ fn process_seed(endpoint: &Path) -> [u8; 32] {
     hasher.update(now.to_be_bytes());
     hasher.update(endpoint.as_os_str().as_encoded_bytes());
     hasher.finalize().into()
-}
-
-struct TerminalOwner {
-    terminal: Terminal<CrosstermBackend<Stdout>>,
-}
-
-impl TerminalOwner {
-    fn enter() -> Result<Self, TuiError> {
-        enable_raw_mode()?;
-        let mut stdout = io::stdout();
-        if let Err(error) = execute!(stdout, EnterAlternateScreen, EnableBracketedPaste, Hide) {
-            let _ = disable_raw_mode();
-            return Err(TuiError::Io(error));
-        }
-        match Terminal::new(CrosstermBackend::new(stdout)) {
-            Ok(mut terminal) => {
-                terminal.clear()?;
-                Ok(Self { terminal })
-            }
-            Err(error) => {
-                let mut stdout = io::stdout();
-                let _ = execute!(stdout, Show, DisableBracketedPaste, LeaveAlternateScreen);
-                let _ = disable_raw_mode();
-                Err(TuiError::Io(error))
-            }
-        }
-    }
-
-    fn draw(&mut self, model: &AppModel) -> Result<(), TuiError> {
-        self.terminal.draw(|frame| render::draw(frame, model))?;
-        Ok(())
-    }
-}
-
-impl Drop for TerminalOwner {
-    fn drop(&mut self) {
-        let _ = self.terminal.show_cursor();
-        let _ = execute!(
-            self.terminal.backend_mut(),
-            Show,
-            DisableBracketedPaste,
-            LeaveAlternateScreen
-        );
-        let _ = disable_raw_mode();
-    }
-}
-
-struct InputPump {
-    stop: Arc<AtomicBool>,
-    thread: Option<thread::JoinHandle<()>>,
-}
-
-impl InputPump {
-    fn start(sender: mpsc::Sender<Event>) -> Result<Self, TuiError> {
-        let stop = Arc::new(AtomicBool::new(false));
-        let worker_stop = Arc::clone(&stop);
-        let thread =
-            thread::Builder::new().name("peritus-tui-input".to_owned()).spawn(move || {
-                while !worker_stop.load(Ordering::Acquire) {
-                    match event::poll(INPUT_POLL) {
-                        Ok(true) => match event::read() {
-                            Ok(event) => {
-                                if sender.blocking_send(event).is_err() {
-                                    return;
-                                }
-                            }
-                            Err(_) => return,
-                        },
-                        Ok(false) => {}
-                        Err(_) => return,
-                    }
-                }
-            })?;
-        Ok(Self { stop, thread: Some(thread) })
-    }
-
-    fn stop(mut self) -> Result<(), TuiError> {
-        self.stop.store(true, Ordering::Release);
-        if let Some(thread) = self.thread.take() {
-            thread
-                .join()
-                .map_err(|_| TuiError::Task("terminal input worker panicked".to_owned()))?;
-        }
-        Ok(())
-    }
-}
-
-impl Drop for InputPump {
-    fn drop(&mut self) {
-        self.stop.store(true, Ordering::Release);
-        if let Some(thread) = self.thread.take() {
-            let _ = thread.join();
-        }
-    }
 }
 
 #[cfg(test)]

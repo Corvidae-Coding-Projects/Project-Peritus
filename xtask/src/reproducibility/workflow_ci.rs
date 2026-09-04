@@ -270,7 +270,15 @@ fn rust_matrix(strategy: Option<&Yaml>) -> bool {
         )
         && string_sequence(
             mapping_value(matrix, "shard"),
-            &["foundation-state", "runtime-tools", "model-orchestration", "app", "testing", "edge"],
+            &[
+                "foundation-state",
+                "runtime-tools",
+                "model-orchestration",
+                "app-runner",
+                "app-shell",
+                "testing",
+                "edge",
+            ],
         )
 }
 
@@ -288,7 +296,14 @@ fn verus_matrix(strategy: Option<&Yaml>) -> bool {
         )
         && string_sequence(
             mapping_value(matrix, "shard"),
-            &["foundation-state", "runtime-tools", "model-orchestration", "app", "edge"],
+            &[
+                "foundation-state",
+                "runtime-tools",
+                "model-orchestration",
+                "app-runner",
+                "app-shell",
+                "edge",
+            ],
         )
 }
 

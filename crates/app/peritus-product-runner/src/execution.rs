@@ -2,6 +2,7 @@
 
 mod acceptance;
 mod cancellation;
+mod candidate_digest;
 mod checkpoint;
 mod cycle;
 mod deadline;

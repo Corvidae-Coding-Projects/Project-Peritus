@@ -6,9 +6,9 @@ use std::{
     process::Command,
 };
 
-use peritus_app_protocol::{
-    ProductDeliverable, ProductRunControlAction, ProductRunPhase, ProductRunSnapshot,
-};
+use peritus_app_protocol::{ProductDeliverable, ProductRunControlAction, ProductRunSnapshot};
+use peritus_product_runner::ProductRunner;
+use peritus_run_settlement::CandidateStage;
 use peritus_types::RunId;
 
 use super::persistence::persist_record;
@@ -24,22 +24,30 @@ impl ProductRunService {
         let mut records =
             self.inner.records.write().map_err(|_| ProductRunServiceError::Unavailable)?;
         let record = records.get_mut(&run_id).ok_or(ProductRunServiceError::NotFound)?;
-        if record.snapshot.phase() != ProductRunPhase::Complete {
+        if !record.snapshot.phase().terminal() {
             return Err(ProductRunServiceError::InvalidState);
         }
         let deliverable =
             record.snapshot.deliverable().cloned().ok_or(ProductRunServiceError::InvalidState)?;
-        if deliverable.discarded() {
-            return Err(ProductRunServiceError::InvalidState);
+        if let Some(snapshot) = repeated_action(record, action, &deliverable) {
+            return Ok(snapshot);
         }
+        let workspace = self
+            .inner
+            .workspaces
+            .get(&record.request.workspace_id())
+            .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
+        validate_exact_candidate(record, &deliverable, workspace)?;
         let (deliverable, status) = match action {
             ProductRunControlAction::Accept => {
-                (deliverable.mark_accepted(), "Deliverable accepted".to_owned())
+                let status = if deliverable.qualification() == CandidateStage::Qualified {
+                    "Qualified deliverable accepted"
+                } else {
+                    "Unqualified candidate accepted by explicit user choice"
+                };
+                (deliverable.mark_accepted(), status.to_owned())
             }
             ProductRunControlAction::Commit => {
-                if !deliverable.commit_revision().is_empty() {
-                    return Err(ProductRunServiceError::InvalidState);
-                }
                 let revision = commit_deliverable(&deliverable, record.request.task())?;
                 (
                     deliverable
@@ -71,7 +79,7 @@ impl ProductRunService {
         };
         let snapshot = replace_snapshot(
             &record.snapshot,
-            ProductRunPhase::Complete,
+            record.snapshot.phase(),
             &status,
             record.snapshot.summary(),
         )?
@@ -80,6 +88,58 @@ impl ProductRunService {
         persist_record(&self.inner.directory, record)?;
         Ok(record.snapshot.clone())
     }
+}
+
+fn repeated_action(
+    record: &super::RunRecord,
+    action: ProductRunControlAction,
+    deliverable: &ProductDeliverable,
+) -> Option<ProductRunSnapshot> {
+    let already_done = match action {
+        ProductRunControlAction::Accept => deliverable.accepted(),
+        ProductRunControlAction::Commit => !deliverable.commit_revision().is_empty(),
+        ProductRunControlAction::Export => !deliverable.export_path().is_empty(),
+        ProductRunControlAction::Discard => deliverable.discarded(),
+        ProductRunControlAction::Cancel | ProductRunControlAction::Retry => false,
+    };
+    already_done.then(|| record.snapshot.clone())
+}
+
+fn validate_exact_candidate(
+    record: &super::RunRecord,
+    deliverable: &ProductDeliverable,
+    workspace: &Path,
+) -> Result<(), ProductRunServiceError> {
+    if deliverable.discarded() {
+        return Err(ProductRunServiceError::InvalidState);
+    }
+    if !record.candidate_actionable {
+        return Err(ProductRunServiceError::InvalidState);
+    }
+    if !deliverable.commit_revision().is_empty() {
+        return Ok(());
+    }
+    if Path::new(deliverable.workspace_path()) != workspace {
+        return Err(ProductRunServiceError::InvalidState);
+    }
+    let Some(checkpoint) = record.checkpoint.as_ref() else {
+        // Legacy qualified handoffs predate digest persistence and remain operable.
+        return (deliverable.qualification() == CandidateStage::Qualified)
+            .then_some(())
+            .ok_or(ProductRunServiceError::InvalidState);
+    };
+    if checkpoint.stage() != deliverable.qualification()
+        || checkpoint.identity().run_id() != record.request.run_id()
+        || checkpoint.identity().workspace_id() != record.request.workspace_id()
+    {
+        return Err(ProductRunServiceError::InvalidState);
+    }
+    let current = ProductRunner::candidate_digest(Path::new(deliverable.workspace_path()))
+        .map_err(|_| ProductRunServiceError::WorkspaceUnavailable)?;
+    if current != checkpoint.identity().candidate_digest() {
+        return Err(ProductRunServiceError::InvalidState);
+    }
+    Ok(())
 }
 
 fn commit_deliverable(
@@ -243,96 +303,5 @@ fn run_hex(run_id: RunId) -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use std::process::Output;
-    use tempfile::TempDir;
-
-    #[test]
-    fn export_and_discard_are_limited_to_exact_deliverable_paths() {
-        let repository = repository();
-        let chosen_path = repository.path().join("chosen.txt");
-        let chosen_baseline = fs::read(&chosen_path).expect("chosen baseline");
-        fs::write(&chosen_path, "changed\n").expect("chosen change");
-        fs::write(repository.path().join("unrelated.txt"), "unrelated change\n")
-            .expect("unrelated change");
-        fs::write(repository.path().join("new.txt"), "new file\n").expect("new file");
-        let deliverable = ProductDeliverable::new(
-            repository.path().to_string_lossy().into_owned(),
-            vec!["chosen.txt".to_owned(), "new.txt".to_owned()],
-            vec!["cargo test --manifest-path game/Cargo.toml".to_owned()],
-            "cargo run --manifest-path game/Cargo.toml".to_owned(),
-        )
-        .expect("deliverable");
-
-        let patch = String::from_utf8(
-            uncommitted_patch(repository.path(), deliverable.changed_paths()).expect("patch"),
-        )
-        .expect("UTF-8 patch");
-        assert!(patch.contains("chosen.txt"));
-        assert!(patch.contains("new.txt"));
-        assert!(!patch.contains("unrelated.txt"));
-
-        discard_deliverable(&deliverable).expect("discard");
-        assert_eq!(fs::read(chosen_path).expect("chosen"), chosen_baseline);
-        assert!(!repository.path().join("new.txt").exists());
-        assert_eq!(
-            fs::read_to_string(repository.path().join("unrelated.txt")).expect("unrelated"),
-            "unrelated change\n"
-        );
-    }
-
-    #[test]
-    fn commit_excludes_an_unrelated_pre_staged_change() {
-        let repository = repository();
-        fs::write(repository.path().join("chosen.txt"), "changed\n").expect("chosen change");
-        fs::write(repository.path().join("unrelated.txt"), "unrelated change\n")
-            .expect("unrelated change");
-        git(repository.path(), &["add", "--", "unrelated.txt"]);
-        let deliverable = ProductDeliverable::new(
-            repository.path().to_string_lossy().into_owned(),
-            vec!["chosen.txt".to_owned()],
-            vec!["cargo test --manifest-path game/Cargo.toml".to_owned()],
-            "cargo run --manifest-path game/Cargo.toml".to_owned(),
-        )
-        .expect("deliverable");
-
-        let revision = commit_deliverable(&deliverable, "finish the game").expect("commit");
-        assert_eq!(revision.len(), 40);
-        let committed =
-            git_output(repository.path(), &["show", "--format=", "--name-only", "HEAD"]);
-        assert!(committed.contains("chosen.txt"));
-        assert!(!committed.contains("unrelated.txt"));
-        let staged = git_output(repository.path(), &["diff", "--cached", "--name-only"]);
-        assert_eq!(staged.trim(), "unrelated.txt");
-    }
-
-    fn repository() -> TempDir {
-        let repository = TempDir::new().expect("temporary repository");
-        git(repository.path(), &["init", "--quiet"]);
-        git(repository.path(), &["config", "user.name", "Peritus Test"]);
-        git(repository.path(), &["config", "user.email", "peritus@example.invalid"]);
-        git(repository.path(), &["config", "commit.gpgsign", "false"]);
-        git(repository.path(), &["config", "core.autocrlf", "false"]);
-        fs::write(repository.path().join("chosen.txt"), "base\n").expect("chosen base");
-        fs::write(repository.path().join("unrelated.txt"), "base\n").expect("unrelated base");
-        git(repository.path(), &["add", "--", "chosen.txt", "unrelated.txt"]);
-        git(repository.path(), &["commit", "--quiet", "-m", "initial"]);
-        repository
-    }
-
-    fn git(root: &Path, arguments: &[&str]) {
-        let output = Command::new("git").args(arguments).current_dir(root).output().expect("git");
-        assert_success(output);
-    }
-
-    fn git_output(root: &Path, arguments: &[&str]) -> String {
-        let output = Command::new("git").args(arguments).current_dir(root).output().expect("git");
-        assert_success(output.clone());
-        String::from_utf8(output.stdout).expect("UTF-8 git output")
-    }
-
-    fn assert_success(output: Output) {
-        assert!(output.status.success(), "git failed: {}", String::from_utf8_lossy(&output.stderr));
-    }
-}
+#[path = "deliverable/tests.rs"]
+mod tests;

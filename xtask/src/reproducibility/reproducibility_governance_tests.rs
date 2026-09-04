@@ -123,8 +123,8 @@ fn required_workflow_rejects_bootstrap_and_gate_weakening() {
 #[test]
 fn required_workflow_retains_the_measured_verus_timeout() {
     let altered = canonical_governance().replacen(
-        "    name: Verus shard ${{ matrix.operation }} ${{ matrix.shard }}\n    needs: policy\n    strategy:\n      fail-fast: false\n      matrix:\n        operation: [verus-verify, verus-verify-strict, verus-build, verus-build-strict]\n        shard: [foundation-state, runtime-tools, model-orchestration, app, edge]\n    runs-on: ubuntu-24.04\n    timeout-minutes: 10",
-        "    name: Verus shard ${{ matrix.operation }} ${{ matrix.shard }}\n    needs: policy\n    strategy:\n      fail-fast: false\n      matrix:\n        operation: [verus-verify, verus-verify-strict, verus-build, verus-build-strict]\n        shard: [foundation-state, runtime-tools, model-orchestration, app, edge]\n    runs-on: ubuntu-24.04\n    timeout-minutes: 9",
+        "    name: Verus shard ${{ matrix.operation }} ${{ matrix.shard }}\n    needs: policy\n    strategy:\n      fail-fast: false\n      matrix:\n        operation: [verus-verify, verus-verify-strict, verus-build, verus-build-strict]\n        shard: [foundation-state, runtime-tools, model-orchestration, app-runner, app-shell, edge]\n    runs-on: ubuntu-24.04\n    timeout-minutes: 10",
+        "    name: Verus shard ${{ matrix.operation }} ${{ matrix.shard }}\n    needs: policy\n    strategy:\n      fail-fast: false\n      matrix:\n        operation: [verus-verify, verus-verify-strict, verus-build, verus-build-strict]\n        shard: [foundation-state, runtime-tools, model-orchestration, app-runner, app-shell, edge]\n    runs-on: ubuntu-24.04\n    timeout-minutes: 9",
         1,
     );
 
@@ -136,8 +136,8 @@ fn required_workflow_retains_the_measured_verus_timeout() {
 #[test]
 fn required_workflow_retains_the_measured_rust_matrix_timeout() {
     let altered = canonical_governance().replacen(
-        "    name: Rust shard ${{ matrix.operation }} ${{ matrix.shard }} (${{ matrix.os }})\n    needs: policy\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-24.04, macos-15, windows-2025]\n        operation: [build, test, doc-test, clippy, docs]\n        shard: [foundation-state, runtime-tools, model-orchestration, app, testing, edge]\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 10",
-        "    name: Rust shard ${{ matrix.operation }} ${{ matrix.shard }} (${{ matrix.os }})\n    needs: policy\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-24.04, macos-15, windows-2025]\n        operation: [build, test, doc-test, clippy, docs]\n        shard: [foundation-state, runtime-tools, model-orchestration, app, testing, edge]\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 9",
+        "    name: Rust shard ${{ matrix.operation }} ${{ matrix.shard }} (${{ matrix.os }})\n    needs: policy\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-24.04, macos-15, windows-2025]\n        operation: [build, test, doc-test, clippy, docs]\n        shard: [foundation-state, runtime-tools, model-orchestration, app-runner, app-shell, testing, edge]\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 10",
+        "    name: Rust shard ${{ matrix.operation }} ${{ matrix.shard }} (${{ matrix.os }})\n    needs: policy\n    strategy:\n      fail-fast: false\n      matrix:\n        os: [ubuntu-24.04, macos-15, windows-2025]\n        operation: [build, test, doc-test, clippy, docs]\n        shard: [foundation-state, runtime-tools, model-orchestration, app-runner, app-shell, testing, edge]\n    runs-on: ${{ matrix.os }}\n    timeout-minutes: 9",
         1,
     );
 

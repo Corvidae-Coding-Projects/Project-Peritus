@@ -11,7 +11,8 @@ use peritus_app_protocol::{
 };
 use peritus_product_runner::{
     CommandRuntime, ConversationView, PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope,
-    ProductRunInput, ProductRunOutcome, ProductRunner, RoleProviders, RunObserver,
+    ProductRunInput, ProductRunOutcome, ProductRunResume, ProductRunner, RoleProviders,
+    RunObserver,
 };
 use peritus_provider_core::CancellationToken;
 use peritus_run_settlement::RunDisposition;
@@ -35,6 +36,7 @@ impl ProductRunService {
         provider_cancellation: CancellationToken,
         conversation: Arc<SharedConversation>,
         finding_state: String,
+        resume: Option<ProductRunResume>,
     ) {
         let service = self.clone();
         let run_id = request.run_id();
@@ -70,7 +72,7 @@ impl ProductRunService {
                     providers,
                     cancelled,
                     provider_cancellation,
-                    resume: None,
+                    resume,
                 },
                 observer,
             )
@@ -92,6 +94,12 @@ impl ProductRunService {
             record.finding_state = update.finding_state;
         }
         record.progress.observe(update.progress);
+        if let Some(checkpoint) = update.checkpoint {
+            record.checkpoint = Some(checkpoint);
+        }
+        if !update.remaining_work.is_empty() {
+            record.remaining_work = update.remaining_work;
+        }
         let phase = match update.phase {
             peritus_product_runner::ProductRunPhase::Designing => ProductRunPhase::Designing,
             peritus_product_runner::ProductRunPhase::Writing => ProductRunPhase::Writing,
@@ -131,6 +139,15 @@ impl ProductRunService {
             let _ = persist_record(&self.inner.directory, record);
             return;
         }
+        if let Ok(outcome) = &result {
+            record.checkpoint = outcome.settlement().checkpoint().copied();
+            record.settlement = Some(*outcome.settlement());
+            record.resume = outcome.resume().cloned();
+            record.remaining_work = outcome.remaining_work().to_vec();
+            record.interruption_cause = outcome.detail().map_or_else(String::new, str::to_owned);
+            record.candidate_actionable =
+                outcome.candidate().is_some() && outcome.settlement().checkpoint().is_some();
+        }
         match result {
             Ok(outcome) if outcome.settlement().disposition() == RunDisposition::Accepted => {
                 let Some(output) = outcome.candidate() else {
@@ -152,7 +169,7 @@ impl ProductRunService {
                     ProductRunPhase::Complete,
                     output.fixer_cycles + 1,
                     record.request.task().to_owned(),
-                    "Run completed with passing checks".to_owned(),
+                    "Accepted — passing checks and independent review".to_owned(),
                     output.diff.clone(),
                     output.gates.clone(),
                     output.review.clone(),
@@ -176,11 +193,16 @@ impl ProductRunService {
                 let _ = record
                     .conversation
                     .append(ProductConversationRole::Agent, question.message().to_owned());
+                let status = if outcome.candidate().is_some() {
+                    "Waiting for you — candidate preserved"
+                } else {
+                    "Waiting for you"
+                };
                 if let Ok(snapshot) = replace_snapshot(
                     &record.snapshot,
                     ProductRunPhase::WaitingForUser,
-                    "Waiting for your reply",
-                    question.message(),
+                    status,
+                    &terminal_summary(&outcome, question.message()),
                 ) {
                     record.snapshot = self.with_candidate(record, &outcome, snapshot);
                 }
@@ -223,15 +245,36 @@ impl ProductRunService {
             }
             RunDisposition::Accepted | RunDisposition::WaitingForUser => return,
         };
-        let status = match outcome.settlement().disposition() {
-            RunDisposition::CandidateAvailable => "Run stopped with a candidate available",
-            RunDisposition::RecoveryRequired => "Run requires recovery before it can continue",
-            RunDisposition::Cancelled => "Run cancelled",
-            _ => "Run stopped before producing a candidate",
+        let has_candidate = outcome.candidate().is_some();
+        let status = match (outcome.settlement().disposition(), has_candidate) {
+            (RunDisposition::CandidateAvailable, _) => "Candidate available",
+            (RunDisposition::RecoveryRequired, true) => "Recovery required — candidate preserved",
+            (RunDisposition::RecoveryRequired, false) => "Recovery required",
+            (RunDisposition::Cancelled, true) => "Cancelled — candidate preserved",
+            (RunDisposition::Cancelled, false) => "Cancelled — no candidate",
+            _ => "Stopped with no candidate",
         };
         let detail = outcome.detail().unwrap_or(status);
-        if let Ok(snapshot) = replace_snapshot(&record.snapshot, phase, status, detail) {
-            record.snapshot = self.with_candidate(record, outcome, snapshot);
+        let summary = terminal_summary(outcome, detail);
+        if let Some(output) = outcome.candidate()
+            && let Some(deliverable) = self.project_deliverable(record, outcome)
+            && let Ok(snapshot) = ProductRunSnapshot::new(
+                record.request.run_id(),
+                record.request.workspace_id(),
+                record.request.providers(),
+                phase,
+                output.fixer_cycles.saturating_add(1),
+                record.request.task().to_owned(),
+                status.to_owned(),
+                output.diff.clone(),
+                output.gates.clone(),
+                output.review.clone(),
+                summary.clone(),
+            )
+        {
+            record.snapshot = snapshot.with_deliverable(deliverable);
+        } else if let Ok(snapshot) = replace_snapshot(&record.snapshot, phase, status, &summary) {
+            record.snapshot = snapshot;
         }
         let remaining = if outcome.remaining_work().is_empty() {
             String::new()
@@ -272,6 +315,21 @@ impl ProductRunService {
         )
         .ok()
     }
+}
+
+fn terminal_summary(outcome: &ProductRunOutcome, detail: &str) -> String {
+    let mut summary = outcome
+        .candidate()
+        .map_or_else(|| detail.to_owned(), |candidate| candidate.summary.clone());
+    if !detail.is_empty() && !summary.contains(detail) {
+        summary.push_str("\n\nInterruption: ");
+        summary.push_str(detail);
+    }
+    if !outcome.remaining_work().is_empty() && !summary.contains("Remaining work:") {
+        summary.push_str("\n\nRemaining work:\n- ");
+        summary.push_str(&outcome.remaining_work().join("\n- "));
+    }
+    summary
 }
 
 fn fail_handoff(record: &mut super::RunRecord) {

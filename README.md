@@ -53,6 +53,14 @@ identity and resumes at the first incomplete phase, so a reviewer retry does not
 writing, or already-current gates. Every ordinary exit has protected finalization time; only an
 invalid initial request or an impossible internal invariant escapes the settlement boundary.
 
+The daemon now persists that checkpoint, its typed settlement, the continuation state, remaining
+work, and the interruption cause as one durable product-run record. On restart it validates
+terminal candidates against the current workspace, marks superseded qualification evidence stale,
+and automatically resumes interrupted work from the first reusable phase. The TUI and scriptable
+CLI show the exact candidate paths, checks, review, run command, and remaining work. Users can
+inspect, run, continue, export, accept, commit, or discard the retained candidate; accepting or
+committing an unqualified candidate requires an explicit evidence-naming confirmation.
+
 ## What remains before release
 
 The implementation is not the release decision. Production readiness still requires:

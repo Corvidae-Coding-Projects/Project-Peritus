@@ -18,18 +18,20 @@ use super::{snapshot::replace_snapshot, snapshot::workspace_has_active_run};
 
 impl ProductRunService {
     pub(crate) async fn shutdown(&self, timeout: Duration) {
+        let mut interrupted = Vec::new();
         if let Ok(mut records) = self.inner.records.write() {
-            for record in records.values_mut() {
-                if !record.snapshot.phase().terminal()
-                    && let Ok(snapshot) = replace_snapshot(
+            for (run_id, record) in records.iter_mut() {
+                if !record.snapshot.phase().terminal() {
+                    interrupted.push(*run_id);
+                    if let Ok(snapshot) = replace_snapshot(
                         &record.snapshot,
-                        ProductRunPhase::RecoveryRequired,
-                        "Daemon is restarting; this goal will continue automatically",
+                        record.snapshot.phase(),
+                        "Stopping safely after the current effect boundary",
                         record.snapshot.summary(),
-                    )
-                {
-                    record.snapshot = snapshot;
-                    let _ = persist_record(&self.inner.directory, record);
+                    ) {
+                        record.snapshot = snapshot;
+                        let _ = persist_record(&self.inner.directory, record);
+                    }
                 }
                 record.cancelled.store(true, Ordering::Release);
                 let _ = record.provider_cancellation.cancel();
@@ -38,6 +40,22 @@ impl ProductRunService {
         let mut tasks = self.inner.tasks.lock().await;
         for task in tasks.drain(..) {
             let _ = tokio::time::timeout(timeout, task).await;
+        }
+        if let Ok(mut records) = self.inner.records.write() {
+            for run_id in interrupted {
+                let Some(record) = records.get_mut(&run_id) else { continue };
+                if record.snapshot.phase() != ProductRunPhase::Complete
+                    && let Ok(snapshot) = replace_snapshot(
+                        &record.snapshot,
+                        ProductRunPhase::RecoveryRequired,
+                        "Daemon restart interrupted this run; continuing automatically",
+                        record.snapshot.summary(),
+                    )
+                {
+                    record.snapshot = snapshot;
+                    let _ = persist_record(&self.inner.directory, record);
+                }
+            }
         }
     }
 
@@ -112,7 +130,17 @@ impl ProductRunService {
         &self,
         run_id: RunId,
     ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
-        let (request, root, providers, cancelled, token, conversation, finding_state, snapshot) = {
+        let (
+            request,
+            root,
+            providers,
+            cancelled,
+            token,
+            conversation,
+            finding_state,
+            resume,
+            snapshot,
+        ) = {
             let mut records =
                 self.inner.records.write().map_err(|_| ProductRunServiceError::Unavailable)?;
             let workspace_id = records
@@ -140,6 +168,8 @@ impl ProductRunService {
             record.provider_cancellation = token.clone();
             record.snapshot = initial_snapshot(&record.request)?;
             record.progress = RunProgress::default();
+            record.settlement = None;
+            record.interruption_cause.clear();
             persist_record(&self.inner.directory, record)?;
             (
                 record.request.clone(),
@@ -149,10 +179,12 @@ impl ProductRunService {
                 token,
                 Arc::clone(&record.conversation),
                 record.finding_state.clone(),
+                record.resume.clone(),
                 record.snapshot.clone(),
             )
         };
-        self.spawn(request, root, providers, cancelled, token, conversation, finding_state).await;
+        self.spawn(request, root, providers, cancelled, token, conversation, finding_state, resume)
+            .await;
         Ok(snapshot)
     }
 }

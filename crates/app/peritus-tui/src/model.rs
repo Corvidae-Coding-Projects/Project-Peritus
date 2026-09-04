@@ -1,5 +1,6 @@
 //! Deterministic application state and update reducer.
 
+mod editor;
 mod interaction;
 mod product;
 mod protocol;
@@ -27,12 +28,12 @@ use sha2::{Digest, Sha256};
 
 use crate::{
     action::{Action, Effect},
-    input::{edit_text, is_active_key, terminal_bytes},
+    input::{is_active_key, terminal_bytes},
     runtime::ProductLaunchContext,
     sanitize::inert_preview,
     terminal::TerminalSession,
 };
-use product::{ProductUi, ProviderRole};
+use product::ProductUi;
 
 const EVENT_CAPACITY: usize = 4_096;
 const NOTICE_TICKS: u16 = 24;

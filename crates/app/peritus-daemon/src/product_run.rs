@@ -7,7 +7,11 @@ mod execution;
 mod lifecycle;
 mod persistence;
 mod progress;
+mod recovery;
 mod snapshot;
+
+#[cfg(test)]
+mod tests;
 
 use std::{
     collections::BTreeMap,
@@ -17,14 +21,15 @@ use std::{
 };
 
 use peritus_app_protocol::{
-    ProductConversationMessage, ProductConversationRole, ProductProviderSelection,
-    ProductRunContinuation, ProductRunControl, ProductRunControlAction, ProductRunConversation,
-    ProductRunConversationQuery, ProductRunPhase, ProductRunQuery, ProductRunRequest,
-    ProductRunSnapshot,
+    AppResponsePayload, ProductConversationMessage, ProductConversationRole,
+    ProductProviderSelection, ProductRunContinuation, ProductRunControl, ProductRunControlAction,
+    ProductRunConversation, ProductRunConversationQuery, ProductRunPhase, ProductRunQuery,
+    ProductRunRequest, ProductRunSnapshot,
 };
 use peritus_process::ProcessStore;
-use peritus_product_runner::RoleProviders;
+use peritus_product_runner::{ProductRunResume, RoleProviders};
 use peritus_provider_core::{CancellationToken, ModelProvider};
+use peritus_run_settlement::{CandidateCheckpoint, RunSettlement};
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 use tokio::{sync::Mutex, task::JoinHandle};
 
@@ -35,7 +40,11 @@ pub use error::ProductRunServiceError;
 use error::{filesystem, invalid};
 use persistence::{load_records, persist_record};
 use progress::RunProgress;
-use snapshot::{initial_snapshot, live_snapshot, replace_snapshot, workspace_has_active_run};
+use recovery::reconcile_restored_candidates;
+use snapshot::{
+    initial_snapshot, live_snapshot, project_collection, project_snapshot, replace_snapshot,
+    workspace_has_active_run,
+};
 
 #[derive(Clone)]
 pub struct ProductRunService {
@@ -60,6 +69,12 @@ struct RunRecord {
     conversation: Arc<SharedConversation>,
     finding_state: String,
     progress: RunProgress,
+    checkpoint: Option<CandidateCheckpoint>,
+    settlement: Option<RunSettlement>,
+    resume: Option<ProductRunResume>,
+    remaining_work: Vec<String>,
+    interruption_cause: String,
+    candidate_actionable: bool,
 }
 
 impl ProductRunService {
@@ -83,14 +98,16 @@ impl ProductRunService {
                 .ok_or_else(|| invalid("configured product provider could not be resolved"))?;
             providers.insert(key.profile_id(), provider);
         }
-        let records = load_records(&directory)?;
+        let mut records = load_records(&directory)?;
+        let workspace_roots = workspaces.roots();
+        reconcile_restored_candidates(&directory, &mut records, &workspace_roots)?;
         Ok(Self {
             inner: Arc::new(Inner {
                 directory,
                 records: RwLock::new(records),
                 providers,
                 automatic_provider_failover,
-                workspaces: workspaces.roots(),
+                workspaces: workspace_roots,
                 processes,
                 tasks: Mutex::new(Vec::new()),
             }),
@@ -140,6 +157,12 @@ impl ProductRunService {
                     conversation: Arc::clone(&conversation),
                     finding_state: String::new(),
                     progress: RunProgress::default(),
+                    checkpoint: None,
+                    settlement: None,
+                    resume: None,
+                    remaining_work: Vec::new(),
+                    interruption_cause: String::new(),
+                    candidate_actionable: false,
                 },
             );
             persist_record(
@@ -155,6 +178,7 @@ impl ProductRunService {
             provider_cancellation,
             conversation,
             String::new(),
+            None,
         )
         .await;
         Ok(snapshot)
@@ -194,6 +218,23 @@ impl ProductRunService {
             .take(peritus_app_protocol::MAX_PRODUCT_RUNS)
             .map(live_snapshot)
             .collect()
+    }
+
+    pub(super) fn project(
+        &self,
+        snapshot: ProductRunSnapshot,
+    ) -> Result<AppResponsePayload, ProductRunServiceError> {
+        let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
+        let record = records.get(&snapshot.run_id()).ok_or(ProductRunServiceError::NotFound)?;
+        project_snapshot(record, snapshot)
+    }
+
+    pub(super) fn project_many(
+        &self,
+        snapshots: Vec<ProductRunSnapshot>,
+    ) -> Result<AppResponsePayload, ProductRunServiceError> {
+        let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
+        project_collection(&records, snapshots)
     }
 
     pub(super) fn query_conversation(
@@ -256,6 +297,8 @@ impl ProductRunService {
                     record.snapshot.summary(),
                 )?;
                 record.progress = RunProgress::default();
+                record.settlement = None;
+                record.interruption_cause.clear();
                 restart = Some((
                     record.request.clone(),
                     root,
@@ -264,6 +307,7 @@ impl ProductRunService {
                     token,
                     Arc::clone(&record.conversation),
                     record.finding_state.clone(),
+                    record.resume.clone(),
                 ));
             } else {
                 record.snapshot = replace_snapshot(
@@ -276,11 +320,28 @@ impl ProductRunService {
             persist_record(&self.inner.directory, record)?;
             record.snapshot.clone()
         };
-        if let Some((request, root, providers, cancelled, token, conversation, finding_state)) =
-            restart
+        if let Some((
+            request,
+            root,
+            providers,
+            cancelled,
+            token,
+            conversation,
+            finding_state,
+            resume,
+        )) = restart
         {
-            self.spawn(request, root, providers, cancelled, token, conversation, finding_state)
-                .await;
+            self.spawn(
+                request,
+                root,
+                providers,
+                cancelled,
+                token,
+                conversation,
+                finding_state,
+                resume,
+            )
+            .await;
         }
         Ok(snapshot)
     }

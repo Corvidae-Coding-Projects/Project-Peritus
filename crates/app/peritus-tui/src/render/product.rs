@@ -3,6 +3,9 @@
 use peritus_app_protocol::{
     ProductConversationRole, ProductRunConversation, ProductRunPhase, ProductRunSnapshot,
 };
+use peritus_run_settlement::{
+    CandidateStage, EvidenceStatus, QualificationEvidence, RunSettlement,
+};
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -85,14 +88,18 @@ pub(super) fn dashboard(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         .direction(Direction::Vertical)
         .constraints([Constraint::Percentage(43), Constraint::Percentage(57)])
         .split(columns[1]);
-    let detail = product.selected_run().map_or_else(empty_detail, run_detail);
+    let detail = product.selected_run().map_or_else(empty_detail, |run| {
+        run_detail(
+            run,
+            product.selected_settlement(),
+            product.confirmation.as_ref().map(|value| value.warning.as_str()),
+        )
+    });
     frame.render_widget(
         Paragraph::new(detail)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(" Progress · i inspect · a accept · c commit · p export · D discard "),
-            )
+            .block(Block::default().borders(Borders::ALL).title(
+                " Progress · i inspect · v run · a accept · c commit · p export · D discard ",
+            ))
             .wrap(Wrap { trim: false }),
         right[0],
     );
@@ -115,7 +122,7 @@ pub(super) fn diff(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         area,
         model,
         " Current managed-worktree diff ",
-        |run| run.diff(),
+        inspect_text,
         "No diff is available for the selected run yet.",
     );
 }
@@ -126,9 +133,7 @@ pub(super) fn review(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         area,
         model,
         " Independent review and checks ",
-        |run| {
-            if run.review().is_empty() { run.gates() } else { run.review() }
-        },
+        |run| if run.review().is_empty() { run.gates() } else { run.review() }.to_owned(),
         "No review is available for the selected run yet.",
     );
 }
@@ -138,14 +143,14 @@ fn render_run_text(
     area: Rect,
     model: &AppModel,
     title: &str,
-    select: impl FnOnce(&ProductRunSnapshot) -> &str,
+    select: impl FnOnce(&ProductRunSnapshot) -> String,
     empty: &str,
 ) {
     let text = model.product.as_ref().and_then(|product| product.selected_run()).map_or_else(
         || empty.to_owned(),
         |run| {
             let value = select(run);
-            if value.is_empty() { empty.to_owned() } else { safe(value) }
+            if value.is_empty() { empty.to_owned() } else { safe(&value) }
         },
     );
     frame.render_widget(
@@ -156,12 +161,13 @@ fn render_run_text(
     );
 }
 
-fn run_detail(run: &ProductRunSnapshot) -> Text<'static> {
+fn run_detail(
+    run: &ProductRunSnapshot,
+    settlement: Option<&RunSettlement>,
+    confirmation: Option<&str>,
+) -> Text<'static> {
     let mut lines = vec![
-        Line::styled(
-            phase_line(run.phase()),
-            phase_style(run.phase()).add_modifier(Modifier::BOLD),
-        ),
+        Line::styled(product_state(run), product_state_style(run).add_modifier(Modifier::BOLD)),
         Line::from(""),
         Line::from(timeline(run.phase())),
         Line::from(""),
@@ -185,6 +191,15 @@ fn run_detail(run: &ProductRunSnapshot) -> Text<'static> {
             Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
         ));
         lines.push(field("Managed path", safe(deliverable.workspace_path())));
+        lines.push(field(
+            "Qualification",
+            qualification_name(deliverable.qualification()).to_owned(),
+        ));
+        if let Some(checkpoint) = settlement.and_then(RunSettlement::checkpoint) {
+            lines.push(field("Checks", evidence_name(checkpoint.gates()).to_owned()));
+            lines.push(field("Requirements", evidence_name(checkpoint.obligations()).to_owned()));
+            lines.push(field("Review", evidence_name(checkpoint.review()).to_owned()));
+        }
         lines.push(field("Changed files", deliverable.changed_paths().len().to_string()));
         lines.push(field("Run", safe(deliverable.run_instructions())));
         let state = if deliverable.discarded() {
@@ -201,7 +216,80 @@ fn run_detail(run: &ProductRunSnapshot) -> Text<'static> {
             lines.push(field("Export", safe(deliverable.export_path())));
         }
     }
+    if let Some(warning) = confirmation {
+        lines.push(Line::from(""));
+        lines.push(Line::styled(
+            safe(warning),
+            Style::default().fg(WARN).add_modifier(Modifier::BOLD),
+        ));
+    }
     Text::from(lines)
+}
+
+fn inspect_text(run: &ProductRunSnapshot) -> String {
+    let Some(deliverable) = run.deliverable() else { return run.diff().to_owned() };
+    let paths = if deliverable.changed_paths().is_empty() {
+        "(no workspace paths; see successful external commands)".to_owned()
+    } else {
+        deliverable.changed_paths().join("\n")
+    };
+    let commands = if deliverable.successful_commands().is_empty() {
+        "(none recorded)".to_owned()
+    } else {
+        deliverable.successful_commands().join("\n")
+    };
+    format!(
+        "Workspace\n{}\n\nExact candidate paths\n{}\n\nSuccessful commands\n{}\n\nRun instructions\n{}\n\nDiff\n{}",
+        deliverable.workspace_path(),
+        paths,
+        commands,
+        deliverable.run_instructions(),
+        run.diff(),
+    )
+}
+
+fn product_state(run: &ProductRunSnapshot) -> String {
+    match (run.phase(), run.deliverable()) {
+        (ProductRunPhase::Complete, _) => "Accepted".to_owned(),
+        (ProductRunPhase::WaitingForUser, _) => "Waiting for you".to_owned(),
+        (ProductRunPhase::Cancelled, Some(_)) => "Cancelled — candidate available".to_owned(),
+        (ProductRunPhase::Cancelled, None) => "Cancelled".to_owned(),
+        (ProductRunPhase::RecoveryRequired, _) => "Recovery required".to_owned(),
+        (ProductRunPhase::Failed, Some(_)) => "Candidate available".to_owned(),
+        (ProductRunPhase::Failed, None) => "Stopped with no candidate".to_owned(),
+        (phase, _) => phase_line(phase),
+    }
+}
+
+fn product_state_style(run: &ProductRunSnapshot) -> Style {
+    if run.phase() == ProductRunPhase::Failed && run.deliverable().is_some() {
+        Style::default().fg(WARN)
+    } else {
+        phase_style(run.phase())
+    }
+}
+
+const fn qualification_name(stage: CandidateStage) -> &'static str {
+    match stage {
+        CandidateStage::Observed => "observed",
+        CandidateStage::Changed => "changed; checks missing",
+        CandidateStage::SelfChecked => "self-checked; independent evidence missing",
+        CandidateStage::GatesPassed => "deterministic checks passed; review missing",
+        CandidateStage::ReviewPending => "review pending",
+        CandidateStage::Qualified => "qualified",
+    }
+}
+
+const fn evidence_name(evidence: &EvidenceStatus<QualificationEvidence>) -> &'static str {
+    if let EvidenceStatus::Current(record) = evidence {
+        return if record.value().satisfied() { "passed" } else { "failed" };
+    }
+    match evidence {
+        EvidenceStatus::Missing => "missing",
+        EvidenceStatus::Failed(_) => "failed",
+        EvidenceStatus::Stale(_) => "stale",
+        EvidenceStatus::Current(_) => unreachable!(),
+    }
 }
 
 fn empty_detail() -> Text<'static> {
@@ -299,3 +387,6 @@ fn safe(value: &str) -> String {
         .filter(|character| *character == '\n' || *character == '\t' || !character.is_control())
         .collect()
 }
+
+#[cfg(test)]
+mod tests;

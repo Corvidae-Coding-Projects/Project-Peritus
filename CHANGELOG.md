@@ -1,5 +1,13 @@
 # Changelog
 
+- Persist complete product-run checkpoints, settlements, continuation state, remaining work, and
+  interruption causes in the daemon. Validate retained terminal candidates against their managed
+  workspaces on startup, mark superseded evidence stale, and resume interrupted candidates from
+  the first reusable phase. Add exact candidate inspection and run support plus continue, export,
+  accept, commit, and discard actions to both the terminal product and scriptable CLI; unqualified
+  accept or commit requires explicit evidence-naming confirmation. Cover checkpoint restoration,
+  migration, stale workspaces, digest-targeted/idempotent actions, TUI state and evidence rendering,
+  foreground execution, and an end-to-end candidate-to-continuation-to-acceptance path (#51).
 - Integrate verified run settlement throughout the production writer-reviewer-fixer loop. Capture
   digest-bound candidate checkpoints after mutations, verification, gates, review, and fixes;
   preserve incomplete candidates across provider failure, cancellation, deadlines, and recovery;
@@ -19,7 +27,9 @@
   and Foundation now partition Rust and Verus work by reviewed architecture layers; H2 runs 18
   single-scenario shards per host; H0 runs four fresh-subject worker partitions before reconstructing
   its canonical platform report; and release jobs build, assemble, attest, and publish in separate
-  stages. Every hosted job now has a timeout of ten minutes or less (#31).
+  stages. The growing product-runner test and proof surface has its own app shard so the remaining
+  application crates no longer share its Windows critical path. Every hosted job retains a timeout
+  of ten minutes or less (#31, #51).
 - Isolate the Rust shard controller in its own Cargo target directory so Windows can compile and
   test the `xtask` package without trying to replace the running `xtask.exe`; keep that invocation
   exact and policy-checked in both Foundation and Gate A (#31).
