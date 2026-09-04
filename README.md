@@ -142,11 +142,12 @@ three focused reboot diagnostics passed with exact single-effect and cleanup evi
 
 H0 also has a Rust-owned exact-candidate preparer and a three-host native workflow. The preparer
 derives the common candidate identity from committed source, binds the controller and native host
-facts, and refuses dirty or cross-platform inputs. On each host, eight isolated workers dynamically
-consume single-probe work units from alternating catalog edges so expensive work cannot collect at
-the tail. The operator reassembles results in catalog order and retains the same canonical platform
-report and raw evidence. Cross-host aggregation and a separately supplied independent review remain
-mandatory; the workflow cannot manufacture either one.
+facts, and refuses dirty or cross-platform inputs. Linux first runs its workspace-wide compiler
+probe alone so it cannot starve bounded native subjects; then eight isolated workers dynamically
+consume single-probe work units from alternating catalog edges. The operator reassembles results in
+catalog order and retains the same canonical platform report and raw evidence. Cross-host
+aggregation and a separately supplied independent review remain mandatory; the workflow cannot
+manufacture either one.
 
 All hosted jobs are capped at ten minutes. Rust and Verus checks are partitioned by the reviewed
 architecture layers, H2 assigns one of its 18 scenarios to each shard, and tagged releases build
