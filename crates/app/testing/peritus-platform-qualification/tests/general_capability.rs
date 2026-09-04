@@ -1,8 +1,9 @@
 //! Generic prerequisite and terminal-control qualification fixtures.
 
 use std::{
-    io::{Read as _, Write as _},
+    io::{self, Read as _, Write as _},
     process::Command,
+    sync::mpsc::{Receiver, SyncSender, sync_channel},
 };
 
 use peritus_platform_qualification::ObservationOutcome;
@@ -11,6 +12,7 @@ use serde::Deserialize;
 
 const PREREQUISITES: &str = include_str!("fixtures/general-capability/prerequisites/cases.json");
 const TERMINAL: &str = include_str!("fixtures/general-capability/terminal/cases.json");
+const CURSOR_POSITION_QUERY: &[u8] = b"\x1b[6n";
 
 #[derive(Deserialize)]
 struct FixtureSet<T> {
@@ -62,7 +64,7 @@ fn ordinary_prerequisites_are_classified_from_real_process_results() {
         {
             Ok(output) if output.status.success() => ObservationOutcome::Passed,
             Ok(_) => ObservationOutcome::Failed,
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {
                 ObservationOutcome::Unsupported
             }
             Err(error) => panic!("{} could not be observed: {error}", fixture.name),
@@ -130,15 +132,13 @@ fn interactive_round_trip() -> ObservationOutcome {
     drop(initial_reader);
     let mut recovered_reader = pair.master.try_clone_reader().expect("recover same PTY reader");
     let mut writer = pair.master.take_writer().expect("terminal writer");
+    let (cursor_query_sender, cursor_query_receiver) = sync_channel(1);
     let reader_thread = std::thread::Builder::new()
         .name("peritus-general-capability-reader".to_owned())
-        .spawn(move || {
-            let mut output = String::new();
-            recovered_reader.read_to_string(&mut output).map(|_| output)
-        })
+        .spawn(move || read_terminal(&mut recovered_reader, &cursor_query_sender))
         .expect("start terminal reader");
-    initialize_terminal_input(&mut writer);
-    writer.write_all(b"hello from fixture\n").expect("terminal input");
+    initialize_terminal_input(&mut writer, &cursor_query_receiver);
+    writer.write_all(interactive_input()).expect("terminal input");
     writer.flush().expect("flush terminal input");
 
     let status = child.wait().expect("wait and reap interactive child");
@@ -154,14 +154,60 @@ fn interactive_round_trip() -> ObservationOutcome {
     }
 }
 
+fn read_terminal(
+    reader: &mut Box<dyn io::Read + Send>,
+    cursor_query_sender: &SyncSender<()>,
+) -> io::Result<String> {
+    let mut output = Vec::new();
+    let mut buffer = [0_u8; 1024];
+    let mut cursor_query_seen = false;
+    loop {
+        let count = reader.read(&mut buffer)?;
+        if count == 0 {
+            break;
+        }
+        output.extend_from_slice(&buffer[..count]);
+        if !cursor_query_seen
+            && output
+                .windows(CURSOR_POSITION_QUERY.len())
+                .any(|window| window == CURSOR_POSITION_QUERY)
+        {
+            cursor_query_seen = true;
+            let _ = cursor_query_sender.send(());
+        }
+    }
+    String::from_utf8(output).map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))
+}
+
 #[cfg(windows)]
-fn initialize_terminal_input(writer: &mut Box<dyn std::io::Write + Send>) {
-    // portable-pty 0.9 requests the inherited cursor position before launching the child.
+fn initialize_terminal_input(
+    writer: &mut Box<dyn io::Write + Send>,
+    cursor_query_receiver: &Receiver<()>,
+) {
+    // portable-pty 0.9 blocks child startup until its inherited cursor query is answered.
+    cursor_query_receiver
+        .recv_timeout(std::time::Duration::from_secs(5))
+        .expect("observe Windows cursor-position query");
     writer.write_all(b"\x1b[1;1R").expect("initialize Windows terminal input");
+    writer.flush().expect("flush Windows cursor-position response");
 }
 
 #[cfg(not(windows))]
-fn initialize_terminal_input(_writer: &mut Box<dyn std::io::Write + Send>) {}
+fn initialize_terminal_input(
+    _writer: &mut Box<dyn io::Write + Send>,
+    _cursor_query_receiver: &Receiver<()>,
+) {
+}
+
+#[cfg(windows)]
+const fn interactive_input() -> &'static [u8] {
+    b"hello from fixture\r\n"
+}
+
+#[cfg(not(windows))]
+const fn interactive_input() -> &'static [u8] {
+    b"hello from fixture\n"
+}
 
 const fn noninteractive_control_claim() -> ObservationOutcome {
     ObservationOutcome::Unsupported
