@@ -27,17 +27,25 @@ const H0_WORKER_COUNT: usize = 8;
 
 struct WorkUnitQueue {
     next: AtomicUsize,
-    count: usize,
+    order: Vec<usize>,
 }
 
 impl WorkUnitQueue {
-    const fn new(count: usize) -> Self {
-        Self { next: AtomicUsize::new(0), count }
+    fn new(count: usize) -> Self {
+        let mut order = Vec::with_capacity(count);
+        for front in 0..count.div_ceil(2) {
+            order.push(front);
+            let back = count - front - 1;
+            if back != front {
+                order.push(back);
+            }
+        }
+        Self { next: AtomicUsize::new(0), order }
     }
 
     fn claim(&self) -> Option<usize> {
-        let index = self.next.fetch_add(1, Ordering::Relaxed);
-        (index < self.count).then_some(index)
+        let position = self.next.fetch_add(1, Ordering::Relaxed);
+        self.order.get(position).copied()
     }
 }
 
@@ -180,6 +188,15 @@ fn publish_report(path: &Path, bytes: &[u8]) -> Result<(), Box<dyn std::error::E
 mod tests {
     use super::{H0_WORKER_COUNT, WorkUnitQueue};
     use crate::{ProbeSpec, QualificationPlatform};
+
+    #[test]
+    fn work_units_alternate_between_catalog_edges() {
+        let even = WorkUnitQueue::new(6);
+        assert_eq!((0..6).map(|_| even.claim()).collect::<Vec<_>>(), [0, 5, 1, 4, 2, 3].map(Some));
+
+        let odd = WorkUnitQueue::new(5);
+        assert_eq!((0..5).map(|_| odd.claim()).collect::<Vec<_>>(), [0, 4, 1, 3, 2].map(Some));
+    }
 
     #[test]
     fn concurrent_workers_claim_every_linux_probe_exactly_once() {

@@ -62,7 +62,7 @@ jobs:
           --controller target/debug/peritus-h0-controller${{ matrix.executable_suffix }}
           --output target/peritus-qualification/h0
           --platform ${{ matrix.platform }}
-      - name: Execute single-probe work units on eight candidate-bound workers
+      - name: Execute edge-balanced probe work on eight candidate-bound workers
         run: >-
           cargo run --locked --package peritus-security-qualification
           --bin peritus-h0 --
