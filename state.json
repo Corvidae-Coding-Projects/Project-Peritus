@@ -1,6 +1,6 @@
 {
   "next_display_id": 57,
-  "next_comment_id": 1225,
+  "next_comment_id": 1226,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11036,7 +11036,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-04T06:10:01.268258127Z",
-      "updated_at": "2026-09-04T10:00:36.972667946Z",
+      "updated_at": "2026-09-04T10:21:12.962517316Z",
       "labels": [
         "feature"
       ],
@@ -11166,6 +11166,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAULSjUfsD2AZ5h3D6r/A8X9r1TTttxsGxKnm+0wdFpxATPMkExKhscLrFLvh8dEBIC9mvToRBoH3F8oqYilGnBA=="
+        },
+        "71987183-30ef-4027-9cef-f0fc2ad705c1": {
+          "display_id": 1225,
+          "author": "6ME5",
+          "content": "Package-level split 5fbdc743 still cancelled Foundation Rust test testing-platform (windows-2025), run 33861149132 job 100985727861: the reviewed shard step consumed 9m34 of a 10m05 job. Commit e4f2c04c adds three fail-closed test-platform-terminal matrix entries per required workflow, excludes only terminal_controls_use_one_pty_and_reap_every_child from the ordinary testing-platform test operation, and runs exactly that named general_capability test in the dedicated operation. Coverage proof: ordinary lane passed 26 tests with exactly one filtered; dedicated lane passed exactly one test with one other filtered. Also passed 272 xtask unit plus 3 CLI tests, formatting, strict xtask clippy, actionlint, full xtask all, diff check, and artifact scan. Timeout remains 10 minutes.",
+          "created_at": "2026-09-04T10:21:12.958735371Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABARU+KEKpf13N6Sv8DF38xKH4zhgM8Sng8DAtSqNwAi3IlpWBR7dHyKrB5xng9m+aJCD98n/XUJwpOWlXs3GRiBA=="
         },
         "7ae47be1-d42a-4296-b493-ee4f0335d01a": {
           "display_id": 1221,
@@ -12021,8 +12030,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-04T10:00:36.972667946Z",
+    "timestamp": "2026-09-04T10:21:12.962517316Z",
     "agent_id": "6ME5",
-    "agent_seq": 1476
+    "agent_seq": 1477
   }
 }
