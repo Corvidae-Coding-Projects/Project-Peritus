@@ -165,6 +165,46 @@ fn writer_batches_tools_and_respects_artifact_workspaces() {
     assert!(prompt.contains("missing controlling fact"));
     assert!(prompt.contains("preserve the complete selected source value"));
     assert!(prompt.contains("apply only explicitly named transformations"));
+    assert!(prompt.contains("return exactly one direct command"));
+    assert!(prompt.contains("no prose, Markdown, quotes"));
+}
+
+#[test]
+fn workspace_completion_requires_a_direct_run_command() {
+    let invalid = terminal::parse(
+        r#"{"kind":"complete","summary":"done","run_instructions":"From the root, run `cargo run`."}"#,
+    )
+    .expect("terminal shape");
+    let Err(error) =
+        terminal::validate_run_instructions(ProductDeliveryScope::WorkspaceChanges, invalid)
+    else {
+        panic!("prose must not qualify as a run command");
+    };
+    assert_eq!(error.kind(), ProductRunnerErrorKind::InvalidModelOutput);
+    assert_eq!(error.operation(), "validate candidate run command");
+
+    let direct = terminal::parse(
+        r#"{"kind":"complete","summary":"done","run_instructions":"cargo run --quiet"}"#,
+    )
+    .expect("terminal shape");
+    assert!(
+        terminal::validate_run_instructions(ProductDeliveryScope::WorkspaceChanges, direct).is_ok()
+    );
+}
+
+#[test]
+fn external_effect_completion_may_retain_concise_steps() {
+    let instructions = terminal::parse(
+        r#"{"kind":"complete","summary":"done","run_instructions":"Inspect the configured service."}"#,
+    )
+    .expect("terminal shape");
+    assert!(
+        terminal::validate_run_instructions(
+            ProductDeliveryScope::AuthorizedExternalEffects,
+            instructions,
+        )
+        .is_ok()
+    );
 }
 
 #[test]

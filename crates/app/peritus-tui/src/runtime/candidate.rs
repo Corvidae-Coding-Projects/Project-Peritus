@@ -3,6 +3,7 @@
 use std::{path::PathBuf, process::Command};
 
 use peritus_product_runner::ProductRunner;
+use peritus_tools_shell::ExecInput;
 use peritus_types::Sha256Digest;
 
 /// Runs the candidate while the full-screen terminal is suspended.
@@ -31,7 +32,7 @@ fn execute_blocking(
                 .to_owned(),
         );
     }
-    let mut command = shell_command(instruction);
+    let mut command = direct_command(instruction)?;
     let status = command
         .current_dir(workspace)
         .status()
@@ -39,18 +40,13 @@ fn execute_blocking(
     if status.success() { Ok(()) } else { Err(format!("candidate command exited with {status}")) }
 }
 
-#[cfg(unix)]
-fn shell_command(instruction: &str) -> Command {
-    let mut command = Command::new("sh");
-    command.args(["-lc", instruction]);
-    command
-}
-
-#[cfg(windows)]
-fn shell_command(instruction: &str) -> Command {
-    let mut command = Command::new("cmd");
-    command.args(["/D", "/S", "/C", instruction]);
-    command
+fn direct_command(instruction: &str) -> Result<Command, String> {
+    let input = ExecInput::from_command_line(instruction).map_err(|error| {
+        format!("candidate run instruction is not executable: {}", error.detail())
+    })?;
+    let mut command = Command::new(input.executable());
+    command.args(input.arguments());
+    Ok(command)
 }
 
 #[cfg(test)]
@@ -75,6 +71,15 @@ mod tests {
                 .await
                 .is_err()
         );
+        assert!(
+            execute(
+                workspace.path().to_path_buf(),
+                "rustc --version && rustc --version".to_owned(),
+                digest,
+            )
+            .await
+            .is_err()
+        );
         std::fs::write(workspace.path().join("changed.txt"), "changed").expect("candidate change");
         let error = execute(workspace.path().to_path_buf(), success_command().to_owned(), digest)
             .await
@@ -88,23 +93,11 @@ mod tests {
         assert!(status.success());
     }
 
-    #[cfg(unix)]
     const fn success_command() -> &'static str {
-        "true"
+        "rustc --version"
     }
 
-    #[cfg(unix)]
     const fn failure_command() -> &'static str {
-        "false"
-    }
-
-    #[cfg(windows)]
-    const fn success_command() -> &'static str {
-        "exit /b 0"
-    }
-
-    #[cfg(windows)]
-    const fn failure_command() -> &'static str {
-        "exit /b 1"
+        "rustc --definitely-invalid-peritus-option"
     }
 }

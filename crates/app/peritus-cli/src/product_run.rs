@@ -11,6 +11,7 @@ use peritus_product_runner::ProductRunner;
 use peritus_run_settlement::{
     CandidateCheckpoint, CandidateStage, EvidenceStatus, QualificationEvidence, RunSettlement,
 };
+use peritus_tools_shell::ExecInput;
 use peritus_types::{RunId, SessionId};
 
 use crate::{
@@ -364,16 +365,32 @@ const fn evidence_name(value: &EvidenceStatus<QualificationEvidence>) -> &'stati
     }
 }
 
-#[cfg(unix)]
 fn run_command(root: &str, instruction: &str) -> Result<std::process::ExitStatus, CliError> {
-    Command::new("sh").args(["-lc", instruction]).current_dir(Path::new(root)).status().map_err(
-        |error| CliError::local_io("run candidate", Some(Path::new(root).to_owned()), error),
-    )
+    let input = ExecInput::from_command_line(instruction).map_err(|error| {
+        CliError::usage(format!("candidate run instruction is not executable: {}", error.detail()))
+    })?;
+    Command::new(input.executable())
+        .args(input.arguments())
+        .current_dir(Path::new(root))
+        .status()
+        .map_err(|error| {
+            CliError::local_io("run candidate", Some(Path::new(root).to_owned()), error)
+        })
 }
 
-#[cfg(windows)]
-fn run_command(root: &str, instruction: &str) -> Result<std::process::ExitStatus, CliError> {
-    Command::new("cmd").args(["/C", instruction]).current_dir(Path::new(root)).status().map_err(
-        |error| CliError::local_io("run candidate", Some(Path::new(root).to_owned()), error),
-    )
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn candidate_command_executes_directly_and_rejects_shell_text() {
+        assert!(
+            run_command(env!("CARGO_MANIFEST_DIR"), "rustc --version")
+                .expect("direct command")
+                .success()
+        );
+        assert!(
+            run_command(env!("CARGO_MANIFEST_DIR"), "rustc --version && rustc --version",).is_err()
+        );
+    }
 }

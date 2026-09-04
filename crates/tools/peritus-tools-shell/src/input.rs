@@ -32,6 +32,31 @@ impl ExecInput {
         Ok(Self { executable, arguments })
     }
 
+    /// Parses one deliberately restricted direct-execution command into literal argv.
+    ///
+    /// This format is intended for persisted user-facing run instructions. It accepts
+    /// whitespace-separated argv only: quoting, command separators, expansions, redirections,
+    /// and multiple lines are rejected rather than interpreted.
+    ///
+    /// # Errors
+    /// Returns a typed failure when the value is empty, contains command-language or markup
+    /// syntax, starts with an environment assignment, or violates the structured-argv contract.
+    pub fn from_command_line(value: &str) -> Result<Self, ShellError> {
+        let value = value.trim();
+        if value.is_empty() || value.chars().any(char::is_control) {
+            return Err(invalid_direct_command());
+        }
+        if value.chars().any(is_command_language_character) {
+            return Err(invalid_direct_command());
+        }
+        let mut words = value.split_ascii_whitespace();
+        let executable = words.next().ok_or_else(invalid_direct_command)?;
+        if executable.contains('=') {
+            return Err(invalid_direct_command());
+        }
+        Self::new(executable, words.map(str::to_owned).collect())
+    }
+
     /// Decodes already schema-validated protocol arguments defensively.
     ///
     /// # Errors
@@ -57,6 +82,20 @@ impl ExecInput {
     pub(crate) fn command(&self) -> Result<CommandSpec, ShellError> {
         CommandSpec::new(self.executable.clone(), self.arguments.clone()).map_err(Into::into)
     }
+}
+
+fn invalid_direct_command() -> ShellError {
+    ShellError::new(
+        ShellErrorKind::InvalidInput,
+        "run instructions must be one direct command with whitespace-separated arguments and no quoting, expansion, redirection, markup, or shell operators",
+    )
+}
+
+const fn is_command_language_character(character: char) -> bool {
+    matches!(
+        character,
+        '\'' | '"' | '`' | '$' | '|' | '&' | ';' | '<' | '>' | '(' | ')' | '{' | '}' | '#'
+    )
 }
 
 /// Explicit interpreter and script input accepted only by `shell.script`.
@@ -212,6 +251,30 @@ mod tests {
             .expect("literal argv");
         let command = input.command().expect("checked command");
         assert_eq!(command.arguments()[1], "$(touch escaped)");
+    }
+
+    #[test]
+    fn direct_command_line_becomes_literal_argv() {
+        let input = ExecInput::from_command_line("cargo run --quiet --features tui,serde")
+            .expect("direct command");
+        assert_eq!(input.executable(), "cargo");
+        assert_eq!(input.arguments(), ["run", "--quiet", "--features", "tui,serde"]);
+    }
+
+    #[test]
+    fn direct_command_line_rejects_shell_syntax_and_markup() {
+        for value in [
+            "cargo test && cargo run",
+            "cargo run > output.txt",
+            "cargo run `whoami`",
+            "From the root, run `cargo run`.",
+            "MODE=release cargo run",
+            "cargo run\ncargo test",
+            "sh -c echo",
+        ] {
+            let error = ExecInput::from_command_line(value).expect_err("restricted command");
+            assert_eq!(error.kind(), ShellErrorKind::InvalidInput, "{value}");
+        }
     }
 
     #[test]
