@@ -23,7 +23,7 @@ pub use aggregate::{H0AggregateStatus, run_from_env as run_aggregate_from_env};
 
 const MAX_HOST_FACT_BYTES: u64 = 1024 * 1024;
 const MAX_CANDIDATE_BYTES: u64 = 256 * 1024;
-const H0_WORKER_COUNT: usize = 12;
+const H0_WORKER_COUNT: usize = 8;
 
 struct WorkUnitQueue {
     next: AtomicUsize,
