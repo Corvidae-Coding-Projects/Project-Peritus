@@ -1,6 +1,6 @@
 {
   "next_display_id": 57,
-  "next_comment_id": 1210,
+  "next_comment_id": 1211,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11036,7 +11036,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-04T06:10:01.268258127Z",
-      "updated_at": "2026-09-04T06:57:08.269181921Z",
+      "updated_at": "2026-09-04T07:46:56.040464168Z",
       "labels": [
         "feature"
       ],
@@ -11067,6 +11067,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAub+aBbbnX3VEyg1FzeBUnFFeLrV+/ANfXWZFOaQGF2fuaYURfsfSzULVem2iZv8ruvHT8VARBrB+Yk93dLhGCQ=="
+        },
+        "6b01ae43-95ae-4c5f-a929-6b61ad2035f5": {
+          "display_id": 1210,
+          "author": "6ME5",
+          "content": "CI finding: Gate A Rust shard test testing (windows-2025) hit the declared 10-minute job ceiling; its cargo step was cancelled after 9m26s, versus 5m58s on prior clean head 467ae96b. The S7 branch adds HTML parser and test-only compile weight through peritus-external-benchmarks. Chosen root-cause repair: isolate that package in a reviewed testing-external shard while preserving the timeout, platforms, operations, and coverage.",
+          "created_at": "2026-09-04T07:46:56.035548522Z",
+          "kind": "decision",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAHja9aQPaJzrHB36xUNyVWp8xuBqpOIWVUy+FaC5CZSrFibxmO/g6xoVvWtSbB4Eg7XjAQUL+QrCsGY2GB0i0BQ=="
         },
         "7c9c1a11-885b-416e-b676-cb11043aa3b2": {
           "display_id": 1209,
@@ -11886,8 +11895,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-04T06:57:08.269181921Z",
+    "timestamp": "2026-09-04T07:46:56.040464168Z",
     "agent_id": "6ME5",
-    "agent_seq": 1461
+    "agent_seq": 1462
   }
 }
