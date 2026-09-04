@@ -1,6 +1,6 @@
 {
   "next_display_id": 57,
-  "next_comment_id": 1231,
+  "next_comment_id": 1232,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11036,7 +11036,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-04T06:10:01.268258127Z",
-      "updated_at": "2026-09-04T11:05:51.573744600Z",
+      "updated_at": "2026-09-04T11:22:58.152055011Z",
       "labels": [
         "feature"
       ],
@@ -11283,6 +11283,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAj9LcrMw1GqHlb0Ux85kquFqp9nPSPMCHzLVUbxDdygWjZG7jYN6JMwllHHtVe4cy6gcFEz2Py1AOpzAJhAoJAw=="
+        },
+        "ecc6868e-c049-491c-a6c6-49d08232cd58": {
+          "display_id": 1231,
+          "author": "6ME5",
+          "content": "Atomic head b6758256 isolated the remaining Windows delay: signal and cancellation PTY jobs passed in 2m17-2m42, while interactive alone remained in progress past six minutes. The interactive fixture reaped its child and then called read_to_string while still owning pair.master; Windows ConPTY retains the output stream until that master closes. Commit e8cae59a drops the master after child.wait and before draining the cloned reader, preserving full-output validation while making EOF deterministic. Verification: all 5 general-capability tests, strict platform clippy, format, actionlint, full xtask all, diff check, and artifact scan pass.",
+          "created_at": "2026-09-04T11:22:58.148258205Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAy/pMlMvW+XE+IP8ZmpipocadOYYpO0KpeeN4omhK8XeNqToQd8DC9BpsZCYo8ApaLKxWRRSQ/YPzfbN3wkNSCw=="
         },
         "fabcd45b-226d-42f3-872d-a4d968e2e5c6": {
           "display_id": 1207,
@@ -12075,8 +12084,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-04T11:05:51.573744600Z",
+    "timestamp": "2026-09-04T11:22:58.152055011Z",
     "agent_id": "6ME5",
-    "agent_seq": 1482
+    "agent_seq": 1483
   }
 }
