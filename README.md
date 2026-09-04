@@ -142,7 +142,7 @@ three focused reboot diagnostics passed with exact single-effect and cleanup evi
 
 H0 also has a Rust-owned exact-candidate preparer and a three-host native workflow. The preparer
 derives the common candidate identity from committed source, binds the controller and native host
-facts, and refuses dirty or cross-platform inputs. Each host runs four isolated worker partitions,
+facts, and refuses dirty or cross-platform inputs. Each host runs eight isolated worker partitions,
 reassembles them in catalog order, and retains the same canonical platform report and raw evidence.
 Cross-host aggregation and a separately supplied independent review remain mandatory; the workflow
 cannot manufacture either one.

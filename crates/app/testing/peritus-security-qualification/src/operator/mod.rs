@@ -22,7 +22,7 @@ pub use aggregate::{H0AggregateStatus, run_from_env as run_aggregate_from_env};
 
 const MAX_HOST_FACT_BYTES: u64 = 1024 * 1024;
 const MAX_CANDIDATE_BYTES: u64 = 256 * 1024;
-const H0_WORKER_PARTITIONS: usize = 4;
+const H0_WORKER_PARTITIONS: usize = 8;
 
 /// Terminal status of a successfully executed native H0 shard.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
