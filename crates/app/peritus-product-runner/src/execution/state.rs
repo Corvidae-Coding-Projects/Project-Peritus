@@ -51,24 +51,30 @@ impl ExecutionContext {
             (Some(resume), Some(checkpoint)) => resume.plan(*checkpoint.identity(), &transcript)?,
             _ => ProductRunPhase::Designing,
         };
-        let (design, state, evidence, gate_report) = if let Some(resume) = &input.resume
-            && next_phase != ProductRunPhase::Designing
-        {
+        let (design, state, evidence, gate_report) = if let Some(resume) = &input.resume {
             let design = design::DesignDocument::restored(
                 resume.design_path().clone(),
                 resume.design_markdown().to_owned(),
                 resume.design_revision(),
             );
-            let evidence = RunEvidence {
-                diff: resume.diff().to_owned(),
-                gates: resume.gates().to_owned(),
-                review: resume.review().to_owned(),
-                developer_commands: resume.developer_evidence().to_owned(),
-            };
-            let state = (next_phase != ProductRunPhase::Writing)
-                .then(|| RunState::restore(input, resume, design.clone()))
-                .transpose()?;
-            (Some(design), state, evidence, resume.gate_report().cloned())
+            if next_phase == ProductRunPhase::Designing {
+                // The prior design is not reusable for execution after a conversation change,
+                // but it remains the last durable design artifact for the unchanged workspace
+                // candidate. Retain it only as a finalization fallback until create_design
+                // replaces it; prior evidence is deliberately not carried forward.
+                (Some(design), None, RunEvidence::default(), None)
+            } else {
+                let evidence = RunEvidence {
+                    diff: resume.diff().to_owned(),
+                    gates: resume.gates().to_owned(),
+                    review: resume.review().to_owned(),
+                    developer_commands: resume.developer_evidence().to_owned(),
+                };
+                let state = (next_phase != ProductRunPhase::Writing)
+                    .then(|| RunState::restore(input, resume, design.clone()))
+                    .transpose()?;
+                (Some(design), state, evidence, resume.gate_report().cloned())
+            }
         } else {
             (None, None, RunEvidence::default(), None)
         };
