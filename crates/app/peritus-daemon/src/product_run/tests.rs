@@ -86,6 +86,65 @@ async fn candidate_continuation_scenario() {
 }
 
 #[test]
+fn candidate_retry_resumes_review_without_repeating_design_or_writing() {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("runtime")
+        .block_on(candidate_retry_scenario());
+}
+
+async fn candidate_retry_scenario() {
+    let repository = repository();
+    let state = tempfile::tempdir().expect("state");
+    let writer = scripted(0xa1, "writer", complete_writer(CORRECT));
+    let reviewer = scripted(0xa2, "reviewer", Vec::new());
+    let fixer = scripted(0xa3, "fixer", Vec::new());
+    let run_id = RunId::new([0xa4; 16]).expect("run");
+    let workspace_id = WorkspaceId::new([0xa5; 16]).expect("workspace");
+    let service =
+        service(state.path(), repository.path(), workspace_id, [&writer, &reviewer, &fixer]);
+    let request = ProductRunRequest::new(
+        run_id,
+        workspace_id,
+        ProductProviderSelection::new(
+            writer.profile.profile_id(),
+            reviewer.profile.profile_id(),
+            fixer.profile.profile_id(),
+        ),
+        "Add a tested answer function that returns 42.".to_owned(),
+    )
+    .expect("request");
+
+    service.start(request).await.expect("start run");
+    let interrupted = wait_for_terminal(&service, run_id).await;
+    assert_eq!(interrupted.phase(), ProductRunPhase::Failed);
+    assert_eq!(
+        interrupted.deliverable().expect("candidate deliverable").qualification(),
+        CandidateStage::ReviewPending,
+    );
+    assert!(writer.responses.lock().expect("writer scripts").is_empty());
+
+    reviewer.responses.lock().expect("reviewer scripts").extend(clean_review());
+    service
+        .control(ProductRunControl::new(run_id, ProductRunControlAction::Retry))
+        .await
+        .expect("retry candidate");
+
+    let completed = wait_for_terminal(&service, run_id).await;
+    assert_eq!(completed.phase(), ProductRunPhase::Complete);
+    assert_eq!(
+        completed.deliverable().expect("qualified deliverable").qualification(),
+        CandidateStage::Qualified,
+    );
+    assert!(
+        writer.responses.lock().expect("writer scripts").is_empty(),
+        "phase-preserving retry must not invoke the writer again",
+    );
+    service.shutdown(Duration::from_secs(5)).await;
+}
+
+#[test]
 fn changed_requirements_continuation_has_a_wire_safe_response_and_retains_the_candidate() {
     tokio::runtime::Builder::new_current_thread()
         .enable_all()

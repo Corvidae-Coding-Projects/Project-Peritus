@@ -30,7 +30,12 @@ impl SharedConversation {
         }
         Ok(Arc::new(Self {
             run_id,
-            revision: AtomicU64::new(messages.len() as u64),
+            revision: AtomicU64::new(
+                messages
+                    .iter()
+                    .filter(|message| message.role() == ProductConversationRole::User)
+                    .count() as u64,
+            ),
             messages: RwLock::new(messages),
         }))
     }
@@ -48,7 +53,9 @@ impl SharedConversation {
             return Err(ProductRunServiceError::InvalidMessage);
         }
         messages.push(message);
-        self.revision.fetch_add(1, Ordering::Release);
+        if role == ProductConversationRole::User {
+            self.revision.fetch_add(1, Ordering::Release);
+        }
         Ok(())
     }
 
@@ -77,8 +84,17 @@ impl ConversationView for SharedConversation {
         let Ok(messages) = self.messages.read() else {
             return "Conversation temporarily unavailable".to_owned();
         };
+        // Trailing agent entries are daemon-visible observations or an unanswered question. They
+        // do not become model input until a later user message makes that exchange part of the
+        // governing conversation. This keeps a phase-preserving retry byte-identical to the
+        // transcript captured before terminal status publication.
+        let through_latest_user = messages
+            .iter()
+            .rposition(|message| message.role() == ProductConversationRole::User)
+            .map_or(0, |index| index + 1);
         messages
             .iter()
+            .take(through_latest_user)
             .map(|message| {
                 let speaker = match message.role() {
                     ProductConversationRole::User => "User",
@@ -96,7 +112,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn followups_advance_revision_and_render_in_chronological_order() {
+    fn only_user_followups_advance_revision_and_agent_messages_wait_for_a_reply() {
         let run_id = RunId::new([71; 16]).expect("run id");
         let conversation = SharedConversation::new(
             run_id,
@@ -113,9 +129,12 @@ mod tests {
         conversation
             .append(ProductConversationRole::Agent, "Which UI should I use?")
             .expect("agent question");
+        assert_eq!(conversation.revision(), original_revision);
+        assert_eq!(conversation.render(), "User:\nbuild the game");
+
         conversation.append(ProductConversationRole::User, "Use ratatui").expect("user answer");
 
-        assert_eq!(conversation.revision(), original_revision + 2);
+        assert_eq!(conversation.revision(), original_revision + 1);
         assert_eq!(conversation.snapshot().expect("snapshot").messages().len(), 3);
         assert_eq!(
             conversation.render(),
