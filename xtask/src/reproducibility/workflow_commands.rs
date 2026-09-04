@@ -202,9 +202,8 @@ impl ParsedScript {
         let commands = &self.commands;
         self.issues.len() == 1
             && self.issues.contains(&ScriptIssue::NestedShell)
-            && commands.len() == 4
-            && commands[0].is_exact_command(&["sudo", "apt-get", "update"])
-            && commands[1].is_exact_command(&[
+            && commands.len() == 3
+            && commands[0].is_exact_command(&[
                 "sudo",
                 "apt-get",
                 "install",
@@ -213,13 +212,13 @@ impl ParsedScript {
                 "apparmor-profiles",
                 "bubblewrap",
             ])
-            && commands[2].is_exact_command(&[
+            && commands[1].is_exact_command(&[
                 "sudo",
                 "apparmor_parser",
                 "--replace",
                 "/usr/share/apparmor/extra-profiles/bwrap-userns-restrict",
             ])
-            && commands[3].is_exact_command(&["bwrap", "--version"])
+            && commands[2].is_exact_command(&["bwrap", "--version"])
     }
 
     pub(super) fn exact_cargo_command(&self, expected: &[&str]) -> bool {

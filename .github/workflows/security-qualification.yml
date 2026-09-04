@@ -46,7 +46,6 @@ jobs:
       - name: Install Linux native sandbox prerequisite
         if: ${{ runner.os == 'Linux' }}
         run: |
-          sudo apt-get update
           sudo apt-get install --yes --no-install-recommends apparmor-profiles bubblewrap
           sudo apparmor_parser --replace /usr/share/apparmor/extra-profiles/bwrap-userns-restrict
           bwrap --version
