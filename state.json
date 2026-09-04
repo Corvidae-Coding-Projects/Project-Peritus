@@ -1,6 +1,6 @@
 {
   "next_display_id": 57,
-  "next_comment_id": 1222,
+  "next_comment_id": 1223,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11036,7 +11036,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-04T06:10:01.268258127Z",
-      "updated_at": "2026-09-04T09:36:32.727872627Z",
+      "updated_at": "2026-09-04T09:46:18.938224308Z",
       "labels": [
         "feature"
       ],
@@ -11049,6 +11049,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAKx6xJE7YX5M7FWEWSAoIPJuDw5NWeMdJmcKVgiVMjSmh5XRcdtDiMzDlZl1Qtt/6GkoK2bzKHE2H87GlJ0JUBw=="
+        },
+        "13d0547e-241b-4c0d-afc4-678faf2ac80e": {
+          "display_id": 1222,
+          "author": "6ME5",
+          "content": "Authoritative final-head H0 Linux evidence for 504022b2 passed: job 8m23s, combined step 7m23s, all 40 cases passed, zero native-execution failures. Four-job isolated workspace-clippy fell from 188.5s on 077af2a8 to 132.5s (56s faster), improving job cancellation margin from 38s to 1m37s. Twelve-worker experiment remains rejected; final runtime uses eight post-warm-up workers.",
+          "created_at": "2026-09-04T09:46:18.925584627Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAE/+D/3G2BRaL7et0nqiOWOPZewAsdSaYB3VteDhw3ZbStRARNMkD3ozw8coEW5xrxT1C4Ilx7niEvykqoyg5DA=="
         },
         "222166d0-553e-4dcb-8f92-2864472ede99": {
           "display_id": 1218,
@@ -11994,8 +12003,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-04T09:36:32.727872627Z",
+    "timestamp": "2026-09-04T09:46:18.938224308Z",
     "agent_id": "6ME5",
-    "agent_seq": 1473
+    "agent_seq": 1474
   }
 }
