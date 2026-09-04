@@ -1,6 +1,6 @@
 {
   "next_display_id": 57,
-  "next_comment_id": 1216,
+  "next_comment_id": 1217,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11036,7 +11036,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-04T06:10:01.268258127Z",
-      "updated_at": "2026-09-04T08:07:33.789382837Z",
+      "updated_at": "2026-09-04T08:21:17.128181168Z",
       "labels": [
         "feature"
       ],
@@ -11067,6 +11067,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZQ4MqIdDJBDqcJu1ZMhkbbW29HDgyHogpH1hWG3rTsyyG1UPXSznuAzskHyo1XSLGVw9DVFK6M169pOByz01Dg=="
+        },
+        "45c596b6-92ca-4f9a-8bf3-b4c68464cb58": {
+          "display_id": 1216,
+          "author": "6ME5",
+          "content": "Final-head H0 passed in 9m44s but retained evidence showed static modulo-8 imbalance: worker sums ranged 304768-516274ms, versus a measured ideal makespan of 413253ms. Proactive root-cause refinement: keep eight same-host workers but feed them single-probe work units dynamically, preserving one-host evidence and canonical report sorting while removing the static tail.",
+          "created_at": "2026-09-04T08:21:17.114574433Z",
+          "kind": "decision",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAlx8oDeMHV0NxADBRqyjErxXjTYsfS++5TeUSlYH4xpm8BsIxTF0gLwnL3K5aqJl9RytJvLrySPzHcl88fBAWCw=="
         },
         "583de221-8ef0-467c-bc90-41649ff3f1da": {
           "display_id": 1214,
@@ -11940,8 +11949,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-04T08:07:33.789382837Z",
+    "timestamp": "2026-09-04T08:21:17.128181168Z",
     "agent_id": "6ME5",
-    "agent_seq": 1467
+    "agent_seq": 1468
   }
 }
