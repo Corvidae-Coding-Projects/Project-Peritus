@@ -135,6 +135,8 @@ fn interactive_round_trip() -> ObservationOutcome {
     drop(writer);
 
     let status = child.wait().expect("wait and reap interactive child");
+    // ConPTY retains the output stream until the master closes, even after the child exits.
+    drop(pair.master);
     let mut output = String::new();
     recovered_reader.read_to_string(&mut output).expect("terminal output");
     if status.success() && output.contains("received:hello from fixture") {
