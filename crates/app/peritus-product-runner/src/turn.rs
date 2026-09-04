@@ -114,7 +114,9 @@ pub async fn complete_developer_turn(
         ) else {
             continue;
         };
-        let terminal = match parse_grounded_terminal(&tools, &result) {
+        let terminal = match parse_grounded_terminal(&tools, &result).and_then(|terminal| {
+            terminal::validate_run_instructions(input.delivery_scope, terminal)
+        }) {
             Ok(terminal) => terminal,
             Err(error) => {
                 let current = WorkspaceCheckpoint::capture(&input.workspace_root)?;
@@ -330,7 +332,7 @@ fn writer_system(
 ) -> String {
     let delivery = match delivery_scope {
         super::ProductDeliveryScope::WorkspaceChanges => {
-            "This run accepts exact workspace changes. Label build, test, lint, and other inspection commands with purpose `verification`; external effects are not an alternate completion path. The workspace_list result gives the exact workspace_root and declares workspace tool paths to be relative to it. When the task names an absolute path below that exact root, remove the root prefix once; never repeat the root directory inside itself."
+            "This run accepts exact workspace changes. Label build, test, lint, and other inspection commands with purpose `verification`; external effects are not an alternate completion path. The workspace_list result gives the exact workspace_root and declares workspace tool paths to be relative to it. When the task names an absolute path below that exact root, remove the root prefix once; never repeat the root directory inside itself. For `run_instructions`, return exactly one direct command such as `cargo run --quiet`: use whitespace-separated executable and arguments only, with no prose, Markdown, quotes, environment assignments, redirections, expansions, or shell operators."
         }
         super::ProductDeliveryScope::AuthorizedExternalEffects => {
             if effect_requirement.is_required() {

@@ -2,7 +2,9 @@
 
 use serde::Deserialize;
 
-use crate::{ProductRunnerError, ProductRunnerErrorKind};
+use peritus_tools_shell::ExecInput;
+
+use crate::{ProductDeliveryScope, ProductRunnerError, ProductRunnerErrorKind};
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -42,6 +44,24 @@ pub(super) fn parse(value: &str) -> Result<TerminalTurn, ProductRunnerError> {
         }
         _ => Err(invalid("developer terminal fields do not match its kind")),
     }
+}
+
+pub(super) fn validate_run_instructions(
+    scope: ProductDeliveryScope,
+    terminal: TerminalTurn,
+) -> Result<TerminalTurn, ProductRunnerError> {
+    if let (ProductDeliveryScope::WorkspaceChanges, TerminalTurn::Complete((_, command))) =
+        (scope, &terminal)
+    {
+        ExecInput::from_command_line(command).map_err(|error| {
+            ProductRunnerError::new(
+                ProductRunnerErrorKind::InvalidModelOutput,
+                "validate candidate run command",
+                error.detail(),
+            )
+        })?;
+    }
+    Ok(terminal)
 }
 
 fn invalid(detail: &'static str) -> ProductRunnerError {
