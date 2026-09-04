@@ -1,6 +1,6 @@
 {
   "next_display_id": 57,
-  "next_comment_id": 1227,
+  "next_comment_id": 1228,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11036,7 +11036,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-09-04T06:10:01.268258127Z",
-      "updated_at": "2026-09-04T10:21:18.123485164Z",
+      "updated_at": "2026-09-04T10:35:37.737068117Z",
       "labels": [
         "feature"
       ],
@@ -11229,6 +11229,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABANnsxVKRIl8R5xK6gyPDD0XoPxyK8bVPoEPt6nxTBwsGXO4w0NSuEURxdDbYHe8Td4DRI0aPAHfg65D1PjDjiAA=="
+        },
+        "d6b2558b-0c2b-45e3-9165-f478929421b4": {
+          "display_id": 1227,
+          "author": "6ME5",
+          "content": "Exact head e4f2c04c exposed a separate H2 cancellation: scenario 7 Linux, run 33862835323 job 100990964008. The job ran 10m18; apt-get update alone expanded the sandbox prerequisite to 6m38, leaving only 3m23 for qualification. Seventeen peer Linux scenario shards passed, and the same shard passed on prior heads, proving this was redundant index-refresh latency rather than scenario scope. Commit 58a65fb1 removes apt-get update from both product-package Linux sites and H0 setup while retaining exact apparmor-profiles/bubblewrap installation, profile replacement, and bwrap version probe. The official actions/runner-images main commit 1dd1f013 runs apt-get update/upgrade during image construction and cleanup only runs apt-get clean, preserving package indexes. Verification: 272 xtask unit plus 3 CLI tests, format, strict clippy, full xtask all, actionlint, diff check, and artifact scan pass.",
+          "created_at": "2026-09-04T10:35:37.731525714Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABATGlAAMyxmg3TjTgbO8ZKmhYYfy1I3bLwGgivocrxI9yYiu6TGcRMPnrnAYKhvoJq7yxLUVOdUPbj15jfFVP3DQ=="
         },
         "e0bc8666-7273-4ab7-a540-cd55685b3da0": {
           "display_id": 1205,
@@ -12039,8 +12048,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-04T10:21:18.123485164Z",
+    "timestamp": "2026-09-04T10:35:37.737068117Z",
     "agent_id": "6ME5",
-    "agent_seq": 1478
+    "agent_seq": 1479
   }
 }
