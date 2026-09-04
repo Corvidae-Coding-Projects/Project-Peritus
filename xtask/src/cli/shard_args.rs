@@ -61,10 +61,10 @@ mod tests {
 
     #[test]
     fn shard_arguments_are_closed_and_bounded() {
-        let mut ci = [OsString::from("test"), OsString::from("app")].into_iter();
+        let mut ci = [OsString::from("test"), OsString::from("app-runner")].into_iter();
         assert_eq!(
             parse(Some(&OsString::from("ci-shard")), &mut ci).expect("CI shard").unwrap(),
-            Command::CiShard { operation: crate::ci_shard::Operation::Test, shard: "app" }
+            Command::CiShard { operation: crate::ci_shard::Operation::Test, shard: "app-runner" }
         );
         let mut h2 = std::iter::once(OsString::from("17"));
         assert_eq!(
