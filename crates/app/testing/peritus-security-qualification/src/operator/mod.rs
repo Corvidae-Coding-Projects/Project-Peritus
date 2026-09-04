@@ -9,10 +9,11 @@ use std::ffi::OsString;
 use std::fs::{self, File};
 use std::io::{Read as _, Write as _};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::{
     CancellationToken, CaseReport, HostFingerprint, IntegratedCandidate, NativeProbeFactory,
-    QualificationLimits, QualificationPlatform, QualificationRunner, QualificationShard,
+    ProbeSpec, QualificationLimits, QualificationPlatform, QualificationRunner, QualificationShard,
     parse_candidate_json,
 };
 
@@ -22,7 +23,23 @@ pub use aggregate::{H0AggregateStatus, run_from_env as run_aggregate_from_env};
 
 const MAX_HOST_FACT_BYTES: u64 = 1024 * 1024;
 const MAX_CANDIDATE_BYTES: u64 = 256 * 1024;
-const H0_WORKER_PARTITIONS: usize = 8;
+const H0_WORKER_COUNT: usize = 8;
+
+struct WorkUnitQueue {
+    next: AtomicUsize,
+    count: usize,
+}
+
+impl WorkUnitQueue {
+    const fn new(count: usize) -> Self {
+        Self { next: AtomicUsize::new(0), count }
+    }
+
+    fn claim(&self) -> Option<usize> {
+        let index = self.next.fetch_add(1, Ordering::Relaxed);
+        (index < self.count).then_some(index)
+    }
+}
 
 /// Terminal status of a successfully executed native H0 shard.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -85,27 +102,33 @@ fn run_parallel_shard(
     let limits = inputs.limits;
     let platform = inputs.platform;
     let host = inputs.host;
+    let work_unit_count =
+        ProbeSpec::h0_production().iter().filter(|spec| platform.owns(spec.target())).count();
+    let work_units = WorkUnitQueue::new(work_unit_count);
     let partitions = std::thread::scope(|scope| {
-        let mut handles = Vec::with_capacity(H0_WORKER_PARTITIONS);
-        for partition in 0..H0_WORKER_PARTITIONS {
+        let mut handles = Vec::with_capacity(H0_WORKER_COUNT);
+        for _ in 0..H0_WORKER_COUNT {
             let controller = controller.clone();
             let candidate_root = candidate_root.clone();
             let scratch = scratch.clone();
             let artifacts = artifacts.clone();
+            let work_units = &work_units;
             handles.push(scope.spawn(move || {
                 let mut factory =
                     NativeProbeFactory::new(controller, candidate_root, scratch, artifacts, host)?;
-                Ok::<Vec<CaseReport>, crate::QualificationError>(
-                    QualificationRunner::run_shard_partition(
+                let mut cases = Vec::new();
+                while let Some(work_unit) = work_units.claim() {
+                    cases.extend(QualificationRunner::run_shard_partition(
                         &mut factory,
                         candidate,
                         limits,
                         &CancellationToken::new(),
                         platform,
-                        partition,
-                        H0_WORKER_PARTITIONS,
-                    ),
-                )
+                        work_unit,
+                        work_unit_count,
+                    ));
+                }
+                Ok::<Vec<CaseReport>, crate::QualificationError>(cases)
             }));
         }
         handles
@@ -151,4 +174,38 @@ fn publish_report(path: &Path, bytes: &[u8]) -> Result<(), Box<dyn std::error::E
     temporary.as_file().sync_all()?;
     temporary.persist_noclobber(path)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{H0_WORKER_COUNT, WorkUnitQueue};
+    use crate::{ProbeSpec, QualificationPlatform};
+
+    #[test]
+    fn concurrent_workers_claim_every_linux_probe_exactly_once() {
+        let count = ProbeSpec::h0_production()
+            .iter()
+            .filter(|spec| QualificationPlatform::Linux.owns(spec.target()))
+            .count();
+        let work_units = WorkUnitQueue::new(count);
+        let mut claimed = std::thread::scope(|scope| {
+            let mut handles = Vec::with_capacity(H0_WORKER_COUNT);
+            for _ in 0..H0_WORKER_COUNT {
+                let work_units = &work_units;
+                handles.push(scope.spawn(move || {
+                    let mut claimed = Vec::new();
+                    while let Some(index) = work_units.claim() {
+                        claimed.push(index);
+                    }
+                    claimed
+                }));
+            }
+            handles
+                .into_iter()
+                .flat_map(|handle| handle.join().expect("work-unit worker"))
+                .collect::<Vec<_>>()
+        });
+        claimed.sort_unstable();
+        assert_eq!(claimed, (0..count).collect::<Vec<_>>());
+    }
 }

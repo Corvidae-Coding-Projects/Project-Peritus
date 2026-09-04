@@ -91,7 +91,9 @@ peritus-h0-prepare --candidate-root DIR --controller FILE --output DIR \
 
 The preparer rejects dirty source and a platform claim that does not match the executing host.
 The `security-qualification.yml` workflow runs this boundary and the shard operator on native
-Linux, macOS, and Windows runners, then retains each complete workspace as a workflow artifact.
+Linux, macOS, and Windows runners. Eight same-host workers dynamically consume single-probe work
+units before the operator restores canonical catalog order and retains each complete workspace as a
+workflow artifact.
 
 After all three native hosts finish, the final operator admits the separately produced external
 review, reconstructs the exact 42-case run, executes the verified policy, and publishes one

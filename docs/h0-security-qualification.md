@@ -80,9 +80,10 @@ diagnostic artifact and cannot contribute to readiness.
 candidate, canonical source root for that candidate, reviewed host-fact document, private scratch
 and retained-artifact roots, no-overwrite report path, and current platform. The production
 controller recomputes the source archive digest before making probe assertions. It runs only that
-platform's canonical subset and publishes the
-shard even when cases fail. A successful exit means the shard passed; it is not a complete H0
-verdict and does not replace cross-host aggregation or independent review.
+platform's canonical subset through eight same-host workers that dynamically claim single-probe
+work units, restores canonical order, and publishes the shard even when cases fail. A successful
+exit means the shard passed; it is not a complete H0 verdict and does not replace cross-host
+aggregation or independent review.
 
 `peritus-h0-prepare` is the reviewed input builder used before each native shard. It requires a
 clean checkout, the compiled controller, the current native platform, and a new output directory.
