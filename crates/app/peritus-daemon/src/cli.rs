@@ -3,6 +3,8 @@
 mod arguments;
 mod blob_corruption;
 #[cfg(not(verus_only))]
+mod context;
+#[cfg(not(verus_only))]
 mod daemon_lifecycle;
 #[cfg(not(verus_only))]
 mod dependency;
@@ -46,6 +48,8 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
         CommandLine::Version => write_output(&format!("peritusd {}", env!("CARGO_PKG_VERSION")))
             .map_or_else(output_failure, |()| ExitCode::SUCCESS),
         CommandLine::Serve(configuration) => server::run(configuration),
+        #[cfg(not(verus_only))]
+        CommandLine::ContextInspect(arguments) => context::run(arguments),
         CommandLine::QualifyPty => qualify_pty(),
         CommandLine::StageBlobBeforeCrash(configuration) => stage_blob_before(configuration),
         CommandLine::RecoverBlobBeforeCrash(configuration) => recover_blob_before(configuration),

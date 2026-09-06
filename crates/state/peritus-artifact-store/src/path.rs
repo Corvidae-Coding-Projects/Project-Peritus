@@ -16,6 +16,40 @@ pub struct StorePaths {
 }
 
 impl StorePaths {
+    pub(crate) fn existing(
+        root: &Path,
+        configured_database: Option<&Path>,
+    ) -> Result<Self, ArtifactStoreError> {
+        let root =
+            fs::canonicalize(root).map_err(|error| io(StoreOperation::Canonicalize, error))?;
+        let objects_sha256 = root.join("objects/sha256");
+        let temporary = root.join("temporary");
+        let quarantine_sha256 = root.join("quarantine/sha256");
+        for directory in [
+            &root,
+            &root.join("objects"),
+            &objects_sha256,
+            &temporary,
+            &root.join("quarantine"),
+            &quarantine_sha256,
+        ] {
+            let metadata = fs::symlink_metadata(directory)
+                .map_err(|error| io(StoreOperation::Initialize, error))?;
+            if !metadata.is_dir() || metadata.file_type().is_symlink() {
+                return Err(layout_escape());
+            }
+        }
+        let database =
+            configured_database.map_or_else(|| root.join("metadata.sqlite3"), Path::to_path_buf);
+        if !fs::symlink_metadata(&database)
+            .map_err(|error| io(StoreOperation::Initialize, error))?
+            .is_file()
+        {
+            return Err(layout_escape());
+        }
+        Ok(Self { root, objects_sha256, temporary, quarantine_sha256, database })
+    }
+
     pub(crate) fn initialize(
         root: &Path,
         configured_database: Option<&Path>,

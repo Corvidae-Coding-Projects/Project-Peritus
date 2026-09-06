@@ -117,6 +117,13 @@ their formally classified crates and the ordinary-API audit constrains the produ
 
 Focused qualification:
 
+Product writer/fixer invocations now default to durable local working memory across retries and
+provider changes. Reviewers retain only their own exact observations under the existing
+memory-excluding role policy. The bounded memory tools cannot satisfy fresh grounding or
+completion gates. Legacy provider compaction is explicitly selectable, never a failure fallback.
+See the [local working-memory guide](../../../docs/local-working-memory.md) for configuration,
+storage, trace versions, read-only inspection, and optional native auxiliary inference.
+
 ```text
 CARGO_BUILD_JOBS=2 cargo test -p peritus-product-runner --all-targets --all-features --locked
 CARGO_BUILD_JOBS=2 cargo clippy -p peritus-product-runner --all-targets --all-features --locked -- -D warnings

@@ -69,7 +69,7 @@ fn rust_shards_are_exact(job: &Yaml) -> bool {
         && sequence(matrix, "os", &["ubuntu-24.04", "macos-15", "windows-2025"])
         && sequence(matrix, "operation", &RUST_OPERATIONS)
         && sequence(matrix, "shard", &PACKAGE_SHARDS)
-        && super::workflow_rust_matrix::has_platform_terminal_includes(mapping_value(
+        && super::workflow_rust_matrix::has_exact_test_includes(mapping_value(
             matrix, "include",
         ))
         && mapping_value(job, "steps").and_then(Yaml::as_vec).is_some_and(|steps| {

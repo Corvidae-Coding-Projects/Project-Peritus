@@ -56,6 +56,7 @@ struct Inner {
     records: RwLock<BTreeMap<RunId, RunRecord>>,
     providers: BTreeMap<ProviderProfileId, Arc<dyn ModelProvider>>,
     automatic_provider_failover: bool,
+    local_context: peritus_product_runner::LocalContextConfig,
     workspaces: BTreeMap<WorkspaceId, PathBuf>,
     processes: ProcessStore,
     tasks: Mutex<Vec<JoinHandle<()>>>,
@@ -83,6 +84,7 @@ impl ProductRunService {
         components: &DaemonComponents,
         workspaces: &WorkspaceCatalog,
         automatic_provider_failover: bool,
+        local_context: peritus_product_runner::LocalContextConfig,
         processes: ProcessStore,
     ) -> Result<Self, DaemonError> {
         let directory = state_root.join("product-runs");
@@ -107,6 +109,7 @@ impl ProductRunService {
                 records: RwLock::new(records),
                 providers,
                 automatic_provider_failover,
+                local_context,
                 workspaces: workspace_roots,
                 processes,
                 tasks: Mutex::new(Vec::new()),

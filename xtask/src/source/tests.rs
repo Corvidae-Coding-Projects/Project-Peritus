@@ -68,6 +68,7 @@ fn cargo(root: &Path, targets: Vec<CargoTarget>) -> CargoMetadata {
 
 fn target(root: &Path, relative: &str, kind: &str) -> CargoTarget {
     CargoTarget {
+        name: relative.to_owned(),
         kind: vec![kind.to_owned()],
         crate_types: vec![kind.to_owned()],
         src_path: root.join(relative),

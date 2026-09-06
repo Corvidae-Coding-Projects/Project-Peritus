@@ -80,7 +80,7 @@ pub fn request_bytes(request: &ModelRequest) -> Result<Vec<u8>, ProtocolError> {
     Ok(writer.into_bytes())
 }
 
-fn message_value(writer: &mut CanonicalWriter, message: &Message) -> Result<(), ProtocolError> {
+pub fn message_value(writer: &mut CanonicalWriter, message: &Message) -> Result<(), ProtocolError> {
     u8_value(
         writer,
         match message.role() {

@@ -22,6 +22,19 @@ pub struct Catalog {
 }
 
 impl Catalog {
+    pub(crate) fn read_only(path: &Path) -> Result<Self, ArtifactStoreError> {
+        let connection = Connection::open_with_flags(
+            path,
+            rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
+        )
+        .map_err(catalog_io)?;
+        connection
+            .set_db_config(rusqlite::config::DbConfig::SQLITE_DBCONFIG_DEFENSIVE, true)
+            .map_err(catalog_io)?;
+        connection.pragma_update(None, "trusted_schema", false).map_err(catalog_io)?;
+        Ok(Self { connection })
+    }
+
     pub(crate) fn open(path: &Path) -> Result<Self, ArtifactStoreError> {
         let connection = Connection::open(path).map_err(catalog_io)?;
         connection.busy_timeout(std::time::Duration::from_secs(5)).map_err(catalog_io)?;

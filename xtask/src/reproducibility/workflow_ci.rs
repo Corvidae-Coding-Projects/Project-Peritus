@@ -269,9 +269,7 @@ fn rust_matrix(strategy: Option<&Yaml>) -> bool {
             &["build", "test", "doc-test", "clippy", "docs"],
         )
         && string_sequence(mapping_value(matrix, "shard"), &crate::ci_shard::SHARD_NAMES)
-        && super::workflow_rust_matrix::has_platform_terminal_includes(mapping_value(
-            matrix, "include",
-        ))
+        && super::workflow_rust_matrix::has_exact_test_includes(mapping_value(matrix, "include"))
 }
 
 fn verus_matrix(strategy: Option<&Yaml>) -> bool {

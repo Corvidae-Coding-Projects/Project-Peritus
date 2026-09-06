@@ -11,6 +11,7 @@ use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
 
 mod approval;
 mod catalog;
+mod context;
 mod deserialize;
 mod paths;
 mod product;
@@ -18,6 +19,7 @@ mod provider;
 
 pub use approval::ApprovalRegistryDeclaration;
 pub use catalog::{ProjectDeclaration, ToolPolicy, WorkspaceDeclaration};
+pub use context::ContextPolicy;
 pub use paths::DaemonPaths;
 pub use product::ProductRunPolicy;
 pub use provider::{ProviderProfileDeclaration, ProviderRoute, ProviderRouteKind};
@@ -160,6 +162,7 @@ pub struct DaemonConfig {
     tools: ToolPolicy,
     providers: Vec<ProviderRoute>,
     product: ProductRunPolicy,
+    context: ContextPolicy,
     telemetry: TelemetryExport,
 }
 
@@ -273,6 +276,11 @@ impl DaemonConfig {
     pub const fn product(&self) -> ProductRunPolicy {
         self.product
     }
+    /// Borrows local context policy and the optional local-only task-provider admission mode.
+    #[must_use]
+    pub const fn context(&self) -> &ContextPolicy {
+        &self.context
+    }
     /// Borrows telemetry export policy.
     #[must_use]
     pub const fn telemetry(&self) -> &TelemetryExport {
@@ -298,6 +306,7 @@ impl DaemonConfig {
         self.limits.validate()?;
         catalog::validate(&self.projects, &self.workspaces, &self.tools)?;
         provider::validate(&self.providers)?;
+        self.context.validate(&self.providers, self.product)?;
         if let TelemetryExport::LocalFile { directory, quota_bytes } = &self.telemetry
             && (!directory.is_absolute()
                 || directory.components().any(|part| part == Component::ParentDir)

@@ -23,6 +23,7 @@ mod reuse;
 mod selection;
 mod trust;
 mod verified;
+pub mod working;
 
 pub use authority::AuthorityClass;
 pub use budget::{TokenAccounting, TokenBudget};

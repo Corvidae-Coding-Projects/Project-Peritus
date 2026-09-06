@@ -15,6 +15,11 @@ until the exact release candidate passes every required native-host and release 
 
 ## Current development state
 
+**Local working memory** is enabled by default for product writer, fixer, and reviewer loops.
+Exact observations and published context views are durable and role-scoped; derived state never
+grants authority or grounding credit. The [operator guide](docs/local-working-memory.md) describes
+configuration, exact-source retrieval, inspection, recovery, and optional local-only inference.
+
 | Area | Implemented capability |
 | --- | --- |
 | A0-A3 foundation | Pinned Rust and Verus toolchains, architecture policy, conformance support, and the versioned application protocol |

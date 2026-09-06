@@ -21,6 +21,31 @@ const REJECTED: [&str; 5] = [
 ];
 
 #[test]
+fn profile_independent_message_archives_retain_mixed_content_and_reject_corruption() {
+    use peritus_model_protocol::{decode_messages, encode_messages};
+    let profile = support::profile();
+    for request in [
+        support::minimal_request(&profile),
+        support::realistic_request(&profile),
+        support::boundary_request(&profile),
+    ] {
+        let archive = encode_messages(request.messages(), ProtocolLimits::PRODUCTION).unwrap();
+        let restored = decode_messages(&archive, ProtocolLimits::PRODUCTION).unwrap();
+        assert_eq!(restored, request.messages());
+        assert_eq!(encode_messages(&restored, ProtocolLimits::PRODUCTION).unwrap(), archive);
+        for length in [0, 3, 5, archive.len() - 1] {
+            assert!(decode_messages(&archive[..length], ProtocolLimits::PRODUCTION).is_err());
+        }
+        let mut unknown = archive.clone();
+        unknown[4] = 255;
+        assert!(decode_messages(&unknown, ProtocolLimits::PRODUCTION).is_err());
+        let mut trailing = archive;
+        trailing.push(0);
+        assert!(decode_messages(&trailing, ProtocolLimits::PRODUCTION).is_err());
+    }
+}
+
+#[test]
 fn accepted_fixtures_decode_and_reencode_byte_identically() {
     let profile = support::profile();
     let expected = [

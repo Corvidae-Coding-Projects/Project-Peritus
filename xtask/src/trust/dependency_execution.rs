@@ -152,6 +152,7 @@ mod tests {
             readme: None,
             dependencies: Vec::new(),
             targets: vec![CargoTarget {
+                name: name.to_owned(),
                 kind: vec![kind.to_owned()],
                 crate_types: vec![kind.to_owned()],
                 src_path: PathBuf::from(format!("/registry/{name}/entry.rs")),

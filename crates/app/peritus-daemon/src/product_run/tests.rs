@@ -279,6 +279,7 @@ fn service(
             records: std::sync::RwLock::new(BTreeMap::new()),
             providers: registry,
             automatic_provider_failover: false,
+            local_context: peritus_product_runner::LocalContextConfig::default(),
             workspaces: BTreeMap::from([(workspace_id, workspace.to_owned())]),
             processes,
             tasks: tokio::sync::Mutex::new(Vec::new()),

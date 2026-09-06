@@ -44,6 +44,46 @@ fn paths_reject_device_ads_reserved_and_escape_forms() {
 }
 
 #[test]
+fn external_inference_inputs_require_explicit_admission_and_cannot_be_writable() {
+    let policy = PathPolicy::new(WindowsPath::new("C:/workspace").unwrap(), vec![]).unwrap();
+    let external = WindowsPath::new("D:/models/local").unwrap();
+    let rule = |operation| {
+        FilesystemRule::new(
+            RuleEffect::Allow,
+            SandboxPath::new("D:/models/local/weights.bin").unwrap(),
+            PathScope::Exact,
+            FileOperationSet::from_operations([operation]),
+        )
+        .unwrap()
+    };
+    let read = support::checked_plan(vec![rule(FileOperation::Read)]);
+    assert!(compile_acl_plan(&read, &policy, "S-1-15-2-123").is_err());
+    let admitted = policy.clone().with_read_only_inputs(vec![external]).unwrap();
+    let acl = compile_acl_plan(&read, &admitted, "S-1-15-2-123").unwrap();
+    assert!(
+        acl.entries().iter().any(|entry| entry.path().as_str() == "D:/models/local/weights.bin"
+            && !entry.access().contains(FileOperation::Write))
+    );
+    for operation in [FileOperation::Write, FileOperation::Remove, FileOperation::Create] {
+        assert!(
+            compile_acl_plan(
+                &support::checked_plan(vec![rule(operation)]),
+                &admitted,
+                "S-1-15-2-123"
+            )
+            .is_err()
+        );
+    }
+    assert!(
+        policy
+            .clone()
+            .with_read_only_inputs(vec![WindowsPath::new("C:/workspace/private").unwrap()])
+            .is_err()
+    );
+    assert!(policy.with_read_only_inputs(vec![WindowsPath::new("C:/").unwrap()]).is_err());
+}
+
+#[test]
 fn acl_projection_is_deterministic_operation_complete_and_deny_dominant() {
     let extra = FilesystemRule::new(
         RuleEffect::Deny,

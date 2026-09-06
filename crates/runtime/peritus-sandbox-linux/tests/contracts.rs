@@ -104,6 +104,18 @@ fn filesystem_projection_is_deterministic_and_protected_metadata_dominates() {
         )
         .expect("protected mask");
     assert!(writable < masked);
+
+    let helper = std::env::current_exe().unwrap().canonicalize().unwrap();
+    let private = policy.with_private_filesystem(helper.clone()).unwrap();
+    let projection = MountPlan::project(&plan, &private).unwrap();
+    assert!(projection.actions().iter().any(|action| matches!(action, MountAction::Tmpfs { target } if target == std::path::Path::new("/"))));
+    assert!(!projection.actions().iter().any(|action| matches!(action, MountAction::ReadOnlyBind { source, .. } if source == std::path::Path::new("/"))));
+    assert!(
+        !projection.landlock_rules().iter().any(|rule| rule.path() == std::path::Path::new("/"))
+    );
+    assert!(projection.actions().iter().any(
+        |action| matches!(action, MountAction::ReadOnlyBind { source, .. } if source == &helper)
+    ));
 }
 
 #[cfg(target_os = "linux")]

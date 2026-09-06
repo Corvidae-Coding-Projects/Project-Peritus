@@ -67,6 +67,7 @@ impl<'de> Deserialize<'de> for DaemonConfig {
             tools: Option<ToolPolicy>,
             providers: Option<Vec<ProviderRoute>>,
             product: Option<ProductRunPolicy>,
+            context: Option<super::ContextPolicy>,
             telemetry: TelemetryExport,
         }
 
@@ -83,6 +84,7 @@ impl<'de> Deserialize<'de> for DaemonConfig {
             tools: representation.tools.unwrap_or_default(),
             providers: representation.providers.unwrap_or_default(),
             product: representation.product.unwrap_or_default(),
+            context: representation.context.unwrap_or_default(),
             telemetry: representation.telemetry,
         })
     }

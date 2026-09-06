@@ -29,6 +29,11 @@ shutdown, and the resource-aware verification commands. Operational procedures l
 
 ## Focused checks
 
+The strict `[context.local]` configuration enables local working memory by default.
+`peritusd context-inspect` reads the exact last published view without opening a writable owner.
+The [local working-memory guide](../../../docs/local-working-memory.md) documents its arguments,
+offline route admission, artifact retention, and fail-closed recovery boundaries.
+
 From the repository root:
 
 ```sh

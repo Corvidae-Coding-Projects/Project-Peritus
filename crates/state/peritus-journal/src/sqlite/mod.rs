@@ -7,6 +7,7 @@ mod connection;
 mod outbox_store;
 mod preconditions;
 pub mod query;
+mod reader;
 mod schema;
 
 #[cfg(test)]
@@ -16,6 +17,7 @@ use crate::CommittedBatch;
 use peritus_types::{CommandId, Sha256Digest};
 
 pub use connection::{SqliteJournal, SqliteJournalOptions, SqliteSettings, SqliteStoragePages};
+pub use reader::JournalReader;
 
 /// Durable resolution of one exact command identity.
 #[derive(Debug, Eq, PartialEq)]

@@ -16,6 +16,7 @@ peritus-agent = { version = "=0.0.0", path = "../../orchestration/peritus-agent"
 peritus-artifact-store = { version = "=0.0.0", path = "../../state/peritus-artifact-store" }
 peritus-budget = { version = "=0.0.0", path = "../../foundation/peritus-budget" }
 peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
+peritus-context = { version = "=0.0.0", path = "../../orchestration/peritus-context" }
 peritus-gates = { version = "=0.0.0", path = "../../orchestration/peritus-gates" }
 peritus-journal = { version = "=0.0.0", path = "../../state/peritus-journal" }
 peritus-kernel = { version = "=0.0.0", path = "../../foundation/peritus-kernel" }
@@ -49,6 +50,15 @@ yaml-rust2.workspace = true
 peritus-provider-anthropic = { version = "=0.0.0", path = "../../model/peritus-provider-anthropic" }
 peritus-provider-openai = { version = "=0.0.0", path = "../../model/peritus-provider-openai" }
 tempfile.workspace = true
+
+[target.'cfg(target_os = "linux")'.dependencies]
+peritus-sandbox-linux = { version = "=0.0.0", path = "../../runtime/peritus-sandbox-linux" }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+peritus-sandbox-macos = { version = "=0.0.0", path = "../../runtime/peritus-sandbox-macos" }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+peritus-sandbox-windows = { version = "=0.0.0", path = "../../runtime/peritus-sandbox-windows" }
 
 [[example]]
 name = "live-account-product-run"

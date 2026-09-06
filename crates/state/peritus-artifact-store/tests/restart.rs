@@ -11,6 +11,31 @@ use peritus_artifact_store::{
 use support::{digest, object_path, quarantine_path, request, store};
 
 #[test]
+fn read_only_inspection_verifies_bounds_and_bytes_without_recovery() {
+    let missing = tempfile::tempdir().unwrap();
+    let absent = missing.path().join("absent");
+    let config = StoreConfig::new(&absent, 128, 512).unwrap();
+    assert!(ArtifactStore::read_existing(&config, digest(b"missing"), 128).is_err());
+    assert!(!absent.exists());
+    let (directory, store) = store(128, 512);
+    let bytes = b"exact published bytes";
+    let mut writer = store.begin_write(request(bytes, 64, 1)).unwrap();
+    writer.write_chunk(bytes).unwrap();
+    writer.finalize().unwrap();
+    let temporary = directory.path().join("temporary").join("do-not-recover.tmp");
+    fs::write(&temporary, b"pending write").unwrap();
+    let config = StoreConfig::new(directory.path(), 128, 512).unwrap();
+    assert_eq!(ArtifactStore::read_existing(&config, digest(bytes), 128).unwrap(), bytes);
+    assert!(ArtifactStore::read_existing(&config, digest(bytes), 4).is_err());
+    assert!(temporary.exists());
+    let object = object_path(directory.path(), digest(bytes));
+    fs::write(&object, b"corrupt").unwrap();
+    assert!(ArtifactStore::read_existing(&config, digest(bytes), 128).is_err());
+    assert!(object.exists(), "inspection must not quarantine corrupt bytes");
+    assert!(temporary.exists());
+}
+
+#[test]
 fn restart_removes_abandoned_partial_temporary_file() {
     let (directory, store) = store(128, 512);
     drop(store);

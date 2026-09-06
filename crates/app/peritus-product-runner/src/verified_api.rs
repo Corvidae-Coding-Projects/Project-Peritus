@@ -10,14 +10,15 @@ use std::{
     time::Duration,
 };
 
-use peritus_process::ProcessStore;
 use peritus_provider_core::{CancellationToken, ModelProvider};
 use peritus_run_settlement::{CandidateCheckpoint, RunSettlement};
 use peritus_types::{RunId, WorkspaceId};
 
 use crate::ProductRunnerError;
 
+mod command_runtime;
 mod effect_stubs;
+pub use command_runtime::CommandRuntime;
 
 /// Maximum wall-clock duration of one uninterrupted product-run attempt.
 pub const PRODUCT_RUN_MAX_ELAPSED: Duration = Duration::from_hours(8);
@@ -201,30 +202,6 @@ impl ProductDeliveryScope {
     #[must_use]
     pub const fn allows_external_effects(self) -> bool {
         matches!(self, Self::AuthorizedExternalEffects)
-    }
-}
-
-/// Fully resolved daemon input for one product run.
-#[derive(Clone, Debug)]
-pub struct CommandRuntime;
-
-impl CommandRuntime {
-    /// Preserves the ordinary command-runtime construction boundary in the Verus API model.
-    ///
-    /// The effectful implementation validates the roots and constructs the C4/C2 runtime. The
-    /// verified API carries the already-resolved value across the daemon composition boundary.
-    ///
-    /// # Errors
-    ///
-    /// The ordinary implementation reports invalid roots or runtime construction failures.
-    pub fn open(
-        state_root: impl Into<PathBuf>,
-        workspace_root: impl Into<PathBuf>,
-        run_id: RunId,
-        process_store: ProcessStore,
-    ) -> Result<Self, ProductRunnerError> {
-        let _ = (state_root.into(), workspace_root.into(), run_id, process_store);
-        Ok(Self)
     }
 }
 

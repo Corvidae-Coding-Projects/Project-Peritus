@@ -24,6 +24,30 @@ pub struct ArtifactStore {
 }
 
 impl ArtifactStore {
+    /// Reads existing finalized bytes without initializing, migrating, recovering, or writing.
+    /// This diagnostic path verifies active catalog metadata and exact content on every read.
+    ///
+    /// # Errors
+    /// Rejects absent or invalid layouts, missing/quarantined artifacts, and corrupt content.
+    pub fn read_existing(
+        config: &StoreConfig,
+        digest: ArtifactDigest,
+        maximum_bytes: u64,
+    ) -> Result<Vec<u8>, ArtifactStoreError> {
+        let paths = StorePaths::existing(config.root(), config.database_path())?;
+        let catalog = Catalog::read_only(paths.database())?;
+        let metadata = catalog.metadata(digest)?.ok_or_else(missing_artifact)?;
+        if !metadata.is_referenceable() {
+            return Err(missing_artifact());
+        }
+        read_finalized(
+            &paths.object(digest),
+            digest,
+            metadata.size(),
+            maximum_bytes.min(config.max_artifact_bytes()),
+        )
+    }
+
     /// Opens or initializes a store and runs idempotent restart recovery.
     ///
     /// # Errors

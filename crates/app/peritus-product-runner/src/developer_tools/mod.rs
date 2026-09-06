@@ -1,5 +1,6 @@
 //! Managed-workspace tools exposed to the D0 developer loop.
 
+use serde_json::Value;
 mod access_policy;
 mod catalog;
 mod command_budget;
@@ -25,4 +26,18 @@ pub use ownership::WorkspaceOwnership;
 
 pub fn merge_rendered(retained: &mut String, incoming: &str) {
     evidence::merge_rendered(retained, incoming);
+}
+
+pub fn checked_context_file(
+    root: &std::path::Path,
+    relative: &str,
+    contract: &str,
+) -> Result<std::path::PathBuf, peritus_agent::DeveloperLoopError> {
+    let policy = access_policy::WorkspaceAccessPolicy::from_transcript(root, contract);
+    policy
+        .authorize("workspace_read", &Value::from_iter([("path", Value::from(relative))]))
+        .map_err(|_| {
+            path::tool("context file dependency is outside the current task's access policy")
+        })?;
+    path::checked(root, relative, true)
 }

@@ -17,6 +17,7 @@ pub struct WindowsBackendConfig {
     pub(crate) helper_path: PathBuf,
     pub(crate) workspace: WindowsPath,
     pub(crate) protected_roots: Vec<WindowsPath>,
+    pub(crate) read_only_inputs: Vec<WindowsPath>,
     pub(crate) acl_backup_root: PathBuf,
     pub(crate) token: TokenProfile,
     pub(crate) managed_filter_digest: Option<Sha256Digest>,
@@ -57,12 +58,24 @@ impl WindowsBackendConfig {
             helper_path,
             workspace,
             protected_roots: policy.protected_roots().to_vec(),
+            read_only_inputs: Vec::new(),
             acl_backup_root,
             token,
             managed_filter_digest,
             proxy,
             secrets,
         })
+    }
+
+    /// Admits explicitly installed read/execute inputs outside the writable workspace.
+    ///
+    /// # Errors
+    /// Rejects external inputs overlapping the workspace or exceeding policy capacity.
+    pub fn with_read_only_inputs(mut self, inputs: Vec<WindowsPath>) -> Result<Self, WindowsError> {
+        PathPolicy::new(self.workspace.clone(), self.protected_roots.clone())?
+            .with_read_only_inputs(inputs.clone())?;
+        self.read_only_inputs = inputs;
+        Ok(self)
     }
 
     /// Returns installed helper path.

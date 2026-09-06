@@ -4,6 +4,8 @@
 mod context_tests;
 #[path = "developer_loop/fixtures.rs"]
 mod fixtures;
+#[path = "developer_loop/local_context_tests.rs"]
+mod local_context_tests;
 #[path = "developer_loop/retry_tests.rs"]
 mod retry_tests;
 

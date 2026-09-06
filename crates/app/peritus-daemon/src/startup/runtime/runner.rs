@@ -109,6 +109,7 @@ impl DaemonRuntime {
             &components,
             &workspaces,
             config.product().automatic_provider_failover(),
+            config.context().local().clone(),
             processes.clone(),
         )?;
         progress.complete(StartupPhase::DomainRecovery)?;

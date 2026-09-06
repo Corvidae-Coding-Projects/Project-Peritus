@@ -3,8 +3,7 @@
 use std::{sync::Arc, time::Duration};
 
 use peritus_agent::{
-    DeveloperLoop, DeveloperLoopError, DeveloperLoopLimits, DeveloperLoopOutcome,
-    DeveloperLoopRequest,
+    DeveloperLoopError, DeveloperLoopLimits, DeveloperLoopOutcome, DeveloperLoopRequest,
 };
 use peritus_provider_core::ModelProvider;
 use peritus_types::RunId;
@@ -15,8 +14,8 @@ use crate::developer_tools::{
 };
 use crate::execution::CandidateRecorder;
 use crate::execution::{AppliedTurn, AppliedWrite, ProductRunInput, check_cancelled};
+use crate::local_context::LocalContextHandle;
 use crate::progress::WorkspaceCheckpoint;
-use crate::trace::FileDeveloperTrace;
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
 mod correction;
@@ -50,6 +49,7 @@ pub async fn complete_developer_turn(
     recorder: &CandidateRecorder,
 ) -> Result<AppliedTurn, ProductRunnerError> {
     let mut providers = crate::failover::ProviderCursor::new(primary, &input.providers.fallbacks);
+    let memory = LocalContextHandle::open(input, role)?;
     let mut checkpoint = WorkspaceCheckpoint::capture(&input.workspace_root)?;
     let mut invocation = 0_u32;
     let mut unproductive_terminals = 0_u8;
@@ -75,6 +75,7 @@ pub async fn complete_developer_turn(
                 ownership,
                 remaining,
                 recorder,
+                memory: memory.as_ref(),
             },
             accounting,
         )
@@ -183,6 +184,7 @@ struct DeveloperInvocation<'a> {
 }
 
 struct InvocationContext<'a> {
+    memory: Option<&'a LocalContextHandle>,
     design: &'a str,
     findings: Option<&'a str>,
     correction: Option<&'a str>,
@@ -244,8 +246,7 @@ async fn run_developer_invocation(
     )
     .with_checkpoint_observer(context.recorder.tool_observer(Arc::clone(&input.conversation)))
     .with_task_contract(&transcript);
-    let mut trace = FileDeveloperTrace::new(input.trace_path.clone());
-    let result = DeveloperLoop::run(
+    let result = crate::local_context::run_invocation(
         model,
         DeveloperLoopRequest {
             request_prefix,
@@ -265,7 +266,8 @@ async fn run_developer_invocation(
             cancellation: input.provider_cancellation.clone(),
         },
         &mut tools,
-        &mut trace,
+        &input.trace_path,
+        context.memory,
     )
     .await;
     Ok((result, tools))
