@@ -12,7 +12,7 @@ use peritus_sandbox::{
     TerminalRequirements, TerminalSignalPermission, TreeContainment, compile_sandbox,
 };
 use peritus_types::ResourceQuantity;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 fn filesystem(
     directory: &Path,
@@ -56,6 +56,7 @@ fn filesystem(
     ];
     // Runtime library trees are read-only; neither the task workspace nor user home is mounted.
     for root in runtime_roots() {
+        let root = Path::new(root);
         if root.exists() {
             let root = root.canonicalize().map_err(|_| "resolve installed runtime library root")?;
             rules.push(
@@ -163,19 +164,19 @@ pub(super) fn normalized_path(path: &Path) -> Result<String, String> {
     Ok(text.replace('\\', "/"))
 }
 
-fn runtime_roots() -> Vec<PathBuf> {
+const fn runtime_roots() -> &'static [&'static str] {
     #[cfg(target_os = "linux")]
     {
-        ["/usr/lib", "/usr/lib64", "/lib", "/lib64"].iter().map(PathBuf::from).collect()
+        &["/usr/lib", "/usr/lib64", "/lib", "/lib64"]
     }
     #[cfg(target_os = "macos")]
     {
-        ["/usr/lib", "/System/Library"].iter().map(PathBuf::from).collect()
+        &["/usr/lib", "/System/Library"]
     }
     #[cfg(target_os = "windows")]
     {
         // AppContainer's native runtime baseline supplies OS libraries; no broad mutable ACL
         // entries are installed on System32. User-provided inputs remain explicitly scoped.
-        Vec::new()
+        &[]
     }
 }
