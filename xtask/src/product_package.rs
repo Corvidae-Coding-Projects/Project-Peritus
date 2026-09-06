@@ -34,7 +34,17 @@ pub(crate) fn install(root: &Path) -> Result<PathBuf, XtaskError> {
 pub(crate) fn smoke(root: &Path) -> Result<PathBuf, XtaskError> {
     build_debug_binaries(root)?;
     assemble(root, true)?;
+    smoke_prepared(root)
+}
+
+pub(crate) fn smoke_prepared(root: &Path) -> Result<PathBuf, XtaskError> {
     let package = package_path(root);
+    if !package.join("manifest.toml").is_file() {
+        return Err(XtaskError::metadata(format!(
+            "required prepared lifecycle package is missing: {}",
+            package.display()
+        )));
+    }
     let subject = SmokeSubject::new()?;
     let (state_root, executable) = smoke_paths(subject.path());
     fs::create_dir_all(&state_root)
@@ -282,5 +292,20 @@ const fn host_os() -> &'static str {
         "windows"
     } else {
         "unsupported"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::error::ErrorCode;
+
+    #[test]
+    fn prepared_lifecycle_rejects_missing_package_without_building() {
+        let subject = SmokeSubject::new().expect("subject");
+        let error = smoke_prepared(subject.path()).expect_err("missing prepared package");
+        assert_eq!(error.code(), ErrorCode::Metadata);
+        assert!(error.render().contains("required prepared lifecycle package is missing"));
+        assert_eq!(fs::read_dir(subject.path()).expect("subject directory").count(), 0);
     }
 }

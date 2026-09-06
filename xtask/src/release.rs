@@ -18,9 +18,12 @@ use std::{
 use serde::Serialize;
 use sha2::{Digest as _, Sha256};
 
-use crate::XtaskError;
+use crate::{XtaskError, product_package::qualification::QualificationInput};
 
-pub(crate) fn bootstrap_smoke(root: &Path) -> Result<PathBuf, XtaskError> {
+pub(crate) fn bootstrap_smoke(
+    root: &Path,
+    input: QualificationInput,
+) -> Result<PathBuf, XtaskError> {
     if cfg!(windows) {
         run(
             Command::new("powershell")
@@ -31,7 +34,10 @@ pub(crate) fn bootstrap_smoke(root: &Path) -> Result<PathBuf, XtaskError> {
             "test Windows installer parsing, archive checks, and dependency routing",
         )?;
     }
-    let package = crate::product_package::smoke(root)?;
+    let package = match input {
+        QualificationInput::Build => crate::product_package::smoke(root)?,
+        QualificationInput::Prepared => crate::product_package::smoke_prepared(root)?,
+    };
     let fixture = TemporaryDirectory::new("peritus-public-installer")?;
     let version = format!("v{}", workspace_version(root)?);
     let release_root = fixture.path().join("releases").join(&version);

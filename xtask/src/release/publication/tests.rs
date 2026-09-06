@@ -144,7 +144,7 @@ fn h2_preparation_is_once_per_native_target_with_every_scenario_retained() {
 }
 
 #[test]
-fn h2_shards_only_execute_the_exact_same_run_prepared_artifact() {
+fn h2_and_lifecycle_only_execute_the_exact_same_run_prepared_artifact() {
     let document = workflow(".github/workflows/product-package.yml");
     let preparation = document["jobs"]["prepare-h2"]["steps"].as_vec().expect("preparation");
     let upload = preparation
@@ -169,7 +169,17 @@ fn h2_shards_only_execute_the_exact_same_run_prepared_artifact() {
     }
     assert!(builds[0].contains("--locked --bins"));
     assert!(builds[0].contains("-p ${{ matrix.helper }}"));
-    let steps = document["jobs"]["h2"]["steps"].as_vec().expect("scenario steps");
+    assert_prepared_consumer(
+        &document,
+        "h2",
+        "product-native-qualification-prepared-shard ${{ matrix.shard }}",
+    );
+    assert_prepared_consumer(&document, "bootstrap", "release-bootstrap-prepared-smoke");
+}
+
+fn assert_prepared_consumer(document: &Yaml, job: &str, command: &str) {
+    assert_eq!(document["jobs"][job]["needs"].as_str(), Some("prepare-h2"));
+    let steps = document["jobs"][job]["steps"].as_vec().expect("prepared consumer steps");
     let download = steps
         .iter()
         .find(|step| {
@@ -179,7 +189,7 @@ fn h2_shards_only_execute_the_exact_same_run_prepared_artifact() {
         })
         .expect("same-run download");
     assert_eq!(download["with"].as_hash().expect("download inputs").len(), 2);
-    assert_eq!(download["with"]["name"], upload["with"]["name"]);
+    assert_eq!(download["with"]["name"].as_str(), Some("h2-prepared-${{ matrix.os }}"));
     assert_eq!(download["with"]["path"].as_str(), Some("target/prepared-h2"));
     let commands =
         steps.iter().filter_map(|step| step["run"].as_str()).collect::<Vec<_>>().join("\n");
@@ -187,10 +197,11 @@ fn h2_shards_only_execute_the_exact_same_run_prepared_artifact() {
         commands
             .contains("cargo run --locked --package xtask -- product-native-qualification-restore")
     );
-    assert!(commands.contains("product-native-qualification-prepared-shard ${{ matrix.shard }}"));
+    assert!(commands.contains(command));
     assert!(
         !commands.contains("cargo build"),
-        "scenario jobs must not repeat the application build"
+        "qualification jobs must not repeat the application build"
     );
     assert!(!commands.contains("product-native-qualification-shard "));
+    assert!(!commands.contains("release-bootstrap-smoke"));
 }

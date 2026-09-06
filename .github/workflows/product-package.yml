@@ -19,6 +19,7 @@ env:
 jobs:
   bootstrap:
     name: Product lifecycle bootstrap (${{ matrix.os }})
+    needs: prepare-h2
     strategy:
       fail-fast: false
       matrix:
@@ -40,8 +41,15 @@ jobs:
           sudo apt-get install --yes --no-install-recommends apparmor-profiles bubblewrap
           sudo apparmor_parser --replace /usr/share/apparmor/extra-profiles/bwrap-userns-restrict
           bwrap --version
+      - name: Retrieve this platform's same-run H2 package
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: h2-prepared-${{ matrix.os }}
+          path: target/prepared-h2
+      - name: Restore prepared artifacts and executable permissions
+        run: cargo run --locked --package xtask -- product-native-qualification-restore
       - name: Qualify native package and public installer lifecycle
-        run: cargo run --locked --package xtask -- release-bootstrap-smoke
+        run: cargo run --locked --package xtask -- release-bootstrap-prepared-smoke
 
   prepare-h2:
     name: Prepare H2 package (${{ matrix.os }})

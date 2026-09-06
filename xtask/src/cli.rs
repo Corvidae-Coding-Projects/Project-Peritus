@@ -37,6 +37,7 @@ Commands:
   product-native-qualification-restore Restore this platform's same-run native H2 archive
   product-native-qualification-prepared-shard INDEX Qualify same-run artifacts without Cargo
   release-bootstrap-smoke Qualify the public download, checksum, and install entry point
+  release-bootstrap-prepared-smoke Qualify the public installer using same-run native artifacts
   release-create         Validate a tag and create its retained draft GitHub release
   release-package-stage Build, archive, checksum, and record this host's native package
   release-package-assemble Assemble a native package from separately built release binaries
@@ -63,7 +64,7 @@ enum Command {
     ProductNativeQualificationPrepare,
     ProductNativeQualificationRestore,
     ProductNativeQualificationShard { index: usize, input: QualificationInput },
-    ReleaseBootstrapSmoke,
+    ReleaseBootstrapSmoke { input: QualificationInput },
     ReleaseCreate,
     ReleasePackageStage,
     ReleasePackageAssemble,
@@ -226,8 +227,8 @@ pub(crate) fn execute(
             execute_product(command, root, output)?;
         }
         Command::ReleaseCreate => crate::release::create(root)?,
-        Command::ReleaseBootstrapSmoke => {
-            let package = crate::release::bootstrap_smoke(root)?;
+        Command::ReleaseBootstrapSmoke { input } => {
+            let package = crate::release::bootstrap_smoke(root, input)?;
             write_output(
                 output,
                 &format!("public release bootstrap passed: {}\n", package.display()),
@@ -323,7 +324,12 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
         Some("product-native-qualification-restore") => {
             Ok(Command::ProductNativeQualificationRestore)
         }
-        Some("release-bootstrap-smoke") => Ok(Command::ReleaseBootstrapSmoke),
+        Some("release-bootstrap-smoke") => {
+            Ok(Command::ReleaseBootstrapSmoke { input: QualificationInput::Build })
+        }
+        Some("release-bootstrap-prepared-smoke") => {
+            Ok(Command::ReleaseBootstrapSmoke { input: QualificationInput::Prepared })
+        }
         Some("release-create") => Ok(Command::ReleaseCreate),
         Some("release-package-stage") => Ok(Command::ReleasePackageStage),
         Some("release-package-assemble") => Ok(Command::ReleasePackageAssemble),

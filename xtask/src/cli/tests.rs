@@ -1,5 +1,6 @@
 use super::{Command, discover_workspace_root, parse};
 use crate::error::ErrorCode;
+use crate::product_package::qualification::QualificationInput;
 use std::ffi::OsString;
 use std::fs;
 
@@ -23,6 +24,20 @@ fn native_qualification_commands_are_first_class_and_reject_extra_arguments() {
         ("product-native-qualification-restore", Command::ProductNativeQualificationRestore),
     ] {
         assert_eq!(parse([OsString::from(name)]).expect("qualification command"), expected);
+        assert!(parse([OsString::from(name), OsString::from("extra")]).is_err());
+    }
+}
+
+#[test]
+fn lifecycle_commands_explicitly_select_build_or_prepared_inputs() {
+    for (name, input) in [
+        ("release-bootstrap-smoke", QualificationInput::Build),
+        ("release-bootstrap-prepared-smoke", QualificationInput::Prepared),
+    ] {
+        assert_eq!(
+            parse([OsString::from(name)]).expect("lifecycle command"),
+            Command::ReleaseBootstrapSmoke { input }
+        );
         assert!(parse([OsString::from(name), OsString::from("extra")]).is_err());
     }
 }
