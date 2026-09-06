@@ -31,7 +31,9 @@ pub(super) fn setup(
     let credential = read_secret()?;
     terminal.line("Credential captured. Saving it to the operating-system credential store…")?;
     let draft = DirectProviderDraft::new(kind, endpoint, model, protocol, header);
-    let profile = draft.store(&credential)?;
+    terminal.line("Discovering available models from this provider…")?;
+    let model = super::models::choose(terminal, draft.discover_models(&credential))?;
+    let profile = draft.with_model(model).store(&credential)?;
     terminal.line(&format!("{} is configured.", kind.label()))?;
     Ok(profile)
 }
@@ -41,18 +43,13 @@ fn settings(
     kind: ProviderKind,
 ) -> Result<DirectSettings, LauncherError> {
     match kind {
-        ProviderKind::OpenAiApi => {
-            Ok((None, defaulted(terminal, "Model [gpt-5.6-sol]: ", "gpt-5.6-sol")?, None, None))
+        ProviderKind::OpenAiApi => Ok((None, String::new(), None, None)),
+        ProviderKind::AnthropicApi => {
+            Ok((Some("https://api.anthropic.com".to_owned()), String::new(), None, None))
         }
-        ProviderKind::AnthropicApi => Ok((
-            Some("https://api.anthropic.com".to_owned()),
-            defaulted(terminal, "Model [claude-sonnet-4-5]: ", "claude-sonnet-4-5")?,
-            None,
-            None,
-        )),
         ProviderKind::GoogleGeminiApi => Ok((
             Some("https://generativelanguage.googleapis.com".to_owned()),
-            defaulted(terminal, "Model [gemini-3.7-flash]: ", "gemini-3.7-flash")?,
+            String::new(),
             None,
             None,
         )),
@@ -67,7 +64,6 @@ type DirectSettings = (Option<String>, String, Option<CompatibleProtocol>, Optio
 
 fn compatible_settings(terminal: &mut Terminal<'_>) -> Result<DirectSettings, LauncherError> {
     let endpoint = required(terminal, "Endpoint URL: ")?;
-    let model = required(terminal, "Model name: ")?;
     terminal.line("Protocol: 1. Responses (default)  2. Chat Completions")?;
     let protocol = loop {
         match terminal.prompt("Protocol [1]: ")?.as_str() {
@@ -79,16 +75,7 @@ fn compatible_settings(terminal: &mut Terminal<'_>) -> Result<DirectSettings, La
     let header = terminal.prompt(
         "Credential header [Enter for Authorization: Bearer, or type an API-key header]: ",
     )?;
-    Ok((Some(endpoint), model, Some(protocol), (!header.is_empty()).then_some(header)))
-}
-
-fn defaulted(
-    terminal: &mut Terminal<'_>,
-    prompt: &str,
-    default: &str,
-) -> Result<String, LauncherError> {
-    let answer = terminal.prompt(prompt)?;
-    Ok(if answer.is_empty() { default.to_owned() } else { answer })
+    Ok((Some(endpoint), String::new(), Some(protocol), (!header.is_empty()).then_some(header)))
 }
 
 fn required(terminal: &mut Terminal<'_>, prompt: &str) -> Result<String, LauncherError> {

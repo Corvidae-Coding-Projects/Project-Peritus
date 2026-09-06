@@ -11,6 +11,9 @@ impl AppModel {
                     editor.buffer.insert_str(editor.cursor, &text);
                     editor.cursor += text.len();
                     Vec::new()
+                } else if self.view == View::Conversation {
+                    self.paste_chat(&text);
+                    Vec::new()
                 } else if self.terminal.as_ref().is_some_and(TerminalSession::capture_input) {
                     self.send_terminal_input(text.into_bytes())
                 } else {
@@ -24,6 +27,13 @@ impl AppModel {
 
     fn handle_key(&mut self, key: KeyEvent) -> Vec<Effect> {
         if !is_active_key(key) {
+            return Vec::new();
+        }
+        if self.view == View::Conversation && self.editor.is_none() {
+            return self.handle_chat_key(key);
+        }
+        if key.code == KeyCode::Esc && self.product.is_some() && self.editor.is_none() {
+            self.return_to_conversation();
             return Vec::new();
         }
         if key.modifiers.contains(KeyModifiers::CONTROL)
@@ -116,6 +126,13 @@ impl AppModel {
             _ => {}
         }
         Vec::new()
+    }
+
+    const fn return_to_conversation(&mut self) {
+        if let Some(terminal) = &mut self.terminal {
+            terminal.set_capture_input(false);
+        }
+        self.view = View::Conversation;
     }
 
     fn open_prompt_editor(&mut self) {

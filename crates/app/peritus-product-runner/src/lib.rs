@@ -1,5 +1,4 @@
 //! Daemon-side product coding-run execution.
-//!
 //! This crate coordinates concrete provider calls, managed-worktree edits, repository gates, and
 //! an independent review/fix cycle. It owns no UI and grants no authority; the daemon supplies
 //! already-resolved provider and workspace capabilities.
@@ -10,6 +9,8 @@ pub(crate) mod bundle;
 #[cfg(not(verus_only))]
 mod candidate;
 mod context_config;
+mod conversation_mode;
+pub use conversation_mode::ConversationMode;
 #[cfg(not(verus_only))]
 mod delivery_requirement;
 #[cfg(not(verus_only))]

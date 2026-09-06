@@ -1,5 +1,6 @@
 //! Deterministic application state and update reducer.
 
+pub mod chat;
 mod editor;
 mod interaction;
 mod product;
@@ -41,6 +42,7 @@ const NOTICE_TICKS: u16 = 24;
 /// Primary full-screen presentation selected by the user.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum View {
+    Conversation,
     Runs,
     Diff,
     Review,
@@ -65,6 +67,7 @@ impl View {
 
     pub(crate) const fn label(self) -> &'static str {
         match self {
+            Self::Conversation => "Conversation",
             Self::Runs => "Runs",
             Self::Diff => "Diff",
             Self::Review => "Review",
@@ -133,7 +136,7 @@ impl EventRecord {
             View::Review => matches!(self.family, 51 | 54),
             View::Trace => matches!(self.family, 60 | 83),
             View::Evolution => matches!(self.family, 80 | 86 | 89 | 92),
-            View::Terminal | View::Approvals | View::Help => false,
+            View::Conversation | View::Terminal | View::Approvals | View::Help => false,
         }
     }
 }
@@ -156,6 +159,10 @@ pub struct PromptItem {
 
 #[derive(Clone, Debug)]
 enum PendingRequest {
+    ChatSubmit { run_id: RunId, text: String },
+    ChatQuery,
+    ChatOpen { run_id: RunId },
+    ModelQuery,
     Status,
     Subscribe,
     Prompt(PromptId),
@@ -240,6 +247,7 @@ impl IdFactory {
 /// Complete deterministic client presentation state.
 #[derive(Debug)]
 pub struct AppModel {
+    pub(crate) chat: chat::ChatUi,
     pub(crate) view: View,
     pub(crate) connection: ConnectionStatus,
     pub(crate) daemon_status: Option<peritus_app_protocol::DaemonStatus>,
@@ -270,7 +278,8 @@ impl AppModel {
 
     pub(crate) fn with_product(seed: [u8; 32], product: Option<ProductLaunchContext>) -> Self {
         Self {
-            view: View::Runs,
+            view: if product.is_some() { View::Conversation } else { View::Runs },
+            chat: chat::ChatUi::default(),
             connection: ConnectionStatus::Connecting,
             daemon_status: None,
             events: VecDeque::new(),
@@ -305,6 +314,7 @@ impl AppModel {
             Action::ConnectionFailed(error) | Action::Disconnected(error) => {
                 self.connection = ConnectionStatus::Disconnected(error.clone());
                 self.context = None;
+                self.recover_chat_drafts();
                 self.pending.clear();
                 self.notice(NoticeLevel::Error, format!("daemon disconnected: {error}"));
                 Vec::new()

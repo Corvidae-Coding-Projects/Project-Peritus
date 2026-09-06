@@ -246,7 +246,7 @@ async fn run_developer_invocation(
     )
     .with_checkpoint_observer(context.recorder.tool_observer(Arc::clone(&input.conversation)))
     .with_task_contract(&transcript);
-    let result = crate::local_context::run_invocation(
+    let result = crate::local_context::run_live_invocation(
         model,
         DeveloperLoopRequest {
             request_prefix,
@@ -268,6 +268,7 @@ async fn run_developer_invocation(
         &mut tools,
         &input.trace_path,
         context.memory,
+        input.conversation.interaction(),
     )
     .await;
     Ok((result, tools))

@@ -16,6 +16,8 @@ use peritus_types::{RunId, WorkspaceId};
 
 use super::{Inner, ProductRunService};
 
+mod catalog;
+mod interaction;
 mod support;
 
 use support::{
@@ -283,6 +285,7 @@ fn service(
             workspaces: BTreeMap::from([(workspace_id, workspace.to_owned())]),
             processes,
             tasks: tokio::sync::Mutex::new(Vec::new()),
+            model_catalogs: tokio::sync::Mutex::new(BTreeMap::new()),
         }),
     }
 }

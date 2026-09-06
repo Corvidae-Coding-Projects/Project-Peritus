@@ -21,6 +21,15 @@ pub struct GoogleConfig {
 }
 
 impl GoogleConfig {
+    pub(crate) fn with_selected_profile(
+        mut self,
+        profile: ProviderProfile,
+    ) -> Result<Self, ProviderCoreError> {
+        validate_google_profile(&profile)?;
+        self.profile = profile;
+        Ok(self)
+    }
+
     /// Creates a profile-bound configuration for a clean Google API origin.
     ///
     /// # Errors

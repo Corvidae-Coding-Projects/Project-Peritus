@@ -1,0 +1,13 @@
+schema = 1
+surface = "app-protocol"
+surface_version = "v1"
+case = "minimal-model-query"
+kind = "minimal"
+
+[[files]]
+path = "expectation.toml"
+sha256 = "9bfec43ae16414cb30f096371819e7785ea0460cc576310813b3ac2e7208039c"
+
+[[files]]
+path = "payload.hex"
+sha256 = "1b1f5d0c2b5b7d18f17bdaf934db41b0f5946aa22110ccc41a7e0be80b3ece0e"

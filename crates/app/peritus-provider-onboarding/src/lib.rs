@@ -4,6 +4,7 @@ mod account;
 mod direct;
 mod error;
 mod install;
+mod models;
 mod status;
 
 pub use account::{AccountLogin, AccountProvider, ProviderCatalog};

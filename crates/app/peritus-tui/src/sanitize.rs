@@ -1,5 +1,19 @@
 //! Streaming terminal-output sanitization.
 
+/// Removes active terminal controls from multiline conversational text.
+pub fn sanitize_display_text(text: &str) -> String {
+    TerminalSanitizer::default()
+        .push(text.as_bytes())
+        .into_iter()
+        .filter_map(|token| match token {
+            SafeToken::Character(character) if !character.is_control() => Some(character),
+            SafeToken::Newline => Some('\n'),
+            SafeToken::Tab => Some(' '),
+            _ => None,
+        })
+        .collect()
+}
+
 /// A display-safe terminal editing token.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SafeToken {

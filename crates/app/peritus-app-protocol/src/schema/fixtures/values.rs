@@ -114,7 +114,7 @@ pub(super) fn generated_valid_cases(
     ])
 }
 
-fn encoded<T: CanonicalEncode>(
+pub(super) fn encoded<T: CanonicalEncode>(
     case: &'static str,
     class: FixtureClass,
     value: &T,
@@ -169,7 +169,7 @@ fn heartbeat_control() -> ControlEnvelope {
     )
 }
 
-fn request(payload: AppRequestPayload) -> AppRequestEnvelope {
+pub(super) fn request(payload: AppRequestPayload) -> AppRequestEnvelope {
     AppRequestEnvelope::new(context(), id(10, RequestId::new), id(11, CorrelationId::new), payload)
         .expect("fixture request")
 }
@@ -353,7 +353,7 @@ fn shutdown_event(limits: AppProtocolLimits) -> AppEventEnvelope {
     event(AppEventPayload::ShutdownProgress(progress))
 }
 
-fn context() -> ProtocolContext {
+pub(super) fn context() -> ProtocolContext {
     ProtocolContext::new(
         id(1, ProtocolId::new),
         ProtocolVersion::new(1, 0).expect("fixture version"),
@@ -385,6 +385,9 @@ fn fixture_bytes(
         .clone()
 }
 
-fn id<T, E: core::fmt::Debug>(byte: u8, constructor: impl FnOnce([u8; 16]) -> Result<T, E>) -> T {
+pub(super) fn id<T, E: core::fmt::Debug>(
+    byte: u8,
+    constructor: impl FnOnce([u8; 16]) -> Result<T, E>,
+) -> T {
     constructor([byte; 16]).expect("fixture identity is nonzero")
 }

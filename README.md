@@ -59,23 +59,35 @@ To open a different repository, run:
 peritus open /path/to/repository
 ```
 
-## Do a task
+## Start a conversation
 
-1. Press `n`.
-2. Describe the result you want.
-3. Press Enter to start the task.
-4. Read the result.
-5. Before you keep the changes, inspect the changed files.
+Type a question, discuss an idea, or request a change, then press Enter.
+Ordinary conversation does not automatically start a build. The composer stays available while
+Peritus works; follow-up messages can correct or redirect it. The status distinguishes input
+received by the daemon from input incorporated into a model request.
 
-Use Shift+Enter to add a line to a message.
-Peritus keeps task files and progress between sessions.
-Press Ctrl+Q to close the interface. Closing the interface does not cancel the task.
+Type `/` to discover commands; Tab completes them.
 
-Select a task before you use these keys:
+| Command | Action |
+| --- | --- |
+| `/plan` or `/review` | Discuss a plan or perform an independent review with read-only tools. |
+| `/build <request>` | Start checked writer, reviewer, and fixer delivery. |
+| `/model` | Discover models from the configured provider; Tab switches roles. |
+| `/new` | Start another conversation without deleting prior work. |
+| `/status`, `/diff`, `/details` | Inspect progress, changes, and public tool summaries. |
+| `/stop` | Stop the current work and preserve effects already completed. |
+| `/runs` | Open the run and candidate dashboard. |
+
+Use Shift+Enter for a new line and PageUp/PageDown to scroll.
+Ctrl+C stops active work, or clears an idle draft. Ctrl+Q closes the interface without cancelling
+daemon-owned work. Conversations and task state remain available between sessions.
+
+In `/runs`, select a task before using these dashboard keys:
 
 | Key | Action |
 | --- | --- |
-| Enter or `m` | Open the task conversation. |
+| Enter | Open the conversation; older runs use their existing message composer. |
+| `m` | Send a follow-up through the legacy task composer. |
 | `i` | Inspect the result. |
 | `a` | Accept the result. |
 | `c` | Commit the changed files. |
@@ -100,7 +112,10 @@ peritus workspaces
 Use `peritus providers` to add a provider, change a provider, or repair a login.
 Use `peritus workspaces` to select a repository or repair its managed copy.
 
-Provider changes during a failure require your permission in provider settings. This option is off by default.
+Setup and `/model` query provider-advertised model catalogs. No built-in model list is substituted
+when discovery fails; `/model manual MODEL_ID` is an explicit, unverified fallback.
+Model changes apply at an idle boundary. Interactive selections never silently fail over.
+Legacy coding-run provider failover requires permission in provider settings and is off by default.
 
 ## Update
 
@@ -127,10 +142,10 @@ peritus update --enable-checks
 
 ## Recover from a problem
 
-- If the connection to the background process fails, press `R` to reconnect.
+- If the connection to the background process fails, use `/reconnect`.
 - If a provider login fails, run `peritus providers`.
 - If a workspace needs repair, run `peritus workspaces`.
-- If a task stops, read its remaining work. Send a message to continue it. To retry it, press `r`.
+- If a task stops, read its remaining work. Send a message to continue it, or select it in `/runs` and press `r` to retry.
 
 Do not delete the state directory to repair a task. It contains task history and managed repository copies.
 

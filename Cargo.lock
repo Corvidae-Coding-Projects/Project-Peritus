@@ -2083,6 +2083,7 @@ dependencies = [
  "fs4",
  "futures-util",
  "libc",
+ "peritus-agent",
  "peritus-app-protocol",
  "peritus-approval",
  "peritus-artifact-store",
@@ -2719,6 +2720,8 @@ dependencies = [
  "peritus-model-protocol",
  "peritus-types",
  "reqwest",
+ "serde_json",
+ "sha2 0.11.0",
  "tempfile",
  "tokio",
  "url",
@@ -2748,12 +2751,14 @@ dependencies = [
  "getrandom 0.4.3",
  "peritus-product-state",
  "peritus-provider-anthropic",
+ "peritus-provider-core",
  "peritus-provider-openai",
  "peritus-secrets",
  "peritus-types",
  "serde_json",
  "tempfile",
  "thiserror 2.0.20",
+ "tokio",
 ]
 
 [[package]]

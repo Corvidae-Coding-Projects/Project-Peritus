@@ -86,7 +86,7 @@ impl CandidateRecorder {
     ) -> Arc<dyn Fn(ToolCheckpointBoundary) -> Result<(), String> + Send + Sync> {
         let recorder = self.clone();
         Arc::new(move |boundary| {
-            let revision = conversation.revision();
+            let revision = conversation.incorporated_revision();
             match boundary {
                 ToolCheckpointBoundary::Mutation => {
                     recorder.record(CandidateStage::Changed, revision, CheckpointEvidence::None)

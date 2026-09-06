@@ -28,6 +28,18 @@ impl ProductRunResume {
 }
 
 impl ProductRunner {
+    /// Verification-only builds cannot perform provider or workspace effects.
+    pub async fn converse(
+        _input: super::ProductRunInput,
+        _mode: crate::ConversationMode,
+        _observe: super::RunObserver,
+    ) -> Result<super::ProductRunOutcome, ProductRunnerError> {
+        Err(ProductRunnerError::new(
+            ProductRunnerErrorKind::InvalidPrecondition,
+            "execute product conversation",
+            "conversation effects are unavailable in a verus_only build",
+        ))
+    }
     /// Verification-only builds cannot inspect an effectful workspace.
     pub fn candidate_digest(_workspace_root: &Path) -> Result<Sha256Digest, ProductRunnerError> {
         Err(ProductRunnerError::new(

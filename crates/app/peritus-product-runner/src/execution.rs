@@ -4,6 +4,7 @@ mod acceptance;
 mod cancellation;
 mod candidate_digest;
 mod checkpoint;
+mod conversation;
 mod cycle;
 mod deadline;
 mod fix_progress;
@@ -23,7 +24,8 @@ pub use resume::ProductRunResume;
 pub use turn_result::{AppliedTurn, AppliedWrite};
 pub use types::{
     ConversationView, ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunOutput,
-    ProductRunPhase, ProductRunQuestion, ProductRunUpdate, RoleProviders, RunObserver,
+    ProductRunPhase, ProductRunQuestion, ProductRunUpdate, ProductRunner, RoleProviders,
+    RunObserver,
 };
 
 use std::sync::{Arc, atomic::Ordering};
@@ -41,9 +43,6 @@ use fix_progress::FixProgressObservation;
 use state::{ExecutionContext, RunState};
 use summary::completion_summary;
 use terminal_exit::{ActiveExit, fatal};
-
-/// Stateless product-run entry point using the D0/D1/D2/E0 production composition.
-pub struct ProductRunner;
 
 impl ProductRunner {
     /// Executes a complete writer-reviewer-fixer loop.

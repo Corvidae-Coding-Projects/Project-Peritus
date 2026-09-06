@@ -16,7 +16,8 @@ impl AppModel {
         }
         match key.code {
             KeyCode::Char('n') => self.open_task_composer(),
-            KeyCode::Enter | KeyCode::Char('m') => self.open_product_message_composer(),
+            KeyCode::Enter => return Some(self.open_selected_conversation()),
+            KeyCode::Char('m') => self.open_product_message_composer(),
             KeyCode::Char('i') => self.view = View::Diff,
             KeyCode::Char('v') => return Some(self.run_selected_product_candidate()),
             KeyCode::Char('a') => {

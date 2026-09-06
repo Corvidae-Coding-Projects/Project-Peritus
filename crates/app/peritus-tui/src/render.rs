@@ -1,5 +1,6 @@
 //! Ratatui rendering for every G2 interaction view.
 
+mod chat;
 mod product;
 
 use ratatui::{
@@ -22,12 +23,17 @@ const WARN: Color = Color::Rgb(238, 190, 94);
 const BAD: Color = Color::Rgb(244, 105, 125);
 
 pub fn draw(frame: &mut Frame<'_>, model: &AppModel) {
+    if model.view == View::Conversation {
+        chat::draw(frame, model);
+        return;
+    }
     let regions = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(3), Constraint::Min(4), Constraint::Length(1)])
         .split(frame.area());
     render_tabs(frame, regions[0], model);
     match model.view {
+        View::Conversation => {}
         View::Runs if model.product.is_some() => product::dashboard(frame, regions[1], model),
         View::Diff if model.product.is_some() => product::diff(frame, regions[1], model),
         View::Review if model.product.is_some() => product::review(frame, regions[1], model),

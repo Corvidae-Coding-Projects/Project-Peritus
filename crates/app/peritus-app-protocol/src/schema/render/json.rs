@@ -114,6 +114,14 @@ fn render_shape(output: &mut String, shape: JsonShape) {
             output.push_str(&quoted(&format!("#/$defs/{name}")));
             output.push_str(" }");
         }
+        JsonShape::OneOfRef(names) => {
+            output.push_str("\"oneOf\": [");
+            separated(
+                output,
+                names.iter().map(|name| format!("{{ \"$ref\": \"#/$defs/{name}\" }}")),
+            );
+            output.push(']');
+        }
         JsonShape::StringArray => {
             output.push_str("\"type\": \"array\", \"items\": { \"type\": \"string\" }");
         }

@@ -8,7 +8,7 @@
   "properties": {
     "family": { "enum": [94, 95, 96, 97, 98, 99] },
     "schemaVersion": { "const": 1 },
-    "payloadKind": { "enum": ["client-hello", "compatible", "downgraded", "incompatible", "submit-command", "subscribe", "open-artifact", "cancel-artifact", "answer-prompt", "cancel-prompt", "attach-terminal", "terminal-input", "terminal-resize", "detach-terminal", "cancel-terminal", "daemon-status", "shutdown", "begin-artifact-upload", "upload-artifact-chunk", "complete-artifact-upload", "start-product-run", "control-product-run", "query-product-runs", "continue-product-run", "query-product-run-conversation", "command-result", "subscription-started", "artifact-opened", "prompt-accepted", "terminal-attached", "acknowledged", "daemon-status", "shutdown-accepted", "error", "product-run-accepted", "product-runs", "product-run-conversation", "product-run-settled", "product-run-settlements", "domain-event", "subscription-gap", "backpressure", "artifact-metadata", "artifact-chunk", "artifact-complete", "prompt-requested", "terminal-output", "terminal-exited", "readiness-changed", "diagnostic", "heartbeat", "shutdown-progress", "shutdown-complete", "acknowledge", "cancel-subscription", "cancel-artifact", "cancel-prompt", "cancel-terminal", "subscription", "heartbeat-reply"] },
+    "payloadKind": { "enum": ["client-hello", "compatible", "downgraded", "incompatible", "submit-command", "subscribe", "open-artifact", "cancel-artifact", "answer-prompt", "cancel-prompt", "attach-terminal", "terminal-input", "terminal-resize", "detach-terminal", "cancel-terminal", "daemon-status", "shutdown", "begin-artifact-upload", "upload-artifact-chunk", "complete-artifact-upload", "start-product-run", "control-product-run", "query-product-runs", "continue-product-run", "query-product-run-conversation", "interact", "query-interaction", "query-models", "command-result", "subscription-started", "artifact-opened", "prompt-accepted", "terminal-attached", "acknowledged", "daemon-status", "shutdown-accepted", "error", "product-run-accepted", "product-runs", "product-run-conversation", "product-run-settled", "product-run-settlements", "interaction", "models", "domain-event", "subscription-gap", "backpressure", "artifact-metadata", "artifact-chunk", "artifact-complete", "prompt-requested", "terminal-output", "terminal-exited", "readiness-changed", "diagnostic", "heartbeat", "shutdown-progress", "shutdown-complete", "acknowledge", "cancel-subscription", "cancel-artifact", "cancel-prompt", "cancel-terminal", "subscription", "heartbeat-reply"] },
     "payload": { "type": "string", "contentEncoding": "base64", "description": "Exact canonical semantic payload bytes" }
   },
   "$defs": {
@@ -771,6 +771,112 @@
         "settlement": { "$ref": "#/$defs/RunSettlement", "x-canonical-wire": "ordered-fields", "x-rust-type": "RunSettlement" }
       },
       "required": ["snapshot", "settlement"]
+    },
+    "ProductRunRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ProductRunRequest",
+      "properties": {
+        "runId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "RunId", "x-bounds": ["nonzero"] },
+        "workspaceId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "WorkspaceId", "x-bounds": ["nonzero"] },
+        "providers": { "$ref": "#/$defs/ProductProviderSelection", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProductProviderSelection" },
+        "task": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["product.max-task-bytes"] }
+      },
+      "required": ["runId", "workspaceId", "providers", "task"]
+    },
+    "ProductModelChoice": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ProductModelChoice",
+      "properties": {
+        "id": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["product.max-model-bytes (512)"] },
+        "manual": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
+      },
+      "required": ["id", "manual"]
+    },
+    "ProductRoleModels": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ProductRoleModels",
+      "properties": {
+        "writer": { "$ref": "#/$defs/ProductModelChoice", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProductModelChoice" },
+        "reviewer": { "$ref": "#/$defs/ProductModelChoice", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProductModelChoice" },
+        "fixer": { "$ref": "#/$defs/ProductModelChoice", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProductModelChoice" }
+      },
+      "required": ["writer", "reviewer", "fixer"]
+    },
+    "ProductInteractionRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ProductInteractionRequest",
+      "properties": {
+        "request": { "$ref": "#/$defs/ProductRunRequest", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProductRunRequest" },
+        "mode": { "type": "string", "enum": ["chat", "plan", "review", "build"], "x-canonical-wire": "u16-be", "x-rust-type": "ProductInteractionMode" },
+        "models": { "$ref": "#/$defs/ProductRoleModels", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProductRoleModels" }
+      },
+      "required": ["request", "mode", "models"]
+    },
+    "ProductActivity": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ProductActivity",
+      "properties": {
+        "sequence": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64", "x-bounds": ["nonzero"] },
+        "kind": { "type": "string", "enum": ["user", "assistant", "tool", "status", "error"], "x-canonical-wire": "u16-be", "x-rust-type": "ProductActivityKind" },
+        "text": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["product.max-activity-bytes (8192)"] },
+        "detail": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["product.max-activity-bytes (8192)"] }
+      },
+      "required": ["sequence", "kind", "text", "detail"]
+    },
+    "ProductInteractionSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ProductInteractionSnapshot",
+      "properties": {
+        "settled": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "state": { "oneOf": [{ "$ref": "#/$defs/ProductRunSnapshot" }, { "$ref": "#/$defs/ProductRunSettlementSnapshot" }], "x-canonical-wire": "ordered-fields", "x-rust-type": "ProductRunSnapshot | ProductRunSettlementSnapshot" },
+        "mode": { "type": "string", "enum": ["chat", "plan", "review", "build"], "x-canonical-wire": "u16-be", "x-rust-type": "ProductInteractionMode" },
+        "models": { "$ref": "#/$defs/ProductRoleModels", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProductRoleModels" },
+        "received": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "incorporated": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "activities": { "type": "array", "items": { "$ref": "#/$defs/ProductActivity" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<ProductActivity>", "x-bounds": ["product.max-activities (256)", "strictly-sorted-unique"] }
+      },
+      "required": ["settled", "state", "mode", "models", "received", "incorporated", "activities"]
+    },
+    "ProductModelQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ProductModelQuery",
+      "properties": {
+        "profile": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ProviderProfileId", "x-bounds": ["nonzero"] },
+        "refresh": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
+      },
+      "required": ["profile", "refresh"]
+    },
+    "ProductModelInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ProductModelInfo",
+      "properties": {
+        "id": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["product.max-model-bytes (512)"] },
+        "label": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["product.max-model-bytes (512)"] },
+        "tools": { "type": "boolean", "x-canonical-wire": "option+value", "x-rust-type": "Option<bool>" }
+      },
+      "required": ["id", "label"]
+    },
+    "ProductModelCatalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ProductModelCatalog",
+      "properties": {
+        "profile": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ProviderProfileId", "x-bounds": ["nonzero"] },
+        "configured": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["product.max-model-bytes (512)"] },
+        "fetchedUnixSeconds": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "cached": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" },
+        "error": { "type": "string", "x-canonical-wire": "len+utf8", "x-rust-type": "String", "x-bounds": ["app.max-diagnostic-bytes"] },
+        "models": { "type": "array", "items": { "$ref": "#/$defs/ProductModelInfo" }, "x-canonical-wire": "len+items", "x-rust-type": "Vec<ProductModelInfo>", "x-bounds": ["product.max-models (4096)"] }
+      },
+      "required": ["profile", "configured", "fetchedUnixSeconds", "cached", "error", "models"]
     }
   }
 }

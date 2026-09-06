@@ -3,6 +3,7 @@
 use super::AppTypeDescriptor;
 
 mod daemon;
+mod interaction;
 mod product;
 mod prompt_terminal;
 
@@ -12,4 +13,5 @@ pub const APP_FLOW_TYPES: &[&[AppTypeDescriptor]] = &[
     daemon::DAEMON_TYPES,
     product::PRODUCT_TYPES,
     product::SETTLEMENT_TYPES,
+    interaction::INTERACTION_TYPES,
 ];

@@ -70,7 +70,7 @@ impl ProductUi {
         self.launch.providers().get(self.fixer).map_or("No provider", |provider| provider.label())
     }
 
-    fn providers(&self) -> Option<ProductProviderSelection> {
+    pub(in crate::model) fn providers(&self) -> Option<ProductProviderSelection> {
         Some(ProductProviderSelection::new(
             self.launch.providers().get(self.writer)?.profile_id(),
             self.launch.providers().get(self.reviewer)?.profile_id(),

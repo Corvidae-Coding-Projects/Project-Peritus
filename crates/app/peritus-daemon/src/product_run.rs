@@ -1,9 +1,12 @@
 //! Daemon-owned product-run registry, persistence, and execution admission.
 
+mod catalog;
+mod continuation;
 mod conversation;
 mod deliverable;
 mod error;
 mod execution;
+mod interaction;
 mod lifecycle;
 mod persistence;
 mod progress;
@@ -22,9 +25,8 @@ use std::{
 
 use peritus_app_protocol::{
     AppResponsePayload, ProductConversationMessage, ProductConversationRole,
-    ProductProviderSelection, ProductRunContinuation, ProductRunControl, ProductRunControlAction,
-    ProductRunConversation, ProductRunConversationQuery, ProductRunPhase, ProductRunQuery,
-    ProductRunRequest, ProductRunSnapshot,
+    ProductProviderSelection, ProductRunControl, ProductRunControlAction, ProductRunConversation,
+    ProductRunConversationQuery, ProductRunQuery, ProductRunRequest, ProductRunSnapshot,
 };
 use peritus_process::ProcessStore;
 use peritus_product_runner::{ProductRunResume, RoleProviders};
@@ -60,9 +62,11 @@ struct Inner {
     workspaces: BTreeMap<WorkspaceId, PathBuf>,
     processes: ProcessStore,
     tasks: Mutex<Vec<JoinHandle<()>>>,
+    model_catalogs: Mutex<BTreeMap<ProviderProfileId, peritus_app_protocol::ProductModelCatalog>>,
 }
 
 struct RunRecord {
+    interaction: Option<interaction::InteractionOptions>,
     request: ProductRunRequest,
     snapshot: ProductRunSnapshot,
     cancelled: Arc<AtomicBool>,
@@ -113,6 +117,7 @@ impl ProductRunService {
                 workspaces: workspace_roots,
                 processes,
                 tasks: Mutex::new(Vec::new()),
+                model_catalogs: Mutex::new(BTreeMap::new()),
             }),
         })
     }
@@ -121,7 +126,16 @@ impl ProductRunService {
         &self,
         request: ProductRunRequest,
     ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
-        let providers = self.resolve_providers(request.providers())?;
+        self.start_configured(request, None).await
+    }
+
+    async fn start_configured(
+        &self,
+        request: ProductRunRequest,
+        mut interaction: Option<interaction::InteractionOptions>,
+    ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
+        let providers =
+            self.resolve_selected_providers(request.providers(), interaction.as_ref())?;
         let workspace_root = self
             .inner
             .workspaces
@@ -141,6 +155,13 @@ impl ProductRunService {
         )?;
         let cancelled = Arc::new(AtomicBool::new(false));
         let provider_cancellation = CancellationToken::new();
+        if let Some(options) = interaction.as_mut() {
+            options.append(
+                peritus_app_protocol::ProductActivityKind::User,
+                request.task(),
+                "Input 1 received",
+            )?;
+        }
         {
             let mut records =
                 self.inner.records.write().map_err(|_| ProductRunServiceError::Unavailable)?;
@@ -153,6 +174,7 @@ impl ProductRunService {
             records.insert(
                 request.run_id(),
                 RunRecord {
+                    interaction,
                     request: request.clone(),
                     snapshot: snapshot.clone(),
                     cancelled: Arc::clone(&cancelled),
@@ -168,10 +190,13 @@ impl ProductRunService {
                     candidate_actionable: false,
                 },
             );
-            persist_record(
+            if let Err(error) = persist_record(
                 &self.inner.directory,
                 records.get(&request.run_id()).expect("inserted product run"),
-            )?;
+            ) {
+                records.remove(&request.run_id());
+                return Err(error);
+            }
         }
         self.spawn(
             request,
@@ -250,108 +275,6 @@ impl ProductRunService {
             .ok_or(ProductRunServiceError::NotFound)?
             .conversation
             .snapshot()
-    }
-
-    pub(super) async fn continue_run(
-        &self,
-        continuation: &ProductRunContinuation,
-    ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
-        let mut restart = None;
-        let snapshot = {
-            let mut records =
-                self.inner.records.write().map_err(|_| ProductRunServiceError::Unavailable)?;
-            let workspace_id = records
-                .get(&continuation.run_id())
-                .ok_or(ProductRunServiceError::NotFound)?
-                .request
-                .workspace_id();
-            let was_terminal = records
-                .get(&continuation.run_id())
-                .expect("checked product run exists")
-                .snapshot
-                .phase()
-                .terminal();
-            if was_terminal
-                && workspace_has_active_run(&records, workspace_id, Some(continuation.run_id()))
-            {
-                return Err(ProductRunServiceError::InvalidState);
-            }
-            let record =
-                records.get_mut(&continuation.run_id()).expect("checked product run exists");
-            record
-                .conversation
-                .append(ProductConversationRole::User, continuation.message().to_owned())?;
-            if was_terminal {
-                let providers = self.resolve_providers(record.request.providers())?;
-                let root = self
-                    .inner
-                    .workspaces
-                    .get(&record.request.workspace_id())
-                    .cloned()
-                    .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
-                let cancelled = Arc::new(AtomicBool::new(false));
-                let token = CancellationToken::new();
-                record.cancelled = Arc::clone(&cancelled);
-                record.provider_cancellation = token.clone();
-                // A follow-up changes the governing conversation revision, so the prior
-                // deliverable and its qualification cannot be projected as current while the
-                // replacement run is active. The checkpoint and resume state remain durable for
-                // phase planning and failure settlement.
-                record.snapshot = initial_snapshot(&record.request)?;
-                record.snapshot = replace_snapshot(
-                    &record.snapshot,
-                    ProductRunPhase::Queued,
-                    "Follow-up queued for the writer",
-                    "",
-                )?;
-                record.progress = RunProgress::default();
-                record.settlement = None;
-                record.interruption_cause.clear();
-                restart = Some((
-                    record.request.clone(),
-                    root,
-                    providers,
-                    cancelled,
-                    token,
-                    Arc::clone(&record.conversation),
-                    record.finding_state.clone(),
-                    record.resume.clone(),
-                ));
-            } else {
-                record.snapshot = replace_snapshot(
-                    &record.snapshot,
-                    record.snapshot.phase(),
-                    "Follow-up received; the next model step will incorporate it",
-                    record.snapshot.summary(),
-                )?;
-            }
-            persist_record(&self.inner.directory, record)?;
-            record.snapshot.clone()
-        };
-        if let Some((
-            request,
-            root,
-            providers,
-            cancelled,
-            token,
-            conversation,
-            finding_state,
-            resume,
-        )) = restart
-        {
-            self.spawn(
-                request,
-                root,
-                providers,
-                cancelled,
-                token,
-                conversation,
-                finding_state,
-                resume,
-            )
-            .await;
-        }
-        Ok(snapshot)
     }
 
     fn resolve_providers(

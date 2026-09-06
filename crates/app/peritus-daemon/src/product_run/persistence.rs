@@ -8,12 +8,11 @@ use std::{
 };
 
 use peritus_app_protocol::{
-    ProductConversationMessage, ProductConversationRole, ProductDeliverable,
-    ProductProviderSelection, ProductRunPhase, ProductRunRequest, ProductRunSnapshot,
+    ProductConversationMessage, ProductConversationRole, ProductProviderSelection, ProductRunPhase,
+    ProductRunRequest, ProductRunSnapshot,
 };
 use peritus_product_runner::{ConversationView, ProductRunResume};
 use peritus_provider_core::CancellationToken;
-use peritus_run_settlement::CandidateStage;
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 use serde::Deserialize;
 use serde::Serialize;
@@ -22,6 +21,8 @@ use super::progress::RunProgress;
 use super::{ProductRunServiceError, RunRecord, SharedConversation, filesystem, invalid};
 use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
 
+mod deliverable;
+mod interaction;
 mod progress;
 mod settlement;
 
@@ -29,6 +30,8 @@ use settlement::{PersistedCheckpoint, restore_settlement};
 
 #[derive(Serialize, Deserialize)]
 struct PersistedRecord {
+    #[serde(default)]
+    interaction: Option<interaction::PersistedInteraction>,
     run_id: String,
     workspace_id: String,
     writer: String,
@@ -112,13 +115,34 @@ pub(super) fn persist_record(
     directory: &Path,
     record: &RunRecord,
 ) -> Result<(), ProductRunServiceError> {
+    let result = write_record(directory, record);
+    if result.is_err()
+        && let Some(options) = &record.interaction
+    {
+        options.persistence_failed.store(true, std::sync::atomic::Ordering::Release);
+        record.cancelled.store(true, std::sync::atomic::Ordering::Release);
+        let _ = record.provider_cancellation.cancel();
+    }
+    result
+}
+
+fn write_record(directory: &Path, record: &RunRecord) -> Result<(), ProductRunServiceError> {
+    use std::io::Write as _;
     let persisted = PersistedRecord::from_record(record)?;
     let bytes =
         serde_json::to_vec_pretty(&persisted).map_err(|_| ProductRunServiceError::Unavailable)?;
     let path = directory.join(format!("{}.json", persisted.run_id));
     let temporary = path.with_extension("json.new");
-    fs::write(&temporary, bytes).map_err(|_| ProductRunServiceError::Unavailable)?;
-    fs::rename(temporary, path).map_err(|_| ProductRunServiceError::Unavailable)
+    let mut file = fs::File::create(&temporary).map_err(|_| ProductRunServiceError::Unavailable)?;
+    file.write_all(&bytes)
+        .and_then(|()| file.sync_all())
+        .map_err(|_| ProductRunServiceError::Unavailable)?;
+    fs::rename(temporary, path).map_err(|_| ProductRunServiceError::Unavailable)?;
+    #[cfg(unix)]
+    fs::File::open(directory)
+        .and_then(|file| file.sync_all())
+        .map_err(|_| ProductRunServiceError::Unavailable)?;
+    Ok(())
 }
 
 pub(super) fn load_records(directory: &Path) -> Result<BTreeMap<RunId, RunRecord>, DaemonError> {
@@ -160,12 +184,17 @@ impl PersistedRecord {
             })
             .collect();
         Ok(Self {
+            interaction: record
+                .interaction
+                .as_ref()
+                .map(interaction::PersistedInteraction::capture),
             run_id: hex(snapshot.run_id().as_bytes()),
             workspace_id: hex(snapshot.workspace_id().as_bytes()),
             writer: hex(providers.writer().as_bytes()),
             reviewer: hex(providers.reviewer().as_bytes()),
             fixer: hex(providers.fixer().as_bytes()),
-            phase: snapshot.phase().tag(),
+            // Old readers reject interactive records instead of retrying them as build runs.
+            phase: snapshot.phase().tag() + if record.interaction.is_some() { 100 } else { 0 },
             cycle: snapshot.cycle(),
             task: snapshot.task().to_owned(),
             status: snapshot.status().to_owned(),
@@ -192,6 +221,13 @@ impl PersistedRecord {
     }
 
     fn into_record(self) -> Result<RunRecord, ProductRunServiceError> {
+        let interaction =
+            self.interaction.map(interaction::PersistedInteraction::restore).transpose()?;
+        let phase_tag = if interaction.is_some() {
+            self.phase.checked_sub(100).ok_or(ProductRunServiceError::InvalidMessage)?
+        } else {
+            self.phase
+        };
         let run_id =
             RunId::new(unhex(&self.run_id)?).map_err(|_| ProductRunServiceError::InvalidMessage)?;
         let workspace_id = WorkspaceId::new(unhex(&self.workspace_id)?)
@@ -204,7 +240,7 @@ impl PersistedRecord {
         let request = ProductRunRequest::new(run_id, workspace_id, providers, self.task.clone())
             .map_err(|_| ProductRunServiceError::InvalidMessage)?;
         let loaded_phase =
-            ProductRunPhase::from_tag(self.phase).ok_or(ProductRunServiceError::InvalidMessage)?;
+            ProductRunPhase::from_tag(phase_tag).ok_or(ProductRunServiceError::InvalidMessage)?;
         let (phase, status) = if loaded_phase.terminal() {
             (loaded_phase, self.status)
         } else {
@@ -239,6 +275,9 @@ impl PersistedRecord {
             }
         }
         let conversation = SharedConversation::new(run_id, messages)?;
+        if interaction.as_ref().is_some_and(|state| state.incorporated > conversation.revision()) {
+            return Err(ProductRunServiceError::InvalidMessage);
+        }
         let checkpoint = self.checkpoint.map(PersistedCheckpoint::into_checkpoint).transpose()?;
         let settlement = restore_settlement(checkpoint, self.settlement_cause)?;
         let resume = self
@@ -272,6 +311,7 @@ impl PersistedRecord {
             snapshot = snapshot.with_deliverable(deliverable.into_deliverable()?);
         }
         Ok(RunRecord {
+            interaction,
             request,
             snapshot,
             cancelled: Arc::new(AtomicBool::new(false)),
@@ -286,54 +326,6 @@ impl PersistedRecord {
             interruption_cause: self.interruption_cause,
             candidate_actionable: self.candidate_actionable.unwrap_or(true),
         })
-    }
-}
-
-impl PersistedDeliverable {
-    fn from_deliverable(value: &ProductDeliverable) -> Self {
-        Self {
-            workspace_path: value.workspace_path().to_owned(),
-            changed_paths: value.changed_paths().to_vec(),
-            successful_commands: value.successful_commands().to_vec(),
-            run_instructions: value.run_instructions().to_owned(),
-            qualification: Some(value.qualification().tag()),
-            accepted: value.accepted(),
-            commit_revision: value.commit_revision().to_owned(),
-            export_path: value.export_path().to_owned(),
-            discarded: value.discarded(),
-        }
-    }
-
-    fn into_deliverable(self) -> Result<ProductDeliverable, ProductRunServiceError> {
-        let qualification = self
-            .qualification
-            .map_or(Some(CandidateStage::Qualified), CandidateStage::from_tag)
-            .ok_or(ProductRunServiceError::InvalidMessage)?;
-        let mut value = ProductDeliverable::candidate(
-            self.workspace_path,
-            self.changed_paths,
-            self.successful_commands,
-            self.run_instructions,
-            qualification,
-        )
-        .map_err(|_| ProductRunServiceError::InvalidMessage)?;
-        if self.accepted {
-            value = value.mark_accepted();
-        }
-        if !self.commit_revision.is_empty() {
-            value = value
-                .mark_committed(self.commit_revision)
-                .map_err(|_| ProductRunServiceError::InvalidMessage)?;
-        }
-        if !self.export_path.is_empty() {
-            value = value
-                .mark_exported(self.export_path)
-                .map_err(|_| ProductRunServiceError::InvalidMessage)?;
-        }
-        if self.discarded {
-            value = value.mark_discarded();
-        }
-        Ok(value)
     }
 }
 

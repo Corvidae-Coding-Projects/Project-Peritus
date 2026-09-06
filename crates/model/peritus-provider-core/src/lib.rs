@@ -8,6 +8,7 @@
 mod adapter;
 mod backoff;
 mod cancellation;
+pub mod catalog;
 mod continuation;
 mod credential;
 mod diagnostic;

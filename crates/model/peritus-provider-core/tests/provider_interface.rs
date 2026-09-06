@@ -149,6 +149,26 @@ fn adapter_boundary_rejects_profile_revision_drift() {
     assert!(!format!("{error:?}").contains("request-secret"));
 }
 
+#[test]
+fn model_selection_is_immutable_deterministic_and_does_not_transfer_probe_evidence() {
+    let original = profile(1);
+    let selected = peritus_provider_core::catalog::selected_profile(
+        &original,
+        ModelName::new("different-advertised-model".to_owned()).expect("model"),
+    )
+    .expect("selection");
+    assert_eq!(original.model().as_str(), "test-model");
+    assert_ne!(selected.profile_id(), original.profile_id());
+    assert_eq!(selected.provenance(), CapabilityProvenance::Profiled);
+    assert_eq!(selected.capabilities(), original.capabilities());
+    assert_eq!(
+        selected,
+        peritus_provider_core::catalog::selected_profile(&original, selected.model().clone())
+            .expect("repeat selection")
+    );
+    assert!(validate_request_profile(&selected, &request(&original)).is_err());
+}
+
 struct DefaultCancellationProvider(ProviderProfile);
 
 impl ModelProvider for DefaultCancellationProvider {

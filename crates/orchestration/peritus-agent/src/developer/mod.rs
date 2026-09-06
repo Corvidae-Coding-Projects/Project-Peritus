@@ -6,6 +6,7 @@ mod context_port;
 mod entry;
 mod error;
 mod execution;
+mod interaction;
 mod model_request;
 mod observation;
 mod retry;
@@ -19,6 +20,7 @@ pub use context_port::{
 };
 pub use entry::DeveloperLoop;
 pub use error::DeveloperLoopError;
+pub use interaction::{DeveloperActivity, DeveloperInput, DeveloperInteraction};
 pub use types::{
     DeveloperContextCompaction, DeveloperLoopLimits, DeveloperLoopOutcome, DeveloperLoopRequest,
     DeveloperRetryReason, DeveloperRetryRecord, DeveloperToolExecutor, DeveloperToolObservation,

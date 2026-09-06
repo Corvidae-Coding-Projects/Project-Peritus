@@ -19,13 +19,11 @@ impl AppModel {
         {
             return Vec::new();
         }
-        let mut effects: Vec<Effect> = self
-            .request(
-                AppRequestPayload::QueryProductRuns(ProductRunQuery::recent()),
-                PendingRequest::ProductQuery,
-            )
-            .into_iter()
-            .collect();
+        let mut effects: Vec<Effect> = self.poll_chat();
+        effects.extend(self.request(
+            AppRequestPayload::QueryProductRuns(ProductRunQuery::recent()),
+            PendingRequest::ProductQuery,
+        ));
         if let Some(run_id) =
             self.product.as_ref().and_then(ProductUi::selected_run).map(ProductRunSnapshot::run_id)
             && let Some(effect) = self.request(
@@ -58,8 +56,11 @@ impl AppModel {
 
     pub(in crate::model) fn accept_product_runs(&mut self, snapshots: Vec<ProductRunSnapshot>) {
         if let Some(product) = &mut self.product {
+            let selected = product.selected_run().map(ProductRunSnapshot::run_id);
             product.runs = snapshots;
-            product.selected = product.selected.min(product.runs.len().saturating_sub(1));
+            product.selected = selected
+                .and_then(|id| product.runs.iter().position(|run| run.run_id() == id))
+                .unwrap_or_else(|| product.selected.min(product.runs.len().saturating_sub(1)));
             product
                 .settlements
                 .retain(|run_id, _| product.runs.iter().any(|run| run.run_id() == *run_id));

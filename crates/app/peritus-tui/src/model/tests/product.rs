@@ -27,6 +27,7 @@ fn unqualified_candidate_names_missing_evidence_and_requires_a_second_action() {
     )
     .expect("product context");
     let mut model = AppModel::with_product([83; 32], Some(product));
+    model.view = crate::model::View::Runs;
     let _ = model.update(Action::Connected {
         context: context(),
         limits: AppProtocolLimits::PRODUCTION,

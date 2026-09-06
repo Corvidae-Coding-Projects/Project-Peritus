@@ -28,6 +28,33 @@ pub trait ModelProvider: Send + Sync {
     /// Returns the exact profile implemented by this provider instance.
     fn profile(&self) -> &ProviderProfile;
 
+    /// Queries the configured endpoint or credential-owning runtime, without inference.
+    ///
+    /// # Errors
+    /// Returns an explicit unsupported, authentication, transport, or bounded-data failure.
+    fn discover_models<'a>(
+        &'a self,
+        _cancellation: &'a CancellationToken,
+    ) -> BoxFuture<'a, Result<Vec<crate::catalog::DiscoveredModel>, ProviderCoreError>> {
+        Box::pin(async {
+            Err(crate::catalog::unavailable("this provider does not expose model discovery"))
+        })
+    }
+
+    /// Creates a separate immutable adapter for an explicitly selected model.
+    ///
+    /// Discovery does not prove capabilities. The configured transport contract is revalidated;
+    /// a provider rejection must remain visible rather than triggering a substitute model.
+    ///
+    /// # Errors
+    /// Returns an unsupported or invalid-profile failure.
+    fn select_model(
+        &self,
+        _model: peritus_model_protocol::ModelName,
+    ) -> Result<std::sync::Arc<dyn ModelProvider>, ProviderCoreError> {
+        Err(crate::catalog::unavailable("this provider does not support model selection"))
+    }
+
     /// Declares whether this provider uses a first-party API, compatible API, or account runtime.
     fn route(&self) -> ProviderRoute {
         ProviderRoute::from_dialect(self.profile().dialect())

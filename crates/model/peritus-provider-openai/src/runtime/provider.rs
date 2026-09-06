@@ -213,6 +213,34 @@ impl CodexRuntimeProvider {
 }
 
 impl ModelProvider for CodexRuntimeProvider {
+    fn discover_models<'a>(
+        &'a self,
+        cancellation: &'a CancellationToken,
+    ) -> BoxFuture<
+        'a,
+        Result<Vec<peritus_provider_core::catalog::DiscoveredModel>, ProviderCoreError>,
+    > {
+        Box::pin(peritus_provider_core::catalog::discover_account_models(
+            self.config.executable().as_path(),
+            peritus_provider_core::catalog::AccountCatalog::Codex,
+            cancellation,
+        ))
+    }
+
+    fn select_model(
+        &self,
+        model: peritus_model_protocol::ModelName,
+    ) -> Result<std::sync::Arc<dyn ModelProvider>, ProviderCoreError> {
+        let profile =
+            peritus_provider_core::catalog::selected_profile(self.config.profile(), model)?;
+        let config = CodexRuntimeConfig::new(
+            self.config.executable().clone(),
+            profile,
+            self.config.process_limits(),
+        )?;
+        Ok(std::sync::Arc::new(Self::new(config)))
+    }
+
     fn profile(&self) -> &peritus_model_protocol::ProviderProfile {
         self.profile()
     }

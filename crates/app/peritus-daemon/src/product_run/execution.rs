@@ -27,7 +27,7 @@ impl ProductRunService {
         clippy::too_many_arguments,
         reason = "daemon execution inputs stay explicit at the task ownership boundary"
     )]
-    pub(super) async fn spawn(
+    pub(super) fn spawn(
         &self,
         request: ProductRunRequest,
         workspace_root: PathBuf,
@@ -37,30 +37,39 @@ impl ProductRunService {
         conversation: Arc<SharedConversation>,
         finding_state: String,
         resume: Option<ProductRunResume>,
-    ) {
-        let service = self.clone();
-        let run_id = request.run_id();
-        let trace_path = self.inner.directory.join(format!("{}.trace", run_hex(run_id)));
-        let observer: RunObserver = Arc::new(move |update| service.observe(run_id, update));
-        let service = self.clone();
-        let task = tokio::spawn(async move {
-            let command_runtime = match CommandRuntime::open(
-                service.inner.directory.join("commands").join(run_hex(run_id)),
-                &workspace_root,
-                run_id,
-                service.inner.processes.clone(),
-            )
-            .and_then(|runtime| runtime.with_local_context(service.inner.local_context.clone()))
-            {
-                Ok(runtime) => runtime,
-                Err(error) => {
-                    service.finish(run_id, Err(error));
-                    return;
-                }
-            };
-            let conversation: Arc<dyn ConversationView> = conversation;
-            let result = ProductRunner::run(
-                ProductRunInput {
+    ) -> peritus_provider_core::BoxFuture<'_, ()> {
+        Box::pin(async move {
+            let service = self.clone();
+            let run_id = request.run_id();
+            let trace_path = self.inner.directory.join(format!("{}.trace", run_hex(run_id)));
+            let observer: RunObserver = Arc::new(move |update| service.observe(run_id, update));
+            let service = self.clone();
+            let task = tokio::spawn(async move {
+                let command_runtime = match CommandRuntime::open(
+                    service.inner.directory.join("commands").join(run_hex(run_id)),
+                    &workspace_root,
+                    run_id,
+                    service.inner.processes.clone(),
+                )
+                .and_then(|runtime| runtime.with_local_context(service.inner.local_context.clone()))
+                {
+                    Ok(runtime) => runtime,
+                    Err(error) => {
+                        service.finish(run_id, Err(error));
+                        return;
+                    }
+                };
+                let interaction_mode = service.inner.records.read().ok().and_then(|records| {
+                    records.get(&run_id).and_then(|record| {
+                        record.interaction.as_ref().map(|interaction| interaction.mode)
+                    })
+                });
+                let conversation: Arc<dyn ConversationView> = if interaction_mode.is_some() {
+                    service.live_conversation(run_id, conversation)
+                } else {
+                    conversation
+                };
+                let input = ProductRunInput {
                     run_id,
                     workspace_id: request.workspace_id(),
                     workspace_root,
@@ -75,15 +84,32 @@ impl ProductRunService {
                     cancelled,
                     provider_cancellation,
                     resume,
-                },
-                observer,
-            )
-            .await;
-            service.finish(run_id, result);
-        });
-        let mut tasks = self.inner.tasks.lock().await;
-        tasks.retain(|existing| !existing.is_finished());
-        tasks.push(task);
+                };
+                let mode = match interaction_mode {
+                    Some(peritus_app_protocol::ProductInteractionMode::Chat) => {
+                        Some(peritus_product_runner::ConversationMode::Chat)
+                    }
+                    Some(peritus_app_protocol::ProductInteractionMode::Plan) => {
+                        Some(peritus_product_runner::ConversationMode::Plan)
+                    }
+                    Some(peritus_app_protocol::ProductInteractionMode::Review) => {
+                        Some(peritus_product_runner::ConversationMode::Review)
+                    }
+                    Some(peritus_app_protocol::ProductInteractionMode::Build) | None => None,
+                };
+                let result = match mode {
+                    Some(mode) => ProductRunner::converse(input, mode, observer).await,
+                    None => ProductRunner::run(input, observer).await,
+                };
+                service.finish(run_id, result);
+                if service.pending_interactive_input(run_id) {
+                    let _ = service.retry(run_id).await;
+                }
+            });
+            let mut tasks = self.inner.tasks.lock().await;
+            tasks.retain(|existing| !existing.is_finished());
+            tasks.push(task);
+        })
     }
 
     fn observe(&self, run_id: RunId, update: peritus_product_runner::ProductRunUpdate) {
@@ -195,7 +221,16 @@ impl ProductRunService {
                 let _ = record
                     .conversation
                     .append(ProductConversationRole::Agent, question.message().to_owned());
-                let status = if outcome.candidate().is_some() {
+                let chatting = record.interaction.as_ref().is_some_and(|interaction| {
+                    interaction.mode != peritus_app_protocol::ProductInteractionMode::Build
+                });
+                let status = if chatting {
+                    if outcome.candidate().is_some() {
+                        "Idle — unqualified changes retained"
+                    } else {
+                        "Idle — ready for your next message"
+                    }
+                } else if outcome.candidate().is_some() {
                     "Waiting for you — candidate preserved"
                 } else {
                     "Waiting for you"
@@ -235,6 +270,7 @@ impl ProductRunService {
                 );
             }
         }
+        super::interaction::terminal_activity(record);
         let _ = persist_record(&self.inner.directory, record);
     }
 

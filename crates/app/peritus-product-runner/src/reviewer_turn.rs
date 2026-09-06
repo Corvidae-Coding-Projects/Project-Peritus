@@ -72,7 +72,7 @@ pub async fn complete(
         let (prompt, attachments) = media.into_parts(prompt);
         let mut tools = WorkspaceDeveloperTools::read_only(input.workspace_root.clone())
             .with_task_contract(evidence.conversation);
-        let result = crate::local_context::run_invocation(
+        let result = crate::local_context::run_live_invocation(
             providers.current(),
             DeveloperLoopRequest {
                 request_prefix: format!(
@@ -89,6 +89,7 @@ pub async fn complete(
             &mut tools,
             &input.trace_path,
             memory.as_ref(),
+            input.conversation.interaction(),
         )
         .await;
         let result = match result {

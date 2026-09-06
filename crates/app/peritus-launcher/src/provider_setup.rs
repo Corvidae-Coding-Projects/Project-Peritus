@@ -10,6 +10,7 @@ use crate::{LauncherError, PreparedProduct, ProductBootstrap};
 
 mod direct;
 mod install;
+mod models;
 mod selection;
 
 use crate::terminal::Terminal;
@@ -287,6 +288,11 @@ fn persist(
     prepared: &PreparedProduct,
     selection: ProviderSelection,
 ) -> Result<PreparedProduct, LauncherError> {
+    let selection = models::account_selections(
+        &mut Terminal::stdio(),
+        selection,
+        prepared.state().providers(),
+    )?;
     let layout = prepared.layout().clone();
     ProductBootstrap::new(layout).configure_providers(selection)
 }

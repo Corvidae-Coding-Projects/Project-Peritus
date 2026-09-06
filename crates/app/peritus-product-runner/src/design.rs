@@ -9,13 +9,12 @@ use std::{
     sync::Arc,
 };
 
-use peritus_agent::{DeveloperLoop, DeveloperLoopLimits, DeveloperLoopRequest};
+use peritus_agent::{DeveloperLoopLimits, DeveloperLoopRequest};
 use peritus_provider_core::ModelProvider;
 
 use crate::budget::RunAccounting;
 use crate::developer_tools::{WorkspaceDeveloperTools, read_only_definitions};
 use crate::execution::{ProductRunInput, check_cancelled};
-use crate::trace::FileDeveloperTrace;
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
 const MINIMUM_DESIGN_BYTES: usize = 512;
@@ -96,8 +95,7 @@ pub async fn create(
             media.into_parts(user_prompt(&transcript, correction.as_deref()));
         let mut tools = WorkspaceDeveloperTools::read_only(input.workspace_root.clone())
             .with_task_contract(&transcript);
-        let mut trace = FileDeveloperTrace::new(input.trace_path.clone());
-        let result = DeveloperLoop::run(
+        let result = crate::local_context::run_live_invocation(
             providers.current(),
             DeveloperLoopRequest {
                 request_prefix: format!(
@@ -113,7 +111,9 @@ pub async fn create(
                 cancellation: input.provider_cancellation.clone(),
             },
             &mut tools,
-            &mut trace,
+            &input.trace_path,
+            None,
+            input.conversation.interaction(),
         )
         .await;
         let result = match result {

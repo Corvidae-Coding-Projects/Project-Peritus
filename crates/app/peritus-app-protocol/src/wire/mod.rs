@@ -7,6 +7,7 @@ mod daemon;
 mod error;
 mod event;
 mod hello;
+mod interaction;
 mod primitive;
 mod product;
 mod prompt;
