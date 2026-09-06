@@ -12,6 +12,16 @@ pub enum OnboardingError {
         /// User-facing provider label.
         provider: &'static str,
     },
+    /// The user-approved official installer could not finish successfully.
+    #[error("could not install {provider} during {stage}: {detail}")]
+    Installation {
+        /// User-facing provider label.
+        provider: &'static str,
+        /// Non-secret failed operation.
+        stage: &'static str,
+        /// Operating-system or process-exit detail.
+        detail: String,
+    },
     /// A bounded status process could not be started.
     #[error("could not inspect {provider} login status: {detail}")]
     StatusProcess {

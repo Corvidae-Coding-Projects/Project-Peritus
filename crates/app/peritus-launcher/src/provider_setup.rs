@@ -9,6 +9,7 @@ use peritus_provider_onboarding::{
 use crate::{LauncherError, PreparedProduct, ProductBootstrap};
 
 mod direct;
+mod install;
 mod selection;
 
 use crate::terminal::Terminal;
@@ -116,8 +117,12 @@ fn repair_if_needed(
                 true,
             )?,
             ProviderStatus::Unavailable => {
-                installation_guidance(&mut terminal, item.kind())?;
-                false
+                if install::offer(&mut terminal, item.kind())? {
+                    true
+                } else {
+                    installation_guidance(&mut terminal, item.kind())?;
+                    false
+                }
             }
             ProviderStatus::Ready => true,
         };
@@ -216,8 +221,12 @@ fn activate_requested(
                 login(terminal, kind)?
             }
             ProviderStatus::Unavailable => {
-                installation_guidance(terminal, kind)?;
-                false
+                if install::offer(terminal, kind)? {
+                    login(terminal, kind)?
+                } else {
+                    installation_guidance(terminal, kind)?;
+                    false
+                }
             }
             ProviderStatus::NeedsAttention => {
                 terminal.line(&format!(

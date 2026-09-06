@@ -3,6 +3,8 @@ set -eu
 
 repository=${PERITUS_REPOSITORY:-Corvidae-Coding-Projects/Project-Peritus}
 release_base=${PERITUS_RELEASE_BASE_URL:-https://github.com/$repository/releases/download}
+# The release publisher replaces this token. A release bootstrap stays bound to its own tag.
+release_tag='@PERITUS_RELEASE_TAG@'
 
 fail() {
     printf '%s\n' "Peritus install failed: $*" >&2
@@ -15,6 +17,8 @@ need() {
 
 need curl
 need tar
+need sed
+need tr
 
 case "$(uname -s)" in
     Linux) platform=linux ;;
@@ -28,9 +32,11 @@ case "$(uname -m)" in
     *) fail "unsupported architecture: $(uname -m)" ;;
 esac
 
-version=${PERITUS_VERSION:-}
+version=${PERITUS_VERSION:-$release_tag}
+case "$version" in @*) version= ;; esac
 if [ -z "$version" ]; then
     latest=$(curl --fail --silent --show-error --location --output /dev/null \
+        --proto '=https' --proto-redir '=https' \
         --write-out '%{url_effective}' "https://github.com/$repository/releases/latest") ||
         fail "could not resolve the latest GitHub release"
     version=${latest##*/}
@@ -56,16 +62,21 @@ checksum_url="$archive_url.sha256"
 temporary=$(mktemp -d "${TMPDIR:-/tmp}/peritus-install.XXXXXXXX") ||
     fail "could not create a temporary directory"
 cleanup() { rm -rf -- "$temporary"; }
-trap cleanup EXIT HUP INT TERM
+trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 printf '%s\n' "Downloading Peritus $version for $platform/$architecture..."
 curl --fail --silent --show-error --location --retry 3 \
+    --proto '=https,file' --proto-redir '=https' --max-filesize 1073741824 \
     --output "$temporary/$asset" "$archive_url" || fail "could not download $archive_url"
 curl --fail --silent --show-error --location --retry 3 \
+    --proto '=https,file' --proto-redir '=https' --max-filesize 1024 \
     --output "$temporary/$asset.sha256" "$checksum_url" ||
     fail "could not download $checksum_url"
 
-expected=$(sed -n '1p' "$temporary/$asset.sha256" | tr -d ' \t\r\n')
+expected=$(tr -d ' \t\r\n' < "$temporary/$asset.sha256" | tr 'A-F' 'a-f')
 case "$expected" in *[!0-9A-Fa-f]*) fail "release checksum is malformed" ;; esac
 [ "${#expected}" -eq 64 ] || fail "release checksum is malformed"
 if command -v sha256sum >/dev/null 2>&1; then
@@ -77,6 +88,18 @@ else
 fi
 [ "$actual" = "$expected" ] || fail "release archive checksum did not match"
 
+tar -tzf "$temporary/$asset" > "$temporary/entries" || fail "could not inspect the release archive"
+while IFS= read -r entry; do
+    case "$entry" in
+        "peritus-$platform-$architecture"|"peritus-$platform-$architecture/"*) ;;
+        *) fail "release archive contains a path outside the package" ;;
+    esac
+    case "/${entry%/}/" in *'/../'*|*'/./'*|*'//'*) fail "release archive contains an unsafe path" ;; esac
+done < "$temporary/entries"
+tar -tvzf "$temporary/$asset" > "$temporary/types" || fail "could not inspect archive entry types"
+while IFS= read -r entry; do
+    case "$entry" in -*|d*) ;; *) fail "release archive contains a link or special file" ;; esac
+done < "$temporary/types"
 tar -xzf "$temporary/$asset" -C "$temporary" || fail "could not extract the release archive"
 bundle="$temporary/peritus-$platform-$architecture"
 [ -d "$bundle" ] || fail "release archive did not contain $bundle"
@@ -91,4 +114,6 @@ else
     sh "$bundle/Install-Peritus.sh" "$bundle" || fail "native installation failed"
 fi
 
-printf '%s\n' "Peritus $version is installed. Start it with: peritus"
+observed=$("$installed" --version) || fail "the installed command does not run"
+[ "$observed" = "peritus $release_number" ] || fail "the installed version does not match $version"
+printf '%s\n' "Peritus $version is installed. Open a new terminal and run: peritus"

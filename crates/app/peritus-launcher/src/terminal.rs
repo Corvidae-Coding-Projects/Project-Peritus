@@ -9,6 +9,13 @@ pub struct Terminal<'a> {
     output: Box<dyn Write + 'a>,
 }
 
+#[cfg(test)]
+impl<'a> Terminal<'a> {
+    pub(crate) fn for_test(input: impl BufRead + 'a, output: impl Write + 'a) -> Self {
+        Self { input: Box::new(input), output: Box::new(output) }
+    }
+}
+
 impl Terminal<'static> {
     pub fn stdio() -> Self {
         Self { input: Box::new(io::BufReader::new(io::stdin())), output: Box::new(io::stdout()) }

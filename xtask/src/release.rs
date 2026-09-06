@@ -1,5 +1,11 @@
 //! Tag-bound GitHub release publication behind direct reviewed Cargo commands.
 
+mod publication;
+pub(crate) use publication::publish;
+
+#[cfg(all(test, unix))]
+mod installer_tests;
+
 use std::{
     env, fs,
     fs::File,
@@ -15,6 +21,16 @@ use sha2::{Digest as _, Sha256};
 use crate::XtaskError;
 
 pub(crate) fn bootstrap_smoke(root: &Path) -> Result<PathBuf, XtaskError> {
+    if cfg!(windows) {
+        run(
+            Command::new("powershell")
+                .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"])
+                .arg(root.join("packaging/tests/windows-installer.Tests.ps1"))
+                .arg("-RepositoryRoot")
+                .arg(root),
+            "test Windows installer parsing, archive checks, and dependency routing",
+        )?;
+    }
     let package = crate::product_package::smoke(root)?;
     let fixture = TemporaryDirectory::new("peritus-public-installer")?;
     let version = format!("v{}", workspace_version(root)?);
@@ -162,14 +178,6 @@ fn unix_seconds() -> Result<u64, XtaskError> {
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_secs())
         .map_err(|_| XtaskError::metadata("system clock is before the Unix epoch"))
-}
-
-pub(crate) fn publish() -> Result<(), XtaskError> {
-    let tag = environment("GITHUB_REF_NAME")?;
-    run(
-        Command::new("gh").args(["release", "edit", &tag, "--draft=false", "--latest"]),
-        "publish complete GitHub release",
-    )
 }
 
 #[cfg(windows)]

@@ -108,6 +108,12 @@ fn render_provider(
         _ => return render_direct_provider(provider, direct),
     };
     let mut text = format!("\n[[providers]]\nkind = {}\n", toml_string(kind));
+    // A native installer can finish after this process captured PATH. Pin its exact discovered
+    // executable for the daemon instead of mutating the process-wide environment.
+    if let Ok(account) = peritus_provider_onboarding::AccountProvider::discover(provider) {
+        writeln!(text, "executable = {}", toml_path(account.executable())?)
+            .expect("writing to String cannot fail");
+    }
     text.push_str(&profile_block(
         profile_id,
         model,

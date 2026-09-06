@@ -55,7 +55,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-15, windows-2025]
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, macos-15-intel, windows-2025, windows-11-arm]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
@@ -77,17 +77,29 @@ jobs:
       matrix:
         include:
           - { os: ubuntu-24.04, package: peritus-cli, binary: peritus, artifact: peritus }
+          - { os: ubuntu-24.04-arm, package: peritus-cli, binary: peritus, artifact: peritus }
           - { os: ubuntu-24.04, package: peritus-daemon, binary: peritusd, artifact: peritusd }
+          - { os: ubuntu-24.04-arm, package: peritus-daemon, binary: peritusd, artifact: peritusd }
           - { os: ubuntu-24.04, package: peritus-tui, binary: peritus-tui, artifact: peritus-tui }
+          - { os: ubuntu-24.04-arm, package: peritus-tui, binary: peritus-tui, artifact: peritus-tui }
           - { os: ubuntu-24.04, package: peritus-sandbox-linux, binary: peritus-linux-sandbox-helper, artifact: peritus-linux-sandbox-helper }
+          - { os: ubuntu-24.04-arm, package: peritus-sandbox-linux, binary: peritus-linux-sandbox-helper, artifact: peritus-linux-sandbox-helper }
           - { os: macos-15, package: peritus-cli, binary: peritus, artifact: peritus }
+          - { os: macos-15-intel, package: peritus-cli, binary: peritus, artifact: peritus }
           - { os: macos-15, package: peritus-daemon, binary: peritusd, artifact: peritusd }
+          - { os: macos-15-intel, package: peritus-daemon, binary: peritusd, artifact: peritusd }
           - { os: macos-15, package: peritus-tui, binary: peritus-tui, artifact: peritus-tui }
+          - { os: macos-15-intel, package: peritus-tui, binary: peritus-tui, artifact: peritus-tui }
           - { os: macos-15, package: peritus-sandbox-macos, binary: peritus-macos-sandbox-helper, artifact: peritus-macos-sandbox-helper }
+          - { os: macos-15-intel, package: peritus-sandbox-macos, binary: peritus-macos-sandbox-helper, artifact: peritus-macos-sandbox-helper }
           - { os: windows-2025, package: peritus-cli, binary: peritus, artifact: peritus.exe }
+          - { os: windows-11-arm, package: peritus-cli, binary: peritus, artifact: peritus.exe }
           - { os: windows-2025, package: peritus-daemon, binary: peritusd, artifact: peritusd.exe }
+          - { os: windows-11-arm, package: peritus-daemon, binary: peritusd, artifact: peritusd.exe }
           - { os: windows-2025, package: peritus-tui, binary: peritus-tui, artifact: peritus-tui.exe }
+          - { os: windows-11-arm, package: peritus-tui, binary: peritus-tui, artifact: peritus-tui.exe }
           - { os: windows-2025, package: peritus-sandbox-windows, binary: peritus-windows-sandbox-helper, artifact: peritus-windows-sandbox-helper.exe }
+          - { os: windows-11-arm, package: peritus-sandbox-windows, binary: peritus-windows-sandbox-helper, artifact: peritus-windows-sandbox-helper.exe }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
@@ -117,7 +129,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-15, windows-2025]
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, macos-15-intel, windows-2025, windows-11-arm]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
@@ -155,7 +167,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-15, windows-2025]
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, macos-15-intel, windows-2025, windows-11-arm]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:

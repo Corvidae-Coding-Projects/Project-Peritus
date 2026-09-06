@@ -28,6 +28,11 @@ may automatically try another selected provider after its current provider is un
 choice defaults off, is stored with provider settings, and returns to off if fewer than two routes
 remain. Offline mode remains available for inspection.
 
+If a selected account tool is missing, setup offers the vendor's native installer. Confirmation
+defaults to no. An approved download uses HTTPS with time and size limits; login starts only after
+installation succeeds. The daemon receives the tool's discovered canonical path, including native
+installation directories that the current terminal's PATH does not yet contain.
+
 Completed setup is resumable. Repeat launch skips healthy decisions, repairs only the provider or
 workspace that needs attention, regenerates immutable daemon configuration when settings change,
 and starts or reuses the packaged local daemon before entering the UI.

@@ -19,6 +19,7 @@ peritus-provider-openai = { version = "=0.0.0", path = "../../model/peritus-prov
 peritus-secrets = { version = "=0.0.0", path = "../../runtime/peritus-secrets" }
 peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
 serde_json.workspace = true
+tempfile.workspace = true
 thiserror.workspace = true
 
 [package.metadata.peritus]

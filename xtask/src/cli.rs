@@ -227,7 +227,7 @@ pub(crate) fn execute(
         }
         Command::ReleasePackageStage => crate::release::package_stage(root)?,
         Command::ReleasePackageAssemble => crate::release::package_assemble(root)?,
-        Command::ReleasePublish => crate::release::publish()?,
+        Command::ReleasePublish => crate::release::publish(root)?,
         Command::Help => {}
     }
     Ok(())

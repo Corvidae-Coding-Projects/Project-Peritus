@@ -30,21 +30,23 @@ pub struct AccountProvider {
 }
 
 impl AccountProvider {
-    /// Discovers and pins the official executable for one account route.
+    /// Pins an account executable from PATH or its standard native installation directory.
     ///
     /// # Errors
     ///
     /// Returns an unavailable error when the executable cannot be found and pinned.
     pub fn discover(kind: ProviderKind) -> Result<Self, OnboardingError> {
-        let executable = match kind {
-            ProviderKind::CodexAccount => CodexExecutable::discover()
-                .map(|value| value.as_path().to_owned())
-                .map_err(|_| unavailable(kind))?,
-            ProviderKind::ClaudeAccount => ClaudeExecutable::discover()
-                .map(|value| value.as_path().to_owned())
-                .map_err(|_| unavailable(kind))?,
+        let discovered = match kind {
+            ProviderKind::CodexAccount => {
+                CodexExecutable::discover().map(|value| value.as_path().to_owned())
+            }
+            ProviderKind::ClaudeAccount => {
+                ClaudeExecutable::discover().map(|value| value.as_path().to_owned())
+            }
             _ => return Err(OnboardingError::UnsupportedProvider),
         };
+        let executable =
+            discovered.ok().or_else(|| discover_native(kind)).ok_or_else(|| unavailable(kind))?;
         Ok(Self { kind, executable })
     }
 
@@ -125,6 +127,36 @@ impl AccountProvider {
     }
 }
 
+fn discover_native(kind: ProviderKind) -> Option<PathBuf> {
+    let (variable, relative) = match (kind, cfg!(windows)) {
+        (ProviderKind::CodexAccount, true) => ("LOCALAPPDATA", "Programs/OpenAI/Codex/bin"),
+        (_, true) => ("USERPROFILE", ".local/bin"),
+        (_, false) => ("HOME", ".local/bin"),
+    };
+    let base = PathBuf::from(std::env::var_os(variable)?);
+    if !base.is_absolute() {
+        return None;
+    }
+    pin_native_directory(kind, &base.join(relative))
+}
+
+fn pin_native_directory(kind: ProviderKind, directory: &Path) -> Option<PathBuf> {
+    let suffix = if cfg!(windows) { ".exe" } else { "" };
+    match kind {
+        ProviderKind::CodexAccount => {
+            CodexExecutable::pin(directory.join(format!("codex{suffix}")))
+                .ok()
+                .map(|value| value.as_path().to_owned())
+        }
+        ProviderKind::ClaudeAccount => {
+            ClaudeExecutable::pin(directory.join(format!("claude{suffix}")))
+                .ok()
+                .map(|value| value.as_path().to_owned())
+        }
+        _ => None,
+    }
+}
+
 /// Complete built-in account-provider catalog.
 pub struct ProviderCatalog;
 
@@ -188,6 +220,26 @@ const fn unavailable(kind: ProviderKind) -> OnboardingError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_directory_pins_an_installed_tool_without_changing_path() {
+        let temporary = tempfile::tempdir().expect("fixture directory");
+        let name = if cfg!(windows) { "codex.exe" } else { "codex" };
+        let path = temporary.path().join(name);
+        std::fs::write(&path, "fixture executable").expect("fixture");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt as _;
+            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700))
+                .expect("executable");
+        }
+        assert_eq!(
+            pin_native_directory(ProviderKind::CodexAccount, temporary.path()),
+            Some(path.canonicalize().expect("canonical path"))
+        );
+        assert!(pin_native_directory(ProviderKind::ClaudeAccount, temporary.path()).is_none());
+        assert!(pin_native_directory(ProviderKind::OpenAiApi, temporary.path()).is_none());
+    }
 
     #[test]
     fn parsers_retain_only_login_state() {
