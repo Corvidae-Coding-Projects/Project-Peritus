@@ -86,7 +86,9 @@ impl ProductRunner {
         });
         let result = tokio::time::timeout(
             max_elapsed,
-            Self::run_until_terminal(&input, &observe, &mut execution, &mut accounting),
+            // Keep the long-lived role loop out of every caller's async state while retaining
+            // timeout ownership: dropping the timeout still drops the active execution future.
+            Box::pin(Self::run_until_terminal(&input, &observe, &mut execution, &mut accounting)),
         )
         .await;
         timer.abort();
