@@ -44,11 +44,7 @@ pub(super) async fn complete(
         return Ok(CycleInspection::conversation_changed(checked));
     }
     if checked.gates_satisfied {
-        let _ = recorder.record(
-            CandidateStage::ReviewPending,
-            state.conversation_revision,
-            CheckpointEvidence::None,
-        )?;
+        recorder.record_pending_review(state.conversation_revision)?;
     }
     check_cancelled(input)?;
     deadline::require_phase_window(

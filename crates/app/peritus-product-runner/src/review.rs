@@ -290,4 +290,18 @@ mod tests {
             ProductFindingState::FixProposed { cycle: 1 },
         ));
     }
+
+    #[test]
+    fn durable_clean_review_round_trip_can_continue_with_the_next_review() {
+        let mut ledger = ProductFindingLedger::new();
+        for cycle in 1..=2 {
+            let submission = parse(r#"{"summary":"No candidate defects","findings":[]}"#, cycle)
+                .expect("clean review");
+            ledger.admit_review(cycle, submission).expect("admit next review");
+            let restored = restore_ledger(&encode_ledger(&ledger).expect("encode"))
+                .expect("restore clean review");
+            assert_eq!(restored, ledger);
+            ledger = restored;
+        }
+    }
 }

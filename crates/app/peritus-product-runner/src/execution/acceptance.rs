@@ -99,8 +99,13 @@ pub(super) fn successful_command_lines(
     if scope.allows_external_effects() && gates.report.changed_paths().is_empty() {
         commands.iter().map(|command| command.command.clone()).collect()
     } else {
-        let mut lines: Vec<String> =
-            gates.report.records().iter().map(|record| record.command.clone()).collect();
+        let mut lines: Vec<String> = gates
+            .report
+            .records()
+            .iter()
+            .filter(|record| record.exit_code == Some(0))
+            .map(|record| record.command.clone())
+            .collect();
         if requirement.is_required() {
             lines.extend(commands.iter().map(|command| command.command.clone()));
         }
@@ -124,6 +129,34 @@ mod tests {
 
     fn command(purpose: CommandPurpose) -> SuccessfulCommand {
         SuccessfulCommand { command: "run_command {}".to_owned(), purpose }
+    }
+
+    #[test]
+    fn partial_handoffs_do_not_label_failed_or_interrupted_gates_as_successful() {
+        let root = tempfile::tempdir().expect("root");
+        let plan = TargetGatePlan::discover(root.path(), Vec::new()).expect("plan");
+        let records = [("passed", Some(0)), ("failed", Some(1)), ("interrupted", None)]
+            .into_iter()
+            .map(|(name, exit_code)| GateExecutionRecord {
+                command: name.to_owned(),
+                label: name.to_owned(),
+                exit_code,
+                output: name.to_owned(),
+            })
+            .collect();
+        let report = TargetGateReport::from_execution_with_constraints(&plan, Vec::new(), records);
+        let gates = gates::GateReport { report, output: String::new() };
+        assert_eq!(
+            successful_command_lines(
+                ProductDeliveryScope::WorkspaceChanges,
+                ExternalEffectRequirement::Optional,
+                &gates,
+                &[],
+            ),
+            vec!["passed"],
+        );
+        assert_eq!(gates.report.records().len(), 3, "the full failure evidence is retained");
+        assert!(!gates.report.passed());
     }
 
     #[test]

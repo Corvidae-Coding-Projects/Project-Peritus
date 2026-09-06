@@ -248,3 +248,19 @@ fn conditional_deliverables_are_not_universal_requirements() {
 
     assert_eq!(required_outputs(root.path(), transcript), vec![PathBuf::from("summary.md")]);
 }
+
+#[test]
+fn output_verbs_do_not_leak_into_later_verification_sentences() {
+    let root = tempfile::tempdir().expect("root");
+    let transcript = "Change python_app/app.py HELLO to PYTHON_OK and node_app/app.js HELLO to \
+        NODE_OK, update their tests, change only these four files. Run both projects tests/checks \
+        and both programs. Run instruction: python python_app/app.py.";
+    let record = run(root.path(), transcript, &[]);
+    assert_eq!(record.exit_code, Some(0), "{}", record.output);
+    assert!(!record.output.contains("tests/checks:"));
+
+    // A real output with the same spelling remains mandatory in its own output clause.
+    let required = run(root.path(), "Run both projects. Create the file tests/checks.", &[]);
+    assert_eq!(required.exit_code, Some(1));
+    assert!(required.output.contains("required explicit output path is missing: tests/checks"));
+}

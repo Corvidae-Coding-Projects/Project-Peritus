@@ -4,6 +4,7 @@ use peritus_app_protocol::{
     AppRequestPayload, ProductRunConversation, ProductRunConversationQuery, ProductRunQuery,
     ProductRunSettlementSnapshot, ProductRunSnapshot,
 };
+use peritus_types::RunId;
 
 use super::ProductUi;
 use crate::{
@@ -12,10 +13,47 @@ use crate::{
 };
 
 impl AppModel {
+    pub(in crate::model) fn accept_product_query(
+        &mut self,
+        snapshots: &[ProductRunSnapshot],
+        exact: Option<RunId>,
+    ) {
+        if let Some(run_id) = exact {
+            if let Some(snapshot) = snapshots.iter().find(|value| value.run_id() == run_id) {
+                self.accept_product_run(snapshot.clone());
+            }
+        } else {
+            self.accept_product_runs(snapshots.to_vec());
+        }
+    }
+
+    pub(in crate::model) fn accept_settlement_query(
+        &mut self,
+        settled: &[ProductRunSettlementSnapshot],
+        exact: Option<RunId>,
+    ) {
+        if let Some(run_id) = exact {
+            if let Some(value) = settled.iter().find(|value| value.snapshot().run_id() == run_id) {
+                // Polling refreshes evidence; it is not a user control acknowledgement.
+                self.accept_product_run(value.snapshot().clone());
+                if let Some(product) = &mut self.product {
+                    product.settlements.insert(run_id, *value.settlement());
+                }
+            }
+        } else {
+            self.accept_product_settlements(settled);
+        }
+    }
+
     pub(in crate::model) fn poll_product_runs(&mut self) -> Vec<Effect> {
         if self.product.is_none()
             || self.context.is_none()
-            || self.pending.values().any(|pending| matches!(pending, PendingRequest::ProductQuery))
+            || self.pending.values().any(|pending| {
+                matches!(
+                    pending,
+                    PendingRequest::ProductQuery | PendingRequest::ProductExactQuery(_)
+                )
+            })
         {
             return Vec::new();
         }
@@ -28,7 +66,7 @@ impl AppModel {
             self.product.as_ref().and_then(ProductUi::selected_run).map(ProductRunSnapshot::run_id)
             && let Some(effect) = self.request(
                 AppRequestPayload::QueryProductRuns(ProductRunQuery::exact(run_id)),
-                PendingRequest::ProductQuery,
+                PendingRequest::ProductExactQuery(run_id),
             )
         {
             effects.push(effect);

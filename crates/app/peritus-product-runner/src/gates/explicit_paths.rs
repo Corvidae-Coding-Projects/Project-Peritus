@@ -279,7 +279,8 @@ fn trim_delimiters(raw: &str) -> &str {
 }
 
 fn output_context(words: &[&str]) -> bool {
-    let start = words.len().saturating_sub(12);
+    // An output verb authorizes paths in its clause, not a later verification instruction.
+    let start = words.len().saturating_sub(12).max(clause_start(words));
     let context = &words[start..];
     let Some(trigger) = context.iter().rposition(|word| output_verb(word)) else {
         return false;
@@ -300,11 +301,16 @@ fn path_noun_context(words: &[&str]) -> bool {
 }
 
 fn conditional_clause(words: &[&str]) -> bool {
-    let clause_start = words
+    words[clause_start(words)..]
         .iter()
-        .rposition(|word| word.ends_with(['.', '?', '!', ';']))
-        .map_or(0, |index| index + 1);
-    words[clause_start..].iter().any(|word| matches!(normalized(word).as_str(), "if" | "unless"))
+        .any(|word| matches!(normalized(word).as_str(), "if" | "unless"))
+}
+
+fn clause_start(words: &[&str]) -> usize {
+    words
+        .iter()
+        .rposition(|word| word.ends_with(['.', '?', '!', ';']) && !prose_abbreviation(word))
+        .map_or(0, |index| index + 1)
 }
 
 fn path_noun(word: &str) -> bool {

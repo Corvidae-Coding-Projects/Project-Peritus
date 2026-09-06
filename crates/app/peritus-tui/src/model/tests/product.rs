@@ -97,3 +97,65 @@ fn unqualified_candidate_names_missing_evidence_and_requires_a_second_action() {
                 if control.run_id() == run_id && control.action() == ProductRunControlAction::Accept)
     )));
 }
+
+#[test]
+fn exact_run_poll_does_not_replace_the_list_or_undo_navigation() {
+    use peritus_app_protocol::{AppResponseEnvelope, AppResponsePayload};
+    for settled_response in [false, true] {
+        let provider = ProviderProfileId::new([81; 16]).expect("provider");
+        let workspace = WorkspaceId::new([82; 16]).expect("workspace");
+        let launch = ProductLaunchContext::new(
+            workspace,
+            "/managed/project".to_owned(),
+            vec![ProductProviderOption::new(provider, "Codex")],
+            Some(0),
+        )
+        .expect("launch");
+        let snapshots = [84, 85, 86].map(|id| {
+            ProductRunSnapshot::new(
+                RunId::new([id; 16]).expect("run"),
+                workspace,
+                ProductProviderSelection::new(provider, provider, provider),
+                ProductRunPhase::Failed,
+                1,
+                format!("task {id}"),
+                "Failed".to_owned(),
+                String::new(),
+                String::new(),
+                String::new(),
+                String::new(),
+            )
+            .expect("snapshot")
+        });
+        let mut model = AppModel::with_product([83; 32], Some(launch));
+        model.context = Some(context());
+        model.accept_product_runs(snapshots.to_vec());
+        let effects = model.poll_product_runs();
+        assert!(model.select_next_product());
+        for effect in effects {
+            let Effect::Send(AppMessage::Request(request)) = effect else { continue };
+            let AppRequestPayload::QueryProductRuns(query) = request.payload() else { continue };
+            let payload = if query.run_id().is_none() {
+                AppResponsePayload::ProductRuns(snapshots.to_vec())
+            } else if settled_response {
+                let settlement =
+                    SettlementReducer::new().settle(SettlementCause::Provider).expect("settlement");
+                AppResponsePayload::ProductRunSettlements(vec![
+                    ProductRunSettlementSnapshot::new(snapshots[0].clone(), settlement)
+                        .expect("settled snapshot"),
+                ])
+            } else {
+                AppResponsePayload::ProductRuns(vec![snapshots[0].clone()])
+            };
+            let _ = model.update(Action::Message(AppMessage::Response(AppResponseEnvelope::new(
+                request.context(),
+                request.request_id(),
+                request.correlation_id(),
+                payload,
+            ))));
+            let product = model.product.as_ref().expect("product");
+            assert_eq!(product.runs.len(), 3);
+            assert_eq!(product.selected_run().expect("selected").run_id(), snapshots[1].run_id());
+        }
+    }
+}

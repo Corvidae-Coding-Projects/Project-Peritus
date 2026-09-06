@@ -18,6 +18,61 @@ mod fixtures;
 use fixtures::*;
 
 #[test]
+fn early_failure_after_durable_restore_retains_exact_candidate_paths() {
+    run_async(async {
+        let repository = repository();
+        let state = tempfile::tempdir().expect("state");
+        let writer = scripted(0x71, "writer", complete_writer(CORRECT));
+        let unavailable = scripted(0x72, "offline", Vec::new());
+        let first = ProductRunner::run(
+            input(
+                &repository,
+                &state,
+                0x73,
+                0x74,
+                roles(writer.clone(), unavailable.clone(), writer),
+                Arc::new(AtomicBool::new(false)),
+                Duration::from_mins(1),
+                None,
+            ),
+            Arc::new(|_| {}),
+        )
+        .await
+        .expect("candidate retained");
+        let bytes = first.resume().expect("resume").encode_durable().expect("encode");
+        let mut durable: serde_json::Value = serde_json::from_slice(&bytes).expect("wire");
+        durable["finding_state"] =
+            serde_json::Value::String(r#"{"cycle":1,"summary":"","findings":[]}"#.to_owned());
+        let resume = peritus_product_runner::ProductRunResume::decode_durable(
+            &serde_json::to_vec(&durable).expect("wire"),
+            &format!("User:\n{TASK}"),
+        )
+        .expect("decode continuation before ledger validation");
+        let second = ProductRunner::run(
+            input(
+                &repository,
+                &state,
+                0x73,
+                0x74,
+                roles(unavailable.clone(), unavailable.clone(), unavailable),
+                Arc::new(AtomicBool::new(false)),
+                Duration::from_mins(1),
+                Some(resume),
+            ),
+            Arc::new(|_| {}),
+        )
+        .await
+        .expect("early failure settles without losing the candidate");
+        assert_eq!(second.settlement().disposition(), RunDisposition::CandidateAvailable);
+        assert!(second.detail().expect("failure").contains("summary is empty"));
+        assert_eq!(
+            second.candidate().expect("candidate").changed_paths,
+            vec![std::path::PathBuf::from("src/lib.rs")],
+        );
+    });
+}
+
+#[test]
 fn provider_failure_after_mutation_returns_the_exact_candidate() {
     run_async(async {
         let repository = repository();

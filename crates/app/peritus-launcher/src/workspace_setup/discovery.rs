@@ -94,12 +94,15 @@ fn has_git_parent(path: &Path) -> Result<bool, LauncherError> {
             .dev()
     };
     for ancestor in path.ancestors() {
+        let metadata = ancestor.metadata().map_err(|error| {
+            LauncherError::filesystem("inspect workspace ancestor", ancestor, error)
+        })?;
+        if !metadata.is_dir() {
+            break;
+        }
         #[cfg(unix)]
         {
             use std::os::unix::fs::MetadataExt as _;
-            let metadata = ancestor.metadata().map_err(|error| {
-                LauncherError::filesystem("inspect workspace ancestor", ancestor, error)
-            })?;
             // Match ordinary Git discovery: do not adopt an unrelated repository across a mount.
             if metadata.dev() != device {
                 break;
@@ -156,5 +159,11 @@ mod tests {
     #[test]
     fn hex_is_lowercase_and_exact() {
         assert_eq!(hex(&[0, 15, 16, 255]), "000f10ff");
+    }
+
+    #[test]
+    fn git_parent_inspection_preserves_filesystem_errors() {
+        let directory = tempfile::tempdir().expect("temporary workspace");
+        assert!(has_git_parent(&directory.path().join("missing")).is_err());
     }
 }

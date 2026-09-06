@@ -173,6 +173,7 @@ enum PendingRequest {
     TerminalCancel,
     ProductStart,
     ProductQuery,
+    ProductExactQuery(RunId),
     ProductControl,
     ProductContinue,
     ProductConversationQuery,

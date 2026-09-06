@@ -46,6 +46,10 @@ impl AppModel {
             return Vec::new();
         }
         let pending = self.pending.remove(&response.request_id());
+        let exact_run = match &pending {
+            Some(PendingRequest::ProductExactQuery(run_id)) => Some(*run_id),
+            _ => None,
+        };
         match response.payload() {
             AppResponsePayload::Interaction(snapshot) => {
                 if self.chat.run_id != Some(snapshot.snapshot().run_id()) {
@@ -116,7 +120,7 @@ impl AppModel {
                 self.notice(NoticeLevel::Info, format!("coding run: {}", snapshot.status()));
             }
             AppResponsePayload::ProductRuns(snapshots) => {
-                self.accept_product_runs(snapshots.clone());
+                self.accept_product_query(snapshots, exact_run);
             }
             AppResponsePayload::ProductRunSettled(settled) => {
                 self.accept_product_settlement(settled);
@@ -126,7 +130,7 @@ impl AppModel {
                 );
             }
             AppResponsePayload::ProductRunSettlements(settled) => {
-                self.accept_product_settlements(settled);
+                self.accept_settlement_query(settled, exact_run);
             }
             AppResponsePayload::ProductRunConversation(conversation) => {
                 self.accept_product_conversation(conversation.clone());
