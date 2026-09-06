@@ -148,6 +148,7 @@ where
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct CargoTarget {
+    pub(crate) name: String,
     pub(crate) kind: Vec<String>,
     pub(crate) crate_types: Vec<String>,
     pub(crate) src_path: PathBuf,

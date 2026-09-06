@@ -1,5 +1,7 @@
 //! Reviewed package shards for bounded hosted Rust and Verus jobs.
 
+mod runner;
+
 use crate::error::XtaskError;
 use crate::metadata;
 use crate::model::{ArchitecturePolicy, CargoMetadata, CargoPackage};
@@ -35,6 +37,8 @@ pub(crate) enum Operation {
     TestPlatformTerminalInteractive,
     TestPlatformTerminalSignal,
     TestPlatformTerminalCancel,
+    TestRunnerRecovery,
+    TestRunnerProduct,
     VerusVerify,
     VerusVerifyStrict,
     VerusBuild,
@@ -52,6 +56,8 @@ impl Operation {
             "test-platform-terminal-interactive" => Some(Self::TestPlatformTerminalInteractive),
             "test-platform-terminal-signal" => Some(Self::TestPlatformTerminalSignal),
             "test-platform-terminal-cancel" => Some(Self::TestPlatformTerminalCancel),
+            "test-runner-recovery" => Some(Self::TestRunnerRecovery),
+            "test-runner-product" => Some(Self::TestRunnerProduct),
             "verus-verify" => Some(Self::VerusVerify),
             "verus-verify-strict" => Some(Self::VerusVerifyStrict),
             "verus-build" => Some(Self::VerusBuild),
@@ -73,6 +79,14 @@ impl Operation {
 
     const fn is_platform_terminal(self) -> bool {
         self.platform_terminal_test().is_some()
+    }
+
+    const fn runner_tests(self) -> Option<&'static [&'static str]> {
+        match self {
+            Self::TestRunnerRecovery => Some(runner::RECOVERY_TESTS),
+            Self::TestRunnerProduct => Some(runner::PRODUCT_TESTS),
+            _ => None,
+        }
     }
 
     const fn platform_terminal_test(self) -> Option<&'static str> {
@@ -130,6 +144,7 @@ fn selected_packages<'a>(
             verus_eligible(package, policy_by_name.get(package.name.as_str()), operation)
         })
         .filter(|package| !operation.is_platform_terminal() || package.name == PLATFORM_PACKAGE)
+        .filter(|package| operation.runner_tests().is_none() || package.name == runner::PACKAGE)
         .map(|package| package.name.as_str())
         .collect::<Vec<_>>();
     selected.sort_unstable();
@@ -162,8 +177,25 @@ fn cargo_command(root: &Path, operation: Operation, packages: &[&str]) -> Comman
         Operation::Build => {
             command.args(["build", "--locked", "--all-targets", "--all-features"]);
         }
+        Operation::Test if packages == [runner::PACKAGE] => {
+            command.args([
+                "test",
+                "--locked",
+                "--lib",
+                "--bins",
+                "--examples",
+                "--benches",
+                "--all-features",
+            ]);
+        }
         Operation::Test => {
             command.args(["test", "--locked", "--all-targets", "--all-features"]);
+        }
+        Operation::TestRunnerRecovery | Operation::TestRunnerProduct => {
+            command.args(["test", "--locked", "--all-features"]);
+            for test in operation.runner_tests().into_iter().flatten() {
+                command.args(["--test", test]);
+            }
         }
         Operation::TestPlatformTerminalInteractive
         | Operation::TestPlatformTerminalSignal
@@ -205,7 +237,7 @@ fn cargo_command(root: &Path, operation: Operation, packages: &[&str]) -> Comman
         command.args(["--rlimit", "20"]);
     } else if let Some(test) = operation.platform_terminal_test() {
         command.args(["--test", "general_capability", test, "--", "--exact", "--test-threads=1"]);
-    } else if matches!(operation, Operation::Test) {
+    } else if matches!(operation, Operation::Test) || operation.runner_tests().is_some() {
         command.args(["--", "--test-threads=1"]);
         if packages == [PLATFORM_PACKAGE] {
             for test in
@@ -247,7 +279,7 @@ fn validate_plan(policy: &ArchitecturePolicy, cargo: &CargoMetadata) -> Result<(
             unknown_layers.into_iter().collect::<Vec<_>>().join(", ")
         )));
     }
-    Ok(())
+    runner::validate(cargo)
 }
 
 fn shard_for_layer(layer: &str) -> Option<&'static str> {
@@ -277,106 +309,4 @@ fn shard_for_package(name: &str, layer: &str) -> Option<&'static str> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{
-        Operation, PLATFORM_PACKAGE, PLATFORM_TERMINAL_CANCEL, PLATFORM_TERMINAL_INTERACTIVE,
-        PLATFORM_TERMINAL_SIGNAL, SHARD_NAMES, cargo_command, shard_for_layer, shard_for_package,
-    };
-    use std::path::Path;
-
-    #[test]
-    fn operation_parser_is_closed() {
-        assert_eq!(Operation::parse("test"), Some(Operation::Test));
-        assert_eq!(
-            Operation::parse("test-platform-terminal-interactive"),
-            Some(Operation::TestPlatformTerminalInteractive)
-        );
-        assert_eq!(Operation::parse("verus-build-strict"), Some(Operation::VerusBuildStrict));
-        assert_eq!(Operation::parse("bench"), None);
-    }
-
-    #[test]
-    fn every_architecture_layer_has_one_stable_shard() {
-        for layer in [
-            "foundation",
-            "state",
-            "runtime",
-            "tools",
-            "model",
-            "orchestration",
-            "app",
-            "testing",
-            "analysis",
-            "observe",
-            "extensions",
-            "engineering",
-        ] {
-            assert!(SHARD_NAMES.contains(&shard_for_layer(layer).expect("known layer")));
-        }
-        assert_eq!(shard_for_layer("unknown"), None);
-    }
-
-    #[test]
-    fn product_runner_has_an_independent_bounded_app_shard() {
-        assert_eq!(shard_for_package("peritus-product-runner", "app"), Some("app-runner"));
-        assert_eq!(shard_for_package("peritus-daemon", "app"), Some("app-shell"));
-    }
-
-    #[test]
-    fn long_running_testing_packages_have_independent_bounded_shards() {
-        assert_eq!(
-            shard_for_package("peritus-platform-qualification", "testing"),
-            Some("testing-platform")
-        );
-        assert_eq!(
-            shard_for_package("peritus-external-benchmarks", "testing"),
-            Some("testing-external")
-        );
-        assert_eq!(
-            shard_for_package("peritus-performance-qualification", "testing"),
-            Some("testing")
-        );
-    }
-
-    #[test]
-    fn strict_verus_shards_always_request_no_cheating() {
-        let command =
-            cargo_command(Path::new("."), Operation::VerusBuildStrict, &["peritus-types"]);
-        let arguments = command
-            .get_args()
-            .map(|value| value.to_string_lossy().into_owned())
-            .collect::<Vec<_>>();
-        assert!(arguments.iter().any(|argument| argument == "--no-cheating"));
-        assert!(arguments.windows(2).any(|pair| pair == ["--rlimit", "20"]));
-    }
-
-    #[test]
-    fn platform_test_operations_partition_the_terminal_case_exactly_once() {
-        let regular = cargo_command(Path::new("."), Operation::Test, &[PLATFORM_PACKAGE]);
-        let regular = regular
-            .get_args()
-            .map(|value| value.to_string_lossy().into_owned())
-            .collect::<Vec<_>>();
-        for test in
-            [PLATFORM_TERMINAL_INTERACTIVE, PLATFORM_TERMINAL_SIGNAL, PLATFORM_TERMINAL_CANCEL]
-        {
-            assert!(regular.windows(2).any(|pair| pair == ["--skip", test]));
-        }
-
-        for (operation, test) in [
-            (Operation::TestPlatformTerminalInteractive, PLATFORM_TERMINAL_INTERACTIVE),
-            (Operation::TestPlatformTerminalSignal, PLATFORM_TERMINAL_SIGNAL),
-            (Operation::TestPlatformTerminalCancel, PLATFORM_TERMINAL_CANCEL),
-        ] {
-            let terminal = cargo_command(Path::new("."), operation, &[PLATFORM_PACKAGE]);
-            let terminal = terminal
-                .get_args()
-                .map(|value| value.to_string_lossy().into_owned())
-                .collect::<Vec<_>>();
-            assert!(terminal.windows(2).any(|pair| pair == ["--test", "general_capability"]));
-            assert!(terminal.iter().any(|argument| argument == test));
-            assert!(terminal.iter().any(|argument| argument == "--exact"));
-            assert!(!terminal.iter().any(|argument| argument == "--skip"));
-        }
-    }
-}
+mod tests;

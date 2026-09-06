@@ -14,18 +14,69 @@ const PLATFORM_TERMINAL_ENTRIES: [(&str, &str); 9] = [
     ("windows-2025", "test-platform-terminal-cancel"),
 ];
 
-pub(super) fn has_platform_terminal_includes(value: Option<&Yaml>) -> bool {
+const RUNNER_ENTRIES: [(&str, &str); 6] = [
+    ("ubuntu-24.04", "test-runner-recovery"),
+    ("ubuntu-24.04", "test-runner-product"),
+    ("macos-15", "test-runner-recovery"),
+    ("macos-15", "test-runner-product"),
+    ("windows-2025", "test-runner-recovery"),
+    ("windows-2025", "test-runner-product"),
+];
+
+pub(super) fn has_exact_test_includes(value: Option<&Yaml>) -> bool {
     let Some(entries) = value.and_then(Yaml::as_vec) else { return false };
-    entries.len() == PLATFORM_TERMINAL_ENTRIES.len()
-        && entries.iter().zip(PLATFORM_TERMINAL_ENTRIES).all(|(entry, expected)| {
+    let expected = PLATFORM_TERMINAL_ENTRIES
+        .into_iter()
+        .map(|(os, operation)| (os, operation, "testing-platform"))
+        .chain(RUNNER_ENTRIES.into_iter().map(|(os, operation)| (os, operation, "app-runner")));
+    entries.len() == PLATFORM_TERMINAL_ENTRIES.len() + RUNNER_ENTRIES.len()
+        && entries.iter().zip(expected).all(|(entry, expected)| {
             let Some(entry) = entry.as_hash() else { return false };
             entry.len() == 3
                 && string(entry, "os") == Some(expected.0)
                 && string(entry, "operation") == Some(expected.1)
-                && string(entry, "shard") == Some("testing-platform")
+                && string(entry, "shard") == Some(expected.2)
         })
 }
 
 fn string<'a>(mapping: &'a yaml_rust2::yaml::Hash, key: &str) -> Option<&'a str> {
     mapping.get(&Yaml::String(key.to_owned())).and_then(Yaml::as_str)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RUNNER_ENTRIES;
+    use crate::reproducibility::reproducibility_workflow_fixture::{
+        canonical_ci, canonical_governance,
+    };
+    use crate::reproducibility::reproducibility_workflow_tests::{assert_message, validate};
+    use crate::reproducibility::workflow_files::DocumentKind;
+
+    #[test]
+    fn both_gates_require_each_native_runner_partition_exactly_once() {
+        for (path, canonical, message) in [
+            (".github/workflows/ci.yml", canonical_ci(), "exact unconditional Rust shard matrix"),
+            (
+                ".github/workflows/formal-governance.yml",
+                canonical_governance(),
+                "does not retain every hardcoded job and final status",
+            ),
+        ] {
+            for (os, operation) in RUNNER_ENTRIES {
+                let entry = format!(
+                    "          - {{ os: {os}, operation: {operation}, shard: app-runner }}\n"
+                );
+                for altered in [
+                    canonical.replace(&entry, ""),
+                    canonical.replace(&entry, &format!("{entry}{entry}")),
+                    canonical
+                        .replace(&entry, &entry.replace("shard: app-runner", "shard: app-shell")),
+                ] {
+                    assert_ne!(altered, canonical, "fixture mutation must change the workflow");
+                    let (_, diagnostics) = validate(path, DocumentKind::Workflow, &altered);
+                    assert_message(&diagnostics, message);
+                }
+            }
+        }
+    }
 }

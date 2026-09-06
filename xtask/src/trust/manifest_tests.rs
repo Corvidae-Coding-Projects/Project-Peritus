@@ -97,6 +97,7 @@ fn cargo(fixture: &Fixture) -> CargoMetadata {
             readme: None,
             dependencies: Vec::new(),
             targets: vec![CargoTarget {
+                name: name.to_owned(),
                 kind: vec!["lib".to_owned()],
                 crate_types: vec!["lib".to_owned()],
                 src_path: fixture.path().join(root).join("src/lib.rs"),
