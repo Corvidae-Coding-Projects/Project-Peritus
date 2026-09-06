@@ -58,7 +58,13 @@ fn non_directory_paths_are_not_workspaces() {
 fn configured_folder_starts_and_restarts_the_real_daemon_without_git_registration() {
     tokio::runtime::Builder::new_current_thread().enable_all().build().expect("runtime").block_on(
         async {
-            let temporary = tempfile::tempdir().expect("home-shaped folder");
+            // macOS's default temporary root can exceed sockaddr_un's path bound after the
+            // private layout and endpoint name are appended. Match the real-daemon fixtures.
+            let base = if cfg!(unix) { std::path::PathBuf::from("/tmp") } else { env::temp_dir() };
+            let temporary = tempfile::Builder::new()
+                .prefix("pl-")
+                .tempdir_in(base)
+                .expect("short home-shaped folder");
             let layout = AppLayout::for_test(temporary.path()).prepare().expect("private layout");
             let discovered =
                 DiscoveredRepository::open(temporary.path()).expect("folder discovery");
