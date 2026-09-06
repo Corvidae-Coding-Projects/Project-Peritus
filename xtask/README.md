@@ -23,6 +23,13 @@ is the equivalent developer convenience interface.
 
 ## Focused checks
 
+Native H2 CI separates package preparation from scenario execution. Each platform builds its
+application and qualification tools once; all 18 scenarios consume that platform's same-run
+prepared artifact without rebuilding the application. The small xtask entry point still uses the
+reviewed locked Cargo command; its prepared execution path never invokes Cargo. Missing artifacts
+fail rather than triggering a rebuild. The local build-and-qualify commands remain available, and
+every hosted job retains its ten-minute limit.
+
 From the repository root:
 
 ```sh

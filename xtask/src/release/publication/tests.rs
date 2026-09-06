@@ -114,3 +114,83 @@ fn release_and_lifecycle_matrices_cover_each_native_target_once() {
         }
     }
 }
+
+#[test]
+fn h2_preparation_is_once_per_native_target_with_every_scenario_retained() {
+    let document = workflow(".github/workflows/product-package.yml");
+    let prepare = &document["jobs"]["prepare-h2"];
+    let rows = prepare["strategy"]["matrix"]["include"].as_vec().expect("preparation matrix");
+    assert_eq!(rows.len(), TARGETS.len());
+    for (platform, _, runner) in TARGETS {
+        let matching =
+            rows.iter().filter(|row| row["os"].as_str() == Some(runner)).collect::<Vec<_>>();
+        assert_eq!(matching.len(), 1, "one preparation for {runner}");
+        assert_eq!(
+            matching[0]["helper"].as_str(),
+            Some(format!("peritus-sandbox-{platform}").as_str())
+        );
+    }
+    let h2 = &document["jobs"]["h2"];
+    assert_eq!(h2["needs"].as_str(), Some("prepare-h2"));
+    let shards = h2["strategy"]["matrix"]["shard"].as_vec().expect("scenarios");
+    assert_eq!(shards.len(), crate::product_package::H2_SHARD_COUNT);
+    for (index, shard) in shards.iter().enumerate() {
+        assert_eq!(shard.as_i64(), Some(i64::try_from(index).expect("index")));
+    }
+    for job in ["bootstrap", "prepare-h2", "h2"] {
+        assert_eq!(document["jobs"][job]["timeout-minutes"].as_i64(), Some(10));
+        assert_eq!(document["jobs"][job]["strategy"]["fail-fast"].as_bool(), Some(false));
+    }
+}
+
+#[test]
+fn h2_shards_only_execute_the_exact_same_run_prepared_artifact() {
+    let document = workflow(".github/workflows/product-package.yml");
+    let preparation = document["jobs"]["prepare-h2"]["steps"].as_vec().expect("preparation");
+    let upload = preparation
+        .iter()
+        .find(|step| {
+            step["uses"].as_str().is_some_and(|value| value.starts_with("actions/upload-artifact@"))
+        })
+        .expect("prepared package upload");
+    assert_eq!(upload["with"]["name"].as_str(), Some("h2-prepared-${{ matrix.os }}"));
+    assert_eq!(upload["with"]["path"].as_str(), Some("target/h2-prepared.tar"));
+    assert_eq!(upload["with"]["if-no-files-found"].as_str(), Some("error"));
+    let builds = preparation
+        .iter()
+        .filter_map(|step| step["run"].as_str())
+        .filter(|command| command.contains("cargo build"))
+        .collect::<Vec<_>>();
+    assert_eq!(builds.len(), 1);
+    for package in
+        ["xtask", "peritus-cli", "peritus-daemon", "peritus-tui", "peritus-platform-qualification"]
+    {
+        assert!(builds[0].contains(&format!("-p {package}")));
+    }
+    assert!(builds[0].contains("--locked --bins"));
+    assert!(builds[0].contains("-p ${{ matrix.helper }}"));
+    let steps = document["jobs"]["h2"]["steps"].as_vec().expect("scenario steps");
+    let download = steps
+        .iter()
+        .find(|step| {
+            step["uses"]
+                .as_str()
+                .is_some_and(|value| value.starts_with("actions/download-artifact@"))
+        })
+        .expect("same-run download");
+    assert_eq!(download["with"].as_hash().expect("download inputs").len(), 2);
+    assert_eq!(download["with"]["name"], upload["with"]["name"]);
+    assert_eq!(download["with"]["path"].as_str(), Some("target/prepared-h2"));
+    let commands =
+        steps.iter().filter_map(|step| step["run"].as_str()).collect::<Vec<_>>().join("\n");
+    assert!(
+        commands
+            .contains("cargo run --locked --package xtask -- product-native-qualification-restore")
+    );
+    assert!(commands.contains("product-native-qualification-prepared-shard ${{ matrix.shard }}"));
+    assert!(
+        !commands.contains("cargo build"),
+        "scenario jobs must not repeat the application build"
+    );
+    assert!(!commands.contains("product-native-qualification-shard "));
+}

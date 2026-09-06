@@ -1,6 +1,7 @@
 //! Product package build, installation, and native lifecycle qualification.
 
 mod host_version;
+pub(crate) mod qualification;
 mod qualification_report;
 
 use std::{
@@ -57,107 +58,6 @@ pub(crate) fn smoke(root: &Path) -> Result<PathBuf, XtaskError> {
         return Err(XtaskError::metadata("native product lifecycle changed protected state"));
     }
     Ok(package)
-}
-
-pub(crate) fn qualify(root: &Path) -> Result<PathBuf, XtaskError> {
-    let qualification = prepare_qualification(root)?;
-    let report = qualification.run_root.join("report.json");
-    let status = h2_command(root, &qualification, &report)?.status().map_err(|error| {
-        XtaskError::io("run complete native H2 qualification from", &qualification.package, error)
-    })?;
-    if !report.is_file() {
-        return Err(XtaskError::metadata(format!(
-            "native H2 qualification exited with {status} without retaining its report at {}",
-            report.display()
-        )));
-    }
-    if !status.success() {
-        let reasons = qualification_report::not_ready_reasons(&report)?;
-        return Err(XtaskError::metadata(format!(
-            "native H2 qualification did not reach Ready; retained report: {}; reasons: {reasons}",
-            report.display()
-        )));
-    }
-    Ok(report)
-}
-
-pub(crate) fn qualify_shard(root: &Path, index: usize) -> Result<PathBuf, XtaskError> {
-    if index >= H2_SHARD_COUNT {
-        return Err(XtaskError::invocation(format!(
-            "H2 qualification shard index must be from 0 through {}",
-            H2_SHARD_COUNT - 1
-        )));
-    }
-    let qualification = prepare_qualification(root)?;
-    let reports = qualification.run_root.join(format!("shard-{index}"));
-    let status = h2_command(root, &qualification, &reports)?
-        .args(["--shard", &index.to_string()])
-        .status()
-        .map_err(|error| {
-            XtaskError::io("run native H2 qualification shard from", &qualification.package, error)
-        })?;
-    let report_count = fs::read_dir(&reports)
-        .map_err(|error| XtaskError::io("read H2 shard reports from", &reports, error))?
-        .filter_map(Result::ok)
-        .filter(|entry| entry.path().extension().and_then(|value| value.to_str()) == Some("json"))
-        .count();
-    if report_count != 1 {
-        return Err(XtaskError::metadata(format!(
-            "native H2 shard {index} retained {report_count} reports instead of 1 at {}",
-            reports.display()
-        )));
-    }
-    require_success(status.success(), "native H2 qualification shard did not reach Ready")?;
-    Ok(reports)
-}
-
-struct PreparedQualification {
-    package: PathBuf,
-    run_root: PathBuf,
-    scratch: PathBuf,
-    artifacts: PathBuf,
-}
-
-fn prepare_qualification(root: &Path) -> Result<PreparedQualification, XtaskError> {
-    build_debug_binaries(root)?;
-    build_h2_binaries(root)?;
-    assemble(root, true)?;
-    let package = package_path(root);
-    let run_root = qualification_run_root(root)?;
-    let scratch = run_root.join("scratch");
-    let artifacts = run_root.join("artifacts");
-    fs::create_dir_all(&scratch).map_err(|error| {
-        XtaskError::io("create H2 qualification scratch root at", &scratch, error)
-    })?;
-    fs::create_dir_all(&artifacts).map_err(|error| {
-        XtaskError::io("create H2 qualification artifact root at", &artifacts, error)
-    })?;
-    Ok(PreparedQualification { package, run_root, scratch, artifacts })
-}
-
-fn h2_command(
-    root: &Path,
-    qualification: &PreparedQualification,
-    report: &Path,
-) -> Result<Command, XtaskError> {
-    let mut command = Command::new(debug_binary(root, "peritus-h2"));
-    command
-        .current_dir(root)
-        .args(["--controller"])
-        .arg(debug_binary(root, "peritus-h2-controller"))
-        .args(["--package"])
-        .arg(&qualification.package)
-        .args(["--manifest"])
-        .arg(qualification.package.join("manifest.toml"))
-        .args(["--scratch"])
-        .arg(&qualification.scratch)
-        .args(["--artifacts"])
-        .arg(&qualification.artifacts)
-        .args(["--report"])
-        .arg(report)
-        .args(["--platform", host_os(), "--architecture", std::env::consts::ARCH])
-        .args(["--version", &host_version::detect(host_os())?]);
-    Ok(command)
 }
 
 fn build_debug_binaries(root: &Path) -> Result<(), XtaskError> {
