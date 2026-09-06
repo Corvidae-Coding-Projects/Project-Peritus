@@ -43,6 +43,7 @@ peritus-provider-openai = { version = "=0.0.0", path = "../../model/peritus-prov
 peritus-orchestrator = { version = "=0.0.0", path = "../../orchestration/peritus-orchestrator" }
 peritus-patch = { version = "=0.0.0", path = "../../runtime/peritus-patch" }
 peritus-review = { version = "=0.0.0", path = "../../orchestration/peritus-review" }
+peritus-role = { version = "=0.0.0", path = "../../orchestration/peritus-role" }
 peritus-run-settlement = { version = "=0.0.0", path = "../../orchestration/peritus-run-settlement" }
 peritus-scheduler = { version = "=0.0.0", path = "../../orchestration/peritus-scheduler" }
 peritus-sandbox = { version = "=0.0.0", path = "../../runtime/peritus-sandbox" }
@@ -82,7 +83,6 @@ windows-sys = { workspace = true, features = [
 [dev-dependencies]
 futures-util.workspace = true
 peritus-conformance = { version = "=0.0.0", path = "../testing/peritus-conformance" }
-peritus-role = { version = "=0.0.0", path = "../../orchestration/peritus-role" }
 peritus-test-support = { version = "=0.0.0", path = "../testing/peritus-test-support" }
 tempfile.workspace = true
 

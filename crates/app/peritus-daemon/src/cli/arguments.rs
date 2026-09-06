@@ -11,6 +11,8 @@ use peritus_orchestrator::qualification::LifecyclePhase;
 pub(super) enum CommandLine {
     Version,
     Serve(OsString),
+    #[cfg(not(verus_only))]
+    ContextInspect(super::context::Inspection),
     QualifyPty,
     StageBlobBeforeCrash(OsString),
     RecoverBlobBeforeCrash(OsString),
@@ -100,6 +102,8 @@ pub(super) fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<Co
     match command.to_str()? {
         "--version" if arguments.next().is_none() => Some(CommandLine::Version),
         "serve" => configuration_argument(arguments).map(CommandLine::Serve),
+        #[cfg(not(verus_only))]
+        "context-inspect" => super::context::parse(arguments).map(CommandLine::ContextInspect),
         "qualify-pty" if arguments.next().is_none() => Some(CommandLine::QualifyPty),
         "qualify-blob-before-stage" => configured(arguments, CommandLine::StageBlobBeforeCrash),
         "qualify-blob-before-recover" => configured(arguments, CommandLine::RecoverBlobBeforeCrash),

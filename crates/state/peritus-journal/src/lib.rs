@@ -61,5 +61,6 @@ pub use record::{
     GlobalEventWindow, MAX_GLOBAL_WINDOW_RECORDS, StateInstall,
 };
 pub use sqlite::{
-    CommandResolution, SqliteJournal, SqliteJournalOptions, SqliteSettings, SqliteStoragePages,
+    CommandResolution, JournalReader, SqliteJournal, SqliteJournalOptions, SqliteSettings,
+    SqliteStoragePages,
 };

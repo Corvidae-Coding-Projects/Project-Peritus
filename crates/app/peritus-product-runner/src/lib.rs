@@ -3,13 +3,13 @@
 //! This crate coordinates concrete provider calls, managed-worktree edits, repository gates, and
 //! an independent review/fix cycle. It owns no UI and grants no authority; the daemon supplies
 //! already-resolved provider and workspace capabilities.
-
 #[cfg(not(verus_only))]
 mod budget;
 #[cfg(not(verus_only))]
 pub(crate) mod bundle;
 #[cfg(not(verus_only))]
 mod candidate;
+mod context_config;
 #[cfg(not(verus_only))]
 mod delivery_requirement;
 #[cfg(not(verus_only))]
@@ -28,6 +28,8 @@ mod file_metadata;
 #[cfg(not(verus_only))]
 pub(crate) mod gates;
 #[cfg(not(verus_only))]
+mod local_context;
+#[cfg(not(verus_only))]
 mod progress;
 #[cfg(not(verus_only))]
 pub mod qualification;
@@ -45,12 +47,15 @@ mod verified_api;
 mod workspace_filter;
 #[cfg(not(verus_only))]
 mod workspace_media;
-
 #[cfg(not(verus_only))]
 pub use budget::{
     PRODUCT_RUN_MAX_COST_MICROUNITS, PRODUCT_RUN_MAX_ELAPSED, PRODUCT_RUN_MAX_MODEL_REQUESTS,
     PRODUCT_RUN_MAX_PEAK_RSS_BYTES, PRODUCT_RUN_MAX_TOOL_CALLS, PRODUCT_RUN_MAX_TOTAL_TOKENS,
     PRODUCT_RUN_MAX_WORKSPACE_GROWTH_BYTES, ProductRunProgress,
+};
+pub use context_config::{
+    LocalCompactorSandbox, LocalContextConfig, LocalContextEngine, LocalProcessConfig,
+    LocalSemanticBackend,
 };
 #[cfg(not(verus_only))]
 pub use developer_tools::CommandRuntime;
@@ -61,6 +66,8 @@ pub use execution::{
     ProductRunPhase, ProductRunQuestion, ProductRunResume, ProductRunUpdate, ProductRunner,
     RoleProviders, RunObserver,
 };
+#[cfg(not(verus_only))]
+pub use local_context::inspect_local_context;
 #[cfg(verus_only)]
 pub use verified_api::{
     CommandRuntime, ConversationView, PRODUCT_RUN_MAX_COST_MICROUNITS, PRODUCT_RUN_MAX_ELAPSED,

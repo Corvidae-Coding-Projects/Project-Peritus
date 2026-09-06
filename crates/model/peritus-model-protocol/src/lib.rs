@@ -16,6 +16,7 @@ pub mod finish;
 pub mod identity;
 mod json_duplicates;
 pub mod message;
+mod message_codec;
 pub mod rate_limit;
 pub mod redaction;
 pub mod reducer;
@@ -50,6 +51,7 @@ pub use identity::{
     RequestFingerprint, RequestId, ResponseId, ToolCallId, ToolName,
 };
 pub use message::{Message, Role};
+pub use message_codec::{decode_messages, encode_messages};
 pub use rate_limit::{
     CacheObservation, CacheStatus, RateLimitDimension, RateLimitObservation, RateLimitWindow,
     ResetTime,

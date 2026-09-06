@@ -1,12 +1,12 @@
 //! Fresh tool-capable, read-only independent review turns.
 
-use peritus_agent::{DeveloperLoop, DeveloperLoopLimits, DeveloperLoopRequest};
+use peritus_agent::{DeveloperLoopLimits, DeveloperLoopRequest};
 use peritus_review::ProductReviewSubmission;
 
 use crate::budget::RunAccounting;
 use crate::developer_tools::{WorkspaceDeveloperTools, read_only_definitions};
 use crate::execution::{ProductRunInput, check_cancelled};
-use crate::trace::FileDeveloperTrace;
+use crate::local_context::LocalContextHandle;
 use crate::{ProductRunnerError, ProductRunnerErrorKind, review, turn};
 
 const MAX_INVALID_REVIEWS: u8 = 3;
@@ -32,6 +32,7 @@ pub async fn complete(
     let mut providers =
         crate::failover::ProviderCursor::new(&input.providers.reviewer, &input.providers.fallbacks);
     let mut correction = None;
+    let memory = LocalContextHandle::open(input, "reviewer")?;
     let mut invalid_reviews = 0_u8;
     let mut provider_recovery = crate::failover::RoleRecovery::default();
     let mut invocation = 0_u32;
@@ -71,8 +72,7 @@ pub async fn complete(
         let (prompt, attachments) = media.into_parts(prompt);
         let mut tools = WorkspaceDeveloperTools::read_only(input.workspace_root.clone())
             .with_task_contract(evidence.conversation);
-        let mut trace = FileDeveloperTrace::new(input.trace_path.clone());
-        let result = DeveloperLoop::run(
+        let result = crate::local_context::run_invocation(
             providers.current(),
             DeveloperLoopRequest {
                 request_prefix: format!(
@@ -83,13 +83,12 @@ pub async fn complete(
                 prompt,
                 attachments,
                 tools: read_only_definitions()?,
-                limits: DeveloperLoopLimits::new(MAX_REVIEWER_TURNS, MAX_REVIEWER_TOOL_CALLS)
-                    .and_then(|limits| limits.with_max_output_tokens(4_096))
-                    .map_err(|error| turn::developer_error(&error))?,
+                limits: reviewer_limits()?,
                 cancellation: input.provider_cancellation.clone(),
             },
             &mut tools,
-            &mut trace,
+            &input.trace_path,
+            memory.as_ref(),
         )
         .await;
         let result = match result {
@@ -135,6 +134,12 @@ fn correction_prompt(error: &ProductRunnerError) -> String {
         error.operation(),
         error.detail(),
     )
+}
+
+fn reviewer_limits() -> Result<DeveloperLoopLimits, ProductRunnerError> {
+    DeveloperLoopLimits::new(MAX_REVIEWER_TURNS, MAX_REVIEWER_TOOL_CALLS)
+        .and_then(|limits| limits.with_max_output_tokens(4_096))
+        .map_err(|error| turn::developer_error(&error))
 }
 
 fn grounding(detail: &'static str) -> ProductRunnerError {

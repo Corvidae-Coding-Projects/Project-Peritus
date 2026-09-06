@@ -119,7 +119,7 @@ fn decode_negotiated(
     NegotiatedCapabilities::from_canonical(profile, selected, model_limits)
 }
 
-fn decode_messages(
+pub fn decode_messages(
     reader: &mut CanonicalReader<'_>,
     limits: ProtocolLimits,
 ) -> Result<Vec<Message>, ProtocolError> {

@@ -11,6 +11,48 @@ use support::{aggregate, command, digest, event, frame, open, store_id};
 const STATE_NAMESPACE: u16 = 900;
 const STATE_KEY: &[u8] = b"durable-lineage";
 
+#[test]
+fn read_only_snapshot_does_not_initialize_and_is_consistent_during_later_commits() {
+    use peritus_journal::{JournalReader, StoreId};
+    let temp = TempDir::new().unwrap();
+    let path = temp.path().join("journal.sqlite3");
+    assert!(JournalReader::open(&path, store_id()).is_err());
+    assert!(!path.exists());
+    let mut journal = open(&temp);
+    assert!(JournalReader::open(&path, StoreId::new([9; 16]).unwrap()).is_err());
+    let key = aggregate(peritus_journal::AggregateKind::Budget, 1);
+    journal
+        .append(state_plan(
+            HeadExpectation::Absent(key),
+            command(1),
+            digest(1),
+            event(1),
+            None,
+            1,
+            b"one",
+        ))
+        .unwrap();
+    let reader = JournalReader::open(&path, store_id()).unwrap();
+    let head = reader.head(key).unwrap().unwrap();
+    journal
+        .append(state_plan(
+            HeadExpectation::Present(head),
+            command(2),
+            digest(2),
+            event(2),
+            Some(event(1)),
+            2,
+            b"two",
+        ))
+        .unwrap();
+    assert_eq!(reader.state_record(STATE_NAMESPACE, STATE_KEY).unwrap().unwrap().bytes(), b"one");
+    assert_eq!(reader.head(key).unwrap(), Some(head));
+    drop(reader);
+    let current = JournalReader::open(&path, store_id()).unwrap();
+    assert_eq!(current.state_record(STATE_NAMESPACE, STATE_KEY).unwrap().unwrap().bytes(), b"two");
+    assert_eq!(journal.records_for_aggregate(key).unwrap().len(), 2);
+}
+
 fn state_plan(
     head: HeadExpectation,
     command_id: CommandId,

@@ -106,7 +106,8 @@ impl WindowsPath {
     pub fn contains(&self, candidate: &Self) -> bool {
         self.case_folded == candidate.case_folded
             || (candidate.case_folded.starts_with(&self.case_folded)
-                && candidate.case_folded.as_bytes().get(self.case_folded.len()) == Some(&b'/'))
+                && (self.case_folded.ends_with('/')
+                    || candidate.case_folded.as_bytes().get(self.case_folded.len()) == Some(&b'/')))
     }
 
     /// Returns an OS path using the platform-native separator parser.

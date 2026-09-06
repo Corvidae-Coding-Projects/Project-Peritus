@@ -46,6 +46,7 @@ source_exceptions = [
 ]
 forbidden_dependencies = []
 controlled_source_roots = [
+    { path = "crates/app/peritus-product-runner/src/local_context/tools/schema.rs", owner = "G4", kind = "schema", rationale = "G4 owns bounded local memory read and update schemas; proposals grant no execution authority." },
     { path = "app-protocol/generated", owner = "A3", kind = "generated-schema", rationale = "A3 deterministically generates the reviewed application-protocol JSON Schema, TypeScript declarations, and wire registry." },
     { path = "benchmarks/schemas", owner = "H3", kind = "schema", rationale = "H3 owns the versioned performance profile, workload, measurement, baseline, evidence, and qualification report interchange schemas." },
     { path = "compat/app-protocol", owner = "A3", kind = "generated", rationale = "A3 owns minimal, realistic, corrupt, and adversarial application-protocol compatibility fixtures with per-case SHA-256 inventories." },

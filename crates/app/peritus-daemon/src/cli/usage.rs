@@ -5,6 +5,7 @@ use std::ffi::OsStr;
 const COMMANDS: &[&str] = &[
     "--version",
     "serve --config <config.toml>",
+    "context-inspect --trace <path> --run <32-hex> --workspace <32-hex> --role <writer|fixer|reviewer>",
     "qualify-pty",
     "qualify-blob-before-stage --config <config.toml>",
     "qualify-blob-before-recover --config <config.toml>",

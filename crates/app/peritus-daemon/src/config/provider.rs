@@ -1,5 +1,4 @@
 //! Strict immutable C5 provider route declarations.
-
 use std::{path::PathBuf, time::Duration};
 
 use peritus_model_protocol::{
@@ -104,6 +103,7 @@ pub struct ProviderRoute {
     executable: Option<PathBuf>,
 }
 
+mod locality;
 impl ProviderRoute {
     /// Builds the exact C5 declaration selected by validated configuration.
     ///

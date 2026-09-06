@@ -120,7 +120,8 @@ impl WindowsBackend {
         #[cfg(target_os = "windows")]
         self.validate_native_paths(execution)?;
         let path_policy =
-            PathPolicy::new(self.config.workspace.clone(), self.config.protected_roots.clone())?;
+            PathPolicy::new(self.config.workspace.clone(), self.config.protected_roots.clone())?
+                .with_read_only_inputs(self.config.read_only_inputs.clone())?;
         let acl = compile_acl_plan(sandbox, &path_policy, self.config.token.principal_sid())?;
         let environment = execution
             .environment()
@@ -302,8 +303,7 @@ impl WindowsBackend {
 
     #[cfg(target_os = "windows")]
     fn validate_native_paths(&self, execution: &ExecutionPlan) -> Result<(), WindowsError> {
-        let working =
-            crate::WindowsPath::new(execution.working_directory().path().to_string_lossy())?;
+        let working = crate::WindowsPath::from_canonicalized(execution.working_directory().path())?;
         if working != self.config.workspace {
             return Err(crate::error::mismatch(
                 WindowsErrorKind::PreparationMismatch,
@@ -311,6 +311,9 @@ impl WindowsBackend {
             ));
         }
         let workspace = crate::ResolvedWindowsPath::resolve(self.config.workspace.clone())?;
+        for input in &self.config.read_only_inputs {
+            crate::ResolvedWindowsPath::resolve(input.clone())?;
+        }
         for protected in &self.config.protected_roots {
             let resolved = crate::ResolvedWindowsPath::resolve(protected.clone())?;
             if workspace.evidence().volume_serial() != resolved.evidence().volume_serial() {

@@ -1,6 +1,7 @@
 //! Shared C4/C2 command ownership for product developer tools.
 
 mod authority;
+mod compactor;
 mod contract;
 mod control;
 mod identity;
@@ -40,6 +41,7 @@ const POLL_INTERVAL: Duration = Duration::from_millis(20);
 #[derive(Clone)]
 pub struct CommandRuntime {
     inner: Arc<RuntimeInner>,
+    local_context: crate::LocalContextConfig,
 }
 
 struct RuntimeInner {
@@ -130,6 +132,7 @@ impl CommandRuntime {
         let limits =
             RouterLimits::new(64, 4_096).map_err(|error| runtime_open(error.to_string()))?;
         Ok(Self {
+            local_context: crate::LocalContextConfig::default(),
             inner: Arc::new(RuntimeInner {
                 run_id,
                 workspace_root,
@@ -146,6 +149,23 @@ impl CommandRuntime {
                 state_guard: None,
             }),
         })
+    }
+
+    /// Selects the run's local-memory policy without changing command authority or recovery.
+    ///
+    /// # Errors
+    /// Rejects malformed local-memory bounds or subprocess configuration.
+    pub fn with_local_context(
+        mut self,
+        config: crate::LocalContextConfig,
+    ) -> Result<Self, crate::ProductRunnerError> {
+        config.validate().map_err(|error| runtime_open(error.to_string()))?;
+        self.local_context = config;
+        Ok(self)
+    }
+
+    pub(crate) const fn local_context_config(&self) -> &crate::LocalContextConfig {
+        &self.local_context
     }
 
     #[cfg(test)]

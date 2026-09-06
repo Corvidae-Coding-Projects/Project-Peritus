@@ -11,6 +11,7 @@ pub struct LinuxBackendConfig {
     pub(crate) probe_request: ProbeRequest,
     pub(crate) managed_proxy: Option<peritus_network::ManagedProxyPreparation>,
     pub(crate) secrets: Option<peritus_secrets::SecretPreparation>,
+    pub(crate) private_filesystem: bool,
 }
 
 impl LinuxBackendConfig {
@@ -43,7 +44,16 @@ impl LinuxBackendConfig {
             probe_request,
             managed_proxy: None,
             secrets: None,
+            private_filesystem: false,
         })
+    }
+    /// Omits the ordinary read-only host tree, mounting only declared files and runtime inputs.
+    /// This stricter view is suitable for credential-free auxiliary inference. The caller must
+    /// explicitly grant the target's runtime library trees; no writable or network grant is added.
+    #[must_use]
+    pub const fn with_private_filesystem(mut self) -> Self {
+        self.private_filesystem = true;
+        self
     }
     /// Supplies inert managed-proxy configuration consumed only inside authorized preparation.
     ///

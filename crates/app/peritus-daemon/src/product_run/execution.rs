@@ -49,7 +49,9 @@ impl ProductRunService {
                 &workspace_root,
                 run_id,
                 service.inner.processes.clone(),
-            ) {
+            )
+            .and_then(|runtime| runtime.with_local_context(service.inner.local_context.clone()))
+            {
                 Ok(runtime) => runtime,
                 Err(error) => {
                     service.finish(run_id, Err(error));

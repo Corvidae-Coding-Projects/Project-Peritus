@@ -100,8 +100,20 @@ impl LinuxBackend {
                 "runtime probe does not cover every required sandbox feature",
             ));
         }
-        let mount_policy =
+        let mut mount_policy =
             MountPolicy::new(&self.config.workspace_root, self.config.protected_roots.clone())?;
+        if self.config.private_filesystem {
+            let helper = std::fs::canonicalize(self.config.probe_request.helper_path()).map_err(
+                |error| {
+                    LinuxError::io(
+                        LinuxOperation::Prepare,
+                        "resolve private bootstrap helper",
+                        &error,
+                    )
+                },
+            )?;
+            mount_policy = mount_policy.with_private_filesystem(helper)?;
+        }
         crate::preparation_validation::validate_secret_destinations(
             sandbox,
             execution,

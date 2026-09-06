@@ -17,6 +17,7 @@ const MAX_PROTECTED_ROOTS: usize = 256;
 pub struct PathPolicy {
     workspace: WindowsPath,
     protected_roots: Vec<WindowsPath>,
+    read_only_inputs: Vec<WindowsPath>,
 }
 
 impl PathPolicy {
@@ -51,7 +52,54 @@ impl PathPolicy {
                 "protected root is outside the exact workspace volume",
             ));
         }
-        Ok(Self { workspace, protected_roots })
+        Ok(Self { workspace, protected_roots, read_only_inputs: Vec::new() })
+    }
+
+    /// Admits explicitly installed external inputs for read/execute rules only.
+    /// This does not add ACL permissions; each actual permission still requires a checked rule.
+    ///
+    /// # Errors
+    /// Rejects excessive inputs and inputs overlapping the writable workspace or protected roots.
+    pub fn with_read_only_inputs(
+        mut self,
+        mut inputs: Vec<WindowsPath>,
+    ) -> Result<Self, WindowsError> {
+        if inputs.len() > MAX_PROTECTED_ROOTS
+            || inputs.iter().any(|input| {
+                self.workspace.contains(input)
+                    || input.contains(&self.workspace)
+                    || self.is_protected(input)
+            })
+        {
+            return Err(error::invalid(
+                WindowsOperation::Validate,
+                "external read-only inputs overlap workspace or exceed capacity",
+            ));
+        }
+        inputs.sort();
+        inputs.dedup();
+        self.read_only_inputs = inputs;
+        Ok(self)
+    }
+
+    fn resolve_rule(
+        &self,
+        rule: &peritus_sandbox::FilesystemRule,
+    ) -> Result<WindowsPath, WindowsError> {
+        let path = WindowsPath::from_sandbox(&self.workspace, rule.path())?;
+        if self.workspace.contains(&path) {
+            return Ok(path);
+        }
+        let writes = [FileOperation::Create, FileOperation::Write, FileOperation::Remove]
+            .into_iter()
+            .any(|operation| rule.operations().contains(operation));
+        if !writes && self.read_only_inputs.iter().any(|input| input.contains(&path)) {
+            return Ok(path);
+        }
+        Err(error::invalid(
+            WindowsOperation::ResolvePath,
+            "rule escapes workspace or writes an external input",
+        ))
     }
 
     /// Returns the normalized workspace root.
@@ -103,7 +151,7 @@ pub fn compile_acl_plan(
 ) -> Result<AclPlan, WindowsError> {
     let mut entries = Vec::new();
     for rule in plan.contract().filesystem().rules() {
-        let path = policy.resolve_logical(rule.path())?;
+        let path = policy.resolve_rule(rule)?;
         if rule.effect() == RuleEffect::Allow && policy.is_protected(&path) {
             return Err(error::invalid(
                 WindowsOperation::CompileAcl,

@@ -136,7 +136,7 @@ pub(super) fn commit_process(
         environment_id: ids.environment,
         resource_id: ids.resource,
         capability_name: ids.capability.clone(),
-        operation_class: OperationClass::RawEffect,
+        operation_class: plan.isolation().operation_class(),
         media_type: EXECUTION_INTENT_MEDIA_TYPE.to_owned(),
         payload: ExecutionIntentPayload::new(
             ids.process,
@@ -149,7 +149,7 @@ pub(super) fn commit_process(
     let digest = intent
         .digest(CodecLimits::PRODUCTION)
         .map_err(|error| format!("digest command process intent: {error}"))?;
-    let capability_use = capability_use(ids, digest, OperationClass::RawEffect)?;
+    let capability_use = capability_use(ids, digest, plan.isolation().operation_class())?;
     let kernel =
         kernel::commit(&mut store, label, ids, contract, &intent, &capability_use, wall_millis)?;
     let (capability, committed_lease) =

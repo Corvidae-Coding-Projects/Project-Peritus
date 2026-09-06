@@ -1,5 +1,7 @@
 //! Durable per-run D0 provider/tool trace.
 
+pub mod local_memory;
+
 use std::{
     fs::{self, File, OpenOptions},
     io::{self, Write as _},
@@ -15,12 +17,25 @@ use crate::{ProductRunnerError, ProductRunnerErrorKind};
 /// Length-framed append-only trace stored beside the daemon's product-run record.
 pub struct FileDeveloperTrace {
     path: PathBuf,
+    memory_scope: Option<local_memory::Scope>,
 }
 
 impl FileDeveloperTrace {
     #[must_use]
     pub const fn new(path: PathBuf) -> Self {
-        Self { path }
+        Self { path, memory_scope: None }
+    }
+
+    /// Binds complete tool observations to one durable local-memory invocation (trace tag 7).
+    #[must_use]
+    pub const fn with_memory_scope(
+        mut self,
+        scope: peritus_types::Sha256Digest,
+        invocation: u64,
+    ) -> Self {
+        self.memory_scope =
+            Some(local_memory::Scope { digest: scope.into_bytes(), invocation, observed: 0 });
+        self
     }
 }
 
@@ -58,6 +73,17 @@ impl DeveloperTrace for FileDeveloperTrace {
         let (tag, payload) = match event {
             DeveloperTraceEvent::ProviderEnvelope(bytes) => (1_u8, bytes.to_vec()),
             DeveloperTraceEvent::ToolObservation { call, observation } => {
+                if let Some(mut scope) = self.memory_scope {
+                    scope.observed = scope.observed.checked_add(1).ok_or_else(|| {
+                        DeveloperLoopError::Trace(
+                            "local trace observation sequence overflow".to_owned(),
+                        )
+                    })?;
+                    let payload = local_memory::tool_payload(scope, call, observation)?;
+                    append(&self.path, 7, &payload).map_err(|error| trace(&error))?;
+                    self.memory_scope = Some(scope);
+                    return Ok(());
+                }
                 let fields = [
                     ("call_id".to_owned(), Value::String(call.id().expose_for_wire().to_owned())),
                     ("name".to_owned(), Value::String(call.name().as_str().to_owned())),

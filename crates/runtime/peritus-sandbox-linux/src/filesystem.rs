@@ -6,6 +6,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+mod private;
+
 const ALL_FILE_OPERATIONS: u8 = 0x7f;
 
 /// Native mount operation emitted in deterministic order.
@@ -128,6 +130,7 @@ impl LandlockRule {
 pub struct MountPolicy {
     workspace_root: PathBuf,
     protected_roots: Vec<PathBuf>,
+    private_helper: Option<PathBuf>,
 }
 
 impl MountPolicy {
@@ -174,7 +177,20 @@ impl MountPolicy {
         }
         protected_roots.sort();
         protected_roots.dedup();
-        Ok(Self { workspace_root, protected_roots })
+        Ok(Self { workspace_root, protected_roots, private_helper: None })
+    }
+    /// Selects a private root containing only declared paths and the installed bootstrap helper.
+    ///
+    /// # Errors
+    /// Rejects an absent, non-file, or noncanonical helper path.
+    pub fn with_private_filesystem(mut self, helper: PathBuf) -> Result<Self, LinuxError> {
+        if !helper.is_file() || fs::canonicalize(&helper).ok().as_ref() != Some(&helper) {
+            return Err(filesystem_error(
+                "private filesystem helper must be a canonical installed file",
+            ));
+        }
+        self.private_helper = Some(helper);
+        Ok(self)
     }
     /// Returns the resolved workspace root.
     #[must_use]
@@ -294,14 +310,22 @@ impl MountPlan {
                 ));
             }
         }
+        let root = if policy.private_helper.is_some() {
+            MountAction::Tmpfs { target: PathBuf::from("/") }
+        } else {
+            MountAction::ReadOnlyBind { source: PathBuf::from("/"), target: PathBuf::from("/") }
+        };
         let mut actions = vec![
-            MountAction::ReadOnlyBind { source: PathBuf::from("/"), target: PathBuf::from("/") },
+            root,
             MountAction::Proc { target: PathBuf::from("/proc") },
             MountAction::Dev { target: PathBuf::from("/dev") },
             MountAction::Tmpfs { target: PathBuf::from("/tmp") },
         ];
         for path in readable.difference(&writable) {
             actions.push(MountAction::ReadOnlyBind { source: path.clone(), target: path.clone() });
+        }
+        if let Some(helper) = &policy.private_helper {
+            private::bootstrap(&mut actions, plan, helper)?;
         }
         for path in writable {
             if !path.starts_with(policy.workspace_root()) {
@@ -312,8 +336,11 @@ impl MountPlan {
         for path in masks {
             actions.push(MountAction::Mask { target: path });
         }
-        let mut landlock_rules =
-            vec![LandlockRule::new(PathBuf::from("/"), LandlockAccess::host_read_only())?];
+        let mut landlock_rules = if policy.private_helper.is_some() {
+            Vec::new()
+        } else {
+            vec![LandlockRule::new(PathBuf::from("/"), LandlockAccess::host_read_only())?]
+        };
         for (path, access) in access_by_path {
             landlock_rules.push(LandlockRule::new(path, access)?);
         }

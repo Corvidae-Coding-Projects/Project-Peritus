@@ -80,6 +80,22 @@ fn checked_plan_with_network(
     network: NetworkContract,
     network_requirements: Vec<NetworkTarget>,
 ) -> CheckedSandboxPlan {
+    checked_plan_with_files(workspace, network, network_requirements, Vec::new())
+}
+
+pub fn checked_private_files_plan(
+    workspace: &Path,
+    files: Vec<FilesystemRule>,
+) -> CheckedSandboxPlan {
+    checked_plan_with_files(workspace, NetworkContract::deny_all(), Vec::new(), files)
+}
+
+fn checked_plan_with_files(
+    workspace: &Path,
+    network: NetworkContract,
+    network_requirements: Vec<NetworkTarget>,
+    extra_files: Vec<FilesystemRule>,
+) -> CheckedSandboxPlan {
     let workspace = workspace.canonicalize().expect("canonical workspace path");
     let root = SandboxPath::new(workspace.to_string_lossy().into_owned()).expect("workspace path");
     let git = SandboxPath::new(workspace.join(".git").to_string_lossy().into_owned())
@@ -94,7 +110,7 @@ fn checked_plan_with_network(
         FileOperation::Write,
         FileOperation::Remove,
     ]);
-    let filesystem = FilesystemContract::new(vec![
+    let mut files = vec![
         FilesystemRule::new(RuleEffect::Allow, root, PathScope::Descendants, all)
             .expect("workspace allow"),
         FilesystemRule::new(RuleEffect::Deny, git, PathScope::Descendants, all)
@@ -111,8 +127,9 @@ fn checked_plan_with_network(
             ]),
         )
         .expect("program allow"),
-    ])
-    .expect("filesystem contract");
+    ];
+    files.extend(extra_files);
+    let filesystem = FilesystemContract::new(files).expect("filesystem contract");
     let process = ProcessContract::new(
         vec![program.clone()],
         DescendantPolicy::Denied,

@@ -64,9 +64,9 @@ pub use component::{
     ToolRegistration,
 };
 pub use config::{
-    ApprovalRegistryDeclaration, DaemonConfig, DaemonLimits, DaemonPaths, LocalHumanPrincipal,
-    ProjectDeclaration, ProviderProfileDeclaration, ProviderRoute, ProviderRouteKind,
-    TelemetryExport, ToolPolicy, WorkspaceDeclaration,
+    ApprovalRegistryDeclaration, ContextPolicy, DaemonConfig, DaemonLimits, DaemonPaths,
+    LocalHumanPrincipal, ProjectDeclaration, ProviderProfileDeclaration, ProviderRoute,
+    ProviderRouteKind, TelemetryExport, ToolPolicy, WorkspaceDeclaration,
 };
 pub use error::{DaemonError, DaemonErrorCode, DaemonRecovery};
 pub use identity::DaemonIdentity;

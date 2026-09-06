@@ -9,35 +9,28 @@ use peritus_provider_core::ModelProvider;
 use crate::{ModelAdvance, ModelSession};
 
 use super::context::prepare_messages;
+use super::context_port::ContextSession;
 use super::model_request::{ModelTurnKind, build_model_request};
 use super::observation::model_visible_tool_output;
 use super::retry::DeveloperRetryPlanner;
 use super::semantic::SemanticCompaction;
 use super::{
-    DeveloperLoopError, DeveloperLoopOutcome, DeveloperLoopRequest, DeveloperToolExecutor,
-    DeveloperTrace, DeveloperTraceEvent, DeveloperUsage,
+    DeveloperContextEvent, DeveloperLoop, DeveloperLoopError, DeveloperLoopOutcome,
+    DeveloperLoopRequest, DeveloperToolExecutor, DeveloperTrace, DeveloperTraceEvent,
+    DeveloperUsage,
 };
 
-/// Production D0 composition that repeatedly lets a model inspect, edit, execute, and observe.
-pub struct DeveloperLoop;
-
 impl DeveloperLoop {
-    /// Runs a bounded developer loop until the provider returns final text without tool calls.
-    ///
-    /// Provider envelopes and tool observations are recorded through `trace` before they are
-    /// admitted to subsequent model context.
-    ///
-    /// # Errors
-    /// Returns typed protocol, provider, trace, tool, cancellation, or bound failures.
     #[allow(
         clippy::too_many_lines,
         reason = "the ordered provider and tool transcript remains explicit"
     )]
-    pub async fn run(
+    pub(super) async fn run_inner(
         provider: &dyn ModelProvider,
         request: DeveloperLoopRequest,
         tools: &mut dyn DeveloperToolExecutor,
         trace: &mut dyn DeveloperTrace,
+        mut context: ContextSession<'_>,
     ) -> Result<DeveloperLoopOutcome, DeveloperLoopError> {
         let protocol_limits = ProtocolLimits::PRODUCTION;
         let profile = provider.profile();
@@ -60,6 +53,7 @@ impl DeveloperLoop {
             message(Role::System, request.system.clone(), protocol_limits)?,
             user_message(request.prompt.clone(), request.attachments.clone(), protocol_limits)?,
         ];
+        context.open(&request, &messages)?;
         let mut tool_calls = 0_u32;
         let mut compactions = 0_u16;
         let mut retries = 0_u16;
@@ -69,60 +63,68 @@ impl DeveloperLoop {
             if request.cancellation.is_cancelled() {
                 return Err(DeveloperLoopError::Cancelled);
             }
-            if let Some(semantic) = SemanticCompaction::prepare(
-                &messages,
-                &request.tools,
-                profile,
-                request.limits.max_output_tokens(),
-                protocol_limits,
-            )? {
-                match complete_turn(
-                    provider,
-                    &request,
-                    semantic.request_messages(),
-                    profile,
-                    negotiated,
-                    protocol_limits,
-                    turn,
-                    ModelTurnKind::SemanticCompaction,
-                    None,
-                    &mut retries,
-                    &mut usage,
-                    trace,
-                )
-                .await
-                {
-                    Ok(session) => {
-                        if let Ok(Some(record)) =
-                            semantic.install(&mut messages, &session, protocol_limits)
-                        {
-                            trace.record(DeveloperTraceEvent::ContextCompaction(&record))?;
-                            compactions = compactions
-                                .checked_add(1)
-                                .ok_or(DeveloperLoopError::LimitExceeded)?;
-                        }
-                    }
-                    Err(DeveloperLoopError::Cancelled) => {
-                        return Err(DeveloperLoopError::Cancelled);
-                    }
-                    Err(_) => {}
+            if context.is_local() {
+                if context.prepare(&mut messages, &request.tools, profile)? {
+                    compactions =
+                        compactions.checked_add(1).ok_or(DeveloperLoopError::LimitExceeded)?;
                 }
+            } else {
+                if let Some(semantic) = SemanticCompaction::prepare(
+                    &messages,
+                    &request.tools,
+                    profile,
+                    request.limits.max_output_tokens(),
+                    protocol_limits,
+                )? {
+                    match complete_turn(
+                        provider,
+                        &request,
+                        semantic.request_messages(),
+                        profile,
+                        negotiated,
+                        protocol_limits,
+                        turn,
+                        ModelTurnKind::SemanticCompaction,
+                        None,
+                        &mut retries,
+                        &mut usage,
+                        trace,
+                    )
+                    .await
+                    {
+                        Ok(session) => {
+                            if let Ok(Some(record)) =
+                                semantic.install(&mut messages, &session, protocol_limits)
+                            {
+                                trace.record(DeveloperTraceEvent::ContextCompaction(&record))?;
+                                compactions = compactions
+                                    .checked_add(1)
+                                    .ok_or(DeveloperLoopError::LimitExceeded)?;
+                            }
+                        }
+                        Err(DeveloperLoopError::Cancelled) => {
+                            return Err(DeveloperLoopError::Cancelled);
+                        }
+                        Err(_) => {}
+                    }
+                }
+                let records = prepare_messages(
+                    &mut messages,
+                    &request.tools,
+                    profile,
+                    request.limits.max_output_tokens(),
+                    protocol_limits,
+                )?;
+                for record in &records {
+                    trace.record(DeveloperTraceEvent::ContextCompaction(record))?;
+                }
+                compactions = compactions
+                    .checked_add(
+                        u16::try_from(records.len())
+                            .map_err(|_| DeveloperLoopError::LimitExceeded)?,
+                    )
+                    .ok_or(DeveloperLoopError::LimitExceeded)?;
             }
-            let records = prepare_messages(
-                &mut messages,
-                &request.tools,
-                profile,
-                request.limits.max_output_tokens(),
-                protocol_limits,
-            )?;
-            for record in &records {
-                trace.record(DeveloperTraceEvent::ContextCompaction(record))?;
-            }
-            compactions = compactions
-                .checked_add(
-                    u16::try_from(records.len()).map_err(|_| DeveloperLoopError::LimitExceeded)?,
-                )
-                .ok_or(DeveloperLoopError::LimitExceeded)?;
             let required_tool = tools.required_tool_name().map(str::to_owned);
             let session = complete_turn(
                 provider,
@@ -164,15 +166,25 @@ impl DeveloperLoop {
                     return Err(DeveloperLoopError::EmptyResponse);
                 }
                 if let Some(blocker) = tools.completion_blocker() {
-                    messages.push(Message::new(Role::Assistant, assistant, protocol_limits)?);
-                    messages.push(message(
+                    context.append(
+                        &mut messages,
+                        Message::new(Role::Assistant, assistant, protocol_limits)?,
+                    )?;
+                    context.append(&mut messages, message(
                         Role::User,
                         format!(
                             "The harness cannot accept that terminal response yet: {blocker}. Continue in this same session, use the declared host tools to satisfy the missing evidence, and then return the complete requested terminal response."
                         ),
                         protocol_limits,
-                    )?);
+                    )?)?;
                     continue;
+                }
+                if context.is_local() {
+                    context.observe(DeveloperContextEvent::Message(&Message::new(
+                        Role::Assistant,
+                        assistant,
+                        protocol_limits,
+                    )?))?;
                 }
                 return Ok(DeveloperLoopOutcome {
                     text: final_text,
@@ -184,6 +196,10 @@ impl DeveloperLoop {
                     messages,
                 });
             }
+            context.append(
+                &mut messages,
+                Message::new(Role::Assistant, assistant, protocol_limits)?,
+            )?;
             tool_calls = tool_calls
                 .checked_add(
                     u32::try_from(calls.len()).map_err(|_| DeveloperLoopError::LimitExceeded)?,
@@ -192,13 +208,13 @@ impl DeveloperLoop {
             if tool_calls > request.limits.max_tool_calls() {
                 return Err(DeveloperLoopError::LimitExceeded);
             }
-            if assistant.is_empty() {
-                return Err(DeveloperLoopError::EmptyResponse);
-            }
-            messages.push(Message::new(Role::Assistant, assistant, protocol_limits)?);
             for call in calls {
                 let observation = tools.execute(&call)?;
                 trace.record(DeveloperTraceEvent::ToolObservation {
+                    call: &call,
+                    observation: &observation,
+                })?;
+                context.observe(DeveloperContextEvent::ToolObservation {
                     call: &call,
                     observation: &observation,
                 })?;
@@ -207,19 +223,24 @@ impl DeveloperLoop {
                     profile.limits().max_input_tokens(),
                     protocol_limits,
                 )?;
-                messages.push(Message::new(
-                    Role::Tool,
-                    vec![ContentBlock::ToolResult(ToolResult::new(
-                        call.id().clone(),
-                        model_output,
-                        observation.is_error,
-                    ))],
-                    protocol_limits,
-                )?);
+                let model_output = context.annotate(&call, model_output)?;
+                context.append(
+                    &mut messages,
+                    Message::new(
+                        Role::Tool,
+                        vec![ContentBlock::ToolResult(ToolResult::new(
+                            call.id().clone(),
+                            model_output,
+                            observation.is_error,
+                        ))],
+                        protocol_limits,
+                    )?,
+                )?;
             }
             if let Some(feedback) = tools.take_progress_feedback() {
-                messages.push(message(Role::User, feedback, protocol_limits)?);
+                context.append(&mut messages, message(Role::User, feedback, protocol_limits)?)?;
             }
+            context.observe(DeveloperContextEvent::BatchCompleted)?;
         }
         Err(DeveloperLoopError::LimitExceeded)
     }

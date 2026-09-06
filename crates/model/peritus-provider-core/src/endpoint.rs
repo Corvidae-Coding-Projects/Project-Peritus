@@ -62,6 +62,17 @@ impl Endpoint {
         &self.serialized
     }
 
+    /// Returns whether the canonical endpoint uses a literal loopback IP address.
+    /// Hostnames (including `localhost`) are excluded: no DNS or proxy assumption proves locality.
+    #[must_use]
+    pub fn is_literal_loopback(&self) -> bool {
+        match self.parsed.host() {
+            Some(url::Host::Ipv4(address)) => address.is_loopback(),
+            Some(url::Host::Ipv6(address)) => address.is_loopback(),
+            _ => false,
+        }
+    }
+
     /// Returns a validated endpoint with the supplied absolute path.
     ///
     /// # Errors
@@ -175,4 +186,23 @@ fn secret_query_name(name: &str) -> bool {
 
 const fn invalid_endpoint(detail: &'static str) -> ProviderCoreError {
     ProviderCoreError::new(ProviderCoreErrorKind::InvalidEndpoint, "endpoint", detail)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn literal_loopback_does_not_trust_dns_names_or_remote_addresses() {
+        for host in ["127.0.0.1", "127.0.0.2", "[::1]"] {
+            assert!(Endpoint::new(format!("http://{host}:8000/v1")).unwrap().is_literal_loopback());
+        }
+        for host in
+            ["localhost", "loopback.invalid", "192.0.2.1", "[2001:db8::1]", "[::ffff:127.0.0.1]"]
+        {
+            assert!(
+                !Endpoint::new(format!("http://{host}:8000/v1")).unwrap().is_literal_loopback()
+            );
+        }
+    }
 }

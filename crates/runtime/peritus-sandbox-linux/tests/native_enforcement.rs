@@ -5,6 +5,8 @@
 mod native_support;
 #[path = "native_enforcement/network.rs"]
 mod network;
+#[path = "native_enforcement/private_filesystem.rs"]
+mod private_filesystem;
 mod support;
 
 use native_support::*;

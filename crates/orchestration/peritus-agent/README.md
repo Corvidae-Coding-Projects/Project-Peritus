@@ -43,6 +43,16 @@ Model output is never tool authority, and D0 completion is never run acceptance.
 the receipts that authorize effects; later D1/D2/E0 components own gates, review, orchestration,
 and acceptance.
 
+`DeveloperLoop::run_with_context` supplies an opt-in seam for a host-owned local context port.
+It records current invocation inputs, visible model messages and proposed calls, full tool
+observations before output limiting, host corrections, and completed batches. The port survives
+error returns because the caller owns it. Local assembly bypasses legacy semantic and
+deterministic compaction; the loop checks the complete input budget and requires checkpoint
+publication before installing a replacement view. A port failure stops execution. Existing
+`run` callers keep their current behavior and format. The seam has no concrete product storage
+adapter yet and does not by itself provide restart recovery or the complete working-memory
+feature. See the [local working-memory design](../../../.design/local-working-memory.md).
+
 Focused qualification:
 
 ```text
