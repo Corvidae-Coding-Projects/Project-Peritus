@@ -4,6 +4,36 @@ Peritus is a coding agent that runs in your terminal. It changes code, runs proj
 You can start in any folder. In a plain folder, requested edits happen in place.
 Git repositories use a separate managed copy. You control which changes to keep.
 
+## HarnessBench: 85.46% combined across all 106 tasks
+
+**Our frozen local run scored above the published HarnessBench leaderboard leader.**
+It scored **85.46% combined** and **88.56% outcome**, with all 106 tasks included and
+adverse results retained in the score.
+
+| Configuration | Combined | Outcome / completion |
+| --- | ---: | ---: |
+| Peritus — frozen local run, GPT-5.6-sol + Sonnet | **85.46%** | **88.56%** |
+| NanoBot + GPT-5.4 — published combined-score leader | 81.3% | 85.1% |
+| Codex + GPT-5.4 — published reference | 80.4% | 86.5% |
+
+Published figures were checked on the [HarnessBench leaderboard](https://www.harness-bench.ai/leaderboard.html)
+on September 6, 2026. Peritus's recorded combined score is 4.16 percentage points higher than
+the published leader's displayed score.
+
+**This is a score comparison, not an official leaderboard placement or a controlled same-model win.**
+Peritus used a mixed-model configuration and GPT-5.6-sol as its process judge; the
+[published evaluation](https://arxiv.org/html/2605.27922v1) used Claude Sonnet 4.6 as its process judge.
+Our result is one retained scored execution per task, not a repeated reliability estimate.
+It does not establish which harness would win with identical models and evaluation conditions.
+
+The run used frozen Peritus revision `a819e58244175711eba1f9c8baaab8ac8b92357c` and
+HarnessBench revision `1025086a446653702b80cfb48babbeec35db6b2c`. Process scored 95.97%
+and security scored 100%; 41 tasks had perfect external outcomes. Native acceptance succeeded
+on 98 tasks; eight retained unaccepted candidates. All remain in the aggregate.
+The retained aggregate's SHA-256 is `88cdb94169783031dcd0e536a38ad0e2ebf84cc5f17e5cfe0467d470c1cffdaf`.
+See the [benchmark integrity policy and findings](docs/benchmark-integrity-appendix.md)
+for how we preserve failures and distinguish product defects from evaluator problems.
+
 ## Install
 
 No public release is available yet. The commands below will work after the first release is published.
