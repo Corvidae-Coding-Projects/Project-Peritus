@@ -51,18 +51,56 @@ jobs:
       - name: Qualify native package and public installer lifecycle
         run: cargo run --locked --package xtask -- release-bootstrap-prepared-smoke
 
-  prepare-h2:
-    name: Prepare H2 package (${{ matrix.os }})
+  build-h2-binary:
+    name: Build H2 binary ${{ matrix.binary }} (${{ matrix.os }})
+    env:
+      CARGO_BUILD_JOBS: "2"
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, helper: peritus-sandbox-linux }
-          - { os: ubuntu-24.04-arm, helper: peritus-sandbox-linux }
-          - { os: macos-15, helper: peritus-sandbox-macos }
-          - { os: macos-15-intel, helper: peritus-sandbox-macos }
-          - { os: windows-2025, helper: peritus-sandbox-windows }
-          - { os: windows-11-arm, helper: peritus-sandbox-windows }
+          - { os: ubuntu-24.04, package: peritus-cli, binary: peritus, artifact: peritus }
+          - { os: ubuntu-24.04, package: peritus-daemon, binary: peritusd, artifact: peritusd }
+          - { os: ubuntu-24.04, package: peritus-tui, binary: peritus-tui, artifact: peritus-tui }
+          - { os: ubuntu-24.04, package: peritus-sandbox-linux, binary: peritus-linux-sandbox-helper, artifact: peritus-linux-sandbox-helper }
+          - { os: ubuntu-24.04, package: peritus-platform-qualification, binary: peritus-package, artifact: peritus-package }
+          - { os: ubuntu-24.04, package: peritus-platform-qualification, binary: peritus-h2, artifact: peritus-h2 }
+          - { os: ubuntu-24.04, package: peritus-platform-qualification, binary: peritus-h2-controller, artifact: peritus-h2-controller }
+          - { os: ubuntu-24.04-arm, package: peritus-cli, binary: peritus, artifact: peritus }
+          - { os: ubuntu-24.04-arm, package: peritus-daemon, binary: peritusd, artifact: peritusd }
+          - { os: ubuntu-24.04-arm, package: peritus-tui, binary: peritus-tui, artifact: peritus-tui }
+          - { os: ubuntu-24.04-arm, package: peritus-sandbox-linux, binary: peritus-linux-sandbox-helper, artifact: peritus-linux-sandbox-helper }
+          - { os: ubuntu-24.04-arm, package: peritus-platform-qualification, binary: peritus-package, artifact: peritus-package }
+          - { os: ubuntu-24.04-arm, package: peritus-platform-qualification, binary: peritus-h2, artifact: peritus-h2 }
+          - { os: ubuntu-24.04-arm, package: peritus-platform-qualification, binary: peritus-h2-controller, artifact: peritus-h2-controller }
+          - { os: macos-15, package: peritus-cli, binary: peritus, artifact: peritus }
+          - { os: macos-15, package: peritus-daemon, binary: peritusd, artifact: peritusd }
+          - { os: macos-15, package: peritus-tui, binary: peritus-tui, artifact: peritus-tui }
+          - { os: macos-15, package: peritus-sandbox-macos, binary: peritus-macos-sandbox-helper, artifact: peritus-macos-sandbox-helper }
+          - { os: macos-15, package: peritus-platform-qualification, binary: peritus-package, artifact: peritus-package }
+          - { os: macos-15, package: peritus-platform-qualification, binary: peritus-h2, artifact: peritus-h2 }
+          - { os: macos-15, package: peritus-platform-qualification, binary: peritus-h2-controller, artifact: peritus-h2-controller }
+          - { os: macos-15-intel, package: peritus-cli, binary: peritus, artifact: peritus }
+          - { os: macos-15-intel, package: peritus-daemon, binary: peritusd, artifact: peritusd }
+          - { os: macos-15-intel, package: peritus-tui, binary: peritus-tui, artifact: peritus-tui }
+          - { os: macos-15-intel, package: peritus-sandbox-macos, binary: peritus-macos-sandbox-helper, artifact: peritus-macos-sandbox-helper }
+          - { os: macos-15-intel, package: peritus-platform-qualification, binary: peritus-package, artifact: peritus-package }
+          - { os: macos-15-intel, package: peritus-platform-qualification, binary: peritus-h2, artifact: peritus-h2 }
+          - { os: macos-15-intel, package: peritus-platform-qualification, binary: peritus-h2-controller, artifact: peritus-h2-controller }
+          - { os: windows-2025, package: peritus-cli, binary: peritus, artifact: peritus.exe }
+          - { os: windows-2025, package: peritus-daemon, binary: peritusd, artifact: peritusd.exe }
+          - { os: windows-2025, package: peritus-tui, binary: peritus-tui, artifact: peritus-tui.exe }
+          - { os: windows-2025, package: peritus-sandbox-windows, binary: peritus-windows-sandbox-helper, artifact: peritus-windows-sandbox-helper.exe }
+          - { os: windows-2025, package: peritus-platform-qualification, binary: peritus-package, artifact: peritus-package.exe }
+          - { os: windows-2025, package: peritus-platform-qualification, binary: peritus-h2, artifact: peritus-h2.exe }
+          - { os: windows-2025, package: peritus-platform-qualification, binary: peritus-h2-controller, artifact: peritus-h2-controller.exe }
+          - { os: windows-11-arm, package: peritus-cli, binary: peritus, artifact: peritus.exe }
+          - { os: windows-11-arm, package: peritus-daemon, binary: peritusd, artifact: peritusd.exe }
+          - { os: windows-11-arm, package: peritus-tui, binary: peritus-tui, artifact: peritus-tui.exe }
+          - { os: windows-11-arm, package: peritus-sandbox-windows, binary: peritus-windows-sandbox-helper, artifact: peritus-windows-sandbox-helper.exe }
+          - { os: windows-11-arm, package: peritus-platform-qualification, binary: peritus-package, artifact: peritus-package.exe }
+          - { os: windows-11-arm, package: peritus-platform-qualification, binary: peritus-h2, artifact: peritus-h2.exe }
+          - { os: windows-11-arm, package: peritus-platform-qualification, binary: peritus-h2-controller, artifact: peritus-h2-controller.exe }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
@@ -74,12 +112,41 @@ jobs:
           RUSTUP_MAX_RETRIES: "10"
         with:
           toolchain: ${{ env.RUST_VERSION }}
-      - name: Build native application and qualification tools once
-        env:
-          CARGO_BUILD_JOBS: "2"
+      - name: Build one native binary
         run: >-
-          cargo build --locked --bins -p xtask -p peritus-cli -p peritus-daemon
-          -p peritus-tui -p peritus-platform-qualification -p ${{ matrix.helper }}
+          cargo build --locked --package ${{ matrix.package }} --bin ${{ matrix.binary }}
+      - name: Retain one same-run native binary
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: h2-bin-${{ matrix.os }}--${{ matrix.binary }}
+          path: target/debug/${{ matrix.artifact }}
+          if-no-files-found: error
+          retention-days: 7
+
+  prepare-h2:
+    name: Prepare H2 package (${{ matrix.os }})
+    needs: build-h2-binary
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, macos-15-intel, windows-2025, windows-11-arm]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        env:
+          RUSTUP_MAX_RETRIES: "10"
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - name: Retrieve this platform's same-run binaries
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: h2-bin-${{ matrix.os }}--*
+          path: target/debug
+          merge-multiple: true
       - name: Assemble and archive prepared H2 package
         run: cargo run --locked --package xtask -- product-native-qualification-prepare
       - name: Retain same-run prepared H2 package

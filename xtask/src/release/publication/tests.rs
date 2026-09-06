@@ -76,6 +76,7 @@ fn release_and_lifecycle_matrices_cover_each_native_target_once() {
         (&release, "assemble"),
         (&release, "attest"),
         (&product, "bootstrap"),
+        (&product, "prepare-h2"),
         (&product, "h2"),
     ] {
         let os = document["jobs"][job]["strategy"]["matrix"]["os"].as_vec().expect("OS matrix");
@@ -119,17 +120,7 @@ fn release_and_lifecycle_matrices_cover_each_native_target_once() {
 fn h2_preparation_is_once_per_native_target_with_every_scenario_retained() {
     let document = workflow(".github/workflows/product-package.yml");
     let prepare = &document["jobs"]["prepare-h2"];
-    let rows = prepare["strategy"]["matrix"]["include"].as_vec().expect("preparation matrix");
-    assert_eq!(rows.len(), TARGETS.len());
-    for (platform, _, runner) in TARGETS {
-        let matching =
-            rows.iter().filter(|row| row["os"].as_str() == Some(runner)).collect::<Vec<_>>();
-        assert_eq!(matching.len(), 1, "one preparation for {runner}");
-        assert_eq!(
-            matching[0]["helper"].as_str(),
-            Some(format!("peritus-sandbox-{platform}").as_str())
-        );
-    }
+    assert_eq!(prepare["needs"].as_str(), Some("build-h2-binary"));
     let h2 = &document["jobs"]["h2"];
     assert_eq!(h2["needs"].as_str(), Some("prepare-h2"));
     let shards = h2["strategy"]["matrix"]["shard"].as_vec().expect("scenarios");
@@ -137,7 +128,7 @@ fn h2_preparation_is_once_per_native_target_with_every_scenario_retained() {
     for (index, shard) in shards.iter().enumerate() {
         assert_eq!(shard.as_i64(), Some(i64::try_from(index).expect("index")));
     }
-    for job in ["bootstrap", "prepare-h2", "h2"] {
+    for job in ["bootstrap", "build-h2-binary", "prepare-h2", "h2"] {
         assert_eq!(document["jobs"][job]["timeout-minutes"].as_i64(), Some(10));
         assert_eq!(document["jobs"][job]["strategy"]["fail-fast"].as_bool(), Some(false));
     }
@@ -156,25 +147,84 @@ fn h2_and_lifecycle_only_execute_the_exact_same_run_prepared_artifact() {
     assert_eq!(upload["with"]["name"].as_str(), Some("h2-prepared-${{ matrix.os }}"));
     assert_eq!(upload["with"]["path"].as_str(), Some("target/h2-prepared.tar"));
     assert_eq!(upload["with"]["if-no-files-found"].as_str(), Some("error"));
-    let builds = preparation
-        .iter()
-        .filter_map(|step| step["run"].as_str())
-        .filter(|command| command.contains("cargo build"))
-        .collect::<Vec<_>>();
-    assert_eq!(builds.len(), 1);
-    for package in
-        ["xtask", "peritus-cli", "peritus-daemon", "peritus-tui", "peritus-platform-qualification"]
-    {
-        assert!(builds[0].contains(&format!("-p {package}")));
-    }
-    assert!(builds[0].contains("--locked --bins"));
-    assert!(builds[0].contains("-p ${{ matrix.helper }}"));
+    assert_eq!(
+        preparation.iter().filter_map(|step| step["run"].as_str()).collect::<Vec<_>>(),
+        ["cargo run --locked --package xtask -- product-native-qualification-prepare"]
+    );
     assert_prepared_consumer(
         &document,
         "h2",
         "product-native-qualification-prepared-shard ${{ matrix.shard }}",
     );
     assert_prepared_consumer(&document, "bootstrap", "release-bootstrap-prepared-smoke");
+}
+
+#[test]
+fn native_binary_builds_are_individually_bounded_and_downloads_cannot_cross_platforms() {
+    let document = workflow(".github/workflows/product-package.yml");
+    let build = &document["jobs"]["build-h2-binary"];
+    let rows = build["strategy"]["matrix"]["include"].as_vec().expect("binary matrix");
+    assert_eq!(rows.len(), TARGETS.len() * 7);
+    let mut artifact_names = std::collections::BTreeSet::new();
+    for (platform, _, runner) in TARGETS {
+        for (package, binary) in native_binary_inventory(platform) {
+            let matching = rows
+                .iter()
+                .filter(|row| {
+                    row["os"].as_str() == Some(runner)
+                        && row["package"].as_str() == Some(package.as_str())
+                        && row["binary"].as_str() == Some(binary.as_str())
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(matching.len(), 1, "exactly one build of {runner}/{binary}");
+            let suffix = if platform == "windows" { ".exe" } else { "" };
+            assert_eq!(
+                matching[0]["artifact"].as_str(),
+                Some(format!("{binary}{suffix}").as_str())
+            );
+            assert!(artifact_names.insert(format!("h2-bin-{runner}--{binary}")));
+        }
+    }
+    for (_, _, runner) in TARGETS {
+        let prefix = format!("h2-bin-{runner}--");
+        assert_eq!(artifact_names.iter().filter(|name| name.starts_with(&prefix)).count(), 7);
+    }
+    let steps = build["steps"].as_vec().expect("build steps");
+    assert_eq!(
+        steps.iter().filter_map(|step| step["run"].as_str()).collect::<Vec<_>>(),
+        ["cargo build --locked --package ${{ matrix.package }} --bin ${{ matrix.binary }}"]
+    );
+    let upload =
+        steps.iter().find(|step| step["with"]["name"].as_str().is_some()).expect("binary upload");
+    assert_eq!(
+        upload["with"]["name"].as_str(),
+        Some("h2-bin-${{ matrix.os }}--${{ matrix.binary }}")
+    );
+    assert_eq!(upload["with"]["path"].as_str(), Some("target/debug/${{ matrix.artifact }}"));
+    assert_eq!(upload["with"]["if-no-files-found"].as_str(), Some("error"));
+    assert_eq!(build["env"]["CARGO_BUILD_JOBS"].as_str(), Some("2"));
+    let prepare = document["jobs"]["prepare-h2"]["steps"].as_vec().expect("assembly steps");
+    let download = prepare
+        .iter()
+        .find(|step| step["with"]["pattern"].as_str().is_some())
+        .expect("binary download");
+    assert_eq!(download["with"].as_hash().expect("same-run download inputs").len(), 3);
+    assert_eq!(download["with"]["pattern"].as_str(), Some("h2-bin-${{ matrix.os }}--*"));
+    assert_eq!(download["with"]["path"].as_str(), Some("target/debug"));
+    assert_eq!(download["with"]["merge-multiple"].as_bool(), Some(true));
+}
+
+fn native_binary_inventory(platform: &str) -> Vec<(String, String)> {
+    let mut binaries = vec![
+        ("peritus-cli".to_owned(), "peritus".to_owned()),
+        ("peritus-daemon".to_owned(), "peritusd".to_owned()),
+        ("peritus-tui".to_owned(), "peritus-tui".to_owned()),
+        (format!("peritus-sandbox-{platform}"), format!("peritus-{platform}-sandbox-helper")),
+    ];
+    for binary in ["peritus-package", "peritus-h2", "peritus-h2-controller"] {
+        binaries.push(("peritus-platform-qualification".to_owned(), binary.to_owned()));
+    }
+    binaries
 }
 
 fn assert_prepared_consumer(document: &Yaml, job: &str, command: &str) {

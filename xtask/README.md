@@ -23,10 +23,12 @@ is the equivalent developer convenience interface.
 
 ## Focused checks
 
-Native product CI separates package preparation from lifecycle and scenario execution. Each platform
-builds its application and qualification tools once; the public installer lifecycle and all 18
-H2 scenarios consume that platform's same-run
-prepared artifact without rebuilding the application. The small xtask entry point still uses the
+Native product CI builds each of its seven native binaries in a separate bounded job on each
+platform, then assembles the downloaded binaries in a separate preparation job. Artifact names
+separate the platform and binary with a double hyphen so ARM and Intel macOS downloads cannot
+overlap. Assembly requires every binary and restores Unix executable permissions before use.
+The public installer lifecycle and all 18 H2 scenarios consume that platform's same-run prepared
+artifact without rebuilding the application. The small xtask entry point still uses the
 reviewed locked Cargo command; its prepared execution path never invokes Cargo. Missing artifacts
 fail rather than triggering a rebuild. The local build-and-qualify commands remain available, and
 every hosted job retains its ten-minute limit.
