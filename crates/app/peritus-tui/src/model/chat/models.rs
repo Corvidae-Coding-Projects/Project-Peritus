@@ -107,7 +107,18 @@ impl AppModel {
         if profile != Some(catalog.profile()) {
             return;
         }
-        self.chat.model_selection = 0;
+        // Metadata replies can arrive after arrow-key input. Keep the highlighted identifier
+        // across refresh/reordering instead of moving Enter's target back to the first row.
+        self.chat.model_selection = self
+            .chat
+            .catalog
+            .as_ref()
+            .filter(|previous| previous.profile() == catalog.profile())
+            .and_then(|previous| previous.models().get(self.chat.model_selection))
+            .and_then(|selected| {
+                catalog.models().iter().position(|model| model.id() == selected.id())
+            })
+            .unwrap_or(0);
         self.chat.catalog = Some(catalog);
     }
 
@@ -120,6 +131,14 @@ impl AppModel {
             }
             KeyCode::Char('r') => return self.query_chat_models(true),
             KeyCode::Up => self.chat.model_selection = self.chat.model_selection.saturating_sub(1),
+            KeyCode::Home => self.chat.model_selection = 0,
+            KeyCode::End => {
+                self.chat.model_selection = self
+                    .chat
+                    .catalog
+                    .as_ref()
+                    .map_or(0, |catalog| catalog.models().len().saturating_sub(1));
+            }
             KeyCode::Down => {
                 self.chat.model_selection = (self.chat.model_selection + 1).min(
                     self.chat
@@ -157,13 +176,10 @@ impl AppModel {
                     ModelRole::Fixer => providers.fixer(),
                 });
                 Some(catalog.profile()) == profile
-                    && catalog
-                        .models()
-                        .iter()
-                        .any(|model| model.id() == id && model.tools() != Some(false))
+                    && catalog.models().iter().any(|model| model.id() == id)
             })
         {
-            self.notice(NoticeLevel::Warning, "Model is not in this provider's usable catalog. Open /model or explicitly use /model manual ID.");
+            self.notice(NoticeLevel::Warning, "Model is not in this provider's catalog. Open /model or explicitly use /model manual ID.");
             return Vec::new();
         }
         let choice = match ProductModelChoice::new(id.to_owned(), manual) {

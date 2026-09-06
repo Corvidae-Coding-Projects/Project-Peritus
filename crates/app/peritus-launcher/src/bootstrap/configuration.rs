@@ -11,6 +11,7 @@ use peritus_product_state::{
 };
 
 use crate::{AppLayout, LauncherError, persistence::read_exact_or_publish};
+mod folder;
 
 /// Imports the exact models from a pre-conversation immutable configuration. This migration
 /// never substitutes a newly chosen provider default or edits an old configuration generation.
@@ -116,6 +117,7 @@ fn render_configuration(layout: &AppLayout, state: &ProductState) -> Result<Stri
         )?);
     }
     render_workspaces(&mut text, state)?;
+    folder::render(&mut text, layout, state)?;
     Ok(text)
 }
 

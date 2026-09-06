@@ -73,8 +73,14 @@ fn title(model: &AppModel) -> String {
         ConnectionStatus::Connecting => " · connecting",
         ConnectionStatus::Disconnected(_) => " · disconnected",
     };
+    let folder = model.direct_folder_chat();
+    let workspace_mode = match folder {
+        Some(true) => " · in-place folder",
+        Some(false) => " · read-only folder",
+        None => "",
+    };
     crate::sanitize::sanitize_display_text(&format!(
-        "Peritus · {} · {provider} · {model_label}{connection}",
+        "Peritus · {} · {provider} · {model_label}{workspace_mode}{connection}",
         model.chat.mode.label()
     ))
 }
@@ -118,10 +124,10 @@ fn draw_composer(
 
 fn draw_status(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
     let status = model.chat.snapshot.as_ref().map_or_else(
-        || "Ready · Enter sends · Shift-Enter newline · Ctrl-Q detaches".to_owned(),
+        || "Ready · Enter sends · Shift-Enter newline · Ctrl-C exits".to_owned(),
         |snapshot| {
             format!(
-                "{} · input received {} / incorporated {} · Ctrl-C stops",
+                "{} · input received {} / incorporated {} · Ctrl-C stops / exits",
                 snapshot.snapshot().status(),
                 snapshot.received(),
                 snapshot.incorporated()
@@ -142,6 +148,24 @@ fn draw_status(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
 }
 
 fn draw_transcript(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
+    let commands = model.chat.matching_commands();
+    if !commands.is_empty() {
+        let mut state = ListState::default();
+        state.select(Some(model.chat.command_selection.min(commands.len() - 1)));
+        frame.render_stateful_widget(
+            List::new(
+                commands
+                    .iter()
+                    .map(|(name, description)| ListItem::new(format!("{name:<12} {description}"))),
+            )
+            .block(Block::default().title("Slash commands · arrows select · Tab completes"))
+            .highlight_symbol("▸ ")
+            .highlight_style(Style::default().fg(ACCENT)),
+            area,
+            &mut state,
+        );
+        return;
+    }
     let mut lines = Vec::new();
     if let Some(snapshot) = &model.chat.snapshot {
         if snapshot.activities().first().is_some_and(|first| first.sequence() > 1) {
@@ -171,29 +195,14 @@ fn draw_transcript(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
             ),
             Line::from(""),
             Line::from("Ask a question, explore an idea, or request a change."),
-            Line::from("/plan and /review are read-only. /build starts checked delivery."),
+            Line::from(if model.direct_folder_chat().is_some() {
+                "/plan and /review are read-only. Ask for in-place work in /chat."
+            } else {
+                "/plan and /review are read-only. /build starts checked delivery."
+            }),
             Line::from("/model discovers models from your configured provider."),
             Line::from("/runs opens the existing run and candidate dashboard."),
         ]);
-    }
-    let commands = model.chat.matching_commands();
-    if !commands.is_empty() {
-        lines.push(Line::styled(
-            "Slash commands · arrows select · Tab completes",
-            Style::default().fg(ACCENT),
-        ));
-        for (index, (name, description)) in commands.iter().enumerate() {
-            lines.push(Line::from(vec![
-                Span::styled(
-                    format!(
-                        "{} {name:<12}",
-                        if index == model.chat.command_selection { "▸" } else { " " }
-                    ),
-                    Style::default().fg(ACCENT),
-                ),
-                Span::raw(*description),
-            ]));
-        }
     }
     let lines = wrapped_lines(lines, usize::from(area.width));
     let offset =
@@ -211,7 +220,7 @@ fn append_lines(lines: &mut Vec<Line<'static>>, text: &str) {
     lines.extend(text.lines().map(|line| Line::from(line.to_owned())));
 }
 
-fn wrapped_lines(lines: Vec<Line<'static>>, width: usize) -> Vec<Line<'static>> {
+pub(super) fn wrapped_lines(lines: Vec<Line<'static>>, width: usize) -> Vec<Line<'static>> {
     if width == 0 {
         return Vec::new();
     }

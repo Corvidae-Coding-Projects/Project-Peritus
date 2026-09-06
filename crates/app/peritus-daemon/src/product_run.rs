@@ -60,6 +60,7 @@ struct Inner {
     automatic_provider_failover: bool,
     local_context: peritus_product_runner::LocalContextConfig,
     workspaces: BTreeMap<WorkspaceId, PathBuf>,
+    folders: BTreeMap<WorkspaceId, crate::config::FolderDeclaration>,
     processes: ProcessStore,
     tasks: Mutex<Vec<JoinHandle<()>>>,
     model_catalogs: Mutex<BTreeMap<ProviderProfileId, peritus_app_protocol::ProductModelCatalog>>,
@@ -115,6 +116,7 @@ impl ProductRunService {
                 automatic_provider_failover,
                 local_context,
                 workspaces: workspace_roots,
+                folders: workspaces.folders().clone(),
                 processes,
                 tasks: Mutex::new(Vec::new()),
                 model_catalogs: Mutex::new(BTreeMap::new()),
@@ -134,6 +136,7 @@ impl ProductRunService {
         request: ProductRunRequest,
         mut interaction: Option<interaction::InteractionOptions>,
     ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
+        self.validate_workspace_mode(request.workspace_id(), interaction.as_ref())?;
         let providers =
             self.resolve_selected_providers(request.providers(), interaction.as_ref())?;
         let workspace_root = self
@@ -210,6 +213,22 @@ impl ProductRunService {
         )
         .await;
         Ok(snapshot)
+    }
+
+    fn validate_workspace_mode(
+        &self,
+        workspace_id: WorkspaceId,
+        interaction: Option<&interaction::InteractionOptions>,
+    ) -> Result<(), ProductRunServiceError> {
+        if let Some(folder) = self.inner.folders.get(&workspace_id) {
+            folder.verify().map_err(|_| ProductRunServiceError::WorkspaceUnavailable)?;
+            if interaction.is_none_or(|options| {
+                options.mode == peritus_app_protocol::ProductInteractionMode::Build
+            }) {
+                return Err(ProductRunServiceError::GitRequired);
+            }
+        }
+        Ok(())
     }
 
     pub(super) async fn control(

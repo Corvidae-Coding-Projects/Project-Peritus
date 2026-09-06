@@ -1,6 +1,37 @@
 use super::*;
 
 #[test]
+fn folder_private_state_is_excluded_from_read_list_and_search_even_after_contract_refresh() {
+    let root = tempfile::tempdir().expect("folder");
+    let private = root.path().join("private-state");
+    fs::create_dir(&private).expect("private directory");
+    fs::write(private.join("secret.txt"), "PRIVATE_CANARY").expect("private fixture");
+    fs::write(root.path().join("public.txt"), "public text").expect("public fixture");
+    let mut tools = WorkspaceDeveloperTools::read_only(root.path().to_owned())
+        .with_protected_paths(&[private])
+        .with_task_contract("Inspect this folder.");
+    for name in ["workspace_read", "workspace_list", "workspace_search"] {
+        let denied = execute(
+            &mut tools,
+            name,
+            r#"{"path":"private-state/secret.txt","query":"PRIVATE_CANARY"}"#,
+        );
+        assert!(denied.is_error, "{name}");
+        assert!(!wire(&denied).contains("PRIVATE_CANARY"));
+    }
+    let listed = execute(&mut tools, "workspace_list", r#"{"path":"","depth":3}"#);
+    assert!(!listed.is_error);
+    assert!(!wire(&listed).contains("private-state"));
+    let searched =
+        execute(&mut tools, "workspace_search", r#"{"path":"","query":"PRIVATE_CANARY"}"#);
+    assert!(!searched.is_error);
+    assert!(!wire(&searched).contains("PRIVATE_CANARY"));
+    let read = execute(&mut tools, "workspace_read", r#"{"path":"public.txt"}"#);
+    assert!(!read.is_error);
+    assert!(wire(&read).contains("public text"));
+}
+
+#[test]
 fn read_only_tools_reject_undeclared_mutation_and_process_calls() {
     let workspace = tempfile::tempdir().expect("workspace");
     fs::write(workspace.path().join("README.md"), "before\n").expect("existing file");

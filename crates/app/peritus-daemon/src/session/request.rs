@@ -293,6 +293,7 @@ const fn product_run_error(error: ProductRunServiceError) -> AppResponsePayload 
         | ProductRunServiceError::WorkspaceUnavailable => AppErrorCode::StaleRevision,
         ProductRunServiceError::InvalidMessage => AppErrorCode::MalformedFrame,
         ProductRunServiceError::Unavailable => AppErrorCode::Backpressure,
+        ProductRunServiceError::GitRequired => AppErrorCode::MissingRequiredFeature,
     };
     AppResponsePayload::Error(AppProtocolError::new(code, None))
 }

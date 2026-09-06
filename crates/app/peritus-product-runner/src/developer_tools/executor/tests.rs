@@ -3,6 +3,7 @@ use peritus_model_protocol::{CanonicalJson, JsonBounds, ProtocolLimits, ToolCall
 use std::{
     path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
+    time::Duration,
 };
 
 mod access;

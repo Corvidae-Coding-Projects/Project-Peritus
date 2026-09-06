@@ -40,10 +40,12 @@ pub async fn launch_interactive_at(
     let binaries = SiblingBinaries::discover()?;
     let supervisor = DaemonSupervisor::new(Duration::from_secs(30));
     let product = product_context(&prepared)?;
+    let mut tui_state = peritus_tui::TuiState::default();
     loop {
         supervisor.ensure_ready(&prepared, &binaries).await?;
-        let outcome = peritus_tui::run(
+        let outcome = peritus_tui::run_with_state(
             TuiConfig::new(prepared.endpoint_path()).with_product(product.clone()),
+            &mut tui_state,
         )
         .await
         .map_err(LauncherError::Tui)?;
@@ -108,6 +110,15 @@ fn product_context(
         providers,
         default,
     )
+    .map(|context| {
+        if workspace.is_direct_folder() {
+            context.with_direct_folder(
+                workspace.trust_level() == peritus_product_state::WorkspaceTrust::Trusted,
+            )
+        } else {
+            context
+        }
+    })
     .map_err(LauncherError::Tui)
 }
 

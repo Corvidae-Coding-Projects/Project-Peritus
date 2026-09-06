@@ -1,6 +1,7 @@
 //! Durable host qualification, with exact artifacts and no real model or external effects.
 
 use serde_json::Value;
+mod folder;
 mod inspection;
 mod recovery;
 mod retrieval;

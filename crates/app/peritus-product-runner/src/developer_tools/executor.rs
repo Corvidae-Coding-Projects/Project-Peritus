@@ -1,6 +1,6 @@
 //! Concrete bounded filesystem and structured-command developer tools.
 
-use std::{fs, path::PathBuf, time::Duration};
+use std::{fs, path::PathBuf};
 
 use peritus_agent::{DeveloperLoopError, DeveloperToolExecutor, DeveloperToolObservation};
 use peritus_model_protocol::CompletedToolCall;
@@ -28,6 +28,7 @@ const PROGRESS_FEEDBACK: &str = "The harness observed a long inspection sequence
 mod active;
 mod checkpoint_observer;
 mod command;
+mod construction;
 
 use active::ActiveCommandLedger;
 pub use checkpoint_observer::ToolCheckpointBoundary;
@@ -59,57 +60,6 @@ pub struct WorkspaceDeveloperTools {
 }
 
 impl WorkspaceDeveloperTools {
-    /// Creates an executor that rejects every mutating or process tool even if a provider emits an
-    /// undeclared call.
-    #[must_use]
-    pub fn read_only(root: PathBuf) -> Self {
-        let ownership = WorkspaceOwnership::capture(&root);
-        Self {
-            root,
-            access_policy: WorkspaceAccessPolicy::default(),
-            grounding: GroundingEvidence::default(),
-            ownership,
-            mode: WorkspaceToolMode::ReadOnly,
-            command_evidence: CommandEvidence::default(),
-            command_budget: None,
-            receipts: None,
-            resources: CommandResources::observe(),
-            command_runtime: None,
-            active_commands: ActiveCommandLedger::default(),
-            tools_without_delivery_progress: 0,
-            progress_nudges: 0,
-            progress_feedback_pending: false,
-            checkpoint_observer: None,
-        }
-    }
-
-    pub(crate) fn with_ownership(
-        root: PathBuf,
-        ownership: WorkspaceOwnership,
-        receipt_path: PathBuf,
-        receipt_scope: String,
-        command_horizon: Duration,
-        command_runtime: crate::CommandRuntime,
-    ) -> Self {
-        Self {
-            root,
-            access_policy: WorkspaceAccessPolicy::default(),
-            grounding: GroundingEvidence::default(),
-            ownership,
-            mode: WorkspaceToolMode::ReadWrite,
-            command_evidence: CommandEvidence::default(),
-            command_budget: Some(CommandBudget::new(command_horizon)),
-            receipts: Some(EffectReceiptLedger::new(receipt_path, receipt_scope)),
-            resources: CommandResources::observe(),
-            command_runtime: Some(command_runtime),
-            active_commands: ActiveCommandLedger::default(),
-            tools_without_delivery_progress: 0,
-            progress_nudges: 0,
-            progress_feedback_pending: false,
-            checkpoint_observer: None,
-        }
-    }
-
     pub(crate) fn with_checkpoint_observer(mut self, observer: ToolCheckpointObserver) -> Self {
         self.checkpoint_observer = Some(observer);
         self
@@ -197,7 +147,9 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
             }
         }
         let result = match call.name().as_str() {
-            "workspace_list" => inspection::list(&self.root, &arguments, self.resources),
+            "workspace_list" => {
+                inspection::list(&self.root, &arguments, self.resources, &self.access_policy)
+            }
             "workspace_search" => inspection::search(&self.root, &arguments, &self.access_policy),
             "workspace_read" => inspection::read(&self.root, &arguments),
             "workspace_write" | "workspace_patch" | "workspace_remove" | "run_command"
@@ -317,6 +269,7 @@ impl WorkspaceDeveloperTools {
             "workspace_read" => {
                 if let Some(path) = string(arguments, "path") {
                     self.grounding.record_read(path);
+                    self.ownership.observe_file(self.root.join(path));
                 }
             }
             "workspace_write" | "workspace_patch" | "workspace_remove" => {

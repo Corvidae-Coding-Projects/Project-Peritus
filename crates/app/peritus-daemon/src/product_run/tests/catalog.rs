@@ -36,10 +36,10 @@ impl ModelProvider for CatalogProvider {
                     "provider detail must not escape",
                 ));
             }
-            Ok(vec![DiscoveredModel::new(
-                "new-advertised-model".to_owned(),
-                "Advertised".to_owned(),
-            )?])
+            let mut model =
+                DiscoveredModel::new("new-advertised-model".to_owned(), "Advertised".to_owned())?;
+            model.tools = Some(false);
+            Ok(vec![model])
         })
     }
 }
@@ -86,6 +86,13 @@ async fn cache_scenario() {
     assert!(!failed.error().contains("provider detail must not escape"));
     assert_eq!(provider.calls.load(Ordering::SeqCst), 2);
     let selected = ProductProviderSelection::new(profile, profile, profile);
+    let advertised = ProductModelChoice::new("new-advertised-model".to_owned(), false)
+        .expect("advertised choice");
+    let advertised_options = super::super::interaction::InteractionOptions::new(
+        ProductInteractionMode::Chat,
+        ProductRoleModels::new(advertised.clone(), advertised.clone(), advertised),
+    );
+    assert!(service.validate_models(selected, &advertised_options).await.is_ok());
     let choice = ProductModelChoice::new("not-advertised".to_owned(), false).expect("choice");
     let options = super::super::interaction::InteractionOptions::new(
         ProductInteractionMode::Chat,

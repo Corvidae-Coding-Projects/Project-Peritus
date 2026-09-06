@@ -15,6 +15,7 @@ use crate::{DaemonConfig, DaemonError, DaemonErrorCode, DaemonRecovery};
 /// Exact immutable registrations admitted by this daemon instance.
 pub struct WorkspaceCatalog {
     registrations: BTreeMap<WorkspaceId, WorkspaceRegistration>,
+    folders: BTreeMap<WorkspaceId, crate::config::FolderDeclaration>,
 }
 
 impl WorkspaceCatalog {
@@ -38,7 +39,12 @@ impl WorkspaceCatalog {
             .map(|(workspace_id, registration)| {
                 (*workspace_id, registration.worktree_manifest().root().to_owned())
             })
+            .chain(self.folders.iter().map(|(id, folder)| (*id, folder.root().to_owned())))
             .collect()
+    }
+
+    pub(crate) const fn folders(&self) -> &BTreeMap<WorkspaceId, crate::config::FolderDeclaration> {
+        &self.folders
     }
 }
 
@@ -106,7 +112,15 @@ pub(super) fn install_and_reconcile(
         };
         after = Some(next);
     }
-    Ok(WorkspaceCatalog { registrations })
+    let mut folders = BTreeMap::new();
+    for folder in config.folders() {
+        let id = folder.workspace_id()?;
+        folder.verify()?;
+        if registrations.contains_key(&id) || folders.insert(id, folder.clone()).is_some() {
+            return Err(invalid("folder identity conflicts with another configured workspace"));
+        }
+    }
+    Ok(WorkspaceCatalog { registrations, folders })
 }
 
 fn workspace_error(error: peritus_workspace::WorkspaceError) -> DaemonError {

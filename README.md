@@ -1,7 +1,8 @@
 # Peritus
 
 Peritus is a coding agent that runs in your terminal. It changes code, runs project checks, and reviews the result.
-It works in a separate copy of your Git repository. You control which changes to keep.
+You can start in any folder. In a plain folder, requested edits happen in place.
+Git repositories use a separate managed copy. You control which changes to keep.
 
 ## Install
 
@@ -38,11 +39,11 @@ For system requirements, manual downloads, and installation options, see [Instal
 
 ## Start
 
-1. Open a terminal in your Git repository.
+1. Open a terminal in the folder where you want to work. Git is not required.
 2. Run `peritus`.
 3. Select a model provider.
 4. Complete the login steps.
-5. Before you give Peritus permission to run commands, check the repository path.
+5. Before you give Peritus permission to edit files or run commands, check the folder path.
 
 Peritus starts its local background process automatically. You do not need to write a configuration file.
 
@@ -53,10 +54,10 @@ Model providers can charge for use. An installation does not include a provider 
 
 Install the build tools that your project needs. Peritus cannot check a project without its test and build commands.
 
-To open a different repository, run:
+To open a different folder, run:
 
 ```sh
-peritus open /path/to/repository
+peritus open /path/to/folder
 ```
 
 ## Start a conversation
@@ -72,15 +73,22 @@ Type `/` to discover commands; Tab completes them.
 | --- | --- |
 | `/plan` or `/review` | Discuss a plan or perform an independent review with read-only tools. |
 | `/build <request>` | Start checked writer, reviewer, and fixer delivery. |
-| `/model` | Discover models from the configured provider; Tab switches roles. |
+| `/model` | Discover provider models; arrows and Enter select, Tab switches roles. |
 | `/new` | Start another conversation without deleting prior work. |
 | `/status`, `/diff`, `/details` | Inspect progress, changes, and public tool summaries. |
 | `/stop` | Stop the current work and preserve effects already completed. |
 | `/runs` | Open the run and candidate dashboard. |
 
 Use Shift+Enter for a new line and PageUp/PageDown to scroll.
-Ctrl+C stops active work, or clears an idle draft. Ctrl+Q closes the interface without cancelling
+Diff and check reports also support PageUp/PageDown; Home returns to the start.
+Ctrl+C closes the interface when idle. During active work it requests a stop; press it again to
+close without waiting. Ctrl+Q closes the interface without cancelling
 daemon-owned work. Conversations and task state remain available between sessions.
+
+Plain folders do not need `git init` or an initial commit. You can chat and inspect files before
+trusting the folder. After trust, ask for changes or commands in `/chat`; edits happen in that folder.
+Commands run with your local user permissions. There is no automatic rollback of in-place changes.
+`/build` and candidate actions such as `/commit`, `/diff`, and `/discard` use the managed Git workflow.
 
 In `/runs`, select a task before using these dashboard keys:
 
@@ -142,7 +150,8 @@ peritus update --enable-checks
 
 ## Recover from a problem
 
-- If the connection to the background process fails, use `/reconnect`.
+- If the connection to the background process fails, use `/reconnect`; the current conversation,
+  selected models, and unsent chat text stay in the interface while daemon readiness is restored.
 - If a provider login fails, run `peritus providers`.
 - If a workspace needs repair, run `peritus workspaces`.
 - If a task stops, read its remaining work. Send a message to continue it, or select it in `/runs` and press `r` to retry.

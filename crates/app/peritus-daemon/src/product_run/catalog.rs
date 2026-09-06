@@ -96,11 +96,7 @@ impl ProductRunService {
                 continue;
             }
             let catalog = self.query_models(ProductModelQuery::new(profile, false)).await?;
-            if !catalog
-                .models()
-                .iter()
-                .any(|model| model.id() == choice.id() && model.tools() != Some(false))
-            {
+            if !catalog.models().iter().any(|model| model.id() == choice.id()) {
                 return Err(ProductRunServiceError::ProviderUnavailable);
             }
         }

@@ -1,4 +1,5 @@
 //! Active product-run task ownership and terminal projection.
+mod runtime;
 
 use std::{
     path::PathBuf,
@@ -10,9 +11,8 @@ use peritus_app_protocol::{
     ProductRunSnapshot,
 };
 use peritus_product_runner::{
-    CommandRuntime, ConversationView, PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope,
-    ProductRunInput, ProductRunOutcome, ProductRunResume, ProductRunner, RoleProviders,
-    RunObserver,
+    ConversationView, PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput,
+    ProductRunOutcome, ProductRunResume, ProductRunner, RoleProviders, RunObserver,
 };
 use peritus_provider_core::CancellationToken;
 use peritus_run_settlement::RunDisposition;
@@ -45,14 +45,8 @@ impl ProductRunService {
             let observer: RunObserver = Arc::new(move |update| service.observe(run_id, update));
             let service = self.clone();
             let task = tokio::spawn(async move {
-                let command_runtime = match CommandRuntime::open(
-                    service.inner.directory.join("commands").join(run_hex(run_id)),
-                    &workspace_root,
-                    run_id,
-                    service.inner.processes.clone(),
-                )
-                .and_then(|runtime| runtime.with_local_context(service.inner.local_context.clone()))
-                {
+                let folder = service.inner.folders.get(&request.workspace_id());
+                let command_runtime = match runtime::open(&service, &request, &workspace_root) {
                     Ok(runtime) => runtime,
                     Err(error) => {
                         service.finish(run_id, Err(error));
@@ -98,6 +92,17 @@ impl ProductRunService {
                     Some(peritus_app_protocol::ProductInteractionMode::Build) | None => None,
                 };
                 let result = match mode {
+                    Some(mode) if folder.is_some() => {
+                        let folder = folder.expect("folder selected");
+                        ProductRunner::converse_folder(
+                            input,
+                            mode,
+                            folder.writable(),
+                            folder.protected_paths(),
+                            observer,
+                        )
+                        .await
+                    }
                     Some(mode) => ProductRunner::converse(input, mode, observer).await,
                     None => ProductRunner::run(input, observer).await,
                 };

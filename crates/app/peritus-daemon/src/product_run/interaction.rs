@@ -1,9 +1,11 @@
 //! Conversation semantics, durable input acknowledgements, and public execution activity.
 
+#[cfg(not(verus_only))]
+use super::persistence::persist_record;
 use super::{
-    ProductRunService, ProductRunServiceError, SharedConversation, persistence::persist_record,
-    snapshot::live_snapshot,
+    ProductRunService, ProductRunServiceError, SharedConversation, snapshot::live_snapshot,
 };
+#[cfg(not(verus_only))]
 use peritus_agent::{DeveloperActivity, DeveloperInput, DeveloperInteraction, DeveloperLoopError};
 use peritus_app_protocol::{
     MAX_PRODUCT_ACTIVITIES, MAX_PRODUCT_ACTIVITY_BYTES, ProductActivity, ProductActivityKind,
@@ -220,10 +222,12 @@ impl ConversationView for LiveConversation {
     fn render(&self) -> String {
         self.conversation.render()
     }
+    #[cfg(not(verus_only))]
     fn interaction(&self) -> Option<&dyn DeveloperInteraction> {
         Some(self)
     }
 }
+#[cfg(not(verus_only))]
 impl DeveloperInteraction for LiveConversation {
     fn input(&self) -> Result<DeveloperInput, DeveloperLoopError> {
         // Admission holds the write lock until persistence succeeds. A model cannot observe an
@@ -273,6 +277,7 @@ impl DeveloperInteraction for LiveConversation {
         })
     }
 }
+#[cfg(not(verus_only))]
 impl LiveConversation {
     fn update(
         &self,
@@ -296,6 +301,7 @@ impl LiveConversation {
         persist_record(&self.service.inner.directory, record).map_err(|_| port_error())
     }
 }
+#[cfg(not(verus_only))]
 fn port_error() -> DeveloperLoopError {
     DeveloperLoopError::Trace("durable conversation activity unavailable".to_owned())
 }

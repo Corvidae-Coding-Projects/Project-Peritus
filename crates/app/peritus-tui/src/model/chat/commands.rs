@@ -42,6 +42,15 @@ impl AppModel {
         if command == "/model" {
             return self.model_command(rest);
         }
+        if self.direct_folder_chat().is_some()
+            && matches!(
+                command,
+                "/build" | "/accept" | "/commit" | "/export" | "/discard" | "/run" | "/diff"
+            )
+        {
+            self.notice(NoticeLevel::Info, "This folder uses in-place edits, not Git candidate handoffs. Ask for changes or commands in /chat; /build and candidate actions require a managed Git workspace.");
+            return Vec::new();
+        }
         if command == "/new" && self.chat_submission_pending() {
             self.notice(
                 NoticeLevel::Info,
@@ -87,6 +96,9 @@ impl AppModel {
             "/status" => self.notice(NoticeLevel::Info, self.chat.status()),
             "/diff" => {
                 if self.select_chat_run() {
+                    if let Some(product) = &mut self.product {
+                        product.inspection_scroll = 0;
+                    }
                     self.view = View::Diff;
                 }
             }
@@ -122,5 +134,15 @@ impl AppModel {
         self.chat.buffer.clear();
         self.chat.cursor = 0;
         self.chat.command_selection = 0;
+    }
+
+    pub(crate) fn direct_folder_chat(&self) -> Option<bool> {
+        let product = self.product.as_ref()?;
+        if self.chat.snapshot.as_ref().is_some_and(|snapshot| {
+            snapshot.snapshot().workspace_id() != product.launch.workspace_id()
+        }) {
+            return None;
+        }
+        product.launch.direct_folder_writable()
     }
 }

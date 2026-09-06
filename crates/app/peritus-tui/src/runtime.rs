@@ -2,6 +2,7 @@
 
 mod candidate;
 mod product;
+mod state;
 mod terminal;
 
 use std::{
@@ -23,6 +24,7 @@ use crate::{
 use terminal::{InputPump, TerminalOwner};
 
 pub use product::{ProductLaunchContext, ProductProviderOption};
+pub use state::TuiState;
 
 const UI_TICK: Duration = Duration::from_millis(250);
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(8);
@@ -92,12 +94,23 @@ pub enum ExitReason {
 /// connection shutdown reports failure. Live daemon disconnects are presented in the UI and may
 /// be retried without ending the process.
 pub async fn run(config: TuiConfig) -> Result<ExitReason, TuiError> {
+    run_with_state(config, &mut TuiState::default()).await
+}
+
+/// Runs the interface while retaining its local conversation and drafts across daemon recovery.
+///
+/// # Errors
+/// Returns the same terminal and connection-cleanup errors as [`run`].
+pub async fn run_with_state(
+    config: TuiConfig,
+    state: &mut TuiState,
+) -> Result<ExitReason, TuiError> {
     let seed = process_seed(config.endpoint());
     let mut terminal = TerminalOwner::enter()?;
     let (input_tx, mut input_rx) = mpsc::channel(128);
     let mut input = InputPump::start(input_tx.clone())?;
     let (client_events_tx, mut client_events_rx) = mpsc::channel(512);
-    let mut model = AppModel::with_product(seed, config.product().cloned());
+    let mut model = state.take_model(&config, seed);
     let mut client = None;
     let mut connection_generation = 0_u64;
     connect(&config, &mut model, &mut client, &client_events_tx, &mut connection_generation).await;
@@ -150,6 +163,9 @@ pub async fn run(config: TuiConfig) -> Result<ExitReason, TuiError> {
     let cleanup = model.cleanup_messages();
     if let Some(session) = client {
         session.close(cleanup).await?;
+    }
+    if matches!(result, Ok(ExitReason::RecoverDaemon)) {
+        state.retain(config, model);
     }
     result
 }

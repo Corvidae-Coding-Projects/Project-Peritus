@@ -29,8 +29,14 @@ locally, never accidentally sent to the model on a typo. `/help` filters the com
   with their existing safety/freshness checks, not implied by an agent message.
 - `/quit`: detach the client cleanly; distinct from stopping daemon-owned work.
 
-Escape returns from an inspection view. Ctrl-C interrupts active work, otherwise clears a draft;
+Escape returns from an inspection view. Ctrl-C exits when idle; during active work it requests a
+stop, and a consecutive second press exits without waiting;
 Ctrl-Q explicitly exits. PageUp/PageDown scroll the conversation; End returns to its live tail.
+Diff and check inspections support PageUp/PageDown and Home. Model and command pickers keep the
+highlighted item visible; catalog refresh preserves the highlighted model identifier. Every
+advertised model can be selected without pretending that listing verifies its capabilities.
+Launcher-owned reconnect retains the conversation, selected models, and chat draft in memory for
+the same endpoint/workspace configuration, but drops transport-bound prompts and confirmations.
 Long transcript and tool details are accessible rather than silently clipped to twelve messages.
 
 User messages can be submitted during execution. The interface distinguishes durable receipt

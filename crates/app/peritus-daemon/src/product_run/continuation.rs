@@ -44,6 +44,10 @@ impl ProductRunService {
             }
             let record =
                 records.get_mut(&continuation.run_id()).expect("checked product run exists");
+            self.validate_workspace_mode(
+                workspace_id,
+                options.as_ref().or(record.interaction.as_ref()),
+            )?;
             // Resolve a new adapter before changing durable input or selected options. A bad
             // manual model must not partially admit a follow-up into the live record.
             let resolved = if was_terminal {

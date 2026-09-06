@@ -7,6 +7,8 @@ use peritus_product_state::{WorkspaceProfile, WorkspaceTrust};
 use crate::{LauncherError, PreparedProduct, ProductBootstrap, terminal::Terminal};
 
 mod discovery;
+#[cfg(test)]
+mod folder_tests;
 mod managed;
 
 use discovery::{DiscoveredRepository, user_path};
@@ -44,7 +46,7 @@ pub fn configure(mut prepared: PreparedProduct) -> Result<PreparedProduct, Launc
         terminal.line("")?;
         terminal.line("Workspace settings")?;
         show_recent(&mut terminal, &prepared)?;
-        terminal.line("  a. Add a repository path")?;
+        terminal.line("  a. Add a folder or repository path")?;
         terminal.line("")?;
         let answer = terminal.prompt(
             "Enter a number to switch, t<number> to trust/repair, r<number> to forget, a to add, or Enter to finish: ",
@@ -65,17 +67,17 @@ pub fn configure(mut prepared: PreparedProduct) -> Result<PreparedProduct, Launc
                 continue;
             }
             let repository = DiscoveredRepository::open(Path::new(profile.repository_root()))?;
-            terminal.line(&format!("Trusting repository: {}", repository.root_text()))?;
+            terminal.line(&format!("Trusting workspace: {}", repository.root_text()))?;
             let trusted = trust(prepared.layout(), &repository, profile)?;
             prepared = persist_profile(&prepared, trusted)?;
-            terminal.line("Workspace is ready in its Peritus-managed writable copy.")?;
+            terminal.line("Workspace is ready. Plain folders are edited in place; Git workspaces use their managed copy.")?;
             continue;
         }
         if let Some(index) = prefixed_index(&answer, 'r') {
             let profile = recent(&prepared, index)?.clone();
             prepared = ProductBootstrap::new(prepared.layout().clone())
                 .remove_workspace(profile.workspace_id())?;
-            if profile.trust_level() == WorkspaceTrust::Trusted {
+            if profile.trust_level() == WorkspaceTrust::Trusted && !profile.is_direct_folder() {
                 terminal.line(
                     "Removed from recent workspaces. Its managed copy is retained for safe recovery and later cleanup.",
                 )?;
@@ -130,18 +132,29 @@ fn activate_repository(
     let mut terminal = Terminal::stdio();
     terminal.line("")?;
     terminal.line("Workspace")?;
-    terminal.line(&format!("Repository: {}", repository.root_text()))?;
-    terminal.line(
-        "Peritus can browse it in restricted mode. Trust creates a separate managed worktree for edits, commands, builds, and tests; your current checkout is left alone.",
-    )?;
-    if !terminal.confirm("Trust this repository? [Y/n]: ", true)? {
+    terminal.line(&format!("Folder: {}", repository.root_text()))?;
+    let direct = restricted.is_direct_folder();
+    terminal.line(if direct {
+        "Peritus can chat and inspect files without trust. Trust allows requested edits directly in this folder and local commands with your user-account permissions. No repository or managed copy will be created."
+    } else {
+        "Peritus can browse it in restricted mode. Trust creates a separate managed worktree for edits, commands, builds, and tests; your current checkout is left alone."
+    })?;
+    if !terminal.confirm("Trust this workspace? [Y/n]: ", true)? {
         terminal.line("Continuing in restricted browse mode. You can trust it later with `peritus workspaces`.")?;
         return Ok(remembered);
     }
-    terminal.line("Preparing a private writable workspace…")?;
+    terminal.line(if direct {
+        "Enabling requested in-place work…"
+    } else {
+        "Preparing a private writable workspace…"
+    })?;
     let trusted = trust(remembered.layout(), &repository, restricted)?;
     let configured = persist_profile(&remembered, trusted)?;
-    terminal.line("Workspace ready. Your source checkout was not modified.")?;
+    terminal.line(if direct {
+        "Folder ready. Files have not been changed; requested edits will happen here."
+    } else {
+        "Workspace ready. Your source checkout was not modified."
+    })?;
     Ok(configured)
 }
 
@@ -150,13 +163,13 @@ fn choose_workspace(prepared: PreparedProduct) -> Result<PreparedProduct, Launch
     terminal.line("")?;
     terminal.line("Choose a workspace")?;
     if prepared.state().workspaces().recent().is_empty() {
-        terminal.line("Peritus could not find a Git repository in the current directory.")?;
+        terminal.line("Peritus could not access the current directory. Select a folder.")?;
         let repository = prompt_repository(&mut terminal)?;
         return activate_repository(prepared, repository);
     }
     loop {
         show_recent(&mut terminal, &prepared)?;
-        terminal.line("  p. Enter another repository path")?;
+        terminal.line("  p. Enter another folder path")?;
         let answer = terminal.prompt("Choose a number, or p for a path: ")?;
         if answer.eq_ignore_ascii_case("p") {
             return activate_repository(prepared, prompt_repository(&mut terminal)?);
@@ -194,7 +207,10 @@ fn show_recent(
 
 fn prompt_repository(terminal: &mut Terminal<'_>) -> Result<DiscoveredRepository, LauncherError> {
     loop {
-        let answer = terminal.prompt("Repository path (q to cancel): ")?;
+        let answer = terminal.prompt("Folder path (q to cancel): ")?;
+        if answer.eq_ignore_ascii_case("q") {
+            return Err(LauncherError::Interaction("workspace selection cancelled".to_owned()));
+        }
         let path = match user_path(&answer) {
             Ok(path) => path,
             Err(error) => {
@@ -205,7 +221,7 @@ fn prompt_repository(terminal: &mut Terminal<'_>) -> Result<DiscoveredRepository
         match DiscoveredRepository::open(&path) {
             Ok(repository) => return Ok(repository),
             Err(_) => terminal.line(
-                "That path is not an accessible Git repository. Check it and choose another path.",
+                "That path is not an accessible workspace directory. Check it and choose another path.",
             )?,
         }
     }

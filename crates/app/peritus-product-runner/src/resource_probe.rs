@@ -10,7 +10,7 @@ use crate::{ProductRunnerError, ProductRunnerErrorKind};
 const MAX_WORKSPACE_ENTRIES: u64 = 2_000_000;
 
 pub(super) struct RunResourceProbe {
-    workspace_root: PathBuf,
+    workspace_root: Option<PathBuf>,
     baseline_workspace_bytes: u64,
 }
 
@@ -24,11 +24,18 @@ pub(super) struct RunResourceObservation {
 impl RunResourceProbe {
     pub(super) fn new(workspace_root: &Path) -> Result<Self, ProductRunnerError> {
         let baseline_workspace_bytes = workspace_bytes(workspace_root)?;
-        Ok(Self { workspace_root: workspace_root.to_owned(), baseline_workspace_bytes })
+        Ok(Self { workspace_root: Some(workspace_root.to_owned()), baseline_workspace_bytes })
+    }
+
+    /// Direct folders do not authorize a recursive home-directory inventory for accounting.
+    /// Workspace bytes and growth remain zero as unmeasured values, not proof of an empty folder.
+    pub(super) const fn process_only() -> Self {
+        Self { workspace_root: None, baseline_workspace_bytes: 0 }
     }
 
     pub(super) fn observe(&self) -> Result<RunResourceObservation, ProductRunnerError> {
-        let workspace_bytes = workspace_bytes(&self.workspace_root)?;
+        let workspace_bytes =
+            self.workspace_root.as_deref().map(workspace_bytes).transpose()?.unwrap_or(0);
         Ok(RunResourceObservation {
             workspace: workspace_bytes,
             growth: workspace_bytes.saturating_sub(self.baseline_workspace_bytes),

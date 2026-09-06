@@ -12,6 +12,18 @@ pub struct CommandRuntime {
 }
 
 impl CommandRuntime {
+    /// Retains the ordinary explicit direct-folder construction boundary in the Verus API model.
+    ///
+    /// # Errors
+    /// The ordinary implementation reports invalid roots or runtime construction failures.
+    pub fn open_direct(
+        state_root: impl Into<PathBuf>,
+        workspace_root: impl Into<PathBuf>,
+        run_id: RunId,
+        process_store: ProcessStore,
+    ) -> Result<Self, ProductRunnerError> {
+        Self::open(state_root, workspace_root, run_id, process_store)
+    }
     /// Preserves the ordinary command-runtime construction boundary in the Verus API model.
     ///
     /// The effectful implementation validates the roots and constructs the C4/C2 runtime. The

@@ -216,7 +216,7 @@ fn settle_conversation(
 // Only the general conversational loop omits forced grounding and delivery nudges. The underlying
 // executor still enforces path policy, actual read-before-write grounding, receipts and read-only
 // access. A greeting must not be forced to inspect a repository or manufacture an implementation.
-struct ConversationalTools(WorkspaceDeveloperTools);
+pub(super) struct ConversationalTools(pub(super) WorkspaceDeveloperTools);
 impl DeveloperToolExecutor for ConversationalTools {
     fn execute(
         &mut self,
@@ -226,7 +226,7 @@ impl DeveloperToolExecutor for ConversationalTools {
     }
 }
 
-fn system(mode: ConversationMode) -> String {
+pub(super) fn system(mode: ConversationMode) -> String {
     let policy = match mode {
         ConversationMode::Chat => {
             "You are Peritus, a conversational coding assistant. Follow the user's exact scope. Questions, explanations, reviews and diagnosis do not authorize changes. Implement only when asked to implement or fix. Never turn ordinary conversation into an automatic build pipeline. You may answer directly without tools. Before an authorized mutation, use workspace_list and inspect relevant files with workspace_read/workspace_search. Preserve unrelated changes. Do not claim strict build checks or independent qualification unless observed; /build is the explicit checked delivery workflow."

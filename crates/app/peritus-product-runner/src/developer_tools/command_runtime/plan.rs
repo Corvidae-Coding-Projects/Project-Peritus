@@ -20,6 +20,9 @@ use serde_json::Value;
 use super::{identity::CommandIds, sandbox};
 use crate::developer_tools::wire::object;
 
+#[cfg(test)]
+mod tests;
+
 pub(super) const OUTPUT_BYTES: u64 = 8 * 1_024 * 1_024;
 pub(super) const MODEL_OUTPUT_BYTES: u32 = 16 * 1_024;
 const MEMORY_BYTES: u64 = 12 * 1_024 * 1_024 * 1_024;
@@ -211,10 +214,16 @@ fn resolve_executable(program: &str, cwd: &Path) -> Result<String, String> {
         executable_candidates(program)
     };
     for candidate in candidates {
+        let candidate = if candidate.is_absolute() { candidate } else { cwd.join(candidate) };
         if candidate.is_file()
-            && let Ok(canonical) = candidate.canonicalize()
-            && let Some(text) = canonical.to_str()
+            && let Some(parent) = candidate.parent()
+            && let Ok(parent) = parent.canonicalize()
+            && let Some(name) = candidate.file_name()
+            && let Some(text) = parent.join(name).to_str()
         {
+            // Keep the final executable name. Multicall launchers such as rustup and ccache
+            // dispatch by argv[0]; resolving cargo's final symlink would execute rustup instead.
+            // The exact same absolute path is used in both authorization and execution.
             return Ok(text.to_owned());
         }
     }

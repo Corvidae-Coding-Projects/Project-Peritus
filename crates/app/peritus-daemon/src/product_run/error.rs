@@ -8,6 +8,7 @@ pub enum ProductRunServiceError {
     NotFound,
     ProviderUnavailable,
     WorkspaceUnavailable,
+    GitRequired,
     InvalidState,
     InvalidMessage,
     Unavailable,

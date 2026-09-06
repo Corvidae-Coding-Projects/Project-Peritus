@@ -14,6 +14,7 @@ use super::path::{ignored, tool};
 /// Distinguishes baseline and model-caused files from unrelated late external evidence.
 #[derive(Clone)]
 pub struct WorkspaceOwnership {
+    direct: bool,
     baseline: BTreeSet<PathBuf>,
     directly_created: BTreeSet<PathBuf>,
     command_created: BTreeSet<PathBuf>,
@@ -24,7 +25,29 @@ impl WorkspaceOwnership {
     #[must_use]
     pub fn capture(root: &Path) -> Self {
         let baseline = regular_files(root);
-        Self { baseline, directly_created: BTreeSet::new(), command_created: BTreeSet::new() }
+        Self {
+            direct: false,
+            baseline,
+            directly_created: BTreeSet::new(),
+            command_created: BTreeSet::new(),
+        }
+    }
+
+    /// Tracks only explicitly inspected/created files in an in-place folder; never scans its tree.
+    pub(crate) const fn direct() -> Self {
+        Self {
+            direct: true,
+            baseline: BTreeSet::new(),
+            directly_created: BTreeSet::new(),
+            command_created: BTreeSet::new(),
+        }
+    }
+
+    /// A direct-folder read establishes a bounded, exact-file target for subsequent requested work.
+    pub(super) fn observe_file(&mut self, path: PathBuf) {
+        if self.direct {
+            self.baseline.insert(path);
+        }
     }
 
     /// Captures files that existed outside the run's current ownership immediately before a
@@ -32,6 +55,9 @@ impl WorkspaceOwnership {
     /// command, preserving unrelated files that appeared through another actor.
     #[must_use]
     pub(super) fn unowned_files(&self, root: &Path) -> BTreeSet<PathBuf> {
+        if self.direct {
+            return BTreeSet::new();
+        }
         untracked_files(root)
             .unwrap_or_else(|| regular_files(root))
             .into_iter()

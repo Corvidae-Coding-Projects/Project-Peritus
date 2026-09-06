@@ -11,6 +11,7 @@ use super::executor::WorkspaceDeveloperTools;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub(super) struct WorkspaceAccessPolicy {
+    protected_paths: BTreeSet<PathBuf>,
     opaque_paths: BTreeSet<PathBuf>,
     hidden_identifiers: BTreeSet<String>,
 }
@@ -18,8 +19,27 @@ pub(super) struct WorkspaceAccessPolicy {
 impl WorkspaceDeveloperTools {
     #[must_use]
     pub(crate) fn with_task_contract(mut self, transcript: &str) -> Self {
+        let protected = std::mem::take(&mut self.access_policy.protected_paths);
         self.access_policy = WorkspaceAccessPolicy::from_transcript(&self.root, transcript);
+        self.access_policy.protected_paths = protected;
         self
+    }
+
+    pub(crate) fn with_protected_paths(mut self, paths: &[PathBuf]) -> Self {
+        self.access_policy.protect(&self.root, paths);
+        self
+    }
+}
+
+impl WorkspaceAccessPolicy {
+    pub(super) fn protect(&mut self, root: &Path, paths: &[PathBuf]) {
+        for path in paths {
+            if let Ok(relative) = path.strip_prefix(root) {
+                self.protected_paths.insert(relative.to_owned());
+            } else if root.starts_with(path) {
+                self.protected_paths.insert(PathBuf::new());
+            }
+        }
     }
 }
 
@@ -66,7 +86,8 @@ impl WorkspaceAccessPolicy {
 
     pub(super) fn authorize(&self, tool: &str, arguments: &Value) -> Result<(), String> {
         match tool {
-            "workspace_read" | "workspace_write" | "workspace_patch" | "workspace_remove" => {
+            "workspace_list" | "workspace_search" | "workspace_read" | "workspace_write"
+            | "workspace_patch" | "workspace_remove" => {
                 if let Some(path) = arguments.get("path").and_then(Value::as_str) {
                     self.authorize_path(path)?;
                 }
@@ -79,10 +100,16 @@ impl WorkspaceAccessPolicy {
 
     pub(super) fn permits_search_result(&self, relative: &Path) -> bool {
         !self.opaque_paths.contains(relative)
+            && !self.protected_paths.iter().any(|path| relative.starts_with(path))
     }
 
     fn authorize_path(&self, raw: &str) -> Result<(), String> {
         let relative = normalized_relative(raw);
+        if self.protected_paths.iter().any(|path| relative.starts_with(path)) {
+            return Err(
+                "Peritus private state is not an ordinary workspace file-tool target".to_owned()
+            );
+        }
         if self.opaque_paths.contains(&relative) {
             return Err(format!(
                 "the task declares {} as an opaque query interface; inspect behavior only through its named public interface",

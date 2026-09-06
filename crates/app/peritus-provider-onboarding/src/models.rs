@@ -115,11 +115,7 @@ fn run(
                 runtime
                     .block_on(future)
                     .map(|models| {
-                        models
-                            .into_iter()
-                            .filter(|model| model.tools != Some(false))
-                            .map(|model| model.id.as_str().to_owned())
-                            .collect()
+                        models.into_iter().map(|model| model.id.as_str().to_owned()).collect()
                     })
                     .map_err(|_| OnboardingError::ModelCatalog)
             })

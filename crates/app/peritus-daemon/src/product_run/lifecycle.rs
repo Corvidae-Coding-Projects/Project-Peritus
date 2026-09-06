@@ -160,6 +160,7 @@ impl ProductRunService {
             if !record.snapshot.phase().retryable() && !pending_chat {
                 return Err(ProductRunServiceError::InvalidState);
             }
+            self.validate_workspace_mode(workspace_id, record.interaction.as_ref())?;
             let providers = self.resolve_selected_providers(
                 record.request.providers(),
                 record.interaction.as_ref(),

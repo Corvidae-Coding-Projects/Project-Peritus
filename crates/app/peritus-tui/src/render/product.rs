@@ -153,12 +153,16 @@ fn render_run_text(
             if value.is_empty() { empty.to_owned() } else { safe(&value) }
         },
     );
-    frame.render_widget(
-        Paragraph::new(text)
-            .block(Block::default().borders(Borders::ALL).title(title))
-            .wrap(Wrap { trim: false }),
-        area,
+    let lines = super::chat::wrapped_lines(
+        text.lines().map(|line| Line::from(line.to_owned())).collect(),
+        usize::from(area.width.saturating_sub(2)),
     );
+    let maximum = lines.len().saturating_sub(usize::from(area.height.saturating_sub(2)));
+    let paragraph = Paragraph::new(lines)
+        .block(Block::default().borders(Borders::ALL).title(format!("{title}· PgUp/PgDn · Home ")));
+    let scroll = usize::from(model.product.as_ref().map_or(0, |product| product.inspection_scroll))
+        .min(maximum);
+    frame.render_widget(paragraph.scroll((u16::try_from(scroll).unwrap_or(u16::MAX), 0)), area);
 }
 
 fn run_detail(

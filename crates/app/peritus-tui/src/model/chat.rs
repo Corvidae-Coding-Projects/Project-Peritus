@@ -31,6 +31,7 @@ pub struct ChatUi {
     pub(crate) model_picker: bool,
     pub(crate) model_selection: usize,
     pub(crate) model_role: models::ModelRole,
+    interrupt_requested: bool,
 }
 impl Default for ChatUi {
     fn default() -> Self {
@@ -48,6 +49,7 @@ impl Default for ChatUi {
             model_picker: false,
             model_selection: 0,
             model_role: models::ModelRole::Writer,
+            interrupt_requested: false,
         }
     }
 }
@@ -95,6 +97,7 @@ impl AppModel {
         .collect()
     }
     pub(super) fn paste_chat(&mut self, text: &str) {
+        self.chat.interrupt_requested = false;
         let text: String =
             text.chars().filter(|ch| !ch.is_control() || *ch == '\n' || *ch == '\t').collect();
         if self.chat.buffer.len().saturating_add(text.len())
@@ -107,6 +110,9 @@ impl AppModel {
         self.chat.cursor += text.len();
     }
     pub(super) fn handle_chat_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+        if !(key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c')) {
+            self.chat.interrupt_requested = false;
+        }
         if key.modifiers.contains(KeyModifiers::CONTROL) {
             match key.code {
                 KeyCode::Char('q') => {
@@ -114,12 +120,18 @@ impl AppModel {
                     return vec![Effect::Quit];
                 }
                 KeyCode::Char('c') => {
-                    if self.chat_work_active() {
-                        return self.chat_control(ProductRunControlAction::Cancel);
+                    if self.chat_work_active() && !self.chat.interrupt_requested {
+                        self.chat.interrupt_requested = true;
+                        let effects = self.chat_control(ProductRunControlAction::Cancel);
+                        self.notice(NoticeLevel::Info, if effects.is_empty() {
+                            "Stop could not be sent. Press Ctrl+C again to close; daemon work may continue."
+                        } else {
+                            "Stop requested. Press Ctrl+C again to close without waiting."
+                        });
+                        return effects;
                     }
-                    self.chat.buffer.clear();
-                    self.chat.cursor = 0;
-                    return Vec::new();
+                    self.quitting = true;
+                    return vec![Effect::Quit];
                 }
                 _ => {}
             }
@@ -277,6 +289,10 @@ impl AppModel {
     }
     pub(super) fn chat_control(&mut self, action: ProductRunControlAction) -> Vec<Effect> {
         if action == ProductRunControlAction::Cancel {
+            if !self.chat_work_active() {
+                self.notice(NoticeLevel::Info, "No active work to stop.");
+                return Vec::new();
+            }
             return self
                 .chat
                 .run_id

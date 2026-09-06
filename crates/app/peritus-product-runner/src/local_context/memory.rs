@@ -42,6 +42,7 @@ pub(super) struct LocalMemory {
     pub(super) model_revision: u64,
     pub(super) compactor_runtime: Option<crate::CommandRuntime>,
     pub(super) task_contract: String,
+    pub(super) workspace_scope: environment::WorkspaceScope,
 }
 
 pub(super) struct PreparedView {
@@ -59,10 +60,33 @@ impl LocalMemory {
         binding: WorkingBinding,
         config: LocalContextConfig,
     ) -> Result<Self, DeveloperLoopError> {
+        Self::load_scoped(
+            root,
+            workspace,
+            trace_path,
+            binding,
+            config,
+            environment::WorkspaceScope::default(),
+        )
+    }
+
+    pub(super) fn load_scoped(
+        root: &Path,
+        workspace: &Path,
+        trace_path: &Path,
+        binding: WorkingBinding,
+        config: LocalContextConfig,
+        workspace_scope: environment::WorkspaceScope,
+    ) -> Result<Self, DeveloperLoopError> {
         config.validate().map_err(|_| error("invalid local context configuration"))?;
         let limits = config.working_limits().map_err(|_| error("invalid local context limits"))?;
-        let store = LocalStore::open(root, workspace, binding)?;
-        let environment = environment::capture(workspace, binding, &[], "", limits)?;
+        let store = if workspace_scope.direct {
+            LocalStore::open_folder(root, workspace, binding, &workspace_scope.protected)?
+        } else {
+            LocalStore::open(root, workspace, binding)?
+        };
+        let environment =
+            environment::capture(workspace, binding, &[], "", limits, &workspace_scope)?;
         let state =
             WorkingState::new(environment, limits).map_err(|_| error("create working state"))?;
         let mut memory = Self {
@@ -85,6 +109,7 @@ impl LocalMemory {
             model_revision: 0,
             compactor_runtime: None,
             task_contract: String::new(),
+            workspace_scope,
         };
         memory.recover()?;
         let trace_path = memory.trace_path.clone();

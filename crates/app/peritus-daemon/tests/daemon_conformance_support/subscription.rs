@@ -143,7 +143,12 @@ pub(super) fn gap() -> io::Result<DaemonConformanceObservation> {
     populate_after(&mut client, 3)?;
     let mut connection =
         rusqlite::Connection::open(environment.database_path()).map_err(super::debug_error)?;
-    let transaction = connection.transaction().map_err(super::debug_error)?;
+    // The daemon continues writing while retention is simulated. Acquire the writer reservation
+    // before reading the oldest event: a deferred read-to-write upgrade can fail with SQLITE_BUSY
+    // immediately when another writer intervenes, even with SQLite's busy timeout configured.
+    let transaction = connection
+        .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+        .map_err(super::debug_error)?;
     let oldest = transaction
         .query_row("SELECT MIN(global_position) FROM events", [], |row| row.get::<_, i64>(0))
         .map_err(super::debug_error)?;
