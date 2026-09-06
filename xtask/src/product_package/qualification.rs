@@ -20,6 +20,7 @@ pub(crate) enum QualificationInput {
 
 /// Assembles and archives checked debug artifacts without rebuilding them or invoking Cargo.
 pub(crate) fn prepare(root: &Path) -> Result<PathBuf, XtaskError> {
+    super::native_artifacts::restore(root)?;
     let status = Command::new(debug_binary(root, "peritus-package"))
         .current_dir(root)
         .arg("--use-debug-artifacts")

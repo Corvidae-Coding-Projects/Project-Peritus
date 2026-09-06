@@ -1,6 +1,7 @@
 //! Product package build, installation, and native lifecycle qualification.
 
 mod host_version;
+mod native_artifacts;
 pub(crate) mod qualification;
 mod qualification_report;
 
