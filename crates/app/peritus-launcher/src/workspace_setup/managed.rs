@@ -50,7 +50,7 @@ pub fn new_profile(repository: &DiscoveredRepository) -> Result<WorkspaceProfile
             chunk[0] = 1;
         }
     }
-    WorkspaceProfile::restricted(
+    let profile = WorkspaceProfile::restricted(
         repository.root_text().to_owned(),
         repository.identity_text().to_owned(),
         hex(&bytes[0..16]),
@@ -58,7 +58,12 @@ pub fn new_profile(repository: &DiscoveredRepository) -> Result<WorkspaceProfile
         hex(&bytes[32..48]),
         hex(&bytes[48..64]),
     )
-    .map_err(LauncherError::from)
+    .map_err(LauncherError::from)?;
+    if repository.repository().is_none() {
+        profile.into_direct_folder().map_err(LauncherError::from)
+    } else {
+        Ok(profile)
+    }
 }
 
 /// Creates or recovers a managed detached worktree, then publishes its exact C1 registration.
@@ -67,20 +72,34 @@ pub fn trust(
     repository: &DiscoveredRepository,
     profile: WorkspaceProfile,
 ) -> Result<WorkspaceProfile, LauncherError> {
+    if profile.is_direct_folder() {
+        if repository.repository().is_some()
+            || repository.root_text() != profile.repository_root()
+            || repository.identity_text() != profile.repository_identity()
+        {
+            return Err(LauncherError::WorkspaceSetup(
+                "folder identity changed; add and trust the selected folder again".to_owned(),
+            ));
+        }
+        return profile.trust_folder().map_err(LauncherError::from);
+    }
+    let repository = repository.repository().ok_or_else(|| {
+        LauncherError::WorkspaceSetup("managed Git workspace has no repository adapter".to_owned())
+    })?;
     let repair = profile.trust_level() == WorkspaceTrust::Trusted;
-    let baseline = repository.repository().resolve_baseline("HEAD")?;
+    let baseline = repository.resolve_baseline("HEAD")?;
     let leaf = format!("workspace_{}", &profile.workspace_id()[..16]);
     let name = WorktreeName::new(leaf.clone())?;
     let destination = layout.managed_workspaces_root().join(&leaf);
     let worktree = if destination.exists() {
         if repair {
-            repository.repository().recover_current_worktree(RecoverWorktree::new(
+            repository.recover_current_worktree(RecoverWorktree::new(
                 name,
                 &destination,
                 WorktreeAccess::Writable,
             ))?
         } else {
-            repository.repository().recover_existing_worktree(CreateWorktree::new(
+            repository.recover_existing_worktree(CreateWorktree::new(
                 name,
                 &destination,
                 baseline,
@@ -88,7 +107,7 @@ pub fn trust(
             ))?
         }
     } else {
-        repository.repository().create_worktree(CreateWorktree::new(
+        repository.create_worktree(CreateWorktree::new(
             name,
             &destination,
             baseline,
@@ -105,12 +124,8 @@ pub fn trust(
         managed_baseline.commit(),
         managed_baseline.tree(),
     )?;
-    let registration = WorkspaceRegistration::new(
-        &binding,
-        repository.repository(),
-        &worktree,
-        transaction_root.clone(),
-    )?;
+    let registration =
+        WorkspaceRegistration::new(&binding, repository, &worktree, transaction_root.clone())?;
     let registration_path = layout.workspace_registration_file(profile.workspace_id());
     let actual = read_exact_or_publish(&registration_path, registration.canonical_bytes())?;
     if actual != registration.canonical_bytes() && repair {
@@ -146,6 +161,18 @@ pub fn trust(
 /// Revalidates one recent workspace without changing its source checkout.
 #[must_use]
 pub fn health(profile: &WorkspaceProfile) -> WorkspaceHealth {
+    if profile.is_direct_folder() {
+        return match DiscoveredRepository::folder(Path::new(profile.repository_root())) {
+            Ok(folder) if folder.identity_text() == profile.repository_identity() => {
+                if profile.trust_level() == WorkspaceTrust::Trusted {
+                    WorkspaceHealth::Ready
+                } else {
+                    WorkspaceHealth::Restricted
+                }
+            }
+            _ => WorkspaceHealth::NeedsRepair,
+        };
+    }
     let Ok(repository) =
         peritus_git::GitRepository::open(RepositoryOptions::new(profile.repository_root()))
     else {
@@ -239,7 +266,10 @@ mod tests {
         let nested = source.join("src/nested");
         fs::create_dir_all(&nested).expect("nested directory");
         let repository = DiscoveredRepository::open(&nested).expect("descendant discovery");
-        assert_eq!(repository.repository().identity().repository_root(), source);
+        assert_eq!(
+            repository.repository().expect("Git repository").identity().repository_root(),
+            source
+        );
         let profile = new_profile(&repository).expect("restricted profile");
         assert_eq!(health(&profile), WorkspaceHealth::Restricted);
 

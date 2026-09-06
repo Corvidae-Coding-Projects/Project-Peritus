@@ -11,13 +11,34 @@ use crate::{
 
 impl AppModel {
     pub(in crate::model) fn handle_product_key(&mut self, key: KeyEvent) -> Option<Vec<Effect>> {
+        if matches!(self.view, View::Diff | View::Review)
+            && let Some(product) = &mut self.product
+        {
+            match key.code {
+                KeyCode::PageUp => {
+                    product.inspection_scroll = product.inspection_scroll.saturating_sub(12);
+                }
+                KeyCode::PageDown => {
+                    product.inspection_scroll = product.inspection_scroll.saturating_add(12);
+                }
+                KeyCode::Home => product.inspection_scroll = 0,
+                _ => return None,
+            }
+            return Some(Vec::new());
+        }
         if self.view != View::Runs {
             return None;
         }
         match key.code {
             KeyCode::Char('n') => self.open_task_composer(),
-            KeyCode::Enter | KeyCode::Char('m') => self.open_product_message_composer(),
-            KeyCode::Char('i') => self.view = View::Diff,
+            KeyCode::Enter => return Some(self.open_selected_conversation()),
+            KeyCode::Char('m') => self.open_product_message_composer(),
+            KeyCode::Char('i') => {
+                self.view = View::Diff;
+                if let Some(product) = &mut self.product {
+                    product.inspection_scroll = 0;
+                }
+            }
             KeyCode::Char('v') => return Some(self.run_selected_product_candidate()),
             KeyCode::Char('a') => {
                 return Some(self.control_selected_product_run(ProductRunControlAction::Accept));

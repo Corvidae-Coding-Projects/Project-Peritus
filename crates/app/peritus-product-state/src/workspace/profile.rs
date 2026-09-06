@@ -21,6 +21,8 @@ pub enum WorkspaceTrust {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct WorkspaceProfile {
+    #[serde(default)]
+    direct_folder: bool,
     repository_root: String,
     repository_identity: String,
     project_id: String,
@@ -49,6 +51,7 @@ impl WorkspaceProfile {
         environment_id: String,
     ) -> Result<Self, ProductStateError> {
         let profile = Self {
+            direct_folder: false,
             repository_root,
             repository_identity,
             project_id,
@@ -84,6 +87,38 @@ impl WorkspaceProfile {
         self.transaction_root = Some(transaction_root);
         self.validate()?;
         Ok(self)
+    }
+
+    /// Marks a restricted directory as an in-place folder, without fabricating Git registration.
+    ///
+    /// # Errors
+    /// Rejects a profile that already carries managed-worktree authority.
+    pub fn into_direct_folder(mut self) -> Result<Self, ProductStateError> {
+        if self.trust != WorkspaceTrust::Restricted {
+            return Err(invalid("only a restricted profile can become a direct folder"));
+        }
+        self.direct_folder = true;
+        self.validate()?;
+        Ok(self)
+    }
+
+    /// Grants explicitly requested in-place effects without adding a managed Git worktree.
+    ///
+    /// # Errors
+    /// Rejects a non-folder profile or malformed retained facts.
+    pub fn trust_folder(mut self) -> Result<Self, ProductStateError> {
+        if !self.direct_folder {
+            return Err(invalid("in-place folder trust requires a direct folder profile"));
+        }
+        self.trust = WorkspaceTrust::Trusted;
+        self.validate()?;
+        Ok(self)
+    }
+
+    /// Whether effects target the selected directory itself instead of a managed Git worktree.
+    #[must_use]
+    pub const fn is_direct_folder(&self) -> bool {
+        self.direct_folder
     }
 
     /// Returns this workspace to inert browse-only mode and forgets executable registration facts.
@@ -168,8 +203,11 @@ impl WorkspaceProfile {
             + u8::from(self.registration_digest.is_some())
             + u8::from(self.managed_root.is_some())
             + u8::from(self.transaction_root.is_some());
-        let registration_shape =
-            crate::verified::workspace_registration_shape_exec(self.trust, registration_count);
+        let registration_shape = if self.direct_folder {
+            registration_count == 0
+        } else {
+            crate::verified::workspace_registration_shape_exec(self.trust, registration_count)
+        };
         let valid_registration = self.registration_file.as_deref().is_none_or(valid_path)
             && self.registration_digest.as_deref().is_none_or(valid_digest)
             && self.managed_root.as_deref().is_none_or(valid_path)

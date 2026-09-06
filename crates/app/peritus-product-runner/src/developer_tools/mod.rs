@@ -28,12 +28,14 @@ pub fn merge_rendered(retained: &mut String, incoming: &str) {
     evidence::merge_rendered(retained, incoming);
 }
 
-pub fn checked_context_file(
+pub fn checked_protected_file(
     root: &std::path::Path,
     relative: &str,
     contract: &str,
+    protected: &[std::path::PathBuf],
 ) -> Result<std::path::PathBuf, peritus_agent::DeveloperLoopError> {
-    let policy = access_policy::WorkspaceAccessPolicy::from_transcript(root, contract);
+    let mut policy = access_policy::WorkspaceAccessPolicy::from_transcript(root, contract);
+    policy.protect(root, protected);
     policy
         .authorize("workspace_read", &Value::from_iter([("path", Value::from(relative))]))
         .map_err(|_| {

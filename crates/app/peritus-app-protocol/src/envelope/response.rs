@@ -65,6 +65,10 @@ impl OperationAcknowledgement {
 /// Closed schema-v1 application response payload.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum AppResponsePayload {
+    /// Conversation status and public activity.
+    Interaction(crate::ProductInteractionSnapshot),
+    /// Provider-discovered catalog, including explicit unavailable/cache metadata.
+    Models(crate::ProductModelCatalog),
     /// Final command status and exact committed range.
     CommandResult(CommandResult),
     /// Successful subscription establishment.

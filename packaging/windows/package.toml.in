@@ -1,7 +1,7 @@
 schema = 1
 release = "@RELEASE@"
 platform = "windows"
-architecture = "x86_64"
+architecture = "@ARCHITECTURE@"
 layout_sha256 = "@LAYOUT_SHA256@"
 
 [[artifact]]

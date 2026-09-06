@@ -1,11 +1,11 @@
 //! Protocol message admission and daemon-derived state projection.
+mod response;
 
 use super::{
     Acknowledgement, AppEventEnvelope, AppEventPayload, AppMessage, AppModel, AppRequestEnvelope,
-    AppRequestPayload, AppResponseEnvelope, AppResponsePayload, ControlEnvelope, ControlPayload,
-    EVENT_CAPACITY, Effect, EventRecord, FAMILIES, HeartbeatReply, NoticeLevel, PendingRequest,
-    PromptItem, PromptPhase, ProtocolContext, SubscriptionFilter, SubscriptionRequest,
-    TerminalSession, View, inert_preview,
+    AppRequestPayload, ControlEnvelope, ControlPayload, EVENT_CAPACITY, Effect, EventRecord,
+    FAMILIES, HeartbeatReply, NoticeLevel, PendingRequest, PromptItem, PromptPhase,
+    ProtocolContext, SubscriptionFilter, SubscriptionRequest, View, inert_preview,
 };
 
 impl AppModel {
@@ -92,103 +92,6 @@ impl AppModel {
             self.notice(NoticeLevel::Error, "daemon frame used a foreign protocol context");
             false
         }
-    }
-
-    fn handle_response(&mut self, response: &AppResponseEnvelope) -> Vec<Effect> {
-        if !self.context_matches(response.context()) {
-            return Vec::new();
-        }
-        let pending = self.pending.remove(&response.request_id());
-        match response.payload() {
-            AppResponsePayload::SubscriptionStarted(started) => {
-                self.subscription = Some(started.subscription_id());
-                self.notice(
-                    NoticeLevel::Info,
-                    format!("live event stream resumed after #{}", started.after().get()),
-                );
-            }
-            AppResponsePayload::DaemonStatus(status) => {
-                self.daemon_status = Some(status.clone());
-            }
-            AppResponsePayload::TerminalAttached(binding) => {
-                match TerminalSession::new(*binding, self.limits.max_terminal_chunk_bytes()) {
-                    Ok(terminal) => {
-                        self.terminal = Some(terminal);
-                        self.view = View::Terminal;
-                        self.notice(
-                            NoticeLevel::Info,
-                            "terminal attached; Ctrl-] releases keyboard capture",
-                        );
-                    }
-                    Err(error) => self.notice(NoticeLevel::Error, error.to_string()),
-                }
-            }
-            AppResponsePayload::PromptAccepted(prompt_id) => {
-                self.set_prompt_phase(*prompt_id, PromptPhase::Accepted);
-                self.notice(NoticeLevel::Info, "prompt response accepted as protocol input");
-            }
-            AppResponsePayload::Acknowledged(_) => match pending {
-                Some(PendingRequest::TerminalDetach) => {
-                    self.terminal = None;
-                    self.notice(NoticeLevel::Info, "terminal detached");
-                }
-                Some(PendingRequest::TerminalCancel) => {
-                    self.notice(NoticeLevel::Warning, "terminal cancellation was acknowledged");
-                }
-                _ => {}
-            },
-            AppResponsePayload::Error(error) => {
-                if let Some(PendingRequest::Prompt(prompt_id)) = pending {
-                    self.set_prompt_phase(prompt_id, PromptPhase::Failed);
-                }
-                self.notice(
-                    NoticeLevel::Error,
-                    format!(
-                        "{} / {} / retry {}{}",
-                        error.subsystem().as_str(),
-                        error.code().as_str(),
-                        error.retry().as_str(),
-                        error
-                            .diagnostic()
-                            .map(|value| format!(": {}", value.as_str()))
-                            .unwrap_or_default()
-                    ),
-                );
-            }
-            AppResponsePayload::CommandResult(result) => {
-                self.notice(NoticeLevel::Info, format!("command result: {result:?}"));
-            }
-            AppResponsePayload::ArtifactOpened(metadata) => {
-                self.notice(
-                    NoticeLevel::Info,
-                    format!("artifact transfer opened: {} bytes", metadata.byte_size()),
-                );
-            }
-            AppResponsePayload::ShutdownAccepted(_) => {
-                self.notice(NoticeLevel::Warning, "daemon accepted graceful shutdown request");
-            }
-            AppResponsePayload::ProductRunAccepted(snapshot) => {
-                self.accept_product_run(snapshot.clone());
-                self.notice(NoticeLevel::Info, format!("coding run: {}", snapshot.status()));
-            }
-            AppResponsePayload::ProductRuns(snapshots) => {
-                self.accept_product_runs(snapshots.clone());
-            }
-            AppResponsePayload::ProductRunSettled(settled) => {
-                self.accept_product_settlement(settled);
-                self.notice(
-                    NoticeLevel::Info,
-                    format!("coding run settled: {:?}", settled.settlement().disposition()),
-                );
-            }
-            AppResponsePayload::ProductRunSettlements(settled) => {
-                self.accept_product_settlements(settled);
-            }
-            AppResponsePayload::ProductRunConversation(conversation) => {
-                self.accept_product_conversation(conversation.clone());
-            }
-        }
-        Vec::new()
     }
 
     fn handle_event(&mut self, event: &AppEventEnvelope) -> Vec<Effect> {

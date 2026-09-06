@@ -1,6 +1,7 @@
 //! Development-only `OpenAI` adapter tests and conformance bridge.
 
 mod cancellation;
+mod catalog;
 mod client;
 mod conformance;
 mod fixtures;

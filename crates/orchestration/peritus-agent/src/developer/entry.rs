@@ -4,8 +4,8 @@ use peritus_provider_core::ModelProvider;
 
 use super::context_port::ContextSession;
 use super::{
-    DeveloperContextPort, DeveloperLoopError, DeveloperLoopOutcome, DeveloperLoopRequest,
-    DeveloperToolExecutor, DeveloperTrace,
+    DeveloperContextPort, DeveloperInteraction, DeveloperLoopError, DeveloperLoopOutcome,
+    DeveloperLoopRequest, DeveloperToolExecutor, DeveloperTrace,
 };
 
 /// Production D0 composition that repeatedly lets a model inspect, edit, execute, and observe.
@@ -27,7 +27,7 @@ impl DeveloperLoop {
         trace: &mut dyn DeveloperTrace,
         context: &mut dyn DeveloperContextPort,
     ) -> Result<DeveloperLoopOutcome, DeveloperLoopError> {
-        Self::run_inner(provider, request, tools, trace, ContextSession(Some(context))).await
+        Self::run_inner(provider, request, tools, trace, ContextSession(Some(context)), None).await
     }
 
     /// Runs a bounded developer loop until the provider returns final text without tool calls.
@@ -43,6 +43,25 @@ impl DeveloperLoop {
         tools: &mut dyn DeveloperToolExecutor,
         trace: &mut dyn DeveloperTrace,
     ) -> Result<DeveloperLoopOutcome, DeveloperLoopError> {
-        Self::run_inner(provider, request, tools, trace, ContextSession(None)).await
+        Self::run_inner(provider, request, tools, trace, ContextSession(None), None).await
+    }
+
+    /// Runs with live steering and public activity, optionally retaining local context.
+    ///
+    /// The interaction port supplies input, not permission. Existing tool authorization remains
+    /// with the executor. New input fences unexecuted calls from an older response.
+    ///
+    /// # Errors
+    /// Returns the same bounded execution errors as [`Self::run`], plus input/observation failures.
+    pub async fn run_interactive(
+        provider: &dyn ModelProvider,
+        request: DeveloperLoopRequest,
+        tools: &mut dyn DeveloperToolExecutor,
+        trace: &mut dyn DeveloperTrace,
+        context: Option<&mut dyn DeveloperContextPort>,
+        interaction: &dyn DeveloperInteraction,
+    ) -> Result<DeveloperLoopOutcome, DeveloperLoopError> {
+        Self::run_inner(provider, request, tools, trace, ContextSession(context), Some(interaction))
+            .await
     }
 }

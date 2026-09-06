@@ -1,6 +1,7 @@
 //! Provider composition, credential timing, HTTP submission, and stream construction.
 
 mod cancel;
+mod catalog;
 mod response;
 
 use core::fmt;
@@ -111,6 +112,30 @@ impl OpenAiProvider {
 }
 
 impl ModelProvider for OpenAiProvider {
+    fn discover_models<'a>(
+        &'a self,
+        cancellation: &'a CancellationToken,
+    ) -> BoxFuture<
+        'a,
+        Result<Vec<peritus_provider_core::catalog::DiscoveredModel>, ProviderCoreError>,
+    > {
+        Box::pin(self.catalog(cancellation))
+    }
+
+    fn select_model(
+        &self,
+        model: peritus_model_protocol::ModelName,
+    ) -> Result<Arc<dyn ModelProvider>, ProviderCoreError> {
+        let profile = peritus_provider_core::catalog::selected_profile(&self.profile, model)?;
+        crate::profile::validate(&profile)?;
+        Ok(Arc::new(Self::compose(
+            self.config.clone(),
+            profile,
+            Arc::clone(&self.credentials),
+            Arc::clone(&self.transport),
+        )))
+    }
+
     fn profile(&self) -> &ProviderProfile {
         &self.profile
     }

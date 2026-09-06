@@ -46,6 +46,15 @@ pub struct AnthropicConfig {
 }
 
 impl AnthropicConfig {
+    pub(crate) fn with_selected_profile(
+        mut self,
+        profile: ProviderProfile,
+    ) -> Result<Self, ProviderCoreError> {
+        validate_anthropic_profile(&profile)?;
+        self.profile = profile;
+        Ok(self)
+    }
+
     /// Creates a profile-bound configuration and canonicalizes beta header order.
     ///
     /// # Errors

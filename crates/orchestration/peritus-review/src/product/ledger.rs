@@ -39,7 +39,7 @@ impl ProductFindingLedger {
         summary: String,
         findings: Vec<ProductFinding>,
     ) -> Result<Self, ProductReviewError> {
-        if (cycle == 0) != findings.is_empty()
+        if (cycle == 0 && !findings.is_empty())
             || findings.iter().any(|finding| finding.last_cycle() > cycle)
         {
             return Err(ProductReviewError::new("restored review ledger cycle is invalid"));
@@ -156,6 +156,25 @@ mod tests {
             cycle,
         )
         .expect("finding")
+    }
+
+    #[test]
+    fn clean_reviews_restore_without_permitting_findings_outside_the_ledger_cycle() {
+        let clean = ProductFindingLedger::restore(1, "No findings".to_owned(), Vec::new())
+            .expect("a completed review may contain no findings");
+        assert_eq!(clean.cycle(), 1);
+        assert!(!clean.has_blockers());
+        assert!(ProductFindingLedger::restore(1, String::new(), Vec::new()).is_err());
+        for cycle in [0, 1] {
+            assert!(
+                ProductFindingLedger::restore(
+                    cycle,
+                    "Invalid future finding".to_owned(),
+                    vec![finding(2, FindingSeverity::High)],
+                )
+                .is_err()
+            );
+        }
     }
 
     #[test]

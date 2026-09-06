@@ -17,6 +17,8 @@ use crate::{
 };
 
 mod configuration;
+#[cfg(test)]
+mod model_tests;
 
 use configuration::{endpoint, ensure_configuration};
 
@@ -54,6 +56,16 @@ impl ProductBootstrap {
         self,
         providers: ProviderSelection,
     ) -> Result<PreparedProduct, LauncherError> {
+        if providers
+            .enabled()
+            .iter()
+            .any(|kind| kind.is_account() && providers.account_model(*kind).is_none())
+        {
+            return Err(LauncherError::Interaction(
+                "Select an explicit model for every enabled account provider before saving"
+                    .to_owned(),
+            ));
+        }
         let lock_path = self.layout.state_root().join("bootstrap.lock");
         let _lock = BootstrapLock::acquire(&lock_path)?;
         let store = ProductStateStore::open(self.layout.product_state_root())?;
@@ -167,6 +179,7 @@ fn finish(
     store: &ProductStateStore,
     mut state: ProductState,
 ) -> Result<PreparedProduct, LauncherError> {
+    configuration::retain_legacy_models(&layout, store, &mut state)?;
     ensure_registry(&layout)?;
     if state.bootstrap_phase() == BootstrapPhase::IdentityReady {
         state.advance(BootstrapPhase::RegistryReady)?;
@@ -254,7 +267,12 @@ mod tests {
             vec![peritus_product_state::ProviderKind::CodexAccount],
             Some(peritus_product_state::ProviderKind::CodexAccount),
         )
-        .expect("selection");
+        .expect("selection")
+        .with_account_models(std::collections::BTreeMap::from([(
+            peritus_product_state::ProviderKind::CodexAccount,
+            "fixture-codex-model".to_owned(),
+        )]))
+        .expect("model selection");
         let configured =
             ProductBootstrap::new(layout).configure_providers(selection).expect("configure");
         assert_ne!(configured.daemon_config_path(), first.daemon_config_path());
@@ -275,7 +293,12 @@ mod tests {
             Vec::new(),
             true,
         )
-        .expect("explicit failover selection");
+        .expect("explicit failover selection")
+        .with_account_models(std::collections::BTreeMap::from([
+            (ProviderKind::CodexAccount, "fixture-codex-model".to_owned()),
+            (ProviderKind::ClaudeAccount, "fixture-claude-model".to_owned()),
+        ]))
+        .expect("model selection");
         let configured =
             ProductBootstrap::new(layout).configure_providers(selection).expect("configure");
 

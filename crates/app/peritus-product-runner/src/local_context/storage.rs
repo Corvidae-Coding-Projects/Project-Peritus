@@ -55,13 +55,19 @@ impl LocalStore {
         workspace: &Path,
         binding: WorkingBinding,
     ) -> Result<Self, DeveloperLoopError> {
-        location::validate(root, workspace)?;
+        Self::open_folder(root, workspace, binding, &[])
+    }
+
+    pub(super) fn open_folder(
+        root: &Path,
+        workspace: &Path,
+        binding: WorkingBinding,
+        protected: &[std::path::PathBuf],
+    ) -> Result<Self, DeveloperLoopError> {
+        location::validate(root, workspace, protected)?;
         fs::create_dir_all(root).map_err(|_| error("create storage root"))?;
         let root = root.canonicalize().map_err(|_| error("resolve storage root"))?;
-        let workspace = workspace.canonicalize().map_err(|_| error("resolve workspace root"))?;
-        if root.starts_with(&workspace) || workspace.starts_with(&root) {
-            return Err(error("storage overlaps editable workspace"));
-        }
+        location::validate(&root, workspace, protected)?;
         let owner = OpenOptions::new()
             .create(true)
             .truncate(false)

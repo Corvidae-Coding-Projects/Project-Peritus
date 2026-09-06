@@ -4,6 +4,11 @@
 account status, and interactive login. It delegates subscription authentication to the official
 credential-owning `codex` and `claude` executables and retains no account tokens or command output.
 
+After explicit user approval, it downloads and runs the selected vendor's native installer.
+Downloads require HTTPS and have time and size limits. Installation does not sign in or grant
+provider authority. Discovery checks PATH and the vendor's standard native directory; callers pass
+the resulting canonical executable path to the daemon without changing the process environment.
+
 The crate observes only bounded status facts and process exit status. It does not grant provider,
 tool, workspace, or approval authority; validated selections are persisted by
 `peritus-product-state` and instantiated by G0/C5.

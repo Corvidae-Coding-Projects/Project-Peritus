@@ -97,6 +97,12 @@ impl ArtifactOpenRequest {
 /// Closed schema-v1 application request payload.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum AppRequestPayload {
+    /// Starts or steers a conversation with explicit execution semantics.
+    Interact(crate::ProductInteractionRequest),
+    /// Reads public activity and exact input incorporation status.
+    QueryInteraction(ProductRunConversationQuery),
+    /// Discovers models from one configured provider route.
+    QueryModels(crate::ProductModelQuery),
     /// Submits one exact, idempotent B3 command binding.
     SubmitCommand(CommandBinding),
     /// Starts or resumes one event subscription.

@@ -4,7 +4,11 @@ use super::super::error;
 use peritus_agent::DeveloperLoopError;
 use std::path::{Component, Path};
 
-pub(super) fn validate(root: &Path, workspace: &Path) -> Result<(), DeveloperLoopError> {
+pub(super) fn validate(
+    root: &Path,
+    workspace: &Path,
+    private_roots: &[std::path::PathBuf],
+) -> Result<(), DeveloperLoopError> {
     if !root.is_absolute() || root.components().any(|part| matches!(part, Component::ParentDir)) {
         return Err(error("memory root must be absolute and traversal-free"));
     }
@@ -20,7 +24,10 @@ pub(super) fn validate(root: &Path, workspace: &Path) -> Result<(), DeveloperLoo
     for name in suffix.iter().rev() {
         projected.push(name);
     }
-    if projected.starts_with(&workspace) || workspace.starts_with(&projected) {
+    let excluded = private_roots
+        .iter()
+        .any(|path| path.canonicalize().is_ok_and(|path| projected.starts_with(path)));
+    if (projected.starts_with(&workspace) && !excluded) || workspace.starts_with(&projected) {
         return Err(error("storage overlaps editable workspace"));
     }
     Ok(())

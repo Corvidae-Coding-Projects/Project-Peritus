@@ -4,6 +4,7 @@ use peritus_app_protocol::{
     AppRequestPayload, ProductRunConversation, ProductRunConversationQuery, ProductRunQuery,
     ProductRunSettlementSnapshot, ProductRunSnapshot,
 };
+use peritus_types::RunId;
 
 use super::ProductUi;
 use crate::{
@@ -12,25 +13,60 @@ use crate::{
 };
 
 impl AppModel {
+    pub(in crate::model) fn accept_product_query(
+        &mut self,
+        snapshots: &[ProductRunSnapshot],
+        exact: Option<RunId>,
+    ) {
+        if let Some(run_id) = exact {
+            if let Some(snapshot) = snapshots.iter().find(|value| value.run_id() == run_id) {
+                self.accept_product_run(snapshot.clone());
+            }
+        } else {
+            self.accept_product_runs(snapshots.to_vec());
+        }
+    }
+
+    pub(in crate::model) fn accept_settlement_query(
+        &mut self,
+        settled: &[ProductRunSettlementSnapshot],
+        exact: Option<RunId>,
+    ) {
+        if let Some(run_id) = exact {
+            if let Some(value) = settled.iter().find(|value| value.snapshot().run_id() == run_id) {
+                // Polling refreshes evidence; it is not a user control acknowledgement.
+                self.accept_product_run(value.snapshot().clone());
+                if let Some(product) = &mut self.product {
+                    product.settlements.insert(run_id, *value.settlement());
+                }
+            }
+        } else {
+            self.accept_product_settlements(settled);
+        }
+    }
+
     pub(in crate::model) fn poll_product_runs(&mut self) -> Vec<Effect> {
         if self.product.is_none()
             || self.context.is_none()
-            || self.pending.values().any(|pending| matches!(pending, PendingRequest::ProductQuery))
+            || self.pending.values().any(|pending| {
+                matches!(
+                    pending,
+                    PendingRequest::ProductQuery | PendingRequest::ProductExactQuery(_)
+                )
+            })
         {
             return Vec::new();
         }
-        let mut effects: Vec<Effect> = self
-            .request(
-                AppRequestPayload::QueryProductRuns(ProductRunQuery::recent()),
-                PendingRequest::ProductQuery,
-            )
-            .into_iter()
-            .collect();
+        let mut effects: Vec<Effect> = self.poll_chat();
+        effects.extend(self.request(
+            AppRequestPayload::QueryProductRuns(ProductRunQuery::recent()),
+            PendingRequest::ProductQuery,
+        ));
         if let Some(run_id) =
             self.product.as_ref().and_then(ProductUi::selected_run).map(ProductRunSnapshot::run_id)
             && let Some(effect) = self.request(
                 AppRequestPayload::QueryProductRuns(ProductRunQuery::exact(run_id)),
-                PendingRequest::ProductQuery,
+                PendingRequest::ProductExactQuery(run_id),
             )
         {
             effects.push(effect);
@@ -58,8 +94,11 @@ impl AppModel {
 
     pub(in crate::model) fn accept_product_runs(&mut self, snapshots: Vec<ProductRunSnapshot>) {
         if let Some(product) = &mut self.product {
+            let selected = product.selected_run().map(ProductRunSnapshot::run_id);
             product.runs = snapshots;
-            product.selected = product.selected.min(product.runs.len().saturating_sub(1));
+            product.selected = selected
+                .and_then(|id| product.runs.iter().position(|run| run.run_id() == id))
+                .unwrap_or_else(|| product.selected.min(product.runs.len().saturating_sub(1)));
             product
                 .settlements
                 .retain(|run_id, _| product.runs.iter().any(|run| run.run_id() == *run_id));

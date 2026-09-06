@@ -222,7 +222,21 @@ fn native_sandbox_probe(layout: &HostLayout) -> Result<Observation, Box<dyn std:
             "Linux host lacks one or more required native sandbox facilities",
         )
         .fact("native.helper-exact", probe.helper_digest().is_some())
-        .fact("native.bubblewrap-functional", probe.bubblewrap().functional()));
+        .fact("native.bubblewrap-functional", probe.bubblewrap().functional())
+        .fact(
+            "native.kernel-supported",
+            probe.kernel().is_some_and(|version| version >= peritus_sandbox_linux::MINIMUM_KERNEL),
+        )
+        .fact("native.architecture-supported", probe.architecture().supported())
+        .fact("native.namespaces-complete", probe.namespaces().complete())
+        .fact(
+            "native.landlock-supported",
+            probe
+                .landlock_abi()
+                .is_some_and(|abi| abi >= peritus_sandbox_linux::MINIMUM_LANDLOCK_ABI),
+        )
+        .fact("native.seccomp", probe.seccomp())
+        .fact("native.pty", probe.pty()));
     }
     Ok(Observation::passed("Linux native sandbox probe admitted every production baseline control")
         .fact("native.helper-exact", true)

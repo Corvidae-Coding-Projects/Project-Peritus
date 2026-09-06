@@ -20,8 +20,8 @@ use crate::stream::AnthropicStream;
 /// Configured first-party Anthropic Messages provider.
 pub struct AnthropicClient {
     config: AnthropicConfig,
-    credentials: Box<dyn CredentialSource>,
-    transport: Box<dyn HttpTransport>,
+    credentials: std::sync::Arc<dyn CredentialSource>,
+    transport: std::sync::Arc<dyn HttpTransport>,
 }
 
 impl AnthropicClient {
@@ -35,8 +35,9 @@ impl AnthropicClient {
         config: AnthropicConfig,
         credentials: Box<dyn CredentialSource>,
     ) -> Result<Self, ProviderCoreError> {
-        let transport = Box::new(ReqwestTransport::new(config.http_limits())?);
-        Ok(Self { config, credentials, transport })
+        let transport: Box<dyn HttpTransport> =
+            Box::new(ReqwestTransport::new(config.http_limits())?);
+        Ok(Self { config, credentials: credentials.into(), transport: transport.into() })
     }
 
     #[cfg(test)]
@@ -45,7 +46,7 @@ impl AnthropicClient {
         credentials: Box<dyn CredentialSource>,
         transport: Box<dyn HttpTransport>,
     ) -> Self {
-        Self { config, credentials, transport }
+        Self { config, credentials: credentials.into(), transport: transport.into() }
     }
 
     /// Returns this instance's exact immutable profile.
@@ -195,6 +196,48 @@ impl AnthropicClient {
 }
 
 impl ModelProvider for AnthropicClient {
+    fn discover_models<'a>(
+        &'a self,
+        cancellation: &'a CancellationToken,
+    ) -> BoxFuture<
+        'a,
+        Result<Vec<peritus_provider_core::catalog::DiscoveredModel>, ProviderCoreError>,
+    > {
+        Box::pin(async move {
+            use peritus_provider_core::catalog::{CatalogDialect, discover_http_models};
+            let origin = self.config.endpoint().as_str().trim_end_matches('/');
+            let endpoint =
+                peritus_provider_core::Endpoint::new(format!("{origin}/v1/models?limit=1000"))?;
+            discover_http_models(
+                self.transport.as_ref(),
+                &endpoint,
+                CatalogDialect::Anthropic,
+                &|| {
+                    let credential = self.credentials.resolve(self.config.credential())?;
+                    let mut headers = vec![credential.into_header(name("x-api-key")?, None)?];
+                    headers.push(Header::new(name("anthropic-version")?, b"2023-06-01".to_vec())?);
+                    HttpHeaders::new(headers, self.config.http_limits())
+                },
+                self.config.http_limits(),
+                cancellation,
+            )
+            .await
+        })
+    }
+
+    fn select_model(
+        &self,
+        model: peritus_model_protocol::ModelName,
+    ) -> Result<std::sync::Arc<dyn ModelProvider>, ProviderCoreError> {
+        let profile = peritus_provider_core::catalog::selected_profile(self.profile(), model)?;
+        let config = self.config.clone().with_selected_profile(profile)?;
+        Ok(std::sync::Arc::new(Self {
+            config,
+            credentials: std::sync::Arc::clone(&self.credentials),
+            transport: std::sync::Arc::clone(&self.transport),
+        }))
+    }
+
     fn profile(&self) -> &ProviderProfile {
         self.profile()
     }

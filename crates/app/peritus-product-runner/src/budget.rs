@@ -11,6 +11,7 @@ use peritus_types::ProviderProfileId;
 
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
+mod folder;
 #[path = "resource_probe.rs"]
 mod resource_probe;
 

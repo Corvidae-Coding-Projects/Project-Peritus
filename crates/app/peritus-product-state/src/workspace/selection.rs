@@ -33,7 +33,9 @@ impl WorkspaceSelection {
         self.recent
             .iter()
             .chain(self.retained_registrations.iter())
-            .filter(|profile| profile.trust_level() == WorkspaceTrust::Trusted)
+            .filter(|profile| {
+                !profile.is_direct_folder() && profile.trust_level() == WorkspaceTrust::Trusted
+            })
             .collect()
     }
 
@@ -117,7 +119,7 @@ impl WorkspaceSelection {
     }
 
     fn retain_registration(&mut self, profile: WorkspaceProfile) {
-        if profile.trust_level() != WorkspaceTrust::Trusted {
+        if profile.is_direct_folder() || profile.trust_level() != WorkspaceTrust::Trusted {
             return;
         }
         self.retained_registrations.retain(|existing| {

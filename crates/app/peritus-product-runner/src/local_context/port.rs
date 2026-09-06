@@ -30,6 +30,21 @@ impl LocalContextHandle {
         input: &ProductRunInput,
         role: &str,
     ) -> Result<Option<Self>, ProductRunnerError> {
+        Self::open_scoped(input, role, None)
+    }
+
+    pub(crate) fn open_folder(
+        input: &ProductRunInput,
+        protected: &[std::path::PathBuf],
+    ) -> Result<Option<Self>, ProductRunnerError> {
+        Self::open_scoped(input, "writer", Some(protected))
+    }
+
+    fn open_scoped(
+        input: &ProductRunInput,
+        role: &str,
+        protected: Option<&[std::path::PathBuf]>,
+    ) -> Result<Option<Self>, ProductRunnerError> {
         let config = input.command_runtime.local_context_config().clone();
         if !config.enabled {
             return Ok(None);
@@ -50,9 +65,23 @@ impl LocalContextHandle {
             input.conversation.revision(),
         );
         let root = input.trace_path.with_extension("context").join(role);
-        let mut memory =
+        let mut memory = if let Some(protected) = protected {
+            LocalMemory::load_scoped(
+                &root,
+                &input.workspace_root,
+                &input.trace_path,
+                binding,
+                config,
+                super::memory::environment::WorkspaceScope {
+                    direct: true,
+                    protected: protected.to_vec(),
+                },
+            )
+            .map_err(|error| crate::turn::developer_error(&error))?
+        } else {
             LocalMemory::load(&root, &input.workspace_root, &input.trace_path, binding, config)
-                .map_err(|error| crate::turn::developer_error(&error))?;
+                .map_err(|error| crate::turn::developer_error(&error))?
+        };
         memory.compactor_runtime = Some(input.command_runtime.clone());
         Ok(Some(Self {
             inner: Arc::new(Mutex::new(memory)),

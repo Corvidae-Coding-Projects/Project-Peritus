@@ -1,23 +1,24 @@
 //! Tight provider/tool execution loop.
+mod provider_turn;
+use provider_turn::complete_turn;
 
 use peritus_model_protocol::{
-    BoundedText, Capability, ContentBlock, Message, ModelRequest, ProtocolLimits, ReducedItem,
-    RequestedCapabilities, Role, TerminalOutcome, ToolResult, negotiate,
+    BoundedText, CanonicalJson, Capability, ContentBlock, JsonBounds, Message, ProtocolLimits,
+    ReducedItem, RequestedCapabilities, Role, TerminalOutcome, ToolResult, negotiate,
 };
 use peritus_provider_core::ModelProvider;
 
-use crate::{ModelAdvance, ModelSession};
+use crate::ModelSession;
 
 use super::context::prepare_messages;
 use super::context_port::ContextSession;
-use super::model_request::{ModelTurnKind, build_model_request};
+use super::model_request::ModelTurnKind;
 use super::observation::model_visible_tool_output;
-use super::retry::DeveloperRetryPlanner;
 use super::semantic::SemanticCompaction;
 use super::{
-    DeveloperContextEvent, DeveloperLoop, DeveloperLoopError, DeveloperLoopOutcome,
-    DeveloperLoopRequest, DeveloperToolExecutor, DeveloperTrace, DeveloperTraceEvent,
-    DeveloperUsage,
+    DeveloperActivity, DeveloperContextEvent, DeveloperInteraction, DeveloperLoop,
+    DeveloperLoopError, DeveloperLoopOutcome, DeveloperLoopRequest, DeveloperToolExecutor,
+    DeveloperToolObservation, DeveloperTrace, DeveloperTraceEvent, DeveloperUsage,
 };
 
 impl DeveloperLoop {
@@ -31,6 +32,7 @@ impl DeveloperLoop {
         tools: &mut dyn DeveloperToolExecutor,
         trace: &mut dyn DeveloperTrace,
         mut context: ContextSession<'_>,
+        interaction: Option<&dyn DeveloperInteraction>,
     ) -> Result<DeveloperLoopOutcome, DeveloperLoopError> {
         let protocol_limits = ProtocolLimits::PRODUCTION;
         let profile = provider.profile();
@@ -58,10 +60,22 @@ impl DeveloperLoop {
         let mut compactions = 0_u16;
         let mut retries = 0_u16;
         let mut usage = DeveloperUsage::default();
+        let mut input_revision = 0;
 
         for turn in 1..=request.limits.max_model_turns() {
             if request.cancellation.is_cancelled() {
                 return Err(DeveloperLoopError::Cancelled);
+            }
+            if let Some(port) = interaction {
+                let input = port.input()?;
+                if input.revision != input_revision {
+                    context.append(&mut messages, message(
+                        Role::User,
+                        format!("Current governing conversation (revision {}); incorporate the latest user message and respect its scope:\n{}", input.revision, input.conversation),
+                        protocol_limits,
+                    )?)?;
+                    input_revision = input.revision;
+                }
             }
             if context.is_local() {
                 if context.prepare(&mut messages, &request.tools, profile)? {
@@ -89,10 +103,11 @@ impl DeveloperLoop {
                         &mut retries,
                         &mut usage,
                         trace,
+                        None,
                     )
                     .await
                     {
-                        Ok(session) => {
+                        Ok(Some(session)) => {
                             if let Ok(Some(record)) =
                                 semantic.install(&mut messages, &session, protocol_limits)
                             {
@@ -105,7 +120,7 @@ impl DeveloperLoop {
                         Err(DeveloperLoopError::Cancelled) => {
                             return Err(DeveloperLoopError::Cancelled);
                         }
-                        Err(_) => {}
+                        Ok(None) | Err(_) => {}
                     }
                 }
                 let records = prepare_messages(
@@ -126,7 +141,7 @@ impl DeveloperLoop {
                     .ok_or(DeveloperLoopError::LimitExceeded)?;
             }
             let required_tool = tools.required_tool_name().map(str::to_owned);
-            let session = complete_turn(
+            let Some(session) = complete_turn(
                 provider,
                 &request,
                 &messages,
@@ -139,8 +154,12 @@ impl DeveloperLoop {
                 &mut retries,
                 &mut usage,
                 trace,
+                interaction.map(|port| (port, input_revision)),
             )
-            .await?;
+            .await?
+            else {
+                continue;
+            };
 
             let mut assistant = Vec::new();
             let mut calls = Vec::new();
@@ -164,6 +183,13 @@ impl DeveloperLoop {
             if calls.is_empty() {
                 if final_text.trim().is_empty() {
                     return Err(DeveloperLoopError::EmptyResponse);
+                }
+                if input_changed(interaction, input_revision)? {
+                    context.append(
+                        &mut messages,
+                        Message::new(Role::Assistant, assistant, protocol_limits)?,
+                    )?;
+                    continue;
                 }
                 if let Some(blocker) = tools.completion_blocker() {
                     context.append(
@@ -209,7 +235,38 @@ impl DeveloperLoop {
                 return Err(DeveloperLoopError::LimitExceeded);
             }
             for call in calls {
-                let observation = tools.execute(&call)?;
+                if request.cancellation.is_cancelled() {
+                    return Err(DeveloperLoopError::Cancelled);
+                }
+                let name = call.name().as_str();
+                let observation = if input_changed(interaction, input_revision)? {
+                    if let Some(port) = interaction {
+                        port.observe(DeveloperActivity::ToolSkipped { name })?;
+                    }
+                    DeveloperToolObservation {
+                        output: CanonicalJson::parse(
+                            r#"{"error":"Not executed: a newer user message superseded this tool call. Follow the updated conversation."}"#,
+                            JsonBounds::value(protocol_limits),
+                        )?,
+                        is_error: true,
+                    }
+                } else {
+                    if let Some(port) = interaction {
+                        port.observe(DeveloperActivity::ToolStarted {
+                            name,
+                            arguments: &call.arguments().to_wire_string(),
+                        })?;
+                    }
+                    let observation = tools.execute(&call)?;
+                    if let Some(port) = interaction {
+                        port.observe(DeveloperActivity::ToolFinished {
+                            name,
+                            output: &observation.output.to_wire_string(),
+                            is_error: observation.is_error,
+                        })?;
+                    }
+                    observation
+                };
                 trace.record(DeveloperTraceEvent::ToolObservation {
                     call: &call,
                     observation: &observation,
@@ -246,91 +303,11 @@ impl DeveloperLoop {
     }
 }
 
-#[allow(clippy::too_many_arguments, reason = "one logical turn keeps its checked request inputs")]
-async fn complete_turn(
-    provider: &dyn ModelProvider,
-    request: &DeveloperLoopRequest,
-    messages: &[Message],
-    profile: &peritus_model_protocol::ProviderProfile,
-    negotiated: peritus_model_protocol::NegotiatedCapabilities,
-    protocol_limits: ProtocolLimits,
-    turn: u16,
-    kind: ModelTurnKind,
-    required_tool: Option<&str>,
-    retries: &mut u16,
-    usage: &mut DeveloperUsage,
-    trace: &mut dyn DeveloperTrace,
-) -> Result<ModelSession, DeveloperLoopError> {
-    let maximum = request.limits.max_attempts_per_turn();
-    let retry_prefix = match kind {
-        ModelTurnKind::Developer => request.request_prefix.clone(),
-        ModelTurnKind::SemanticCompaction => {
-            format!("{}-semantic-compaction", request.request_prefix)
-        }
-    };
-    let planner = DeveloperRetryPlanner::new(&retry_prefix, turn, maximum, &request.cancellation);
-    for attempt in 1..=maximum {
-        if request.cancellation.is_cancelled() {
-            return Err(DeveloperLoopError::Cancelled);
-        }
-        let model_request = build_model_request(
-            request,
-            messages,
-            profile,
-            negotiated,
-            protocol_limits,
-            turn,
-            attempt,
-            kind,
-            required_tool,
-        )?;
-        match drive(provider, model_request, request, protocol_limits, trace).await {
-            Ok(session) if successful(session.terminal()) && usable(&session) => {
-                usage.observe(session.usage_high_water())?;
-                return Ok(session);
-            }
-            Ok(session) => {
-                usage.observe(session.usage_high_water())?;
-                let Some(record) =
-                    planner.terminal(attempt, session.terminal(), usable(&session))?
-                else {
-                    return Err(terminal_error(session.terminal()));
-                };
-                planner.record_and_wait(&record, trace).await?;
-                *retries = retries.checked_add(1).ok_or(DeveloperLoopError::LimitExceeded)?;
-            }
-            Err(error) => {
-                let Some(record) = planner.error(attempt, &error)? else {
-                    return Err(error);
-                };
-                planner.record_and_wait(&record, trace).await?;
-                *retries = retries.checked_add(1).ok_or(DeveloperLoopError::LimitExceeded)?;
-            }
-        }
-    }
-    Err(DeveloperLoopError::EmptyResponse)
-}
-
-async fn drive(
-    provider: &dyn ModelProvider,
-    model_request: ModelRequest,
-    request: &DeveloperLoopRequest,
-    protocol_limits: ProtocolLimits,
-    trace: &mut dyn DeveloperTrace,
-) -> Result<ModelSession, DeveloperLoopError> {
-    let mut session =
-        ModelSession::start(provider, model_request, protocol_limits, request.cancellation.clone())
-            .await?;
-    loop {
-        match session.pull_one().await? {
-            ModelAdvance::Closed => return Ok(session),
-            ModelAdvance::EnvelopePending { .. } => {
-                let encoded = session.encode_pending()?;
-                trace.record(DeveloperTraceEvent::ProviderEnvelope(&encoded))?;
-                let _ = session.accept_durable_pending()?;
-            }
-        }
-    }
+fn input_changed(
+    interaction: Option<&dyn DeveloperInteraction>,
+    revision: u64,
+) -> Result<bool, DeveloperLoopError> {
+    interaction.map_or(Ok(false), |port| port.input().map(|input| input.revision != revision))
 }
 
 const fn successful(terminal: Option<&TerminalOutcome>) -> bool {

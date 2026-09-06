@@ -4,6 +4,7 @@ use std::ffi::OsString;
 
 use super::Command;
 use crate::error::XtaskError;
+use crate::product_package::qualification::QualificationInput;
 
 pub(super) fn parse(
     first: Option<&OsString>,
@@ -11,7 +12,12 @@ pub(super) fn parse(
 ) -> Result<Option<Command>, XtaskError> {
     match first.and_then(|value| value.to_str()) {
         Some("ci-shard") => parse_ci(arguments).map(Some),
-        Some("product-native-qualification-shard") => parse_h2(arguments).map(Some),
+        Some("product-native-qualification-shard") => {
+            parse_h2(arguments, QualificationInput::Build).map(Some)
+        }
+        Some("product-native-qualification-prepared-shard") => {
+            parse_h2(arguments, QualificationInput::Prepared).map(Some)
+        }
         _ => Ok(None),
     }
 }
@@ -35,7 +41,10 @@ fn parse_ci(arguments: &mut impl Iterator<Item = OsString>) -> Result<Command, X
     Ok(Command::CiShard { operation, shard })
 }
 
-fn parse_h2(arguments: &mut impl Iterator<Item = OsString>) -> Result<Command, XtaskError> {
+fn parse_h2(
+    arguments: &mut impl Iterator<Item = OsString>,
+    input: QualificationInput,
+) -> Result<Command, XtaskError> {
     let index = arguments
         .next()
         .and_then(|value| value.into_string().ok())
@@ -52,7 +61,7 @@ fn parse_h2(arguments: &mut impl Iterator<Item = OsString>) -> Result<Command, X
             "product-native-qualification-shard accepts exactly one index",
         ));
     }
-    Ok(Command::ProductNativeQualificationShard { index })
+    Ok(Command::ProductNativeQualificationShard { index, input })
 }
 
 #[cfg(test)]
@@ -71,12 +80,43 @@ mod tests {
             parse(Some(&OsString::from("product-native-qualification-shard")), &mut h2)
                 .expect("H2 shard")
                 .unwrap(),
-            Command::ProductNativeQualificationShard { index: 17 }
+            Command::ProductNativeQualificationShard {
+                index: 17,
+                input: QualificationInput::Build
+            }
         );
         let mut invalid = std::iter::once(OsString::from("18"));
         assert!(
             parse(Some(&OsString::from("product-native-qualification-shard")), &mut invalid,)
                 .is_err()
         );
+    }
+
+    #[test]
+    fn prepared_shards_are_explicit_and_keep_the_same_argument_bounds() {
+        for index in 0..18 {
+            let mut arguments = std::iter::once(OsString::from(index.to_string()));
+            assert_eq!(
+                parse(
+                    Some(&OsString::from("product-native-qualification-prepared-shard")),
+                    &mut arguments
+                )
+                .expect("prepared shard"),
+                Some(Command::ProductNativeQualificationShard {
+                    index,
+                    input: QualificationInput::Prepared
+                })
+            );
+        }
+        for values in [vec![], vec!["18"], vec!["-1"], vec!["0", "extra"]] {
+            let mut arguments = values.into_iter().map(OsString::from);
+            assert!(
+                parse(
+                    Some(&OsString::from("product-native-qualification-prepared-shard")),
+                    &mut arguments
+                )
+                .is_err()
+            );
+        }
     }
 }

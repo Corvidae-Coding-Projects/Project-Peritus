@@ -64,6 +64,7 @@ impl LocalMemory {
             &self.transcript.files,
             &self.task_contract,
             self.limits,
+            &self.workspace_scope,
         )?;
         if &environment != self.state.environment() {
             self.state_event(&WorkingEvent::Refresh {

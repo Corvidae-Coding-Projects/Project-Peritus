@@ -20,6 +20,7 @@ pub(super) fn list(
     root: &Path,
     arguments: &Value,
     resources: CommandResources,
+    access_policy: &WorkspaceAccessPolicy,
 ) -> Result<Value, DeveloperLoopError> {
     let relative = string(arguments, "path").unwrap_or("");
     let depth = bounded_usize(arguments, "depth", 3, 1, 12);
@@ -37,7 +38,7 @@ pub(super) fn list(
             let Some(relative) = path.strip_prefix(root).ok() else {
                 continue;
             };
-            if ignored(relative) {
+            if ignored(relative) || !access_policy.permits_search_result(relative) {
                 continue;
             }
             let kind = child.file_type().map_err(|error| tool(error.to_string()))?;
@@ -94,6 +95,9 @@ pub(super) fn search(
     let mut queue = VecDeque::from([start]);
     let mut matches = Vec::new();
     while let Some(path) = queue.pop_front() {
+        if !access_policy.permits_search_result(path.strip_prefix(root).unwrap_or(&path)) {
+            continue;
+        }
         let metadata = fs::symlink_metadata(&path).map_err(|error| tool(error.to_string()))?;
         if metadata.is_dir() {
             let mut children = fs::read_dir(path)

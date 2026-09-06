@@ -96,6 +96,14 @@ pub enum FieldBound {
     ProductDeliverablePaths,
     /// The product deliverable successful-command ceiling applies.
     ProductDeliverableCommands,
+    /// Interactive activity-entry ceiling.
+    ProductActivities,
+    /// Interactive activity text and detail byte ceiling.
+    ProductActivityBytes,
+    /// Provider catalog entry ceiling.
+    ProductModels,
+    /// Model identifier or label byte ceiling.
+    ProductModelBytes,
     /// Items must be strictly sorted and unique.
     SortedUnique,
     /// Cursors, offsets, or sequence numbers must be contiguous.
@@ -131,6 +139,10 @@ impl FieldBound {
             Self::ProductDetailBytes => "product.max-detail-bytes",
             Self::ProductDeliverablePaths => "product.max-deliverable-paths",
             Self::ProductDeliverableCommands => "product.max-deliverable-commands",
+            Self::ProductActivities => "product.max-activities (256)",
+            Self::ProductActivityBytes => "product.max-activity-bytes (8192)",
+            Self::ProductModels => "product.max-models (4096)",
+            Self::ProductModelBytes => "product.max-model-bytes (512)",
             Self::SortedUnique => "strictly-sorted-unique",
             Self::Contiguous => "contiguous",
             Self::DeclaredArtifactSize => "declared-artifact-size",
@@ -164,6 +176,8 @@ pub enum JsonShape {
     Enum(&'static [&'static str]),
     /// Reference to one named nested type.
     Ref(&'static str),
+    /// One of several closed named aggregate shapes, selected by a preceding wire tag.
+    OneOfRef(&'static [&'static str]),
     /// Ordered array of one named nested type.
     ArrayRef(&'static str),
     /// Ordered array of strings.

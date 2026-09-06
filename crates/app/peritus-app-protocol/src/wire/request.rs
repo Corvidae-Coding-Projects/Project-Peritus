@@ -47,6 +47,18 @@ impl CanonicalEncode for AppRequestEnvelope {
         write_id(writer, self.request_id().as_bytes())?;
         write_id(writer, self.correlation_id().as_bytes())?;
         match self.payload() {
+            AppRequestPayload::Interact(value) => {
+                writer.write_u16(22)?;
+                super::interaction::write_request(writer, value)
+            }
+            AppRequestPayload::QueryInteraction(value) => {
+                writer.write_u16(23)?;
+                write_conversation_query(writer, *value)
+            }
+            AppRequestPayload::QueryModels(value) => {
+                writer.write_u16(24)?;
+                super::interaction::write_model_query(writer, *value)
+            }
             AppRequestPayload::SubmitCommand(value) => {
                 writer.write_u16(1)?;
                 write_command_binding(writer, value)
@@ -172,6 +184,9 @@ pub(super) fn read_request(
         19 => AppRequestPayload::QueryProductRuns(read_run_query(reader)?),
         20 => AppRequestPayload::ContinueProductRun(read_run_continuation(reader)?),
         21 => AppRequestPayload::QueryProductRunConversation(read_conversation_query(reader)?),
+        22 => AppRequestPayload::Interact(super::interaction::read_request(reader)?),
+        23 => AppRequestPayload::QueryInteraction(read_conversation_query(reader)?),
+        24 => AppRequestPayload::QueryModels(super::interaction::read_model_query(reader)?),
         _ => return unknown(tag_offset),
     };
     let request =

@@ -233,6 +233,7 @@ fn candidate_record(repository: &TempDir) -> crate::product_run::RunRecord {
     )
     .expect("conversation");
     crate::product_run::RunRecord {
+        interaction: None,
         request,
         snapshot,
         cancelled: Arc::new(AtomicBool::new(false)),

@@ -123,6 +123,11 @@ fn prepare(
     }
     let mut paths = memory.transcript.files.clone();
     for operation in &update.operations {
+        if memory.workspace_scope.direct && matches!(operation.validity, Validity::Candidate) {
+            return Err(error(
+                "folder memory requires file, conversation or task validity; no Git candidate exists",
+            ));
+        }
         if operation.files.len() > memory.limits.links()
             || (!matches!(operation.validity, Validity::Files) && !operation.files.is_empty())
         {
@@ -132,10 +137,11 @@ fn prepare(
             if path.len() > 4096 {
                 return Err(error("file path exceeds bound"));
             }
-            crate::developer_tools::checked_context_file(
+            crate::developer_tools::checked_protected_file(
                 &memory.workspace,
                 path,
                 &memory.task_contract,
+                &memory.workspace_scope.protected,
             )?;
             paths.push(path.clone());
         }
@@ -151,6 +157,7 @@ fn prepare(
         &paths,
         &memory.task_contract,
         memory.limits,
+        &memory.workspace_scope,
     )?;
     let state = if &environment == memory.state.environment() {
         memory.state.clone()

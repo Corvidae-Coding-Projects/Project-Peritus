@@ -3,6 +3,8 @@
 mod control;
 mod conversation;
 mod error;
+mod interaction;
+mod models;
 mod phase;
 mod request;
 mod settlement;
@@ -11,6 +13,8 @@ mod snapshot;
 pub use control::*;
 pub use conversation::*;
 pub use error::ProductRunMessageError;
+pub use interaction::*;
+pub use models::*;
 pub use phase::*;
 pub use request::*;
 pub use settlement::*;

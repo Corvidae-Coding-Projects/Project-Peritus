@@ -2,6 +2,7 @@
 
 mod authority;
 mod compactor;
+mod construction;
 mod contract;
 mod control;
 mod identity;
@@ -22,13 +23,11 @@ use std::{
 
 use peritus_agent::DeveloperLoopError;
 use peritus_artifact_store::{ArtifactStore, StoreConfig};
-use peritus_policy::{AuthorityInstant, OperationDescriptor, OperationRegistry, RiskSet};
-use peritus_process::{ExecutionGateway, ProcessStore};
+use peritus_policy::AuthorityInstant;
+use peritus_process::ExecutionGateway;
 use peritus_tool_protocol::{CancellationReason, ToolControl, ToolProgress, ToolResult};
-use peritus_tool_router::{
-    DispatchOutcome, InvocationHandle, RecoveryOutcome, RouterLimits, ToolRegistry, ToolRouter,
-};
-use peritus_tools_shell::{RawShellDispatcher, exec_descriptor};
+use peritus_tool_router::{DispatchOutcome, InvocationHandle, RecoveryOutcome, ToolRouter};
+use peritus_tools_shell::RawShellDispatcher;
 use peritus_types::RunId;
 use serde_json::Value;
 
@@ -88,69 +87,6 @@ pub(super) struct StartCommand<'a> {
 }
 
 impl CommandRuntime {
-    /// Creates the run-owned C4 router while reusing the caller's daemon-owned C2 process store.
-    ///
-    /// # Errors
-    /// Returns a product-run failure when the state root overlaps the agent-visible workspace or
-    /// the canonical C4 catalog cannot be constructed.
-    pub fn open(
-        state_root: impl Into<PathBuf>,
-        workspace_root: impl Into<PathBuf>,
-        run_id: RunId,
-        process_store: ProcessStore,
-    ) -> Result<Self, crate::ProductRunnerError> {
-        let state_root = state_root.into();
-        let workspace_root = workspace_root.into();
-        std::fs::create_dir_all(&state_root).map_err(|error| runtime_open(error.to_string()))?;
-        let state_root =
-            state_root.canonicalize().map_err(|error| runtime_open(error.to_string()))?;
-        let workspace_root =
-            workspace_root.canonicalize().map_err(|error| runtime_open(error.to_string()))?;
-        if state_root.starts_with(&workspace_root) || workspace_root.starts_with(&state_root) {
-            return Err(runtime_open(
-                "command state and agent-visible workspace roots overlap".to_owned(),
-            ));
-        }
-        let artifacts = StoreConfig::new(
-            state_root.join("artifacts"),
-            plan::OUTPUT_BYTES,
-            ARTIFACT_QUOTA_BYTES,
-        )
-        .map_err(|error| runtime_open(error.to_string()))?;
-        let descriptor = exec_descriptor().map_err(|error| runtime_open(error.to_string()))?;
-        let operation = OperationDescriptor::new(
-            descriptor.operation().name().clone(),
-            descriptor.operation().operation_class(),
-            RiskSet::new(descriptor.operation().risks().as_slice().to_vec())
-                .map_err(|error| runtime_open(format!("{error:?}")))?,
-        )
-        .map_err(|error| runtime_open(format!("{error:?}")))?;
-        let operations = OperationRegistry::new(vec![operation])
-            .map_err(|error| runtime_open(format!("{error:?}")))?;
-        let registry = ToolRegistry::new(vec![Arc::new(descriptor)], &operations)
-            .map_err(|error| runtime_open(error.to_string()))?;
-        let limits =
-            RouterLimits::new(64, 4_096).map_err(|error| runtime_open(error.to_string()))?;
-        Ok(Self {
-            local_context: crate::LocalContextConfig::default(),
-            inner: Arc::new(RuntimeInner {
-                run_id,
-                workspace_root,
-                state_root,
-                artifacts,
-                gateway: ExecutionGateway::new(process_store),
-                state: Mutex::new(RuntimeState {
-                    router: ToolRouter::new(registry, limits),
-                    next_ordinal: 0,
-                    active: BTreeMap::new(),
-                    terminal: BTreeMap::new(),
-                }),
-                #[cfg(test)]
-                state_guard: None,
-            }),
-        })
-    }
-
     /// Selects the run's local-memory policy without changing command authority or recovery.
     ///
     /// # Errors
@@ -171,8 +107,11 @@ impl CommandRuntime {
     #[cfg(test)]
     pub(crate) fn open_for_test(workspace_root: &Path, run_id: RunId) -> Self {
         let state_guard = tempfile::tempdir().expect("temporary command state");
-        let processes = ProcessStore::open(state_guard.path().join("processes"), workspace_root)
-            .expect("test command process store");
+        let processes = peritus_process::ProcessStore::open(
+            state_guard.path().join("processes"),
+            workspace_root,
+        )
+        .expect("test command process store");
         let mut runtime =
             Self::open(state_guard.path().join("router"), workspace_root, run_id, processes)
                 .expect("test command runtime");

@@ -170,8 +170,14 @@ pub type RunObserver = Arc<dyn Fn(ProductRunUpdate) + Send + Sync>;
 
 /// Live daemon-owned conversation supplied to model turns.
 pub trait ConversationView: Send + Sync {
+    // Live provider interaction is an ordinary-build effect, like the developer loop itself.
+    // The verification projection retains only the conversation data needed by composition.
     /// Monotonic revision incremented whenever the user adds context.
     fn revision(&self) -> u64;
+    /// Latest revision actually incorporated by a model, not merely received.
+    fn incorporated_revision(&self) -> u64 {
+        self.revision()
+    }
     /// Human-readable chronological transcript for the next model turn.
     fn render(&self) -> String;
 }

@@ -9,7 +9,19 @@ use peritus_context::{
 };
 use peritus_types::Sha256Digest;
 use sha2::{Digest as _, Sha256};
-use std::{fs::File, io::Read as _, path::Path};
+use std::{
+    fs::File,
+    io::Read as _,
+    path::{Path, PathBuf},
+};
+
+/// Direct folders have no whole-tree candidate identity. Only explicit file dependencies,
+/// conversation and task validity are supported; the digest is a directory namespace only.
+#[derive(Clone, Default)]
+pub(in crate::local_context) struct WorkspaceScope {
+    pub(in crate::local_context) direct: bool,
+    pub(in crate::local_context) protected: Vec<PathBuf>,
+}
 
 pub(in crate::local_context) fn key(label: &[u8]) -> Result<ContextNodeId, DeveloperLoopError> {
     let digest = sha256(label);
@@ -25,13 +37,20 @@ pub(in crate::local_context) fn capture(
     paths: &[String],
     contract: &str,
     limits: WorkingLimits,
+    scope: &WorkspaceScope,
 ) -> Result<WorkingEnvironment, DeveloperLoopError> {
-    let candidate = crate::progress::WorkspaceCheckpoint::capture(root)
-        .map_err(|_| error("capture candidate identity"))?
-        .digest();
+    let candidate = if scope.direct {
+        sha256(&binding.workspace().into_bytes())
+    } else {
+        crate::progress::WorkspaceCheckpoint::capture(root)
+            .map_err(|_| error("capture candidate identity"))?
+            .digest()
+    };
     let mut files = Vec::new();
     for path in paths {
-        let Ok(full) = crate::developer_tools::checked_context_file(root, path, contract) else {
+        let Ok(full) =
+            crate::developer_tools::checked_protected_file(root, path, contract, &scope.protected)
+        else {
             continue;
         };
         match File::open(full) {

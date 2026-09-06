@@ -3,6 +3,11 @@
 /// Provider discovery, status, or interactive-login failure.
 #[derive(Debug, thiserror::Error)]
 pub enum OnboardingError {
+    /// Model metadata discovery failed without substituting a bundled catalog.
+    #[error(
+        "model discovery unavailable; check authentication or explicitly enter a manual model ID"
+    )]
+    ModelCatalog,
     /// The selected provider is not an official account-backed route.
     #[error("selected provider does not support official account login")]
     UnsupportedProvider,
@@ -11,6 +16,16 @@ pub enum OnboardingError {
     ExecutableUnavailable {
         /// User-facing provider label.
         provider: &'static str,
+    },
+    /// The user-approved official installer could not finish successfully.
+    #[error("could not install {provider} during {stage}: {detail}")]
+    Installation {
+        /// User-facing provider label.
+        provider: &'static str,
+        /// Non-secret failed operation.
+        stage: &'static str,
+        /// Operating-system or process-exit detail.
+        detail: String,
     },
     /// A bounded status process could not be started.
     #[error("could not inspect {provider} login status: {detail}")]

@@ -13,6 +13,7 @@ mod approval;
 mod catalog;
 mod context;
 mod deserialize;
+mod folder;
 mod paths;
 mod product;
 mod provider;
@@ -20,6 +21,7 @@ mod provider;
 pub use approval::ApprovalRegistryDeclaration;
 pub use catalog::{ProjectDeclaration, ToolPolicy, WorkspaceDeclaration};
 pub use context::ContextPolicy;
+pub use folder::FolderDeclaration;
 pub use paths::DaemonPaths;
 pub use product::ProductRunPolicy;
 pub use provider::{ProviderProfileDeclaration, ProviderRoute, ProviderRouteKind};
@@ -159,6 +161,7 @@ pub struct DaemonConfig {
     human: LocalHumanPrincipal,
     projects: Vec<ProjectDeclaration>,
     workspaces: Vec<WorkspaceDeclaration>,
+    folders: Vec<FolderDeclaration>,
     tools: ToolPolicy,
     providers: Vec<ProviderRoute>,
     product: ProductRunPolicy,
@@ -261,6 +264,12 @@ impl DaemonConfig {
     pub fn workspaces(&self) -> &[WorkspaceDeclaration] {
         &self.workspaces
     }
+
+    /// Direct directories authorized for conversational work, never synthetic Git registrations.
+    #[must_use]
+    pub fn folders(&self) -> &[FolderDeclaration] {
+        &self.folders
+    }
     /// Borrows the explicit tool allowlist.
     #[must_use]
     pub const fn tools(&self) -> &ToolPolicy {
@@ -305,6 +314,7 @@ impl DaemonConfig {
         self.approval_registry.validate()?;
         self.limits.validate()?;
         catalog::validate(&self.projects, &self.workspaces, &self.tools)?;
+        folder::validate(&self.folders)?;
         provider::validate(&self.providers)?;
         self.context.validate(&self.providers, self.product)?;
         if let TelemetryExport::LocalFile { directory, quota_bytes } = &self.telemetry

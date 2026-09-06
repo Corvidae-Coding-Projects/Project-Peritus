@@ -16,6 +16,9 @@ use peritus_types::{RunId, WorkspaceId};
 
 use super::{Inner, ProductRunService};
 
+mod catalog;
+mod folder;
+mod interaction;
 mod support;
 
 use support::{
@@ -281,8 +284,10 @@ fn service(
             automatic_provider_failover: false,
             local_context: peritus_product_runner::LocalContextConfig::default(),
             workspaces: BTreeMap::from([(workspace_id, workspace.to_owned())]),
+            folders: BTreeMap::new(),
             processes,
             tasks: tokio::sync::Mutex::new(Vec::new()),
+            model_catalogs: tokio::sync::Mutex::new(BTreeMap::new()),
         }),
     }
 }

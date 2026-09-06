@@ -86,7 +86,7 @@ impl CandidateRecorder {
     ) -> Arc<dyn Fn(ToolCheckpointBoundary) -> Result<(), String> + Send + Sync> {
         let recorder = self.clone();
         Arc::new(move |boundary| {
-            let revision = conversation.revision();
+            let revision = conversation.incorporated_revision();
             match boundary {
                 ToolCheckpointBoundary::Mutation => {
                     recorder.record(CandidateStage::Changed, revision, CheckpointEvidence::None)
@@ -172,6 +172,21 @@ impl CandidateRecorder {
         conversation_revision: u64,
     ) -> Result<Option<CandidateCheckpoint>, ProductRunnerError> {
         self.record(CandidateStage::Observed, conversation_revision, CheckpointEvidence::None)
+    }
+
+    pub(super) fn record_pending_review(
+        &self,
+        conversation_revision: u64,
+    ) -> Result<(), ProductRunnerError> {
+        if self.checkpoint()?.is_some_and(|checkpoint| {
+            checkpoint.review().is_current_and_satisfied(checkpoint.identity())
+        }) {
+            // A retry may reacquire gates for an unchanged candidate with a completed review.
+            // Keep that valid evidence while the new review runs; it is not a pending review.
+            return Ok(());
+        }
+        self.record(CandidateStage::ReviewPending, conversation_revision, CheckpointEvidence::None)
+            .map(|_| ())
     }
 
     pub(super) fn settle(
@@ -261,6 +276,30 @@ mod tests {
     use std::{fs, process::Command};
 
     use super::*;
+
+    #[test]
+    fn retry_preserves_a_clean_review_when_failed_gates_are_reacquired() {
+        let root = repository();
+        let baseline = CandidateBaseline::capture(root.path()).expect("baseline");
+        let recorder =
+            CandidateRecorder::new(root.path(), baseline, run_id(), workspace_id(), None, false)
+                .expect("recorder");
+        fs::write(root.path().join("candidate.txt"), "changed").expect("candidate");
+        recorder
+            .record(CandidateStage::SelfChecked, 1, CheckpointEvidence::Gates(false))
+            .expect("failed gates");
+        recorder
+            .record(CandidateStage::SelfChecked, 1, CheckpointEvidence::Review(true))
+            .expect("clean review");
+        recorder
+            .record(CandidateStage::GatesPassed, 1, CheckpointEvidence::Gates(true))
+            .expect("reacquired gates");
+        recorder.record_pending_review(1).expect("start another review");
+        let checkpoint = recorder.checkpoint().expect("state").expect("candidate");
+        assert_eq!(checkpoint.stage(), CandidateStage::GatesPassed);
+        assert!(checkpoint.review().is_current_and_satisfied(checkpoint.identity()));
+        assert!(!checkpoint.obligations().is_current_and_satisfied(checkpoint.identity()));
+    }
 
     #[test]
     fn changed_candidate_stales_prior_gate_evidence() {

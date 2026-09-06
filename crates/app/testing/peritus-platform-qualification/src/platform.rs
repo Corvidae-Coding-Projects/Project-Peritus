@@ -198,7 +198,7 @@ impl PlatformContract {
 
 const LINUX_ARCHITECTURES: [Architecture; 2] = [Architecture::X86_64, Architecture::Aarch64];
 const MACOS_ARCHITECTURES: [Architecture; 2] = [Architecture::X86_64, Architecture::Aarch64];
-const WINDOWS_ARCHITECTURES: [Architecture; 1] = [Architecture::X86_64];
+const WINDOWS_ARCHITECTURES: [Architecture; 2] = [Architecture::X86_64, Architecture::Aarch64];
 
 const LINUX_PREREQUISITES: [NativePrerequisite; 10] = [
     NativePrerequisite::new(

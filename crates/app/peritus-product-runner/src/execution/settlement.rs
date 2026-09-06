@@ -54,9 +54,9 @@ pub(super) fn from_initial_error(
             diff: resume.diff().to_owned(),
             gates: resume.gates().to_owned(),
             review: resume.review().to_owned(),
-            changed_paths: resume
-                .gate_report()
-                .map_or_else(Vec::new, |report| report.report.changed_paths().to_vec()),
+            // Durable resumes deliberately reacquire effectful gate reports. Candidate paths
+            // must therefore come from the retained baseline, not that optional runtime report.
+            changed_paths: resume.baseline().changed_paths(&input.workspace_root)?,
             successful_commands: resume
                 .successful_commands()
                 .iter()

@@ -12,6 +12,9 @@ use peritus_types::{RunId, WorkspaceId};
 
 use crate::{ProductRunProgress, execution::resume::ProductRunResume};
 
+/// Stateless product-run entry point using the D0/D1/D2/E0 production composition.
+pub struct ProductRunner;
+
 /// Concrete product-run phase emitted to the daemon.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ProductRunPhase {
@@ -65,8 +68,16 @@ pub type RunObserver = Arc<dyn Fn(ProductRunUpdate) + Send + Sync>;
 
 /// Live daemon-owned conversation supplied to every model turn.
 pub trait ConversationView: Send + Sync {
+    /// Optional daemon-owned live input and public activity port.
+    fn interaction(&self) -> Option<&dyn peritus_agent::DeveloperInteraction> {
+        None
+    }
     /// Monotonic revision incremented whenever the user adds context.
     fn revision(&self) -> u64;
+    /// Latest revision actually incorporated by a model, not merely received.
+    fn incorporated_revision(&self) -> u64 {
+        self.revision()
+    }
     /// Human-readable chronological transcript for the next model turn.
     fn render(&self) -> String;
 }

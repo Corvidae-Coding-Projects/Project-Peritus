@@ -18,6 +18,7 @@ rm -f -- "$command_file"
 rm -f -- "$app_root/bin/peritusd" "$app_root/bin/peritus" "$app_root/bin/peritus-tui"
 rm -f -- "$app_root/libexec/peritus-macos-sandbox-helper"
 rm -f -- "$app_root/share/peritus/com.corvidae.peritus.plist.in"
+rm -f -- "$app_root/share/peritus/Uninstall-Peritus.sh"
 rmdir -- "$app_root/bin" "$app_root/libexec" "$app_root/share/peritus" "$app_root/share" 2>/dev/null || true
 
 echo "Peritus package files were removed; configuration, state, logs, and credentials were preserved"

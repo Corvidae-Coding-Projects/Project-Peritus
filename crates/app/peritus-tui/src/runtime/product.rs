@@ -38,6 +38,7 @@ pub struct ProductLaunchContext {
     workspace_label: String,
     providers: Vec<ProductProviderOption>,
     default_provider: Option<usize>,
+    direct_folder_writable: Option<bool>,
 }
 
 impl ProductLaunchContext {
@@ -59,7 +60,26 @@ impl ProductLaunchContext {
                 "product provider default does not match the enabled provider list".to_owned(),
             ));
         }
-        Ok(Self { workspace_id, workspace_label, providers, default_provider })
+        Ok(Self {
+            workspace_id,
+            workspace_label,
+            providers,
+            default_provider,
+            direct_folder_writable: None,
+        })
+    }
+
+    /// Marks a directory whose requested changes are in-place, with the current trust level.
+    #[must_use]
+    pub const fn with_direct_folder(mut self, writable: bool) -> Self {
+        self.direct_folder_writable = Some(writable);
+        self
+    }
+
+    /// Direct-folder authority, or none for the existing managed Git workspace flow.
+    #[must_use]
+    pub const fn direct_folder_writable(&self) -> Option<bool> {
+        self.direct_folder_writable
     }
 
     /// Active workspace identity.

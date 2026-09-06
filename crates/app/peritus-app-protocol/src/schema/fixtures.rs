@@ -5,6 +5,7 @@ use core::mem::size_of;
 use crate::{APP_SCHEMA_V1, AppErrorCode};
 use peritus_codec::{CodecError, CodecLimits, encode_frame};
 
+mod interaction;
 mod values;
 
 use values::generated_valid_cases;
@@ -83,6 +84,7 @@ impl GeneratedFixtureCase {
 pub fn generated_fixture_cases() -> Result<Vec<GeneratedFixtureCase>, CodecError> {
     let limits = CodecLimits::PRODUCTION;
     let mut cases = generated_valid_cases(limits)?;
+    cases.extend(interaction::cases(limits)?);
     let mut unknown_request = cases
         .iter()
         .find(|case| case.case == "minimal-daemon-status-request")

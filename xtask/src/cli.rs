@@ -2,6 +2,7 @@ use crate::api_contract;
 use crate::architecture;
 use crate::error::XtaskError;
 use crate::metadata;
+use crate::product_package::qualification::{self, QualificationInput};
 use crate::reproducibility;
 use crate::source;
 use crate::toolchain;
@@ -32,7 +33,11 @@ Commands:
   product-package-smoke  Qualify native install, repeat launch, upgrade, and uninstall
   product-native-qualification Run and retain all 18 native H2 package scenarios
   product-native-qualification-shard INDEX Run one of 18 single-scenario H2 shards
+  product-native-qualification-prepare Assemble previously built native H2 artifacts
+  product-native-qualification-restore Restore this platform's same-run native H2 archive
+  product-native-qualification-prepared-shard INDEX Qualify same-run artifacts without Cargo
   release-bootstrap-smoke Qualify the public download, checksum, and install entry point
+  release-bootstrap-prepared-smoke Qualify the public installer using same-run native artifacts
   release-create         Validate a tag and create its retained draft GitHub release
   release-package-stage Build, archive, checksum, and record this host's native package
   release-package-assemble Assemble a native package from separately built release binaries
@@ -56,8 +61,10 @@ enum Command {
     ProductInstall,
     ProductPackageSmoke,
     ProductNativeQualification,
-    ProductNativeQualificationShard { index: usize },
-    ReleaseBootstrapSmoke,
+    ProductNativeQualificationPrepare,
+    ProductNativeQualificationRestore,
+    ProductNativeQualificationShard { index: usize, input: QualificationInput },
+    ReleaseBootstrapSmoke { input: QualificationInput },
     ReleaseCreate,
     ReleasePackageStage,
     ReleasePackageAssemble,
@@ -214,12 +221,14 @@ pub(crate) fn execute(
         | Command::ProductInstall
         | Command::ProductPackageSmoke
         | Command::ProductNativeQualification
+        | Command::ProductNativeQualificationPrepare
+        | Command::ProductNativeQualificationRestore
         | Command::ProductNativeQualificationShard { .. } => {
             execute_product(command, root, output)?;
         }
         Command::ReleaseCreate => crate::release::create(root)?,
-        Command::ReleaseBootstrapSmoke => {
-            let package = crate::release::bootstrap_smoke(root)?;
+        Command::ReleaseBootstrapSmoke { input } => {
+            let package = crate::release::bootstrap_smoke(root, input)?;
             write_output(
                 output,
                 &format!("public release bootstrap passed: {}\n", package.display()),
@@ -227,7 +236,7 @@ pub(crate) fn execute(
         }
         Command::ReleasePackageStage => crate::release::package_stage(root)?,
         Command::ReleasePackageAssemble => crate::release::package_assemble(root)?,
-        Command::ReleasePublish => crate::release::publish()?,
+        Command::ReleasePublish => crate::release::publish(root)?,
         Command::Help => {}
     }
     Ok(())
@@ -266,12 +275,17 @@ fn execute_product(
         Command::ProductPackageSmoke => {
             (crate::product_package::smoke(root)?, "native product lifecycle passed")
         }
-        Command::ProductNativeQualification => (
-            crate::product_package::qualify(root)?,
-            "native H2 qualification passed; retained report",
-        ),
-        Command::ProductNativeQualificationShard { index } => (
-            crate::product_package::qualify_shard(root, index)?,
+        Command::ProductNativeQualification => {
+            (qualification::qualify(root)?, "native H2 qualification passed; retained report")
+        }
+        Command::ProductNativeQualificationPrepare => {
+            (qualification::prepare(root)?, "native H2 package prepared without rebuilding")
+        }
+        Command::ProductNativeQualificationRestore => {
+            (qualification::restore(root)?, "same-run native H2 package restored")
+        }
+        Command::ProductNativeQualificationShard { index, input } => (
+            qualification::qualify_shard(root, index, input)?,
             "native H2 qualification shard passed; retained reports",
         ),
         _ => return Err(XtaskError::invocation("command is not a product packaging operation")),
@@ -304,7 +318,18 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
         Some("product-install") => Ok(Command::ProductInstall),
         Some("product-package-smoke") => Ok(Command::ProductPackageSmoke),
         Some("product-native-qualification") => Ok(Command::ProductNativeQualification),
-        Some("release-bootstrap-smoke") => Ok(Command::ReleaseBootstrapSmoke),
+        Some("product-native-qualification-prepare") => {
+            Ok(Command::ProductNativeQualificationPrepare)
+        }
+        Some("product-native-qualification-restore") => {
+            Ok(Command::ProductNativeQualificationRestore)
+        }
+        Some("release-bootstrap-smoke") => {
+            Ok(Command::ReleaseBootstrapSmoke { input: QualificationInput::Build })
+        }
+        Some("release-bootstrap-prepared-smoke") => {
+            Ok(Command::ReleaseBootstrapSmoke { input: QualificationInput::Prepared })
+        }
         Some("release-create") => Ok(Command::ReleaseCreate),
         Some("release-package-stage") => Ok(Command::ReleasePackageStage),
         Some("release-package-assemble") => Ok(Command::ReleasePackageAssemble),
@@ -322,61 +347,6 @@ fn write_output(output: &mut dyn Write, message: &str) -> Result<(), XtaskError>
         .map_err(|error| XtaskError::io("write", Path::new("<stdout>"), error))
 }
 
-#[cfg(test)]
-mod tests {
-    use super::{Command, discover_workspace_root, parse};
-    use crate::error::ErrorCode;
-    use std::ffi::OsString;
-    use std::fs;
-
-    #[test]
-    fn empty_arguments_show_help() {
-        assert_eq!(parse(Vec::<OsString>::new()).expect("empty args are valid"), Command::Help);
-    }
-
-    #[test]
-    fn unknown_command_has_stable_typed_error() {
-        let error = parse([OsString::from("unknown")]).expect_err("unknown command must fail");
-        assert_eq!(error.code(), ErrorCode::Invocation);
-        assert!(error.render().contains("cargo xtask help"));
-    }
-
-    #[test]
-    fn native_qualification_command_is_first_class() {
-        assert_eq!(
-            parse([OsString::from("product-native-qualification")])
-                .expect("native qualification command must parse"),
-            Command::ProductNativeQualification
-        );
-    }
-
-    #[test]
-    fn workspace_root_is_discovered_from_the_xtask_directory() {
-        let crate_root = fs::canonicalize(env!("CARGO_MANIFEST_DIR"))
-            .expect("xtask manifest directory must be canonicalizable");
-        let workspace = discover_workspace_root(&crate_root)
-            .expect("xtask must be nested under the Peritus workspace root");
-        assert_eq!(
-            workspace.join("xtask").canonicalize().expect("discovered xtask must canonicalize"),
-            crate_root
-        );
-        assert!(workspace.join("architecture.toml").is_file());
-    }
-
-    #[cfg(windows)]
-    #[test]
-    fn discovered_workspace_root_is_safe_to_pass_back_to_child_processes() {
-        use std::path::{Component, Prefix};
-
-        let crate_root = fs::canonicalize(env!("CARGO_MANIFEST_DIR"))
-            .expect("xtask manifest directory must be canonicalizable");
-        let workspace = discover_workspace_root(&crate_root)
-            .expect("xtask must be nested under the Peritus workspace root");
-        assert!(!matches!(
-            workspace.components().next(),
-            Some(Component::Prefix(prefix))
-                if matches!(prefix.kind(), Prefix::VerbatimDisk(_) | Prefix::VerbatimUNC(_, _))
-        ));
-    }
-}
 mod shard_args;
+#[cfg(test)]
+mod tests;

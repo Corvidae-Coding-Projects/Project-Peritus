@@ -11,6 +11,61 @@ use peritus_product_state::{
 };
 
 use crate::{AppLayout, LauncherError, persistence::read_exact_or_publish};
+mod folder;
+
+/// Imports the exact models from a pre-conversation immutable configuration. This migration
+/// never substitutes a newly chosen provider default or edits an old configuration generation.
+pub(super) fn retain_legacy_models(
+    layout: &AppLayout,
+    store: &crate::persistence::ProductStateStore,
+    state: &mut ProductState,
+) -> Result<(), LauncherError> {
+    let missing = state
+        .providers()
+        .enabled()
+        .iter()
+        .copied()
+        .any(|kind| kind.is_account() && state.providers().account_model(kind).is_none());
+    if !missing {
+        return Ok(());
+    }
+    let path = layout.daemon_config(state.generation());
+    let text = std::fs::read_to_string(path).map_err(|_| {
+        invalid(
+            "account models must be explicitly selected before publishing provider configuration",
+        )
+    })?;
+    let prior = DaemonConfig::parse(&text)?;
+    let value: toml::Value =
+        toml::from_str(&text).map_err(|_| invalid("prior model configuration is malformed"))?;
+    let _ = prior;
+    let routes = value
+        .get("providers")
+        .and_then(toml::Value::as_array)
+        .ok_or_else(|| invalid("prior provider configuration is missing"))?;
+    let mut models = std::collections::BTreeMap::new();
+    for kind in state.providers().enabled().iter().copied().filter(|kind| kind.is_account()) {
+        let model = if let Some(model) = state.providers().account_model(kind) {
+            model
+        } else {
+            let route =
+                if kind == ProviderKind::CodexAccount { "codex-runtime" } else { "claude-runtime" };
+            routes
+                .iter()
+                .find(|value| value.get("kind").and_then(toml::Value::as_str) == Some(route))
+                .and_then(|value| value.get("profile"))
+                .and_then(|value| value.get("model"))
+                .and_then(toml::Value::as_str)
+                .ok_or_else(|| invalid("prior selected account model is missing"))?
+        };
+        models.insert(kind, model.to_owned());
+    }
+    let selection = state.providers().clone().with_account_models(models)?;
+    if state.configure_providers(selection) {
+        store.commit(state)?;
+    }
+    Ok(())
+}
 
 pub fn ensure_configuration(
     layout: &AppLayout,
@@ -55,9 +110,14 @@ fn render_configuration(layout: &AppLayout, state: &ProductState) -> Result<Stri
         state.providers().automatic_failover(),
     );
     for provider in state.providers().enabled() {
-        text.push_str(&render_provider(*provider, state.providers().direct_profile(*provider))?);
+        text.push_str(&render_provider(
+            *provider,
+            state.providers().direct_profile(*provider),
+            state.providers().account_model(*provider),
+        )?);
     }
     render_workspaces(&mut text, state)?;
+    folder::render(&mut text, layout, state)?;
     Ok(text)
 }
 
@@ -97,17 +157,25 @@ fn render_workspaces(text: &mut String, state: &ProductState) -> Result<(), Laun
 fn render_provider(
     provider: ProviderKind,
     direct: Option<&DirectProviderProfile>,
+    account_model: Option<&str>,
 ) -> Result<String, LauncherError> {
-    let (kind, profile_id, model, image_input) = match provider {
-        ProviderKind::CodexAccount => {
-            ("codex-runtime", "a1000000000000000000000000000001", "gpt-5.6-sol", true)
-        }
+    let (kind, profile_id, image_input) = match provider {
+        ProviderKind::CodexAccount => ("codex-runtime", "a1000000000000000000000000000001", true),
         ProviderKind::ClaudeAccount => {
-            ("claude-runtime", "a2000000000000000000000000000002", "opus", false)
+            ("claude-runtime", "a2000000000000000000000000000002", false)
         }
         _ => return render_direct_provider(provider, direct),
     };
+    let model = account_model.ok_or_else(|| {
+        invalid("account provider has no selected model; complete provider model setup")
+    })?;
     let mut text = format!("\n[[providers]]\nkind = {}\n", toml_string(kind));
+    // A native installer can finish after this process captured PATH. Pin its exact discovered
+    // executable for the daemon instead of mutating the process-wide environment.
+    if let Ok(account) = peritus_provider_onboarding::AccountProvider::discover(provider) {
+        writeln!(text, "executable = {}", toml_path(account.executable())?)
+            .expect("writing to String cannot fail");
+    }
     text.push_str(&profile_block(
         profile_id,
         model,

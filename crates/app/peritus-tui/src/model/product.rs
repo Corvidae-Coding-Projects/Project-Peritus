@@ -26,6 +26,7 @@ pub struct ProductUi {
     pub conversation: Option<ProductRunConversation>,
     pub settlements: BTreeMap<RunId, RunSettlement>,
     pub confirmation: Option<CandidateConfirmation>,
+    pub inspection_scroll: u16,
     writer: usize,
     reviewer: usize,
     fixer: usize,
@@ -41,6 +42,7 @@ impl ProductUi {
             conversation: None,
             settlements: BTreeMap::new(),
             confirmation: None,
+            inspection_scroll: 0,
             writer: default,
             reviewer: default,
             fixer: default,
@@ -70,7 +72,7 @@ impl ProductUi {
         self.launch.providers().get(self.fixer).map_or("No provider", |provider| provider.label())
     }
 
-    fn providers(&self) -> Option<ProductProviderSelection> {
+    pub(in crate::model) fn providers(&self) -> Option<ProductProviderSelection> {
         Some(ProductProviderSelection::new(
             self.launch.providers().get(self.writer)?.profile_id(),
             self.launch.providers().get(self.reviewer)?.profile_id(),
@@ -136,6 +138,14 @@ impl AppModel {
     }
 
     pub(super) fn open_task_composer(&mut self) {
+        if self
+            .product
+            .as_ref()
+            .is_some_and(|product| product.launch.direct_folder_writable().is_some())
+        {
+            self.notice(NoticeLevel::Info, "Use /chat to request in-place folder changes. Checked candidate delivery requires a managed Git workspace.");
+            return;
+        }
         if self.product.is_none() {
             self.notice(
                 NoticeLevel::Warning,

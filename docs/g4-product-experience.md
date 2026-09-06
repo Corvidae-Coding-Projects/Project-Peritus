@@ -28,6 +28,11 @@ may automatically try another selected provider after its current provider is un
 choice defaults off, is stored with provider settings, and returns to off if fewer than two routes
 remain. Offline mode remains available for inspection.
 
+If a selected account tool is missing, setup offers the vendor's native installer. Confirmation
+defaults to no. An approved download uses HTTPS with time and size limits; login starts only after
+installation succeeds. The daemon receives the tool's discovered canonical path, including native
+installation directories that the current terminal's PATH does not yet contain.
+
 Completed setup is resumable. Repeat launch skips healthy decisions, repairs only the provider or
 workspace that needs attention, regenerates immutable daemon configuration when settings change,
 and starts or reuses the packaged local daemon before entering the UI.
@@ -38,9 +43,38 @@ instance lock before starting the replacement. If a connection later drops, the 
 displays `R restart/reconnect`; that action returns daemon ownership to the launcher, restores
 readiness, and resumes the durable application session.
 
-## Coding runs
+## Conversation-first work
 
-The Runs view is the ordinary work surface:
+The default screen is a conversation with a persistent multiline composer. Type ordinary text to
+ask a question or request scoped work. Questions and diagnosis do not implicitly authorize changes.
+`/plan` and `/review` expose read-only tools; the latter uses a fresh reviewer invocation.
+`/build <request>` explicitly commissions the checked delivery pipeline described below.
+
+Type `/` to discover commands, use arrows and Tab to complete them, and use Shift-Enter for
+newlines. PageUp/PageDown scroll public activity; `/details` expands bounded tool summaries.
+Raw tool arguments/results stay in the trace rather than being copied into the public activity
+projection, and hidden reasoning is not shown. The bounded activity window explicitly reports
+omitted earlier history; durable conversation records and traces remain available.
+
+Messages submitted during work show separate received and incorporated revisions. New input
+fences remaining stale tool calls at the next safe boundary; it cannot undo an effect already
+running. Ctrl-C or `/stop` interrupts work, while Ctrl-Q or `/quit` only detaches the client.
+`/new` preserves prior work. `/runs` opens the dashboard and Enter reopens a selected conversation.
+Legacy runs retain their existing message composer.
+
+`/model` queries the configured provider's catalog without inference. Tab changes the role,
+`r` refreshes, and Enter selects the exact advertised ID. A retained cache is marked with its
+timestamp; a failed query cannot substitute a built-in list. Explicit manual fallback is
+`/model [writer|reviewer|fixer] manual MODEL_ID`. Availability and capability claims are not inferred
+from model names. Changes apply only at idle boundaries and create immutable provider bindings;
+interactive requests never silently fall back to another model.
+
+The same discovery is used during provider setup. Existing installations retain their exact
+selected account models when their state is upgraded; old immutable configurations are untouched.
+
+## Checked coding runs
+
+Use `/build <request>` from the conversation or the legacy task action in `/runs`:
 
 1. Press `n`, describe the desired coding outcome, and press Enter. Shift-Enter adds a line.
 2. Peritus sends the task and the selected writer, reviewer, and fixer providers to the daemon.

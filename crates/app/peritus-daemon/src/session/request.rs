@@ -119,6 +119,20 @@ where
                 Err(error) => daemon_error_payload(&error),
             }
         }
+        AppRequestPayload::Interact(value) => match product_runs.interact(value.clone()).await {
+            Ok(snapshot) => AppResponsePayload::Interaction(snapshot),
+            Err(error) => product_run_error(error),
+        },
+        AppRequestPayload::QueryInteraction(value) => {
+            match product_runs.query_interaction(*value) {
+                Ok(snapshot) => AppResponsePayload::Interaction(snapshot),
+                Err(error) => product_run_error(error),
+            }
+        }
+        AppRequestPayload::QueryModels(value) => match product_runs.query_models(*value).await {
+            Ok(catalog) => AppResponsePayload::Models(catalog),
+            Err(error) => product_run_error(error),
+        },
         AppRequestPayload::StartProductRun(value) => {
             match product_runs.start(value.clone()).await {
                 Ok(snapshot) => product_run_projection(product_runs.project(snapshot)),
@@ -279,6 +293,7 @@ const fn product_run_error(error: ProductRunServiceError) -> AppResponsePayload 
         | ProductRunServiceError::WorkspaceUnavailable => AppErrorCode::StaleRevision,
         ProductRunServiceError::InvalidMessage => AppErrorCode::MalformedFrame,
         ProductRunServiceError::Unavailable => AppErrorCode::Backpressure,
+        ProductRunServiceError::GitRequired => AppErrorCode::MissingRequiredFeature,
     };
     AppResponsePayload::Error(AppProtocolError::new(code, None))
 }

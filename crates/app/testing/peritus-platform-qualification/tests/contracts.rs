@@ -123,6 +123,36 @@ fn production_platform_minimums_reject_older_subjects() {
     );
 }
 
+#[test]
+fn every_release_architecture_can_enter_native_qualification() {
+    for platform in [Platform::Linux, Platform::Macos, Platform::Windows] {
+        let contract = PlatformContract::production(platform);
+        for architecture in [Architecture::X86_64, Architecture::Aarch64] {
+            contract
+                .validate_target(QualificationTarget::new(
+                    platform,
+                    architecture,
+                    contract.minimum_version(),
+                ))
+                .expect("release target can enter qualification, not bypass its scenarios");
+        }
+    }
+}
+
+#[test]
+fn windows_arm_qualification_preserves_the_minimum_build_requirement() {
+    let contract = PlatformContract::production(Platform::Windows);
+    assert!(
+        contract
+            .validate_target(QualificationTarget::new(
+                Platform::Windows,
+                Architecture::Aarch64,
+                PlatformVersion::new(11, 0, 0, 26_099),
+            ))
+            .is_err()
+    );
+}
+
 fn manifest(layout: &ReleaseLayout) -> PackageManifest {
     let roles = [
         (ArtifactRole::Daemon, "bin/peritusd", true),

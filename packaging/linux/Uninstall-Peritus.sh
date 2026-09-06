@@ -19,6 +19,7 @@ systemctl --user daemon-reload 2>/dev/null || true
 rm -f -- "$bin_root/peritusd" "$bin_root/peritus" "$bin_root/peritus-tui"
 rm -f -- "$helper_root/peritus-linux-sandbox-helper"
 rm -f -- "$share_file"
+rm -f -- "$peritus_home/.local/share/peritus/Uninstall-Peritus.sh"
 rmdir -- "$helper_root" 2>/dev/null || true
 rmdir -- "$(dirname "$share_file")" 2>/dev/null || true
 

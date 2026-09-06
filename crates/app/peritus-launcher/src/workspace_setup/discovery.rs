@@ -12,7 +12,7 @@ use crate::LauncherError;
 /// One canonical repository selected by the user or current directory.
 #[derive(Clone, Debug)]
 pub struct DiscoveredRepository {
-    repository: GitRepository,
+    repository: Option<GitRepository>,
     root_text: String,
     identity_text: String,
 }
@@ -24,8 +24,19 @@ impl DiscoveredRepository {
     ///
     /// Returns the structured Git discovery failure or a non-UTF-8 path failure.
     pub fn open(path: &Path) -> Result<Self, LauncherError> {
+        let path = path
+            .canonicalize()
+            .map_err(|error| LauncherError::filesystem("open workspace directory", path, error))?;
+        if !path.is_dir() {
+            return Err(LauncherError::WorkspaceSetup(
+                "workspace path must be a directory".to_owned(),
+            ));
+        }
+        if !has_git_parent(&path)? {
+            return Self::folder(&path);
+        }
         let repository = GitRepository::open(
-            RepositoryOptions::new(path).allow_discovery_from_descendant(true),
+            RepositoryOptions::new(&path).allow_discovery_from_descendant(true),
         )?;
         let root_text = repository
             .identity()
@@ -38,13 +49,25 @@ impl DiscoveredRepository {
             })?
             .to_owned();
         let identity_text = hex(repository.identity().digest().as_bytes());
-        Ok(Self { repository, root_text, identity_text })
+        Ok(Self { repository: Some(repository), root_text, identity_text })
+    }
+
+    /// Observes one direct folder without invoking Git or enumerating its children.
+    pub fn folder(path: &Path) -> Result<Self, LauncherError> {
+        let folder = peritus_workspace::FolderIdentity::observe(path)
+            .map_err(|error| LauncherError::filesystem("open folder", path, error))?;
+        let root_text = folder
+            .root()
+            .to_str()
+            .ok_or_else(|| LauncherError::WorkspaceSetup("workspace path is not UTF-8".to_owned()))?
+            .to_owned();
+        Ok(Self { repository: None, root_text, identity_text: hex(folder.digest().as_bytes()) })
     }
 
     /// Borrows the structured repository adapter.
     #[must_use]
-    pub const fn repository(&self) -> &GitRepository {
-        &self.repository
+    pub const fn repository(&self) -> Option<&GitRepository> {
+        self.repository.as_ref()
     }
 
     /// Borrows the canonical source-repository root for display and durable state.
@@ -58,6 +81,42 @@ impl DiscoveredRepository {
     pub fn identity_text(&self) -> &str {
         &self.identity_text
     }
+}
+
+fn has_git_parent(path: &Path) -> Result<bool, LauncherError> {
+    #[cfg(unix)]
+    let device = {
+        use std::os::unix::fs::MetadataExt as _;
+        path.metadata()
+            .map_err(|error| {
+                LauncherError::filesystem("inspect workspace filesystem", path, error)
+            })?
+            .dev()
+    };
+    for ancestor in path.ancestors() {
+        let metadata = ancestor.metadata().map_err(|error| {
+            LauncherError::filesystem("inspect workspace ancestor", ancestor, error)
+        })?;
+        if !metadata.is_dir() {
+            break;
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::MetadataExt as _;
+            // Match ordinary Git discovery: do not adopt an unrelated repository across a mount.
+            if metadata.dev() != device {
+                break;
+            }
+        }
+        let marker = ancestor.join(".git");
+        if marker.is_file()
+            || (marker.join("HEAD").is_file()
+                && (marker.join("objects").is_dir() || marker.join("commondir").is_file()))
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 /// Expands one user-entered path without requiring shell expansion or exports.
@@ -100,5 +159,11 @@ mod tests {
     #[test]
     fn hex_is_lowercase_and_exact() {
         assert_eq!(hex(&[0, 15, 16, 255]), "000f10ff");
+    }
+
+    #[test]
+    fn git_parent_inspection_preserves_filesystem_errors() {
+        let directory = tempfile::tempdir().expect("temporary workspace");
+        assert!(has_git_parent(&directory.path().join("missing")).is_err());
     }
 }

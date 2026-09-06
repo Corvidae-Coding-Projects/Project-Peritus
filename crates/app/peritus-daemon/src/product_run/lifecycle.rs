@@ -152,10 +152,19 @@ impl ProductRunService {
                 return Err(ProductRunServiceError::InvalidState);
             }
             let record = records.get_mut(&run_id).expect("checked product run exists");
-            if !record.snapshot.phase().retryable() {
+            let pending_chat = record.snapshot.phase() == ProductRunPhase::WaitingForUser
+                && record.interaction.as_ref().is_some_and(|options| {
+                    use peritus_product_runner::ConversationView as _;
+                    record.conversation.revision() > options.incorporated
+                });
+            if !record.snapshot.phase().retryable() && !pending_chat {
                 return Err(ProductRunServiceError::InvalidState);
             }
-            let providers = self.resolve_providers(record.request.providers())?;
+            self.validate_workspace_mode(workspace_id, record.interaction.as_ref())?;
+            let providers = self.resolve_selected_providers(
+                record.request.providers(),
+                record.interaction.as_ref(),
+            )?;
             let root = self
                 .inner
                 .workspaces

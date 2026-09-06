@@ -19,10 +19,11 @@ env:
 jobs:
   bootstrap:
     name: Product lifecycle bootstrap (${{ matrix.os }})
+    needs: prepare-h2
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-15, windows-2025]
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, macos-15-intel, windows-2025, windows-11-arm]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
@@ -40,15 +41,62 @@ jobs:
           sudo apt-get install --yes --no-install-recommends apparmor-profiles bubblewrap
           sudo apparmor_parser --replace /usr/share/apparmor/extra-profiles/bwrap-userns-restrict
           bwrap --version
+      - name: Retrieve this platform's same-run H2 package
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: h2-prepared-${{ matrix.os }}
+          path: target/prepared-h2
+      - name: Restore prepared artifacts and executable permissions
+        run: cargo run --locked --package xtask -- product-native-qualification-restore
       - name: Qualify native package and public installer lifecycle
-        run: cargo run --locked --package xtask -- release-bootstrap-smoke
+        run: cargo run --locked --package xtask -- release-bootstrap-prepared-smoke
 
-  h2:
-    name: H2 scenarios ${{ matrix.shard }} (${{ matrix.os }})
+  prepare-h2:
+    name: Prepare H2 package (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-15, windows-2025]
+        include:
+          - { os: ubuntu-24.04, helper: peritus-sandbox-linux }
+          - { os: ubuntu-24.04-arm, helper: peritus-sandbox-linux }
+          - { os: macos-15, helper: peritus-sandbox-macos }
+          - { os: macos-15-intel, helper: peritus-sandbox-macos }
+          - { os: windows-2025, helper: peritus-sandbox-windows }
+          - { os: windows-11-arm, helper: peritus-sandbox-windows }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        env:
+          RUSTUP_MAX_RETRIES: "10"
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - name: Build native application and qualification tools once
+        env:
+          CARGO_BUILD_JOBS: "2"
+        run: >-
+          cargo build --locked --bins -p xtask -p peritus-cli -p peritus-daemon
+          -p peritus-tui -p peritus-platform-qualification -p ${{ matrix.helper }}
+      - name: Assemble and archive prepared H2 package
+        run: cargo run --locked --package xtask -- product-native-qualification-prepare
+      - name: Retain same-run prepared H2 package
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: h2-prepared-${{ matrix.os }}
+          path: target/h2-prepared.tar
+          if-no-files-found: error
+          retention-days: 7
+
+  h2:
+    name: H2 scenarios ${{ matrix.shard }} (${{ matrix.os }})
+    needs: prepare-h2
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, macos-15-intel, windows-2025, windows-11-arm]
         shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
@@ -61,6 +109,13 @@ jobs:
           RUSTUP_MAX_RETRIES: "10"
         with:
           toolchain: ${{ env.RUST_VERSION }}
+      - name: Retrieve this platform's same-run H2 package
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: h2-prepared-${{ matrix.os }}
+          path: target/prepared-h2
+      - name: Restore prepared artifacts and executable permissions
+        run: cargo run --locked --package xtask -- product-native-qualification-restore
       - name: Install Linux native sandbox prerequisite
         if: ${{ runner.os == 'Linux' }}
         run: |
@@ -70,7 +125,7 @@ jobs:
       - name: Qualify one native H2 package scenario
         run: >-
           cargo run --locked --package xtask --
-          product-native-qualification-shard ${{ matrix.shard }}
+          product-native-qualification-prepared-shard ${{ matrix.shard }}
       - name: Retain native H2 report and raw evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

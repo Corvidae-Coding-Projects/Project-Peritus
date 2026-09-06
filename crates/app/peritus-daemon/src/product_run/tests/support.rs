@@ -214,7 +214,7 @@ fn encoded_object(entries: Vec<(&str, Value)>) -> Vec<u8> {
     serde_json::to_vec(&Value::Object(object)).expect("JSON arguments")
 }
 
-fn named_tool_response(name: &str, arguments: Vec<u8>) -> VecDeque<EventEnvelope> {
+pub(super) fn named_tool_response(name: &str, arguments: Vec<u8>) -> VecDeque<EventEnvelope> {
     let limits = ProtocolLimits::PRODUCTION;
     let item = ItemId::new(format!("{name}-item")).expect("item");
     let call = ToolCallId::new(format!("{name}-call")).expect("call");
@@ -236,7 +236,7 @@ fn named_tool_response(name: &str, arguments: Vec<u8>) -> VecDeque<EventEnvelope
     ])
 }
 
-fn text_response(text: &[u8]) -> VecDeque<EventEnvelope> {
+pub(super) fn text_response(text: &[u8]) -> VecDeque<EventEnvelope> {
     let item = ItemId::new(format!("text-{}", text.len())).expect("item");
     response([
         ModelEvent::ResponseStarted { response_id: None, model: None },

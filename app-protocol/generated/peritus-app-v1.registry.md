@@ -8,8 +8,8 @@ Generated from Rust metadata. Numeric and semantic allocations are append-only.
 |---:|---|---:|---|
 | 94 | `app-client-hello` | 1 | `1:client-hello` |
 | 95 | `app-server-hello` | 1 | `1:compatible`, `2:downgraded`, `3:incompatible` |
-| 96 | `app-request` | 1 | `1:submit-command`, `2:subscribe`, `3:open-artifact`, `4:cancel-artifact`, `5:answer-prompt`, `6:cancel-prompt`, `7:attach-terminal`, `8:terminal-input`, `9:terminal-resize`, `10:detach-terminal`, `11:cancel-terminal`, `12:daemon-status`, `13:shutdown`, `14:begin-artifact-upload`, `15:upload-artifact-chunk`, `16:complete-artifact-upload`, `17:start-product-run`, `18:control-product-run`, `19:query-product-runs`, `20:continue-product-run`, `21:query-product-run-conversation` |
-| 97 | `app-response` | 1 | `1:command-result`, `2:subscription-started`, `3:artifact-opened`, `4:prompt-accepted`, `5:terminal-attached`, `6:acknowledged`, `7:daemon-status`, `8:shutdown-accepted`, `9:error`, `10:product-run-accepted`, `11:product-runs`, `12:product-run-conversation`, `13:product-run-settled`, `14:product-run-settlements` |
+| 96 | `app-request` | 1 | `1:submit-command`, `2:subscribe`, `3:open-artifact`, `4:cancel-artifact`, `5:answer-prompt`, `6:cancel-prompt`, `7:attach-terminal`, `8:terminal-input`, `9:terminal-resize`, `10:detach-terminal`, `11:cancel-terminal`, `12:daemon-status`, `13:shutdown`, `14:begin-artifact-upload`, `15:upload-artifact-chunk`, `16:complete-artifact-upload`, `17:start-product-run`, `18:control-product-run`, `19:query-product-runs`, `20:continue-product-run`, `21:query-product-run-conversation`, `22:interact`, `23:query-interaction`, `24:query-models` |
+| 97 | `app-response` | 1 | `1:command-result`, `2:subscription-started`, `3:artifact-opened`, `4:prompt-accepted`, `5:terminal-attached`, `6:acknowledged`, `7:daemon-status`, `8:shutdown-accepted`, `9:error`, `10:product-run-accepted`, `11:product-runs`, `12:product-run-conversation`, `13:product-run-settled`, `14:product-run-settlements`, `15:interaction`, `16:models` |
 | 98 | `app-event` | 1 | `1:domain-event`, `2:subscription-gap`, `3:backpressure`, `4:artifact-metadata`, `5:artifact-chunk`, `6:artifact-complete`, `7:prompt-requested`, `8:terminal-output`, `9:terminal-exited`, `10:readiness-changed`, `11:diagnostic`, `12:heartbeat`, `13:shutdown-progress`, `14:shutdown-complete` |
 | 99 | `app-control` | 1 | `1:acknowledge`, `2:cancel-subscription`, `3:cancel-artifact`, `4:cancel-prompt`, `5:cancel-terminal`, `6:subscription`, `7:heartbeat-reply` |
 
@@ -708,6 +708,103 @@ Rust type: `ProductRunSettlementSnapshot`
 |---|:---:|---|---|---|---|
 | `snapshot` | yes | `ordered-fields` | `ProductRunSnapshot` | `ProductRunSnapshot` | — |
 | `settlement` | yes | `ordered-fields` | `RunSettlement` | `RunSettlement` | — |
+
+### `ProductRunRequest`
+
+Rust type: `ProductRunRequest`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `runId` | yes | `fixed[16]` | `RunId` | `RunId` | `nonzero` |
+| `workspaceId` | yes | `fixed[16]` | `WorkspaceId` | `WorkspaceId` | `nonzero` |
+| `providers` | yes | `ordered-fields` | `ProductProviderSelection` | `ProductProviderSelection` | — |
+| `task` | yes | `len+utf8` | `String` | `string` | `product.max-task-bytes` |
+
+### `ProductModelChoice`
+
+Rust type: `ProductModelChoice`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `id` | yes | `len+utf8` | `String` | `string` | `product.max-model-bytes (512)` |
+| `manual` | yes | `bool/u8` | `bool` | `boolean` | — |
+
+### `ProductRoleModels`
+
+Rust type: `ProductRoleModels`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `writer` | yes | `ordered-fields` | `ProductModelChoice` | `ProductModelChoice` | — |
+| `reviewer` | yes | `ordered-fields` | `ProductModelChoice` | `ProductModelChoice` | — |
+| `fixer` | yes | `ordered-fields` | `ProductModelChoice` | `ProductModelChoice` | — |
+
+### `ProductInteractionRequest`
+
+Rust type: `ProductInteractionRequest`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `request` | yes | `ordered-fields` | `ProductRunRequest` | `ProductRunRequest` | — |
+| `mode` | yes | `u16-be` | `ProductInteractionMode` | `"chat" | "plan" | "review" | "build"` | — |
+| `models` | yes | `ordered-fields` | `ProductRoleModels` | `ProductRoleModels` | — |
+
+### `ProductActivity`
+
+Rust type: `ProductActivity`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `sequence` | yes | `u64-be` | `u64` | `UInt64` | `nonzero` |
+| `kind` | yes | `u16-be` | `ProductActivityKind` | `"user" | "assistant" | "tool" | "status" | "error"` | — |
+| `text` | yes | `len+utf8` | `String` | `string` | `product.max-activity-bytes (8192)` |
+| `detail` | yes | `len+utf8` | `String` | `string` | `product.max-activity-bytes (8192)` |
+
+### `ProductInteractionSnapshot`
+
+Rust type: `ProductInteractionSnapshot`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `settled` | yes | `bool/u8` | `bool` | `boolean` | — |
+| `state` | yes | `ordered-fields` | `ProductRunSnapshot | ProductRunSettlementSnapshot` | `ProductRunSnapshot | ProductRunSettlementSnapshot` | — |
+| `mode` | yes | `u16-be` | `ProductInteractionMode` | `"chat" | "plan" | "review" | "build"` | — |
+| `models` | yes | `ordered-fields` | `ProductRoleModels` | `ProductRoleModels` | — |
+| `received` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `incorporated` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `activities` | yes | `len+items` | `Vec<ProductActivity>` | `readonly ProductActivity[]` | `product.max-activities (256)`, `strictly-sorted-unique` |
+
+### `ProductModelQuery`
+
+Rust type: `ProductModelQuery`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `profile` | yes | `fixed[16]` | `ProviderProfileId` | `ProviderProfileId` | `nonzero` |
+| `refresh` | yes | `bool/u8` | `bool` | `boolean` | — |
+
+### `ProductModelInfo`
+
+Rust type: `ProductModelInfo`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `id` | yes | `len+utf8` | `String` | `string` | `product.max-model-bytes (512)` |
+| `label` | yes | `len+utf8` | `String` | `string` | `product.max-model-bytes (512)` |
+| `tools` | no | `option+value` | `Option<bool>` | `boolean` | — |
+
+### `ProductModelCatalog`
+
+Rust type: `ProductModelCatalog`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `profile` | yes | `fixed[16]` | `ProviderProfileId` | `ProviderProfileId` | `nonzero` |
+| `configured` | yes | `len+utf8` | `String` | `string` | `product.max-model-bytes (512)` |
+| `fetchedUnixSeconds` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `cached` | yes | `bool/u8` | `bool` | `boolean` | — |
+| `error` | yes | `len+utf8` | `String` | `string` | `app.max-diagnostic-bytes` |
+| `models` | yes | `len+items` | `Vec<ProductModelInfo>` | `readonly ProductModelInfo[]` | `product.max-models (4096)` |
 
 ## Stable errors
 

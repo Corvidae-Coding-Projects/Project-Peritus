@@ -112,6 +112,7 @@ fn product_launch_queries_runs_and_task_submission_is_daemon_owned() {
     )
     .expect("product context");
     let mut model = AppModel::with_product([43; 32], Some(product));
+    model.view = View::Runs;
     let effects = model.update(Action::Connected {
         context: context(),
         limits: AppProtocolLimits::PRODUCTION,
@@ -153,6 +154,7 @@ fn selected_product_run_accepts_conversational_followup() {
     )
     .expect("product context");
     let mut model = AppModel::with_product([63; 32], Some(product));
+    model.view = View::Runs;
     let _ = model.update(Action::Connected {
         context: context(),
         limits: AppProtocolLimits::PRODUCTION,
@@ -179,7 +181,7 @@ fn selected_product_run_accepts_conversational_followup() {
     assert!(
         model
             .update(Action::TerminalEvent(Event::Key(KeyEvent::new(
-                KeyCode::Enter,
+                KeyCode::Char('m'),
                 KeyModifiers::NONE,
             ))))
             .is_empty()
@@ -225,6 +227,7 @@ fn completed_product_run_exposes_all_four_handoff_controls() {
         )
         .expect("product context");
         let mut model = AppModel::with_product([73; 32], Some(product));
+        model.view = View::Runs;
         let _ = model.update(Action::Connected {
             context: context(),
             limits: AppProtocolLimits::PRODUCTION,
@@ -296,6 +299,7 @@ fn completed_product_run_exposes_foreground_run_action() {
     )
     .expect("product context");
     let mut model = AppModel::with_product([77; 32], Some(product));
+    model.view = View::Runs;
     let run_id = RunId::new([78; 16]).expect("run");
     let digest = Sha256Digest::new([79; 32]);
     let identity = CandidateIdentity::new(run_id, workspace_id, digest, 1, 1).expect("identity");

@@ -44,6 +44,29 @@ pub struct DirectProviderDraft {
 }
 
 impl DirectProviderDraft {
+    /// Selects an exact discovered or explicitly entered model before credential publication.
+    #[must_use]
+    pub fn with_model(mut self, model: String) -> Self {
+        self.model = model;
+        self
+    }
+
+    /// Queries provider model metadata using the captured credential, without storing it or
+    /// submitting an inference request.
+    ///
+    /// # Errors
+    /// Returns a bounded metadata/authentication failure; never returns a fallback list.
+    pub fn discover_models(
+        &self,
+        credential: &DirectCredential,
+    ) -> Result<Vec<String>, OnboardingError> {
+        crate::models::direct(
+            self.kind,
+            self.endpoint.as_deref(),
+            self.credential_header.as_deref(),
+            &credential.0,
+        )
+    }
     /// Creates one direct provider draft.
     #[must_use]
     pub const fn new(

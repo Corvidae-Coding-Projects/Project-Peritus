@@ -80,8 +80,9 @@ impl LocalMemory {
                     )
                     .map_err(|_| error("invalid fact links"))?;
                     let validity = WorkingValidity::new(
-                        None,
-                        Some(self.state.environment().candidate()),
+                        self.workspace_scope.direct.then_some(self.binding.conversation_revision()),
+                        (!self.workspace_scope.direct)
+                            .then_some(self.state.environment().candidate()),
                         Vec::new(),
                         self.limits,
                     )

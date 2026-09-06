@@ -17,6 +17,30 @@ fn candidate_inspection_snapshot_names_every_handoff_field() {
 }
 
 #[test]
+fn candidate_inspection_scroll_reaches_the_diff_without_a_blank_tail() {
+    use crate::runtime::{ProductLaunchContext, ProductProviderOption};
+    use ratatui::{Terminal, backend::TestBackend};
+    let run = candidate_snapshot(ProductRunPhase::Complete);
+    let launch = ProductLaunchContext::new(
+        run.workspace_id(),
+        "fixture".to_owned(),
+        vec![ProductProviderOption::new(run.providers().writer(), "fixture")],
+        Some(0),
+    )
+    .expect("launch");
+    let mut model = AppModel::with_product([91; 32], Some(launch));
+    model.product.as_mut().expect("product").runs.push(run);
+    let mut terminal = Terminal::new(TestBackend::new(60, 10)).expect("terminal");
+    for (offset, expected) in [(0, "Workspace"), (u16::MAX, "diff --git")] {
+        model.product.as_mut().expect("product").inspection_scroll = offset;
+        let frame = terminal.draw(|frame| diff(frame, frame.area(), &model)).expect("draw");
+        let text =
+            frame.buffer.content().iter().map(ratatui::buffer::Cell::symbol).collect::<String>();
+        assert!(text.contains(expected), "missing {expected}: {text}");
+    }
+}
+
+#[test]
 fn terminal_state_snapshot_distinguishes_each_user_outcome() {
     assert_eq!(product_state(&candidate_snapshot(ProductRunPhase::Complete)), "Accepted");
     assert_eq!(

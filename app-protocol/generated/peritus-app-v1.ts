@@ -53,6 +53,9 @@ export type AppPayloadKind =
   | "query-product-runs"
   | "continue-product-run"
   | "query-product-run-conversation"
+  | "interact"
+  | "query-interaction"
+  | "query-models"
   | "command-result"
   | "subscription-started"
   | "artifact-opened"
@@ -67,6 +70,8 @@ export type AppPayloadKind =
   | "product-run-conversation"
   | "product-run-settled"
   | "product-run-settlements"
+  | "interaction"
+  | "models"
   | "domain-event"
   | "subscription-gap"
   | "backpressure"
@@ -561,6 +566,67 @@ export interface RunSettlement {
 export interface ProductRunSettlementSnapshot {
   readonly snapshot: ProductRunSnapshot;
   readonly settlement: RunSettlement;
+}
+
+export interface ProductRunRequest {
+  readonly runId: RunId;
+  readonly workspaceId: WorkspaceId;
+  readonly providers: ProductProviderSelection;
+  readonly task: string;
+}
+
+export interface ProductModelChoice {
+  readonly id: string;
+  readonly manual: boolean;
+}
+
+export interface ProductRoleModels {
+  readonly writer: ProductModelChoice;
+  readonly reviewer: ProductModelChoice;
+  readonly fixer: ProductModelChoice;
+}
+
+export interface ProductInteractionRequest {
+  readonly request: ProductRunRequest;
+  readonly mode: "chat" | "plan" | "review" | "build";
+  readonly models: ProductRoleModels;
+}
+
+export interface ProductActivity {
+  readonly sequence: UInt64;
+  readonly kind: "user" | "assistant" | "tool" | "status" | "error";
+  readonly text: string;
+  readonly detail: string;
+}
+
+export interface ProductInteractionSnapshot {
+  readonly settled: boolean;
+  readonly state: ProductRunSnapshot | ProductRunSettlementSnapshot;
+  readonly mode: "chat" | "plan" | "review" | "build";
+  readonly models: ProductRoleModels;
+  readonly received: UInt64;
+  readonly incorporated: UInt64;
+  readonly activities: readonly ProductActivity[];
+}
+
+export interface ProductModelQuery {
+  readonly profile: ProviderProfileId;
+  readonly refresh: boolean;
+}
+
+export interface ProductModelInfo {
+  readonly id: string;
+  readonly label: string;
+  readonly tools?: boolean;
+}
+
+export interface ProductModelCatalog {
+  readonly profile: ProviderProfileId;
+  readonly configured: string;
+  readonly fetchedUnixSeconds: UInt64;
+  readonly cached: boolean;
+  readonly error: string;
+  readonly models: readonly ProductModelInfo[];
 }
 
 export interface CanonicalAppMessage {
