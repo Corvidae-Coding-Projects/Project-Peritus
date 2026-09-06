@@ -187,11 +187,12 @@ H2 does not reinterpret C3 support:
   helper, functional Seatbelt, process-group and requested PTY ownership, required rlimits,
   Keychain when credentials are required, managed-proxy reachability when egress is requested,
   and a per-user launchd domain.
-- Windows production subjects are Windows 11 24H2 or Windows Server 2025 build 26100+ on x86-64,
+- Windows production subjects are Windows 11 24H2 or Windows Server 2025 build 26100+ on x86-64 or AArch64,
   with restricted tokens, low-integrity/AppContainer support, kill-on-close Job Objects, exact
   handle-list inheritance, reversible ACL controls, ConPTY when requested, Credential Manager
   when credentials are required, Task Scheduler, and BFE/WFP management when managed egress is
-  requested. The retained Windows AArch64 build path is not an H2 production qualification claim.
+  requested. Both architectures must pass the same native scenarios; admission to the matrix is
+  not an H2 production qualification claim.
 
 The native `SandboxObservation` binds the package helper digest, native probe digest, each of the
 seven C2 capability domains plus recovery, literal argv, a directly executed restricted process,

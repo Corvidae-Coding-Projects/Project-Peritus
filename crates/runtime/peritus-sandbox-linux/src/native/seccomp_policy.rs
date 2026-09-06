@@ -13,7 +13,6 @@ const BASE_SYSCALLS: &[&str] = &[
     "close",
     "close_range",
     "dup",
-    "dup2",
     "dup3",
     "fcntl",
     "ioctl",
@@ -78,7 +77,6 @@ const BASE_SYSCALLS: &[&str] = &[
     "sched_getaffinity",
     "getrandom",
     "pipe2",
-    "poll",
     "ppoll",
     "pselect6",
     "epoll_create1",
@@ -119,6 +117,11 @@ pub(super) fn install() -> Result<(), LinuxError> {
     let architecture: TargetArch = std::env::consts::ARCH
         .try_into()
         .map_err(|_| seccomp_error("seccomp compiler does not support the current architecture"))?;
+    let filter = compile(architecture)?;
+    seccompiler::apply_filter(&filter).map_err(|_| seccomp_error("seccomp-BPF installation failed"))
+}
+
+fn compile(architecture: TargetArch) -> Result<seccompiler::BpfProgram, LinuxError> {
     let mut json = String::from(
         r#"{"target":{"mismatch_action":{"errno":1},"match_action":"allow","filter":["#,
     );
@@ -131,15 +134,18 @@ pub(super) fn install() -> Result<(), LinuxError> {
         json.push_str("\"}");
     }
     if architecture == TargetArch::x86_64 {
-        json.push_str(",{\"syscall\":\"arch_prctl\"}");
+        // AArch64 uses dup3 and ppoll from the common policy; it has no dup2 or poll syscall.
+        // Keep the original x86-64 allowlist without passing nonexistent names to the ARM compiler.
+        json.push_str(
+            ",{\"syscall\":\"dup2\"},{\"syscall\":\"poll\"},{\"syscall\":\"arch_prctl\"}",
+        );
     }
     json.push_str("]}}");
-    let filters = seccompiler::compile_from_json(json.as_bytes(), architecture)
+    let mut filters = seccompiler::compile_from_json(json.as_bytes(), architecture)
         .map_err(|_| seccomp_error("fixed seccomp policy compilation failed"))?;
-    let filter = filters
-        .get("target")
-        .ok_or_else(|| seccomp_error("fixed seccomp policy compiler returned no target"))?;
-    seccompiler::apply_filter(filter).map_err(|_| seccomp_error("seccomp-BPF installation failed"))
+    filters
+        .remove("target")
+        .ok_or_else(|| seccomp_error("fixed seccomp policy compiler returned no target"))
 }
 
 fn seccomp_error(detail: &'static str) -> LinuxError {
@@ -149,4 +155,17 @@ fn seccomp_error(detail: &'static str) -> LinuxError {
         LinuxRecovery::CancelAndReap,
         detail,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn production_policy_compiles_for_each_supported_architecture() {
+        for architecture in [TargetArch::x86_64, TargetArch::aarch64] {
+            let filter = compile(architecture).expect("supported architecture policy compiles");
+            assert!(!filter.is_empty());
+        }
+    }
 }

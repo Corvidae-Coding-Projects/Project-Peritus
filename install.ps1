@@ -61,6 +61,7 @@ function Get-PeritusSha256Hex {
 function Test-PeritusArchive {
     param([Parameter(Mandatory = $true)][string]$Archive, [Parameter(Mandatory = $true)][string]$PackageName)
 
+    Add-Type -AssemblyName System.IO.Compression
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $zip = [IO.Compression.ZipFile]::OpenRead($Archive)
     try {

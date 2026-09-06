@@ -34,6 +34,8 @@ function Assert-Fails {
 
 $temporary = Join-Path ([IO.Path]::GetTempPath()) ('peritus-ps-tests-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $temporary | Out-Null
+# Windows PowerShell 5.1 does not load the ZipArchive types with FileSystem alone.
+Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $package = 'peritus-windows-x86_64'
 
