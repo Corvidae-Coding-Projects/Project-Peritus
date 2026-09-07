@@ -1,6 +1,7 @@
 %{!?peritus_version:%{error:Pass --define 'peritus_version X.Y.Z'}}
 %{!?peritus_packager:%{error:Pass --define 'peritus_packager Name <email>'}}
 %{!?peritus_changelog_date:%{error:Pass --define 'peritus_changelog_date Sun Sep 06 2026'}}
+%global peritus_check cargo --config .cargo/vendor.toml test --frozen -p peritus-launcher --features system-package
 Name:           peritus
 Version:        %{peritus_version}
 Release:        1%{?dist}
@@ -43,6 +44,9 @@ export RUSTFLAGS="-C force-frame-pointers=yes -C link-arg=-Wl,-z,relro,-z,now"
 cargo --config .cargo/vendor.toml build --release --frozen --bins \
     -p peritus-cli -p peritus-daemon -p peritus-tui -p peritus-sandbox-linux \
     --features peritus-cli/system-package
+%if 0%{?peritus_compile_checks}
+%{peritus_check} --no-run
+%endif
 
 %check
 export CARGO_HOME="$PWD/.package-cargo"
@@ -51,8 +55,7 @@ export CARGO_BUILD_JOBS=${CARGO_BUILD_JOBS:-2}
 export CARGO_PROFILE_RELEASE_DEBUG=2
 export CARGO_PROFILE_RELEASE_STRIP=none
 export RUSTFLAGS="-C force-frame-pointers=yes -C link-arg=-Wl,-z,relro,-z,now"
-cargo --config .cargo/vendor.toml test --frozen -p peritus-launcher \
-    --features system-package update::tests
+%{peritus_check} update::tests
 test "$(target/release/peritus --version)" = 'peritus %{version}'
 
 %install

@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import tarfile
 import tempfile
 import unittest
@@ -15,6 +16,29 @@ import compiled
 
 
 class NativeRecipeTests(unittest.TestCase):
+    def test_rpm_check_compilation_uses_the_native_build_environment_without_installing(self):
+        with patch.object(build, "container") as container, \
+                patch.object(build, "version", return_value="1.2.3"), \
+                patch.object(build, "maintainer", return_value="A <a@example.invalid>"):
+            build.run_native_build("rpm", Path("root"), Path("peritus-1.2.3"), 123, 4, "compile-checks")
+            args = container.call_args.args
+            self.assertEqual(args[2:4], ("rpmbuild", "-bc"))
+            self.assertIn("--noprep", args)
+            self.assertIn("--noclean", args)
+            self.assertIn("peritus_compile_checks 1", args)
+            for forbidden in ("--nocheck", "--short-circuit", "--nodebuginfo", "--nodeps", "-bi"):
+                self.assertNotIn(forbidden, args)
+            container.reset_mock()
+            with self.assertRaises(ValueError):
+                build.run_native_build("deb", Path("root"), Path("source"), 123, 4, "compile-checks")
+            container.assert_not_called()
+
+    def test_rpm_compiles_and_runs_the_same_check_command(self):
+        spec = (build.ROOT / "packaging/rpm/peritus.spec").read_text()
+        self.assertIn("%global peritus_check cargo --config .cargo/vendor.toml test --frozen -p peritus-launcher --features system-package", spec)
+        self.assertIn("%if 0%{?peritus_compile_checks}\n%{peritus_check} --no-run\n%endif", spec)
+        self.assertIn("%{peritus_check} update::tests", spec.split("%check\n", 1)[1])
+
     def test_direct_debian_compilation_exports_the_full_recipe_build_flags(self):
         rules = (build.ROOT / "packaging/debian/rules").read_text()
         hardening = rules.index("export DEB_BUILD_MAINT_OPTIONS = hardening=+all")
@@ -185,6 +209,59 @@ class TransferTests(unittest.TestCase):
         binding["format"] = "rpm"
         with self.assertRaisesRegex(ValueError, "one compiled RPM source"):
             compiled.verify_source_trees(self.tree, binding)
+
+    def rpm_check_bundle(self):
+        binding = copy.deepcopy(self.binding)
+        binding["format"] = "rpm"
+        native_source = self.tree / "BUILD/peritus-1.2.3-build/peritus-1.2.3"
+        shutil.copytree(self.source, native_source)
+        previous = compiled.save_bundle(self.tree, self.root / "rpm-release", binding, self.observation)
+        checks = native_source / "target/debug/deps/peritus_launcher-0123456789abcdef"
+        checks.parent.mkdir(parents=True)
+        checks.write_bytes(b"fixture check executable")
+        checks.chmod(0o755)
+        observation = {**self.observation, "invocation": "checks-two",
+                       "started_unix_nanos": 30, "finished_unix_nanos": 40}
+        bundle = self.root / "rpm-checks"
+        record = compiled.save_bundle(self.tree, bundle, binding, observation, previous)
+        return binding, bundle, record
+
+    def test_rpm_check_transfer_retains_both_phase_observations_and_requires_the_checked_stage(self):
+        binding, bundle, record = self.rpm_check_bundle()
+        self.assertEqual(record["previous_compilation"]["compile_observation"], self.observation)
+        self.assertEqual(record["stage"], "checks")
+        with self.assertRaisesRegex(ValueError, "stage"):
+            compiled.restore_bundle(bundle, self.destination, binding)
+        self.assertFalse(self.destination.exists())
+        restored = compiled.restore_bundle(bundle, self.destination, binding, "checks")
+        self.assertEqual(restored, record)
+
+    def test_check_transfer_rejects_missing_parent_changed_binding_or_reused_observations(self):
+        binding, bundle, record = self.rpm_check_bundle()
+        for mutation in ("missing-parent", "binding", "stage", "time", "invocation"):
+            changed = copy.deepcopy(record)
+            if mutation == "missing-parent":
+                changed["previous_compilation"] = None
+            elif mutation == "binding":
+                changed["previous_compilation"]["binding"]["architecture"] = "other"
+            elif mutation == "stage":
+                changed["previous_compilation"]["stage"] = "checks"
+            elif mutation == "time":
+                changed["compile_observation"]["started_unix_nanos"] = 15
+            else:
+                changed["compile_observation"]["invocation"] = self.observation["invocation"]
+            (bundle / compiled.RECORD).write_text(json.dumps(changed))
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                compiled.restore_bundle(bundle, self.destination, binding, "checks")
+            self.assertFalse(self.destination.exists())
+
+    def test_checked_stage_requires_exactly_one_executable_check_harness(self):
+        binding, _, record = self.rpm_check_bundle()
+        native = self.tree / "BUILD/peritus-1.2.3-build/peritus-1.2.3/target/debug/deps"
+        (native / "peritus_launcher-0123456789abcdef").unlink()
+        with self.assertRaisesRegex(ValueError, "check executable"):
+            compiled.save_bundle(self.tree, self.root / "missing-checks", binding,
+                                 record["compile_observation"], record["previous_compilation"])
 
 
 class ArchiveAdmissionTests(unittest.TestCase):

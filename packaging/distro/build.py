@@ -68,8 +68,10 @@ def run_native_build(kind, build_root, source, epoch, jobs, stage="full"):
     """Continue native recipes without short-circuiting any packaging or test stage."""
     if kind not in FORMATS:
         raise ValueError("native package format must be deb or rpm")
-    if stage not in ("full", "compile", "package"):
-        raise ValueError("native build stage must be full, compile, or package")
+    if stage not in ("full", "compile", "compile-checks", "package"):
+        raise ValueError("unknown native build stage")
+    if stage == "compile-checks" and kind != "rpm":
+        raise ValueError("separate check compilation is only supported for RPM")
     if kind == "deb":
         options = ["--rules-target=override_dh_auto_build"] if stage == "compile" else ["--build=full"]
         if stage == "package":
@@ -80,9 +82,11 @@ def run_native_build(kind, build_root, source, epoch, jobs, stage="full"):
     else:
         date = formatdate(epoch, usegmt=True).split()
         changelog_date = f"{date[0].rstrip(',')} {date[2]} {date[1]} {date[3]}"
-        options = ["-bc", "--noclean"] if stage == "compile" else ["-ba"]
-        if stage == "package":
+        options = ["-bc", "--noclean"] if stage in ("compile", "compile-checks") else ["-ba"]
+        if stage in ("package", "compile-checks"):
             options.append("--noprep")
+        if stage == "compile-checks":
+            options.extend(["--define", "peritus_compile_checks 1"])
         container(kind, [(build_root, "/build", False)],
                   "rpmbuild", *options, "--define", "_topdir /build",
                   *rpm_reproducibility_arguments(),

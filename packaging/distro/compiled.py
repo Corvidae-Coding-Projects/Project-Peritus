@@ -47,7 +47,7 @@ def current_binding(kind, jobs):
             "maintainer": maintainer(), "cargo_build_jobs": jobs, "source": source, "workflow": workflow}
 
 
-def verify_source_trees(root, binding):
+def verify_source_trees(root, binding, stage="release"):
     name = f"peritus-{binding['source']['version']}"
     original = root / name
     sources = [original]
@@ -71,6 +71,11 @@ def verify_source_trees(root, binding):
         if (not binary.exists() or not stat.S_ISREG(binary.lstat().st_mode)
                 or not binary.stat().st_size or not binary.stat().st_mode & stat.S_IXUSR):
             raise ValueError(f"missing or invalid compiled binary: {name}")
+    if stage == "checks":
+        checks = [path for path in (sources[-1] / "target/debug/deps").glob("peritus_launcher-*")
+                  if stat.S_ISREG(path.lstat().st_mode) and path.stat().st_mode & stat.S_IXUSR]
+        if len(checks) != 1 or not checks[0].stat().st_size:
+            raise ValueError("checked compilation requires exactly one nonempty check executable")
     return original
 
 
@@ -96,8 +101,9 @@ def validate_members(entries):
     return members
 
 
-def save_bundle(root, directory, binding, observation):
-    verify_source_trees(root, binding)
+def save_bundle(root, directory, binding, observation, previous_compilation=None):
+    stage = "release" if previous_compilation is None else "checks"
+    verify_source_trees(root, binding, stage)
     paths, expanded = [root], 0
     for path in root.rglob("*"):
         metadata = path.lstat()
@@ -131,27 +137,31 @@ def save_bundle(root, directory, binding, observation):
             transport.add(path, arcname=name, recursive=False, filter=preserve)
     if archive.stat().st_size > MAX_ARCHIVE_BYTES:
         raise ValueError("compiled-tree transport exceeds its compressed-byte bound")
-    record = {"schema_version": 1, "kind": "native-distribution-compilation", "binding": binding,
+    record = {"schema_version": 2, "kind": "native-distribution-compilation", "binding": binding,
+              "stage": stage, "previous_compilation": previous_compilation,
               "compile_observation": observation, "archive_sha256": digest(archive),
               "archive_byte_length": archive.stat().st_size}
+    validate_record(record, binding, stage)
     with (directory / RECORD).open("x") as output:
         json.dump(record, output, indent=2, sort_keys=True)
         output.write("\n")
     return record
 
 
-def restore_bundle(directory, destination, expected_binding):
-    if {path.name for path in directory.iterdir()} != {ARCHIVE, RECORD}:
-        raise ValueError("compiled-tree transport inventory must contain exactly its archive and record")
-    record_file = regular(directory / RECORD)
-    if record_file.stat().st_size > 8 * 1024**2:
-        raise ValueError("compiled-tree record exceeds its size bound")
-    record = json.loads(record_file.read_bytes())
-    fields = {"schema_version", "kind", "binding", "compile_observation", "archive_sha256", "archive_byte_length"}
-    if (set(record) != fields or type(record["schema_version"]) is not int
-            or record["schema_version"] != 1 or record["kind"] != "native-distribution-compilation"
+def validate_record(record, expected_binding, stage):
+    fields = {"schema_version", "kind", "binding", "stage", "previous_compilation",
+              "compile_observation", "archive_sha256", "archive_byte_length"}
+    if (not isinstance(record, dict) or set(record) != fields or type(record["schema_version"]) is not int
+            or record["schema_version"] != 2 or record["kind"] != "native-distribution-compilation"
             or record["binding"] != expected_binding):
         raise ValueError("compiled-tree binding differs from this candidate, builder, or native run")
+    if stage not in ("release", "checks") or record["stage"] != stage:
+        raise ValueError("compiled-tree stage differs from the required compilation phase")
+    if (not isinstance(record["archive_sha256"], str)
+            or not re.fullmatch(r"[0-9a-f]{64}", record["archive_sha256"])
+            or type(record["archive_byte_length"]) is not int
+            or not 0 < record["archive_byte_length"] <= MAX_ARCHIVE_BYTES):
+        raise ValueError("compiled-tree archive identity is incomplete or invalid")
     observation = record["compile_observation"]
     if (not isinstance(observation, dict) or not observation.get("host") or not observation.get("invocation")
             or observation.get("cargo_build_jobs") != expected_binding["cargo_build_jobs"]
@@ -159,6 +169,28 @@ def restore_bundle(directory, destination, expected_binding):
             or type(observation.get("finished_unix_nanos")) is not int
             or not 0 < observation["started_unix_nanos"] <= observation["finished_unix_nanos"]):
         raise ValueError("compiled-tree observation is incomplete or invalid")
+    previous = record["previous_compilation"]
+    if stage == "release":
+        if previous is not None:
+            raise ValueError("release compilation cannot reuse a preceding compilation")
+    else:
+        if expected_binding["format"] != "rpm":
+            raise ValueError("separate check compilation requires the native RPM format")
+        validate_record(previous, expected_binding, "release")
+        earlier = previous["compile_observation"]
+        if (observation["invocation"] == earlier["invocation"]
+                or observation["started_unix_nanos"] < earlier["finished_unix_nanos"]):
+            raise ValueError("check compilation must observe a distinct later invocation")
+
+
+def restore_bundle(directory, destination, expected_binding, stage="release"):
+    if {path.name for path in directory.iterdir()} != {ARCHIVE, RECORD}:
+        raise ValueError("compiled-tree transport inventory must contain exactly its archive and record")
+    record_file = regular(directory / RECORD)
+    if record_file.stat().st_size > 8 * 1024**2:
+        raise ValueError("compiled-tree record exceeds its size bound")
+    record = json.loads(record_file.read_bytes())
+    validate_record(record, expected_binding, stage)
     archive = regular(directory / ARCHIVE)
     if (not 0 < archive.stat().st_size <= MAX_ARCHIVE_BYTES
             or archive.stat().st_size != record["archive_byte_length"]
@@ -170,7 +202,7 @@ def restore_bundle(directory, destination, expected_binding):
     with tarfile.open(archive, "r:gz") as transport:
         members = validate_members(transport)
         transport.extractall(destination.parent, members=members, filter="data")
-    verify_source_trees(destination, expected_binding)
+    verify_source_trees(destination, expected_binding, stage)
     return record
 
 
@@ -200,7 +232,9 @@ def package_compiled():
     (ROOT / "target").mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=f"package-{kind}-finish-", dir=ROOT / "target", delete=False) as temporary:
         root = Path(temporary) / "build"
-        compilation = restore_bundle(ROOT / "target/distro-compiled", root, binding)
+        stage = "checks" if kind == "rpm" else "release"
+        directory = "distro-check-compiled" if kind == "rpm" else "distro-compiled"
+        compilation = restore_bundle(ROOT / "target" / directory, root, binding, stage)
         out = output_directory(kind)
         source = root / f"peritus-{binding['source']['version']}"
         build.run_native_build(kind, root, source, binding["source"]["source_date_epoch"], jobs, "package")
@@ -208,3 +242,24 @@ def package_compiled():
             raise ValueError("candidate or builder changed while finishing packages")
         build.retain_packages(kind, root, source, out, jobs, started, compilation, root.parent)
     print(f"Built and tested {kind} packages from the retained native compilation in {out}")
+
+
+def compile_checks():
+    kind, jobs = package_format(), package_build_jobs()
+    if kind != "rpm":
+        raise ValueError("separate check compilation is only supported for RPM")
+    binding = current_binding(kind, jobs)
+    output = ROOT / "target/distro-check-compiled"
+    if output.exists():
+        raise ValueError("refusing to overwrite an existing checked compilation")
+    started = time.time_ns()
+    with tempfile.TemporaryDirectory(prefix="package-rpm-checks-", dir=ROOT / "target", delete=False) as temporary:
+        root = Path(temporary) / "build"
+        previous = restore_bundle(ROOT / "target/distro-compiled", root, binding)
+        source = root / f"peritus-{binding['source']['version']}"
+        build.run_native_build(kind, root, source, binding["source"]["source_date_epoch"], jobs, "compile-checks")
+        if current_binding(kind, jobs) != binding:
+            raise ValueError("candidate or builder changed while compiling package checks")
+        observation = build.build_observation(root.parent, jobs, started)
+        save_bundle(root, output, binding, observation, previous)
+    print(f"Retained native RPM release and check compilation in {output}")

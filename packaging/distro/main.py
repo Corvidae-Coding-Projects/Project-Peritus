@@ -14,7 +14,8 @@ import upload
 
 def main():
     actions = {"image": build.build_image, "build": build.build, "sign": sign.sign,
-               "compile": compiled.compile_packages, "package-compiled": compiled.package_compiled,
+               "compile": compiled.compile_packages, "compile-checks": compiled.compile_checks,
+               "package-compiled": compiled.package_compiled,
                "verify": verify.verify, "sign-ci": ci_sign.sign_ci, "upload": upload.upload,
                "image-save": build.save_image, "image-restore": build.restore_image,
                "test": test}

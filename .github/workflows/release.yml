@@ -461,17 +461,64 @@ jobs:
           compression-level: 0
           retention-days: 1
 
-  distro-build:
-    name: Distribution source build (${{ matrix.format }}, ${{ matrix.arch }})
+  distro-compile-checks:
+    name: Distribution check compilation (rpm, ${{ matrix.arch }})
     needs: distro-compile
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04, arch: x86_64, format: deb }
-          - { os: ubuntu-24.04-arm, arch: aarch64, format: deb }
           - { os: ubuntu-24.04, arch: x86_64, format: rpm }
           - { os: ubuntu-24.04-arm, arch: aarch64, format: rpm }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    env:
+      PERITUS_PACKAGE_FORMAT: ${{ matrix.format }}
+      PERITUS_PACKAGE_MAINTAINER: ${{ vars.PERITUS_PACKAGE_MAINTAINER }}
+      PERITUS_PACKAGE_BUILD_JOBS: "4"
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - name: Restore this architecture's same-run RPM builder
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: distro-image-${{ matrix.format }}-${{ matrix.arch }}
+          path: target
+      - name: Load the retained native builder
+        run: cargo run --locked --package xtask -- distro-image-restore
+      - name: Restore only this same-run native release compilation
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: distro-compiled-${{ matrix.format }}-${{ matrix.arch }}
+          path: target/distro-compiled
+      - name: Compile the RPM check harness in its native build environment
+        run: cargo run --locked --package xtask -- distro-compile-checks
+      - name: Retain both compilation phases and their observed binding
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: distro-check-compiled-${{ matrix.format }}-${{ matrix.arch }}
+          path: target/distro-check-compiled
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
+  distro-build:
+    name: Distribution source build (${{ matrix.format }}, ${{ matrix.arch }})
+    needs: [distro-compile, distro-compile-checks]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, arch: x86_64, format: deb, compiled: distro-compiled }
+          - { os: ubuntu-24.04-arm, arch: aarch64, format: deb, compiled: distro-compiled }
+          - { os: ubuntu-24.04, arch: x86_64, format: rpm, compiled: distro-check-compiled }
+          - { os: ubuntu-24.04-arm, arch: aarch64, format: rpm, compiled: distro-check-compiled }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     env:
@@ -497,8 +544,8 @@ jobs:
       - name: Restore only this same-run native compilation
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          name: distro-compiled-${{ matrix.format }}-${{ matrix.arch }}
-          path: target/distro-compiled
+          name: ${{ matrix.compiled }}-${{ matrix.format }}-${{ matrix.arch }}
+          path: target/${{ matrix.compiled }}
       - name: Admit the compiled tree and run full native recipes and tests offline
         run: cargo run --locked --package xtask -- distro-package-compiled
       - name: Retain source, binaries, and unsigned build provenance

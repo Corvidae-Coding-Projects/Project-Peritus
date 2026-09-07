@@ -39,12 +39,23 @@ or extend the ten-minute CI job ceiling. Signing and verification keep their
 existing two-job setting. Hosted completion still requires observed validation.
 
 CI separates `cargo xtask distro-compile` from `cargo xtask distro-package-compiled`.
-The first invokes only the native recipe's compilation stage and retains the complete
+RPM adds `cargo xtask distro-compile-checks` between them to compile its test harness
+in the native build environment without installing files or producing package payloads.
+The final RPM recipe still executes those tests; precompilation is not test evidence.
+The first command invokes only the native recipe's compilation stage and retains the complete
 build tree in a same-run, format- and architecture-specific intermediate artifact.
-The second verifies its archive hash and exact source inventory, commit, maintainer,
+Each subsequent phase verifies its archive hash and exact source inventory, commit, maintainer,
 native architecture, builder-image identity, capacity, and workflow-run binding before
 extracting into a fresh directory. The transfer preserves permissions and timestamps;
 it is not a cross-run cache and is never attached as a public release asset.
+The v2 intermediate record identifies the release or check-compilation stage.
+RPM's checked record retains the preceding release-compilation record and requires a
+distinct, later invocation with the same binding. Final RPM assembly rejects a
+release-only tree. Both stages preserve the bounded, link-free archive contract.
+Locally, the three RPM commands can run in order without moving or replacing an input:
+the first writes `target/distro-compiled`, the second writes
+`target/distro-check-compiled`, and assembly consumes the latter. Debian continues
+to consume its release compilation directly.
 
 Final packaging runs the ordinary full recipe with Debian's
 [`--no-pre-clean`](https://manpages.debian.org/trixie/dpkg-dev/dpkg-buildpackage.1.en.html)

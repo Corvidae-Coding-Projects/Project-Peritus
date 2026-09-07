@@ -51,6 +51,7 @@ Commands:
   distro-image-restore   Restore the same-run builder image without rebuilding it
   distro-build           Build real source and binary distribution packages offline
   distro-compile         Retain a candidate-bound native distribution compilation
+  distro-compile-checks  Retain native RPM check compilation for final recipe execution
   distro-package-compiled  Run full recipes and tests on the same-run compiled tree
   distro-sign            Sign distribution packages using the local OpenPGP agent
   distro-sign-ci         Sign with explicitly provisioned protected-environment CI secrets
@@ -357,6 +358,9 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
         Some("distro-build") => Ok(Command::Distro { operation: crate::distro::Operation::Build }),
         Some("distro-compile") => {
             Ok(Command::Distro { operation: crate::distro::Operation::Compile })
+        }
+        Some("distro-compile-checks") => {
+            Ok(Command::Distro { operation: crate::distro::Operation::CompileChecks })
         }
         Some("distro-package-compiled") => {
             Ok(Command::Distro { operation: crate::distro::Operation::PackageCompiled })
