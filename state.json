@@ -64,10 +64,6 @@
     "35": {
       "agent_id": "6ME5",
       "claimed_at": "2026-08-30T04:05:45.643660911Z"
-    },
-    "57": {
-      "agent_id": "QWDj",
-      "claimed_at": "2026-09-07T16:57:34.191208307Z"
     }
   },
   "issues": {
@@ -13235,8 +13231,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T18:29:51.879686367Z",
+    "timestamp": "2026-09-07T18:29:57.800274775Z",
     "agent_id": "QWDj",
-    "agent_seq": 136
+    "agent_seq": 137
   }
 }
