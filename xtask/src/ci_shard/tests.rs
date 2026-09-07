@@ -1,7 +1,10 @@
 use super::{
     Operation, PLATFORM_PACKAGE, PLATFORM_TERMINAL_CANCEL, PLATFORM_TERMINAL_INTERACTIVE,
-    PLATFORM_TERMINAL_SIGNAL, SHARD_NAMES, cargo_command, shard_for_layer, shard_for_package,
+    PLATFORM_TERMINAL_SIGNAL, SHARD_NAMES, cargo_command, selected_packages, shard_for_layer,
+    shard_for_package,
 };
+use crate::metadata;
+use std::collections::BTreeSet;
 use std::path::Path;
 
 #[test]
@@ -40,6 +43,65 @@ fn every_architecture_layer_has_one_stable_shard() {
 fn product_runner_has_an_independent_bounded_app_shard() {
     assert_eq!(shard_for_package("peritus-product-runner", "app"), Some("app-runner"));
     assert_eq!(shard_for_package("peritus-daemon", "app"), Some("app-shell"));
+}
+
+#[test]
+fn daemon_test_partition_preserves_every_workspace_package_exactly_once() {
+    let daemon = Operation::parse("test-daemon").expect("reviewed daemon test operation");
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().expect("workspace root");
+    let policy = metadata::architecture_policy(root).expect("architecture policy");
+    let cargo = metadata::cargo_metadata(root).expect("workspace metadata");
+    let mut built = BTreeSet::new();
+    let mut tested = BTreeSet::new();
+    for shard in SHARD_NAMES {
+        built.extend(selected_packages(&policy, &cargo, Operation::Build, shard).expect("build"));
+        for package in selected_packages(&policy, &cargo, Operation::Test, shard).expect("test") {
+            assert!(tested.insert(package), "package tested in more than one regular shard");
+        }
+    }
+    assert!(!tested.contains("peritus-daemon"));
+    let dedicated = selected_packages(&policy, &cargo, daemon, "app-shell").expect("daemon");
+    assert_eq!(dedicated, ["peritus-daemon"]);
+    for package in dedicated {
+        assert!(tested.insert(package), "daemon tests must not run in the regular shell job");
+    }
+    assert_eq!(tested, built, "every built workspace package must retain its test assignment");
+    assert!(selected_packages(&policy, &cargo, daemon, "app-runner").is_err());
+
+    for operation in [
+        Operation::Build,
+        Operation::Clippy,
+        Operation::Docs,
+        Operation::DocTest,
+        Operation::VerusVerify,
+        Operation::VerusVerifyStrict,
+        Operation::VerusBuild,
+        Operation::VerusBuildStrict,
+    ] {
+        let packages = selected_packages(&policy, &cargo, operation, "app-shell").expect("shell");
+        assert!(packages.contains(&"peritus-daemon"), "only ordinary tests may be partitioned");
+    }
+}
+
+#[test]
+fn daemon_test_command_keeps_every_target_feature_and_serial_execution() {
+    let operation = Operation::parse("test-daemon").expect("reviewed daemon test operation");
+    let command = cargo_command(Path::new("."), operation, &["peritus-daemon"]);
+    let arguments =
+        command.get_args().map(|value| value.to_string_lossy().into_owned()).collect::<Vec<_>>();
+    assert_eq!(
+        arguments,
+        [
+            "test",
+            "--locked",
+            "--all-targets",
+            "--all-features",
+            "--package",
+            "peritus-daemon",
+            "--",
+            "--test-threads=1",
+        ]
+    );
 }
 
 #[test]

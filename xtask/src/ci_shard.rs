@@ -9,6 +9,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::process::Command;
 
+const DAEMON_PACKAGE: &str = "peritus-daemon";
 const PLATFORM_PACKAGE: &str = "peritus-platform-qualification";
 const PLATFORM_TERMINAL_INTERACTIVE: &str =
     "terminal_interactive_round_trip_is_observed_and_reaped";
@@ -31,6 +32,7 @@ pub(crate) const SHARD_NAMES: [&str; 9] = [
 pub(crate) enum Operation {
     Build,
     Test,
+    TestDaemon,
     DocTest,
     Clippy,
     Docs,
@@ -50,6 +52,7 @@ impl Operation {
         match value {
             "build" => Some(Self::Build),
             "test" => Some(Self::Test),
+            "test-daemon" => Some(Self::TestDaemon),
             "doc-test" => Some(Self::DocTest),
             "clippy" => Some(Self::Clippy),
             "docs" => Some(Self::Docs),
@@ -143,6 +146,11 @@ fn selected_packages<'a>(
         .filter(|package| {
             verus_eligible(package, policy_by_name.get(package.name.as_str()), operation)
         })
+        .filter(|package| match operation {
+            Operation::Test => package.name != DAEMON_PACKAGE,
+            Operation::TestDaemon => package.name == DAEMON_PACKAGE,
+            _ => true,
+        })
         .filter(|package| !operation.is_platform_terminal() || package.name == PLATFORM_PACKAGE)
         .filter(|package| operation.runner_tests().is_none() || package.name == runner::PACKAGE)
         .map(|package| package.name.as_str())
@@ -188,7 +196,7 @@ fn cargo_command(root: &Path, operation: Operation, packages: &[&str]) -> Comman
                 "--all-features",
             ]);
         }
-        Operation::Test => {
+        Operation::Test | Operation::TestDaemon => {
             command.args(["test", "--locked", "--all-targets", "--all-features"]);
         }
         Operation::TestRunnerRecovery | Operation::TestRunnerProduct => {
@@ -237,7 +245,9 @@ fn cargo_command(root: &Path, operation: Operation, packages: &[&str]) -> Comman
         command.args(["--rlimit", "20"]);
     } else if let Some(test) = operation.platform_terminal_test() {
         command.args(["--test", "general_capability", test, "--", "--exact", "--test-threads=1"]);
-    } else if matches!(operation, Operation::Test) || operation.runner_tests().is_some() {
+    } else if matches!(operation, Operation::Test | Operation::TestDaemon)
+        || operation.runner_tests().is_some()
+    {
         command.args(["--", "--test-threads=1"]);
         if packages == [PLATFORM_PACKAGE] {
             for test in
