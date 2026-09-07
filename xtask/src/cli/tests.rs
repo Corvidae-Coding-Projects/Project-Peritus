@@ -24,6 +24,22 @@ fn release_staging_has_no_automatic_publication_command() {
 }
 
 #[test]
+fn native_rebuild_commands_select_exact_operations() {
+    use crate::release::rebuild::Operation;
+
+    for (name, operation) in [
+        ("release-rebuild-record", Operation::Record),
+        ("release-rebuild-compare", Operation::Compare),
+    ] {
+        assert_eq!(
+            parse([OsString::from(name)]).expect("rebuild command"),
+            Command::ReleaseRebuild { operation }
+        );
+        assert!(parse([OsString::from(name), OsString::from("extra")]).is_err());
+    }
+}
+
+#[test]
 fn distribution_commands_select_reviewed_operations_and_reject_extra_arguments() {
     use crate::distro::Operation;
 

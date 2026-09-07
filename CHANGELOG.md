@@ -31,6 +31,10 @@
   native hosts and through the public installer. Verify archive checksums and
   members, preserve executable permissions, and retain original archive bytes
   instead of rebuilding debug packages for release qualification.
+- Compile and assemble each native archive twice on separate clean hosted jobs,
+  retain genuine source/toolchain/platform observations, and require compatible,
+  byte-identical archive and checksum outputs before attestation. Allow manual
+  candidate validation without creating, signing, or publishing a release.
 
 ### Product development included in this release
 

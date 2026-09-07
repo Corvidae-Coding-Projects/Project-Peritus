@@ -40,6 +40,8 @@ Commands:
   release-bootstrap-prepared-smoke Qualify the public installer using same-run native artifacts
   release-bootstrap-staged-smoke Qualify the public installer using the exact staged archive
   release-qualification-prepare Restore the staged release archive and retain H2 inputs
+  release-rebuild-record Retain actual source, environment, and native assembly observations
+  release-rebuild-compare Require a compatible byte-identical independent native rebuild
   release-create         Validate a tag and create its retained draft GitHub release
   release-package-stage Build, archive, checksum, and record this host's native package
   release-package-assemble Assemble a native package from separately built release binaries
@@ -80,6 +82,7 @@ enum Command {
     ReleasePackageStage,
     ReleasePackageAssemble,
     ReleaseQualificationPrepare,
+    ReleaseRebuild { operation: crate::release::rebuild::Operation },
     ReleaseStage,
     Distro { operation: crate::distro::Operation },
     Help,
@@ -246,6 +249,7 @@ pub(crate) fn execute(
         Command::ReleasePackageStage => crate::release::package_stage(root)?,
         Command::ReleasePackageAssemble => crate::release::package_assemble(root)?,
         Command::ReleaseQualificationPrepare => crate::release::qualification_prepare(root)?,
+        Command::ReleaseRebuild { operation } => crate::release::rebuild::run(root, operation)?,
         Command::ReleaseStage => execute_release_stage(root, output)?,
         Command::Distro { operation } => crate::distro::run(root, operation)?,
         Command::Help => {}
@@ -332,6 +336,12 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
             Ok(Command::ReleaseBootstrapSmoke { input: QualificationInput::Release })
         }
         Some("release-qualification-prepare") => Ok(Command::ReleaseQualificationPrepare),
+        Some("release-rebuild-record") => {
+            Ok(Command::ReleaseRebuild { operation: crate::release::rebuild::Operation::Record })
+        }
+        Some("release-rebuild-compare") => {
+            Ok(Command::ReleaseRebuild { operation: crate::release::rebuild::Operation::Compare })
+        }
         Some("release-package-stage") => Ok(Command::ReleasePackageStage),
         Some("release-package-assemble") => Ok(Command::ReleasePackageAssemble),
         Some("release-stage") => Ok(Command::ReleaseStage),

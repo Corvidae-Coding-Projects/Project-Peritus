@@ -1,6 +1,7 @@
-name: Stage Peritus release
+name: Validate or stage Peritus release
 
 on:
+  workflow_dispatch:
   push:
     tags: ["v*.*.*"]
 
@@ -14,6 +15,7 @@ env:
 jobs:
   create-draft:
     name: Create exact draft release
+    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -131,7 +133,7 @@ jobs:
       - name: Restore this host's exact same-run release package
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          name: release-package-${{ matrix.os }}
+          name: release-package-primary-${{ matrix.os }}
           path: target/release-input
       - name: Restore this host's qualification tools
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
@@ -194,11 +196,12 @@ jobs:
           retention-days: 30
 
   build-binary:
-    name: Release binary ${{ matrix.binary }} (${{ matrix.os }})
+    name: Release binary ${{ matrix.target.binary }} (${{ matrix.target.os }}, ${{ matrix.build }})
     strategy:
       fail-fast: false
       matrix:
-        include:
+        build: [primary, independent]
+        target:
           - { os: ubuntu-24.04, package: peritus-cli, binary: peritus, artifact: peritus }
           - { os: ubuntu-24.04-arm, package: peritus-cli, binary: peritus, artifact: peritus }
           - { os: ubuntu-24.04, package: peritus-daemon, binary: peritusd, artifact: peritusd }
@@ -223,7 +226,7 @@ jobs:
           - { os: windows-11-arm, package: peritus-tui, binary: peritus-tui, artifact: peritus-tui.exe }
           - { os: windows-2025, package: peritus-sandbox-windows, binary: peritus-windows-sandbox-helper, artifact: peritus-windows-sandbox-helper.exe }
           - { os: windows-11-arm, package: peritus-sandbox-windows, binary: peritus-windows-sandbox-helper, artifact: peritus-windows-sandbox-helper.exe }
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.target.os }}
     timeout-minutes: 10
     steps:
       - name: Check out tagged source
@@ -236,22 +239,23 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - name: Build one release binary
         run: >-
-          cargo build --release --locked --package ${{ matrix.package }}
-          --bin ${{ matrix.binary }}
+          cargo build --release --locked --package ${{ matrix.target.package }}
+          --bin ${{ matrix.target.binary }}
       - name: Retain one release binary
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: release-bin-${{ matrix.os }}-${{ matrix.binary }}
-          path: target/release/${{ matrix.artifact }}
+          name: release-bin-${{ matrix.build }}-${{ matrix.target.os }}-${{ matrix.target.binary }}
+          path: target/release/${{ matrix.target.artifact }}
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 30
 
   assemble:
-    name: Assemble package (${{ matrix.os }})
+    name: Assemble package (${{ matrix.os }}, ${{ matrix.build }})
     needs: build-binary
     strategy:
       fail-fast: false
       matrix:
+        build: [primary, independent]
         os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, macos-15-intel, windows-2025, windows-11-arm]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
@@ -267,22 +271,66 @@ jobs:
       - name: Restore this host's release binaries
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          pattern: release-bin-${{ matrix.os }}-*
+          pattern: release-bin-${{ matrix.build }}-${{ matrix.os }}-*
           path: target/release
           merge-multiple: true
       - name: Assemble, archive, checksum, and record native package
         run: cargo run --locked --package xtask -- release-package-assemble
+      - name: Retain exact source, toolchain, platform, and assembly observations
+        env:
+          PERITUS_RELEASE_BUILD_ROLE: ${{ matrix.build }}
+        run: cargo run --locked --package xtask -- release-rebuild-record
       - name: Retain assembled native package
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: release-package-${{ matrix.os }}
+          name: release-package-${{ matrix.build }}-${{ matrix.os }}
           path: dist
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 30
+
+  compare-native:
+    name: Compare independent native rebuild (${{ matrix.os }})
+    needs: assemble
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, macos-15-intel, windows-2025, windows-11-arm]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - name: Restore the primary package from this workflow run
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: release-package-primary-${{ matrix.os }}
+          path: target/native-rebuild/primary
+      - name: Restore the independently compiled package from this workflow run
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: release-package-independent-${{ matrix.os }}
+          path: target/native-rebuild/independent
+      - name: Require complete byte-identical output and compatible observed build inputs
+        run: cargo run --locked --package xtask -- release-rebuild-compare
+      - name: Retain both real observations and the comparison, including failure evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-native-rebuild-${{ matrix.os }}
+          path: |
+            target/native-rebuild/report.json
+            target/native-rebuild/primary/peritus-native-build.json
+            target/native-rebuild/independent/peritus-native-build.json
+          if-no-files-found: warn
+          retention-days: 30
 
   attest:
     name: Attest package (${{ matrix.os }})
-    needs: [create-draft, assemble]
+    needs: [create-draft, compare-native]
     permissions:
       attestations: write
       contents: write
@@ -305,7 +353,7 @@ jobs:
       - name: Restore assembled native package
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          name: release-package-${{ matrix.os }}
+          name: release-package-primary-${{ matrix.os }}
           path: dist
       - name: Generate candidate-bound inventory, SBOM, and provenance
         id: evidence
@@ -457,7 +505,7 @@ jobs:
 
   stage-draft:
     name: Complete unpublished release draft
-    needs: [policy, bootstrap, h2, attest, distro-sign]
+    needs: [policy, bootstrap, h2, compare-native, attest, distro-sign]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

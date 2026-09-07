@@ -2,6 +2,7 @@
 
 mod publication;
 mod qualification;
+pub(crate) mod rebuild;
 pub(crate) use publication::stage_draft;
 
 pub(crate) fn qualification_prepare(root: &Path) -> Result<(), XtaskError> {

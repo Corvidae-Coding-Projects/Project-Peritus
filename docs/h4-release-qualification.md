@@ -72,6 +72,24 @@ Reports and raw H2 evidence, including failures, are retained for 30 days. This
 staging check is distinct from development CI's debug-package qualification and
 does not itself supply H4 signatures, independent reviews, or publication approval.
 
+Native archive builds use separate `primary` and `independent` jobs for every
+binary and assembly, with no shared compiled artifacts or build cache. A retained
+assembly observation records the exact source-tree hash, release profile, Rust
+identity, native OS/image revision, Python/zlib identity, workflow identity, and
+real invocation/time observations. The comparison admits the complete native
+primary inventory (archive plus checksum), checks those observed inputs for
+compatibility, and compares actual output bytes. Unaccounted outputs, changed
+checksums, source drift, reused invocations, or any artifact difference fail the
+check before attestation. Both observations and any failed comparison remain
+retained; assembly records are not represented as independent security reviews.
+
+The same workflow can be manually dispatched to validate a candidate before
+creating a version tag. That path builds, compares, and runs native H2, but skips
+draft creation, protected signing, attestation/upload, and draft completion.
+Only a version-tag push can enter those draft-dependent operations. Manual
+validation is not publication authorization or a replacement for the final H4
+evidence binding.
+
 The documentation inventory requires exactly one migration, backup, restore, rollback, license
 notice, and completed security-review document. License notices are rendered from an explicit,
 component-sorted input set. Empty documents and incomplete category sets are rejected.

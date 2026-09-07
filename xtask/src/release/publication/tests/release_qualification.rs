@@ -31,7 +31,10 @@ fn release_h2_and_bootstrap_consume_the_same_staged_archive_without_product_rebu
         })
         .collect::<Vec<_>>();
     assert_eq!(downloads.len(), 2);
-    assert_eq!(downloads[0]["with"]["name"].as_str(), Some("release-package-${{ matrix.os }}"));
+    assert_eq!(
+        downloads[0]["with"]["name"].as_str(),
+        Some("release-package-primary-${{ matrix.os }}")
+    );
     assert_eq!(downloads[0]["with"]["path"].as_str(), Some("target/release-input"));
     assert_eq!(downloads[0]["with"].as_hash().expect("same-run options").len(), 2);
     assert_eq!(

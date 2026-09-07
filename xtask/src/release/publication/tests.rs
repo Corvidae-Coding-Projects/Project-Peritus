@@ -1,6 +1,7 @@
 use super::*;
 use yaml_rust2::{Yaml, YamlLoader};
 
+mod native_rebuild;
 mod release_qualification;
 
 fn complete_release() -> Release {
@@ -124,7 +125,7 @@ fn tag_workflow_completes_a_draft_without_a_publication_job() {
     let needs = staging["needs"].as_vec().expect("staging dependencies");
     assert_eq!(
         needs.iter().map(|value| value.as_str().expect("job")).collect::<Vec<_>>(),
-        ["policy", "bootstrap", "h2", "attest", "distro-sign"]
+        ["policy", "bootstrap", "h2", "compare-native", "attest", "distro-sign"]
     );
     let commands = staging["steps"]
         .as_vec()
@@ -180,6 +181,7 @@ fn release_and_lifecycle_matrices_cover_each_native_target_once() {
         (&release, "build-h2-controller"),
         (&release, "prepare-h2"),
         (&release, "h2"),
+        (&release, "compare-native"),
         (&product, "bootstrap"),
         (&product, "prepare-h2"),
         (&product, "h2"),
@@ -192,7 +194,7 @@ fn release_and_lifecycle_matrices_cover_each_native_target_once() {
             .collect::<std::collections::BTreeSet<_>>();
         assert_eq!(actual, expected, "target coverage in {job}");
     }
-    let binaries = release["jobs"]["build-binary"]["strategy"]["matrix"]["include"]
+    let binaries = release["jobs"]["build-binary"]["strategy"]["matrix"]["target"]
         .as_vec()
         .expect("binary matrix");
     assert_eq!(binaries.len(), TARGETS.len() * 4);
