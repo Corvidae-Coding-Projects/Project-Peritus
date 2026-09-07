@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1261,
+  "next_comment_id": 1262,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T03:54:23.839495688Z",
+      "updated_at": "2026-09-07T04:04:25.308259997Z",
       "labels": [
         "release"
       ],
@@ -1223,6 +1223,15 @@
           "kind": "result",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIqbYzhB7nLCp3WT2BOSyXnFIe7lEWVIbprrHMribOFAkZ+d2IpCYrW60BRA6rrDiTLyP5BYbSGgcd4XpjfqeCw=="
+        },
+        "10ae8979-1863-4dae-85e4-7b7dfcd9e014": {
+          "display_id": 1261,
+          "author": "QWDj",
+          "content": "H3 corrected NVMe pre-freeze load was deliberately stopped after substantial append slowdown, not reported complete: fourth workload expected 60000 appends over 120 logical seconds but had only7369events after13minutes. Retained read-only SQLite backup passed integrity_check, SHA256028928a194c0ddc6b67eac05f49bdc359d1a80da9cd89f9c043529fa46da9dc0, under qualification/h3/prefreeze-load-d66c2414.v3UaQE. Identity-verified owned daemon1251886 receivedTERM, runner1229310 exited1 atstep7370 withBrokenpipe; scratch empty and bothprocessesgone. Source dispatch::scheduler reloads/rebuilds fullhistory everycommand; snapshot state_record_history uses449867776bytes versus3788800events table. This is an unresolved product-performance finding, not an H3 verdict or accepted baseline. H1 power-cut unit and migration checks pass; nativeVM validation pending.",
+          "created_at": "2026-09-07T04:04:25.302388277Z",
+          "kind": "observation",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPnaXHzW49Vw1c6uU+04cVQE4x5kUXC/fqF5t9yzt0JU9ll3Q68pzOSIWLvxs9LGhjXrt5WnM0qWXBUUm8z/ODA=="
         },
         "11bf7d75-afd0-496b-8664-ebae5f684a1c": {
           "display_id": 1242,
@@ -12362,8 +12371,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T03:54:23.839495688Z",
+    "timestamp": "2026-09-07T04:04:25.308259997Z",
     "agent_id": "QWDj",
-    "agent_seq": 33
+    "agent_seq": 34
   }
 }
