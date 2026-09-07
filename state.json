@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1278,
+  "next_comment_id": 1279,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T06:03:01.608541950Z",
+      "updated_at": "2026-09-07T06:18:49.708094935Z",
       "labels": [
         "release"
       ],
@@ -1601,6 +1601,15 @@
           "kind": "result",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAGfsEj74pGBs9e2NxyUgP4xxsk2n6GrgQFAUmXIn3UmzmGAUsZKLj7V1qCOR8WKcfpBD+ZfqE/dxCMMqEZjEcDg=="
+        },
+        "f93a504b-ff86-47fc-9eaf-268cd61f14cc": {
+          "display_id": 1278,
+          "author": "QWDj",
+          "content": "CI-only root-cause repair prepared on fix/release-ci-daemon-budget: main Windows Foundation app-shell job 101635969697 exceeded its 10m limit after 57.29s xtask bootstrap, 6m26 test compilation, and 114.79s daemon unit tests. All test assertions passed but the job timed out at completion; the earlier d66 job also timed out. Split only daemon test execution into test-daemon/app-shell on all3 native platforms in both gates; unchanged 10m, serial execution, all targets/features, build/doc/Clippy/Verus routing, product code, dependencies, and profiles. New real-workspace exact-once routing and exact command tests fail before/pass after; both validators reject missing/repeated/misrouted daemon jobs. 318 xtask unit +7 integration and 249 native tests (104 daemon,145 shell) pass; initial sandbox IPC bind failure disappears with host IPC. Strict Clippy, fmt, actionlint and full repository policy pass. Separate Intel macOS release-build timeout remains under investigation.",
+          "created_at": "2026-09-07T06:18:49.703864444Z",
+          "kind": "result",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABhVghIwi8Sz0RMtXXygIUynJFZm0rLbZ3lAiYiF95rSTRMtLEYM9KOEWmVOcrhS8T8Gokn/VoBA/z/dzlf2GCA=="
         }
       }
     },
@@ -12515,8 +12524,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T06:03:01.608541950Z",
+    "timestamp": "2026-09-07T06:18:49.708094935Z",
     "agent_id": "QWDj",
-    "agent_seq": 54
+    "agent_seq": 55
   }
 }
