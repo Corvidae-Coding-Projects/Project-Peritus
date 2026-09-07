@@ -49,6 +49,8 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - name: Enforce repository policy
         run: cargo run --locked --package xtask -- all
+      - name: Test distribution package tooling
+        run: cargo run --locked --package xtask -- distro-test
 
   bootstrap:
     name: Release bootstrap (${{ matrix.os }})
@@ -209,9 +211,132 @@ jobs:
           "${{ steps.build_provenance.outputs.bundle-path }}"
           "${{ steps.sbom_attestation.outputs.bundle-path }}"
 
+  distro-image:
+    name: Distribution builder (${{ matrix.format }}, ${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, arch: x86_64, format: deb }
+          - { os: ubuntu-24.04-arm, arch: aarch64, format: deb }
+          - { os: ubuntu-24.04, arch: x86_64, format: rpm }
+          - { os: ubuntu-24.04-arm, arch: aarch64, format: rpm }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    env:
+      PERITUS_PACKAGE_FORMAT: ${{ matrix.format }}
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - name: Build the digest-pinned distribution Docker image
+        run: cargo run --locked --package xtask -- distro-image
+      - name: Save the exact builder for this release run
+        run: cargo run --locked --package xtask -- distro-image-save
+      - name: Retain the native builder image
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: distro-image-${{ matrix.format }}-${{ matrix.arch }}
+          path: target/distro-builder.tar
+          if-no-files-found: error
+          retention-days: 1
+
+  distro-build:
+    name: Distribution source build (${{ matrix.format }}, ${{ matrix.arch }})
+    needs: distro-image
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, arch: x86_64, format: deb }
+          - { os: ubuntu-24.04-arm, arch: aarch64, format: deb }
+          - { os: ubuntu-24.04, arch: x86_64, format: rpm }
+          - { os: ubuntu-24.04-arm, arch: aarch64, format: rpm }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    env:
+      PERITUS_PACKAGE_FORMAT: ${{ matrix.format }}
+      PERITUS_PACKAGE_MAINTAINER: ${{ vars.PERITUS_PACKAGE_MAINTAINER }}
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - name: Restore this format and architecture's same-run builder
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: distro-image-${{ matrix.format }}-${{ matrix.arch }}
+          path: target
+      - name: Load the retained native builder
+        run: cargo run --locked --package xtask -- distro-image-restore
+      - name: Build real packages from locked sources without network access
+        run: cargo run --locked --package xtask -- distro-build
+      - name: Retain source, binaries, and unsigned build provenance
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: distro-unsigned-${{ matrix.format }}-${{ matrix.arch }}
+          path: dist/packages/${{ matrix.format }}
+          if-no-files-found: error
+          retention-days: 1
+
+  distro-sign:
+    name: Sign and qualify distribution (${{ matrix.format }}, ${{ matrix.arch }})
+    needs: [create-draft, distro-build]
+    environment: release-signing
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, arch: x86_64, format: deb }
+          - { os: ubuntu-24.04-arm, arch: aarch64, format: deb }
+          - { os: ubuntu-24.04, arch: x86_64, format: rpm }
+          - { os: ubuntu-24.04-arm, arch: aarch64, format: rpm }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    env:
+      PERITUS_PACKAGE_FORMAT: ${{ matrix.format }}
+      PERITUS_SIGNING_FINGERPRINT: C5FAA0061C56096C0DB57E93BC1152DDCE409792
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - name: Restore this format and architecture's same-run builder
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: distro-image-${{ matrix.format }}-${{ matrix.arch }}
+          path: target
+      - name: Load the retained native signing tools
+        run: cargo run --locked --package xtask -- distro-image-restore
+      - name: Restore exact same-run unsigned packages
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: distro-unsigned-${{ matrix.format }}-${{ matrix.arch }}
+          path: dist/packages/${{ matrix.format }}
+      - name: Sign packages and Debian source metadata with the reviewed release key
+        env:
+          PERITUS_SIGNING_KEY: ${{ secrets.PERITUS_SIGNING_KEY }}
+          PERITUS_SIGNING_PASSPHRASE: ${{ secrets.PERITUS_SIGNING_PASSPHRASE }}
+        run: cargo run --locked --package xtask -- distro-sign-ci
+      - name: Require signatures, tamper rejection, and actual install/remove before upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: cargo run --locked --package xtask -- distro-upload
+
   publish:
     name: Publish complete release
-    needs: [policy, bootstrap, attest]
+    needs: [policy, bootstrap, attest, distro-sign]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

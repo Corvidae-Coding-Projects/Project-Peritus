@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.0.1
+
+- Prepare the first versioned release with native Linux, macOS, and Windows
+  archives for x86-64 and ARM64.
+- Add genuine Debian and RPM source, binary, and debug packages built offline
+  from locked, vendored source in pinned distribution containers. Sign packages,
+  source metadata, checksum inventories, and bundles with the release OpenPGP key.
+- Verify package signatures, tamper and unsigned-package rejection, installation,
+  file integrity, and removal. Keep system-package updates owned by APT or DNF.
+- Separate protected package signing from unprivileged builds, retain exact source
+  and builder inventories, and require the complete release-asset set before
+  publication. Production qualification remains governed by the H4 release gate.
+
+### Product development included in this release
+
 - Persist complete product-run checkpoints, settlements, continuation state, remaining work, and
   interruption causes in the daemon. Validate retained terminal candidates against their managed
   workspaces on startup, mark superseded evidence stale, and resume interrupted candidates from

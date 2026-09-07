@@ -42,6 +42,15 @@ Commands:
   release-package-stage Build, archive, checksum, and record this host's native package
   release-package-assemble Assemble a native package from separately built release binaries
   release-publish        Publish a draft only after every native package job passes
+  distro-image           Build a pinned Debian or Fedora package-builder Docker image
+  distro-image-save      Retain the exact builder image for same-run package jobs
+  distro-image-restore   Restore the same-run builder image without rebuilding it
+  distro-build           Build real source and binary distribution packages offline
+  distro-sign            Sign distribution packages using the local OpenPGP agent
+  distro-sign-ci         Sign with explicitly provisioned protected-environment CI secrets
+  distro-verify          Verify package signatures and disposable install/remove lifecycle
+  distro-upload          Upload a verified package set to the exact existing release draft
+  distro-test            Run distribution package tooling regression tests
   help                   Print this help
 ";
 
@@ -69,6 +78,7 @@ enum Command {
     ReleasePackageStage,
     ReleasePackageAssemble,
     ReleasePublish,
+    Distro { operation: crate::distro::Operation },
     Help,
 }
 
@@ -237,6 +247,7 @@ pub(crate) fn execute(
         Command::ReleasePackageStage => crate::release::package_stage(root)?,
         Command::ReleasePackageAssemble => crate::release::package_assemble(root)?,
         Command::ReleasePublish => crate::release::publish(root)?,
+        Command::Distro { operation } => crate::distro::run(root, operation)?,
         Command::Help => {}
     }
     Ok(())
@@ -334,6 +345,25 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
         Some("release-package-stage") => Ok(Command::ReleasePackageStage),
         Some("release-package-assemble") => Ok(Command::ReleasePackageAssemble),
         Some("release-publish") => Ok(Command::ReleasePublish),
+        Some("distro-image") => Ok(Command::Distro { operation: crate::distro::Operation::Image }),
+        Some("distro-image-save") => {
+            Ok(Command::Distro { operation: crate::distro::Operation::ImageSave })
+        }
+        Some("distro-image-restore") => {
+            Ok(Command::Distro { operation: crate::distro::Operation::ImageRestore })
+        }
+        Some("distro-build") => Ok(Command::Distro { operation: crate::distro::Operation::Build }),
+        Some("distro-sign") => Ok(Command::Distro { operation: crate::distro::Operation::Sign }),
+        Some("distro-sign-ci") => {
+            Ok(Command::Distro { operation: crate::distro::Operation::SignCi })
+        }
+        Some("distro-verify") => {
+            Ok(Command::Distro { operation: crate::distro::Operation::Verify })
+        }
+        Some("distro-upload") => {
+            Ok(Command::Distro { operation: crate::distro::Operation::Upload })
+        }
+        Some("distro-test") => Ok(Command::Distro { operation: crate::distro::Operation::Test }),
         Some("help" | "-h" | "--help") | None => Ok(Command::Help),
         Some(command) => Err(XtaskError::invocation(format!(
             "unknown command `{command}`; run `cargo xtask help` for the supported interface"

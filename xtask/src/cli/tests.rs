@@ -17,6 +17,29 @@ fn unknown_command_has_stable_typed_error() {
 }
 
 #[test]
+fn distribution_commands_select_reviewed_operations_and_reject_extra_arguments() {
+    use crate::distro::Operation;
+
+    for (name, operation) in [
+        ("distro-image", Operation::Image),
+        ("distro-image-save", Operation::ImageSave),
+        ("distro-image-restore", Operation::ImageRestore),
+        ("distro-build", Operation::Build),
+        ("distro-sign", Operation::Sign),
+        ("distro-sign-ci", Operation::SignCi),
+        ("distro-verify", Operation::Verify),
+        ("distro-upload", Operation::Upload),
+        ("distro-test", Operation::Test),
+    ] {
+        assert_eq!(
+            parse([OsString::from(name)]).expect("distribution command"),
+            Command::Distro { operation }
+        );
+        assert!(parse([OsString::from(name), OsString::from("extra")]).is_err());
+    }
+}
+
+#[test]
 fn native_qualification_commands_are_first_class_and_reject_extra_arguments() {
     for (name, expected) in [
         ("product-native-qualification", Command::ProductNativeQualification),

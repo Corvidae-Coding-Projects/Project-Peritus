@@ -13,9 +13,9 @@ categories = ["development-tools", "network-programming"]
 
 [dependencies]
 base64.workspace = true
-peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
-peritus-sandbox = { version = "=0.0.0", path = "../peritus-sandbox" }
-peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+peritus-codec = { version = "=0.0.1", path = "../../foundation/peritus-codec" }
+peritus-sandbox = { version = "=0.0.1", path = "../peritus-sandbox" }
+peritus-types = { version = "=0.0.1", path = "../../foundation/peritus-types" }
 vstd.workspace = true
 zeroize.workspace = true
 

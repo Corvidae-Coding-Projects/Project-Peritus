@@ -12,15 +12,15 @@ keywords = ["agents", "protocol", "ipc", "formal-verification"]
 categories = ["development-tools"]
 
 [dependencies]
-peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
-peritus-protocol = { version = "=0.0.0", path = "../../foundation/peritus-protocol" }
-peritus-run-settlement = { version = "=0.0.0", path = "../../orchestration/peritus-run-settlement" }
-peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+peritus-codec = { version = "=0.0.1", path = "../../foundation/peritus-codec" }
+peritus-protocol = { version = "=0.0.1", path = "../../foundation/peritus-protocol" }
+peritus-run-settlement = { version = "=0.0.1", path = "../../orchestration/peritus-run-settlement" }
+peritus-types = { version = "=0.0.1", path = "../../foundation/peritus-types" }
 vstd.workspace = true
 
 [dev-dependencies]
-peritus-conformance = { version = "=0.0.0", path = "../testing/peritus-conformance" }
-peritus-test-support = { version = "=0.0.0", path = "../testing/peritus-test-support" }
+peritus-conformance = { version = "=0.0.1", path = "../testing/peritus-conformance" }
+peritus-test-support = { version = "=0.0.1", path = "../testing/peritus-test-support" }
 tempfile.workspace = true
 
 [package.metadata.peritus]

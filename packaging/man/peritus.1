@@ -1,0 +1,49 @@
+.TH PERITUS 1 "September 2026" "Peritus" "User Commands"
+.SH NAME
+peritus \- local-first coding agent with a supervised per-user daemon
+.SH SYNOPSIS
+.B peritus
+.RI [ command " " arguments ]
+.SH DESCRIPTION
+Peritus starts an interactive terminal coding workspace when invoked without a
+command. It discovers or creates per-user application state, starts or reuses its
+matching daemon, and opens the terminal interface. It does not require a system
+service or a root-owned background process.
+.PP
+Use
+.B peritus help
+for the complete command interface and the arguments supported by this version.
+.SH OPTIONS
+.TP
+.B \-\-version
+Print the installed command version.
+.TP
+.B \-\-help
+Print command usage.
+.SH UPDATES
+When installed from a Debian or RPM package, Peritus does not download or install
+self-updates. Install a newer signed package with the system package manager.
+Archive installations have a separate
+.B peritus update
+command and cached startup update checks.
+.SH SECURITY
+Run Peritus as your ordinary login user. Linux task execution requires the
+supported Landlock, seccomp, and user-namespace facilities. Provider credentials
+require an unlocked session credential store. Installing this package does not
+create provider accounts, grant credentials, or disable host security policy.
+.SH FILES
+.TP
+.B /usr/lib/peritus/
+Matching command, daemon, terminal interface, and sandbox-helper binaries.
+.TP
+.B /usr/share/doc/peritus/
+Product documentation; Debian packages also store copyright and license notices here.
+.TP
+.B /usr/share/licenses/peritus/
+Copyright and third-party license notices in RPM installations.
+.SH SEE ALSO
+.BR apt (8),
+.BR dnf (8),
+.BR gpg (1)
+.PP
+https://github.com/Corvidae-Coding-Projects/Project-Peritus

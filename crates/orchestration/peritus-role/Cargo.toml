@@ -10,8 +10,8 @@ publish = false
 readme = "README.md"
 
 [dependencies]
-peritus-policy = { version = "=0.0.0", path = "../../foundation/peritus-policy" }
-peritus-spec = { version = "=0.0.0", path = "../../foundation/peritus-spec" }
+peritus-policy = { version = "=0.0.1", path = "../../foundation/peritus-policy" }
+peritus-spec = { version = "=0.0.1", path = "../../foundation/peritus-spec" }
 vstd.workspace = true
 
 [package.metadata.peritus]

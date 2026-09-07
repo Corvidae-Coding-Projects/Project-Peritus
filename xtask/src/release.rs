@@ -373,7 +373,7 @@ mod tests {
     #[test]
     fn workspace_release_version_is_exact() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().expect("workspace");
-        assert_eq!(workspace_version(root).expect("version"), "0.0.0");
+        assert_eq!(workspace_version(root).expect("version"), env!("CARGO_PKG_VERSION"));
     }
 
     #[test]

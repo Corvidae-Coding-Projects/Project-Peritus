@@ -11,19 +11,22 @@ readme = "README.md"
 keywords = ["agents", "launcher", "developer-tools"]
 categories = ["command-line-utilities", "development-tools"]
 
+[features]
+system-package = []
+
 [dependencies]
 crossterm.workspace = true
 fs4.workspace = true
 futures-util.workspace = true
 getrandom.workspace = true
-peritus-approval = { version = "=0.0.0", path = "../../state/peritus-approval" }
-peritus-daemon = { version = "=0.0.0", path = "../peritus-daemon" }
-peritus-git = { version = "=0.0.0", path = "../../runtime/peritus-git" }
-peritus-provider-onboarding = { version = "=0.0.0", path = "../peritus-provider-onboarding" }
-peritus-product-state = { version = "=0.0.0", path = "../peritus-product-state" }
-peritus-tui = { version = "=0.0.0", path = "../peritus-tui" }
-peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
-peritus-workspace = { version = "=0.0.0", path = "../../runtime/peritus-workspace" }
+peritus-approval = { version = "=0.0.1", path = "../../state/peritus-approval" }
+peritus-daemon = { version = "=0.0.1", path = "../peritus-daemon" }
+peritus-git = { version = "=0.0.1", path = "../../runtime/peritus-git" }
+peritus-provider-onboarding = { version = "=0.0.1", path = "../peritus-provider-onboarding" }
+peritus-product-state = { version = "=0.0.1", path = "../peritus-product-state" }
+peritus-tui = { version = "=0.0.1", path = "../peritus-tui" }
+peritus-types = { version = "=0.0.1", path = "../../foundation/peritus-types" }
+peritus-workspace = { version = "=0.0.1", path = "../../runtime/peritus-workspace" }
 reqwest.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

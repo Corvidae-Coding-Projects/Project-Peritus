@@ -5,7 +5,7 @@ fn complete_release() -> Release {
     Release {
         tag_name: "v1.2.3".to_owned(),
         is_draft: true,
-        assets: expected_assets(true)
+        assets: expected_assets(true, "v1.2.3")
             .into_iter()
             .map(|name| Asset { name, size: 1, state: "uploaded".to_owned() })
             .collect(),
@@ -15,7 +15,7 @@ fn complete_release() -> Release {
 #[test]
 fn publication_requires_every_target_and_evidence_asset() {
     let release = complete_release();
-    assert_eq!(release.assets.len(), 52);
+    assert_eq!(release.assets.len(), 69);
     validate_release(&release, "v1.2.3", true).expect("complete release");
     for index in 0..release.assets.len() {
         let mut missing = complete_release();
@@ -63,6 +63,86 @@ fn workflow(path: &str) -> Yaml {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().expect("workspace");
     let source = fs::read_to_string(root.join(path)).expect("workflow");
     YamlLoader::load_from_str(&source).expect("YAML").remove(0)
+}
+
+#[test]
+fn distribution_matrix_builds_and_signs_each_format_on_each_native_architecture() {
+    let document = workflow(".github/workflows/release.yml");
+    for job in ["distro-image", "distro-build", "distro-sign"] {
+        let definition = &document["jobs"][job];
+        assert_eq!(definition["timeout-minutes"].as_i64(), Some(10));
+        assert_eq!(definition["strategy"]["fail-fast"].as_bool(), Some(false));
+        let rows = definition["strategy"]["matrix"]["include"].as_vec().expect("distro matrix");
+        assert_eq!(rows.len(), 4);
+        for (runner, architecture) in [("ubuntu-24.04", "x86_64"), ("ubuntu-24.04-arm", "aarch64")]
+        {
+            for format in ["deb", "rpm"] {
+                assert_eq!(
+                    rows.iter()
+                        .filter(|row| row["os"].as_str() == Some(runner)
+                            && row["arch"].as_str() == Some(architecture)
+                            && row["format"].as_str() == Some(format))
+                        .count(),
+                    1,
+                    "{job}/{format}/{architecture} must have exactly one native runner"
+                );
+            }
+        }
+    }
+    assert_eq!(document["jobs"]["distro-build"]["needs"].as_str(), Some("distro-image"));
+    let signing = &document["jobs"]["distro-sign"];
+    assert_eq!(signing["environment"].as_str(), Some("release-signing"));
+    let signing_needs = signing["needs"].as_vec().expect("signing dependencies");
+    assert!(signing_needs.iter().any(|value| value.as_str() == Some("distro-build")));
+    let publish_needs =
+        document["jobs"]["publish"]["needs"].as_vec().expect("publish dependencies");
+    assert!(publish_needs.iter().any(|value| value.as_str() == Some("distro-sign")));
+    let commands = signing["steps"]
+        .as_vec()
+        .expect("signing steps")
+        .iter()
+        .filter_map(|step| step["run"].as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        commands,
+        [
+            "cargo run --locked --package xtask -- distro-image-restore",
+            "cargo run --locked --package xtask -- distro-sign-ci",
+            "cargo run --locked --package xtask -- distro-upload",
+        ]
+    );
+}
+
+#[test]
+fn distribution_downloads_cannot_cross_runs_formats_or_architectures() {
+    let document = workflow(".github/workflows/release.yml");
+    for (job, count) in [("distro-build", 1), ("distro-sign", 2)] {
+        let steps = document["jobs"][job]["steps"].as_vec().expect("distribution steps");
+        let downloads = steps
+            .iter()
+            .filter(|step| {
+                step["uses"]
+                    .as_str()
+                    .is_some_and(|value| value.starts_with("actions/download-artifact@"))
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(downloads.len(), count);
+        for download in downloads {
+            let options = &download["with"];
+            assert_eq!(options.as_hash().expect("same-run options").len(), 2);
+            assert!(matches!(
+                options["name"].as_str(),
+                Some(
+                    "distro-image-${{ matrix.format }}-${{ matrix.arch }}"
+                        | "distro-unsigned-${{ matrix.format }}-${{ matrix.arch }}"
+                )
+            ));
+            assert!(matches!(
+                options["path"].as_str(),
+                Some("target" | "dist/packages/${{ matrix.format }}")
+            ));
+        }
+    }
 }
 
 #[test]

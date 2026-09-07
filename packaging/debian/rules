@@ -1,0 +1,40 @@
+#!/usr/bin/make -f
+
+include /usr/share/dpkg/default.mk
+
+export CARGO_HOME = $(CURDIR)/.package-cargo
+export CARGO_NET_OFFLINE = true
+export CARGO_BUILD_JOBS ?= 2
+export CARGO_PROFILE_RELEASE_DEBUG = 2
+export CARGO_PROFILE_RELEASE_STRIP = none
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export RUSTFLAGS = -C link-arg=-Wl,-z,relro,-z,now --remap-path-prefix=$(CURDIR)=/usr/src/peritus
+CARGO = cargo --config .cargo/vendor.toml
+PRODUCTS = -p peritus-cli -p peritus-daemon -p peritus-tui -p peritus-sandbox-linux
+
+%:
+	dh $@
+
+override_dh_auto_configure:
+	rustc --version
+
+override_dh_auto_build:
+	$(CARGO) build --release --frozen $(PRODUCTS) --bins --features peritus-cli/system-package
+
+override_dh_auto_test:
+ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
+	$(CARGO) test --frozen -p peritus-launcher --features system-package update::tests
+	test "$$(target/release/peritus --version)" = "peritus $(DEB_VERSION_UPSTREAM)"
+endif
+
+override_dh_auto_install:
+	install -d debian/peritus/usr/lib/peritus debian/peritus/usr/bin
+	install -m 0755 target/release/peritus target/release/peritusd target/release/peritus-tui target/release/peritus-linux-sandbox-helper debian/peritus/usr/lib/peritus/
+	ln -s ../lib/peritus/peritus debian/peritus/usr/bin/peritus
+
+override_dh_auto_clean:
+	cargo clean
+	rm -rf .package-cargo
+
+override_dh_clean:
+	dh_clean -Xvendor/

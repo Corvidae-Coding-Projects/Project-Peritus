@@ -355,3 +355,25 @@ fn relative_readme_is_resolved_from_absolute_package_manifest_directory() {
     assert!(resolved.is_absolute());
     assert!(resolved.is_file());
 }
+
+#[test]
+fn workspace_release_accepts_matching_versions_and_rejects_package_drift() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().expect("workspace");
+    let policy = crate::metadata::architecture_policy(root).expect("architecture policy");
+    let mut cargo = crate::metadata::cargo_metadata(root).expect("workspace metadata");
+    assert!(super::validate_packages(root, &policy, &cargo).expect("validate packages").is_empty());
+
+    let package = cargo
+        .packages
+        .iter_mut()
+        .find(|package| package.name == "peritus-cli")
+        .expect("CLI workspace package");
+    package.version = "999.0.0".to_owned();
+    let diagnostics = super::validate_packages(root, &policy, &cargo).expect("validate drift");
+    assert_eq!(diagnostics.len(), 1);
+    assert_eq!(
+        diagnostics[0].message(),
+        "package version does not match the workspace release version"
+    );
+    assert_eq!(diagnostics[0].path(), Some(Path::new("crates/app/peritus-cli/Cargo.toml")));
+}

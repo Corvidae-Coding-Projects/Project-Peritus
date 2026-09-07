@@ -13,8 +13,8 @@ readme = "README.md"
 bytes.workspace = true
 futures-core.workspace = true
 futures-util.workspace = true
-peritus-model-protocol = { version = "=0.0.0", path = "../peritus-model-protocol" }
-peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+peritus-model-protocol = { version = "=0.0.1", path = "../peritus-model-protocol" }
+peritus-types = { version = "=0.0.1", path = "../../foundation/peritus-types" }
 reqwest.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
