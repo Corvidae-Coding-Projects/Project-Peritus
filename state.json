@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1258,
+  "next_comment_id": 1259,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T03:35:00.196017997Z",
+      "updated_at": "2026-09-07T03:36:39.477731621Z",
       "labels": [
         "release"
       ],
@@ -1214,6 +1214,15 @@
           "kind": "note",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA5UW8PptdCUuMBOeejwv5GDixp7OH3fd6sKeDmzvKrsPnTeYecTFmvDwSkFxRTBJ/h/MtAQQ9koLLuiw35R+DDQ=="
+        },
+        "08082db3-8fe4-41aa-bc2b-6624f69f6a70": {
+          "display_id": 1258,
+          "author": "QWDj",
+          "content": "Committed de046e732484bb55f00e8781ce17872f4f99625f: independent native binary/assembly axes, full native archive+checksum comparison, actual source/profile/Rust/OS/image/Python/zlib/workflow/invocation observations, and manual validation with draft/signing/upload paths skipped. 316 xtask unit + 7 integration, 13 Python regressions, strict Clippy/policy/fmt/actionlint pass; six-host actual rebuild execution is still pending. Separate H3 fixture repair committed next: unchanged canonical-path encoding guard tested without creating invalid APFS filenames, plus Linux symlink integration. 25 H3 unit + 1 normal integration and all 3 explicit real-daemon NVMe smoke checks pass. Native macOS must verify on the new CI head. No tag or publication, no waived criteria.",
+          "created_at": "2026-09-07T03:36:39.474178434Z",
+          "kind": "result",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIqbYzhB7nLCp3WT2BOSyXnFIe7lEWVIbprrHMribOFAkZ+d2IpCYrW60BRA6rrDiTLyP5BYbSGgcd4XpjfqeCw=="
         },
         "11bf7d75-afd0-496b-8664-ebae5f684a1c": {
           "display_id": 1242,
@@ -12335,8 +12344,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T03:35:00.196017997Z",
+    "timestamp": "2026-09-07T03:36:39.477731621Z",
     "agent_id": "QWDj",
-    "agent_seq": 30
+    "agent_seq": 31
   }
 }
