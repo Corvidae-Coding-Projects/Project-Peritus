@@ -36,7 +36,8 @@ class NativeEvidenceTests(unittest.TestCase):
         binary.write_bytes(payload)
         name = "peritus-macos-x86_64.tar.gz"
         archive.archive_tree(loose, directory / name, 1)
-        (directory / (name + ".sha256")).write_text(rebuild.digest(directory / name) + "\n")
+        (directory / (name + ".sha256")).write_bytes(
+            rebuild.digest(directory / name).encode("ascii") + b"\n")
         package = {"schema_version": 1, "archive": "dist/" + name,
                    "checksum": "dist/" + name + ".sha256",
                    "build_started_unix": 1, "build_finished_unix": 2}
@@ -63,6 +64,24 @@ class NativeEvidenceTests(unittest.TestCase):
         evidence.write_text(json.dumps(record))
         return directory, evidence, record
 
+    def test_checksum_fixture_is_byte_exact_under_windows_text_translation(self):
+        write_text = Path.write_text
+
+        def windows_text(path, data, **options):
+            options.setdefault("newline", "\r\n")
+            return write_text(path, data, **options)
+
+        with patch.object(Path, "write_text", windows_text):
+            directory, _, _ = self.fixture()
+        name = "peritus-macos-x86_64.tar.gz"
+        checksum = directory / (name + ".sha256")
+        expected = rebuild.digest(directory / name).encode("ascii") + b"\n"
+        self.assertEqual(checksum.read_bytes(), expected)
+        rebuild.outputs(directory)
+        checksum.write_bytes(expected[:-1] + b"\r\n")
+        with self.assertRaisesRegex(ValueError, "native output checksum mismatch"):
+            rebuild.outputs(directory)
+
     def test_real_compilation_observations_are_retained_and_revalidated(self):
         directory, _, record = self.fixture()
         rebuild.record(directory, "primary")
@@ -82,6 +101,8 @@ class NativeEvidenceTests(unittest.TestCase):
 
     def test_missing_cross_role_changed_environment_or_wrong_bytes_cannot_be_recorded(self):
         directory, evidence, record = self.fixture()
+        package, _ = rebuild.outputs(directory)
+        self.assertEqual(rebuild.daemon_compilation(directory, package, "primary"), record)
         for fault in ("missing", "role", "environment", "bytes", "workflow"):
             changed = copy.deepcopy(record)
             if fault == "role":
