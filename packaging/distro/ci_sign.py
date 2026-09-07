@@ -2,11 +2,25 @@
 
 import os
 from pathlib import Path
+import re
 import subprocess
 import tempfile
 
 from common import run, version
 from sign import fingerprint, sign
+
+
+def seed_restricted_cache(key, passphrase):
+    """The extra socket has a separate cache; a normal loopback signature does not seed it."""
+    metadata = run("gpg", "--batch", "--with-colons", "--with-keygrip",
+                   "--list-secret-keys", key, capture=True)
+    grips = {line.split(":")[9] for line in metadata.splitlines() if line.startswith("grp:")}
+    if not grips or any(not re.fullmatch(r"[A-F0-9]{40}", grip) for grip in grips):
+        raise ValueError("CI signing key has no valid agent keygrips")
+    preset = Path(run("gpgconf", "--list-dirs", "libexecdir", capture=True)) / "gpg-preset-passphrase"
+    for grip in sorted(grips):
+        # Send only over stdin to the host agent. Neither argv nor the container gets the password.
+        run(preset, "--preset", "--restricted", grip, input=passphrase + "\n")
 
 
 def sign_ci():
@@ -23,6 +37,9 @@ def sign_ci():
     previous = os.environ.get("GNUPGHOME")
     with tempfile.TemporaryDirectory(prefix="peritus-ci-signing-") as temporary:
         home = Path(temporary)
+        # This configuration belongs only to this disposable CI agent, never the user's agent.
+        # Pinentry is unavailable on hosted runners; an unexpected prompt must fail immediately.
+        (home / "gpg-agent.conf").write_text("allow-preset-passphrase\npinentry-program /bin/false\n")
         os.environ["GNUPGHOME"] = str(home)
         try:
             imported = subprocess.run(["gpg", "--batch", "--import"], text=True, input=secret,
@@ -37,11 +54,14 @@ def sign_ci():
             run("gpg", "--batch", "--local-user", key, "--pinentry-mode", "loopback",
                 "--passphrase-fd", "0", "--output", home / "agent-check.sig",
                 "--detach-sign", primer, input=passphrase + "\n")
+            seed_restricted_cache(key, passphrase)
             passphrase = ""
             sign()
         finally:
-            run("gpgconf", "--kill", "gpg-agent")
-            if previous is None:
-                os.environ.pop("GNUPGHOME", None)
-            else:
-                os.environ["GNUPGHOME"] = previous
+            try:
+                run("gpgconf", "--kill", "gpg-agent")
+            finally:
+                if previous is None:
+                    os.environ.pop("GNUPGHOME", None)
+                else:
+                    os.environ["GNUPGHOME"] = previous
