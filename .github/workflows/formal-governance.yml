@@ -148,6 +148,9 @@ jobs:
           - { os: macos-15, operation: test-runner-product, shard: app-runner }
           - { os: windows-2025, operation: test-runner-recovery, shard: app-runner }
           - { os: windows-2025, operation: test-runner-product, shard: app-runner }
+          - { os: ubuntu-24.04, operation: test-daemon, shard: app-shell }
+          - { os: macos-15, operation: test-daemon, shard: app-shell }
+          - { os: windows-2025, operation: test-daemon, shard: app-shell }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
