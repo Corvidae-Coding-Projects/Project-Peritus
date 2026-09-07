@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1234,
+  "next_comment_id": 1235,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,11 +1192,20 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T00:52:12.236367774Z",
+      "updated_at": "2026-09-07T00:52:17.364529150Z",
       "labels": [
         "release"
       ],
       "comments": {
+        "4828d1d4-cb47-465b-9656-86e8f250a081": {
+          "display_id": 1234,
+          "author": "QWDj",
+          "content": "Prepared real Debian/RPM source, binary and debug packaging with native signatures; local 0.0.0 qualification passed both distributions including tamper rejection and installation/removal. Owner selected 0.0.1 and Laurelai <dollspacegay@gmail.com>. Protected release-signing environment is tag-only with required dollspace-gay reviewer and explicitly authorized self-review; key/passphrase provisioned and isolated import/signing verified. No release tag, publication or H4 pass is claimed.",
+          "created_at": "2026-09-07T00:52:17.361229470Z",
+          "kind": "decision",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIvvdFRPkMATD78ps6OrUowcyY1hHq5E61vNulBZPUQW8AdQoGcpWzMlEYK81CQUBMUrrKPjROjmWu/ugBGcxDw=="
+        },
         "af3aabb4-4641-4686-94fc-19a1e1b1ae31": {
           "display_id": 1233,
           "author": "QWDj",
@@ -12119,8 +12128,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T00:52:12.236367774Z",
+    "timestamp": "2026-09-07T00:52:17.364529150Z",
     "agent_id": "QWDj",
-    "agent_seq": 4
+    "agent_seq": 5
   }
 }
