@@ -374,6 +374,40 @@ The startup route includes two genuine guest-kernel boot identity transitions.
 The host was not rebooted, and the earlier failed guest probes remain failures.
 This preparation does not replace the final candidate's full 43-case H1 campaign.
 
+### Abrupt virtual-machine power loss
+
+The earlier guest diagnostics invoked `sync` before a forced guest reboot. They
+prove kernel restart and reconciliation, not recovery from abrupt power loss.
+The controller now force-terminates and reaps its owned QEMU process without
+running a guest sync, shutdown, or QEMU flush command, then starts a new process
+with the same copy-on-write disk overlay. The virtual disk uses `cache=none`:
+direct host I/O with guest flushes honored, not unsafe flush suppression. Only
+fixture installation is synchronized, before any candidate checkpoint runs.
+
+Each reboot route retains the terminated/restarted QEMU process identities, the
+observed forced-exit status, disk cache mode, and distinct guest kernel boot IDs.
+The startup-reconciliation route requires a second abrupt power cycle before
+acknowledgement. Console output shares one retained handle across these boots.
+An already exited guest, an unexpected termination status, failed relaunch, or
+unchanged kernel identity cannot yield a passing observation.
+
+This simulates loss of the virtual machine's volatile state. It is not a claim
+that the physical host or storage controller lost power. A complete pre-freeze
+campaign using the GNU daemon and Debian image above passed all 43 cases,
+including four observed QEMU SIGKILL/restart transitions across the three reboot
+routes. The report is retained at
+`/home/doll/.local/state/peritus/qualification/h1/prefreeze-power-cut-full.RAbOgl/report.json`,
+SHA-256 `12b6eb6951b895c26b201f46461ced3ed29e6996bab2c4475c953878c67fb9f1`.
+All 258 report-referenced raw evidence digests matched their retained files;
+all 43 cleanup receipts reported released resources and zero owned work, with
+empty scratch and no remaining campaign or QEMU processes. The observed
+controller SHA-256 was
+`924c9f9147563af8f13f93299346f3dc2dbe51779028fef3a6543d1c29e09e64`.
+
+These observations validate the adapter repair, not a final merged release.
+The final candidate-bound H1 campaign remains required; process-ownership unit
+tests alone cannot replace its native execution.
+
 The release integration owner must:
 
 1. build and independently review the platform controller executable used by the standard native

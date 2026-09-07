@@ -200,7 +200,11 @@ The harness-promotion evidence diagnostic is `h1.corruption.harness-promotion`.
 The dependency-death diagnostics are `h1.death.provider`, `h1.death.tool`, and
 `h1.death.worker`. The exhaustion diagnostics are `h1.retry-exhaustion.provider`,
 `h1.retry-exhaustion.tool`, and `h1.retry-exhaustion.worker`.
-The reboot diagnostics are `h1.reboot.outstanding-effect`,
+The reboot diagnostics use abrupt owned-QEMU termination and restart on the same
+disk overlay, without synchronizing candidate state before the cut. They record
+forced process exit and changed guest kernel boot identity; this is virtual-machine
+power-loss simulation, not physical-host power interruption. The diagnostic IDs are
+`h1.reboot.outstanding-effect`,
 `h1.reboot.durable-before-ack`, and `h1.reboot.startup-reconciliation`. They require
 `--reboot-image` and a candidate executable that can run in the selected guest; the Alpine image
 uses the `x86_64-unknown-linux-musl` release build. The host must provide

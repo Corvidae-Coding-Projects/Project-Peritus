@@ -3,6 +3,7 @@
 mod guest;
 mod media;
 mod parse;
+mod power;
 
 use std::fs;
 use std::time::Instant;
@@ -29,6 +30,8 @@ struct RebootHistory {
     recovery_boot_id: String,
     initial_stage_sha256: String,
     reconciliation_stage_sha256: Option<String>,
+    first_power_cut: String,
+    second_power_cut: Option<String>,
 }
 
 pub(super) fn prepare(
@@ -82,9 +85,11 @@ pub(super) fn inject(
     } else {
         None
     };
-    let (_, first_boot_id) = runtime.guest.reboot()?;
+    let (first_boot_id, first_cut) = runtime.guest.power_cycle()?;
+    let first_power_cut = first_cut.observation();
     let mut recovery_boot_id = first_boot_id.clone();
     let mut reconciliation_stage_sha256 = None;
+    let mut second_power_cut = None;
     let (effect_path, claim_fence) = if phase == RebootPhase::StartupReconciliation {
         let line = runtime.guest.start_checkpoint("qualify-reboot-startup-reconciliation-stage")?;
         let reconciliation = parse::stage(&line, phase, true)?;
@@ -96,7 +101,8 @@ pub(super) fn inject(
         }
         effect = Some(runtime.guest.file(&reconciliation.effect_path)?);
         reconciliation_stage_sha256 = Some(bytes_sha256(line.as_bytes()));
-        let (_, second_boot_id) = runtime.guest.reboot()?;
+        let (second_boot_id, second_cut) = runtime.guest.power_cycle()?;
+        second_power_cut = Some(second_cut.observation());
         recovery_boot_id = second_boot_id;
         (reconciliation.effect_path, reconciliation.claim_fence)
     } else {
@@ -104,7 +110,7 @@ pub(super) fn inject(
     };
     let initial_stage_sha256 = bytes_sha256(initial_stage.as_bytes());
     let checkpoint = format!(
-        "peritus-h1-host-reboot phase={} image_sha256={} candidate_sha256={} request_sha256={} initial_boot_id={} first_boot_id={} recovery_boot_id={} initial_stage_sha256={} reconciliation_stage_sha256={}",
+        "peritus-h1-host-reboot phase={} image_sha256={} candidate_sha256={} request_sha256={} initial_boot_id={} first_boot_id={} recovery_boot_id={} initial_stage_sha256={} reconciliation_stage_sha256={} fault=qemu-process-power-cut disk_cache=none first_power_cut={} second_power_cut={}",
         phase.code(),
         runtime.image_sha256,
         runtime.candidate_sha256,
@@ -114,6 +120,8 @@ pub(super) fn inject(
         recovery_boot_id,
         initial_stage_sha256,
         reconciliation_stage_sha256.as_deref().unwrap_or("none"),
+        first_power_cut,
+        second_power_cut.as_deref().unwrap_or("none"),
     );
     runtime.history = Some(RebootHistory {
         phase,
@@ -122,6 +130,8 @@ pub(super) fn inject(
         recovery_boot_id,
         initial_stage_sha256,
         reconciliation_stage_sha256,
+        first_power_cut,
+        second_power_cut,
     });
     Ok(InjectedCandidate {
         checkpoint,
@@ -138,7 +148,7 @@ pub(super) fn inject(
         gate: None,
         promotion: None,
         projection: None,
-        fault_process_exit: "disposable-guest-kernel-rebooted".to_owned(),
+        fault_process_exit: "owned-qemu-force-terminated-reaped-and-restarted".to_owned(),
     })
 }
 
@@ -165,12 +175,14 @@ pub(super) fn recover(
     }
     let journal = runtime.guest.file(JOURNAL)?;
     let observation = format!(
-        "{line} initial_boot_id={} first_boot_id={} recovery_boot_id={} initial_stage_sha256={} reconciliation_stage_sha256={}",
+        "{line} initial_boot_id={} first_boot_id={} recovery_boot_id={} initial_stage_sha256={} reconciliation_stage_sha256={} fault=qemu-process-power-cut disk_cache=none first_power_cut={} second_power_cut={}",
         history.initial_boot_id,
         history.first_boot_id,
         history.recovery_boot_id,
         history.initial_stage_sha256,
         history.reconciliation_stage_sha256.as_deref().unwrap_or("none"),
+        history.first_power_cut,
+        history.second_power_cut.as_deref().unwrap_or("none"),
     );
     Ok(RecoveredCandidate {
         observation,
