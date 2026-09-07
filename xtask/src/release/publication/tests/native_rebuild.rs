@@ -76,7 +76,9 @@ fn independent_build_is_a_real_cartesian_axis_for_every_native_binary_and_archiv
     let upload = build.last().expect("binary upload");
     assert_eq!(
         upload["with"]["name"].as_str(),
-        Some("release-bin-${{ matrix.build }}-${{ matrix.target.os }}-${{ matrix.target.binary }}")
+        Some(
+            "release-bin-${{ matrix.build }}-${{ matrix.target.os }}--${{ matrix.target.binary }}"
+        )
     );
     let assemble = document["jobs"]["assemble"]["steps"].as_vec().expect("assembly steps");
     let download = assemble
@@ -89,7 +91,7 @@ fn independent_build_is_a_real_cartesian_axis_for_every_native_binary_and_archiv
         .expect("binaries");
     assert_eq!(
         download["with"]["pattern"].as_str(),
-        Some("release-bin-${{ matrix.build }}-${{ matrix.os }}-*")
+        Some("release-bin-${{ matrix.build }}-${{ matrix.os }}--*")
     );
     assert_eq!(download["with"].as_hash().expect("same-run options").len(), 3);
     assert_eq!(

@@ -73,8 +73,13 @@ staging check is distinct from development CI's debug-package qualification and
 does not itself supply H4 signatures, independent reviews, or publication approval.
 
 Native archive builds use separate `primary` and `independent` jobs for every
-binary and assembly, with no shared compiled artifacts or build cache. A retained
-assembly observation records the exact source-tree hash, release profile, Rust
+binary and assembly, with no shared compiled artifacts or build cache. Each
+binary, qualification-tool, and compilation-record artifact separates its complete
+runner label from the binary name with `--`. Download patterns preserve this
+boundary, so `ubuntu-24.04` cannot select `ubuntu-24.04-arm` outputs and `macos-15`
+cannot select `macos-15-intel` outputs. Workflow regressions expand the actual
+producer and consumer templates and check each native platform and build role.
+A retained assembly observation records the exact source-tree hash, release profile, Rust
 identity, native OS/image revision, Python/zlib identity, workflow identity, and
 real invocation/time observations. The comparison admits the complete native
 primary inventory (archive plus checksum), checks those observed inputs for

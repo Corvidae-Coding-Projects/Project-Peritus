@@ -109,7 +109,7 @@ jobs:
       - name: Retain native qualification tool
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: release-h2-tool-${{ matrix.os }}-${{ matrix.binary }}
+          name: release-h2-tool-${{ matrix.os }}--${{ matrix.binary }}
           path: target/debug/${{ matrix.binary }}${{ runner.os == 'Windows' && '.exe' || '' }}
           if-no-files-found: error
           retention-days: 30
@@ -138,7 +138,7 @@ jobs:
       - name: Restore this host's qualification tools
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          pattern: release-h2-tool-${{ matrix.os }}-*
+          pattern: release-h2-tool-${{ matrix.os }}--*
           path: target/debug
           merge-multiple: true
       - name: Verify and unpack the staged archive without building product binaries
@@ -295,14 +295,14 @@ jobs:
         if: ${{ matrix.target.os == 'macos-15-intel' && (matrix.target.binary == 'peritusd' || matrix.target.binary == 'peritus') }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: release-compile-${{ matrix.build }}-${{ matrix.target.os }}-${{ matrix.target.binary }}
+          name: release-compile-${{ matrix.build }}-${{ matrix.target.os }}--${{ matrix.target.binary }}
           path: target/native-${{ matrix.target.binary }}-build.json
           if-no-files-found: error
           retention-days: 30
       - name: Retain one release binary
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: release-bin-${{ matrix.build }}-${{ matrix.target.os }}-${{ matrix.target.binary }}
+          name: release-bin-${{ matrix.build }}-${{ matrix.target.os }}--${{ matrix.target.binary }}
           path: target/release/${{ matrix.target.artifact }}
           if-no-files-found: error
           retention-days: 30
@@ -329,7 +329,7 @@ jobs:
       - name: Restore this host's release binaries
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          pattern: release-bin-${{ matrix.build }}-${{ matrix.os }}-*
+          pattern: release-bin-${{ matrix.build }}-${{ matrix.os }}--*
           path: target/release
           merge-multiple: true
       - name: Assemble, archive, checksum, and record native package
@@ -338,7 +338,7 @@ jobs:
         if: ${{ matrix.os == 'macos-15-intel' }}
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          pattern: release-compile-${{ matrix.build }}-${{ matrix.os }}-*
+          pattern: release-compile-${{ matrix.build }}-${{ matrix.os }}--*
           path: target/native-compile-record
           merge-multiple: true
       - name: Retain exact source, toolchain, platform, and assembly observations

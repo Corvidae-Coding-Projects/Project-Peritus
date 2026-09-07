@@ -4,6 +4,7 @@ use yaml_rust2::{Yaml, YamlLoader};
 mod distribution;
 mod native_compilation;
 mod native_rebuild;
+mod native_routing;
 mod release_qualification;
 
 fn complete_release() -> Release {

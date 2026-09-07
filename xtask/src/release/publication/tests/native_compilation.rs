@@ -86,7 +86,7 @@ fn every_binary_keeps_its_native_command_or_uses_only_its_verified_daemon_librar
     assert_eq!(
         evidence["with"]["name"].as_str(),
         Some(
-            "release-compile-${{ matrix.build }}-${{ matrix.target.os }}-${{ matrix.target.binary }}"
+            "release-compile-${{ matrix.build }}-${{ matrix.target.os }}--${{ matrix.target.binary }}"
         )
     );
     assert_eq!(evidence["with"]["if-no-files-found"].as_str(), Some("error"));
@@ -99,7 +99,7 @@ fn every_binary_keeps_its_native_command_or_uses_only_its_verified_daemon_librar
     assert_eq!(download["with"].as_hash().expect("same-run evidence").len(), 3);
     assert_eq!(
         download["with"]["pattern"].as_str(),
-        Some("release-compile-${{ matrix.build }}-${{ matrix.os }}-*")
+        Some("release-compile-${{ matrix.build }}-${{ matrix.os }}--*")
     );
     assert_eq!(download["with"]["merge-multiple"].as_bool(), Some(true));
 }
