@@ -63,14 +63,14 @@ fn independent_build_is_a_real_cartesian_axis_for_every_native_binary_and_archiv
     let download = downloads[0];
     assert_eq!(
         download["if"].as_str(),
-        Some("${{ matrix.target.os == 'macos-15-intel' && matrix.target.binary == 'peritusd' }}")
+        Some(
+            "${{ matrix.target.os == 'macos-15-intel' && (matrix.target.binary == 'peritusd' || matrix.target.binary == 'peritus') }}"
+        )
     );
     assert_eq!(download["with"].as_hash().expect("same-run library inputs").len(), 2);
     assert_eq!(
         download["with"]["name"].as_str(),
-        Some(
-            "release-libraries-${{ matrix.build }}-${{ matrix.target.os }}-${{ matrix.target.binary }}"
-        )
+        Some("release-libraries-${{ matrix.build }}-${{ matrix.target.os }}-peritusd")
     );
     assert_eq!(download["with"]["path"].as_str(), Some("target/native-daemon-libraries"));
     let upload = build.last().expect("binary upload");

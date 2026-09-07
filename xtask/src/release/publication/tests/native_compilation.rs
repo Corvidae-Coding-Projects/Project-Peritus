@@ -1,9 +1,27 @@
-//! The native daemon library handoff must preserve independent compilation and evidence.
+//! The native library handoff must preserve each consumer and independent compilation.
 
 use super::*;
 
 const DAEMON: &str =
     "${{ matrix.target.os == 'macos-15-intel' && matrix.target.binary == 'peritusd' }}";
+const CONSUMERS: &str = "${{ matrix.target.os == 'macos-15-intel' && (matrix.target.binary == 'peritusd' || matrix.target.binary == 'peritus') }}";
+
+#[test]
+fn intel_cli_has_a_reviewed_same_role_library_consumer() {
+    let document = workflow(".github/workflows/release.yml");
+    let steps = document["jobs"]["build-binary"]["steps"].as_vec().expect("binary steps");
+    let consumer = steps
+        .iter()
+        .find(|step| {
+            step["run"].as_str() == Some("cargo run --locked --package xtask -- release-cli-binary")
+        })
+        .expect("CLI must consume the verified libraries instead of a cold oversized build");
+    assert_eq!(
+        consumer["if"].as_str(),
+        Some("${{ matrix.target.os == 'macos-15-intel' && matrix.target.binary == 'peritus' }}")
+    );
+    assert_eq!(consumer["env"]["PERITUS_RELEASE_BUILD_ROLE"].as_str(), Some("${{ matrix.build }}"));
+}
 
 #[test]
 fn native_library_producers_are_independent_fresh_and_scoped_to_intel_macos() {
@@ -45,10 +63,12 @@ fn every_binary_keeps_its_native_command_or_uses_only_its_verified_daemon_librar
     let document = workflow(".github/workflows/release.yml");
     let steps = document["jobs"]["build-binary"]["steps"].as_vec().expect("binary steps");
     let commands = steps.iter().filter(|step| step["run"].as_str().is_some()).collect::<Vec<_>>();
-    assert_eq!(commands.len(), 2);
+    assert_eq!(commands.len(), 3);
     assert_eq!(
         commands[0]["if"].as_str(),
-        Some("${{ matrix.target.os != 'macos-15-intel' || matrix.target.binary != 'peritusd' }}")
+        Some(
+            "${{ matrix.target.os != 'macos-15-intel' || (matrix.target.binary != 'peritusd' && matrix.target.binary != 'peritus') }}"
+        )
     );
     assert_eq!(commands[1]["if"].as_str(), Some(DAEMON));
     assert_eq!(
@@ -57,9 +77,12 @@ fn every_binary_keeps_its_native_command_or_uses_only_its_verified_daemon_librar
     );
     let evidence = steps
         .iter()
-        .find(|step| step["with"]["path"].as_str() == Some("target/native-daemon-build.json"))
+        .find(|step| {
+            step["with"]["path"].as_str()
+                == Some("target/native-${{ matrix.target.binary }}-build.json")
+        })
         .expect("producer evidence");
-    assert_eq!(evidence["if"].as_str(), Some(DAEMON));
+    assert_eq!(evidence["if"].as_str(), Some(CONSUMERS));
     assert_eq!(
         evidence["with"]["name"].as_str(),
         Some(
@@ -73,9 +96,10 @@ fn every_binary_keeps_its_native_command_or_uses_only_its_verified_daemon_librar
         .find(|step| step["with"]["path"].as_str() == Some("target/native-compile-record"))
         .expect("assembly evidence");
     assert_eq!(download["if"].as_str(), Some("${{ matrix.os == 'macos-15-intel' }}"));
-    assert_eq!(download["with"].as_hash().expect("same-run evidence").len(), 2);
+    assert_eq!(download["with"].as_hash().expect("same-run evidence").len(), 3);
     assert_eq!(
-        download["with"]["name"].as_str(),
-        Some("release-compile-${{ matrix.build }}-${{ matrix.os }}-peritusd")
+        download["with"]["pattern"].as_str(),
+        Some("release-compile-${{ matrix.build }}-${{ matrix.os }}-*")
     );
+    assert_eq!(download["with"]["merge-multiple"].as_bool(), Some(true));
 }

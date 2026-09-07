@@ -88,7 +88,8 @@ fn release_build_capacity_is_scoped_without_loosening_profiles_or_deadlines() {
         commands,
         [
             "cargo build --release --locked --package ${{ matrix.target.package }} --bin ${{ matrix.target.binary }}",
-            "cargo run --locked --package xtask -- release-daemon-binary"
+            "cargo run --locked --package xtask -- release-daemon-binary",
+            "cargo run --locked --package xtask -- release-cli-binary"
         ]
     );
 }

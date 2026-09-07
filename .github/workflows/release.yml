@@ -271,27 +271,32 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - name: Build one release binary
-        if: ${{ matrix.target.os != 'macos-15-intel' || matrix.target.binary != 'peritusd' }}
+        if: ${{ matrix.target.os != 'macos-15-intel' || (matrix.target.binary != 'peritusd' && matrix.target.binary != 'peritus') }}
         run: >-
           cargo build --release --locked --package ${{ matrix.target.package }}
           --bin ${{ matrix.target.binary }}
       - name: Restore only this same-run build role's native daemon libraries
-        if: ${{ matrix.target.os == 'macos-15-intel' && matrix.target.binary == 'peritusd' }}
+        if: ${{ matrix.target.os == 'macos-15-intel' && (matrix.target.binary == 'peritusd' || matrix.target.binary == 'peritus') }}
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          name: release-libraries-${{ matrix.build }}-${{ matrix.target.os }}-${{ matrix.target.binary }}
+          name: release-libraries-${{ matrix.build }}-${{ matrix.target.os }}-peritusd
           path: target/native-daemon-libraries
       - name: Verify native library inputs and compile the final daemon binary
         if: ${{ matrix.target.os == 'macos-15-intel' && matrix.target.binary == 'peritusd' }}
         env:
           PERITUS_RELEASE_BUILD_ROLE: ${{ matrix.build }}
         run: cargo run --locked --package xtask -- release-daemon-binary
+      - name: Verify native library inputs and compile the CLI with its own dependency features
+        if: ${{ matrix.target.os == 'macos-15-intel' && matrix.target.binary == 'peritus' }}
+        env:
+          PERITUS_RELEASE_BUILD_ROLE: ${{ matrix.build }}
+        run: cargo run --locked --package xtask -- release-cli-binary
       - name: Retain actual library and binary compilation observations
-        if: ${{ matrix.target.os == 'macos-15-intel' && matrix.target.binary == 'peritusd' }}
+        if: ${{ matrix.target.os == 'macos-15-intel' && (matrix.target.binary == 'peritusd' || matrix.target.binary == 'peritus') }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-compile-${{ matrix.build }}-${{ matrix.target.os }}-${{ matrix.target.binary }}
-          path: target/native-daemon-build.json
+          path: target/native-${{ matrix.target.binary }}-build.json
           if-no-files-found: error
           retention-days: 30
       - name: Retain one release binary
@@ -329,12 +334,13 @@ jobs:
           merge-multiple: true
       - name: Assemble, archive, checksum, and record native package
         run: cargo run --locked --package xtask -- release-package-assemble
-      - name: Restore the matching daemon compilation evidence for native assembly
+      - name: Restore both matching CLI and daemon compilation records for native assembly
         if: ${{ matrix.os == 'macos-15-intel' }}
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          name: release-compile-${{ matrix.build }}-${{ matrix.os }}-peritusd
+          pattern: release-compile-${{ matrix.build }}-${{ matrix.os }}-*
           path: target/native-compile-record
+          merge-multiple: true
       - name: Retain exact source, toolchain, platform, and assembly observations
         env:
           PERITUS_RELEASE_BUILD_ROLE: ${{ matrix.build }}

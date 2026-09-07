@@ -9,7 +9,8 @@ pub(crate) enum Operation {
     Record,
     Compare,
     Library,
-    Binary,
+    DaemonBinary,
+    CliBinary,
 }
 
 impl Operation {
@@ -18,7 +19,8 @@ impl Operation {
             "release-rebuild-record" => Some(Self::Record),
             "release-rebuild-compare" => Some(Self::Compare),
             "release-daemon-library" => Some(Self::Library),
-            "release-daemon-binary" => Some(Self::Binary),
+            "release-daemon-binary" => Some(Self::DaemonBinary),
+            "release-cli-binary" => Some(Self::CliBinary),
             _ => None,
         }
     }
@@ -40,11 +42,13 @@ pub(crate) fn run(root: &Path, operation: Operation) -> Result<(), XtaskError> {
 
 fn command(root: &Path, operation: Operation, role: Option<&str>) -> Result<Command, XtaskError> {
     let mut command = Command::new(if cfg!(windows) { "python" } else { "python3" });
-    let script = if matches!(operation, Operation::Library | Operation::Binary) {
-        "packaging/native_build.py"
-    } else {
-        "packaging/rebuild.py"
-    };
+    let script =
+        if matches!(operation, Operation::Library | Operation::DaemonBinary | Operation::CliBinary)
+        {
+            "packaging/native_build.py"
+        } else {
+            "packaging/rebuild.py"
+        };
     command.current_dir(root).arg(root.join(script));
     match operation {
         Operation::Record => {
@@ -58,9 +62,14 @@ fn command(root: &Path, operation: Operation, role: Option<&str>) -> Result<Comm
                 "target/native-rebuild/report.json",
             ]);
         }
-        Operation::Library | Operation::Binary => {
+        Operation::Library => {
             command.env("PERITUS_RELEASE_BUILD_ROLE", require_role(role)?);
-            command.arg(if operation == Operation::Library { "library" } else { "binary" });
+            command.arg("library");
+        }
+        Operation::DaemonBinary | Operation::CliBinary => {
+            let binary = if operation == Operation::DaemonBinary { "peritusd" } else { "peritus" };
+            command.env("PERITUS_RELEASE_BUILD_ROLE", require_role(role)?);
+            command.args(["binary", binary]);
         }
     }
     Ok(command)
@@ -79,7 +88,12 @@ mod tests {
     fn roles_are_closed_and_commands_do_not_invoke_a_shell_or_product_build() {
         let root = Path::new(".");
         for role in [None, Some(""), Some("other"), Some("primary; exit 0")] {
-            for operation in [Operation::Record, Operation::Library, Operation::Binary] {
+            for operation in [
+                Operation::Record,
+                Operation::Library,
+                Operation::DaemonBinary,
+                Operation::CliBinary,
+            ] {
                 assert!(command(root, operation, role).is_err());
             }
         }
@@ -100,13 +114,17 @@ mod tests {
     }
 
     #[test]
-    fn native_daemon_phases_select_only_the_reviewed_compiler_entry_point() {
-        for (operation, phase) in [(Operation::Library, "library"), (Operation::Binary, "binary")] {
+    fn native_phases_select_only_the_reviewed_compiler_and_binary() {
+        for (operation, arguments) in [
+            (Operation::Library, vec!["library"]),
+            (Operation::DaemonBinary, vec!["binary", "peritusd"]),
+            (Operation::CliBinary, vec!["binary", "peritus"]),
+        ] {
             for role in ["primary", "independent"] {
                 let command = command(Path::new("."), operation, Some(role)).expect("phase");
                 let script = Path::new(".").join("packaging/native_build.py");
                 assert_eq!(command.get_args().next(), Some(script.as_os_str()));
-                assert_eq!(command.get_args().skip(1).collect::<Vec<_>>(), [phase]);
+                assert_eq!(command.get_args().skip(1).collect::<Vec<_>>(), arguments);
                 assert!(command.get_envs().any(|(name, value)| {
                     name == "PERITUS_RELEASE_BUILD_ROLE" && value == Some(role.as_ref())
                 }));

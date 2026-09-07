@@ -31,7 +31,8 @@ fn native_rebuild_commands_select_exact_operations() {
         ("release-rebuild-record", Operation::Record),
         ("release-rebuild-compare", Operation::Compare),
         ("release-daemon-library", Operation::Library),
-        ("release-daemon-binary", Operation::Binary),
+        ("release-daemon-binary", Operation::DaemonBinary),
+        ("release-cli-binary", Operation::CliBinary),
     ] {
         assert_eq!(
             parse([OsString::from(name)]).expect("rebuild command"),

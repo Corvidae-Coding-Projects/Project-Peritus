@@ -1,4 +1,4 @@
-"""Observed inputs for the same-run native daemon compilation boundary."""
+"""Observed inputs for native daemon libraries and their same-run binary consumers."""
 
 import json
 import os
@@ -10,7 +10,7 @@ import time
 import tomllib
 import uuid
 
-from native_transport import digest, validate_observation, validate_record
+from native_transport import binary_package, digest, validate_observation, validate_record
 
 ROOT = Path(__file__).resolve().parent.parent
 ROLE_ENV = "PERITUS_RELEASE_BUILD_ROLE"
@@ -83,7 +83,8 @@ def environment():
     return result
 
 
-def binding():
+def binding(binary="peritusd"):
+    package = binary_package(binary)
     role = os.environ.get(ROLE_ENV)
     if role not in ("primary", "independent"):
         raise ValueError("native release build role must be primary or independent")
@@ -93,7 +94,12 @@ def binding():
         if not all(workflow.values()):
             raise ValueError("native compilation requires a complete same-run workflow binding")
     return {"candidate": candidate(), "environment": environment(), "role": role,
-            "package": "peritus-daemon", "binary": "peritusd", "workflow": workflow}
+            "package": package, "binary": binary, "workflow": workflow}
+
+
+def library_binding(consumer):
+    """Both consumers require this role's original daemon library compilation."""
+    return dict(consumer, package="peritus-daemon", binary="peritusd")
 
 
 def normalize_verified_sources(expected):
@@ -111,25 +117,28 @@ def observation(started, arguments):
             "command": arguments, "workflow_job": os.environ.get("GITHUB_JOB")}
 
 
-def validate_binary_record(record, expected_candidate, role, binary):
+def validate_binary_record(record, expected_candidate, role, binary, binary_name="peritusd"):
     if not stat.S_ISREG(binary.lstat().st_mode) or not binary.stat().st_size:
-        raise ValueError("native daemon product must be a nonempty regular file")
+        raise ValueError("native product must be a nonempty regular file")
     observed = {"sha256": digest(binary), "byte_length": binary.stat().st_size}
-    validate_binary_observation(record, expected_candidate, role, observed)
+    validate_binary_observation(record, expected_candidate, role, observed, binary_name)
 
 
-def validate_binary_observation(record, expected_candidate, role, observed):
+def validate_binary_observation(record, expected_candidate, role, observed, binary_name="peritusd"):
+    package = binary_package(binary_name)
     if (not isinstance(record, dict) or set(record) != {
             "schema_version", "kind", "binding", "library", "observation", "binary"}
-            or type(record["schema_version"]) is not int or record["schema_version"] != 1
-            or record["kind"] != "native-daemon-binary-compilation"):
+            or type(record["schema_version"]) is not int or record["schema_version"] != 2
+            or record["kind"] != "native-release-binary-compilation"):
         raise ValueError("invalid native binary compilation record")
     bound = record["binding"]
-    if (bound["candidate"] != expected_candidate or bound["role"] != role
-            or bound["package"] != "peritus-daemon" or bound["binary"] != "peritusd"):
-        raise ValueError("native binary compilation candidate or role differs")
-    validate_record(record["library"], bound)
-    validate_observation(record["observation"], "binary")
+    if (not isinstance(bound, dict) or set(bound) != {
+            "candidate", "environment", "role", "package", "binary", "workflow"}
+            or bound["candidate"] != expected_candidate or bound["role"] != role
+            or bound["package"] != package or bound["binary"] != binary_name):
+        raise ValueError("native binary compilation candidate, role, or consumer differs")
+    validate_record(record["library"], library_binding(bound))
+    validate_observation(record["observation"], "binary", binary_name)
     first, last = record["library"]["observation"], record["observation"]
     if (first["invocation"] == last["invocation"]
             or first["finished_unix_nanos"] > last["started_unix_nanos"]):

@@ -6,18 +6,22 @@ each role's own binaries and requires complete byte-identical archive/checksum
 outputs before release attestation. Manual validation cannot create a release,
 sign packages, or publish. Passing a development run is not final H4 qualification.
 
-## Intel macOS daemon phases
+## Intel macOS library and binary phases
 
-The Intel macOS daemon exceeded the ten-minute job ceiling even with four build
-jobs. Its library and final binary now have separate bounded native phases.
-The other native binary commands, supported platforms, release profile, locked
+The Intel macOS daemon and CLI exceeded the ten-minute job ceiling even with
+four build jobs. The daemon library producer and each final binary now have
+separate bounded native phases. The other native binary commands, supported platforms, release profile, locked
 dependencies, and ten-minute limits are unchanged. The binary matrix waits for
 both independent library producers before starting; no role borrows another
 role's compilation.
 
 The existing library target is selected with `cargo build --release --locked
 --package peritus-daemon --lib`. The final phase still runs the corresponding
-`--bin peritusd` build. Cargo's [target selection](https://doc.rust-lang.org/cargo/commands/cargo-build.html#target-selection)
+`--package peritus-daemon --bin peritusd` build for the daemon, or
+`--package peritus-cli --bin peritus` for the CLI. The CLI retains its own
+dependency features: Cargo recompiles feature-affected libraries when necessary.
+This is partial library reuse, not a forced shared feature graph or a promise
+that only the final binary target compiles. Cargo's [target selection](https://doc.rust-lang.org/cargo/commands/cargo-build.html#target-selection)
 does not change the declared release profile.
 
 The reviewed entry points are:
@@ -28,6 +32,9 @@ cargo xtask release-daemon-library
 # In a fresh checkout at the same absolute path and with the same native inputs:
 # restore only this role's same-run target/native-daemon-libraries artifact
 cargo xtask release-daemon-binary
+# In a separate fresh checkout at that same absolute path, restore the original
+# library-only artifact again, never the daemon binary consumer's target tree:
+cargo xtask release-cli-binary
 ```
 
 These commands reject existing compilation/product outputs. They use the fixed
@@ -49,16 +56,20 @@ permissions and timestamps are preserved for Cargo's own freshness checks.
 
 The archive is bounded to 2 GiB compressed, 8 GiB expanded, and 100,000 entries.
 Links, special files, traversal, duplicate paths, special permissions, malformed
-observations, missing libraries, and prebuilt daemon binaries are rejected.
+observations, missing libraries, and prebuilt CLI or daemon binaries are rejected.
 No shared cross-run cache or previously compiled product can satisfy the handoff.
 The library and binary invocations retain distinct real times and identifiers.
 
-The final phase retains `target/native-daemon-build.json` alongside its separately
-uploaded binary. Assembly retrieves the exact same-run, same-role record and
-checks its daemon hash against the actual archive member, not a loose package
-projection. Native assembly observation schema v2 retains this compilation chain;
-other platforms record no daemon handoff. Old schema-v1 development observations
-do not qualify a new candidate. The independent comparison remains mandatory.
+Each final phase retains `target/native-peritusd-build.json` or
+`target/native-peritus-build.json` alongside its separately uploaded binary.
+Assembly requires exactly these two same-run, same-role records, bound to their
+respective package and binary, with distinct final invocations and an identical
+original library record. It checks both hashes against the actual archive
+members, not loose package projections. Binary compilation records use schema v2;
+native assembly schema v3 retains both in `binary_compilations`. Other platforms
+retain an empty map. Old daemon-only binary/assembly development observations
+do not qualify a new candidate under this protocol. The daemon library transport
+remains schema v1. The independent comparison remains mandatory.
 
 ## Verification
 

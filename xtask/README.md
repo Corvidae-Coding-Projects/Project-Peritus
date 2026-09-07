@@ -50,8 +50,9 @@ and ZIP bytes. This removes archive metadata variability; an independent native
 rebuild must still prove the complete candidate outputs byte-identical for H4.
 
 The [native release compilation boundary](../packaging/native-build.md) keeps
-Intel macOS daemon library and binary compilation in separate same-role jobs,
-with source/environment-bound transport and archived-binary evidence checks.
+Intel macOS daemon library, CLI, and daemon binary compilation in separate
+same-role jobs. Source/environment-bound library transport preserves each binary's
+own Cargo feature graph, and assembly verifies both archived binaries' evidence.
 
 From the repository root:
 

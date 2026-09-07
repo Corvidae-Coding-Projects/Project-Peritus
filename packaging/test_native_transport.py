@@ -114,6 +114,19 @@ class NativeTransportTests(unittest.TestCase):
                     transport.save(tree, root / "second-bundle", binding, record["observation"])
                 self.assertFalse((root / "second-bundle").exists())
 
+    def test_prebuilt_cli_outputs_are_rejected_before_creating_a_library_bundle(self):
+        for name in ("release/peritus", "release/deps/peritus-fixture",
+                     "release/.fingerprint/peritus-cli-fixture/bin-peritus"):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                tree, _, binding, record = self.fixture(root)
+                product = tree / name
+                product.parent.mkdir(parents=True, exist_ok=True)
+                product.write_bytes(b"prebuilt CLI fixture must not enter a library bundle")
+                with self.assertRaises(ValueError):
+                    transport.save(tree, root / "second-bundle", binding, record["observation"])
+                self.assertFalse((root / "second-bundle").exists())
+
     def test_unsafe_tar_members_and_resource_overflow_are_rejected(self):
         for name in ("../escape", "/absolute", "native-daemon/../escape", "native-daemon//bad",
                      "native-daemon/back\\slash", "another-root/file", "native-daemon/control\n"):

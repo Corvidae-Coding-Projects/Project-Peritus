@@ -44,6 +44,7 @@ Commands:
   release-rebuild-compare Require a compatible byte-identical independent native rebuild
   release-daemon-library Compile and retain a same-run native daemon library tree
   release-daemon-binary Compile the final daemon from its verified same-role library tree
+  release-cli-binary     Compile the CLI from its verified same-role daemon libraries
   release-create         Validate a tag and create its retained draft GitHub release
   release-package-stage Build, archive, checksum, and record this host's native package
   release-package-assemble Assemble a native package from separately built release binaries

@@ -16,13 +16,28 @@ MAX_ARCHIVE_BYTES = 2 * 1024**3
 MAX_EXPANDED_BYTES = 8 * 1024**3
 MAX_MEMBERS = 100_000
 MAX_RECORD_BYTES = 4 * 1024**2
+BINARY_PACKAGES = {"peritusd": "peritus-daemon", "peritus": "peritus-cli"}
 
 
-def cargo_arguments(stage):
+def binary_package(binary):
+    if not isinstance(binary, str) or binary not in BINARY_PACKAGES:
+        raise ValueError("native library consumers must be peritusd or peritus")
+    return BINARY_PACKAGES[binary]
+
+
+def record_filename(binary):
+    binary_package(binary)
+    return f"native-{binary}-build.json"
+
+
+def cargo_arguments(stage, binary="peritusd"):
     if stage not in ("library", "binary"):
-        raise ValueError("native daemon phase must be library or binary")
-    return ["cargo", "build", "--release", "--locked", "--package", "peritus-daemon",
-            *(["--lib"] if stage == "library" else ["--bin", "peritusd"])]
+        raise ValueError("native compilation phase must be library or binary")
+    package = binary_package(binary)
+    if stage == "library" and binary != "peritusd":
+        raise ValueError("the shared native library producer must compile peritus-daemon")
+    return ["cargo", "build", "--release", "--locked", "--package", package,
+            *(["--lib"] if stage == "library" else ["--bin", binary])]
 
 
 def regular(path):
@@ -70,8 +85,9 @@ def library_tree(root):
             raise ValueError("native library tree contains special permissions")
         if stat.S_ISREG(mode):
             expanded += path.stat().st_size
-        if (path.name == "peritusd" or path.name.startswith("peritusd-")
-                or path.name.startswith("bin-peritusd")):
+        if stat.S_ISREG(mode) and any(
+                path.name == binary or path.name.startswith(binary + "-")
+                or path.name.startswith("bin-" + binary) for binary in BINARY_PACKAGES):
             raise ValueError("library compilation cannot contain a prebuilt product binary")
     if expanded > MAX_EXPANDED_BYTES:
         raise ValueError("native library tree exceeds its expanded-byte bound")
@@ -84,13 +100,13 @@ def library_tree(root):
     return tree
 
 
-def validate_observation(observation, stage):
+def validate_observation(observation, stage, binary="peritusd"):
     if (not isinstance(observation, dict) or not observation.get("host")
             or not observation.get("invocation")
             or type(observation.get("started_unix_nanos")) is not int
             or type(observation.get("finished_unix_nanos")) is not int
             or not 0 < observation["started_unix_nanos"] <= observation["finished_unix_nanos"]
-            or observation.get("command") != cargo_arguments(stage)):
+            or observation.get("command") != cargo_arguments(stage, binary)):
         raise ValueError("native compilation observation is incomplete or unordered")
 
 
