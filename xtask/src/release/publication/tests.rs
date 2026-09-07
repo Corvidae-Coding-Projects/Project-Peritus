@@ -2,6 +2,7 @@ use super::*;
 use yaml_rust2::{Yaml, YamlLoader};
 
 mod distribution;
+mod native_compilation;
 mod native_rebuild;
 mod release_qualification;
 

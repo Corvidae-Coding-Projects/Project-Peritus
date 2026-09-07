@@ -42,6 +42,8 @@ Commands:
   release-qualification-prepare Restore the staged release archive and retain H2 inputs
   release-rebuild-record Retain actual source, environment, and native assembly observations
   release-rebuild-compare Require a compatible byte-identical independent native rebuild
+  release-daemon-library Compile and retain a same-run native daemon library tree
+  release-daemon-binary Compile the final daemon from its verified same-role library tree
   release-create         Validate a tag and create its retained draft GitHub release
   release-package-stage Build, archive, checksum, and record this host's native package
   release-package-assemble Assemble a native package from separately built release binaries
@@ -308,7 +310,11 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
             "expected exactly one command; run `cargo xtask help` for the supported interface",
         ));
     }
-    match first.as_deref().and_then(|value| value.to_str()) {
+    let name = first.as_deref().and_then(|value| value.to_str());
+    if let Some(operation) = name.and_then(crate::release::rebuild::Operation::parse) {
+        return Ok(Command::ReleaseRebuild { operation });
+    }
+    match name {
         Some("all") => Ok(Command::All),
         Some("architecture-check") => Ok(Command::Architecture),
         Some("docs-check") => Ok(Command::Documentation),
@@ -339,12 +345,6 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
             Ok(Command::ReleaseBootstrapSmoke { input: QualificationInput::Release })
         }
         Some("release-qualification-prepare") => Ok(Command::ReleaseQualificationPrepare),
-        Some("release-rebuild-record") => {
-            Ok(Command::ReleaseRebuild { operation: crate::release::rebuild::Operation::Record })
-        }
-        Some("release-rebuild-compare") => {
-            Ok(Command::ReleaseRebuild { operation: crate::release::rebuild::Operation::Compare })
-        }
         Some("release-package-stage") => Ok(Command::ReleasePackageStage),
         Some("release-package-assemble") => Ok(Command::ReleasePackageAssemble),
         Some("release-stage") => Ok(Command::ReleaseStage),

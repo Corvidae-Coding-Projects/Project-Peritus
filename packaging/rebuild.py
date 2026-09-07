@@ -16,10 +16,14 @@ import re
 import stat
 import subprocess
 import sys
+import tarfile
 import time
 import tomllib
 import uuid
 import zlib
+
+import native_inputs
+import native_transport
 
 ROOT = Path(__file__).resolve().parent.parent
 OBSERVATION = "peritus-native-build.json"
@@ -91,10 +95,12 @@ def record(directory, role):
     if role not in ("primary", "independent"):
         raise ValueError("build role must be primary or independent")
     package, artifacts = outputs(directory)
+    compilation = daemon_compilation(directory, package, role)
     observation = {
-        "schema_version": 1, "kind": "native-release-assembly", "role": role,
+        "schema_version": 2, "kind": "native-release-assembly", "role": role,
         "invocation": str(uuid.uuid4()), "observed_unix_nanos": time.time_ns(),
         "candidate": candidate(), "artifacts": artifacts, "package_record": package,
+        "daemon_compilation": compilation,
         "host": platform.node(),
         "environment": {
             "system": platform.system(), "release": platform.release(),
@@ -118,11 +124,67 @@ def record(directory, role):
 def load(directory, role):
     observation = json.loads(regular(directory / OBSERVATION).read_bytes())
     package, artifacts = outputs(directory)
-    if (observation["schema_version"] != 1 or observation["kind"] != "native-release-assembly"
+    if (observation["schema_version"] != 2 or observation["kind"] != "native-release-assembly"
             or observation["role"] != role or observation["artifacts"] != artifacts
             or observation["package_record"] != package):
         raise ValueError("native build observation does not match its retained outputs")
+    validate_daemon_compilation(observation["daemon_compilation"], directory, package, role)
     return observation
+
+
+def daemon_compilation(directory, package, role):
+    source = ROOT / "target/native-compile-record/native-daemon-build.json"
+    required = package["archive"].replace("\\", "/") == "dist/peritus-macos-x86_64.tar.gz"
+    if not required:
+        if source.exists() or source.is_symlink():
+            raise ValueError("unexpected daemon compilation evidence on this native target")
+        return None
+    if regular(source).stat().st_size > native_transport.MAX_RECORD_BYTES:
+        raise ValueError("native daemon compilation evidence exceeds its size bound")
+    record = json.loads(source.read_bytes())
+    validate_daemon_compilation(record, directory, package, role)
+    return record
+
+
+def validate_daemon_compilation(record, directory, package, role):
+    required = package["archive"].replace("\\", "/") == "dist/peritus-macos-x86_64.tar.gz"
+    if not required:
+        if record is not None:
+            raise ValueError("unexpected native daemon compilation record")
+        return
+    binary = archived_daemon(directory / PurePosixPath(package["archive"]).name)
+    native_inputs.validate_binary_observation(record, native_inputs.candidate(), role, binary)
+    bound = record["binding"]
+    if (bound["environment"]["system"] != "Darwin"
+            or bound["environment"]["machine"] != "x86_64"
+            or bound["environment"]["rustc"] != command("rustc", "--version", "--verbose")
+            or bound["environment"]["image_version"] != os.environ.get("ImageVersion")):
+        raise ValueError("native daemon compilation environment differs from native assembly")
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        workflow = {key: os.environ.get(key) for key in native_inputs.WORKFLOW_KEYS}
+        if not all(workflow.values()) or bound["workflow"] != workflow:
+            raise ValueError("native daemon compilation differs from this assembly's workflow run")
+
+
+def archived_daemon(archive):
+    """Inspect the shipped bytes, never the untrusted loose package projection."""
+    result, expanded, count = None, 0, 0
+    with tarfile.open(regular(archive), "r:gz") as source:
+        for entry in source:
+            count += 1
+            expanded += entry.size
+            if count > 10_000 or expanded > 1024**3 or entry.size < 0:
+                raise ValueError("native archive exceeds its inspection bound")
+            if entry.name != "peritus-macos-x86_64/bin/peritusd":
+                continue
+            if result is not None or not entry.isfile() or not 0 < entry.size <= 256 * 1024**2:
+                raise ValueError("native archive requires one nonempty regular daemon")
+            with source.extractfile(entry) as binary:
+                result = {"byte_length": entry.size,
+                          "sha256": hashlib.file_digest(binary, "sha256").hexdigest()}
+    if result is None:
+        raise ValueError("native archive is missing the compiled daemon")
+    return result
 
 
 def compare(first, second, report):

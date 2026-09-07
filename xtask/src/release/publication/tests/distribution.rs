@@ -84,10 +84,12 @@ fn release_build_capacity_is_scoped_without_loosening_profiles_or_deadlines() {
         .iter()
         .filter_map(|step| step["run"].as_str())
         .collect::<Vec<_>>();
-    assert_eq!(commands.len(), 1);
     assert_eq!(
-        commands[0],
-        "cargo build --release --locked --package ${{ matrix.target.package }} --bin ${{ matrix.target.binary }}"
+        commands,
+        [
+            "cargo build --release --locked --package ${{ matrix.target.package }} --bin ${{ matrix.target.binary }}",
+            "cargo run --locked --package xtask -- release-daemon-binary"
+        ]
     );
 }
 
