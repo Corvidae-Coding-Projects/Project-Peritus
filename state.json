@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1280,
+  "next_comment_id": 1281,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T06:20:46.616571303Z",
+      "updated_at": "2026-09-07T06:27:40.046592978Z",
       "labels": [
         "release"
       ],
@@ -1466,6 +1466,15 @@
           "kind": "result",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAu4kqUviADS7lB4egWboI/doFO9DD98uBlkiD3HpcjWSeJ6KqtjIzKQbRWEFVAdgPcDlWIss+752lr4XRMT58AQ=="
+        },
+        "a16c3abf-0176-406b-a8b3-6ed72b131ea2": {
+          "display_id": 1280,
+          "author": "QWDj",
+          "content": "[action] Investigated manual release run34088606976: all four native DEB/RPM jobs hit exact 10m annotation after release compilation succeeded (6m18..8m06), during test compilation/packaging. Intel macOS primary daemon exceeded budget during compilation; independent counterpart still running. Public repo verified; official GitHub runner specifications confirm 4 CPUs on Linux and Intel macOS. Prefer scoped bounded build concurrency4 over transporting multi-GB partially built package trees across jobs; defaults2 and every recipe/profile/test/10m ceiling remain intact. New independent branch fix/release-build-capacity starts merged main ecb8, not PR52; verify tooling fail-before/pass-after, native package build, full xtask gate, and hosted unsigned validation before claiming repair.",
+          "created_at": "2026-09-07T06:27:40.043290539Z",
+          "kind": "note",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAa7BLLWkXADRElw8Swld2xA7MJOrYhUS+TbjHkRnaAqafNR/OidCIWLUFO0+ObaIcXOYlWXGvXFf7ZgnD4ZHrCw=="
         },
         "ae19cc53-25d5-4f66-9536-a90a81650197": {
           "display_id": 1239,
@@ -12533,8 +12542,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T06:20:46.616571303Z",
+    "timestamp": "2026-09-07T06:27:40.046592978Z",
     "agent_id": "QWDj",
-    "agent_seq": 56
+    "agent_seq": 57
   }
 }
