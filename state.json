@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1328,
+  "next_comment_id": 1329,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T13:37:39.390628358Z",
+      "updated_at": "2026-09-07T13:40:19.598097361Z",
       "labels": [
         "release"
       ],
@@ -1601,6 +1601,15 @@
           "kind": "note",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAwNTWUcHmJNG46GrCYomT6FiAmvJvUjpT8Myrndhopqgg6KYysvGFUuBbha8hAXiv/sGFNoKpZZYvxON/HCCpCw=="
+        },
+        "79261774-acdf-45a0-8268-e9def9eecae5": {
+          "display_id": 1328,
+          "author": "QWDj",
+          "content": "Signed e07225c8b0743ce38353945e4b25a790005e4efd: fix(macos): distinguish failed process queries from empty groups (#57). Seven explicitly staged files,426 insertions109 deletions; complete staged diff and exact tested file hashes verified. All three original libproc group-query sites now clear/capture errno and distinguish zero-error from empty; required H1/sandbox fail closed, optional C2 returns None, public APIs/dependencies/profiles/limits unchanged. Five fail-before regressions now pass; eight portable focused tests and seven native-only cases added. Final78 affected tests, strict localClippy, H1IntelMacClippy, WindowsGNU full3cratecheck, affectedbuild/fmt, doc commands0cases, fullworkspace alltargetallfeaturecheck and policy3675sources PASS. Initial sandboxEPERM/conformance logs retained; full Mac C2/sandbox crosscheck unavailable(hostcc rejectsDarwinflags), so no nativeMac pass claimed before hostedCI. OriginalFF92 H1stale cause remains unproven. Pushing PR53 for native verification; not merge/freeze/H4 readiness. Frozenroota819 and five local untracked paths preserved. Existing unsigned4f proof remains candidate4f only: actualprimaryCLI validated; bothactualMacdaemon products/records validated and cmpidenticaleea628bc; independentCLI pending. No tag, artifactsigning, publication or newcampaign.",
+          "created_at": "2026-09-07T13:40:19.594679133Z",
+          "kind": "result",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAGaovLmFJ/74NJEyJt637DHLAR3+x3hmvud4nRwX5HH/RRecHdxNHbmzNeEMxOXpEPU9Z5k5cs1L/p/IPZWYlDQ=="
         },
         "7af0bb49-9d63-4fb6-bf63-acb0b3aee785": {
           "display_id": 1241,
@@ -12965,8 +12974,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T13:37:39.390628358Z",
+    "timestamp": "2026-09-07T13:40:19.598097361Z",
     "agent_id": "QWDj",
-    "agent_seq": 104
+    "agent_seq": 105
   }
 }
