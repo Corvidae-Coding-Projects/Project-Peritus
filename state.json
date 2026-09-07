@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1300,
+  "next_comment_id": 1301,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T09:17:39.260906497Z",
+      "updated_at": "2026-09-07T09:23:42.565717333Z",
       "labels": [
         "release"
       ],
@@ -1277,6 +1277,15 @@
           "kind": "result",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA/b9jHF7tvG/rKB7Tapv174H5reuGxNPVXjnxXVuqf9y8I0Jq8ljIbyb+AbY5o0cM6mdij51FmuL40z9EU72xCA=="
+        },
+        "24d5e34a-ba4f-4b9b-aaeb-9661734d88d0": {
+          "display_id": 1300,
+          "author": "QWDj",
+          "content": "[action] c25d unsignedmanual34103773007: all4builderjobsPASS. ARMnativecompile/uploadPASS:DEB1016869751116m28(Cargo3m55),RPM1016869748497m05(Cargo4m27);rawlogsretainedtarget/h4-c25d-release-compile-{deb,rpm}-arm-raw.log. X86compile101686974848DEBactualstart09:18:52 and101686974881RPMactualstart09:19:03stilllive. Newcheckcompile/finalpackagesnotyetqualified. PR52Foundation34090416934completeSUCCESSall182jobsverifiedandretainedtarget/h4-pr52-foundation-complete-jobs.json. PR52latest501PASS31pending(noFAIL), remainingvisible30H2+GateAMacdaemon101642900463. BothobsoletePR53GateArunsnowCOMPLETED/CANCELLED09:17:39/40followingordinarythenforcecancel;current3watchers46429/3219/4313live. Previousgoalturnwasprogress(signedpushrepair+nativeproof);currentturnverifiedwaitplusretiredsupersededruns/evidenceretention. FullH4scopeincomplete,nootherauthorityreceived.",
+          "created_at": "2026-09-07T09:23:42.562066403Z",
+          "kind": "note",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABASfrkVBLy7VGDbxrxpaNlikfhq8DzH1RfKRd7hjCKM8AWTryR7L6ak+z4QFJcOxFOI6kXSHZJzV0D+KeHI86aBQ=="
         },
         "264ec61e-32a1-413d-969f-7e1864628ece": {
           "display_id": 1290,
@@ -12713,8 +12722,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T09:17:39.260906497Z",
+    "timestamp": "2026-09-07T09:23:42.565717333Z",
     "agent_id": "QWDj",
-    "agent_seq": 76
+    "agent_seq": 77
   }
 }
