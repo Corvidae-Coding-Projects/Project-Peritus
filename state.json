@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1304,
+  "next_comment_id": 1305,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T09:39:22.062793949Z",
+      "updated_at": "2026-09-07T09:49:22.587791690Z",
       "labels": [
         "release"
       ],
@@ -1700,6 +1700,15 @@
           "kind": "result",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABArsncEADTKjM8FgjO/mRXFHVAWKiKeAy2qLymzNNZQNb7SFaw+LcJrdyBN+29gMwJzqzydRpP+JjXKPkhKGejBw=="
+        },
+        "d4a274d7-add9-4ab7-bbfe-94421e81821c": {
+          "display_id": 1304,
+          "author": "QWDj",
+          "content": "All fourteen c25d hosted distribution jobs in unsigned run34103773007 passed: 4builders+4releasecompiles+2RPMcheckcompiles+4completefinalrecipes. Final DEB ARM4m30/x864m43; RPM ARM5m47/x867m28. Both RPM final release/test rechecks FRESH0.31/0.26 ARM and0.46/0.38 x86, all4 assertions each, allsource/main/debug outputs. Complete downloaded26file sets (8/8/5/5) verified for closed inventory, every output hash, all4311 source hashes, exactcandidate/run/nativebuilder/4job binding and chronological distinct observations; RPM headers confirm gzip9source,zstd19binary/debug. Evidence report target/h4-c25d-native-build-evidence-20260907.md and rawlogs retained. Overallmanual remains adverse due IntelMacprimarydaemon10m0stimeout; independent9m47. Local exactc25d probe h4-native-library-probe.1mhPtb completed: --lib2m20, --bin35.23s only rustc peritusd, coldunsplit2m55; cmp+SHA256 identical0f8c4c44bd13c6ff53fcbe3d78541e5bcc1330a508d80fd64cdecfb59f511087. Firstccachereadonlyfailure retained; no sourceedits/nativehandoffimplementation yet. PR53 updated with outcomes. Keep fullH4 scope and outstandingmacrepair; no merge/sign/tag/publication.",
+          "created_at": "2026-09-07T09:49:22.584662308Z",
+          "kind": "result",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIDsekftuNTcZqEC9sJhwAd/Uk10Gv1zRTo0HovKp63jSa3xgbZ8PhijZpW+oAr27Efjl/MEy7nJFW2eO9By8Cw=="
         },
         "d4d7c352-edec-403d-89bf-399575c72b76": {
           "display_id": 1276,
@@ -12749,8 +12758,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T09:39:22.062793949Z",
+    "timestamp": "2026-09-07T09:49:22.587791690Z",
     "agent_id": "QWDj",
-    "agent_seq": 80
+    "agent_seq": 81
   }
 }
