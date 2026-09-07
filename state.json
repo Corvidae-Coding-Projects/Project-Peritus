@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1333,
+  "next_comment_id": 1334,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T14:17:58.684371522Z",
+      "updated_at": "2026-09-07T14:27:27.751932512Z",
       "labels": [
         "release"
       ],
@@ -2078,6 +2078,15 @@
           "kind": "result",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABhVghIwi8Sz0RMtXXygIUynJFZm0rLbZ3lAiYiF95rSTRMtLEYM9KOEWmVOcrhS8T8Gokn/VoBA/z/dzlf2GCA=="
+        },
+        "faac0fe3-3eac-4ea1-a9bc-0f6e5b54e1c2": {
+          "display_id": 1333,
+          "author": "QWDj",
+          "content": "[action] Current release progress: signed LOCAL routing commit 550666002012a08e8c1a7387783955ed4ea1d719, not pushed; PR 53 remains e07225c8. Wrong-architecture Linux x86 and Mac ARM archives proven in exact old unsigned 4fafd050 run34122771282: wildcard prefixes selected both CPU families and merged same-named binaries. All12 actual archive packages and all6 hosted rebuild reports downloaded; Linux ARM and IntelMac complete archive/checksum pairs reproducible, other4 comparisons reject content differences. IntelMac native schema3 comparison job101774973145 passed; actual12,278,735-byte archive011f5e03 pair cmp passes, full local schema3-to-actual-byte audit still next. Windows all8 executable pairs differ only in4COFF/debug timestamps plusCodeViewGUID;159 changed bytes total, no unclassified differences, no bytes modified. Retained target/h4-4fafd-windows-pe-differences.json and inspector script. Windows fix UNCOMMITTED6files: native final cargo rustc --release --locked --package/--bin -- -C link-arg=/Brepro, exactworkflowtests/docs; no profile/dependency/toolchain/gate change. Final328xtaskunits+7integration+39nestedPython/strictClippy/build/fmt/actionlint/policy3677/doc0 PASS, exact6file hashes saved. NativeMSVCafterfix NOTRUN; must verify new hostedbuild. Initial Windowsfullsuite exactcommand-list expectation failed, updated only reviewed extra command then allpass. e07MacH1Foundation101763416746 passed actual libproc failure/livegroup tests and stale cleanup; rawlog retained, originalFF92cause stillunproven. C2/sandbox nativeMac cases remainpending. Existing3observers31817unsigned31972/76365PR liveearlier; allnewtoolhandles done. No newdispatch/cancellation/merge/freeze/tag/artifactsign/publication/campaign. Next review/stage/commitWindows separately, pushbothonce, preserve/auditoldartifacts and stopknowninvalidoldrun ifnonterminal, launchonlynewexactunsignedcandidatevalidation thenmonitor. No representative/soak launch.",
+          "created_at": "2026-09-07T14:27:27.747151722Z",
+          "kind": "note",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAvk3W7UpYmpwh/Psm5uUkTKoOEatUI/rQdLLB2Kf0MQCxPuKUOdRm+YaQMFWWOqL3rn8STNTw9FcfyrTTlgbWBQ=="
         },
         "fad597f4-e70a-49fe-8075-2d937ef1dcb9": {
           "display_id": 1313,
@@ -13010,8 +13019,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T14:17:58.684371522Z",
+    "timestamp": "2026-09-07T14:27:27.751932512Z",
     "agent_id": "QWDj",
-    "agent_seq": 109
+    "agent_seq": 110
   }
 }
