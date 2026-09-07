@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1345,
+  "next_comment_id": 1346,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T16:14:08.282704995Z",
+      "updated_at": "2026-09-07T16:17:12.388462098Z",
       "labels": [
         "release"
       ],
@@ -1727,6 +1727,15 @@
           "kind": "note",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAiccqLqUlEy5maHii33Lpl5TMR3CMfJ8/fVYX+4B3o1U4vNhaV5iwan4aGZspMKGJWeQGWT0QkSK+ywWrf/rFDg=="
+        },
+        "836df416-cbcb-4919-b23a-d32c9e07a1a8": {
+          "display_id": 1345,
+          "author": "QWDj",
+          "content": "Committed signed local 51047816: fix(journal): batch and validate aggregate replay (#57). Eight reviewed files only, 327 additions/79 deletions; exact tested hashes verified before staging and after commit. Three corruption regressions failed before; all6 focused cases pass including concurrent-writer snapshot. Final13-consumer suite525 cases plus fullG0daemon104 cases PASS; strictall-target/all-featureClippy, journalbuild, workspaceall-target/all-featurecheck, format/whitespace and fullpolicy3679sources PASS. No-cheating Verus journal14verified0errors; initial sandbox compiler-cache failure retained, identical command passed with cache access. FullG0nativeIPC run passed after sandbox socket-bind failure, adverse log retained. No wire/API/schema/history/write changes; this is the first cold-replay increment, not fullH3 repair or a performance claim. Not pushed: remotePR53/unsigned34133906605 remain9fa. User-requested PR body is now357words, exact readback verified, old fullbody retained. FullH3receipt-bound reuse/losslessstorage and allfinalH0-H4 gates remain; no campaign/freeze/merge/sign/pub.",
+          "created_at": "2026-09-07T16:17:12.384718334Z",
+          "kind": "result",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA5b/gdVQ7igeFx4WBO27b0QLUwd6SKE56jACy80X4Xr9rSx8V7gjZRpzWLfZ55KBnyDPF7h9bMbsPaWp2k1VlDw=="
         },
         "8497b5d9-b124-4be5-93de-0c8a3789f593": {
           "display_id": 1237,
@@ -13118,8 +13127,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T16:14:08.282704995Z",
+    "timestamp": "2026-09-07T16:17:12.388462098Z",
     "agent_id": "QWDj",
-    "agent_seq": 121
+    "agent_seq": 122
   }
 }
