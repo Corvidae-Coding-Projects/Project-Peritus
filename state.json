@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1335,
+  "next_comment_id": 1336,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T14:32:55.407075142Z",
+      "updated_at": "2026-09-07T14:40:27.676990343Z",
       "labels": [
         "release"
       ],
@@ -2042,6 +2042,15 @@
           "kind": "result",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA1xslaZkTEec6O5j2ETgd9Fuo0t5omwNg66/GTmP1V6JjbliQQqmBUDRPIfXw9v4hsjwmPfPWpjA34ZrDfYxvAw=="
+        },
+        "eddc6477-3898-4385-afdb-e7f936d54333": {
+          "display_id": 1335,
+          "author": "QWDj",
+          "content": "Both signed native-artifact repairs are pushed: routing550666002012a08e8c1a7387783955ed4ea1d719 and Windows9fa5228c0d6ae374828e4c26fb1c8946f5d2e3d3. New development candidate4325files source archive72b8b906ada94ebf23fb023ebc173d1e0fe638f531ffa236c08bb2d5ba90e89d. Exact unsigned validation34133906605 dispatched once after duplicate/head guard, no publication/signing path. Historical4f all12packages and6reports now offline-audited against actual bytes and originalIntelMaccompile records: LinuxARM+IntelMacpass;Linuxx86+Windowsboth+MacARMfail. Known-invalidoldrun34122771282 cancelled after evidence retention, terminal14:37:14UTC; failedresults retained. All7newnativeMaclibproctests now pass on e07actual FoundationH1job101763416746 andruntime-tools101763416917; stalecleanup passes too,originalFF92cause stillunproven. Reporttarget/h4-native-artifact-repairs-20260907.md. NewheadCIpending,fullH0-H4unmet,no finalfreeze/merge/tag/sign/pub/representative/soak. Frozenroota819preserved.",
+          "created_at": "2026-09-07T14:40:27.673303285Z",
+          "kind": "observation",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAeHrg/YzYsTCunu3z5g04DliuR0zg+dmK/zXiqmYDKTyTCg2eBFQsKLkjHnhcUfSjCWwV+CrU9oM4AI690qNCDw=="
         },
         "f15d6a79-04b8-4b3c-a814-d70d21cefb0c": {
           "display_id": 1292,
@@ -13028,8 +13037,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T14:32:55.407075142Z",
+    "timestamp": "2026-09-07T14:40:27.676990343Z",
     "agent_id": "QWDj",
-    "agent_seq": 111
+    "agent_seq": 112
   }
 }
