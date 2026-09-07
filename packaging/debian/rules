@@ -1,5 +1,8 @@
 #!/usr/bin/make -f
 
+# default.mk loads buildflags.mk once, so configure exports before that include.
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+DPKG_EXPORT_BUILDFLAGS = 1
 include /usr/share/dpkg/default.mk
 
 export CARGO_HOME = $(CURDIR)/.package-cargo
@@ -7,7 +10,6 @@ export CARGO_NET_OFFLINE = true
 export CARGO_BUILD_JOBS ?= 2
 export CARGO_PROFILE_RELEASE_DEBUG = 2
 export CARGO_PROFILE_RELEASE_STRIP = none
-export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 export RUSTFLAGS = -C link-arg=-Wl,-z,relro,-z,now --remap-path-prefix=$(CURDIR)=/usr/src/peritus
 CARGO = cargo --config .cargo/vendor.toml
 PRODUCTS = -p peritus-cli -p peritus-daemon -p peritus-tui -p peritus-sandbox-linux

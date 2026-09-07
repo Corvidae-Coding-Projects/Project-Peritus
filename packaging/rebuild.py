@@ -16,14 +16,19 @@ import re
 import stat
 import subprocess
 import sys
+import tarfile
 import time
 import tomllib
 import uuid
 import zlib
 
+import native_inputs
+import native_transport
+
 ROOT = Path(__file__).resolve().parent.parent
 OBSERVATION = "peritus-native-build.json"
 PACKAGE_RECORD = "peritus-native-package.json"
+INTEL_MAC_ARCHIVE = "dist/peritus-macos-x86_64.tar.gz"
 
 
 def regular(path):
@@ -91,10 +96,12 @@ def record(directory, role):
     if role not in ("primary", "independent"):
         raise ValueError("build role must be primary or independent")
     package, artifacts = outputs(directory)
+    compilations = binary_compilations(directory, package, role)
     observation = {
-        "schema_version": 1, "kind": "native-release-assembly", "role": role,
+        "schema_version": 3, "kind": "native-release-assembly", "role": role,
         "invocation": str(uuid.uuid4()), "observed_unix_nanos": time.time_ns(),
         "candidate": candidate(), "artifacts": artifacts, "package_record": package,
+        "binary_compilations": compilations,
         "host": platform.node(),
         "environment": {
             "system": platform.system(), "release": platform.release(),
@@ -118,11 +125,88 @@ def record(directory, role):
 def load(directory, role):
     observation = json.loads(regular(directory / OBSERVATION).read_bytes())
     package, artifacts = outputs(directory)
-    if (observation["schema_version"] != 1 or observation["kind"] != "native-release-assembly"
+    if (observation["schema_version"] != 3 or observation["kind"] != "native-release-assembly"
             or observation["role"] != role or observation["artifacts"] != artifacts
             or observation["package_record"] != package):
         raise ValueError("native build observation does not match its retained outputs")
+    validate_binary_compilations(observation.get("binary_compilations"), directory, package, role)
     return observation
+
+
+def binary_compilations(directory, package, role):
+    source = ROOT / "target/native-compile-record"
+    required = package["archive"].replace("\\", "/") == INTEL_MAC_ARCHIVE
+    if not required:
+        if source.exists() or source.is_symlink():
+            raise ValueError("unexpected binary compilation evidence on this native target")
+        return {}
+    names = {binary: native_transport.record_filename(binary)
+             for binary in native_transport.BINARY_PACKAGES}
+    if (source.is_symlink() or not source.is_dir()
+            or {path.name for path in source.iterdir()} != set(names.values())):
+        raise ValueError("native compilation evidence requires exactly the CLI and daemon records")
+    records = {}
+    for binary, name in names.items():
+        path = regular(source / name)
+        if path.stat().st_size > native_transport.MAX_RECORD_BYTES:
+            raise ValueError("native binary compilation evidence exceeds its size bound")
+        records[binary] = json.loads(path.read_bytes())
+    validate_binary_compilations(records, directory, package, role)
+    return records
+
+
+def validate_binary_compilations(records, directory, package, role):
+    required = package["archive"].replace("\\", "/") == INTEL_MAC_ARCHIVE
+    names = set(native_transport.BINARY_PACKAGES) if required else set()
+    if not isinstance(records, dict) or set(records) != names:
+        raise ValueError("native binary compilation inventory differs from this archive target")
+    if not names:
+        return
+    observed = archived_binaries(directory / PurePosixPath(package["archive"]).name)
+    candidate_inputs = native_inputs.candidate()
+    rustc = command("rustc", "--version", "--verbose")
+    for name, record in records.items():
+        native_inputs.validate_binary_observation(record, candidate_inputs, role, observed[name], name)
+        validate_compilation_environment(record["binding"], rustc)
+    daemon, cli = records["peritusd"], records["peritus"]
+    if (daemon["library"] != cli["library"]
+            or daemon["observation"]["invocation"] == cli["observation"]["invocation"]):
+        raise ValueError("native CLI and daemon must have distinct invocations from the same role's library")
+
+
+def validate_compilation_environment(bound, rustc):
+    if (bound["environment"]["system"] != "Darwin"
+            or bound["environment"]["machine"] != "x86_64"
+            or bound["environment"]["rustc"] != rustc
+            or bound["environment"]["image_version"] != os.environ.get("ImageVersion")):
+        raise ValueError("native binary compilation environment differs from native assembly")
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        workflow = {key: os.environ.get(key) for key in native_inputs.WORKFLOW_KEYS}
+        if not all(workflow.values()) or bound["workflow"] != workflow:
+            raise ValueError("native binary compilation differs from this assembly's workflow run")
+
+
+def archived_binaries(archive):
+    """Inspect the shipped bytes, never the untrusted loose package projection."""
+    wanted = {f"peritus-macos-x86_64/bin/{name}": name for name in native_transport.BINARY_PACKAGES}
+    result, expanded, count = {}, 0, 0
+    with tarfile.open(regular(archive), "r:gz") as source:
+        for entry in source:
+            count += 1
+            expanded += entry.size
+            if count > 10_000 or expanded > 1024**3 or entry.size < 0:
+                raise ValueError("native archive exceeds its inspection bound")
+            if entry.name not in wanted:
+                continue
+            name = wanted[entry.name]
+            if name in result or not entry.isfile() or not 0 < entry.size <= 256 * 1024**2:
+                raise ValueError("native archive requires one nonempty regular entry for each binary")
+            with source.extractfile(entry) as binary:
+                result[name] = {"byte_length": entry.size,
+                                "sha256": hashlib.file_digest(binary, "sha256").hexdigest()}
+    if set(result) != set(wanted.values()):
+        raise ValueError("native archive is missing a compiled CLI or daemon")
+    return result
 
 
 def compare(first, second, report):

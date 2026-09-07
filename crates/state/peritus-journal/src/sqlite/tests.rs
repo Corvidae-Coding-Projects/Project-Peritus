@@ -16,7 +16,9 @@ use tempfile::TempDir;
 
 use super::{SqliteJournal, SqliteJournalOptions};
 
+mod aggregate_replay_tests;
 mod application_tests;
+mod observation_tests;
 mod outbox_tests;
 mod recovery_tests;
 mod storage_tests;

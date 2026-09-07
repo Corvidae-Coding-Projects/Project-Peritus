@@ -57,7 +57,7 @@ a module-level safety contract and typed safe boundary:
 |---|---|
 | `peritus-process::platform::inheritance` | Unix `pre_exec` descriptor inheritance and Windows exact-handle inheritance flags |
 | `peritus-network::proxy::inherited` | Unix borrowed/owned descriptor conversion around one checked `SCM_RIGHTS` listener transfer |
-| `peritus-sandbox-macos::resource_monitor` | read-only libproc and rlimit resource queries |
+| `peritus-sandbox-macos::resource_monitor` (including `pids`) | read-only libproc and rlimit resource queries; same-thread errno reset/capture distinguishes query failure from an empty group |
 | `peritus-sandbox-macos::runner` | Seatbelt, descriptor, rlimit, and process-launch system calls |
 | `peritus-sandbox-windows::native` | restricted-token, AppContainer, Job Object, handle-list, ConPTY, ACL/path, process, and WFP calls |
 

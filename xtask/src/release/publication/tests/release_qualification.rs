@@ -39,7 +39,7 @@ fn release_h2_and_bootstrap_consume_the_same_staged_archive_without_product_rebu
     assert_eq!(downloads[0]["with"].as_hash().expect("same-run options").len(), 2);
     assert_eq!(
         downloads[1]["with"]["pattern"].as_str(),
-        Some("release-h2-tool-${{ matrix.os }}-*")
+        Some("release-h2-tool-${{ matrix.os }}--*")
     );
     assert_eq!(downloads[1]["with"]["path"].as_str(), Some("target/debug"));
     assert_eq!(downloads[1]["with"].as_hash().expect("same-run options").len(), 3);

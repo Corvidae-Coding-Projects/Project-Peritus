@@ -49,6 +49,11 @@ existing output files. The focused test command below exercises both tar/gzip
 and ZIP bytes. This removes archive metadata variability; an independent native
 rebuild must still prove the complete candidate outputs byte-identical for H4.
 
+The [native release compilation boundary](../packaging/native-build.md) keeps
+Intel macOS daemon library, CLI, and daemon binary compilation in separate
+same-role jobs. Source/environment-bound library transport preserves each binary's
+own Cargo feature graph, and assembly verifies both archived binaries' evidence.
+
 From the repository root:
 
 ```sh

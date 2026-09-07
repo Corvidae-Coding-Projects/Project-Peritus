@@ -1,10 +1,57 @@
 use peritus_codec::{CodecLimits, encode_frame};
 use peritus_types::{EventSequence, Sha256Digest};
+use rusqlite::params;
 use tempfile::TempDir;
 
 use crate::{AggregateKind, AppendRequest, EventDraft, ExactFrame, HeadExpectation};
 
 use super::{command, event, key, open, store_id};
+
+#[test]
+fn rejected_open_does_not_leave_partial_schema_installation() {
+    for (identity, version, kind) in [
+        ([2_u8; 16], 1, crate::JournalErrorKind::InvalidInput),
+        ([1_u8; 16], 99, crate::JournalErrorKind::UnsupportedSchema),
+    ] {
+        let temp = TempDir::new().expect("temporary directory");
+        let path = temp.path().join("partial.sqlite3");
+        let connection = rusqlite::Connection::open(&path).expect("fixture");
+        connection
+            .execute_batch(
+                "CREATE TABLE store_meta(singleton INTEGER PRIMARY KEY, store_id BLOB NOT NULL,
+                                     schema_version INTEGER NOT NULL) STRICT;",
+            )
+            .expect("pre-existing store metadata");
+        connection
+            .execute("INSERT INTO store_meta VALUES (1, ?1, ?2)", params![identity, version])
+            .expect("rejected identity or version");
+        let before = schema_objects(&connection);
+        drop(connection);
+        let error =
+            crate::SqliteJournal::open(&path, store_id(), crate::SqliteJournalOptions::default())
+                .err()
+                .expect("reject incompatible store binding");
+        assert_eq!(error.kind(), kind);
+        let connection = rusqlite::Connection::open(&path).expect("inspect rejected open");
+        assert_eq!(schema_objects(&connection), before);
+        assert_eq!(
+            connection
+                .pragma_query_value(None, "user_version", |row| row.get::<_, i64>(0))
+                .expect("version unchanged"),
+            0
+        );
+    }
+}
+
+fn schema_objects(connection: &rusqlite::Connection) -> Vec<(String, String)> {
+    connection
+        .prepare("SELECT name, sql FROM sqlite_schema ORDER BY name")
+        .expect("schema statement")
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+        .expect("schema rows")
+        .collect::<Result<_, _>>()
+        .expect("schema values")
+}
 
 #[test]
 fn page_ceiling_returns_exact_storage_exhaustion_without_partial_append() {

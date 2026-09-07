@@ -42,6 +42,9 @@ Commands:
   release-qualification-prepare Restore the staged release archive and retain H2 inputs
   release-rebuild-record Retain actual source, environment, and native assembly observations
   release-rebuild-compare Require a compatible byte-identical independent native rebuild
+  release-daemon-library Compile and retain a same-run native daemon library tree
+  release-daemon-binary Compile the final daemon from its verified same-role library tree
+  release-cli-binary     Compile the CLI from its verified same-role daemon libraries
   release-create         Validate a tag and create its retained draft GitHub release
   release-package-stage Build, archive, checksum, and record this host's native package
   release-package-assemble Assemble a native package from separately built release binaries
@@ -50,6 +53,9 @@ Commands:
   distro-image-save      Retain the exact builder image for same-run package jobs
   distro-image-restore   Restore the same-run builder image without rebuilding it
   distro-build           Build real source and binary distribution packages offline
+  distro-compile         Retain a candidate-bound native distribution compilation
+  distro-compile-checks  Retain native RPM check compilation for final recipe execution
+  distro-package-compiled  Run full recipes and tests on the same-run compiled tree
   distro-sign            Sign distribution packages using the local OpenPGP agent
   distro-sign-ci         Sign with explicitly provisioned protected-environment CI secrets
   distro-verify          Verify package signatures and disposable install/remove lifecycle
@@ -305,7 +311,11 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
             "expected exactly one command; run `cargo xtask help` for the supported interface",
         ));
     }
-    match first.as_deref().and_then(|value| value.to_str()) {
+    let name = first.as_deref().and_then(|value| value.to_str());
+    if let Some(operation) = name.and_then(crate::release::rebuild::Operation::parse) {
+        return Ok(Command::ReleaseRebuild { operation });
+    }
+    match name {
         Some("all") => Ok(Command::All),
         Some("architecture-check") => Ok(Command::Architecture),
         Some("docs-check") => Ok(Command::Documentation),
@@ -336,12 +346,6 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
             Ok(Command::ReleaseBootstrapSmoke { input: QualificationInput::Release })
         }
         Some("release-qualification-prepare") => Ok(Command::ReleaseQualificationPrepare),
-        Some("release-rebuild-record") => {
-            Ok(Command::ReleaseRebuild { operation: crate::release::rebuild::Operation::Record })
-        }
-        Some("release-rebuild-compare") => {
-            Ok(Command::ReleaseRebuild { operation: crate::release::rebuild::Operation::Compare })
-        }
         Some("release-package-stage") => Ok(Command::ReleasePackageStage),
         Some("release-package-assemble") => Ok(Command::ReleasePackageAssemble),
         Some("release-stage") => Ok(Command::ReleaseStage),
@@ -353,6 +357,15 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
             Ok(Command::Distro { operation: crate::distro::Operation::ImageRestore })
         }
         Some("distro-build") => Ok(Command::Distro { operation: crate::distro::Operation::Build }),
+        Some("distro-compile") => {
+            Ok(Command::Distro { operation: crate::distro::Operation::Compile })
+        }
+        Some("distro-compile-checks") => {
+            Ok(Command::Distro { operation: crate::distro::Operation::CompileChecks })
+        }
+        Some("distro-package-compiled") => {
+            Ok(Command::Distro { operation: crate::distro::Operation::PackageCompiled })
+        }
         Some("distro-sign") => Ok(Command::Distro { operation: crate::distro::Operation::Sign }),
         Some("distro-sign-ci") => {
             Ok(Command::Distro { operation: crate::distro::Operation::SignCi })

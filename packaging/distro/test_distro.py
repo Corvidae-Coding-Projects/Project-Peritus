@@ -21,6 +21,14 @@ from verify_inside import rpm_signature_verified, tamper, terminal_failure
 
 
 class ConfigurationTests(unittest.TestCase):
+    def test_docker_and_podman_image_ids_have_one_canonical_representation(self):
+        for observed in ("e" * 64, "sha256:" + "e" * 64):
+            with patch.object(build, "run", return_value=observed):
+                self.assertEqual(build.image_identity("deb"), "sha256:" + "e" * 64)
+        for observed in ("", "fixture", "sha256:abc", "sha512:" + "e" * 64, "e" * 63):
+            with patch.object(build, "run", return_value=observed), self.assertRaises(ValueError):
+                build.image_identity("deb")
+
     def test_rpm_metadata_uses_explicit_reproducibility_controls(self):
         arguments = build.rpm_reproducibility_arguments()
         self.assertEqual(arguments[::2], ["--define"] * 3)
@@ -119,7 +127,8 @@ class BuildTests(unittest.TestCase):
 
             def compile_fixture(kind, mounts, *arguments, **options):
                 self.assertEqual(kind, "rpm")
-                self.assertEqual(options, {"environment": ["SOURCE_DATE_EPOCH=1234567890"]})
+                self.assertEqual(options, {"environment": ["SOURCE_DATE_EPOCH=1234567890"],
+                                           "build_jobs": 2})
                 self.assertIn("use_source_date_epoch_as_buildtime 1", arguments)
                 self.assertIn("build_mtime_policy clamp_to_source_date_epoch", arguments)
                 self.assertIn("_buildhost peritus-reproducible", arguments)
@@ -132,13 +141,15 @@ class BuildTests(unittest.TestCase):
                     patch.object(build, "output_directory", return_value=output), \
                     patch.object(build, "prepare", side_effect=prepare), \
                     patch.object(build, "container", side_effect=compile_fixture), \
-                    patch.object(build, "run", return_value="sha256:fixture-image"), \
+                    patch.object(build, "run", return_value="sha256:" + "e" * 64), \
                     patch.object(build.socket, "gethostname", return_value="actual-host"), \
-                    patch.object(build.time, "time_ns", side_effect=[2000000000000, 3000000000000]):
+                    patch.object(build.time, "time_ns", side_effect=[2000000000000, 3000000000000]), \
+                    patch.dict(os.environ, PERITUS_PACKAGE_BUILD_JOBS="2"):
                 build.build()
             record = json.loads((output / "peritus-rpm-build.json").read_text())
             observation = record["build_observation"]
             self.assertEqual(observation["host"], "actual-host")
+            self.assertEqual(observation["cargo_build_jobs"], 2)
             self.assertEqual(observation["started_unix_nanos"], 2000000000000)
             self.assertEqual(observation["finished_unix_nanos"], 3000000000000)
             self.assertTrue((root / "target" / observation["invocation"]).is_dir())

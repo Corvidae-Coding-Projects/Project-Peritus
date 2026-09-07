@@ -1,5 +1,10 @@
 //! Platform resource observations used by supervisor enforcement.
 
+#[cfg(any(target_os = "macos", all(test, unix)))]
+mod macos;
+#[cfg(target_os = "macos")]
+pub(crate) use macos::process_group_count;
+
 use crate::{
     ErrorCode, ProcessError, ProcessOperation, RecoveryClass, platform::ProcessTreeIdentity,
 };
@@ -74,44 +79,6 @@ pub(crate) fn process_group_count(
     identity: ProcessTreeIdentity,
 ) -> Result<Option<u64>, ProcessError> {
     sample_resources(identity).map(|sample| Some(sample.process_count()))
-}
-
-#[cfg(target_os = "macos")]
-#[allow(unsafe_code, reason = "inventoried libproc read-only process-group enumeration boundary")]
-pub(crate) fn process_group_count(
-    identity: ProcessTreeIdentity,
-) -> Result<Option<u64>, ProcessError> {
-    use std::{ffi::c_void, mem::size_of_val};
-
-    const MAX_GROUP_PROCESSES: usize = 16_384;
-
-    let group = identity
-        .process_group()
-        .and_then(|value| i32::try_from(value).ok())
-        .ok_or_else(|| sample_error("process-group identity is unavailable"))?;
-    let mut pids = vec![0_i32; MAX_GROUP_PROCESSES];
-    let buffer_bytes = i32::try_from(size_of_val(pids.as_slice()))
-        .map_err(|_| sample_error("process-group buffer exceeds platform capacity"))?;
-    // SAFETY: `pids` is writable for `buffer_bytes`; the selector requests process IDs for the
-    // exact C2-owned process group and transfers no ownership.
-    let count =
-        unsafe { libc::proc_listpgrppids(group, pids.as_mut_ptr().cast::<c_void>(), buffer_bytes) };
-    if count < 0 {
-        // macOS can remove a short-lived child's process-group entry before the supervisor's
-        // first optional libproc sample. The root handle remains the exit authority, so an
-        // unavailable sample is not an execution failure.
-        return Ok(None);
-    }
-    let count = usize::try_from(count)
-        .map_err(|_| sample_error("process-group count exceeds platform capacity"))?;
-    if count >= pids.len() {
-        return Err(sample_error("process-group observation exceeded its bounded buffer"));
-    }
-    pids.truncate(count);
-    pids.retain(|pid| *pid > 0);
-    pids.sort_unstable();
-    pids.dedup();
-    Ok(Some(u64::try_from(pids.len()).unwrap_or(u64::MAX)))
 }
 
 #[cfg(all(unix, not(any(target_os = "linux", target_os = "macos"))))]

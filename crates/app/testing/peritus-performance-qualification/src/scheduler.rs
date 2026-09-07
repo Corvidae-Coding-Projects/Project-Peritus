@@ -10,7 +10,7 @@ use peritus_protocol::CommandEnvelopeDto;
 use peritus_scheduler::{
     ResourceEntry, ResourceKind, ResourceQuantity, ResourceVector, SchedulerBinding,
     SchedulerCommand, SchedulerCommandFrame, SchedulerCommandKind, SchedulerId, SchedulerLimits,
-    SchedulerPhase, SchedulerState, decide, start,
+    SchedulerState, decide, start,
 };
 use peritus_types::{
     AcceptanceSpecId, ActorId, CommandId, EventId, Generation, HarnessId, PolicyId,
@@ -52,23 +52,6 @@ impl SchedulerRun {
         let transition = start(&command)?;
         submit(client, identities, &command)?;
         Ok(Self { state: transition.into_state() })
-    }
-
-    pub fn append_event(
-        &mut self,
-        client: &mut A3Client,
-        identities: &mut IdentitySource,
-    ) -> Result<(), SubjectError> {
-        let kind = match self.state.phase() {
-            SchedulerPhase::Active => SchedulerCommandKind::PauseScheduler,
-            SchedulerPhase::Paused => SchedulerCommandKind::ResumeScheduler,
-            _ => {
-                return Err(SubjectError::UnexpectedResponse(
-                    "cannot append a qualification event to a draining scheduler".to_owned(),
-                ));
-            }
-        };
-        self.transition(client, identities, kind)
     }
 
     pub fn finish(
@@ -122,18 +105,28 @@ fn submit(
     identities: &mut IdentitySource,
     command: &SchedulerCommand,
 ) -> Result<(), SubjectError> {
-    let request_id = identities.next(RequestId::new)?;
-    let correlation_id = identities.next(CorrelationId::new)?;
     let envelope = CommandEnvelope::new(
         command.command_id(),
         command.event_id(),
         command.expected_previous_event(),
         command.revision(),
     );
-    let envelope_bytes =
-        encode_message(&CommandEnvelopeDto::from(envelope), CodecLimits::PRODUCTION)?;
     let command_bytes =
         encode_message(&SchedulerCommandFrame::from_command(command), CodecLimits::PRODUCTION)?;
+    submit_frames(client, identities, envelope, command_bytes)
+}
+
+pub fn submit_frames(
+    client: &mut A3Client,
+    identities: &mut IdentitySource,
+    envelope: CommandEnvelope,
+    command_bytes: Vec<u8>,
+) -> Result<(), SubjectError> {
+    let request_id = identities.next(RequestId::new)?;
+    let correlation_id = identities.next(CorrelationId::new)?;
+    let revision = envelope.revision();
+    let envelope_bytes =
+        encode_message(&CommandEnvelopeDto::from(envelope), CodecLimits::PRODUCTION)?;
     let frames = CommandSubmissionFrames::parse(
         envelope_bytes,
         command_bytes,
@@ -146,7 +139,7 @@ fn submit(
         correlation_id,
         IdempotencyKey::new(identities.key()?)
             .map_err(|error| SubjectError::Configuration(format!("idempotency key: {error:?}")))?,
-        Some(command.revision()),
+        Some(revision),
         frames,
     )?;
     let response = client.request(

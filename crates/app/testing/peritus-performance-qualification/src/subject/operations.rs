@@ -40,8 +40,8 @@ impl IntegratedSubject {
                 self.finish_run(*run)?;
                 accounting.apply(ResourceEvent::RunFinished { run: *run })?;
             }
-            PlannedOperation::AppendEvent { .. } => {
-                self.append_event(context, step.sequence(), measurements)?;
+            PlannedOperation::AppendEvent { bytes } => {
+                self.append_event(context, step.sequence(), *bytes, measurements)?;
             }
             PlannedOperation::StartProcess { process, memory_bytes } => {
                 self.start_process(*process, *memory_bytes, context, measurements, accounting)?;

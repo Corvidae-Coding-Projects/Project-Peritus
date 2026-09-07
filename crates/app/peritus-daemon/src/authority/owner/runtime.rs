@@ -29,6 +29,7 @@ pub(super) async fn run(
     authority_clock: AuthorityClock,
     mut receiver: mpsc::Receiver<AuthorityMessage>,
 ) -> Result<(), DaemonError> {
+    let mut scheduler_session = peritus_scheduler::SchedulerSession::default();
     while let Some(message) = receiver.recv().await {
         match message {
             AuthorityMessage::Status { respond } => reply(
@@ -271,8 +272,9 @@ pub(super) async fn run(
                 reply(respond, result);
             }
             AuthorityMessage::DispatchCommand { submission, respond } => {
-                let result = require_mutation(&lifecycle)
-                    .and_then(|()| crate::domain::dispatch(&mut journal, submission));
+                let result = require_mutation(&lifecycle).and_then(|()| {
+                    crate::domain::dispatch(&mut journal, &mut scheduler_session, submission)
+                });
                 reply(respond, result);
             }
             AuthorityMessage::SettleCommand { command_id, request_digest, settlement, respond } => {

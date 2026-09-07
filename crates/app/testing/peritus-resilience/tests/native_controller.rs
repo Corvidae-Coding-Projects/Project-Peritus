@@ -2,6 +2,8 @@
 
 #![cfg(unix)]
 
+#[path = "native_controller/diagnostics.rs"]
+mod diagnostics;
 #[path = "native_controller/drain.rs"]
 mod drain;
 
@@ -61,15 +63,7 @@ fn false_retained_digest_fails_recovery_but_each_controller_still_cleans_up() {
 
     assert!(!report.is_ready());
     assert_eq!(report.summary().failed(), 43);
-    assert!(report.cases().iter().all(|case| {
-        case.failures().iter().any(|failure| {
-            matches!(
-                failure,
-                ScenarioFailure::Subject { error, .. }
-                    if error.context().as_str().contains("evidence digest")
-            )
-        }) && case.cleanup().is_some_and(peritus_resilience::CleanupObservation::resources_released)
-    }));
+    diagnostics::assert_failed_subjects_are_clean(&report, "evidence digest");
     assert_eq!(fs::read_dir(&fixture.scratch).expect("scratch contents").count(), 0);
     assert_retained_evidence(&fixture.artifacts, 43);
 }
@@ -83,15 +77,7 @@ fn stale_prepare_response_is_rejected_and_the_subject_still_cleans_up() {
     let report = block_on(QualificationRunner::run(factory.config(), &catalog, &factory));
 
     assert_eq!(report.summary().failed(), 43);
-    assert!(report.cases().iter().all(|case| {
-        case.failures().iter().any(|failure| {
-            matches!(
-                failure,
-                ScenarioFailure::Subject { error, .. }
-                    if error.context().as_str().contains("stale")
-            )
-        }) && case.cleanup().is_some_and(peritus_resilience::CleanupObservation::resources_released)
-    }));
+    diagnostics::assert_failed_subjects_are_clean(&report, "stale");
     assert_eq!(fs::read_dir(&fixture.scratch).expect("scratch contents").count(), 0);
 }
 

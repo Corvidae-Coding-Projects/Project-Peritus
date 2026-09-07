@@ -93,7 +93,9 @@ impl MeasurementSink for SamplingSink {
         if bucket.samples.len() < bucket.target {
             bucket.samples.push(sample);
         } else {
-            let slot = mix64(bucket.seen ^ measurement.sequence()) % bucket.seen;
+            // The bucket ordinal is the sampling stream. XOR with the global sequence cancels
+            // it when they align and makes sampling depend on unrelated metric interleaving.
+            let slot = mix64(bucket.seen) % bucket.seen;
             if slot < bucket.target as u64 {
                 bucket.samples[usize::try_from(slot).expect("slot is below usize target")] = sample;
             }
@@ -180,7 +182,54 @@ mod tests {
         }));
     }
 
+    #[test]
+    fn aligned_event_sequence_retains_samples_across_the_complete_horizon() {
+        let samples = event_samples(1, 60_000, 10_000);
+        let mut windows = [0_usize; 6];
+        for sample in &samples {
+            let window = usize::try_from((sample.value - 1) / 10_000).expect("sample window");
+            windows[window] += 1;
+        }
+        assert_eq!(samples.len(), 20_000);
+        assert_eq!(windows, [3332, 3344, 3272, 3366, 3327, 3359]);
+    }
+
+    #[test]
+    fn other_metrics_global_sequences_do_not_change_event_sampling() {
+        let contiguous = event_samples(1, 1_000, 16);
+        let interleaved = event_samples(2, 1_000, 16);
+        assert_eq!(
+            contiguous.iter().map(|sample| sample.value).collect::<Vec<_>>(),
+            interleaved.iter().map(|sample| sample.value).collect::<Vec<_>>()
+        );
+    }
+
+    fn event_samples(stride: u64, count: u64, minimum_samples: usize) -> Vec<Sample> {
+        let profile = profile_with_minimum(minimum_samples);
+        let mut sink = SamplingSink::new(&profile, id("workload"), 0);
+        for ordinal in 1..=count {
+            sink.record(
+                MeasurementRecord::new(
+                    id("run"),
+                    id("profile"),
+                    id("workload"),
+                    Metric::EventAppendLatency,
+                    ordinal * stride,
+                    ordinal * stride,
+                    ordinal,
+                )
+                .expect("record"),
+            )
+            .expect("sample");
+        }
+        sink.finish()
+    }
+
     fn profile() -> QualificationProfile {
+        profile_with_minimum(16)
+    }
+
+    fn profile_with_minimum(minimum_samples: usize) -> QualificationProfile {
         let envelope = ResourceEnvelope::new(
             ConcurrencyLimits::new(1, 1, 1).expect("concurrency"),
             CapacityLimits::new(1, 1, 1).expect("capacity"),
@@ -202,7 +251,7 @@ mod tests {
                 Statistic::P99,
                 ObjectiveBound::AtMost,
                 100,
-                16,
+                minimum_samples,
             )
             .expect("objective"),
         )

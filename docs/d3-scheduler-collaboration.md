@@ -125,17 +125,24 @@ event identity and sequence, predecessor, revision, canonical ordering, parent/d
 resource conservation, command/event correspondence, successor digest, and exact checkpoint
 equality. Missing, ahead, behind, corrupt, foreign, or divergent checkpoints fail closed.
 
-## Schema-version-five migration
+The serialized G0 owner holds one `SchedulerSession`, populated by this complete checked replay
+or by an exact successor commit receipt. Before a warm command, C0 checks the original journal
+instance, append generation and external-commit version. It repeats the external-version check
+inside `BEGIN IMMEDIATE`, retaining all existing head/checkpoint CAS and idempotency checks.
+Every append attempt invalidates older observations; only its successful guarded receipt can
+extend the session. Failed or indeterminate commits discard the cached state. Restart and run
+switches use cold replay, and external corruption cannot be hidden behind unchanged head fields.
 
-C0 schema version five widens only the closed aggregate-kind checks from tags 1-9 to tags 1-12.
-Tags 10 and 11 are D3 scheduler and collaboration; tag 12 is reserved for the immediately following
-E0 orchestrator. The migration requires a completed backup, copies both constrained journal tables,
-checks row counts and metadata, recreates indexes, and records schema/user version five.
+This is bounded reuse of one verified aggregate, not a second persistence format. E0 still reads
+exact historical scheduler predecessors for pause/resume and retries; its ordinary commits
+invalidate any retained G0 scheduler state. Complete canonical command history, wire bytes and
+full current-state writes remain unchanged. Load and soak qualification remain separate gates.
 
-The checked version-four fixture proves that historical tags 1-9, event order, hashes, and frame
-bytes survive byte-for-byte and that tags 10-12 can then be appended. Once newer aggregate rows
-exist, rollback restores the version-four backup or uses a reviewed forward repair; it does not
-rewrite journal history.
+## Initial release schema
+
+The initial C0 schema includes scheduler and collaboration tags 10 and 11, along with E0 tag 12.
+Fresh installation needs no development-schema upgrades. Journal history remains authoritative
+across restart, and corruption is rejected rather than repaired by rewriting events.
 
 ## Projections and operations
 

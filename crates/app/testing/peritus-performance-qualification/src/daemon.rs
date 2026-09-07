@@ -267,8 +267,8 @@ generation = 1
 [limits]
 authority_queue = 512
 connection_queue = 64
-maximum_connections = 16
-maximum_workers = 16
+maximum_connections = 64
+maximum_workers = 32
 maximum_artifact_bytes = 16777216
 artifact_quota_bytes = 8589934592
 shutdown_millis = 5000

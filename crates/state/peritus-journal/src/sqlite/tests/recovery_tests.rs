@@ -133,14 +133,19 @@ fn integrity_rejects_state_history_gaps_and_current_row_rewinds() {
     let rewind_temp = TempDir::new().expect("temporary directory");
     let mut rewind = open(&rewind_temp);
     append_two_state_revisions(&mut rewind, 90);
+    let old = rewind
+        .state_record_revision(7, b"durable-state", 1)
+        .expect("historical read")
+        .expect("old state");
     rewind
         .connection
-        .execute_batch(
+        .execute(
             "UPDATE state_records
                 SET revision = 1,
                     value_digest = (SELECT value_digest FROM state_record_history WHERE revision = 1),
-                    value = (SELECT value FROM state_record_history WHERE revision = 1),
+                    value = ?1,
                     producing_position = (SELECT producing_position FROM state_record_history WHERE revision = 1);",
+            [old.bytes()],
         )
         .expect("rewind current row to valid older history");
     assert_eq!(

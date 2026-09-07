@@ -176,16 +176,10 @@ On restart:
 Missing, ahead, behind, corrupt, foreign, or divergent checkpoints fail closed. Preserve the store
 and immutable inputs for diagnosis; do not synthesize a checkpoint from whichever copy looks newer.
 
-## Schema-version-four migration
+## Initial release schema
 
-C0 schema version four widens only the closed aggregate-kind checks from tags 1–8 to 1–9. The
-migration requires a completed backup, copies constrained journal tables, verifies row counts and
-metadata, recreates indexes, and then records schema/user version four. The checked version-three
-fixture proves that all historical tag 1–8 rows and event bytes survive migration and that the
-backup restores the exact pre-D2 store.
-
-Once tag-9 events exist, an old binary cannot open that forward schema. Rollback restores the
-version-three backup or uses a later reviewed forward repair; it never rewrites historical events.
+The initial C0 schema includes the `Review` aggregate (tag 9). No development-schema migration is
+required; fresh-install, replay, and integrity tests cover the release format.
 
 ## Errors and recovery
 

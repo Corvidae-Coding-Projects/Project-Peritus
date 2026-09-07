@@ -29,18 +29,28 @@ Evidence is immutable history, but its currentness is a separate revision and in
 metadata, rejects a caller limit below the durable size, reads a regular object file, and verifies
 that the exact bytes returned still match both the recorded size and SHA-256 digest.
 
-The shared journal schema is currently version 10. Its closed aggregate-kind registry includes the
+The first release, `0.0.1`, has one initial journal schema, version 1. Its aggregate registry includes the
 permanent D0 `Agent`, D1 `Gate`, C7 `Trace`, D2 `Review`, D3 `Scheduler`/`Collaboration`, and E0
 `Orchestrator`, E1 `Harness`, E2 `Debugger`, E3 `Evaluation`, F0
 `EvolutionCampaign`/`ProductionHarness`, and G0 `Application` kinds in addition to the foundational
-kernel and B1 state kinds.
-Upgrades from
-version 1 preserve existing event and head rows exactly while version 2 admits `Agent`, version 3
-admits `Gate` and `Trace`, version 4 admits `Review`, version 5 admits the D3/E0 kinds, and version 6
-admits E1, version 7 admits E2, version 8 admits E3, version 9 admits F0, and version 10 admits G0.
-Version 10 also installs the application principal, session, command, prompt-target, artifact, and
-workspace tables and indexes. All nine table-rebuilding upgrades require a verified whole-file
-backup before table replacement.
+kernel and B1 state kinds. All application principal, session, command, prompt-target, artifact,
+workspace, and shared-history tables are present on first installation. The development-era
+versions were never released and are not supported migration targets. Retained experimental
+databases are evidence archives, not installations to convert automatically.
+
+`state_record_history` stores a required 32-byte root digest in the `state_history_nodes` table,
+alongside the logical value digest, revision, and producing position. There is no legacy inline
+representation. Current `state_records` contain the complete value.
+
+The shared representation uses fixed 512-byte leaves and fanout 16, bounded by the same 16 MiB
+logical state limit and a maximum height of four. Node SHA-256 binds a format-specific domain,
+height, logical length, and exact payload. Reads validate node hashes, exact child spans, decreasing
+heights, the minimum root height, and the reconstructed logical SHA-256 in one snapshot. Empty
+values use an empty leaf. Missing or corrupt nodes fail closed. Reused nodes are checked before
+acceptance, and all new nodes and history roots share the existing append transaction. History
+integrity still checks contiguous revisions, producing events, and exact current/latest agreement.
+No history pruning or node garbage collection is introduced. Sharing reduces retained duplicate
+history but does not eliminate full current-value writes or per-append tree traversal and encoding.
 
 For the intended composed deployment, configure `ArtifactStore` with
 `StoreConfig::with_database_path` and pass that same SQLite path to `SqliteJournal`,
@@ -75,6 +85,15 @@ or inconsistent requests do not reach the database.
 File-backed journals enable WAL, `synchronous=FULL`, foreign keys, defensive mode, an explicit busy
 timeout, a 32 MiB SQLite value limit, no attached databases, and untrusted-schema handling. One
 `SqliteJournal` owns one writable connection and mutating methods require `&mut self`.
+
+For verified aggregate reuse, `observe_replay` captures the journal instance/append generation
+and [SQLite's connection-local external commit version](https://www.sqlite.org/pragma.html#pragma_data_version)
+before cold replay. `append_observed` rejects an invalidated observation and checks the external
+version under the same `BEGIN IMMEDIATE` lock as the append. Its successful receipt yields the
+next observation without adopting any intervening post-commit external version. All append
+attempts invalidate older observations, including failures and lost acknowledgements. Mutable
+same-connection application ledgers and outbox leases are outside this history-only observation;
+their own admission/CAS checks still apply. The marker itself does not establish replay correctness.
 
 `CommittedBatch` and the typed B0/B1 committed observations have private construction and are not
 `Clone` or `Copy`. They show that this process observed an exact committed result; they are not
@@ -250,12 +269,14 @@ backup paths, acquires an exclusive owner lock, enables `synchronous=FULL` and f
 registry/history digests, current and target versions, application compatibility, forward-only
 ordering, and checked database/backup free-space requirements.
 
-The production registry contains ten contiguous, required-backup migrations. Version 1 establishes
-the initial migration marker and declares 64 KiB of scratch; versions 2–10 extend the shared journal
-and application schema as described above and each declare 32 MiB. Their original `0.0.0` release
-identities and exact SQL digests remain immutable when package versions change. Artifact, projection,
-and evidence schemas are still installed by their owning `open` methods, so migration version alone
-is not evidence that every component has been initialized.
+The production registry contains only the version-1 marker for release `0.0.1`. The journal installs
+the complete initial schema directly; `adopt_current_install` records that marker once, without
+running historical upgrades or creating backups. Subsequent released schema changes will append
+forward migrations. The generic migration engine still tests transaction failure, interrupted
+backup, lost commit acknowledgement, digest verification, and explicit restore. Those are storage
+safety checks, not compatibility promises for development databases. Artifact, projection, and
+evidence schemas remain installed by their owning `open` methods, so the journal version alone is
+not evidence that every component has been initialized.
 
 For a risky plan, `apply` records the operation identity, creates a consistent SQLite backup in an
 exclusive `.partial` file, syncs it, records its digest and recovery state, atomically renames it to

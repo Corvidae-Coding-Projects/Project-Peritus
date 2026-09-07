@@ -9,7 +9,7 @@ use peritus_types::{EventId, Sha256Digest};
 
 use crate::{JournalError, JournalErrorKind};
 
-pub use aggregate::parse_head;
+pub use aggregate::{AggregateCheckpointSnapshot, parse_head};
 pub use command::resolve_command;
 pub use records::load_records_range;
 

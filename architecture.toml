@@ -41,8 +41,6 @@ source_exceptions = [
     { path = "crates/orchestration/peritus-review/tests/domain_engine.rs", owner = "D2", rationale = "The D2 engine matrix keeps exact binding, quorum, waiver, terminal, and shared identity fixtures together so each assertion exercises the same deterministic domain construction." },
     { path = "crates/orchestration/peritus-review/tests/domain_transitions.rs", owner = "D2", rationale = "The D2 transition matrix keeps reconciliation, confirmation, cancellation, supersession, and oscillation sequences beside one shared canonical review-history fixture." },
     { path = "crates/state/peritus-migrations/src/engine.rs", owner = "C0", rationale = "The migration engine keeps backup, transaction, integrity, recovery, and version publication ordering in one auditable implementation." },
-    { path = "crates/state/peritus-migrations/src/registry.rs", owner = "C0", rationale = "The ordered migration registry keeps every historical descriptor and the exact validated schema chain visible in one compatibility audit surface." },
-    { path = "crates/state/peritus-migrations/tests/fixture_upgrade.rs", owner = "C0", rationale = "The historical migration matrix keeps v1, v3, and unversioned byte-preservation fixtures with their shared journal hash and row-snapshot machinery." },
 ]
 forbidden_dependencies = []
 controlled_source_roots = [
@@ -68,7 +66,6 @@ controlled_source_roots = [
     { path = "crates/state/peritus-artifact-store/src/catalog/schema.rs", owner = "C0", kind = "schema", rationale = "C0 owns the artifact catalog schema used by the shared durable SQLite database." },
     { path = "crates/state/peritus-evidence/src/sqlite/schema.rs", owner = "C0", kind = "schema", rationale = "C0 owns the durable evidence catalog schema and its provenance constraints." },
     { path = "crates/state/peritus-journal/src/sqlite/schema.rs", owner = "C0", kind = "schema", rationale = "C0 owns the authoritative journal schema and transactional state tables." },
-    { path = "crates/state/peritus-migrations/fixtures", owner = "C0", kind = "generated", rationale = "C0 owns immutable old-schema fixtures exercised by forward migration and restoration tests." },
     { path = "crates/state/peritus-projection/src/sqlite/schema.rs", owner = "C0", kind = "schema", rationale = "C0 owns versioned projection generations and atomic activation metadata." },
     { path = "fixtures/protocol/scheduler-v1", owner = "D3", kind = "generated", rationale = "D3 owns immutable schema-versioned scheduler command, event, and complete-state compatibility frames plus their SHA-256 manifest." },
     { path = "protocol/generated", owner = "B3", kind = "generated-schema", rationale = "B3 deterministically generates the reviewed protocol schema and TypeScript client declarations." },

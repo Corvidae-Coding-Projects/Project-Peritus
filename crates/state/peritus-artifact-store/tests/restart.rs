@@ -148,44 +148,14 @@ fn restart_contains_referenced_corrupt_object_without_losing_its_audit_root() {
 }
 
 #[test]
-fn opening_a_pre_integrity_catalog_adds_the_healthy_default() {
-    let directory = tempfile::tempdir().expect("temporary store root");
-    let database = directory.path().join("metadata.sqlite3");
-    let connection = rusqlite::Connection::open(&database).expect("legacy catalog");
-    connection
-        .execute_batch(
-            "CREATE TABLE artifact_records (
-                digest BLOB PRIMARY KEY NOT NULL CHECK(length(digest) = 32),
-                size INTEGER NOT NULL CHECK(size >= 0),
-                media_type TEXT NOT NULL,
-                encryption_algorithm TEXT,
-                encryption_key_reference BLOB,
-                encryption_parameters_digest BLOB,
-                finalization_state INTEGER NOT NULL CHECK(finalization_state IN (1, 2)),
-                creating_event BLOB NOT NULL CHECK(length(creating_event) = 16),
-                quarantine_state INTEGER NOT NULL CHECK(quarantine_state IN (1, 2)),
-                quarantine_generation INTEGER
-            ) STRICT;
-            CREATE TABLE artifact_references (
-                owner_kind INTEGER NOT NULL,
-                owner_identity BLOB NOT NULL,
-                artifact_digest BLOB NOT NULL,
-                PRIMARY KEY(owner_kind, owner_identity, artifact_digest),
-                FOREIGN KEY(artifact_digest) REFERENCES artifact_records(digest) ON DELETE RESTRICT
-            ) STRICT;",
-        )
-        .expect("legacy schema");
-    drop(connection);
-
-    let store = ArtifactStore::open(StoreConfig::new(directory.path(), 128, 512).expect("config"))
-        .expect("legacy catalog migrates");
+fn fresh_catalog_includes_integrity_state_with_a_healthy_default() {
+    let (directory, store) = store(128, 512);
     drop(store);
-    let connection = rusqlite::Connection::open(database).expect("migrated catalog");
-    let mut statement = connection.prepare("PRAGMA table_info(artifact_records)").expect("pragma");
-    let columns = statement
-        .query_map([], |row| row.get::<_, String>(1))
-        .expect("column query")
-        .collect::<Result<Vec<_>, _>>()
-        .expect("column names");
-    assert!(columns.iter().any(|column| column == "integrity_state"));
+    let connection = rusqlite::Connection::open(directory.path().join("metadata.sqlite3"))
+        .expect("initial catalog");
+    let column: (bool, String) = connection.query_row(
+        "SELECT [notnull], dflt_value FROM pragma_table_info('artifact_records') WHERE name = 'integrity_state'",
+        [], |row| Ok((row.get(0)?, row.get(1)?)),
+    ).expect("initial integrity column");
+    assert_eq!(column, (true, "1".to_owned()));
 }

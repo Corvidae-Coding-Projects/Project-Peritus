@@ -1,5 +1,8 @@
 //! Bounded macOS process-group and workspace resource sampling.
 
+#[cfg(any(target_os = "macos", test))]
+mod pids;
+
 use std::{
     path::{Path, PathBuf},
     time::Instant,
@@ -154,7 +157,7 @@ fn disk_usage(root: &Path) -> Result<u64, MacosError> {
     Ok(total)
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", test))]
 fn sample_error() -> MacosError {
     MacosError::new(
         MacosErrorKind::SupervisorFailure,
@@ -170,10 +173,7 @@ fn sample_error() -> MacosError {
     reason = "inventoried libproc read-only process-group resource observation boundary"
 )]
 mod native {
-    use std::{
-        ffi::{c_int, c_void},
-        mem::{MaybeUninit, size_of_val},
-    };
+    use std::{ffi::c_void, mem::MaybeUninit};
 
     use peritus_process::ProcessTreeIdentity;
 
@@ -204,26 +204,9 @@ mod native {
     ) -> Result<ResourceUsage, MacosError> {
         let group = tree.process_group().ok_or_else(sample_error)?;
         let mut pids = vec![0_i32; MAX_GROUP_PROCESSES];
-        let buffer_bytes =
-            c_int::try_from(size_of_val(pids.as_slice())).map_err(|_| sample_error())?;
-        // SAFETY: `pids` is writable for `buffer_bytes`; the selector requests only process IDs
-        // belonging to the exact C2-owned process group and transfers no ownership.
-        let count = unsafe {
-            libc::proc_listpgrppids(
-                group.cast_signed(),
-                pids.as_mut_ptr().cast::<c_void>(),
-                buffer_bytes,
-            )
-        };
-        if count < 0 {
-            return Err(sample_error());
-        }
+        let count = super::pids::enumerate(group.cast_signed(), &mut pids)?;
         if count == 0 {
             return Ok(ResourceUsage::default());
-        }
-        let count = usize::try_from(count).map_err(|_| sample_error())?;
-        if count >= pids.len() {
-            return Err(sample_error());
         }
         pids.truncate(count);
         pids.retain(|pid| *pid > 0);

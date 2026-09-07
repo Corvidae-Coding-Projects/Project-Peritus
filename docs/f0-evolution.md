@@ -23,9 +23,8 @@ lives across every campaign and serializes activations for one project. This sep
 multiple campaigns to analyze the same baseline while preserving one project-global compare-and-
 swap at promotion time.
 
-Journal schema 9 admits both aggregate kinds. Migration v9 preserves every schema-8 row, frame,
-position, digest, and hash before widening the aggregate-kind checks. Older F0 schemas are decoded
-only by their registered version; unknown frames remain inert.
+The initial journal release schema includes both aggregate kinds. Wire frames are decoded only by
+their registered version; unknown frames remain inert. No development-database upgrade is required.
 
 ## Exact inputs
 

@@ -8,7 +8,8 @@ use peritus_codec::{CodecLimits, decode_message, encode_message, sha256};
 use peritus_evidence::revision_digest;
 use peritus_journal::{
     AggregateId, AggregateKey, AggregateKind, AppendRequest, CommandResolution, CommittedBatch,
-    EventDraft, ExactFrame, HeadExpectation, SqliteJournal, StateInstall, StoreId,
+    EventDraft, ExactFrame, HeadExpectation, ReplayObservation, SqliteJournal, StateInstall,
+    StoreId,
 };
 use peritus_types::RunId;
 
@@ -109,6 +110,15 @@ pub fn commit_scheduler_transition(
     command: &SchedulerCommand,
     transition: &SchedulerTransition,
 ) -> Result<CommittedBatch, SchedulerError> {
+    commit_transition(journal, command, transition, None).map(|(batch, _)| batch)
+}
+
+pub fn commit_transition(
+    journal: &mut SqliteJournal,
+    command: &SchedulerCommand,
+    transition: &SchedulerTransition,
+    observation: Option<&ReplayObservation>,
+) -> Result<(CommittedBatch, Option<ReplayObservation>), SchedulerError> {
     binding::validate(command, transition)?;
     let event = transition.event();
     let state = transition.state();
@@ -139,7 +149,9 @@ pub fn commit_scheduler_transition(
         state,
         request_digest,
     )? {
-        return Ok(batch);
+        // Existing-command resolution is unchanged. It is not a new guarded append, so it
+        // cannot advance a reusable replay observation.
+        return Ok((batch, None));
     }
     let head = journal.head(aggregate).map_err(journal_error)?;
     let current =
@@ -193,7 +205,23 @@ pub fn commit_scheduler_transition(
         None,
         Vec::new(),
     );
-    journal.append(request.plan().map_err(journal_error)?).map_err(journal_error)
+    append(journal, request, observation)
+}
+
+fn append(
+    journal: &mut SqliteJournal,
+    request: AppendRequest,
+    observation: Option<&ReplayObservation>,
+) -> Result<(CommittedBatch, Option<ReplayObservation>), SchedulerError> {
+    let plan = request.plan().map_err(journal_error)?;
+    if let Some(observation) = observation {
+        journal
+            .append_observed(plan, observation)
+            .map(|(batch, next)| (batch, Some(next)))
+            .map_err(journal_error)
+    } else {
+        journal.append(plan).map(|batch| (batch, None)).map_err(journal_error)
+    }
 }
 
 #[allow(clippy::too_many_arguments, reason = "all exact idempotency bindings remain explicit")]
@@ -254,9 +282,10 @@ pub fn load_scheduler_replay(
 ) -> Result<SchedulerReplay, SchedulerError> {
     let aggregate = scheduler_aggregate_key(run_id)?;
     let state_key = scheduler_state_key(run_id);
-    let records = journal.records_for_aggregate(aggregate).map_err(journal_error)?;
-    let state_record =
-        journal.state_record(SCHEDULER_STATE_NAMESPACE, &state_key).map_err(journal_error)?;
+    let (records, state_record) = journal
+        .aggregate_checkpoint_snapshot(aggregate, SCHEDULER_STATE_NAMESPACE, &state_key)
+        .map_err(journal_error)?
+        .into_parts();
     if records.is_empty() != state_record.is_none() {
         return Err(inconsistent("scheduler events/checkpoint presence differs"));
     }
@@ -308,7 +337,7 @@ fn codec_error(error: peritus_codec::CodecError) -> SchedulerError {
         error,
     )
 }
-fn journal_error(error: peritus_journal::JournalError) -> SchedulerError {
+pub fn journal_error(error: peritus_journal::JournalError) -> SchedulerError {
     SchedulerError::sourced(
         SchedulerErrorKind::Journal,
         crate::SchedulerRecoveryAction::ReplayAggregate,

@@ -135,16 +135,10 @@ The rebuildable projection exposes bounded status, immutable query/selection/rep
 progress, budget use, retry state, typed safe failures, and artifact/evidence identities. It never
 exposes credentials, raw-vault bytes, capabilities, evaluation results, or production pointers.
 
-## Schema migration
+## Initial release schema
 
-C0 schema version 7 widens only the constrained journal aggregate-kind columns from tags 1–13 to
-1–14. It copies heads and events in canonical order, verifies row counts, rebuilds the command
-index, and publishes schema/user version 7 in one transaction after a completed whole-file backup.
-
-The frozen v6 fixture proves that every historical tag and event frame remains byte-exact. The
-upgrade test then appends tag-14 family-83 data, runs the journal integrity scanner, restores the
-backup, and verifies the original v6 rows and `user_version`. Once real tag-14 data exists, an old
-v6 binary must not open the store; use the verified backup or a future forward repair.
+The initial C0 release schema includes `Debugger` (tag 14) directly. Fresh-install, restart, and
+integrity tests cover the release format without supporting unshipped development schemas.
 
 ## Verification and operation
 

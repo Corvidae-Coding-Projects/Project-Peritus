@@ -13,6 +13,7 @@ pub(crate) mod reducer;
 pub(crate) mod resource;
 pub(crate) mod runtime;
 pub(crate) mod selection;
+mod session;
 pub(crate) mod state;
 pub(crate) mod verified;
 pub(crate) mod wire;
@@ -36,6 +37,7 @@ pub use reducer::{decide, replay, start};
 pub use resource::{ResourceEntry, ResourceKind, ResourceQuantity, ResourceVector};
 pub use runtime::{SchedulerDirective, pending_directives};
 pub use selection::{Selection, select_next};
+pub use session::SchedulerSession;
 pub use state::{SchedulerPhase, SchedulerState, SchedulerTerminal, SchedulerTerminalKind};
 pub use verified::{
     attempts_are_monotonic, dependencies_are_ready, no_implicit_success, replay_equivalent,

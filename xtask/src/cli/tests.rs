@@ -30,6 +30,9 @@ fn native_rebuild_commands_select_exact_operations() {
     for (name, operation) in [
         ("release-rebuild-record", Operation::Record),
         ("release-rebuild-compare", Operation::Compare),
+        ("release-daemon-library", Operation::Library),
+        ("release-daemon-binary", Operation::DaemonBinary),
+        ("release-cli-binary", Operation::CliBinary),
     ] {
         assert_eq!(
             parse([OsString::from(name)]).expect("rebuild command"),
@@ -48,6 +51,9 @@ fn distribution_commands_select_reviewed_operations_and_reject_extra_arguments()
         ("distro-image-save", Operation::ImageSave),
         ("distro-image-restore", Operation::ImageRestore),
         ("distro-build", Operation::Build),
+        ("distro-compile", Operation::Compile),
+        ("distro-compile-checks", Operation::CompileChecks),
+        ("distro-package-compiled", Operation::PackageCompiled),
         ("distro-sign", Operation::Sign),
         ("distro-sign-ci", Operation::SignCi),
         ("distro-verify", Operation::Verify),

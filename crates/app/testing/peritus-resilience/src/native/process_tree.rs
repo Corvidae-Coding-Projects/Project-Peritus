@@ -1,5 +1,9 @@
 //! Platform process-tree ownership for one persistent H1 controller.
 
+#[cfg(any(target_os = "macos", all(test, unix)))]
+#[path = "process_tree/macos.rs"]
+mod macos;
+
 #[cfg(unix)]
 mod platform {
     use std::os::unix::process::CommandExt as _;
@@ -14,6 +18,8 @@ mod platform {
     use crate::{SubjectError, SubjectErrorCode};
 
     use super::super::subject_error;
+    #[cfg(target_os = "macos")]
+    use super::macos::process_group_is_empty;
 
     const PROCESS_DRAIN_DEADLINE: Duration = Duration::from_secs(2);
     const PROCESS_DRAIN_POLL_INTERVAL: Duration = Duration::from_millis(10);
@@ -72,53 +78,6 @@ mod platform {
                 false,
             )),
         }
-    }
-
-    #[cfg(target_os = "macos")]
-    #[allow(
-        unsafe_code,
-        reason = "inventoried libproc read-only process-group enumeration boundary"
-    )]
-    fn process_group_is_empty(group: i32) -> Result<bool, SubjectError> {
-        use std::{ffi::c_void, mem::size_of_val};
-
-        const MAX_GROUP_PROCESSES: usize = 16_384;
-
-        let mut pids = vec![0_i32; MAX_GROUP_PROCESSES];
-        let buffer_bytes = i32::try_from(size_of_val(pids.as_slice())).map_err(|_| {
-            subject_error(
-                SubjectErrorCode::Cleanup,
-                "macOS process-group buffer exceeds platform capacity",
-                false,
-            )
-        })?;
-        // SAFETY: `pids` is writable for `buffer_bytes`; libproc reads the exact controller-owned
-        // process group and transfers no ownership.
-        let count = unsafe {
-            libc::proc_listpgrppids(group, pids.as_mut_ptr().cast::<c_void>(), buffer_bytes)
-        };
-        if count < 0 {
-            return Err(subject_error(
-                SubjectErrorCode::Cleanup,
-                "enumerate owned macOS controller process group",
-                false,
-            ));
-        }
-        let count = usize::try_from(count).map_err(|_| {
-            subject_error(
-                SubjectErrorCode::Cleanup,
-                "macOS process-group count exceeds platform capacity",
-                false,
-            )
-        })?;
-        if count >= pids.len() {
-            return Err(subject_error(
-                SubjectErrorCode::Cleanup,
-                "macOS process-group observation exceeded its bounded buffer",
-                false,
-            ));
-        }
-        Ok(count == 0)
     }
 
     fn signal_group(group: i32, signal: Signal) -> Result<(), SubjectError> {

@@ -1,15 +1,27 @@
 //! Derived baseline candidates that remain inert until explicit operator acceptance.
 
 use peritus_benchmarks::{
-    BaselineEntry, BaselineManifest, EvidenceManifest, QualificationError, QualificationEvaluation,
-    StableId,
+    BaselineEntry, BaselineManifest, EvidenceManifest, NotReadyReason, QualificationError,
+    QualificationEvaluation, StableId,
 };
 
 pub fn derive_candidate(
     manifest: &EvidenceManifest,
     evaluation: &QualificationEvaluation,
 ) -> Result<Option<BaselineManifest>, QualificationError> {
-    if evaluation.objectives().iter().any(|objective| objective.observed().is_none()) {
+    // Measured performance can miss an SLO or differ from another baseline and still be offered
+    // for explicit review. Missing execution, samples, or resource exercise cannot define one.
+    let incomplete_evidence = evaluation.not_ready_reasons().iter().any(|reason| {
+        !matches!(
+            reason,
+            NotReadyReason::ObjectiveMissed { .. }
+                | NotReadyReason::RequiredBaselineMissing { .. }
+                | NotReadyReason::BlockingRegression { .. }
+        )
+    });
+    if incomplete_evidence
+        || evaluation.objectives().iter().any(|objective| objective.observed().is_none())
+    {
         return Ok(None);
     }
     let entries = evaluation

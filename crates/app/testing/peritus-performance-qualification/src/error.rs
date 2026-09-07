@@ -24,6 +24,18 @@ pub enum SubjectError {
     /// The deterministic scheduler rejected a locally constructed transition.
     #[error("qualification subject scheduler transition failed")]
     Scheduler(#[from] peritus_scheduler::SchedulerError),
+    /// The existing D2 review boundary rejected a locally constructed event fixture.
+    #[error("qualification review event construction failed")]
+    Review(#[from] peritus_review::ReviewError),
+    /// Construction of a checked, synthetic application fixture failed.
+    #[error("qualification event fixture was invalid: {0:?}")]
+    EventFixture(peritus_spec::SpecError),
+    /// Exact per-operation evidence could not be serialized or decoded.
+    #[error("qualification event evidence encoding failed")]
+    EventEvidence(#[from] serde_json::Error),
+    /// An owned load worker disconnected or panicked.
+    #[error("qualification event worker failed: {0}")]
+    EventWorker(&'static str),
     /// A benchmark measurement or accounting contract rejected an observation.
     #[error("qualification subject evidence contract failed")]
     Qualification(#[from] QualificationError),
@@ -221,6 +233,9 @@ pub enum RunnerError<E>
 where
     E: std::error::Error + Send + Sync + 'static,
 {
+    /// A concurrent event-load invocation failed outside an individual plan step.
+    #[error("qualification event-load execution failed")]
+    EventLoad(#[source] E),
     /// The integrated subject rejected or failed one planned operation.
     #[error("qualification subject failed at plan step {step}")]
     Subject {

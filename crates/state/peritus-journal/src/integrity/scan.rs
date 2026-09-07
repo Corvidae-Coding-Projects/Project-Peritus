@@ -2,7 +2,6 @@
 
 use std::collections::BTreeMap;
 
-use peritus_types::Sha256Digest;
 use rusqlite::Transaction;
 
 use super::{
@@ -85,33 +84,9 @@ fn validate_event_order(
         if record.global_position() != expected_position {
             return Err(corrupt("global positions are not contiguous from one"));
         }
-        match heads.get(&record.aggregate()) {
-            None => {
-                if record.sequence().get() != 1
-                    || record.previous_event_id().is_some()
-                    || record.previous_event_hash() != Sha256Digest::new([0; 32])
-                {
-                    return Err(corrupt("aggregate genesis predecessor is invalid"));
-                }
-            }
-            Some(previous) => {
-                if previous.sequence().get().checked_add(1) != Some(record.sequence().get())
-                    || record.previous_event_id() != Some(previous.event_id())
-                    || record.previous_event_hash() != previous.event_hash()
-                {
-                    return Err(corrupt("aggregate sequence or hash predecessor is broken"));
-                }
-            }
-        }
-        heads.insert(
-            record.aggregate(),
-            AggregateHead::new(
-                record.aggregate(),
-                record.sequence(),
-                record.event_id(),
-                record.event_hash(),
-            ),
-        );
+        let head =
+            AggregateHead::checked_successor(heads.get(&record.aggregate()).copied(), record)?;
+        heads.insert(record.aggregate(), head);
     }
     Ok(heads)
 }

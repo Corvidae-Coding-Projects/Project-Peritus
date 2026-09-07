@@ -23,7 +23,8 @@ class NativeRebuildTests(unittest.TestCase):
                    "build_started_unix": 1, "build_finished_unix": 2}
         (directory / rebuild.PACKAGE_RECORD).write_text(json.dumps(package))
         with patch.object(rebuild, "candidate", return_value={"explicit_test_fixture": True}), \
-                patch.object(rebuild, "command", return_value="fixture rustc identity"):
+                patch.object(rebuild, "command", return_value="fixture rustc identity"), \
+                patch.object(rebuild, "ROOT", directory):
             rebuild.record(directory, role)
         return directory
 
