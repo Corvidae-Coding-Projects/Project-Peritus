@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1316,
+  "next_comment_id": 1317,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T11:35:35.192099419Z",
+      "updated_at": "2026-09-07T11:35:40.059646956Z",
       "labels": [
         "release"
       ],
@@ -1637,6 +1637,15 @@
           "kind": "note",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWSrmRHiiUApXYApCCxN+8YA588J8lniy8JtnaR3/4YYhhSL46vTSYmvcLblZIC9j/A2WJZBu5HFScycEKP/MDg=="
+        },
+        "9c6f312a-17a4-44ae-992c-335c574920b0": {
+          "display_id": 1316,
+          "author": "QWDj",
+          "content": "[action] Current release repair head ff92d079 is signed, pushed and tracked-clean; frozen root a819 remains unchanged. Both hosted ad508 Intel Mac library producers and downloaded strict transport validations passed. Exact-ad508 fresh dependency extraction proof matched cold unsplit bytes. One-file Windows fixture correction local gates all pass; hosted replacement Windows and final Mac binaries remain pending. PR #53 updated and verified, preserving historical evidence and candidate boundaries. Only superseded ad508 PR Gate A 34112897920 was force-cancelled after ordinary cancellation stalled; terminal state verified. Existing unsigned ad508, main 6709 and ff92 PR checks remain live. Observers 36360 main, 21628 unsigned, 31972 current PR, and older PR observer 76365 all confirmed live. Report target/h4-ad508-native-library-and-fresh-dependencies-20260907.md fully read and verified. No local builds/downloads remain active. No signing, tag, publication, soak, benchmark restart, or final H4 claim.",
+          "created_at": "2026-09-07T11:35:40.056329166Z",
+          "kind": "note",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAYsHWcGk/ZpgGn8nMLjnH4GqlgZ07rkQFCtCLiEGH7+bawez7rwhRUHTfO4EoS8Mjc2YfmFvNBI28LIPDkKApAg=="
         },
         "9e79ba5f-a10c-4cb1-aff4-e31ad05182c9": {
           "display_id": 1302,
@@ -12857,8 +12866,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T11:35:35.192099419Z",
+    "timestamp": "2026-09-07T11:35:40.059646956Z",
     "agent_id": "QWDj",
-    "agent_seq": 92
+    "agent_seq": 93
   }
 }
