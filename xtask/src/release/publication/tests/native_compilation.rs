@@ -63,16 +63,17 @@ fn every_binary_keeps_its_native_command_or_uses_only_its_verified_daemon_librar
     let document = workflow(".github/workflows/release.yml");
     let steps = document["jobs"]["build-binary"]["steps"].as_vec().expect("binary steps");
     let commands = steps.iter().filter(|step| step["run"].as_str().is_some()).collect::<Vec<_>>();
-    assert_eq!(commands.len(), 3);
+    assert_eq!(commands.len(), 4);
     assert_eq!(
         commands[0]["if"].as_str(),
         Some(
-            "${{ matrix.target.os != 'macos-15-intel' || (matrix.target.binary != 'peritusd' && matrix.target.binary != 'peritus') }}"
+            "${{ runner.os != 'Windows' && (matrix.target.os != 'macos-15-intel' || (matrix.target.binary != 'peritusd' && matrix.target.binary != 'peritus')) }}"
         )
     );
-    assert_eq!(commands[1]["if"].as_str(), Some(DAEMON));
+    assert_eq!(commands[1]["if"].as_str(), Some("${{ runner.os == 'Windows' }}"));
+    assert_eq!(commands[2]["if"].as_str(), Some(DAEMON));
     assert_eq!(
-        commands[1]["env"]["PERITUS_RELEASE_BUILD_ROLE"].as_str(),
+        commands[2]["env"]["PERITUS_RELEASE_BUILD_ROLE"].as_str(),
         Some("${{ matrix.build }}")
     );
     let evidence = steps

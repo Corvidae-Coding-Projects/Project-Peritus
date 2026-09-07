@@ -88,6 +88,16 @@ checksums, source drift, reused invocations, or any artifact difference fail the
 check before attestation. Both observations and any failed comparison remain
 retained; assembly records are not represented as independent security reviews.
 
+Windows release binary jobs pass `/Brepro` to their native MSVC linker through
+`cargo rustc --release --locked --package <package> --bin <binary> -- -C link-arg=/Brepro`.
+This requests deterministic PE timestamps and debug identifiers at creation time;
+it does not rewrite downloaded binaries or ignore metadata differences. The
+[linker determinism option](https://blog.llvm.org/2019/11/deterministic-builds-with-clang-and-lld.html)
+is scoped to the final executable, preserving the release profile and dependency
+compilation. Real build times remain in the external observations. Both Windows
+architectures and both build roles use this command, and the unchanged complete
+archive/checksum comparison must still pass on their actual outputs.
+
 The same workflow can be manually dispatched to validate a candidate before
 creating a version tag. That path builds, compares, and runs native H2, but skips
 draft creation, protected signing, attestation/upload, and draft completion.

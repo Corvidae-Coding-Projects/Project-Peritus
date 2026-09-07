@@ -271,10 +271,15 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - name: Build one release binary
-        if: ${{ matrix.target.os != 'macos-15-intel' || (matrix.target.binary != 'peritusd' && matrix.target.binary != 'peritus') }}
+        if: ${{ runner.os != 'Windows' && (matrix.target.os != 'macos-15-intel' || (matrix.target.binary != 'peritusd' && matrix.target.binary != 'peritus')) }}
         run: >-
           cargo build --release --locked --package ${{ matrix.target.package }}
           --bin ${{ matrix.target.binary }}
+      - name: Link the native Windows release binary deterministically
+        if: ${{ runner.os == 'Windows' }}
+        run: >-
+          cargo rustc --release --locked --package ${{ matrix.target.package }}
+          --bin ${{ matrix.target.binary }} -- -C link-arg=/Brepro
       - name: Restore only this same-run build role's native daemon libraries
         if: ${{ matrix.target.os == 'macos-15-intel' && (matrix.target.binary == 'peritusd' || matrix.target.binary == 'peritus') }}
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8

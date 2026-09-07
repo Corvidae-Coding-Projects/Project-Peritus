@@ -5,6 +5,7 @@ mod distribution;
 mod native_compilation;
 mod native_rebuild;
 mod native_routing;
+mod native_windows;
 mod release_qualification;
 
 fn complete_release() -> Release {
