@@ -73,12 +73,7 @@ pub struct StorageObservation {
 impl StorageObservation {
     pub(crate) fn observe(path: &Path) -> Result<Self, SubjectError> {
         let path = fs::canonicalize(path)?;
-        if path.to_str().is_none() {
-            return Err(SubjectError::Configuration(
-                "scratch path must be representable exactly in UTF-8 configuration and evidence"
-                    .to_owned(),
-            ));
-        }
+        require_exact_configuration_path(&path)?;
         let metadata = fs::metadata(&path)?;
         if !metadata.is_dir() {
             return Err(SubjectError::Configuration(
@@ -98,6 +93,17 @@ impl StorageObservation {
     #[must_use]
     pub const fn device(&self) -> u64 {
         self.device
+    }
+}
+
+fn require_exact_configuration_path(path: &Path) -> Result<(), SubjectError> {
+    if path.to_str().is_none() {
+        Err(SubjectError::Configuration(
+            "scratch path must be representable exactly in UTF-8 configuration and evidence"
+                .to_owned(),
+        ))
+    } else {
+        Ok(())
     }
 }
 
@@ -159,12 +165,24 @@ mod tests {
 
     #[test]
     fn scratch_path_cannot_be_lossily_reencoded_into_daemon_configuration() {
+        // APFS rejects invalid UTF-8 names before the admission guard can inspect a directory.
+        // Test the encoding boundary without requiring the filesystem to accept invalid input.
+        let scratch = PathBuf::from(std::ffi::OsString::from_vec(vec![b's', 0xff]));
+        assert!(matches!(
+            require_exact_configuration_path(&scratch),
+            Err(SubjectError::Configuration(_))
+        ));
+        require_exact_configuration_path(Path::new("valid-scratch")).expect("exact UTF-8");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn canonical_scratch_path_is_checked_after_symlink_resolution() {
         let root = tempfile::tempdir().expect("root");
         let scratch = root.path().join(std::ffi::OsString::from_vec(vec![b's', 0xff]));
         fs::create_dir(&scratch).expect("non-UTF-8 directory");
-        assert!(matches!(
-            StorageObservation::observe(&scratch),
-            Err(SubjectError::Configuration(_))
-        ));
+        let alias = root.path().join("utf8-alias");
+        std::os::unix::fs::symlink(&scratch, &alias).expect("UTF-8 alias for the directory");
+        assert!(matches!(StorageObservation::observe(&alias), Err(SubjectError::Configuration(_))));
     }
 }
