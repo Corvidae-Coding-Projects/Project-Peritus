@@ -94,9 +94,9 @@ fn distribution_matrix_builds_and_signs_each_format_on_each_native_architecture(
     assert_eq!(signing["environment"].as_str(), Some("release-signing"));
     let signing_needs = signing["needs"].as_vec().expect("signing dependencies");
     assert!(signing_needs.iter().any(|value| value.as_str() == Some("distro-build")));
-    let publish_needs =
-        document["jobs"]["publish"]["needs"].as_vec().expect("publish dependencies");
-    assert!(publish_needs.iter().any(|value| value.as_str() == Some("distro-sign")));
+    let staging_needs =
+        document["jobs"]["stage-draft"]["needs"].as_vec().expect("staging dependencies");
+    assert!(staging_needs.iter().any(|value| value.as_str() == Some("distro-sign")));
     let commands = signing["steps"]
         .as_vec()
         .expect("signing steps")
@@ -111,6 +111,26 @@ fn distribution_matrix_builds_and_signs_each_format_on_each_native_architecture(
             "cargo run --locked --package xtask -- distro-upload",
         ]
     );
+}
+
+#[test]
+fn tag_workflow_completes_a_draft_without_a_publication_job() {
+    let document = workflow(".github/workflows/release.yml");
+    let jobs = document["jobs"].as_hash().expect("release jobs");
+    assert!(!jobs.contains_key(&Yaml::String("publish".to_owned())));
+    let staging = &document["jobs"]["stage-draft"];
+    let needs = staging["needs"].as_vec().expect("staging dependencies");
+    assert_eq!(
+        needs.iter().map(|value| value.as_str().expect("job")).collect::<Vec<_>>(),
+        ["policy", "bootstrap", "attest", "distro-sign"]
+    );
+    let commands = staging["steps"]
+        .as_vec()
+        .expect("steps")
+        .iter()
+        .filter_map(|step| step["run"].as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(commands, ["cargo run --locked --package xtask -- release-stage"]);
 }
 
 #[test]

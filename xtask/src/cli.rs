@@ -41,7 +41,7 @@ Commands:
   release-create         Validate a tag and create its retained draft GitHub release
   release-package-stage Build, archive, checksum, and record this host's native package
   release-package-assemble Assemble a native package from separately built release binaries
-  release-publish        Publish a draft only after every native package job passes
+  release-stage          Complete and validate the release draft without publishing it
   distro-image           Build a pinned Debian or Fedora package-builder Docker image
   distro-image-save      Retain the exact builder image for same-run package jobs
   distro-image-restore   Restore the same-run builder image without rebuilding it
@@ -77,7 +77,7 @@ enum Command {
     ReleaseCreate,
     ReleasePackageStage,
     ReleasePackageAssemble,
-    ReleasePublish,
+    ReleaseStage,
     Distro { operation: crate::distro::Operation },
     Help,
 }
@@ -246,11 +246,19 @@ pub(crate) fn execute(
         }
         Command::ReleasePackageStage => crate::release::package_stage(root)?,
         Command::ReleasePackageAssemble => crate::release::package_assemble(root)?,
-        Command::ReleasePublish => crate::release::publish(root)?,
+        Command::ReleaseStage => execute_release_stage(root, output)?,
         Command::Distro { operation } => crate::distro::run(root, operation)?,
         Command::Help => {}
     }
     Ok(())
+}
+
+fn execute_release_stage(root: &Path, output: &mut dyn Write) -> Result<(), XtaskError> {
+    crate::release::stage_draft(root)?;
+    write_output(
+        output,
+        "Release draft is complete and remains unpublished; H4 approval and separate publication authorization are required.\n",
+    )
 }
 
 fn execute_all(root: &Path, output: &mut dyn Write) -> Result<(), XtaskError> {
@@ -344,7 +352,7 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
         Some("release-create") => Ok(Command::ReleaseCreate),
         Some("release-package-stage") => Ok(Command::ReleasePackageStage),
         Some("release-package-assemble") => Ok(Command::ReleasePackageAssemble),
-        Some("release-publish") => Ok(Command::ReleasePublish),
+        Some("release-stage") => Ok(Command::ReleaseStage),
         Some("distro-image") => Ok(Command::Distro { operation: crate::distro::Operation::Image }),
         Some("distro-image-save") => {
             Ok(Command::Distro { operation: crate::distro::Operation::ImageSave })

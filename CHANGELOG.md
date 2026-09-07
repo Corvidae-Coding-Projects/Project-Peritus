@@ -12,6 +12,9 @@
 - Separate protected package signing from unprivileged builds, retain exact source
   and builder inventories, and require the complete release-asset set before
   publication. Production qualification remains governed by the H4 release gate.
+- Complete tagged builds as unpublished drafts. Remove automatic publication from
+  the workflow and workspace CLI so H4 can qualify the exact staged artifacts
+  before the release owner separately authorizes public publication.
 
 ### Product development included in this release
 

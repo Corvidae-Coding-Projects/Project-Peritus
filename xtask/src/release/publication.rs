@@ -1,4 +1,4 @@
-//! Complete target inventory and tag-bound public bootstrap publication.
+//! Complete target inventory and tag-bound bootstrap staging, without publication authority.
 
 use std::{fs, path::Path, process::Command};
 
@@ -42,7 +42,7 @@ struct Asset {
     state: String,
 }
 
-pub(crate) fn publish(root: &Path) -> Result<(), XtaskError> {
+pub(crate) fn stage_draft(root: &Path) -> Result<(), XtaskError> {
     let tag = super::environment("GITHUB_REF_NAME")?;
     let expected_tag = format!("v{}", super::workspace_version(root)?);
     if tag != expected_tag {
@@ -57,17 +57,7 @@ pub(crate) fn publish(root: &Path) -> Result<(), XtaskError> {
             .args(bootstraps),
         "upload tag-bound release installers and their checksums",
     )?;
-    validate_release(&read_release(root, &tag)?, &tag, true)?;
-    super::run(
-        Command::new("gh").current_dir(root).args([
-            "release",
-            "edit",
-            &tag,
-            "--draft=false",
-            "--latest",
-        ]),
-        "publish complete GitHub release",
-    )
+    validate_release(&read_release(root, &tag)?, &tag, true)
 }
 
 fn read_release(root: &Path, tag: &str) -> Result<Release, XtaskError> {
@@ -116,7 +106,7 @@ fn validate_release(
     include_bootstraps: bool,
 ) -> Result<(), XtaskError> {
     if !release.is_draft || release.tag_name != tag {
-        return Err(XtaskError::metadata("publication requires the exact unpublished draft"));
+        return Err(XtaskError::metadata("staging requires the exact unpublished draft"));
     }
     for name in expected_assets(include_bootstraps, tag) {
         let mut matching = release.assets.iter().filter(|asset| asset.name == name);

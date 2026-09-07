@@ -17,6 +17,13 @@ fn unknown_command_has_stable_typed_error() {
 }
 
 #[test]
+fn release_staging_has_no_automatic_publication_command() {
+    assert_eq!(parse([OsString::from("release-stage")]).expect("staging"), Command::ReleaseStage);
+    assert!(parse([OsString::from("release-stage"), OsString::from("extra")]).is_err());
+    assert!(parse([OsString::from("release-publish")]).is_err());
+}
+
+#[test]
 fn distribution_commands_select_reviewed_operations_and_reject_extra_arguments() {
     use crate::distro::Operation;
 

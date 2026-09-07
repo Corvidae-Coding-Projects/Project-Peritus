@@ -1,7 +1,7 @@
-//! Tag-bound GitHub release publication behind direct reviewed Cargo commands.
+//! Tag-bound GitHub release staging behind direct reviewed Cargo commands.
 
 mod publication;
-pub(crate) use publication::publish;
+pub(crate) use publication::stage_draft;
 
 #[cfg(all(test, unix))]
 mod installer_tests;

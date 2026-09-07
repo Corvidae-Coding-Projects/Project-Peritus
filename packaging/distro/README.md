@@ -133,10 +133,15 @@ Before a first release:
 CI imports the supplied secret only into an ephemeral GnuPG home, checks the
 reviewed fingerprint and exact tag/commit, signs, qualifies, then uploads to the
 existing draft. Signing secrets are scoped to the signing step. The public key
-asset has one matrix owner to prevent concurrent upload races. Publication
+asset has one matrix owner to prevent concurrent upload races. Draft completion
 requires all six native archives/evidence sets, all four signed distribution
 bundles, all four main native packages, the public key, and both bootstraps with
-their checksums. A partial package matrix cannot publish.
+their checksums. A partial package matrix cannot complete staging.
+
+The tag workflow ends with `cargo xtask release-stage` and always leaves the
+release as a draft. Staging is not H4 approval. Qualify and retain the exact draft
+bytes, complete H4, and obtain separate release-owner authorization before public
+publication. No workflow or `xtask` command automatically publishes the draft.
 
 Native package OpenPGP signatures and GitHub attestations are not Windows
 Authenticode signatures or Apple Developer ID signatures/notarization. No

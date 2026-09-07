@@ -1,4 +1,4 @@
-name: Publish Peritus release
+name: Stage Peritus release
 
 on:
   push:
@@ -334,8 +334,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: cargo run --locked --package xtask -- distro-upload
 
-  publish:
-    name: Publish complete release
+  stage-draft:
+    name: Complete unpublished release draft
     needs: [policy, bootstrap, attest, distro-sign]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -350,7 +350,7 @@ jobs:
           RUSTUP_MAX_RETRIES: "10"
         with:
           toolchain: ${{ env.RUST_VERSION }}
-      - name: Publish only after every native package succeeds
+      - name: Complete the draft after every native package succeeds; never publish
         env:
           GH_TOKEN: ${{ github.token }}
-        run: cargo run --locked --package xtask -- release-publish
+        run: cargo run --locked --package xtask -- release-stage

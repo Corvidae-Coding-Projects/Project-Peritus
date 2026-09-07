@@ -253,9 +253,17 @@ workflow, source commit, tag reference, predicate type, archive digest, and host
 then copies both bundles to deterministic release-asset names, writes a checksum inventory covering
 the archive and all retained evidence, and uploads the complete set to the still-draft release. The
 workflow receives only the minimum content, identity-token, and attestation permissions needed by
-each job. Every job has a ten-minute ceiling, and the draft is published only after policy, public
-installer qualification, all binary builds, all package assemblies, and all three native
-attestation jobs succeed.
+each job. Every job has a ten-minute ceiling. After policy, public installer qualification, all
+binary builds, package assemblies, six native attestation jobs, and four signed distribution jobs
+succeed, `cargo xtask release-stage` adds the tag-bound installers and validates the complete draft.
+It does not publish, mark a release as latest, or grant H4 approval. The former `release-publish`
+command is deliberately unavailable.
+
+The immutable version tag stages a candidate; it is not a production-release approval. Retain and
+qualify the exact draft asset bytes before any public publication. A changed candidate requires
+a new binding and tag, not replacement of an already qualified artifact. After H4 returns `Ready`,
+the release owner may separately authorize publication of that same verified draft through GitHub.
+The staging workflow has no automatic public-promotion job.
 
 These public artifacts make a release inspectable; they do not make it qualified. H4 still requires
 the exact-candidate native campaigns, soak evidence, independent rebuild comparison, completed
