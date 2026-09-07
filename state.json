@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1323,
+  "next_comment_id": 1324,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T12:41:57.352895804Z",
+      "updated_at": "2026-09-07T12:45:39.821299844Z",
       "labels": [
         "release"
       ],
@@ -1556,6 +1556,15 @@
           "kind": "note",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9RCucCV0Pw4IXA4ZDm7stwDQqIIUQZvCcENr90OBB7GMXl4Q7i4nCNWFbV2iDPYAbhiRYJbLSxXEGw84XWJICA=="
+        },
+        "715638cd-71f6-4307-b999-b6f1c9365e48": {
+          "display_id": 1323,
+          "author": "QWDj",
+          "content": "[action] Superseded FF92 GateA34116238609 cancellation verified terminal completed/cancelled updated12:42:07 after guarded ordinary then force cancellation; retained h4-ff92-gatea-terminal-check.json. Main36360,currentPR31972/76365 and exact4f unsigned34122771282 observer31817 remain live; oldADmanualobserver21628terminal. All local source work,commit,push,proof,tests,downloads,PR evidence updates complete; parent4fafd signed/pushedtrackedclean root a819frozen. CLI repair ready for native diagnostic CI only; next exact-hosted four heavy consumers/assembly and separate unproven MacH1stale-response cleanup finding. FullH0-H4 objective and approval requirements intact; no merge/sign/tag/publication/newcampaign.",
+          "created_at": "2026-09-07T12:45:39.817262444Z",
+          "kind": "note",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAYgq++hKsRsnMRiscQAAIW/DABpTnMxQ4CVS/+S7ikYU7D8ZXBgpCnU5Kb/UbhpZoiaHbYvNzVI4aZr773J5TDQ=="
         },
         "7198601b-aadc-465c-b95a-d4c256118fa2": {
           "display_id": 1286,
@@ -12920,8 +12929,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T12:41:57.352895804Z",
+    "timestamp": "2026-09-07T12:45:39.821299844Z",
     "agent_id": "QWDj",
-    "agent_seq": 99
+    "agent_seq": 100
   }
 }
