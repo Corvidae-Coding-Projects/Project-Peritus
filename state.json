@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1313,
+  "next_comment_id": 1314,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T11:18:14.957091838Z",
+      "updated_at": "2026-09-07T11:21:51.908353402Z",
       "labels": [
         "release"
       ],
@@ -1907,6 +1907,15 @@
           "kind": "result",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABhVghIwi8Sz0RMtXXygIUynJFZm0rLbZ3lAiYiF95rSTRMtLEYM9KOEWmVOcrhS8T8Gokn/VoBA/z/dzlf2GCA=="
+        },
+        "fad597f4-e70a-49fe-8075-2d937ef1dcb9": {
+          "display_id": 1313,
+          "author": "QWDj",
+          "content": "Signed commit ff92d0791a6f2bc1b495966b8fc0a309d046a671: test(release): preserve checksum fixture bytes on Windows (#57). Only packaging/test_native_evidence.py changed,22 insertions1deletion. Native Foundation101716187926 and GateA101716433836 logs both prove the same two CRLF fixture checksum failures; no timeout or production-validator error. Windows-text translation regression failed before the fix and passed afterward; strict CRLF rejection and valid negative-case baseline retained. Full local gate:33Python,324xtaskunit,7integration,strict all-target/all-feature Clippy,build,fmt,actionlint,policy PASS. Pushed to PR53; hosted Windows verification pending. Existing unsigned ad508 run34112894666 remains live because production native build code/workflow are unchanged; its artifacts remain evidence only for ad508, not final qualification of ff92 or the eventual frozen release. No fresh manual duplicate, product/profile/lock/signing changes, or publication.",
+          "created_at": "2026-09-07T11:21:51.904998411Z",
+          "kind": "result",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8kRX1LSbI3RTsGIm4JRipOpH5Fp8WJmavAhqJZbBvepxMoICARkP6tly6FeZN6NL44l78wcbxa0yumHVVEJZBg=="
         },
         "faf6b68a-c3a9-467a-bfb1-15825a557514": {
           "display_id": 1291,
@@ -12830,8 +12839,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T11:18:14.957091838Z",
+    "timestamp": "2026-09-07T11:21:51.908353402Z",
     "agent_id": "QWDj",
-    "agent_seq": 89
+    "agent_seq": 90
   }
 }
