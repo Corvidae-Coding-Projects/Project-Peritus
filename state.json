@@ -1,5 +1,5 @@
 {
-  "next_display_id": 57,
+  "next_display_id": 58,
   "next_comment_id": 1233,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -11,6 +11,7 @@
     "14d2332f-63ae-4030-a3b7-5bd440b04f6c": 30,
     "18d12d2e-08fd-450f-bee1-5894f79e83a7": 29,
     "19b7b53a-b2fb-41c1-835d-ffd6ce605c08": 14,
+    "1df15ea3-f541-41f4-9d1c-9f91f53fafd4": 57,
     "2194b9c5-c19f-47a2-9c91-d84a6c3c7b84": 46,
     "27633189-3dec-4781-9940-42a3e8eb9e60": 24,
     "2b288a30-b5b1-4452-81bd-20950bebd2d3": 9,
@@ -1177,6 +1178,17 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9hvYVeEpaJvWp215yPjNpzfPkd74D8bN4UbvbxRNCMNU6qgs6GNduD72sTyXNawilRpDw32eWL59Ef5+j2zfCw=="
         }
       }
+    },
+    "1df15ea3-f541-41f4-9d1c-9f91f53fafd4": {
+      "uuid": "1df15ea3-f541-41f4-9d1c-9f91f53fafd4",
+      "display_id": 57,
+      "title": "Prepare first signed native release v0.0.1",
+      "description": "Prepare and commit v0.0.1; genuine signed Debian/RPM packages and six native archive targets; protect CI signing; retain H4 qualification as a separate publication gate. Do not restart frozen benchmarks.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "QWDj",
+      "created_at": "2026-09-07T00:47:26.828033464Z",
+      "updated_at": "2026-09-07T00:47:26.828033464Z"
     },
     "2194b9c5-c19f-47a2-9c91-d84a6c3c7b84": {
       "uuid": "2194b9c5-c19f-47a2-9c91-d84a6c3c7b84",
@@ -12089,8 +12101,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-04T11:41:35.778862470Z",
-    "agent_id": "6ME5",
-    "agent_seq": 1485
+    "timestamp": "2026-09-07T00:47:26.828033464Z",
+    "agent_id": "QWDj",
+    "agent_seq": 1
   }
 }
