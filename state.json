@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1331,
+  "next_comment_id": 1332,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T13:59:21.360194474Z",
+      "updated_at": "2026-09-07T14:08:34.848202145Z",
       "labels": [
         "release"
       ],
@@ -1709,6 +1709,15 @@
           "kind": "result",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAu4kqUviADS7lB4egWboI/doFO9DD98uBlkiD3HpcjWSeJ6KqtjIzKQbRWEFVAdgPcDlWIss+752lr4XRMT58AQ=="
+        },
+        "9905eae4-4b4a-4ba4-b378-1237bbac68d7": {
+          "display_id": 1331,
+          "author": "QWDj",
+          "content": "Actual 4fafd050 artifact admission found a release-routing root cause: Linux x86_64 assembly 101765978636 selected eight release-bin-primary-ubuntu-24.04-* artifacts including ARM, merged duplicate binary filenames, and produced an archive whose daemon is actual ELF aarch64. Independent x86 archive also contains ARM daemon and ARM helper. Both outer checksums/records validate, but exact production comparison rejects differing archive bytes. Raw assembly log and failed report retained under target/h4-4fafd-*. Release H2 tool patterns have the same prefix overlap; development H2 already uses an unambiguous double-hyphen delimiter. Plan: repair all release wildcard family boundaries consistently, prove actual YAML expansions select exactly each intended role/platform inventory across six targets, preserve original compile commands/profiles/timeouts/schema and failures. Separate downloaded Linux ARM archive pair is byte-identical; both Windows pairs fail byte comparison and remain undiagnosed. No final qualification, publication or new campaign.",
+          "created_at": "2026-09-07T14:08:34.844872048Z",
+          "kind": "observation",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAN90HAM0WoKOJuY9whYJRasKmg4LFLVAm9t8pv0JIyjjsvkriz7Et47BZmLLM20g0gIWMSO5z223aDlHfow/MCw=="
         },
         "9a339692-1f88-4111-b3ab-a191f443f5be": {
           "display_id": 1284,
@@ -12992,8 +13001,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T13:59:21.360194474Z",
+    "timestamp": "2026-09-07T14:08:34.848202145Z",
     "agent_id": "QWDj",
-    "agent_seq": 107
+    "agent_seq": 108
   }
 }
