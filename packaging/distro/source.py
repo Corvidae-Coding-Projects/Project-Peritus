@@ -16,28 +16,14 @@ from licenses import SUPPLEMENTS, debian_copyright
 def prepare(build):
     source = build / f"peritus-{version()}"
     source.mkdir()
-    files = run("git", "ls-files", "--cached", "--others", "--exclude-standard", "-z",
-                cwd=ROOT, capture=True).split("\0")
-    excluded = {".crosslink", ".claude", ".codex", ".agents", ".git", ".worktrees"}
     inventory = {}
-    for name in sorted(set(files)):
-        relative = Path(name)
-        if not name or relative.parts[0] in excluded or name in ("AGENTS.md", ".mcp.json"):
-            continue
-        original = ROOT / relative
-        if original.is_symlink() or not original.is_file():
-            raise ValueError(f"source must be a regular file: {name}")
-        target = source / relative
+    for name, original in project_files():
+        target = source / name
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(original, target)
         inventory[name] = digest(target)
-    epoch = int(run("git", "log", "-1", "--format=%ct", cwd=ROOT, capture=True))
-    provenance = {
-        "git_commit": run("git", "rev-parse", "HEAD", cwd=ROOT, capture=True),
-        "source_date_epoch": epoch,
-        "version": version(),
-        "source_files_sha256": inventory,
-    }
+    provenance = source_provenance(inventory)
+    epoch = provenance["source_date_epoch"]
     (source / "PACKAGE-SOURCE.json").write_text(json.dumps(provenance, indent=2) + "\n")
     config = run("cargo", "vendor", "--locked", "--versioned-dirs", "vendor",
                  cwd=source, capture=True)
@@ -46,6 +32,32 @@ def prepare(build):
     archive = build / f"peritus-{version()}.tar.gz"
     archive_source(source, archive, epoch)
     return source, archive, epoch
+
+
+def project_files():
+    """Select the same source inventory for initial builds and staged admission."""
+    files = run("git", "ls-files", "--cached", "--others", "--exclude-standard", "-z",
+                cwd=ROOT, capture=True).split("\0")
+    excluded = {".crosslink", ".claude", ".codex", ".agents", ".git", ".worktrees"}
+    for name in sorted(set(files)):
+        relative = Path(name)
+        if not name or relative.parts[0] in excluded or name in ("AGENTS.md", ".mcp.json"):
+            continue
+        original = ROOT / relative
+        if original.is_symlink() or not original.is_file():
+            raise ValueError(f"source must be a regular file: {name}")
+        yield name, original
+
+
+def source_provenance(inventory=None):
+    if inventory is None:
+        inventory = {name: digest(path) for name, path in project_files()}
+    return {
+        "git_commit": run("git", "rev-parse", "HEAD", cwd=ROOT, capture=True),
+        "source_date_epoch": int(run("git", "log", "-1", "--format=%ct", cwd=ROOT, capture=True)),
+        "version": version(),
+        "source_files_sha256": inventory,
+    }
 
 
 def archive_source(source, archive, epoch):

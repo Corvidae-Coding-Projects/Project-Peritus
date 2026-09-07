@@ -50,6 +50,8 @@ Commands:
   distro-image-save      Retain the exact builder image for same-run package jobs
   distro-image-restore   Restore the same-run builder image without rebuilding it
   distro-build           Build real source and binary distribution packages offline
+  distro-compile         Retain a candidate-bound native distribution compilation
+  distro-package-compiled  Run full recipes and tests on the same-run compiled tree
   distro-sign            Sign distribution packages using the local OpenPGP agent
   distro-sign-ci         Sign with explicitly provisioned protected-environment CI secrets
   distro-verify          Verify package signatures and disposable install/remove lifecycle
@@ -353,6 +355,12 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
             Ok(Command::Distro { operation: crate::distro::Operation::ImageRestore })
         }
         Some("distro-build") => Ok(Command::Distro { operation: crate::distro::Operation::Build }),
+        Some("distro-compile") => {
+            Ok(Command::Distro { operation: crate::distro::Operation::Compile })
+        }
+        Some("distro-package-compiled") => {
+            Ok(Command::Distro { operation: crate::distro::Operation::PackageCompiled })
+        }
         Some("distro-sign") => Ok(Command::Distro { operation: crate::distro::Operation::Sign }),
         Some("distro-sign-ci") => {
             Ok(Command::Distro { operation: crate::distro::Operation::SignCi })

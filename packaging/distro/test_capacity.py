@@ -82,7 +82,7 @@ class CapacityTests(unittest.TestCase):
                         patch.object(build, "prepare", side_effect=prepare), \
                         patch.object(build, "debian_metadata"), \
                         patch.object(build, "container", side_effect=compile_fixture), \
-                        patch.object(build, "run", return_value="sha256:fixture"), \
+                        patch.object(build, "run", return_value="sha256:" + "e" * 64), \
                         patch.dict(os.environ, PERITUS_PACKAGE_BUILD_JOBS="4"):
                     build.build()
                 record = json.loads((output / f"peritus-{kind}-build.json").read_text())

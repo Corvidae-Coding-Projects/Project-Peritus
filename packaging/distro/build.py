@@ -4,6 +4,7 @@ import json
 from email.utils import formatdate
 import os
 from pathlib import Path
+import re
 import shutil
 import socket
 import tempfile
@@ -43,51 +44,90 @@ def build():
     (ROOT / "target").mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=f"package-{kind}-", dir=ROOT / "target", delete=False) as temporary:
         build_root = Path(temporary)
-        source, archive, epoch = prepare(build_root)
-        if kind == "deb":
-            debian_metadata(source, epoch)
-            shutil.copyfile(archive, build_root / f"peritus_{version()}.orig.tar.gz")
-            container(kind, [(build_root, "/build", False)],
-                      "dpkg-buildpackage", "--build=full", "--no-sign", f"--jobs={jobs}",
-                      "--", f"/build/{source.name}", build_jobs=jobs)
-            suffixes = (".deb", ".dsc", ".changes", ".buildinfo", ".orig.tar.gz", ".debian.tar.xz")
-            files = [p for p in build_root.iterdir() if p.name.endswith(suffixes)]
-        else:
-            date = formatdate(epoch, usegmt=True).split()
-            changelog_date = f"{date[0].rstrip(',')} {date[2]} {date[1]} {date[3]}"
-            for name in ("SOURCES", "SPECS", "RPMS", "SRPMS", "BUILD", "BUILDROOT"):
-                (build_root / name).mkdir()
-            shutil.copyfile(archive, build_root / "SOURCES" / archive.name)
-            shutil.copyfile(source / "packaging/rpm/peritus.spec", build_root / "SPECS/peritus.spec")
-            container(kind, [(build_root, "/build", False)],
-                      "rpmbuild", "-ba", "--define", "_topdir /build",
-                      *rpm_reproducibility_arguments(),
-                      "--define", f"peritus_version {version()}",
-                      "--define", f"peritus_packager {maintainer()}",
-                      "--define", f"peritus_changelog_date {changelog_date}",
-                      "/build/SPECS/peritus.spec",
-                      environment=[f"SOURCE_DATE_EPOCH={epoch}"], build_jobs=jobs)
-            files = list((build_root / "RPMS").rglob("*.rpm"))
-            files += list((build_root / "SRPMS").glob("*.rpm"))
-        if not any(p.suffix == (".deb" if kind == "deb" else ".rpm") for p in files):
-            raise ValueError("package builder produced no installable packages")
-        for path in files:
-            shutil.copyfile(path, out / path.name)
-        provenance = json.loads((source / "PACKAGE-SOURCE.json").read_text())
-        provenance["container_image"] = run(engine(), "image", "inspect", image_name(kind),
-                                            "--format", "{{.Id}}", capture=True)
-        provenance["format"] = kind
-        provenance["architecture"] = architecture()
-        provenance["build_observation"] = {
-            "host": socket.gethostname(),
-            "invocation": build_root.name,
-            "cargo_build_jobs": jobs,
-            "started_unix_nanos": started,
-            "finished_unix_nanos": time.time_ns(),
-        }
-        provenance["unsigned_files_sha256"] = {p.name: digest(p) for p in sorted(out.iterdir())}
-        (out / f"peritus-{kind}-build.json").write_text(json.dumps(provenance, indent=2) + "\n")
+        source, epoch = prepare_native_source(kind, build_root)
+        run_native_build(kind, build_root, source, epoch, jobs)
+        retain_packages(kind, build_root, source, out, jobs, started)
     print(f"Built {kind} packages in {out}")
+
+
+def prepare_native_source(kind, build_root):
+    """Prepare the same complete vendored sources for full or staged native builds."""
+    source, archive, epoch = prepare(build_root)
+    if kind == "deb":
+        debian_metadata(source, epoch)
+        shutil.copyfile(archive, build_root / f"peritus_{version()}.orig.tar.gz")
+    else:
+        for name in ("SOURCES", "SPECS", "RPMS", "SRPMS", "BUILD", "BUILDROOT"):
+            (build_root / name).mkdir()
+        shutil.copyfile(archive, build_root / "SOURCES" / archive.name)
+        shutil.copyfile(source / "packaging/rpm/peritus.spec", build_root / "SPECS/peritus.spec")
+    return source, epoch
+
+
+def run_native_build(kind, build_root, source, epoch, jobs, stage="full"):
+    """Continue native recipes without short-circuiting any packaging or test stage."""
+    if kind not in FORMATS:
+        raise ValueError("native package format must be deb or rpm")
+    if stage not in ("full", "compile", "package"):
+        raise ValueError("native build stage must be full, compile, or package")
+    if kind == "deb":
+        options = ["--rules-target=override_dh_auto_build"] if stage == "compile" else ["--build=full"]
+        if stage == "package":
+            options.append("--no-pre-clean")
+        container(kind, [(build_root, "/build", False)],
+                  "dpkg-buildpackage", *options, "--no-sign", f"--jobs={jobs}",
+                  "--", f"/build/{source.name}", build_jobs=jobs)
+    else:
+        date = formatdate(epoch, usegmt=True).split()
+        changelog_date = f"{date[0].rstrip(',')} {date[2]} {date[1]} {date[3]}"
+        options = ["-bc", "--noclean"] if stage == "compile" else ["-ba"]
+        if stage == "package":
+            options.append("--noprep")
+        container(kind, [(build_root, "/build", False)],
+                  "rpmbuild", *options, "--define", "_topdir /build",
+                  *rpm_reproducibility_arguments(),
+                  "--define", f"peritus_version {version()}",
+                  "--define", f"peritus_packager {maintainer()}",
+                  "--define", f"peritus_changelog_date {changelog_date}",
+                  "/build/SPECS/peritus.spec",
+                  environment=[f"SOURCE_DATE_EPOCH={epoch}"], build_jobs=jobs)
+
+
+def image_identity(kind):
+    observed = run(engine(), "image", "inspect", image_name(kind), "--format", "{{.Id}}", capture=True)
+    if not re.fullmatch(r"(?:sha256:)?[0-9a-f]{64}", observed):
+        raise ValueError("native builder did not return a SHA-256 image identity")
+    return "sha256:" + observed.removeprefix("sha256:")
+
+
+def build_observation(build_root, jobs, started):
+    return {"host": socket.gethostname(), "invocation": build_root.name,
+            "cargo_build_jobs": jobs, "started_unix_nanos": started,
+            "finished_unix_nanos": time.time_ns(),
+            "workflow_job": os.environ.get("GITHUB_JOB"),
+            "workflow_run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT")}
+
+
+def retain_packages(kind, build_root, source, out, jobs, started, compilation=None, observation_root=None):
+    if kind == "deb":
+        suffixes = (".deb", ".dsc", ".changes", ".buildinfo", ".orig.tar.gz", ".debian.tar.xz")
+        files = [p for p in build_root.iterdir() if p.name.endswith(suffixes)]
+    else:
+        files = list((build_root / "RPMS").rglob("*.rpm"))
+        files += list((build_root / "SRPMS").glob("*.rpm"))
+    if not any(p.suffix == (".deb" if kind == "deb" else ".rpm") for p in files):
+        raise ValueError("package builder produced no installable packages")
+    for path in files:
+        shutil.copyfile(path, out / path.name)
+    provenance = json.loads((source / "PACKAGE-SOURCE.json").read_text())
+    provenance["container_image"] = image_identity(kind)
+    provenance["format"] = kind
+    provenance["architecture"] = architecture()
+    provenance["build_observation"] = build_observation(observation_root or build_root, jobs, started)
+    if compilation is not None:
+        provenance["compilation"] = compilation
+    provenance["unsigned_files_sha256"] = {p.name: digest(p) for p in sorted(out.iterdir())}
+    (out / f"peritus-{kind}-build.json").write_text(json.dumps(provenance, indent=2) + "\n")
 
 
 def rpm_reproducibility_arguments():

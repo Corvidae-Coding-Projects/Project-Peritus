@@ -16,6 +16,8 @@ fn help_describes_the_stable_policy_commands() {
     assert!(stdout.contains("ordinary-api-check"));
     assert!(stdout.contains("toolchain-check"));
     assert!(stdout.contains("verify-trust"));
+    assert!(stdout.contains("distro-compile"));
+    assert!(stdout.contains("distro-package-compiled"));
 }
 
 #[test]

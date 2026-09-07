@@ -38,6 +38,26 @@ This does not alter the release profile, skip package tests, enable network acce
 or extend the ten-minute CI job ceiling. Signing and verification keep their
 existing two-job setting. Hosted completion still requires observed validation.
 
+CI separates `cargo xtask distro-compile` from `cargo xtask distro-package-compiled`.
+The first invokes only the native recipe's compilation stage and retains the complete
+build tree in a same-run, format- and architecture-specific intermediate artifact.
+The second verifies its archive hash and exact source inventory, commit, maintainer,
+native architecture, builder-image identity, capacity, and workflow-run binding before
+extracting into a fresh directory. The transfer preserves permissions and timestamps;
+it is not a cross-run cache and is never attached as a public release asset.
+
+Final packaging runs the ordinary full recipe with Debian's
+[`--no-pre-clean`](https://manpages.debian.org/trixie/dpkg-dev/dpkg-buildpackage.1.en.html)
+or RPM's [`--noprep`](https://rpm.org/docs/6.0.x/man/rpmbuild.1), since the admitted
+tree has already been compiled or unpacked respectively. Cargo rechecks that tree;
+all package tests, source and binary packaging, debug symbols, and default payload
+compression remain enabled. No RPM `--short-circuit` or test-skipping option is used.
+Debian's rules explicitly export `dpkg-buildflags` before either entry point, so
+the compile stage receives the same native hardening flags as the full recipe.
+The final build record retains the compilation's archive hash, source binding,
+host, invocation, and real times alongside the final packaging observations.
+Local `cargo xtask distro-build` still performs the complete build in one invocation.
+
 Output is `dist/packages/deb` or `dist/packages/rpm`. Existing output is never
 overwritten. Move a previous qualification set aside before rebuilding.
 The build workspace is retained under `target/package-<format>-*`, including
@@ -127,7 +147,7 @@ or DNF repository, nor sign APT `InRelease` metadata.
 The existing release workflow retains native Linux, macOS, and Windows archives
 for x86-64 and ARM64, with their SBOM/provenance attestations. Four additional
 matrix legs build and sign Debian/RPM packages for x86-64 and ARM64.
-Each has separate image, build, and protected-signing jobs with the repository's
+Each has separate image, compilation, packaging, and protected-signing jobs with the repository's
 10-minute job ceiling. Actual hosted-runner timing still requires CI validation.
 
 Before a first release:

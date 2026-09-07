@@ -48,6 +48,8 @@ fn distribution_commands_select_reviewed_operations_and_reject_extra_arguments()
         ("distro-image-save", Operation::ImageSave),
         ("distro-image-restore", Operation::ImageRestore),
         ("distro-build", Operation::Build),
+        ("distro-compile", Operation::Compile),
+        ("distro-package-compiled", Operation::PackageCompiled),
         ("distro-sign", Operation::Sign),
         ("distro-sign-ci", Operation::SignCi),
         ("distro-verify", Operation::Verify),
