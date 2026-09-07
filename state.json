@@ -1188,7 +1188,10 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T00:47:26.828033464Z"
+      "updated_at": "2026-09-07T00:47:32.193807952Z",
+      "labels": [
+        "release"
+      ]
     },
     "2194b9c5-c19f-47a2-9c91-d84a6c3c7b84": {
       "uuid": "2194b9c5-c19f-47a2-9c91-d84a6c3c7b84",
@@ -12101,8 +12104,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T00:47:26.828033464Z",
+    "timestamp": "2026-09-07T00:47:32.193807952Z",
     "agent_id": "QWDj",
-    "agent_seq": 1
+    "agent_seq": 2
   }
 }
