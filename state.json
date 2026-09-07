@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1373,
+  "next_comment_id": 1374,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T22:13:04.107544471Z",
+      "updated_at": "2026-09-07T23:23:55.920903332Z",
       "labels": [
         "release"
       ],
@@ -1871,6 +1871,15 @@
           "kind": "result",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA5b/gdVQ7igeFx4WBO27b0QLUwd6SKE56jACy80X4Xr9rSx8V7gjZRpzWLfZ55KBnyDPF7h9bMbsPaWp2k1VlDw=="
+        },
+        "83a25f4c-3a77-4df6-8350-ab13bfff2cf2": {
+          "display_id": 1373,
+          "author": "QWDj",
+          "content": "Owner explicitly authorized fixing signing and replacing the already-pushed v0.0.1 tag, then completing publication. Working on fix/release-signing-agent from main eebdf44be52607a694ab9bcc6969ddfcafdb3653. Main latest runs verified: four cancelled duplicate runs and one success, not five failures; next main runs will be allowed to complete. Completed tag run additionally reports Windows x86_64 independent comparison failure; investigating exact log before replacement.",
+          "created_at": "2026-09-07T23:23:55.916938347Z",
+          "kind": "decision",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAVTb8uNab4ErR7L8OdgP0shFW7Hp++6ElN12x+rJTYo8mIPe9CS5BWuAtCOqbvpM72J3dQbmyQ5K6lkjXx03GAg=="
         },
         "8497b5d9-b124-4be5-93de-0c8a3789f593": {
           "display_id": 1237,
@@ -13370,8 +13379,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T22:13:04.107544471Z",
+    "timestamp": "2026-09-07T23:23:55.920903332Z",
     "agent_id": "QWDj",
-    "agent_seq": 157
+    "agent_seq": 158
   }
 }
