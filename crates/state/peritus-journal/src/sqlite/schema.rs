@@ -1,9 +1,8 @@
-//! Immutable schema-version-ten SQL.
+//! Complete initial release schema. Unshipped development revisions are not migration targets.
 
-pub(super) const SCHEMA_VERSION: i64 = 10;
+pub(super) const SCHEMA_VERSION: i64 = 1;
 
 pub(super) const INSTALL_SCHEMA: &str = r"
-BEGIN IMMEDIATE;
 CREATE TABLE IF NOT EXISTS store_meta (
     singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
     store_id BLOB NOT NULL CHECK (length(store_id) = 16),
@@ -58,12 +57,18 @@ CREATE TABLE IF NOT EXISTS state_record_history (
     record_key BLOB NOT NULL CHECK (length(record_key) BETWEEN 1 AND 1024),
     revision INTEGER NOT NULL CHECK (revision > 0),
     value_digest BLOB NOT NULL CHECK (length(value_digest) = 32),
-    value BLOB NOT NULL,
+    root_digest BLOB NOT NULL CHECK (length(root_digest) = 32),
     producing_position INTEGER NOT NULL REFERENCES events(global_position),
     PRIMARY KEY (namespace, record_key, revision)
 ) STRICT, WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS state_history_producer
     ON state_record_history(producing_position, namespace, record_key);
+CREATE TABLE IF NOT EXISTS state_history_nodes (
+    node_digest BLOB PRIMARY KEY CHECK (length(node_digest) = 32),
+    level INTEGER NOT NULL CHECK (level BETWEEN 0 AND 4),
+    byte_length INTEGER NOT NULL CHECK (byte_length BETWEEN 0 AND 16777216),
+    payload BLOB NOT NULL CHECK (length(payload) <= 512)
+) STRICT, WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS outbox (
     outbox_id BLOB PRIMARY KEY CHECK (length(outbox_id) = 16),
     producing_position INTEGER NOT NULL REFERENCES events(global_position),
@@ -184,5 +189,4 @@ CREATE TABLE IF NOT EXISTS app_workspaces (
     registration_digest BLOB NOT NULL CHECK (length(registration_digest) = 32),
     state INTEGER NOT NULL CHECK (state BETWEEN 1 AND 3)
 ) STRICT, WITHOUT ROWID;
-COMMIT;
 ";

@@ -9,6 +9,8 @@ use crate::{ReviewEvent, ReviewEventKind, ReviewLimits};
 pub struct ReviewEventFrame(pub ReviewEvent);
 
 impl ReviewEventFrame {
+    /// Returns the decoded immutable review event without asserting durable commitment.
+    #[must_use]
     pub fn into_event(self) -> ReviewEvent {
         self.0
     }

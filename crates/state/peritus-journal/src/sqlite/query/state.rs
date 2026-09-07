@@ -5,6 +5,8 @@ use rusqlite::{Connection, OptionalExtension, params};
 use super::{corrupt, digest_from_blob, positive_u64};
 use crate::{DurableStateRecord, JournalError, JournalErrorKind, SqliteJournal};
 
+type HistoryRow = (Vec<u8>, Vec<u8>, i64, bool);
+
 impl SqliteJournal {
     /// Reads and digest-checks the current revision of one durable state row.
     ///
@@ -42,10 +44,15 @@ impl SqliteJournal {
                 "state namespace, key, or revision is outside its canonical bounds",
             ));
         }
-        let row: Option<(Vec<u8>, Vec<u8>, i64)> = self
+        let transaction = self
             .connection
+            .unchecked_transaction()
+            .map_err(|error| JournalError::sqlite("begin state history read", error))?;
+        let row: Option<HistoryRow> = transaction
             .query_row(
-                "SELECT value_digest, value, producing_position
+                "SELECT value_digest, root_digest, producing_position,
+                        EXISTS(SELECT 1 FROM events
+                               WHERE global_position = producing_position)
                    FROM state_record_history
                   WHERE namespace = ?1 AND record_key = ?2 AND revision = ?3",
                 params![
@@ -53,26 +60,36 @@ impl SqliteJournal {
                     key,
                     super::super::append::to_i64(revision, "state history revision")?,
                 ],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
             )
             .optional()
             .map_err(|error| JournalError::sqlite("read state history", error))?;
-        row.map(|(stored_digest, bytes, producing_position)| {
-            let producing_position = positive_u64(producing_position, "state producing position")?;
-            let digest = digest_from_blob(&stored_digest, "state history value digest")?;
-            if peritus_codec::sha256(&bytes) != digest {
-                return Err(corrupt("state history digest does not match exact bytes"));
-            }
-            Ok(DurableStateRecord {
-                namespace,
-                key: key.to_vec(),
-                revision,
-                bytes,
-                digest,
-                producing_position,
+        let record = row
+            .map(|(stored_digest, root, producing_position, producer_exists)| {
+                if !producer_exists {
+                    return Err(corrupt("state history has no exact producing event"));
+                }
+                let bytes = super::super::history::restore(&transaction, &root)?;
+                let producing_position =
+                    positive_u64(producing_position, "state producing position")?;
+                let digest = digest_from_blob(&stored_digest, "state history value digest")?;
+                if peritus_codec::sha256(&bytes) != digest {
+                    return Err(corrupt("state history digest does not match exact bytes"));
+                }
+                Ok(DurableStateRecord {
+                    namespace,
+                    key: key.to_vec(),
+                    revision,
+                    bytes,
+                    digest,
+                    producing_position,
+                })
             })
-        })
-        .transpose()
+            .transpose()?;
+        transaction
+            .commit()
+            .map_err(|error| JournalError::sqlite("finish state history read", error))?;
+        Ok(record)
     }
 }
 

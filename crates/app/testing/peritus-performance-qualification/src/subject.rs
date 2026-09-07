@@ -17,7 +17,10 @@ use crate::process::OwnedProcess;
 use crate::scheduler::{SchedulerRun, qualification_revision};
 use crate::{StorageObservation, SubjectConfiguration, SubjectError};
 
+mod event_load;
 mod operations;
+
+pub use event_load::{EventAppendRunner, EventLoadEvidence};
 
 /// Borrowed capability created together with one disposable subject.
 pub struct SubjectAuthorization {
@@ -63,7 +66,6 @@ pub struct IntegratedSubject {
     measurement_sequence: u64,
     startup_latency: Option<u64>,
     runs: BTreeMap<u64, SchedulerRun>,
-    event_run: Option<SchedulerRun>,
     processes: BTreeMap<u64, OwnedProcess>,
     provider_requests: BTreeSet<u64>,
     queue_depths: BTreeMap<peritus_benchmarks::QueueKind, u32>,
@@ -104,7 +106,6 @@ impl IntegratedSubject {
             measurement_sequence: 0,
             startup_latency: Some(micros(startup)),
             runs: BTreeMap::new(),
-            event_run: None,
             processes: BTreeMap::new(),
             provider_requests: BTreeSet::new(),
             queue_depths: BTreeMap::new(),
@@ -191,29 +192,20 @@ impl IntegratedSubject {
         &mut self,
         context: &RunContext,
         sequence: u64,
+        bytes: u32,
         measurements: &mut dyn MeasurementSink,
     ) -> Result<(), SubjectError> {
         let started = Instant::now();
         let mut client = self.client.take().ok_or_else(|| {
             SubjectError::UnexpectedResponse("daemon is crashed and has no A3 session".to_owned())
         })?;
-        if self.runs.is_empty() {
-            if self.event_run.is_none() {
-                self.event_run =
-                    Some(SchedulerRun::create(&mut client, &mut self.identities, self.revision)?);
-            }
-            self.event_run
-                .as_mut()
-                .expect("event scheduler was initialized")
-                .append_event(&mut client, &mut self.identities)?;
-        } else {
-            let index = usize::try_from(sequence % self.runs.len() as u64).unwrap_or(0);
-            let run = *self.runs.keys().nth(index).expect("nonempty run map");
-            self.runs
-                .get_mut(&run)
-                .expect("selected run remains present")
-                .append_event(&mut client, &mut self.identities)?;
-        }
+        let operation = crate::event_payload::EventOperation::prepare(
+            &mut self.identities,
+            self.revision,
+            bytes,
+            sequence,
+        )?;
+        operation.submit(&mut client, &mut self.identities, &mut 0)?;
         self.client = Some(client);
         self.measure(context, Metric::EventAppendLatency, micros(started.elapsed()), measurements)
     }

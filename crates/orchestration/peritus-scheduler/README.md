@@ -14,6 +14,12 @@ Resource and scheduling decisions are pure and time-independent: configured capa
 ordinals, priority, and bounded bypass counters completely determine every reservation.
 Worker loss, cancellation, and retry never infer success from an absent or late observation.
 
+`SchedulerSession` retains at most one fully verified replay for the serialized daemon owner.
+Warm commands use the same pure reducer and canonical checkpoints, then retain a successor only
+after a guarded C0 commit receipt. A run switch, journal reopen, another append, external commit,
+or failed append requires checked cold replay. E0's historical pause/resume and exact retry readers
+continue to use the complete retained event history. No wire schema or scheduling rule changes.
+
 ## Focused checks
 
 From the repository root:

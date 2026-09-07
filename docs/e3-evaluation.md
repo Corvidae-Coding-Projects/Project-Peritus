@@ -178,17 +178,10 @@ The rebuildable `EvaluationProjection` exposes only bounded phase, plan, rollout
 report, publication, cancellation, and safe failure state. It carries no candidate/evaluator
 payload, credential, capability, or mutation method.
 
-## Schema migration
+## Initial release schema
 
-C0 schema version 8 widens the constrained journal aggregate-kind columns from tags 1–14 to 1–15.
-The backup-required migration copies historical heads and events in canonical order, verifies
-counts and integrity, rebuilds the command index, and publishes schema/user version 8 in one
-transaction.
-
-The frozen v7 fixture proves that every historical tag and frame remains byte-exact. The upgrade
-test appends tag-15 evaluation data, runs the journal integrity scanner, restores the whole-file
-backup, and confirms the original v7 rows and version. Once tag-15 data exists, use forward repair
-or the verified backup rather than opening the store with an older binary.
+The initial C0 release schema includes `Evaluation` (tag 15) directly. Fresh installation admits
+evaluation data, and restart and integrity checks verify its exact journal history.
 
 ## Verification and operation
 

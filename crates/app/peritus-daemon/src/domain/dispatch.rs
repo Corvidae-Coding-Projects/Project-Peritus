@@ -43,12 +43,13 @@ pub enum DomainOutcome {
 
 pub fn dispatch(
     journal: &mut SqliteJournal,
+    scheduler_session: &mut peritus_scheduler::SchedulerSession,
     submission: DomainSubmission,
 ) -> Result<DomainOutcome, DaemonError> {
     match submission.family {
         50 => gates(journal, &submission),
         53 => review(journal, &submission),
-        70 => scheduler(journal, &submission),
+        70 => scheduler(journal, scheduler_session, &submission),
         73 => collaboration(journal, &submission),
         76 => orchestrator(journal, &submission),
         79 => harness::dispatch(journal, &submission),
@@ -131,6 +132,7 @@ fn review(
 
 fn scheduler(
     journal: &mut SqliteJournal,
+    session: &mut peritus_scheduler::SchedulerSession,
     submission: &DomainSubmission,
 ) -> Result<DomainOutcome, DaemonError> {
     let frame = match decode_message::<peritus_scheduler::SchedulerCommandFrame>(
@@ -150,18 +152,18 @@ fn scheduler(
     ) {
         return binding_rejection();
     }
-    let replay = peritus_scheduler::load_scheduler_replay(journal, command.run_id())
-        .map_err(|error| domain_failure("load scheduler aggregate", error))?;
-    let prior =
-        replay.rebuild().map_err(|error| domain_failure("rebuild scheduler aggregate", error))?;
-    let transition = match prior.as_ref() {
+    let prior = session
+        .state(journal, command.run_id())
+        .map_err(|error| domain_failure("observe verified scheduler aggregate", error))?;
+    let transition = match prior {
         Some(state) => peritus_scheduler::decide(state, &command),
         None => peritus_scheduler::start(&command),
     };
     let Ok(transition) = transition else {
         return semantic_rejection();
     };
-    peritus_scheduler::commit_scheduler_transition(journal, &command, &transition)
+    session
+        .commit(journal, &command, transition)
         .map(DomainOutcome::Committed)
         .map_err(|error| domain_failure("commit scheduler transition", error))
 }

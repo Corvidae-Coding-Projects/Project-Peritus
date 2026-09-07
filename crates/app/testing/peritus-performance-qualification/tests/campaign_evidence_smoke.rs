@@ -6,7 +6,7 @@ use std::ffi::OsString;
 use std::os::unix::fs::MetadataExt as _;
 use std::path::{Path, PathBuf};
 
-use peritus_benchmarks::StableId;
+use peritus_benchmarks::{NotReadyReason, QualificationVerdict, RunnerTermination, StableId};
 use peritus_performance_qualification::{MachineProbe, OperatorOptions};
 
 const WORKLOADS: &str = r#"{
@@ -61,7 +61,7 @@ fn real_operator_publishes_a_complete_atomic_bundle() {
     .expect("operator execution");
 
     assert_eq!(published.root(), output);
-    assert_eq!(published.manifest().artifacts().len(), 9);
+    assert_eq!(published.manifest().artifacts().len(), 10);
     verify_storage(&output);
     assert!(published.baseline_candidate().is_some());
     assert!(published.baseline_candidate_digest().is_some());
@@ -77,6 +77,7 @@ fn real_operator_publishes_a_complete_atomic_bundle() {
         "identity/peritusd",
         "identity/qualification-runner",
         "results/measurements.ndjson",
+        "results/events.smoke-event.ndjson",
         "results/receipts.json",
         "results/accounting.json",
         "results/machine.json",
@@ -125,20 +126,91 @@ fn real_operator_publishes_a_complete_atomic_bundle() {
     );
 }
 
+#[test]
+#[ignore = "set PERITUS_H3_DAEMON to a built peritusd and invoke explicitly"]
+fn real_operator_retains_failed_horizon_without_baseline_or_later_work() {
+    let temporary = tempfile::tempdir().expect("evidence parent");
+    let profile_path = temporary.path().join("profile.json");
+    let workload_path = temporary.path().join("workloads.json");
+    let mut profile: serde_json::Value =
+        serde_json::from_str(&profile_document()).expect("profile");
+    profile["max_measurements"] = serde_json::json!(256);
+    let mut workloads: serde_json::Value = serde_json::from_str(WORKLOADS).expect("workloads");
+    let mut later = workloads["workloads"][0].clone();
+    later["id"] = serde_json::json!("smoke-later");
+    workloads["workloads"][0]["operations_per_second"] = serde_json::json!(10_000);
+    workloads["workloads"].as_array_mut().expect("workloads array").push(later);
+    std::fs::write(&profile_path, serde_json::to_vec(&profile).expect("profile JSON"))
+        .expect("profile input");
+    std::fs::write(&workload_path, serde_json::to_vec(&workloads).expect("workloads JSON"))
+        .expect("workload input");
+    let output = temporary.path().join("failed-bundle");
+    let published = OperatorOptions::parse(vec![
+        OsString::from("load"),
+        OsString::from("--daemon"),
+        daemon_executable().into_os_string(),
+        OsString::from("--scratch"),
+        scratch_root().into_os_string(),
+        OsString::from("--profile"),
+        profile_path.into_os_string(),
+        OsString::from("--workloads"),
+        workload_path.into_os_string(),
+        OsString::from("--evidence"),
+        output.clone().into_os_string(),
+        OsString::from("--storage-class"),
+        OsString::from("smoke-storage"),
+        OsString::from("--revision"),
+        OsString::from("operator-overload-smoke"),
+    ])
+    .expect("operator options")
+    .execute()
+    .expect("failed qualification still retains its observed evidence");
+    verify_storage(&output);
+    let evaluation = published.report().evaluation();
+    assert_eq!(evaluation.verdict(), QualificationVerdict::NotReady);
+    assert!(evaluation.not_ready_reasons().iter().any(|reason| matches!(
+        reason,
+        NotReadyReason::RunnerIncomplete { workload_id, termination: RunnerTermination::Failed }
+            if workload_id == &id("smoke-event")
+    )));
+    assert!(evaluation.objectives()[0].observed().is_some(), "latency alone was observed");
+    let receipts: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(output.join("results/receipts.json")).expect("retained receipts"),
+    )
+    .expect("receipt JSON");
+    let receipts = receipts.as_array().expect("workload receipts");
+    assert_eq!(
+        (receipts.len(), published.baseline_candidate().is_some()),
+        (1, false),
+        "failed load must neither start later work nor produce a baseline candidate"
+    );
+    assert_eq!(receipts[0]["workload_id"], "smoke-event");
+    assert!(
+        receipts[0]["executed_steps"].as_u64().expect("executed steps")
+            < receipts[0]["expected_steps"].as_u64().expect("expected steps")
+    );
+    assert!(!receipts[0]["failures"].as_array().expect("failures").is_empty());
+    assert!(!output.join("baseline-candidate.json").exists());
+    assert!(output.join("results/measurements.ndjson").is_file());
+    assert!(output.join("results/receipts.json").is_file());
+}
+
 fn verify_storage(output: &Path) {
     let scratch = std::fs::canonicalize(scratch_root()).expect("scratch root");
     let observed: serde_json::Value = serde_json::from_slice(
         &std::fs::read(output.join("results/storage.json")).expect("retained storage"),
     )
     .expect("storage JSON");
-    let subject = PathBuf::from(observed[0]["storage"]["path"].as_str().expect("subject path"));
-    assert_eq!(subject.parent(), Some(scratch.as_path()));
-    assert_eq!(
-        observed[0]["storage"]["device"],
-        std::fs::metadata(&scratch).expect("scratch metadata").dev()
-    );
-    assert_eq!(observed[0]["cleanup_completed"], true);
-    assert!(!subject.exists(), "successful campaign left its subject directory");
+    for workload in observed.as_array().expect("workload storage observations") {
+        let subject = PathBuf::from(workload["storage"]["path"].as_str().expect("subject path"));
+        assert_eq!(subject.parent(), Some(scratch.as_path()));
+        assert_eq!(
+            workload["storage"]["device"],
+            std::fs::metadata(&scratch).expect("scratch metadata").dev()
+        );
+        assert_eq!(workload["cleanup_completed"], true);
+        assert!(!subject.exists(), "campaign left its subject directory");
+    }
 }
 
 fn scratch_root() -> PathBuf {

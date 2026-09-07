@@ -131,8 +131,7 @@ state.
 
 E0 uses schema-version-one B3 families 76, 77, and 78 for command, event, and complete state. The
 C0 aggregate kind is `Orchestrator` with permanent tag 12; complete checkpoints use namespace
-`0xE001`. Schema migration version five admits D3 tags 10 and 11 plus E0 tag 12 while preserving
-historical tags 1-9 and their bytes.
+`0xE001`. The initial C0 release schema includes this aggregate directly.
 
 Unknown versions or tags, malformed lengths, noncanonical collections, and trailing bytes are
 rejected. Decoded frames remain inert until checked constructors and the reducer validate their

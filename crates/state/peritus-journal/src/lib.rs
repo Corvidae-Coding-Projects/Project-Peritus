@@ -62,6 +62,6 @@ pub use record::{
 };
 pub use sqlite::query::AggregateCheckpointSnapshot;
 pub use sqlite::{
-    CommandResolution, JournalReader, SqliteJournal, SqliteJournalOptions, SqliteSettings,
-    SqliteStoragePages,
+    CommandResolution, JournalReader, ReplayObservation, SqliteJournal, SqliteJournalOptions,
+    SqliteSettings, SqliteStoragePages,
 };

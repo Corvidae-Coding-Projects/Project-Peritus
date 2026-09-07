@@ -18,6 +18,8 @@ mod daemon;
 mod effects;
 mod error;
 #[cfg(unix)]
+mod event_payload;
+#[cfg(unix)]
 mod evidence;
 #[cfg(unix)]
 mod evidence_io;
@@ -63,4 +65,7 @@ pub use runner::PacedRunner;
 #[cfg(unix)]
 pub use storage::{StorageObservation, SubjectConfiguration, WorkloadStorage};
 #[cfg(unix)]
-pub use subject::{AuthorizedSubject, IntegratedSubject, SubjectAuthorization};
+pub use subject::{
+    AuthorizedSubject, EventAppendRunner, EventLoadEvidence, IntegratedSubject,
+    SubjectAuthorization,
+};

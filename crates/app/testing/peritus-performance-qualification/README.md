@@ -21,11 +21,41 @@ then runs the four eight-hour workloads concurrently under one combined resource
 production soak takes eight hours rather than thirty-two. Every subject must report the same exact
 daemon executable identity.
 
+The runner will not start unexecuted backlog after a workload's declared time window. It retains
+a failed receipt with the actual executed count and elapsed/declaration values. An operation that
+started inside the window may finish afterward; an early-finishing plan waits until its declared
+horizon, with cancellation still active. A non-completed receipt stops later loads and prevents
+the soak phase; a non-completed soak cancels its sibling workers. The report preserves partial
+measurements and the failed receipt after observed subject cleanup.
+
+Focused `event_append` workloads use `EventAppendRunner`: one independent monotonic producer,
+the declared bounded worker concurrency (up to 32), and the declared bounded client queue.
+Arrivals that miss their entire rate interval are recorded as missed, not burst-replayed. Full
+queues reject arrivals explicitly. Queued work expires at the horizon; already-started work drains.
+Every unsampled arrival, completion, rejection, expiry, and terminal counter is retained in
+`results/events.<workload>.ndjson`, independently of the latency reservoir.
+
+Every `AppendEvent` now submits a real synthetic D2 review finding through public A3. Its canonical
+family-54 **event payload**, excluding the 16-byte frame header, has exactly the plan's seeded size.
+Each operation uses a fresh review aggregate and requires two prerequisite commits (start and
+assignment) before the measured submission. These are not extra successful workload operations;
+the focused runner counts them separately and includes preparation, scheduled waiting, queueing,
+all three public commands, and commit acknowledgement in event latency. Synthetic findings are
+not real reviews, evidence approvals, or release authority. This fixture is not comparable to the
+old scheduler-toggle diagnostic or an old adapter baseline.
+
+This correction covers event payloads and the focused event-append arrival schedule. Other scenario
+adapters still include local pressure effects; it is not full H3 qualification.
+
 Long campaigns use deterministic reservoir sampling per workload and metric. Objective metrics
 retain twice their required sample count and diagnostics retain a bounded representative set, then
 the coordinator merges everything into one monotonic campaign sequence. Queue workloads end with
 an exact drain when their operation count stops partway through a saturation cycle, so successful
 plans return the shared ledger to a balanced terminal state.
+
+Reservoir draws use the per-metric observation ordinal, independently of global measurement
+sequence numbers. Matching counters must not cancel the sampling seed or bias retention toward
+early events; interleaving another metric leaves the selected event ordinals unchanged.
 
 `CampaignEvidenceWriter` publishes a completed campaign through a private temporary directory and
 one final rename. It refuses an existing destination, reparses the exact profile, workload, and
@@ -73,8 +103,11 @@ The runner records each workload's actual canonical directory, filesystem device
 retaining a successful cleanup observation. Review the mount and device mapping separately; the
 numeric filesystem identity alone does not establish an NVMe generation. The owned parent remains.
 
-The first run is expected to finish `NotReady` because no accepted baseline was supplied. When every
-objective has enough samples, its evidence bundle contains `baseline-candidate.json`. Review that
+The first run is expected to finish `NotReady` because no accepted baseline was supplied. A baseline
+candidate requires complete runner coverage, resource exercise/accounting and sufficient objective
+samples. Failed, cancelled or incomplete execution cannot produce `baseline-candidate.json`, even
+if its partial latency samples meet an objective. Observed SLO misses or regressions remain visible
+and do not alone prevent generating an inert candidate for explicit review. Review that
 file and its bound manifest, then run a separate complete comparison with the reviewed candidate and
 its exact file digest:
 
@@ -121,3 +154,22 @@ PERITUS_H3_DAEMON="$PWD/target/debug/peritusd" \
   CARGO_BUILD_JOBS=2 cargo test --locked --package peritus-performance-qualification \
   --test campaign_evidence_smoke -- --ignored --test-threads=1
 ```
+
+The focused production event acceptance test preserves the checked-in host profile, 120-second
+duration, 500/s rate, seeded 8-KiB payload sizes, 32-worker/256-queue bounds, and 50-ms p99 objective
+with at least 10,000 samples. It retains every arrival and latency plus a consistent SQLite backup,
+verifies every successful event's exact stored bytes, and cleans up before asserting acceptance.
+It runs no other workload, baseline comparison, or soak:
+
+```sh
+PERITUS_H3_DAEMON=/absolute/path/to/release/peritusd \
+PERITUS_H3_SCRATCH=/existing/reviewed/nvme/directory \
+PERITUS_H3_SOURCE_MANIFEST=/absolute/path/to/reviewed-sources.sha256 \
+PERITUS_H3_ACCEPTANCE_OUTPUT=/existing/parent/new-event-acceptance \
+CARGO_BUILD_JOBS=2 cargo test --locked --release -p peritus-performance-qualification \
+  --test event_fidelity production_event_append_acceptance -- --ignored --test-threads=1
+```
+
+The output must not exist. A failed assertion is an acceptance failure with retained evidence, not
+permission to change the objective or continue into optimization. Missing other H3 workloads and
+the accepted baseline remain explicit in the full evaluator output.

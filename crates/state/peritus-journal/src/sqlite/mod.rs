@@ -4,6 +4,8 @@ mod append;
 mod apply_rows;
 mod authority_store;
 mod connection;
+pub mod history;
+mod observation;
 mod outbox_store;
 mod preconditions;
 pub mod query;
@@ -17,6 +19,7 @@ use crate::CommittedBatch;
 use peritus_types::{CommandId, Sha256Digest};
 
 pub use connection::{SqliteJournal, SqliteJournalOptions, SqliteSettings, SqliteStoragePages};
+pub use observation::ReplayObservation;
 pub use reader::JournalReader;
 
 /// Durable resolution of one exact command identity.

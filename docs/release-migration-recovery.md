@@ -5,6 +5,11 @@ contract, not a claim that any particular candidate was exercised. Candidate-spe
 must record actual paths, digests, timestamps, subject identity, adapter result, and cleanup under
 the exact `ReleaseBinding`.
 
+Release `0.0.1` starts with a single initial journal schema, version 1. There are no earlier released
+database versions to upgrade. Fresh installation creates that schema directly; the development
+migration chain is not supported. The upgrade procedures below apply to subsequent released
+changes. Crash, backup-integrity, restore, and package-lifecycle drills remain separate requirements.
+
 ## Authority and protected data
 
 The release operator may replace package-owned binaries, helpers, manifests, and supervisor

@@ -91,16 +91,17 @@ fn install_state(
     position: u64,
 ) -> Result<(), JournalError> {
     for install in &plan.state_installs {
+        let root = super::history::install(transaction, install.bytes())?;
         transaction
             .execute(
-                "INSERT INTO state_record_history(namespace, record_key, revision, value_digest, value, producing_position) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                "INSERT INTO state_record_history(namespace, record_key, revision, value_digest, producing_position, root_digest) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
                 params![
                     i64::from(install.namespace()),
                     install.key(),
                     super::append::to_i64(install.revision(), "state revision")?,
                     install.digest().as_bytes().as_slice(),
-                    install.bytes(),
                     super::append::to_i64(position, "state producing position")?,
+                    root.as_bytes().as_slice(),
                 ],
             )
             .map_err(|error| JournalError::sqlite("append state record history", error))?;

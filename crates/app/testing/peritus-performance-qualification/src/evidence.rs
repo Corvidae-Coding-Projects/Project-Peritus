@@ -12,7 +12,7 @@ use peritus_benchmarks::{
 use serde_json::Serializer;
 
 use crate::baseline_candidate::derive_candidate;
-use crate::evidence_io::{copy_executable, write_private};
+use crate::evidence_io::{copy_event_evidence, copy_executable, write_private};
 use crate::{CampaignOutcome, EvidenceError};
 
 const PROFILE_PATH: &str = "inputs/profile.json";
@@ -181,6 +181,13 @@ fn write_primary_artifacts(
     artifacts.push(write_json_artifact(root, ACCOUNTING_PATH, outcome.accounting())?);
     artifacts.push(write_json_artifact(root, MACHINE_PATH, outcome.machine())?);
     artifacts.push(write_json_artifact(root, STORAGE_PATH, outcome.storage())?);
+    for (workload, evidence) in outcome.event_evidence() {
+        artifacts.push(copy_event_evidence(
+            root,
+            &format!("results/events.{workload}.ndjson"),
+            evidence.path(),
+        )?);
+    }
     Ok(artifacts)
 }
 

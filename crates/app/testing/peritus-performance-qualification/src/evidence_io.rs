@@ -58,6 +58,24 @@ pub fn write_private(path: &Path, bytes: &[u8]) -> Result<(), EvidenceError> {
         .map_err(|error| EvidenceError::io("write evidence artifact", path, error))
 }
 
+pub fn copy_event_evidence(
+    root: &Path,
+    relative: &str,
+    source: &Path,
+) -> Result<EvidenceArtifact, EvidenceError> {
+    let destination = root.join(relative);
+    create_private_parent(&destination)?;
+    let mut input = File::open(source)
+        .map_err(|error| EvidenceError::io("open event evidence", source, error))?;
+    let mut output = File::create(&destination)
+        .map_err(|error| EvidenceError::io("create event evidence", &destination, error))?;
+    output
+        .set_permissions(fs::Permissions::from_mode(0o600))
+        .map_err(|error| EvidenceError::io("protect event evidence", &destination, error))?;
+    let (length, digest) = copy_and_digest(source, &destination, &mut input, &mut output)?;
+    Ok(EvidenceArtifact::new(ArtifactPath::new(relative)?, "application/x-ndjson", length, digest)?)
+}
+
 fn copy_and_digest(
     source: &Path,
     destination: &Path,

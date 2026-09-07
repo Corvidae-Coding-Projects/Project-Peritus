@@ -189,21 +189,35 @@ fn mutate_checkpoint(path: &std::path::Path, mutation: CheckpointMutation) {
 }
 
 fn corrupt_family_55_checkpoint(path: &std::path::Path) {
-    let mut bytes = std::fs::read(path).unwrap();
+    let connection = rusqlite::Connection::open(path).unwrap();
+    let namespace = i64::from(peritus_review::REVIEW_STATE_NAMESPACE);
+    let (key, mut value): (Vec<u8>, Vec<u8>) = connection
+        .query_row(
+            "SELECT record_key, value FROM state_records WHERE namespace = ?1",
+            [namespace],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .unwrap();
     let marker = b"PRTS\x00\x01\x00\x37\x00\x01\x00\x00";
-    let starts = bytes
-        .windows(marker.len())
-        .enumerate()
-        .filter_map(|(index, window)| (window == marker).then_some(index))
-        .collect::<Vec<_>>();
-    assert!(!starts.is_empty(), "family-55 bytes must exist in the SQLite database");
-    for start in starts {
-        let payload_len = u32::from_be_bytes(bytes[start + 12..start + 16].try_into().unwrap());
-        let end = start + 16 + payload_len as usize;
-        assert!(end <= bytes.len() && payload_len > 0);
-        bytes[end - 1] ^= 0x01;
-    }
-    std::fs::write(path, bytes).unwrap();
+    assert!(value.starts_with(marker), "the selected checkpoint must be family 55");
+    let payload_len = u32::from_be_bytes(value[12..16].try_into().unwrap()) as usize;
+    assert!(payload_len > 0);
+    assert_eq!(value.len(), 16 + payload_len);
+    // Mutate the logical BLOB, not physical pages: SQLite may fragment large values.
+    // Leave its recorded digest intact so checkpoint verification must reject it.
+    value[16 + payload_len - 1] ^= 0x01;
+    assert_eq!(
+        connection
+            .execute(
+                "UPDATE state_records SET value = ?1 WHERE namespace = ?2 AND record_key = ?3",
+                (value, namespace, key),
+            )
+            .unwrap(),
+        1
+    );
+    let integrity: String =
+        connection.query_row("PRAGMA integrity_check", [], |row| row.get(0)).unwrap();
+    assert_eq!(integrity, "ok", "checkpoint corruption must preserve SQLite integrity");
 }
 
 struct Fixture {

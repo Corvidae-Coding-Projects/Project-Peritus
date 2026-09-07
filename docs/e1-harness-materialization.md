@@ -158,22 +158,15 @@ materialization pipeline with an explicit rollback reason. The result is a new C
 E1 receipt. The revision history, descendants, and prior receipts remain intact. E1 does not move a
 production pointer; a later F0 decision owns production activation and rollback policy.
 
-## Schema migration
+## Initial release schema
 
-C0 schema version 6 widens only the constrained journal aggregate-kind columns from tags 1–12 to
-1–13. It copies heads and events in canonical order, verifies row counts, rebuilds the command
-index, and publishes schema/user version 6 in one migration transaction. The migration requires a
-completed whole-file backup.
-
-The frozen v5 fixture proves every historical tag and event byte survives the migration. The test
-then appends tag-13 family-80 data, runs the journal integrity scan, restores the backup, and checks
-the exact v5 rows and `user_version` again. After real tag-13 data exists, use the v5 backup or a
-forward repair for binary rollback; an old v5 binary cannot open a v6 store.
+The initial C0 release schema includes `Harness` (tag 13) directly. Fresh-install tests admit its
+events, and journal replay and integrity checks preserve the exact retained history.
 
 ## Verification
 
 Focused verification covers domain, manifest/inventory, graph, immutable revision history,
-materialization planning/execution, protocol fixtures, durability, replay/restart, migration,
+materialization planning/execution, protocol fixtures, durability, replay/restart, fresh installation,
 artifact reads, projection, and the independent A2 harness conformance catalog. Strict Verus runs
 with `--no-cheating`; ordinary APIs are audited separately.
 

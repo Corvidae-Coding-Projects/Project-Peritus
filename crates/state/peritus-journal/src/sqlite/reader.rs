@@ -5,7 +5,7 @@ use crate::{
     StoreId,
 };
 use rusqlite::{Connection, OpenFlags, config::DbConfig};
-use std::path::Path;
+use std::{path::Path, sync::Arc};
 
 /// A read-only `SQLite` snapshot with no mutation or initialization methods.
 pub struct JournalReader {
@@ -53,7 +53,9 @@ impl JournalReader {
                 "store identity or schema does not match",
             ));
         }
-        Ok(Self { journal: SqliteJournal { connection, store_id } })
+        Ok(Self {
+            journal: SqliteJournal { connection, store_id, replay_generation: Arc::new(()) },
+        })
     }
 
     /// Reads and digest-checks the current state row in this read snapshot.

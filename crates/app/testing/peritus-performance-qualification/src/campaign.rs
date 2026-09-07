@@ -1,22 +1,22 @@
 //! Production-catalog campaign coordination for disposable integrated subjects.
 
 use std::path::PathBuf;
-use std::sync::mpsc;
-use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+mod soak;
 
 use peritus_benchmarks::{
     AccountingSummary, BaselineManifest, MeasurementSet, PlanKind, QualificationDataset,
     QualificationEvaluation, QualificationEvaluator, QualificationPlan, QualificationProfile,
     QualificationRunner, QualificationSubject, RunContext, RunnerDescriptor, RunnerReceipt,
-    StableId, SubjectDescriptor, Workload,
+    ScenarioKind, StableId, SubjectDescriptor, Workload,
 };
 
 use crate::sampling::{Sample, SamplingSink, merge_samples};
 use crate::shared_accounting::SharedAccounting;
 use crate::{
-    CampaignError, CancellationFlag, IntegratedSubject, MachineObservation, PacedRunner,
-    SubjectConfiguration, WorkloadStorage,
+    CampaignError, CancellationFlag, EventAppendRunner, EventLoadEvidence, IntegratedSubject,
+    MachineObservation, PacedRunner, SubjectConfiguration, WorkloadStorage,
 };
 
 /// Workload horizon selected for one operator invocation.
@@ -81,6 +81,7 @@ pub struct CampaignOutcome {
     accounting: AccountingSummary,
     receipts: Vec<RunnerReceipt>,
     storage: Vec<WorkloadStorage>,
+    event_evidence: Vec<(StableId, EventLoadEvidence)>,
     evaluation: QualificationEvaluation,
     subject: SubjectDescriptor,
     runner: RunnerDescriptor,
@@ -130,6 +131,12 @@ impl CampaignOutcome {
     #[must_use]
     pub fn storage(&self) -> &[WorkloadStorage] {
         &self.storage
+    }
+
+    /// Returns the unsampled offered-load records for each event-append workload.
+    #[must_use]
+    pub fn event_evidence(&self) -> &[(StableId, EventLoadEvidence)] {
+        &self.event_evidence
     }
 
     /// Returns the deterministic SLO and baseline evaluation.
@@ -202,7 +209,7 @@ impl CampaignCoordinator {
         let accounting = SharedAccounting::new(profile.envelope());
         let mut outcomes = Vec::with_capacity(selected);
         for workload in loads {
-            outcomes.push(run_workload(WorkloadInvocation {
+            let outcome = run_workload(WorkloadInvocation {
                 subject: request.subject.clone(),
                 implementation_revision: request.implementation_revision.clone(),
                 run_id: request.run_id.clone(),
@@ -213,10 +220,16 @@ impl CampaignCoordinator {
                 elapsed_offset_micros: micros(campaign_origin.elapsed()),
                 cancellation: cancellation.clone(),
                 accounting: accounting.clone(),
-            })?);
+            })?;
+            let completed = outcome.receipt.completed();
+            outcomes.push(outcome);
+            if !completed {
+                cancellation.cancel();
+                break;
+            }
         }
-        if request.mode == CampaignMode::Full {
-            outcomes.extend(run_soaks(
+        if request.mode == CampaignMode::Full && !cancellation.is_cancelled() {
+            outcomes.extend(soak::run(
                 soaks,
                 &request,
                 &campaign_origin,
@@ -234,6 +247,15 @@ impl CampaignCoordinator {
             outcomes.iter().map(|outcome| outcome.workload_id.clone()).collect::<Vec<_>>();
         let receipts = outcomes.iter().map(|outcome| outcome.receipt.clone()).collect::<Vec<_>>();
         let storage = outcomes.iter().map(|outcome| outcome.storage.clone()).collect::<Vec<_>>();
+        let event_evidence = outcomes
+            .iter_mut()
+            .filter_map(|outcome| {
+                outcome
+                    .event_evidence
+                    .take()
+                    .map(|evidence| (outcome.workload_id.clone(), evidence))
+            })
+            .collect();
         let samples = outcomes.into_iter().flat_map(|outcome| outcome.samples).collect::<Vec<_>>();
         let measurements = merge_samples(
             &request.run_id,
@@ -259,6 +281,7 @@ impl CampaignCoordinator {
             accounting,
             receipts,
             storage,
+            event_evidence,
             evaluation,
             subject,
             runner: request.runner,
@@ -288,6 +311,7 @@ struct WorkloadOutcome {
     receipt: RunnerReceipt,
     samples: Vec<Sample>,
     storage: WorkloadStorage,
+    event_evidence: Option<EventLoadEvidence>,
 }
 
 fn run_workload(invocation: WorkloadInvocation) -> Result<WorkloadOutcome, CampaignError> {
@@ -308,7 +332,6 @@ fn run_workload(invocation: WorkloadInvocation) -> Result<WorkloadOutcome, Campa
     );
     let mut authorized =
         IntegratedSubject::launch(&invocation.subject, invocation.implementation_revision)?;
-    let mut runner = PacedRunner::new(invocation.runner, invocation.cancellation);
     let mut sampling = SamplingSink::new(
         &invocation.profile,
         workload_id.clone(),
@@ -317,71 +340,31 @@ fn run_workload(invocation: WorkloadInvocation) -> Result<WorkloadOutcome, Campa
     let mut accounting = invocation.accounting;
     let (integrated, authorization) = authorized.parts();
     let subject = integrated.descriptor().clone();
-    let result =
-        runner.run(integrated, authorization, &context, &plan, &mut sampling, &mut accounting);
+    let (result, event_evidence) = if plan.workload().scenario() == ScenarioKind::EventAppend {
+        let mut runner = EventAppendRunner::new(invocation.runner, invocation.cancellation);
+        let result =
+            runner.run(integrated, authorization, &context, &plan, &mut sampling, &mut accounting);
+        (result, runner.take_evidence())
+    } else {
+        let mut runner = PacedRunner::new(invocation.runner, invocation.cancellation);
+        (
+            runner.run(integrated, authorization, &context, &plan, &mut sampling, &mut accounting),
+            None,
+        )
+    };
     let storage = integrated.storage().clone();
     let cleanup = authorized.cleanup();
     let receipt = result?;
     cleanup?;
     let storage = WorkloadStorage::after_cleanup(workload_id.clone(), storage);
-    Ok(WorkloadOutcome { workload_id, subject, receipt, samples: sampling.finish(), storage })
-}
-
-fn run_soaks(
-    soaks: Vec<Workload>,
-    request: &CampaignRequest,
-    campaign_origin: &Instant,
-    cancellation: &CancellationFlag,
-    accounting: &SharedAccounting,
-) -> Result<Vec<WorkloadOutcome>, CampaignError> {
-    let worker_count = soaks.len();
-    let (sender, receiver) = mpsc::channel();
-    let mut handles = Vec::with_capacity(worker_count);
-    for workload in soaks {
-        let sender = sender.clone();
-        let invocation = WorkloadInvocation {
-            subject: request.subject.clone(),
-            implementation_revision: request.implementation_revision.clone(),
-            run_id: request.run_id.clone(),
-            runner: request.runner.clone(),
-            profile: request.dataset.profile().clone(),
-            workload,
-            kind: PlanKind::Soak,
-            elapsed_offset_micros: micros(campaign_origin.elapsed()),
-            cancellation: cancellation.clone(),
-            accounting: accounting.clone(),
-        };
-        let cancellation = cancellation.clone();
-        handles.push(thread::spawn(move || {
-            let result =
-                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run_workload(invocation)))
-                    .unwrap_or(Err(CampaignError::WorkerPanicked));
-            if result.is_err() {
-                cancellation.cancel();
-            }
-            let _ = sender.send(result);
-        }));
-    }
-    drop(sender);
-    let mut outcomes = Vec::with_capacity(worker_count);
-    let mut failure = None;
-    for result in receiver {
-        match result {
-            Ok(outcome) => outcomes.push(outcome),
-            Err(error) if failure.is_none() => failure = Some(error),
-            Err(_) => {}
-        }
-    }
-    if handles.into_iter().any(|handle| handle.join().is_err()) {
-        return Err(CampaignError::WorkerPanicked);
-    }
-    if let Some(error) = failure {
-        return Err(error);
-    }
-    if outcomes.len() != worker_count {
-        return Err(CampaignError::WorkerPanicked);
-    }
-    Ok(outcomes)
+    Ok(WorkloadOutcome {
+        workload_id,
+        subject,
+        receipt,
+        samples: sampling.finish(),
+        storage,
+        event_evidence,
+    })
 }
 
 pub fn classify_workloads(workloads: &[Workload]) -> (Vec<Workload>, Vec<Workload>) {

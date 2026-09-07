@@ -89,6 +89,35 @@ ledger across their subjects, and rejects subject executable-identity drift. Det
 reservoirs preserve representative samples without exceeding the profile's global record limit;
 the final merge assigns one contiguous, monotonic campaign sequence. A final partial queue cycle
 uses an exact drain operation so completed workloads do not retain queue ownership.
+Reservoir draws depend on the per-metric observation ordinal, not its potentially matching global
+sequence number; unrelated metric interleaving cannot alter the selected event ordinals.
+
+The runner rejects unstarted backlog when the declared workload window expires, retaining a
+`Failed` receipt with the executed count and measured elapsed time. Already-started work may drain
+after the window; an early-finishing plan waits through the declared horizon. Cancellation remains
+active during that final wait. A non-completed load stops later workloads and prevents soak launch;
+a non-completed soak cancels its siblings. Partial measurements and terminal receipts remain
+evidence after subject cleanup, but incomplete runner/resource coverage cannot generate a baseline
+candidate.
+
+Focused event-append workloads now use a separate open-loop producer with the declared rate,
+bounded concurrency and bounded client queue. An arrival that misses its entire rate interval is
+recorded as missed rather than burst-replayed. Full queues reject explicitly; unstarted queued work
+expires at the horizon. Unsampled per-operation records distinguish these outcomes from committed
+operations and retain exact schedule, start, finish, expected event digest and payload length.
+
+The public-A3 payload fixture is a synthetic D2 review submission in a fresh aggregate. Its
+canonical event payload (excluding the 16-byte frame header) exactly matches each seeded planned
+length. Two real prerequisite commands start and assign the review; their commits are counted
+separately, and their costs are included in scheduled-to-commit latency along with preparation and
+queueing. The fixture neither executes a real independent review nor grants approval. It replaces
+the payload-free scheduler toggles and cannot reuse their measurements as a compatible baseline.
+
+The explicit native `event_fidelity` acceptance test runs only the unchanged 120-second, 500/s
+event case, then verifies actual event bytes in a retained consistent database backup. It retains
+the full profile and catalog, unsampled evidence, all latencies and an honest incomplete-H3
+evaluation before asserting the event count and p99 objective. This bounded correction is not a
+claim that other pressure adapters, the full campaign, an accepted baseline, or the soak are qualified.
 
 The eleven load schedules total 33 minutes of declared runtime. The four soak schedules then run
 together for eight hours, so one `full` campaign takes at least eight hours and 33 minutes plus

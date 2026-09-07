@@ -1,9 +1,11 @@
 //! `SQLite` connection ownership and hardened configuration.
 
-use std::{path::Path, time::Duration};
+use std::{path::Path, sync::Arc, time::Duration};
 
 use crate::{JournalError, JournalErrorKind, StoreId};
-use rusqlite::{Connection, OpenFlags, config::DbConfig, limits::Limit, params};
+use rusqlite::{
+    Connection, OpenFlags, TransactionBehavior, config::DbConfig, limits::Limit, params,
+};
 
 /// `SQLite` connection configuration for a journal owner.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -74,6 +76,7 @@ impl SqliteStoragePages {
 pub struct SqliteJournal {
     pub(crate) connection: Connection,
     pub(crate) store_id: StoreId,
+    pub(crate) replay_generation: Arc<()>,
 }
 
 impl SqliteJournal {
@@ -90,17 +93,25 @@ impl SqliteJournal {
         let flags = OpenFlags::SQLITE_OPEN_READ_WRITE
             | OpenFlags::SQLITE_OPEN_CREATE
             | OpenFlags::SQLITE_OPEN_NO_MUTEX;
-        let connection = Connection::open_with_flags(path, flags)
+        let mut connection = Connection::open_with_flags(path, flags)
             .map_err(|error| JournalError::sqlite("open journal", error))?;
         configure(&connection, options.busy_timeout)?;
-        connection
+        // Installation and identity/version checks are one transaction: rejecting an older store
+        // must not leave new tables behind and prevent its explicit forward migration.
+        let transaction = connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(|error| JournalError::sqlite("begin journal schema installation", error))?;
+        transaction
             .execute_batch(super::schema::INSTALL_SCHEMA)
             .map_err(|error| JournalError::sqlite("install journal schema", error))?;
-        peritus_artifact_store::sqlite_interop::install_schema(&connection)
+        peritus_artifact_store::sqlite_interop::install_schema(&transaction)
             .map_err(|error| JournalError::sqlite("install artifact catalog schema", error))?;
-        bind_store(&connection, store_id)?;
-        bind_migration_version(&connection)?;
-        Ok(Self { connection, store_id })
+        bind_store(&transaction, store_id)?;
+        bind_migration_version(&transaction)?;
+        transaction
+            .commit()
+            .map_err(|error| JournalError::sqlite("commit journal schema installation", error))?;
+        Ok(Self { connection, store_id, replay_generation: Arc::new(()) })
     }
 
     /// Returns the journal's exact store identity.

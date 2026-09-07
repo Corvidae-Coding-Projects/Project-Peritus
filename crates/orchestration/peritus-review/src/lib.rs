@@ -50,4 +50,4 @@ pub use verified::{
     replay_equivalent, transition_is_legal,
 };
 pub use waiver::ObservedWaiver;
-pub use wire::ReviewCommandFrame;
+pub use wire::{ReviewCommandFrame, ReviewEventFrame};

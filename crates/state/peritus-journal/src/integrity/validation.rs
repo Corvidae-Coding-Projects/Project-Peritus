@@ -68,7 +68,7 @@ type StateCatalog = BTreeMap<(u16, Vec<u8>), StateObservation>;
 fn load_state_history(transaction: &Transaction<'_>) -> Result<StateCatalog, JournalError> {
     let mut statement = transaction
         .prepare(
-            "SELECT h.namespace, h.record_key, h.revision, h.value_digest, h.value,
+            "SELECT h.namespace, h.record_key, h.revision, h.value_digest, h.root_digest,
                     h.producing_position, e.global_position
                FROM state_record_history AS h
           LEFT JOIN events AS e ON e.global_position = h.producing_position
@@ -95,9 +95,9 @@ fn load_state_history(transaction: &Transaction<'_>) -> Result<StateCatalog, Jou
         let raw_digest: Vec<u8> = row
             .get(3)
             .map_err(|error| JournalError::sqlite("decode state history digest", error))?;
-        let bytes: Vec<u8> = row
-            .get(4)
-            .map_err(|error| JournalError::sqlite("decode state history bytes", error))?;
+        let root: Vec<u8> =
+            row.get(4).map_err(|error| JournalError::sqlite("decode state history root", error))?;
+        let bytes = crate::sqlite::history::restore(transaction, &root)?;
         let producing_position = positive(row.get(5).map_err(|error| {
             JournalError::sqlite("decode state history producing position", error)
         })?)?;

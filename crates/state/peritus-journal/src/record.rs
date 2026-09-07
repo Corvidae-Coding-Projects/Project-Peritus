@@ -8,8 +8,8 @@ use peritus_codec::{CodecLimits, decode_frame, sha256};
 use peritus_types::{EventId, EventSequence, Sha256Digest};
 
 pub use committed::CommittedRecord;
-pub use state::MAX_STATE_KEY_BYTES;
 pub use state::{DurableStateRecord, StateInstall};
+pub use state::{MAX_STATE_BYTES, MAX_STATE_KEY_BYTES};
 
 /// Maximum exact records returned by one global event query.
 pub const MAX_GLOBAL_WINDOW_RECORDS: usize = 4_096;

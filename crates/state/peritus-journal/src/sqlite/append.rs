@@ -4,8 +4,9 @@ use crate::{
     AppendPlan, CommandDecision, CommandResolution, JournalError, JournalErrorKind, decide_command,
 };
 use rusqlite::{OptionalExtension, TransactionBehavior, params};
+use std::sync::Arc;
 
-use super::SqliteJournal;
+use super::{ReplayObservation, SqliteJournal};
 
 impl SqliteJournal {
     /// Atomically applies a deterministic append plan or returns its original committed result.
@@ -14,13 +15,38 @@ impl SqliteJournal {
     ///
     /// Returns typed stale-CAS, idempotency, artifact, storage, or indeterminate-commit failures.
     pub fn append(&mut self, plan: AppendPlan) -> Result<crate::CommittedBatch, JournalError> {
-        self.append_inner(plan, false)
+        self.replay_generation = Arc::new(());
+        self.append_inner(plan, false, None)
+    }
+
+    /// Appends only if replay's original instance and mutation observation still match.
+    ///
+    /// The external-commit check runs inside `BEGIN IMMEDIATE`, before command resolution or
+    /// row changes. Success returns an observation extended only by this exact commit receipt.
+    /// Every attempt invalidates older observations, including failed or indeterminate appends.
+    /// Existing head/state CAS, idempotency and integrity checks remain mandatory.
+    ///
+    /// # Errors
+    /// Returns a stale-head error on invalidated replay, or the same failures as [`Self::append`].
+    pub fn append_observed(
+        &mut self,
+        plan: AppendPlan,
+        observation: &ReplayObservation,
+    ) -> Result<(crate::CommittedBatch, ReplayObservation), JournalError> {
+        let same_generation = observation.same_generation(&self.replay_generation);
+        self.replay_generation = Arc::new(());
+        if !same_generation {
+            return Err(super::observation::stale());
+        }
+        let batch = self.append_inner(plan, false, Some(observation))?;
+        Ok((batch, observation.after_append(&self.replay_generation)))
     }
 
     fn append_inner(
         &mut self,
         plan: AppendPlan,
         lose_acknowledgement: bool,
+        observation: Option<&ReplayObservation>,
     ) -> Result<crate::CommittedBatch, JournalError> {
         if plan.store_id != self.store_id {
             return Err(JournalError::new(
@@ -35,6 +61,10 @@ impl SqliteJournal {
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(|error| JournalError::sqlite("begin append transaction", error))?;
+
+        if let Some(observation) = observation {
+            observation.verify_external_version(&transaction)?;
+        }
 
         let stored_digest: Option<Vec<u8>> = transaction
             .query_row(
@@ -124,7 +154,8 @@ impl SqliteJournal {
         &mut self,
         plan: AppendPlan,
     ) -> Result<crate::CommittedBatch, JournalError> {
-        self.append_inner(plan, true)
+        self.replay_generation = Arc::new(());
+        self.append_inner(plan, true, None)
     }
 }
 
