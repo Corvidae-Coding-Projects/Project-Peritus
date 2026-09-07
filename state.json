@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1290,
+  "next_comment_id": 1291,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T07:57:12.892039446Z",
+      "updated_at": "2026-09-07T07:59:23.601106508Z",
       "labels": [
         "release"
       ],
@@ -1277,6 +1277,15 @@
           "kind": "result",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA/b9jHF7tvG/rKB7Tapv174H5reuGxNPVXjnxXVuqf9y8I0Jq8ljIbyb+AbY5o0cM6mdij51FmuL40z9EU72xCA=="
+        },
+        "264ec61e-32a1-413d-969f-7e1864628ece": {
+          "display_id": 1290,
+          "author": "QWDj",
+          "content": "Committed and pushed signed bfab32d0fbd173aef54f014efe491872dc237e61: fix(release): split native compilation from package assembly (#57). All 16 reviewed files are included; local provider/tracking initialization remains excluded. Native DEB/RPM reuse, all package outputs/digests, 318 unit + 7 integration + 36 package-tool tests, strict Clippy/build/fmt/actionlint/policy passed. Updated PR53 scope to include the phase split after four-job capacity alone proved insufficient. Next is unsigned hosted validation on this exact new head; no tag, signing, draft, publication, H4 pass, or product performance repair.",
+          "created_at": "2026-09-07T07:59:23.597715254Z",
+          "kind": "result",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAqJB3+3VKcIKAWhF1/ThNXr/uQdwyZfjqjEC+0nnoLpQ688X65MxlERer1gWntwzEI/SffTFH909jHSRTBN/WBQ=="
         },
         "265def79-3666-4c71-b000-d21baaed357d": {
           "display_id": 1259,
@@ -12623,8 +12632,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T07:57:12.892039446Z",
+    "timestamp": "2026-09-07T07:59:23.601106508Z",
     "agent_id": "QWDj",
-    "agent_seq": 66
+    "agent_seq": 67
   }
 }
