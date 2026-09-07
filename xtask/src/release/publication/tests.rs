@@ -1,6 +1,8 @@
 use super::*;
 use yaml_rust2::{Yaml, YamlLoader};
 
+mod release_qualification;
+
 fn complete_release() -> Release {
     Release {
         tag_name: "v1.2.3".to_owned(),
@@ -122,7 +124,7 @@ fn tag_workflow_completes_a_draft_without_a_publication_job() {
     let needs = staging["needs"].as_vec().expect("staging dependencies");
     assert_eq!(
         needs.iter().map(|value| value.as_str().expect("job")).collect::<Vec<_>>(),
-        ["policy", "bootstrap", "attest", "distro-sign"]
+        ["policy", "bootstrap", "h2", "attest", "distro-sign"]
     );
     let commands = staging["steps"]
         .as_vec()
@@ -175,6 +177,9 @@ fn release_and_lifecycle_matrices_cover_each_native_target_once() {
         (&release, "bootstrap"),
         (&release, "assemble"),
         (&release, "attest"),
+        (&release, "build-h2-controller"),
+        (&release, "prepare-h2"),
+        (&release, "h2"),
         (&product, "bootstrap"),
         (&product, "prepare-h2"),
         (&product, "h2"),

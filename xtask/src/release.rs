@@ -1,7 +1,12 @@
 //! Tag-bound GitHub release staging behind direct reviewed Cargo commands.
 
 mod publication;
+mod qualification;
 pub(crate) use publication::stage_draft;
+
+pub(crate) fn qualification_prepare(root: &Path) -> Result<(), XtaskError> {
+    qualification::prepare(root)
+}
 
 #[cfg(test)]
 mod archive_tests;
@@ -39,7 +44,9 @@ pub(crate) fn bootstrap_smoke(
     }
     let package = match input {
         QualificationInput::Build => crate::product_package::smoke(root)?,
-        QualificationInput::Prepared => crate::product_package::smoke_prepared(root)?,
+        QualificationInput::Prepared | QualificationInput::Release => {
+            crate::product_package::smoke_prepared(root)?
+        }
     };
     let fixture = TemporaryDirectory::new("peritus-public-installer")?;
     let version = format!("v{}", workspace_version(root)?);
@@ -53,10 +60,15 @@ pub(crate) fn bootstrap_smoke(
         .ok_or_else(|| XtaskError::metadata("native package directory has no UTF-8 name"))?;
     let extension = if cfg!(windows) { "zip" } else { "tar.gz" };
     let archive = release_root.join(format!("{name}.{extension}"));
-    archive_package(root, &package, &archive)?;
     let checksum = archive.with_file_name(format!("{name}.{extension}.sha256"));
-    fs::write(&checksum, format!("{}\n", digest(&archive)?))
-        .map_err(|error| XtaskError::io("write bootstrap fixture checksum at", &checksum, error))?;
+    if input == QualificationInput::Release {
+        qualification::copy_archive(root, &archive, &checksum)?;
+    } else {
+        archive_package(root, &package, &archive)?;
+        fs::write(&checksum, format!("{}\n", digest(&archive)?)).map_err(|error| {
+            XtaskError::io("write bootstrap fixture checksum at", &checksum, error)
+        })?;
+    }
 
     let subject = TemporaryDirectory::new("peritus-public-installer-subject")?;
     let release_base = file_url(&fixture.path().join("releases"));

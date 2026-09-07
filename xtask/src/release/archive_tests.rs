@@ -9,7 +9,7 @@ fn native_archive_format_and_boundary_regressions() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().expect("workspace");
     let status = Command::new(if cfg!(windows) { "python" } else { "python3" })
         .current_dir(root)
-        .args(["-m", "unittest", "discover", "-s", "packaging", "-p", "test_archive.py"])
+        .args(["-m", "unittest", "discover", "-s", "packaging", "-p", "test_*.py"])
         .status()
         .expect("run native archive format tests");
     assert!(status.success(), "native tar/ZIP format and failure-boundary regressions");

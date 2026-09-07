@@ -1,7 +1,7 @@
 //! Product package build, installation, and native lifecycle qualification.
 
 mod host_version;
-mod native_artifacts;
+pub(crate) mod native_artifacts;
 pub(crate) mod qualification;
 mod qualification_report;
 
@@ -216,11 +216,11 @@ fn run_installed_version(executable: &Path, subject: &Path) -> Result<(), XtaskE
     require_success(status.success(), "installed peritus command failed")
 }
 
-fn package_path(root: &Path) -> PathBuf {
+pub(crate) fn package_path(root: &Path) -> PathBuf {
     root.join("dist").join(format!("peritus-{}-{}", host_os(), std::env::consts::ARCH))
 }
 
-fn debug_binary(root: &Path, name: &str) -> PathBuf {
+pub(crate) fn debug_binary(root: &Path, name: &str) -> PathBuf {
     let suffix = if cfg!(windows) { ".exe" } else { "" };
     root.join("target").join("debug").join(format!("{name}{suffix}"))
 }

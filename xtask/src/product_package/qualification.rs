@@ -16,6 +16,7 @@ use crate::XtaskError;
 pub(crate) enum QualificationInput {
     Build,
     Prepared,
+    Release,
 }
 
 /// Assembles and archives checked debug artifacts without rebuilding them or invoking Cargo.
@@ -27,15 +28,31 @@ pub(crate) fn prepare(root: &Path) -> Result<PathBuf, XtaskError> {
         .status()
         .map_err(|error| XtaskError::io("assemble prepared H2 package in", root, error))?;
     require_success(status.success(), "prepared H2 package assembly failed")?;
+    archive_prepared(root, QualificationInput::Prepared)
+}
+
+/// Retains the package and tools together, preserving permissions across artifact transport.
+pub(crate) fn archive_prepared(
+    root: &Path,
+    input: QualificationInput,
+) -> Result<PathBuf, XtaskError> {
     require_prepared_inputs(root)?;
     let archive = root.join("target/h2-prepared.tar");
-    let status = Command::new("tar")
+    let mut command = Command::new("tar");
+    command
         .current_dir(root)
         .arg("-cf")
         .arg(&archive)
         .arg(package_path(Path::new(".")))
         .arg(debug_binary(Path::new("."), "peritus-h2"))
-        .arg(debug_binary(Path::new("."), "peritus-h2-controller"))
+        .arg(debug_binary(Path::new("."), "peritus-h2-controller"));
+    if input == QualificationInput::Release {
+        let package = package_path(Path::new("."));
+        let extension = if cfg!(windows) { "zip" } else { "tar.gz" };
+        command.arg(package.with_extension(extension));
+        command.arg(package.with_extension(format!("{extension}.sha256")));
+    }
+    let status = command
         .status()
         .map_err(|error| XtaskError::io("archive prepared H2 package in", root, error))?;
     require_success(status.success(), "prepared H2 archive creation failed")?;

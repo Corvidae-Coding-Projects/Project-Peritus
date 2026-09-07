@@ -27,6 +27,10 @@
 - Require explicit H3 scratch storage, retain actual workload filesystem identities,
   and verify process and directory cleanup. Do not place NVMe qualification state
   on an ambient RAM-backed temporary filesystem.
+- Qualify the actual staged release archives through all 18 H2 scenarios on six
+  native hosts and through the public installer. Verify archive checksums and
+  members, preserve executable permissions, and retain original archive bytes
+  instead of rebuilding debug packages for release qualification.
 
 ### Product development included in this release
 

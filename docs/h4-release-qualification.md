@@ -61,6 +61,17 @@ prerequisite, not a substitute for independent compilation and comparison of the
 complete output inventory. Build-time provenance and signatures remain genuine
 observations; their timestamps must not be falsified to force a byte match.
 
+The tag staging workflow qualifies the actual primary release archives on all six
+native targets. It separately builds only the H2 observation tools, verifies each
+archive's SHA-256, validates its complete member inventory, and unpacks it into a
+fresh tree. An exact same-run transport bundle preserves native permissions and
+the original archive/checksum for all 18 H2 scenarios and the public-installer
+lifecycle. Loose downloaded package files are not used as release evidence, and
+the installer test copies the original archive rather than reassembling it.
+Reports and raw H2 evidence, including failures, are retained for 30 days. This
+staging check is distinct from development CI's debug-package qualification and
+does not itself supply H4 signatures, independent reviews, or publication approval.
+
 The documentation inventory requires exactly one migration, backup, restore, rollback, license
 notice, and completed security-review document. License notices are rendered from an explicit,
 component-sorted input set. Empty documents and incomplete category sets are rejected.

@@ -29,8 +29,16 @@ fn paths(root: &Path) -> Result<[PathBuf; 7], XtaskError> {
 
 /// Checks the full input inventory before restoring permissions lost by artifact download.
 pub(super) fn restore(root: &Path) -> Result<(), XtaskError> {
-    let paths = paths(root)?;
-    for path in &paths {
+    restore_paths(&paths(root)?)
+}
+
+/// Restores only the two qualification tools, without requiring debug product binaries.
+pub(crate) fn restore_controllers(root: &Path) -> Result<(), XtaskError> {
+    restore_paths(&[debug_binary(root, "peritus-h2"), debug_binary(root, "peritus-h2-controller")])
+}
+
+fn restore_paths(paths: &[PathBuf]) -> Result<(), XtaskError> {
+    for path in paths {
         let metadata = fs::symlink_metadata(path).map_err(|error| {
             XtaskError::io("inspect required native build artifact at", path, error)
         })?;
@@ -42,7 +50,7 @@ pub(super) fn restore(root: &Path) -> Result<(), XtaskError> {
         }
     }
     #[cfg(unix)]
-    for path in &paths {
+    for path in paths {
         use std::os::unix::fs::PermissionsExt as _;
         fs::set_permissions(path, fs::Permissions::from_mode(0o755)).map_err(|error| {
             XtaskError::io("restore native build artifact permissions at", path, error)

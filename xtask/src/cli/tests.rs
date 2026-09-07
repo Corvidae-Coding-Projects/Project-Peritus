@@ -52,6 +52,7 @@ fn native_qualification_commands_are_first_class_and_reject_extra_arguments() {
         ("product-native-qualification", Command::ProductNativeQualification),
         ("product-native-qualification-prepare", Command::ProductNativeQualificationPrepare),
         ("product-native-qualification-restore", Command::ProductNativeQualificationRestore),
+        ("release-qualification-prepare", Command::ReleaseQualificationPrepare),
     ] {
         assert_eq!(parse([OsString::from(name)]).expect("qualification command"), expected);
         assert!(parse([OsString::from(name), OsString::from("extra")]).is_err());
@@ -63,6 +64,7 @@ fn lifecycle_commands_explicitly_select_build_or_prepared_inputs() {
     for (name, input) in [
         ("release-bootstrap-smoke", QualificationInput::Build),
         ("release-bootstrap-prepared-smoke", QualificationInput::Prepared),
+        ("release-bootstrap-staged-smoke", QualificationInput::Release),
     ] {
         assert_eq!(
             parse([OsString::from(name)]).expect("lifecycle command"),

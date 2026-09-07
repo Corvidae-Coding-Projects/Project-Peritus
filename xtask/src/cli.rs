@@ -38,6 +38,8 @@ Commands:
   product-native-qualification-prepared-shard INDEX Qualify same-run artifacts without Cargo
   release-bootstrap-smoke Qualify the public download, checksum, and install entry point
   release-bootstrap-prepared-smoke Qualify the public installer using same-run native artifacts
+  release-bootstrap-staged-smoke Qualify the public installer using the exact staged archive
+  release-qualification-prepare Restore the staged release archive and retain H2 inputs
   release-create         Validate a tag and create its retained draft GitHub release
   release-package-stage Build, archive, checksum, and record this host's native package
   release-package-assemble Assemble a native package from separately built release binaries
@@ -77,6 +79,7 @@ enum Command {
     ReleaseCreate,
     ReleasePackageStage,
     ReleasePackageAssemble,
+    ReleaseQualificationPrepare,
     ReleaseStage,
     Distro { operation: crate::distro::Operation },
     Help,
@@ -238,14 +241,11 @@ pub(crate) fn execute(
         }
         Command::ReleaseCreate => crate::release::create(root)?,
         Command::ReleaseBootstrapSmoke { input } => {
-            let package = crate::release::bootstrap_smoke(root, input)?;
-            write_output(
-                output,
-                &format!("public release bootstrap passed: {}\n", package.display()),
-            )?;
+            execute_release_bootstrap(root, input, output)?;
         }
         Command::ReleasePackageStage => crate::release::package_stage(root)?,
         Command::ReleasePackageAssemble => crate::release::package_assemble(root)?,
+        Command::ReleaseQualificationPrepare => crate::release::qualification_prepare(root)?,
         Command::ReleaseStage => execute_release_stage(root, output)?,
         Command::Distro { operation } => crate::distro::run(root, operation)?,
         Command::Help => {}
@@ -259,6 +259,15 @@ fn execute_release_stage(root: &Path, output: &mut dyn Write) -> Result<(), Xtas
         output,
         "Release draft is complete and remains unpublished; H4 approval and separate publication authorization are required.\n",
     )
+}
+
+fn execute_release_bootstrap(
+    root: &Path,
+    input: QualificationInput,
+    output: &mut dyn Write,
+) -> Result<(), XtaskError> {
+    let package = crate::release::bootstrap_smoke(root, input)?;
+    write_output(output, &format!("public release bootstrap passed: {}\n", package.display()))
 }
 
 fn execute_all(root: &Path, output: &mut dyn Write) -> Result<(), XtaskError> {
@@ -279,37 +288,6 @@ fn execute_all(root: &Path, output: &mut dyn Write) -> Result<(), XtaskError> {
             api.files, api.executable_entry_points
         ),
     )
-}
-
-fn execute_product(
-    command: Command,
-    root: &Path,
-    output: &mut dyn Write,
-) -> Result<(), XtaskError> {
-    let (package, message) = match command {
-        Command::ProductPackage => (crate::product_package::build(root)?, "product package ready"),
-        Command::ProductInstall => {
-            (crate::product_package::install(root)?, "product installed; start it with `peritus`")
-        }
-        Command::ProductPackageSmoke => {
-            (crate::product_package::smoke(root)?, "native product lifecycle passed")
-        }
-        Command::ProductNativeQualification => {
-            (qualification::qualify(root)?, "native H2 qualification passed; retained report")
-        }
-        Command::ProductNativeQualificationPrepare => {
-            (qualification::prepare(root)?, "native H2 package prepared without rebuilding")
-        }
-        Command::ProductNativeQualificationRestore => {
-            (qualification::restore(root)?, "same-run native H2 package restored")
-        }
-        Command::ProductNativeQualificationShard { index, input } => (
-            qualification::qualify_shard(root, index, input)?,
-            "native H2 qualification shard passed; retained reports",
-        ),
-        _ => return Err(XtaskError::invocation("command is not a product packaging operation")),
-    };
-    write_output(output, &format!("{message}: {}\n", package.display()))
 }
 
 fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError> {
@@ -350,6 +328,10 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, XtaskError
             Ok(Command::ReleaseBootstrapSmoke { input: QualificationInput::Prepared })
         }
         Some("release-create") => Ok(Command::ReleaseCreate),
+        Some("release-bootstrap-staged-smoke") => {
+            Ok(Command::ReleaseBootstrapSmoke { input: QualificationInput::Release })
+        }
+        Some("release-qualification-prepare") => Ok(Command::ReleaseQualificationPrepare),
         Some("release-package-stage") => Ok(Command::ReleasePackageStage),
         Some("release-package-assemble") => Ok(Command::ReleasePackageAssemble),
         Some("release-stage") => Ok(Command::ReleaseStage),
@@ -385,6 +367,8 @@ fn write_output(output: &mut dyn Write, message: &str) -> Result<(), XtaskError>
         .map_err(|error| XtaskError::io("write", Path::new("<stdout>"), error))
 }
 
+mod product;
 mod shard_args;
+use product::execute_product;
 #[cfg(test)]
 mod tests;
