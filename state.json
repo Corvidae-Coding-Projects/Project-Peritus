@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1299,
+  "next_comment_id": 1300,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T09:11:42.494078154Z",
+      "updated_at": "2026-09-07T09:17:39.260906497Z",
       "labels": [
         "release"
       ],
@@ -1295,6 +1295,15 @@
           "kind": "note",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAiYxdE4l3DGEiWh0gytOOr5HKhmwllY8nps9LTUULCiWe+tty1/9vmMXKC64QudIeiH7ikDYGm26TdfSmqbbxAQ=="
+        },
+        "2cf9c64a-d7ad-4edd-b41c-3498941514c3": {
+          "display_id": 1299,
+          "author": "QWDj",
+          "content": "[action] OrdinarycancelofobsoletePR53GateArunsbfab34098156784/92d634091384662didnotterminateafterseveralminutes. Verifiedgh--forceandGitHubofficialRESTforce-canceldocs;actualGateAaggregationjobsuseifalways. Noactivejobsremainedoninspectionbutrunsstillqueued. Retainedsecondfullpre-forcejobsnapshots target/h4-{bfab,92d6}-gate-a-before-force-cancel.json andusedsupportedforcecancelONLYthesesupersededruns. Currentc25GateA34103702481,PR52allworkflows,andmainuntouched. Thisisrunretirementnotbypassingcurrentreleasegates.",
+          "created_at": "2026-09-07T09:17:39.257457858Z",
+          "kind": "note",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAmjd4cEApKpHndegqiUqMOzw1UGz12uNAteHyKV62dirvH+TFg4Og2imgIwFpRjvRkTiZo2ZqBPX4WAua7a1oBg=="
         },
         "316aa00d-66d6-4af5-b48a-8a9aee4095ee": {
           "display_id": 1248,
@@ -12704,8 +12713,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T09:11:42.494078154Z",
+    "timestamp": "2026-09-07T09:17:39.260906497Z",
     "agent_id": "QWDj",
-    "agent_seq": 75
+    "agent_seq": 76
   }
 }
