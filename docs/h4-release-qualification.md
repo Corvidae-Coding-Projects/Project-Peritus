@@ -53,6 +53,14 @@ complete path-sorted output, including lengths and hashes, and reports missing o
 A comparison containing any difference is evidence of nonreproducibility, never a warning that can
 be silently ignored.
 
+Native archive assembly uses `packaging/archive.py` with the committed source
+epoch. It sorts entries, normalizes ownership and permissions, excludes ambient
+filesystem timestamps, and rejects links or existing output. Python and its zlib
+version belong in the builder-tool inventory. This is an archive determinism
+prerequisite, not a substitute for independent compilation and comparison of the
+complete output inventory. Build-time provenance and signatures remain genuine
+observations; their timestamps must not be falsified to force a byte match.
+
 The documentation inventory requires exactly one migration, backup, restore, rollback, license
 notice, and completed security-review document. License notices are rendered from an explicit,
 component-sorted input set. Empty documents and incomplete category sets are rejected.

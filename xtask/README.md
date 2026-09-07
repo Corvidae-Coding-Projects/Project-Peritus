@@ -33,6 +33,14 @@ reviewed locked Cargo command; its prepared execution path never invokes Cargo. 
 fail rather than triggering a rebuild. The local build-and-qualify commands remain available, and
 every hosted job retains its ten-minute limit.
 
+Native release and bootstrap archives require Python 3.12+ on the build host
+(`python3` on Unix, `python` on Windows), not on the installed product host.
+The archive writer fixes entry order, owner/group, normalized permissions, and
+timestamps at the committed source epoch; it rejects links, special files, and
+existing output files. The focused test command below exercises both tar/gzip
+and ZIP bytes. This removes archive metadata variability; an independent native
+rebuild must still prove the complete candidate outputs byte-identical for H4.
+
 From the repository root:
 
 ```sh

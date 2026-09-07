@@ -3,6 +3,9 @@
 mod publication;
 pub(crate) use publication::stage_draft;
 
+#[cfg(test)]
+mod archive_tests;
+
 #[cfg(all(test, unix))]
 mod installer_tests;
 
@@ -186,39 +189,29 @@ fn unix_seconds() -> Result<u64, XtaskError> {
         .map_err(|_| XtaskError::metadata("system clock is before the Unix epoch"))
 }
 
-#[cfg(windows)]
 fn archive_package(root: &Path, package: &Path, archive: &Path) -> Result<(), XtaskError> {
+    let output = Command::new("git")
+        .current_dir(root)
+        .args(["log", "-1", "--format=%ct"])
+        .output()
+        .map_err(|error| XtaskError::io("read candidate source epoch in", root, error))?;
+    if !output.status.success() {
+        return Err(XtaskError::metadata("cannot read the candidate source epoch"));
+    }
+    let epoch = String::from_utf8(output.stdout)
+        .map_err(|_| XtaskError::metadata("candidate source epoch is not UTF-8"))?;
+    let epoch = epoch
+        .trim()
+        .parse::<u32>()
+        .map_err(|_| XtaskError::metadata("candidate source epoch is not a gzip timestamp"))?;
     run(
-        Command::new("powershell")
+        Command::new(if cfg!(windows) { "python" } else { "python3" })
             .current_dir(root)
-            .args([
-                "-NoProfile",
-                "-Command",
-                "$ErrorActionPreference='Stop'; Compress-Archive -LiteralPath $env:PERITUS_ARCHIVE_SOURCE -DestinationPath $env:PERITUS_ARCHIVE_DESTINATION -Force",
-            ])
-            .env("PERITUS_ARCHIVE_SOURCE", package)
-            .env("PERITUS_ARCHIVE_DESTINATION", archive),
-        "archive Windows release package",
-    )
-}
-
-#[cfg(not(windows))]
-fn archive_package(root: &Path, package: &Path, archive: &Path) -> Result<(), XtaskError> {
-    let parent = package
-        .parent()
-        .ok_or_else(|| XtaskError::metadata("native package directory has no parent"))?;
-    let name = package
-        .file_name()
-        .ok_or_else(|| XtaskError::metadata("native package directory has no name"))?;
-    run(
-        Command::new("tar")
-            .current_dir(root)
-            .arg("-C")
-            .arg(parent)
-            .arg("-czf")
+            .arg(root.join("packaging/archive.py"))
+            .arg(package)
             .arg(archive)
-            .arg(name),
-        "archive Unix release package",
+            .arg(epoch.to_string()),
+        "archive native release package with canonical metadata",
     )
 }
 

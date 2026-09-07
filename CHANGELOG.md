@@ -15,6 +15,9 @@
 - Complete tagged builds as unpublished drafts. Remove automatic publication from
   the workflow and workspace CLI so H4 can qualify the exact staged artifacts
   before the release owner separately authorizes public publication.
+- Make native tar/gzip and ZIP archive metadata deterministic at the candidate's
+  committed source epoch, with stable ordering and permissions and fail-closed
+  handling of links, special files, and existing outputs.
 
 ### Product development included in this release
 
