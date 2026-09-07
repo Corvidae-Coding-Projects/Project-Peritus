@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1324,
+  "next_comment_id": 1325,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T12:45:39.821299844Z",
+      "updated_at": "2026-09-07T13:05:06.026920712Z",
       "labels": [
         "release"
       ],
@@ -1574,6 +1574,15 @@
           "kind": "note",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjubLXewOnSHhFFs9Aox6ybagSCf3xdF6DQ/hXW+Hr424S5zNlQI2DCy8LdujhvruphVFsPGc+yGA8LyhfXI+DQ=="
+        },
+        "72a19c74-2703-4127-a5ec-ba863b608668": {
+          "display_id": 1324,
+          "author": "QWDj",
+          "content": "Committed signed 6940543ba22bfd00f3eb6243191ea12bfc66738e: test(h1): identify native controller case failures (#57). Two test files only; identical rejection and resources-released invariants now print exact case, failures and cleanup. Two deliberate fixture regressions failed before and pass afterward. All18 resilience tests, strict all-target/all-feature Clippy/build, doctests, formatting, policy and Intel macOS cross-target compilation pass; 100 unchanged stale-fixture repetitions pass locally on Linux, NOT a macOS reproduction or failure fix. Separate confirmed Apple libproc zero-on-error finding affects three existing process-group callers and remains unmodified/unqualified. Both exact4f native IntelMac library jobs PASS7m40 and8m38; heavy binary consumers queued. No runtime/profile/dependency/threshold changes, merge, tag, artifact signing, publication or campaign restart.",
+          "created_at": "2026-09-07T13:05:06.022118205Z",
+          "kind": "result",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA0HHhcaUi8K07ijDA/Jwod7HEDeV7EKXVWXckRDWwMyirR8g2Nko6vSBXqMb9BCeieh+E6lHT/m0wdjGHtMTAAg=="
         },
         "77d4fe15-7d7e-494f-8a76-7a9e8b5b7329": {
           "display_id": 1314,
@@ -12929,8 +12938,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T12:45:39.821299844Z",
+    "timestamp": "2026-09-07T13:05:06.026920712Z",
     "agent_id": "QWDj",
-    "agent_seq": 100
+    "agent_seq": 101
   }
 }
