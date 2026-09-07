@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1344,
+  "next_comment_id": 1345,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T15:28:01.732652915Z",
+      "updated_at": "2026-09-07T16:14:08.282704995Z",
       "labels": [
         "release"
       ],
@@ -1781,6 +1781,15 @@
           "kind": "result",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAu4kqUviADS7lB4egWboI/doFO9DD98uBlkiD3HpcjWSeJ6KqtjIzKQbRWEFVAdgPcDlWIss+752lr4XRMT58AQ=="
+        },
+        "942a0a74-6b43-4b23-82ca-69c00da13af9": {
+          "display_id": 1344,
+          "author": "QWDj",
+          "content": "Owner approved the H3 scheduler/journal persistence repair at 15:59 UTC. First local C0 increment replaces per-event aggregate queries with one transaction-scoped exact-row read and shares full-scan predecessor validation. Three new corruption regressions failed before and six focused cases pass after, including actual concurrent-writer snapshot isolation. 525 cases across 13 consumer crates, strict Clippy, all-target/all-feature workspace check and full policy pass; journal no-cheating Verus gate passed 14 verified/0 errors after the initial sandbox-denied compiler-cache attempt. Full persistence repair still requires receipt-bound state reuse and lossless history storage; no H3 performance or qualification pass claimed. In parallel all12 exact9fa archive bundles and6 hosted rebuild reports now retained/whole-ZIP-digest verified: all6 actual complete archive/checksum pairs byte-identical, correct architectures, hosted reports match. User requested simplifying PR53; body replaced by concise summary/current evidence/remaining gates and exact readback verified. Old body and detailed diagnostics retained. No source push/freeze/merge/tag/sign/publication/newcampaign.",
+          "created_at": "2026-09-07T16:14:08.278259249Z",
+          "kind": "observation",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAMslpfJrHFrHHzF1OoHkba7XAk5MOYNVMbQPzYWjG3yLSKxg4kFHINFPBDIcGMegfP8WHsmEAkOYDv0nFf+agBA=="
         },
         "9905eae4-4b4a-4ba4-b378-1237bbac68d7": {
           "display_id": 1331,
@@ -13109,8 +13118,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T15:28:01.732652915Z",
+    "timestamp": "2026-09-07T16:14:08.282704995Z",
     "agent_id": "QWDj",
-    "agent_seq": 120
+    "agent_seq": 121
   }
 }
