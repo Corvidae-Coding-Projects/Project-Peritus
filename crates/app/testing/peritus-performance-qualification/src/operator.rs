@@ -12,7 +12,7 @@ use peritus_benchmarks::{
 
 use crate::{
     CampaignCoordinator, CampaignEvidenceWriter, CampaignMode, CampaignRequest, MachineProbe,
-    OperatorError, PublishedEvidence, sha256_file,
+    OperatorError, PublishedEvidence, SubjectConfiguration, sha256_file,
 };
 
 const MAX_PROFILE_BYTES: u64 = 256 * 1024;
@@ -23,6 +23,7 @@ const MAX_BASELINE_BYTES: u64 = 512 * 1024;
 pub const OPERATOR_USAGE: &str = "\
 Usage: peritus-h3 <load|full> \\
   --daemon <peritusd> \\
+  --scratch <existing-reviewed-storage-directory> \\
   --profile <profile.json> \\
   --workloads <workloads.json> \\
   [--baseline <accepted-baseline.json>] \\
@@ -39,6 +40,7 @@ long-horizon workloads. The evidence destination must not already exist.\n";
 pub struct OperatorOptions {
     mode: CampaignMode,
     daemon: PathBuf,
+    scratch: PathBuf,
     profile: PathBuf,
     workloads: PathBuf,
     baseline: Option<PathBuf>,
@@ -64,6 +66,7 @@ impl OperatorOptions {
             value => return Err(usage(format!("unknown mode `{value}`"))),
         };
         let mut daemon = None;
+        let mut scratch = None;
         let mut profile = None;
         let mut workloads = None;
         let mut baseline = None;
@@ -81,6 +84,7 @@ impl OperatorOptions {
             let value = args.next().ok_or_else(|| usage(format!("{flag} requires a value")))?;
             match flag.as_str() {
                 "--daemon" => assign(&mut daemon, PathBuf::from(value), &flag)?,
+                "--scratch" => assign(&mut scratch, PathBuf::from(value), &flag)?,
                 "--profile" => assign(&mut profile, PathBuf::from(value), &flag)?,
                 "--workloads" => assign(&mut workloads, PathBuf::from(value), &flag)?,
                 "--baseline" => assign(&mut baseline, PathBuf::from(value), &flag)?,
@@ -119,6 +123,7 @@ impl OperatorOptions {
         Ok(Self {
             mode,
             daemon: required(daemon, "--daemon")?,
+            scratch: required(scratch, "--scratch")?,
             profile: required(profile, "--profile")?,
             workloads: required(workloads, "--workloads")?,
             baseline,
@@ -173,7 +178,8 @@ impl OperatorOptions {
         )?;
         let mut request = CampaignRequest::new(
             dataset,
-            self.daemon,
+            SubjectConfiguration::new(&self.daemon, &self.scratch)
+                .map_err(crate::CampaignError::from)?,
             self.revision,
             run_id()?,
             runner,
@@ -248,6 +254,7 @@ mod tests {
         let options = OperatorOptions::parse(arguments()).expect("options");
         assert_eq!(options.mode, CampaignMode::Full);
         assert_eq!(options.daemon, PathBuf::from("peritusd"));
+        assert_eq!(options.scratch, PathBuf::from("scratch"));
         assert_eq!(options.storage_class.as_str(), "nvme-gen4");
     }
 
@@ -274,6 +281,17 @@ mod tests {
     }
 
     #[test]
+    fn scratch_directory_is_required_instead_of_an_ambient_default() {
+        let mut arguments = arguments();
+        let index = arguments.iter().position(|value| value == "--scratch").expect("scratch");
+        arguments.drain(index..index + 2);
+        assert!(matches!(
+            OperatorOptions::parse(arguments),
+            Err(OperatorError::Usage(message)) if message.contains("--scratch")
+        ));
+    }
+
+    #[test]
     fn baseline_bytes_must_match_the_explicitly_accepted_digest() {
         let temporary = tempfile::tempdir().expect("temporary");
         let profile = temporary.path().join("profile.json");
@@ -285,6 +303,7 @@ mod tests {
         let options = OperatorOptions {
             mode: CampaignMode::Load,
             daemon: PathBuf::from("peritusd"),
+            scratch: temporary.path().to_path_buf(),
             profile,
             workloads,
             baseline: Some(baseline),
@@ -301,6 +320,8 @@ mod tests {
             "full",
             "--daemon",
             "peritusd",
+            "--scratch",
+            "scratch",
             "--profile",
             "profile.json",
             "--workloads",

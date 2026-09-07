@@ -14,7 +14,10 @@ use peritus_benchmarks::{
 
 use crate::sampling::{Sample, SamplingSink, merge_samples};
 use crate::shared_accounting::SharedAccounting;
-use crate::{CampaignError, CancellationFlag, IntegratedSubject, MachineObservation, PacedRunner};
+use crate::{
+    CampaignError, CancellationFlag, IntegratedSubject, MachineObservation, PacedRunner,
+    SubjectConfiguration, WorkloadStorage,
+};
 
 /// Workload horizon selected for one operator invocation.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -28,7 +31,7 @@ pub enum CampaignMode {
 /// Complete immutable inputs required before a campaign can execute.
 pub struct CampaignRequest {
     dataset: QualificationDataset,
-    daemon_executable: PathBuf,
+    subject: SubjectConfiguration,
     implementation_revision: String,
     run_id: StableId,
     runner: RunnerDescriptor,
@@ -42,7 +45,7 @@ impl CampaignRequest {
     #[must_use]
     pub fn new(
         dataset: QualificationDataset,
-        daemon_executable: PathBuf,
+        subject: SubjectConfiguration,
         implementation_revision: impl Into<String>,
         run_id: StableId,
         runner: RunnerDescriptor,
@@ -51,7 +54,7 @@ impl CampaignRequest {
     ) -> Self {
         Self {
             dataset,
-            daemon_executable,
+            subject,
             implementation_revision: implementation_revision.into(),
             run_id,
             runner,
@@ -77,6 +80,7 @@ pub struct CampaignOutcome {
     measurements: MeasurementSet,
     accounting: AccountingSummary,
     receipts: Vec<RunnerReceipt>,
+    storage: Vec<WorkloadStorage>,
     evaluation: QualificationEvaluation,
     subject: SubjectDescriptor,
     runner: RunnerDescriptor,
@@ -120,6 +124,12 @@ impl CampaignOutcome {
     #[must_use]
     pub fn receipts(&self) -> &[RunnerReceipt] {
         &self.receipts
+    }
+
+    /// Returns each workload's observed scratch location and verified cleanup result.
+    #[must_use]
+    pub fn storage(&self) -> &[WorkloadStorage] {
+        &self.storage
     }
 
     /// Returns the deterministic SLO and baseline evaluation.
@@ -193,7 +203,7 @@ impl CampaignCoordinator {
         let mut outcomes = Vec::with_capacity(selected);
         for workload in loads {
             outcomes.push(run_workload(WorkloadInvocation {
-                daemon_executable: request.daemon_executable.clone(),
+                subject: request.subject.clone(),
                 implementation_revision: request.implementation_revision.clone(),
                 run_id: request.run_id.clone(),
                 runner: request.runner.clone(),
@@ -223,6 +233,7 @@ impl CampaignCoordinator {
         let workload_ids =
             outcomes.iter().map(|outcome| outcome.workload_id.clone()).collect::<Vec<_>>();
         let receipts = outcomes.iter().map(|outcome| outcome.receipt.clone()).collect::<Vec<_>>();
+        let storage = outcomes.iter().map(|outcome| outcome.storage.clone()).collect::<Vec<_>>();
         let samples = outcomes.into_iter().flat_map(|outcome| outcome.samples).collect::<Vec<_>>();
         let measurements = merge_samples(
             &request.run_id,
@@ -243,10 +254,11 @@ impl CampaignCoordinator {
         Ok(CampaignOutcome {
             dataset: request.dataset,
             baseline: request.baseline,
-            subject_executable: request.daemon_executable,
+            subject_executable: request.subject.executable().to_path_buf(),
             measurements,
             accounting,
             receipts,
+            storage,
             evaluation,
             subject,
             runner: request.runner,
@@ -258,7 +270,7 @@ impl CampaignCoordinator {
 }
 
 struct WorkloadInvocation {
-    daemon_executable: PathBuf,
+    subject: SubjectConfiguration,
     implementation_revision: String,
     run_id: StableId,
     runner: RunnerDescriptor,
@@ -275,6 +287,7 @@ struct WorkloadOutcome {
     subject: SubjectDescriptor,
     receipt: RunnerReceipt,
     samples: Vec<Sample>,
+    storage: WorkloadStorage,
 }
 
 fn run_workload(invocation: WorkloadInvocation) -> Result<WorkloadOutcome, CampaignError> {
@@ -293,10 +306,8 @@ fn run_workload(invocation: WorkloadInvocation) -> Result<WorkloadOutcome, Campa
         plan_id,
         workload_id.clone(),
     );
-    let mut authorized = IntegratedSubject::launch(
-        &invocation.daemon_executable,
-        invocation.implementation_revision,
-    )?;
+    let mut authorized =
+        IntegratedSubject::launch(&invocation.subject, invocation.implementation_revision)?;
     let mut runner = PacedRunner::new(invocation.runner, invocation.cancellation);
     let mut sampling = SamplingSink::new(
         &invocation.profile,
@@ -306,9 +317,14 @@ fn run_workload(invocation: WorkloadInvocation) -> Result<WorkloadOutcome, Campa
     let mut accounting = invocation.accounting;
     let (integrated, authorization) = authorized.parts();
     let subject = integrated.descriptor().clone();
-    let receipt =
-        runner.run(integrated, authorization, &context, &plan, &mut sampling, &mut accounting)?;
-    Ok(WorkloadOutcome { workload_id, subject, receipt, samples: sampling.finish() })
+    let result =
+        runner.run(integrated, authorization, &context, &plan, &mut sampling, &mut accounting);
+    let storage = integrated.storage().clone();
+    let cleanup = authorized.cleanup();
+    let receipt = result?;
+    cleanup?;
+    let storage = WorkloadStorage::after_cleanup(workload_id.clone(), storage);
+    Ok(WorkloadOutcome { workload_id, subject, receipt, samples: sampling.finish(), storage })
 }
 
 fn run_soaks(
@@ -324,7 +340,7 @@ fn run_soaks(
     for workload in soaks {
         let sender = sender.clone();
         let invocation = WorkloadInvocation {
-            daemon_executable: request.daemon_executable.clone(),
+            subject: request.subject.clone(),
             implementation_revision: request.implementation_revision.clone(),
             run_id: request.run_id.clone(),
             runner: request.runner.clone(),

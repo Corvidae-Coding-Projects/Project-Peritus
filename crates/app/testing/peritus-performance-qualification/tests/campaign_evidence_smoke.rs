@@ -3,7 +3,8 @@
 #![cfg(unix)]
 
 use std::ffi::OsString;
-use std::path::PathBuf;
+use std::os::unix::fs::MetadataExt as _;
+use std::path::{Path, PathBuf};
 
 use peritus_benchmarks::StableId;
 use peritus_performance_qualification::{MachineProbe, OperatorOptions};
@@ -42,6 +43,8 @@ fn real_operator_publishes_a_complete_atomic_bundle() {
         OsString::from("load"),
         OsString::from("--daemon"),
         daemon_executable().into_os_string(),
+        OsString::from("--scratch"),
+        scratch_root().into_os_string(),
         OsString::from("--profile"),
         profile_path.clone().into_os_string(),
         OsString::from("--workloads"),
@@ -58,7 +61,8 @@ fn real_operator_publishes_a_complete_atomic_bundle() {
     .expect("operator execution");
 
     assert_eq!(published.root(), output);
-    assert_eq!(published.manifest().artifacts().len(), 8);
+    assert_eq!(published.manifest().artifacts().len(), 9);
+    verify_storage(&output);
     assert!(published.baseline_candidate().is_some());
     assert!(published.baseline_candidate_digest().is_some());
     assert_eq!(
@@ -76,6 +80,7 @@ fn real_operator_publishes_a_complete_atomic_bundle() {
         "results/receipts.json",
         "results/accounting.json",
         "results/machine.json",
+        "results/storage.json",
         "manifest.json",
         "report.json",
         "baseline-candidate.json",
@@ -91,6 +96,8 @@ fn real_operator_publishes_a_complete_atomic_bundle() {
         OsString::from("load"),
         OsString::from("--daemon"),
         daemon_executable().into_os_string(),
+        OsString::from("--scratch"),
+        scratch_root().into_os_string(),
         OsString::from("--profile"),
         profile_path.into_os_string(),
         OsString::from("--workloads"),
@@ -109,12 +116,33 @@ fn real_operator_publishes_a_complete_atomic_bundle() {
     .expect("accepted operator options")
     .execute()
     .expect("accepted operator execution");
+    verify_storage(&accepted_output);
     assert!(accepted.baseline_candidate().is_some());
     assert_eq!(
         std::fs::read(accepted_output.join("inputs/accepted-baseline.json"))
             .expect("retained accepted baseline"),
         std::fs::read(candidate_path).expect("candidate baseline")
     );
+}
+
+fn verify_storage(output: &Path) {
+    let scratch = std::fs::canonicalize(scratch_root()).expect("scratch root");
+    let observed: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(output.join("results/storage.json")).expect("retained storage"),
+    )
+    .expect("storage JSON");
+    let subject = PathBuf::from(observed[0]["storage"]["path"].as_str().expect("subject path"));
+    assert_eq!(subject.parent(), Some(scratch.as_path()));
+    assert_eq!(
+        observed[0]["storage"]["device"],
+        std::fs::metadata(&scratch).expect("scratch metadata").dev()
+    );
+    assert_eq!(observed[0]["cleanup_completed"], true);
+    assert!(!subject.exists(), "successful campaign left its subject directory");
+}
+
+fn scratch_root() -> PathBuf {
+    std::env::var_os("PERITUS_H3_SCRATCH").map_or_else(|| PathBuf::from("/tmp"), PathBuf::from)
 }
 
 fn profile_document() -> String {

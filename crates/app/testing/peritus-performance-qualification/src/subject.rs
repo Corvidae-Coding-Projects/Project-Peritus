@@ -1,7 +1,6 @@
 //! Integrated disposable subject exercised by H3 plans.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::Path;
 use std::time::Instant;
 
 use peritus_benchmarks::{
@@ -10,13 +9,13 @@ use peritus_benchmarks::{
 };
 use peritus_types::RevisionTuple;
 
-use crate::SubjectError;
 use crate::a3::A3Client;
 use crate::daemon::DisposableDaemon;
 use crate::effects::{micros, resident_bytes};
 use crate::identity::IdentitySource;
 use crate::process::OwnedProcess;
 use crate::scheduler::{SchedulerRun, qualification_revision};
+use crate::{StorageObservation, SubjectConfiguration, SubjectError};
 
 mod operations;
 
@@ -35,6 +34,20 @@ impl AuthorizedSubject {
     /// Returns disjoint borrows suitable for [`crate::PacedRunner`].
     pub const fn parts(&mut self) -> (&mut IntegratedSubject, &SubjectAuthorization) {
         (&mut self.subject, &self.authorization)
+    }
+
+    /// Reaps the subject's owned processes and removes its private scratch directory.
+    ///
+    /// # Errors
+    ///
+    /// Returns a process or filesystem error instead of asserting successful cleanup.
+    pub fn cleanup(mut self) -> Result<(), SubjectError> {
+        for process in self.subject.processes.values_mut() {
+            process.terminate()?;
+        }
+        self.subject.processes.clear();
+        self.subject.client = None;
+        self.subject.daemon.cleanup()
     }
 }
 
@@ -65,7 +78,7 @@ impl IntegratedSubject {
     /// Returns [`SubjectError`] when the daemon cannot start, negotiate A3, or produce a complete
     /// subject identity.
     pub fn launch(
-        daemon_executable: &Path,
+        configuration: &SubjectConfiguration,
         implementation_revision: impl Into<String>,
     ) -> Result<AuthorizedSubject, SubjectError> {
         let mut identities = IdentitySource::new(u64::from(std::process::id()));
@@ -73,7 +86,7 @@ impl IntegratedSubject {
             SubjectError::Configuration("authorization identity had the wrong length".to_owned())
         })?;
         let revision = qualification_revision(&mut identities)?;
-        let (daemon, startup) = DisposableDaemon::launch(daemon_executable)?;
+        let (daemon, startup) = DisposableDaemon::launch(configuration)?;
         let descriptor = SubjectDescriptor::new(
             StableId::new("peritus-daemon")?,
             implementation_revision,
@@ -101,6 +114,12 @@ impl IntegratedSubject {
             subject,
             authorization: SubjectAuthorization { instance: authorization },
         })
+    }
+
+    /// Returns the actual private directory and filesystem used for daemon and artifact writes.
+    #[must_use]
+    pub const fn storage(&self) -> &StorageObservation {
+        self.daemon.storage()
     }
 
     fn measure(

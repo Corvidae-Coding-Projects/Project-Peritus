@@ -10,16 +10,17 @@ use std::time::{Duration, Instant, SystemTime};
 use peritus_approval::CredentialRegistrySnapshot;
 use peritus_benchmarks::Sha256Digest;
 use peritus_types::RevisionNumber;
-use tempfile::{Builder, TempDir};
+use tempfile::TempDir;
 
-use crate::{SubjectError, sha256_file};
+use crate::{StorageObservation, SubjectConfiguration, SubjectError, sha256_file};
 
 const STARTUP_BOUND: Duration = Duration::from_secs(30);
 const EXIT_BOUND: Duration = Duration::from_secs(10);
 const POLL_INTERVAL: Duration = Duration::from_millis(20);
 
 pub struct DisposableDaemon {
-    _temporary: TempDir,
+    temporary: Option<TempDir>,
+    storage: StorageObservation,
     executable: PathBuf,
     state_root: PathBuf,
     config_path: PathBuf,
@@ -30,9 +31,10 @@ pub struct DisposableDaemon {
 }
 
 impl DisposableDaemon {
-    pub fn launch(executable: &Path) -> Result<(Self, Duration), SubjectError> {
-        let temporary = short_tempdir()?;
-        let root = fs::canonicalize(temporary.path())?;
+    pub fn launch(configuration: &SubjectConfiguration) -> Result<(Self, Duration), SubjectError> {
+        let temporary = configuration.create_temporary()?;
+        let storage = StorageObservation::observe(temporary.path())?;
+        let root = storage.path();
         let state_root = root.join("state");
         let config_path = root.join("daemon.toml");
         let log_path = root.join("daemon.log");
@@ -49,13 +51,14 @@ impl DisposableDaemon {
             })?,
         )?;
         fs::write(&config_path, configuration_text(&state_root, &registry_path))?;
-        let executable = fs::canonicalize(executable)?;
+        let executable = configuration.executable().to_path_buf();
         let started = Instant::now();
         let (child, endpoint) =
             spawn_and_wait(&executable, &config_path, &state_root, &log_path, None)?;
         Ok((
             Self {
-                _temporary: temporary,
+                temporary: Some(temporary),
+                storage,
                 executable,
                 state_root,
                 config_path,
@@ -70,6 +73,24 @@ impl DisposableDaemon {
 
     pub fn executable_digest(&self) -> Result<Sha256Digest, SubjectError> {
         Ok(sha256_file(&self.executable)?)
+    }
+
+    pub const fn storage(&self) -> &StorageObservation {
+        &self.storage
+    }
+
+    pub fn cleanup(&mut self) -> Result<(), SubjectError> {
+        if let Some(child) = self.child.as_mut() {
+            if child.try_wait()?.is_none() {
+                child.kill()?;
+            }
+            wait_for_exit(child)?;
+            self.child = None;
+        }
+        if let Some(temporary) = self.temporary.take() {
+            temporary.close()?;
+        }
+        Ok(())
     }
 
     pub fn endpoint(&self) -> &Path {
@@ -215,10 +236,6 @@ fn endpoint_identity(path: &Path) -> std::io::Result<EndpointIdentity> {
         inode: metadata.ino(),
         modified: metadata.modified()?,
     })
-}
-
-fn short_tempdir() -> std::io::Result<TempDir> {
-    Builder::new().prefix("peritus-h3-").tempdir_in(fs::canonicalize("/tmp")?)
 }
 
 fn bounded_log(path: &Path) -> String {

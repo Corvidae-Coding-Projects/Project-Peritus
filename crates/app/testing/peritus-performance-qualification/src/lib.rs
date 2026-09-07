@@ -40,6 +40,8 @@ mod scheduler;
 #[cfg(unix)]
 mod shared_accounting;
 #[cfg(unix)]
+mod storage;
+#[cfg(unix)]
 mod subject;
 
 #[cfg(unix)]
@@ -58,5 +60,7 @@ pub use operator::{OPERATOR_USAGE, OperatorOptions};
 #[cfg(unix)]
 pub use probe::MachineProbe;
 pub use runner::PacedRunner;
+#[cfg(unix)]
+pub use storage::{StorageObservation, SubjectConfiguration, WorkloadStorage};
 #[cfg(unix)]
 pub use subject::{AuthorizedSubject, IntegratedSubject, SubjectAuthorization};

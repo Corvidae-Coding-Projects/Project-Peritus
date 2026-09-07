@@ -10,7 +10,9 @@ use peritus_benchmarks::{
     RunContext, RunnerDescriptor, RunnerReceipt, ScenarioKind, Sha256Digest, StableId, Workload,
     WorkloadParameters,
 };
-use peritus_performance_qualification::{CancellationFlag, IntegratedSubject, PacedRunner};
+use peritus_performance_qualification::{
+    CancellationFlag, IntegratedSubject, PacedRunner, SubjectConfiguration,
+};
 
 #[test]
 #[ignore = "set PERITUS_H3_DAEMON to a built peritusd and invoke explicitly"]
@@ -40,7 +42,11 @@ fn run_smoke(
     operations_per_second: u32,
     workload_id: &str,
 ) -> (RunnerReceipt, AccountingSummary, usize) {
-    let mut authorized = IntegratedSubject::launch(&daemon_executable(), "operator-smoke")
+    let scratch =
+        std::env::var_os("PERITUS_H3_SCRATCH").map_or_else(|| PathBuf::from("/tmp"), PathBuf::from);
+    let configuration =
+        SubjectConfiguration::new(&daemon_executable(), &scratch).expect("subject configuration");
+    let mut authorized = IntegratedSubject::launch(&configuration, "operator-smoke")
         .expect("launch integrated subject");
     let envelope = ResourceEnvelope::new(
         ConcurrencyLimits::new(1, 1, 1).expect("concurrency"),
@@ -87,6 +93,11 @@ fn run_smoke(
         .expect("run integrated smoke");
     let summary = accounting.summary();
     let measurement_count = measurements.finish().records().len();
+    let storage = subject.storage().clone();
+    assert_eq!(storage.path().parent(), Some(configuration.scratch().path()));
+    assert_eq!(storage.device(), configuration.scratch().device());
+    authorized.cleanup().expect("observed subject cleanup");
+    assert!(!storage.path().exists(), "subject scratch remains after successful cleanup");
     (receipt, summary, measurement_count)
 }
 

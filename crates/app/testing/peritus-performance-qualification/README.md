@@ -47,6 +47,7 @@ Build `peritusd` and the H3 operator, then run the first complete campaign witho
 CARGO_BUILD_JOBS=2 cargo build --locked --bin peritusd --bin peritus-h3
 target/debug/peritus-h3 full \
   --daemon target/debug/peritusd \
+  --scratch /path/on/reviewed-storage \
   --profile benchmarks/profiles/qualification-intel-core-ultra-9-275hx-v1.json \
   --workloads benchmarks/workloads/production-v1.json \
   --evidence /path/to/new/peritus-h3-baseline-evidence \
@@ -64,6 +65,14 @@ the storage generation remains explicit because unprivileged operating-system in
 report it consistently. Both raw CPU/memory facts and their normalized hardware class are retained.
 The command fails before launching `peritusd` if that class does not exactly match the profile.
 
+`--scratch` is required and must name an existing directory on the reviewed storage. There is no
+ambient `/tmp` or `TMPDIR` fallback: a RAM-backed temporary filesystem cannot stand in for the
+declared NVMe device. Choose a short canonical path to accommodate native Unix-socket limits.
+The runner records each workload's actual canonical directory, filesystem device, and inode in
+`results/storage.json`, and requires process reaping and directory removal to succeed before
+retaining a successful cleanup observation. Review the mount and device mapping separately; the
+numeric filesystem identity alone does not establish an NVMe generation. The owned parent remains.
+
 The first run is expected to finish `NotReady` because no accepted baseline was supplied. When every
 objective has enough samples, its evidence bundle contains `baseline-candidate.json`. Review that
 file and its bound manifest, then run a separate complete comparison with the reviewed candidate and
@@ -73,6 +82,7 @@ its exact file digest:
 sha256sum /path/to/peritus-h3-baseline-evidence/baseline-candidate.json
 target/debug/peritus-h3 full \
   --daemon target/debug/peritusd \
+  --scratch /path/on/reviewed-storage \
   --profile benchmarks/profiles/qualification-intel-core-ultra-9-275hx-v1.json \
   --workloads benchmarks/workloads/production-v1.json \
   --baseline /path/to/peritus-h3-baseline-evidence/baseline-candidate.json \

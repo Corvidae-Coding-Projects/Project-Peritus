@@ -24,6 +24,9 @@
 - Normalize RPM build metadata to the committed source epoch and a declared
   stable host label, while retaining actual builder identity and timestamps in
   the signed external build record.
+- Require explicit H3 scratch storage, retain actual workload filesystem identities,
+  and verify process and directory cleanup. Do not place NVMe qualification state
+  on an ambient RAM-backed temporary filesystem.
 
 ### Product development included in this release
 
