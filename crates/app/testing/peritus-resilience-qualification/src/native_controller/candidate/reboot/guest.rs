@@ -1,5 +1,6 @@
 //! Owned QEMU guest and bounded SSH operations for actual host-reboot qualification.
 
+use std::ffi::OsStr;
 use std::fs;
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
@@ -9,6 +10,7 @@ use std::time::{Duration, Instant};
 
 use super::media;
 use super::parse;
+use super::power;
 use crate::native_controller::args::ControllerPaths;
 
 const BOOT_TIMEOUT: Duration = Duration::from_mins(5);
@@ -20,6 +22,7 @@ const GUEST_STATE: &str = "/var/lib/peritus-h1";
 
 pub(super) struct Guest {
     child: Child,
+    command: Command,
     port: u16,
     private_key: PathBuf,
     root: PathBuf,
@@ -43,7 +46,6 @@ impl Guest {
         let qemu_stdout = super::super::process::create_output(&runtime_root.join("qemu.stdout"))?;
         let qemu_stderr_path = runtime_root.join("qemu.stderr");
         let qemu_stderr = super::super::process::create_output(&qemu_stderr_path)?;
-        let console = runtime_root.join("qemu.console");
         let mut command = Command::new("qemu-system-x86_64");
         command
             .arg("-name")
@@ -57,9 +59,11 @@ impl Guest {
             .arg("-monitor")
             .arg("none")
             .arg("-serial")
-            .arg(format!("file:{}", console.display()))
+            // The reusable command retains this output handle across power cycles,
+            // preserving every boot's console bytes in qemu.stdout without truncation.
+            .arg("stdio")
             .arg("-drive")
-            .arg(format!("file={},if=virtio,format=qcow2", media.overlay.display()))
+            .arg(format!("file={},if=virtio,format=qcow2,cache=none", media.overlay.display()))
             .arg("-drive")
             .arg(format!("file={},media=cdrom,readonly=on", media.seed_iso.display()))
             .arg("-drive")
@@ -67,7 +71,7 @@ impl Guest {
             .arg("-netdev")
             .arg(format!("user,id=peritusnet,restrict=on,hostfwd=tcp:127.0.0.1:{port}-:22"))
             .arg("-device")
-            .arg("e1000,netdev=peritusnet")
+            .arg(format!("e1000,netdev=peritusnet,mac={}", media::GUEST_MAC_ADDRESS))
             .current_dir(runtime_root)
             .stdin(Stdio::null())
             .stdout(Stdio::from(qemu_stdout))
@@ -80,6 +84,7 @@ impl Guest {
         let child = command.spawn()?;
         let mut guest = Self {
             child,
+            command,
             port,
             private_key: media.private_key,
             root: runtime_root.to_path_buf(),
@@ -90,6 +95,12 @@ impl Guest {
         let (boot_id, version) = guest.wait_ready(None, BOOT_TIMEOUT)?;
         guest.boot_id = boot_id;
         guest.version = version;
+        // Flush only the fixture installation, before any candidate checkpoint executes.
+        // There is deliberately no flush after a workload begins or before a power cut.
+        let installed = guest.ssh("sync")?;
+        if !installed.status.success() || !installed.stderr.is_empty() {
+            return Err(remote_failure("persist guest fixture installation", &installed));
+        }
         Ok(guest)
     }
 
@@ -135,15 +146,18 @@ impl Guest {
         }
     }
 
-    pub(super) fn reboot(&mut self) -> Result<(String, String), Box<dyn std::error::Error>> {
+    pub(super) fn power_cycle(
+        &mut self,
+    ) -> Result<(String, power::PowerCut), Box<dyn std::error::Error>> {
         let previous = self.boot_id.clone();
-        let _ = self.ssh("sync; reboot -f");
+        self.require_running()?;
+        let cut = power::restart(&mut self.child, &mut self.command)?;
         let (current, version) = self.wait_ready(Some(&previous), REBOOT_TIMEOUT)?;
         if version != self.version {
             return Err("guest candidate version changed across host reboot".into());
         }
         self.boot_id.clone_from(&current);
-        Ok((previous, current))
+        Ok((current, cut))
     }
 
     pub(super) fn run_candidate(
@@ -237,30 +251,49 @@ impl Guest {
         }
     }
 
-    fn ssh(&self, remote: &str) -> Result<Output, std::io::Error> {
-        Command::new("ssh")
-            .arg("-i")
-            .arg(&self.private_key)
-            .arg("-p")
-            .arg(self.port.to_string())
-            .arg("-o")
-            .arg("BatchMode=yes")
-            .arg("-o")
-            .arg("IdentitiesOnly=yes")
-            .arg("-o")
-            .arg("StrictHostKeyChecking=no")
-            .arg("-o")
-            .arg("UserKnownHostsFile=/dev/null")
-            .arg("-o")
-            .arg("LogLevel=ERROR")
-            .arg("-o")
-            .arg("ConnectTimeout=2")
-            .arg("-o")
-            .arg("ConnectionAttempts=1")
-            .arg("root@127.0.0.1")
-            .arg(remote)
-            .current_dir(&self.root)
-            .output()
+    fn ssh(&self, remote: &str) -> Result<Output, Box<dyn std::error::Error>> {
+        let output_root = tempfile::Builder::new().prefix("ssh-").tempdir_in(&self.root)?;
+        let port = self.port.to_string();
+        let mut arguments = [
+            "-F",
+            "none",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "IdentitiesOnly=yes",
+            "-o",
+            "StrictHostKeyChecking=no",
+            "-o",
+            "UserKnownHostsFile=/dev/null",
+            "-o",
+            "LogLevel=ERROR",
+            "-o",
+            "ConnectTimeout=2",
+            "-o",
+            "ConnectionAttempts=1",
+            "-o",
+            "ServerAliveInterval=2",
+            "-o",
+            "ServerAliveCountMax=3",
+        ]
+        .map(OsStr::new)
+        .to_vec();
+        arguments.extend([
+            OsStr::new("-i"),
+            self.private_key.as_os_str(),
+            OsStr::new("-p"),
+            OsStr::new(&port),
+            OsStr::new("root@127.0.0.1"),
+            OsStr::new(remote),
+        ]);
+        let output = super::super::process::bounded_command(
+            Path::new("ssh"),
+            arguments,
+            &self.root,
+            &output_root.path().join("stdout"),
+            &output_root.path().join("stderr"),
+        )?;
+        Ok(Output { status: output.status, stdout: output.stdout, stderr: output.stderr })
     }
 
     fn require_running(&mut self) -> Result<(), Box<dyn std::error::Error>> {

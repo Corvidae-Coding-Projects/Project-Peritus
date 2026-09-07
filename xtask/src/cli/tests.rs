@@ -17,11 +17,58 @@ fn unknown_command_has_stable_typed_error() {
 }
 
 #[test]
+fn release_staging_has_no_automatic_publication_command() {
+    assert_eq!(parse([OsString::from("release-stage")]).expect("staging"), Command::ReleaseStage);
+    assert!(parse([OsString::from("release-stage"), OsString::from("extra")]).is_err());
+    assert!(parse([OsString::from("release-publish")]).is_err());
+}
+
+#[test]
+fn native_rebuild_commands_select_exact_operations() {
+    use crate::release::rebuild::Operation;
+
+    for (name, operation) in [
+        ("release-rebuild-record", Operation::Record),
+        ("release-rebuild-compare", Operation::Compare),
+    ] {
+        assert_eq!(
+            parse([OsString::from(name)]).expect("rebuild command"),
+            Command::ReleaseRebuild { operation }
+        );
+        assert!(parse([OsString::from(name), OsString::from("extra")]).is_err());
+    }
+}
+
+#[test]
+fn distribution_commands_select_reviewed_operations_and_reject_extra_arguments() {
+    use crate::distro::Operation;
+
+    for (name, operation) in [
+        ("distro-image", Operation::Image),
+        ("distro-image-save", Operation::ImageSave),
+        ("distro-image-restore", Operation::ImageRestore),
+        ("distro-build", Operation::Build),
+        ("distro-sign", Operation::Sign),
+        ("distro-sign-ci", Operation::SignCi),
+        ("distro-verify", Operation::Verify),
+        ("distro-upload", Operation::Upload),
+        ("distro-test", Operation::Test),
+    ] {
+        assert_eq!(
+            parse([OsString::from(name)]).expect("distribution command"),
+            Command::Distro { operation }
+        );
+        assert!(parse([OsString::from(name), OsString::from("extra")]).is_err());
+    }
+}
+
+#[test]
 fn native_qualification_commands_are_first_class_and_reject_extra_arguments() {
     for (name, expected) in [
         ("product-native-qualification", Command::ProductNativeQualification),
         ("product-native-qualification-prepare", Command::ProductNativeQualificationPrepare),
         ("product-native-qualification-restore", Command::ProductNativeQualificationRestore),
+        ("release-qualification-prepare", Command::ReleaseQualificationPrepare),
     ] {
         assert_eq!(parse([OsString::from(name)]).expect("qualification command"), expected);
         assert!(parse([OsString::from(name), OsString::from("extra")]).is_err());
@@ -33,6 +80,7 @@ fn lifecycle_commands_explicitly_select_build_or_prepared_inputs() {
     for (name, input) in [
         ("release-bootstrap-smoke", QualificationInput::Build),
         ("release-bootstrap-prepared-smoke", QualificationInput::Prepared),
+        ("release-bootstrap-staged-smoke", QualificationInput::Release),
     ] {
         assert_eq!(
             parse([OsString::from(name)]).expect("lifecycle command"),

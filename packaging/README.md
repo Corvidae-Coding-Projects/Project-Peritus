@@ -123,10 +123,70 @@ It restores the previous package if installation fails.
 
 ## Update
 
-Run `peritus update` to install an available update.
+For an archive/source installation, run `peritus update` to install an available update.
 Startup checks occur at most once every six hours.
 Use `peritus update --disable-checks` to stop automatic checks.
 Use `peritus update --enable-checks` to start them again.
+
+Debian and RPM installations use the system package manager instead, as described below.
+
+## Debian and RPM packages
+
+Releases also provide signed Debian 13 and Fedora 44 packages for x86-64 and ARM64.
+These distribution packages have their own distribution-native library requirements;
+the glibc baseline above applies to the portable Linux archive.
+No package is publicly available until the first release is published.
+
+Download `peritus-deb-<architecture>.tar.gz` or `peritus-rpm-<architecture>.tar.gz`,
+its `.asc` signature, and `peritus-release.asc` from the same release. Before
+importing the public key, compare its full fingerprint with the reviewed value:
+
+```text
+C5FA A006 1C56 096C 0DB5 7E93 BC11 52DD CE40 9792
+```
+
+For example, to verify and install the x86-64 Debian bundle:
+
+```sh
+gpg --show-keys --with-fingerprint peritus-release.asc
+gpg --import peritus-release.asc
+gpg --verify peritus-deb-x86_64.tar.gz.asc peritus-deb-x86_64.tar.gz
+tar -xzf peritus-deb-x86_64.tar.gz
+cd packages
+gpg --verify SHA256SUMS.asc SHA256SUMS
+sha256sum --check SHA256SUMS
+sudo apt install ./peritus_*-1_amd64.deb
+```
+
+Stop if the fingerprint, signature, or any checksum does not match. Use `arm64`
+in the Debian filename and `aarch64` in the bundle name on ARM64. APT does not
+automatically verify a local `.deb`'s embedded origin signature; the explicit
+verification above is required.
+
+For Fedora, verify and extract the matching RPM bundle in the same way, then:
+
+```sh
+sudo rpm --import peritus-release.asc
+rpmkeys --checksig --verbose peritus-[0-9]*-1.fc44.x86_64.rpm
+sudo dnf --setopt=localpkg_gpgcheck=1 install ./peritus-[0-9]*-1.fc44.x86_64.rpm
+```
+
+Use `aarch64` instead of `x86_64` on ARM64. Install the main `peritus` package;
+debug packages and the source RPM are optional developer artifacts.
+Run Peritus as your normal user, not as root. The public command is
+`/usr/bin/peritus`; all four sibling binaries are under `/usr/lib/peritus`.
+No system service starts during package installation.
+
+To upgrade, verify the newer release bundle and install its package with APT or
+DNF. `peritus update` and startup download prompts are disabled for these builds.
+There is no hosted APT/DNF repository yet, so ordinary repository refreshes do
+not discover Peritus releases. Remove with `sudo apt remove peritus` or
+`sudo dnf remove peritus`; user configuration, credentials, and task state remain.
+Avoid mixing a user-local archive installation with a system package, because
+an existing user-local command may precede `/usr/bin/peritus` on `PATH`.
+
+See [distribution build and signing instructions](distro/README.md) for source
+packages, signature policy, and release-operator setup.
 
 ## Uninstall
 
@@ -176,7 +236,8 @@ Native CI runs the lifecycle and all 18 H2 scenarios on each release target.
 
 Tagged release jobs build each binary on its target system.
 They attach archives, checksums, inventories, SBOMs, provenance, and GitHub attestations to a draft release.
-Publication requires all six target packages and their evidence.
+Publication requires all six target archives and their evidence, plus signed
+Debian/RPM bundles and main packages for both Linux architectures.
 The publisher then attaches version-bound `install.sh` and `install.ps1` files, with checksums, before it publishes the release.
 
 These mechanisms do not approve a production release.

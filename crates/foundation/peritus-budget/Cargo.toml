@@ -12,11 +12,11 @@ keywords = ["budgeting", "formal-verification", "resource-management", "rust"]
 categories = ["algorithms", "data-structures"]
 
 [dependencies]
-peritus-types = { version = "=0.0.0", path = "../peritus-types" }
+peritus-types = { version = "=0.0.1", path = "../peritus-types" }
 vstd.workspace = true
 
 [dev-dependencies]
-peritus-test-support = { version = "=0.0.0", path = "../../app/testing/peritus-test-support" }
+peritus-test-support = { version = "=0.0.1", path = "../../app/testing/peritus-test-support" }
 
 [package.metadata.peritus]
 owner = "B1"

@@ -1,6 +1,7 @@
-name: Publish Peritus release
+name: Validate or stage Peritus release
 
 on:
+  workflow_dispatch:
   push:
     tags: ["v*.*.*"]
 
@@ -14,6 +15,7 @@ env:
 jobs:
   create-draft:
     name: Create exact draft release
+    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -49,9 +51,12 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - name: Enforce repository policy
         run: cargo run --locked --package xtask -- all
+      - name: Test distribution package tooling
+        run: cargo run --locked --package xtask -- distro-test
 
   bootstrap:
     name: Release bootstrap (${{ matrix.os }})
+    needs: prepare-h2
     strategy:
       fail-fast: false
       matrix:
@@ -67,15 +72,136 @@ jobs:
           RUSTUP_MAX_RETRIES: "10"
         with:
           toolchain: ${{ env.RUST_VERSION }}
-      - name: Qualify native package and public installer lifecycle
-        run: cargo run --locked --package xtask -- release-bootstrap-smoke
+      - name: Install Linux native sandbox prerequisite
+        if: ${{ runner.os == 'Linux' }}
+        run: |
+          sudo apt-get install --yes --no-install-recommends apparmor-profiles bubblewrap
+          sudo apparmor_parser --replace /usr/share/apparmor/extra-profiles/bwrap-userns-restrict
+          bwrap --version
+      - name: Retrieve this platform's same-run release qualification package
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: release-h2-prepared-${{ matrix.os }}
+          path: target/prepared-h2
+      - name: Restore exact staged package and qualification tools
+        run: cargo run --locked --package xtask -- product-native-qualification-restore
+      - name: Qualify the exact release archive and public installer lifecycle
+        run: cargo run --locked --package xtask -- release-bootstrap-staged-smoke
 
-  build-binary:
-    name: Release binary ${{ matrix.binary }} (${{ matrix.os }})
+  build-h2-controller:
+    name: Build release H2 tool ${{ matrix.binary }} (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
-        include:
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, macos-15-intel, windows-2025, windows-11-arm]
+        binary: [peritus-h2, peritus-h2-controller]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - name: Build only the qualification tool, not a replacement product
+        run: cargo build --locked --package peritus-platform-qualification --bin ${{ matrix.binary }}
+      - name: Retain native qualification tool
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-h2-tool-${{ matrix.os }}-${{ matrix.binary }}
+          path: target/debug/${{ matrix.binary }}${{ runner.os == 'Windows' && '.exe' || '' }}
+          if-no-files-found: error
+          retention-days: 30
+
+  prepare-h2:
+    name: Prepare exact release H2 inputs (${{ matrix.os }})
+    needs: [assemble, build-h2-controller]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, macos-15-intel, windows-2025, windows-11-arm]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - name: Restore this host's exact same-run release package
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: release-package-primary-${{ matrix.os }}
+          path: target/release-input
+      - name: Restore this host's qualification tools
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: release-h2-tool-${{ matrix.os }}-*
+          path: target/debug
+          merge-multiple: true
+      - name: Verify and unpack the staged archive without building product binaries
+        run: cargo run --locked --package xtask -- release-qualification-prepare
+      - name: Retain exact release package and tools with native permissions
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-h2-prepared-${{ matrix.os }}
+          path: target/h2-prepared.tar
+          if-no-files-found: error
+          retention-days: 30
+
+  h2:
+    name: Release H2 (${{ matrix.os }}, scenario ${{ matrix.shard }})
+    needs: prepare-h2
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, macos-15-intel, windows-2025, windows-11-arm]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - name: Install Linux native sandbox prerequisite
+        if: ${{ runner.os == 'Linux' }}
+        run: |
+          sudo apt-get install --yes --no-install-recommends apparmor-profiles bubblewrap
+          sudo apparmor_parser --replace /usr/share/apparmor/extra-profiles/bwrap-userns-restrict
+          bwrap --version
+      - name: Retrieve this platform's same-run release qualification package
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: release-h2-prepared-${{ matrix.os }}
+          path: target/prepared-h2
+      - name: Restore exact staged package and qualification tools
+        # Restoration is explicit; the prepared shard command never invokes a build.
+        run: cargo run --locked --package xtask -- product-native-qualification-restore
+      - name: Run one native scenario against the actual staged release
+        run: >-
+          cargo run --locked --package xtask --
+          product-native-qualification-prepared-shard ${{ matrix.shard }}
+      - name: Retain release H2 report and raw evidence, including failures
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-h2-${{ matrix.os }}-${{ matrix.shard }}
+          path: target/peritus-qualification/h2/**
+          if-no-files-found: warn
+          retention-days: 30
+
+  build-binary:
+    name: Release binary ${{ matrix.target.binary }} (${{ matrix.target.os }}, ${{ matrix.build }})
+    strategy:
+      fail-fast: false
+      matrix:
+        build: [primary, independent]
+        target:
           - { os: ubuntu-24.04, package: peritus-cli, binary: peritus, artifact: peritus }
           - { os: ubuntu-24.04-arm, package: peritus-cli, binary: peritus, artifact: peritus }
           - { os: ubuntu-24.04, package: peritus-daemon, binary: peritusd, artifact: peritusd }
@@ -100,7 +226,7 @@ jobs:
           - { os: windows-11-arm, package: peritus-tui, binary: peritus-tui, artifact: peritus-tui.exe }
           - { os: windows-2025, package: peritus-sandbox-windows, binary: peritus-windows-sandbox-helper, artifact: peritus-windows-sandbox-helper.exe }
           - { os: windows-11-arm, package: peritus-sandbox-windows, binary: peritus-windows-sandbox-helper, artifact: peritus-windows-sandbox-helper.exe }
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.target.os }}
     timeout-minutes: 10
     steps:
       - name: Check out tagged source
@@ -113,22 +239,23 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - name: Build one release binary
         run: >-
-          cargo build --release --locked --package ${{ matrix.package }}
-          --bin ${{ matrix.binary }}
+          cargo build --release --locked --package ${{ matrix.target.package }}
+          --bin ${{ matrix.target.binary }}
       - name: Retain one release binary
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: release-bin-${{ matrix.os }}-${{ matrix.binary }}
-          path: target/release/${{ matrix.artifact }}
+          name: release-bin-${{ matrix.build }}-${{ matrix.target.os }}-${{ matrix.target.binary }}
+          path: target/release/${{ matrix.target.artifact }}
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 30
 
   assemble:
-    name: Assemble package (${{ matrix.os }})
+    name: Assemble package (${{ matrix.os }}, ${{ matrix.build }})
     needs: build-binary
     strategy:
       fail-fast: false
       matrix:
+        build: [primary, independent]
         os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, macos-15-intel, windows-2025, windows-11-arm]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
@@ -144,22 +271,66 @@ jobs:
       - name: Restore this host's release binaries
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          pattern: release-bin-${{ matrix.os }}-*
+          pattern: release-bin-${{ matrix.build }}-${{ matrix.os }}-*
           path: target/release
           merge-multiple: true
       - name: Assemble, archive, checksum, and record native package
         run: cargo run --locked --package xtask -- release-package-assemble
+      - name: Retain exact source, toolchain, platform, and assembly observations
+        env:
+          PERITUS_RELEASE_BUILD_ROLE: ${{ matrix.build }}
+        run: cargo run --locked --package xtask -- release-rebuild-record
       - name: Retain assembled native package
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: release-package-${{ matrix.os }}
+          name: release-package-${{ matrix.build }}-${{ matrix.os }}
           path: dist
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 30
+
+  compare-native:
+    name: Compare independent native rebuild (${{ matrix.os }})
+    needs: assemble
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, macos-15-intel, windows-2025, windows-11-arm]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - name: Restore the primary package from this workflow run
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: release-package-primary-${{ matrix.os }}
+          path: target/native-rebuild/primary
+      - name: Restore the independently compiled package from this workflow run
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: release-package-independent-${{ matrix.os }}
+          path: target/native-rebuild/independent
+      - name: Require complete byte-identical output and compatible observed build inputs
+        run: cargo run --locked --package xtask -- release-rebuild-compare
+      - name: Retain both real observations and the comparison, including failure evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-native-rebuild-${{ matrix.os }}
+          path: |
+            target/native-rebuild/report.json
+            target/native-rebuild/primary/peritus-native-build.json
+            target/native-rebuild/independent/peritus-native-build.json
+          if-no-files-found: warn
+          retention-days: 30
 
   attest:
     name: Attest package (${{ matrix.os }})
-    needs: [create-draft, assemble]
+    needs: [create-draft, compare-native]
     permissions:
       attestations: write
       contents: write
@@ -182,7 +353,7 @@ jobs:
       - name: Restore assembled native package
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          name: release-package-${{ matrix.os }}
+          name: release-package-primary-${{ matrix.os }}
           path: dist
       - name: Generate candidate-bound inventory, SBOM, and provenance
         id: evidence
@@ -209,9 +380,132 @@ jobs:
           "${{ steps.build_provenance.outputs.bundle-path }}"
           "${{ steps.sbom_attestation.outputs.bundle-path }}"
 
-  publish:
-    name: Publish complete release
-    needs: [policy, bootstrap, attest]
+  distro-image:
+    name: Distribution builder (${{ matrix.format }}, ${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, arch: x86_64, format: deb }
+          - { os: ubuntu-24.04-arm, arch: aarch64, format: deb }
+          - { os: ubuntu-24.04, arch: x86_64, format: rpm }
+          - { os: ubuntu-24.04-arm, arch: aarch64, format: rpm }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    env:
+      PERITUS_PACKAGE_FORMAT: ${{ matrix.format }}
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - name: Build the digest-pinned distribution Docker image
+        run: cargo run --locked --package xtask -- distro-image
+      - name: Save the exact builder for this release run
+        run: cargo run --locked --package xtask -- distro-image-save
+      - name: Retain the native builder image
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: distro-image-${{ matrix.format }}-${{ matrix.arch }}
+          path: target/distro-builder.tar
+          if-no-files-found: error
+          retention-days: 1
+
+  distro-build:
+    name: Distribution source build (${{ matrix.format }}, ${{ matrix.arch }})
+    needs: distro-image
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, arch: x86_64, format: deb }
+          - { os: ubuntu-24.04-arm, arch: aarch64, format: deb }
+          - { os: ubuntu-24.04, arch: x86_64, format: rpm }
+          - { os: ubuntu-24.04-arm, arch: aarch64, format: rpm }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    env:
+      PERITUS_PACKAGE_FORMAT: ${{ matrix.format }}
+      PERITUS_PACKAGE_MAINTAINER: ${{ vars.PERITUS_PACKAGE_MAINTAINER }}
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - name: Restore this format and architecture's same-run builder
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: distro-image-${{ matrix.format }}-${{ matrix.arch }}
+          path: target
+      - name: Load the retained native builder
+        run: cargo run --locked --package xtask -- distro-image-restore
+      - name: Build real packages from locked sources without network access
+        run: cargo run --locked --package xtask -- distro-build
+      - name: Retain source, binaries, and unsigned build provenance
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: distro-unsigned-${{ matrix.format }}-${{ matrix.arch }}
+          path: dist/packages/${{ matrix.format }}
+          if-no-files-found: error
+          retention-days: 1
+
+  distro-sign:
+    name: Sign and qualify distribution (${{ matrix.format }}, ${{ matrix.arch }})
+    needs: [create-draft, distro-build]
+    environment: release-signing
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, arch: x86_64, format: deb }
+          - { os: ubuntu-24.04-arm, arch: aarch64, format: deb }
+          - { os: ubuntu-24.04, arch: x86_64, format: rpm }
+          - { os: ubuntu-24.04-arm, arch: aarch64, format: rpm }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    env:
+      PERITUS_PACKAGE_FORMAT: ${{ matrix.format }}
+      PERITUS_SIGNING_FINGERPRINT: C5FAA0061C56096C0DB57E93BC1152DDCE409792
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - name: Restore this format and architecture's same-run builder
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: distro-image-${{ matrix.format }}-${{ matrix.arch }}
+          path: target
+      - name: Load the retained native signing tools
+        run: cargo run --locked --package xtask -- distro-image-restore
+      - name: Restore exact same-run unsigned packages
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: distro-unsigned-${{ matrix.format }}-${{ matrix.arch }}
+          path: dist/packages/${{ matrix.format }}
+      - name: Sign packages and Debian source metadata with the reviewed release key
+        env:
+          PERITUS_SIGNING_KEY: ${{ secrets.PERITUS_SIGNING_KEY }}
+          PERITUS_SIGNING_PASSPHRASE: ${{ secrets.PERITUS_SIGNING_PASSPHRASE }}
+        run: cargo run --locked --package xtask -- distro-sign-ci
+      - name: Require signatures, tamper rejection, and actual install/remove before upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: cargo run --locked --package xtask -- distro-upload
+
+  stage-draft:
+    name: Complete unpublished release draft
+    needs: [policy, bootstrap, h2, compare-native, attest, distro-sign]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -225,7 +519,7 @@ jobs:
           RUSTUP_MAX_RETRIES: "10"
         with:
           toolchain: ${{ env.RUST_VERSION }}
-      - name: Publish only after every native package succeeds
+      - name: Complete the draft after every native package succeeds; never publish
         env:
           GH_TOKEN: ${{ github.token }}
-        run: cargo run --locked --package xtask -- release-publish
+        run: cargo run --locked --package xtask -- release-stage

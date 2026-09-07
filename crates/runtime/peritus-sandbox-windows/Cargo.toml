@@ -20,12 +20,12 @@ verification-class = "H"
 verify = true
 
 [dependencies]
-peritus-codec = { version = "=0.0.0", path = "../../foundation/peritus-codec" }
-peritus-network = { version = "=0.0.0", path = "../peritus-network" }
-peritus-process = { version = "=0.0.0", path = "../peritus-process" }
-peritus-sandbox = { version = "=0.0.0", path = "../peritus-sandbox" }
-peritus-secrets = { version = "=0.0.0", path = "../peritus-secrets" }
-peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+peritus-codec = { version = "=0.0.1", path = "../../foundation/peritus-codec" }
+peritus-network = { version = "=0.0.1", path = "../peritus-network" }
+peritus-process = { version = "=0.0.1", path = "../peritus-process" }
+peritus-sandbox = { version = "=0.0.1", path = "../peritus-sandbox" }
+peritus-secrets = { version = "=0.0.1", path = "../peritus-secrets" }
+peritus-types = { version = "=0.0.1", path = "../../foundation/peritus-types" }
 vstd.workspace = true
 zeroize.workspace = true
 
@@ -50,7 +50,7 @@ windows-sys = { workspace = true, features = [
 ] }
 
 [dev-dependencies]
-peritus-conformance = { version = "=0.0.0", path = "../../app/testing/peritus-conformance" }
+peritus-conformance = { version = "=0.0.1", path = "../../app/testing/peritus-conformance" }
 tempfile.workspace = true
 
 [[bin]]

@@ -1,7 +1,5 @@
 //! Focused tests for campaign selection and fail-fast production admission.
 
-use std::path::PathBuf;
-
 use peritus_benchmarks::{
     DatasetLimits, QualificationDataset, RunnerDescriptor, ScenarioKind, Sha256Digest, StableId,
     Workload, WorkloadParameters,
@@ -10,6 +8,7 @@ use peritus_benchmarks::{
 use crate::campaign::classify_workloads;
 use crate::{
     CampaignCoordinator, CampaignError, CampaignMode, CampaignRequest, MachineObservation,
+    SubjectConfiguration,
 };
 
 #[test]
@@ -23,6 +22,12 @@ fn one_hour_is_the_long_horizon_boundary() {
 
 #[test]
 fn machine_mismatch_is_rejected_before_daemon_launch() {
+    let temporary = tempfile::tempdir().expect("scratch");
+    let subject = SubjectConfiguration::new(
+        &std::env::current_exe().expect("non-daemon test executable"),
+        temporary.path(),
+    )
+    .expect("subject configuration");
     let dataset = QualificationDataset::from_json(
         include_str!("../../../../../benchmarks/profiles/qualification-candidate-v1.json"),
         include_str!("../../../../../benchmarks/workloads/production-v1.json"),
@@ -46,7 +51,7 @@ fn machine_mismatch_is_rejected_before_daemon_launch() {
     .expect("observation");
     let request = CampaignRequest::new(
         dataset,
-        PathBuf::from("/path/that/must/not/be-launched"),
+        subject,
         "revision",
         id("run"),
         runner,

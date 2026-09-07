@@ -10,9 +10,9 @@ publish = false
 readme = "README.md"
 
 [dependencies]
-peritus-role = { version = "=0.0.0", path = "../peritus-role" }
-peritus-run-settlement = { version = "=0.0.0", path = "../peritus-run-settlement" }
-peritus-types = { version = "=0.0.0", path = "../../foundation/peritus-types" }
+peritus-role = { version = "=0.0.1", path = "../peritus-role" }
+peritus-run-settlement = { version = "=0.0.1", path = "../peritus-run-settlement" }
+peritus-types = { version = "=0.0.1", path = "../../foundation/peritus-types" }
 vstd.workspace = true
 
 [package.metadata.peritus]

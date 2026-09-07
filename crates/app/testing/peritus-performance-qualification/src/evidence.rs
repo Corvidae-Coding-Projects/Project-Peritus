@@ -24,6 +24,7 @@ const MEASUREMENTS_PATH: &str = "results/measurements.ndjson";
 const RECEIPTS_PATH: &str = "results/receipts.json";
 const ACCOUNTING_PATH: &str = "results/accounting.json";
 const MACHINE_PATH: &str = "results/machine.json";
+const STORAGE_PATH: &str = "results/storage.json";
 const BASELINE_CANDIDATE_PATH: &str = "baseline-candidate.json";
 
 /// Successfully published H3 evidence and its in-memory content bindings.
@@ -179,6 +180,7 @@ fn write_primary_artifacts(
     artifacts.push(write_json_artifact(root, RECEIPTS_PATH, outcome.receipts())?);
     artifacts.push(write_json_artifact(root, ACCOUNTING_PATH, outcome.accounting())?);
     artifacts.push(write_json_artifact(root, MACHINE_PATH, outcome.machine())?);
+    artifacts.push(write_json_artifact(root, STORAGE_PATH, outcome.storage())?);
     Ok(artifacts)
 }
 

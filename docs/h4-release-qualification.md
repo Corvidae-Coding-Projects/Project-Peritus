@@ -53,6 +53,43 @@ complete path-sorted output, including lengths and hashes, and reports missing o
 A comparison containing any difference is evidence of nonreproducibility, never a warning that can
 be silently ignored.
 
+Native archive assembly uses `packaging/archive.py` with the committed source
+epoch. It sorts entries, normalizes ownership and permissions, excludes ambient
+filesystem timestamps, and rejects links or existing output. Python and its zlib
+version belong in the builder-tool inventory. This is an archive determinism
+prerequisite, not a substitute for independent compilation and comparison of the
+complete output inventory. Build-time provenance and signatures remain genuine
+observations; their timestamps must not be falsified to force a byte match.
+
+The tag staging workflow qualifies the actual primary release archives on all six
+native targets. It separately builds only the H2 observation tools, verifies each
+archive's SHA-256, validates its complete member inventory, and unpacks it into a
+fresh tree. An exact same-run transport bundle preserves native permissions and
+the original archive/checksum for all 18 H2 scenarios and the public-installer
+lifecycle. Loose downloaded package files are not used as release evidence, and
+the installer test copies the original archive rather than reassembling it.
+Reports and raw H2 evidence, including failures, are retained for 30 days. This
+staging check is distinct from development CI's debug-package qualification and
+does not itself supply H4 signatures, independent reviews, or publication approval.
+
+Native archive builds use separate `primary` and `independent` jobs for every
+binary and assembly, with no shared compiled artifacts or build cache. A retained
+assembly observation records the exact source-tree hash, release profile, Rust
+identity, native OS/image revision, Python/zlib identity, workflow identity, and
+real invocation/time observations. The comparison admits the complete native
+primary inventory (archive plus checksum), checks those observed inputs for
+compatibility, and compares actual output bytes. Unaccounted outputs, changed
+checksums, source drift, reused invocations, or any artifact difference fail the
+check before attestation. Both observations and any failed comparison remain
+retained; assembly records are not represented as independent security reviews.
+
+The same workflow can be manually dispatched to validate a candidate before
+creating a version tag. That path builds, compares, and runs native H2, but skips
+draft creation, protected signing, attestation/upload, and draft completion.
+Only a version-tag push can enter those draft-dependent operations. Manual
+validation is not publication authorization or a replacement for the final H4
+evidence binding.
+
 The documentation inventory requires exactly one migration, backup, restore, rollback, license
 notice, and completed security-review document. License notices are rendered from an explicit,
 component-sorted input set. Empty documents and incomplete category sets are rejected.
@@ -253,9 +290,17 @@ workflow, source commit, tag reference, predicate type, archive digest, and host
 then copies both bundles to deterministic release-asset names, writes a checksum inventory covering
 the archive and all retained evidence, and uploads the complete set to the still-draft release. The
 workflow receives only the minimum content, identity-token, and attestation permissions needed by
-each job. Every job has a ten-minute ceiling, and the draft is published only after policy, public
-installer qualification, all binary builds, all package assemblies, and all three native
-attestation jobs succeed.
+each job. Every job has a ten-minute ceiling. After policy, public installer qualification, all
+binary builds, package assemblies, six native attestation jobs, and four signed distribution jobs
+succeed, `cargo xtask release-stage` adds the tag-bound installers and validates the complete draft.
+It does not publish, mark a release as latest, or grant H4 approval. The former `release-publish`
+command is deliberately unavailable.
+
+The immutable version tag stages a candidate; it is not a production-release approval. Retain and
+qualify the exact draft asset bytes before any public publication. A changed candidate requires
+a new binding and tag, not replacement of an already qualified artifact. After H4 returns `Ready`,
+the release owner may separately authorize publication of that same verified draft through GitHub.
+The staging workflow has no automatic public-promotion job.
 
 These public artifacts make a release inspectable; they do not make it qualified. H4 still requires
 the exact-candidate native campaigns, soak evidence, independent rebuild comparison, completed

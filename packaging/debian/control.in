@@ -1,0 +1,19 @@
+Source: peritus
+Section: devel
+Priority: optional
+Maintainer: @MAINTAINER@
+Build-Depends: debhelper-compat (= 13), rustup, pkgconf, python3, ca-certificates
+Standards-Version: 4.7.2
+Rules-Requires-Root: no
+Homepage: https://github.com/Corvidae-Coding-Projects/Project-Peritus
+Vcs-Git: https://github.com/Corvidae-Coding-Projects/Project-Peritus.git
+Vcs-Browser: https://github.com/Corvidae-Coding-Projects/Project-Peritus
+
+Package: peritus
+Architecture: amd64 arm64
+Depends: ${shlibs:Depends}, ${misc:Depends}, ca-certificates, git, bubblewrap, dbus-user-session
+Recommends: gnome-keyring
+Description: local-first evidence-driven coding agent
+ Peritus provides a terminal interface, command-line client, supervised
+ per-user daemon, and Linux sandbox helper for local coding workflows.
+ It runs as the invoking user and does not install a system daemon.

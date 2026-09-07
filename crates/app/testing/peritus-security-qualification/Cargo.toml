@@ -12,8 +12,8 @@ keywords = ["security", "qualification", "release", "sandbox"]
 categories = ["development-tools::testing"]
 
 [dependencies]
-peritus-security-policy = { version = "=0.0.0", path = "../../../foundation/peritus-security-policy" }
-peritus-types = { version = "=0.0.0", path = "../../../foundation/peritus-types" }
+peritus-security-policy = { version = "=0.0.1", path = "../../../foundation/peritus-security-policy" }
+peritus-types = { version = "=0.0.1", path = "../../../foundation/peritus-types" }
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

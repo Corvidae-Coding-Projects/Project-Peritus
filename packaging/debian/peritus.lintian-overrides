@@ -1,0 +1,6 @@
+# yaml-rust2 is a pure-Rust parser port with libyaml-compatible diagnostic strings.
+# Cargo.lock has no libyaml dependency; the ELF dynamic section has no libyaml NEEDED entry.
+peritus: embedded-library libyaml [usr/lib/peritus/peritusd]
+# This is an upstream-distributed package, not an upload to the Debian archive;
+# there is no Debian ITP bug to close and no fictitious bug number is inserted.
+peritus: initial-upload-closes-no-bugs [usr/share/doc/peritus/changelog.Debian.gz:1]

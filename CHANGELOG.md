@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.0.1
+
+- Prepare the first versioned release with native Linux, macOS, and Windows
+  archives for x86-64 and ARM64.
+- Add genuine Debian and RPM source, binary, and debug packages built offline
+  from locked, vendored source in pinned distribution containers. Sign packages,
+  source metadata, checksum inventories, and bundles with the release OpenPGP key.
+- Verify package signatures, tamper and unsigned-package rejection, installation,
+  file integrity, and removal. Keep system-package updates owned by APT or DNF.
+- Separate protected package signing from unprivileged builds, retain exact source
+  and builder inventories, and require the complete release-asset set before
+  publication. Production qualification remains governed by the H4 release gate.
+- Complete tagged builds as unpublished drafts. Remove automatic publication from
+  the workflow and workspace CLI so H4 can qualify the exact staged artifacts
+  before the release owner separately authorizes public publication.
+- Make native tar/gzip and ZIP archive metadata deterministic at the candidate's
+  committed source epoch, with stable ordering and permissions and fail-closed
+  handling of links, special files, and existing outputs.
+- Bind disposable reboot-qualification guests to their exact network device and
+  bound SSH execution across connection loss. Qualify GNU Linux daemon builds in
+  a compatible glibc guest without substituting a different static executable.
+- Normalize RPM build metadata to the committed source epoch and a declared
+  stable host label, while retaining actual builder identity and timestamps in
+  the signed external build record.
+- Require explicit H3 scratch storage, retain actual workload filesystem identities,
+  and verify process and directory cleanup. Do not place NVMe qualification state
+  on an ambient RAM-backed temporary filesystem.
+- Qualify the actual staged release archives through all 18 H2 scenarios on six
+  native hosts and through the public installer. Verify archive checksums and
+  members, preserve executable permissions, and retain original archive bytes
+  instead of rebuilding debug packages for release qualification.
+- Compile and assemble each native archive twice on separate clean hosted jobs,
+  retain genuine source/toolchain/platform observations, and require compatible,
+  byte-identical archive and checksum outputs before attestation. Allow manual
+  candidate validation without creating, signing, or publishing a release.
+
+### Product development included in this release
+
 - Persist complete product-run checkpoints, settlements, continuation state, remaining work, and
   interruption causes in the daemon. Validate retained terminal candidates against their managed
   workspaces on startup, mark superseded evidence stale, and resume interrupted candidates from

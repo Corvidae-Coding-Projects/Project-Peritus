@@ -1,7 +1,16 @@
-//! Tag-bound GitHub release publication behind direct reviewed Cargo commands.
+//! Tag-bound GitHub release staging behind direct reviewed Cargo commands.
 
 mod publication;
-pub(crate) use publication::publish;
+mod qualification;
+pub(crate) mod rebuild;
+pub(crate) use publication::stage_draft;
+
+pub(crate) fn qualification_prepare(root: &Path) -> Result<(), XtaskError> {
+    qualification::prepare(root)
+}
+
+#[cfg(test)]
+mod archive_tests;
 
 #[cfg(all(test, unix))]
 mod installer_tests;
@@ -36,7 +45,9 @@ pub(crate) fn bootstrap_smoke(
     }
     let package = match input {
         QualificationInput::Build => crate::product_package::smoke(root)?,
-        QualificationInput::Prepared => crate::product_package::smoke_prepared(root)?,
+        QualificationInput::Prepared | QualificationInput::Release => {
+            crate::product_package::smoke_prepared(root)?
+        }
     };
     let fixture = TemporaryDirectory::new("peritus-public-installer")?;
     let version = format!("v{}", workspace_version(root)?);
@@ -50,10 +61,15 @@ pub(crate) fn bootstrap_smoke(
         .ok_or_else(|| XtaskError::metadata("native package directory has no UTF-8 name"))?;
     let extension = if cfg!(windows) { "zip" } else { "tar.gz" };
     let archive = release_root.join(format!("{name}.{extension}"));
-    archive_package(root, &package, &archive)?;
     let checksum = archive.with_file_name(format!("{name}.{extension}.sha256"));
-    fs::write(&checksum, format!("{}\n", digest(&archive)?))
-        .map_err(|error| XtaskError::io("write bootstrap fixture checksum at", &checksum, error))?;
+    if input == QualificationInput::Release {
+        qualification::copy_archive(root, &archive, &checksum)?;
+    } else {
+        archive_package(root, &package, &archive)?;
+        fs::write(&checksum, format!("{}\n", digest(&archive)?)).map_err(|error| {
+            XtaskError::io("write bootstrap fixture checksum at", &checksum, error)
+        })?;
+    }
 
     let subject = TemporaryDirectory::new("peritus-public-installer-subject")?;
     let release_base = file_url(&fixture.path().join("releases"));
@@ -186,39 +202,29 @@ fn unix_seconds() -> Result<u64, XtaskError> {
         .map_err(|_| XtaskError::metadata("system clock is before the Unix epoch"))
 }
 
-#[cfg(windows)]
 fn archive_package(root: &Path, package: &Path, archive: &Path) -> Result<(), XtaskError> {
+    let output = Command::new("git")
+        .current_dir(root)
+        .args(["log", "-1", "--format=%ct"])
+        .output()
+        .map_err(|error| XtaskError::io("read candidate source epoch in", root, error))?;
+    if !output.status.success() {
+        return Err(XtaskError::metadata("cannot read the candidate source epoch"));
+    }
+    let epoch = String::from_utf8(output.stdout)
+        .map_err(|_| XtaskError::metadata("candidate source epoch is not UTF-8"))?;
+    let epoch = epoch
+        .trim()
+        .parse::<u32>()
+        .map_err(|_| XtaskError::metadata("candidate source epoch is not a gzip timestamp"))?;
     run(
-        Command::new("powershell")
+        Command::new(if cfg!(windows) { "python" } else { "python3" })
             .current_dir(root)
-            .args([
-                "-NoProfile",
-                "-Command",
-                "$ErrorActionPreference='Stop'; Compress-Archive -LiteralPath $env:PERITUS_ARCHIVE_SOURCE -DestinationPath $env:PERITUS_ARCHIVE_DESTINATION -Force",
-            ])
-            .env("PERITUS_ARCHIVE_SOURCE", package)
-            .env("PERITUS_ARCHIVE_DESTINATION", archive),
-        "archive Windows release package",
-    )
-}
-
-#[cfg(not(windows))]
-fn archive_package(root: &Path, package: &Path, archive: &Path) -> Result<(), XtaskError> {
-    let parent = package
-        .parent()
-        .ok_or_else(|| XtaskError::metadata("native package directory has no parent"))?;
-    let name = package
-        .file_name()
-        .ok_or_else(|| XtaskError::metadata("native package directory has no name"))?;
-    run(
-        Command::new("tar")
-            .current_dir(root)
-            .arg("-C")
-            .arg(parent)
-            .arg("-czf")
+            .arg(root.join("packaging/archive.py"))
+            .arg(package)
             .arg(archive)
-            .arg(name),
-        "archive Unix release package",
+            .arg(epoch.to_string()),
+        "archive native release package with canonical metadata",
     )
 }
 
@@ -373,7 +379,7 @@ mod tests {
     #[test]
     fn workspace_release_version_is_exact() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().expect("workspace");
-        assert_eq!(workspace_version(root).expect("version"), "0.0.0");
+        assert_eq!(workspace_version(root).expect("version"), env!("CARGO_PKG_VERSION"));
     }
 
     #[test]

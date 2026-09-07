@@ -12,7 +12,10 @@ use release::Release;
 const CHECK_INTERVAL: Duration = Duration::from_hours(6);
 
 pub async fn offer_on_startup(layout: &AppLayout) -> Result<bool, LauncherError> {
-    if !automatic_checks_enabled(layout) || check_is_fresh(layout) {
+    if cfg!(feature = "system-package")
+        || !automatic_checks_enabled(layout)
+        || check_is_fresh(layout)
+    {
         return Ok(false);
     }
     let Ok(release) = release::latest().await else {
@@ -41,6 +44,7 @@ pub async fn offer_on_startup(layout: &AppLayout) -> Result<bool, LauncherError>
 }
 
 pub fn configure_checks(layout: &AppLayout, enabled: bool) -> Result<(), LauncherError> {
+    require_self_managed_install()?;
     let value = if enabled { b"enabled\n".as_slice() } else { b"disabled\n".as_slice() };
     persist_check_setting(layout, value)?;
     announce(if enabled {
@@ -51,6 +55,7 @@ pub fn configure_checks(layout: &AppLayout, enabled: bool) -> Result<(), Launche
 }
 
 pub async fn run_explicit(layout: &AppLayout) -> Result<(), LauncherError> {
+    require_self_managed_install()?;
     announce("Checking for Peritus updates...")?;
     let Some(release) = release::latest().await? else {
         return Err(LauncherError::Update(
@@ -67,7 +72,17 @@ pub async fn run_explicit(layout: &AppLayout) -> Result<(), LauncherError> {
     announce_completion(&release)
 }
 
+fn require_self_managed_install() -> Result<(), LauncherError> {
+    if cfg!(feature = "system-package") {
+        return Err(LauncherError::Update(
+            "this installation is managed by your system package manager; update Peritus with apt or dnf instead of `peritus update`".to_owned(),
+        ));
+    }
+    Ok(())
+}
+
 async fn apply(layout: &AppLayout, release: &Release) -> Result<(), LauncherError> {
+    require_self_managed_install()?;
     let package = download::package(layout, release).await?;
     install::apply(&package, release)
 }
@@ -120,6 +135,29 @@ fn record_check(layout: &AppLayout) -> Result<(), LauncherError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn update_ownership_matches_build_configuration() {
+        assert_eq!(require_self_managed_install().is_err(), cfg!(feature = "system-package"));
+    }
+
+    #[cfg(feature = "system-package")]
+    #[tokio::test]
+    async fn system_package_never_queries_release_service_or_changes_settings() {
+        let temporary = tempfile::tempdir().expect("temporary root");
+        let layout = AppLayout::for_test(temporary.path()).prepare().expect("layout");
+        assert!(!offer_on_startup(&layout).await.expect("no startup update"));
+        assert!(
+            run_explicit(&layout)
+                .await
+                .expect_err("package ownership")
+                .to_string()
+                .contains("apt or dnf")
+        );
+        assert!(configure_checks(&layout, true).is_err());
+        assert!(!layout.config_root().join("update-checks").exists());
+        assert!(!layout.cache_root().join("update-check").exists());
+    }
 
     #[test]
     fn fresh_check_suppresses_network_poll() {

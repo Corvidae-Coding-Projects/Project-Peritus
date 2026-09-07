@@ -29,16 +29,18 @@ Evidence is immutable history, but its currentness is a separate revision and in
 metadata, rejects a caller limit below the durable size, reads a regular object file, and verifies
 that the exact bytes returned still match both the recorded size and SHA-256 digest.
 
-The shared journal schema is currently version 7. Its closed aggregate-kind registry includes the
+The shared journal schema is currently version 10. Its closed aggregate-kind registry includes the
 permanent D0 `Agent`, D1 `Gate`, C7 `Trace`, D2 `Review`, D3 `Scheduler`/`Collaboration`, and E0
-`Orchestrator`, E1 `Harness`, and E2 `Debugger` kinds in addition to the foundational kernel and B1
-state kinds.
+`Orchestrator`, E1 `Harness`, E2 `Debugger`, E3 `Evaluation`, F0
+`EvolutionCampaign`/`ProductionHarness`, and G0 `Application` kinds in addition to the foundational
+kernel and B1 state kinds.
 Upgrades from
 version 1 preserve existing event and head rows exactly while version 2 admits `Agent`, version 3
 admits `Gate` and `Trace`, version 4 admits `Review`, version 5 admits the D3/E0 kinds, and version 6
-admits E1, and version 7 admits E2; all six
-table-rebuilding upgrades require a verified
-whole-file backup before table replacement.
+admits E1, version 7 admits E2, version 8 admits E3, version 9 admits F0, and version 10 admits G0.
+Version 10 also installs the application principal, session, command, prompt-target, artifact, and
+workspace tables and indexes. All nine table-rebuilding upgrades require a verified whole-file
+backup before table replacement.
 
 For the intended composed deployment, configure `ArtifactStore` with
 `StoreConfig::with_database_path` and pass that same SQLite path to `SqliteJournal`,
@@ -248,11 +250,12 @@ backup paths, acquires an exclusive owner lock, enables `synchronous=FULL` and f
 registry/history digests, current and target versions, application compatibility, forward-only
 ordering, and checked database/backup free-space requirements.
 
-The production registry currently contains exactly one required-backup migration: version 1 for
-release `0.0.0`, whose SQL is `PRAGMA user_version = 1;` and whose declared scratch requirement is
-64 KiB. The C0 component schemas are still installed by their owning `open` methods. Therefore,
-observing migration version 1 is not evidence that journal, artifact, projection, or evidence tables
-have all been initialized.
+The production registry contains ten contiguous, required-backup migrations. Version 1 establishes
+the initial migration marker and declares 64 KiB of scratch; versions 2–10 extend the shared journal
+and application schema as described above and each declare 32 MiB. Their original `0.0.0` release
+identities and exact SQL digests remain immutable when package versions change. Artifact, projection,
+and evidence schemas are still installed by their owning `open` methods, so migration version alone
+is not evidence that every component has been initialized.
 
 For a risky plan, `apply` records the operation identity, creates a consistent SQLite backup in an
 exclusive `.partial` file, syncs it, records its digest and recovery state, atomically renames it to

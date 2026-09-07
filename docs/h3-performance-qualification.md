@@ -111,6 +111,14 @@ GiB hardware class. Storage generation is an explicit reviewed argument because 
 unprivileged interfaces do not expose it consistently. Exact profile mismatch stops before daemon
 launch and reports every mismatched field.
 
+The operator also requires `--scratch` naming an existing, short directory on the reviewed storage.
+Each disposable daemon, journal, and pressure-artifact file is created beneath that explicit root;
+there is no hardcoded `/tmp` placement or ambient `TMPDIR` fallback. The runner checks the selected
+directory identity before every workload and retains each subject's canonical path, filesystem
+device, inode, and successful process/directory cleanup in `results/storage.json`. The operator must
+review the actual mount/device mapping against `--storage-class`; a device number alone does not
+prove its storage generation. A RAM-backed temporary filesystem is not NVMe qualification evidence.
+
 When every objective has sufficient observations, evidence publication also writes an inert
 `baseline-candidate.json`. Its workload/metric/statistic entries come from the evaluated campaign
 and its `evidence_digest` binds the exact source manifest. The candidate is deliberately outside
@@ -180,7 +188,8 @@ Retain the exact bytes for:
 - subject executable and runner implementation identity;
 - newline-delimited measurements;
 - runner receipts and resource-accounting export;
-- platform/machine probe output needed to establish the reference-machine match; and
+- platform/machine probe output needed to establish the reference-machine match;
+- per-workload storage placement and verified cleanup observations; and
 - the structured qualification report.
 
 `EvidenceManifest` binds subject and runner digests, reference machine, dataset digests, wall-clock

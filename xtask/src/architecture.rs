@@ -148,11 +148,11 @@ fn validate_package(
             "set edition.workspace = true and rust-version.workspace = true",
         ));
     }
-    if package.version != "0.0.0" {
+    if package.version != env!("CARGO_PKG_VERSION") {
         diagnostics.push(Diagnostic::at(
             &manifest,
-            "foundation package version must remain 0.0.0 before the release contract is established",
-            "inherit version.workspace = true; versioning changes require release review",
+            "package version does not match the workspace release version",
+            "inherit version.workspace = true and update exact internal dependency versions together",
         ));
     }
     let readme = package_readme_path(package);
