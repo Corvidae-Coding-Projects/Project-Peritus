@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1349,
+  "next_comment_id": 1350,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T16:36:18.593630583Z",
+      "updated_at": "2026-09-07T16:36:45.814271788Z",
       "labels": [
         "release"
       ],
@@ -1799,6 +1799,15 @@
           "kind": "result",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAu4kqUviADS7lB4egWboI/doFO9DD98uBlkiD3HpcjWSeJ6KqtjIzKQbRWEFVAdgPcDlWIss+752lr4XRMT58AQ=="
+        },
+        "9320ad4c-1101-44eb-9a7d-9905ebb76e5d": {
+          "display_id": 1349,
+          "author": "QWDj",
+          "content": "[action] Signed local b3c3ffa8 adds transaction-coherent C0 aggregate/checkpoint observation and D3 adoption. Full632 consumer+native daemon tests, strict Clippy/build/workspace/policy/fmt and journal14/scheduler6 Verus pass. Two commits ahead of9fa, not pushed; tracked/index clean and original untracked files/roota819 preserved. PR53 now all551 checks successful at9fa. FullH3 receipt-bound reuse and lossless history remain next; do not claim old CI qualifies new source. No new campaign, merge, freeze, tag or publication.",
+          "created_at": "2026-09-07T16:36:45.810555144Z",
+          "kind": "note",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWKmxnqtkDFvbp8NId5epQsGA42v9mt7MeTPqmNyx2lSCelox+824zofzGBrfWoo2VMf8YJgDNKmygupQcpbgCA=="
         },
         "942a0a74-6b43-4b23-82ca-69c00da13af9": {
           "display_id": 1344,
@@ -13154,8 +13163,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T16:36:18.593630583Z",
+    "timestamp": "2026-09-07T16:36:45.814271788Z",
     "agent_id": "QWDj",
-    "agent_seq": 125
+    "agent_seq": 126
   }
 }
