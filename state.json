@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1244,
+  "next_comment_id": 1245,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T02:00:38.971211978Z",
+      "updated_at": "2026-09-07T02:06:02.068437017Z",
       "labels": [
         "release"
       ],
@@ -1232,6 +1232,15 @@
           "kind": "decision",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIvvdFRPkMATD78ps6OrUowcyY1hHq5E61vNulBZPUQW8AdQoGcpWzMlEYK81CQUBMUrrKPjROjmWu/ugBGcxDw=="
+        },
+        "5ae76656-adaa-4c32-a36f-da2620d35ce8": {
+          "display_id": 1244,
+          "author": "QWDj",
+          "content": "H1 root-cause repair verified: MAC-bound Debian generic seed plus bounded SSH execution (30-second command owner, liveness probes, private bounded output, no user SSH config). All three fresh GNU-daemon reboot routes pass; each retains six evidence records and complete cleanup. Final scoped gate: 16 H1-controller unit + 1 integration and 16 parent-resilience tests, release build, strict Clippy, fmt, policy and diff review passed. Four independently rebuilt Linux binaries and their complete native tar.gz matched byte-for-byte; this remains pre-freeze diagnostic evidence. Separate release blocker: bfe Foundation Windows app-runner hit an unchanged 10-second wall-clock assertion; identical prior-head jobs and focused Linux test pass. No threshold changed. Exact-job rerun is unavailable until its containing workflow finishes (GitHub 403).",
+          "created_at": "2026-09-07T02:06:02.063650731Z",
+          "kind": "result",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAKkAWGdTN3mcOGS10WV3PR+UAe/Oup3SjYvCyJAcSIuheKQW+HhWslB5Ot966qA40W3SxStw1jPY2Q6e37umnBA=="
         },
         "6ec32060-36d2-4f79-b73e-69652457692e": {
           "display_id": 1240,
@@ -12209,8 +12218,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T02:00:38.971211978Z",
+    "timestamp": "2026-09-07T02:06:02.068437017Z",
     "agent_id": "QWDj",
-    "agent_seq": 16
+    "agent_seq": 17
   }
 }
