@@ -16,6 +16,12 @@ resolved under the original command identity and request digest, and integrity e
 available only after recomputing frame, event-chain, command-range, state, registry, artifact, and
 head checks.
 
+Aggregate replay reads the head and all event rows in one read transaction. One ordered event
+query replaces per-event queries while retaining exact frame/hash checks, contiguous predecessor
+validation and complete final-head equality. Orphaned events, damaged historical bytes and
+self-consistently hashed but disconnected records are rejected. This read-path optimization does
+not introduce a checkpoint cache, alter canonical bytes or discard state history.
+
 The journal is the authoritative transition history. Its state records, authority clock,
 credential registry, and outbox are updated under checked compare-and-swap preconditions; query
 projections remain replaceable consumers. The artifact catalog must be in the same SQLite file for

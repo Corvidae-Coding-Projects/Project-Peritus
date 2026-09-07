@@ -1,9 +1,12 @@
 //! Aggregate-head and complete aggregate-chain reads.
 
-use peritus_types::EventSequence;
-use rusqlite::{OptionalExtension, params};
+#[cfg(test)]
+mod tests;
 
-use super::{corrupt, digest_from_blob, event_id_from_blob, load_records_range, positive_u64};
+use peritus_types::EventSequence;
+use rusqlite::{Connection, OptionalExtension, Transaction, params};
+
+use super::{corrupt, digest_from_blob, event_id_from_blob, positive_u64};
 use crate::{AggregateHead, AggregateKey, CommittedRecord, JournalError, SqliteJournal};
 
 impl SqliteJournal {
@@ -13,7 +16,49 @@ impl SqliteJournal {
     ///
     /// Returns a terminal integrity failure for malformed stored values.
     pub fn head(&self, key: AggregateKey) -> Result<Option<AggregateHead>, JournalError> {
-        self.connection
+        load_head(&self.connection, key)
+    }
+
+    /// Loads one aggregate's checked event chain in sequence order.
+    ///
+    /// The head and all exact rows are read in one snapshot, with one ordered event query
+    /// regardless of history length. Every row hash, predecessor, sequence and final head field
+    /// is checked; an absent head is valid only when no events exist.
+    ///
+    /// # Errors
+    ///
+    /// Returns a storage or integrity error for gaps, malformed rows, or hash-chain corruption.
+    pub fn records_for_aggregate(
+        &self,
+        key: AggregateKey,
+    ) -> Result<Vec<CommittedRecord>, JournalError> {
+        let transaction = self
+            .connection
+            .unchecked_transaction()
+            .map_err(|error| JournalError::sqlite("begin aggregate replay", error))?;
+        let records = load_snapshot(&transaction, key)?;
+        transaction
+            .commit()
+            .map_err(|error| JournalError::sqlite("complete aggregate replay", error))?;
+        Ok(records)
+    }
+}
+
+fn load_snapshot(
+    transaction: &Transaction<'_>,
+    key: AggregateKey,
+) -> Result<Vec<CommittedRecord>, JournalError> {
+    let head = load_head(transaction, key)?;
+    let records = super::records::load_aggregate_records(transaction, key)?;
+    validate_aggregate_records(key, head, &records)?;
+    Ok(records)
+}
+
+fn load_head(
+    connection: &Connection,
+    key: AggregateKey,
+) -> Result<Option<AggregateHead>, JournalError> {
+    connection
             .query_row(
                 "SELECT sequence, event_id, event_hash FROM aggregate_heads WHERE aggregate_kind = ?1 AND aggregate_id = ?2",
                 params![key.kind().tag(), key.id().as_bytes().as_slice()],
@@ -31,54 +76,24 @@ impl SqliteJournal {
                 parse_head(key, sequence, &event_id, &event_hash)
             })
             .transpose()
-    }
+}
 
-    /// Loads one aggregate's checked event chain in sequence order.
-    ///
-    /// # Errors
-    ///
-    /// Returns a storage or integrity error for gaps, malformed rows, or hash-chain corruption.
-    pub fn records_for_aggregate(
-        &self,
-        key: AggregateKey,
-    ) -> Result<Vec<CommittedRecord>, JournalError> {
-        let head = self.head(key)?;
-        let Some(head) = head else {
-            return Ok(Vec::new());
-        };
-        let mut statement = self
-            .connection
-            .prepare(
-                "SELECT global_position FROM events
-                   WHERE aggregate_kind = ?1 AND aggregate_id = ?2 ORDER BY sequence",
-            )
-            .map_err(|error| JournalError::sqlite("prepare aggregate replay", error))?;
-        let positions = statement
-            .query_map(params![key.kind().tag(), key.id().as_bytes().as_slice()], |row| {
-                row.get::<_, i64>(0)
-            })
-            .map_err(|error| JournalError::sqlite("query aggregate replay", error))?
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|error| JournalError::sqlite("read aggregate replay", error))?;
-        let mut records = Vec::with_capacity(positions.len());
-        for (index, position) in positions.into_iter().enumerate() {
-            let position = positive_u64(position, "aggregate event position")?;
-            let mut loaded = load_records_range(&self.connection, position, position)?;
-            let record = loaded.pop().ok_or_else(|| corrupt("aggregate replay event vanished"))?;
-            let expected = u64::try_from(index)
-                .ok()
-                .and_then(|value| value.checked_add(1))
-                .ok_or_else(|| corrupt("aggregate replay sequence overflowed"))?;
-            if record.sequence().get() != expected || record.aggregate() != key {
-                return Err(corrupt("aggregate replay sequence is not contiguous"));
-            }
-            records.push(record);
+fn validate_aggregate_records(
+    key: AggregateKey,
+    head: Option<AggregateHead>,
+    records: &[CommittedRecord],
+) -> Result<(), JournalError> {
+    let mut previous = None;
+    for record in records {
+        if record.aggregate() != key {
+            return Err(corrupt("aggregate replay includes another aggregate"));
         }
-        if records.last().map(CommittedRecord::event_hash) != Some(head.event_hash()) {
-            return Err(corrupt("aggregate replay does not reach its durable head"));
-        }
-        Ok(records)
+        previous = Some(AggregateHead::checked_successor(previous, record)?);
     }
+    if previous != head {
+        return Err(corrupt("aggregate replay does not reach its exact durable head"));
+    }
+    Ok(())
 }
 
 pub fn parse_head(

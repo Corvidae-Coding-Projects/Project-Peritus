@@ -1,7 +1,7 @@
 //! Immutable event-range loading and exact row validation.
 
 use peritus_types::{CommandId, EventSequence};
-use rusqlite::{Connection, params};
+use rusqlite::{Connection, Rows, params};
 
 use super::{
     array_from_blob, causal_ids_from_blob, corrupt, digest_from_blob, event_id_from_blob,
@@ -115,9 +115,28 @@ pub fn load_records_range(
             super::super::append::to_i64(last, "last event position")?,
         ])
         .map_err(|error| JournalError::sqlite("query event range", error))?;
+    load_rows(&mut rows)
+}
+
+pub(super) fn load_aggregate_records(
+    connection: &Connection,
+    key: AggregateKey,
+) -> Result<Vec<CommittedRecord>, JournalError> {
+    let mut statement = connection
+        .prepare(
+            "SELECT global_position, event_id, aggregate_kind, aggregate_id, sequence, previous_event_id, previous_event_hash, event_hash, command_id, frame_family, frame_schema, frame_digest, revision_digest, causal_ids, frame FROM events WHERE aggregate_kind = ?1 AND aggregate_id = ?2 ORDER BY sequence",
+        )
+        .map_err(|error| JournalError::sqlite("prepare aggregate events", error))?;
+    let mut rows = statement
+        .query(params![key.kind().tag(), key.id().as_bytes().as_slice()])
+        .map_err(|error| JournalError::sqlite("query aggregate events", error))?;
+    load_rows(&mut rows)
+}
+
+fn load_rows(rows: &mut Rows<'_>) -> Result<Vec<CommittedRecord>, JournalError> {
     let mut records = Vec::new();
     while let Some(row) =
-        rows.next().map_err(|error| JournalError::sqlite("read event range", error))?
+        rows.next().map_err(|error| JournalError::sqlite("read immutable events", error))?
     {
         let raw = RawRecord {
             global_position: row
