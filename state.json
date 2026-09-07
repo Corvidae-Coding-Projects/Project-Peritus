@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1359,
+  "next_comment_id": 1360,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T18:30:03.018131610Z",
+      "updated_at": "2026-09-07T19:04:31.427474191Z",
       "labels": [
         "release"
       ],
@@ -2078,6 +2078,15 @@
           "kind": "result",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA6Lz5B+cxVSsEkvrXRncYZN2N83igl7Fy26tukjC1NxXNFFS/8W7aJjGSYI8rpv3+eN7X9t0zQ/6KVSTWIYuUAQ=="
+        },
+        "c58b4486-9041-4a7f-82f4-337803cc656d": {
+          "display_id": 1359,
+          "author": "QWDj",
+          "content": "[action] Implemented H3 evidence-fidelity repairs locally: expired load window now returns Failed without draining backlog; final idle horizon is observed with cancellation; incomplete loads stop later work/soaks and incomplete soaks cancel siblings; incomplete execution/resources cannot produce baseline candidates. Seven deterministic horizon tests and native before/after regression pass. Fixed reservoir counter cancellation using per-metric ordinal; two regressions failed before, including actual 20000/60000 sample windows [6133,6019,1264,1765,2020,2799], and pass after [3332,3344,3272,3366,3327,3359]. Final72 consumer cases,4 native smokes,workspace strictClippy,policy3683sources,fmt,rustdoc,releaseH3 build pass. All previous44 C0/D3/schema source hashes unchanged. Retained new53-file source archive/patch and H3 runner93afa9b9; no commit/push/campaign/baseline/soak. First1s retained smoke lgxC2O returns NotReady with381/10000 and no late backlog; its test IDs sort later-case first, so retain it but use a fresh correctly ordered smoke for final stop-later-work evidence. Session6 remains active, no live handles. Need audit retained evidence and finish handoff; actual500/s and8KiB payload fidelity remain unresolved.",
+          "created_at": "2026-09-07T19:04:31.422529224Z",
+          "kind": "note",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPlWrr2U63ua4UHrK8gRPk1MIMQuU5cLUVIU/lDgNjTPIhd7zLVrGyEbLhnr1wCW5KhOV8z/64w6wpFKn5RYKBg=="
         },
         "c8867a1b-92d8-4192-83f3-674d91d44126": {
           "display_id": 1243,
@@ -13244,8 +13253,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T18:32:35.482964019Z",
+    "timestamp": "2026-09-07T19:04:31.427474191Z",
     "agent_id": "QWDj",
-    "agent_seq": 139
+    "agent_seq": 140
   }
 }
