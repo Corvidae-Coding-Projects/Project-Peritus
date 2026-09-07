@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1242,
+  "next_comment_id": 1243,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T01:41:19.028382806Z",
+      "updated_at": "2026-09-07T01:51:28.960282224Z",
       "labels": [
         "release"
       ],
@@ -1205,6 +1205,15 @@
           "kind": "note",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAxrHk3QB6q/fZJPJUDyCkGEszCSDHGCzS2qH49ETD9qYrLNHPnwxnY7brNQXmgSmfQab5vR/8g0s0lGRt+9HzCQ=="
+        },
+        "11bf7d75-afd0-496b-8664-ebae5f684a1c": {
+          "display_id": 1242,
+          "author": "QWDj",
+          "content": "Fresh daemon rebuild from bfe7b6de in a distinct source/target directory matched the original release-profile peritusd byte-for-byte (SHA256 0f8c4c44bd13c6ff53fcbe3d78541e5bcc1330a508d80fd64cdecfb59f511087). Debian generic H1 probe proved a runner seed bug: ens3 was left unconfigured by name-only eth0 config. MAC binding restores DHCP and real kernel reboot. Post-reboot guest responds with peritusd 0.0.1, but the original reboot SSH child remains alive after connection loss; repairing bounded transport before claiming diagnostic completion.",
+          "created_at": "2026-09-07T01:51:28.955944038Z",
+          "kind": "observation",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAphjDT0MuNXjGqTPPW+aJ4dL2A+fX13wM8AAiFK0tg6Aao6HeAU5e3pDGgOiD73bq46tKbQ/VX/hhSlED8bpRDw=="
         },
         "3fbf943e-0d20-4aaa-b9ae-eb1df8e56ff4": {
           "display_id": 1235,
@@ -12191,8 +12200,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T01:41:19.028382806Z",
+    "timestamp": "2026-09-07T01:51:28.960282224Z",
     "agent_id": "QWDj",
-    "agent_seq": 14
+    "agent_seq": 15
   }
 }
