@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1361,
+  "next_comment_id": 1362,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T19:12:10.300883916Z",
+      "updated_at": "2026-09-07T19:12:43.227541176Z",
       "labels": [
         "release"
       ],
@@ -1313,6 +1313,15 @@
           "kind": "observation",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAphjDT0MuNXjGqTPPW+aJ4dL2A+fX13wM8AAiFK0tg6Aao6HeAU5e3pDGgOiD73bq46tKbQ/VX/hhSlED8bpRDw=="
+        },
+        "124de6bc-4f9a-4551-916d-74c1b9c56e06": {
+          "display_id": 1361,
+          "author": "QWDj",
+          "content": "Completed the scoped H3 evidence-fidelity repair increment. PacedRunner now rejects unstarted backlog at the declared horizon and observes the final idle tail; non-completed loads stop later work and soaks; incomplete execution/resources cannot produce a baseline candidate. Corrected per-metric reservoir seed cancellation; both sampling regressions failed before and pass after, with 20000/60000 window coverage corrected from [6133,6019,1264,1765,2020,2799] to [3332,3344,3272,3366,3327,3359]. Final 72 consumer cases, 4 explicit actual-daemon smokes, strict workspace Clippy, full policy, fmt, rustdoc and release H3 build passed. Retained release-runner smoke GuWv5W returns NotReady with exactly one failed 404/10000 receipt at 1000749 us, no later workload and no baseline candidate. Independent closed nine-artifact SHA256/length/input/report audit passed twice identically, and exact scratch, runner PID and daemon executable cleanup were observed. Prior misordered smoke lgxC2O retained as fixture mistake, not stop-later-work proof. All 53 source hashes and prior 44 C0/D3 source hashes unchanged after checks; current patch/archive inventory and production profile/catalog reverified. Full result and hashes: target/h4-h3-harness-fidelity-result-20260907.md. Actual 500/s offered load and 8-KiB event payload fidelity remain unresolved; no H3 pass or baseline/soak/campaign launched, no commit/push/freeze/sign/publication. Frozen root a819e582 preserved; no live handles remain.",
+          "created_at": "2026-09-07T19:12:43.224104696Z",
+          "kind": "result",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAngI9QzyOP7AivYlDyulGtN8XmrVrp5NLZr5EZV5uHyEjUFB3KZftChT1ZXB8MNG/8S8k5sOJuGDKhb9qZdJyBw=="
         },
         "139805cb-1ba5-4b96-94c0-505df439ad9f": {
           "display_id": 1309,
@@ -13262,8 +13271,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T19:12:10.300883916Z",
+    "timestamp": "2026-09-07T19:12:43.227541176Z",
     "agent_id": "QWDj",
-    "agent_seq": 141
+    "agent_seq": 142
   }
 }
