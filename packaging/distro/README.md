@@ -44,6 +44,14 @@ checkout before signing. Vendored crates retain Cargo's checksum files and
 upstream license notices. Missing reviewed upstream notices have exact-version
 [provenance](../licenses/README.md); new unidentified omissions fail the build.
 
+RPM package metadata uses the exact source epoch for build time and timestamp
+clamping, and the declared stable build-host label `peritus-reproducible`, through
+RPM's supported [reproducibility controls](https://rpm.org/docs/6.0.x/man/rpmbuild-config.5).
+The build record separately retains the actual host, fresh invocation identity,
+and observed start/finish times. That record and signatures are genuine external
+observations, not normalized package content. Deterministic metadata alone does
+not prove that independent complete package builds are byte-identical.
+
 The recipes preserve debug information for the distribution's own debug-package
 tools and use normal package-manager dependency discovery. The four binaries
 are siblings under `/usr/lib/peritus`; `/usr/bin/peritus` is a symlink into that

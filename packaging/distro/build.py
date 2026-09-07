@@ -5,7 +5,9 @@ from email.utils import formatdate
 import os
 from pathlib import Path
 import shutil
+import socket
 import tempfile
+import time
 import tomllib
 
 from common import (ROOT, FORMATS, architecture, container, digest, engine, image_name,
@@ -36,6 +38,7 @@ def build():
     kind = package_format()
     maintainer()
     out = output_directory(kind)
+    started = time.time_ns()
     (ROOT / "target").mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=f"package-{kind}-", dir=ROOT / "target", delete=False) as temporary:
         build_root = Path(temporary)
@@ -57,10 +60,12 @@ def build():
             shutil.copyfile(source / "packaging/rpm/peritus.spec", build_root / "SPECS/peritus.spec")
             container(kind, [(build_root, "/build", False)],
                       "rpmbuild", "-ba", "--define", "_topdir /build",
+                      *rpm_reproducibility_arguments(),
                       "--define", f"peritus_version {version()}",
                       "--define", f"peritus_packager {maintainer()}",
                       "--define", f"peritus_changelog_date {changelog_date}",
-                      "/build/SPECS/peritus.spec")
+                      "/build/SPECS/peritus.spec",
+                      environment=[f"SOURCE_DATE_EPOCH={epoch}"])
             files = list((build_root / "RPMS").rglob("*.rpm"))
             files += list((build_root / "SRPMS").glob("*.rpm"))
         if not any(p.suffix == (".deb" if kind == "deb" else ".rpm") for p in files):
@@ -72,6 +77,19 @@ def build():
                                             "--format", "{{.Id}}", capture=True)
         provenance["format"] = kind
         provenance["architecture"] = architecture()
+        provenance["build_observation"] = {
+            "host": socket.gethostname(),
+            "invocation": build_root.name,
+            "started_unix_nanos": started,
+            "finished_unix_nanos": time.time_ns(),
+        }
         provenance["unsigned_files_sha256"] = {p.name: digest(p) for p in sorted(out.iterdir())}
         (out / f"peritus-{kind}-build.json").write_text(json.dumps(provenance, indent=2) + "\n")
     print(f"Built {kind} packages in {out}")
+
+
+def rpm_reproducibility_arguments():
+    """Normalize package metadata, not the separately retained real build observations."""
+    return ["--define", "_buildhost peritus-reproducible",
+            "--define", "use_source_date_epoch_as_buildtime 1",
+            "--define", "build_mtime_policy clamp_to_source_date_epoch"]

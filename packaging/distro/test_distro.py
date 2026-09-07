@@ -10,6 +10,7 @@ import unittest
 from unittest.mock import patch
 
 import common
+import build
 import ci_sign
 import sign
 import verify
@@ -20,6 +21,15 @@ from verify_inside import rpm_signature_verified, tamper, terminal_failure
 
 
 class ConfigurationTests(unittest.TestCase):
+    def test_rpm_metadata_uses_explicit_reproducibility_controls(self):
+        arguments = build.rpm_reproducibility_arguments()
+        self.assertEqual(arguments[::2], ["--define"] * 3)
+        self.assertEqual(arguments[1::2], [
+            "_buildhost peritus-reproducible",
+            "use_source_date_epoch_as_buildtime 1",
+            "build_mtime_policy clamp_to_source_date_epoch",
+        ])
+
     def test_maintainer_requires_one_safe_identity(self):
         for value in ("", "A", "A <a@example.org>\nB", "A%{expand:x} <a@example.org>", "A <a b@c>"):
             with self.subTest(value=value), patch.dict(os.environ, PERITUS_PACKAGE_MAINTAINER=value):
@@ -87,6 +97,54 @@ class ArchiveTests(unittest.TestCase):
             (crate / "Cargo.toml").write_text('[package]\nname="unreviewed"\nversion="1.0.0"\nlicense="MIT"\n')
             with self.assertRaisesRegex(ValueError, "no redistributable license"):
                 notices(root)
+
+
+class BuildTests(unittest.TestCase):
+    def test_rpm_build_passes_exact_source_epoch_and_retains_real_observations(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "output"
+            output.mkdir()
+
+            def prepare(build_root):
+                source = build_root / "peritus-1.2.3"
+                spec = source / "packaging/rpm/peritus.spec"
+                spec.parent.mkdir(parents=True)
+                spec.write_text("test-only spec")
+                (source / "PACKAGE-SOURCE.json").write_text(
+                    json.dumps({"source_date_epoch": 1234567890}))
+                archive = build_root / "peritus-1.2.3.tar.gz"
+                archive.write_bytes(b"test-only source")
+                return source, archive, 1234567890
+
+            def compile_fixture(kind, mounts, *arguments, **options):
+                self.assertEqual(kind, "rpm")
+                self.assertEqual(options, {"environment": ["SOURCE_DATE_EPOCH=1234567890"]})
+                self.assertIn("use_source_date_epoch_as_buildtime 1", arguments)
+                self.assertIn("build_mtime_policy clamp_to_source_date_epoch", arguments)
+                self.assertIn("_buildhost peritus-reproducible", arguments)
+                (mounts[0][0] / "RPMS/peritus.rpm").write_bytes(b"test-only output")
+
+            with patch.object(build, "ROOT", root), \
+                    patch.object(build, "package_format", return_value="rpm"), \
+                    patch.object(build, "maintainer", return_value="Fixture <fixture@example.invalid>"), \
+                    patch.object(build, "version", return_value="1.2.3"), \
+                    patch.object(build, "output_directory", return_value=output), \
+                    patch.object(build, "prepare", side_effect=prepare), \
+                    patch.object(build, "container", side_effect=compile_fixture), \
+                    patch.object(build, "run", return_value="sha256:fixture-image"), \
+                    patch.object(build.socket, "gethostname", return_value="actual-host"), \
+                    patch.object(build.time, "time_ns", side_effect=[2000000000000, 3000000000000]):
+                build.build()
+            record = json.loads((output / "peritus-rpm-build.json").read_text())
+            observation = record["build_observation"]
+            self.assertEqual(observation["host"], "actual-host")
+            self.assertEqual(observation["started_unix_nanos"], 2000000000000)
+            self.assertEqual(observation["finished_unix_nanos"], 3000000000000)
+            self.assertTrue((root / "target" / observation["invocation"]).is_dir())
+            self.assertEqual(record["source_date_epoch"], 1234567890)
+            self.assertEqual(record["unsigned_files_sha256"], {
+                "peritus.rpm": hashlib.sha256(b"test-only output").hexdigest()})
 
 
 class SigningTests(unittest.TestCase):
