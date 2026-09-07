@@ -1,5 +1,9 @@
 //! Aggregate-head and complete aggregate-chain reads.
 
+mod checkpoint;
+
+pub use checkpoint::AggregateCheckpointSnapshot;
+
 #[cfg(test)]
 mod tests;
 

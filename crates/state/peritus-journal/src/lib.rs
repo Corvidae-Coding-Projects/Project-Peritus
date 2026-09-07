@@ -60,6 +60,7 @@ pub use record::{
     ArtifactDependency, CommittedRecord, DurableStateRecord, EventDraft, ExactFrame,
     GlobalEventWindow, MAX_GLOBAL_WINDOW_RECORDS, StateInstall,
 };
+pub use sqlite::query::AggregateCheckpointSnapshot;
 pub use sqlite::{
     CommandResolution, JournalReader, SqliteJournal, SqliteJournalOptions, SqliteSettings,
     SqliteStoragePages,

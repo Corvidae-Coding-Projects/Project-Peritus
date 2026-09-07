@@ -22,6 +22,11 @@ validation and complete final-head equality. Orphaned events, damaged historical
 self-consistently hashed but disconnected records are rejected. This read-path optimization does
 not introduce a checkpoint cache, alter canonical bytes or discard state history.
 
+`aggregate_checkpoint_snapshot` also reads a requested current state row in that same transaction,
+so a concurrent commit cannot mix old events with a newer checkpoint. The domain adapter must
+still check the state row's identity and compare its contents against deterministic replay; this
+snapshot is not permission to reuse cached state or authorize a later append.
+
 The journal is the authoritative transition history. Its state records, authority clock,
 credential registry, and outbox are updated under checked compare-and-swap preconditions; query
 projections remain replaceable consumers. The artifact catalog must be in the same SQLite file for

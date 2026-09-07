@@ -254,9 +254,10 @@ pub fn load_scheduler_replay(
 ) -> Result<SchedulerReplay, SchedulerError> {
     let aggregate = scheduler_aggregate_key(run_id)?;
     let state_key = scheduler_state_key(run_id);
-    let records = journal.records_for_aggregate(aggregate).map_err(journal_error)?;
-    let state_record =
-        journal.state_record(SCHEDULER_STATE_NAMESPACE, &state_key).map_err(journal_error)?;
+    let (records, state_record) = journal
+        .aggregate_checkpoint_snapshot(aggregate, SCHEDULER_STATE_NAMESPACE, &state_key)
+        .map_err(journal_error)?
+        .into_parts();
     if records.is_empty() != state_record.is_none() {
         return Err(inconsistent("scheduler events/checkpoint presence differs"));
     }
