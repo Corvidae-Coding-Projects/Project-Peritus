@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1292,
+  "next_comment_id": 1293,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T08:04:06.438375780Z",
+      "updated_at": "2026-09-07T08:26:45.883111271Z",
       "labels": [
         "release"
       ],
@@ -1691,6 +1691,15 @@
           "kind": "result",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA1xslaZkTEec6O5j2ETgd9Fuo0t5omwNg66/GTmP1V6JjbliQQqmBUDRPIfXw9v4hsjwmPfPWpjA34ZrDfYxvAw=="
+        },
+        "f15d6a79-04b8-4b3c-a814-d70d21cefb0c": {
+          "display_id": 1292,
+          "author": "QWDj",
+          "content": "[action] User asked why two PRs and why merged51 is red. Reverified #51 had545 successful PR checks when merged05:46:33, currentmain still ecb8df3b. Post-merge Foundation Windows app-shell has exact10m0s annotation despite passed assertions; #52 is its pending repair. I cancelled remaining runner-product/recovery and other Foundation jobs only after replacement validation started, so those are cancellations, not observed assertion failures. Main H0/H2/distribution tooling now success; GateA still live, cancelled Foundation/manual remain non-green. Priority is merge validated repairs and independently verify resultingmain, not call merged synonymous with qualified. bfab ARM compile jobs passedDEB6m26/RPM7m02; x86 compilation currentlyrunning.",
+          "created_at": "2026-09-07T08:26:45.879139787Z",
+          "kind": "note",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAakbpWHHu4M8msh4+VGDLrDeFBt4V3XAkcNeQcxk/guo7JCa//0x2K6AbgJb4VTuhSoLOJnk/MXxP/hGi+HBsAg=="
         },
         "f5ef7a20-7d03-4f06-9490-fa403608f90b": {
           "display_id": 1263,
@@ -12641,8 +12650,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T08:04:06.438375780Z",
+    "timestamp": "2026-09-07T08:26:45.883111271Z",
     "agent_id": "QWDj",
-    "agent_seq": 68
+    "agent_seq": 69
   }
 }
