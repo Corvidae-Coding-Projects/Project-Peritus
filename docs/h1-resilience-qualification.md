@@ -342,6 +342,38 @@ All 43 catalog routes are now connected to genuine production or disposable-host
 H1 production qualification is still pending because these are focused development diagnostics,
 not one complete report bound to the final release revision.
 
+### GNU release-profile guest preparation
+
+The dynamically linked Linux `0.0.1` candidate requires a compatible glibc guest;
+the earlier static-candidate Alpine diagnostics cannot stand in for that build.
+Pre-freeze checks use Debian 13's official
+[generic amd64 image, build 20260831-2587](https://cloud.debian.org/images/cloud/trixie/20260831-2587/),
+verified against its published SHA-512 inventory. Its SHA-256 is
+`ce793c5de15b3d7f2294e4d054a20dc5600751018c0d2e9682ffee2d5a580939`.
+The genericcloud probe did not expose the controller's e1000 device; the full
+generic image did. The cloud-init seed now binds the exact emulated MAC
+address so distro interface renaming cannot leave DHCP configured on the wrong NIC.
+SSH commands use the controller's bounded child runner, private temporary output,
+and connection-liveness checks; a reboot-disconnected SSH session cannot bypass
+the command deadline. User SSH configuration is not consulted.
+
+All three repaired routes passed as independent fresh-subject diagnostics with
+six retained evidence records each and verified cleanup. Their report digests are:
+
+- outstanding effect, `debian-bounded-outstanding-effect.oIQvyA/report.json`:
+  `8d0c994cac9552ca1276ff25945b2143c27999e677cc9fbf492e7b35526ae9a2`;
+- durable before acknowledgement, `debian-bounded-durable-before-ack.bQk7VP/report.json`:
+  `9e70b3e2c23e7aab3fbd9fdf87c31c23b9a6d455d4ca7dbf6095556021677035`;
+- startup reconciliation, `debian-bounded-startup-reconciliation.ct9GrM/report.json`:
+  `e922cdb687fd39eecf7cacc435c9f7d12822da5ca3d4fdf38cc25a0121344ec7`.
+
+These paths are relative to `/home/doll/.local/state/peritus/qualification/h1/`.
+They bind daemon SHA-256
+`0f8c4c44bd13c6ff53fcbe3d78541e5bcc1330a508d80fd64cdecfb59f511087`.
+The startup route includes two genuine guest-kernel boot identity transitions.
+The host was not rebooted, and the earlier failed guest probes remain failures.
+This preparation does not replace the final candidate's full 43-case H1 campaign.
+
 The release integration owner must:
 
 1. build and independently review the platform controller executable used by the standard native

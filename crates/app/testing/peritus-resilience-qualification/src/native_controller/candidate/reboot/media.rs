@@ -7,6 +7,10 @@ use std::process::Command;
 use super::super::config::{create_private_directory, render_configuration, write_new};
 use crate::native_controller::args::ControllerPaths;
 
+// Each guest owns an isolated user-mode network; this binds cloud-init's interface rename
+// to the exact emulated NIC, independently of distro names such as eth0 or ens3.
+pub(super) const GUEST_MAC_ADDRESS: &str = "52:54:00:12:34:56";
+
 pub(super) struct GuestMedia {
     pub(super) overlay: PathBuf,
     pub(super) seed_iso: PathBuf,
@@ -96,8 +100,10 @@ fn cloud_config(public_key: &str) -> String {
     )
 }
 
-const fn network_config() -> &'static str {
-    "version: 1\nconfig:\n  - type: physical\n    name: eth0\n    subnets:\n      - type: dhcp4\n"
+fn network_config() -> String {
+    format!(
+        "version: 1\nconfig:\n  - type: physical\n    name: eth0\n    mac_address: '{GUEST_MAC_ADDRESS}'\n    subnets:\n      - type: dhcp4\n"
+    )
 }
 
 fn iso(
@@ -142,5 +148,21 @@ fn one_line<'a>(value: &'a str, label: &str) -> Result<&'a str, Box<dyn std::err
         Err(format!("{label} is not one line").into())
     } else {
         Ok(value)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{GUEST_MAC_ADDRESS, cloud_config, network_config};
+
+    #[test]
+    fn guest_seed_binds_the_emulated_nic_and_keeps_password_authentication_disabled() {
+        let network = network_config();
+        assert!(network.contains(&format!("    mac_address: '{GUEST_MAC_ADDRESS}'\n")));
+        assert!(network.contains("    name: eth0\n"));
+        assert!(network.contains("      - type: dhcp4\n"));
+        let config = cloud_config("ssh-ed25519 test-disposable-key");
+        assert!(config.contains("ssh_pwauth: false\n"));
+        assert!(config.contains("      - ssh-ed25519 test-disposable-key\n"));
     }
 }

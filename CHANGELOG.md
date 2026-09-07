@@ -18,6 +18,9 @@
 - Make native tar/gzip and ZIP archive metadata deterministic at the candidate's
   committed source epoch, with stable ordering and permissions and fail-closed
   handling of links, special files, and existing outputs.
+- Bind disposable reboot-qualification guests to their exact network device and
+  bound SSH execution across connection loss. Qualify GNU Linux daemon builds in
+  a compatible glibc guest without substituting a different static executable.
 
 ### Product development included in this release
 

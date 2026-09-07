@@ -1,5 +1,6 @@
 //! Owned QEMU guest and bounded SSH operations for actual host-reboot qualification.
 
+use std::ffi::OsStr;
 use std::fs;
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
@@ -67,7 +68,7 @@ impl Guest {
             .arg("-netdev")
             .arg(format!("user,id=peritusnet,restrict=on,hostfwd=tcp:127.0.0.1:{port}-:22"))
             .arg("-device")
-            .arg("e1000,netdev=peritusnet")
+            .arg(format!("e1000,netdev=peritusnet,mac={}", media::GUEST_MAC_ADDRESS))
             .current_dir(runtime_root)
             .stdin(Stdio::null())
             .stdout(Stdio::from(qemu_stdout))
@@ -237,30 +238,49 @@ impl Guest {
         }
     }
 
-    fn ssh(&self, remote: &str) -> Result<Output, std::io::Error> {
-        Command::new("ssh")
-            .arg("-i")
-            .arg(&self.private_key)
-            .arg("-p")
-            .arg(self.port.to_string())
-            .arg("-o")
-            .arg("BatchMode=yes")
-            .arg("-o")
-            .arg("IdentitiesOnly=yes")
-            .arg("-o")
-            .arg("StrictHostKeyChecking=no")
-            .arg("-o")
-            .arg("UserKnownHostsFile=/dev/null")
-            .arg("-o")
-            .arg("LogLevel=ERROR")
-            .arg("-o")
-            .arg("ConnectTimeout=2")
-            .arg("-o")
-            .arg("ConnectionAttempts=1")
-            .arg("root@127.0.0.1")
-            .arg(remote)
-            .current_dir(&self.root)
-            .output()
+    fn ssh(&self, remote: &str) -> Result<Output, Box<dyn std::error::Error>> {
+        let output_root = tempfile::Builder::new().prefix("ssh-").tempdir_in(&self.root)?;
+        let port = self.port.to_string();
+        let mut arguments = [
+            "-F",
+            "none",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "IdentitiesOnly=yes",
+            "-o",
+            "StrictHostKeyChecking=no",
+            "-o",
+            "UserKnownHostsFile=/dev/null",
+            "-o",
+            "LogLevel=ERROR",
+            "-o",
+            "ConnectTimeout=2",
+            "-o",
+            "ConnectionAttempts=1",
+            "-o",
+            "ServerAliveInterval=2",
+            "-o",
+            "ServerAliveCountMax=3",
+        ]
+        .map(OsStr::new)
+        .to_vec();
+        arguments.extend([
+            OsStr::new("-i"),
+            self.private_key.as_os_str(),
+            OsStr::new("-p"),
+            OsStr::new(&port),
+            OsStr::new("root@127.0.0.1"),
+            OsStr::new(remote),
+        ]);
+        let output = super::super::process::bounded_command(
+            Path::new("ssh"),
+            arguments,
+            &self.root,
+            &output_root.path().join("stdout"),
+            &output_root.path().join("stderr"),
+        )?;
+        Ok(Output { status: output.status, stdout: output.stdout, stderr: output.stderr })
     }
 
     fn require_running(&mut self) -> Result<(), Box<dyn std::error::Error>> {
