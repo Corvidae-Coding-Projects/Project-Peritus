@@ -11,7 +11,7 @@ import time
 import tomllib
 
 from common import (ROOT, FORMATS, architecture, container, digest, engine, image_name,
-                    maintainer, output_directory, package_format, run, version)
+                    maintainer, output_directory, package_build_jobs, package_format, run, version)
 from source import debian_metadata, prepare
 
 
@@ -37,6 +37,7 @@ def restore_image():
 def build():
     kind = package_format()
     maintainer()
+    jobs = package_build_jobs()
     out = output_directory(kind)
     started = time.time_ns()
     (ROOT / "target").mkdir(exist_ok=True)
@@ -47,8 +48,8 @@ def build():
             debian_metadata(source, epoch)
             shutil.copyfile(archive, build_root / f"peritus_{version()}.orig.tar.gz")
             container(kind, [(build_root, "/build", False)],
-                      "dpkg-buildpackage", "--build=full", "--no-sign", "--jobs=2",
-                      "--", f"/build/{source.name}")
+                      "dpkg-buildpackage", "--build=full", "--no-sign", f"--jobs={jobs}",
+                      "--", f"/build/{source.name}", build_jobs=jobs)
             suffixes = (".deb", ".dsc", ".changes", ".buildinfo", ".orig.tar.gz", ".debian.tar.xz")
             files = [p for p in build_root.iterdir() if p.name.endswith(suffixes)]
         else:
@@ -65,7 +66,7 @@ def build():
                       "--define", f"peritus_packager {maintainer()}",
                       "--define", f"peritus_changelog_date {changelog_date}",
                       "/build/SPECS/peritus.spec",
-                      environment=[f"SOURCE_DATE_EPOCH={epoch}"])
+                      environment=[f"SOURCE_DATE_EPOCH={epoch}"], build_jobs=jobs)
             files = list((build_root / "RPMS").rglob("*.rpm"))
             files += list((build_root / "SRPMS").glob("*.rpm"))
         if not any(p.suffix == (".deb" if kind == "deb" else ".rpm") for p in files):
@@ -80,6 +81,7 @@ def build():
         provenance["build_observation"] = {
             "host": socket.gethostname(),
             "invocation": build_root.name,
+            "cargo_build_jobs": jobs,
             "started_unix_nanos": started,
             "finished_unix_nanos": time.time_ns(),
         }

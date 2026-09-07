@@ -42,6 +42,14 @@ def package_format():
     return value
 
 
+def package_build_jobs():
+    """Use bounded, explicit build capacity without changing Cargo profiles or tests."""
+    value = os.environ.get("PERITUS_PACKAGE_BUILD_JOBS", "2")
+    if value not in ("1", "2", "3", "4"):
+        raise ValueError("PERITUS_PACKAGE_BUILD_JOBS must be 1, 2, 3, or 4")
+    return int(value)
+
+
 def engine():
     value = os.environ.get("PERITUS_CONTAINER_ENGINE", "docker")
     if value not in ("docker", "podman"):
@@ -74,7 +82,10 @@ def output_directory(kind):
     return path
 
 
-def container(kind, mounts, *command, network="none", root=False, environment=(), forward_agent=False):
+def container(kind, mounts, *command, network="none", root=False, environment=(),
+              forward_agent=False, build_jobs=2):
+    if type(build_jobs) is not int or build_jobs not in (1, 2, 3, 4):
+        raise ValueError("container build_jobs must be an integer from 1 through 4")
     args = [engine(), "run", "--rm", "--network", network]
     if engine() == "podman" and forward_agent:
         # The host agent socket must retain its original SELinux label. This changes
@@ -89,5 +100,5 @@ def container(kind, mounts, *command, network="none", root=False, environment=()
         args.extend(["--volume", f"{source}:{target}:{'ro' if readonly else 'rw'}{label}"])
     for entry in environment:
         args.extend(["--env", entry])
-    args.extend(["--env", "CARGO_BUILD_JOBS=2", image_name(kind)])
+    args.extend(["--env", f"CARGO_BUILD_JOBS={build_jobs}", image_name(kind)])
     return run(*args, *command)

@@ -119,7 +119,8 @@ class BuildTests(unittest.TestCase):
 
             def compile_fixture(kind, mounts, *arguments, **options):
                 self.assertEqual(kind, "rpm")
-                self.assertEqual(options, {"environment": ["SOURCE_DATE_EPOCH=1234567890"]})
+                self.assertEqual(options, {"environment": ["SOURCE_DATE_EPOCH=1234567890"],
+                                           "build_jobs": 2})
                 self.assertIn("use_source_date_epoch_as_buildtime 1", arguments)
                 self.assertIn("build_mtime_policy clamp_to_source_date_epoch", arguments)
                 self.assertIn("_buildhost peritus-reproducible", arguments)
@@ -134,11 +135,13 @@ class BuildTests(unittest.TestCase):
                     patch.object(build, "container", side_effect=compile_fixture), \
                     patch.object(build, "run", return_value="sha256:fixture-image"), \
                     patch.object(build.socket, "gethostname", return_value="actual-host"), \
-                    patch.object(build.time, "time_ns", side_effect=[2000000000000, 3000000000000]):
+                    patch.object(build.time, "time_ns", side_effect=[2000000000000, 3000000000000]), \
+                    patch.dict(os.environ, PERITUS_PACKAGE_BUILD_JOBS="2"):
                 build.build()
             record = json.loads((output / "peritus-rpm-build.json").read_text())
             observation = record["build_observation"]
             self.assertEqual(observation["host"], "actual-host")
+            self.assertEqual(observation["cargo_build_jobs"], 2)
             self.assertEqual(observation["started_unix_nanos"], 2000000000000)
             self.assertEqual(observation["finished_unix_nanos"], 3000000000000)
             self.assertTrue((root / "target" / observation["invocation"]).is_dir())

@@ -117,6 +117,35 @@ fn distribution_matrix_builds_and_signs_each_format_on_each_native_architecture(
 }
 
 #[test]
+fn release_build_capacity_is_scoped_without_loosening_profiles_or_deadlines() {
+    let document = workflow(".github/workflows/release.yml");
+    assert_eq!(document["env"]["CARGO_BUILD_JOBS"].as_str(), Some("2"));
+    let jobs = &document["jobs"];
+    assert_eq!(
+        jobs["build-binary"]["env"]["CARGO_BUILD_JOBS"].as_str(),
+        Some("${{ matrix.target.os == 'macos-15-intel' && '4' || '2' }}")
+    );
+    assert_eq!(jobs["distro-build"]["env"]["PERITUS_PACKAGE_BUILD_JOBS"].as_str(), Some("4"));
+    for (name, job) in jobs.as_hash().expect("release jobs") {
+        assert_eq!(job["timeout-minutes"].as_i64(), Some(10));
+        if name.as_str() != Some("distro-build") {
+            assert!(job["env"]["PERITUS_PACKAGE_BUILD_JOBS"].is_badvalue());
+        }
+    }
+    let commands = jobs["build-binary"]["steps"]
+        .as_vec()
+        .expect("binary build steps")
+        .iter()
+        .filter_map(|step| step["run"].as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(commands.len(), 1);
+    assert_eq!(
+        commands[0],
+        "cargo build --release --locked --package ${{ matrix.target.package }} --bin ${{ matrix.target.binary }}"
+    );
+}
+
+#[test]
 fn tag_workflow_completes_a_draft_without_a_publication_job() {
     let document = workflow(".github/workflows/release.yml");
     let jobs = document["jobs"].as_hash().expect("release jobs");

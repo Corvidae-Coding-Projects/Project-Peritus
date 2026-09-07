@@ -228,6 +228,9 @@ jobs:
           - { os: windows-11-arm, package: peritus-sandbox-windows, binary: peritus-windows-sandbox-helper, artifact: peritus-windows-sandbox-helper.exe }
     runs-on: ${{ matrix.target.os }}
     timeout-minutes: 10
+    env:
+      # The public Intel macOS runner has four CPUs; keep other targets at two.
+      CARGO_BUILD_JOBS: ${{ matrix.target.os == 'macos-15-intel' && '4' || '2' }}
     steps:
       - name: Check out tagged source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -429,6 +432,8 @@ jobs:
     env:
       PERITUS_PACKAGE_FORMAT: ${{ matrix.format }}
       PERITUS_PACKAGE_MAINTAINER: ${{ vars.PERITUS_PACKAGE_MAINTAINER }}
+      # Both standard public Linux architectures have four CPUs and 16 GiB RAM.
+      PERITUS_PACKAGE_BUILD_JOBS: "4"
     steps:
       - name: Check out tagged source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

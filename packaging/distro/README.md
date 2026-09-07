@@ -29,6 +29,15 @@ distribution build dependencies are resolved when the builder is created.
 The exact builder image ID is recorded, not asserted to be timeless or bitwise
 reproducible. CI saves and restores that same image between jobs.
 
+Local builds default to two Cargo jobs. `PERITUS_PACKAGE_BUILD_JOBS` accepts
+only `1`, `2`, `3`, or `4`; it controls Cargo compilation and Debian's package
+build parallelism and is retained in the build observation. The public Linux
+release jobs select four to use their existing
+[four-CPU standard runners](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
+This does not alter the release profile, skip package tests, enable network access,
+or extend the ten-minute CI job ceiling. Signing and verification keep their
+existing two-job setting. Hosted completion still requires observed validation.
+
 Output is `dist/packages/deb` or `dist/packages/rpm`. Existing output is never
 overwritten. Move a previous qualification set aside before rebuilding.
 The build workspace is retained under `target/package-<format>-*`, including
