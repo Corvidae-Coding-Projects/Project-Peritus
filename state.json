@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1339,
+  "next_comment_id": 1340,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-07T14:56:44.612847122Z",
+      "updated_at": "2026-09-07T15:03:31.440488194Z",
       "labels": [
         "release"
       ],
@@ -1826,6 +1826,15 @@
           "kind": "note",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAhpSgbU/w2kGJOhk7uEej+JK6vwCN5I9kL8/0sFimhz5o2suqlNWn/+RdxiWyoIoap7SYVAi+tHIVhx8ptKEHBw=="
+        },
+        "ac375bfb-6591-42f4-b9ac-5ee043c1f3e0": {
+          "display_id": 1339,
+          "author": "QWDj",
+          "content": "Exact9fa unsigned34133906605 actualWindowshelperpairs nowbyte-identical: x86_64293376B4134cd9305ac3835b17db6801e96e81abd278a812b91f478c4d4cd78b0e2a5dd; ARM64270336B92e70c53ad2188d2648c374d9f52908060b84f1101c83a3a84861cfa8ebc7708. FourouterGitHubZIP length/digests/run9fa binding checked; originalPEexpectedmachinesandtype16REPROmarkers, actualnativeprimarylogsconfirmcargo rustc/Brepro. No bytesexecuted/rewritten. Readonlyreporttarget/h4-9fa5228c-windows-helpers-comparison.json; other6Windowsbinarypairs/full6archivepairs stillpending. NativeIntelMaclibraryjobs101780265674/101780265726 passed8m14/7m07, all48finalbinaryjobsstarted/queued. H3currentarchitecturefindingretainedseparately, awaitingownerpersistence-repairdirection. Trackedsource9faunchanged.",
+          "created_at": "2026-09-07T15:03:31.437035457Z",
+          "kind": "observation",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAHidknNumMI2Mw3nGd1JJyfvRTDwVDW0L+HC1ScKOlYl6c5tfafVnybngN5oyadpLme0XjgU+Lq4qJskQN21ICA=="
         },
         "ae19cc53-25d5-4f66-9536-a90a81650197": {
           "display_id": 1239,
@@ -13064,8 +13073,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-07T14:56:44.612847122Z",
+    "timestamp": "2026-09-07T15:03:31.440488194Z",
     "agent_id": "QWDj",
-    "agent_seq": 115
+    "agent_seq": 116
   }
 }
