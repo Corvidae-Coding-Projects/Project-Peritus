@@ -23,6 +23,14 @@ is the equivalent developer convenience interface.
 
 ## Focused checks
 
+Foundation and Gate A run `ci-shard test-daemon app-shell` separately from the
+ordinary `ci-shard test app-shell` job on Linux, macOS, and Windows. Together
+they select every application-shell package exactly once, with locked dependencies,
+all targets and features, serial tests, and the unchanged ten-minute job limit.
+Daemon build, Clippy, documentation, and Verus checks remain in the existing
+application-shell shards. Exact workflow checks reject missing, repeated, or
+misrouted daemon jobs.
+
 Native product CI builds each of its seven native binaries in a separate bounded job on each
 platform, then assembles the downloaded binaries in a separate preparation job. Artifact names
 separate the platform and binary with a double hyphen so ARM and Intel macOS downloads cannot
