@@ -11,6 +11,8 @@ pub(crate) enum Operation {
     Library,
     DaemonBinary,
     CliBinary,
+    WindowsBinary,
+    WindowsSqliteCheck,
 }
 
 impl Operation {
@@ -21,31 +23,50 @@ impl Operation {
             "release-daemon-library" => Some(Self::Library),
             "release-daemon-binary" => Some(Self::DaemonBinary),
             "release-cli-binary" => Some(Self::CliBinary),
+            "release-windows-binary" => Some(Self::WindowsBinary),
+            "release-windows-sqlite-check" => Some(Self::WindowsSqliteCheck),
             _ => None,
         }
     }
 }
 
 pub(crate) fn run(root: &Path, operation: Operation) -> Result<(), XtaskError> {
-    let role = if operation == Operation::Compare {
+    let role = if matches!(
+        operation,
+        Operation::Compare | Operation::WindowsBinary | Operation::WindowsSqliteCheck
+    ) {
         None
     } else {
         Some(env::var("PERITUS_RELEASE_BUILD_ROLE").map_err(|_| {
             XtaskError::invocation("PERITUS_RELEASE_BUILD_ROLE must be primary or independent")
         })?)
     };
+    let binary = if operation == Operation::WindowsBinary {
+        Some(env::var("PERITUS_RELEASE_BINARY").map_err(|_| {
+            XtaskError::invocation("PERITUS_RELEASE_BINARY must select a reviewed Windows binary")
+        })?)
+    } else {
+        None
+    };
     super::run(
-        &mut command(root, operation, role.as_deref())?,
+        &mut command(root, operation, role.as_deref(), binary.as_deref())?,
         "run native release build operation",
     )
 }
 
-fn command(root: &Path, operation: Operation, role: Option<&str>) -> Result<Command, XtaskError> {
+fn command(
+    root: &Path,
+    operation: Operation,
+    role: Option<&str>,
+    binary: Option<&str>,
+) -> Result<Command, XtaskError> {
     let mut command = Command::new(if cfg!(windows) { "python" } else { "python3" });
     let script =
         if matches!(operation, Operation::Library | Operation::DaemonBinary | Operation::CliBinary)
         {
             "packaging/native_build.py"
+        } else if matches!(operation, Operation::WindowsBinary | Operation::WindowsSqliteCheck) {
+            "packaging/windows_release.py"
         } else {
             "packaging/rebuild.py"
         };
@@ -71,6 +92,22 @@ fn command(root: &Path, operation: Operation, role: Option<&str>) -> Result<Comm
             command.env("PERITUS_RELEASE_BUILD_ROLE", require_role(role)?);
             command.args(["binary", binary]);
         }
+        Operation::WindowsBinary => {
+            let binary = binary
+                .filter(|value| {
+                    matches!(
+                        *value,
+                        "peritus" | "peritusd" | "peritus-tui" | "peritus-windows-sandbox-helper"
+                    )
+                })
+                .ok_or_else(|| {
+                    XtaskError::invocation("release requires a reviewed Windows binary")
+                })?;
+            command.args(["build", binary]);
+        }
+        Operation::WindowsSqliteCheck => {
+            command.arg("check-sqlite");
+        }
     }
     Ok(command)
 }
@@ -94,14 +131,14 @@ mod tests {
                 Operation::DaemonBinary,
                 Operation::CliBinary,
             ] {
-                assert!(command(root, operation, role).is_err());
+                assert!(command(root, operation, role, None).is_err());
             }
         }
         for role in ["primary", "independent"] {
-            let command = command(root, Operation::Record, Some(role)).expect("record");
+            let command = command(root, Operation::Record, Some(role), None).expect("record");
             assert_eq!(command.get_args().skip(1).collect::<Vec<_>>(), ["record", "dist", role]);
         }
-        let command = command(root, Operation::Compare, None).expect("comparison");
+        let command = command(root, Operation::Compare, None, None).expect("comparison");
         assert_eq!(
             command.get_args().skip(1).collect::<Vec<_>>(),
             [
@@ -121,7 +158,7 @@ mod tests {
             (Operation::CliBinary, vec!["binary", "peritus"]),
         ] {
             for role in ["primary", "independent"] {
-                let command = command(Path::new("."), operation, Some(role)).expect("phase");
+                let command = command(Path::new("."), operation, Some(role), None).expect("phase");
                 let script = Path::new(".").join("packaging/native_build.py");
                 assert_eq!(command.get_args().next(), Some(script.as_os_str()));
                 assert_eq!(command.get_args().skip(1).collect::<Vec<_>>(), arguments);
@@ -130,5 +167,25 @@ mod tests {
                 }));
             }
         }
+    }
+
+    #[test]
+    fn windows_operations_reject_arbitrary_binaries_and_use_the_reviewed_script() {
+        let root = Path::new(".");
+        for binary in [None, Some(""), Some("other"), Some("peritus; exit 0")] {
+            assert!(command(root, Operation::WindowsBinary, None, binary).is_err());
+        }
+        for binary in ["peritus", "peritusd", "peritus-tui", "peritus-windows-sandbox-helper"] {
+            let command =
+                command(root, Operation::WindowsBinary, None, Some(binary)).expect("binary");
+            assert_eq!(command.get_args().skip(1).collect::<Vec<_>>(), ["build", binary]);
+            assert_eq!(
+                command.get_args().next(),
+                Some(root.join("packaging/windows_release.py").as_os_str())
+            );
+        }
+        let command =
+            command(root, Operation::WindowsSqliteCheck, None, None).expect("SQLite check");
+        assert_eq!(command.get_args().skip(1).collect::<Vec<_>>(), ["check-sqlite"]);
     }
 }

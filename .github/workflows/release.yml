@@ -275,8 +275,13 @@ jobs:
         run: >-
           cargo build --release --locked --package ${{ matrix.target.package }}
           --bin ${{ matrix.target.binary }}
-      - name: Link the native Windows release binary deterministically
-        if: ${{ runner.os == 'Windows' }}
+      - name: Compile native Windows x86-64 with the pinned reproducible C compiler
+        if: ${{ matrix.target.os == 'windows-2025' }}
+        env:
+          PERITUS_RELEASE_BINARY: ${{ matrix.target.binary }}
+        run: cargo run --locked --package xtask -- release-windows-binary
+      - name: Link the native Windows ARM64 release binary deterministically
+        if: ${{ matrix.target.os == 'windows-11-arm' }}
         run: >-
           cargo rustc --release --locked --package ${{ matrix.target.package }}
           --bin ${{ matrix.target.binary }} -- -C link-arg=/Brepro

@@ -235,6 +235,14 @@ The package contains `manifest.toml`, `SHA256SUMS`, four executables, lifecycle 
 Native CI runs the lifecycle and all 18 H2 scenarios on each release target.
 
 Tagged release jobs build each binary on its target system.
+Windows x86-64 uses native `clang-cl` 20.1.8 for C dependencies and the MSVC ABI,
+with the locked Rust toolchain and `/Brepro` final linking. This avoids an
+observed MSVC C-code generation difference between otherwise identical SQLite
+builds. The compiler version, target and executable hash are recorded in build
+logs; unexpected compiler versions fail rather than falling back. CI also
+compares two fresh bundled SQLite compilations. Windows ARM64 retains its
+native toolchain. All six targets still require byte-identical independent
+release archives; no executable bytes are rewritten to make comparisons pass.
 They attach archives, checksums, inventories, SBOMs, provenance, and GitHub attestations to a draft release.
 Publication requires all six target archives and their evidence, plus signed
 Debian/RPM bundles and main packages for both Linux architectures.

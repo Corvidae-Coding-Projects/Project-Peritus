@@ -33,6 +33,8 @@ fn native_rebuild_commands_select_exact_operations() {
         ("release-daemon-library", Operation::Library),
         ("release-daemon-binary", Operation::DaemonBinary),
         ("release-cli-binary", Operation::CliBinary),
+        ("release-windows-binary", Operation::WindowsBinary),
+        ("release-windows-sqlite-check", Operation::WindowsSqliteCheck),
     ] {
         assert_eq!(
             parse([OsString::from(name)]).expect("rebuild command"),
