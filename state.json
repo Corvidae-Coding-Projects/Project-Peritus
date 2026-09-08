@@ -1,5 +1,5 @@
 {
-  "next_display_id": 58,
+  "next_display_id": 59,
   "next_comment_id": 1404,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -23,6 +23,7 @@
     "3bef48a1-7556-4245-8dc8-a4326deff3ea": 16,
     "3cc3f0d8-ec40-44e7-9c99-9b245adaea3e": 22,
     "47cec64d-270a-4ee4-8aea-3dd626c1447e": 40,
+    "4def40a8-18c1-4e39-9b0b-9712055f3803": 58,
     "4f2ebc95-0b8b-4acb-b8c0-eba2775c3f7b": 10,
     "4fb07c6c-0d6b-4458-8aa8-0ae9d6bd810a": 38,
     "52028605-f0c2-43fe-b0ae-0e0db829553f": 47,
@@ -8798,6 +8799,17 @@
         }
       }
     },
+    "4def40a8-18c1-4e39-9b0b-9712055f3803": {
+      "uuid": "4def40a8-18c1-4e39-9b0b-9712055f3803",
+      "display_id": 58,
+      "title": "Audit all interactive slash commands on develop",
+      "description": "User requested isolated live Peritus testing of all 22 slash commands, including apparent noops; preserve personal state and root checkout. Record observed outcomes and concrete fixes before implementation.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "krvx",
+      "created_at": "2026-09-08T16:03:25.595232157Z",
+      "updated_at": "2026-09-08T16:03:25.595232157Z"
+    },
     "4f2ebc95-0b8b-4acb-b8c0-eba2775c3f7b": {
       "uuid": "4f2ebc95-0b8b-4acb-b8c0-eba2775c3f7b",
       "display_id": 10,
@@ -13645,8 +13657,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-08T11:21:28.751642305Z",
-    "agent_id": "QWDj",
-    "agent_seq": 189
+    "timestamp": "2026-09-08T16:03:25.595232157Z",
+    "agent_id": "krvx",
+    "agent_seq": 1
   }
 }
