@@ -1,6 +1,6 @@
 {
   "next_display_id": 62,
-  "next_comment_id": 1415,
+  "next_comment_id": 1416,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10235,8 +10235,17 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-08T17:43:12.163870150Z",
-      "updated_at": "2026-09-08T17:48:41.978792213Z",
+      "updated_at": "2026-09-08T18:12:50.036707659Z",
       "comments": {
+        "48a28e3e-b4f4-4b35-b490-fa12161142e0": {
+          "display_id": 1415,
+          "author": "krvx",
+          "content": "User directed reuse of the existing production pipeline from Chat, with in-place delivery adaptation for direct folders. Reverted only the experimental issue61 engineering contract/review layer; preserved prior issue59 narration and issue60 model-selection changes. Existing design, gates, reviewer, fixer and checkpoint ownership must remain authoritative.",
+          "created_at": "2026-09-08T18:12:50.030682905Z",
+          "kind": "decision",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAFwlC9YEuBbDJk0JiAJtlt0auSMelGWJIy/njh/qC3Lyr5tNgcN8NSzq68DCmtYXd2hmQTqyId2vWn3c6s0PdDA=="
+        },
         "8364c90e-992e-4827-a3b1-acc5cc90a40b": {
           "display_id": 1414,
           "author": "krvx",
@@ -13804,8 +13813,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-08T17:48:41.978792213Z",
+    "timestamp": "2026-09-08T18:12:50.036707659Z",
     "agent_id": "krvx",
-    "agent_seq": 23
+    "agent_seq": 24
   }
 }
