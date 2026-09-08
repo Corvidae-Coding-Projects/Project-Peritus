@@ -1,6 +1,6 @@
 {
   "next_display_id": 62,
-  "next_comment_id": 1428,
+  "next_comment_id": 1429,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -9079,7 +9079,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-08T16:37:48.739341882Z",
-      "updated_at": "2026-09-08T19:27:58.946438338Z",
+      "updated_at": "2026-09-08T19:28:09.514922021Z",
       "comments": {
         "03bfd23d-18b4-46e1-8c9f-5dd2a029fc03": {
           "display_id": 1409,
@@ -9107,6 +9107,15 @@
           "kind": "note",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAdCCZeOqmpKTtoSzkXXObihLfMRECmc06O1D4+HqaGzMIGY0zNwXgHuP2C/p6QBBzEdQrqJtpwKuZFfwa6GcuCQ=="
+        },
+        "34b4ce75-721d-4bff-af28-b0e9c776a0a8": {
+          "display_id": 1428,
+          "author": "krvx",
+          "content": "UI-only chatter/idler fix ready in develop worktree, uncommitted and not installed: 9 modified tracked paths plus new model/chat/working.rs. All 50 TUI tests, strict Clippy, build, fmt/diff pass. Installed app is still ac716a06. User may request installation or commit next.",
+          "created_at": "2026-09-08T19:28:09.511521885Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPkQdJwU3eYlEdJUcbBF47aw6paNNdBqBy0E1z1I0GZRdBaSZMRKYEnOcOLok04Qie0OAoM+2URovakNmZ34yDA=="
         },
         "47edcfa3-2063-4154-abf4-397ac56e9d4a": {
           "display_id": 1427,
@@ -13917,8 +13926,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-08T19:28:04.234682647Z",
+    "timestamp": "2026-09-08T19:28:09.514922021Z",
     "agent_id": "krvx",
-    "agent_seq": 43
+    "agent_seq": 44
   }
 }
