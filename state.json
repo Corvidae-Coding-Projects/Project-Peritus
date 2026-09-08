@@ -1,5 +1,5 @@
 {
-  "next_display_id": 59,
+  "next_display_id": 60,
   "next_comment_id": 1408,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -26,6 +26,7 @@
     "4def40a8-18c1-4e39-9b0b-9712055f3803": 58,
     "4f2ebc95-0b8b-4acb-b8c0-eba2775c3f7b": 10,
     "4fb07c6c-0d6b-4458-8aa8-0ae9d6bd810a": 38,
+    "510ed474-3a7b-4e60-ba8d-0ea5c67e9eca": 59,
     "52028605-f0c2-43fe-b0ae-0e0db829553f": 47,
     "5451d33a-0a54-49ff-98d0-eec32c2b67a5": 28,
     "5542a0ec-9091-4c82-b341-df0b119bc0b1": 3,
@@ -9027,6 +9028,17 @@
         }
       }
     },
+    "510ed474-3a7b-4e60-ba8d-0ea5c67e9eca": {
+      "uuid": "510ed474-3a7b-4e60-ba8d-0ea5c67e9eca",
+      "display_id": 59,
+      "title": "Stream readable conversation progress during work",
+      "description": "On develop: make Peritus emit useful visible text while working, fix buffering from provider runtime through TUI, retain cancellation and privacy boundaries, add focused regression and live checks.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "krvx",
+      "created_at": "2026-09-08T16:37:48.739341882Z",
+      "updated_at": "2026-09-08T16:37:48.739341882Z"
+    },
     "52028605-f0c2-43fe-b0ae-0e0db829553f": {
       "uuid": "52028605-f0c2-43fe-b0ae-0e0db829553f",
       "display_id": 47,
@@ -13695,8 +13707,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-08T16:18:35.901137809Z",
+    "timestamp": "2026-09-08T16:37:48.739341882Z",
     "agent_id": "krvx",
-    "agent_seq": 7
+    "agent_seq": 8
   }
 }
