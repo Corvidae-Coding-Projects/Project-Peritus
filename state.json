@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1390,
+  "next_comment_id": 1391,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-08T02:53:37.565573765Z",
+      "updated_at": "2026-09-08T03:09:53.453004188Z",
       "labels": [
         "release"
       ],
@@ -1682,6 +1682,15 @@
           "kind": "result",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAnZOoWACUkQ3lrN1YU2cQKBleiz/OInLxLTk4symyofj5gNuZmV42PQQ6eBVfeI/JpqRzoLKsLe5ZElk6sNDFDQ=="
+        },
+        "54b85fbe-94b4-4dd9-bb99-e1876436c7a2": {
+          "display_id": 1390,
+          "author": "QWDj",
+          "content": "Fresh exact-head manual validation 34181631010 on 59c1a8ca has both native Windows daemon library stages passing: independent job 101921728895 took 7m47s, primary 101921729030 took 7m51s, including artifact retention under the unchanged 10-minute ceiling. Compiler identity matches pinned clang-cl 20.1.8. Eighteen validation jobs pass; Intel Mac stages are queued, so final binary and previous-path comparisons are still pending. PR55 has 69 passing checks and no current-head failures at this snapshot.",
+          "created_at": "2026-09-08T03:09:53.449298736Z",
+          "kind": "observation",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAvjhIxvvMVoTxmn5j3+Dn8EGN9b/9Hs67tgmMN3SYrHZ5L+G0BWyCoY+x+y/KJa4DgZSIOTPbcraS+36tx7A1Cg=="
         },
         "58adf2e5-cbed-4452-afa7-e8bf4bcec7f4": {
           "display_id": 1337,
@@ -13523,8 +13532,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-08T02:53:37.565573765Z",
+    "timestamp": "2026-09-08T03:09:53.453004188Z",
     "agent_id": "QWDj",
-    "agent_seq": 174
+    "agent_seq": 175
   }
 }
