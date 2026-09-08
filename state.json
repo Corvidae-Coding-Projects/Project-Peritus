@@ -1,6 +1,6 @@
 {
   "next_display_id": 60,
-  "next_comment_id": 1409,
+  "next_comment_id": 1410,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -9041,8 +9041,17 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-08T16:37:48.739341882Z",
-      "updated_at": "2026-09-08T16:56:24.456053632Z",
+      "updated_at": "2026-09-08T16:56:30.807765298Z",
       "comments": {
+        "03bfd23d-18b4-46e1-8c9f-5dd2a029fc03": {
+          "display_id": 1409,
+          "author": "krvx",
+          "content": "Ready on develop, uncommitted. Shared interactive prompt requests model-authored progress alongside tools; D0 emits honest 20-second provider-wait observations while awaiting the same future, stops notices once text starts, and cancels on observation failure. G0 persists readable start/build-stage/tool narration and coalesces waits; TUI compacts routine tool rows. No model, tool policy, wire format, database schema, or provider terminal validation changed. Current Codex account transport remains message-buffered, not token-streamed. Full affected-crate tests passed (agent, product-runner, daemon, TUI); strict all-target/all-feature affected Clippy passed; workspace all-target check, format, and diff checks passed. Additional interactive build regression reached qualified Complete. Live rebuilt app with gpt-5.6-sol showed immediate start, model-authored locating/reading updates, and final prose; no fixture source changes. Evidence /tmp/peritus-narration-qa.RiAMVz/live-conversation-screens.json, run ab927ea908225e471d83ec3a83a85f7b. Own daemon shutdown clean. Installed release and user daemon unchanged. Root-cause repair plus local presentation correction; ready for review/install, no commit or push.",
+          "created_at": "2026-09-08T16:56:30.804633399Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABARcN70SkhA3fyU5+veelsrHubN5vcEwhmbmNQBdEXR8jyuH0h+F8ks1kSEqfW58hzIglt7GefUztKn8uN8S6ZAg=="
+        },
         "8fd3935d-5aea-46d1-9333-93c884e5b153": {
           "display_id": 1408,
           "author": "krvx",
@@ -13722,8 +13731,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-08T16:56:24.456053632Z",
+    "timestamp": "2026-09-08T16:56:30.807765298Z",
     "agent_id": "krvx",
-    "agent_seq": 11
+    "agent_seq": 12
   }
 }
