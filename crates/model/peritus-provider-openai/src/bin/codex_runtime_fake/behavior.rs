@@ -31,6 +31,21 @@ pub(super) fn run() {
         }
     }
     let (output, exit) = scenario::output(model, invocation);
+    if let Some(path) = contract::argument_value(&arguments, "--output-last-message") {
+        let final_message = output
+            .lines()
+            .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+            .filter(|event| {
+                event["type"] == "item.completed" && event["item"]["type"] == "agent_message"
+            })
+            .filter_map(|event| event["item"]["text"].as_str().map(str::to_owned))
+            .next_back();
+        if let Some(message) = final_message
+            && !model.contains("missing-final")
+        {
+            std::fs::write(path, message).expect("fake final response");
+        }
+    }
     let _ = std::io::stdout().write_all(output.as_bytes());
     let _ = std::io::stdout().flush();
     if exit != 0 {

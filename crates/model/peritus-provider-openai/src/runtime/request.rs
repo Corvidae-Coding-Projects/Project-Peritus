@@ -16,6 +16,7 @@ pub struct RuntimeRequest {
     pub schema: Vec<u8>,
     pub allowed_tools: std::collections::BTreeSet<String>,
     pub max_calls: usize,
+    pub min_calls: usize,
     images: Vec<RuntimeImage>,
     effort: &'static str,
 }
@@ -64,6 +65,7 @@ pub fn encode(request: &ModelRequest) -> Result<RuntimeRequest, ProviderCoreErro
         schema: contract.bytes,
         allowed_tools: contract.allowed_tools,
         max_calls: contract.max_calls,
+        min_calls: contract.min_calls,
         images,
         effort,
     })

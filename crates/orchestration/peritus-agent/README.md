@@ -39,6 +39,12 @@ retry planner. Each wait has stable bounded jitter, honors a bounded provider `R
 promptly cancellable, and records its reason, attempt, elapsed time, and selected delay before
 sleeping.
 
+The optional `DeveloperTrace::account` callback reports admitted model attempts, completed tool
+observations, compactions, and accepted per-response usage high-water snapshots immediately.
+Hosts can retain accounting even when a later error or cancellation prevents a successful loop
+outcome. Usage events replace the preceding snapshot for that request; they are not additive.
+The default callback is inert for existing trace implementations and does not change trace bytes.
+
 Model output is never tool authority, and D0 completion is never run acceptance. B0/B1/C0/C4 own
 the receipts that authorize effects; later D1/D2/E0 components own gates, review, orchestration,
 and acceptance.

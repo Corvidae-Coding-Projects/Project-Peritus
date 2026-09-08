@@ -62,6 +62,15 @@ media capability is checked against the current task. Safety, refusal, cancellat
 transport, and normalized ambiguous acceptance never trigger a switch. Each accepted transition is
 written to the append-only trace before its progress counter advances.
 
+Recovery progress is a content change, not a larger inspection scope: enrolling an unchanged or
+absent path does not replenish retry allowances. Policy, cancellation, integrity, and ambiguous
+terminals cannot be restarted merely because an earlier call changed a file. Malformed-response
+recovery supplies explicit format guidance without replaying effects. Model requests, completed
+tool calls, compactions, and accepted usage snapshots update shared accounting as they occur, so
+later failures or cancellation cannot erase observed work; repeated usage snapshots are not added
+twice. Workspace tool arguments must match the published closed schema before scope enrollment,
+receipts, or execution. Missing-file reads return greenfield-aware corrective guidance.
+
 Writable tool receipts bind deterministic role/invocation/effect identity, provider call ID, and
 canonical request digest to `Started`, `Completed`, or `Ambiguous` state. Exact completed calls
 replay their bounded result. A command left in `Started` across restart is never launched again;

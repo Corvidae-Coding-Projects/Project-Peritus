@@ -11,7 +11,7 @@ mod storage;
 mod tests;
 mod tools;
 
-pub use driver::run_live_invocation;
+pub use driver::{InvocationAccounting, run_live_invocation};
 pub use port::LocalContextHandle;
 pub use tools::{MemoryTools, definitions as memory_tool_definitions};
 

@@ -1,7 +1,7 @@
 //! Bounded provider retries and durable public-text delivery.
 use super::super::{
-    DeveloperActivity, DeveloperInteraction, DeveloperLoopError, DeveloperLoopRequest,
-    DeveloperTrace, DeveloperTraceEvent, DeveloperUsage,
+    DeveloperAccountingEvent, DeveloperActivity, DeveloperInteraction, DeveloperLoopError,
+    DeveloperLoopRequest, DeveloperTrace, DeveloperTraceEvent, DeveloperUsage,
     model_request::{ModelTurnKind, build_model_request},
     retry::DeveloperRetryPlanner,
 };
@@ -62,6 +62,7 @@ pub(super) async fn complete_turn(
             port.applied(revision)?;
             port.observe(DeveloperActivity::ModelStarted { model: profile.model().as_str() })?;
         }
+        trace.account(DeveloperAccountingEvent::ModelRequest { retry: attempt > 1 })?;
         match drive(
             provider,
             model_request,
@@ -119,26 +120,44 @@ async fn drive(
             .map_err(DeveloperLoopError::from)
         })
         .await?;
-    loop {
-        match progress
-            .wait(async { session.pull_one().await.map_err(DeveloperLoopError::from) })
-            .await?
-        {
-            ModelAdvance::Closed => return Ok(session),
-            ModelAdvance::EnvelopePending { .. } => {
-                let encoded = session.encode_pending()?;
-                trace.record(DeveloperTraceEvent::ProviderEnvelope(&encoded))?;
-                let public_text = session.pending().and_then(|envelope| match envelope.event() {
-                    ModelEvent::TextDelta { fragment, .. } => Some(fragment.expose().to_vec()),
-                    _ => None,
-                });
-                let _ = session.accept_durable_pending()?;
-                if let (Some(port), Some(text)) = (interaction, public_text) {
-                    // Never insert waiting messages between fragments of public assistant text.
-                    progress.text_received();
-                    port.observe(DeveloperActivity::Text(&text))?;
+    let result = async {
+        loop {
+            match progress
+                .wait(async { session.pull_one().await.map_err(DeveloperLoopError::from) })
+                .await?
+            {
+                ModelAdvance::Closed => return Ok::<(), DeveloperLoopError>(()),
+                ModelAdvance::EnvelopePending { .. } => {
+                    let encoded = session.encode_pending()?;
+                    trace.record(DeveloperTraceEvent::ProviderEnvelope(&encoded))?;
+                    let public_text =
+                        session.pending().and_then(|envelope| match envelope.event() {
+                            ModelEvent::TextDelta { fragment, .. } => {
+                                Some(fragment.expose().to_vec())
+                            }
+                            _ => None,
+                        });
+                    let has_usage = session
+                        .pending()
+                        .is_some_and(|envelope| matches!(envelope.event(), ModelEvent::Usage(_)));
+                    let _ = session.accept_durable_pending()?;
+                    if has_usage {
+                        // Cancellation/deadline can drop this future before a terminal response.
+                        trace
+                            .account(DeveloperAccountingEvent::Usage(session.usage_high_water()))?;
+                    }
+                    if let (Some(port), Some(text)) = (interaction, public_text) {
+                        // Never insert waiting messages between fragments of public assistant text.
+                        progress.text_received();
+                        port.observe(DeveloperActivity::Text(&text))?;
+                    }
                 }
             }
         }
     }
+    .await;
+    // A later stream/trace/tool failure must not erase usage already accepted by the reducer.
+    trace.account(DeveloperAccountingEvent::Usage(session.usage_high_water()))?;
+    result?;
+    Ok(session)
 }

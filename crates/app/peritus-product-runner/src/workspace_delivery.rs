@@ -44,10 +44,12 @@ impl ProductRunInput {
     }
 
     pub(crate) fn checkpoint(&self) -> Result<WorkspaceCheckpoint, ProductRunnerError> {
-        match self.in_place_scope() {
-            Some(scope) => WorkspaceCheckpoint::scoped(&self.workspace_root, scope.paths()?),
-            None => WorkspaceCheckpoint::capture(&self.workspace_root),
-        }
+        // Enrollment is evidence collection, not delivery progress. Only paths whose state
+        // differs from their enrolled baseline may replenish recovery budgets.
+        self.in_place_scope().map_or_else(
+            || WorkspaceCheckpoint::capture(&self.workspace_root),
+            |scope| scope.progress_checkpoint(&self.workspace_root),
+        )
     }
 
     pub(crate) fn ownership(&self) -> WorkspaceOwnership {

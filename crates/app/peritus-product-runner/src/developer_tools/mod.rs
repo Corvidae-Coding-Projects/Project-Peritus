@@ -2,6 +2,7 @@
 
 use serde_json::Value;
 mod access_policy;
+mod arguments;
 mod catalog;
 mod command_budget;
 mod command_runtime;

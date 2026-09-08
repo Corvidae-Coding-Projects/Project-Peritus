@@ -12,6 +12,7 @@ pub(super) struct ResultContract {
     pub bytes: Vec<u8>,
     pub allowed_tools: BTreeSet<String>,
     pub max_calls: usize,
+    pub min_calls: usize,
 }
 
 pub(super) fn result_contract(request: &ModelRequest) -> Result<ResultContract, ProviderCoreError> {
@@ -94,7 +95,7 @@ pub(super) fn result_contract(request: &ModelRequest) -> Result<ResultContract, 
     ]);
     let bytes = serde_json::to_vec(&schema)
         .map_err(|_| invalid("Codex runtime output schema serialization failed"))?;
-    Ok(ResultContract { bytes, allowed_tools: names, max_calls: maximum })
+    Ok(ResultContract { bytes, allowed_tools: names, min_calls: minimum, max_calls: maximum })
 }
 
 fn max_calls(request: &ModelRequest, variants: usize) -> Result<usize, ProviderCoreError> {

@@ -66,8 +66,13 @@ features are disabled, and OpenAI/Codex credential, endpoint, organization, and 
 are removed from the child environment. The output contract deliberately uses a bounded tool-name
 enum plus an `arguments_json` string. Full host schemas are prompt guidance only; returned names and
 argument objects are parsed and validated before becoming inert Peritus tool proposals. Native tool
-execution items, malformed JSONL, missing turn completion, multiple agent messages, and unknown
-correctness-critical shapes fail closed.
+execution items, malformed JSONL, missing turn completion, competing structured results, and unknown
+correctness-critical shapes fail closed. The final envelope must match the bounded private
+`--output-last-message` artifact; preliminary plain-language commentary and inert item updates
+are permitted without being confused with the final result. Required tool choices and argument
+object encoding are validated before any host proposal is emitted. Specific redaction-safe
+diagnostics and any valid observed usage survive rejected final output. Native execution is a
+non-retryable safety terminal, not a recoverable format error or provider-permission fallback.
 
 PNG, JPEG, WebP, and GIF bytes remain outside the text prompt. The request projection records only
 their attachment index, media type, and SHA-256 digest. Each image is written beneath the turn's

@@ -65,6 +65,13 @@ impl ScopedBaseline {
         Ok(self.load()?.into_keys().map(PathBuf::from).collect())
     }
 
+    pub(crate) fn progress_checkpoint(
+        &self,
+        root: &Path,
+    ) -> Result<crate::progress::WorkspaceCheckpoint, ProductRunnerError> {
+        crate::progress::WorkspaceCheckpoint::scoped(root, self.changed_paths(root)?)
+    }
+
     pub fn changed_paths(&self, root: &Path) -> Result<Vec<PathBuf>, ProductRunnerError> {
         self.check_root(root)?;
         self.load()?

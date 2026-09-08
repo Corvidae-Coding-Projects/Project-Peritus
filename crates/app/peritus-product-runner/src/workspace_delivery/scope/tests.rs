@@ -5,6 +5,28 @@ fn scope(root: &Path, state: &Path) -> ScopedBaseline {
 }
 
 #[test]
+fn enrollment_is_not_progress_but_creation_edit_deletion_and_reversion_are() {
+    let root = tempfile::tempdir().expect("root");
+    let state = tempfile::tempdir().expect("state");
+    let scoped = scope(root.path(), state.path());
+    let before = scoped.progress_checkpoint(root.path()).expect("empty checkpoint");
+    scoped.enroll("Cargo.toml").expect("missing read enrollment");
+    assert_eq!(scoped.progress_checkpoint(root.path()).unwrap(), before);
+    fs::write(root.path().join("existing.txt"), "before").unwrap();
+    scoped.enroll("existing.txt").unwrap();
+    assert_eq!(scoped.progress_checkpoint(root.path()).unwrap(), before);
+    fs::write(root.path().join("Cargo.toml"), "created").unwrap();
+    let created = scoped.progress_checkpoint(root.path()).unwrap();
+    assert_ne!(created, before);
+    fs::write(root.path().join("Cargo.toml"), "edited").unwrap();
+    assert_ne!(scoped.progress_checkpoint(root.path()).unwrap(), created);
+    fs::remove_file(root.path().join("Cargo.toml")).unwrap();
+    assert_eq!(scoped.progress_checkpoint(root.path()).unwrap(), before);
+    fs::remove_file(root.path().join("existing.txt")).unwrap();
+    assert_ne!(scoped.progress_checkpoint(root.path()).unwrap(), before);
+}
+
+#[test]
 fn exact_file_baseline_survives_reopen_without_inventory_or_rebaselining() {
     let root = tempfile::tempdir().expect("root");
     let state = tempfile::tempdir().expect("state");

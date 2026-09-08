@@ -119,6 +119,25 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
         if let Err(detail) = self.access_policy.authorize(call.name().as_str(), &arguments) {
             return observation(&object(vec![("error", Value::String(detail))]), true);
         }
+        if self.mode == WorkspaceToolMode::ReadOnly
+            && !matches!(
+                call.name().as_str(),
+                "workspace_list" | "workspace_search" | "workspace_read"
+            )
+        {
+            return observation(
+                &object(vec![(
+                    "error",
+                    Value::String("this role has read-only workspace access".to_owned()),
+                )]),
+                true,
+            );
+        }
+        // Reject malformed proposals before enrolling paths, creating effect receipts, or
+        // allowing optional fields of the wrong type to silently become execution defaults.
+        if let Err(error) = super::arguments::validate(call.name().as_str(), &arguments) {
+            return observation(&object(vec![("error", Value::String(error.to_string()))]), true);
+        }
         if let Err(error) = self.prepare_in_place(call.name().as_str(), &arguments) {
             return observation(&object(vec![("error", Value::String(error.to_string()))]), true);
         }
@@ -144,13 +163,6 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
             "workspace_search" => inspection::search(&self.root, &arguments, &self.access_policy),
             "workspace_read" => inspection::read(&self.root, &arguments),
             "workspace_scope" => self.declare_in_place(&arguments),
-            "workspace_write" | "workspace_patch" | "workspace_remove" | "run_command"
-            | "command_start" | "command_stdin" | "command_resize" | "command_signal"
-            | "command_cancel" | "command_poll" | "command_recover"
-                if self.mode == WorkspaceToolMode::ReadOnly =>
-            {
-                Err(tool("this role has read-only workspace access"))
-            }
             "workspace_write" => self.write(&arguments),
             "workspace_patch" => self.patch(&arguments),
             "workspace_remove" => self.remove(&arguments),

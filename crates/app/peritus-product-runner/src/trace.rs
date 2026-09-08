@@ -1,5 +1,6 @@
 //! Durable per-run D0 provider/tool trace.
 
+pub mod accounting;
 pub mod local_memory;
 
 use std::{

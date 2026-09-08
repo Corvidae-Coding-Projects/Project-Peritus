@@ -108,17 +108,38 @@ fn cancellation_between_calls_prevents_the_remaining_effects() {
             cancel: Some(cancellation.clone()),
         };
         let mut tools = RecordingTool::default();
+        let mut trace = RecordingTrace::default();
         let result = DeveloperLoop::run_interactive(
             &provider,
             request(cancellation),
             &mut tools,
-            &mut RecordingTrace::default(),
+            &mut trace,
             None,
             &port,
         )
         .await;
         assert!(matches!(result, Err(DeveloperLoopError::Cancelled)));
         assert_eq!(tools.calls, 1);
+        assert_eq!(
+            trace
+                .accounting
+                .iter()
+                .filter(|event| matches!(event, peritus_agent::DeveloperAccountingEvent::ToolCall))
+                .count(),
+            1,
+            "a completed effect remains counted when the next call is cancelled"
+        );
+        assert_eq!(
+            trace
+                .accounting
+                .iter()
+                .filter(|event| matches!(
+                    event,
+                    peritus_agent::DeveloperAccountingEvent::ModelRequest { .. }
+                ))
+                .count(),
+            1
+        );
         assert_eq!(provider.requests.lock().expect("requests").len(), 1);
     });
 }

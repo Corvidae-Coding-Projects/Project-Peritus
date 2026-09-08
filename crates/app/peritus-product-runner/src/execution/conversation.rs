@@ -55,7 +55,10 @@ impl ProductRunner {
                     model.as_ref(),
                     request,
                     &mut tools,
-                    &input.trace_path,
+                    crate::local_context::InvocationAccounting {
+                        trace_path: &input.trace_path,
+                        accounting: &mut accounting,
+                    },
                     memory.as_ref(),
                     input.conversation.interaction(),
                     if mode == ConversationMode::Review {
@@ -68,7 +71,7 @@ impl ProductRunner {
             .await;
             let (cause, reply, detail) = match result {
                 Ok(Ok(result)) => {
-                    accounting.record(&result)?;
+                    accounting.check()?;
                     if let Some(revision) = tools.requested_revision {
                         // Steering after the handoff tool must return to conversation, not launch
                         // work authorized against an older user message.

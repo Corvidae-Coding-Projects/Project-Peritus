@@ -85,16 +85,21 @@ pub async fn complete(
                 cancellation: input.provider_cancellation.clone(),
             },
             &mut tools,
-            &input.trace_path,
+            crate::local_context::InvocationAccounting {
+                trace_path: &input.trace_path,
+                accounting,
+            },
             memory.as_ref(),
             input.conversation.interaction(),
             peritus_agent::DeveloperModelRole::Reviewer,
         )
         .await;
+        accounting.check()?;
         let result = match result {
             Ok(result) => result,
             Err(error) => {
                 if let Some(reason) = provider_recovery.retry(&error) {
+                    accounting.record_role_retry()?;
                     correction = Some(crate::failover::RoleRecovery::correction(reason));
                     continue;
                 }
@@ -108,7 +113,6 @@ pub async fn complete(
             }
         };
         crate::failover::record_provider_success(accounting, &providers, &mut provider_recovery);
-        accounting.record(&result)?;
         check_cancelled(input)?;
         let submission = grounded_submission(&tools, &result.text, review_cycle);
         match submission {

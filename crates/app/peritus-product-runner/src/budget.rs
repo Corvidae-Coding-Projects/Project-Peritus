@@ -6,7 +6,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use peritus_agent::DeveloperLoopOutcome;
+use peritus_agent::{DeveloperAccountingEvent, DeveloperUsage};
 use peritus_types::ProviderProfileId;
 
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
@@ -53,7 +53,7 @@ pub struct ProductRunProgress {
 }
 
 impl ProductRunProgress {
-    /// Provider requests completed or terminally observed.
+    /// Provider attempts admitted, including failed, cancelled and compaction requests.
     #[must_use]
     pub const fn model_requests(self) -> u32 {
         self.model_requests
@@ -148,6 +148,7 @@ pub struct RunAccounting {
     started: Instant,
     max_elapsed: Duration,
     progress: ProductRunProgress,
+    response_usage: DeveloperUsage,
     resources: RunResourceProbe,
     unavailable_providers: BTreeSet<ProviderProfileId>,
 }
@@ -159,31 +160,72 @@ impl RunAccounting {
             started: Instant::now(),
             max_elapsed,
             progress: ProductRunProgress::default(),
+            response_usage: DeveloperUsage::default(),
             resources: RunResourceProbe::new(workspace_root)?,
             unavailable_providers: BTreeSet::new(),
         })
     }
 
-    pub fn record(&mut self, outcome: &DeveloperLoopOutcome) -> Result<(), ProductRunnerError> {
-        let retries = u32::from(outcome.retries);
-        let requests = u32::from(outcome.model_turns)
-            .checked_add(retries)
-            .ok_or_else(|| exhausted("provider request counter overflowed"))?;
-        self.progress.model_requests = add_u32(self.progress.model_requests, requests)?;
-        self.progress.tool_calls = add_u32(self.progress.tool_calls, outcome.tool_calls)?;
-        self.progress.retries = add_u32(self.progress.retries, retries)?;
-        self.progress.compactions =
-            add_u32(self.progress.compactions, u32::from(outcome.compactions))?;
-        let usage = outcome.usage;
-        self.progress.input_tokens = add_u64(self.progress.input_tokens, usage.input_tokens())?;
-        self.progress.cached_input_tokens =
-            add_u64(self.progress.cached_input_tokens, usage.cached_input_tokens())?;
-        self.progress.output_tokens = add_u64(self.progress.output_tokens, usage.output_tokens())?;
-        self.progress.total_tokens = add_u64(self.progress.total_tokens, usage.total_tokens())?;
-        self.progress.provider_cost_microunits =
-            add_u64(self.progress.provider_cost_microunits, usage.provider_cost_microunits())?;
-        self.progress.usage_observations =
-            add_u32(self.progress.usage_observations, usage.observations())?;
+    pub(crate) fn record_event(
+        &mut self,
+        event: DeveloperAccountingEvent,
+    ) -> Result<(), ProductRunnerError> {
+        match event {
+            DeveloperAccountingEvent::ModelRequest { retry } => {
+                self.response_usage = DeveloperUsage::default();
+                self.progress.model_requests = add_u32(self.progress.model_requests, 1)?;
+                self.progress.retries = add_u32(self.progress.retries, u32::from(retry))?;
+            }
+            DeveloperAccountingEvent::ToolCall => {
+                self.progress.tool_calls = add_u32(self.progress.tool_calls, 1)?;
+            }
+            DeveloperAccountingEvent::Compaction => {
+                self.progress.compactions = add_u32(self.progress.compactions, 1)?;
+            }
+            DeveloperAccountingEvent::Usage(counters) => {
+                let mut usage = DeveloperUsage::default();
+                usage.observe(counters).map_err(|_| exhausted("provider usage overflowed"))?;
+                self.record_usage(usage)?;
+            }
+        }
+        // Per-event admission is cheap: do not recursively probe the workspace for every token
+        // or tool. The ordinary role/settlement boundary still samples host resources.
+        self.progress.elapsed_millis = millis(self.started.elapsed());
+        budget_violation(self.progress, self.started.elapsed(), self.max_elapsed)
+            .map_or(Ok(()), |detail| Err(exhausted(detail)))
+    }
+
+    fn record_usage(&mut self, usage: DeveloperUsage) -> Result<(), ProductRunnerError> {
+        let previous = self.response_usage;
+        let mut progress = self.progress;
+        progress.input_tokens =
+            replace_u64(progress.input_tokens, previous.input_tokens(), usage.input_tokens())?;
+        progress.cached_input_tokens = replace_u64(
+            progress.cached_input_tokens,
+            previous.cached_input_tokens(),
+            usage.cached_input_tokens(),
+        )?;
+        progress.output_tokens =
+            replace_u64(progress.output_tokens, previous.output_tokens(), usage.output_tokens())?;
+        progress.total_tokens =
+            replace_u64(progress.total_tokens, previous.total_tokens(), usage.total_tokens())?;
+        progress.provider_cost_microunits = replace_u64(
+            progress.provider_cost_microunits,
+            previous.provider_cost_microunits(),
+            usage.provider_cost_microunits(),
+        )?;
+        progress.usage_observations = progress
+            .usage_observations
+            .checked_sub(previous.observations())
+            .and_then(|value| value.checked_add(usage.observations()))
+            .ok_or_else(|| exhausted("run usage observation counter overflowed"))?;
+        self.progress = progress;
+        self.response_usage = usage;
+        Ok(())
+    }
+
+    pub(crate) fn record_role_retry(&mut self) -> Result<(), ProductRunnerError> {
+        self.progress.retries = add_u32(self.progress.retries, 1)?;
         self.check()
     }
 
@@ -268,8 +310,11 @@ fn add_u32(left: u32, right: u32) -> Result<u32, ProductRunnerError> {
     left.checked_add(right).ok_or_else(|| exhausted("run accounting counter overflowed"))
 }
 
-fn add_u64(left: u64, right: u64) -> Result<u64, ProductRunnerError> {
-    left.checked_add(right).ok_or_else(|| exhausted("run accounting counter overflowed"))
+fn replace_u64(total: u64, previous: u64, current: u64) -> Result<u64, ProductRunnerError> {
+    total
+        .checked_sub(previous)
+        .and_then(|value| value.checked_add(current))
+        .ok_or_else(|| exhausted("run accounting counter overflowed"))
 }
 
 fn millis(duration: Duration) -> u64 {
@@ -293,21 +338,53 @@ mod tests {
     use super::*;
 
     #[test]
-    fn role_outcomes_accumulate_requests_tools_retries_and_compactions() {
+    fn streaming_usage_replaces_each_response_snapshot_and_survives_failure() {
+        let mut accounting = RunAccounting::direct_folder(PRODUCT_RUN_MAX_ELAPSED).unwrap();
+        let usage = |output| {
+            DeveloperAccountingEvent::Usage(peritus_model_protocol::UsageCounters::new(
+                Some(10),
+                Some(3),
+                None,
+                Some(output),
+                Some(1),
+                None,
+                None,
+                None,
+            ))
+        };
+        accounting.record_event(DeveloperAccountingEvent::ModelRequest { retry: false }).unwrap();
+        accounting.record_event(usage(2)).unwrap();
+        accounting.record_event(usage(4)).unwrap();
+        accounting.record_event(usage(4)).unwrap();
+        accounting.record_role_retry().unwrap();
+        accounting.record_event(DeveloperAccountingEvent::ModelRequest { retry: false }).unwrap();
+        accounting.record_event(usage(2)).unwrap();
+        let progress = accounting.latest_snapshot();
+        assert_eq!(progress.model_requests(), 2);
+        assert_eq!(progress.retries(), 1);
+        assert_eq!(progress.input_tokens(), 20);
+        assert_eq!(progress.output_tokens(), 6);
+        assert_eq!(progress.total_tokens(), 26);
+        assert_eq!(progress.cached_input_tokens(), 6);
+        assert_eq!(progress.usage_observations(), 2);
+    }
+
+    #[test]
+    fn work_events_accumulate_without_a_successful_role_outcome() {
         let temporary = tempfile::tempdir().expect("workspace");
         let mut accounting =
             RunAccounting::new(temporary.path(), PRODUCT_RUN_MAX_ELAPSED).expect("accounting");
-        accounting
-            .record(&DeveloperLoopOutcome {
-                text: "done".to_owned(),
-                model_turns: 48,
-                tool_calls: 512,
-                compactions: 2,
-                retries: 3,
-                usage: peritus_agent::DeveloperUsage::default(),
-                messages: Vec::new(),
-            })
-            .expect("record bounded role outcome");
+        for index in 0..51 {
+            accounting
+                .record_event(DeveloperAccountingEvent::ModelRequest { retry: index < 3 })
+                .unwrap();
+        }
+        for _ in 0..512 {
+            accounting.record_event(DeveloperAccountingEvent::ToolCall).unwrap();
+        }
+        for _ in 0..2 {
+            accounting.record_event(DeveloperAccountingEvent::Compaction).unwrap();
+        }
         let progress = accounting.snapshot().expect("bounded progress");
 
         assert_eq!(progress.model_requests(), 51);

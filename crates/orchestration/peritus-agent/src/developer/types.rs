@@ -356,6 +356,18 @@ pub enum DeveloperTraceEvent<'a> {
 
 /// Durable trace boundary owned by the production host.
 pub trait DeveloperTrace: Send {
+    /// Records observed work independently of success, before the next fallible boundary.
+    /// Existing trace-only hosts may ignore accounting; product hosts enforce shared budgets here.
+    ///
+    /// # Errors
+    /// Returns a host accounting or budget failure, stopping further work.
+    fn account(
+        &mut self,
+        _event: super::DeveloperAccountingEvent,
+    ) -> Result<(), DeveloperLoopError> {
+        Ok(())
+    }
+
     /// Commits one exact event before the loop advances.
     ///
     /// # Errors

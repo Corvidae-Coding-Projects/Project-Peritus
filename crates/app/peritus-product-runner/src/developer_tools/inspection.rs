@@ -145,8 +145,12 @@ pub(super) fn search(
 }
 
 pub(super) fn read(root: &Path, arguments: &Value) -> Result<Value, DeveloperLoopError> {
-    let path = checked(root, required_string(arguments, "path")?, false)?;
-    let metadata = fs::metadata(&path).map_err(|error| tool(error.to_string()))?;
+    let path = checked(root, required_string(arguments, "path")?, true)?;
+    let metadata = fs::metadata(&path).map_err(|error| {
+        if error.kind() == std::io::ErrorKind::NotFound {
+            tool("not_found: this file does not exist. Use the observed workspace listing; do not repeat this read unless the file has since been created. For an authorized greenfield task, create the planned file with workspace_write rather than assuming a manifest already exists.")
+        } else { tool(error.to_string()) }
+    })?;
     if !metadata.is_file() || metadata.len() > MAX_FILE_BYTES as u64 {
         return Err(tool("file is not a bounded regular text file"));
     }

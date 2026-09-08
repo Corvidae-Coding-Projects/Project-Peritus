@@ -132,6 +132,7 @@ pub fn qualify_tool_process_failure(
                 ),
                 ("cwd", Value::String(".".to_owned())),
                 ("program", Value::String(executable.to_owned())),
+                ("purpose", Value::String("verification".to_owned())),
                 ("timeout_seconds", Value::from(10_u64)),
             ]),
         )?)

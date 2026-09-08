@@ -80,7 +80,7 @@ pub async fn complete_developer_turn(
         else {
             continue;
         };
-        provider::record_accounting(&result, accounting)?;
+        accounting.check()?;
         *ownership = tools.ownership().clone();
         merge_rendered(&mut verification_evidence, &tools.verification_evidence());
         crate::developer_tools::merge_successful(
@@ -200,7 +200,8 @@ async fn run_selected_invocation(
     Option<(Result<DeveloperLoopOutcome, DeveloperLoopError>, WorkspaceDeveloperTools)>,
     ProductRunnerError,
 > {
-    let result = run_developer_invocation(input, providers.current(), identity, context).await;
+    let result =
+        run_developer_invocation(input, providers.current(), identity, context, accounting).await;
     match result {
         Ok(result) => Ok(Some(result)),
         Err(error) if let Some(switch) = providers.advance_for_capability(&error) => {
@@ -222,6 +223,7 @@ async fn run_developer_invocation(
     model: &dyn ModelProvider,
     identity: DeveloperInvocation<'_>,
     context: InvocationContext<'_>,
+    accounting: &mut RunAccounting,
 ) -> Result<
     (Result<DeveloperLoopOutcome, DeveloperLoopError>, WorkspaceDeveloperTools),
     ProductRunnerError,
@@ -268,7 +270,7 @@ async fn run_developer_invocation(
             cancellation: input.provider_cancellation.clone(),
         },
         &mut tools,
-        &input.trace_path,
+        crate::local_context::InvocationAccounting { trace_path: &input.trace_path, accounting },
         context.memory,
         input.conversation.interaction(),
         if identity.role == "fixer" {

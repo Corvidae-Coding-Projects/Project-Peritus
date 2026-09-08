@@ -1,7 +1,7 @@
 //! Shared production invocation switch; legacy mode is explicit and never an error fallback.
 
 use super::{LocalContextHandle, MemoryTools, memory_tool_definitions};
-use crate::trace::FileDeveloperTrace;
+use crate::{budget::RunAccounting, trace::accounting::AccountingTrace};
 use peritus_agent::{
     DeveloperLoop, DeveloperLoopError, DeveloperLoopOutcome, DeveloperLoopRequest,
     DeveloperToolExecutor,
@@ -9,11 +9,16 @@ use peritus_agent::{
 use peritus_provider_core::ModelProvider;
 use std::path::Path;
 
+pub struct InvocationAccounting<'a> {
+    pub trace_path: &'a Path,
+    pub accounting: &'a mut RunAccounting,
+}
+
 pub async fn run_live_invocation(
     model: &dyn ModelProvider,
     mut request: DeveloperLoopRequest,
     tools: &mut dyn DeveloperToolExecutor,
-    trace_path: &Path,
+    accounting: InvocationAccounting<'_>,
     memory: Option<&LocalContextHandle>,
     interaction: Option<&dyn peritus_agent::DeveloperInteraction>,
     role: peritus_agent::DeveloperModelRole,
@@ -21,11 +26,12 @@ pub async fn run_live_invocation(
     if interaction.is_some() {
         request.system.push_str(LIVE_COMMUNICATION);
     }
-    let mut trace = FileDeveloperTrace::new(trace_path.to_path_buf());
+    let mut trace = AccountingTrace::new(accounting.trace_path, accounting.accounting);
     match memory {
         Some(memory) => {
             request.tools.extend(memory_tool_definitions()?);
-            trace = trace.with_memory_scope(memory.scope_digest()?, memory.next_invocation()?);
+            trace.trace =
+                trace.trace.with_memory_scope(memory.scope_digest()?, memory.next_invocation()?);
             let mut port = memory.clone();
             let mut tools = MemoryTools::new(tools, memory.clone());
             match interaction {

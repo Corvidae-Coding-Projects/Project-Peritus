@@ -1,5 +1,7 @@
 //! Production D0 developer-loop integration with a scripted provider and concrete tool port.
 
+#[path = "developer_loop/accounting_tests.rs"]
+mod accounting_tests;
 #[path = "developer_loop/context_tests.rs"]
 mod context_tests;
 #[path = "developer_loop/fixtures.rs"]
@@ -175,6 +177,7 @@ impl DeveloperToolExecutor for RecordingTool {
 
 #[derive(Default)]
 struct RecordingTrace {
+    accounting: Vec<peritus_agent::DeveloperAccountingEvent>,
     envelopes: u32,
     observations: u32,
     observation_bytes: Vec<usize>,
@@ -183,6 +186,13 @@ struct RecordingTrace {
 }
 
 impl DeveloperTrace for RecordingTrace {
+    fn account(
+        &mut self,
+        event: peritus_agent::DeveloperAccountingEvent,
+    ) -> Result<(), peritus_agent::DeveloperLoopError> {
+        self.accounting.push(event);
+        Ok(())
+    }
     fn record(
         &mut self,
         event: DeveloperTraceEvent<'_>,

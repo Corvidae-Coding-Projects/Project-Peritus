@@ -16,9 +16,10 @@ use super::model_request::ModelTurnKind;
 use super::observation::model_visible_tool_output;
 use super::semantic::SemanticCompaction;
 use super::{
-    DeveloperActivity, DeveloperContextEvent, DeveloperInteraction, DeveloperLoop,
-    DeveloperLoopError, DeveloperLoopOutcome, DeveloperLoopRequest, DeveloperToolExecutor,
-    DeveloperToolObservation, DeveloperTrace, DeveloperTraceEvent, DeveloperUsage,
+    DeveloperAccountingEvent, DeveloperActivity, DeveloperContextEvent, DeveloperInteraction,
+    DeveloperLoop, DeveloperLoopError, DeveloperLoopOutcome, DeveloperLoopRequest,
+    DeveloperToolExecutor, DeveloperToolObservation, DeveloperTrace, DeveloperTraceEvent,
+    DeveloperUsage,
 };
 
 impl DeveloperLoop {
@@ -82,6 +83,7 @@ impl DeveloperLoop {
             }
             if context.is_local() {
                 if context.prepare(&mut messages, &request.tools, profile)? {
+                    trace.account(DeveloperAccountingEvent::Compaction)?;
                     compactions =
                         compactions.checked_add(1).ok_or(DeveloperLoopError::LimitExceeded)?;
                 }
@@ -115,6 +117,7 @@ impl DeveloperLoop {
                                 semantic.install(&mut messages, &session, protocol_limits)
                             {
                                 trace.record(DeveloperTraceEvent::ContextCompaction(&record))?;
+                                trace.account(DeveloperAccountingEvent::Compaction)?;
                                 compactions = compactions
                                     .checked_add(1)
                                     .ok_or(DeveloperLoopError::LimitExceeded)?;
@@ -135,6 +138,7 @@ impl DeveloperLoop {
                 )?;
                 for record in &records {
                     trace.record(DeveloperTraceEvent::ContextCompaction(record))?;
+                    trace.account(DeveloperAccountingEvent::Compaction)?;
                 }
                 compactions = compactions
                     .checked_add(
@@ -263,6 +267,7 @@ impl DeveloperLoop {
                         })?;
                     }
                     let observation = tools.execute(&call)?;
+                    trace.account(DeveloperAccountingEvent::ToolCall)?;
                     if let Some(port) = interaction {
                         port.observe(DeveloperActivity::ToolFinished {
                             name,

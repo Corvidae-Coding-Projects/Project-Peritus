@@ -14,6 +14,7 @@ use failure::reported_failure;
 const MAX_JSONL_LINES: usize = 100_000;
 const MAX_JSONL_LINE_BYTES: usize = 4 * 1024 * 1024;
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DecodeFailure {
     Authentication,
     Safety,
@@ -23,50 +24,16 @@ pub enum DecodeFailure {
     ContextLimit,
     Reported,
     Malformed,
+    InvalidLifecycle,
+    InvalidEnvelope,
+    InvalidToolArguments,
+    InvalidToolChoice,
+    OutputLimit,
+    InvalidUsage,
+    MultipleMessages,
+    UnsupportedEvent,
     Incomplete,
     NativeTool,
-}
-
-impl Clone for DecodeFailure {
-    fn clone(&self) -> Self {
-        match self {
-            Self::Authentication => Self::Authentication,
-            Self::Safety => Self::Safety,
-            Self::RateLimited => Self::RateLimited,
-            Self::Capacity => Self::Capacity,
-            Self::QuotaExhausted => Self::QuotaExhausted,
-            Self::ContextLimit => Self::ContextLimit,
-            Self::Reported => Self::Reported,
-            Self::Malformed => Self::Malformed,
-            Self::Incomplete => Self::Incomplete,
-            Self::NativeTool => Self::NativeTool,
-        }
-    }
-}
-
-impl PartialEq for DecodeFailure {
-    fn eq(&self, other: &Self) -> bool {
-        core::mem::discriminant(self) == core::mem::discriminant(other)
-    }
-}
-
-impl Eq for DecodeFailure {}
-
-impl fmt::Debug for DecodeFailure {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str(match self {
-            Self::Authentication => "Authentication",
-            Self::Safety => "Safety",
-            Self::RateLimited => "RateLimited",
-            Self::Capacity => "Capacity",
-            Self::QuotaExhausted => "QuotaExhausted",
-            Self::ContextLimit => "ContextLimit",
-            Self::Reported => "Reported",
-            Self::Malformed => "Malformed",
-            Self::Incomplete => "Incomplete",
-            Self::NativeTool => "NativeTool",
-        })
-    }
 }
 
 pub struct RuntimeTurn {
@@ -179,39 +146,66 @@ impl<'de> Visitor<'de> for StructuredToolCallVisitor {
     }
 }
 
+pub struct RuntimeDecoded {
+    pub turn: Result<RuntimeTurn, DecodeFailure>,
+    pub usage: UsageCounters,
+}
+
+pub fn decode_with_usage(
+    stdout: &[u8],
+    allowed_tools: &BTreeSet<String>,
+    call_bounds: std::ops::RangeInclusive<usize>,
+    final_message: Option<&str>,
+) -> RuntimeDecoded {
+    let mut state = State::default();
+    let turn = decode_turn(stdout, allowed_tools, call_bounds, final_message, &mut state);
+    RuntimeDecoded { turn, usage: state.usage }
+}
+
+#[cfg(test)]
 pub fn decode(
     stdout: &[u8],
     allowed_tools: &BTreeSet<String>,
-    max_calls: usize,
+    call_bounds: std::ops::RangeInclusive<usize>,
+    final_message: Option<&str>,
 ) -> Result<RuntimeTurn, DecodeFailure> {
-    let mut state = State::default();
+    decode_with_usage(stdout, allowed_tools, call_bounds, final_message).turn
+}
+
+fn decode_turn(
+    stdout: &[u8],
+    allowed_tools: &BTreeSet<String>,
+    call_bounds: std::ops::RangeInclusive<usize>,
+    final_message: Option<&str>,
+    state: &mut State,
+) -> Result<RuntimeTurn, DecodeFailure> {
     let mut seen = HashSet::new();
     for raw_line in stdout.split(|byte| *byte == b'\n') {
         let line = raw_line.strip_suffix(b"\r").unwrap_or(raw_line);
         if line.is_empty() {
             continue;
         }
-        state.raw_events = state.raw_events.checked_add(1).ok_or(DecodeFailure::Malformed)?;
+        state.raw_events = state.raw_events.checked_add(1).ok_or(DecodeFailure::OutputLimit)?;
         if state.raw_events > MAX_JSONL_LINES || line.len() > MAX_JSONL_LINE_BYTES {
-            return Err(DecodeFailure::Malformed);
+            return Err(DecodeFailure::OutputLimit);
         }
         if !seen.insert(line.to_vec()) {
-            state.duplicates = state.duplicates.checked_add(1).ok_or(DecodeFailure::Malformed)?;
+            state.duplicates = state.duplicates.checked_add(1).ok_or(DecodeFailure::OutputLimit)?;
             continue;
         }
         if state.completed {
-            return Err(DecodeFailure::Malformed);
+            return Err(DecodeFailure::InvalidLifecycle);
         }
         let event: Value = serde_json::from_slice(line).map_err(|_| DecodeFailure::Malformed)?;
-        decode_event(&event, &mut state)?;
+        decode_event(&event, state, final_message)?;
     }
     if !state.completed {
         return Err(DecodeFailure::Incomplete);
     }
-    let encoded = state.assistant_message.as_ref().ok_or(DecodeFailure::Malformed)?;
+    let encoded = state.assistant_message.as_ref().ok_or(DecodeFailure::InvalidEnvelope)?;
     let turn: StructuredTurn =
-        serde_json::from_str(encoded).map_err(|_| DecodeFailure::Malformed)?;
-    validate_turn(turn, allowed_tools, max_calls, &state)
+        serde_json::from_str(encoded).map_err(|_| DecodeFailure::InvalidEnvelope)?;
+    validate_turn(turn, allowed_tools, call_bounds, state)
 }
 
 struct State {
@@ -238,35 +232,46 @@ impl Default for State {
     }
 }
 
-fn decode_event(event: &Value, state: &mut State) -> Result<(), DecodeFailure> {
+fn decode_event(
+    event: &Value,
+    state: &mut State,
+    final_message: Option<&str>,
+) -> Result<(), DecodeFailure> {
     let event_type = string(event, "type")?;
     match event_type {
         "thread.started" => {
             if state.thread_started || string(event, "thread_id")?.len() > 512 {
-                return Err(DecodeFailure::Malformed);
+                return Err(DecodeFailure::InvalidLifecycle);
             }
             state.thread_started = true;
             Ok(())
         }
         "turn.started" => {
             if state.turn_started {
-                return Err(DecodeFailure::Malformed);
+                return Err(DecodeFailure::InvalidLifecycle);
             }
             state.turn_started = true;
             Ok(())
         }
-        "item.started" | "item.completed" => decode_item(event, event_type, state),
+        "item.started" | "item.updated" | "item.completed" => {
+            decode_item(event, event_type, state, final_message)
+        }
         "turn.completed" => {
             state.usage = decode_usage(event.get("usage"))?;
             state.completed = true;
             Ok(())
         }
         "turn.failed" | "error" => Err(reported_failure(event)),
-        _ => Err(DecodeFailure::Malformed),
+        _ => Err(DecodeFailure::UnsupportedEvent),
     }
 }
 
-fn decode_item(event: &Value, event_type: &str, state: &mut State) -> Result<(), DecodeFailure> {
+fn decode_item(
+    event: &Value,
+    event_type: &str,
+    state: &mut State,
+    final_message: Option<&str>,
+) -> Result<(), DecodeFailure> {
     let item = event.get("item").and_then(Value::as_object).ok_or(DecodeFailure::Malformed)?;
     let item_type = item.get("type").and_then(Value::as_str).ok_or(DecodeFailure::Malformed)?;
     if native_tool_item(item_type) {
@@ -274,33 +279,50 @@ fn decode_item(event: &Value, event_type: &str, state: &mut State) -> Result<(),
     }
     match item_type {
         "reasoning" => Ok(()),
-        "agent_message" if event_type == "item.started" => Ok(()),
+        "agent_message" if event_type != "item.completed" => Ok(()),
         "agent_message" => {
             let text = item.get("text").and_then(Value::as_str).ok_or(DecodeFailure::Malformed)?;
-            if text.len() > ProtocolLimits::PRODUCTION.max_text_bytes()
-                || text.contains('\0')
-                || state.assistant_message.replace(text.to_owned()).is_some()
+            if text.len() > ProtocolLimits::PRODUCTION.max_text_bytes() || text.contains('\0') {
+                return Err(DecodeFailure::OutputLimit);
+            }
+            if let Some(expected) = final_message
+                && text.trim() != expected.trim()
             {
-                return Err(DecodeFailure::Malformed);
+                // A proven final-message file permits preliminary plain public prose, not
+                // competing structured results or discarded host-tool proposals.
+                if state.assistant_message.is_some() {
+                    return Err(DecodeFailure::InvalidLifecycle);
+                }
+                if text.trim_start().starts_with(['{', '[', '`']) {
+                    return Err(DecodeFailure::MultipleMessages);
+                }
+                return Ok(());
+            }
+            if state.assistant_message.replace(text.to_owned()).is_some() {
+                return Err(DecodeFailure::MultipleMessages);
             }
             Ok(())
         }
-        _ => Err(DecodeFailure::Malformed),
+        _ => Err(DecodeFailure::UnsupportedEvent),
     }
 }
 
 fn validate_turn(
     turn: StructuredTurn,
     allowed_tools: &BTreeSet<String>,
-    max_calls: usize,
+    call_bounds: std::ops::RangeInclusive<usize>,
     state: &State,
 ) -> Result<RuntimeTurn, DecodeFailure> {
     if turn.content.len() > ProtocolLimits::PRODUCTION.max_text_bytes()
         || turn.content.contains('\0')
-        || turn.tool_calls.len() > max_calls
-        || turn.content.is_empty() && turn.tool_calls.is_empty()
     {
-        return Err(DecodeFailure::Malformed);
+        return Err(DecodeFailure::OutputLimit);
+    }
+    if !call_bounds.contains(&turn.tool_calls.len()) {
+        return Err(DecodeFailure::InvalidToolChoice);
+    }
+    if turn.content.is_empty() && turn.tool_calls.is_empty() {
+        return Err(DecodeFailure::InvalidEnvelope);
     }
     let mut tool_calls = Vec::with_capacity(turn.tool_calls.len());
     for call in turn.tool_calls {
@@ -308,18 +330,18 @@ fn validate_turn(
             || call.name.is_empty()
             || !allowed_tools.contains(&call.name)
         {
-            return Err(DecodeFailure::Malformed);
+            return Err(DecodeFailure::InvalidToolChoice);
         }
-        let parsed: Value =
-            serde_json::from_str(&call.arguments_json).map_err(|_| DecodeFailure::Malformed)?;
+        let parsed: Value = serde_json::from_str(&call.arguments_json)
+            .map_err(|_| DecodeFailure::InvalidToolArguments)?;
         if !parsed.is_object() {
-            return Err(DecodeFailure::Malformed);
+            return Err(DecodeFailure::InvalidToolArguments);
         }
         let arguments = CanonicalJson::parse(
             &call.arguments_json,
             JsonBounds::value(ProtocolLimits::PRODUCTION),
         )
-        .map_err(|_| DecodeFailure::Malformed)?;
+        .map_err(|_| DecodeFailure::InvalidToolArguments)?;
         tool_calls.push(RuntimeToolCall { name: call.name, arguments });
     }
     Ok(RuntimeTurn {
@@ -337,20 +359,20 @@ fn decode_usage(value: Option<&Value>) -> Result<UsageCounters, DecodeFailure> {
     let Some(value) = value else {
         return Ok(UsageCounters::new(None, None, None, None, None, None, None, None));
     };
-    let object = value.as_object().ok_or(DecodeFailure::Malformed)?;
+    let object = value.as_object().ok_or(DecodeFailure::InvalidUsage)?;
     let input = optional_u64(object.get("input_tokens"))?;
     let cached = optional_u64(object.get("cached_input_tokens"))?;
     let output = optional_u64(object.get("output_tokens"))?;
     let total = optional_u64(object.get("total_tokens"))?;
     if matches!((input, output, total), (Some(left), Some(right), Some(sum)) if left.checked_add(right) != Some(sum))
     {
-        return Err(DecodeFailure::Malformed);
+        return Err(DecodeFailure::InvalidUsage);
     }
     Ok(UsageCounters::new(input, cached, None, output, None, None, total, None))
 }
 
 fn optional_u64(value: Option<&Value>) -> Result<Option<u64>, DecodeFailure> {
-    value.map_or(Ok(None), |value| value.as_u64().map(Some).ok_or(DecodeFailure::Malformed))
+    value.map_or(Ok(None), |value| value.as_u64().map(Some).ok_or(DecodeFailure::InvalidUsage))
 }
 
 fn string<'a>(value: &'a Value, field: &str) -> Result<&'a str, DecodeFailure> {

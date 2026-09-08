@@ -16,6 +16,7 @@ pub(super) fn valid(arguments: &[String], stdin: &str) -> bool {
         "never",
         "--model",
         "--output-schema",
+        "--output-last-message",
         "-",
     ];
     let required_present = required.iter().all(|value| arguments.iter().any(|item| item == value));

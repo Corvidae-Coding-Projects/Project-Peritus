@@ -1,5 +1,6 @@
 //! Production developer-loop composition around D0's provider runtime.
 
+mod accounting;
 mod context;
 mod context_encoding;
 mod context_port;
@@ -14,6 +15,7 @@ mod semantic;
 mod types;
 mod usage;
 
+pub use accounting::DeveloperAccountingEvent;
 pub use context_port::{
     DeveloperContextAssembly, DeveloperContextEvent, DeveloperContextPort,
     estimate_developer_request_tokens,

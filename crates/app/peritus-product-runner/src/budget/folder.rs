@@ -11,6 +11,7 @@ impl RunAccounting {
             started: Instant::now(),
             max_elapsed,
             progress: ProductRunProgress::default(),
+            response_usage: peritus_agent::DeveloperUsage::default(),
             resources: RunResourceProbe::process_only(),
             unavailable_providers: BTreeSet::new(),
         })
