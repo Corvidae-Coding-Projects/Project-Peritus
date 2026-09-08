@@ -1,6 +1,6 @@
 {
   "next_display_id": 62,
-  "next_comment_id": 1424,
+  "next_comment_id": 1425,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10231,7 +10231,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-08T17:43:12.163870150Z",
-      "updated_at": "2026-09-08T19:17:46.306672589Z",
+      "updated_at": "2026-09-08T19:17:57.327401536Z",
       "comments": {
         "3c85ec48-d4c8-40ff-b3e3-8c1efceb768a": {
           "display_id": 1422,
@@ -10241,6 +10241,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAgimaXCFTfTvd9tQx+rZCpGzDQiZYWHWKnKgmpBj2mbJ9zzLHb/lpqpFHajOaXUqJAlqngtqQmZhSSx5TctFoDw=="
+        },
+        "3fa8f771-9a8a-48b3-95bb-e520d8789d07": {
+          "display_id": 1424,
+          "author": "krvx",
+          "content": "Develop ac716a06 is installed user-locally and RPM removed. Installed binaries verified against built release package; old binary backups deleted at user request. User configuration, credentials, task state and dependencies kept. Prior idle RPM daemon cleanly stopped; next peritus launch starts installed develop daemon.",
+          "created_at": "2026-09-08T19:17:57.324147563Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAgNzqyOxRsZUDt6x8viYa3NS2FxtK2eQQCpUnDDLwwcXHAtmFnOvl4Q9bp0hrwYUGH5py+84Wsw1ogCNelbUDAA=="
         },
         "4111c62c-ac95-4b9f-9bea-3afa5223ae20": {
           "display_id": 1419,
@@ -13881,8 +13890,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-08T19:17:51.811392733Z",
+    "timestamp": "2026-09-08T19:17:57.327401536Z",
     "agent_id": "krvx",
-    "agent_seq": 37
+    "agent_seq": 38
   }
 }
