@@ -1,6 +1,6 @@
 {
   "next_display_id": 60,
-  "next_comment_id": 1408,
+  "next_comment_id": 1409,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -9041,7 +9041,18 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-08T16:37:48.739341882Z",
-      "updated_at": "2026-09-08T16:37:48.739341882Z"
+      "updated_at": "2026-09-08T16:52:07.760889304Z",
+      "comments": {
+        "8fd3935d-5aea-46d1-9333-93c884e5b153": {
+          "display_id": 1408,
+          "author": "krvx",
+          "content": "Root-cause repair uses the shared live invocation prompt plus D0 provider-wait observation and daemon/TUI narration. Existing Codex exec contract yields complete agent messages, not token deltas; retain strict complete-response validation rather than changing transport authority or simulating tokens. Add truthful host start/stage/wait messages, request model-authored prose alongside tool calls, compact routine tool rows. No protocol/database schema or model change. Tests include pending provider visibility, observer failure cancellation, no mid-text wait insertion, bounded repeated notices, and render visibility. Strict affected-crate Clippy and whole-workspace all-target compile passed; full affected-crate tests passed. Live smoke in fresh private fixture underway.",
+          "created_at": "2026-09-08T16:52:07.753038746Z",
+          "kind": "decision",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABADNzrWhbHsFqm6gPtgJWzdrNeM3p5ux/k7wfIiqvrJh3RERwMKM+deY4DEHVxRLoGyCqcCkGEuFrZv9JEYz49Ag=="
+        }
+      }
     },
     "52028605-f0c2-43fe-b0ae-0e0db829553f": {
       "uuid": "52028605-f0c2-43fe-b0ae-0e0db829553f",
@@ -13711,8 +13722,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-08T16:38:00.132875099Z",
+    "timestamp": "2026-09-08T16:52:07.760889304Z",
     "agent_id": "krvx",
-    "agent_seq": 9
+    "agent_seq": 10
   }
 }
