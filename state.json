@@ -1,6 +1,6 @@
 {
   "next_display_id": 62,
-  "next_comment_id": 1421,
+  "next_comment_id": 1422,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10235,7 +10235,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-08T17:43:12.163870150Z",
-      "updated_at": "2026-09-08T19:11:16.358490956Z",
+      "updated_at": "2026-09-08T19:11:54.963072350Z",
       "comments": {
         "4111c62c-ac95-4b9f-9bea-3afa5223ae20": {
           "display_id": 1419,
@@ -10263,6 +10263,15 @@
           "kind": "note",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAYvJRE6y5vSZZs4v3kHJ+oVtgNxk8r24MoIKOlYLKnguePUasO1ILKYgHhxdG/Upy1NwwEHaj0mdhlIRcix/sDQ=="
+        },
+        "573a8e6c-75f0-4b67-830f-1f0ac90ff39d": {
+          "display_id": 1421,
+          "author": "krvx",
+          "content": "Committed and pushed ac716a06306bb01a5f4c1c8df44b3ab1cb2a5722: feat(chat): route authorized work through production pipeline [CL-61]. Includes completed CL-59 narration and CL-60 model-selection changes and prior slash-command QA report. PASS affected tests and all-target/all-feature builds for agent/product-runner/daemon/tui/app-protocol, strict Clippy, workspace all-target/all-feature compilation, formatting, canonical protocol generation and staged security checks. Normal push created origin/develop; live remote SHA equals local HEAD. Excluded local .claude/.codex/.crosslink/.mcp.json/AGENTS.md. No install or restart.",
+          "created_at": "2026-09-08T19:11:54.959411423Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAdMkMwbElS1DPprOYHoXdWKwBAi27feN6RHiZtYB1PscBMV9OymMJ0H4G/kbvldX+KcgwUJd/RkjKlmGYAfjHBA=="
         },
         "80b281f6-d168-42ef-b705-10aa9305e03b": {
           "display_id": 1420,
@@ -13858,8 +13867,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-08T19:11:16.358490956Z",
+    "timestamp": "2026-09-08T19:11:54.963072350Z",
     "agent_id": "krvx",
-    "agent_seq": 31
+    "agent_seq": 32
   }
 }
