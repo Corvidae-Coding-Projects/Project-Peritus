@@ -1,6 +1,6 @@
 {
   "next_display_id": 62,
-  "next_comment_id": 1438,
+  "next_comment_id": 1439,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -9083,7 +9083,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-08T16:37:48.739341882Z",
-      "updated_at": "2026-09-08T19:35:51.699493525Z",
+      "updated_at": "2026-09-08T23:53:06.523212544Z",
       "comments": {
         "03bfd23d-18b4-46e1-8c9f-5dd2a029fc03": {
           "display_id": 1409,
@@ -9165,6 +9165,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABIeeTaAX3d/bokyVazhwtirnkeuVnVTWF7SLveJVQY9ByB2Ljq8dOfWeLAH/u7dugAxcwueVV9LXDKLKpye4Cg=="
+        },
+        "cf0214dc-9245-4e16-b0a8-80297d0539aa": {
+          "display_id": 1438,
+          "author": "krvx",
+          "content": "Implemented user-requested feedback visibility follow-up in develop at 8a8f08b7 (uncommitted). Working timer moved from muted footer to bold-white fixed row directly above conversation; tests assert exact row/color/BOLD across narrow/wide, scrolling and details modes, with existing stop/reset behavior intact. Actual tool calls are now visible by default: existing ToolStarted/Finished host observations project command/argv/cwd or tool/path, then update the same durable Tool activity with observed exit state and output; no schema/dependency/model/authority change. Default UI keeps first/last wrapped lines with /details for retained output; generic Status remains hidden by default. Bounded previews preserve head/tail diagnostics, mask recognizable credential shapes, omit write/stdin bodies from labels and sanitize terminal controls at render. Tests cover before-completion entry, no duplicate after completion/intervening user message, failures/background handles, no mismatched pairing, Unicode bounds/privacy, output expansion and real C4/C2 cp execution visible after durable reload. PASS 171 daemon/TUI all-target/all-feature tests, strict Clippy, daemon/TUI/CLI build, workspace all-target/all-feature check, fmt/diff and supported daemon cargo-verus verification. Architecture verdict ready. User Tetris run was inspected read-only after reported idling: actively Writing, live Codex process and actual Cargo.toml/lib.rs/piece.rs/rules.rs creation; user confirmed it was moving. No live run changes, install/restart, commit or push.",
+          "created_at": "2026-09-08T23:53:06.517602420Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAF+i7Y9rSwcMxfhNQoCQd3h16CVQWPVecGSkhe+mpYB4PwtcypcVx7FQEIOdbUp7Ff7+/TRjVuzVlj07ummCSCQ=="
         },
         "ffa0e536-384c-4b0f-b10e-e4768d7d4747": {
           "display_id": 1430,
@@ -14011,8 +14020,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-08T23:40:28.389763246Z",
+    "timestamp": "2026-09-08T23:53:06.523212544Z",
     "agent_id": "krvx",
-    "agent_seq": 60
+    "agent_seq": 61
   }
 }
