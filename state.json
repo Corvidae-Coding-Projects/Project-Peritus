@@ -1,6 +1,6 @@
 {
   "next_display_id": 59,
-  "next_comment_id": 1405,
+  "next_comment_id": 1406,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -8812,7 +8812,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-08T16:03:25.595232157Z",
-      "updated_at": "2026-09-08T16:07:51.103691979Z",
+      "updated_at": "2026-09-08T16:11:52.384955203Z",
       "comments": {
         "5b3221ef-9a69-4b55-a421-6dcbfeff4720": {
           "display_id": 1404,
@@ -8822,6 +8822,15 @@
           "kind": "note",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWgX9npB99zXb3O2PuMZm6lZlk1cBMDKWCJQfvxjgvHwywV7ql9YBLdjz7SzKf0tn08o3I8D4FpjB0xM/ews9Cw=="
+        },
+        "8e56d7b3-c562-42cc-ba5a-0081ce9fc66c": {
+          "display_id": 1405,
+          "author": "krvx",
+          "content": "[action] Confirmed idle WaitingForUser blocks /new submissions; CLI cancellation unblocks /build. /details expands actual tool metadata and /stop cancels active build. Testing a completed candidate next.",
+          "created_at": "2026-09-08T16:11:52.381567880Z",
+          "kind": "note",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjKaA8C1LVPvT5ceek0+Z+Gg/0G2rtDS126UhSAatgloOakQ3uBblG/J2cXZtZKzpBBXKEnHbFCmoUB7keXFxAA=="
         }
       }
     },
@@ -13672,8 +13681,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-08T16:07:51.103691979Z",
+    "timestamp": "2026-09-08T16:11:52.384955203Z",
     "agent_id": "krvx",
-    "agent_seq": 3
+    "agent_seq": 4
   }
 }
