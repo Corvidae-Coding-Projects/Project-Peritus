@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1399,
+  "next_comment_id": 1400,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-08T07:47:57.936350441Z",
+      "updated_at": "2026-09-08T07:57:14.370797788Z",
       "labels": [
         "release"
       ],
@@ -1808,6 +1808,15 @@
           "kind": "result",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAAkIg9lTDN13/W1wZELNX1eB8r+N+VC+LszoGtVWTICyHk82lhe0SY28Yh1gt0e/DXOnFQZxsXH/cGp9H7vuNDw=="
+        },
+        "68449f54-27f5-4d85-8ea7-6209580e12ab": {
+          "display_id": 1399,
+          "author": "QWDj",
+          "content": "[action] Owner explicitly authorizes continuing through publication: increase limits for further genuine timeouts until builds complete, fix non-time failures at their cause, preserve all release checks. PR56 current timeout fix first; then normal merge, backed-up exact-lease replacement of unpublished draft tag, fresh complete tagged build, signing approval, asset verification and publication. Do not stop at PR or CI without a genuine external blocker.",
+          "created_at": "2026-09-08T07:57:14.367296403Z",
+          "kind": "note",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAbPhnk9nkJNMTYP+ngN+B57b2biAHgn4byKfr3l9BovC+Yzst8bhAEsL0r+pPyMy72IeMQrC2KdtsW6RvtwnZDw=="
         },
         "6a174529-7353-4720-8fdc-4144e4f2763c": {
           "display_id": 1377,
@@ -13604,8 +13613,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-08T07:47:57.936350441Z",
+    "timestamp": "2026-09-08T07:57:14.370797788Z",
     "agent_id": "QWDj",
-    "agent_seq": 183
+    "agent_seq": 184
   }
 }
