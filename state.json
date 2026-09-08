@@ -1,6 +1,6 @@
 {
   "next_display_id": 62,
-  "next_comment_id": 1434,
+  "next_comment_id": 1435,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10294,7 +10294,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-08T17:43:12.163870150Z",
-      "updated_at": "2026-09-08T21:42:55.570162728Z",
+      "updated_at": "2026-09-08T21:43:06.063985072Z",
       "comments": {
         "2b7412b0-46f1-41ee-96c2-7fb2d13f9c9e": {
           "display_id": 1432,
@@ -10358,6 +10358,15 @@
           "kind": "note",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAYvJRE6y5vSZZs4v3kHJ+oVtgNxk8r24MoIKOlYLKnguePUasO1ILKYgHhxdG/Upy1NwwEHaj0mdhlIRcix/sDQ=="
+        },
+        "4f882018-127d-42d6-b85e-6368a875f919": {
+          "display_id": 1434,
+          "author": "krvx",
+          "content": "CL-61 stopped-run recovery/tool-invocation hardening complete and verified in .worktrees/develop, uncommitted at 464024df. 43 modified tracked files plus 8 new source/test files; local .claude/.codex/.crosslink/.mcp.json/AGENTS.md preserved. 417 affected tests, strict Clippy/docs, workspace check, daemon build, fmt/diff and targeted supported Verus checks pass. No install/restart/live-provider run/commit/push. Ready for user-directed review or deployment.",
+          "created_at": "2026-09-08T21:43:06.060649309Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAGs8jVzVoffnS8A45dr1L8cIsnVmFFcBXTwwBrPaU2l1ZeVRdkNy3RqOfBc/v7RQKbtoHS9iHR8i02QdErqtsCQ=="
         },
         "573a8e6c-75f0-4b67-830f-1f0ac90ff39d": {
           "display_id": 1421,
@@ -13971,8 +13980,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-08T21:43:00.688728195Z",
+    "timestamp": "2026-09-08T21:43:06.063985072Z",
     "agent_id": "krvx",
-    "agent_seq": 53
+    "agent_seq": 54
   }
 }
