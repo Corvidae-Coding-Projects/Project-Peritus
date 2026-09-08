@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1393,
+  "next_comment_id": 1394,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-08T03:46:02.933070963Z",
+      "updated_at": "2026-09-08T04:57:07.374423546Z",
       "labels": [
         "release"
       ],
@@ -1385,6 +1385,15 @@
           "kind": "note",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA2Ck8JT6XKq/f0GI6pcjkro3pBNgcNXq03jJy0zOdvBTPjUjvgkguHMf0u+iao1W+8dtuFYbyh+xnGSUCvXklBQ=="
+        },
+        "1854d396-49e6-45fe-9196-cd2e4e0ed894": {
+          "display_id": 1393,
+          "author": "QWDj",
+          "content": "[action] Release staging validation 34181631010: all six library producers and all 48 final binary jobs passed, including both Windows and Intel Mac CLI/daemon builds under 10 minutes. Now awaiting 12 archive assemblies and two previous-staging comparisons; PR 55 head 4fc6 remains failure-free but incomplete. Draft tag untouched; publication still pending.",
+          "created_at": "2026-09-08T04:57:07.369378761Z",
+          "kind": "note",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAoUXVS/tAfFmCoikydSIYXu+9TryWVJfQsc233w7QRyAgHdiJ4KbjR3z462lJQ6akVQZrxAJJ2d497zpN30FrAQ=="
         },
         "1a4e10ee-4acb-48a2-9cf6-525c12b43ba1": {
           "display_id": 1271,
@@ -13550,8 +13559,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-08T03:46:02.933070963Z",
+    "timestamp": "2026-09-08T04:57:07.374423546Z",
     "agent_id": "QWDj",
-    "agent_seq": 177
+    "agent_seq": 178
   }
 }
