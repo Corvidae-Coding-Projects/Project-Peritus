@@ -1,6 +1,6 @@
 {
   "next_display_id": 61,
-  "next_comment_id": 1411,
+  "next_comment_id": 1412,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -8714,7 +8714,18 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-08T17:14:48.217607809Z",
-      "updated_at": "2026-09-08T17:14:48.217607809Z"
+      "updated_at": "2026-09-08T17:30:30.352834393Z",
+      "comments": {
+        "49c93cff-3c87-4897-85fd-28ce6b41798b": {
+          "display_id": 1411,
+          "author": "krvx",
+          "content": "Root-cause repair: add A3 UpdateModels tag 25 with durable daemon acknowledgement, resolve role-specific immutable adapters at logical model-turn boundaries, and show requested model in activity. Retain in-flight turns/retries and user/tool history. Chosen over cancellation/restart switching, which would unnecessarily disturb command ownership and active effects. No dependencies or persisted-record schema changed; generated A3 assets and compatibility fixture updated. Existing narration diff and live personal Tetris daemon remain untouched.",
+          "created_at": "2026-09-08T17:30:30.347571786Z",
+          "kind": "decision",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAu/v6xiobq1LmMi8pcRaXtihljHG+ytFVa8EHKyvNM3dOEeqvotBn2uvqXokYGg6oP3EjvY6RgABJDgUCZJMOCQ=="
+        }
+      }
     },
     "47cec64d-270a-4ee4-8aea-3dd626c1447e": {
       "uuid": "47cec64d-270a-4ee4-8aea-3dd626c1447e",
@@ -13752,8 +13763,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-08T17:15:00.910915147Z",
+    "timestamp": "2026-09-08T17:30:30.352834393Z",
     "agent_id": "krvx",
-    "agent_seq": 16
+    "agent_seq": 17
   }
 }
