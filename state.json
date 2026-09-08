@@ -1,6 +1,6 @@
 {
   "next_display_id": 62,
-  "next_comment_id": 1436,
+  "next_comment_id": 1437,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10298,7 +10298,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-08T17:43:12.163870150Z",
-      "updated_at": "2026-09-08T23:35:54.720953355Z",
+      "updated_at": "2026-09-08T23:37:47.950282164Z",
       "comments": {
         "2a80dff1-d73a-4a4e-9212-f149c1e80124": {
           "display_id": 1435,
@@ -10434,6 +10434,15 @@
           "kind": "result",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA/+WaNu8yIbONlODM+HXT/XshEUIQ6ufaUtBDk8+AEEioEQ9T6DOolhlMxCGmSLN9DZOS5Brkne76IMLofL28AQ=="
+        },
+        "efec74a1-fd3a-40fa-bded-af45d61bfb10": {
+          "display_id": 1436,
+          "author": "krvx",
+          "content": "Pushed develop normally: origin/develop and local HEAD both 8a8f08b74b8c5342c49d1f030b94eba4d73596af, including prior UI commit 464024df. Rebuilt native release package from this clean tracked branch (1m25s) and installed with checked native Install-Peritus.sh, PERITUS_INSTALL_DEPS=0. All four installed executable bytes match package; peritus --version succeeds and PATH resolves /home/doll/.local/bin/peritus. Config and .bashrc hashes unchanged; no dependencies, credentials or task records replaced. Installed daemon had only waiting/cancelled/failed runs and shut down cleanly before replacement. Separate QA daemon untouched. Only excluded local agent configuration remains untracked. Next peritus launch uses updated binaries.",
+          "created_at": "2026-09-08T23:37:47.946128417Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAmmOV1JShpO9vM/0Catk7k9De5dxP+207jycTUOGCySA7AR2k8ZazLU0oqEdPIDo288b+8ZPj5w39HyD7/keTBQ=="
         }
       }
     },
@@ -13993,8 +14002,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-08T23:35:54.720953355Z",
+    "timestamp": "2026-09-08T23:37:47.950282164Z",
     "agent_id": "krvx",
-    "agent_seq": 56
+    "agent_seq": 57
   }
 }
