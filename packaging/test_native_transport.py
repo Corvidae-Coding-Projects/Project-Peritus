@@ -19,7 +19,8 @@ class NativeTransportTests(unittest.TestCase):
         (tree / "release/deps").mkdir(parents=True)
         (tree / "release/libperitus_daemon.rlib").write_bytes(b"fixture library")
         (tree / "release/deps/libperitus_daemon-fixture.rlib").write_bytes(b"fixture library")
-        binding = {"candidate": {"fixture": True}, "role": "primary", "environment": {"fixture": True}}
+        binding = {"candidate": {"fixture": True}, "role": "primary", "environment": {"fixture": True},
+                   "binary": "peritusd", "package": "peritus-daemon", "workflow": {"GITHUB_RUN_ATTEMPT": "1"}}
         observation = {"host": "fixture-host", "invocation": "fixture-library",
                        "started_unix_nanos": 1, "finished_unix_nanos": 2,
                        "command": ["cargo", "build", "--release", "--locked", "--package",
@@ -44,7 +45,7 @@ class NativeTransportTests(unittest.TestCase):
             self.assertFalse((destination / "release/peritusd").exists())
 
     def test_changed_candidate_role_or_environment_is_rejected_before_extraction(self):
-        for field in ("candidate", "role", "environment"):
+        for field in ("candidate", "role", "environment", "workflow", "binary", "package"):
             with self.subTest(field=field), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
                 _, bundle, binding, _ = self.fixture(root)
@@ -96,7 +97,7 @@ class NativeTransportTests(unittest.TestCase):
             self.assertFalse((root / "second-bundle").exists())
 
     def test_missing_libraries_or_prebuilt_product_are_not_a_library_stage(self):
-        for fault in ("library", "binary", "binary-dependency", "binary-fingerprint"):
+        for fault in ("library", "binary", "windows-binary", "binary-dependency", "binary-fingerprint"):
             with self.subTest(fault=fault), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
                 tree, _, binding, record = self.fixture(root)
@@ -104,6 +105,8 @@ class NativeTransportTests(unittest.TestCase):
                     (tree / "release/libperitus_daemon.rlib").unlink()
                 elif fault == "binary":
                     (tree / "release/peritusd").write_bytes(b"fixture binary")
+                elif fault == "windows-binary":
+                    (tree / "release/peritusd.exe").write_bytes(b"fixture binary")
                 elif fault == "binary-dependency":
                     (tree / "release/deps/peritusd-fixture").write_bytes(b"fixture binary")
                 else:
@@ -115,7 +118,7 @@ class NativeTransportTests(unittest.TestCase):
                 self.assertFalse((root / "second-bundle").exists())
 
     def test_prebuilt_cli_outputs_are_rejected_before_creating_a_library_bundle(self):
-        for name in ("release/peritus", "release/deps/peritus-fixture",
+        for name in ("release/peritus", "release/peritus.exe", "release/PERITUS.EXE", "release/deps/peritus-fixture",
                      "release/.fingerprint/peritus-cli-fixture/bin-peritus"):
             with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
@@ -129,7 +132,9 @@ class NativeTransportTests(unittest.TestCase):
 
     def test_unsafe_tar_members_and_resource_overflow_are_rejected(self):
         for name in ("../escape", "/absolute", "native-daemon/../escape", "native-daemon//bad",
-                     "native-daemon/back\\slash", "another-root/file", "native-daemon/control\n"):
+                     "native-daemon/back\\slash", "native-daemon/C:stream", "native-daemon/CON.txt",
+                     "native-daemon/file.", "native-daemon/file ", "native-daemon/wild*card",
+                     "another-root/file", "native-daemon/control\n"):
             with self.subTest(name=name):
                 member = tarfile.TarInfo(name)
                 with self.assertRaises(ValueError):
@@ -142,6 +147,8 @@ class NativeTransportTests(unittest.TestCase):
         member = tarfile.TarInfo("native-daemon/file")
         with self.assertRaises(ValueError):
             transport.members([member, member])
+        with self.assertRaises(ValueError):
+            transport.members([member, tarfile.TarInfo("native-daemon/FILE")])
         for value in (-1, float("inf")):
             member.mtime = value
             with self.assertRaises(ValueError):

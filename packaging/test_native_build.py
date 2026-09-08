@@ -16,8 +16,7 @@ import native_inputs as inputs
 import native_transport as transport
 
 
-@unittest.skipUnless(os.name == "posix", "native daemon handoff executes only on Unix hosts")
-class NativeBuildTests(unittest.TestCase):
+class NativeBuildFixture(unittest.TestCase):
     def setUp(self):
         self.resources = ExitStack()
         self.addCleanup(self.resources.close)
@@ -38,10 +37,11 @@ class NativeBuildTests(unittest.TestCase):
         self.assertEqual(arguments[:5], ["cargo", "build", "--release", "--locked", "--package"])
         target = self.root / "target/native-daemon/release"
         if arguments[6:] == ["--lib"]:
-            self.assertEqual(arguments[5], "peritus-daemon")
-            (target / "deps").mkdir(parents=True)
-            (target / "libperitus_daemon.rlib").write_bytes(b"fixture library")
-            (target / "deps/libperitus_daemon-fixture.rlib").write_bytes(b"fixture library")
+            self.assertIn(arguments[5], ("peritus-daemon", "peritus-cli"))
+            crate = arguments[5].replace("-", "_")
+            (target / "deps").mkdir(parents=True, exist_ok=True)
+            (target / f"lib{crate}.rlib").write_bytes(b"fixture library")
+            (target / f"deps/lib{crate}-fixture.rlib").write_bytes(b"fixture library")
         else:
             binary = arguments[7]
             self.assertIn(binary, ("peritusd", "peritus"))
@@ -56,6 +56,18 @@ class NativeBuildTests(unittest.TestCase):
             build.library()
         shutil.move(self.root / "target/native-daemon", self.root / "target/retained-producer")
 
+    def prepare_cli(self):
+        self.prepare()
+        self.binding.return_value = dict(self.bound, package="peritus-cli", binary="peritus")
+        with patch.object(build.subprocess, "run", side_effect=self.fake_cargo) as cargo:
+            build.library("peritus")
+        self.assertEqual(cargo.call_count, 1)
+        self.assertFalse((self.root / "target/native-daemon/release/peritus").exists())
+        shutil.move(self.root / "target/native-daemon", self.root / "target/retained-cli-producer")
+
+
+@unittest.skipUnless(os.name == "posix", "Unix executable-mode fixtures require a Unix filesystem")
+class NativeBuildTests(NativeBuildFixture):
     def test_binary_is_actually_compiled_and_its_distinct_observation_binds_the_bytes(self):
         self.prepare()
         with patch.object(build.subprocess, "run", side_effect=self.fake_cargo) as cargo:
@@ -119,7 +131,7 @@ class NativeBuildTests(unittest.TestCase):
             build.cargo_arguments("unknown")
 
     def test_cli_compilation_retains_its_own_command_and_original_same_role_library(self):
-        self.prepare()
+        self.prepare_cli()
         consumer = dict(self.bound, package="peritus-cli", binary="peritus")
         self.binding.return_value = consumer
         with patch.object(build.subprocess, "run", side_effect=self.fake_cargo) as cargo:
@@ -129,7 +141,8 @@ class NativeBuildTests(unittest.TestCase):
         record = json.loads((self.root / "target/native-peritus-build.json").read_bytes())
         inputs.validate_binary_record(record, self.bound["candidate"], "primary", product, "peritus")
         self.assertEqual(record["binding"], consumer)
-        self.assertEqual(record["library"]["binding"], self.bound)
+        self.assertEqual(record["library"]["binding"], consumer)
+        self.assertEqual(record["library"]["previous_library"]["binding"], self.bound)
         self.assertEqual(record["observation"]["command"],
                          ["cargo", "build", "--release", "--locked", "--package", "peritus-cli", "--bin", "peritus"])
         self.assertFalse((self.root / "target/release/peritusd").exists())
@@ -146,14 +159,14 @@ class NativeBuildTests(unittest.TestCase):
             elif fault == "library-role":
                 altered["library"]["binding"]["role"] = "independent"
             elif fault == "library-package":
-                altered["library"]["binding"]["package"] = "peritus-cli"
+                altered["library"]["binding"]["package"] = "peritus-daemon"
             else:
                 altered["schema_version"] = 1
             with self.subTest(fault=fault), self.assertRaises(ValueError):
                 inputs.validate_binary_record(altered, self.bound["candidate"], "primary", product, "peritus")
 
     def test_failed_cli_compilation_cannot_create_a_product_or_success_record(self):
-        self.prepare()
+        self.prepare_cli()
         self.binding.return_value = dict(self.bound, package="peritus-cli", binary="peritus")
         failure = subprocess.CalledProcessError(1, ["fixture cargo"])
         with patch.object(build.subprocess, "run", side_effect=failure), self.assertRaises(subprocess.CalledProcessError):
@@ -161,8 +174,87 @@ class NativeBuildTests(unittest.TestCase):
         self.assertFalse((self.root / "target/native-peritus-build.json").exists())
         self.assertFalse((self.root / "target/release/peritus").exists())
 
+    def test_cli_parent_identity_order_and_attempt_are_mandatory_before_final_cargo(self):
+        self.prepare_cli()
+        path = self.root / "target/native-cli-libraries/libraries.json"
+        original = json.loads(path.read_bytes())
+        for fault in ("missing", "role", "attempt", "recursive", "order", "invocation", "old-schema"):
+            changed = copy.deepcopy(original)
+            parent = changed["previous_library"]
+            if fault == "missing":
+                changed["previous_library"] = None
+            elif fault == "role":
+                parent["binding"]["role"] = "independent"
+            elif fault == "attempt":
+                parent["binding"]["workflow"] = {"GITHUB_RUN_ATTEMPT": "2"}
+            elif fault == "recursive":
+                parent["previous_library"] = copy.deepcopy(parent)
+            elif fault == "order":
+                changed["observation"]["started_unix_nanos"] = 1
+            elif fault == "invocation":
+                changed["observation"]["invocation"] = parent["observation"]["invocation"]
+            else:
+                changed["schema_version"] = 1
+            path.write_text(json.dumps(changed))
+            with self.subTest(fault=fault), patch.object(build.subprocess, "run") as cargo, \
+                    self.assertRaises(ValueError):
+                build.binary("peritus")
+            cargo.assert_not_called()
+            self.assertFalse((self.root / "target/native-daemon").exists())
+            self.assertFalse((self.root / "target/native-peritus-build.json").exists())
+        path.write_text(json.dumps(original))
+
+
+class WindowsNativeBuildTests(NativeBuildFixture):
+    def test_windows_daemon_uses_pinned_compiler_and_brepro_in_a_distinct_final_invocation(self):
+        self.bound["environment"].update(system="Windows", cc={"path": "fixture-clang-cl"})
+        self.prepare()
+
+        def windows_cargo(arguments, **kwargs):
+            self.assertEqual(arguments, transport.cargo_arguments("binary", "peritusd", "Windows"))
+            self.assertEqual(kwargs["env"]["CC_x86_64_pc_windows_msvc"], "fixture-clang-cl")
+            self.assertTrue(kwargs["check"])
+            (self.root / "target/native-daemon/release/peritusd.exe").write_bytes(b"MZ explicit fixture")
+
+        with patch.object(build.subprocess, "run", side_effect=windows_cargo) as cargo:
+            build.binary()
+        cargo.assert_called_once()
+        product = self.root / "target/release/peritusd.exe"
+        record = json.loads((self.root / "target/native-peritusd-build.json").read_bytes())
+        inputs.validate_binary_record(record, self.bound["candidate"], "primary", product)
+        self.assertEqual(record["library"]["binding"]["environment"]["cc"], {"path": "fixture-clang-cl"})
+        self.assertFalse((self.root / "target/release/peritusd").exists())
+        changed = copy.deepcopy(record)
+        changed["observation"]["command"] = transport.cargo_arguments("binary", "peritusd")
+        with self.assertRaises(ValueError):
+            inputs.validate_binary_record(changed, self.bound["candidate"], "primary", product)
+
+    def test_windows_non_executable_output_cannot_emit_a_success_record(self):
+        self.bound["environment"].update(system="Windows", cc={"path": "fixture-clang-cl"})
+        self.prepare()
+
+        def invalid_cargo(*_args, **_kwargs):
+            (self.root / "target/native-daemon/release/peritusd.exe").write_bytes(b"not a PE image")
+
+        with patch.object(build.subprocess, "run", side_effect=invalid_cargo), self.assertRaises(ValueError):
+            build.binary()
+        self.assertFalse((self.root / "target/release/peritusd.exe").exists())
+        self.assertFalse((self.root / "target/native-peritusd-build.json").exists())
+
 
 class NativeInputTests(unittest.TestCase):
+    def test_windows_environment_records_verified_native_compiler_instead_of_ambient_cc(self):
+        compiler = {"path": "fixture-clang-cl", "version": "fixture-version", "sha256": "f" * 64}
+        with patch.object(inputs.platform, "system", return_value="Windows"), \
+                patch.object(inputs.platform, "machine", return_value="AMD64"), \
+                patch.object(inputs.windows_release, "compiler_environment", return_value=({}, compiler)), \
+                patch.object(inputs, "command", return_value="fixture") as command, \
+                patch.dict(os.environ, {}, clear=True):
+            observed = inputs.environment()
+        self.assertEqual(observed["cc"], compiler)
+        self.assertEqual(observed["system"], "Windows")
+        self.assertNotIn(unittest.mock.call("cc", "--version"), command.call_args_list)
+
     def test_consumer_mapping_is_closed_before_source_or_environment_commands(self):
         for binary in ("", "unknown", "../peritus", "peritus; exit 0", None, []):
             with self.subTest(binary=binary), patch.object(inputs, "command") as command:
@@ -173,13 +265,13 @@ class NativeInputTests(unittest.TestCase):
                     build.cargo_arguments("binary", binary)
                 with self.assertRaises(ValueError):
                     transport.record_filename(binary)
-        with self.assertRaises(ValueError):
-            build.cargo_arguments("library", "peritus")
+        self.assertEqual(build.cargo_arguments("library", "peritus")[-3:], ["--package", "peritus-cli", "--lib"])
         with patch.object(inputs, "candidate", return_value={"fixture": True}), \
                 patch.object(inputs, "environment", return_value={"fixture": True}), \
                 patch.dict(os.environ, {inputs.ROLE_ENV: "primary"}, clear=True):
             self.assertEqual(inputs.binding("peritus")["package"], "peritus-cli")
-            self.assertEqual(inputs.library_binding(inputs.binding("peritus")), inputs.binding("peritusd"))
+            self.assertEqual(inputs.library_binding(inputs.binding("peritus")), inputs.binding("peritus"))
+            self.assertEqual(inputs.daemon_binding(inputs.binding("peritus")), inputs.binding("peritusd"))
 
     def test_roles_and_complete_workflow_identity_are_required(self):
         with patch.object(inputs, "candidate", return_value={"fixture": True}), \

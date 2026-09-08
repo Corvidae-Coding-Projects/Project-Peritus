@@ -21,6 +21,7 @@ import time
 import tomllib
 import uuid
 import zlib
+import zipfile
 
 import native_inputs
 import native_transport
@@ -29,6 +30,14 @@ ROOT = Path(__file__).resolve().parent.parent
 OBSERVATION = "peritus-native-build.json"
 PACKAGE_RECORD = "peritus-native-package.json"
 INTEL_MAC_ARCHIVE = "dist/peritus-macos-x86_64.tar.gz"
+WINDOWS_ARCHIVE = "dist/peritus-windows-x86_64.zip"
+
+
+def compilation_names(package):
+    target = package["archive"].replace("\\", "/")
+    if target == INTEL_MAC_ARCHIVE:
+        return set(native_transport.BINARY_PACKAGES)
+    return {"peritusd"} if target == WINDOWS_ARCHIVE else set()
 
 
 def regular(path):
@@ -98,7 +107,7 @@ def record(directory, role):
     package, artifacts = outputs(directory)
     compilations = binary_compilations(directory, package, role)
     observation = {
-        "schema_version": 3, "kind": "native-release-assembly", "role": role,
+        "schema_version": 4, "kind": "native-release-assembly", "role": role,
         "invocation": str(uuid.uuid4()), "observed_unix_nanos": time.time_ns(),
         "candidate": candidate(), "artifacts": artifacts, "package_record": package,
         "binary_compilations": compilations,
@@ -125,7 +134,7 @@ def record(directory, role):
 def load(directory, role):
     observation = json.loads(regular(directory / OBSERVATION).read_bytes())
     package, artifacts = outputs(directory)
-    if (observation["schema_version"] != 3 or observation["kind"] != "native-release-assembly"
+    if (observation["schema_version"] != 4 or observation["kind"] != "native-release-assembly"
             or observation["role"] != role or observation["artifacts"] != artifacts
             or observation["package_record"] != package):
         raise ValueError("native build observation does not match its retained outputs")
@@ -135,16 +144,16 @@ def load(directory, role):
 
 def binary_compilations(directory, package, role):
     source = ROOT / "target/native-compile-record"
-    required = package["archive"].replace("\\", "/") == INTEL_MAC_ARCHIVE
+    required = compilation_names(package)
     if not required:
         if source.exists() or source.is_symlink():
             raise ValueError("unexpected binary compilation evidence on this native target")
         return {}
     names = {binary: native_transport.record_filename(binary)
-             for binary in native_transport.BINARY_PACKAGES}
+             for binary in required}
     if (source.is_symlink() or not source.is_dir()
             or {path.name for path in source.iterdir()} != set(names.values())):
-        raise ValueError("native compilation evidence requires exactly the CLI and daemon records")
+        raise ValueError("native compilation evidence requires exactly this target's staged binary records")
     records = {}
     for binary, name in names.items():
         path = regular(source / name)
@@ -156,38 +165,46 @@ def binary_compilations(directory, package, role):
 
 
 def validate_binary_compilations(records, directory, package, role):
-    required = package["archive"].replace("\\", "/") == INTEL_MAC_ARCHIVE
-    names = set(native_transport.BINARY_PACKAGES) if required else set()
+    names = compilation_names(package)
     if not isinstance(records, dict) or set(records) != names:
         raise ValueError("native binary compilation inventory differs from this archive target")
     if not names:
         return
-    observed = archived_binaries(directory / PurePosixPath(package["archive"]).name)
+    archive_path = package["archive"].replace("\\", "/")
+    windows = archive_path == WINDOWS_ARCHIVE
+    observed = archived_binaries(directory / PurePosixPath(archive_path).name, windows)
     candidate_inputs = native_inputs.candidate()
     rustc = command("rustc", "--version", "--verbose")
     for name, record in records.items():
         native_inputs.validate_binary_observation(record, candidate_inputs, role, observed[name], name)
-        validate_compilation_environment(record["binding"], rustc)
-    daemon, cli = records["peritusd"], records["peritus"]
-    if (daemon["library"] != cli["library"]
-            or daemon["observation"]["invocation"] == cli["observation"]["invocation"]):
-        raise ValueError("native CLI and daemon must have distinct invocations from the same role's library")
+        validate_compilation_environment(record["binding"], rustc, windows)
+    if not windows:
+        daemon, cli = records["peritusd"], records["peritus"]
+        if (daemon["library"] != cli["library"]["previous_library"]
+                or daemon["observation"]["invocation"] in (
+                    cli["observation"]["invocation"], cli["library"]["observation"]["invocation"])):
+            raise ValueError("native CLI and daemon must have distinct invocations from the same role's library")
 
 
-def validate_compilation_environment(bound, rustc):
-    if (bound["environment"]["system"] != "Darwin"
-            or bound["environment"]["machine"] != "x86_64"
+def validate_compilation_environment(bound, rustc, windows=False):
+    machines = ("amd64", "x86_64") if windows else ("x86_64",)
+    if (bound["environment"]["system"] != ("Windows" if windows else "Darwin")
+            or bound["environment"]["machine"].lower() not in machines
             or bound["environment"]["rustc"] != rustc
             or bound["environment"]["image_version"] != os.environ.get("ImageVersion")):
         raise ValueError("native binary compilation environment differs from native assembly")
+    if windows and bound["environment"]["cc"] != native_inputs.windows_release.compiler_environment()[1]:
+        raise ValueError("native Windows compilation C compiler differs from native assembly")
     if os.environ.get("GITHUB_ACTIONS") == "true":
         workflow = {key: os.environ.get(key) for key in native_inputs.WORKFLOW_KEYS}
         if not all(workflow.values()) or bound["workflow"] != workflow:
             raise ValueError("native binary compilation differs from this assembly's workflow run")
 
 
-def archived_binaries(archive):
+def archived_binaries(archive, windows=False):
     """Inspect the shipped bytes, never the untrusted loose package projection."""
+    if windows:
+        return archived_windows_daemon(archive)
     wanted = {f"peritus-macos-x86_64/bin/{name}": name for name in native_transport.BINARY_PACKAGES}
     result, expanded, count = {}, 0, 0
     with tarfile.open(regular(archive), "r:gz") as source:
@@ -207,6 +224,25 @@ def archived_binaries(archive):
     if set(result) != set(wanted.values()):
         raise ValueError("native archive is missing a compiled CLI or daemon")
     return result
+
+
+def archived_windows_daemon(archive):
+    wanted = "peritus-windows-x86_64/bin/peritusd.exe"
+    with zipfile.ZipFile(regular(archive)) as source:
+        entries = source.infolist()
+        if len(entries) > 10_000 or sum(entry.file_size for entry in entries) > 1024**3:
+            raise ValueError("native archive exceeds its inspection bound")
+        products = [entry for entry in entries if entry.filename == wanted]
+        if len(products) != 1:
+            raise ValueError("native archive requires exactly one Windows daemon")
+        entry = products[0]
+        mode = entry.external_attr >> 16
+        if (entry.is_dir() or stat.S_IFMT(mode) not in (0, stat.S_IFREG)
+                or not 0 < entry.file_size <= 256 * 1024**2):
+            raise ValueError("native archive requires one nonempty regular Windows daemon")
+        with source.open(entry) as binary:
+            digest_value = hashlib.file_digest(binary, "sha256").hexdigest()
+        return {"peritusd": {"byte_length": entry.file_size, "sha256": digest_value}}
 
 
 def compare(first, second, report):

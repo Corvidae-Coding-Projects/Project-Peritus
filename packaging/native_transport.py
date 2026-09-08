@@ -17,6 +17,8 @@ MAX_EXPANDED_BYTES = 8 * 1024**3
 MAX_MEMBERS = 100_000
 MAX_RECORD_BYTES = 4 * 1024**2
 BINARY_PACKAGES = {"peritusd": "peritus-daemon", "peritus": "peritus-cli"}
+WINDOWS_DEVICES = {"con", "prn", "aux", "nul", *(f"com{i}" for i in range(1, 10)),
+                   *(f"lpt{i}" for i in range(1, 10))}
 
 
 def binary_package(binary):
@@ -30,12 +32,13 @@ def record_filename(binary):
     return f"native-{binary}-build.json"
 
 
-def cargo_arguments(stage, binary="peritusd"):
+def cargo_arguments(stage, binary="peritusd", system=None):
     if stage not in ("library", "binary"):
         raise ValueError("native compilation phase must be library or binary")
     package = binary_package(binary)
-    if stage == "library" and binary != "peritusd":
-        raise ValueError("the shared native library producer must compile peritus-daemon")
+    if stage == "binary" and system == "Windows":
+        return ["cargo", "rustc", "--release", "--locked", "--package", package,
+                "--bin", binary, "--", "-C", "link-arg=/Brepro"]
     return ["cargo", "build", "--release", "--locked", "--package", package,
             *(["--lib"] if stage == "library" else ["--bin", binary])]
 
@@ -56,14 +59,17 @@ def members(entries):
     for entry in entries:
         name = entry.name.rstrip("/") if entry.isdir() else entry.name
         path = PurePosixPath(name)
-        if (not name or "\\" in name or any(ord(char) < 32 for char in name)
+        if (not name or any(char in name for char in '\\:<>"|?*')
+                or any(ord(char) < 32 for char in name)
+                or any(part.endswith((".", " ")) or part.split(".")[0].casefold() in WINDOWS_DEVICES
+                       for part in path.parts)
                 or path.as_posix() != name or path.is_absolute() or ".." in path.parts
-                or path.parts[0] != "native-daemon" or name in names
+                or path.parts[0] != "native-daemon" or name.casefold() in names
                 or (len(path.parts) == 1 and not entry.isdir())
                 or not (entry.isfile() or entry.isdir()) or entry.mode & 0o7000
                 or entry.size < 0 or not math.isfinite(entry.mtime) or entry.mtime < 0):
             raise ValueError(f"unsafe or duplicate native library archive member: {entry.name}")
-        names.add(name)
+        names.add(name.casefold())
         expanded += entry.size
         result.append(entry)
         if len(result) > MAX_MEMBERS or expanded > MAX_EXPANDED_BYTES:
@@ -73,7 +79,7 @@ def members(entries):
     return result
 
 
-def library_tree(root):
+def library_tree(root, binary="peritusd"):
     if root.name != "native-daemon":
         raise ValueError("native libraries require their fixed target directory")
     tree = native_archive.entries(root)
@@ -86,36 +92,37 @@ def library_tree(root):
         if stat.S_ISREG(mode):
             expanded += path.stat().st_size
         if stat.S_ISREG(mode) and any(
-                path.name == binary or path.name.startswith(binary + "-")
-                or path.name.startswith("bin-" + binary) for binary in BINARY_PACKAGES):
+                path.name.casefold() in (binary, binary + ".exe") or path.name.casefold().startswith(binary + "-")
+                or path.name.casefold().startswith("bin-" + binary) for binary in BINARY_PACKAGES):
             raise ValueError("library compilation cannot contain a prebuilt product binary")
     if expanded > MAX_EXPANDED_BYTES:
         raise ValueError("native library tree exceeds its expanded-byte bound")
-    library = root / "release/libperitus_daemon.rlib"
-    candidates = list((root / "release/deps").glob("libperitus_daemon-*.rlib"))
+    crate = binary_package(binary).replace("-", "_")
+    library = root / f"release/lib{crate}.rlib"
+    candidates = list((root / "release/deps").glob(f"lib{crate}-*.rlib"))
     if not library.is_file() or not regular(library).stat().st_size or len(candidates) != 1:
-        raise ValueError("native compilation requires exactly one complete daemon library")
+        raise ValueError("native compilation requires exactly one complete consumer library")
     if not regular(candidates[0]).stat().st_size:
         raise ValueError("native daemon dependency library is empty")
     return tree
 
 
-def validate_observation(observation, stage, binary="peritusd"):
+def validate_observation(observation, stage, binary="peritusd", system=None):
     if (not isinstance(observation, dict) or not observation.get("host")
             or not observation.get("invocation")
             or type(observation.get("started_unix_nanos")) is not int
             or type(observation.get("finished_unix_nanos")) is not int
             or not 0 < observation["started_unix_nanos"] <= observation["finished_unix_nanos"]
-            or observation.get("command") != cargo_arguments(stage, binary)):
+            or observation.get("command") != cargo_arguments(stage, binary, system)):
         raise ValueError("native compilation observation is incomplete or unordered")
 
 
 def validate_record(record, expected):
     if (not isinstance(record, dict) or set(record) != {
             "schema_version", "kind", "binding", "observation",
-            "archive_byte_length", "archive_sha256"}
-            or type(record["schema_version"]) is not int or record["schema_version"] != 1
-            or record["kind"] != "native-daemon-library-compilation"
+            "archive_byte_length", "archive_sha256", "previous_library"}
+            or type(record["schema_version"]) is not int or record["schema_version"] != 2
+            or record["kind"] != "native-release-library-compilation"
             or record["binding"] != expected):
         raise ValueError("native library binding differs from this candidate, role, or environment")
     if (type(record["archive_byte_length"]) is not int
@@ -123,12 +130,26 @@ def validate_record(record, expected):
             or not isinstance(record["archive_sha256"], str)
             or not re.fullmatch(r"[0-9a-f]{64}", record["archive_sha256"])):
         raise ValueError("native library archive identity is invalid")
-    validate_observation(record["observation"], "library")
+    binary = expected["binary"]
+    validate_observation(record["observation"], "library", binary)
+    previous = record["previous_library"]
+    if binary == "peritusd":
+        if previous is not None:
+            raise ValueError("daemon library compilation cannot have a previous library")
+    else:
+        validate_record(previous, dict(expected, package="peritus-daemon", binary="peritusd"))
+        validate_later(previous["observation"], record["observation"])
 
 
-def save(root, directory, binding, observation):
-    tree = library_tree(root)
-    validate_observation(observation, "library")
+def validate_later(first, last):
+    if (first["invocation"] == last["invocation"]
+            or first["finished_unix_nanos"] > last["started_unix_nanos"]):
+        raise ValueError("native compilation must be a distinct later invocation")
+
+
+def save(root, directory, binding, observation, previous_library=None):
+    tree = library_tree(root, binding["binary"])
+    validate_observation(observation, "library", binding["binary"])
     directory.mkdir(parents=True)
     archive = directory / ARCHIVE
     with tarfile.open(archive, "x:gz", compresslevel=1, dereference=True) as output:
@@ -142,8 +163,9 @@ def save(root, directory, binding, observation):
                     output.addfile(info, payload)
             else:
                 output.addfile(info)
-    record = {"schema_version": 1, "kind": "native-daemon-library-compilation",
+    record = {"schema_version": 2, "kind": "native-release-library-compilation",
               "binding": binding, "observation": observation,
+              "previous_library": previous_library,
               "archive_byte_length": archive.stat().st_size, "archive_sha256": digest(archive)}
     validate_record(record, binding)
     with (directory / RECORD).open("x", newline="\n") as output:
@@ -172,5 +194,5 @@ def restore(directory, destination, expected):
     with tarfile.open(archive, "r:gz") as source:
         inventory = members(source)
         source.extractall(destination.parent, members=inventory, filter="data")
-    library_tree(destination)
+    library_tree(destination, expected["binary"])
     return record
