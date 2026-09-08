@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1383,
+  "next_comment_id": 1384,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-08T02:01:00.354244340Z",
+      "updated_at": "2026-09-08T02:18:50.957157277Z",
       "labels": [
         "release"
       ],
@@ -1250,6 +1250,15 @@
           "kind": "result",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA1yA/nY6UwOjwzfjbEyRq0gzBabvMVrcxRLIgYjlwEfZyu9QpUyNmEdgN0fzB38waZ45v1R01R6vPfwW0sV53Cw=="
+        },
+        "0967d470-7b8c-4e78-96be-242ddffec8e1": {
+          "display_id": 1383,
+          "author": "QWDj",
+          "content": "[action] User flagged runner timeout; inspected exacttwo failures. Windows independent10m04completion timeout, matchingprimary9m21SUCCESS and binariesidentical. MacIntelprimaryCLI job101909291211 actualcompiletimeout; matchingindependentjob101909291275SUCCESS4m11. Run34176332143 attempt1 finished80SUCCESS2CANCEL7SKIP. Reran onlyunsuccessful jobs unchanged via --failed -> attempt2 Windowsjob101915053542running; Macjob101915053587failedfast atnative_transport.validate_record because GITHUB_RUN_ATTEMPT is an exact library workflow binding (producer attempt1 vsconsumer2). Preserve strict provenance; need fresh full existing-tag workflow attempt after currentWindowsfinishes, NOT code weakening/retag. All4actualGPGsign+nativeAPT/DNFqualifications passed; downloaded4bundles outerGPG/hash/internalinventory/directpackages/source4334files verified exactebae. Fullrerun will produce fresh assets; redownload to new attempt-specific directory forfinal verification.",
+          "created_at": "2026-09-08T02:18:50.952665728Z",
+          "kind": "note",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWRgSanHKsOWIzh50weD4QzhyjI1k+yUcA9ivmfajlmqF54ldYWn/YpXf/e25PKevXamnuCQblquZT3hHN3BBAw=="
         },
         "0a7bf4d2-c971-43ed-89dd-5bb238653bf3": {
           "display_id": 1279,
@@ -13460,8 +13469,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-08T02:01:00.354244340Z",
+    "timestamp": "2026-09-08T02:18:50.957157277Z",
     "agent_id": "QWDj",
-    "agent_seq": 167
+    "agent_seq": 168
   }
 }
