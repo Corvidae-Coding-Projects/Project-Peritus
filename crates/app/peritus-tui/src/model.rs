@@ -305,7 +305,8 @@ impl AppModel {
     }
 
     pub(crate) fn update(&mut self, action: Action) -> Vec<Effect> {
-        match action {
+        let observed_at = if let Action::Tick(now) = &action { Some(*now) } else { None };
+        let effects = match action {
             Action::Connected { context, limits, server, downgraded } => {
                 self.context = Some(context);
                 self.limits = limits;
@@ -323,7 +324,7 @@ impl AppModel {
             }
             Action::Message(message) => self.handle_message(message),
             Action::TerminalEvent(event) => self.handle_terminal_event(event),
-            Action::Tick => {
+            Action::Tick(_) => {
                 self.tick_count = self.tick_count.saturating_add(1);
                 if let Some(notice) = &mut self.notice {
                     notice.ticks_remaining = notice.ticks_remaining.saturating_sub(1);
@@ -337,7 +338,11 @@ impl AppModel {
                     Vec::new()
                 }
             }
-        }
+        };
+        let working =
+            matches!(self.connection, ConnectionStatus::Online { .. }) && self.chat_work_active();
+        self.chat.working.observe(if working { self.chat.run_id } else { None }, observed_at);
+        effects
     }
 
     pub(crate) fn visible_event_indices(&self) -> Vec<usize> {

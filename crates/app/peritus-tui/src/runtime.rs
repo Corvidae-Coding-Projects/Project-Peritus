@@ -131,7 +131,7 @@ pub async fn run_with_state(
                 Some(ClientEvent::Disconnected(error)) => Action::Disconnected(error),
                 None => Action::Disconnected("all daemon client tasks stopped".to_owned()),
             },
-            _ = tick.tick() => Action::Tick,
+            _ = tick.tick() => Action::Tick(std::time::Instant::now()),
         };
         let effects = model.update(action);
         match apply_effects(

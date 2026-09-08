@@ -49,8 +49,13 @@ stop so they cannot split streamed prose. A failed observation cancels the pendi
 Repeated waiting observations update one durable status entry instead of filling the transcript.
 These host observations are `Status` activities, not fabricated assistant text or progress evidence.
 
-Routine tool observations use compact rows; `/details` restores expanded metadata. Arguments,
-tool output, credentials, and private reasoning are not copied into progress narration. Existing
+Normal conversation hides host `Status` and `Tool` activities. `/details` reveals them with distinct
+Status/Tool labels and expanded metadata; user messages, model replies, and errors remain visible.
+One `*working (40s)` footer indicator replaces repeated harness chatter. It advances from monotonic
+runtime timestamps, not tick counts or provider heartbeat messages, and resets when work becomes
+idle, the selected conversation changes, or the connection is lost. Reopening active work starts a
+new client-observed busy period; the timer does not claim historical task duration or model progress.
+Arguments, tool output, credentials, and private reasoning are not copied into progress narration. Existing
 public text streaming remains unchanged. In particular, the current Codex account adapter
 validates and delivers one complete provider response at a time: it does not expose token deltas.
 The underlying [Codex JSONL interface](https://learn.chatgpt.com/docs/non-interactive-mode#make-output-machine-readable)

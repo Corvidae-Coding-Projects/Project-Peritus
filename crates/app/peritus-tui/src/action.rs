@@ -22,7 +22,7 @@ pub enum Action {
     Disconnected(String),
     Message(AppMessage),
     TerminalEvent(Event),
-    Tick,
+    Tick(std::time::Instant),
 }
 
 /// One external operation requested by the reducer.

@@ -4,6 +4,7 @@ mod commands;
 mod models;
 #[cfg(test)]
 mod tests;
+mod working;
 
 use super::{AppModel, Effect, NoticeLevel, PendingRequest};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -15,6 +16,7 @@ use peritus_app_protocol::{
 use peritus_types::RunId;
 
 pub use commands::COMMANDS;
+pub use working::WorkingIndicator;
 
 #[derive(Debug)]
 pub struct ChatUi {
@@ -26,6 +28,7 @@ pub struct ChatUi {
     pub(crate) models: ProductRoleModels,
     pub(crate) scroll: usize,
     pub(crate) expanded: bool,
+    pub(crate) working: WorkingIndicator,
     pub(crate) command_selection: usize,
     pub(crate) catalog: Option<ProductModelCatalog>,
     pub(crate) model_picker: bool,
@@ -44,6 +47,7 @@ impl Default for ChatUi {
             models: ProductRoleModels::default(),
             scroll: 0,
             expanded: false,
+            working: WorkingIndicator::default(),
             command_selection: 0,
             catalog: None,
             model_picker: false,

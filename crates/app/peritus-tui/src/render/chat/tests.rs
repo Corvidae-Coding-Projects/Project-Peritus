@@ -8,6 +8,7 @@ use ratatui::{Terminal, backend::TestBackend};
 
 fn model() -> AppModel {
     let mut model = AppModel::new([1; 32]);
+    model.connection = ConnectionStatus::Online { server: "test".to_owned(), downgraded: false };
     let profile = ProviderProfileId::new([2; 16]).expect("profile");
     let snapshot = ProductRunSnapshot::new(
         RunId::new([3; 16]).expect("run"),
@@ -34,6 +35,7 @@ fn model() -> AppModel {
             .expect("activity")
         })
         .collect();
+    model.chat.run_id = Some(snapshot.run_id());
     model.chat.snapshot = Some(
         ProductInteractionSnapshot::new(
             snapshot,
@@ -98,30 +100,30 @@ fn command_picker_keeps_first_and_last_selection_visible() {
     }
 }
 
-#[test]
-fn compact_tool_activity_keeps_public_narration_visible_and_details_expand() {
+fn conversation_with_diagnostics() -> AppModel {
     let mut model = model();
     let previous = model.chat.snapshot.take().expect("snapshot");
-    let mut activities = vec![
-        ProductActivity::new(
-            1,
-            ProductActivityKind::Assistant,
-            "I'll inspect the parser and check why input is lost.".to_owned(),
-            String::new(),
-        )
-        .expect("public narration"),
-    ];
-    for sequence in 2..=9 {
-        activities.push(
-            ProductActivity::new(
-                sequence,
-                ProductActivityKind::Tool,
-                "Reading the relevant file contents.".to_owned(),
-                "workspace_read: 100 output bytes; bounded details".to_owned(),
-            )
-            .expect("tool"),
-        );
-    }
+    let activities = [
+        (ProductActivityKind::User, "Fix the parser.", ""),
+        (ProductActivityKind::Status, "I'm working on your reply.", ""),
+        (ProductActivityKind::Status, "Requesting model gpt-5.6-sol", ""),
+        (ProductActivityKind::Assistant, "I'll inspect the parser.", ""),
+        (
+            ProductActivityKind::Tool,
+            "Reading the relevant file contents.",
+            "workspace_read: 100 output bytes",
+        ),
+        (ProductActivityKind::Tool, "Finished that step.", ""),
+        (ProductActivityKind::Status, "I'm inspecting the workspace and preparing the design.", ""),
+        (ProductActivityKind::Assistant, "The parser drops empty input.", ""),
+        (ProductActivityKind::Error, "Connection lost; the result is not verified.", ""),
+    ]
+    .into_iter()
+    .zip(1..)
+    .map(|((kind, text, detail), sequence)| {
+        ProductActivity::new(sequence, kind, text.to_owned(), detail.to_owned()).expect("activity")
+    })
+    .collect();
     model.chat.snapshot = Some(
         ProductInteractionSnapshot::new(
             previous.snapshot().clone(),
@@ -134,13 +136,122 @@ fn compact_tool_activity_keeps_public_narration_visible_and_details_expand() {
         )
         .expect("snapshot"),
     );
-    let (compact, _) = screen(&model, 100, 24);
-    assert!(
-        compact.contains("I'll inspect the parser"),
-        "narration must not be crowded out: {compact}"
-    );
-    assert!(!compact.contains("bounded details"));
+    model
+}
+
+#[test]
+fn ordinary_transcript_shows_conversation_and_errors_without_harness_chatter() {
+    let model = conversation_with_diagnostics();
+    for width in [60, 100] {
+        let (text, _) = screen(&model, width, 32);
+        for visible in [
+            "Fix the parser.",
+            "I'll inspect the parser.",
+            "The parser drops empty input.",
+            "Connection lost;",
+        ] {
+            assert!(text.contains(visible), "missing {visible}: {text}");
+        }
+        for diagnostic in [
+            "I'm working on your reply.",
+            "Requesting model",
+            "Reading the relevant file",
+            "Finished that step.",
+            "preparing the design",
+            "workspace_read",
+        ] {
+            assert!(!text.contains(diagnostic), "harness chatter visible: {diagnostic}");
+        }
+    }
+}
+
+#[test]
+fn explicit_details_reveal_host_activity_with_distinct_labels() {
+    let mut model = conversation_with_diagnostics();
     model.chat.expanded = true;
-    let (expanded, _) = screen(&model, 100, 24);
-    assert!(expanded.contains("bounded details"));
+    let (expanded, _) = screen(&model, 100, 48);
+    for diagnostic in [
+        "Status",
+        "Tool",
+        "Requesting model gpt-5.6-sol",
+        "Finished that step.",
+        "workspace_read: 100 output bytes",
+    ] {
+        assert!(expanded.contains(diagnostic), "missing diagnostic: {diagnostic}");
+    }
+    assert_eq!(expanded.matches("Peritus").count(), 3, "app title plus two model reply labels");
+    model.chat.expanded = false;
+    let (collapsed, _) = screen(&model, 100, 32);
+    assert!(!collapsed.contains("Requesting model"));
+    assert!(collapsed.contains("I'll inspect the parser."));
+}
+
+#[test]
+fn one_working_idler_updates_elapsed_seconds_without_adding_transcript_rows() {
+    use crate::action::Action;
+    use std::time::{Duration, Instant};
+    let mut model = conversation_with_diagnostics();
+    let started = Instant::now();
+    let _ = model.update(Action::Tick(started));
+    let (initial, _) = screen(&model, 100, 32);
+    assert!(initial.contains("*working (0s)"));
+    let _ = model.update(Action::Tick(started + Duration::from_secs(40)));
+    let (later, _) = screen(&model, 100, 32);
+    assert!(later.contains("*working (40s)"));
+    assert_eq!(later.matches("*working").count(), 1);
+    assert!(!later.contains("*working (0s)"));
+    assert!(!later.contains("Requesting model"));
+    assert!(later.contains("I'll inspect the parser."));
+    let _ = model.update(Action::Disconnected("socket closed".to_owned()));
+    let (disconnected, _) = screen(&model, 100, 32);
+    assert!(!disconnected.contains("*working"), "disconnection cannot imply live progress");
+}
+
+#[test]
+fn working_idler_stops_at_every_idle_or_terminal_phase() {
+    use crate::action::Action;
+    use std::time::{Duration, Instant};
+    for phase in [
+        ProductRunPhase::WaitingForUser,
+        ProductRunPhase::Complete,
+        ProductRunPhase::Failed,
+        ProductRunPhase::Cancelled,
+        ProductRunPhase::RecoveryRequired,
+    ] {
+        let mut model = model();
+        let now = Instant::now();
+        let _ = model.update(Action::Tick(now));
+        assert_eq!(model.chat.working.elapsed_seconds(), Some(0));
+        let previous = model.chat.snapshot.take().expect("snapshot");
+        let current = previous.snapshot();
+        let snapshot = ProductRunSnapshot::new(
+            current.run_id(),
+            current.workspace_id(),
+            current.providers(),
+            phase,
+            current.cycle(),
+            current.task().to_owned(),
+            "Stopped".to_owned(),
+            String::new(),
+            String::new(),
+            String::new(),
+            String::new(),
+        )
+        .expect("phase snapshot");
+        model.chat.snapshot = Some(
+            ProductInteractionSnapshot::new(
+                snapshot,
+                previous.mode(),
+                previous.models().clone(),
+                previous.received(),
+                previous.incorporated(),
+                previous.activities().to_vec(),
+                None,
+            )
+            .expect("interaction"),
+        );
+        let _ = model.update(Action::Tick(now + Duration::from_secs(40)));
+        assert_eq!(model.chat.working.elapsed_seconds(), None, "{phase:?}");
+        assert!(!screen(&model, 100, 32).0.contains("*working"));
+    }
 }

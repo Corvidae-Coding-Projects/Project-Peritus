@@ -34,7 +34,7 @@ pub(super) fn draw(frame: &mut Frame<'_>, model: &AppModel) {
         Paragraph::new(vec![
             Line::styled(title, Style::default().fg(ACCENT).add_modifier(Modifier::BOLD)),
             Line::styled(
-                "Type / for commands · PageUp/PageDown scroll · /details expands tools",
+                "Type / for commands · PageUp/PageDown scroll · /details shows diagnostics",
                 Style::default().fg(MUTED),
             ),
         ]),
@@ -123,17 +123,23 @@ fn draw_composer(
 }
 
 fn draw_status(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
-    let status = model.chat.snapshot.as_ref().map_or_else(
-        || "Ready · Enter sends · Shift-Enter newline · Ctrl-C exits".to_owned(),
-        |snapshot| {
-            format!(
-                "{} · input received {} / incorporated {} · Ctrl-C stops / exits",
-                snapshot.snapshot().status(),
-                snapshot.received(),
-                snapshot.incorporated()
-            )
-        },
-    );
+    let status = if !model.chat.expanded
+        && let Some(seconds) = model.chat.working.elapsed_seconds()
+    {
+        format!("*working ({seconds}s) · Ctrl-C stops")
+    } else {
+        model.chat.snapshot.as_ref().map_or_else(
+            || "Ready · Enter sends · Shift-Enter newline · Ctrl-C exits".to_owned(),
+            |snapshot| {
+                format!(
+                    "{} · input received {} / incorporated {} · Ctrl-C stops / exits",
+                    snapshot.snapshot().status(),
+                    snapshot.received(),
+                    snapshot.incorporated()
+                )
+            },
+        )
+    };
     let notice = model.notice.as_ref().map_or("", |notice| notice.text.as_str());
     frame.render_widget(
         Paragraph::new(vec![
@@ -172,18 +178,19 @@ fn draw_transcript(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
             lines.push(Line::styled("Earlier activity is outside this bounded window. The durable conversation and trace remain available.", Style::default().fg(MUTED)));
         }
         for activity in snapshot.activities() {
-            if activity.kind() == ProductActivityKind::Tool && !model.chat.expanded {
-                lines.push(Line::styled(
-                    format!("  · {}", crate::sanitize::sanitize_display_text(activity.text())),
-                    Style::default().fg(MUTED),
-                ));
+            if !model.chat.expanded
+                && matches!(
+                    activity.kind(),
+                    ProductActivityKind::Tool | ProductActivityKind::Status
+                )
+            {
                 continue;
             }
             let (label, color) = match activity.kind() {
                 ProductActivityKind::User => ("You", ACCENT),
                 ProductActivityKind::Assistant => ("Peritus", GOOD),
                 ProductActivityKind::Tool => ("Tool", MUTED),
-                ProductActivityKind::Status => ("Peritus", MUTED),
+                ProductActivityKind::Status => ("Status", MUTED),
                 ProductActivityKind::Error => ("Error", BAD),
             };
             lines

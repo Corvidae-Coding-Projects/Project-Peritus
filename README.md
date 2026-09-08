@@ -101,9 +101,10 @@ When you ask Chat to implement or fix something, it hands the request to the exi
 writer, exact-target checks, independent reviewer, and fixer pipeline. Questions, diagnosis,
 planning, and read-only review remain conversational; they do not authorize edits.
 
-Peritus shares short progress messages while inspecting, editing, and verifying work. Routine
-tool activity stays compact; `/details` expands it. If the provider has not returned public text
-after 20 seconds, Peritus shows an explicit waiting notice rather than implying new progress.
+The conversation shows your messages and the model's replies, with one `*working (40s)` indicator
+while work is active. Harness status messages and tool activity stay behind `/details`; failures
+remain visible. The timer measures elapsed time since this client observed the current busy period,
+not evidence of model progress.
 The account-backed Codex adapter delivers complete messages, not token-by-token text.
 
 Type `/` to discover commands; Tab completes them.

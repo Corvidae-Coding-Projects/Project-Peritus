@@ -16,7 +16,7 @@ pub const COMMANDS: &[(&str, &str)] = &[
     ("/trace", "Inspect event trace"),
     ("/terminal", "Attach to a daemon process"),
     ("/approvals", "Inspect pending approvals"),
-    ("/details", "Expand or collapse tool details"),
+    ("/details", "Show or hide harness diagnostics"),
     ("/stop", "Stop active work, preserve effects"),
     ("/accept", "Accept the exact candidate"),
     ("/commit", "Commit the exact candidate"),
