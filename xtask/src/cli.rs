@@ -45,6 +45,8 @@ Commands:
   release-daemon-library Compile and retain a same-run native daemon library tree
   release-daemon-binary Compile the final daemon from its verified same-role library tree
   release-cli-binary     Compile the CLI from its verified same-role daemon libraries
+  release-windows-binary Compile a selected native Windows x86-64 binary with pinned C tooling
+  release-windows-sqlite-check Compare two fresh native Windows bundled SQLite compilations
   release-create         Validate a tag and create its retained draft GitHub release
   release-package-stage Build, archive, checksum, and record this host's native package
   release-package-assemble Assemble a native package from separately built release binaries

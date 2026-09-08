@@ -22,3 +22,27 @@ jobs:
           toolchain: 1.97.1
       - name: Test distribution package tooling
         run: cargo run --locked --package xtask -- distro-test
+
+  windows-sqlite:
+    name: Windows bundled SQLite reproducibility
+    runs-on: windows-2025
+    timeout-minutes: 10
+    env:
+      CARGO_BUILD_JOBS: 2
+      CARGO_INCREMENTAL: 0
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install pinned Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # v1
+        with:
+          toolchain: 1.97.1
+      - name: Compare two fresh native compilations using the release C compiler
+        run: cargo run --locked --package xtask -- release-windows-sqlite-check
+      - name: Retain the observed native compiler and object digests
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-sqlite-rebuild
+          path: target/windows-sqlite-rebuild.json
+          if-no-files-found: warn

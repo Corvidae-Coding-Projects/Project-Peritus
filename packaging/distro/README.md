@@ -180,7 +180,14 @@ Before a first release:
 
 CI imports the supplied secret only into an ephemeral GnuPG home, checks the
 reviewed fingerprint and exact tag/commit, signs, qualifies, then uploads to the
-existing draft. Signing secrets are scoped to the signing step. The public key
+existing draft. After validating the passphrase with a loopback signature, it
+seeds the agent's [separate restricted cache](https://lists.gnupg.org/pipermail/gnupg-users/2023-March/066472.html)
+using `gpg-preset-passphrase --restricted` over standard input. Only the
+restricted socket and public key enter package containers; private-key material
+and passphrases do not. Interactive pinentry is disabled for this ephemeral CI
+agent, and the agent and keyring are removed on success or failure. A regression
+test uses a disposable protected key and an actual public-only restricted client.
+Signing secrets are scoped to the signing step. The public key
 asset has one matrix owner to prevent concurrent upload races. Draft completion
 requires all six native archives/evidence sets, all four signed distribution
 bundles, all four main native packages, the public key, and both bootstraps with
