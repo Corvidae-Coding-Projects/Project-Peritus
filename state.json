@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1402,
+  "next_comment_id": 1403,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-08T10:57:32.872743737Z",
+      "updated_at": "2026-09-08T11:21:18.931558311Z",
       "labels": [
         "release"
       ],
@@ -2141,6 +2141,15 @@
           "kind": "note",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWSrmRHiiUApXYApCCxN+8YA588J8lniy8JtnaR3/4YYhhSL46vTSYmvcLblZIC9j/A2WJZBu5HFScycEKP/MDg=="
+        },
+        "9b77cf69-cc01-4615-a8ca-1c5ef89c012e": {
+          "display_id": 1402,
+          "author": "QWDj",
+          "content": "Published Peritus v0.0.1 at https://github.com/Corvidae-Coding-Projects/Project-Peritus/releases/tag/v0.0.1 on 2026-09-08T11:20:45Z. Signed tag 0a4cabd7 points to abe690a5. Actual release run 34208941181 passed 231 jobs (only optional prior-staging comparison skipped), including all 6 independent binary comparisons, 108 H2 shards, 6 bootstraps, 6 attestation jobs and 4 distribution signing/qualification jobs. Independently verified all 75 assets: GPG/SHAs, exact source/version and inventories, all 12 Sigstore attestations, and exact rendered installers. All 5 post-merge workflows green; Windows testing-external had one settlement assertion failure then passed unchanged on exact-job retry, so no proven root cause or code change claimed. H3/H4 incompleteness remains explicit in public release notes. Root checkout and unrelated provider files preserved.",
+          "created_at": "2026-09-08T11:21:18.928040560Z",
+          "kind": "result",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJ/3/BdL18T0X0hOi4HDpXB+yQz6Vb5l/ga/g4IoZwmI0NkWaBNMSa4e+MR8NPyCQ7Z2Ncs7cRIoOx2hYUz6QCQ=="
         },
         "9c6f312a-17a4-44ae-992c-335c574920b0": {
           "display_id": 1316,
@@ -13631,8 +13640,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-08T10:57:32.872743737Z",
+    "timestamp": "2026-09-08T11:21:18.931558311Z",
     "agent_id": "QWDj",
-    "agent_seq": 186
+    "agent_seq": 187
   }
 }
