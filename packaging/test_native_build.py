@@ -295,6 +295,7 @@ class NativeInputTests(unittest.TestCase):
                 patch.object(inputs.platform, "machine", return_value="AMD64"), \
                 patch.object(inputs.windows_release, "compiler_environment", return_value=({}, compiler)), \
                 patch.object(inputs, "command", return_value="fixture") as command, \
+                patch.object(Path, "home", return_value=Path("fixture-user")), \
                 patch.dict(os.environ, {}, clear=True):
             observed = inputs.environment()
         self.assertEqual(observed["cc"], compiler)
