@@ -4,6 +4,30 @@ use super::{
     ProductRoleModels, ProductRunMessageError, ProductRunRequest, ProductRunSnapshot, bounded_text,
 };
 
+/// Changes model choices for an existing conversation without adding user input or restarting it.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProductModelUpdate {
+    run_id: peritus_types::RunId,
+    models: ProductRoleModels,
+}
+impl ProductModelUpdate {
+    /// Selects exact role models for subsequent logical model turns.
+    #[must_use]
+    pub const fn new(run_id: peritus_types::RunId, models: ProductRoleModels) -> Self {
+        Self { run_id, models }
+    }
+    /// Conversation to update.
+    #[must_use]
+    pub const fn run_id(&self) -> peritus_types::RunId {
+        self.run_id
+    }
+    /// Requested choices; the daemon validates and persists them before acknowledgement.
+    #[must_use]
+    pub const fn models(&self) -> &ProductRoleModels {
+        &self.models
+    }
+}
+
 /// Explicit interaction mode; read-only modes are enforced by the execution tool boundary.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ProductInteractionMode {

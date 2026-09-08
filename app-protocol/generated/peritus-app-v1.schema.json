@@ -8,7 +8,7 @@
   "properties": {
     "family": { "enum": [94, 95, 96, 97, 98, 99] },
     "schemaVersion": { "const": 1 },
-    "payloadKind": { "enum": ["client-hello", "compatible", "downgraded", "incompatible", "submit-command", "subscribe", "open-artifact", "cancel-artifact", "answer-prompt", "cancel-prompt", "attach-terminal", "terminal-input", "terminal-resize", "detach-terminal", "cancel-terminal", "daemon-status", "shutdown", "begin-artifact-upload", "upload-artifact-chunk", "complete-artifact-upload", "start-product-run", "control-product-run", "query-product-runs", "continue-product-run", "query-product-run-conversation", "interact", "query-interaction", "query-models", "command-result", "subscription-started", "artifact-opened", "prompt-accepted", "terminal-attached", "acknowledged", "daemon-status", "shutdown-accepted", "error", "product-run-accepted", "product-runs", "product-run-conversation", "product-run-settled", "product-run-settlements", "interaction", "models", "domain-event", "subscription-gap", "backpressure", "artifact-metadata", "artifact-chunk", "artifact-complete", "prompt-requested", "terminal-output", "terminal-exited", "readiness-changed", "diagnostic", "heartbeat", "shutdown-progress", "shutdown-complete", "acknowledge", "cancel-subscription", "cancel-artifact", "cancel-prompt", "cancel-terminal", "subscription", "heartbeat-reply"] },
+    "payloadKind": { "enum": ["client-hello", "compatible", "downgraded", "incompatible", "submit-command", "subscribe", "open-artifact", "cancel-artifact", "answer-prompt", "cancel-prompt", "attach-terminal", "terminal-input", "terminal-resize", "detach-terminal", "cancel-terminal", "daemon-status", "shutdown", "begin-artifact-upload", "upload-artifact-chunk", "complete-artifact-upload", "start-product-run", "control-product-run", "query-product-runs", "continue-product-run", "query-product-run-conversation", "interact", "query-interaction", "query-models", "update-models", "command-result", "subscription-started", "artifact-opened", "prompt-accepted", "terminal-attached", "acknowledged", "daemon-status", "shutdown-accepted", "error", "product-run-accepted", "product-runs", "product-run-conversation", "product-run-settled", "product-run-settlements", "interaction", "models", "domain-event", "subscription-gap", "backpressure", "artifact-metadata", "artifact-chunk", "artifact-complete", "prompt-requested", "terminal-output", "terminal-exited", "readiness-changed", "diagnostic", "heartbeat", "shutdown-progress", "shutdown-complete", "acknowledge", "cancel-subscription", "cancel-artifact", "cancel-prompt", "cancel-terminal", "subscription", "heartbeat-reply"] },
     "payload": { "type": "string", "contentEncoding": "base64", "description": "Exact canonical semantic payload bytes" }
   },
   "$defs": {
@@ -771,6 +771,16 @@
         "settlement": { "$ref": "#/$defs/RunSettlement", "x-canonical-wire": "ordered-fields", "x-rust-type": "RunSettlement" }
       },
       "required": ["snapshot", "settlement"]
+    },
+    "ProductModelUpdate": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "ProductModelUpdate",
+      "properties": {
+        "runId": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "RunId", "x-bounds": ["nonzero"] },
+        "models": { "$ref": "#/$defs/ProductRoleModels", "x-canonical-wire": "ordered-fields", "x-rust-type": "ProductRoleModels" }
+      },
+      "required": ["runId", "models"]
     },
     "ProductRunRequest": {
       "type": "object",

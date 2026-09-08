@@ -163,6 +163,7 @@ enum PendingRequest {
     ChatQuery,
     ChatOpen { run_id: RunId },
     ModelQuery,
+    ModelUpdate { run_id: RunId },
     Status,
     Subscribe,
     Prompt(PromptId),

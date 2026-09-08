@@ -1,5 +1,6 @@
 use super::*;
 use peritus_agent::{DeveloperActivity, DeveloperInput, DeveloperInteraction, DeveloperLoopError};
+use peritus_model_protocol::CompletedToolCall;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 struct LiveInput {
@@ -118,6 +119,52 @@ fn cancellation_between_calls_prevents_the_remaining_effects() {
         .await;
         assert!(matches!(result, Err(DeveloperLoopError::Cancelled)));
         assert_eq!(tools.calls, 1);
+        assert_eq!(provider.requests.lock().expect("requests").len(), 1);
+    });
+}
+
+#[derive(Default)]
+struct HostHandoff {
+    calls: u32,
+}
+
+impl DeveloperToolExecutor for HostHandoff {
+    fn execute(
+        &mut self,
+        _: &CompletedToolCall,
+    ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
+        self.calls += 1;
+        Ok(DeveloperToolObservation {
+            output: CanonicalJson::parse("{}", JsonBounds::value(ProtocolLimits::PRODUCTION))?,
+            is_error: false,
+        })
+    }
+
+    fn yields_to_host(&self) -> bool {
+        self.calls > 0
+    }
+}
+
+#[test]
+fn host_handoff_stops_the_batch_and_returns_without_another_model_request() {
+    block_on(async {
+        let provider = ScriptedProvider {
+            profile: parallel_profile(),
+            responses: Mutex::new(VecDeque::from([batch_tool_response()])),
+            requests: Mutex::new(Vec::new()),
+        };
+        let mut tools = HostHandoff::default();
+        let result = DeveloperLoop::run(
+            &provider,
+            request(CancellationToken::new()),
+            &mut tools,
+            &mut RecordingTrace::default(),
+        )
+        .await
+        .expect("host handoff");
+        assert_eq!(tools.calls, 1);
+        assert_eq!(result.model_turns, 1);
+        assert!(result.text.is_empty());
         assert_eq!(provider.requests.lock().expect("requests").len(), 1);
     });
 }

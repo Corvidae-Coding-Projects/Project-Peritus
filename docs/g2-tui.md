@@ -18,6 +18,64 @@ snapshot-recovery path; they are not concealed by resetting the cursor.
 
 ## State and effect architecture
 
+### Chat and the production pipeline
+
+Chat answers questions and supports read-only inspection directly. For explicitly requested
+implementation or effects, its host handoff enters the same design, writer, exact-target gates,
+independent reviewer, and fixer loop used by Build. The handoff preserves the conversation,
+selected role models, cancellation, and elapsed-time accounting; remaining calls in that tool
+batch cannot execute. Plan, Review, and untrusted folders cannot request this handoff.
+
+In-place folders adapt file comparison and checkpoints, not the workflow. A durable journal records
+only explicitly enrolled task files before effects; it never initializes Git or inventories the
+whole folder. Retry retains the original task baseline, while a follow-up after completion starts
+a new scope. Checks and review use the same qualification machinery. Missing checks or interrupted
+work remain unqualified, with effects retained. The public snapshot shows status, scoped diff,
+gates, and review, but no managed deliverable or accept/discard controls. The legacy candidate
+settlement wire format remains managed-delivery-only; in-place checkpoints stay daemon-owned.
+
+### Conversational progress
+
+The conversation view displays public assistant prose during work, not only the terminal answer.
+Interactive invocations ask the model to include concise next-step explanations alongside host
+tool calls and to report meaningful discoveries, edits, and verification. Intermediate updates
+do not change the role's final response format or grant tool authority.
+
+G0 persists a short acknowledgement when a new input revision reaches a model request, plus
+truthful build-stage transitions. D0 emits a waiting observation every 20 seconds while opening
+a provider request or waiting for its first public text. It awaits the same owned future: no
+duplicate provider request or detached task is created. Once text arrives, waiting observations
+stop so they cannot split streamed prose. A failed observation cancels the pending request.
+Repeated waiting observations update one durable status entry instead of filling the transcript.
+These host observations are `Status` activities, not fabricated assistant text or progress evidence.
+
+Routine tool observations use compact rows; `/details` restores expanded metadata. Arguments,
+tool output, credentials, and private reasoning are not copied into progress narration. Existing
+public text streaming remains unchanged. In particular, the current Codex account adapter
+validates and delivers one complete provider response at a time: it does not expose token deltas.
+The underlying [Codex JSONL interface](https://learn.chatgpt.com/docs/non-interactive-mode#make-output-machine-readable)
+separates agent messages from reasoning and tool events; Peritus retains its strict normalization.
+
+### Model selection
+
+`/model [writer|reviewer|fixer]` selects the exact model for that role. For an existing
+conversation, selection sends a dedicated daemon request immediately, including while work is
+active. The client shows a pending notice until the daemon validates the adapters and durably
+acknowledges the choices; rejection or disconnection must not appear as success. Input submission
+waits for this acknowledgement, so it cannot accidentally send the old choices back to the daemon.
+
+Each subsequent logical model turn resolves the selected immutable adapter and renegotiates its
+capabilities and context limits. An in-flight turn (including its retries) finishes on its original
+adapter; selection neither restarts the run nor adds synthetic user input. Activity records name
+the model requested at each turn. Idle selection does not start work. New conversations retain
+the client's role choices; reopening a saved conversation restores that conversation's choices.
+
+The additive `UpdateModels` request uses A3 payload tag 25. Older daemons reject the unknown tag;
+they cannot silently acknowledge a model change they do not implement. Deploy matching daemon
+and TUI builds to use this behavior.
+
+### State ownership
+
 `AppModel` is a deterministic bounded reducer. Terminal events, A3 messages, ticks, and keyboard
 events produce a new presentation state plus explicit effects. The runtime alone performs effects:
 connect, subscribe, acknowledge, send prompt input, attach/control a terminal, or shut down. This

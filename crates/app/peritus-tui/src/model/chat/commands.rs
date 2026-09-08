@@ -43,10 +43,7 @@ impl AppModel {
             return self.model_command(rest);
         }
         if self.direct_folder_chat().is_some()
-            && matches!(
-                command,
-                "/build" | "/accept" | "/commit" | "/export" | "/discard" | "/run" | "/diff"
-            )
+            && matches!(command, "/build" | "/accept" | "/commit" | "/export" | "/discard" | "/run")
         {
             self.notice(NoticeLevel::Info, "This folder uses in-place edits, not Git candidate handoffs. Ask for changes or commands in /chat; /build and candidate actions require a managed Git workspace.");
             return Vec::new();

@@ -65,7 +65,7 @@ pub async fn create(
     accounting: &mut RunAccounting,
 ) -> Result<DesignDocument, ProductRunnerError> {
     let scope = design_scope(&input.workspace_root);
-    if scope == DesignScope::Artifact {
+    if scope == DesignScope::Artifact && !input.workspace_kind.is_in_place() {
         return artifact::create(input);
     }
     let mut providers = crate::failover::ProviderCursor::new(primary, fallbacks);
@@ -79,11 +79,7 @@ pub async fn create(
         invocation = invocation.saturating_add(1);
         let revision = input.conversation.revision();
         let transcript = input.conversation.render();
-        let media = match crate::workspace_media::discover(
-            &input.workspace_root,
-            &transcript,
-            providers.current().profile(),
-        ) {
+        let media = match input.media(&transcript, providers.current().profile()) {
             Ok(media) => media,
             Err(error) if let Some(switch) = providers.advance_for_capability(&error) => {
                 crate::failover::record_switch(input, "designer", cycle, accounting, switch)?;
@@ -93,8 +89,10 @@ pub async fn create(
         };
         let (prompt, attachments) =
             media.into_parts(user_prompt(&transcript, correction.as_deref()));
-        let mut tools = WorkspaceDeveloperTools::read_only(input.workspace_root.clone())
-            .with_task_contract(&transcript);
+        let mut tools = input.configure_tools(
+            WorkspaceDeveloperTools::read_only(input.workspace_root.clone())
+                .with_task_contract(&transcript),
+        );
         let result = crate::local_context::run_live_invocation(
             providers.current(),
             DeveloperLoopRequest {
@@ -102,7 +100,7 @@ pub async fn create(
                     "{}-invocation-{invocation}",
                     crate::turn::request_name(input.run_id, "designer", cycle)
                 ),
-                system: system_prompt(accounting.remaining()),
+                system: system_prompt(accounting.remaining()) + input.delivery_instructions(),
                 prompt,
                 attachments,
                 tools: read_only_definitions()?,
@@ -114,6 +112,7 @@ pub async fn create(
             &input.trace_path,
             None,
             input.conversation.interaction(),
+            peritus_agent::DeveloperModelRole::Writer,
         )
         .await;
         let result = match result {

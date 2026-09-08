@@ -13,6 +13,20 @@ use crate::{
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
 use peritus_types::ProviderProfileId;
 
+pub(super) fn write_model_update(
+    w: &mut CanonicalWriter,
+    value: &crate::ProductModelUpdate,
+) -> Result<(), CodecError> {
+    write_id(w, value.run_id().as_bytes())?;
+    write_models(w, value.models())
+}
+
+pub(super) fn read_model_update(
+    r: &mut CanonicalReader<'_>,
+) -> Result<crate::ProductModelUpdate, CodecError> {
+    Ok(crate::ProductModelUpdate::new(read_id(r, peritus_types::RunId::new)?, read_models(r)?))
+}
+
 pub(super) fn write_request(
     w: &mut CanonicalWriter,
     value: &ProductInteractionRequest,

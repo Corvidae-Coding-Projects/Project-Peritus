@@ -164,8 +164,11 @@ impl AppModel {
     }
 
     fn choose_model(&mut self, id: &str, manual: bool) -> Vec<Effect> {
-        if self.chat_work_active() {
-            self.notice(NoticeLevel::Warning, "Stop active work before changing its model.");
+        if self.chat_submission_pending() {
+            self.notice(
+                NoticeLevel::Warning,
+                "Wait for the pending conversation update before changing its model.",
+            );
             return Vec::new();
         }
         if !manual
@@ -190,7 +193,7 @@ impl AppModel {
             }
         };
         let models = &self.chat.models;
-        self.chat.models = match self.chat.model_role {
+        let models = match self.chat.model_role {
             ModelRole::Writer => {
                 ProductRoleModels::new(choice, models.reviewer().clone(), models.fixer().clone())
             }
@@ -203,10 +206,31 @@ impl AppModel {
         };
         self.clear_chat_command();
         self.chat.model_picker = false;
+        if let Some(run_id) = self.chat.run_id {
+            let effect = self.request(
+                AppRequestPayload::UpdateModels(peritus_app_protocol::ProductModelUpdate::new(
+                    run_id, models,
+                )),
+                PendingRequest::ModelUpdate { run_id },
+            );
+            if effect.is_some() {
+                self.notice(
+                    NoticeLevel::Info,
+                    "Saving model selection; waiting for daemon confirmation.",
+                );
+            } else {
+                self.notice(
+                    NoticeLevel::Error,
+                    "Model selection was not sent. Reconnect and select it again.",
+                );
+            }
+            return effect.into_iter().collect();
+        }
+        self.chat.models = models;
         self.notice(
             NoticeLevel::Info,
             format!(
-                "{} model: {id} ({})",
+                "{} model for new conversation: {id} ({})",
                 self.chat.model_role.label(),
                 if manual {
                     "explicit manual ID; availability unverified"

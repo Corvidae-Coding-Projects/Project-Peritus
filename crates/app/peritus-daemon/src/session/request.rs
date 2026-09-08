@@ -123,6 +123,10 @@ where
             Ok(snapshot) => AppResponsePayload::Interaction(snapshot),
             Err(error) => product_run_error(error),
         },
+        AppRequestPayload::UpdateModels(value) => match product_runs.update_models(value).await {
+            Ok(snapshot) => AppResponsePayload::Interaction(snapshot),
+            Err(error) => product_run_error(error),
+        },
         AppRequestPayload::QueryInteraction(value) => {
             match product_runs.query_interaction(*value) {
                 Ok(snapshot) => AppResponsePayload::Interaction(snapshot),

@@ -113,6 +113,8 @@ impl ProductDeliveryScope {
 
 /// Fully resolved input supplied by the daemon authority boundary.
 pub struct ProductRunInput {
+    /// Caller-resolved delivery adapter; interaction mode cannot widen this authority.
+    pub workspace_kind: crate::ProductWorkspaceKind,
     /// Stable run identity.
     pub run_id: RunId,
     /// Stable managed-workspace lineage supplied by the daemon authority boundary.

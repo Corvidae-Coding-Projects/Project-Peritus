@@ -14,7 +14,7 @@ use peritus_types::{RunId, WorkspaceId};
 use super::ConversationView;
 use crate::{
     ProductRunnerError, ProductRunnerErrorKind, candidate::CandidateBaseline,
-    developer_tools::ToolCheckpointBoundary, progress::WorkspaceCheckpoint,
+    developer_tools::ToolCheckpointBoundary,
 };
 
 /// Cloneable candidate recorder shared with synchronous developer-tool execution.
@@ -114,7 +114,7 @@ impl CandidateRecorder {
         conversation_revision: u64,
         acquired: CheckpointEvidence,
     ) -> Result<Option<CandidateCheckpoint>, ProductRunnerError> {
-        let workspace = WorkspaceCheckpoint::capture(&self.root)?;
+        let workspace = self.baseline.checkpoint(&self.root)?;
         let has_workspace_candidate = !self.baseline.changed_paths(&self.root)?.is_empty();
         let mut recorder_state = self.lock()?;
         if !has_workspace_candidate && !recorder_state.external_effect_observed {

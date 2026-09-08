@@ -69,6 +69,7 @@ pub async fn execute(
     };
     let result = ProductRunner::run(
         ProductRunInput {
+            workspace_kind: peritus_product_runner::ProductWorkspaceKind::Managed,
             run_id: guard.seed().run_id,
             workspace_id: guard.seed().workspace_id,
             workspace_root: baseline.root.clone(),

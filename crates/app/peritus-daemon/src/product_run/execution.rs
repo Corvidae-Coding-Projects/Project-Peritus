@@ -64,6 +64,7 @@ impl ProductRunService {
                     conversation
                 };
                 let input = ProductRunInput {
+                    workspace_kind: peritus_product_runner::ProductWorkspaceKind::Managed,
                     run_id,
                     workspace_id: request.workspace_id(),
                     workspace_root,
@@ -143,6 +144,43 @@ impl ProductRunService {
             peritus_product_runner::ProductRunPhase::Finalizing => ProductRunPhase::Verifying,
             peritus_product_runner::ProductRunPhase::Complete => ProductRunPhase::Complete,
         };
+        if phase != record.snapshot.phase()
+            && update.phase != peritus_product_runner::ProductRunPhase::Finalizing
+            && let Some(options) = &mut record.interaction
+            && matches!(
+                options.mode,
+                peritus_app_protocol::ProductInteractionMode::Build
+                    | peritus_app_protocol::ProductInteractionMode::Chat
+            )
+        {
+            let message = match phase {
+                ProductRunPhase::Designing => {
+                    "I'm inspecting the workspace and preparing the design."
+                }
+                ProductRunPhase::Writing => "I'm moving on to the implementation.",
+                ProductRunPhase::Checking => {
+                    "The changes are ready for checks. I'm verifying them now."
+                }
+                ProductRunPhase::Reviewing => {
+                    "The candidate is ready for independent review. I'll check it against your request."
+                }
+                ProductRunPhase::Fixing => {
+                    "The review found issues to address. I'm working through those fixes."
+                }
+                ProductRunPhase::Verifying => {
+                    "I'm checking the final result before handing it back to you."
+                }
+                _ => "",
+            };
+            if !message.is_empty()
+                && options
+                    .append(peritus_app_protocol::ProductActivityKind::Status, message, "")
+                    .is_err()
+            {
+                options.persistence_failed.store(true, std::sync::atomic::Ordering::Release);
+                return;
+            }
+        }
         if let Ok(snapshot) = ProductRunSnapshot::new(
             run_id,
             record.request.workspace_id(),
@@ -179,7 +217,9 @@ impl ProductRunService {
             record.remaining_work = outcome.remaining_work().to_vec();
             record.interruption_cause = outcome.detail().map_or_else(String::new, str::to_owned);
             record.candidate_actionable =
-                outcome.candidate().is_some() && outcome.settlement().checkpoint().is_some();
+                !self.inner.folders.contains_key(&record.request.workspace_id())
+                    && outcome.candidate().is_some()
+                    && outcome.settlement().checkpoint().is_some();
         }
         match result {
             Ok(outcome) if outcome.settlement().disposition() == RunDisposition::Accepted => {
@@ -190,11 +230,13 @@ impl ProductRunService {
                 };
                 let completion_message = format!("Completed: {}", output.summary);
                 let deliverable = self.project_deliverable(record, &outcome);
-                let Some(deliverable) = deliverable else {
+                if deliverable.is_none()
+                    && !self.inner.folders.contains_key(&record.request.workspace_id())
+                {
                     fail_handoff(record);
                     let _ = persist_record(&self.inner.directory, record);
                     return;
-                };
+                }
                 if let Ok(snapshot) = ProductRunSnapshot::new(
                     run_id,
                     record.request.workspace_id(),
@@ -202,13 +244,20 @@ impl ProductRunService {
                     ProductRunPhase::Complete,
                     output.fixer_cycles + 1,
                     record.request.task().to_owned(),
-                    "Accepted — passing checks and independent review".to_owned(),
+                    if deliverable.is_some() {
+                        "Accepted — passing checks and independent review".to_owned()
+                    } else {
+                        "Completed in place — tracked task files passed checks and independent review".to_owned()
+                    },
                     output.diff.clone(),
                     output.gates.clone(),
                     output.review.clone(),
                     output.summary.clone(),
                 ) {
-                    record.snapshot = snapshot.with_deliverable(deliverable);
+                    record.snapshot = match deliverable {
+                        Some(deliverable) => snapshot.with_deliverable(deliverable),
+                        None => snapshot,
+                    };
                 } else {
                     fail_handoff(record);
                     let _ = persist_record(&self.inner.directory, record);
@@ -289,7 +338,15 @@ impl ProductRunService {
             RunDisposition::Accepted | RunDisposition::WaitingForUser => return,
         };
         let has_candidate = outcome.candidate().is_some();
+        let in_place = self.inner.folders.contains_key(&record.request.workspace_id());
         let status = match (outcome.settlement().disposition(), has_candidate) {
+            (RunDisposition::Cancelled, _) if in_place => {
+                "Cancelled — in-place effects retained, not verified complete"
+            }
+            (RunDisposition::RecoveryRequired, _) if in_place => {
+                "Recovery required — in-place effects retained, not verified complete"
+            }
+            (_, _) if in_place => "Stopped — in-place effects retained, not verified complete",
             (RunDisposition::CandidateAvailable, _) => "Candidate available",
             (RunDisposition::RecoveryRequired, true) => "Recovery required — candidate preserved",
             (RunDisposition::RecoveryRequired, false) => "Recovery required",
@@ -300,7 +357,6 @@ impl ProductRunService {
         let detail = outcome.detail().unwrap_or(status);
         let summary = terminal_summary(outcome, detail);
         if let Some(output) = outcome.candidate()
-            && let Some(deliverable) = self.project_deliverable(record, outcome)
             && let Ok(snapshot) = ProductRunSnapshot::new(
                 record.request.run_id(),
                 record.request.workspace_id(),
@@ -315,7 +371,7 @@ impl ProductRunService {
                 summary.clone(),
             )
         {
-            record.snapshot = snapshot.with_deliverable(deliverable);
+            record.snapshot = self.with_candidate(record, outcome, snapshot);
         } else if let Ok(snapshot) = replace_snapshot(&record.snapshot, phase, status, &summary) {
             record.snapshot = snapshot;
         }
@@ -346,6 +402,9 @@ impl ProductRunService {
         record: &super::RunRecord,
         outcome: &ProductRunOutcome,
     ) -> Option<ProductDeliverable> {
+        if self.inner.folders.contains_key(&record.request.workspace_id()) {
+            return None;
+        }
         let output = outcome.candidate()?;
         let stage = outcome.settlement().checkpoint()?.stage();
         let workspace = self.inner.workspaces.get(&record.request.workspace_id())?;

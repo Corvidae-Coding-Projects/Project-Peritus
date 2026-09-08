@@ -102,6 +102,14 @@ pub fn read_only_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError
     ])
 }
 
+pub fn in_place_definition() -> Result<ToolDefinition, ProductRunnerError> {
+    definition(
+        "workspace_scope",
+        "Declare additional exact workspace-relative task files BEFORE a command creates or modifies them in an in-place folder. File reads/writes are enrolled automatically. This records comparison evidence, not permission; preserve unrelated/private files. Do not declare a whole home directory or build-cache tree.",
+        r#"{"type":"object","additionalProperties":false,"properties":{"paths":{"type":"array","items":{"type":"string"},"minItems":1,"maxItems":256}},"required":["paths"]}"#,
+    )
+}
+
 fn definitions_from(
     definitions: &[(&str, &str, &str)],
 ) -> Result<Vec<ToolDefinition>, ProductRunnerError> {

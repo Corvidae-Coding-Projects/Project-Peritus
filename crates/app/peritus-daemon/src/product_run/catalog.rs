@@ -120,7 +120,7 @@ impl ProductRunService {
         })
     }
 
-    fn select_provider(
+    pub(super) fn select_provider(
         &self,
         profile: ProviderProfileId,
         choice: &ProductModelChoice,

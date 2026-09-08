@@ -55,6 +55,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
     )?;
     let output = ProductRunner::run(
         ProductRunInput {
+            workspace_kind: peritus_product_runner::ProductWorkspaceKind::Managed,
             run_id,
             workspace_id: WorkspaceId::new([0xE5; 16]).expect("nonzero workspace id"),
             workspace_root: repository.path().to_owned(),

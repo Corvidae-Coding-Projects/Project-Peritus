@@ -32,25 +32,14 @@ impl DeveloperLoop {
         tools: &mut dyn DeveloperToolExecutor,
         trace: &mut dyn DeveloperTrace,
         mut context: ContextSession<'_>,
-        interaction: Option<&dyn DeveloperInteraction>,
+        live: Option<(&dyn DeveloperInteraction, super::DeveloperModelRole)>,
     ) -> Result<DeveloperLoopOutcome, DeveloperLoopError> {
         let protocol_limits = ProtocolLimits::PRODUCTION;
-        let profile = provider.profile();
+        let interaction = live.map(|(port, _)| port);
         let mut required_capabilities = vec![Capability::ToolCalls];
         if !request.attachments.is_empty() {
             required_capabilities.push(Capability::ImageInput);
         }
-        let requested = RequestedCapabilities::new(
-            &required_capabilities,
-            &[
-                Capability::Streaming,
-                Capability::ParallelToolCalls,
-                Capability::ReasoningControls,
-                Capability::PromptCaching,
-            ],
-            profile.limits(),
-        )?;
-        let negotiated = negotiate(profile, requested)?;
         let mut messages = vec![
             message(Role::System, request.system.clone(), protocol_limits)?,
             user_message(request.prompt.clone(), request.attachments.clone(), protocol_limits)?,
@@ -66,6 +55,20 @@ impl DeveloperLoop {
             if request.cancellation.is_cancelled() {
                 return Err(DeveloperLoopError::Cancelled);
             }
+            let selected = live.map(|(port, role)| port.provider(role)).transpose()?.flatten();
+            let provider = selected.as_deref().unwrap_or(provider);
+            let profile = provider.profile();
+            let requested = RequestedCapabilities::new(
+                &required_capabilities,
+                &[
+                    Capability::Streaming,
+                    Capability::ParallelToolCalls,
+                    Capability::ReasoningControls,
+                    Capability::PromptCaching,
+                ],
+                profile.limits(),
+            )?;
+            let negotiated = negotiate(profile, requested)?;
             if let Some(port) = interaction {
                 let input = port.input()?;
                 if input.revision != input_revision {
@@ -239,13 +242,15 @@ impl DeveloperLoop {
                     return Err(DeveloperLoopError::Cancelled);
                 }
                 let name = call.name().as_str();
-                let observation = if input_changed(interaction, input_revision)? {
+                let observation = if tools.yields_to_host()
+                    || input_changed(interaction, input_revision)?
+                {
                     if let Some(port) = interaction {
                         port.observe(DeveloperActivity::ToolSkipped { name })?;
                     }
                     DeveloperToolObservation {
                         output: CanonicalJson::parse(
-                            r#"{"error":"Not executed: a newer user message superseded this tool call. Follow the updated conversation."}"#,
+                            r#"{"error":"Not executed: control was handed to the host or a newer user message superseded this tool call."}"#,
                             JsonBounds::value(protocol_limits),
                         )?,
                         is_error: true,
@@ -298,6 +303,17 @@ impl DeveloperLoop {
                 context.append(&mut messages, message(Role::User, feedback, protocol_limits)?)?;
             }
             context.observe(DeveloperContextEvent::BatchCompleted)?;
+            if tools.yields_to_host() {
+                return Ok(DeveloperLoopOutcome {
+                    text: String::new(),
+                    model_turns: turn,
+                    tool_calls,
+                    compactions,
+                    retries,
+                    usage,
+                    messages,
+                });
+            }
         }
         Err(DeveloperLoopError::LimitExceeded)
     }

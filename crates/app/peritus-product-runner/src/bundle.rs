@@ -10,6 +10,9 @@ use crate::{
 const MAX_FILE_BYTES: usize = 192 * 1024;
 
 pub fn diff(root: &Path, baseline: &CandidateBaseline) -> Result<String, ProductRunnerError> {
+    if let Some(scope) = baseline.scope() {
+        return scope.diff(root);
+    }
     let changed_paths = baseline.changed_paths(root)?;
     let output = Command::new("git")
         .args(["-C", root_text(root)?, "diff", "--no-ext-diff"])

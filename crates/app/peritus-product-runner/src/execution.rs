@@ -35,10 +35,7 @@ use peritus_obligations::FailureDisposition;
 use peritus_orchestrator::ProductionDecision;
 use peritus_run_settlement::SettlementCause;
 
-use crate::{
-    ProductRunnerError, ProductRunnerErrorKind, budget::RunAccounting,
-    developer_tools::WorkspaceOwnership, review,
-};
+use crate::{ProductRunnerError, ProductRunnerErrorKind, budget::RunAccounting, review};
 use cycle::{GateInspection, apply_fix, create_design, inspect_gates, retained_inspection};
 use fix_progress::FixProgressObservation;
 use state::{ExecutionContext, RunState};
@@ -57,10 +54,19 @@ impl ProductRunner {
         observe: RunObserver,
     ) -> Result<ProductRunOutcome, ProductRunnerError> {
         crate::budget::validate_run_horizon(input.max_elapsed)?;
-        let mut accounting = match RunAccounting::new(&input.workspace_root, input.max_elapsed) {
+        let accounting = match input.accounting() {
             Ok(accounting) => accounting,
             Err(error) => return settlement::from_initial_error(&input, &error),
         };
+        Box::pin(Self::run_accounted(input, observe, accounting)).await
+    }
+
+    #[allow(clippy::too_many_lines, reason = "the E0 effect and decision order remains explicit")]
+    async fn run_accounted(
+        input: ProductRunInput,
+        observe: RunObserver,
+        mut accounting: RunAccounting,
+    ) -> Result<ProductRunOutcome, ProductRunnerError> {
         if let Err(error) = accounting.check() {
             return settlement::from_initial_error(&input, &error);
         }
@@ -71,7 +77,7 @@ impl ProductRunner {
             Ok(execution) => execution,
             Err(error) => return settlement::from_initial_error(&input, &error),
         };
-        let max_elapsed = input.max_elapsed;
+        let max_elapsed = accounting.remaining();
         let cancelled = Arc::clone(&input.cancelled);
         let provider_cancellation = input.provider_cancellation.clone();
         let deadline_reached = Arc::new(std::sync::atomic::AtomicBool::new(false));
@@ -151,7 +157,7 @@ impl ProductRunner {
         execution: &mut ExecutionContext,
         accounting: &mut RunAccounting,
     ) -> Result<ActiveExit, ProductRunnerError> {
-        let mut workspace_ownership = WorkspaceOwnership::capture(&input.workspace_root);
+        let mut workspace_ownership = input.ownership();
         if let Some((question, revision)) = execution
             .prepare_active_state(input, observe, &mut workspace_ownership, accounting)
             .await?
@@ -213,7 +219,7 @@ impl ProductRunner {
                             &mut state.successful_commands,
                             &applied.successful_commands,
                         );
-                        state.fix_progress.reset(&input.workspace_root)?;
+                        state.fix_progress.reset(input.checkpoint()?);
                         execution.next_phase = ProductRunPhase::Checking;
                     }
                     AppliedTurn::Waiting { question, conversation_revision } => {
@@ -305,7 +311,7 @@ impl ProductRunner {
                         ));
                     }
                     execution.next_phase = ProductRunPhase::Verifying;
-                    if state.fix_progress.observe(&input.workspace_root)?
+                    if state.fix_progress.observe(input.checkpoint()?)
                         == FixProgressObservation::Exhausted
                     {
                         return Ok(ActiveExit::stopped(

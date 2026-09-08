@@ -29,6 +29,7 @@ mod active;
 mod checkpoint_observer;
 mod command;
 mod construction;
+mod in_place;
 
 use active::ActiveCommandLedger;
 pub use checkpoint_observer::ToolCheckpointBoundary;
@@ -47,6 +48,7 @@ pub struct WorkspaceDeveloperTools {
     grounding: GroundingEvidence,
     ownership: WorkspaceOwnership,
     mode: WorkspaceToolMode,
+    in_place_scope: Option<crate::workspace_delivery::scope::ScopedBaseline>,
     command_evidence: CommandEvidence,
     command_budget: Option<CommandBudget>,
     receipts: Option<EffectReceiptLedger>,
@@ -60,6 +62,14 @@ pub struct WorkspaceDeveloperTools {
 }
 
 impl WorkspaceDeveloperTools {
+    pub(crate) fn with_in_place_scope(
+        mut self,
+        scope: Option<crate::workspace_delivery::scope::ScopedBaseline>,
+    ) -> Self {
+        self.in_place_scope = scope;
+        self
+    }
+
     pub(crate) fn with_checkpoint_observer(mut self, observer: ToolCheckpointObserver) -> Self {
         self.checkpoint_observer = Some(observer);
         self
@@ -109,6 +119,9 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
         if let Err(detail) = self.access_policy.authorize(call.name().as_str(), &arguments) {
             return observation(&object(vec![("error", Value::String(detail))]), true);
         }
+        if let Err(error) = self.prepare_in_place(call.name().as_str(), &arguments) {
+            return observation(&object(vec![("error", Value::String(error.to_string()))]), true);
+        }
         let effect = matches!(
             call.name().as_str(),
             "workspace_write"
@@ -121,30 +134,8 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
                 | "command_signal"
                 | "command_cancel"
         ) && self.mode == WorkspaceToolMode::ReadWrite;
-        if effect {
-            let decision = self
-                .receipts
-                .as_mut()
-                .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
-                .begin(call)?;
-            match decision {
-                ReceiptDecision::Execute => {}
-                ReceiptDecision::Replay { value, is_error } => {
-                    if value.get("error").is_none() {
-                        self.record_success(call.name().as_str(), &arguments, &value);
-                    }
-                    return observation(&value, is_error);
-                }
-                ReceiptDecision::Refuse { detail, ambiguous } => {
-                    return observation(
-                        &object(vec![
-                            ("error", Value::String(detail)),
-                            ("ambiguous", Value::Bool(ambiguous)),
-                        ]),
-                        true,
-                    );
-                }
-            }
+        if effect && let Some(observation) = self.begin_effect(call, &arguments)? {
+            return Ok(observation);
         }
         let result = match call.name().as_str() {
             "workspace_list" => {
@@ -152,6 +143,7 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
             }
             "workspace_search" => inspection::search(&self.root, &arguments, &self.access_policy),
             "workspace_read" => inspection::read(&self.root, &arguments),
+            "workspace_scope" => self.declare_in_place(&arguments),
             "workspace_write" | "workspace_patch" | "workspace_remove" | "run_command"
             | "command_start" | "command_stdin" | "command_resize" | "command_signal"
             | "command_cancel" | "command_poll" | "command_recover"
@@ -219,6 +211,34 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
 }
 
 impl WorkspaceDeveloperTools {
+    fn begin_effect(
+        &mut self,
+        call: &CompletedToolCall,
+        arguments: &Value,
+    ) -> Result<Option<DeveloperToolObservation>, DeveloperLoopError> {
+        let decision = self
+            .receipts
+            .as_mut()
+            .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
+            .begin(call)?;
+        match decision {
+            ReceiptDecision::Execute => Ok(None),
+            ReceiptDecision::Replay { value, is_error } => {
+                if value.get("error").is_none() {
+                    self.record_success(call.name().as_str(), arguments, &value);
+                }
+                observation(&value, is_error).map(Some)
+            }
+            ReceiptDecision::Refuse { detail, ambiguous } => observation(
+                &object(vec![
+                    ("error", Value::String(detail)),
+                    ("ambiguous", Value::Bool(ambiguous)),
+                ]),
+                true,
+            )
+            .map(Some),
+        }
+    }
     fn observe_delivery_progress(
         &mut self,
         name: &str,

@@ -77,6 +77,7 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
         )
     };
     Ok(vec![
+        model_update(run_id, limits)?,
         encoded(
             "realistic-interaction-request",
             FixtureClass::Realistic,
@@ -106,4 +107,21 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
             limits,
         )?,
     ])
+}
+
+fn model_update(run_id: RunId, limits: CodecLimits) -> Result<GeneratedFixtureCase, CodecError> {
+    use super::values::{encoded, request};
+    encoded(
+        "realistic-model-update",
+        FixtureClass::Realistic,
+        &request(AppRequestPayload::UpdateModels(crate::ProductModelUpdate::new(
+            run_id,
+            ProductRoleModels::new(
+                crate::ProductModelChoice::new("gpt-6-astra".to_owned(), true).expect("model"),
+                crate::ProductModelChoice::default(),
+                crate::ProductModelChoice::default(),
+            ),
+        ))),
+        limits,
+    )
 }

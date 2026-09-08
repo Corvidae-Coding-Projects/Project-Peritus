@@ -57,10 +57,13 @@ impl AppModel {
                 }
                 if matches!(pending, Some(PendingRequest::ChatOpen { .. })) {
                     self.chat.mode = snapshot.mode();
-                    self.chat.models = snapshot.models().clone();
                     self.view = View::Conversation;
                 }
                 self.accept_chat(snapshot.clone());
+                if matches!(pending, Some(PendingRequest::ModelUpdate { run_id }) if run_id == snapshot.snapshot().run_id())
+                {
+                    self.notice(NoticeLevel::Info, "Model selection saved for subsequent model turns; any in-flight turn is unchanged.");
+                }
             }
             AppResponsePayload::Models(catalog) => self.accept_model_catalog(catalog.clone()),
             AppResponsePayload::SubscriptionStarted(started) => {

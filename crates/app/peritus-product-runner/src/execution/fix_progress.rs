@@ -1,11 +1,11 @@
 //! Cross-cycle candidate and review progress for the E0 fixer loop.
 
-use std::{collections::BTreeMap, path::Path};
+use std::collections::BTreeMap;
 
 use peritus_review::ProductFindingLedger;
 use peritus_types::Sha256Digest;
 
-use crate::{ProductRunnerError, progress::WorkspaceCheckpoint};
+use crate::progress::WorkspaceCheckpoint;
 
 const MAX_CONSECUTIVE_UNCHANGED_FIXES: u8 = 2;
 const MAX_CONSECUTIVE_UNRESOLVED_FIXES: u8 = 2;
@@ -30,19 +30,14 @@ pub(super) struct PersistentFinding {
 }
 
 impl FixProgress {
-    pub(super) fn capture(root: &Path) -> Result<Self, ProductRunnerError> {
-        Ok(Self {
-            checkpoint: WorkspaceCheckpoint::capture(root)?,
-            consecutive_unchanged: 0,
-            blocking_attempts: BTreeMap::new(),
-        })
+    pub(super) const fn new(checkpoint: WorkspaceCheckpoint) -> Self {
+        Self { checkpoint, consecutive_unchanged: 0, blocking_attempts: BTreeMap::new() }
     }
 
-    pub(super) fn reset(&mut self, root: &Path) -> Result<(), ProductRunnerError> {
-        self.checkpoint = WorkspaceCheckpoint::capture(root)?;
+    pub(super) fn reset(&mut self, checkpoint: WorkspaceCheckpoint) {
+        self.checkpoint = checkpoint;
         self.consecutive_unchanged = 0;
         self.blocking_attempts.clear();
-        Ok(())
     }
 
     /// Observes one fresh review and returns a blocker that survived the configured number of
@@ -72,29 +67,25 @@ impl FixProgress {
         exhausted
     }
 
-    pub(super) fn observe(
-        &mut self,
-        root: &Path,
-    ) -> Result<FixProgressObservation, ProductRunnerError> {
-        let current = WorkspaceCheckpoint::capture(root)?;
+    pub(super) fn observe(&mut self, current: WorkspaceCheckpoint) -> FixProgressObservation {
         if current != self.checkpoint {
             self.checkpoint = current;
             self.consecutive_unchanged = 0;
-            return Ok(FixProgressObservation::Changed);
+            return FixProgressObservation::Changed;
         }
 
         self.consecutive_unchanged = self.consecutive_unchanged.saturating_add(1);
         if self.consecutive_unchanged >= MAX_CONSECUTIVE_UNCHANGED_FIXES {
-            Ok(FixProgressObservation::Exhausted)
+            FixProgressObservation::Exhausted
         } else {
-            Ok(FixProgressObservation::Unchanged)
+            FixProgressObservation::Unchanged
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::{fs, process::Command};
+    use std::{fs, path::Path, process::Command};
 
     use super::*;
     use peritus_review::{FindingSeverity, ProductFinding, ProductFindingCategory};
@@ -102,14 +93,16 @@ mod tests {
     #[test]
     fn two_unchanged_fixer_cycles_exhaust_progress() {
         let root = repository();
-        let mut progress = FixProgress::capture(root.path()).expect("initial progress");
+        let mut progress =
+            FixProgress::new(WorkspaceCheckpoint::capture(root.path()).expect("initial progress"));
 
         assert_eq!(
-            progress.observe(root.path()).expect("first observation"),
+            progress.observe(WorkspaceCheckpoint::capture(root.path()).expect("first observation")),
             FixProgressObservation::Unchanged
         );
         assert_eq!(
-            progress.observe(root.path()).expect("second observation"),
+            progress
+                .observe(WorkspaceCheckpoint::capture(root.path()).expect("second observation")),
             FixProgressObservation::Exhausted
         );
     }
@@ -117,19 +110,22 @@ mod tests {
     #[test]
     fn candidate_change_resets_the_unchanged_count() {
         let root = repository();
-        let mut progress = FixProgress::capture(root.path()).expect("initial progress");
+        let mut progress =
+            FixProgress::new(WorkspaceCheckpoint::capture(root.path()).expect("initial progress"));
         assert_eq!(
-            progress.observe(root.path()).expect("first observation"),
+            progress.observe(WorkspaceCheckpoint::capture(root.path()).expect("first observation")),
             FixProgressObservation::Unchanged
         );
 
         fs::write(root.path().join("candidate.txt"), "changed").expect("change candidate");
         assert_eq!(
-            progress.observe(root.path()).expect("changed observation"),
+            progress
+                .observe(WorkspaceCheckpoint::capture(root.path()).expect("changed observation")),
             FixProgressObservation::Changed
         );
         assert_eq!(
-            progress.observe(root.path()).expect("new first observation"),
+            progress
+                .observe(WorkspaceCheckpoint::capture(root.path()).expect("new first observation")),
             FixProgressObservation::Unchanged
         );
     }
@@ -144,13 +140,16 @@ mod tests {
         fs::write(&candidate, "secret").expect("write candidate");
         fs::set_permissions(&candidate, fs::Permissions::from_mode(0o644))
             .expect("initial permissions");
-        let mut progress = FixProgress::capture(root.path()).expect("initial progress");
+        let mut progress =
+            FixProgress::new(WorkspaceCheckpoint::capture(root.path()).expect("initial progress"));
 
         fs::set_permissions(&candidate, fs::Permissions::from_mode(0o600))
             .expect("fixed permissions");
 
         assert_eq!(
-            progress.observe(root.path()).expect("permission observation"),
+            progress.observe(
+                WorkspaceCheckpoint::capture(root.path()).expect("permission observation")
+            ),
             FixProgressObservation::Changed
         );
     }
@@ -158,19 +157,24 @@ mod tests {
     #[test]
     fn changing_candidate_does_not_hide_a_persistent_blocker() {
         let root = repository();
-        let mut progress = FixProgress::capture(root.path()).expect("initial progress");
+        let mut progress =
+            FixProgress::new(WorkspaceCheckpoint::capture(root.path()).expect("initial progress"));
         let ledger = review_ledger(1, "Canonical reason contradicts the case");
         assert_eq!(progress.observe_findings(&ledger), None);
         fs::write(root.path().join("candidate.txt"), "first fix").expect("first candidate");
         assert_eq!(
-            progress.observe(root.path()).expect("first changed candidate"),
+            progress.observe(
+                WorkspaceCheckpoint::capture(root.path()).expect("first changed candidate")
+            ),
             FixProgressObservation::Changed
         );
         let ledger = review_ledger(2, "Canonical reason contradicts the case");
         assert_eq!(progress.observe_findings(&ledger), None);
         fs::write(root.path().join("candidate.txt"), "second fix").expect("second candidate");
         assert_eq!(
-            progress.observe(root.path()).expect("second changed candidate"),
+            progress.observe(
+                WorkspaceCheckpoint::capture(root.path()).expect("second changed candidate")
+            ),
             FixProgressObservation::Changed
         );
         let ledger = review_ledger(3, "Canonical reason contradicts the case");
@@ -187,7 +191,8 @@ mod tests {
     #[test]
     fn a_changed_blocker_identity_starts_a_fresh_attempt_budget() {
         let root = repository();
-        let mut progress = FixProgress::capture(root.path()).expect("initial progress");
+        let mut progress =
+            FixProgress::new(WorkspaceCheckpoint::capture(root.path()).expect("initial progress"));
         let ledger = review_ledger(1, "First blocker");
         assert_eq!(progress.observe_findings(&ledger), None);
         let ledger = review_ledger(2, "Second blocker");

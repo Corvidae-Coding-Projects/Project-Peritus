@@ -46,100 +46,111 @@ impl CanonicalEncode for AppRequestEnvelope {
         write_context(writer, self.context())?;
         write_id(writer, self.request_id().as_bytes())?;
         write_id(writer, self.correlation_id().as_bytes())?;
-        match self.payload() {
-            AppRequestPayload::Interact(value) => {
-                writer.write_u16(22)?;
-                super::interaction::write_request(writer, value)
-            }
-            AppRequestPayload::QueryInteraction(value) => {
-                writer.write_u16(23)?;
-                write_conversation_query(writer, *value)
-            }
-            AppRequestPayload::QueryModels(value) => {
-                writer.write_u16(24)?;
-                super::interaction::write_model_query(writer, *value)
-            }
-            AppRequestPayload::SubmitCommand(value) => {
-                writer.write_u16(1)?;
-                write_command_binding(writer, value)
-            }
-            AppRequestPayload::Subscribe(value) => {
-                writer.write_u16(2)?;
-                write_subscription_request(writer, value)
-            }
-            AppRequestPayload::OpenArtifact(value) => {
-                writer.write_u16(3)?;
-                write_artifact_open(writer, *value)
-            }
-            AppRequestPayload::CancelArtifact(value) => {
-                writer.write_u16(4)?;
-                write_artifact_cancellation(writer, *value)
-            }
-            AppRequestPayload::AnswerPrompt(value) => {
-                writer.write_u16(5)?;
-                write_prompt_answer(writer, value)
-            }
-            AppRequestPayload::CancelPrompt(value) => {
-                writer.write_u16(6)?;
-                write_prompt_cancellation(writer, *value)
-            }
-            AppRequestPayload::AttachTerminal(value) => {
-                writer.write_u16(7)?;
-                write_terminal_binding(writer, *value)
-            }
-            AppRequestPayload::TerminalInput(value) => {
-                writer.write_u16(8)?;
-                write_terminal_input(writer, value)
-            }
-            AppRequestPayload::TerminalResize(value) => {
-                writer.write_u16(9)?;
-                write_terminal_resize(writer, *value)
-            }
-            AppRequestPayload::DetachTerminal(value) => {
-                writer.write_u16(10)?;
-                write_terminal_detach(writer, *value)
-            }
-            AppRequestPayload::CancelTerminal(value) => {
-                writer.write_u16(11)?;
-                write_terminal_cancellation(writer, *value)
-            }
-            AppRequestPayload::DaemonStatus => writer.write_u16(12),
-            AppRequestPayload::Shutdown(value) => {
-                writer.write_u16(13)?;
-                write_shutdown_request(writer, *value)
-            }
-            AppRequestPayload::BeginArtifactUpload(value) => {
-                writer.write_u16(14)?;
-                write_artifact_metadata(writer, value)
-            }
-            AppRequestPayload::UploadArtifactChunk(value) => {
-                writer.write_u16(15)?;
-                write_artifact_chunk(writer, value)
-            }
-            AppRequestPayload::CompleteArtifactUpload(value) => {
-                writer.write_u16(16)?;
-                write_artifact_completion(writer, *value)
-            }
-            AppRequestPayload::StartProductRun(value) => {
-                writer.write_u16(17)?;
-                write_run_request(writer, value)
-            }
-            AppRequestPayload::ControlProductRun(value) => {
-                writer.write_u16(18)?;
-                write_run_control(writer, *value)
-            }
-            AppRequestPayload::QueryProductRuns(value) => {
-                writer.write_u16(19)?;
-                write_run_query(writer, *value)
-            }
-            AppRequestPayload::ContinueProductRun(value) => {
-                writer.write_u16(20)?;
-                write_run_continuation(writer, value)
-            }
-            AppRequestPayload::QueryProductRunConversation(value) => {
-                writer.write_u16(21)?;
-                write_conversation_query(writer, *value)
-            }
+        write_payload(writer, self.payload())
+    }
+}
+
+fn write_payload(
+    writer: &mut CanonicalWriter,
+    payload: &AppRequestPayload,
+) -> Result<(), CodecError> {
+    match payload {
+        AppRequestPayload::Interact(value) => {
+            writer.write_u16(22)?;
+            super::interaction::write_request(writer, value)
+        }
+        AppRequestPayload::QueryInteraction(value) => {
+            writer.write_u16(23)?;
+            write_conversation_query(writer, *value)
+        }
+        AppRequestPayload::QueryModels(value) => {
+            writer.write_u16(24)?;
+            super::interaction::write_model_query(writer, *value)
+        }
+        AppRequestPayload::SubmitCommand(value) => {
+            writer.write_u16(1)?;
+            write_command_binding(writer, value)
+        }
+        AppRequestPayload::Subscribe(value) => {
+            writer.write_u16(2)?;
+            write_subscription_request(writer, value)
+        }
+        AppRequestPayload::OpenArtifact(value) => {
+            writer.write_u16(3)?;
+            write_artifact_open(writer, *value)
+        }
+        AppRequestPayload::CancelArtifact(value) => {
+            writer.write_u16(4)?;
+            write_artifact_cancellation(writer, *value)
+        }
+        AppRequestPayload::AnswerPrompt(value) => {
+            writer.write_u16(5)?;
+            write_prompt_answer(writer, value)
+        }
+        AppRequestPayload::CancelPrompt(value) => {
+            writer.write_u16(6)?;
+            write_prompt_cancellation(writer, *value)
+        }
+        AppRequestPayload::AttachTerminal(value) => {
+            writer.write_u16(7)?;
+            write_terminal_binding(writer, *value)
+        }
+        AppRequestPayload::TerminalInput(value) => {
+            writer.write_u16(8)?;
+            write_terminal_input(writer, value)
+        }
+        AppRequestPayload::TerminalResize(value) => {
+            writer.write_u16(9)?;
+            write_terminal_resize(writer, *value)
+        }
+        AppRequestPayload::DetachTerminal(value) => {
+            writer.write_u16(10)?;
+            write_terminal_detach(writer, *value)
+        }
+        AppRequestPayload::CancelTerminal(value) => {
+            writer.write_u16(11)?;
+            write_terminal_cancellation(writer, *value)
+        }
+        AppRequestPayload::DaemonStatus => writer.write_u16(12),
+        AppRequestPayload::Shutdown(value) => {
+            writer.write_u16(13)?;
+            write_shutdown_request(writer, *value)
+        }
+        AppRequestPayload::BeginArtifactUpload(value) => {
+            writer.write_u16(14)?;
+            write_artifact_metadata(writer, value)
+        }
+        AppRequestPayload::UploadArtifactChunk(value) => {
+            writer.write_u16(15)?;
+            write_artifact_chunk(writer, value)
+        }
+        AppRequestPayload::CompleteArtifactUpload(value) => {
+            writer.write_u16(16)?;
+            write_artifact_completion(writer, *value)
+        }
+        AppRequestPayload::StartProductRun(value) => {
+            writer.write_u16(17)?;
+            write_run_request(writer, value)
+        }
+        AppRequestPayload::ControlProductRun(value) => {
+            writer.write_u16(18)?;
+            write_run_control(writer, *value)
+        }
+        AppRequestPayload::QueryProductRuns(value) => {
+            writer.write_u16(19)?;
+            write_run_query(writer, *value)
+        }
+        AppRequestPayload::ContinueProductRun(value) => {
+            writer.write_u16(20)?;
+            write_run_continuation(writer, value)
+        }
+        AppRequestPayload::UpdateModels(value) => {
+            writer.write_u16(25)?;
+            super::interaction::write_model_update(writer, value)
+        }
+        AppRequestPayload::QueryProductRunConversation(value) => {
+            writer.write_u16(21)?;
+            write_conversation_query(writer, *value)
         }
     }
 }
@@ -187,6 +198,7 @@ pub(super) fn read_request(
         22 => AppRequestPayload::Interact(super::interaction::read_request(reader)?),
         23 => AppRequestPayload::QueryInteraction(read_conversation_query(reader)?),
         24 => AppRequestPayload::QueryModels(super::interaction::read_model_query(reader)?),
+        25 => AppRequestPayload::UpdateModels(super::interaction::read_model_update(reader)?),
         _ => return unknown(tag_offset),
     };
     let request =

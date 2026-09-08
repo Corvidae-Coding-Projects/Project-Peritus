@@ -11,6 +11,8 @@ mod candidate;
 mod context_config;
 mod conversation_mode;
 pub use conversation_mode::ConversationMode;
+mod workspace_kind;
+pub use workspace_kind::ProductWorkspaceKind;
 #[cfg(not(verus_only))]
 mod delivery_requirement;
 #[cfg(not(verus_only))]
@@ -44,6 +46,8 @@ pub(crate) mod trace;
 mod turn;
 #[cfg(verus_only)]
 mod verified_api;
+#[cfg(not(verus_only))]
+mod workspace_delivery;
 #[cfg(not(verus_only))]
 mod workspace_filter;
 #[cfg(not(verus_only))]

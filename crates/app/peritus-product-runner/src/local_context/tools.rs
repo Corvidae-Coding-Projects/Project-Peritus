@@ -29,6 +29,10 @@ impl<'a> MemoryTools<'a> {
 }
 
 impl DeveloperToolExecutor for MemoryTools<'_> {
+    fn yields_to_host(&self) -> bool {
+        self.base.yields_to_host()
+    }
+
     fn execute(
         &mut self,
         call: &CompletedToolCall,

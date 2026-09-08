@@ -97,6 +97,15 @@ Ordinary conversation does not automatically start a build. The composer stays a
 Peritus works; follow-up messages can correct or redirect it. The status distinguishes input
 received by the daemon from input incorporated into a model request.
 
+When you ask Chat to implement or fix something, it hands the request to the existing design,
+writer, exact-target checks, independent reviewer, and fixer pipeline. Questions, diagnosis,
+planning, and read-only review remain conversational; they do not authorize edits.
+
+Peritus shares short progress messages while inspecting, editing, and verifying work. Routine
+tool activity stays compact; `/details` expands it. If the provider has not returned public text
+after 20 seconds, Peritus shows an explicit waiting notice rather than implying new progress.
+The account-backed Codex adapter delivers complete messages, not token-by-token text.
+
 Type `/` to discover commands; Tab completes them.
 
 | Command | Action |
@@ -117,8 +126,11 @@ daemon-owned work. Conversations and task state remain available between session
 
 Plain folders do not need `git init` or an initial commit. You can chat and inspect files before
 trusting the folder. After trust, ask for changes or commands in `/chat`; edits happen in that folder.
+The same pipeline checks individually tracked task files without a whole-folder snapshot. Missing
+verification coverage or an interrupted review leaves effects in place but not verified complete.
 Commands run with your local user permissions. There is no automatic rollback of in-place changes.
-`/build` and candidate actions such as `/commit`, `/diff`, and `/discard` use the managed Git workflow.
+`/diff` shows the available comparison evidence. `/build` and candidate actions such as `/commit`
+and `/discard` require the managed Git workflow; they are not offered for in-place delivery.
 
 In `/runs`, select a task before using these dashboard keys:
 

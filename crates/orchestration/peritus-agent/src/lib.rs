@@ -33,9 +33,9 @@ pub use completion::{CompletionProposal, CompletionRequest, EvidenceReference, T
 pub use developer::{
     DeveloperActivity, DeveloperContextAssembly, DeveloperContextEvent, DeveloperContextPort,
     DeveloperInput, DeveloperInteraction, DeveloperLoop, DeveloperLoopError, DeveloperLoopLimits,
-    DeveloperLoopOutcome, DeveloperLoopRequest, DeveloperRetryReason, DeveloperRetryRecord,
-    DeveloperToolExecutor, DeveloperToolObservation, DeveloperTrace, DeveloperTraceEvent,
-    DeveloperUsage, estimate_developer_request_tokens,
+    DeveloperLoopOutcome, DeveloperLoopRequest, DeveloperModelRole, DeveloperRetryReason,
+    DeveloperRetryRecord, DeveloperToolExecutor, DeveloperToolObservation, DeveloperTrace,
+    DeveloperTraceEvent, DeveloperUsage, estimate_developer_request_tokens,
 };
 pub use error::{AgentErrorCode, AgentOperation, AgentRecovery, AgentRejection};
 pub use event::{AgentEvent, AgentEventKind};

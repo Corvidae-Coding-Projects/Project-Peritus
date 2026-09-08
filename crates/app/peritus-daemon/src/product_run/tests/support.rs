@@ -46,6 +46,7 @@ impl ModelStream for ScriptedStream {
 pub(super) struct ScriptedProvider {
     pub(super) profile: ProviderProfile,
     pub(super) responses: Mutex<VecDeque<VecDeque<EventEnvelope>>>,
+    pub(super) requests: Mutex<Vec<ModelRequest>>,
     stalled: bool,
 }
 
@@ -56,10 +57,11 @@ impl ModelProvider for ScriptedProvider {
 
     fn start(
         &self,
-        _request: ModelRequest,
+        request: ModelRequest,
         cancellation: CancellationToken,
     ) -> BoxFuture<'_, Result<OwnedModelStream, ProviderCoreError>> {
         Box::pin(async move {
+            self.requests.lock().expect("request observations").push(request);
             let events = self
                 .responses
                 .lock()
@@ -84,6 +86,7 @@ pub(super) fn scripted(
     Arc::new(ScriptedProvider {
         profile: profile([id; 16], name),
         responses: Mutex::new(responses.into()),
+        requests: Mutex::new(Vec::new()),
         stalled: false,
     })
 }
@@ -96,6 +99,7 @@ pub(super) fn stalled(id: u8, name: &str) -> Arc<ScriptedProvider> {
             model: None,
         }])])),
         stalled: true,
+        requests: Mutex::new(Vec::new()),
     })
 }
 
@@ -151,7 +155,7 @@ fn profile(id: [u8; 16], name: &str) -> ProviderProfile {
         WireDialect::CompatibleResponses,
         CapabilityMatrix::new(&[Capability::ToolCalls], &[]).expect("capabilities"),
         CapabilityProvenance::Probed,
-        ModelLimits::new(32_768, 4_096, 16, 1, 512 * 1024).expect("limits"),
+        ModelLimits::new(32_768, 4_096, 32, 1, 512 * 1024).expect("limits"),
         OutputLimitEnforcement::ProviderEnforced,
         StateMode::StatelessReplay,
         ResumeKind::Unsupported,

@@ -60,6 +60,10 @@ fn every_mode_and_new_query_roundtrips() {
     let mut payloads = vec![
         AppRequestPayload::QueryInteraction(ProductRunConversationQuery::new(run())),
         AppRequestPayload::QueryModels(ProductModelQuery::new(profile(), true)),
+        AppRequestPayload::UpdateModels(peritus_app_protocol::ProductModelUpdate::new(
+            run(),
+            models(),
+        )),
     ];
     for mode in [
         ProductInteractionMode::Chat,

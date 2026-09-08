@@ -19,6 +19,7 @@ use super::{Inner, ProductRunService};
 mod catalog;
 mod folder;
 mod interaction;
+mod model_selection;
 mod support;
 
 use support::{

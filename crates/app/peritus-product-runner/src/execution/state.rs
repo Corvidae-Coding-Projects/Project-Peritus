@@ -31,12 +31,21 @@ pub(super) struct ExecutionContext {
 
 impl ExecutionContext {
     pub(super) fn prepare(input: &ProductRunInput) -> Result<Self, ProductRunnerError> {
+        if let Some(resume) = &input.resume
+            && resume.baseline().scope() != input.in_place_scope().as_ref()
+        {
+            return Err(ProductRunnerError::new(
+                ProductRunnerErrorKind::InvalidPrecondition,
+                "restore workspace delivery",
+                "resume delivery scope differs from the caller's current workspace capability",
+            ));
+        }
         let transcript = input.conversation.render();
         let obligations = RunObligations::capture(&transcript, input.conversation.revision())?;
-        let baseline = input.resume.as_ref().map_or_else(
-            || CandidateBaseline::capture(&input.workspace_root),
-            |resume| Ok(resume.baseline().clone()),
-        )?;
+        let baseline = input
+            .resume
+            .as_ref()
+            .map_or_else(|| input.baseline(), |resume| Ok(resume.baseline().clone()))?;
         let prior = input.resume.as_ref().map(ProductRunResume::checkpoint);
         let recorder = CandidateRecorder::new(
             &input.workspace_root,
@@ -181,9 +190,7 @@ impl RunState {
             tool_calls: applied.tool_calls,
             conversation_revision: applied.conversation_revision,
             findings,
-            fix_progress: crate::execution::fix_progress::FixProgress::capture(
-                &input.workspace_root,
-            )?,
+            fix_progress: crate::execution::fix_progress::FixProgress::new(input.checkpoint()?),
             coordinator: coordinator(0)?,
             developer_evidence: applied.verification_evidence,
             successful_commands: applied.successful_commands,
@@ -203,9 +210,7 @@ impl RunState {
             tool_calls: resume.tool_calls(),
             conversation_revision: resume.checkpoint().identity().conversation_revision(),
             findings: review::restore_ledger(resume.finding_state())?,
-            fix_progress: crate::execution::fix_progress::FixProgress::capture(
-                &input.workspace_root,
-            )?,
+            fix_progress: crate::execution::fix_progress::FixProgress::new(input.checkpoint()?),
             coordinator: coordinator(resume.fixer_cycles())?,
             developer_evidence: resume.developer_evidence().to_owned(),
             successful_commands: resume.successful_commands().to_vec(),

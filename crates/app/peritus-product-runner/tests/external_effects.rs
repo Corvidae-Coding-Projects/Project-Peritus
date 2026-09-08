@@ -123,6 +123,7 @@ fn authorized_external_effects_complete_without_a_synthetic_workspace_diff() {
 
             let outcome = ProductRunner::run(
                 ProductRunInput {
+                    workspace_kind: peritus_product_runner::ProductWorkspaceKind::Managed,
                     run_id,
                     workspace_id: WorkspaceId::new([0xA4; 16]).expect("workspace ID"),
                     workspace_root: repository.path().to_owned(),
@@ -260,6 +261,7 @@ fn operational_request_needs_a_live_effect_even_when_supporting_files_change() {
 
             let outcome = ProductRunner::run(
                 ProductRunInput {
+                    workspace_kind: peritus_product_runner::ProductWorkspaceKind::Managed,
                     run_id,
                     workspace_id: WorkspaceId::new([0xB4; 16]).expect("workspace ID"),
                     workspace_root: repository.path().to_owned(),

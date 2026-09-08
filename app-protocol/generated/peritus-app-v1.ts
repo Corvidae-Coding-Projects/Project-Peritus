@@ -56,6 +56,7 @@ export type AppPayloadKind =
   | "interact"
   | "query-interaction"
   | "query-models"
+  | "update-models"
   | "command-result"
   | "subscription-started"
   | "artifact-opened"
@@ -566,6 +567,11 @@ export interface RunSettlement {
 export interface ProductRunSettlementSnapshot {
   readonly snapshot: ProductRunSnapshot;
   readonly settlement: RunSettlement;
+}
+
+export interface ProductModelUpdate {
+  readonly runId: RunId;
+  readonly models: ProductRoleModels;
 }
 
 export interface ProductRunRequest {

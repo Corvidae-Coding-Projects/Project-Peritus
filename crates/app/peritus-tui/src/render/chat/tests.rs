@@ -97,3 +97,50 @@ fn command_picker_keeps_first_and_last_selection_visible() {
         assert!(text.contains(&format!("▸ {command}")), "selected command hidden: {text}");
     }
 }
+
+#[test]
+fn compact_tool_activity_keeps_public_narration_visible_and_details_expand() {
+    let mut model = model();
+    let previous = model.chat.snapshot.take().expect("snapshot");
+    let mut activities = vec![
+        ProductActivity::new(
+            1,
+            ProductActivityKind::Assistant,
+            "I'll inspect the parser and check why input is lost.".to_owned(),
+            String::new(),
+        )
+        .expect("public narration"),
+    ];
+    for sequence in 2..=9 {
+        activities.push(
+            ProductActivity::new(
+                sequence,
+                ProductActivityKind::Tool,
+                "Reading the relevant file contents.".to_owned(),
+                "workspace_read: 100 output bytes; bounded details".to_owned(),
+            )
+            .expect("tool"),
+        );
+    }
+    model.chat.snapshot = Some(
+        ProductInteractionSnapshot::new(
+            previous.snapshot().clone(),
+            previous.mode(),
+            previous.models().clone(),
+            previous.received(),
+            previous.incorporated(),
+            activities,
+            None,
+        )
+        .expect("snapshot"),
+    );
+    let (compact, _) = screen(&model, 100, 24);
+    assert!(
+        compact.contains("I'll inspect the parser"),
+        "narration must not be crowded out: {compact}"
+    );
+    assert!(!compact.contains("bounded details"));
+    model.chat.expanded = true;
+    let (expanded, _) = screen(&model, 100, 24);
+    assert!(expanded.contains("bounded details"));
+}

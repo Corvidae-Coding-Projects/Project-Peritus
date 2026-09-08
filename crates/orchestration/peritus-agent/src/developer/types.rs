@@ -124,6 +124,14 @@ pub struct DeveloperToolObservation {
 
 /// Executes already parsed provider tool calls against one explicitly supplied workspace.
 pub trait DeveloperToolExecutor: Send {
+    /// Whether an executed tool handed control back to its owning application.
+    ///
+    /// The loop records the observation, skips remaining calls in the batch, and returns its
+    /// accounting without another model turn. This is host state, never a provider verdict.
+    fn yields_to_host(&self) -> bool {
+        false
+    }
+
     /// Executes one call and returns a model-safe observation.
     ///
     /// # Errors

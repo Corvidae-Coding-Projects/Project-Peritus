@@ -97,6 +97,8 @@ impl ArtifactOpenRequest {
 /// Closed schema-v1 application request payload.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum AppRequestPayload {
+    /// Durably selects models for subsequent turns of an existing conversation.
+    UpdateModels(crate::ProductModelUpdate),
     /// Starts or steers a conversation with explicit execution semantics.
     Interact(crate::ProductInteractionRequest),
     /// Reads public activity and exact input incorporation status.

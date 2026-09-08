@@ -61,7 +61,40 @@ impl DeveloperLoop {
         context: Option<&mut dyn DeveloperContextPort>,
         interaction: &dyn DeveloperInteraction,
     ) -> Result<DeveloperLoopOutcome, DeveloperLoopError> {
-        Self::run_inner(provider, request, tools, trace, ContextSession(context), Some(interaction))
-            .await
+        Self::run_interactive_for_role(
+            provider,
+            request,
+            tools,
+            trace,
+            context,
+            interaction,
+            super::DeveloperModelRole::Writer,
+        )
+        .await
+    }
+
+    /// Runs with live selection for an explicit host-owned execution role.
+    /// A selected adapter is immutable for the whole turn, including its retries.
+    ///
+    /// # Errors
+    /// Returns execution, selection, capability negotiation, or durable interaction failures.
+    pub async fn run_interactive_for_role(
+        provider: &dyn ModelProvider,
+        request: DeveloperLoopRequest,
+        tools: &mut dyn DeveloperToolExecutor,
+        trace: &mut dyn DeveloperTrace,
+        context: Option<&mut dyn DeveloperContextPort>,
+        interaction: &dyn DeveloperInteraction,
+        role: super::DeveloperModelRole,
+    ) -> Result<DeveloperLoopOutcome, DeveloperLoopError> {
+        Self::run_inner(
+            provider,
+            request,
+            tools,
+            trace,
+            ContextSession(context),
+            Some((interaction, role)),
+        )
+        .await
     }
 }

@@ -9,13 +9,10 @@ use peritus_provider_core::ModelProvider;
 use peritus_types::RunId;
 
 use crate::budget::RunAccounting;
-use crate::developer_tools::{
-    WorkspaceDeveloperTools, WorkspaceOwnership, definitions, merge_rendered,
-};
+use crate::developer_tools::{WorkspaceDeveloperTools, WorkspaceOwnership, merge_rendered};
 use crate::execution::CandidateRecorder;
 use crate::execution::{AppliedTurn, AppliedWrite, ProductRunInput, check_cancelled};
 use crate::local_context::LocalContextHandle;
-use crate::progress::WorkspaceCheckpoint;
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
 mod correction;
@@ -49,8 +46,8 @@ pub async fn complete_developer_turn(
     recorder: &CandidateRecorder,
 ) -> Result<AppliedTurn, ProductRunnerError> {
     let mut providers = crate::failover::ProviderCursor::new(primary, &input.providers.fallbacks);
-    let memory = LocalContextHandle::open(input, role)?;
-    let mut checkpoint = WorkspaceCheckpoint::capture(&input.workspace_root)?;
+    let memory = input.working_memory(role)?;
+    let mut checkpoint = input.checkpoint()?;
     let mut invocation = 0_u32;
     let mut unproductive_terminals = 0_u8;
     let mut provider_recovery = crate::failover::RoleRecovery::default();
@@ -92,7 +89,7 @@ pub async fn complete_developer_turn(
         );
         check_cancelled(input)?;
         if input.conversation.revision() != revision {
-            checkpoint = WorkspaceCheckpoint::capture(&input.workspace_root)?;
+            checkpoint = input.checkpoint()?;
             provider_recovery.reset();
             unproductive_terminals = 0;
             (correction, pending_question) = (None, None);
@@ -120,7 +117,7 @@ pub async fn complete_developer_turn(
         }) {
             Ok(terminal) => terminal,
             Err(error) => {
-                let current = WorkspaceCheckpoint::capture(&input.workspace_root)?;
+                let current = input.checkpoint()?;
                 if current != checkpoint {
                     checkpoint = current;
                     unproductive_terminals = 0;
@@ -145,7 +142,7 @@ pub async fn complete_developer_turn(
                 successful_commands,
             })),
             TerminalTurn::Question(question) => {
-                let current = WorkspaceCheckpoint::capture(&input.workspace_root)?;
+                let current = input.checkpoint()?;
                 if retry_unverified_question(
                     &question,
                     current == checkpoint,
@@ -230,22 +227,27 @@ async fn run_developer_invocation(
     ProductRunnerError,
 > {
     let transcript = input.conversation.render();
-    let media =
-        crate::workspace_media::discover(&input.workspace_root, &transcript, model.profile())?;
+    let media = input.media(&transcript, model.profile())?;
     let prompt = writer_user(&transcript, context.design, context.findings, context.correction);
     let (prompt, attachments) = media.into_parts(prompt);
     let prefix = request_name(input.run_id, identity.role, identity.cycle);
-    let request_prefix = format!("{prefix}-invocation-{}", identity.invocation);
-    let mut tools = WorkspaceDeveloperTools::with_ownership(
-        input.workspace_root.clone(),
-        context.ownership.clone(),
-        input.trace_path.with_extension("effects.bin"),
-        request_prefix.clone(),
-        context.remaining,
-        input.command_runtime.clone(),
-    )
-    .with_checkpoint_observer(context.recorder.tool_observer(Arc::clone(&input.conversation)))
-    .with_task_contract(&transcript);
+    let request_prefix = format!(
+        "{prefix}-revision-{}-invocation-{}",
+        input.conversation.revision(),
+        identity.invocation,
+    );
+    let mut tools = input.configure_tools(
+        WorkspaceDeveloperTools::with_ownership(
+            input.workspace_root.clone(),
+            context.ownership.clone(),
+            input.trace_path.with_extension("effects.bin"),
+            request_prefix.clone(),
+            context.remaining,
+            input.command_runtime.clone(),
+        )
+        .with_checkpoint_observer(context.recorder.tool_observer(Arc::clone(&input.conversation)))
+        .with_task_contract(&transcript),
+    );
     let result = crate::local_context::run_live_invocation(
         model,
         DeveloperLoopRequest {
@@ -258,10 +260,10 @@ async fn run_developer_invocation(
                     &input.task,
                 ),
                 context.remaining,
-            ),
+            ) + input.delivery_instructions(),
             prompt,
             attachments,
-            tools: definitions()?,
+            tools: input.developer_definitions()?,
             limits: DeveloperLoopLimits::new(48, 512).map_err(|error| developer_error(&error))?,
             cancellation: input.provider_cancellation.clone(),
         },
@@ -269,6 +271,11 @@ async fn run_developer_invocation(
         &input.trace_path,
         context.memory,
         input.conversation.interaction(),
+        if identity.role == "fixer" {
+            peritus_agent::DeveloperModelRole::Fixer
+        } else {
+            peritus_agent::DeveloperModelRole::Writer
+        },
     )
     .await;
     Ok((result, tools))

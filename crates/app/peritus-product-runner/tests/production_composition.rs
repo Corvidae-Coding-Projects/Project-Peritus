@@ -57,6 +57,7 @@ fn provider_failure_before_first_response_retains_an_empty_trace() {
             let command_runtime = support::command_runtime(state.path(), repository.path(), run_id);
             let outcome = ProductRunner::run(
                 ProductRunInput {
+                    workspace_kind: peritus_product_runner::ProductWorkspaceKind::Managed,
                     run_id,
                     workspace_id: WorkspaceId::new([0x73; 16]).expect("workspace ID"),
                     workspace_root: repository.path().to_owned(),
@@ -178,6 +179,7 @@ mod tests {
 
             let outcome = ProductRunner::run(
                 ProductRunInput {
+                    workspace_kind: peritus_product_runner::ProductWorkspaceKind::Managed,
                     run_id,
                     workspace_id: WorkspaceId::new([0x84; 16]).expect("workspace ID"),
                     workspace_root: repository.path().to_owned(),
@@ -353,6 +355,7 @@ mod tests {
 
             let outcome = ProductRunner::run(
                 ProductRunInput {
+                    workspace_kind: peritus_product_runner::ProductWorkspaceKind::Managed,
                     run_id,
                     workspace_id: WorkspaceId::new([0x95; 16]).expect("workspace ID"),
                     workspace_root: repository.path().to_owned(),

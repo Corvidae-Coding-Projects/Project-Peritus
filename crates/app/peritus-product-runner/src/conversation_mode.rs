@@ -1,9 +1,9 @@
 //! Public conversation policy shared by ordinary and verification-only API surfaces.
 
-/// Governing conversational tool and prompt policy, separate from strict build execution.
+/// Conversational policy; authorized Chat effects hand off to the shared production pipeline.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ConversationMode {
-    /// Follow the user's exact scope, including authorized workspace changes.
+    /// Answer directly or hand authorized changes to the existing design/writer/reviewer loop.
     Chat,
     /// Inspect and plan with read-only tools.
     Plan,

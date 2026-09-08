@@ -20,7 +20,9 @@ pub use context_port::{
 };
 pub use entry::DeveloperLoop;
 pub use error::DeveloperLoopError;
-pub use interaction::{DeveloperActivity, DeveloperInput, DeveloperInteraction};
+pub use interaction::{
+    DeveloperActivity, DeveloperInput, DeveloperInteraction, DeveloperModelRole,
+};
 pub use types::{
     DeveloperContextCompaction, DeveloperLoopLimits, DeveloperLoopOutcome, DeveloperLoopRequest,
     DeveloperRetryReason, DeveloperRetryRecord, DeveloperToolExecutor, DeveloperToolObservation,

@@ -16,6 +16,9 @@ use peritus_product_runner::ConversationView;
 use peritus_types::RunId;
 use std::sync::Arc;
 
+mod models;
+mod narration;
+
 #[derive(Clone)]
 pub(super) struct InteractionOptions {
     pub(super) persistence_failed: Arc<std::sync::atomic::AtomicBool>,
@@ -182,7 +185,7 @@ impl ProductRunService {
             record.conversation.revision(),
             options.incorporated,
             options.activities.clone(),
-            record.settlement,
+            super::snapshot::delivery_settlement(record),
         )
         .map_err(|_| ProductRunServiceError::InvalidMessage)
     }
@@ -229,6 +232,29 @@ impl ConversationView for LiveConversation {
 }
 #[cfg(not(verus_only))]
 impl DeveloperInteraction for LiveConversation {
+    fn provider(
+        &self,
+        role: peritus_agent::DeveloperModelRole,
+    ) -> Result<Option<Arc<dyn peritus_provider_core::ModelProvider>>, DeveloperLoopError> {
+        let records = self.service.inner.records.read().map_err(|_| port_error())?;
+        let record = records.get(&self.run_id).ok_or_else(port_error)?;
+        let options = record.interaction.as_ref().ok_or_else(port_error)?;
+        if options.persistence_failed.load(std::sync::atomic::Ordering::Acquire) {
+            return Err(port_error());
+        }
+        let providers = record.request.providers();
+        let (profile, choice) = match role {
+            peritus_agent::DeveloperModelRole::Writer => {
+                (providers.writer(), options.models.writer())
+            }
+            peritus_agent::DeveloperModelRole::Reviewer => {
+                (providers.reviewer(), options.models.reviewer())
+            }
+            peritus_agent::DeveloperModelRole::Fixer => (providers.fixer(), options.models.fixer()),
+        };
+        self.service.select_provider(profile, choice).map(Some).map_err(|_| port_error())
+    }
+
     fn input(&self) -> Result<DeveloperInput, DeveloperLoopError> {
         // Admission holds the write lock until persistence succeeds. A model cannot observe an
         // input revision halfway through its durable receive transaction.
@@ -246,32 +272,39 @@ impl DeveloperInteraction for LiveConversation {
     }
     fn applied(&self, revision: u64) -> Result<(), DeveloperLoopError> {
         self.update(|options| {
-            options.incorporated = options.incorporated.max(revision);
-            options.append(
-                ProductActivityKind::Status,
-                &format!("Input {revision} incorporated into model request"),
-                "",
-            )
+            if revision > options.incorporated {
+                options.incorporated = revision;
+                options.append(
+                    ProductActivityKind::Status,
+                    narration::starting(options.mode),
+                    &format!("Input {revision} incorporated into model request"),
+                )?;
+            }
+            Ok(())
         })
     }
     fn observe(&self, activity: DeveloperActivity<'_>) -> Result<(), DeveloperLoopError> {
         self.update(|options| match activity {
             DeveloperActivity::Text(bytes) => options.text(bytes),
-            DeveloperActivity::ModelStarted => {
-                options.append(ProductActivityKind::Status, "Model responding", "")
+            DeveloperActivity::ModelStarted { model } => {
+                options.streaming_text = false;
+                options.append(ProductActivityKind::Status, &format!("Requesting model {model}"), "")
+            }
+            DeveloperActivity::ModelWaiting { elapsed_seconds } => {
+                narration::waiting(options, elapsed_seconds)
             }
             DeveloperActivity::ToolStarted { name, arguments } => {
-                options.append(ProductActivityKind::Tool, &format!("Running {name}"),
-                    &format!("{} argument bytes. Raw arguments remain in the trace, not this public activity projection.", arguments.len()))
+                options.append(ProductActivityKind::Tool, narration::tool_started(name),
+                    &format!("{name}: {} argument bytes. Raw arguments remain in the trace, not this public activity projection.", arguments.len()))
             }
             DeveloperActivity::ToolFinished { name, output, is_error } => options.append(
                 ProductActivityKind::Tool,
-                &format!("{} {name}", if is_error { "Failed" } else { "Finished" }),
-                &format!("{} output bytes. Raw tool output remains in the trace, not this public activity projection.", output.len()),
+                if is_error { "That step failed; no success has been confirmed." } else { "Finished that step." },
+                &format!("{name}: {} output bytes. Raw tool output remains in the trace, not this public activity projection.", output.len()),
             ),
             DeveloperActivity::ToolSkipped { name } => options.append(
                 ProductActivityKind::Status,
-                &format!("Skipped {name}: newer user input received"),
+                &format!("Skipped {name}: control returned before execution"),
                 "",
             ),
         })

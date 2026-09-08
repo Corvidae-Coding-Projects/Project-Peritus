@@ -10,6 +10,8 @@ use crate::{ModelAdvance, ModelSession};
 use peritus_model_protocol::{Message, ModelEvent, ModelRequest, ProtocolLimits};
 use peritus_provider_core::ModelProvider;
 
+mod progress;
+
 #[allow(clippy::too_many_arguments, reason = "one logical turn keeps its checked request inputs")]
 pub(super) async fn complete_turn(
     provider: &dyn ModelProvider,
@@ -58,7 +60,7 @@ pub(super) async fn complete_turn(
         )?;
         if let Some((port, revision)) = interaction {
             port.applied(revision)?;
-            port.observe(DeveloperActivity::ModelStarted)?;
+            port.observe(DeveloperActivity::ModelStarted { model: profile.model().as_str() })?;
         }
         match drive(
             provider,
@@ -104,11 +106,24 @@ async fn drive(
     trace: &mut dyn DeveloperTrace,
     interaction: Option<&dyn DeveloperInteraction>,
 ) -> Result<ModelSession, DeveloperLoopError> {
-    let mut session =
-        ModelSession::start(provider, model_request, protocol_limits, request.cancellation.clone())
-            .await?;
+    let mut progress = progress::ProviderProgress::new(interaction, &request.cancellation);
+    let mut session = progress
+        .wait(async {
+            ModelSession::start(
+                provider,
+                model_request,
+                protocol_limits,
+                request.cancellation.clone(),
+            )
+            .await
+            .map_err(DeveloperLoopError::from)
+        })
+        .await?;
     loop {
-        match session.pull_one().await? {
+        match progress
+            .wait(async { session.pull_one().await.map_err(DeveloperLoopError::from) })
+            .await?
+        {
             ModelAdvance::Closed => return Ok(session),
             ModelAdvance::EnvelopePending { .. } => {
                 let encoded = session.encode_pending()?;
@@ -119,6 +134,8 @@ async fn drive(
                 });
                 let _ = session.accept_durable_pending()?;
                 if let (Some(port), Some(text)) = (interaction, public_text) {
+                    // Never insert waiting messages between fragments of public assistant text.
+                    progress.text_received();
                     port.observe(DeveloperActivity::Text(&text))?;
                 }
             }

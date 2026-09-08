@@ -6,6 +6,22 @@ use super::super::{
 
 pub(super) const INTERACTION_TYPES: &[AppTypeDescriptor] = &[
     AppTypeDescriptor {
+        name: "ProductModelUpdate",
+        rust_type: "ProductModelUpdate",
+        fields: &[
+            field("runId", W::Identifier, &[B::NonZero], "RunId", "RunId", J::Identifier, true),
+            field(
+                "models",
+                W::Struct,
+                &[],
+                "ProductRoleModels",
+                "ProductRoleModels",
+                J::Ref("ProductRoleModels"),
+                true,
+            ),
+        ],
+    },
+    AppTypeDescriptor {
         name: "ProductRunRequest",
         rust_type: "ProductRunRequest",
         fields: &[

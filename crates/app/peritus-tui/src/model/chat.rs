@@ -258,6 +258,18 @@ impl AppModel {
         if self.chat.run_id != Some(snapshot.snapshot().run_id()) {
             return;
         }
+        // Model updates append a durable activity. A delayed pre-selection poll must not
+        // overwrite a newer acknowledgement, including after a reconnect.
+        if self.chat.snapshot.as_ref().is_some_and(|current| {
+            snapshot.activities().last().map_or(0, peritus_app_protocol::ProductActivity::sequence)
+                < current
+                    .activities()
+                    .last()
+                    .map_or(0, peritus_app_protocol::ProductActivity::sequence)
+        }) {
+            return;
+        }
+        self.chat.models = snapshot.models().clone();
         self.accept_product_run(snapshot.snapshot().clone());
         if let Some(settlement) = snapshot.settlement()
             && let Some(product) = &mut self.product
@@ -318,7 +330,12 @@ impl AppModel {
         })
     }
     pub(super) fn chat_submission_pending(&self) -> bool {
-        self.pending.values().any(|pending| matches!(pending, PendingRequest::ChatSubmit { .. }))
+        self.pending.values().any(|pending| {
+            matches!(
+                pending,
+                PendingRequest::ChatSubmit { .. } | PendingRequest::ModelUpdate { .. }
+            )
+        })
     }
     pub(crate) fn chat_providers(&self) -> Option<peritus_app_protocol::ProductProviderSelection> {
         self.chat

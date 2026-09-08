@@ -31,7 +31,7 @@ pub(super) fn resolve(
         }
         Err(error) => error,
     };
-    let current = WorkspaceCheckpoint::capture(&input.workspace_root)?;
+    let current = input.checkpoint()?;
     if current != *checkpoint {
         *checkpoint = current;
         recovery.reset();

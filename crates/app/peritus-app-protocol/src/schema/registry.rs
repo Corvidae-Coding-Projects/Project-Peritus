@@ -67,6 +67,7 @@ const REQUESTS: &[AppPayloadDescriptor] = &[
     AppPayloadDescriptor { tag: 22, name: "interact" },
     AppPayloadDescriptor { tag: 23, name: "query-interaction" },
     AppPayloadDescriptor { tag: 24, name: "query-models" },
+    AppPayloadDescriptor { tag: 25, name: "update-models" },
 ];
 
 const RESPONSES: &[AppPayloadDescriptor] = &[

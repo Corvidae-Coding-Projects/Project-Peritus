@@ -209,6 +209,9 @@ pub(super) fn inspect_gates(
         &conversation,
     )?;
     let mut gate_output = gate_report.output.clone();
+    if input.workspace_kind.is_in_place() {
+        gate_output.insert_str(0, "In-place verification covers explicitly tracked task files, not a whole-folder inventory or undeclared command effects.\n\n");
+    }
     gate_output.push('\n');
     gate_output.push_str(&obligations.render());
     if input.delivery_scope.allows_external_effects()
