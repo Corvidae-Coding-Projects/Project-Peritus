@@ -11,7 +11,7 @@ fn previous_staging_comparison_is_manual_only_and_cannot_supply_release_products
     let job = &document["jobs"]["check-native-staging"];
     assert_eq!(job["if"].as_str(), Some("${{ github.event_name == 'workflow_dispatch' }}"));
     assert_eq!(job["needs"].as_str(), Some("build-binary"));
-    assert_eq!(job["timeout-minutes"].as_i64(), Some(10));
+    assert_eq!(job["timeout-minutes"].as_i64(), Some(20));
     assert_eq!(job["env"]["PERITUS_RELEASE_BUILD_ROLE"].as_str(), Some("primary"));
     let rows = job["strategy"]["matrix"]["target"].as_vec().expect("diagnostic targets");
     assert_eq!(rows.len(), 2);
@@ -56,7 +56,7 @@ fn intel_cli_library_stage_retains_the_original_role_bound_daemon_chain_without_
     let stage = &document["jobs"]["build-cli-library"];
     assert_eq!(stage["needs"].as_str(), Some("build-daemon-library"));
     assert_eq!(stage["runs-on"].as_str(), Some("macos-15-intel"));
-    assert_eq!(stage["timeout-minutes"].as_i64(), Some(10));
+    assert_eq!(stage["timeout-minutes"].as_i64(), Some(20));
     assert_eq!(stage["strategy"]["fail-fast"].as_bool(), Some(false));
     assert_eq!(stage["strategy"]["matrix"].as_hash().expect("CLI matrix").len(), 1);
     assert_eq!(
@@ -98,7 +98,7 @@ fn native_library_producers_are_independent_fresh_and_scoped_to_oversized_native
     let document = workflow(".github/workflows/release.yml");
     let producer = &document["jobs"]["build-daemon-library"];
     assert_eq!(producer["runs-on"].as_str(), Some("${{ matrix.os }}"));
-    assert_eq!(producer["timeout-minutes"].as_i64(), Some(10));
+    assert_eq!(producer["timeout-minutes"].as_i64(), Some(20));
     assert_eq!(producer["strategy"]["fail-fast"].as_bool(), Some(false));
     let matrix = &producer["strategy"]["matrix"];
     assert_eq!(matrix.as_hash().expect("library matrix").len(), 2);
