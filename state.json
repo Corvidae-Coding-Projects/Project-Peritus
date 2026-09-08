@@ -1,6 +1,6 @@
 {
   "next_display_id": 61,
-  "next_comment_id": 1412,
+  "next_comment_id": 1413,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -8714,7 +8714,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-08T17:14:48.217607809Z",
-      "updated_at": "2026-09-08T17:30:30.352834393Z",
+      "updated_at": "2026-09-08T17:34:44.284578916Z",
       "comments": {
         "49c93cff-3c87-4897-85fd-28ce6b41798b": {
           "display_id": 1411,
@@ -8724,6 +8724,15 @@
           "kind": "decision",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAu/v6xiobq1LmMi8pcRaXtihljHG+ytFVa8EHKyvNM3dOEeqvotBn2uvqXokYGg6oP3EjvY6RgABJDgUCZJMOCQ=="
+        },
+        "d1c50ed9-0ccb-4b58-b271-87fa4b3a03b6": {
+          "display_id": 1412,
+          "author": "krvx",
+          "content": "READY for review, uncommitted on develop. Verified outgoing selected-model requests across Chat/Plan/Review x managed/direct-folder (6 cases), immutable in-flight request, retained tool history, invalid-selection rollback, idle reset without work, durable reload, failed-publication rollback. TUI regressions exercise catalog Enter -> UpdateModels -> daemon ack, rejected/unsent changes, pending input, new-conversation retention, lost-ack polling and stale reply fencing. Final set-e verification passed: affected five-crate test suites, strict all-targets/all-features Clippy, workspace all-targets check, codegen --check, fmt --check, diff --check, CLI/daemon debug builds. No personal Tetris files/config/processes or installed binaries changed. Effort control and command-journal CAS bug remain separate scope.",
+          "created_at": "2026-09-08T17:34:44.279754211Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAfwR8vzT4aTWw32VuIGNVPrDF3+sOXu16LXJDu3FXYLiOclQfAg6CrZWky5tQvoACgAu9LQzFMSGHCKYVGGhUAg=="
         }
       }
     },
@@ -13763,8 +13772,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-08T17:30:30.352834393Z",
+    "timestamp": "2026-09-08T17:34:44.284578916Z",
     "agent_id": "krvx",
-    "agent_seq": 17
+    "agent_seq": 18
   }
 }
