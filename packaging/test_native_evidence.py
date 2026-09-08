@@ -6,10 +6,13 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import stat
 import tarfile
 import tempfile
 import unittest
+import warnings
 from unittest.mock import patch
+import zipfile
 
 import archive
 import native_inputs
@@ -28,15 +31,19 @@ class NativeEvidenceTests(unittest.TestCase):
         self.resources.enter_context(patch.object(rebuild, "candidate", return_value=self.candidate))
         self.resources.enter_context(patch.object(native_inputs, "candidate", return_value=self.candidate))
         self.resources.enter_context(patch.dict(os.environ, {"ImageVersion": "fixture-image"}, clear=True))
+        self.compiler = {"path": "fixture-clang-cl", "version": "fixture-version", "sha256": "f" * 64}
+        self.resources.enter_context(patch.object(native_inputs.windows_release, "compiler_environment",
+                                                return_value=({}, self.compiler)))
 
-    def fixture(self, payload=b"non-release daemon fixture"):
+    def fixture(self, payload=b"non-release daemon fixture", windows=False):
         directory = self.root / "dist"
-        loose = directory / "peritus-macos-x86_64"
+        package_name = "peritus-windows-x86_64" if windows else "peritus-macos-x86_64"
+        loose = directory / package_name
         (loose / "bin").mkdir(parents=True)
         payloads = {"peritusd": payload, "peritus": b"non-release CLI fixture"}
         for binary, content in payloads.items():
-            (loose / "bin" / binary).write_bytes(content)
-        name = "peritus-macos-x86_64.tar.gz"
+            (loose / "bin" / (binary + (".exe" if windows else ""))).write_bytes(content)
+        name = package_name + (".zip" if windows else ".tar.gz")
         archive.archive_tree(loose, directory / name, 1)
         (directory / (name + ".sha256")).write_bytes(
             rebuild.digest(directory / name).encode("ascii") + b"\n")
@@ -48,8 +55,9 @@ class NativeEvidenceTests(unittest.TestCase):
                  "package": "peritus-daemon", "binary": "peritusd",
                  "environment": {"system": "Darwin", "machine": "x86_64",
                                  "rustc": "fixture rustc", "image_version": "fixture-image"}}
-        record = {"schema_version": 2, "kind": "native-release-binary-compilation", "binding": bound,
-                  "library": {"schema_version": 1, "kind": "native-daemon-library-compilation",
+        record = {"schema_version": 3, "kind": "native-release-binary-compilation", "binding": bound,
+                  "library": {"schema_version": 2, "kind": "native-release-library-compilation",
+                              "previous_library": None,
                               "binding": copy.deepcopy(bound), "archive_byte_length": 1,
                               "archive_sha256": "0" * 64,
                               "observation": {"host": "fixture", "invocation": "fixture-library",
@@ -62,10 +70,23 @@ class NativeEvidenceTests(unittest.TestCase):
                                               "--package", "peritus-daemon", "--bin", "peritusd"]},
                   "binary": {"sha256": hashlib.sha256(payload).hexdigest(), "byte_length": len(payload)}}
         evidence, records = {}, {}
+        if windows:
+            bound["environment"].update(system="Windows", machine="AMD64", cc=self.compiler)
+            record["library"]["binding"] = copy.deepcopy(bound)
         for binary, content in payloads.items():
+            if windows and binary != "peritusd":
+                continue
             observed = copy.deepcopy(record)
             observed["binding"].update(binary=binary, package=native_transport.binary_package(binary))
-            observed["observation"]["command"] = native_transport.cargo_arguments("binary", binary)
+            if binary == "peritus":
+                observed["library"] = dict(copy.deepcopy(record["library"]),
+                    binding=copy.deepcopy(observed["binding"]), previous_library=copy.deepcopy(record["library"]),
+                    observation={"host": "fixture", "invocation": "fixture-cli-library",
+                                 "started_unix_nanos": 3, "finished_unix_nanos": 4,
+                                 "command": native_transport.cargo_arguments("library", binary)})
+                observed["observation"].update(started_unix_nanos=5, finished_unix_nanos=6)
+            observed["observation"]["command"] = native_transport.cargo_arguments(
+                "binary", binary, "Windows" if windows else "Darwin")
             observed["observation"]["invocation"] = f"fixture-binary-{binary}"
             observed["binary"] = {"sha256": hashlib.sha256(content).hexdigest(), "byte_length": len(content)}
             path = self.root / "target/native-compile-record" / native_transport.record_filename(binary)
@@ -73,6 +94,61 @@ class NativeEvidenceTests(unittest.TestCase):
             path.write_text(json.dumps(observed))
             evidence[binary], records[binary] = path, observed
         return directory, evidence, records
+
+    def test_windows_zip_bytes_and_pinned_compiler_are_bound_to_retained_daemon_stages(self):
+        directory, _, records = self.fixture(windows=True)
+        rebuild.record(directory, "primary")
+        self.assertEqual(rebuild.load(directory, "primary")["binary_compilations"], records)
+        loose = directory / "peritus-windows-x86_64/bin/peritusd.exe"
+        loose.write_bytes(b"loose file is not the shipped binary")
+        self.assertEqual(rebuild.load(directory, "primary")["binary_compilations"], records)
+        compiler = dict(self.compiler, sha256="0" * 64)
+        with patch.object(native_inputs.windows_release, "compiler_environment", return_value=({}, compiler)), \
+                self.assertRaisesRegex(ValueError, "C compiler"):
+            rebuild.load(directory, "primary")
+
+    def test_windows_missing_record_wrong_bytes_attempt_or_command_fails_closed(self):
+        directory, evidence, records = self.fixture(windows=True)
+        original = records["peritusd"]
+        path = evidence["peritusd"]
+        for fault in ("missing", "bytes", "attempt", "command", "schema"):
+            changed = copy.deepcopy(original)
+            if fault == "bytes":
+                changed["binary"]["sha256"] = "0" * 64
+            elif fault == "attempt":
+                changed["library"]["binding"]["workflow"] = {"GITHUB_RUN_ATTEMPT": "2"}
+            elif fault == "command":
+                changed["observation"]["command"] = native_transport.cargo_arguments("binary")
+            elif fault == "schema":
+                changed["schema_version"] = 2
+            path.write_text(json.dumps(changed))
+            if fault == "missing":
+                path.unlink()
+            with self.subTest(fault=fault), self.assertRaises(ValueError):
+                rebuild.record(directory, "primary")
+            self.assertFalse((directory / rebuild.OBSERVATION).exists())
+        path.write_text(json.dumps(original))
+
+    def test_windows_zip_duplicate_link_empty_and_missing_daemon_are_rejected(self):
+        target = self.root / "bad.zip"
+        wanted = "peritus-windows-x86_64/bin/peritusd.exe"
+        for fault in ("duplicate", "link", "empty", "missing"):
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                with zipfile.ZipFile(target, "w") as output:
+                    if fault == "duplicate":
+                        output.writestr(wanted, b"fixture")
+                        output.writestr(wanted, b"fixture")
+                    elif fault == "link":
+                        info = zipfile.ZipInfo(wanted)
+                        info.external_attr = (stat.S_IFLNK | 0o777) << 16
+                        output.writestr(info, b"somewhere")
+                    elif fault == "empty":
+                        output.writestr(wanted, b"")
+                    else:
+                        output.writestr("peritusd.exe", b"wrong path")
+            with self.subTest(fault=fault), self.assertRaises(ValueError):
+                rebuild.archived_binaries(target, windows=True)
 
     def test_checksum_fixture_is_byte_exact_under_windows_text_translation(self):
         write_text = Path.write_text
@@ -96,7 +172,7 @@ class NativeEvidenceTests(unittest.TestCase):
         directory, _, records = self.fixture()
         rebuild.record(directory, "primary")
         retained = rebuild.load(directory, "primary")
-        self.assertEqual(retained["schema_version"], 3)
+        self.assertEqual(retained["schema_version"], 4)
         self.assertEqual(retained["binary_compilations"], records)
 
     def test_a_loose_projection_cannot_substitute_for_the_archived_binary(self):
@@ -176,13 +252,13 @@ class NativeEvidenceTests(unittest.TestCase):
             elif fault == "missing-cli":
                 del altered["peritus"]
             elif fault == "library":
-                altered["peritus"]["library"]["observation"]["invocation"] = "another-library"
+                altered["peritus"]["library"]["previous_library"]["observation"]["invocation"] = "another-library"
             else:
                 altered["peritus"]["observation"]["invocation"] = altered["peritusd"]["observation"]["invocation"]
             with self.subTest(fault=fault), self.assertRaises(ValueError):
                 rebuild.validate_binary_compilations(altered, directory, package, "primary")
         (evidence["peritus"].parent / "unaccounted.json").write_text("{}")
-        with self.assertRaisesRegex(ValueError, "exactly the CLI and daemon"):
+        with self.assertRaisesRegex(ValueError, "exactly this target's staged binary"):
             rebuild.record(directory, "primary")
         self.assertFalse((directory / rebuild.OBSERVATION).exists())
 

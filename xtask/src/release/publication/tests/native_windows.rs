@@ -9,7 +9,7 @@ fn windows_release_binaries_use_reviewed_native_compilation_and_deterministic_li
     let steps = build["steps"].as_vec().expect("binary steps");
     for (condition, command) in [
         (
-            "${{ matrix.target.os == 'windows-2025' }}",
+            "${{ matrix.target.os == 'windows-2025' && matrix.target.binary != 'peritusd' }}",
             "cargo run --locked --package xtask -- release-windows-binary",
         ),
         (

@@ -33,6 +33,8 @@ fn native_rebuild_commands_select_exact_operations() {
         ("release-daemon-library", Operation::Library),
         ("release-daemon-binary", Operation::DaemonBinary),
         ("release-cli-binary", Operation::CliBinary),
+        ("release-cli-library", Operation::CliLibrary),
+        ("release-staging-check", Operation::StagingCheck),
         ("release-windows-binary", Operation::WindowsBinary),
         ("release-windows-sqlite-check", Operation::WindowsSqliteCheck),
     ] {

@@ -13,7 +13,9 @@ import rebuild
 class NativeRebuildTests(unittest.TestCase):
     def fixture(self, directory, role, payload=b"non-release archive fixture", windows=False):
         directory.mkdir()
-        name = "peritus-windows-x86_64.zip" if windows else "peritus-linux-x86_64.tar.gz"
+        # Non-staged targets exercise the generic archive/checksum comparison here;
+        # native x86-64 Windows evidence is covered with real ZIP fixtures separately.
+        name = "peritus-windows-aarch64.zip" if windows else "peritus-linux-x86_64.tar.gz"
         (directory / name).write_bytes(payload)
         (directory / (name + ".sha256")).write_bytes(
             hashlib.sha256(payload).hexdigest().encode() + b"\n")

@@ -6,20 +6,23 @@ each role's own binaries and requires complete byte-identical archive/checksum
 outputs before release attestation. Manual validation cannot create a release,
 sign packages, or publish. Passing a development run is not final H4 qualification.
 
-## Intel macOS library and binary phases
+## Bounded native library and binary phases
 
 The Intel macOS daemon and CLI exceeded the ten-minute job ceiling even with
-four build jobs. The daemon library producer and each final binary now have
-separate bounded native phases. The other native binary commands, supported platforms, release profile, locked
+four build jobs. The native x86-64 Windows daemon also exceeded that ceiling.
+The daemon library producer and each final binary now have separate bounded
+native phases on these hosts. Intel macOS adds a dedicated CLI-library phase
+between its original daemon libraries and the final CLI binary. The other native binary commands, supported platforms, release profile, locked
 dependencies, and ten-minute limits are unchanged. The binary matrix waits for
-both independent library producers before starting; no role borrows another
+all independent library producers before starting; no role borrows another
 role's compilation.
 
 The existing library target is selected with `cargo build --release --locked
 --package peritus-daemon --lib`. The final phase still runs the corresponding
 `--package peritus-daemon --bin peritusd` build for the daemon, or
 `--package peritus-cli --bin peritus` for the CLI. The CLI retains its own
-dependency features: Cargo recompiles feature-affected libraries when necessary.
+dependency features: `cargo build --release --locked --package peritus-cli --lib`
+recompiles feature-affected libraries in the intermediate stage when necessary.
 This is partial library reuse, not a forced shared feature graph or a promise
 that only the final binary target compiles. Cargo's [target selection](https://doc.rust-lang.org/cargo/commands/cargo-build.html#target-selection)
 does not change the declared release profile.
@@ -34,13 +37,18 @@ cargo xtask release-daemon-library
 cargo xtask release-daemon-binary
 # In a separate fresh checkout at that same absolute path, restore the original
 # library-only artifact again, never the daemon binary consumer's target tree:
+cargo xtask release-cli-library
+# In another fresh checkout, restore only this role's target/native-cli-libraries:
 cargo xtask release-cli-binary
 ```
 
 These commands reject existing compilation/product outputs. They use the fixed
 `target/native-daemon` Cargo directory. Linux can exercise the transfer mechanics
-locally, but Linux timing is not evidence of native macOS capacity. Windows does
-not use this handoff.
+locally, but Linux timing is not evidence of native macOS or Windows capacity.
+Windows uses only the daemon-library and daemon-binary stages, with two build
+jobs, pinned native clang-cl 20.1.8, and the original `cargo rustc ... --bin
+peritusd -- -C link-arg=/Brepro` final command. The actual `.exe` bytes are
+retained; no post-link rewriting or prebuilt executable reuse is allowed.
 
 ## Admission and independence
 
@@ -62,14 +70,18 @@ The library and binary invocations retain distinct real times and identifiers.
 
 Each final phase retains `target/native-peritusd-build.json` or
 `target/native-peritus-build.json` alongside its separately uploaded binary.
-Assembly requires exactly these two same-run, same-role records, bound to their
-respective package and binary, with distinct final invocations and an identical
-original library record. It checks both hashes against the actual archive
-members, not loose package projections. Binary compilation records use schema v2;
-native assembly schema v3 retains both in `binary_compilations`. Other platforms
-retain an empty map. Old daemon-only binary/assembly development observations
-do not qualify a new candidate under this protocol. The daemon library transport
-remains schema v1. The independent comparison remains mandatory.
+Intel macOS assembly requires exactly these two same-run, same-role records,
+bound to their respective package and binary. The CLI library record must retain
+the exact original daemon library as `previous_library`; daemon library records
+must not have a parent. All dependent invocations must be distinct and ordered.
+Windows x86-64 assembly requires exactly its daemon record and rechecks the
+pinned C compiler identity. Assembly checks hashes against actual tar/ZIP
+members, not loose package projections. Library records use schema v2, binary
+records v3, and native assembly v4 retains them in `binary_compilations`.
+Other platforms retain an empty map. Earlier development observations do not
+qualify a new candidate under this protocol. The independent comparison remains
+mandatory. Reruns must include producers and consumers from the same workflow
+attempt; retrying just a consumer against an older attempt is intentionally rejected.
 
 ## Verification
 
@@ -78,3 +90,7 @@ compile-failure, archived-binary, and native workflow boundary regressions.
 Real fresh-source transfer and unsplit-build byte comparison are also required
 before a new workflow is considered ready. Hosted native completion must be
 observed on the exact commit; local fixtures cannot establish its timing.
+Manual dispatch additionally compiles the previous Intel Mac CLI path (from
+its original daemon libraries) and the previous cold Windows daemon path, then
+compares them with the actual staged products. These diagnostic binaries cannot
+enter assembly: only a separate `native-staging-diagnostic` report is uploaded.

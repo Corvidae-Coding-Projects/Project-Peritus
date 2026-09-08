@@ -10,7 +10,8 @@ import time
 import tomllib
 import uuid
 
-from native_transport import binary_package, digest, validate_observation, validate_record
+from native_transport import binary_package, digest, validate_later, validate_observation, validate_record
+import windows_release
 
 ROOT = Path(__file__).resolve().parent.parent
 ROLE_ENV = "PERITUS_RELEASE_BUILD_ROLE"
@@ -52,8 +53,8 @@ def candidate():
 
 
 def environment():
-    if platform.system() not in ("Darwin", "Linux"):
-        raise ValueError("native daemon library handoff requires a Unix build host")
+    if platform.system() not in ("Darwin", "Linux", "Windows"):
+        raise ValueError("unsupported native library build host")
     forbidden = {"RUSTFLAGS", "CARGO_ENCODED_RUSTFLAGS", "CARGO_BUILD_RUSTFLAGS",
                  "RUSTC", "CARGO_BUILD_RUSTC", "RUSTC_BOOTSTRAP",
                  "RUSTC_WRAPPER", "RUSTC_WORKSPACE_WRAPPER", "CARGO_TARGET_DIR", "CARGO_BUILD_TARGET"}
@@ -66,11 +67,13 @@ def environment():
     jobs = os.environ.get("CARGO_BUILD_JOBS", "2")
     if jobs not in ("1", "2", "3", "4"):
         raise ValueError("native release compilation requires one through four build jobs")
+    compiler = windows_release.compiler_environment()[1] if platform.system() == "Windows" else None
     result = {"system": platform.system(), "machine": platform.machine(),
               "release": platform.release(), "version": platform.version(),
               "rustc": command("rustc", "--version", "--verbose"),
               "rust_sysroot": command("rustc", "--print", "sysroot"),
-              "cargo": command("cargo", "--version"), "cc": command("cc", "--version"),
+              "cargo": command("cargo", "--version"),
+              "cc": compiler if compiler is not None else command("cc", "--version"),
               "image_os": os.environ.get("ImageOS"), "image_version": os.environ.get("ImageVersion"),
               "cargo_build_jobs": int(jobs), "checkout": str(ROOT.resolve()),
               "cargo_home": str(Path(os.environ.get("CARGO_HOME", Path.home() / ".cargo")).resolve()),
@@ -98,7 +101,12 @@ def binding(binary="peritusd"):
 
 
 def library_binding(consumer):
-    """Both consumers require this role's original daemon library compilation."""
+    """The final binary consumes its own package's observed library compilation."""
+    return dict(consumer)
+
+
+def daemon_binding(consumer):
+    """The CLI library stage starts with this role's original daemon libraries."""
     return dict(consumer, package="peritus-daemon", binary="peritusd")
 
 
@@ -108,7 +116,15 @@ def normalize_verified_sources(expected):
         raise ValueError("native compilation source changed before timestamp preparation")
     epoch = expected["source_date_epoch"] * 1_000_000_000
     for name in expected["source_files_sha256"]:
-        os.utime(ROOT / name, ns=(epoch, epoch), follow_symlinks=False)
+        path = ROOT / name
+        metadata = path.lstat()
+        if (not stat.S_ISREG(metadata.st_mode)
+                or getattr(metadata, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
+            raise ValueError("native source timestamp preparation requires a regular non-reparse file")
+        # Windows Python does not implement the no-follow keyword. The complete
+        # source inventory was just verified; recheck each entry before timestamping.
+        options = {"follow_symlinks": False} if os.utime in os.supports_follow_symlinks else {}
+        os.utime(path, ns=(epoch, epoch), **options)
 
 
 def observation(started, arguments):
@@ -128,7 +144,7 @@ def validate_binary_observation(record, expected_candidate, role, observed, bina
     package = binary_package(binary_name)
     if (not isinstance(record, dict) or set(record) != {
             "schema_version", "kind", "binding", "library", "observation", "binary"}
-            or type(record["schema_version"]) is not int or record["schema_version"] != 2
+            or type(record["schema_version"]) is not int or record["schema_version"] != 3
             or record["kind"] != "native-release-binary-compilation"):
         raise ValueError("invalid native binary compilation record")
     bound = record["binding"]
@@ -138,11 +154,11 @@ def validate_binary_observation(record, expected_candidate, role, observed, bina
             or bound["package"] != package or bound["binary"] != binary_name):
         raise ValueError("native binary compilation candidate, role, or consumer differs")
     validate_record(record["library"], library_binding(bound))
-    validate_observation(record["observation"], "binary", binary_name)
+    validate_observation(record["observation"], "binary", binary_name, bound["environment"].get("system"))
     first, last = record["library"]["observation"], record["observation"]
-    if (first["invocation"] == last["invocation"]
-            or first["finished_unix_nanos"] > last["started_unix_nanos"]):
-        raise ValueError("native binary compilation must be a distinct later invocation")
+    validate_later(first, last)
+    if record["library"]["previous_library"] is not None:
+        validate_later(record["library"]["previous_library"]["observation"], last)
     if record["binary"] != observed:
         raise ValueError("native binary compilation record differs from its product bytes")
 
