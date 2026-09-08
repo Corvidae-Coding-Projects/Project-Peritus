@@ -1,6 +1,6 @@
 {
   "next_display_id": 62,
-  "next_comment_id": 1433,
+  "next_comment_id": 1434,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10298,7 +10298,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-08T17:43:12.163870150Z",
-      "updated_at": "2026-09-08T21:28:44.910453672Z",
+      "updated_at": "2026-09-08T21:42:55.570162728Z",
       "comments": {
         "2b7412b0-46f1-41ee-96c2-7fb2d13f9c9e": {
           "display_id": 1432,
@@ -10308,6 +10308,15 @@
           "kind": "note",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA5tMzDxHM2whCEzH6NKI92hxOw6PM7/deBVpLwXwwPhH93ftkReV0QnDrJBpec5BB52iyyybfx44gXrdZivweDg=="
+        },
+        "2ea0af02-85d3-43f1-8880-2298225c9cce": {
+          "display_id": 1433,
+          "author": "krvx",
+          "content": "Fixed stopped empty-folder run and hardened invocation boundaries in develop (HEAD 464024df, uncommitted). Root repairs: only actual content changes replenish in-place recovery; immediate request/tool/compaction/high-water usage accounting retains failed and dropped invocations; Codex final output bound to private output-last-message artifact, with preliminary prose and inert updates accepted but competing results rejected. Host tool schemas now validated before scope/receipt/effects; missing-file reads provide greenfield guidance; malformed recovery gives safe correction. Progress never overrides safety/refusal/cancellation/integrity failures; native execution is Safety/Never with no provider fallback. Regressions: exact stopped sequence bounds at 11 requests, 7 tools, 2 retries and all 132 known tokens; write-then-safety retains unaccepted candidate without retry/fallback; dropped response retains observed usage; real-process final-output/argument failures and no-effect admission cases. PASS 417 distinct affected tests (416 four-package tests plus new dropped-response regression), strict all-target/all-feature Clippy for agent/product-runner/provider-openai/daemon and final agent rerun, workspace all-target/all-feature check, daemon build, strict affected docs, fmt/diff checks, supported targeted cargo-verus verify (0 errors; host adapters remain ordinary Rust, not newly proved). No live-provider/Tetris qualification, installation, restart, commit or push. Architecture verdict ready; existing local integration files preserved.",
+          "created_at": "2026-09-08T21:42:55.564953182Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAMnIh3x0cky3tsdHuaZXueDqNCnDgbHoFMCIJDkWBZEuwF7kKfWP2YYBc/OvQm+spJMDZXBFoCRP53h1mJmjkAw=="
         },
         "3c85ec48-d4c8-40ff-b3e3-8c1efceb768a": {
           "display_id": 1422,
@@ -13966,8 +13975,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-08T21:28:44.910453672Z",
+    "timestamp": "2026-09-08T21:42:55.570162728Z",
     "agent_id": "krvx",
-    "agent_seq": 51
+    "agent_seq": 52
   }
 }
