@@ -39,7 +39,15 @@ The public installer lifecycle and all 18 H2 scenarios consume that platform's s
 artifact without rebuilding the application. The small xtask entry point still uses the
 reviewed locked Cargo command; its prepared execution path never invokes Cargo. Missing artifacts
 fail rather than triggering a rebuild. The local build-and-qualify commands remain available, and
-every hosted job retains its ten-minute limit.
+these native product CI jobs retain their ten-minute limit.
+
+Hosted jobs default to a ten-minute ceiling. Only six named compilation jobs in
+`.github/workflows/release.yml` have a twenty-minute allowance: `build-daemon-library`,
+`build-cli-library`, `build-binary`, `check-native-staging`, `distro-compile`, and
+`distro-compile-checks`. This includes setup and artifact retention, not just Cargo
+execution. Policy rejects larger limits, other job names, and the same names in
+other workflows. Qualification, assembly, signing, and publication checks keep
+their existing ten-minute limits and requirements.
 
 Native release and bootstrap archives require Python 3.12+ on the build host
 (`python3` on Unix, `python` on Windows), not on the installed product host.

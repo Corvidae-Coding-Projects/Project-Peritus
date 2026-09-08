@@ -186,7 +186,7 @@ jobs:
 }
 
 #[test]
-fn every_hosted_job_requires_a_ten_minute_or_shorter_timeout() {
+fn ordinary_hosted_jobs_require_a_ten_minute_or_shorter_timeout() {
     let yaml = r"
 name: slow runner
 jobs:

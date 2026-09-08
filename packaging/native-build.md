@@ -13,9 +13,17 @@ four build jobs. The native x86-64 Windows daemon also exceeded that ceiling.
 The daemon library producer and each final binary now have separate bounded
 native phases on these hosts. Intel macOS adds a dedicated CLI-library phase
 between its original daemon libraries and the final CLI binary. The other native binary commands, supported platforms, release profile, locked
-dependencies, and ten-minute limits are unchanged. The binary matrix waits for
+dependencies, and compilation commands are unchanged. The binary matrix waits for
 all independent library producers before starting; no role borrows another
 role's compilation.
+
+Release compilation jobs now allow twenty minutes, including setup, compilation,
+library transport, and artifact upload. The previous ten-minute limit could expire
+after Cargo completed but before its outputs were retained. The exception is limited
+to the native library and binary producers, the manual previous-path compilation
+comparison, and distribution product/check compilation. Assembly, qualification,
+signing, and other hosted jobs retain their ten-minute ceilings. No timeout change
+relaxes candidate binding, independent rebuilds, or required tests.
 
 The existing library target is selected with `cargo build --release --locked
 --package peritus-daemon --lib`. The final phase still runs the corresponding

@@ -203,7 +203,7 @@ jobs:
         build: [primary, independent]
         os: [macos-15-intel, windows-2025]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: 20
     env:
       CARGO_BUILD_JOBS: ${{ matrix.os == 'macos-15-intel' && '4' || '2' }}
       PERITUS_RELEASE_BUILD_ROLE: ${{ matrix.build }}
@@ -233,7 +233,7 @@ jobs:
       matrix:
         build: [primary, independent]
     runs-on: macos-15-intel
-    timeout-minutes: 10
+    timeout-minutes: 20
     env:
       CARGO_BUILD_JOBS: "4"
       PERITUS_RELEASE_BUILD_ROLE: ${{ matrix.build }}
@@ -293,7 +293,7 @@ jobs:
           - { os: windows-2025, package: peritus-sandbox-windows, binary: peritus-windows-sandbox-helper, artifact: peritus-windows-sandbox-helper.exe }
           - { os: windows-11-arm, package: peritus-sandbox-windows, binary: peritus-windows-sandbox-helper, artifact: peritus-windows-sandbox-helper.exe }
     runs-on: ${{ matrix.target.os }}
-    timeout-minutes: 10
+    timeout-minutes: 20
     env:
       # The public Intel macOS runner has four CPUs; keep other targets at two.
       CARGO_BUILD_JOBS: ${{ matrix.target.os == 'macos-15-intel' && '4' || '2' }}
@@ -364,7 +364,7 @@ jobs:
           - { os: macos-15-intel, binary: peritus }
           - { os: windows-2025, binary: peritusd }
     runs-on: ${{ matrix.target.os }}
-    timeout-minutes: 10
+    timeout-minutes: 20
     env:
       CARGO_BUILD_JOBS: ${{ matrix.target.os == 'macos-15-intel' && '4' || '2' }}
       PERITUS_RELEASE_BUILD_ROLE: primary
@@ -582,7 +582,7 @@ jobs:
           - { os: ubuntu-24.04, arch: x86_64, format: rpm }
           - { os: ubuntu-24.04-arm, arch: aarch64, format: rpm }
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: 20
     env:
       PERITUS_PACKAGE_FORMAT: ${{ matrix.format }}
       PERITUS_PACKAGE_MAINTAINER: ${{ vars.PERITUS_PACKAGE_MAINTAINER }}
@@ -625,7 +625,7 @@ jobs:
           - { os: ubuntu-24.04, arch: x86_64, format: rpm }
           - { os: ubuntu-24.04-arm, arch: aarch64, format: rpm }
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: 20
     env:
       PERITUS_PACKAGE_FORMAT: ${{ matrix.format }}
       PERITUS_PACKAGE_MAINTAINER: ${{ vars.PERITUS_PACKAGE_MAINTAINER }}

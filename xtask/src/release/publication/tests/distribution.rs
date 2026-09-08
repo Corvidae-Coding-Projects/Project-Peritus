@@ -5,7 +5,8 @@ fn distribution_matrix_builds_and_signs_each_format_on_each_native_architecture(
     let document = workflow(".github/workflows/release.yml");
     for job in ["distro-image", "distro-compile", "distro-build", "distro-sign"] {
         let definition = &document["jobs"][job];
-        assert_eq!(definition["timeout-minutes"].as_i64(), Some(10));
+        let timeout = if job == "distro-compile" { 20 } else { 10 };
+        assert_eq!(definition["timeout-minutes"].as_i64(), Some(timeout));
         assert_eq!(definition["strategy"]["fail-fast"].as_bool(), Some(false));
         let rows = definition["strategy"]["matrix"]["include"].as_vec().expect("distro matrix");
         assert_eq!(rows.len(), 4);
@@ -55,7 +56,7 @@ fn distribution_matrix_builds_and_signs_each_format_on_each_native_architecture(
 }
 
 #[test]
-fn release_build_capacity_is_scoped_without_loosening_profiles_or_deadlines() {
+fn release_build_capacity_and_longer_deadlines_are_scoped_to_compilation() {
     let document = workflow(".github/workflows/release.yml");
     assert_eq!(document["env"]["CARGO_BUILD_JOBS"].as_str(), Some("2"));
     let jobs = &document["jobs"];
@@ -70,7 +71,22 @@ fn release_build_capacity_is_scoped_without_loosening_profiles_or_deadlines() {
         Some("4")
     );
     for (name, job) in jobs.as_hash().expect("release jobs") {
-        assert_eq!(job["timeout-minutes"].as_i64(), Some(10));
+        let timeout = if matches!(
+            name.as_str(),
+            Some(
+                "build-daemon-library"
+                    | "build-cli-library"
+                    | "build-binary"
+                    | "check-native-staging"
+                    | "distro-compile"
+                    | "distro-compile-checks"
+            )
+        ) {
+            20
+        } else {
+            10
+        };
+        assert_eq!(job["timeout-minutes"].as_i64(), Some(timeout), "{name:?}");
         if !matches!(
             name.as_str(),
             Some("distro-build" | "distro-compile" | "distro-compile-checks")

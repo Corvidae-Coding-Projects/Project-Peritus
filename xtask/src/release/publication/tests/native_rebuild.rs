@@ -42,7 +42,8 @@ fn independent_build_is_a_real_cartesian_axis_for_every_native_binary_and_archiv
             matrix["build"].as_vec().expect("independent build axis"),
             &[Yaml::String("primary".into()), Yaml::String("independent".into()),]
         );
-        assert_eq!(document["jobs"][job]["timeout-minutes"].as_i64(), Some(10));
+        let timeout = if job == "build-binary" { 20 } else { 10 };
+        assert_eq!(document["jobs"][job]["timeout-minutes"].as_i64(), Some(timeout));
         let steps = document["jobs"][job]["steps"].as_vec().expect("steps");
         assert!(
             !steps
