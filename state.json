@@ -9035,13 +9035,13 @@
     "510ed474-3a7b-4e60-ba8d-0ea5c67e9eca": {
       "uuid": "510ed474-3a7b-4e60-ba8d-0ea5c67e9eca",
       "display_id": 59,
-      "title": "Stream readable conversation progress during work",
+      "title": "Narrate interactive work and provider waits",
       "description": "On develop: make Peritus emit useful visible text while working, fix buffering from provider runtime through TUI, retain cancellation and privacy boundaries, add focused regression and live checks.",
       "status": "open",
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-08T16:37:48.739341882Z",
-      "updated_at": "2026-09-08T16:52:07.760889304Z",
+      "updated_at": "2026-09-08T16:56:24.456053632Z",
       "comments": {
         "8fd3935d-5aea-46d1-9333-93c884e5b153": {
           "display_id": 1408,
@@ -13722,8 +13722,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-08T16:52:07.760889304Z",
+    "timestamp": "2026-09-08T16:56:24.456053632Z",
     "agent_id": "krvx",
-    "agent_seq": 10
+    "agent_seq": 11
   }
 }
