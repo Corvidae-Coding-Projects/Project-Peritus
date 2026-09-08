@@ -1,6 +1,6 @@
 {
   "next_display_id": 58,
-  "next_comment_id": 1384,
+  "next_comment_id": 1385,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -1192,7 +1192,7 @@
       "priority": "high",
       "created_by": "QWDj",
       "created_at": "2026-09-07T00:47:26.828033464Z",
-      "updated_at": "2026-09-08T02:18:50.957157277Z",
+      "updated_at": "2026-09-08T02:25:58.478811943Z",
       "labels": [
         "release"
       ],
@@ -1655,6 +1655,15 @@
           "kind": "note",
           "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAOxum/KrP2BixaMSUG3+i2RTqMyrZoUMhsZYJf+GsovoviKNv5BNOT2iwrVcWviG9+lDkY3t8hInoeV+U6WFCAg=="
+        },
+        "4fc3d73b-2ce9-447a-a4bb-e8b10b7bfe55": {
+          "display_id": 1384,
+          "author": "QWDj",
+          "content": "[action] Windows unchanged retry101915053542 timed out again10m05; devxtask61s and pinnedcompilerhash12s precededreleasecompile, cancellation02:24:14beforecompletion. Run34176332143attempt2completedFAILURE (Macsame-attemptbindingrejection plusWindowsrepeat10mtimeout). DoNOTrepeatfullworkflowunchanged now: repeatestablishesinsufficientbuildmargin. Need reviewedcompilationstagingfix whilepreserving10mgates/compiler/repro/provenance, thennewmainmerge and another replacement of stillDRAFTv0.0.1tag; requestownerpermissionforadditionalretagbeforeexpanding. All4distroGPGqualificationspassedandsignedassetsverifiedbutreleaseNOTPUBLISHED. Mainrunsuntouched; noadditionalcode/tagchange.",
+          "created_at": "2026-09-08T02:25:58.475310053Z",
+          "kind": "note",
+          "signed_by": "SHA256:wEQd+vqRlI7i2+GdofU7vdcg/ixBLJa9Bi8lFn/HB1o",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgSY3NzUt4yJsmoc9xMF24/yiRVJA4OsYNnfEm+9bJ5LkAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAv06naWYiqFZLswdhHr63v2UC3WvA5B8qm96V/hGZos1SV1ADVnVT+jmn4dnlcOA8bCnDv6qYNhjofIczQ4yWBw=="
         },
         "548d89f8-b906-4ce4-81ac-23c074328841": {
           "display_id": 1346,
@@ -13469,8 +13478,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-08T02:18:50.957157277Z",
+    "timestamp": "2026-09-08T02:25:58.478811943Z",
     "agent_id": "QWDj",
-    "agent_seq": 168
+    "agent_seq": 169
   }
 }
