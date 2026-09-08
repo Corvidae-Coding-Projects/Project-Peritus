@@ -1,6 +1,6 @@
 {
   "next_display_id": 62,
-  "next_comment_id": 1425,
+  "next_comment_id": 1426,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -9083,7 +9083,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-08T16:37:48.739341882Z",
-      "updated_at": "2026-09-08T16:56:42.001968960Z",
+      "updated_at": "2026-09-08T19:21:47.569584983Z",
       "comments": {
         "03bfd23d-18b4-46e1-8c9f-5dd2a029fc03": {
           "display_id": 1409,
@@ -9093,6 +9093,15 @@
           "kind": "result",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABARcN70SkhA3fyU5+veelsrHubN5vcEwhmbmNQBdEXR8jyuH0h+F8ks1kSEqfW58hzIglt7GefUztKn8uN8S6ZAg=="
+        },
+        "085d8b2c-e7a0-45be-ba94-e1de51787ed5": {
+          "display_id": 1425,
+          "author": "krvx",
+          "content": "User reports harness chatter obscuring actual model responses. Follow-up scope: default TUI transcript hides Status and Tool activities; explicit /details reveals diagnostic entries labelled Status/Tool, never impersonating the model. Preserve user/model messages, errors, footer state, durable activity and production execution. Local presentation correctness repair; no new dependencies or protocol changes. Verify render regressions and full TUI tests/Clippy/build.",
+          "created_at": "2026-09-08T19:21:47.565846625Z",
+          "kind": "decision",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAl7i57l23VMf5Z00n+Qyrsk1SQS7dFhO9gj7jDaix2i27SL7MUU+pAUCbA+YHNRaFP9LuhHUW+nVbE4D0YafuDQ=="
         },
         "8fd3935d-5aea-46d1-9333-93c884e5b153": {
           "display_id": 1408,
@@ -13894,8 +13903,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-08T19:21:40.835661940Z",
+    "timestamp": "2026-09-08T19:21:47.569584983Z",
     "agent_id": "krvx",
-    "agent_seq": 39
+    "agent_seq": 40
   }
 }
