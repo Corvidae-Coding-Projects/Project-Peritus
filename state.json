@@ -1,6 +1,6 @@
 {
   "next_display_id": 62,
-  "next_comment_id": 1423,
+  "next_comment_id": 1424,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10235,7 +10235,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-08T17:43:12.163870150Z",
-      "updated_at": "2026-09-08T19:12:06.203701645Z",
+      "updated_at": "2026-09-08T19:17:46.306672589Z",
       "comments": {
         "3c85ec48-d4c8-40ff-b3e3-8c1efceb768a": {
           "display_id": 1422,
@@ -10281,6 +10281,15 @@
           "kind": "result",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAdMkMwbElS1DPprOYHoXdWKwBAi27feN6RHiZtYB1PscBMV9OymMJ0H4G/kbvldX+KcgwUJd/RkjKlmGYAfjHBA=="
+        },
+        "7a6847bb-b25e-4067-8cff-580b1e339749": {
+          "display_id": 1423,
+          "author": "krvx",
+          "content": "Installed develop ac716a06306bb01a5f4c1c8df44b3ab1cb2a5722 using cargo xtask product-package and its checked native Install-Peritus.sh (dependencies already present, no dependency changes). Release build passed in 3m09s. Installed CLI, daemon, TUI and sandbox helper match package bytes exactly; PATH resolves /home/doll/.local/bin/peritus. Removed only peritus-0.0.1-1.fc44.x86_64 with DNF clean_requirements_on_remove=False; RPM query confirms absent. Prior RPM daemon shut down cleanly with no active work. Config, credentials and task state preserved. User explicitly requested deleting old binary backups; removed the three exact backed-up binaries, retaining only shell/service configuration backup. No source edits. Product daemon will start on next peritus launch.",
+          "created_at": "2026-09-08T19:17:46.301682854Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAsFU5Bx8CEtu2dvQJZUVgRjxAqXKW90rD0i4yN0Kgts9JM3ubKT82GHdyPgAlfV1c1ZqQsP6JVjMKx39LpjQpBg=="
         },
         "80b281f6-d168-42ef-b705-10aa9305e03b": {
           "display_id": 1420,
@@ -13876,8 +13885,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-08T19:14:07.937277970Z",
+    "timestamp": "2026-09-08T19:17:46.306672589Z",
     "agent_id": "krvx",
-    "agent_seq": 35
+    "agent_seq": 36
   }
 }
