@@ -116,7 +116,15 @@ def normalize_verified_sources(expected):
         raise ValueError("native compilation source changed before timestamp preparation")
     epoch = expected["source_date_epoch"] * 1_000_000_000
     for name in expected["source_files_sha256"]:
-        os.utime(ROOT / name, ns=(epoch, epoch), follow_symlinks=False)
+        path = ROOT / name
+        metadata = path.lstat()
+        if (not stat.S_ISREG(metadata.st_mode)
+                or getattr(metadata, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
+            raise ValueError("native source timestamp preparation requires a regular non-reparse file")
+        # Windows Python does not implement the no-follow keyword. The complete
+        # source inventory was just verified; recheck each entry before timestamping.
+        options = {"follow_symlinks": False} if os.utime in os.supports_follow_symlinks else {}
+        os.utime(path, ns=(epoch, epoch), **options)
 
 
 def observation(started, arguments):

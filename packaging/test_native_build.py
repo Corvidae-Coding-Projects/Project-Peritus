@@ -243,6 +243,52 @@ class WindowsNativeBuildTests(NativeBuildFixture):
 
 
 class NativeInputTests(unittest.TestCase):
+    def test_verified_regular_source_timestamps_are_normalized_on_this_host(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "fixture.txt"
+            source.write_bytes(b"explicit fixture source")
+            expected = {"source_date_epoch": 2, "source_files_sha256": {source.name: transport.digest(source)}}
+            with patch.object(inputs, "ROOT", root), patch.object(inputs, "candidate", return_value=expected):
+                inputs.normalize_verified_sources(expected)
+            self.assertEqual(source.stat().st_mtime_ns, 2_000_000_000)
+            self.assertEqual(transport.digest(source), expected["source_files_sha256"][source.name])
+
+    def test_unsupported_no_follow_option_is_not_passed_to_the_native_timestamp_api(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "fixture.txt"
+            source.write_bytes(b"explicit fixture source")
+            expected = {"source_date_epoch": 2, "source_files_sha256": {source.name: transport.digest(source)}}
+            with patch.object(inputs, "ROOT", root), patch.object(inputs, "candidate", return_value=expected), \
+                    patch.object(inputs.os, "supports_follow_symlinks", set()), \
+                    patch.object(inputs.os, "utime") as timestamp:
+                inputs.normalize_verified_sources(expected)
+            timestamp.assert_called_once_with(source, ns=(2_000_000_000, 2_000_000_000))
+
+    @unittest.skipIf(os.name == "nt", "Windows symlink creation requires a host privilege")
+    def test_missing_no_follow_support_does_not_admit_a_symlink_as_source(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "target.txt").write_bytes(b"preserve source")
+            (root / "link.txt").symlink_to("target.txt")
+            expected = {"source_date_epoch": 2, "source_files_sha256": {"link.txt": "fixture"}}
+            with patch.object(inputs, "ROOT", root), patch.object(inputs, "candidate", return_value=expected), \
+                    patch.object(inputs.os, "supports_follow_symlinks", set()), \
+                    patch.object(inputs.os, "utime") as timestamp, self.assertRaises(ValueError):
+                inputs.normalize_verified_sources(expected)
+            timestamp.assert_not_called()
+
+    def test_windows_reparse_file_cannot_be_timestamped_even_when_its_mode_is_regular(self):
+        expected = {"source_date_epoch": 2, "source_files_sha256": {"fixture.txt": "fixture"}}
+        metadata = unittest.mock.Mock(st_mode=0o100644, st_file_attributes=inputs.stat.FILE_ATTRIBUTE_REPARSE_POINT)
+        with patch.object(inputs, "candidate", return_value=expected), \
+                patch.object(Path, "lstat", return_value=metadata), \
+                patch.object(inputs.os, "supports_follow_symlinks", set()), \
+                patch.object(inputs.os, "utime") as timestamp, self.assertRaises(ValueError):
+            inputs.normalize_verified_sources(expected)
+        timestamp.assert_not_called()
+
     def test_windows_environment_records_verified_native_compiler_instead_of_ambient_cc(self):
         compiler = {"path": "fixture-clang-cl", "version": "fixture-version", "sha256": "f" * 64}
         with patch.object(inputs.platform, "system", return_value="Windows"), \
