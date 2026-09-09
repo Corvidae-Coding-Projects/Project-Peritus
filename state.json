@@ -1,6 +1,6 @@
 {
   "next_display_id": 63,
-  "next_comment_id": 1445,
+  "next_comment_id": 1446,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -9038,7 +9038,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-09T00:28:01.908689887Z",
-      "updated_at": "2026-09-09T00:47:49.828738324Z",
+      "updated_at": "2026-09-09T00:49:59.117295373Z",
       "comments": {
         "062b42b7-0132-4e72-b751-4ed7f2cd24e5": {
           "display_id": 1440,
@@ -9048,6 +9048,15 @@
           "kind": "observation",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABANOwPM2p7I3ynU5pTIm5RFbSUSHMmCVGZjZuimmKZA6Ytxy7f4mpDYA6fNGsUTLNaQaqb1sIyO2GnT3uZR+JZBw=="
+        },
+        "65967378-1d18-42bf-9711-a313e2e96439": {
+          "display_id": 1445,
+          "author": "krvx",
+          "content": "Delivered signed commit 8fcb4190c9356113637e3e4889ecd3de1837c008 to origin/develop; remote ref verified exact. Reinstalled from clean tracked develop via PERITUS_INSTALL_DEPS=0 cargo xtask product-install. Optimized release build and native checksum/dependency/sandbox checks passed. Installed CLI, daemon, TUI, and Linux sandbox helper SHA-256 each exactly match target/release and the native package. CLI/daemon --version run successfully; TUI has no --version flag, so its binary was verified by digest and argument-parser execution instead. No task run restarted. Only local provider/configuration files remain untracked.",
+          "created_at": "2026-09-09T00:49:59.112125542Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAu9h/XX9qQ2zzFwrhjnnmr9lKSGkf/ZWt+U5ftDMA34ZPH0nZ8fZChlj4/lR5Rhcy4mCwsT8nomU4fjLBnH8yCA=="
         },
         "8c800f2e-72a6-4e8c-b888-93600e8a4ae8": {
           "display_id": 1443,
@@ -14088,8 +14097,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-09T00:47:54.952270917Z",
+    "timestamp": "2026-09-09T00:49:59.117295373Z",
     "agent_id": "krvx",
-    "agent_seq": 72
+    "agent_seq": 73
   }
 }
