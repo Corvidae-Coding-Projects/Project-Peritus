@@ -1,6 +1,6 @@
 {
   "next_display_id": 67,
-  "next_comment_id": 1466,
+  "next_comment_id": 1467,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -12950,7 +12950,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-09T03:39:44.724470894Z",
-      "updated_at": "2026-09-09T04:45:17.286363226Z",
+      "updated_at": "2026-09-09T05:44:12.247186133Z",
       "comments": {
         "220d9114-cfc8-4c8a-89d3-d4e98ad1ae2b": {
           "display_id": 1462,
@@ -12978,6 +12978,15 @@
           "kind": "note",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABATVnschVLlR6It9El9fNeVWGQkfg1AjR5SSrKVs6J3mJ8bC5g5GX6k5PIgNpRIV/9MMDxa83A2/zuoHH+k3FaBw=="
+        },
+        "caa0c289-fc96-4d59-98b2-3583e2eed7b2": {
+          "display_id": 1466,
+          "author": "krvx",
+          "content": "[action] CL-66: queue A3/TUI and authenticated IPC/restart path now tested; separately gated execution stays unavailable. Actual product-runner binds exact canonical request bytes and all selected input revisions atomically with incorporation and receipt. Closed legacy model-update bypass and retained unknown operation on receipt-query rejection. C0 6, runner 2, IPC 2, TUI 72 plus focused 8 tests passed; A3 assets current. Native queue QA underway. Remaining brief/media/context and P2-P7 are still pending; no commit/push.",
+          "created_at": "2026-09-09T05:44:12.238227052Z",
+          "kind": "note",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAdfRWCN2aiAgM4t+CXpto6LrQrY9vBBw/ysH2bPqC0309HInn7LMz1Egb9KCJDZM8QV3NUaEBffIvFh6Y5TlgAw=="
         },
         "dff6d914-bf41-420e-89d4-e1f9bb71c232": {
           "display_id": 1465,
@@ -14333,8 +14342,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-09T04:45:17.286363226Z",
+    "timestamp": "2026-09-09T05:44:12.247186133Z",
     "agent_id": "krvx",
-    "agent_seq": 109
+    "agent_seq": 110
   }
 }
