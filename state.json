@@ -1,6 +1,6 @@
 {
   "next_display_id": 67,
-  "next_comment_id": 1488,
+  "next_comment_id": 1489,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -12950,7 +12950,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-09T03:39:44.724470894Z",
-      "updated_at": "2026-09-09T15:42:30.515949201Z",
+      "updated_at": "2026-09-09T15:57:44.898689652Z",
       "comments": {
         "0d314b27-5216-4bce-9507-b37486d0e01a": {
           "display_id": 1480,
@@ -13032,6 +13032,15 @@
           "kind": "result",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjLnJwaXzmVbmUelqkyXikjb6wFDyd2vMtWJKxWSKDDtpOAPXuhODiJ7lsBVf4h6Mhf4uj3hzpowm6eD/BMq4Dg=="
+        },
+        "4f9b8806-cf95-4008-adf6-beb1183c7483": {
+          "display_id": 1488,
+          "author": "krvx",
+          "content": "Workspace-file workflow complete through scoped preview/confirmation, exact range and snapshot/refresh, durable selection, sealed requests and native restart. Four TUI workflow tests and nine compatibility fixtures pass; authenticated IPC never invokes sentinel provider; actual runner selects correct immutable/refreshed version with exactly one request. Full A3/daemon/TUI suites, strict four-crate Clippy and workspace check pass. Native 40x12/wide restart retains revision 13 deselection. Remaining P1 external text imports, proposed/observed brief, pins/compaction; P2-P7 still pending. No commit/push.",
+          "created_at": "2026-09-09T15:57:44.892314492Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAmbE76+5UM8ikNEhvJ8C6RpJtWhh8V73i7NkZAGN6hZvb2njZTd577HUcYpzYy2mr0KbwLm+EEf/IfdZb5sn8BQ=="
         },
         "647d04b3-2a82-4b17-8020-b6a9632837b2": {
           "display_id": 1469,
@@ -14531,8 +14540,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-09T15:42:30.515949201Z",
+    "timestamp": "2026-09-09T15:57:44.898689652Z",
     "agent_id": "krvx",
-    "agent_seq": 135
+    "agent_seq": 136
   }
 }
