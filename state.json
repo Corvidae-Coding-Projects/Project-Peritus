@@ -1,6 +1,6 @@
 {
   "next_display_id": 65,
-  "next_comment_id": 1455,
+  "next_comment_id": 1456,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -9153,7 +9153,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-08T16:37:48.739341882Z",
-      "updated_at": "2026-09-09T02:58:28.491099973Z",
+      "updated_at": "2026-09-09T03:01:10.658908731Z",
       "comments": {
         "03bfd23d-18b4-46e1-8c9f-5dd2a029fc03": {
           "display_id": 1409,
@@ -9262,6 +9262,15 @@
           "kind": "result",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAF+i7Y9rSwcMxfhNQoCQd3h16CVQWPVecGSkhe+mpYB4PwtcypcVx7FQEIOdbUp7Ff7+/TRjVuzVlj07ummCSCQ=="
+        },
+        "e302c3d7-4c79-472f-98f8-bc843c0cff5f": {
+          "display_id": 1455,
+          "author": "krvx",
+          "content": "[action] CL59 working indicator moved directly above composer; 57 TUI tests and strict Clippy pass. Actual rebuilt CLI running in Konsole/Xvfb :97 with fresh isolated state /tmp/peritus-layout-qa.avJYsQ. Inspected wide and narrow screenshots at 5s, 11s, 20s; working row remains immediately above wrapping composer. Original user daemon untouched.",
+          "created_at": "2026-09-09T03:01:10.653764075Z",
+          "kind": "note",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPHRXyxaGr1R5jkjvgWel8tEejlnCNTPjW+5OROz/dgh3hpz57pjDnaSx0PGKUsryjX/WN3LYfkqnpildqCRpAw=="
         },
         "fe8b205e-db81-48d7-8e15-fc6cbaa74473": {
           "display_id": 1439,
@@ -14206,8 +14215,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-09T02:58:28.491099973Z",
+    "timestamp": "2026-09-09T03:01:10.658908731Z",
     "agent_id": "krvx",
-    "agent_seq": 90
+    "agent_seq": 91
   }
 }
