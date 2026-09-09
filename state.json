@@ -1,6 +1,6 @@
 {
   "next_display_id": 65,
-  "next_comment_id": 1454,
+  "next_comment_id": 1455,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -9153,7 +9153,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-08T16:37:48.739341882Z",
-      "updated_at": "2026-09-09T00:47:54.952270917Z",
+      "updated_at": "2026-09-09T02:58:28.491099973Z",
       "comments": {
         "03bfd23d-18b4-46e1-8c9f-5dd2a029fc03": {
           "display_id": 1409,
@@ -9235,6 +9235,15 @@
           "kind": "decision",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABADNzrWhbHsFqm6gPtgJWzdrNeM3p5ux/k7wfIiqvrJh3RERwMKM+deY4DEHVxRLoGyCqcCkGEuFrZv9JEYz49Ag=="
+        },
+        "93e965ac-e5bc-4221-b2c5-8c9f94b3daa9": {
+          "display_id": 1454,
+          "author": "krvx",
+          "content": "User clarified placement from actual screenshot: working indicator belongs immediately above bottom message-entry composer, not under top header. Moving layout row and updating position/style regression test; will run actual binary in isolated terminal and inspect screenshots without touching active user run.",
+          "created_at": "2026-09-09T02:58:28.487166250Z",
+          "kind": "decision",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAsKNf2aZ9CL0pXVOXpJWmLkXbbSrBPUurswzs3xPr3ByYCP2jqg11Y+Q1oyhYsj5oZhtMw9Bo1A0uZqArlAtACg=="
         },
         "c261dd69-7877-4a16-b183-6f1449d51e39": {
           "display_id": 1410,
@@ -14197,8 +14206,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-09T02:57:35.579636616Z",
+    "timestamp": "2026-09-09T02:58:28.491099973Z",
     "agent_id": "krvx",
-    "agent_seq": 89
+    "agent_seq": 90
   }
 }
