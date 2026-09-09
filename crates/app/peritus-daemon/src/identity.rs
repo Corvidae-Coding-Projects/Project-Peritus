@@ -12,15 +12,19 @@ pub struct DaemonIdentity {
 
 impl DaemonIdentity {
     /// Derives a stable, non-secret endpoint name from one store identity.
+    ///
+    /// The name is `peritus-` followed by 16 hex characters. It is kept short because Unix socket
+    /// paths are limited to 103 bytes on macOS (`sun_path`), and the macOS state root under
+    /// `~/Library/Application Support/Peritus/State/daemon` already consumes most of that.
     #[must_use]
     pub fn new(store_id: StoreId) -> Self {
         let mut hasher = Sha256::new();
-        hasher.update(b"peritus/daemon-endpoint/v1\0");
+        hasher.update(b"peritus/daemon-endpoint/v2\0");
         hasher.update(store_id.as_bytes());
         let digest: [u8; 32] = hasher.finalize().into();
-        let mut endpoint_name = String::with_capacity(8 + 32);
+        let mut endpoint_name = String::with_capacity(8 + 16);
         endpoint_name.push_str("peritus-");
-        for byte in &digest[..16] {
+        for byte in &digest[..8] {
             use core::fmt::Write as _;
             write!(&mut endpoint_name, "{byte:02x}").expect("writing into String cannot fail");
         }

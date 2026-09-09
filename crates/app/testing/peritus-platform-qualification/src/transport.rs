@@ -47,16 +47,16 @@ impl StoreIdentity {
         self.0
     }
 
-    /// Derives the exact non-secret `peritus-<32-hex>` daemon endpoint name used by G0.
+    /// Derives the exact non-secret `peritus-<16-hex>` daemon endpoint name used by G0.
     #[must_use]
     pub fn endpoint_name(self) -> String {
         let mut hasher = Sha256::new();
-        hasher.update(b"peritus/daemon-endpoint/v1\0");
+        hasher.update(b"peritus/daemon-endpoint/v2\0");
         hasher.update(self.0);
         let digest: [u8; 32] = hasher.finalize().into();
-        let mut output = String::with_capacity(40);
+        let mut output = String::with_capacity(24);
         output.push_str("peritus-");
-        for byte in &digest[..16] {
+        for byte in &digest[..8] {
             use core::fmt::Write as _;
             write!(&mut output, "{byte:02x}").expect("writing to String cannot fail");
         }

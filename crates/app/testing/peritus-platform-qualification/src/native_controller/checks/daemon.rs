@@ -221,9 +221,9 @@ fn native_temporary_parent() -> Result<PathBuf, std::io::Error> {
 
 fn endpoint_name() -> String {
     let mut hasher = Sha256::new();
-    hasher.update(b"peritus/daemon-endpoint/v1\0");
+    hasher.update(b"peritus/daemon-endpoint/v2\0");
     hasher.update(STORE_ID);
-    format!("peritus-{}", hex(&hasher.finalize()[..16]))
+    format!("peritus-{}", hex(&hasher.finalize()[..8]))
 }
 
 fn toml_path(path: &Path) -> String {

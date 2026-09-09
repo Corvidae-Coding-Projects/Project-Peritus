@@ -76,6 +76,7 @@ impl PlatformEndpoint {
         let root = inspect_state_root(state_root)?;
         let owner_uid = root.uid();
         let path = state_root.join(format!("{}.sock", identity.endpoint_name()));
+        refuse_endpoint_path_too_long(&path)?;
         refuse_existing_endpoint(&path)?;
 
         let listener = UnixListener::bind(&path).map_err(bind_error)?;
@@ -202,6 +203,26 @@ fn inspect_state_root(state_root: &Path) -> Result<fs::Metadata, DaemonError> {
         ));
     }
     Ok(metadata)
+}
+
+/// Longest `sun_path` accepted by every supported Unix platform (macOS allows 104 bytes
+/// including the terminating NUL; Linux allows 108).
+const MAX_UNIX_ENDPOINT_PATH_BYTES: usize = 103;
+
+fn refuse_endpoint_path_too_long(path: &Path) -> Result<(), DaemonError> {
+    let length = path.as_os_str().len();
+    if length > MAX_UNIX_ENDPOINT_PATH_BYTES {
+        return Err(DaemonError::new(
+            DaemonErrorCode::Transport,
+            DaemonRecovery::Operator,
+            "bind Unix endpoint",
+            format!(
+                "Unix endpoint path is {length} bytes; the platform limit is {MAX_UNIX_ENDPOINT_PATH_BYTES}: {}",
+                path.display()
+            ),
+        ));
+    }
+    Ok(())
 }
 
 fn refuse_existing_endpoint(path: &Path) -> Result<(), DaemonError> {
