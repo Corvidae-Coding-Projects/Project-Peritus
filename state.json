@@ -1,6 +1,6 @@
 {
   "next_display_id": 67,
-  "next_comment_id": 1496,
+  "next_comment_id": 1497,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -12950,7 +12950,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-09T03:39:44.724470894Z",
-      "updated_at": "2026-09-09T20:59:05.177753197Z",
+      "updated_at": "2026-09-09T21:17:58.298230907Z",
       "comments": {
         "0d314b27-5216-4bce-9507-b37486d0e01a": {
           "display_id": 1480,
@@ -13185,6 +13185,15 @@
           "kind": "note",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA63Qupvl74L6SSh0d1/7DGeEpFB63dzRqDF/Mj5F6GQ+YKg4XC3spC/6sfq8WykhQco5SPsjPA/GZYPqAn0PCCw=="
+        },
+        "c63c82b9-972b-45c6-b7d3-b0f0c4615a01": {
+          "display_id": 1496,
+          "author": "krvx",
+          "content": "[action] All P1-P7 overlays now combined and four-crate A3/G4/G0/TUI cargo check passes. Combined daemon/runner tests started. C1 folder owner reviewed with reproduced full-policy-tuple mismatch fixed; focused 3/3 and strict C1 Clippy pass. Completing actual init/rewind authorization, checkpoint/fork lineage, native feature negotiation and composed flow qualification. Real Git index preserved; no commit or push.",
+          "created_at": "2026-09-09T21:17:58.293204490Z",
+          "kind": "note",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAmEqSVeFygfzZhBF8RdKHoUAmBClF6L8VRh1hHqDvThQ7qOQWo9Dx/MJOtUemaVo9B5W/Wiw5aTbhoKZAU6z3BA=="
         },
         "caa0c289-fc96-4d59-98b2-3583e2eed7b2": {
           "display_id": 1466,
@@ -14603,8 +14612,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-09T20:59:05.177753197Z",
+    "timestamp": "2026-09-09T21:17:58.298230907Z",
     "agent_id": "krvx",
-    "agent_seq": 143
+    "agent_seq": 144
   }
 }
