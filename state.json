@@ -1,6 +1,6 @@
 {
   "next_display_id": 65,
-  "next_comment_id": 1456,
+  "next_comment_id": 1457,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -9153,7 +9153,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-08T16:37:48.739341882Z",
-      "updated_at": "2026-09-09T03:01:10.658908731Z",
+      "updated_at": "2026-09-09T03:01:34.135108713Z",
       "comments": {
         "03bfd23d-18b4-46e1-8c9f-5dd2a029fc03": {
           "display_id": 1409,
@@ -9244,6 +9244,15 @@
           "kind": "decision",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAsKNf2aZ9CL0pXVOXpJWmLkXbbSrBPUurswzs3xPr3ByYCP2jqg11Y+Q1oyhYsj5oZhtMw9Bo1A0uZqArlAtACg=="
+        },
+        "bf7b817f-9699-4b94-9ade-43cb2626b638": {
+          "display_id": 1456,
+          "author": "krvx",
+          "content": "Placement correction verified in the actual rebuilt product CLI running in Konsole on isolated Xvfb :97 with a fresh read-only QA workspace and daemon. Captured and visually inspected idle, active 1280x800 (5s/11s), active 640x480 (20s) with wrapped draft and PageUp, and completed reply with timer gone and unsent draft preserved. Screenshots: /tmp/peritus-layout-qa.avJYsQ/working-wide.png, working-narrow.png, completed-narrow.png. 57 TUI tests passed, strict package Clippy/all targets/all features passed, fmt and diff checks passed. Only source/test/docs layout changes this turn; not installed, committed or pushed; user active daemon PID 958501 untouched.",
+          "created_at": "2026-09-09T03:01:34.131598622Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA1VUVXXcoVjAT6270KgHZ/wpgTf9frgqjXkLwDFEJGM6r9bSNs2xK0T76yQl+H4bbu0jZHc8Q9GJrD3hPNDBLBw=="
         },
         "c261dd69-7877-4a16-b183-6f1449d51e39": {
           "display_id": 1410,
@@ -14215,8 +14224,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-09T03:01:10.658908731Z",
+    "timestamp": "2026-09-09T03:01:34.135108713Z",
     "agent_id": "krvx",
-    "agent_seq": 91
+    "agent_seq": 92
   }
 }
