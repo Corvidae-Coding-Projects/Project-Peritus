@@ -1,6 +1,6 @@
 {
   "next_display_id": 67,
-  "next_comment_id": 1478,
+  "next_comment_id": 1479,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -12950,7 +12950,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-09T03:39:44.724470894Z",
-      "updated_at": "2026-09-09T07:26:57.825473868Z",
+      "updated_at": "2026-09-09T08:14:36.468966381Z",
       "comments": {
         "16d8cdd2-fe72-4b82-b4c3-e0a3a5591360": {
           "display_id": 1467,
@@ -13032,6 +13032,15 @@
           "kind": "note",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA25YnI3T4P98NTP4Q8l324uXmRL/1X6/xANbH9YHXkvdC5bqcltGS4se1bd9Na+z9HGEkD5QU9Bsz539mkYSHDg=="
+        },
+        "a9e4e1cf-278a-4150-b945-365c8c3a6c7e": {
+          "display_id": 1478,
+          "author": "krvx",
+          "content": "Scoped image progress: durable actor/conversation/workspace upload claims and restart/ownership regressions pass, including a foreign-completion transfer-loss repair. C0 now atomically installs validated image bytes with input/reference/receipt; live capture feeds exact selected images into the real runner, seals provenance, rejects omissions/extras, and fences selection changes. Context DTO/wire/schema/TUI now distinguishes image eligibility, deselection, and original sealed inclusion. Four-crate full suites, strict all-target/all-feature Clippy, format and regenerated protocol checks pass. Preview/confirmation/import UI, remaining P1 and P2-P7, final native TUI acceptance, commit and push are still outstanding.",
+          "created_at": "2026-09-09T08:14:36.462376811Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAkE0N4nInueOt7+GHkLTsygEC/08ejTzmVa0FzCJzW6xMgtX7vyIYw7EN+rPP8yJxWFIK2IqQOvMsdrZ+os2wCw=="
         },
         "af086f17-374b-46d5-bf17-364c318528f1": {
           "display_id": 1470,
@@ -14441,8 +14450,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-09T07:26:57.825473868Z",
+    "timestamp": "2026-09-09T08:14:36.468966381Z",
     "agent_id": "krvx",
-    "agent_seq": 121
+    "agent_seq": 122
   }
 }
