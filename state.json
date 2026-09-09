@@ -1,6 +1,6 @@
 {
   "next_display_id": 67,
-  "next_comment_id": 1477,
+  "next_comment_id": 1478,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -12950,7 +12950,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-09T03:39:44.724470894Z",
-      "updated_at": "2026-09-09T07:24:57.485398227Z",
+      "updated_at": "2026-09-09T07:26:57.825473868Z",
       "comments": {
         "16d8cdd2-fe72-4b82-b4c3-e0a3a5591360": {
           "display_id": 1467,
@@ -13086,6 +13086,15 @@
           "kind": "result",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAHajICP/UYKVQNRInwFD+ffm2U5HUlEJwLMGxBzhFDmU6xZ4ohFQnhIh1Y3Q8SKhWBeuHQCscaDt1ol4HusUdCA=="
+        },
+        "ffe4f085-ea9a-4f1d-9064-564f2b38af18": {
+          "display_id": 1477,
+          "author": "krvx",
+          "content": "[action] CL-66 checkpoint: explicit-image validator and C5 provider bounds implemented; final five-crate strict Clippy, full suites, final runner/daemon rerun, fmt and protocol codegen checks passed. Twelve workbench-affected source-layout violations resolved; only two unchanged baseline violations remain. Next is scoped durable import/consent and attachment selection/UI; full design remains incomplete, no commit or push.",
+          "created_at": "2026-09-09T07:26:57.822048084Z",
+          "kind": "note",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAOV/Sa8geXL/Pj2DAUtfOfKPnXbAsSxLqb1jMe8URPO6Z9KnQ/58T5xMtdRZJF5Kwewm6K541xu/N8mXDdXKABw=="
         }
       }
     },
@@ -14432,8 +14441,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-09T07:24:57.485398227Z",
+    "timestamp": "2026-09-09T07:26:57.825473868Z",
     "agent_id": "krvx",
-    "agent_seq": 120
+    "agent_seq": 121
   }
 }
