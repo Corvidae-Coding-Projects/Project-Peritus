@@ -26,6 +26,8 @@ fn profile_and_projection_are_exact_and_minimum_safe() {
     assert!(prompt.contains("PERITUS_PROVIDER_REQUEST_JSON"));
     assert!(prompt.contains("host_tools"));
     assert!(prompt.contains("max_output_tokens_advisory"));
+    assert!(prompt.contains("Continue the assistant at the end of its messages array"));
+    assert!(prompt.contains("not a new Peritus host invocation"));
     assert_eq!(encoded.reasoning_effort(), "high");
     assert_eq!(
         schema.pointer("/properties/tool_calls/items/properties/name/enum/0"),

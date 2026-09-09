@@ -15,6 +15,12 @@ remaining work, and run instructions. Users can inspect, continue, run, export, 
 discard a candidate without finding an internal worktree or log. Foreground run commands temporarily
 return terminal ownership to the candidate and restore the full-screen interface afterward.
 
+Conversation view pins the active elapsed working indicator directly above the transcript in
+bold white. Tool calls remain visible without enabling diagnostics: one entry shows the command
+or operation, then its observed result, exit status and bounded output preview. Long entries keep
+their opening and final lines; `/details` expands retained details and host status diagnostics.
+The timer stops on disconnect or idle/terminal phases; it never claims provider progress.
+
 ## Focused checks
 
 From the repository root:

@@ -19,6 +19,10 @@ or profile-inconsistent values fail before credentials or transport.
 
 ## Lifecycle and recovery
 
+The Codex runtime projection explicitly continues the assistant after the latest retained message.
+A fresh Codex subprocess is transport for a provider step, not a new Peritus host invocation;
+replayed task-entry instructions do not require restarting completed setup on each request.
+
 Foreground requests stream locally and ordinary disconnect/caller cancellation is unconfirmed
 local abort. Stored background requests may register their response identity for exact
 `starting_after` continuation only after the adapter observes `response.created`; arbitrary or

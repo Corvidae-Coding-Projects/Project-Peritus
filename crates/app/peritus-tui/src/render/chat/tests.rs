@@ -110,10 +110,9 @@ fn conversation_with_diagnostics() -> AppModel {
         (ProductActivityKind::Assistant, "I'll inspect the parser.", ""),
         (
             ProductActivityKind::Tool,
-            "Reading the relevant file contents.",
-            "workspace_read: 100 output bytes",
+            "Called workspace_read path=parser.rs",
+            "Parser source preview",
         ),
-        (ProductActivityKind::Tool, "Finished that step.", ""),
         (ProductActivityKind::Status, "I'm inspecting the workspace and preparing the design.", ""),
         (ProductActivityKind::Assistant, "The parser drops empty input.", ""),
         (ProductActivityKind::Error, "Connection lost; the result is not verified.", ""),
@@ -149,6 +148,8 @@ fn ordinary_transcript_shows_conversation_and_errors_without_harness_chatter() {
             "I'll inspect the parser.",
             "The parser drops empty input.",
             "Connection lost;",
+            "Called workspace_read path=parser.rs",
+            "Parser source preview",
         ] {
             assert!(text.contains(visible), "missing {visible}: {text}");
         }
@@ -158,7 +159,6 @@ fn ordinary_transcript_shows_conversation_and_errors_without_harness_chatter() {
             "Reading the relevant file",
             "Finished that step.",
             "preparing the design",
-            "workspace_read",
         ] {
             assert!(!text.contains(diagnostic), "harness chatter visible: {diagnostic}");
         }
@@ -172,10 +172,9 @@ fn explicit_details_reveal_host_activity_with_distinct_labels() {
     let (expanded, _) = screen(&model, 100, 48);
     for diagnostic in [
         "Status",
-        "Tool",
         "Requesting model gpt-5.6-sol",
-        "Finished that step.",
-        "workspace_read: 100 output bytes",
+        "Called workspace_read path=parser.rs",
+        "Parser source preview",
     ] {
         assert!(expanded.contains(diagnostic), "missing diagnostic: {diagnostic}");
     }
@@ -184,6 +183,30 @@ fn explicit_details_reveal_host_activity_with_distinct_labels() {
     let (collapsed, _) = screen(&model, 100, 32);
     assert!(!collapsed.contains("Requesting model"));
     assert!(collapsed.contains("I'll inspect the parser."));
+}
+
+#[test]
+fn tool_entries_show_actual_commands_and_bounded_sanitized_results_without_details() {
+    let activity = ProductActivity::new(
+        1, ProductActivityKind::Tool, "Ran cargo test".to_owned(),
+        "Exit code: 1\nstdout:\nfirst line\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nstderr:\n\u{1b}[31massertion failed\u{1b}[0m".to_owned(),
+    ).unwrap();
+    for width in [40, 100] {
+        let mut compact = Vec::new();
+        append_tool(&mut compact, &activity, false, width);
+        let compact = compact.iter().map(ToString::to_string).collect::<Vec<_>>().join("\n");
+        assert!(compact.contains("• Ran cargo test"));
+        assert!(compact.contains("Exit code: 1"));
+        assert!(compact.contains("assertion failed"));
+        assert!(compact.contains("more lines · /details"));
+        assert!(!compact.contains("line 4"));
+        assert!(!compact.contains('\u{1b}'));
+        let mut expanded = Vec::new();
+        append_tool(&mut expanded, &activity, true, width);
+        let expanded = expanded.iter().map(ToString::to_string).collect::<Vec<_>>().join("\n");
+        assert!(expanded.contains("line 4"));
+        assert!(!expanded.contains("more lines"));
+    }
 }
 
 #[test]
@@ -205,6 +228,43 @@ fn one_working_idler_updates_elapsed_seconds_without_adding_transcript_rows() {
     let _ = model.update(Action::Disconnected("socket closed".to_owned()));
     let (disconnected, _) = screen(&model, 100, 32);
     assert!(!disconnected.contains("*working"), "disconnection cannot imply live progress");
+}
+
+#[test]
+fn working_indicator_is_bold_white_above_the_scrollable_conversation() {
+    use crate::action::Action;
+    use std::time::{Duration, Instant};
+    let mut model = model();
+    let started = Instant::now();
+    let _ = model.update(Action::Tick(started));
+    let _ = model.update(Action::Tick(started + Duration::from_secs(40)));
+    for (width, height) in [(40, 12), (100, 32)] {
+        for expanded in [false, true] {
+            model.chat.expanded = expanded;
+            for scroll in [0, usize::MAX] {
+                model.chat.scroll = scroll;
+                let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
+                let frame = terminal.draw(|frame| draw(frame, &model)).unwrap();
+                let label = "*working (40s)";
+                for (column, character) in label.chars().enumerate() {
+                    let cell = &frame.buffer[(u16::try_from(column).unwrap(), 2)];
+                    assert_eq!(cell.symbol(), character.to_string());
+                    assert_eq!(cell.fg, Color::White);
+                    assert!(cell.modifier.contains(Modifier::BOLD));
+                }
+                let text = frame
+                    .buffer
+                    .content()
+                    .iter()
+                    .map(ratatui::buffer::Cell::symbol)
+                    .collect::<String>();
+                assert_eq!(text.matches("*working").count(), 1, "no footer duplicate");
+                let activity = if scroll == 0 { "Activity 30" } else { "Activity 01" };
+                assert!(text.find(activity).unwrap() > text.find(label).unwrap());
+                assert!(text.contains("Message / steer active work"));
+            }
+        }
+    }
 }
 
 #[test]

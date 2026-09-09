@@ -64,6 +64,9 @@ impl DeveloperToolExecutor for MemoryTools<'_> {
     fn take_progress_feedback(&mut self) -> Option<String> {
         self.base.take_progress_feedback()
     }
+    fn continuation_blocker(&self) -> Option<String> {
+        self.base.continuation_blocker()
+    }
 }
 
 pub(super) fn hex(bytes: &[u8]) -> String {

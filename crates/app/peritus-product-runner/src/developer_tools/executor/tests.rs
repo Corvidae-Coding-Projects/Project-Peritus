@@ -1,4 +1,5 @@
 use super::*;
+mod inspection;
 use peritus_model_protocol::{CanonicalJson, JsonBounds, ProtocolLimits, ToolCallId, ToolName};
 use std::{
     path::{Path, PathBuf},
@@ -138,11 +139,11 @@ fn long_inspection_sequence_returns_one_concrete_delivery_nudge() {
         "workspace_read",
         r#"{"end_line":10,"path":"README.md","start_line":1}"#,
     );
-    for _ in 0..10 {
+    for index in 0..10 {
         let result = execute(
             &mut tools,
             "workspace_search",
-            r#"{"max_results":5,"path":".","query":"not-present"}"#,
+            &format!(r#"{{"max_results":5,"path":".","query":"not-present-{index}"}}"#),
         );
         assert!(!result.is_error);
     }

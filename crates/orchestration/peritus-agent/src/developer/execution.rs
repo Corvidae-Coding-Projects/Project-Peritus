@@ -1,4 +1,5 @@
 //! Tight provider/tool execution loop.
+mod invocation;
 mod provider_turn;
 use provider_turn::complete_turn;
 
@@ -81,13 +82,18 @@ impl DeveloperLoop {
                     input_revision = input.revision;
                 }
             }
+            let required_tool = tools.required_tool_name().map(str::to_owned);
+            let invocation_policy = invocation::policy(&request, turn, required_tool.as_deref())?;
             if context.is_local() {
-                if context.prepare(&mut messages, &request.tools, profile)? {
+                if context.prepare(&mut messages, &request.tools, profile, &invocation_policy)? {
                     trace.account(DeveloperAccountingEvent::Compaction)?;
                     compactions =
                         compactions.checked_add(1).ok_or(DeveloperLoopError::LimitExceeded)?;
                 }
             } else {
+                // Replace, never append: the current host projection is budgeted and cannot
+                // accumulate stale startup states or be compacted as optional conversation.
+                messages[0] = invocation_policy;
                 if let Some(semantic) = SemanticCompaction::prepare(
                     &messages,
                     &request.tools,
@@ -147,7 +153,6 @@ impl DeveloperLoop {
                     )
                     .ok_or(DeveloperLoopError::LimitExceeded)?;
             }
-            let required_tool = tools.required_tool_name().map(str::to_owned);
             let Some(session) = complete_turn(
                 provider,
                 &request,
@@ -308,6 +313,9 @@ impl DeveloperLoop {
                 context.append(&mut messages, message(Role::User, feedback, protocol_limits)?)?;
             }
             context.observe(DeveloperContextEvent::BatchCompleted)?;
+            if let Some(blocker) = tools.continuation_blocker() {
+                return Err(DeveloperLoopError::Tool(blocker));
+            }
             if tools.yields_to_host() {
                 return Ok(DeveloperLoopOutcome {
                     text: String::new(),

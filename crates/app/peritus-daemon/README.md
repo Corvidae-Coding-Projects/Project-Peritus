@@ -21,6 +21,14 @@ configured managed workspace, marks changed candidates stale, and automatically 
 interrupted runs. Accept, commit, export, and discard remain separate durable user decisions, and
 every mutating handoff action is revalidated against the exact candidate digest.
 
+Interactive tool observations retain a bounded command/operation label before execution, then
+update the same activity with the observed result. Command previews include exit status and
+stdout/stderr; rejected calls and active background handles are not presented as completed success.
+Recognizable credential fields are masked as accidental-disclosure defense, not as a complete
+secret detector. Replacement bodies and terminal input are omitted from labels. No provider
+reasoning or credential store is consulted. Existing activity persistence and wire formats remain
+unchanged; terminal clients still sanitize control sequences before rendering.
+
 The [G0 daemon guide](../../../docs/g0-daemon.md) documents strict configuration, startup and
 recovery order, protected A3 IPC, durable service composition, outbox delivery, worker ownership,
 shutdown, and the resource-aware verification commands. Operational procedures live in the

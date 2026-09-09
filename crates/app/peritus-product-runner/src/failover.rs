@@ -44,7 +44,7 @@ impl RoleRecovery {
             ""
         };
         format!(
-            "The preceding provider invocation ended with recoverable `{reason}` after its bounded in-turn retries. Start a fresh invocation from the exact current workspace: call `workspace_list`, read the authoritative inputs and current targets, preserve any useful existing work, and continue to the required terminal result.{repair}"
+            "The preceding provider invocation ended with recoverable `{reason}` after its bounded in-turn retries. At entry to this new host invocation, ground once from the exact current workspace: call `workspace_list`, read the authoritative inputs and current targets, preserve any useful existing work, and continue to the required terminal result. Later provider steps in this same invocation must continue from completed work, not repeat this startup sequence.{repair}"
         )
     }
 }
@@ -261,6 +261,7 @@ mod tests {
             DeveloperLoopError::Refused,
             DeveloperLoopError::Trace("fixture".to_owned()),
             DeveloperLoopError::Tool("fixture".to_owned()),
+            DeveloperLoopError::Tool("inspection-no-progress".to_owned()),
             DeveloperLoopError::Context("fixture".to_owned()),
         ] {
             assert!(!RoleRecovery::may_continue_after_progress(&error));

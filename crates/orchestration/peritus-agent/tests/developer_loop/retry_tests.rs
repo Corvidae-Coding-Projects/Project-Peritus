@@ -43,7 +43,14 @@ fn developer_loop_retries_a_recoverable_malformed_provider_turn() {
         assert_eq!(outcome.text, "implementation inspected");
         assert_eq!(outcome.model_turns, 1);
         assert_eq!(outcome.retries, 2);
-        assert_eq!(provider.requests.lock().expect("requests").len(), 3);
+        let requests = provider.requests.lock().expect("requests");
+        assert_eq!(requests.len(), 3);
+        assert!(requests.windows(2).all(|pair| pair[0].messages() == pair[1].messages()));
+        let ContentBlock::Text(policy) = &requests[0].messages()[0].content()[0] else {
+            panic!("missing current policy");
+        };
+        assert!(policy.expose_for_wire().contains("provider_step=1; required_tool=none"));
+        drop(requests);
         assert_eq!(trace.retries.len(), 2);
         assert_eq!(
             trace.retries[0].reason(),

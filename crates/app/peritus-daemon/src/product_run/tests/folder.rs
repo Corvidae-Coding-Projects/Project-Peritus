@@ -289,6 +289,28 @@ fn requested_command_runs_in_the_original_folder_with_daemon_owned_processes() {
         let snapshot =
             service.query_interaction(ProductRunConversationQuery::new(id)).expect("snapshot");
         assert!(root.path().join("command-result.txt").exists(), "{snapshot:?}");
+        let command = snapshot
+            .activities()
+            .iter()
+            .find(|activity| {
+                activity.kind() == peritus_app_protocol::ProductActivityKind::Tool
+                    && activity.text().starts_with("Ran /bin/cp note.txt command-result.txt")
+            })
+            .expect("actual command is visible in the conversation");
+        assert!(command.detail().contains("Exit code: 0"));
+        assert!(
+            !snapshot
+                .activities()
+                .iter()
+                .any(|activity| activity.text().starts_with("Calling /bin/cp")),
+            "completion updates the original entry"
+        );
+        let restored = super::super::persistence::load_records(&service.inner.directory)
+            .expect("durable activities");
+        assert_eq!(
+            restored.get(&id).unwrap().interaction.as_ref().unwrap().activities,
+            snapshot.activities()
+        );
         assert_eq!(
             fs::read_to_string(root.path().join("command-result.txt")).expect("command effect"),
             "requested"

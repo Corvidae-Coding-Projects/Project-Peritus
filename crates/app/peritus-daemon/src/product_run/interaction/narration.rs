@@ -19,17 +19,6 @@ pub(super) const fn starting(mode: ProductInteractionMode) -> &'static str {
     }
 }
 
-pub(super) fn tool_started(name: &str) -> &'static str {
-    match name {
-        "workspace_list" => "Looking through the workspace files.",
-        "workspace_read" => "Reading the relevant file contents.",
-        "workspace_search" => "Searching the workspace for relevant code and context.",
-        "workspace_write" => "Writing the proposed changes.",
-        "run_command" => "Running a command; I'll check its result before continuing.",
-        _ => "Working through the next step.",
-    }
-}
-
 pub(super) fn waiting(
     options: &mut InteractionOptions,
     elapsed_seconds: u64,
@@ -78,9 +67,7 @@ mod tests {
     }
 
     #[test]
-    fn tool_narration_does_not_echo_private_or_unknown_names() {
-        assert_eq!(tool_started("workspace_read"), "Reading the relevant file contents.");
-        assert_eq!(tool_started("private-tool-name"), "Working through the next step.");
+    fn chat_start_does_not_claim_implementation() {
         assert!(!starting(ProductInteractionMode::Chat).contains("implementation"));
     }
 }

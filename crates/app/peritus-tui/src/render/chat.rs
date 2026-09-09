@@ -9,7 +9,7 @@ use peritus_app_protocol::ProductActivityKind;
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
-    style::{Modifier, Style},
+    style::{Color, Modifier, Style},
     text::{Line, Span, Text},
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap},
 };
@@ -22,8 +22,10 @@ pub(super) fn draw(frame: &mut Frame<'_>, model: &AppModel) {
     );
     let draft_lines = draft.lines.len().clamp(1, 6);
     let composer_height = u16::try_from(draft_lines).unwrap_or(6) + 2;
+    let working_seconds = model.chat.working.elapsed_seconds();
     let regions = Layout::vertical([
         Constraint::Length(2),
+        Constraint::Length(u16::from(working_seconds.is_some())),
         Constraint::Min(3),
         Constraint::Length(composer_height),
         Constraint::Length(2),
@@ -40,13 +42,20 @@ pub(super) fn draw(frame: &mut Frame<'_>, model: &AppModel) {
         ]),
         regions[0],
     );
-    if model.chat.model_picker {
-        draw_models(frame, regions[1], model);
-    } else {
-        draw_transcript(frame, regions[1], model);
+    if let Some(seconds) = working_seconds {
+        frame.render_widget(
+            Paragraph::new(format!("*working ({seconds}s)"))
+                .style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+            regions[1],
+        );
     }
-    draw_composer(frame, regions[2], model, draft);
-    draw_status(frame, regions[3], model);
+    if model.chat.model_picker {
+        draw_models(frame, regions[2], model);
+    } else {
+        draw_transcript(frame, regions[2], model);
+    }
+    draw_composer(frame, regions[3], model, draft);
+    draw_status(frame, regions[4], model);
 }
 
 fn title(model: &AppModel) -> String {
@@ -123,10 +132,8 @@ fn draw_composer(
 }
 
 fn draw_status(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
-    let status = if !model.chat.expanded
-        && let Some(seconds) = model.chat.working.elapsed_seconds()
-    {
-        format!("*working ({seconds}s) · Ctrl-C stops")
+    let status = if !model.chat.expanded && model.chat.working.elapsed_seconds().is_some() {
+        "Ctrl-C stops".to_owned()
     } else {
         model.chat.snapshot.as_ref().map_or_else(
             || "Ready · Enter sends · Shift-Enter newline · Ctrl-C exits".to_owned(),
@@ -178,12 +185,11 @@ fn draw_transcript(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
             lines.push(Line::styled("Earlier activity is outside this bounded window. The durable conversation and trace remain available.", Style::default().fg(MUTED)));
         }
         for activity in snapshot.activities() {
-            if !model.chat.expanded
-                && matches!(
-                    activity.kind(),
-                    ProductActivityKind::Tool | ProductActivityKind::Status
-                )
-            {
+            if !model.chat.expanded && activity.kind() == ProductActivityKind::Status {
+                continue;
+            }
+            if activity.kind() == ProductActivityKind::Tool {
+                append_tool(&mut lines, activity, model.chat.expanded, usize::from(area.width));
                 continue;
             }
             let (label, color) = match activity.kind() {
@@ -232,6 +238,34 @@ fn draw_transcript(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
 fn append_lines(lines: &mut Vec<Line<'static>>, text: &str) {
     let text = crate::sanitize::sanitize_display_text(text);
     lines.extend(text.lines().map(|line| Line::from(line.to_owned())));
+}
+
+fn append_tool(
+    lines: &mut Vec<Line<'static>>,
+    activity: &peritus_app_protocol::ProductActivity,
+    expanded: bool,
+    width: usize,
+) {
+    let mut tool = vec![Line::styled(
+        format!("• {}", crate::sanitize::sanitize_display_text(activity.text())),
+        Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+    )];
+    let detail = crate::sanitize::sanitize_display_text(activity.detail());
+    tool.extend(
+        detail.lines().map(|line| Line::styled(format!("  │ {line}"), Style::default().fg(MUTED))),
+    );
+    let tool = wrapped_lines(tool, width);
+    if !expanded && tool.len() > 7 {
+        lines.extend(tool.iter().take(3).cloned());
+        lines.push(Line::styled(
+            format!("  └ … {} more lines · /details", tool.len() - 6),
+            Style::default().fg(MUTED),
+        ));
+        lines.extend(tool.iter().skip(tool.len() - 3).cloned());
+    } else {
+        lines.extend(tool);
+    }
+    lines.push(Line::from(""));
 }
 
 pub(super) fn wrapped_lines(lines: Vec<Line<'static>>, width: usize) -> Vec<Line<'static>> {

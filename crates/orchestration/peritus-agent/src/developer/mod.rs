@@ -12,6 +12,7 @@ mod model_request;
 mod observation;
 mod retry;
 mod semantic;
+mod tool_executor;
 mod types;
 mod usage;
 
@@ -25,9 +26,10 @@ pub use error::DeveloperLoopError;
 pub use interaction::{
     DeveloperActivity, DeveloperInput, DeveloperInteraction, DeveloperModelRole,
 };
+pub use tool_executor::DeveloperToolExecutor;
 pub use types::{
     DeveloperContextCompaction, DeveloperLoopLimits, DeveloperLoopOutcome, DeveloperLoopRequest,
-    DeveloperRetryReason, DeveloperRetryRecord, DeveloperToolExecutor, DeveloperToolObservation,
-    DeveloperTrace, DeveloperTraceEvent,
+    DeveloperRetryReason, DeveloperRetryRecord, DeveloperToolObservation, DeveloperTrace,
+    DeveloperTraceEvent,
 };
 pub use usage::DeveloperUsage;

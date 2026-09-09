@@ -39,6 +39,14 @@ retry planner. Each wait has stable bounded jitter, honors a bounded provider `R
 promptly cancellable, and records its reason, attempt, elapsed time, and selected delay before
 sleeping.
 
+Every provider step carries one replacement system-policy projection with its current host
+invocation step and live executor prerequisite. Transport retries and local context reconstruction
+do not reset grounding or replay invocation-entry recovery instructions. Local context ports must
+retain that exact current projection before budgeting and checkpoint publication; stale projections
+fail before provider dispatch. An executor's terminal continuation blocker is checked only after
+the complete tool batch has been recorded and handed to local context, and is a nonretryable tool
+failure rather than a new provider-recovery segment.
+
 The optional `DeveloperTrace::account` callback reports admitted model attempts, completed tool
 observations, compactions, and accepted per-response usage high-water snapshots immediately.
 Hosts can retain accounting even when a later error or cancellation prevents a successful loop

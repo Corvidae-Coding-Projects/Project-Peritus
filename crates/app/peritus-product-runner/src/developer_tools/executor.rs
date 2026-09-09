@@ -30,6 +30,7 @@ mod checkpoint_observer;
 mod command;
 mod construction;
 mod in_place;
+mod inspection_progress;
 
 use active::ActiveCommandLedger;
 pub use checkpoint_observer::ToolCheckpointBoundary;
@@ -58,6 +59,7 @@ pub struct WorkspaceDeveloperTools {
     tools_without_delivery_progress: u16,
     progress_nudges: u8,
     progress_feedback_pending: bool,
+    inspection_progress: inspection_progress::InspectionProgress,
     checkpoint_observer: Option<ToolCheckpointObserver>,
 }
 
@@ -207,6 +209,9 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
             self.record_success(call.name().as_str(), &arguments, &value);
         }
         self.observe_delivery_progress(call.name().as_str(), &arguments, &value, accepted);
+        if self.mode == WorkspaceToolMode::ReadWrite {
+            self.inspection_progress.observe(call.name().as_str(), &arguments, &value);
+        }
         observation(&value, is_error)
     }
 
@@ -215,10 +220,17 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
     }
 
     fn take_progress_feedback(&mut self) -> Option<String> {
+        if let Some(feedback) = self.inspection_progress.feedback() {
+            return Some(feedback);
+        }
         if !std::mem::take(&mut self.progress_feedback_pending) {
             return None;
         }
         Some(PROGRESS_FEEDBACK.to_owned())
+    }
+
+    fn continuation_blocker(&self) -> Option<String> {
+        self.inspection_progress.blocker()
     }
 }
 
@@ -261,8 +273,9 @@ impl WorkspaceDeveloperTools {
         if self.mode == WorkspaceToolMode::ReadOnly {
             return;
         }
-        let workspace_mutation =
-            accepted && matches!(name, "workspace_write" | "workspace_patch" | "workspace_remove");
+        let workspace_mutation = accepted
+            && matches!(name, "workspace_write" | "workspace_patch" | "workspace_remove")
+            && result.get("changed").and_then(Value::as_bool) != Some(false);
         let external_effect = matches!(
             name,
             "run_command"
@@ -278,6 +291,7 @@ impl WorkspaceDeveloperTools {
         if workspace_mutation || external_effect {
             self.tools_without_delivery_progress = 0;
             self.progress_feedback_pending = false;
+            self.progress_nudges = 0;
             return;
         }
         self.tools_without_delivery_progress =

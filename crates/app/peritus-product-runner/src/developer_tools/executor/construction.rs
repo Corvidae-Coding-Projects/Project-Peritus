@@ -29,6 +29,7 @@ impl WorkspaceDeveloperTools {
             tools_without_delivery_progress: 0,
             progress_nudges: 0,
             progress_feedback_pending: false,
+            inspection_progress: super::inspection_progress::InspectionProgress::default(),
             checkpoint_observer: None,
         }
     }
@@ -57,6 +58,7 @@ impl WorkspaceDeveloperTools {
             tools_without_delivery_progress: 0,
             progress_nudges: 0,
             progress_feedback_pending: false,
+            inspection_progress: super::inspection_progress::InspectionProgress::default(),
             checkpoint_observer: None,
         }
     }

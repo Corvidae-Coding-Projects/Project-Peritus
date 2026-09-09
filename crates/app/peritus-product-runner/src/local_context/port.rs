@@ -184,7 +184,11 @@ impl DeveloperContextPort for LocalContextHandle {
         &mut self,
         request: DeveloperContextAssembly<'_>,
     ) -> Result<Vec<Message>, DeveloperLoopError> {
-        self.lock()?.prepare_view(request.profile, request.tools)
+        self.lock()?.prepare_view_with_policy(
+            request.profile,
+            request.tools,
+            Some(request.invocation_policy),
+        )
     }
     fn checkpoint(&mut self, messages: &[Message]) -> Result<(), DeveloperLoopError> {
         self.lock()?.publish(messages)

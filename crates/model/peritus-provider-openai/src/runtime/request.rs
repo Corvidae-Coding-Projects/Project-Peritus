@@ -9,7 +9,7 @@ use peritus_model_protocol::{
 use peritus_provider_core::ProviderCoreError;
 use serde_json::{Map, Value};
 
-const PROMPT_PREFIX: &str = "Peritus is the sole host agent, policy authority, and owner of conversation state. The JSON below is one complete provider request. Do not invoke Codex-native tools. Return only the object required by --output-schema. Entries in host_tools are inert proposals for Peritus to validate and execute; never execute them yourself. max_output_tokens_advisory is a requested ceiling, not a claim that this runtime enforces it.\n\nPERITUS_PROVIDER_REQUEST_JSON:\n";
+const PROMPT_PREFIX: &str = "Peritus is the sole host agent, policy authority, and owner of conversation state. The JSON below is one complete provider request. Continue the assistant at the end of its messages array, using the latest tool results; do not restart the initial user task. A fresh Codex process is only a transport for the next step, not a new Peritus host invocation. Do not invoke Codex-native tools. Return only the object required by --output-schema. Entries in host_tools are inert proposals for Peritus to validate and execute; never execute them yourself. max_output_tokens_advisory is a requested ceiling, not a claim that this runtime enforces it.\n\nPERITUS_PROVIDER_REQUEST_JSON:\n";
 
 pub struct RuntimeRequest {
     pub prompt: Vec<u8>,

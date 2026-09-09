@@ -62,6 +62,15 @@ media capability is checked against the current task. Safety, refusal, cancellat
 transport, and normalized ambiguous acceptance never trigger a switch. Each accepted transition is
 written to the append-only trace before its progress counter advances.
 
+Workspace grounding belongs to a host invocation, not to each provider request. Recovery prompts
+apply their startup sequence once; later steps receive current executor prerequisite state alongside
+the original host policy. Writable roles also detect unchanged inspection cycles using a bounded
+16-entry history of tool-name, argument, and result digests. Three consecutive repeated observations
+produce a specific warning; six stop with `inspection-no-progress` after the complete batch is
+retained. New inspection evidence or a different tool strategy resets the cycle. Command polling
+is not inspection repetition, and read-only reviewer/design tools do not use this delivery guard.
+This stop is nonretryable, so earlier file writes cannot turn it into another recovery loop.
+
 Recovery progress is a content change, not a larger inspection scope: enrolling an unchanged or
 absent path does not replenish retry allowances. Policy, cancellation, integrity, and ambiguous
 terminals cannot be restarted merely because an earlier call changed a file. Malformed-response

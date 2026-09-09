@@ -18,6 +18,7 @@ use std::sync::Arc;
 
 mod models;
 mod narration;
+mod tool_activity;
 
 #[derive(Clone)]
 pub(super) struct InteractionOptions {
@@ -29,6 +30,7 @@ pub(super) struct InteractionOptions {
     pub(super) next_sequence: u64,
     pub(super) pending_utf8: Vec<u8>,
     pub(super) streaming_text: bool,
+    pending_tool: Option<tool_activity::PendingTool>,
 }
 
 impl InteractionOptions {
@@ -42,6 +44,7 @@ impl InteractionOptions {
             next_sequence: 1,
             pending_utf8: Vec::new(),
             streaming_text: false,
+            pending_tool: None,
         }
     }
 
@@ -288,20 +291,21 @@ impl DeveloperInteraction for LiveConversation {
             DeveloperActivity::Text(bytes) => options.text(bytes),
             DeveloperActivity::ModelStarted { model } => {
                 options.streaming_text = false;
-                options.append(ProductActivityKind::Status, &format!("Requesting model {model}"), "")
+                options.append(
+                    ProductActivityKind::Status,
+                    &format!("Requesting model {model}"),
+                    "",
+                )
             }
             DeveloperActivity::ModelWaiting { elapsed_seconds } => {
                 narration::waiting(options, elapsed_seconds)
             }
             DeveloperActivity::ToolStarted { name, arguments } => {
-                options.append(ProductActivityKind::Tool, narration::tool_started(name),
-                    &format!("{name}: {} argument bytes. Raw arguments remain in the trace, not this public activity projection.", arguments.len()))
+                tool_activity::started(options, name, arguments)
             }
-            DeveloperActivity::ToolFinished { name, output, is_error } => options.append(
-                ProductActivityKind::Tool,
-                if is_error { "That step failed; no success has been confirmed." } else { "Finished that step." },
-                &format!("{name}: {} output bytes. Raw tool output remains in the trace, not this public activity projection.", output.len()),
-            ),
+            DeveloperActivity::ToolFinished { name, output, is_error } => {
+                tool_activity::finished(options, name, output, is_error)
+            }
             DeveloperActivity::ToolSkipped { name } => options.append(
                 ProductActivityKind::Status,
                 &format!("Skipped {name}: control returned before execution"),
