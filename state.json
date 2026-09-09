@@ -1,6 +1,6 @@
 {
   "next_display_id": 65,
-  "next_comment_id": 1452,
+  "next_comment_id": 1453,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10682,7 +10682,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-09T02:23:00.575476536Z",
-      "updated_at": "2026-09-09T02:48:15.750361053Z",
+      "updated_at": "2026-09-09T02:51:09.676532744Z",
       "comments": {
         "12fea821-d373-4d2b-8305-9553bdf2a42e": {
           "display_id": 1451,
@@ -10692,6 +10692,15 @@
           "kind": "result",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAn+nDJxKNRH5xNxM4th9besHST/O2PYzWPKdcZ5Kcn/Y1hr9QWh8cDxq9SK9Vt32BMHwbGhr3kQp5K81MYiTxDg=="
+        },
+        "930d0e05-2a77-41bb-87a7-78b65bb4c0e3": {
+          "display_id": 1452,
+          "author": "krvx",
+          "content": "Installed locally from the develop worktree with CL63 effort controls. PERITUS_INSTALL_DEPS=0 cargo xtask product-install completed successfully. Installed CLI, daemon, TUI and sandbox helper SHA-256 values exactly match both release build and package. CLI/daemon version smoke passes; current config hash unchanged; all four saved run phases unchanged (idle/cancelled/failed). Final eleven-package all-targets/all-features test run: 703 passed. Strict Clippy, full-workspace check, fmt, diff, generated protocol and docs passed. Existing global source-layout/architecture five violations and ordinary-api 41 violations remain. No live inference campaign, commit or push. User should reopen Peritus so the normal binary-identity supervisor reloads the installed daemon.",
+          "created_at": "2026-09-09T02:51:09.667627939Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAOJtHT3wWzZr5qORsKNiOdQc3A4CPj+TCZAOjY0CUuKebbMQAUx7ceLqkXKvrBAwGM+2ynwjPsBmURWfS1cnICA=="
         },
         "9f07a83a-bf44-41d3-a117-903284be64c2": {
           "display_id": 1450,
@@ -14179,8 +14188,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-09T02:48:15.750361053Z",
+    "timestamp": "2026-09-09T02:51:09.676532744Z",
     "agent_id": "krvx",
-    "agent_seq": 85
+    "agent_seq": 86
   }
 }
