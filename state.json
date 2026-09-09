@@ -1,6 +1,6 @@
 {
   "next_display_id": 67,
-  "next_comment_id": 1481,
+  "next_comment_id": 1482,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -12946,7 +12946,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-09T03:39:44.724470894Z",
-      "updated_at": "2026-09-09T08:17:27.182714033Z",
+      "updated_at": "2026-09-09T08:17:38.329061807Z",
       "comments": {
         "0d314b27-5216-4bce-9507-b37486d0e01a": {
           "display_id": 1480,
@@ -12965,6 +12965,15 @@
           "kind": "note",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABADzrtBIGBKKTGAr0RJbjnMKTgwcYeHQXibvPMhJHxLMM2AmIS4tBZaDFRRs6ffgzNrbiUajoMqsUbb/m7LCLaBQ=="
+        },
+        "1b912bfe-a6c7-4ded-8cd3-7bf4754af82f": {
+          "display_id": 1481,
+          "author": "krvx",
+          "content": "CL-66 remains open and incomplete. Implemented and tested scoped artifact ownership plus atomic validated image state/request capture and context provenance. Four affected crates full tests, strict Clippy, fmt, codegen and workspace check passed; last receipt-only split reverified with 122 daemon/226 runner unit tests and strict Clippy. Layout only two unchanged HEAD baseline violations. Next: A3 scoped-upload and preview/confirmation, attachment selection/import TUI; then remaining P1 and P2-P7, final native TUI acceptance, commit and push develop. No commit/push or real-user provider/desktop actions in this increment.",
+          "created_at": "2026-09-09T08:17:38.325108524Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAKIxdneoYywnC6inkrXjLaPsqLdFUA2poNAg/7Q7xl7bnhEYJ1sWq2fQHycowyvcDcbrcDpE8lpJ7rTcF3C2fAw=="
         },
         "220d9114-cfc8-4c8a-89d3-d4e98ad1ae2b": {
           "display_id": 1462,
@@ -14464,8 +14473,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-09T08:17:32.532906069Z",
+    "timestamp": "2026-09-09T08:17:38.329061807Z",
     "agent_id": "krvx",
-    "agent_seq": 125
+    "agent_seq": 126
   }
 }
