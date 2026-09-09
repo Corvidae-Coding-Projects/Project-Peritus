@@ -1,6 +1,6 @@
 {
   "next_display_id": 65,
-  "next_comment_id": 1450,
+  "next_comment_id": 1451,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10682,7 +10682,18 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-09T02:23:00.575476536Z",
-      "updated_at": "2026-09-09T02:23:00.575476536Z"
+      "updated_at": "2026-09-09T02:24:11.186472810Z",
+      "comments": {
+        "9f07a83a-bf44-41d3-a117-903284be64c2": {
+          "display_id": 1450,
+          "author": "krvx",
+          "content": "Architecture: shared bounded deterministic JSON healing in provider-core, invoked only for complete model-authored structured payloads at adapter normalization boundaries. Preserve strict C5 reducer, identity/lifecycle binding, argument schemas and tool authorization. Preserve raw/corrected values in a bounded peritus.response_healing provider event, never logs. Prefer shared parser plus thin adapter hooks over relaxing canonical parser or asking a second model. Refuse missing delimiters/values, duplicate keys, conflicting JSON documents, invalid transport frames, and oversized repairs. Verify all provider routes and unchanged valid responses before local installation.",
+          "created_at": "2026-09-09T02:24:11.182908115Z",
+          "kind": "decision",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAx1wmWXjSC5udJf8NAxpNsu0MChTUPAD3lefh05EyI7crxzQbxvEM0L8J4hGQcZh4R/rFWVJ2C++VuIyudzrqCw=="
+        }
+      }
     },
     "8bbbda45-2e84-44e1-87fb-033729ad7029": {
       "uuid": "8bbbda45-2e84-44e1-87fb-033729ad7029",
@@ -14159,8 +14170,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-09T02:23:20.984873881Z",
+    "timestamp": "2026-09-09T02:24:11.186472810Z",
     "agent_id": "krvx",
-    "agent_seq": 83
+    "agent_seq": 84
   }
 }
