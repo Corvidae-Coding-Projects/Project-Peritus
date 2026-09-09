@@ -1,5 +1,5 @@
 {
-  "next_display_id": 64,
+  "next_display_id": 65,
   "next_comment_id": 1450,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -40,6 +40,7 @@
     "65f4d2ae-ffe6-471c-8d5f-3de1632a9724": 61,
     "6e8845fe-4835-478b-80d0-18135c12bc4d": 43,
     "79bb0f68-384c-454b-9302-eb88b692c28f": 18,
+    "7f54e62c-3c08-44f0-99bc-570d189eadb1": 64,
     "8bbbda45-2e84-44e1-87fb-033729ad7029": 45,
     "8d3b149c-50c3-4887-9973-8bea59b5f6a2": 15,
     "92b485c0-34af-4248-b792-21bc54e81c70": 35,
@@ -10668,6 +10669,17 @@
         }
       }
     },
+    "7f54e62c-3c08-44f0-99bc-570d189eadb1": {
+      "uuid": "7f54e62c-3c08-44f0-99bc-570d189eadb1",
+      "display_id": 64,
+      "title": "Add bounded native response healing for structured tool calls and install locally",
+      "description": "Shared deterministic repair for syntactically malformed completed structured outputs/tool arguments, strict validation and original-to-repaired provenance, cross-provider tests, then local install including pending effort controls. No guessing names, arguments, incomplete streams, permissions or tool success; no commit/push requested.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "krvx",
+      "created_at": "2026-09-09T02:23:00.575476536Z",
+      "updated_at": "2026-09-09T02:23:00.575476536Z"
+    },
     "8bbbda45-2e84-44e1-87fb-033729ad7029": {
       "uuid": "8bbbda45-2e84-44e1-87fb-033729ad7029",
       "display_id": 45,
@@ -14143,8 +14155,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-09T02:16:08.484080624Z",
+    "timestamp": "2026-09-09T02:23:00.575476536Z",
     "agent_id": "krvx",
-    "agent_seq": 81
+    "agent_seq": 82
   }
 }
