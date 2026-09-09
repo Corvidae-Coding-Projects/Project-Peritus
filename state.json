@@ -1,6 +1,6 @@
 {
   "next_display_id": 63,
-  "next_comment_id": 1446,
+  "next_comment_id": 1447,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -9034,7 +9034,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-09T00:28:01.908689887Z",
-      "updated_at": "2026-09-09T00:49:59.117295373Z",
+      "updated_at": "2026-09-09T00:50:09.531340306Z",
       "comments": {
         "062b42b7-0132-4e72-b751-4ed7f2cd24e5": {
           "display_id": 1440,
@@ -9044,6 +9044,15 @@
           "kind": "observation",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABANOwPM2p7I3ynU5pTIm5RFbSUSHMmCVGZjZuimmKZA6Ytxy7f4mpDYA6fNGsUTLNaQaqb1sIyO2GnT3uZR+JZBw=="
+        },
+        "08cec641-e43d-4de9-a89f-f420c6a1d6f7": {
+          "display_id": 1446,
+          "author": "krvx",
+          "content": "User-requested commit/push/reinstall complete: signed8fcb4190 on origin/develop and local native release install exact. Four installed binary hashes match release/package. Tests/lint/checks as recorded; global policy issues remain explicitly disclosed. No stopped Tetris run restarted. Tracked develop clean; preserve untracked .claude/.codex/.crosslink/.mcp.json/AGENTS.md. Reopen Peritus to use new binaries.",
+          "created_at": "2026-09-09T00:50:09.528135108Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJzKRiZuhKpWWg7/9OFaIkoB0KbfxEh7H6sgMkDNnQIRtDtgsElx9EFy/AtwYbfr81GmvU88Dj0oUJ61IJ1J/Bg=="
         },
         "65967378-1d18-42bf-9711-a313e2e96439": {
           "display_id": 1445,
@@ -14093,8 +14102,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-09T00:50:04.418492397Z",
+    "timestamp": "2026-09-09T00:50:09.531340306Z",
     "agent_id": "krvx",
-    "agent_seq": 74
+    "agent_seq": 75
   }
 }
