@@ -1,6 +1,6 @@
 {
   "next_display_id": 64,
-  "next_comment_id": 1448,
+  "next_comment_id": 1449,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -12404,7 +12404,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-09T01:42:50.381589964Z",
-      "updated_at": "2026-09-09T01:44:12.717061450Z",
+      "updated_at": "2026-09-09T02:15:57.540781466Z",
       "comments": {
         "3820eef3-1330-437c-a669-5e2768d79a0e": {
           "display_id": 1447,
@@ -12414,6 +12414,15 @@
           "kind": "decision",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAhg6ktZYPHKozc+2au+HKUhfz/QnRXM/3Y3p7rfPyRH7qu/xb5AoYVHBTfUfpg60EVuCmIl6RQ21GYKBj3CedAg=="
+        },
+        "8da02b40-06c4-47a0-9ebf-e29b1d1c1276": {
+          "display_id": 1448,
+          "author": "krvx",
+          "content": "Implementation ready for review in develop worktree: visible /effort picker and model-picker e shortcut; durable per-role default/minimal/low/medium/high/xhigh/max/ultra selections reach immutable next-turn adapters and request encoders without remapping. Legacy default wire bytes and persisted record shape remain compatible. Final verification: 668 tests passed across ten affected packages with all targets/features; strict Clippy, full-workspace all-targets/features check, fmt, generated protocol check, docs-check and diff-check passed. Source-layout remains five pre-existing violations; ordinary-api-check remains 41 pre-existing violations, with no added failures after explicit serialization/default implementations. No commit, push, installation, live inference canary or stopped-run restart. Native response healing assessed only; no response validation changes.",
+          "created_at": "2026-09-09T02:15:57.533431198Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAdKyvhS1hwch7CMJE62ESoHoCtEMQrXOIm/VAVbncGs997/C6JGQLold6jUCfQkxDpl3qb2uck8a/X6tWp1o8Dw=="
         }
       }
     },
@@ -14129,8 +14138,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-09T01:44:12.717061450Z",
+    "timestamp": "2026-09-09T02:15:57.540781466Z",
     "agent_id": "krvx",
-    "agent_seq": 78
+    "agent_seq": 79
   }
 }
