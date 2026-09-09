@@ -1,6 +1,6 @@
 {
   "next_display_id": 64,
-  "next_comment_id": 1447,
+  "next_comment_id": 1448,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -12404,7 +12404,18 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-09T01:42:50.381589964Z",
-      "updated_at": "2026-09-09T01:42:50.381589964Z"
+      "updated_at": "2026-09-09T01:44:12.717061450Z",
+      "comments": {
+        "3820eef3-1330-437c-a669-5e2768d79a0e": {
+          "display_id": 1447,
+          "author": "krvx",
+          "content": "Preflight: clean tracked develop at 8fcb4190; Rust 1.97.1 workspace with strict lints, no new dependency planned; rule loaders remain zero bytes. Root cause is absent ProductModelChoice effort and hardcoded high in developer request. Prefer durable per-role choice + immutable next-turn adapter setting over process-global configuration (which races concurrent conversations). Add distinct effort-bearing wire tags, preserving legacy byte layouts and absent stored effort defaults. Verify UI, persistence/rollback, live role selection, provider encodings, fmt, strict affected Clippy, workspace check and generated assets.",
+          "created_at": "2026-09-09T01:44:12.713551620Z",
+          "kind": "decision",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAhg6ktZYPHKozc+2au+HKUhfz/QnRXM/3Y3p7rfPyRH7qu/xb5AoYVHBTfUfpg60EVuCmIl6RQ21GYKBj3CedAg=="
+        }
+      }
     },
     "be287235-44b0-49cd-b238-d64fe12e32f1": {
       "uuid": "be287235-44b0-49cd-b238-d64fe12e32f1",
@@ -14118,8 +14129,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-09T01:43:08.000237574Z",
+    "timestamp": "2026-09-09T01:44:12.717061450Z",
     "agent_id": "krvx",
-    "agent_seq": 77
+    "agent_seq": 78
   }
 }
