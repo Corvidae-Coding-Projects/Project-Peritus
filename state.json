@@ -69,10 +69,6 @@
     "35": {
       "agent_id": "6ME5",
       "claimed_at": "2026-08-30T04:05:45.643660911Z"
-    },
-    "62": {
-      "agent_id": "krvx",
-      "claimed_at": "2026-09-09T00:28:16.072877307Z"
     }
   },
   "issues": {
@@ -14061,8 +14057,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-09T00:44:08.110284821Z",
+    "timestamp": "2026-09-09T00:44:13.444004007Z",
     "agent_id": "krvx",
-    "agent_seq": 67
+    "agent_seq": 68
   }
 }
