@@ -1,6 +1,6 @@
 {
   "next_display_id": 67,
-  "next_comment_id": 1470,
+  "next_comment_id": 1471,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -12950,7 +12950,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-09T03:39:44.724470894Z",
-      "updated_at": "2026-09-09T06:28:26.221986028Z",
+      "updated_at": "2026-09-09T06:32:47.123808505Z",
       "comments": {
         "16d8cdd2-fe72-4b82-b4c3-e0a3a5591360": {
           "display_id": 1467,
@@ -12996,6 +12996,15 @@
           "kind": "note",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABADabT84+niOC5K2K03T07Z79bLNpbLes1tjWg7mgUe8bTiu8zUX8crBtqnprwDMT+OZR9B03Di52NJwWFCZKnCg=="
+        },
+        "af086f17-374b-46d5-bf17-364c318528f1": {
+          "display_id": 1470,
+          "author": "krvx",
+          "content": "Context increment: sealed request and manifest digests are independently bound in C0; exact public source and C5 message metadata are inspectable through feature-gated A3 and /context. Authenticated IPC, restart, actor/workspace fences, pagination, privacy and tamper tests pass. Linux native next/history and 40x12 scroll checked. Broad daemon testing exposed a duplicated-file-handle lock lifetime bug; regression reproduced it and explicit guard unlock repaired it. Brief/attachments/pins/compact and P2-P7 remain unfinished. No commit or push.",
+          "created_at": "2026-09-09T06:32:47.118712980Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8cspthu4zi3cNcd3Mled1SeF75Ct6htl/m1X3aEALnWcqksRUFRTzFiyPmfB6ZD7xC9JxwNsc0RnMSRHwEiHBA=="
         },
         "b06130ff-37f6-4a5e-9f41-81ddf993e2c2": {
           "display_id": 1464,
@@ -14369,8 +14378,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-09T06:28:26.221986028Z",
+    "timestamp": "2026-09-09T06:32:47.123808505Z",
     "agent_id": "krvx",
-    "agent_seq": 113
+    "agent_seq": 114
   }
 }
