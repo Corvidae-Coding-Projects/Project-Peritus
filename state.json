@@ -1,6 +1,6 @@
 {
   "next_display_id": 67,
-  "next_comment_id": 1468,
+  "next_comment_id": 1469,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -12950,7 +12950,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-09T03:39:44.724470894Z",
-      "updated_at": "2026-09-09T05:59:28.047822651Z",
+      "updated_at": "2026-09-09T06:00:22.376737261Z",
       "comments": {
         "16d8cdd2-fe72-4b82-b4c3-e0a3a5591360": {
           "display_id": 1467,
@@ -12978,6 +12978,15 @@
           "kind": "note",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAcbgqInKf/AG1D3OD5yVWRvDIHTSCg/FRDj1JxeUyG7tLCqKjlrp/qCu7sPNUuzE+40ptnRWYqCFSRADX0n82Dw=="
+        },
+        "8b934267-ff9a-41bb-8bea-0df37b581388": {
+          "display_id": 1468,
+          "author": "krvx",
+          "content": "P1 progress: queue is now independently negotiated and native-tested (add/hold/edit/history/withdraw, 80x24 and narrow scroll). C0 stores exact request bytes and selection provenance with incorporation; disk-full leaves queue pending/no artifacts. Public reply artifacts are immutable and included only in subsequent user turns, with restart coverage. Execution remains unadvertised; brief/media/context and P2-P7 still pending. No commit or push yet.",
+          "created_at": "2026-09-09T06:00:22.372509845Z",
+          "kind": "note",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABADabT84+niOC5K2K03T07Z79bLNpbLes1tjWg7mgUe8bTiu8zUX8crBtqnprwDMT+OZR9B03Di52NJwWFCZKnCg=="
         },
         "b06130ff-37f6-4a5e-9f41-81ddf993e2c2": {
           "display_id": 1464,
@@ -14351,8 +14360,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-09T05:59:28.047822651Z",
+    "timestamp": "2026-09-09T06:00:22.376737261Z",
     "agent_id": "krvx",
-    "agent_seq": 111
+    "agent_seq": 112
   }
 }
