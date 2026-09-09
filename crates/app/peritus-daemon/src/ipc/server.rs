@@ -86,20 +86,22 @@ pub async fn serve(
                             )
                             .await;
                             if let Err(error) = &result {
-                                let mut stderr = std::io::stderr().lock();
-                                let _ = stderr.write_all(b"application connection terminated: ");
-                                let _ = stderr.write_all(error.code().as_bytes());
-                                let _ = stderr.write_all(b" during ");
-                                let _ = stderr.write_all(error.operation().as_bytes());
-                                let _ = stderr.write_all(b": ");
-                                let _ = stderr.write_all(error.detail().as_bytes());
-                                let _ = stderr.write_all(b"\n");
+                                report_connection_event(
+                                    b"application connection terminated: ",
+                                    error,
+                                );
                             }
                             result
                         });
                     }
                     Err(error) if error.code_kind() == DaemonErrorCode::Unauthorized => {
                         drop(permit);
+                    }
+                    Err(error) if error.recovery() == DaemonRecovery::Retry => {
+                        // One connection that closed before authentication completed, or
+                        // failed to be accepted, must not stop the daemon for every other client.
+                        drop(permit);
+                        report_rejected_connection(&error);
                     }
                     Err(error) => return Err(error),
                 }
@@ -119,6 +121,21 @@ enum ServerAction {
     Stop(Result<(), watch::error::RecvError>),
     Joined(Option<Result<Result<(), DaemonError>, tokio::task::JoinError>>),
     Accepted(Result<AuthenticatedConnection, DaemonError>),
+}
+
+fn report_rejected_connection(error: &DaemonError) {
+    report_connection_event(b"local connection rejected: ", error);
+}
+
+fn report_connection_event(prefix: &[u8], error: &DaemonError) {
+    let mut stderr = std::io::stderr().lock();
+    let _ = stderr.write_all(prefix);
+    let _ = stderr.write_all(error.code().as_bytes());
+    let _ = stderr.write_all(b" during ");
+    let _ = stderr.write_all(error.operation().as_bytes());
+    let _ = stderr.write_all(b": ");
+    let _ = stderr.write_all(error.detail().as_bytes());
+    let _ = stderr.write_all(b"\n");
 }
 
 fn stopped() -> DaemonError {

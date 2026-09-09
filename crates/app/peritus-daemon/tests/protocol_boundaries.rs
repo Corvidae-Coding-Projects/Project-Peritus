@@ -120,6 +120,48 @@ async fn malformed_and_oversized_headers_close_without_waiting_for_declared_payl
         .expect("daemon shuts down cleanly");
 }
 
+#[test]
+fn clients_that_close_before_authentication_do_not_stop_the_daemon() {
+    run_async_test(clients_that_close_before_authentication_do_not_stop_the_daemon_async());
+}
+
+async fn clients_that_close_before_authentication_do_not_stop_the_daemon_async() {
+    let temporary = support::temporary_root();
+    let runtime = tokio::time::timeout(
+        LIFECYCLE_BOUND,
+        DaemonRuntime::start(support::configuration(temporary.path())),
+    )
+    .await
+    .expect("daemon startup completes within the bound")
+    .expect("daemon starts");
+    let socket = unix_address(&runtime);
+
+    // A readiness probe connects and closes at once, usually before the daemon has read the
+    // peer's credentials. Connect synchronously so the close cannot yield to the acceptor first.
+    for _ in 0..32 {
+        drop(std::os::unix::net::UnixStream::connect(&socket).expect("probe connects"));
+    }
+
+    let stream = connect(&socket).await;
+    let mut frames = AppFrameStream::new(stream, AppProtocolLimits::PRODUCTION);
+    tokio::time::timeout(IO_BOUND, frames.write(&AppMessage::ClientHello(compatible_hello(9))))
+        .await
+        .expect("hello write completes within the bound")
+        .expect("write compatible hello");
+    let AppMessage::ServerHello(server) = tokio::time::timeout(IO_BOUND, frames.read())
+        .await
+        .expect("server hello arrives within the bound")
+        .expect("daemon still serves after early-closing clients")
+    else {
+        panic!("daemon did not answer with ServerHello");
+    };
+    assert!(server.established_session().is_some(), "compatible hello establishes a session");
+    tokio::time::timeout(LIFECYCLE_BOUND, runtime.shutdown())
+        .await
+        .expect("daemon shutdown completes within the bound")
+        .expect("daemon shuts down cleanly");
+}
+
 fn run_async_test(test: impl Future<Output = ()>) {
     let runtime = Builder::new_current_thread()
         .enable_all()
