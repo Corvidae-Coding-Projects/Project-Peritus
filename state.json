@@ -1,5 +1,5 @@
 {
-  "next_display_id": 62,
+  "next_display_id": 63,
   "next_comment_id": 1440,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -26,6 +26,7 @@
     "47cec64d-270a-4ee4-8aea-3dd626c1447e": 40,
     "4def40a8-18c1-4e39-9b0b-9712055f3803": 58,
     "4f2ebc95-0b8b-4acb-b8c0-eba2775c3f7b": 10,
+    "4f7e1673-73ed-4ec2-9f53-aa0aef4a7a14": 62,
     "4fb07c6c-0d6b-4458-8aa8-0ae9d6bd810a": 38,
     "510ed474-3a7b-4e60-ba8d-0ea5c67e9eca": 59,
     "52028605-f0c2-43fe-b0ae-0e0db829553f": 47,
@@ -9024,6 +9025,17 @@
         }
       }
     },
+    "4f7e1673-73ed-4ec2-9f53-aa0aef4a7a14": {
+      "uuid": "4f7e1673-73ed-4ec2-9f53-aa0aef4a7a14",
+      "display_id": 62,
+      "title": "Disambiguate host invocation continuation to prevent repeated grounding",
+      "description": "Diagnose and repair Tetris repeated successful workspace listings in invocation 6. Preserve live run and existing CL-59 UI changes. Scope recovery instructions to invocation start and project authoritative continuation state into provider requests; retain grounding enforcement and add regression coverage.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "krvx",
+      "created_at": "2026-09-09T00:28:01.908689887Z",
+      "updated_at": "2026-09-09T00:28:01.908689887Z"
+    },
     "4fb07c6c-0d6b-4458-8aa8-0ae9d6bd810a": {
       "uuid": "4fb07c6c-0d6b-4458-8aa8-0ae9d6bd810a",
       "display_id": 38,
@@ -14025,8 +14037,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-08T23:53:17.849049944Z",
+    "timestamp": "2026-09-09T00:28:01.908689887Z",
     "agent_id": "krvx",
-    "agent_seq": 63
+    "agent_seq": 64
   }
 }
