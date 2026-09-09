@@ -1,6 +1,6 @@
 {
   "next_display_id": 63,
-  "next_comment_id": 1442,
+  "next_comment_id": 1443,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -9034,7 +9034,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-09T00:28:01.908689887Z",
-      "updated_at": "2026-09-09T00:44:08.110284821Z",
+      "updated_at": "2026-09-09T00:44:18.694996382Z",
       "comments": {
         "062b42b7-0132-4e72-b751-4ed7f2cd24e5": {
           "display_id": 1440,
@@ -9053,6 +9053,15 @@
           "kind": "result",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAoEJ9YsfbQmBq+4RJH4Dtr8joKoH2KuezQvWuYsbqlPbwuScJ/5NVh12ygFEW1hWYT3L9SGcdGM7EPPHWGNp8Ag=="
+        },
+        "e00748a9-5c69-457c-a82f-8381ec20cf96": {
+          "display_id": 1442,
+          "author": "krvx",
+          "content": "CL-62 invocation lifecycle/repeated-inspection fix implemented uncommitted on develop. 309 affected tests, strict lint, workspace check, daemon build, docs/fmt/diff pass; global policy gate remains red on pre-existing size/API/proof inventory. User stopped Tetris run; do not restart or install without request. Preserve prior CL-59 UI modifications and local provider files. New host state projection distinguishes provider steps from fresh invocations; bounded duplicate inspection guard warns at 3, stops at 6 after retained batch, no auto role recovery. Changes need user-directed commit/install handoff.",
+          "created_at": "2026-09-09T00:44:18.691487296Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAV3akiqEWtlH2Lx0mvVsYwWCcWq92ek3OselGHr8dWuLQMpshMQURuqlAZGxO1Wft/7c/+BFfCqmQAG2OGzDSBg=="
         }
       }
     },
@@ -14057,8 +14066,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-09T00:44:13.444004007Z",
+    "timestamp": "2026-09-09T00:44:18.694996382Z",
     "agent_id": "krvx",
-    "agent_seq": 68
+    "agent_seq": 69
   }
 }
