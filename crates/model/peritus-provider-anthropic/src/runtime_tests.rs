@@ -195,6 +195,29 @@ fn constrained_turn_disables_runtime_authority_and_normalizes_inert_output() {
 }
 
 #[test]
+fn runtime_healing_emits_private_audit_and_exact_arguments_without_extra_inference() {
+    let raw = String::from_utf8(fixture("runtime_tool.json")).unwrap();
+    let malformed =
+        raw.replace(r#""arguments":{"id":"42"}"#, r#""arguments":"```json\n{id:\"42\",}\n```""#);
+    assert_ne!(malformed, raw);
+    let fake = state(vec![
+        output("runtime_auth_true.json"),
+        Script::Output { success: true, stdout: malformed.into_bytes(), stderr: Vec::new() },
+    ]);
+    let provider = runtime_provider(Arc::clone(&fake));
+    let events =
+        events(&provider, runtime_request(provider.profile(), true), CancellationToken::new());
+    assert!(matches!(events.last().unwrap().event(), ModelEvent::ResponseCompleted));
+    assert!(events.iter().any(|event| matches!(event.event(), ModelEvent::ProviderEvent(value) if value.name().as_str() == "peritus.response_healing")));
+    assert!(events.iter().any(|event| matches!(event.event(), ModelEvent::ToolArgumentDelta { fragment, .. } if fragment.expose() == br#"{"id":"42"}"#)));
+    assert_eq!(
+        fake.captures.lock().unwrap().len(),
+        2,
+        "one auth check and one inference, no repair call"
+    );
+}
+
+#[test]
 fn auth_malformed_reported_and_cancelled_paths_are_explicit_terminals() {
     let cases = [
         (
@@ -248,6 +271,33 @@ fn direct_messages_profile_cannot_be_reused_for_the_runtime() {
     let executable = ClaudeExecutable::pin(std::env::current_exe().expect("test executable"))
         .expect("pinned executable");
     assert!(ClaudeRuntimeConfig::new(executable, profile(), ProcessLimits::PRODUCTION).is_err());
+}
+
+#[test]
+fn selected_effort_reaches_claude_process_exactly_and_unmapped_levels_fail_before_process() {
+    use peritus_model_protocol::ReasoningEffort as Effort;
+    for effort in [Effort::Low, Effort::Medium, Effort::High, Effort::XHigh, Effort::Max] {
+        let fake = state(vec![output("runtime_auth_true.json"), output("runtime_tool.json")]);
+        let provider = runtime_provider(Arc::clone(&fake));
+        let request =
+            crate::test_support::runtime_request_with_effort(provider.profile(), true, effort);
+        let _ = events(&provider, request, CancellationToken::new());
+        let captures = fake.captures.lock().expect("captures");
+        assert!(captures.iter().any(|capture| argument_pair(
+            &capture.arguments,
+            "--effort",
+            effort.as_str()
+        )));
+        drop(captures);
+    }
+    for effort in [Effort::Minimal, Effort::Ultra] {
+        let fake = state(Vec::new());
+        let provider = runtime_provider(Arc::clone(&fake));
+        let request =
+            crate::test_support::runtime_request_with_effort(provider.profile(), true, effort);
+        assert!(block_on(provider.start(request, CancellationToken::new())).is_err());
+        assert!(fake.captures.lock().expect("captures").is_empty());
+    }
 }
 
 enum Expected {

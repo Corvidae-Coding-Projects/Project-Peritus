@@ -10,6 +10,7 @@ use peritus_app_protocol::{
 };
 use peritus_types::{ProviderProfileId, SessionId, WorkspaceId};
 
+mod effort;
 mod model_selection;
 
 fn model() -> AppModel {
@@ -72,7 +73,7 @@ fn enter_selects_every_advertised_model_for_every_role() {
             // A delayed cache reply must not change which row Enter selects.
             model.accept_model_catalog(catalog.clone());
             assert!(key(&mut model, KeyCode::Enter).is_empty());
-            assert!(!model.chat.model_picker);
+            assert!(!model.chat.model_picker());
             let chosen = match role {
                 "reviewer" => model.chat.models.reviewer(),
                 "fixer" => model.chat.models.fixer(),
@@ -142,7 +143,7 @@ fn control_c_exits_idle_chat_with_or_without_a_draft() {
 fn control_c_exits_disconnected_chat_and_the_model_picker() {
     let mut model = model();
     let _ = model.update(Action::Disconnected("lost".to_owned()));
-    model.chat.model_picker = true;
+    model.chat.show_model_picker();
     let effects = model.update(Action::TerminalEvent(Event::Key(KeyEvent::new(
         KeyCode::Char('c'),
         KeyModifiers::CONTROL,

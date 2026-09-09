@@ -114,6 +114,7 @@ Type `/` to discover commands; Tab completes them.
 | `/plan` or `/review` | Discuss a plan or perform an independent review with read-only tools. |
 | `/build <request>` | Start checked writer, reviewer, and fixer delivery. |
 | `/model` | Discover provider models; arrows and Enter select, Tab switches roles. |
+| `/effort` | Select per-role reasoning effort; also press `e` in the model picker. |
 | `/new` | Start another conversation without deleting prior work. |
 | `/status`, `/diff`, `/details` | Inspect progress, changes, and public tool summaries. |
 | `/stop` | Stop the current work and preserve effects already completed. |

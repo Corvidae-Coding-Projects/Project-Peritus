@@ -190,6 +190,18 @@ impl GoogleClient {
 }
 
 impl ModelProvider for GoogleClient {
+    fn supports_reasoning_effort(&self, effort: peritus_model_protocol::ReasoningEffort) -> bool {
+        self.profile()
+            .capabilities()
+            .supports(peritus_model_protocol::Capability::ReasoningControls)
+            && !matches!(
+                effort,
+                peritus_model_protocol::ReasoningEffort::XHigh
+                    | peritus_model_protocol::ReasoningEffort::Max
+                    | peritus_model_protocol::ReasoningEffort::Ultra
+            )
+    }
+
     fn discover_models<'a>(
         &'a self,
         cancellation: &'a CancellationToken,

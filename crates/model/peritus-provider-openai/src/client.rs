@@ -112,6 +112,10 @@ impl OpenAiProvider {
 }
 
 impl ModelProvider for OpenAiProvider {
+    fn supports_reasoning_effort(&self, _effort: peritus_model_protocol::ReasoningEffort) -> bool {
+        self.profile().capabilities().supports(Capability::ReasoningControls)
+    }
+
     fn discover_models<'a>(
         &'a self,
         cancellation: &'a CancellationToken,

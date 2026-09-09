@@ -240,6 +240,9 @@ fn reasoning_policy(
                     ReasoningEffort::Low => 2,
                     ReasoningEffort::Medium => 3,
                     ReasoningEffort::High => 4,
+                    ReasoningEffort::XHigh => 5,
+                    ReasoningEffort::Max => 6,
+                    ReasoningEffort::Ultra => 7,
                 },
             )?;
             u8_value(writer, summary_policy(summary))

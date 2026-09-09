@@ -289,17 +289,29 @@ impl DeveloperInteraction for LiveConversation {
     fn observe(&self, activity: DeveloperActivity<'_>) -> Result<(), DeveloperLoopError> {
         self.update(|options| match activity {
             DeveloperActivity::Text(bytes) => options.text(bytes),
-            DeveloperActivity::ModelStarted { model } => {
+            DeveloperActivity::ModelStarted { model, reasoning } => {
                 options.streaming_text = false;
+                let effort = match reasoning {
+                    peritus_model_protocol::ReasoningPolicy::Disabled => "not requested",
+                    peritus_model_protocol::ReasoningPolicy::Adaptive { .. } => "adaptive",
+                    peritus_model_protocol::ReasoningPolicy::Effort { effort, .. } => {
+                        effort.as_str()
+                    }
+                };
                 options.append(
                     ProductActivityKind::Status,
-                    &format!("Requesting model {model}"),
+                    &format!("Requesting model {model} · effort {effort}"),
                     "",
                 )
             }
             DeveloperActivity::ModelWaiting { elapsed_seconds } => {
                 narration::waiting(options, elapsed_seconds)
             }
+            DeveloperActivity::ResponseHealed => options.append(
+                ProductActivityKind::Status,
+                "Repaired model JSON formatting",
+                "Original and repaired values are retained in the private trace. Tool validation and permissions still apply.",
+            ),
             DeveloperActivity::ToolStarted { name, arguments } => {
                 tool_activity::started(options, name, arguments)
             }

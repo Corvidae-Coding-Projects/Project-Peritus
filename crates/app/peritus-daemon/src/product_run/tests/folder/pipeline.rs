@@ -1,4 +1,5 @@
 use super::*;
+use peritus_app_protocol::{ProductModelChoice, ProductModelEffort};
 
 fn write(text: &str) -> std::collections::VecDeque<peritus_model_protocol::EventEnvelope> {
     named_tool_response(
@@ -284,7 +285,7 @@ fn a_question_about_interrupted_folder_work_preserves_its_continuation_without_r
 }
 
 #[test]
-fn folder_review_finding_runs_the_existing_fixer_and_fresh_review() {
+fn folder_effort_selection_follows_writer_reviewer_fixer_and_fresh_review() {
     block_on(async {
         let root = tempfile::tempdir().expect("folder");
         fs::write(root.path().join("note.txt"), "original").expect("source");
@@ -304,15 +305,16 @@ fn folder_review_finding_runs_the_existing_fixer_and_fresh_review() {
             ])
             .chain(pipeline_review("note.txt"))
             .collect();
-        let writer = scripted(0x69, "fixer-pipeline", responses);
+        let writer = support::scripted_reasoning(0x69, "fixer-pipeline", responses);
         let (service, request) = folder_service(root.path(), &writer, true);
         let id = request.run_id();
+        let models = ProductRoleModels::new(
+            ProductModelChoice::default().with_effort(ProductModelEffort::Low),
+            ProductModelChoice::default().with_effort(ProductModelEffort::XHigh),
+            ProductModelChoice::default().with_effort(ProductModelEffort::Max),
+        );
         service
-            .interact(ProductInteractionRequest::new(
-                request,
-                Mode::Chat,
-                ProductRoleModels::default(),
-            ))
+            .interact(ProductInteractionRequest::new(request, Mode::Chat, models))
             .await
             .expect("start");
         let completed = wait_for_terminal(&service, id).await;
@@ -331,6 +333,24 @@ fn folder_review_finding_runs_the_existing_fixer_and_fresh_review() {
                 .any(|activity| activity.text().contains("review found issues"))
         );
         assert!(writer.responses.lock().expect("scripts").is_empty());
+        let efforts = writer
+            .requests
+            .lock()
+            .expect("requests")
+            .iter()
+            .map(|request| {
+                let peritus_model_protocol::ReasoningPolicy::Effort { effort, .. } =
+                    request.options().reasoning()
+                else {
+                    panic!("every pipeline request must retain its role effort")
+                };
+                effort.as_str()
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            efforts,
+            [vec!["low"; 8], vec!["xhigh"; 3], vec!["max"; 4], vec!["xhigh"; 3]].concat()
+        );
         service.shutdown(Duration::from_secs(5)).await;
     });
 }

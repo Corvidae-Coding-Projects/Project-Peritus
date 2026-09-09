@@ -51,7 +51,8 @@ These host observations are `Status` activities, not fabricated assistant text o
 
 Normal conversation hides host `Status` and `Tool` activities. `/details` reveals them with distinct
 Status/Tool labels and expanded metadata; user messages, model replies, and errors remain visible.
-One `*working (40s)` footer indicator replaces repeated harness chatter. It advances from monotonic
+One `*working (40s)` indicator directly above the message-entry box replaces repeated harness chatter.
+It advances from monotonic
 runtime timestamps, not tick counts or provider heartbeat messages, and resets when work becomes
 idle, the selected conversation changes, or the connection is lost. Reopening active work starts a
 new client-observed busy period; the timer does not claim historical task duration or model progress.
@@ -60,6 +61,14 @@ public text streaming remains unchanged. In particular, the current Codex accoun
 validates and delivers one complete provider response at a time: it does not expose token deltas.
 The underlying [Codex JSONL interface](https://learn.chatgpt.com/docs/non-interactive-mode#make-output-machine-readable)
 separates agent messages from reasoning and tool events; Peritus retains its strict normalization.
+
+### Native response healing
+
+Native response healing is automatic for completed structured model output and tool arguments.
+`/details` shows **Repaired model JSON formatting** when a bounded syntax repair is recorded.
+Raw originals and repaired values stay in the private run trace. A repaired call still has to
+pass the normal tool schema and permission checks; missing arguments and truncation are not
+filled in. This introduces no additional model request or external response-healing service.
 
 ### Model selection
 
@@ -78,6 +87,33 @@ the client's role choices; reopening a saved conversation restores that conversa
 The additive `UpdateModels` request uses A3 payload tag 25. Older daemons reject the unknown tag;
 they cannot silently acknowledge a model change they do not implement. Deploy matching daemon
 and TUI builds to use this behavior.
+
+### Reasoning effort
+
+`/effort` opens a visible picker; `/effort [writer|reviewer|fixer] LEVEL` selects directly.
+Without a role, the command targets reviewer in Review mode and chat/writer otherwise.
+Press `e` inside `/model` to edit that picker's current role. The effort picker supports
+arrows, Home/End, Enter to save, Tab to change role, and Escape to discard its highlight.
+It works even if model discovery is unavailable.
+
+Levels are `default`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, and `ultra`.
+They are requested values, not a claim that every provider/model supports all levels.
+Unsupported adapter mappings reject before saving; model-specific provider rejections remain
+visible. No nearby level is substituted by Peritus. `default` preserves the prior policy:
+high when controls are negotiated, otherwise no reasoning control. Defaults do not read or
+modify an external runtime's global configuration.
+
+Effort is retained separately for each role, survives model changes, and shares model selection's
+durable acknowledgement, next-turn boundary, rollback, and saved-conversation restoration.
+The title shows the selected effort; `/details` names the exact outgoing effort per request.
+New-conversation selections are local until first submission validates them with the daemon.
+
+Effort-bearing requests use A3 tags 26 (Interact) and 27 (UpdateModels); snapshots use tag 17.
+Within those tags, every role's model choice adds a u16 effort after the manual flag (0 default,
+1 minimal, 2 low, 3 medium, 4 high, 5 xhigh, 6 max, 7 ultra). At least one role must be explicit.
+All-default selections retain the original tags and exact byte layout. Older daemons reject
+new tags rather than falsely acknowledging them. Durable records omit all-default effort arrays
+and load missing arrays as default; unknown values reject. Use matching client and daemon builds.
 
 ### State ownership
 

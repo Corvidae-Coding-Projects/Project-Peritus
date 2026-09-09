@@ -93,10 +93,31 @@ fn command_picker_keeps_first_and_last_selection_visible() {
     let mut model = model();
     model.chat.buffer = "/".to_owned();
     model.chat.cursor = 1;
-    for (selection, command) in [(0, "/chat"), (21, "/quit")] {
+    for (selection, command) in [(0, "/chat"), (crate::model::chat::COMMANDS.len() - 1, "/quit")] {
         model.chat.command_selection = selection;
         let (text, _) = screen(&model, 80, 24);
         assert!(text.contains(&format!("▸ {command}")), "selected command hidden: {text}");
+    }
+}
+
+#[test]
+fn effort_picker_and_entrypoint_are_visible_on_narrow_and_wide_terminals() {
+    let mut model = model();
+    for width in [40, 100] {
+        let (ordinary, _) = screen(&model, width, 24);
+        assert!(ordinary.contains("/effort"), "effort control must be discoverable");
+        model.chat.show_effort_picker();
+        for selection in [0, peritus_app_protocol::ProductModelEffort::ALL.len() - 1] {
+            model.chat.effort_selection = selection;
+            let (picker, _) = screen(&model, width, 24);
+            assert!(picker.contains("Reasoning effort for chat/writer"));
+            assert!(picker.contains(&format!(
+                "▸ {}",
+                peritus_app_protocol::ProductModelEffort::ALL[selection].label()
+            )));
+            assert!(picker.contains("Enter saves"));
+        }
+        model.chat.close_effort_picker();
     }
 }
 
@@ -231,14 +252,16 @@ fn one_working_idler_updates_elapsed_seconds_without_adding_transcript_rows() {
 }
 
 #[test]
-fn working_indicator_is_bold_white_above_the_scrollable_conversation() {
+fn working_indicator_is_bold_white_directly_above_the_composer() {
     use crate::action::Action;
     use std::time::{Duration, Instant};
     let mut model = model();
     let started = Instant::now();
     let _ = model.update(Action::Tick(started));
     let _ = model.update(Action::Tick(started + Duration::from_secs(40)));
-    for (width, height) in [(40, 12), (100, 32)] {
+    for (width, height, draft) in [(40, 12, ""), (100, 32, ""), (40, 24, "one\ntwo\nthree")] {
+        model.chat.buffer = draft.to_owned();
+        model.chat.cursor = draft.len();
         for expanded in [false, true] {
             model.chat.expanded = expanded;
             for scroll in [0, usize::MAX] {
@@ -246,8 +269,17 @@ fn working_indicator_is_bold_white_above_the_scrollable_conversation() {
                 let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
                 let frame = terminal.draw(|frame| draw(frame, &model)).unwrap();
                 let label = "*working (40s)";
+                let composer_row = (0..height)
+                    .find(|row| {
+                        (0..width)
+                            .map(|column| frame.buffer[(column, *row)].symbol())
+                            .collect::<String>()
+                            .contains("Message / steer active work")
+                    })
+                    .expect("composer must remain visible");
+                let indicator_row = composer_row.checked_sub(1).expect("row above composer");
                 for (column, character) in label.chars().enumerate() {
-                    let cell = &frame.buffer[(u16::try_from(column).unwrap(), 2)];
+                    let cell = &frame.buffer[(u16::try_from(column).unwrap(), indicator_row)];
                     assert_eq!(cell.symbol(), character.to_string());
                     assert_eq!(cell.fg, Color::White);
                     assert!(cell.modifier.contains(Modifier::BOLD));
@@ -260,7 +292,7 @@ fn working_indicator_is_bold_white_above_the_scrollable_conversation() {
                     .collect::<String>();
                 assert_eq!(text.matches("*working").count(), 1, "no footer duplicate");
                 let activity = if scroll == 0 { "Activity 30" } else { "Activity 01" };
-                assert!(text.find(activity).unwrap() > text.find(label).unwrap());
+                assert!(text.find(activity).unwrap() < text.find(label).unwrap());
                 assert!(text.contains("Message / steer active work"));
             }
         }

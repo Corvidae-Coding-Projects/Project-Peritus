@@ -57,6 +57,8 @@ export type AppPayloadKind =
   | "query-interaction"
   | "query-models"
   | "update-models"
+  | "interact-with-effort"
+  | "update-models-with-effort"
   | "command-result"
   | "subscription-started"
   | "artifact-opened"
@@ -73,6 +75,7 @@ export type AppPayloadKind =
   | "product-run-settlements"
   | "interaction"
   | "models"
+  | "interaction-with-effort"
   | "domain-event"
   | "subscription-gap"
   | "backpressure"
@@ -584,6 +587,7 @@ export interface ProductRunRequest {
 export interface ProductModelChoice {
   readonly id: string;
   readonly manual: boolean;
+  readonly effort?: "default" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max" | "ultra";
 }
 
 export interface ProductRoleModels {

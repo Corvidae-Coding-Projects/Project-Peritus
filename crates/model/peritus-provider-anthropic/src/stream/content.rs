@@ -1,7 +1,7 @@
 //! Ordered Anthropic content-block and delta normalization.
 
 use peritus_model_protocol::{
-    CanonicalJson, ItemKind, ModelEvent, ProtocolLimits, StreamFragment, ToolCallId, ToolName,
+    ItemKind, ModelEvent, ProtocolLimits, StreamFragment, ToolCallId, ToolName,
 };
 use peritus_provider_core::ProviderCoreError;
 use serde_json::Value;
@@ -66,7 +66,11 @@ pub(super) fn start(
                 digest,
                 event_id,
             )?;
-            ActiveBlock::Tool { item_id: item, call_id, arguments: Vec::new() }
+            ActiveBlock::Tool {
+                item_id: item,
+                call_id,
+                arguments: peritus_provider_core::healing::ToolArgumentBuffer::default(),
+            }
         }
         "thinking" => {
             state.emit(
@@ -123,27 +127,13 @@ pub(super) fn delta(
         (ActiveBlock::Text { .. }, "citations_delta") => {
             provider_event("anthropic.citation", value)?
         }
-        (ActiveBlock::Tool { call_id, arguments, .. }, "input_json_delta") => {
+        (ActiveBlock::Tool { arguments, .. }, "input_json_delta") => {
             let partial = required_str(value, "/delta/partial_json")?.as_bytes();
             if partial.is_empty() {
                 return Err(invalid("Anthropic tool argument fragment is empty"));
             }
-            let total = arguments
-                .len()
-                .checked_add(partial.len())
-                .ok_or_else(|| invalid("Anthropic tool argument length overflowed"))?;
-            if total > ProtocolLimits::PRODUCTION.max_tool_argument_bytes() {
-                return Err(ProviderCoreError::limit_exceeded(
-                    "anthropic_stream",
-                    "Anthropic tool arguments exceed their byte bound",
-                ));
-            }
-            arguments.extend_from_slice(partial);
-            ModelEvent::ToolArgumentDelta {
-                call_id: call_id.clone(),
-                fragment: StreamFragment::new(partial.to_vec(), ProtocolLimits::PRODUCTION)
-                    .map_err(|_| invalid("Anthropic tool argument fragment is invalid"))?,
-            }
+            arguments.append(partial, ProtocolLimits::PRODUCTION)?;
+            ModelEvent::Heartbeat
         }
         (ActiveBlock::Thinking { item_id, .. }, "thinking_delta") => {
             reasoning_delta(item_id.clone(), required_str(value, "/delta/thinking")?)?
@@ -185,30 +175,12 @@ pub(super) fn stop(
         ActiveBlock::Thinking { .. } => {
             return Err(invalid("Anthropic thinking block closed without a replay signature"));
         }
-        ActiveBlock::Tool { item_id, call_id, arguments } => {
-            let arguments = if arguments.is_empty() { b"{}".to_vec() } else { arguments };
-            let text = core::str::from_utf8(&arguments)
-                .map_err(|_| invalid("Anthropic tool arguments are not valid UTF-8"))?;
-            let parsed = CanonicalJson::parse(
-                text,
-                peritus_model_protocol::JsonBounds::value(ProtocolLimits::PRODUCTION),
-            )
-            .map_err(|_| invalid("Anthropic tool arguments are not complete bounded JSON"))?;
-            if !parsed.is_object() {
-                return Err(invalid("Anthropic tool arguments are not a JSON object"));
+        ActiveBlock::Tool { item_id, call_id, mut arguments } => {
+            if arguments.as_bytes().is_empty() {
+                arguments.append(b"{}", ProtocolLimits::PRODUCTION)?;
             }
-            if text == "{}" {
-                state.emit(
-                    ModelEvent::ToolArgumentDelta {
-                        call_id,
-                        fragment: StreamFragment::new(b"{}".to_vec(), ProtocolLimits::PRODUCTION)
-                            .map_err(|_| {
-                            invalid("empty Anthropic tool arguments are invalid")
-                        })?,
-                    },
-                    digest,
-                    event_id,
-                )?;
+            for event in arguments.complete(&call_id, ProtocolLimits::PRODUCTION)? {
+                state.emit(event, digest, event_id)?;
             }
             item_id
         }

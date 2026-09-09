@@ -215,6 +215,12 @@ impl CodexRuntimeProvider {
 }
 
 impl ModelProvider for CodexRuntimeProvider {
+    fn supports_reasoning_effort(&self, _effort: peritus_model_protocol::ReasoningEffort) -> bool {
+        self.profile()
+            .capabilities()
+            .supports(peritus_model_protocol::Capability::ReasoningControls)
+    }
+
     fn discover_models<'a>(
         &'a self,
         cancellation: &'a CancellationToken,

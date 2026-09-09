@@ -7,6 +7,8 @@ use peritus_app_protocol::{
     ProductRoleModels,
 };
 
+mod effort;
+
 #[derive(Clone, Copy, Debug)]
 pub enum ModelRole {
     Writer,
@@ -21,11 +23,19 @@ impl ModelRole {
             Self::Fixer => "fixer",
         }
     }
-    const fn next(self) -> Self {
+    pub(super) const fn next(self) -> Self {
         match self {
             Self::Writer => Self::Reviewer,
             Self::Reviewer => Self::Fixer,
             Self::Fixer => Self::Writer,
+        }
+    }
+
+    pub(crate) const fn choice(self, models: &ProductRoleModels) -> &ProductModelChoice {
+        match self {
+            Self::Writer => models.writer(),
+            Self::Reviewer => models.reviewer(),
+            Self::Fixer => models.fixer(),
         }
     }
 }
@@ -64,7 +74,7 @@ impl AppModel {
             }
             None | Some("refresh") if words.next().is_none() => {
                 self.clear_chat_command();
-                self.chat.model_picker = true;
+                self.chat.show_model_picker();
                 self.query_chat_models(command == Some("refresh"))
             }
             Some(id) if words.next().is_none() => self.choose_model(id, false),
@@ -124,12 +134,16 @@ impl AppModel {
 
     pub(super) fn model_picker_key(&mut self, key: KeyEvent) -> Vec<Effect> {
         match key.code {
-            KeyCode::Esc => self.chat.model_picker = false,
+            KeyCode::Esc => self.chat.close_model_picker(),
             KeyCode::Tab => {
                 self.chat.model_role = self.chat.model_role.next();
                 return self.query_chat_models(false);
             }
             KeyCode::Char('r') => return self.query_chat_models(true),
+            KeyCode::Char('e') => {
+                self.open_effort_picker();
+                return Vec::new();
+            }
             KeyCode::Up => self.chat.model_selection = self.chat.model_selection.saturating_sub(1),
             KeyCode::Home => self.chat.model_selection = 0,
             KeyCode::End => {
@@ -192,6 +206,28 @@ impl AppModel {
                 return Vec::new();
             }
         };
+        let effort = self.chat.model_role.choice(&self.chat.models).effort();
+        self.save_model_choice(choice.with_effort(effort))
+    }
+
+    fn save_model_choice(&mut self, choice: ProductModelChoice) -> Vec<Effect> {
+        if self.chat_submission_pending() {
+            self.notice(
+                NoticeLevel::Warning,
+                "Wait for the pending conversation update before changing model or effort.",
+            );
+            return Vec::new();
+        }
+        let description = format!(
+            "{} · effort {} ({})",
+            if choice.id().is_empty() { "configured model" } else { choice.id() },
+            choice.effort().label(),
+            if choice.manual() {
+                "manual ID; availability unverified"
+            } else {
+                "model-specific effort support unverified"
+            },
+        );
         let models = &self.chat.models;
         let models = match self.chat.model_role {
             ModelRole::Writer => {
@@ -205,7 +241,8 @@ impl AppModel {
             }
         };
         self.clear_chat_command();
-        self.chat.model_picker = false;
+        self.chat.close_model_picker();
+        self.chat.close_effort_picker();
         if let Some(run_id) = self.chat.run_id {
             let effect = self.request(
                 AppRequestPayload::UpdateModels(peritus_app_protocol::ProductModelUpdate::new(
@@ -216,12 +253,12 @@ impl AppModel {
             if effect.is_some() {
                 self.notice(
                     NoticeLevel::Info,
-                    "Saving model selection; waiting for daemon confirmation.",
+                    "Saving model and effort selection; waiting for daemon confirmation.",
                 );
             } else {
                 self.notice(
                     NoticeLevel::Error,
-                    "Model selection was not sent. Reconnect and select it again.",
+                    "Model/effort selection was not sent. Reconnect and select it again.",
                 );
             }
             return effect.into_iter().collect();
@@ -230,13 +267,8 @@ impl AppModel {
         self.notice(
             NoticeLevel::Info,
             format!(
-                "{} model for new conversation: {id} ({})",
+                "{} selection for new conversation: {description}",
                 self.chat.model_role.label(),
-                if manual {
-                    "explicit manual ID; availability unverified"
-                } else {
-                    "provider-advertised; capabilities not probed"
-                }
             ),
         );
         Vec::new()

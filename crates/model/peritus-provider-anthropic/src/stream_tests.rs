@@ -38,6 +38,28 @@ fn events(fixture: &[u8], fragment_bytes: bool) -> Vec<peritus_model_protocol::E
 }
 
 #[test]
+fn completed_model_arguments_are_healed_but_truncation_is_not() {
+    let raw = String::from_utf8(crate::test_support::fixture("tool_thinking.sse")).unwrap();
+    for (suffix, repaired) in [(r#"\"Paris\",}"#, true), (r#"\"Paris\""#, false)] {
+        let malformed = raw.replace(r#"{\"city\":"#, "{city:").replace(r#"\"Paris\"}"#, suffix);
+        let events = events(malformed.as_bytes(), true);
+        let audit = events.iter().any(|event| matches!(event.event(), ModelEvent::ProviderEvent(value) if value.name().as_str() == "peritus.response_healing"));
+        assert_eq!(audit, repaired);
+        if repaired {
+            assert!(events.iter().any(|event| matches!(event.event(), ModelEvent::ToolArgumentDelta { fragment, .. } if fragment.expose() == br#"{"city":"Paris"}"#)));
+            assert!(matches!(events.last().unwrap().event(), ModelEvent::ResponseCompleted));
+        } else {
+            assert!(matches!(events.last().unwrap().event(), ModelEvent::ResponseFailed(_)));
+            assert!(
+                !events
+                    .iter()
+                    .any(|event| matches!(event.event(), ModelEvent::ToolArgumentDelta { .. }))
+            );
+        }
+    }
+}
+
+#[test]
 fn byte_fragmented_utf8_text_citations_usage_and_metadata_stay_ordered() {
     let events = events(&crate::test_support::fixture("text.sse"), true);
     assert!(events.windows(2).all(|pair| pair[0].sequence() + 1 == pair[1].sequence()));

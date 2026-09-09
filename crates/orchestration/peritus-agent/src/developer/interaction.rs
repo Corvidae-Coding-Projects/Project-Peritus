@@ -26,9 +26,16 @@ pub struct DeveloperInput {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DeveloperActivity<'a> {
     /// A model request is about to start.
-    ModelStarted { model: &'a str },
+    ModelStarted {
+        /// Exact requested model identifier.
+        model: &'a str,
+        /// Reasoning control in the outgoing request, not an inferred provider outcome.
+        reasoning: peritus_model_protocol::ReasoningPolicy,
+    },
     /// No public text has arrived while a provider request remains pending.
     ModelWaiting { elapsed_seconds: u64 },
+    /// A bounded syntax repair was durably recorded; no response contents are exposed here.
+    ResponseHealed,
     /// Public assistant text received from a provider, never a reasoning delta.
     Text(&'a [u8]),
     /// One exact tool call is about to execute.

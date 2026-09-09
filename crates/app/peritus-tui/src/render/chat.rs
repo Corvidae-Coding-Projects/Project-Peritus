@@ -1,6 +1,7 @@
 //! Conversation-first terminal layout with a persistent multiline composer and scrollable text.
 
 mod composer;
+mod effort;
 #[cfg(test)]
 mod tests;
 use super::{ACCENT, BAD, GOOD, MUTED, WARN};
@@ -25,8 +26,8 @@ pub(super) fn draw(frame: &mut Frame<'_>, model: &AppModel) {
     let working_seconds = model.chat.working.elapsed_seconds();
     let regions = Layout::vertical([
         Constraint::Length(2),
-        Constraint::Length(u16::from(working_seconds.is_some())),
         Constraint::Min(3),
+        Constraint::Length(u16::from(working_seconds.is_some())),
         Constraint::Length(composer_height),
         Constraint::Length(2),
     ])
@@ -36,7 +37,7 @@ pub(super) fn draw(frame: &mut Frame<'_>, model: &AppModel) {
         Paragraph::new(vec![
             Line::styled(title, Style::default().fg(ACCENT).add_modifier(Modifier::BOLD)),
             Line::styled(
-                "Type / for commands · PageUp/PageDown scroll · /details shows diagnostics",
+                "Type / for commands · /model · /effort · PageUp/PageDown scroll · /details",
                 Style::default().fg(MUTED),
             ),
         ]),
@@ -46,13 +47,15 @@ pub(super) fn draw(frame: &mut Frame<'_>, model: &AppModel) {
         frame.render_widget(
             Paragraph::new(format!("*working ({seconds}s)"))
                 .style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
-            regions[1],
+            regions[2],
         );
     }
-    if model.chat.model_picker {
-        draw_models(frame, regions[2], model);
+    if model.chat.effort_picker() {
+        effort::draw(frame, regions[1], model);
+    } else if model.chat.model_picker() {
+        draw_models(frame, regions[1], model);
     } else {
-        draw_transcript(frame, regions[2], model);
+        draw_transcript(frame, regions[1], model);
     }
     draw_composer(frame, regions[3], model, draft);
     draw_status(frame, regions[4], model);
@@ -89,8 +92,9 @@ fn title(model: &AppModel) -> String {
         None => "",
     };
     crate::sanitize::sanitize_display_text(&format!(
-        "Peritus · {} · {provider} · {model_label}{workspace_mode}{connection}",
-        model.chat.mode.label()
+        "Peritus · {} · {provider} · {model_label} · effort {}{workspace_mode}{connection}",
+        model.chat.mode.label(),
+        selected.effort().label()
     ))
 }
 
@@ -117,7 +121,7 @@ fn draw_composer(
         ),
     );
     frame.render_widget(composer, area);
-    if !model.chat.model_picker {
+    if !model.chat.model_picker() && !model.chat.effort_picker() {
         frame.set_cursor_position((
             area.x
                 + 1
@@ -313,7 +317,7 @@ fn draw_models(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         Layout::vertical([Constraint::Length(4), Constraint::Min(1), Constraint::Length(3)])
             .split(area);
     let Some(catalog) = &model.chat.catalog else {
-        frame.render_widget(Paragraph::new("Querying configured provider model catalog…\nEscape closes; no inference request is sent."), area);
+        frame.render_widget(Paragraph::new("Querying configured provider model catalog…\ne selects effort · Escape closes; no inference request is sent."), area);
         return;
     };
     let provenance = if catalog.cached() {
@@ -325,8 +329,9 @@ fn draw_models(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
     };
     frame.render_widget(
         Paragraph::new(format!(
-            "Model for {} · {provenance}\nConfigured: {} · fetched at Unix {}\n{}",
+            "Model for {} · effort {} · {provenance}\nConfigured: {} · fetched at Unix {}\n{}",
             model.chat.model_role.label(),
+            model.chat.model_role.choice(&model.chat.models).effort().label(),
             catalog.configured(),
             catalog.fetched_unix_seconds(),
             catalog.error()
@@ -359,5 +364,5 @@ fn draw_models(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
         regions[1],
         &mut state,
     );
-    frame.render_widget(Paragraph::new("Enter selects · Tab changes role · r refreshes · Escape closes\nListing is not capability verification. Manual fallback: /model [role] manual ID").wrap(Wrap { trim: false }), regions[2]);
+    frame.render_widget(Paragraph::new("Enter selects · e selects effort · Tab changes role · r refreshes · Esc closes\nListing is not capability verification. Manual fallback: /model [role] manual ID").wrap(Wrap { trim: false }), regions[2]);
 }

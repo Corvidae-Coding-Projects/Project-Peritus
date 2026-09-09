@@ -37,7 +37,7 @@ fn preliminary_prose_is_accepted_only_with_an_exact_unambiguous_final_binding() 
 }
 
 #[test]
-fn required_tool_and_exact_argument_object_are_enforced_without_repairs() {
+fn required_tool_and_exact_argument_object_reject_unsafe_repairs() {
     let allowed = BTreeSet::from(["lookup".to_owned()]);
     let absent = transcript(&[r#"{"content":"I will do it later","tool_calls":[]}"#]);
     assert!(matches!(
@@ -68,6 +68,37 @@ fn required_tool_and_exact_argument_object_are_enforced_without_repairs() {
         decode(&transcript(&[&message]), &allowed, 0..=0, None),
         Err(DecodeFailure::InvalidToolChoice)
     ));
+}
+
+#[test]
+fn native_healing_repairs_envelope_and_arguments_without_relaxing_tool_admission() {
+    let allowed = BTreeSet::from(["lookup".to_owned()]);
+    let arguments = "```json\n{id: \"42\",}\n```";
+    let message = serde_json::Value::from_iter([
+        ("content", serde_json::Value::from("")),
+        (
+            "tool_calls",
+            serde_json::Value::from(vec![serde_json::Value::from_iter([
+                ("name", serde_json::Value::from("lookup")),
+                ("arguments_json", serde_json::Value::from(arguments)),
+            ])]),
+        ),
+    ])
+    .to_string();
+    let wrapped = format!("```json\n{message}\n```");
+    let turn = decode(&transcript(&[&wrapped]), &allowed, 1..=1, Some(&wrapped)).unwrap();
+    assert_eq!(turn.tool_calls[0].arguments.canonical_bytes(), br#"{"id":"42"}"#);
+    assert_eq!(turn.repairs.len(), 2);
+    assert!(!format!("{:?}", turn.repairs).contains(arguments));
+    assert!(decode(&transcript(&[&wrapped]), &BTreeSet::new(), 0..=0, Some(&wrapped)).is_err());
+    let unknown = wrapped.replace("lookup", "undeclared");
+    assert!(decode(&transcript(&[&unknown]), &allowed, 1..=1, Some(&unknown)).is_err());
+    let incomplete = transcript(&[&wrapped]);
+    let cutoff = incomplete
+        .windows(b"{\"type\":\"turn.completed\"".len())
+        .position(|value| value == b"{\"type\":\"turn.completed\"")
+        .unwrap();
+    assert!(decode(&incomplete[..cutoff], &allowed, 1..=1, Some(&wrapped)).is_err());
 }
 
 #[test]

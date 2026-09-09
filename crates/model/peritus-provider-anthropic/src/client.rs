@@ -196,6 +196,17 @@ impl AnthropicClient {
 }
 
 impl ModelProvider for AnthropicClient {
+    fn supports_reasoning_effort(&self, effort: peritus_model_protocol::ReasoningEffort) -> bool {
+        self.profile()
+            .capabilities()
+            .supports(peritus_model_protocol::Capability::ReasoningControls)
+            && !matches!(
+                effort,
+                peritus_model_protocol::ReasoningEffort::Minimal
+                    | peritus_model_protocol::ReasoningEffort::Ultra
+            )
+    }
+
     fn discover_models<'a>(
         &'a self,
         cancellation: &'a CancellationToken,

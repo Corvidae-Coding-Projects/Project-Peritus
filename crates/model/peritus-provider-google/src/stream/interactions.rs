@@ -1,13 +1,13 @@
 //! Stable-v1 Interactions event grammar and step normalization.
 
 use peritus_model_protocol::{
-    CanonicalJson, FailureCategory, FinishReason, ItemId, ItemKind, JsonBounds, ModelEvent,
-    ModelName, ProtocolLimits, ResponseId, ToolCallId, UsageScope,
+    FailureCategory, FinishReason, ItemId, ItemKind, ModelEvent, ModelName, ProtocolLimits,
+    ResponseId, ToolCallId, UsageScope,
 };
 use peritus_provider_core::{ProviderCoreError, SseFrame};
 use serde_json::{Map, Value};
 
-use super::interaction_fields::{append_arguments, correctness_critical, summary_text};
+use super::interaction_fields::{correctness_critical, summary_text};
 use super::state::NormalizeState;
 use super::value::{
     cache, call_id, fragment, invalid, item_id, provider_event, required_str, required_u32,
@@ -15,9 +15,20 @@ use super::value::{
 };
 
 enum ActiveStep {
-    Message { item: ItemId, has_content: bool },
-    Tool { item: ItemId, call: ToolCallId, arguments: Vec<u8> },
-    Thought { item: ItemId, has_signature: bool },
+    Message {
+        item: ItemId,
+        has_content: bool,
+        json: peritus_provider_core::healing::ToolArgumentBuffer,
+    },
+    Tool {
+        item: ItemId,
+        call: ToolCallId,
+        arguments: peritus_provider_core::healing::ToolArgumentBuffer,
+    },
+    Thought {
+        item: ItemId,
+        has_signature: bool,
+    },
 }
 
 pub(super) struct InteractionState {
@@ -122,7 +133,11 @@ impl InteractionState {
                     digest,
                     event_id,
                 )?;
-                self.active = Some(ActiveStep::Message { item, has_content: false });
+                self.active = Some(ActiveStep::Message {
+                    item,
+                    has_content: false,
+                    json: peritus_provider_core::healing::ToolArgumentBuffer::new(),
+                });
             }
             "function_call" => {
                 let id = required_str(value, "/step/id")?;
@@ -146,7 +161,11 @@ impl InteractionState {
                     digest,
                     event_id,
                 )?;
-                self.active = Some(ActiveStep::Tool { item, call, arguments: Vec::new() });
+                self.active = Some(ActiveStep::Tool {
+                    item,
+                    call,
+                    arguments: peritus_provider_core::healing::ToolArgumentBuffer::default(),
+                });
             }
             "thought" => {
                 owner.emit(
@@ -178,9 +197,13 @@ impl InteractionState {
         }
         let kind = required_str(value, "/delta/type")?;
         match (&mut self.active, kind) {
-            (Some(ActiveStep::Message { item, has_content }), "text") => {
+            (Some(ActiveStep::Message { item, has_content, json }), "text") => {
                 let text = required_str(value, "/delta/text")?;
                 *has_content = true;
+                if self.structured {
+                    json.append(text.as_bytes(), ProtocolLimits::PRODUCTION)?;
+                    return owner.emit(ModelEvent::Heartbeat, digest, event_id);
+                }
                 owner.emit(
                     ModelEvent::TextDelta {
                         item_id: item.clone(),
@@ -190,17 +213,10 @@ impl InteractionState {
                     event_id,
                 )
             }
-            (Some(ActiveStep::Tool { call, arguments, .. }), "arguments_delta") => {
+            (Some(ActiveStep::Tool { arguments, .. }), "arguments_delta") => {
                 let bytes = required_str(value, "/delta/arguments")?.as_bytes().to_vec();
-                append_arguments(arguments, &bytes)?;
-                owner.emit(
-                    ModelEvent::ToolArgumentDelta {
-                        call_id: call.clone(),
-                        fragment: fragment(bytes)?,
-                    },
-                    digest,
-                    event_id,
-                )
+                arguments.append(&bytes, ProtocolLimits::PRODUCTION)?;
+                owner.emit(ModelEvent::Heartbeat, digest, event_id)
             }
             (Some(ActiveStep::Thought { item, .. }), "thought_summary") => {
                 let text = summary_text(value)?;
@@ -250,22 +266,24 @@ impl InteractionState {
         }
         let active = self.active.take().ok_or_else(|| invalid("Google stopped no active step"))?;
         let item = match active {
-            ActiveStep::Message { item, has_content } => {
+            ActiveStep::Message { item, has_content, json } => {
                 if !has_content {
                     return Err(invalid("Google model-output step ended empty"));
                 }
+                if self.structured {
+                    for event in peritus_provider_core::healing::structured_output(
+                        json.as_bytes(),
+                        &item,
+                        ProtocolLimits::PRODUCTION,
+                    )? {
+                        owner.emit(event, digest, event_id)?;
+                    }
+                }
                 item
             }
-            ActiveStep::Tool { item, arguments, .. } => {
-                let text = core::str::from_utf8(&arguments)
-                    .map_err(|_| invalid("Google function arguments are not UTF-8"))?;
-                let arguments =
-                    CanonicalJson::parse(text, JsonBounds::value(ProtocolLimits::PRODUCTION))
-                        .map_err(|_| {
-                            invalid("Google function arguments are incomplete or malformed")
-                        })?;
-                if !arguments.is_object() {
-                    return Err(invalid("Google function arguments are not an object"));
+            ActiveStep::Tool { item, call, arguments } => {
+                for event in arguments.complete(&call, ProtocolLimits::PRODUCTION)? {
+                    owner.emit(event, digest, event_id)?;
                 }
                 item
             }

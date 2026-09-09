@@ -28,6 +28,7 @@ pub(super) fn build_model_request(
     attempt: u8,
     kind: ModelTurnKind,
     required_tool: Option<&str>,
+    selected_effort: Option<ReasoningEffort>,
 ) -> Result<ModelRequest, DeveloperLoopError> {
     let parallel_tools = if kind == ModelTurnKind::Developer
         && required_tool.is_none()
@@ -38,8 +39,16 @@ pub(super) fn build_model_request(
         ParallelToolPolicy::Disabled
     };
     let reasoning = if negotiated.includes(Capability::ReasoningControls) {
-        ReasoningPolicy::Effort { effort: ReasoningEffort::High, summary: SummaryPolicy::None }
+        ReasoningPolicy::Effort {
+            effort: selected_effort.unwrap_or(ReasoningEffort::High),
+            summary: SummaryPolicy::None,
+        }
     } else {
+        if selected_effort.is_some() {
+            return Err(DeveloperLoopError::Context(
+                "selected reasoning effort is not supported by negotiated capabilities".to_owned(),
+            ));
+        }
         ReasoningPolicy::Disabled
     };
     let developer_tool_choice = match required_tool {

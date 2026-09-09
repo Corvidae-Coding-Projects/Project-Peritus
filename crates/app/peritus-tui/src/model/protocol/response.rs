@@ -10,8 +10,15 @@ impl AppModel {
         error: &peritus_app_protocol::AppProtocolError,
         pending: Option<&PendingRequest>,
     ) -> Vec<Effect> {
+        if matches!(pending, Some(PendingRequest::ModelUpdate { .. }))
+            && error.code() == peritus_app_protocol::AppErrorCode::MissingRequiredFeature
+        {
+            self.notice(NoticeLevel::Error,
+                "Selected reasoning effort is unsupported by this provider. Prior model/effort retained; choose another level or default.");
+            return Vec::new();
+        }
         if matches!(pending, Some(PendingRequest::ModelQuery)) {
-            self.chat.model_picker = false;
+            self.chat.close_model_picker();
         }
         if let Some(PendingRequest::ChatOpen { run_id }) = pending {
             if self.chat.run_id != Some(*run_id) {
@@ -62,7 +69,7 @@ impl AppModel {
                 self.accept_chat(snapshot.clone());
                 if matches!(pending, Some(PendingRequest::ModelUpdate { run_id }) if run_id == snapshot.snapshot().run_id())
                 {
-                    self.notice(NoticeLevel::Info, "Model selection saved for subsequent model turns; any in-flight turn is unchanged.");
+                    self.notice(NoticeLevel::Info, "Model and effort selection saved for subsequent model turns; any in-flight turn is unchanged.");
                 }
             }
             AppResponsePayload::Models(catalog) => self.accept_model_catalog(catalog.clone()),

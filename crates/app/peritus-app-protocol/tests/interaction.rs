@@ -56,6 +56,89 @@ fn roundtrip(message: &AppMessage) {
 }
 
 #[test]
+fn effort_bearing_requests_and_snapshots_roundtrip_every_level_without_changing_legacy_tags() {
+    use peritus_app_protocol::{ProductModelEffort, ProductModelUpdate};
+    for effort in ProductModelEffort::ALL {
+        let choices = ProductRoleModels::new(
+            ProductModelChoice::default().with_effort(effort),
+            ProductModelChoice::new("review-model".to_owned(), true)
+                .expect("reviewer")
+                .with_effort(ProductModelEffort::Low),
+            ProductModelChoice::default().with_effort(ProductModelEffort::Max),
+        );
+        let request = ProductRunRequest::new(
+            run(),
+            snapshot().workspace_id(),
+            snapshot().providers(),
+            "hello".to_owned(),
+        )
+        .expect("request");
+        for payload in [
+            AppRequestPayload::UpdateModels(ProductModelUpdate::new(run(), choices.clone())),
+            AppRequestPayload::Interact(ProductInteractionRequest::new(
+                request,
+                ProductInteractionMode::Chat,
+                choices.clone(),
+            )),
+        ] {
+            roundtrip(&AppMessage::Request(
+                AppRequestEnvelope::new(
+                    context(),
+                    RequestId::new([6; 16]).expect("id"),
+                    CorrelationId::new([7; 16]).expect("id"),
+                    payload,
+                )
+                .expect("request"),
+            ));
+        }
+        let interaction = ProductInteractionSnapshot::new(
+            snapshot(),
+            ProductInteractionMode::Chat,
+            choices,
+            1,
+            1,
+            Vec::new(),
+            None,
+        )
+        .expect("interaction");
+        roundtrip(&AppMessage::Response(AppResponseEnvelope::new(
+            context(),
+            RequestId::new([6; 16]).expect("id"),
+            CorrelationId::new([7; 16]).expect("id"),
+            AppResponsePayload::Interaction(interaction),
+        )));
+    }
+}
+
+#[test]
+fn unknown_effort_and_noncanonical_explicit_default_payload_are_rejected() {
+    use peritus_app_protocol::{ProductModelEffort, ProductModelUpdate};
+    let update = AppMessage::Request(
+        AppRequestEnvelope::new(
+            context(),
+            RequestId::new([6; 16]).expect("id"),
+            CorrelationId::new([7; 16]).expect("id"),
+            AppRequestPayload::UpdateModels(ProductModelUpdate::new(
+                run(),
+                ProductRoleModels::new(
+                    ProductModelChoice::default(),
+                    ProductModelChoice::default(),
+                    ProductModelChoice::default().with_effort(ProductModelEffort::Low),
+                ),
+            )),
+        )
+        .expect("update"),
+    );
+    let bytes = encode_app_message(&update, AppProtocolLimits::PRODUCTION).expect("encoded");
+    for tag in [0_u16, 99] {
+        let mut corrupt = bytes.clone();
+        let end = corrupt.len();
+        corrupt[end - 2..].copy_from_slice(&tag.to_be_bytes());
+        assert!(decode_app_message(&corrupt, AppProtocolLimits::PRODUCTION).is_err());
+    }
+}
+
+#[test]
 fn every_mode_and_new_query_roundtrips() {
     let mut payloads = vec![
         AppRequestPayload::QueryInteraction(ProductRunConversationQuery::new(run())),

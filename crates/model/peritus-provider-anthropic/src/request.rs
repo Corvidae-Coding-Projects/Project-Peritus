@@ -281,9 +281,17 @@ fn thinking(
         ReasoningPolicy::Effort { effort, summary } => {
             validate_summary(summary)?;
             let effort = match effort {
-                ReasoningEffort::Minimal | ReasoningEffort::Low => "low",
+                ReasoningEffort::Minimal => {
+                    return Err(invalid("Anthropic does not map minimal reasoning effort"));
+                }
+                ReasoningEffort::Low => "low",
                 ReasoningEffort::Medium => "medium",
                 ReasoningEffort::High => "high",
+                ReasoningEffort::XHigh => "xhigh",
+                ReasoningEffort::Max => "max",
+                ReasoningEffort::Ultra => {
+                    return Err(invalid("Anthropic does not map ultra reasoning effort"));
+                }
             };
             Ok((Some(typed_value("adaptive")), Some(effort)))
         }

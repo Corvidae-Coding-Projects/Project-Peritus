@@ -33,6 +33,9 @@ impl ClaudeRuntimeStream {
             response_id: None,
             model: Some(request.model().clone()),
         })?;
+        for repair in turn.repairs {
+            builder.push(repair)?;
+        }
         let message_id = item_id(&prefix, "message", 0)?;
         builder.push(ModelEvent::ItemStarted {
             item_id: message_id.clone(),

@@ -12,6 +12,23 @@ fn events(
     fragmented: bool,
 ) -> Vec<peritus_model_protocol::EventEnvelope> {
     let bytes = fixture(name);
+    events_bytes(bytes, dialect, fragmented)
+}
+
+fn events_bytes(
+    bytes: Vec<u8>,
+    dialect: WireDialect,
+    fragmented: bool,
+) -> Vec<peritus_model_protocol::EventEnvelope> {
+    output_bytes(bytes, dialect, fragmented, false)
+}
+
+fn output_bytes(
+    bytes: Vec<u8>,
+    dialect: WireDialect,
+    fragmented: bool,
+    structured: bool,
+) -> Vec<peritus_model_protocol::EventEnvelope> {
     let chunks =
         if fragmented { bytes.iter().map(|byte| vec![*byte]).collect() } else { vec![bytes] };
     let response = response(
@@ -23,7 +40,7 @@ fn events(
         response,
         profile(dialect).provider().clone(),
         dialect,
-        false,
+        structured,
         peritus_provider_core::FramingLimits::PRODUCTION,
     )
     .expect("stream");
@@ -35,6 +52,53 @@ fn events(
         }
         events
     })
+}
+
+#[test]
+fn both_google_dialects_heal_structured_output_but_leave_public_prose_untouched() {
+    for (name, dialect) in [
+        ("generate_success.sse", WireDialect::GeminiGenerateContentV1),
+        ("interactions_success.sse", WireDialect::GeminiInteractionsV1),
+    ] {
+        let raw = String::from_utf8(fixture(name)).unwrap().replace("héllo", "[1,2,]");
+        for structured in [true, false] {
+            let events = output_bytes(raw.as_bytes().to_vec(), dialect, true, structured);
+            assert!(matches!(events.last().unwrap().event(), ModelEvent::ResponseCompleted));
+            assert!(events.iter().any(|event| matches!(event.event(), ModelEvent::TextDelta { fragment, .. } if fragment.expose() == if structured { b"[1,2]".as_slice() } else { b"[1,2,]" })));
+            assert_eq!(events.iter().any(|event| matches!(event.event(), ModelEvent::ProviderEvent(value) if value.name().as_str() == "peritus.response_healing")), structured);
+        }
+    }
+}
+
+#[test]
+fn generate_content_unwraps_audited_string_encoded_tool_arguments() {
+    let raw = String::from_utf8(fixture("generate_tool_thinking.sse")).unwrap();
+    let raw = raw.replace(r#""args":{"city":"Paris"}"#, r#""args":"{city:\"Paris\",}""#);
+    let events = events_bytes(raw.into_bytes(), WireDialect::GeminiGenerateContentV1, true);
+    assert!(matches!(events.last().unwrap().event(), ModelEvent::ResponseCompleted));
+    assert!(events.iter().any(|event| matches!(event.event(), ModelEvent::ProviderEvent(value) if value.name().as_str() == "peritus.response_healing")));
+    assert!(events.iter().any(|event| matches!(event.event(), ModelEvent::ToolArgumentDelta { fragment, .. } if fragment.expose() == br#"{"city":"Paris"}"#)));
+}
+
+#[test]
+fn interactions_heals_completed_arguments_with_audit_and_rejects_truncation() {
+    let raw = String::from_utf8(fixture("interactions_tool_thinking.sse")).unwrap();
+    for (suffix, repaired) in [(r#"\"Paris\",}"#, true), (r#"\"Paris\""#, false)] {
+        let malformed = raw.replace(r#"{\"city\":"#, "{city:").replace(r#"\"Paris\"}"#, suffix);
+        let events = events_bytes(malformed.into_bytes(), WireDialect::GeminiInteractionsV1, true);
+        assert_eq!(events.iter().any(|event| matches!(event.event(), ModelEvent::ProviderEvent(value) if value.name().as_str() == "peritus.response_healing")), repaired);
+        if repaired {
+            assert!(events.iter().any(|event| matches!(event.event(), ModelEvent::ToolArgumentDelta { fragment, .. } if fragment.expose() == br#"{"city":"Paris"}"#)));
+            assert!(matches!(events.last().unwrap().event(), ModelEvent::ResponseCompleted));
+        } else {
+            assert!(matches!(events.last().unwrap().event(), ModelEvent::ResponseFailed(_)));
+            assert!(
+                !events
+                    .iter()
+                    .any(|event| matches!(event.event(), ModelEvent::ToolArgumentDelta { .. }))
+            );
+        }
+    }
 }
 
 #[test]

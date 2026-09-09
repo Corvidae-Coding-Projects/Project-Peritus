@@ -26,6 +26,40 @@ fn realistic_request_projects_every_supported_request_family() {
 }
 
 #[test]
+fn exact_reasoning_efforts_reach_the_api_body_and_survive_canonical_replay() {
+    use peritus_model_protocol::{ProtocolLimits, ReasoningEffort as Effort, decode_request};
+    for effort in [
+        Effort::Minimal,
+        Effort::Low,
+        Effort::Medium,
+        Effort::High,
+        Effort::XHigh,
+        Effort::Max,
+        Effort::Ultra,
+    ] {
+        let profile = profile_full();
+        let request = super::support::realistic_request_with_effort(&profile, effort);
+        let encoded = crate::request::encode(&request).expect("encode effort");
+        let value: serde_json::Value = serde_json::from_slice(&encoded).expect("body");
+        assert_eq!(
+            value.pointer("/reasoning/effort").and_then(serde_json::Value::as_str),
+            Some(effort.as_str())
+        );
+        let bytes = request.canonical_bytes().expect("canonical");
+        assert_eq!(
+            decode_request(
+                &bytes,
+                &profile,
+                request.request_id().clone(),
+                ProtocolLimits::PRODUCTION
+            )
+            .expect("replay"),
+            request
+        );
+    }
+}
+
+#[test]
 fn nonnegotiated_streaming_fails_before_encoding() {
     let profile = profile_minimal();
     let request = super::support::request_with_capabilities(&profile, &[]);

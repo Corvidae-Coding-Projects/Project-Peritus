@@ -2,6 +2,7 @@
 
 mod control;
 mod conversation;
+mod effort;
 mod error;
 mod interaction;
 mod models;
@@ -12,6 +13,7 @@ mod snapshot;
 
 pub use control::*;
 pub use conversation::*;
+pub use effort::ProductModelEffort;
 pub use error::ProductRunMessageError;
 pub use interaction::*;
 pub use models::*;

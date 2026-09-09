@@ -18,6 +18,7 @@ use super::{Inner, ProductRunService};
 
 mod catalog;
 mod folder;
+mod healing;
 mod interaction;
 mod model_selection;
 mod support;

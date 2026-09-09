@@ -9,6 +9,7 @@ pub const COMMANDS: &[(&str, &str)] = &[
     ("/review", "Fresh independent read-only review"),
     ("/build", "Checked writer / reviewer / fixer delivery"),
     ("/model", "Discover and select provider models"),
+    ("/effort", "Select reasoning effort for chat/writer, reviewer, or fixer"),
     ("/new", "New conversation; preserve existing work"),
     ("/status", "Current conversation and input status"),
     ("/diff", "Inspect retained workspace changes"),
@@ -41,6 +42,9 @@ impl AppModel {
         }
         if command == "/model" {
             return self.model_command(rest);
+        }
+        if command == "/effort" {
+            return self.effort_command(rest);
         }
         if self.direct_folder_chat().is_some()
             && matches!(command, "/build" | "/accept" | "/commit" | "/export" | "/discard" | "/run")

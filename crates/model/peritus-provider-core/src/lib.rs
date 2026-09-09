@@ -12,9 +12,11 @@ pub mod catalog;
 mod continuation;
 mod credential;
 mod diagnostic;
+mod effort;
 mod endpoint;
 mod error;
 mod framing;
+pub mod healing;
 mod http;
 mod process;
 mod qualification;
@@ -31,6 +33,7 @@ pub use cancellation::{CancelFirst, CancellationFuture, CancellationToken, first
 pub use continuation::{ContinuationRestoreOutcome, PersistedContinuation};
 pub use credential::{Credential, CredentialReference, CredentialSource};
 pub use diagnostic::{Diagnostic, DiagnosticValue, TransportPhase};
+pub use effort::select_reasoning_effort;
 pub use endpoint::Endpoint;
 pub use error::{ProviderCoreError, ProviderCoreErrorKind};
 pub use framing::{

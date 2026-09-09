@@ -2,6 +2,7 @@
 
 mod commands;
 mod models;
+mod picker;
 #[cfg(test)]
 mod tests;
 mod working;
@@ -31,7 +32,8 @@ pub struct ChatUi {
     pub(crate) working: WorkingIndicator,
     pub(crate) command_selection: usize,
     pub(crate) catalog: Option<ProductModelCatalog>,
-    pub(crate) model_picker: bool,
+    picker: Option<picker::Picker>,
+    pub(crate) effort_selection: usize,
     pub(crate) model_selection: usize,
     pub(crate) model_role: models::ModelRole,
     interrupt_requested: bool,
@@ -50,7 +52,8 @@ impl Default for ChatUi {
             working: WorkingIndicator::default(),
             command_selection: 0,
             catalog: None,
-            model_picker: false,
+            picker: None,
+            effort_selection: 0,
             model_selection: 0,
             model_role: models::ModelRole::Writer,
             interrupt_requested: false,
@@ -140,7 +143,10 @@ impl AppModel {
                 _ => {}
             }
         }
-        if self.chat.model_picker {
+        if self.chat.effort_picker() {
+            return self.effort_picker_key(key);
+        }
+        if self.chat.model_picker() {
             return self.model_picker_key(key);
         }
         let commands = self.chat.matching_commands();

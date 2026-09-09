@@ -55,7 +55,7 @@ impl OpenAiStream {
                 kind,
                 call_id,
                 call_name,
-                arguments: Vec::new(),
+                arguments: peritus_provider_core::healing::ToolArgumentBuffer::default(),
                 arguments_done: false,
                 completed: false,
             },
@@ -135,6 +135,9 @@ impl OpenAiStream {
             return Err(error::malformed("OpenAI content delta targeted an incompatible part"));
         }
         append_bounded(&mut part.bytes, delta, limits.max_output_bytes())?;
+        if part.kind == ItemKind::StructuredOutput {
+            return Ok(Vec::new());
+        }
         let fragment = StreamFragment::new(delta.to_vec(), limits)
             .map_err(|_| error::limit("OpenAI content fragment exceeds protocol limits"))?;
         let event = if refusal {
@@ -165,6 +168,13 @@ impl OpenAiStream {
             return Err(error::malformed("OpenAI finalized content contradicted its deltas"));
         }
         part.value_done = true;
+        if part.kind == ItemKind::StructuredOutput {
+            return peritus_provider_core::healing::structured_output(
+                &part.bytes,
+                &part.normalized_id,
+                self.limits,
+            );
+        }
         Ok(Vec::new())
     }
 
@@ -203,14 +213,9 @@ impl OpenAiStream {
         {
             return Err(error::malformed("OpenAI tool delta targeted an incompatible item"));
         }
-        append_bounded(&mut item.arguments, delta, limits.max_tool_argument_bytes())?;
-        let call_id = item
-            .call_id
-            .clone()
-            .ok_or_else(|| error::malformed("OpenAI tool item omitted its call identity"))?;
-        let fragment = StreamFragment::new(delta.to_vec(), limits)
-            .map_err(|_| error::limit("OpenAI tool fragment exceeds protocol limits"))?;
-        Ok(vec![ModelEvent::ToolArgumentDelta { call_id, fragment }])
+        item.arguments.append(delta, limits)?;
+        // Retain raw bytes for terminal consistency; publish arguments only once complete.
+        Ok(Vec::new())
     }
 
     pub(super) fn tool_done(
@@ -227,7 +232,7 @@ impl OpenAiStream {
         if item.kind != ItemKind::ToolCall
             || item.output_index != output_index
             || item.arguments_done
-            || item.arguments != arguments.as_bytes()
+            || item.arguments.as_bytes() != arguments.as_bytes()
         {
             return Err(error::malformed("OpenAI finalized tool input contradicted its deltas"));
         }
@@ -237,7 +242,11 @@ impl OpenAiStream {
             return Err(error::malformed("OpenAI finalized tool name changed"));
         }
         item.arguments_done = true;
-        Ok(Vec::new())
+        let call_id = item
+            .call_id
+            .as_ref()
+            .ok_or_else(|| error::malformed("OpenAI tool item omitted its call identity"))?;
+        item.arguments.complete(call_id, self.limits)
     }
 
     pub(super) fn reasoning_delta(

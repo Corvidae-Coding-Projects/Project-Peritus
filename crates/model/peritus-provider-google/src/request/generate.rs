@@ -153,6 +153,11 @@ fn thinking(policy: ReasoningPolicy) -> Result<Option<Value>, ProviderCoreError>
                 ReasoningEffort::Low => "low",
                 ReasoningEffort::Medium => "medium",
                 ReasoningEffort::High => "high",
+                ReasoningEffort::XHigh | ReasoningEffort::Max | ReasoningEffort::Ultra => {
+                    return Err(invalid(
+                        "Google does not map xhigh, max, or ultra reasoning effort",
+                    ));
+                }
             };
             (Some(level), include_thoughts(summary)?)
         }

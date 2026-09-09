@@ -177,6 +177,28 @@ pub enum ReasoningEffort {
     Medium,
     /// High reasoning effort.
     High,
+    /// Extra-high reasoning effort; support is provider/model-specific.
+    XHigh,
+    /// Maximum reasoning effort; support is provider/model-specific.
+    Max,
+    /// Ultra reasoning effort on providers that explicitly support this level.
+    Ultra,
+}
+
+impl ReasoningEffort {
+    /// Exact provider wire spelling, without capability inference or coercion.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Minimal => "minimal",
+            Self::Low => "low",
+            Self::Medium => "medium",
+            Self::High => "high",
+            Self::XHigh => "xhigh",
+            Self::Max => "max",
+            Self::Ultra => "ultra",
+        }
+    }
 }
 
 /// Visible reasoning-summary request.

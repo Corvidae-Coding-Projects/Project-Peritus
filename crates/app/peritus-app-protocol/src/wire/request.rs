@@ -56,7 +56,7 @@ fn write_payload(
 ) -> Result<(), CodecError> {
     match payload {
         AppRequestPayload::Interact(value) => {
-            writer.write_u16(22)?;
+            writer.write_u16(if value.models().has_effort() { 26 } else { 22 })?;
             super::interaction::write_request(writer, value)
         }
         AppRequestPayload::QueryInteraction(value) => {
@@ -145,7 +145,7 @@ fn write_payload(
             write_run_continuation(writer, value)
         }
         AppRequestPayload::UpdateModels(value) => {
-            writer.write_u16(25)?;
+            writer.write_u16(if value.models().has_effort() { 27 } else { 25 })?;
             super::interaction::write_model_update(writer, value)
         }
         AppRequestPayload::QueryProductRunConversation(value) => {
@@ -195,10 +195,14 @@ pub(super) fn read_request(
         19 => AppRequestPayload::QueryProductRuns(read_run_query(reader)?),
         20 => AppRequestPayload::ContinueProductRun(read_run_continuation(reader)?),
         21 => AppRequestPayload::QueryProductRunConversation(read_conversation_query(reader)?),
-        22 => AppRequestPayload::Interact(super::interaction::read_request(reader)?),
+        22 => AppRequestPayload::Interact(super::interaction::read_request(reader, false)?),
         23 => AppRequestPayload::QueryInteraction(read_conversation_query(reader)?),
         24 => AppRequestPayload::QueryModels(super::interaction::read_model_query(reader)?),
-        25 => AppRequestPayload::UpdateModels(super::interaction::read_model_update(reader)?),
+        25 => {
+            AppRequestPayload::UpdateModels(super::interaction::read_model_update(reader, false)?)
+        }
+        26 => AppRequestPayload::Interact(super::interaction::read_request(reader, true)?),
+        27 => AppRequestPayload::UpdateModels(super::interaction::read_model_update(reader, true)?),
         _ => return unknown(tag_offset),
     };
     let request =

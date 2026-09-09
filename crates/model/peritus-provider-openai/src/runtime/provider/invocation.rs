@@ -15,6 +15,9 @@ use super::super::CodexRuntimeConfig;
 use super::super::output::DecodeFailure;
 use super::super::request::RuntimeRequest;
 
+#[cfg(test)]
+mod tests;
+
 pub(super) struct TurnOutput {
     pub(super) process: peritus_provider_core::ProcessOutput,
     pub(super) final_message: Result<String, DecodeFailure>,

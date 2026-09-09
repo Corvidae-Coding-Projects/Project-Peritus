@@ -32,7 +32,7 @@ struct ToolState {
     item_id: ItemId,
     call_id: ToolCallId,
     name: ToolName,
-    bytes: Vec<u8>,
+    bytes: peritus_provider_core::healing::ToolArgumentBuffer,
     completed: bool,
 }
 
@@ -192,9 +192,13 @@ impl ChatDecoder {
             })?;
             let item = self.ensure_text(events)?;
             append(&mut self.text_bytes, content.as_bytes(), self.limits.max_output_bytes())?;
-            let fragment = StreamFragment::new(content.as_bytes().to_vec(), self.limits)
-                .map_err(|_| error::limit("Chat-compatible content fragment exceeded bounds"))?;
-            events.push(ModelEvent::TextDelta { item_id: item, fragment });
+            if !self.structured {
+                let fragment = StreamFragment::new(content.as_bytes().to_vec(), self.limits)
+                    .map_err(|_| {
+                        error::limit("Chat-compatible content fragment exceeded bounds")
+                    })?;
+                events.push(ModelEvent::TextDelta { item_id: item, fragment });
+            }
         }
         if let Some(refusal) = delta.get("refusal").filter(|value| !value.is_null()) {
             let refusal = refusal.as_str().filter(|value| !value.is_empty()).ok_or_else(|| {
@@ -313,7 +317,13 @@ impl ChatDecoder {
             });
             self.tools.insert(
                 tool_index,
-                ToolState { item_id, call_id: id, name, bytes: Vec::new(), completed: false },
+                ToolState {
+                    item_id,
+                    call_id: id,
+                    name,
+                    bytes: peritus_provider_core::healing::ToolArgumentBuffer::default(),
+                    completed: false,
+                },
             );
         }
         let state = self
@@ -339,10 +349,7 @@ impl ChatDecoder {
             if arguments.is_empty() {
                 return Ok(());
             }
-            append(&mut state.bytes, arguments.as_bytes(), self.limits.max_tool_argument_bytes())?;
-            let fragment = StreamFragment::new(arguments.as_bytes().to_vec(), self.limits)
-                .map_err(|_| error::limit("Chat-compatible tool fragment exceeded bounds"))?;
-            events.push(ModelEvent::ToolArgumentDelta { call_id: state.call_id.clone(), fragment });
+            state.bytes.append(arguments.as_bytes(), self.limits)?;
         }
         Ok(())
     }
@@ -360,6 +367,13 @@ impl ChatDecoder {
             _ => return Err(error::malformed("Chat-compatible finish reason was unmapped")),
         };
         if let Some(item) = &self.text {
+            if self.structured {
+                events.extend(peritus_provider_core::healing::structured_output(
+                    &self.text_bytes,
+                    item,
+                    self.limits,
+                )?);
+            }
             events.push(ModelEvent::ItemCompleted(item.clone()));
         }
         if let Some(item) = &self.refusal {
@@ -370,6 +384,7 @@ impl ChatDecoder {
                 return Err(error::malformed("Chat-compatible tool item completed twice"));
             }
             state.completed = true;
+            events.extend(state.bytes.complete(&state.call_id, self.limits)?);
             events.push(ModelEvent::ItemCompleted(state.item_id.clone()));
         }
         self.finish = Some(reason.clone());

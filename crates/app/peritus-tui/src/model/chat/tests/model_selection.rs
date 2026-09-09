@@ -3,7 +3,7 @@ use peritus_app_protocol::{
     AppResponseEnvelope, AppResponsePayload, ProductRoleModels, ProductRunPhase, ProductRunSnapshot,
 };
 
-fn active(model: &mut AppModel) -> ProductInteractionSnapshot {
+pub(super) fn active(model: &mut AppModel) -> ProductInteractionSnapshot {
     let run = RunId::new([0x41; 16]).expect("run");
     model.chat.run_id = Some(run);
     let snapshot = ProductRunSnapshot::new(

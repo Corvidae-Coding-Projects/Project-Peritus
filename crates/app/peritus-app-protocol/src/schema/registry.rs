@@ -68,6 +68,8 @@ const REQUESTS: &[AppPayloadDescriptor] = &[
     AppPayloadDescriptor { tag: 23, name: "query-interaction" },
     AppPayloadDescriptor { tag: 24, name: "query-models" },
     AppPayloadDescriptor { tag: 25, name: "update-models" },
+    AppPayloadDescriptor { tag: 26, name: "interact-with-effort" },
+    AppPayloadDescriptor { tag: 27, name: "update-models-with-effort" },
 ];
 
 const RESPONSES: &[AppPayloadDescriptor] = &[
@@ -87,6 +89,7 @@ const RESPONSES: &[AppPayloadDescriptor] = &[
     AppPayloadDescriptor { tag: 14, name: "product-run-settlements" },
     AppPayloadDescriptor { tag: 15, name: "interaction" },
     AppPayloadDescriptor { tag: 16, name: "models" },
+    AppPayloadDescriptor { tag: 17, name: "interaction-with-effort" },
 ];
 
 const EVENTS: &[AppPayloadDescriptor] = &[

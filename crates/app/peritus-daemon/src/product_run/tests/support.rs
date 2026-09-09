@@ -51,6 +51,9 @@ pub(super) struct ScriptedProvider {
 }
 
 impl ModelProvider for ScriptedProvider {
+    fn supports_reasoning_effort(&self, _effort: peritus_model_protocol::ReasoningEffort) -> bool {
+        self.profile.capabilities().supports(Capability::ReasoningControls)
+    }
     fn profile(&self) -> &ProviderProfile {
         &self.profile
     }
@@ -103,6 +106,17 @@ pub(super) fn stalled(id: u8, name: &str) -> Arc<ScriptedProvider> {
     })
 }
 
+pub(super) fn scripted_reasoning(
+    id: u8,
+    name: &str,
+    responses: Vec<VecDeque<EventEnvelope>>,
+) -> Arc<ScriptedProvider> {
+    let mut provider = scripted(id, name, responses);
+    Arc::get_mut(&mut provider).expect("exclusive fixture").profile =
+        profile_with_reasoning([id; 16], name, true);
+    provider
+}
+
 pub(super) fn complete_writer(source: &str) -> Vec<VecDeque<EventEnvelope>> {
     vec![
         named_tool_response("workspace_list", list_arguments("", 3)),
@@ -147,13 +161,22 @@ pub(super) fn repository() -> tempfile::TempDir {
 }
 
 fn profile(id: [u8; 16], name: &str) -> ProviderProfile {
+    profile_with_reasoning(id, name, false)
+}
+
+fn profile_with_reasoning(id: [u8; 16], name: &str, reasoning: bool) -> ProviderProfile {
+    let capabilities: &[Capability] = if reasoning {
+        &[Capability::ToolCalls, Capability::ReasoningControls]
+    } else {
+        &[Capability::ToolCalls]
+    };
     ProviderProfile::new(
         ProviderProfileId::new(id).expect("profile ID"),
         1,
         ProviderName::new(format!("scripted-{name}")).expect("provider"),
         ModelName::new(format!("scripted-{name}")).expect("model"),
         WireDialect::CompatibleResponses,
-        CapabilityMatrix::new(&[Capability::ToolCalls], &[]).expect("capabilities"),
+        CapabilityMatrix::new(capabilities, &[]).expect("capabilities"),
         CapabilityProvenance::Probed,
         ModelLimits::new(32_768, 4_096, 32, 1, 512 * 1024).expect("limits"),
         OutputLimitEnforcement::ProviderEnforced,

@@ -57,10 +57,14 @@ pub(super) async fn complete_turn(
             attempt,
             kind,
             required_tool,
+            provider.reasoning_effort(),
         )?;
         if let Some((port, revision)) = interaction {
             port.applied(revision)?;
-            port.observe(DeveloperActivity::ModelStarted { model: profile.model().as_str() })?;
+            port.observe(DeveloperActivity::ModelStarted {
+                model: profile.model().as_str(),
+                reasoning: model_request.options().reasoning(),
+            })?;
         }
         trace.account(DeveloperAccountingEvent::ModelRequest { retry: attempt > 1 })?;
         match drive(
@@ -140,7 +144,16 @@ async fn drive(
                     let has_usage = session
                         .pending()
                         .is_some_and(|envelope| matches!(envelope.event(), ModelEvent::Usage(_)));
+                    let healed = session.pending().is_some_and(|envelope| {
+                        matches!(
+                            envelope.event(), ModelEvent::ProviderEvent(extension)
+                            if extension.name().as_str() == "peritus.response_healing"
+                        )
+                    });
                     let _ = session.accept_durable_pending()?;
+                    if healed && let Some(port) = interaction {
+                        port.observe(DeveloperActivity::ResponseHealed)?;
+                    }
                     if has_usage {
                         // Cancellation/deadline can drop this future before a terminal response.
                         trace

@@ -63,6 +63,14 @@ pub fn codex_image_profile(model: &str) -> ProviderProfile {
 }
 
 pub fn codex_tool_request(profile: &ProviderProfile, request_id: &str) -> ModelRequest {
+    codex_tool_request_with_effort(profile, request_id, ReasoningEffort::High)
+}
+
+pub fn codex_tool_request_with_effort(
+    profile: &ProviderProfile,
+    request_id: &str,
+    effort: ReasoningEffort,
+) -> ModelRequest {
     let negotiated = negotiate(
         profile,
         RequestedCapabilities::new(
@@ -95,10 +103,7 @@ pub fn codex_tool_request(profile: &ProviderProfile, request_id: &str) -> ModelR
         vec![tool],
         ToolChoice::Auto,
         ParallelToolPolicy::Allowed(2),
-        runtime_options(ReasoningPolicy::Effort {
-            effort: ReasoningEffort::High,
-            summary: SummaryPolicy::None,
-        }),
+        runtime_options(ReasoningPolicy::Effort { effort, summary: SummaryPolicy::None }),
         ProtocolLimits::PRODUCTION,
     )
     .expect("Codex tool request")

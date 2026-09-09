@@ -8,9 +8,25 @@ use crate::stream::CompatibleStream;
 
 async fn collect(name: &str, dialect: WireDialect) -> Vec<peritus_model_protocol::EventEnvelope> {
     let bytes = fixture(name);
+    collect_bytes(bytes, dialect, name.contains("tool")).await
+}
+
+async fn collect_bytes(
+    bytes: Vec<u8>,
+    dialect: WireDialect,
+    tools: bool,
+) -> Vec<peritus_model_protocol::EventEnvelope> {
+    collect_output(bytes, dialect, tools, false).await
+}
+
+async fn collect_output(
+    bytes: Vec<u8>,
+    dialect: WireDialect,
+    tools: bool,
+    structured: bool,
+) -> Vec<peritus_model_protocol::EventEnvelope> {
     let chunks = bytes.chunks(7).map(<[u8]>::to_vec).collect();
     let body = MemoryByteStream::new(chunks, HttpLimits::PRODUCTION).expect("body");
-    let tools = name.contains("tool");
     let capabilities = if tools {
         vec![Capability::Streaming, Capability::UsageDetail, Capability::ToolCalls]
     } else {
@@ -27,7 +43,7 @@ async fn collect(name: &str, dialect: WireDialect) -> Vec<peritus_model_protocol
         profile.provider().clone(),
         profile.model().clone(),
         dialect,
-        false,
+        structured,
         tools,
         true,
         peritus_model_protocol::ProtocolLimits::PRODUCTION,
@@ -40,6 +56,73 @@ async fn collect(name: &str, dialect: WireDialect) -> Vec<peritus_model_protocol
         events.push(event);
     }
     events
+}
+
+#[test]
+fn compatible_structured_healing_does_not_change_ordinary_text() {
+    block_on(async {
+        for (name, dialect) in [
+            ("responses-success.sse", WireDialect::CompatibleResponses),
+            ("chat-success.sse", WireDialect::CompatibleChatCompletions),
+        ] {
+            let raw = String::from_utf8(fixture(name))
+                .unwrap()
+                .replace("hello", "{answer:42,}")
+                .replace("\"hel\"", "\"{answer:\"")
+                .replace("\"lo\"", "\"42,}\"");
+            for structured in [true, false] {
+                let events =
+                    collect_output(raw.as_bytes().to_vec(), dialect, false, structured).await;
+                let text: Vec<_> = events
+                    .iter()
+                    .filter_map(|event| match event.event() {
+                        ModelEvent::TextDelta { fragment, .. } => Some(fragment.expose()),
+                        _ => None,
+                    })
+                    .flatten()
+                    .copied()
+                    .collect();
+                assert_eq!(
+                    text,
+                    if structured { br#"{"answer":42}"#.as_slice() } else { b"{answer:42,}" }
+                );
+                assert_eq!(events.iter().any(|event| matches!(event.event(), ModelEvent::ProviderEvent(value) if value.name().as_str() == "peritus.response_healing")), structured);
+            }
+        }
+    });
+}
+
+#[test]
+fn both_compatible_dialects_heal_only_complete_tool_objects() {
+    block_on(async {
+        for (name, dialect) in [
+            ("responses-tool.sse", WireDialect::CompatibleResponses),
+            ("chat-tool.sse", WireDialect::CompatibleChatCompletions),
+        ] {
+            let raw = String::from_utf8(fixture(name)).unwrap();
+            for (suffix, repaired) in [(r#"\"42\",}"#, true), (r#"\"42\""#, false)] {
+                let malformed = raw.replace(r#"{\"id\":"#, "{id:").replace(r#"\"42\"}"#, suffix);
+                let events = collect_bytes(malformed.into_bytes(), dialect, true).await;
+                assert_eq!(events.iter().any(|event| matches!(event.event(), ModelEvent::ProviderEvent(value) if value.name().as_str() == "peritus.response_healing")), repaired);
+                if repaired {
+                    assert!(events.iter().any(|event| matches!(event.event(), ModelEvent::ToolArgumentDelta { fragment, .. } if fragment.expose() == br#"{"id":"42"}"#)));
+                    assert!(matches!(
+                        events.last().unwrap().event(),
+                        ModelEvent::ResponseCompleted
+                    ));
+                } else {
+                    assert!(matches!(
+                        events.last().unwrap().event(),
+                        ModelEvent::ResponseFailed(_)
+                    ));
+                    assert!(!events.iter().any(|event| matches!(
+                        event.event(),
+                        ModelEvent::ToolArgumentDelta { .. }
+                    )));
+                }
+            }
+        }
+    });
 }
 
 #[test]

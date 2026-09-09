@@ -1,8 +1,9 @@
 //! Regression: a confirmed selection must reach actual requests, not only a UI field.
 use super::*;
+use crate::product_run::ProductRunServiceError;
 use peritus_app_protocol::{
-    ProductInteractionMode, ProductInteractionRequest, ProductModelChoice, ProductModelUpdate,
-    ProductRoleModels, ProductRunConversationQuery,
+    ProductInteractionMode, ProductInteractionRequest, ProductModelChoice, ProductModelEffort,
+    ProductModelUpdate, ProductRoleModels, ProductRunConversationQuery,
 };
 use peritus_model_protocol::{ModelName, ModelRequest, ProviderProfile};
 use peritus_provider_core::{BoxFuture, CancellationToken, OwnedModelStream, ProviderCoreError};
@@ -72,6 +73,37 @@ fn active_selection_changes_the_next_request_without_restarting_or_losing_contex
 }
 
 async fn active_scenario(mode: ProductInteractionMode, direct_folder: bool) {
+    effort_scenario(mode, direct_folder, ProductModelEffort::Default).await;
+}
+
+#[test]
+fn active_effort_selection_reaches_next_turn_and_survives_reload_for_each_execution_mode() {
+    interaction::block_on(async {
+        for mode in [
+            ProductInteractionMode::Chat,
+            ProductInteractionMode::Plan,
+            ProductInteractionMode::Review,
+        ] {
+            for direct in [false, true] {
+                for effort in [
+                    ProductModelEffort::Low,
+                    ProductModelEffort::Medium,
+                    ProductModelEffort::High,
+                    ProductModelEffort::XHigh,
+                    ProductModelEffort::Max,
+                ] {
+                    effort_scenario(mode, direct, effort).await;
+                }
+            }
+        }
+    });
+}
+
+async fn effort_scenario(
+    mode: ProductInteractionMode,
+    direct_folder: bool,
+    effort: ProductModelEffort,
+) {
     let repository = repository();
     let state = tempfile::tempdir().expect("state");
     let base = scripted(
@@ -79,7 +111,7 @@ async fn active_scenario(mode: ProductInteractionMode, direct_folder: bool) {
         "sol",
         vec![support::named_tool_response("workspace_list", br#"{"path":"","depth":1}"#.to_vec())],
     );
-    let selected = scripted(
+    let selected = support::scripted_reasoning(
         0x92,
         "astra",
         vec![support::text_response(b"Selected model received the conversation.")],
@@ -120,6 +152,19 @@ async fn active_scenario(mode: ProductInteractionMode, direct_folder: bool) {
         .expect("old model in flight");
     let before = service.query_interaction(ProductRunConversationQuery::new(run)).expect("before");
     let models = choices(mode, selected.profile().model().as_str());
+    let models = if mode == ProductInteractionMode::Review {
+        ProductRoleModels::new(
+            models.writer().clone(),
+            models.reviewer().clone().with_effort(effort),
+            models.fixer().clone(),
+        )
+    } else {
+        ProductRoleModels::new(
+            models.writer().clone().with_effort(effort),
+            models.reviewer().clone(),
+            models.fixer().clone(),
+        )
+    };
     let updated = service
         .update_models(&ProductModelUpdate::new(run, models.clone()))
         .await
@@ -127,6 +172,16 @@ async fn active_scenario(mode: ProductInteractionMode, direct_folder: bool) {
     assert_eq!(updated.models(), &models);
     assert_eq!(updated.received(), before.received(), "selection must not invent user input");
     assert_eq!(updated.incorporated(), before.incorporated());
+    let unsupported = ProductRoleModels::new(
+        ProductModelChoice::default().with_effort(ProductModelEffort::Low),
+        ProductModelChoice::default(),
+        ProductModelChoice::default(),
+    );
+    assert_eq!(
+        service.update_models(&ProductModelUpdate::new(run, unsupported)).await,
+        Err(ProductRunServiceError::EffortUnsupported),
+        "unmapped controls must reject before saving"
+    );
     assert!(!updated.snapshot().phase().terminal());
     assert!(selected.requests.lock().expect("requests").is_empty(), "in-flight turn is unchanged");
     let invalid =
@@ -149,10 +204,24 @@ async fn active_scenario(mode: ProductInteractionMode, direct_folder: bool) {
     let terminal = wait_for_terminal(&service, run).await;
     assert_eq!(terminal.phase(), ProductRunPhase::WaitingForUser, "{}", terminal.summary());
     assert_eq!(base.requests.lock().expect("old requests").len(), 1);
+    assert_eq!(
+        base.requests.lock().expect("old requests")[0].options().reasoning(),
+        peritus_model_protocol::ReasoningPolicy::Disabled,
+        "in-flight effort is immutable"
+    );
     {
         let requests = selected.requests.lock().expect("selected requests");
         assert_eq!(requests.len(), 1);
         assert_eq!(requests[0].model(), selected.profile().model());
+        let peritus_model_protocol::ReasoningPolicy::Effort { effort: actual, .. } =
+            requests[0].options().reasoning()
+        else {
+            panic!("selected effort must reach the actual provider request")
+        };
+        assert_eq!(
+            actual.as_str(),
+            if effort == ProductModelEffort::Default { "high" } else { effort.label() }
+        );
         peritus_provider_core::validate_request_profile(selected.profile(), &requests[0])
             .expect("exact selected binding");
         assert!(

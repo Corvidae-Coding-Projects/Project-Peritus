@@ -17,7 +17,7 @@ pub(super) struct ItemState {
     pub index: u32,
     pub kind: ItemKind,
     pub call_id: Option<ToolCallId>,
-    pub bytes: Vec<u8>,
+    pub bytes: peritus_provider_core::healing::ToolArgumentBuffer,
     pub value_done: bool,
     pub completed: bool,
 }

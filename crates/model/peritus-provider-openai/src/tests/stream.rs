@@ -13,6 +13,14 @@ async fn collect_fixture(
     bytes: &[u8],
     splits: &[usize],
 ) -> Vec<peritus_model_protocol::EventEnvelope> {
+    collect_output(bytes, splits, false).await
+}
+
+async fn collect_output(
+    bytes: &[u8],
+    splits: &[usize],
+    structured: bool,
+) -> Vec<peritus_model_protocol::EventEnvelope> {
     let mut chunks = Vec::new();
     let mut start = 0;
     for end in splits.iter().copied().filter(|end| *end < bytes.len()) {
@@ -27,7 +35,7 @@ async fn collect_fixture(
         FramingLimits::PRODUCTION,
         profile.provider().clone(),
         profile.model().clone(),
-        false,
+        structured,
         peritus_model_protocol::ProtocolLimits::PRODUCTION,
         ResponseMetadata::empty(),
         false,
@@ -39,6 +47,80 @@ async fn collect_fixture(
         events.push(event);
     }
     events
+}
+
+#[test]
+fn structured_output_healing_does_not_rewrite_ordinary_prose() {
+    block_on(async {
+        let raw =
+            String::from_utf8(fixture("success.sse")).unwrap().replace("hello", "{answer:42,}");
+        for structured in [true, false] {
+            let events = collect_output(raw.as_bytes(), &[11, 33], structured).await;
+            let text: Vec<_> = events
+                .iter()
+                .filter_map(|event| match event.event() {
+                    ModelEvent::TextDelta { fragment, .. } => Some(fragment.expose()),
+                    _ => None,
+                })
+                .flatten()
+                .copied()
+                .collect();
+            assert_eq!(
+                text,
+                if structured { br#"{"answer":42}"#.as_slice() } else { b"{answer:42,}" }
+            );
+            assert_eq!(events.iter().any(|event| matches!(event.event(), ModelEvent::ProviderEvent(value) if value.name().as_str() == "peritus.response_healing")), structured);
+        }
+    });
+}
+
+#[test]
+fn native_healing_preserves_terminal_binding_and_replays_audited_tool_calls() {
+    block_on(async {
+        let raw = String::from_utf8(fixture("tool-reasoning.sse")).unwrap();
+        for (replacement, repaired) in [(r#"\"42\",}"#, true), (r#"\"42\""#, false)] {
+            let bytes = raw.replace(r#"\"42\"}"#, replacement);
+            assert_ne!(bytes, raw);
+            let events = collect_fixture(bytes.as_bytes(), &[1, 17, 90]).await;
+            let audit = events.iter().find_map(|event| match event.event() {
+                ModelEvent::ProviderEvent(value)
+                    if value.name().as_str() == "peritus.response_healing" =>
+                {
+                    Some(value)
+                }
+                _ => None,
+            });
+            assert_eq!(audit.is_some(), repaired);
+            if repaired {
+                let mut reducer = ResponseReducer::new(
+                    profile_minimal().provider().clone(),
+                    peritus_model_protocol::ProtocolLimits::PRODUCTION,
+                );
+                for event in events {
+                    reducer.push(event).unwrap();
+                }
+                assert!(matches!(reducer.terminal(), Some(TerminalOutcome::RequiresAction { .. })));
+            } else {
+                assert!(
+                    events
+                        .iter()
+                        .any(|event| matches!(event.event(), ModelEvent::ResponseFailed(_)))
+                );
+                assert!(
+                    !events
+                        .iter()
+                        .any(|event| matches!(event.event(), ModelEvent::ToolArgumentDelta { .. }))
+                );
+            }
+        }
+        let changed_terminal = raw.replacen(
+            r#""arguments":"{\"id\":\"42\"}""#,
+            r#""arguments":"{\"id\":\"43\",}""#,
+            1,
+        );
+        let events = collect_fixture(changed_terminal.as_bytes(), &[7]).await;
+        assert!(events.iter().any(|event| matches!(event.event(), ModelEvent::ResponseFailed(_))));
+    });
 }
 
 #[test]

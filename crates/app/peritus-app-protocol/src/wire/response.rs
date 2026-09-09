@@ -36,7 +36,7 @@ impl CanonicalEncode for AppResponseEnvelope {
         write_id(writer, self.correlation_id().as_bytes())?;
         match self.payload() {
             AppResponsePayload::Interaction(value) => {
-                writer.write_u16(15)?;
+                writer.write_u16(if value.models().has_effort() { 17 } else { 15 })?;
                 super::interaction::write_snapshot(writer, value)
             }
             AppResponsePayload::Models(value) => {
@@ -139,8 +139,9 @@ pub(super) fn read_response(
         12 => AppResponsePayload::ProductRunConversation(read_conversation(reader)?),
         13 => AppResponsePayload::ProductRunSettled(read_settlement_snapshot(reader)?),
         14 => AppResponsePayload::ProductRunSettlements(read_settlement_snapshots(reader)?),
-        15 => AppResponsePayload::Interaction(super::interaction::read_snapshot(reader)?),
+        15 => AppResponsePayload::Interaction(super::interaction::read_snapshot(reader, false)?),
         16 => AppResponsePayload::Models(super::interaction::read_catalog(reader)?),
+        17 => AppResponsePayload::Interaction(super::interaction::read_snapshot(reader, true)?),
         _ => return unknown(tag_offset),
     };
     let response = AppResponseEnvelope::new(context, request_id, correlation_id, payload);

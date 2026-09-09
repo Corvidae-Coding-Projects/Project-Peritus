@@ -3,7 +3,7 @@
 use std::collections::{BTreeSet, HashSet};
 use std::fmt;
 
-use peritus_model_protocol::{CanonicalJson, JsonBounds, ProtocolLimits, UsageCounters};
+use peritus_model_protocol::{CanonicalJson, ModelEvent, ProtocolLimits, UsageCounters};
 use serde::de::{self, Deserializer, MapAccess, Visitor};
 use serde_json::Value;
 
@@ -40,6 +40,7 @@ pub struct RuntimeTurn {
     pub content: String,
     pub tool_calls: Vec<RuntimeToolCall>,
     pub usage: UsageCounters,
+    pub repairs: Vec<ModelEvent>,
     #[cfg(test)]
     pub raw_events: usize,
     #[cfg(test)]
@@ -203,9 +204,13 @@ fn decode_turn(
         return Err(DecodeFailure::Incomplete);
     }
     let encoded = state.assistant_message.as_ref().ok_or(DecodeFailure::InvalidEnvelope)?;
-    let turn: StructuredTurn =
-        serde_json::from_str(encoded).map_err(|_| DecodeFailure::InvalidEnvelope)?;
-    validate_turn(turn, allowed_tools, call_bounds, state)
+    let (value, audit) =
+        peritus_provider_core::healing::object(encoded, "codex.turn", ProtocolLimits::PRODUCTION)
+            .map_err(|_| DecodeFailure::InvalidEnvelope)?
+            .into_parts();
+    let turn: StructuredTurn = serde_json::from_slice(value.canonical_bytes())
+        .map_err(|_| DecodeFailure::InvalidEnvelope)?;
+    validate_turn(turn, allowed_tools, call_bounds, state, audit.into_iter().collect())
 }
 
 struct State {
@@ -312,6 +317,7 @@ fn validate_turn(
     allowed_tools: &BTreeSet<String>,
     call_bounds: std::ops::RangeInclusive<usize>,
     state: &State,
+    mut repairs: Vec<ModelEvent>,
 ) -> Result<RuntimeTurn, DecodeFailure> {
     if turn.content.len() > ProtocolLimits::PRODUCTION.max_text_bytes()
         || turn.content.contains('\0')
@@ -332,22 +338,21 @@ fn validate_turn(
         {
             return Err(DecodeFailure::InvalidToolChoice);
         }
-        let parsed: Value = serde_json::from_str(&call.arguments_json)
-            .map_err(|_| DecodeFailure::InvalidToolArguments)?;
-        if !parsed.is_object() {
-            return Err(DecodeFailure::InvalidToolArguments);
-        }
-        let arguments = CanonicalJson::parse(
+        let (arguments, audit) = peritus_provider_core::healing::object(
             &call.arguments_json,
-            JsonBounds::value(ProtocolLimits::PRODUCTION),
+            &format!("codex.tool_calls[{}].arguments_json", tool_calls.len()),
+            ProtocolLimits::PRODUCTION,
         )
-        .map_err(|_| DecodeFailure::InvalidToolArguments)?;
+        .map_err(|_| DecodeFailure::InvalidToolArguments)?
+        .into_parts();
+        repairs.extend(audit);
         tool_calls.push(RuntimeToolCall { name: call.name, arguments });
     }
     Ok(RuntimeTurn {
         content: turn.content,
         tool_calls,
         usage: state.usage,
+        repairs,
         #[cfg(test)]
         raw_events: state.raw_events,
         #[cfg(test)]
