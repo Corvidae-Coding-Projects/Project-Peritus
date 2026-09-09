@@ -1,6 +1,6 @@
 {
   "next_display_id": 67,
-  "next_comment_id": 1472,
+  "next_comment_id": 1473,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -12950,7 +12950,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-09T03:39:44.724470894Z",
-      "updated_at": "2026-09-09T06:54:39.181433135Z",
+      "updated_at": "2026-09-09T06:54:44.251967922Z",
       "comments": {
         "16d8cdd2-fe72-4b82-b4c3-e0a3a5591360": {
           "display_id": 1467,
@@ -13032,6 +13032,15 @@
           "kind": "note",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAdfRWCN2aiAgM4t+CXpto6LrQrY9vBBw/ysH2bPqC0309HInn7LMz1Egb9KCJDZM8QV3NUaEBffIvFh6Y5TlgAw=="
+        },
+        "d9a463bb-272b-4a99-8d3d-f5de71894f19": {
+          "display_id": 1472,
+          "author": "krvx",
+          "content": "User-confirmed brief now has additive independently negotiated A3 DTO/wire/schema/fixtures, read-only query and exact revisioned edits, TUI inspector and receipt/draft recovery. Verified 30 A3 unit tests plus full integrations, authenticated IPC restart/feature/stale/held/source history/no-inference case, all 80 TUI tests, strict affected Clippy and full workspace compile. Native rebuilt CLI/daemon exercised objective, hold, re-edit with same source and content rev2 at all three terminal sizes. Full scope remains incomplete; next is explicit attachment/request-boundary media and local context controls.",
+          "created_at": "2026-09-09T06:54:44.248847285Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA44/C9lezdlbiFamemMH+qgrmELnho8QbX/DxhrfVUbSrP3EFgXOFHUfECq14PeiRb/YDCMyFhSPhmtRAw7NDCw=="
         },
         "dff6d914-bf41-420e-89d4-e1f9bb71c232": {
           "display_id": 1465,
@@ -14387,8 +14396,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-09T06:54:39.181433135Z",
+    "timestamp": "2026-09-09T06:54:44.251967922Z",
     "agent_id": "krvx",
-    "agent_seq": 115
+    "agent_seq": 116
   }
 }
