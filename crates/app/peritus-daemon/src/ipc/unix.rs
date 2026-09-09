@@ -78,7 +78,7 @@ impl PlatformEndpoint {
         let path = state_root.join(format!("{}.sock", identity.endpoint_name()));
         refuse_existing_endpoint(&path)?;
 
-        let listener = UnixListener::bind(&path).map_err(bind_error)?;
+        let listener = bind_listener(&path).map_err(bind_error)?;
         let created = match fs::symlink_metadata(&path) {
             Ok(metadata) if metadata.file_type().is_socket() && metadata.uid() == owner_uid => {
                 metadata
@@ -229,6 +229,13 @@ fn refuse_existing_endpoint(path: &Path) -> Result<(), DaemonError> {
     }
 }
 
+/// Binds at any path length and hands the listener to the Tokio runtime.
+fn bind_listener(path: &Path) -> io::Result<UnixListener> {
+    let listener = peritus_local_socket::bind(path)?;
+    listener.set_nonblocking(true)?;
+    UnixListener::from_std(listener)
+}
+
 fn bind_error(error: io::Error) -> DaemonError {
     if error.kind() == io::ErrorKind::AddrInUse {
         DaemonError::with_source(
@@ -243,7 +250,7 @@ fn bind_error(error: io::Error) -> DaemonError {
             DaemonErrorCode::Transport,
             DaemonRecovery::Operator,
             "bind Unix endpoint",
-            "Unix endpoint could not be created",
+            format!("Unix endpoint could not be created: {error}"),
             error,
         )
     }

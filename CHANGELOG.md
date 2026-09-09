@@ -2,6 +2,9 @@
 
 ## 0.0.1
 
+- Bind and connect the daemon's Unix-domain endpoint at any path length through the new
+  `peritus-local-socket` crate. The macOS state root made the socket path exceed
+  `sockaddr_un`, so `peritusd` could not start.
 - Prepare the first versioned release with native Linux, macOS, and Windows
   archives for x86-64 and ARM64.
 - Add genuine Debian and RPM source, binary, and debug packages built offline

@@ -15,6 +15,7 @@ base64.workspace = true
 crossterm.workspace = true
 peritus-app-protocol = { version = "=0.0.1", path = "../peritus-app-protocol" }
 peritus-codec = { version = "=0.0.1", path = "../../foundation/peritus-codec" }
+peritus-local-socket = { version = "=0.0.1", path = "../../runtime/peritus-local-socket" }
 peritus-protocol = { version = "=0.0.1", path = "../../foundation/peritus-protocol" }
 peritus-product-runner = { version = "=0.0.1", path = "../peritus-product-runner" }
 peritus-run-settlement = { version = "=0.0.1", path = "../../orchestration/peritus-run-settlement" }

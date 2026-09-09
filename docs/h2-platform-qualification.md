@@ -132,7 +132,9 @@ endpoint-name = "peritus-" || lowercase-hex(digest-prefix)
 ```
 
 On Linux and macOS the address is `<state_root>/<endpoint-name>.sock`, owned by the state-root user
-at mode `0600`. On Windows it is `\\.\pipe\<endpoint-name>`, created with an owner-restricted
+at mode `0600`. The daemon and all local clients bind and connect through `peritus-local-socket`,
+so the address is valid at any path length rather than only within the standard `sockaddr_un`
+structure. On Windows it is `\\.\pipe\<endpoint-name>`, created with an owner-restricted
 security descriptor. `state_root/daemon.instance` publishes the live endpoint name, PID, and
 process birth token while the instance lock is held. The record disappears on orderly teardown;
 it is discovery evidence, not authority. No platform permits a TCP or remote listener.

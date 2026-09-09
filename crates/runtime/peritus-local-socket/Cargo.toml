@@ -1,0 +1,26 @@
+[package]
+name = "peritus-local-socket"
+description = "Long-path-safe Unix-domain socket binding and connection for local Peritus endpoints"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["unix-socket", "ipc", "macos", "linux"]
+categories = ["os::unix-apis"]
+
+[package.metadata.peritus]
+owner = "G0"
+layer = "runtime"
+verification-class = "C"
+
+[target.'cfg(unix)'.dependencies]
+libc.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

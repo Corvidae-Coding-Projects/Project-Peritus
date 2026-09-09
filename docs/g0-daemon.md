@@ -135,6 +135,13 @@ G0 exposes A3 only over a local operating-system endpoint. Unix platforms use a 
 Unix-domain socket. Windows uses a local named pipe with an owner-restricted security descriptor.
 There is no TCP listener or remote bind option.
 
+The socket lives beneath the protected state root, whose length depends on the platform layout
+and the account name, so its path can exceed the 104-byte (macOS) or 108-byte (Linux)
+`sockaddr_un` structure. G0 and every local client bind and connect through
+`peritus-local-socket`, which uses the extended `sun_len` address on macOS and a
+`/proc/self/fd` directory-relative address on Linux so the endpoint works at any path length. A
+path beyond the platform's real limit fails closed with the path and the limit named.
+
 The endpoint authenticates the operating-system peer before negotiation and resolves it through
 the durable one-to-one local-principal binding. A successful hello establishes or resumes a
 durable session. Every later frame must echo the exact negotiated protocol ID, version, session,

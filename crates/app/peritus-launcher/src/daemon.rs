@@ -354,8 +354,12 @@ fn stop_child(child: &mut Child) {
 }
 
 #[cfg(unix)]
+#[allow(
+    clippy::unused_async,
+    reason = "keeps Unix sockets and Windows named pipes behind one awaited readiness contract"
+)]
 async fn endpoint_ready(endpoint: &Path) -> bool {
-    tokio::net::UnixStream::connect(endpoint).await.is_ok()
+    peritus_local_socket::connect(endpoint).is_ok()
 }
 
 #[cfg(windows)]

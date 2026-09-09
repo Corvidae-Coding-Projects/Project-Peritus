@@ -45,6 +45,7 @@ members = [
     "crates/state/peritus-migrations",
     "crates/state/peritus-projection",
     "crates/runtime/peritus-git",
+    "crates/runtime/peritus-local-socket",
     "crates/runtime/peritus-network",
     "crates/runtime/peritus-patch",
     "crates/runtime/peritus-process",

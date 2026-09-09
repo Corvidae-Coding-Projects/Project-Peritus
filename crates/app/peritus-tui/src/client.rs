@@ -285,8 +285,14 @@ where
 }
 
 #[cfg(unix)]
-async fn connect_local(endpoint: &Path) -> Result<BoxedLocalIo, std::io::Error> {
-    tokio::net::UnixStream::connect(endpoint).await.map(|stream| Box::new(stream) as BoxedLocalIo)
+fn connect_local(endpoint: &Path) -> std::future::Ready<Result<BoxedLocalIo, std::io::Error>> {
+    let connected = peritus_local_socket::connect(endpoint)
+        .and_then(|stream| {
+            stream.set_nonblocking(true)?;
+            tokio::net::UnixStream::from_std(stream)
+        })
+        .map(|stream| Box::new(stream) as BoxedLocalIo);
+    std::future::ready(connected)
 }
 
 #[cfg(windows)]

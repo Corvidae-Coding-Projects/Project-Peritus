@@ -30,7 +30,7 @@ impl A3Client {
         requested_session: Option<SessionId>,
         identities: &mut IdentitySource,
     ) -> Result<Self, SubjectError> {
-        let mut stream = UnixStream::connect(endpoint)?;
+        let mut stream = peritus_local_socket::connect(endpoint)?;
         stream.set_read_timeout(Some(IO_BOUND))?;
         stream.set_write_timeout(Some(IO_BOUND))?;
         let protocol_id = identities.next(ProtocolId::new)?;
