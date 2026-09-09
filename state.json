@@ -1,6 +1,6 @@
 {
   "next_display_id": 67,
-  "next_comment_id": 1476,
+  "next_comment_id": 1477,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -12950,7 +12950,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-09T03:39:44.724470894Z",
-      "updated_at": "2026-09-09T07:22:58.168306635Z",
+      "updated_at": "2026-09-09T07:24:57.485398227Z",
       "comments": {
         "16d8cdd2-fe72-4b82-b4c3-e0a3a5591360": {
           "display_id": 1467,
@@ -13077,6 +13077,15 @@
           "kind": "note",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABX19dXphsjQSGJpoz9+hzZZOZZzA4BDbwM2xzoX4YDFSXcikQv++29iOnalBbbMEcoBLDc0yD4zOpojAe+bpAQ=="
+        },
+        "fd341616-a462-4c63-a891-9c4e857fcec3": {
+          "display_id": 1476,
+          "author": "krvx",
+          "content": "Explicit image validation now detects and decodes PNG/JPEG/GIF/WebP, retains exact encoded digest/size/dimensions/frames, and rejects provider/count/aggregate/dimension/frame bounds. Pinned image 0.25.10 with only four formats; cargo deny advisory/license/source/bans passes with a documented exact private miniz version exception. Seven new validator tests; full runner 223 unit plus integration tests pass. C5 also centrally enforces negotiated inline media limits for image/audio/document (red-first regression). Resolved 12 workbench-affected source-layout violations through responsibility splits; two unchanged HEAD baseline G4 files remain above the source budget. Post-split full five-crate suites and strict Clippy pass; final runner/daemon rerun after reply helper extraction is running. Importer persistence/preview/consent/UI and broader P1-P7 remain incomplete; no commit/push.",
+          "created_at": "2026-09-09T07:24:57.480092211Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAHajICP/UYKVQNRInwFD+ffm2U5HUlEJwLMGxBzhFDmU6xZ4ohFQnhIh1Y3Q8SKhWBeuHQCscaDt1ol4HusUdCA=="
         }
       }
     },
@@ -14423,8 +14432,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-09T07:22:58.168306635Z",
+    "timestamp": "2026-09-09T07:24:57.485398227Z",
     "agent_id": "krvx",
-    "agent_seq": 119
+    "agent_seq": 120
   }
 }
