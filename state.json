@@ -1,6 +1,6 @@
 {
   "next_display_id": 73,
-  "next_comment_id": 1550,
+  "next_comment_id": 1551,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -14382,7 +14382,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-10T23:27:26.663955506Z",
-      "updated_at": "2026-09-10T23:31:48.013884482Z",
+      "updated_at": "2026-09-10T23:36:14.721210890Z",
       "comments": {
         "0d235d1d-e4f6-468c-acf7-1c4e30fd1db4": {
           "display_id": 1548,
@@ -14392,6 +14392,15 @@
           "kind": "note",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzyT9kxlyzLRJ7Zh6o4uH3SWm6XWFuVHaFrYHMfE3JHpjV3zWYIFQAAnZVy91nXe1i9q0sJYDr50cWQDNHZPECw=="
+        },
+        "8f8cebd9-38a4-48ed-8135-5503ee20c52a": {
+          "display_id": 1550,
+          "author": "krvx",
+          "content": "[action] Expanded PR66 regressions pass (17 command-runtime tests; one existing preview subprocess fixture ignored). Added failed-start/reopen exact identity and exactly-once effects on both backends, fresh and initialized concurrent allocation, independent runs, invalid/persisted-exhausted counters. Strengthened rollback-mode durability from synchronous FULL to EXTRA per SQLite documentation. Running workspace strict Clippy, policy and broader qualification before updating the PR.",
+          "created_at": "2026-09-10T23:36:14.707136241Z",
+          "kind": "note",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAKgtOQrUPuMIxHHImM26CaZ7Mib8DTAQxuMQjSfTbotCyTzx4Xyt8Eso6g3uqOuf69tkFl+GUKgP+JNbymVjvBg=="
         },
         "a2dd8e53-c7aa-4367-9278-d69890a88ba3": {
           "display_id": 1549,
@@ -15184,8 +15193,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-10T23:31:48.013884482Z",
+    "timestamp": "2026-09-10T23:36:14.721210890Z",
     "agent_id": "krvx",
-    "agent_seq": 222
+    "agent_seq": 223
   }
 }
