@@ -51,6 +51,13 @@ impl DirectProviderDraft {
         self
     }
 
+    /// Binds a discovered or explicitly selected protocol for a mixed-protocol hosted service.
+    #[must_use]
+    pub const fn with_protocol(mut self, protocol: CompatibleProtocol) -> Self {
+        self.compatible_protocol = Some(protocol);
+        self
+    }
+
     /// Queries provider model metadata using the captured credential, without storing it or
     /// submitting an inference request.
     ///
@@ -59,7 +66,7 @@ impl DirectProviderDraft {
     pub fn discover_models(
         &self,
         credential: &DirectCredential,
-    ) -> Result<Vec<String>, OnboardingError> {
+    ) -> Result<Vec<peritus_provider_core::catalog::DiscoveredModel>, OnboardingError> {
         crate::models::direct(
             self.kind,
             self.endpoint.as_deref(),

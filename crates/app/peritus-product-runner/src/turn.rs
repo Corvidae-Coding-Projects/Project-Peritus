@@ -239,12 +239,13 @@ async fn run_developer_invocation(
         context.correction,
     );
     let (prompt, attachments) = media.into_parts(prompt);
-    let prefix = request_name(input.run_id, identity.role, identity.cycle);
-    let request_prefix = format!(
-        "{prefix}-revision-{}-invocation-{}",
+    let request_prefix = request_name::invocation(
+        input.run_id,
+        identity.role,
+        identity.cycle,
         input.conversation.revision(),
         identity.invocation,
-    );
+    )?;
     let mut tools = input.configure_tools(
         WorkspaceDeveloperTools::with_ownership(
             input.workspace_root.clone(),

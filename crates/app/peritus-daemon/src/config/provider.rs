@@ -1,15 +1,14 @@
 //! Strict immutable C5 provider route declarations.
-use std::{path::PathBuf, time::Duration};
+use std::path::PathBuf;
 
 use peritus_model_protocol::{
-    CancellationKind, Capability, CapabilityMatrix, CapabilityProvenance, ModelLimits, ModelName,
+    CancellationKind, CapabilityMatrix, CapabilityProvenance, ModelLimits, ModelName,
     OutputLimitEnforcement, ProviderName, ProviderProfile, ResumeKind, StateMode, WireDialect,
 };
 use peritus_provider_anthropic::{AnthropicBeta, AnthropicConfig};
 use peritus_provider_compatible::{CompatibleAuth, CompatibleConfig, CompatibleProfile};
 use peritus_provider_core::{
     CredentialReference, Endpoint, FramingLimits, HeaderName, HttpLimits, ProcessLimits,
-    RetryPolicy,
 };
 use peritus_provider_google::GoogleConfig;
 use peritus_provider_openai::OpenAiConfig;
@@ -17,13 +16,12 @@ use serde::Deserialize;
 use serde::Deserializer;
 
 use super::decode_identifier;
-use crate::{
-    DaemonError, DaemonErrorCode, DaemonRecovery, OfficialExecutableSelection, ProviderDeclaration,
-};
+use crate::{DaemonError, OfficialExecutableSelection, ProviderDeclaration};
 
 const MAX_PROVIDERS: usize = 256;
-const MAX_CAPABILITIES: usize = 17;
+const MAX_CAPABILITIES: usize = 18;
 const PROVIDER_ROUTE_KINDS: &[&str] = &[
+    "hosted",
     "open-ai",
     "anthropic",
     "google-interactions",
@@ -37,6 +35,8 @@ const PROVIDER_ROUTE_KINDS: &[&str] = &[
 /// Closed provider adapter families configurable in G0.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ProviderRouteKind {
+    /// Named hosted service with a discovered or explicitly selected protocol.
+    Hosted,
     /// First-party `OpenAI` Responses HTTP route.
     OpenAi,
     /// First-party Anthropic Messages HTTP route.
@@ -62,6 +62,7 @@ impl<'de> Deserialize<'de> for ProviderRouteKind {
     {
         let name = String::deserialize(deserializer)?;
         match name.as_str() {
+            "hosted" => Ok(Self::Hosted),
             "open-ai" => Ok(Self::OpenAi),
             "anthropic" => Ok(Self::Anthropic),
             "google-interactions" => Ok(Self::GoogleInteractions),
@@ -101,9 +102,13 @@ pub struct ProviderRoute {
     credential_reference: Option<String>,
     credential_header: Option<String>,
     executable: Option<PathBuf>,
+    hosted_service: Option<String>,
+    wire_protocol: Option<ProviderRouteKind>,
 }
 
 mod locality;
+mod values;
+use values::{capability, invalid, protocol_error, provider_error, retry_policy};
 impl ProviderRoute {
     /// Builds the exact C5 declaration selected by validated configuration.
     ///
@@ -112,8 +117,13 @@ impl ProviderRoute {
     /// Returns a stable configuration error for profile, endpoint, credential-reference, or
     /// executable drift.
     pub fn declaration(&self) -> Result<ProviderDeclaration, DaemonError> {
-        let profile = self.profile.build(self.kind)?;
+        let profile = self.profile.build(self.adapter_kind()?)?;
         let declaration = match self.kind {
+            ProviderRouteKind::Hosted => ProviderDeclaration::Hosted {
+                service: self.hosted()?,
+                credential: self.credential()?,
+                profile,
+            },
             ProviderRouteKind::OpenAi => ProviderDeclaration::openai(
                 OpenAiConfig::new(self.credential()?).map_err(provider_error)?,
                 profile,
@@ -181,6 +191,35 @@ impl ProviderRoute {
             .map_err(provider_error)?,
         };
         Ok(declaration)
+    }
+
+    fn hosted(&self) -> Result<peritus_provider_core::hosted::HostedService, DaemonError> {
+        self.hosted_service
+            .as_deref()
+            .and_then(peritus_provider_core::hosted::HostedService::parse)
+            .ok_or_else(|| invalid("hosted route requires a recognized service"))
+    }
+
+    fn adapter_kind(&self) -> Result<ProviderRouteKind, DaemonError> {
+        if self.kind != ProviderRouteKind::Hosted {
+            return Ok(self.kind);
+        }
+        let kind = self
+            .wire_protocol
+            .ok_or_else(|| invalid("hosted route requires a selected wire protocol"))?;
+        if !matches!(
+            kind,
+            ProviderRouteKind::OpenAi
+                | ProviderRouteKind::CompatibleResponses
+                | ProviderRouteKind::CompatibleChatCompletions
+                | ProviderRouteKind::Anthropic
+                | ProviderRouteKind::GoogleGenerateContent
+        ) {
+            return Err(invalid("hosted wire protocol is not a supported inference API"));
+        }
+        let (_, dialect, _) = route_profile(kind, None)?;
+        self.hosted()?.route(dialect).map_err(provider_error)?;
+        Ok(kind)
     }
 
     fn required_endpoint(&self) -> Result<&str, DaemonError> {
@@ -254,7 +293,7 @@ pub(super) fn validate(routes: &[ProviderRoute]) -> Result<(), DaemonError> {
     }
     let mut keys = std::collections::BTreeSet::new();
     for route in routes {
-        let profile = route.profile.build(route.kind)?;
+        let profile = route.profile.build(route.adapter_kind()?)?;
         if !keys.insert((profile.profile_id(), profile.revision())) {
             return Err(invalid("provider profile identity and revision are configured twice"));
         }
@@ -262,7 +301,10 @@ pub(super) fn validate(routes: &[ProviderRoute]) -> Result<(), DaemonError> {
             route.kind,
             ProviderRouteKind::CodexRuntime | ProviderRouteKind::ClaudeRuntime
         );
-        if direct != route.credential_reference.is_some()
+        if (route.kind == ProviderRouteKind::Hosted) != route.hosted_service.is_some()
+            || (route.kind == ProviderRouteKind::Hosted) != route.wire_protocol.is_some()
+            || route.kind == ProviderRouteKind::Hosted && route.endpoint.is_some()
+            || direct != route.credential_reference.is_some()
             || !direct && (route.endpoint.is_some() || route.credential_header.is_some())
             || direct && route.executable.is_some()
             || matches!(route.kind, ProviderRouteKind::OpenAi) && route.endpoint.is_some()
@@ -291,6 +333,9 @@ fn route_profile(
     configured: Option<&str>,
 ) -> Result<(String, WireDialect, OutputLimitEnforcement), DaemonError> {
     let (default, dialect, output) = match kind {
+        ProviderRouteKind::Hosted => {
+            return Err(invalid("hosted route requires a resolved wire protocol"));
+        }
         ProviderRouteKind::OpenAi => {
             ("openai", WireDialect::OpenAiResponses, OutputLimitEnforcement::ProviderEnforced)
         }
@@ -331,70 +376,4 @@ fn route_profile(
         return Err(invalid("provider name contradicts the selected adapter kind"));
     }
     Ok((configured.unwrap_or(default).to_owned(), dialect, output))
-}
-
-fn capability(value: &str) -> Result<Capability, DaemonError> {
-    match value {
-        "streaming" => Ok(Capability::Streaming),
-        "tool-calls" => Ok(Capability::ToolCalls),
-        "parallel-tool-calls" => Ok(Capability::ParallelToolCalls),
-        "strict-structured-output" => Ok(Capability::StrictStructuredOutput),
-        "prompt-caching" => Ok(Capability::PromptCaching),
-        "image-input" => Ok(Capability::ImageInput),
-        "audio-input" => Ok(Capability::AudioInput),
-        "document-input" => Ok(Capability::DocumentInput),
-        "reasoning-controls" => Ok(Capability::ReasoningControls),
-        "reasoning-summaries" => Ok(Capability::ReasoningSummaries),
-        "resumable-response" => Ok(Capability::ResumableResponse),
-        "confirmed-cancellation" => Ok(Capability::ConfirmedCancellation),
-        "usage-detail" => Ok(Capability::UsageDetail),
-        "rate-limit-detail" => Ok(Capability::RateLimitDetail),
-        "stored-state" => Ok(Capability::StoredState),
-        "provider-extensions" => Ok(Capability::ProviderExtensions),
-        "sampling-controls" => Ok(Capability::SamplingControls),
-        _ => Err(invalid("provider profile contains an unknown capability name")),
-    }
-}
-
-fn retry_policy() -> Result<RetryPolicy, DaemonError> {
-    RetryPolicy::new(
-        3,
-        [
-            Duration::from_millis(100),
-            Duration::from_secs(2),
-            Duration::from_secs(2),
-            Duration::from_secs(10),
-        ],
-        64 * 1024 * 1024,
-    )
-    .map_err(provider_error)
-}
-
-fn provider_error(error: peritus_provider_core::ProviderCoreError) -> DaemonError {
-    DaemonError::with_source(
-        DaemonErrorCode::InvalidInput,
-        DaemonRecovery::CorrectRequest,
-        "construct provider route",
-        error.to_string(),
-        error,
-    )
-}
-
-fn protocol_error(error: peritus_model_protocol::ProtocolError) -> DaemonError {
-    DaemonError::with_source(
-        DaemonErrorCode::InvalidInput,
-        DaemonRecovery::CorrectRequest,
-        "construct provider profile",
-        error.to_string(),
-        error,
-    )
-}
-
-fn invalid(detail: &'static str) -> DaemonError {
-    DaemonError::new(
-        DaemonErrorCode::InvalidInput,
-        DaemonRecovery::CorrectRequest,
-        "validate daemon provider inventory",
-        detail,
-    )
 }

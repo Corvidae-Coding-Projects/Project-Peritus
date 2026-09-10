@@ -5,50 +5,8 @@ use serde::Serialize;
 
 use crate::ProductStateError;
 
-/// Provider login routes selectable in the product.
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum ProviderKind {
-    /// Subscription-backed `OpenAI` access through the official Codex executable.
-    CodexAccount,
-    /// Subscription-backed Anthropic access through the official Claude executable.
-    ClaudeAccount,
-    /// Direct `OpenAI` API access through an operating-system credential store.
-    OpenAiApi,
-    /// Direct Anthropic API access through an operating-system credential store.
-    AnthropicApi,
-    /// Direct Google Gemini API access through an operating-system credential store.
-    GoogleGeminiApi,
-    /// Explicit compatible HTTP endpoint with credential-store-backed authentication.
-    CompatibleEndpoint,
-}
-
-impl ProviderKind {
-    /// Returns the user-facing provider label.
-    #[must_use]
-    pub const fn label(self) -> &'static str {
-        match self {
-            Self::CodexAccount => "OpenAI with ChatGPT account",
-            Self::ClaudeAccount => "Anthropic with Claude account",
-            Self::OpenAiApi => "OpenAI API",
-            Self::AnthropicApi => "Anthropic API",
-            Self::GoogleGeminiApi => "Google Gemini API",
-            Self::CompatibleEndpoint => "Compatible endpoint",
-        }
-    }
-
-    /// Returns whether the route delegates account ownership to an official executable.
-    #[must_use]
-    pub const fn is_account(self) -> bool {
-        matches!(self, Self::CodexAccount | Self::ClaudeAccount)
-    }
-
-    /// Returns whether the route uses a credential stored by the operating system.
-    #[must_use]
-    pub const fn is_direct(self) -> bool {
-        !self.is_account()
-    }
-}
+mod kind;
+pub use kind::ProviderKind;
 
 /// Wire family selected for an explicitly compatible endpoint.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
@@ -58,6 +16,10 @@ pub enum CompatibleProtocol {
     Responses,
     /// `OpenAI` Chat Completions-compatible request and stream shapes.
     ChatCompletions,
+    /// Anthropic Messages wire contract for a hosted service.
+    AnthropicMessages,
+    /// Google Generate Content wire contract for a hosted service.
+    GoogleGenerateContent,
 }
 
 /// Durable non-secret configuration for one direct provider route.
@@ -143,9 +105,18 @@ impl DirectProviderProfile {
                 | ProviderKind::CompatibleEndpoint
         );
         let compatible = self.kind == ProviderKind::CompatibleEndpoint;
+        let hosted = self.kind.hosted_service().is_some();
         if !self.kind.is_direct()
             || endpoint_required != self.endpoint.is_some()
-            || compatible != self.compatible_protocol.is_some()
+            || (compatible || hosted) != self.compatible_protocol.is_some()
+            || compatible
+                && matches!(
+                    self.compatible_protocol,
+                    Some(
+                        CompatibleProtocol::AnthropicMessages
+                            | CompatibleProtocol::GoogleGenerateContent
+                    )
+                )
             || !compatible && self.credential_header.is_some()
             || !bounded_text(&self.model, 256)
             || !bounded_text(&self.credential_reference, 256)

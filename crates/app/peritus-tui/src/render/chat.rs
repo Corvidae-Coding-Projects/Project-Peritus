@@ -3,7 +3,6 @@
 mod brief;
 mod checkpoints;
 mod compaction;
-mod composer;
 mod context;
 mod doctor;
 mod effort;
@@ -18,7 +17,10 @@ mod queue;
 mod tests;
 mod workbench;
 use super::{ACCENT, BAD, GOOD, MUTED, WARN};
-use crate::model::{AppModel, ConnectionStatus};
+use crate::{
+    input::composer,
+    model::{AppModel, ConnectionStatus},
+};
 use peritus_app_protocol::ProductActivityKind;
 use ratatui::{
     Frame,
@@ -32,19 +34,11 @@ pub(super) fn draw(frame: &mut Frame<'_>, model: &AppModel) {
     let draft = composer::layout(
         &model.chat.buffer,
         model.chat.cursor,
+        model.chat.selection().as_ref(),
         usize::from(frame.area().width.saturating_sub(2)),
     );
-    let draft_lines = draft.lines.len().clamp(1, 6);
-    let composer_height = u16::try_from(draft_lines).unwrap_or(6) + 2;
     let working_seconds = model.chat.working.elapsed_seconds();
-    let regions = Layout::vertical([
-        Constraint::Length(2),
-        Constraint::Min(3),
-        Constraint::Length(u16::from(working_seconds.is_some())),
-        Constraint::Length(composer_height),
-        Constraint::Length(2),
-    ])
-    .split(frame.area());
+    let regions = composer::regions(frame.area(), draft.lines.len(), working_seconds.is_some());
     let title = title(model);
     frame.render_widget(
         Paragraph::new(vec![
@@ -122,15 +116,9 @@ fn draw_composer(
     draft: composer::DraftLayout,
 ) {
     let visible_rows = usize::from(area.height.saturating_sub(2)).max(1);
-    let draft_offset = draft.row.saturating_sub(visible_rows - 1);
+    let draft_offset = draft.offset(area);
     let composer = Paragraph::new(
-        draft
-            .lines
-            .into_iter()
-            .skip(draft_offset)
-            .take(visible_rows)
-            .map(Line::from)
-            .collect::<Vec<_>>(),
+        draft.lines.into_iter().skip(draft_offset).take(visible_rows).collect::<Vec<_>>(),
     )
     .block(
         Block::default().borders(Borders::ALL).border_style(Style::default().fg(ACCENT)).title(
@@ -227,7 +215,9 @@ fn draw_transcript(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
             lines
                 .push(Line::styled(label, Style::default().fg(color).add_modifier(Modifier::BOLD)));
             append_lines(&mut lines, activity.text());
-            if model.chat.expanded && !activity.detail().is_empty() {
+            if (model.chat.expanded || activity.kind() == ProductActivityKind::Error)
+                && !activity.detail().is_empty()
+            {
                 append_lines(&mut lines, activity.detail());
             }
             lines.push(Line::from(""));

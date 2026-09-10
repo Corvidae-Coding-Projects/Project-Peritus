@@ -67,3 +67,56 @@ fn nonnegotiated_streaming_fails_before_encoding() {
     assert_eq!(error.kind(), peritus_provider_core::ProviderCoreErrorKind::InvalidRequest);
     assert!(!request.negotiated().includes(Capability::Streaming));
 }
+
+#[test]
+fn opencode_responses_preserves_gateway_path_and_stateless_wire_contract() {
+    use crate::{
+        OpenAiConfig,
+        request::{RequestPlan, http_request},
+    };
+    use peritus_provider_core::{Credential, Endpoint};
+    for endpoint in
+        ["https://opencode.ai/zen/v1/responses", "https://opencode.ai/zen/go/v1/responses"]
+    {
+        let config = OpenAiConfig::opencode_gateway(
+            Endpoint::new(endpoint.to_owned()).expect("endpoint"),
+            super::support::credential_reference(),
+        )
+        .expect("gateway");
+        let profile = profile_minimal();
+        let request = minimal_request(&profile);
+        let http = http_request(
+            &config,
+            &request,
+            &RequestPlan::Create,
+            Credential::new(b"fixture-key".to_vec()).expect("credential"),
+        )
+        .expect("request");
+        assert_eq!(http.endpoint().as_str(), endpoint);
+        let wire: serde_json::Value = serde_json::from_slice(http.body()).expect("wire");
+        assert_eq!(wire["stream"], true);
+        assert_eq!(wire["store"], false);
+        assert!(wire.get("input").is_some());
+        assert!(wire.get("messages").is_none());
+    }
+    assert!(
+        OpenAiConfig::opencode_gateway(
+            Endpoint::new("https://unrelated.invalid/v1/responses".to_owned()).expect("endpoint"),
+            super::support::credential_reference()
+        )
+        .is_err()
+    );
+}
+
+#[test]
+fn initial_reasoning_request_includes_encrypted_state_before_any_replay_exists() {
+    let profile = profile_full();
+    let request = super::support::request_with_capabilities(
+        &profile,
+        &[Capability::Streaming, Capability::ReasoningControls],
+    );
+    let wire: serde_json::Value =
+        serde_json::from_slice(&crate::request::encode(&request).expect("request")).expect("wire");
+    assert_eq!(wire["include"], serde_json::json!(["reasoning.encrypted_content"]));
+    assert!(wire.get("reasoning").is_none());
+}

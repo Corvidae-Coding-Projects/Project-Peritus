@@ -7,16 +7,19 @@ use peritus_app_protocol::ProductRunControlAction;
 impl AppModel {
     pub(in crate::model) fn paste_chat(&mut self, text: &str) {
         self.chat.interrupt_requested = false;
+        self.chat.mouse_anchor = None;
         let text: String =
             text.chars().filter(|ch| !ch.is_control() || *ch == '\n' || *ch == '\t').collect();
-        if self.chat.buffer.len().saturating_add(text.len())
+        let selected = self.chat.selection().unwrap_or(self.chat.cursor..self.chat.cursor);
+        if self.chat.buffer.len().saturating_sub(selected.len()).saturating_add(text.len())
             > peritus_app_protocol::MAX_PRODUCT_TASK_BYTES
         {
             self.notice(NoticeLevel::Warning, "Message is too large; paste a smaller selection");
             return;
         }
-        self.chat.buffer.insert_str(self.chat.cursor, &text);
-        self.chat.cursor += text.len();
+        self.chat.cursor = selected.start + text.len();
+        self.chat.buffer.replace_range(selected, &text);
+        self.chat.selection_anchor = None;
     }
 
     pub(in crate::model) fn paste_chat_event(&mut self, text: &str) {
@@ -24,7 +27,7 @@ impl AppModel {
             return;
         }
         let previous = self.chat.buffer.clone();
-        let cursor = self.chat.cursor;
+        let cursor = self.chat.selection().map_or(self.chat.cursor, |range| range.start);
         self.paste_chat(text);
         // A paste that introduces or modifies the command token cannot become an intent.
         // Pasting arguments after a fully keyboard-entered token remains deliberate input.
@@ -37,6 +40,7 @@ impl AppModel {
         }
     }
     pub(in crate::model) fn handle_chat_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+        self.chat.mouse_anchor = None;
         if !(key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c')) {
             self.chat.interrupt_requested = false;
         }
@@ -83,6 +87,7 @@ impl AppModel {
                 self.chat.buffer =
                     format!("{} ", commands[self.chat.command_selection.min(commands.len() - 1)].0);
                 self.chat.cursor = self.chat.buffer.len();
+                self.chat.selection_anchor = None;
                 self.chat.command_selection = 0;
                 // Explicit selection from the local catalog creates a keyboard-owned intent.
                 self.chat.pasted_command = false;
@@ -97,16 +102,29 @@ impl AppModel {
             KeyCode::PageUp => self.chat.scroll = self.chat.scroll.saturating_add(12),
             KeyCode::PageDown => self.chat.scroll = self.chat.scroll.saturating_sub(12),
             KeyCode::End if self.chat.buffer.is_empty() => self.chat.scroll = 0,
+            KeyCode::Esc if self.chat.selection_anchor.take().is_some() => {}
             KeyCode::Esc => {
                 self.chat.expanded = false;
                 self.chat.command_selection = 0;
             }
             _ => {
-                if self.chat.buffer.len() < peritus_app_protocol::MAX_PRODUCT_TASK_BYTES
-                    || !matches!(key.code, KeyCode::Char(_))
+                let selected_bytes = self.chat.selection().map_or(0, |range| range.len());
+                let inserted_bytes = match key.code {
+                    KeyCode::Char(ch) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        ch.len_utf8()
+                    }
+                    _ => 0,
+                };
+                if inserted_bytes == 0
+                    || self.chat.buffer.len() - selected_bytes + inserted_bytes
+                        <= peritus_app_protocol::MAX_PRODUCT_TASK_BYTES
                 {
-                    let _ =
-                        crate::input::edit_text(&mut self.chat.buffer, &mut self.chat.cursor, key);
+                    let _ = crate::input::selection::edit(
+                        &mut self.chat.buffer,
+                        &mut self.chat.cursor,
+                        &mut self.chat.selection_anchor,
+                        key,
+                    );
                     if self.chat.buffer.is_empty() {
                         self.chat.pasted_command = false;
                     }

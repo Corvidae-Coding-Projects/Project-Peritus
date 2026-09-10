@@ -121,6 +121,11 @@ Type `/` to discover commands; Tab completes them.
 | `/runs` | Open the run and candidate dashboard. |
 
 Use Shift+Enter for a new line and PageUp/PageDown to scroll.
+In the message composer, Ctrl+Left/Right moves by word. Hold Shift with Left/Right,
+Ctrl+Left/Right, or Home/End to select text; typing, pasting, Backspace, and Delete
+replace or remove the selection. Escape clears it. Click to position the cursor,
+or drag or Shift-click to select. Mouse input requires terminal mouse reporting;
+use your terminal’s selection override (usually Shift-drag) to copy screen text.
 Diff and check reports also support PageUp/PageDown; Home returns to the start.
 Ctrl+C closes the interface when idle. During active work it requests a stop; press it again to
 close without waiting. Ctrl+Q closes the interface without cancelling
@@ -164,6 +169,13 @@ peritus workspaces
 Use `peritus providers` to add a provider, change a provider, or repair a login.
 Use `peritus workspaces` to select a repository or repair its managed copy.
 
+Direct API choices include OpenAI, Anthropic, Google Gemini, OpenCode Zen and Go, OpenRouter,
+Groq, Together AI, Fireworks AI, DeepSeek, and an explicitly configured compatible endpoint.
+In provider settings, press `t` on an existing direct provider to test generation, tool calling,
+and a tool-result round trip. The optional test makes up to three small requests and may use
+paid tokens; saving a key or listing models does not run it. See [provider contracts](docs/provider-contracts.md)
+for API sources, discovery behavior, and test limits.
+
 Setup and `/model` query provider-advertised model catalogs. No built-in model list is substituted
 when discovery fails; `/model manual MODEL_ID` is an explicit, unverified fallback.
 Model changes apply at an idle boundary. Interactive selections never silently fail over.
@@ -198,6 +210,8 @@ peritus update --enable-checks
   selected models, and unsent chat text stay in the interface while daemon readiness is restored.
 - If a provider login fails, run `peritus providers`.
 - If a workspace needs repair, run `peritus workspaces`.
+- Interrupted provider responses retry automatically within the task's limits. After a daemon
+  restart, interrupted tasks continue from preserved work. Tasks you explicitly cancel stay stopped.
 - If a task stops, read its remaining work. Send a message to continue it, or select it in `/runs` and press `r` to retry.
 
 Do not delete the state directory to repair a task. It contains task history and managed repository copies.

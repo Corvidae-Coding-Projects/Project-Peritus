@@ -131,7 +131,9 @@ fn definition(
         Some(BoundedText::new(description.to_owned(), limits).map_err(|error| protocol(&error))?),
         JsonSchema::parse(schema, SchemaDialect::Draft202012, JsonBounds::schema(limits))
             .map_err(|error| protocol(&error))?,
-        true,
+        // These portable schemas contain optional fields. Provider strict decoding is a
+        // separate model-specific feature; the host still validates tool arguments and access.
+        false,
     ))
 }
 

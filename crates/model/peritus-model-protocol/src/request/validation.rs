@@ -88,7 +88,10 @@ fn validate_capabilities(
             ContentBlock::Audio(_) => Some(Capability::AudioInput),
             ContentBlock::Document(_) => Some(Capability::DocumentInput),
             ContentBlock::ToolCall(_) | ContentBlock::ToolResult(_) => Some(Capability::ToolCalls),
-            ContentBlock::Reasoning(_) => Some(Capability::ReasoningControls),
+            ContentBlock::Reasoning(_) if negotiated.includes(Capability::ReasoningControls) => {
+                None
+            }
+            ContentBlock::Reasoning(_) => Some(Capability::ReasoningReplay),
             ContentBlock::ProviderExtension(_) => Some(Capability::ProviderExtensions),
             ContentBlock::Text(_) | ContentBlock::Refusal(_) => None,
         };

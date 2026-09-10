@@ -15,6 +15,7 @@ mod commands;
 mod doctor;
 mod effort;
 mod model_selection;
+mod navigation;
 mod workbench;
 
 fn model() -> AppModel {

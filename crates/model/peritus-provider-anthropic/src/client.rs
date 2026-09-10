@@ -67,7 +67,7 @@ impl AnthropicClient {
         Box::pin(async move {
             validate_request_profile(self.config.profile(), &request)?;
             let body = crate::request::encode(&request, &self.config)?;
-            let endpoint = self.config.endpoint().with_path("/v1/messages")?;
+            let endpoint = self.config.operation_endpoint()?;
             let started = Instant::now();
             let mut attempt = 1_u32;
             let mut cumulative_bytes = 0_u64;

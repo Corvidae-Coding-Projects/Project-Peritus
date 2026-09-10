@@ -39,10 +39,12 @@ pub enum Capability {
     ProviderExtensions = 15,
     /// Model-specific sampling and deterministic-seed controls.
     SamplingControls = 16,
+    /// Replay provider-returned reasoning state without requesting reasoning controls.
+    ReasoningReplay = 17,
 }
 
 impl Capability {
-    pub(super) const ALL: [Self; 17] = [
+    pub(super) const ALL: [Self; 18] = [
         Self::Streaming,
         Self::ToolCalls,
         Self::ParallelToolCalls,
@@ -60,6 +62,7 @@ impl Capability {
         Self::StoredState,
         Self::ProviderExtensions,
         Self::SamplingControls,
+        Self::ReasoningReplay,
     ];
 
     pub(super) const fn bit(self) -> u64 {
@@ -81,6 +84,7 @@ impl Capability {
             Self::StoredState => 1 << 14,
             Self::ProviderExtensions => 1 << 15,
             Self::SamplingControls => 1 << 16,
+            Self::ReasoningReplay => 1 << 17,
         }
     }
 
@@ -109,6 +113,7 @@ impl Capability {
             Self::StoredState => "stored_state",
             Self::ProviderExtensions => "provider_extensions",
             Self::SamplingControls => "sampling_controls",
+            Self::ReasoningReplay => "reasoning_replay",
         }
     }
 }
@@ -171,7 +176,7 @@ impl CapabilityMatrix {
 
     /// Iterates all capability names and states in stable order.
     #[must_use]
-    pub fn iter(self) -> std::array::IntoIter<(Capability, CapabilityState), 17> {
+    pub fn iter(self) -> std::array::IntoIter<(Capability, CapabilityState), 18> {
         Capability::ALL.map(|capability| (capability, self.state(capability))).into_iter()
     }
 

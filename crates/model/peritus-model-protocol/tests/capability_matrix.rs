@@ -7,7 +7,7 @@ use peritus_model_protocol::{
 };
 use peritus_types::ProviderProfileId;
 
-const fn capabilities() -> [Capability; 17] {
+const fn capabilities() -> [Capability; 18] {
     [
         Capability::Streaming,
         Capability::ToolCalls,
@@ -26,6 +26,7 @@ const fn capabilities() -> [Capability; 17] {
         Capability::StoredState,
         Capability::ProviderExtensions,
         Capability::SamplingControls,
+        Capability::ReasoningReplay,
     ]
 }
 

@@ -16,7 +16,7 @@ use crate::{
     persistence::{ProductStateStore, protect_file, read_exact_or_publish},
 };
 
-mod configuration;
+pub mod configuration;
 #[cfg(all(test, unix))]
 mod endpoint_tests;
 #[cfg(test)]

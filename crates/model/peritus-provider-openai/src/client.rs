@@ -53,6 +53,11 @@ impl OpenAiProvider {
         credentials: Arc<dyn CredentialSource>,
     ) -> Result<Self, ProviderCoreError> {
         crate::profile::validate(&profile)?;
+        if config.is_gateway() && profile.state_mode() != StateMode::StatelessReplay {
+            return Err(error::invalid(
+                "OpenCode gateway supports only stateless replay in this adapter",
+            ));
+        }
         let transport = ReqwestTransport::new(config.http_limits())?;
         Ok(Self::compose(config, profile, credentials, Arc::new(transport)))
     }

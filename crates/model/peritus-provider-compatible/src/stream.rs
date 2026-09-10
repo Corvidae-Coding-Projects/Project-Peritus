@@ -110,6 +110,25 @@ impl CompatibleStream {
         })
     }
 
+    pub(crate) const fn with_hosted_service(
+        mut self,
+        service: Option<peritus_provider_core::hosted::HostedService>,
+    ) -> Self {
+        if let Decoder::Chat(decoder) = &mut self.decoder {
+            decoder.service = service;
+        }
+        self
+    }
+
+    pub(crate) fn with_tool_choice(mut self, choice: peritus_model_protocol::ToolChoice) -> Self {
+        if let Decoder::Chat(decoder) = &mut self.decoder
+            && decoder.service.is_some()
+        {
+            decoder.tool_choice = choice;
+        }
+        self
+    }
+
     pub(crate) fn failure_stream(
         provider: ProviderName,
         event: ModelEvent,

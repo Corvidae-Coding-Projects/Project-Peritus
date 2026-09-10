@@ -4,7 +4,7 @@ mod provider_turn;
 use provider_turn::complete_turn;
 
 use peritus_model_protocol::{
-    CanonicalJson, Capability, ContentBlock, JsonBounds, Message, ProtocolLimits, ReducedItem,
+    CanonicalJson, Capability, ContentBlock, JsonBounds, Message, ProtocolLimits,
     RequestedCapabilities, Role, ToolResult, negotiate,
 };
 use peritus_provider_core::ModelProvider;
@@ -68,6 +68,7 @@ impl DeveloperLoop {
                     Capability::Streaming,
                     Capability::ParallelToolCalls,
                     Capability::ReasoningControls,
+                    Capability::ReasoningReplay,
                     Capability::PromptCaching,
                 ],
                 profile.limits(),
@@ -196,25 +197,8 @@ impl DeveloperLoop {
                 continue;
             };
 
-            let mut assistant = Vec::new();
-            let mut calls = Vec::new();
-            let mut final_text = String::new();
-            for item in session.completed_items() {
-                match item {
-                    ReducedItem::Text { text, .. } => {
-                        final_text.push_str(text.expose_for_wire());
-                        assistant.push(ContentBlock::Text(text.clone()));
-                    }
-                    ReducedItem::ToolCall { call, .. } => {
-                        calls.push(call.clone());
-                        assistant.push(ContentBlock::ToolCall(call.clone()));
-                    }
-                    ReducedItem::Refusal { .. } => return Err(DeveloperLoopError::Refused),
-                    ReducedItem::Reasoning { .. }
-                    | ReducedItem::Structured { .. }
-                    | ReducedItem::ProviderNative { .. } => {}
-                }
-            }
+            let (assistant, calls, final_text) =
+                state::assistant_items(session.completed_items(), protocol_limits)?;
             if calls.is_empty() {
                 if final_text.trim().is_empty() {
                     return Err(DeveloperLoopError::EmptyResponse);

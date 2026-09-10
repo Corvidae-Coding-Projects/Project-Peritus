@@ -3,12 +3,15 @@
 //! Component registries are assembled once during startup. They contain only configured,
 //! revision-bound capabilities and expose no runtime mutation surface.
 
+mod connection;
 mod credentials;
+mod hosted;
 mod inventory;
 mod profiles;
 mod providers;
 mod tools;
 
+pub use connection::test_provider_connection;
 pub use credentials::PlatformCredentialSource;
 pub use inventory::DaemonComponents;
 pub use profiles::{OfficialExecutableSelection, ProviderDeclaration, ProviderProfileKey};

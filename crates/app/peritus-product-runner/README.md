@@ -80,8 +80,11 @@ later failures or cancellation cannot erase observed work; repeated usage snapsh
 twice. Workspace tool arguments must match the published closed schema before scope enrollment,
 receipts, or execution. Missing-file reads return greenfield-aware corrective guidance.
 
-Writable tool receipts bind deterministic role/invocation/effect identity, provider call ID, and
-canonical request digest to `Started`, `Completed`, or `Ambiguous` state. Exact completed calls
+Writable tool receipts bind a fresh host invocation identity, its ordered effect number, provider
+call ID, and canonical request digest to `Started`, `Completed`, or `Ambiguous` state. The invocation
+identity is shared with the model requests and retained before effects; a resumed writer or fixer
+gets a new identity even at the same conversation revision, independently of local-memory mode.
+Exact completed calls within the original identity
 replay their bounded result. A command left in `Started` across restart is never launched again;
 Peritus returns an explicit ambiguous observation so the agent or user can reconcile its effects.
 

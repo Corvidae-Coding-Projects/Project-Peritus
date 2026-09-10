@@ -10,6 +10,7 @@ use crate::{error, profile::CompatibleProfile};
 pub(super) fn validate(
     profile: &CompatibleProfile,
     request: &ModelRequest,
+    service: Option<peritus_provider_core::hosted::HostedService>,
 ) -> Result<(), ProviderCoreError> {
     if !request.negotiated().includes(Capability::Streaming) {
         return Err(error::invalid("compatible streaming must be explicitly negotiated"));
@@ -45,7 +46,15 @@ pub(super) fn validate(
     }
     for message in request.messages() {
         for block in message.content() {
-            validate_block(block)?;
+            if let ContentBlock::Reasoning(replay) = block
+                && service.is_some()
+                && profile.provider_profile().dialect()
+                    == peritus_model_protocol::WireDialect::CompatibleChatCompletions
+            {
+                super::hosted::replay(replay, service)?;
+            } else {
+                validate_block(block)?;
+            }
         }
     }
     Ok(())

@@ -60,6 +60,35 @@ fn screen(model: &AppModel, width: u16, height: u16) -> (String, (u16, u16)) {
 }
 
 #[test]
+fn provider_failure_details_are_visible_without_expanding_the_transcript() {
+    let mut model = model();
+    let previous = model.chat.snapshot.take().expect("snapshot");
+    model.chat.snapshot = Some(
+        ProductInteractionSnapshot::new(
+            previous.snapshot().clone(),
+            ProductInteractionMode::Chat,
+            ProductRoleModels::default(),
+            2,
+            1,
+            vec![
+                ProductActivity::new(
+                    1,
+                    ProductActivityKind::Error,
+                    "Stopped".to_owned(),
+                    "HTTP 401: replace the API key and test the connection".to_owned(),
+                )
+                .expect("error"),
+            ],
+            None,
+        )
+        .expect("snapshot"),
+    );
+    assert!(!model.chat.expanded);
+    let (text, _) = screen(&model, 100, 24);
+    assert!(text.contains("HTTP 401: replace the API key and test the connection"));
+}
+
+#[test]
 fn narrow_and_wide_screens_keep_composer_and_input_status_visible() {
     let mut model = model();
     model.chat.buffer = "draft λ 界 ".repeat(40);

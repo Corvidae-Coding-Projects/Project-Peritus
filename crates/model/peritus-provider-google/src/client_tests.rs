@@ -172,3 +172,91 @@ fn generate_numeric_error_envelope_remains_rate_limited_without_quota_evidence()
     assert_eq!(state.captures().len(), 1);
     assert!(!format!("{failure:?}").contains("Resource exhausted"));
 }
+
+#[test]
+fn opencode_generate_content_preserves_prefix_and_native_stream() {
+    use peritus_provider_core::{CredentialReference, Endpoint, FramingLimits, HttpLimits};
+    let dialect = WireDialect::GeminiGenerateContentV1;
+    for endpoint in ["https://opencode.ai/zen/", "https://opencode.ai/zen/go/"] {
+        let selected = profile(dialect);
+        let expected = format!(
+            "{endpoint}v1/models/{}:streamGenerateContent?alt=sse",
+            selected.model().as_str()
+        );
+        let config = crate::GoogleConfig::opencode_gateway(
+            Endpoint::new(endpoint.to_owned()).expect("endpoint"),
+            CredentialReference::new("fixture".to_owned()).expect("reference"),
+            selected.clone(),
+            HttpLimits::PRODUCTION,
+            FramingLimits::PRODUCTION,
+            config(dialect, 1).retry_policy(),
+        )
+        .expect("gateway");
+        let state = TransportState::with_responses(vec![Ok(success(dialect))]);
+        let client = GoogleClient::with_transport(
+            config,
+            Box::new(TestCredentials::default()),
+            Box::new(TestTransport(std::sync::Arc::clone(&state))),
+        );
+        assert!(matches!(
+            block_on(terminal_event(&client, request(&selected, true))),
+            ModelEvent::ResponseCompleted
+        ));
+        let captures = state.captures();
+        assert_eq!(captures[0].endpoint, expected);
+        let wire: serde_json::Value = serde_json::from_slice(&captures[0].body).expect("wire");
+        assert!(wire.get("contents").is_some());
+        assert!(captures[0].headers.iter().any(|header| header.0 == "x-goog-api-key" && header.1));
+    }
+}
+
+#[test]
+fn opencode_google_connection_check_uses_portable_schemas_and_matching_function_results() {
+    use peritus_provider_core::{
+        CredentialReference, Endpoint, FramingLimits, HttpLimits,
+        connection::verify_provider_connection,
+    };
+    let dialect = WireDialect::GeminiGenerateContentV1;
+    let config = crate::GoogleConfig::opencode_gateway(
+        Endpoint::new("https://opencode.ai/zen/".to_owned()).expect("endpoint"),
+        CredentialReference::new("fixture".to_owned()).expect("reference"),
+        profile(dialect),
+        HttpLimits::PRODUCTION,
+        FramingLimits::PRODUCTION,
+        config(dialect, 1).retry_policy(),
+    )
+    .expect("gateway");
+    let tools = String::from_utf8(fixture("generate_tool_thinking.sse"))
+        .expect("fixture")
+        .replace("weather", "peritus_connection_check")
+        .replace(r#"{"city":"Paris"}"#, "{}")
+        .into_bytes();
+    let result = String::from_utf8(fixture("generate_success.sse"))
+        .expect("fixture")
+        .replace("héllo", "peritus-connection-ok")
+        .into_bytes();
+    let state = TransportState::with_responses(vec![
+        Ok(success(dialect)),
+        Ok(response(200, &[("content-type", "text/event-stream")], vec![tools])),
+        Ok(response(200, &[("content-type", "text/event-stream")], vec![result])),
+    ]);
+    let client = GoogleClient::with_transport(
+        config,
+        Box::new(TestCredentials::default()),
+        Box::new(TestTransport(std::sync::Arc::clone(&state))),
+    );
+    block_on(verify_provider_connection(&client, CancellationToken::new()))
+        .expect("all connection stages");
+    let captures = state.captures();
+    let tool: serde_json::Value = serde_json::from_slice(&captures[1].body).expect("tool request");
+    assert_eq!(
+        tool["tools"][0]["functionDeclarations"][0]["parametersJsonSchema"]["type"],
+        "object"
+    );
+    let result: serde_json::Value =
+        serde_json::from_slice(&captures[2].body).expect("result request");
+    let response = &result["contents"][2]["parts"][0]["functionResponse"];
+    assert_eq!(response["name"], "peritus_connection_check");
+    assert_eq!(response["id"], "call-peritus_connection_check");
+    assert_eq!(response["response"]["token"], "peritus-connection-ok");
+}

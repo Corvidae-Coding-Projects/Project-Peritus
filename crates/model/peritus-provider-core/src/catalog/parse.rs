@@ -24,7 +24,13 @@ pub(super) fn model(value: &Value, google: bool) -> Result<DiscoveredModel, Prov
     model.tools = value
         .pointer("/capabilities/tool_use/supported")
         .and_then(Value::as_bool)
-        .or_else(|| value.get("supports_tools").and_then(Value::as_bool));
+        .or_else(|| value.get("supports_tools").and_then(Value::as_bool))
+        .or_else(|| value.get("supportsTools").and_then(Value::as_bool))
+        .or_else(|| {
+            value.get("supported_parameters").and_then(Value::as_array).map(|parameters| {
+                parameters.iter().any(|parameter| parameter.as_str() == Some("tools"))
+            })
+        });
     if let Some(methods) = value.get("supportedGenerationMethods").and_then(Value::as_array)
         && !methods.iter().any(|method| method.as_str() == Some("generateContent"))
     {
@@ -34,11 +40,15 @@ pub(super) fn model(value: &Value, google: bool) -> Result<DiscoveredModel, Prov
         .get("inputTokenLimit")
         .or_else(|| value.get("max_input_tokens"))
         .or_else(|| value.get("context_window"))
+        .or_else(|| value.get("context_length"))
+        .or_else(|| value.get("contextLength"))
         .and_then(Value::as_u64)
         .filter(|value| *value > 0);
     model.output_tokens = value
         .get("outputTokenLimit")
         .or_else(|| value.get("max_tokens"))
+        .or_else(|| value.get("max_completion_tokens"))
+        .or_else(|| value.pointer("/top_provider/max_completion_tokens"))
         .and_then(Value::as_u64)
         .filter(|value| *value > 0);
     Ok(model)

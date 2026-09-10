@@ -2,12 +2,8 @@
 
 use core::fmt;
 
-use peritus_model_protocol::{
-    BoundedText, CachePolicy, Capability, ContentBlock, GenerationConfig, Message, ModelEvent,
-    ModelRequest, ParallelToolPolicy, PersistencePolicy, ProtocolLimits, ProviderProfile,
-    ReasoningEffort, ReasoningPolicy, RequestId, RequestOptions, RequestedCapabilities, Role,
-    StructuredOutput, SummaryPolicy, ToolChoice, WireDialect, negotiate,
-};
+use peritus_model_protocol::{Capability, ModelEvent, ProviderProfile, WireDialect};
+mod canary;
 
 use crate::{CancellationToken, ModelProvider, ProviderCoreError, ProviderTerminal};
 
@@ -127,15 +123,19 @@ pub enum ProviderCanaryError {
     Core(ProviderCoreError),
     /// The provider emitted a normalized terminal failure.
     Terminal(ProviderTerminal),
+    /// Original normalized provider failure, retaining safe HTTP status and diagnostic code.
+    Failure(Box<peritus_model_protocol::ModelFailure>),
 }
 
 impl ProviderCanaryError {
     /// Stable provider terminal when execution reached one.
     #[must_use]
-    pub const fn terminal(&self) -> Option<ProviderTerminal> {
+    pub fn terminal(&self) -> Option<ProviderTerminal> {
         match self {
-            Self::Protocol(_) | Self::Core(_) => None,
+            Self::Protocol(_) => None,
+            Self::Core(error) => Some(ProviderTerminal::from_core_error(error)),
             Self::Terminal(terminal) => Some(*terminal),
+            Self::Failure(failure) => Some(ProviderTerminal::from_model_failure(failure)),
         }
     }
 }
@@ -147,6 +147,18 @@ impl fmt::Display for ProviderCanaryError {
                 write!(formatter, "provider canary request is invalid: {error}")
             }
             Self::Core(error) => write!(formatter, "provider canary setup failed: {error}"),
+            Self::Failure(failure) => {
+                write!(
+                    formatter,
+                    "provider connection failed ({:?}; {}",
+                    failure.category(),
+                    failure.diagnostic().code()
+                )?;
+                if let Some(status) = failure.http_status() {
+                    write!(formatter, "; HTTP {status}")?;
+                }
+                formatter.write_str(")")
+            }
             Self::Terminal(terminal) => write!(
                 formatter,
                 "provider canary ended with {:?}; recovery {:?}",
@@ -304,16 +316,12 @@ pub async fn verify_live_provider(
     cancellation: CancellationToken,
 ) -> Result<ProviderQualification, ProviderCanaryError> {
     validate_capabilities(provider.profile(), requirement)?;
-    let request = canary_request(provider.profile())?;
-    let mut stream = provider.start(request, cancellation).await.map_err(|error| {
-        ProviderCanaryError::Terminal(ProviderTerminal::from_core_error(&error))
-    })?;
+    let request = canary::request(provider.profile())?;
+    let mut stream =
+        provider.start(request, cancellation).await.map_err(ProviderCanaryError::Core)?;
     let mut text_observed = false;
     loop {
-        let Some(envelope) = stream.pull().await.map_err(|error| {
-            ProviderCanaryError::Terminal(ProviderTerminal::from_core_error(&error))
-        })?
-        else {
+        let Some(envelope) = stream.pull().await.map_err(ProviderCanaryError::Core)? else {
             return Err(ProviderCanaryError::Terminal(ProviderTerminal::empty_response()));
         };
         match envelope.event() {
@@ -332,9 +340,7 @@ pub async fn verify_live_provider(
                 return Err(ProviderCanaryError::Terminal(ProviderTerminal::empty_response()));
             }
             ModelEvent::ResponseFailed(failure) => {
-                return Err(ProviderCanaryError::Terminal(ProviderTerminal::from_model_failure(
-                    failure,
-                )));
+                return Err(ProviderCanaryError::Failure(Box::new(failure.clone())));
             }
             ModelEvent::ResponseCancelled => {
                 return Err(ProviderCanaryError::Terminal(ProviderTerminal::from_core_error(
@@ -352,41 +358,4 @@ fn validate_capabilities(
 ) -> Result<(), ProviderCoreError> {
     ProviderQualification::evaluate(profile, ProviderAvailability::CredentialPresent, requirement)
         .map(|_| ())
-}
-
-fn canary_request(profile: &ProviderProfile) -> Result<ModelRequest, ProviderCanaryError> {
-    let optional = [Capability::ReasoningControls];
-    let negotiated =
-        negotiate(profile, RequestedCapabilities::new(&[], &optional, profile.limits())?)?;
-    let limits = ProtocolLimits::PRODUCTION;
-    let prompt = BoundedText::new(
-        "Reply with one short word to confirm this provider route is usable.".to_owned(),
-        limits,
-    )?;
-    let messages = vec![Message::new(Role::User, vec![ContentBlock::Text(prompt)], limits)?];
-    let reasoning = if negotiated.includes(Capability::ReasoningControls) {
-        ReasoningPolicy::Effort { effort: ReasoningEffort::Low, summary: SummaryPolicy::None }
-    } else {
-        ReasoningPolicy::Disabled
-    };
-    let options = RequestOptions::new(
-        StructuredOutput::Text,
-        reasoning,
-        GenerationConfig::new(16, Vec::new(), None, None, None)?,
-        CachePolicy::Disabled,
-        PersistencePolicy::LOCAL_FIRST,
-        None,
-        Vec::new(),
-    );
-    Ok(ModelRequest::new(
-        profile,
-        negotiated,
-        RequestId::new("peritus-live-provider-canary".to_owned())?,
-        messages,
-        Vec::new(),
-        ToolChoice::None,
-        ParallelToolPolicy::Disabled,
-        options,
-        limits,
-    )?)
 }

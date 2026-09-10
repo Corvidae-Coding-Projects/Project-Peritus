@@ -12,6 +12,7 @@ use peritus_product_state::{
 
 use crate::{AppLayout, LauncherError, persistence::read_exact_or_publish};
 mod folder;
+mod hosted;
 
 /// Imports the exact models from a pre-conversation immutable configuration. This migration
 /// never substitutes a newly chosen provider default or edits an old configuration generation.
@@ -186,7 +187,7 @@ fn render_provider(
     Ok(text)
 }
 
-fn render_direct_provider(
+pub fn render_direct_provider(
     provider: ProviderKind,
     direct: Option<&DirectProviderProfile>,
 ) -> Result<String, LauncherError> {
@@ -195,6 +196,9 @@ fn render_direct_provider(
             "enabled direct provider is missing its profile".to_owned(),
         )
     })?;
+    if let Some(service) = provider.hosted_service() {
+        return hosted::render(provider, direct, service);
+    }
     let (kind, profile_id, input, output, image_input, reasoning) = direct_route(provider, direct)?;
     let mut text = format!(
         "\n[[providers]]\nkind = {}\ncredential_reference = {}\n",
@@ -249,7 +253,7 @@ fn direct_route(
                 false,
                 false,
             )),
-            None => Err(invalid("compatible provider is missing its wire protocol")),
+            _ => Err(invalid("compatible provider is missing its supported wire protocol")),
         },
         _ => Err(invalid("account provider was routed through direct configuration")),
     }

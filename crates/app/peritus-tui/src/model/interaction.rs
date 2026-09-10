@@ -20,8 +20,15 @@ impl AppModel {
                     Vec::new()
                 }
             }
-            Event::Resize(columns, rows) => self.send_terminal_resize(columns, rows),
-            Event::FocusGained | Event::FocusLost | Event::Mouse(_) => Vec::new(),
+            Event::Resize(columns, rows) => {
+                self.chat.viewport = None;
+                self.send_terminal_resize(columns, rows)
+            }
+            Event::Mouse(mouse) => {
+                self.handle_chat_mouse(mouse);
+                Vec::new()
+            }
+            Event::FocusGained | Event::FocusLost => Vec::new(),
         }
     }
 

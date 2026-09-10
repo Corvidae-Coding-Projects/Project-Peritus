@@ -94,14 +94,13 @@ pub(super) fn draw_editor(
     text: &str,
     cursor: usize,
 ) {
-    let layout = super::composer::layout(text, cursor, usize::from(area.width.saturating_sub(2)));
+    let layout =
+        super::composer::layout(text, cursor, None, usize::from(area.width.saturating_sub(2)));
     let rows = usize::from(area.height.saturating_sub(2)).max(1);
     let offset = layout.row.saturating_sub(rows - 1);
     frame.render_widget(
-        Paragraph::new(
-            layout.lines.into_iter().skip(offset).take(rows).map(Line::from).collect::<Vec<_>>(),
-        )
-        .block(Block::default().borders(Borders::ALL).title(label)),
+        Paragraph::new(layout.lines.into_iter().skip(offset).take(rows).collect::<Vec<_>>())
+            .block(Block::default().borders(Borders::ALL).title(label)),
         area,
     );
     if area.height > 2 && area.width > 2 {
