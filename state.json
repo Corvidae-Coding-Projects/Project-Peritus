@@ -1,6 +1,6 @@
 {
   "next_display_id": 72,
-  "next_comment_id": 1539,
+  "next_comment_id": 1540,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11529,7 +11529,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-10T18:04:24.271923519Z",
-      "updated_at": "2026-09-10T18:43:24.346029128Z",
+      "updated_at": "2026-09-10T19:13:20.634626993Z",
       "comments": {
         "6ee3b5c2-f50f-4f4a-adae-7e47ebc9d278": {
           "display_id": 1538,
@@ -11539,6 +11539,15 @@
           "kind": "note",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJYYLAdyDED/m2jSzSlMZABhyvZmiaOzMSYRz2XyGAau21dhc88ec370cioK/1JISl0EjkqMMAF0Ns2bF84K4DA=="
+        },
+        "94740da3-5957-4ec6-96aa-999b48798373": {
+          "display_id": 1539,
+          "author": "krvx",
+          "content": "Implemented dynamic hosted model discovery for OpenCode Zen/Go, OpenRouter, Groq, Together, Fireworks, and DeepSeek; selected protocols use approved routes and credential-free OpenCode metadata enrichment. Added explicit generation/tool/result connection tests through the production registry and safe visible failure details. Current official API review fixed reasoning replay, named Chat request/stream contracts, DeepSeek forced-choice restrictions with exact host validation, portable tool strict-mode assumptions, and Google schema/result identity. Local qualification: 469 focused tests; full daemon/product suite 479 tests; latest product-runner unit suite 253; workspace all-feature strict Clippy, xtask all, formatting, cargo-deny, docs, strict Verus, Windows GNU builds and 12 Wine regressions passed. Preparing scoped commit for existing PR65.",
+          "created_at": "2026-09-10T19:13:20.629331009Z",
+          "kind": "note",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAkVIlDUwJP3FM8uSPc6xDiftM2bRDzcpD6ELIbi6Ui6qaOWGQV7zsWysadPSGKoBL8KKWTAvwHvqpcAf8I6kzCQ=="
         }
       }
     },
@@ -15072,8 +15081,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-10T18:43:24.346029128Z",
+    "timestamp": "2026-09-10T19:13:20.634626993Z",
     "agent_id": "krvx",
-    "agent_seq": 208
+    "agent_seq": 209
   }
 }
