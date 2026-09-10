@@ -1,6 +1,6 @@
 {
   "next_display_id": 72,
-  "next_comment_id": 1541,
+  "next_comment_id": 1542,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11529,8 +11529,17 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-10T18:04:24.271923519Z",
-      "updated_at": "2026-09-10T19:15:04.347383359Z",
+      "updated_at": "2026-09-10T19:27:02.312992333Z",
       "comments": {
+        "21bb2d9e-932a-4d5f-a67f-c24bc7516dd2": {
+          "display_id": 1541,
+          "author": "krvx",
+          "content": "CI exposed a replay compatibility defect: extending the live capability iterator changed v1 frozen provider fingerprints. Reproduced locally, preserved the fixed v1 schema and original binary corpus, and added a versioned canonical extension inventory that distinguishes supported and unknown new capabilities. Focused replay and snapshot regressions pass; full edge shard, lint, policy and formal checks are running.",
+          "created_at": "2026-09-10T19:27:02.307931366Z",
+          "kind": "progress",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAf+2acMBxMsDdR/2l3ui3GJDwK301cZDb1Z4ZyEL0hm6BgZU+dmuiQ/6qq8Upyh1vv4wB0AIaTNFd8WvoiVanAg=="
+        },
         "6ee3b5c2-f50f-4f4a-adae-7e47ebc9d278": {
           "display_id": 1538,
           "author": "krvx",
@@ -15090,8 +15099,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-10T19:15:04.347383359Z",
+    "timestamp": "2026-09-10T19:27:02.312992333Z",
     "agent_id": "krvx",
-    "agent_seq": 210
+    "agent_seq": 211
   }
 }
