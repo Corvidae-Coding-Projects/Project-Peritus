@@ -1,18 +1,26 @@
 # peritus-local-socket
 
-`peritus-local-socket` binds and connects Unix-domain sockets whose paths are longer than the
-standard `sockaddr_un` structure can carry. The standard library refuses such paths before the
-kernel sees them: `sun_path` holds 104 bytes on macOS and 108 on Linux, and Peritus keeps its
-daemon endpoint beneath a protected per-user state root whose length depends on the platform
-layout and the account name.
+`peritus-local-socket` chooses a bounded filesystem location for a local daemon endpoint.
+An original path of at most 103 bytes on macOS or 107 bytes on Linux stays unchanged. A longer
+path maps to `/tmp/peritus-<32-hex>/daemon.sock`, where the digest binds the complete original
+path, including its state root and store-derived endpoint name. Durable state remains in its
+configured location.
 
-On macOS the crate passes the kernel an address whose `sun_len` covers the whole path, which XNU
-accepts up to 252 bytes. On Linux it addresses the socket through `/proc/self/fd/<directory>/<name>`
-so the address stays short regardless of the real path. Paths that fit the standard structure use
-the standard library unchanged, and every path is created and validated at its real location.
+The daemon holds its existing state-root instance lock before preparing the runtime directory.
+The system temporary root must be root-owned and protected against replacement. The private
+directory must be a real mode-0700 directory owned by the state-root owner. A pre-existing
+symlink, wrong owner, or broader mode is rejected without chmod, replacement, or a fallback.
+The daemon protects its socket at mode 0600 and retains its same-user peer authentication.
 
-The daemon, launcher, CLI, TUI, and qualification clients all connect through this crate so that
-a socket bound at a long path is reachable from every Peritus process.
+The daemon, launcher, and platform qualification use the same path derivation. All clients use
+ordinary socket APIs; interactive clients retain Tokio's nonblocking, cancellable connect.
+After removing its exact socket, the daemon drops the prepared path, which removes an empty
+runtime directory only when its device/inode still match. Stale sockets are reclaimed only
+under the existing daemon instance lock and ownership checks.
+
+The crate is a class-H adapter. Verus verifies the executable path-length and directory-policy
+predicates; filesystem observations, SHA-256, and standard socket behavior remain host boundaries
+covered by native tests. It introduces no unsafe production code or proof assumptions.
 
 ## Focused checks
 

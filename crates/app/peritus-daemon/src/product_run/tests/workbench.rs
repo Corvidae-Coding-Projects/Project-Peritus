@@ -3,17 +3,20 @@
 use super::*;
 use peritus_app_protocol::{
     AppResponsePayload, ControlOperationId, ConversationId, ConversationLibraryQuery,
-    ConversationSearchText, ConversationTitle, CorrelationId, ProductInteractionMode,
-    ProductRoleModels, ProductRunConversationQuery, WorkbenchBriefField, WorkbenchCaptureConsent,
-    WorkbenchCaptureRequest, WorkbenchCaptureState, WorkbenchCaptureTarget, WorkbenchCommand,
-    WorkbenchExecutionSettings, WorkbenchForkBudget, WorkbenchForkMode, WorkbenchForkRequest,
-    WorkbenchGoalBudget, WorkbenchGoalCriterionDefinition, WorkbenchGoalCriterionKind,
-    WorkbenchGoalDefinition, WorkbenchGoalPauseMode, WorkbenchGoalState, WorkbenchInputId,
-    WorkbenchInputOrder, WorkbenchInputSelection, WorkbenchInputText, WorkbenchIntent,
-    WorkbenchLaunchProfile, WorkbenchLaunchSource, WorkbenchLaunchSourceKind, WorkbenchLaunchState,
-    WorkbenchLaunchText, WorkbenchNewInput, WorkbenchQuery, WorkbenchQueueIntent,
-    WorkbenchResultQuery, WorkbenchReviewAnchor, WorkbenchReviewCommentState,
+    ConversationSearchText, ConversationTitle, ProductInteractionMode, ProductRoleModels,
+    ProductRunConversationQuery, WorkbenchBriefField, WorkbenchCommand, WorkbenchExecutionSettings,
+    WorkbenchForkBudget, WorkbenchForkMode, WorkbenchForkRequest, WorkbenchGoalBudget,
+    WorkbenchGoalCriterionDefinition, WorkbenchGoalCriterionKind, WorkbenchGoalDefinition,
+    WorkbenchGoalPauseMode, WorkbenchGoalState, WorkbenchInputId, WorkbenchInputOrder,
+    WorkbenchInputSelection, WorkbenchInputText, WorkbenchIntent, WorkbenchLaunchProfile,
+    WorkbenchLaunchSource, WorkbenchLaunchSourceKind, WorkbenchLaunchText, WorkbenchNewInput,
+    WorkbenchQuery, WorkbenchQueueIntent, WorkbenchReviewAnchor, WorkbenchReviewCommentState,
     WorkbenchReviewFeedback, WorkbenchReviewQuery, WorkbenchReviewTarget,
+};
+#[cfg(target_os = "linux")]
+use peritus_app_protocol::{
+    CorrelationId, WorkbenchCaptureConsent, WorkbenchCaptureRequest, WorkbenchCaptureState,
+    WorkbenchCaptureTarget, WorkbenchLaunchState, WorkbenchResultQuery,
 };
 use peritus_product_runner::control::{ControlError, InputState};
 use peritus_types::ActorId;

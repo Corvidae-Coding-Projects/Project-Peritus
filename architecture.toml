@@ -454,7 +454,7 @@ name = "peritus-local-socket"
 path = "crates/runtime/peritus-local-socket"
 owner = "G0"
 layer = "runtime"
-verification_class = "C"
+verification_class = "H"
 
 [[packages]]
 name = "peritus-network"

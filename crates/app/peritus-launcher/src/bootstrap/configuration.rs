@@ -342,18 +342,20 @@ fn toml_string(value: &str) -> String {
     toml::Value::String(value.to_owned()).to_string()
 }
 
-pub fn endpoint(configuration: &DaemonConfig) -> LocalEndpointAddress {
-    let store = configuration.store_identity().expect("validated daemon store identity");
+pub fn endpoint(configuration: &DaemonConfig) -> Result<LocalEndpointAddress, LauncherError> {
+    let store = configuration.store_identity()?;
     let identity = DaemonIdentity::new(store);
     #[cfg(unix)]
     {
-        LocalEndpointAddress::Unix(
-            configuration.paths().state_root().join(format!("{}.sock", identity.endpoint_name())),
-        )
+        let original =
+            configuration.paths().state_root().join(format!("{}.sock", identity.endpoint_name()));
+        peritus_local_socket::bounded_path(&original, peritus_local_socket::NATIVE_MAX_PATH_BYTES)
+            .map(LocalEndpointAddress::Unix)
+            .map_err(|error| LauncherError::filesystem("derive Unix endpoint", original, error))
     }
     #[cfg(windows)]
     {
-        LocalEndpointAddress::Windows(format!(r"\\.\pipe\{}", identity.endpoint_name()))
+        Ok(LocalEndpointAddress::Windows(format!(r"\\.\pipe\{}", identity.endpoint_name())))
     }
 }
 

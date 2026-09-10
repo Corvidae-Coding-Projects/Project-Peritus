@@ -127,14 +127,26 @@ fn clients_that_close_before_authentication_do_not_stop_the_daemon() {
 
 async fn clients_that_close_before_authentication_do_not_stop_the_daemon_async() {
     let temporary = support::temporary_root();
-    let runtime = tokio::time::timeout(
-        LIFECYCLE_BOUND,
-        DaemonRuntime::start(support::configuration(temporary.path())),
-    )
-    .await
-    .expect("daemon startup completes within the bound")
-    .expect("daemon starts");
+    early_closing_clients(temporary.path()).await;
+}
+
+#[test]
+fn very_long_state_roots_use_standard_sockets_and_survive_early_closes() {
+    let temporary = support::temporary_root();
+    let root = temporary.path().join("long-state-".repeat(18)).join("nested-state-".repeat(12));
+    std::fs::create_dir_all(&root).expect("long real state root");
+    assert!(root.as_os_str().len() > 252);
+    run_async_test(early_closing_clients(&root));
+}
+
+async fn early_closing_clients(root: &Path) {
+    let runtime =
+        tokio::time::timeout(LIFECYCLE_BOUND, DaemonRuntime::start(support::configuration(root)))
+            .await
+            .expect("daemon startup completes within the bound")
+            .expect("daemon starts");
     let socket = unix_address(&runtime);
+    assert!(socket.as_os_str().len() <= peritus_local_socket::NATIVE_MAX_PATH_BYTES);
 
     // A readiness probe connects and closes at once, usually before the daemon has read the
     // peer's credentials. Connect synchronously so the close cannot yield to the acceptor first.
@@ -160,6 +172,7 @@ async fn clients_that_close_before_authentication_do_not_stop_the_daemon_async()
         .await
         .expect("daemon shutdown completes within the bound")
         .expect("daemon shuts down cleanly");
+    assert!(!socket.exists(), "shutdown withdraws the real socket");
 }
 
 fn run_async_test(test: impl Future<Output = ()>) {

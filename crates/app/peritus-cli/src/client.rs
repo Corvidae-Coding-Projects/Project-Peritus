@@ -283,16 +283,12 @@ const fn heartbeat(event: &AppEventEnvelope) -> Option<&peritus_app_protocol::Da
 }
 
 #[cfg(unix)]
-fn connect_local(endpoint: &OsStr) -> std::future::Ready<Result<BoxedLocalIo, CliError>> {
+async fn connect_local(endpoint: &OsStr) -> Result<BoxedLocalIo, CliError> {
     use std::path::Path;
-    let connected = peritus_local_socket::connect(Path::new(endpoint))
-        .and_then(|stream| {
-            stream.set_nonblocking(true)?;
-            tokio::net::UnixStream::from_std(stream)
-        })
-        .map(|stream| Box::pin(stream) as BoxedLocalIo)
-        .map_err(|error| CliError::connection("connect Unix endpoint", error.to_string()));
-    std::future::ready(connected)
+    let stream = tokio::net::UnixStream::connect(Path::new(endpoint))
+        .await
+        .map_err(|error| CliError::connection("connect Unix endpoint", error.to_string()))?;
+    Ok(Box::pin(stream))
 }
 
 #[cfg(windows)]

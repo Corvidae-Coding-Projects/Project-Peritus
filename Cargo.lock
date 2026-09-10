@@ -2234,7 +2234,6 @@ dependencies = [
  "peritus-app-protocol",
  "peritus-codec",
  "peritus-launcher",
- "peritus-local-socket",
  "peritus-product-runner",
  "peritus-run-settlement",
  "peritus-tools-shell",
@@ -2595,8 +2594,9 @@ dependencies = [
 name = "peritus-local-socket"
 version = "0.0.1"
 dependencies = [
- "libc",
+ "sha2 0.11.0",
  "tempfile",
+ "vstd",
 ]
 
 [[package]]
@@ -2716,7 +2716,6 @@ dependencies = [
  "peritus-context",
  "peritus-evidence",
  "peritus-kernel",
- "peritus-local-socket",
  "peritus-protocol",
  "peritus-quality-policy",
  "peritus-review",
@@ -2737,6 +2736,7 @@ version = "0.0.1"
 dependencies = [
  "nix 0.31.3",
  "peritus-approval",
+ "peritus-local-socket",
  "peritus-sandbox-linux",
  "peritus-sandbox-macos",
  "peritus-sandbox-windows",
@@ -3446,7 +3446,6 @@ dependencies = [
  "libc",
  "peritus-app-protocol",
  "peritus-codec",
- "peritus-local-socket",
  "peritus-product-runner",
  "peritus-protocol",
  "peritus-run-settlement",

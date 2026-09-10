@@ -1,61 +1,69 @@
-//! Directory-relative addressing for Linux.
-//!
-//! Linux has no extended `sockaddr_un` form, but `/proc/self/fd/<fd>/<name>` names a file inside
-//! an open directory descriptor. Binding or connecting through that address keeps the address
-//! short however long the real path is, while the socket file itself is created at, and visible
-//! through, the real path.
+//! Fail-closed creation and identity-bound cleanup of private runtime directories.
 
 use std::{
-    fs::{File, OpenOptions},
-    io,
-    os::{
-        fd::AsRawFd,
-        unix::{
-            fs::OpenOptionsExt,
-            net::{UnixListener, UnixStream},
-        },
-    },
+    fs, io,
+    os::unix::fs::{DirBuilderExt as _, MetadataExt as _},
     path::{Path, PathBuf},
 };
 
-/// `PATH_MAX` less the terminating NUL: the real path must still be a valid filesystem path.
-pub(super) const MAX_PATH_BYTES: usize = 4095;
-
-pub(super) fn bind(path: &Path) -> io::Result<UnixListener> {
-    through_directory(path, UnixListener::bind)
+#[derive(Debug)]
+pub(super) struct RuntimeDirectory {
+    path: PathBuf,
+    device: u64,
+    inode: u64,
 }
 
-pub(super) fn connect(path: &Path) -> io::Result<UnixStream> {
-    through_directory(path, UnixStream::connect)
+impl RuntimeDirectory {
+    pub(super) fn prepare(path: &Path, owner_uid: u32) -> io::Result<Self> {
+        // `/tmp` is a root-controlled alias on macOS. Validate its canonical target rather than
+        // rejecting that system symlink, and do not trust an environment-selected temp root.
+        let base = fs::canonicalize("/tmp")?;
+        let metadata = fs::symlink_metadata(&base)?;
+        if !metadata.is_dir()
+            || !crate::verified::protected_temporary_root(
+                metadata.uid(),
+                metadata.mode() & 0o022 != 0,
+                metadata.mode() & 0o1000 != 0,
+            )
+        {
+            return Err(unsafe_directory(
+                "system temporary directory is not root-owned and protected against replacement",
+            ));
+        }
+        match fs::DirBuilder::new().mode(0o700).create(path) {
+            Ok(()) => {}
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
+            Err(error) => return Err(error),
+        }
+        let metadata = fs::symlink_metadata(path)?;
+        if !metadata.file_type().is_dir()
+            || !crate::verified::private_directory(
+                metadata.uid(),
+                owner_uid,
+                metadata.mode() & 0o777,
+            )
+        {
+            return Err(unsafe_directory(
+                "Unix runtime directory must be a real mode-0700 directory owned by the state-root owner",
+            ));
+        }
+        Ok(Self { path: path.to_path_buf(), device: metadata.dev(), inode: metadata.ino() })
+    }
 }
 
-fn through_directory<T>(
-    path: &Path,
-    operation: impl FnOnce(&Path) -> io::Result<T>,
-) -> io::Result<T> {
-    if path.as_os_str().len() > MAX_PATH_BYTES {
-        return Err(super::too_long(path, MAX_PATH_BYTES));
+impl Drop for RuntimeDirectory {
+    fn drop(&mut self) {
+        if let Ok(metadata) = fs::symlink_metadata(&self.path)
+            && metadata.file_type().is_dir()
+            && metadata.dev() == self.device
+            && metadata.ino() == self.inode
+        {
+            // remove_dir never follows a symlink and refuses any nonempty directory.
+            let _ = fs::remove_dir(&self.path);
+        }
     }
-    let name = path.file_name().ok_or_else(|| {
-        io::Error::new(io::ErrorKind::InvalidInput, "socket path has no file name")
-    })?;
-    let parent =
-        path.parent().filter(|parent| !parent.as_os_str().is_empty()).ok_or_else(|| {
-            io::Error::new(io::ErrorKind::InvalidInput, "socket path has no directory")
-        })?;
-    let directory: File = OpenOptions::new()
-        .read(true)
-        .custom_flags(libc::O_DIRECTORY | libc::O_CLOEXEC)
-        .open(parent)?;
-    let short = PathBuf::from(format!("/proc/self/fd/{}", directory.as_raw_fd())).join(name);
-    if !super::fits_standard(&short) {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            format!(
-                "Unix socket file name is too long for a directory-relative address: {}",
-                path.display()
-            ),
-        ));
-    }
-    operation(&short)
+}
+
+fn unsafe_directory(detail: &'static str) -> io::Error {
+    io::Error::new(io::ErrorKind::PermissionDenied, detail)
 }

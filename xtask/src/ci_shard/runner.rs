@@ -6,7 +6,7 @@ use std::collections::BTreeSet;
 
 pub(super) const PACKAGE: &str = "peritus-product-runner";
 pub(super) const RECOVERY_TESTS: &[&str] =
-    &["checkpoint_resume", "provider_failover", "role_recovery"];
+    &["checkpoint_resume", "in_place_recovery", "provider_failover", "role_recovery"];
 pub(super) const PRODUCT_TESTS: &[&str] = &["external_effects", "production_composition"];
 
 pub(super) fn validate(cargo: &CargoMetadata) -> Result<(), XtaskError> {

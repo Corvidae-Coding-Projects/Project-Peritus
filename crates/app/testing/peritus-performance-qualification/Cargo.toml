@@ -19,7 +19,6 @@ peritus-codec = { version = "=0.0.1", path = "../../../foundation/peritus-codec"
 peritus-context = { version = "=0.0.1", path = "../../../orchestration/peritus-context" }
 peritus-evidence = { version = "=0.0.1", path = "../../../state/peritus-evidence" }
 peritus-kernel = { version = "=0.0.1", path = "../../../foundation/peritus-kernel" }
-peritus-local-socket = { version = "=0.0.1", path = "../../../runtime/peritus-local-socket" }
 peritus-protocol = { version = "=0.0.1", path = "../../../foundation/peritus-protocol" }
 peritus-quality-policy = { version = "=0.0.1", path = "../../../foundation/peritus-quality-policy" }
 peritus-review = { version = "=0.0.1", path = "../../../orchestration/peritus-review" }

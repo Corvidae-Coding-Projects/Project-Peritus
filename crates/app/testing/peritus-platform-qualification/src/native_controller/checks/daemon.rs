@@ -41,7 +41,10 @@ impl<'a> DaemonSession<'a> {
         let (endpoint, endpoint_path) = if cfg!(windows) {
             (OsString::from(format!(r"\\.\pipe\{endpoint_name}")), None)
         } else {
-            let path = state.join(format!("{endpoint_name}.sock"));
+            let path = peritus_local_socket::bounded_path(
+                &state.join(format!("{endpoint_name}.sock")),
+                peritus_local_socket::NATIVE_MAX_PATH_BYTES,
+            )?;
             (path.as_os_str().to_owned(), Some(path))
         };
         let log = runtime.join("daemon.log");

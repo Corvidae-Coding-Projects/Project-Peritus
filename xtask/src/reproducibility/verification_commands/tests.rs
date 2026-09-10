@@ -140,6 +140,13 @@ owner = "B1"
 layer = "state"
 verification_class = "H"
 [[packages]]
+name = "peritus-local-socket"
+path = "crates/runtime/peritus-local-socket"
+owner = "G0"
+layer = "runtime"
+verification_class = "H"
+
+[[packages]]
 name = "peritus-mcp"
 path = "crates/extensions/peritus-mcp"
 owner = "G3"

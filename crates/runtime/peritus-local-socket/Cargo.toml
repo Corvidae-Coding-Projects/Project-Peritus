@@ -1,6 +1,6 @@
 [package]
 name = "peritus-local-socket"
-description = "Long-path-safe Unix-domain socket binding and connection for local Peritus endpoints"
+description = "Bounded, owner-protected filesystem locations for local Peritus sockets"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -14,10 +14,14 @@ categories = ["os::unix-apis"]
 [package.metadata.peritus]
 owner = "G0"
 layer = "runtime"
-verification-class = "C"
+verification-class = "H"
 
-[target.'cfg(unix)'.dependencies]
-libc.workspace = true
+[package.metadata.verus]
+verify = true
+
+[dependencies]
+sha2.workspace = true
+vstd.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

@@ -1,18 +1,15 @@
-//! Long-path-safe Unix-domain socket binding and connection for local Peritus endpoints.
+//! Bounded, owner-protected paths for ordinary Unix-domain sockets.
 //!
-//! The standard `sockaddr_un` structure carries at most 104 path bytes on macOS and 108 on Linux,
-//! and the standard library rejects longer paths before the kernel sees them. Peritus keeps its
-//! daemon endpoint beneath a protected per-user state root whose length depends on the platform
-//! layout and the account name, so the endpoint must not depend on that path being short.
-//!
-//! On macOS the kernel accepts a `sockaddr_un` whose `sun_len` covers up to 252 path bytes, and
-//! this crate builds that address directly. On Linux it binds and connects through
-//! `/proc/self/fd/<directory>/<name>`, which keeps the address short however long the real path
-//! is. Paths that fit the standard structure use the standard library unchanged. In every case the
-//! socket file is created at, and can be inspected through, its real path.
+//! Paths that fit the platform's standard socket address remain unchanged. Longer paths map to
+//! a private, identity-derived directory beneath `/tmp`; durable state is never relocated.
+//! All clients continue to use standard socket APIs, including Tokio's cancellable connector.
 
+mod path;
 #[cfg(unix)]
 mod unix;
 
+pub use path::{NATIVE_MAX_PATH_BYTES, bounded_path};
 #[cfg(unix)]
-pub use unix::{MAX_PATH_BYTES, bind, connect};
+pub use unix::PreparedSocketPath;
+
+mod verified;

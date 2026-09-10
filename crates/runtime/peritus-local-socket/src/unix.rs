@@ -1,93 +1,50 @@
-//! Dispatch between standard and long-path Unix socket addressing.
+//! Owner-checked custody of the private runtime directory used by an oversized endpoint.
 
 use std::{
     io,
-    os::unix::{
-        ffi::OsStrExt,
-        net::{UnixListener, UnixStream},
-    },
-    path::Path,
+    path::{Path, PathBuf},
 };
 
-#[cfg(target_os = "linux")]
+use crate::{NATIVE_MAX_PATH_BYTES, bounded_path};
+
 mod directory;
-#[cfg(target_os = "macos")]
-mod extended;
 #[cfg(test)]
 mod tests;
 
-#[cfg(target_os = "linux")]
-use directory as long;
-#[cfg(target_os = "macos")]
-use extended as long;
-#[cfg(not(any(target_os = "linux", target_os = "macos")))]
-mod long {
-    //! Platforms without a long-path form refuse paths the standard structure cannot carry.
-
-    use std::{
-        io,
-        os::unix::net::{UnixListener, UnixStream},
-        path::Path,
-    };
-
-    pub(super) const MAX_PATH_BYTES: usize = super::STANDARD_PATH_BYTES;
-
-    pub(super) fn bind(path: &Path) -> io::Result<UnixListener> {
-        Err(super::too_long(path, MAX_PATH_BYTES))
-    }
-
-    pub(super) fn connect(path: &Path) -> io::Result<UnixStream> {
-        Err(super::too_long(path, MAX_PATH_BYTES))
-    }
+/// One usable socket path and, when needed, an owned private runtime directory.
+///
+/// The listener owner must remove its exact socket before dropping this value. Drop removes an
+/// empty runtime directory only if its device/inode still match the directory validated here.
+#[derive(Debug)]
+pub struct PreparedSocketPath {
+    path: PathBuf,
+    _directory: Option<directory::RuntimeDirectory>,
 }
 
-/// Longest path, in bytes, that the standard `sockaddr_un` structure carries with its NUL.
-const STANDARD_PATH_BYTES: usize =
-    size_of::<libc::sockaddr_un>() - std::mem::offset_of!(libc::sockaddr_un, sun_path) - 1;
-
-/// Longest socket path, in bytes, that this platform accepts.
-pub const MAX_PATH_BYTES: usize = long::MAX_PATH_BYTES;
-
-/// Binds a listening socket at `path`, however long the path is.
-///
-/// The socket is created at the real path with the process umask applied; callers that need a
-/// particular mode restrict it afterwards exactly as they would for a standard bind.
-///
-/// # Errors
-///
-/// Returns the operating-system bind error, or an invalid-input error naming the path and this
-/// platform's limit when the path is too long even for the long-path form.
-pub fn bind(path: &Path) -> io::Result<UnixListener> {
-    if fits_standard(path) {
-        return UnixListener::bind(path);
+impl PreparedSocketPath {
+    /// Prepares a socket location for the already-validated owner of a protected state root.
+    ///
+    /// An oversized address uses a mode-0700 directory below the system's root-owned temporary
+    /// directory. Existing directories must have the expected owner and mode and must not be
+    /// symlinks. They are never repaired by chmod or replaced speculatively.
+    ///
+    /// # Errors
+    /// Returns an input, ownership, permission, or filesystem error without using another path.
+    pub fn prepare(original: &Path, owner_uid: u32) -> io::Result<Self> {
+        let path = bounded_path(original, NATIVE_MAX_PATH_BYTES)?;
+        let directory = if path == original {
+            None
+        } else {
+            let parent =
+                path.parent().ok_or_else(|| io::Error::other("runtime endpoint has no parent"))?;
+            Some(directory::RuntimeDirectory::prepare(parent, owner_uid)?)
+        };
+        Ok(Self { path, _directory: directory })
     }
-    long::bind(path)
-}
 
-/// Connects to the listening socket at `path`, however long the path is.
-///
-/// # Errors
-///
-/// Returns the operating-system connect error, or an invalid-input error naming the path and this
-/// platform's limit when the path is too long even for the long-path form.
-pub fn connect(path: &Path) -> io::Result<UnixStream> {
-    if fits_standard(path) {
-        return UnixStream::connect(path);
+    /// Borrows the real path accepted by standard Unix socket APIs.
+    #[must_use]
+    pub fn path(&self) -> &Path {
+        &self.path
     }
-    long::connect(path)
-}
-
-fn fits_standard(path: &Path) -> bool {
-    path.as_os_str().as_bytes().len() <= STANDARD_PATH_BYTES
-}
-
-fn too_long(path: &Path, limit: usize) -> io::Error {
-    io::Error::new(
-        io::ErrorKind::InvalidInput,
-        format!(
-            "Unix socket path is {} bytes; this platform accepts at most {limit}: {}",
-            path.as_os_str().as_bytes().len(),
-            path.display()
-        ),
-    )
 }

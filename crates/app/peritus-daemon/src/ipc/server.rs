@@ -5,11 +5,13 @@ use std::{
     io::Write as _,
     sync::Arc,
     task::Poll,
+    time::Duration,
 };
 
 use tokio::{
     sync::{Semaphore, mpsc, watch},
     task::JoinSet,
+    time::{Instant, sleep_until},
 };
 
 use super::{AuthenticatedConnection, LocalEndpoint};
@@ -19,6 +21,12 @@ use crate::{
     session::{ShutdownCommand, run_connection},
     terminal::TerminalRegistry,
 };
+
+// Persistent listener/resource errors must yield rather than spin and flood the daemon log.
+const ACCEPT_RETRY_DELAY: Duration = Duration::from_millis(100);
+
+#[cfg(all(test, unix))]
+mod tests;
 
 pub async fn serve(
     endpoint: LocalEndpoint,
@@ -31,11 +39,12 @@ pub async fn serve(
 ) -> Result<(), DaemonError> {
     let permits = Arc::new(Semaphore::new(maximum_connections));
     let mut connections = JoinSet::new();
+    let mut retry_at = None;
     loop {
         let action = {
             let mut changed = Box::pin(stop.changed());
-            let mut accepted =
-                (permits.available_permits() > 0).then(|| Box::pin(endpoint.accept()));
+            let mut accepted = (permits.available_permits() > 0)
+                .then(|| Box::pin(accept_after(&endpoint, retry_at)));
             poll_fn(|context| {
                 if let Poll::Ready(changed) = changed.as_mut().poll(context) {
                     return Poll::Ready(ServerAction::Stop(changed));
@@ -69,6 +78,7 @@ pub async fn serve(
                 let permit = Arc::clone(&permits).acquire_owned().await.map_err(|_| stopped())?;
                 match accepted {
                     Ok(connection) => {
+                        retry_at = None;
                         let authority = authority.clone();
                         let terminals = terminals.clone();
                         let product_runs = product_runs.clone();
@@ -96,12 +106,12 @@ pub async fn serve(
                     }
                     Err(error) if error.code_kind() == DaemonErrorCode::Unauthorized => {
                         drop(permit);
+                        retry_at = None;
                     }
                     Err(error) if error.recovery() == DaemonRecovery::Retry => {
-                        // One connection that closed before authentication completed, or
-                        // failed to be accepted, must not stop the daemon for every other client.
                         drop(permit);
                         report_rejected_connection(&error);
+                        retry_at = Some(Instant::now() + ACCEPT_RETRY_DELAY);
                     }
                     Err(error) => return Err(error),
                 }
@@ -115,6 +125,16 @@ pub async fn serve(
         }
     }
     Ok(())
+}
+
+async fn accept_after(
+    endpoint: &LocalEndpoint,
+    retry_at: Option<Instant>,
+) -> Result<AuthenticatedConnection, DaemonError> {
+    if let Some(deadline) = retry_at {
+        sleep_until(deadline).await;
+    }
+    endpoint.accept().await
 }
 
 enum ServerAction {
