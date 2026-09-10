@@ -1,6 +1,6 @@
 {
   "next_display_id": 72,
-  "next_comment_id": 1544,
+  "next_comment_id": 1545,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11529,7 +11529,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-10T18:04:24.271923519Z",
-      "updated_at": "2026-09-10T20:08:46.023033633Z",
+      "updated_at": "2026-09-10T20:19:02.472349767Z",
       "comments": {
         "21bb2d9e-932a-4d5f-a67f-c24bc7516dd2": {
           "display_id": 1541,
@@ -11566,6 +11566,15 @@
           "kind": "note",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAkVIlDUwJP3FM8uSPc6xDiftM2bRDzcpD6ELIbi6Ui6qaOWGQV7zsWysadPSGKoBL8KKWTAvwHvqpcAf8I6kzCQ=="
+        },
+        "9cc84804-61b0-414c-9e5b-b4c19c305b1e": {
+          "display_id": 1544,
+          "author": "krvx",
+          "content": "[action] Reproduced and fixed two recovery defects on PR65: resumed writer/fixer scopes reused earlier effect identities; stream cleanup cancelled the parent run token and defeated automatic retries. Synthetic regressions now pass for interrupted-stream retry without duplicate tools and resumed edits with local memory enabled/disabled. Testing automatic daemon restart continuation and explicit-stop preservation next.",
+          "created_at": "2026-09-10T20:19:02.467221578Z",
+          "kind": "note",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAa9wBCZKw7HaBXVHRhP7eD8/C9TQgvfx/HeE6iZVg7FY2bsXs8fwBBAzunJfMR4O8naCZKpnmsdvZO5Cm5Tx6CQ=="
         },
         "c2e4d7f6-6ec3-4df2-a8ff-17194300176f": {
           "display_id": 1540,
@@ -15117,8 +15126,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-10T20:08:46.023033633Z",
+    "timestamp": "2026-09-10T20:19:02.472349767Z",
     "agent_id": "krvx",
-    "agent_seq": 213
+    "agent_seq": 214
   }
 }
