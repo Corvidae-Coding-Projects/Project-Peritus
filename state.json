@@ -1,6 +1,6 @@
 {
   "next_display_id": 67,
-  "next_comment_id": 1507,
+  "next_comment_id": 1508,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -12950,7 +12950,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-09T03:39:44.724470894Z",
-      "updated_at": "2026-09-10T00:46:14.238582510Z",
+      "updated_at": "2026-09-10T01:13:31.741004775Z",
       "comments": {
         "0d314b27-5216-4bce-9507-b37486d0e01a": {
           "display_id": 1480,
@@ -13104,6 +13104,15 @@
           "kind": "note",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAO3FjgvkeLbxXDJDnHBFwdOizP+zdSyfJIlNtp1dqmj0yOghN75B6D2F1UHHlyyHbyVh1JIqMEfx0bCdpVAH3Dg=="
+        },
+        "6044884b-e293-4329-8811-7f5fe8d91e4e": {
+          "display_id": 1507,
+          "author": "krvx",
+          "content": "[action] Concrete shipping repairs: permission regression fixed; native graphical2 and TUI132 pass; restore receipt queries now observational and uncertain C1 errors remain Prepared. Inherited fork inputs held by default. Finishing automatic checkpoint ordering/sealing and durable child-ID reservations before freeze and formal evidence.",
+          "created_at": "2026-09-10T01:13:31.735419947Z",
+          "kind": "note",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAvN4UTKZlzkw0lDOsH7AsS7qph1lstsGvz3We8jw8CWdZVscfvF2cENHj9EVaIULQ7Fif/4397CuOQ/zMs61CBQ=="
         },
         "647d04b3-2a82-4b17-8020-b6a9632837b2": {
           "display_id": 1469,
@@ -14702,8 +14711,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-10T00:46:14.238582510Z",
+    "timestamp": "2026-09-10T01:13:31.741004775Z",
     "agent_id": "krvx",
-    "agent_seq": 158
+    "agent_seq": 159
   }
 }
