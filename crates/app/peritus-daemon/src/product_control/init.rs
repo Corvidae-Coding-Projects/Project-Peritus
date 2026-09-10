@@ -329,13 +329,16 @@ const fn patch_mode(mode: InitFileMode) -> FileMode {
     }
 }
 
+#[cfg(unix)]
 fn observed_mode(metadata: &fs::Metadata) -> InitFileMode {
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt as _;
-        if metadata.permissions().mode() & 0o111 != 0 {
-            return InitFileMode::Executable;
-        }
+    use std::os::unix::fs::PermissionsExt as _;
+    if metadata.permissions().mode() & 0o111 != 0 {
+        return InitFileMode::Executable;
     }
+    InitFileMode::Regular
+}
+
+#[cfg(not(unix))]
+const fn observed_mode(_metadata: &fs::Metadata) -> InitFileMode {
     InitFileMode::Regular
 }

@@ -15,6 +15,7 @@ mod render;
 mod runtime;
 mod sanitize;
 mod terminal;
+mod title;
 
 pub use entry::run_env;
 pub use error::TuiError;
@@ -22,3 +23,4 @@ pub use runtime::{
     ExitReason, ProductLaunchContext, ProductProviderOption, TuiConfig, TuiState, run,
     run_with_state,
 };
+pub use title::TerminalTitle;

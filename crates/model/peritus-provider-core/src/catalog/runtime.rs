@@ -41,6 +41,8 @@ pub async fn discover_account_models(
         .tempdir()
         .map_err(|_| unavailable("cannot create isolated model-discovery directory"))?;
     let mut command = Command::new(executable);
+    #[cfg(windows)]
+    command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW: metadata must not own the host console.
     command
         .current_dir(directory.path())
         .stdin(Stdio::piped())
@@ -52,6 +54,7 @@ pub async fn discover_account_models(
             command.arg("app-server");
         }
         AccountCatalog::Claude => {
+            command.env("CLAUDE_CODE_DISABLE_TERMINAL_TITLE", "1");
             command.args([
                 "--print",
                 "--input-format",

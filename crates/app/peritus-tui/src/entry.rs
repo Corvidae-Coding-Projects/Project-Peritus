@@ -21,7 +21,7 @@ pub fn run_env() -> ExitCode {
             write_usage(&program, &mut io::stdout());
             ExitCode::SUCCESS
         }
-        Ok(ParseOutcome::Run(config)) => run_config(config),
+        Ok(ParseOutcome::Run(config)) => run_config(*config),
         Err(error) => {
             let _ = writeln!(io::stderr(), "peritus-tui: {error}");
             write_usage(&program, &mut io::stderr());
@@ -49,7 +49,7 @@ fn run_config(config: TuiConfig) -> ExitCode {
 
 enum ParseOutcome {
     Help,
-    Run(TuiConfig),
+    Run(Box<TuiConfig>),
 }
 
 fn parse(arguments: &[OsString]) -> Result<ParseOutcome, String> {
@@ -90,7 +90,7 @@ fn parse(arguments: &[OsString]) -> Result<ParseOutcome, String> {
         || TuiConfig::new(endpoint.clone()),
         |session| TuiConfig::new(endpoint.clone()).with_session(session),
     );
-    Ok(ParseOutcome::Run(config))
+    Ok(ParseOutcome::Run(Box::new(config)))
 }
 
 fn decode_hex_16(text: &str) -> Option<[u8; 16]> {

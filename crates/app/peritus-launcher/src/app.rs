@@ -32,6 +32,7 @@ pub async fn launch_interactive() -> Result<ExitReason, LauncherError> {
 pub async fn launch_interactive_at(
     repository: Option<PathBuf>,
 ) -> Result<ExitReason, LauncherError> {
+    let _title = crate::terminal::product_title()?;
     let layout = AppLayout::discover()?.prepare()?;
     if update::offer_on_startup(&layout).await? {
         return Ok(ExitReason::UserQuit);
@@ -161,6 +162,7 @@ fn decode_id(value: &str) -> Result<[u8; 16], LauncherError> {
 ///
 /// Returns an actionable bootstrap, interaction, provider, or configuration failure.
 pub fn configure_providers_interactive() -> Result<(), LauncherError> {
+    let _title = crate::terminal::product_title()?;
     let layout = AppLayout::discover()?.prepare()?;
     let prepared = ProductBootstrap::new(layout).prepare()?;
     let _configured = provider_setup::configure(&prepared)?;

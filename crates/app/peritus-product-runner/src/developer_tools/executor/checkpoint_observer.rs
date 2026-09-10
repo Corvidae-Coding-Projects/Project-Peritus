@@ -304,19 +304,17 @@ fn exact_file_receipt(
     })
 }
 
+#[cfg(unix)]
 fn file_mode(metadata: &fs::Metadata) -> CheckpointFileMode {
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt as _;
-        if metadata.permissions().mode() & 0o111 == 0 {
-            CheckpointFileMode::Regular
-        } else {
-            CheckpointFileMode::Executable
-        }
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = metadata;
+    use std::os::unix::fs::PermissionsExt as _;
+    if metadata.permissions().mode() & 0o111 == 0 {
         CheckpointFileMode::Regular
+    } else {
+        CheckpointFileMode::Executable
     }
+}
+
+#[cfg(not(unix))]
+const fn file_mode(_metadata: &fs::Metadata) -> CheckpointFileMode {
+    CheckpointFileMode::Regular
 }

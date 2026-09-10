@@ -4,6 +4,10 @@ use std::io::{self, BufRead, Write};
 
 use crate::LauncherError;
 
+pub fn product_title() -> Result<peritus_tui::TerminalTitle, LauncherError> {
+    peritus_tui::TerminalTitle::acquire().map_err(|error| interaction(&error))
+}
+
 pub struct Terminal<'a> {
     input: Box<dyn BufRead + 'a>,
     output: Box<dyn Write + 'a>,

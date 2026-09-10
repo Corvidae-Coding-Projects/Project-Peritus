@@ -83,6 +83,7 @@ impl AccountProvider {
     /// Returns a redaction-safe process or incomplete-login failure.
     pub fn login(&self, mode: AccountLogin) -> Result<ProviderObservation, OnboardingError> {
         let mut command = Command::new(&self.executable);
+        preserve_terminal_title(&mut command, self.kind);
         match self.kind {
             ProviderKind::CodexAccount => {
                 command.arg("login");
@@ -178,6 +179,7 @@ impl ProviderCatalog {
 
 fn status_command(kind: ProviderKind, executable: &Path) -> Option<Command> {
     let mut command = Command::new(executable);
+    preserve_terminal_title(&mut command, kind);
     match kind {
         ProviderKind::CodexAccount => {
             command.args(["login", "status"]);
@@ -188,7 +190,20 @@ fn status_command(kind: ProviderKind, executable: &Path) -> Option<Command> {
         _ => return None,
     }
     command.stdin(Stdio::null());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt as _;
+        // Piped output alone does not prevent a child from changing the shared console title.
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
     Some(command)
+}
+
+fn preserve_terminal_title(command: &mut Command, kind: ProviderKind) {
+    if kind == ProviderKind::ClaudeAccount {
+        command.env("CLAUDE_CODE_DISABLE_TERMINAL_TITLE", "1");
+    }
 }
 
 fn parse_status(kind: ProviderKind, success: bool, stdout: &[u8]) -> ProviderStatus {
@@ -261,3 +276,6 @@ mod tests {
         );
     }
 }
+
+#[cfg(all(test, windows))]
+mod windows_tests;

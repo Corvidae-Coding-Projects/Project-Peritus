@@ -65,6 +65,7 @@ fn claude_metadata_uses_control_initialization_without_a_user_prompt() {
 set -eu
 case " $* " in *" --no-session-persistence "*) ;; *) exit 21 ;; esac
 case " $* " in *"disableAllHooks"*) ;; *) exit 22 ;; esac
+test "$CLAUDE_CODE_DISABLE_TERMINAL_TITLE" = 1
 IFS= read -r line
 case "$line" in *'"type":"control_request"'*'"subtype":"initialize"'*|*'"subtype":"initialize"'*'"type":"control_request"'*) ;; *) exit 23 ;; esac
 printf '%s\n' '{"type":"control_response","response":{"subtype":"success","request_id":"peritus-models","response":{"models":[{"value":"provider-alias","displayName":"Advertised alias"}]}}}'

@@ -69,6 +69,10 @@ termination and await reaping before returning. Tests exercise the public fake s
 Tokio transport with a portable Rust helper, including argv/stdin/cwd/environment removal,
 output bounds, cancellation, and process ownership on Windows and Unix.
 
+On Windows, both runtime transport and model-catalog discovery launch without a console. Piped
+output alone is insufficient: a provider can otherwise rename the caller's shared console through
+native APIs. Claude catalog discovery also disables its automatic title updates.
+
 ## Failure and compatibility notes
 
 ### Native response healing

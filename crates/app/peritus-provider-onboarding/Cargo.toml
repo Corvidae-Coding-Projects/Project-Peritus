@@ -24,6 +24,9 @@ serde_json.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true
 
+[target.'cfg(windows)'.dev-dependencies]
+windows-sys = { workspace = true, features = ["Win32_System_Console"] }
+
 [package.metadata.peritus]
 owner = "G4"
 layer = "app"
