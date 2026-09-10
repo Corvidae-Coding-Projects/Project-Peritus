@@ -1,6 +1,6 @@
 {
   "next_display_id": 69,
-  "next_comment_id": 1531,
+  "next_comment_id": 1532,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -2941,7 +2941,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-10T11:22:27.739162003Z",
-      "updated_at": "2026-09-10T14:45:55.728124670Z",
+      "updated_at": "2026-09-10T15:16:40.462088317Z",
       "comments": {
         "200ee734-a8ff-45d4-bd5a-4ea08bcb360b": {
           "display_id": 1526,
@@ -3041,6 +3041,15 @@
           "kind": "result",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALMI2FISWCcN2McBqBL8KYtYQNeg4EgsWOHa3y6fazp/1Y4Ah2RBSAhatKNB6pgC7ntffDZGL5WOlG8jLjjnvAg=="
+        },
+        "f192e47c-dc1a-4dff-aa05-a03b89ed9c97": {
+          "display_id": 1531,
+          "author": "krvx",
+          "content": "Windows Gate A recovery job102919191055 reached ordinary checkpoint test early_failure_after_durable_restore_retains_exact_candidate_paths, which ran about80s and had no resume under its60s fixture budget. Added shared3min budget to ordinary checkpoint scenarios and an explicit expected Provider settlement assertion with detail before resume encoding; dedicated2sec deadline test unchanged. All7checkpoint tests pass, policyall and Linux/Windows strict Clippy pass. Intel macOS H2 CLI on35f4 completedsuccessfully in10m41, validating15minjobbudget. Replacement head qualification pending.",
+          "created_at": "2026-09-10T15:16:40.458241975Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzlWYc/1dwAO633aL7Xpm+gkQW3gaknteT2I2ep7zuTLonab8Fa7nxJCUD2+nD/Zu+ieD/WnzjPqtdsmJnc0GAQ=="
         }
       }
     },
@@ -14946,8 +14955,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-10T14:45:55.728124670Z",
+    "timestamp": "2026-09-10T15:16:40.462088317Z",
     "agent_id": "krvx",
-    "agent_seq": 188
+    "agent_seq": 189
   }
 }
