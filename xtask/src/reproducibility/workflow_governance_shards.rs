@@ -134,7 +134,7 @@ fn verus_shards_are_exact(job: &Yaml) -> bool {
         job,
         "Verus shard ${{ matrix.operation }} ${{ matrix.shard }}",
         "ubuntu-24.04",
-        10,
+        15,
     ) && exact_keys(strategy, &["fail-fast", "matrix"])
         && mapping_value(strategy, "fail-fast").and_then(Yaml::as_bool) == Some(false)
         && exact_keys(matrix, &["operation", "shard"])

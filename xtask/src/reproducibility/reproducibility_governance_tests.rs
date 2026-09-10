@@ -136,7 +136,7 @@ fn required_workflow_rejects_bootstrap_and_gate_weakening() {
 #[test]
 fn required_workflow_retains_the_measured_verus_timeout() {
     let altered = canonical_governance().replacen(
-        "    name: Verus shard ${{ matrix.operation }} ${{ matrix.shard }}\n    needs: policy\n    strategy:\n      fail-fast: false\n      matrix:\n        operation: [verus-verify, verus-verify-strict, verus-build, verus-build-strict]\n        shard: [foundation-state, runtime-tools, model-orchestration, app-runner, app-shell, edge]\n    runs-on: ubuntu-24.04\n    timeout-minutes: 10",
+        "    name: Verus shard ${{ matrix.operation }} ${{ matrix.shard }}\n    needs: policy\n    strategy:\n      fail-fast: false\n      matrix:\n        operation: [verus-verify, verus-verify-strict, verus-build, verus-build-strict]\n        shard: [foundation-state, runtime-tools, model-orchestration, app-runner, app-shell, edge]\n    runs-on: ubuntu-24.04\n    timeout-minutes: 15",
         "    name: Verus shard ${{ matrix.operation }} ${{ matrix.shard }}\n    needs: policy\n    strategy:\n      fail-fast: false\n      matrix:\n        operation: [verus-verify, verus-verify-strict, verus-build, verus-build-strict]\n        shard: [foundation-state, runtime-tools, model-orchestration, app-runner, app-shell, edge]\n    runs-on: ubuntu-24.04\n    timeout-minutes: 9",
         1,
     );

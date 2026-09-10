@@ -73,10 +73,10 @@ fn verus_jobs_reject_needs_runner_shell_env_and_intervening_steps() {
 }
 
 #[test]
-fn verus_shards_retain_the_ten_minute_ceiling() {
+fn verus_shards_retain_the_fifteen_minute_ceiling() {
     let altered = canonical_ci().replacen(
-        "    name: Foundation Verus ${{ matrix.operation }} ${{ matrix.shard }}\n    needs: bootstrap\n    strategy:\n      fail-fast: false\n      matrix:\n        operation: [verus-verify, verus-verify-strict, verus-build, verus-build-strict]\n        shard: [foundation-state, runtime-tools, model-orchestration, app-runner, app-shell, edge]\n    runs-on: ubuntu-24.04\n    timeout-minutes: 10",
-        "    name: Foundation Verus ${{ matrix.operation }} ${{ matrix.shard }}\n    needs: bootstrap\n    strategy:\n      fail-fast: false\n      matrix:\n        operation: [verus-verify, verus-verify-strict, verus-build, verus-build-strict]\n        shard: [foundation-state, runtime-tools, model-orchestration, app-runner, app-shell, edge]\n    runs-on: ubuntu-24.04\n    timeout-minutes: 11",
+        "    name: Foundation Verus ${{ matrix.operation }} ${{ matrix.shard }}\n    needs: bootstrap\n    strategy:\n      fail-fast: false\n      matrix:\n        operation: [verus-verify, verus-verify-strict, verus-build, verus-build-strict]\n        shard: [foundation-state, runtime-tools, model-orchestration, app-runner, app-shell, edge]\n    runs-on: ubuntu-24.04\n    timeout-minutes: 15",
+        "    name: Foundation Verus ${{ matrix.operation }} ${{ matrix.shard }}\n    needs: bootstrap\n    strategy:\n      fail-fast: false\n      matrix:\n        operation: [verus-verify, verus-verify-strict, verus-build, verus-build-strict]\n        shard: [foundation-state, runtime-tools, model-orchestration, app-runner, app-shell, edge]\n    runs-on: ubuntu-24.04\n    timeout-minutes: 16",
         1,
     );
 

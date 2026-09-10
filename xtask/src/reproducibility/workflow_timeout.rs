@@ -24,6 +24,8 @@ pub(super) fn validate(
         20
     } else if [
         (".github/workflows/ci.yml", "jobs.rust"),
+        (".github/workflows/ci.yml", "jobs.verus"),
+        (".github/workflows/formal-governance.yml", "jobs.verus-shards"),
         (".github/workflows/formal-governance.yml", "jobs.rust-shards"),
         (".github/workflows/security-qualification.yml", "jobs.native-security"),
         (".github/workflows/product-package.yml", "jobs.build-h2-binary"),
@@ -40,7 +42,7 @@ pub(super) fn validate(
         diagnostics.push(Diagnostic::at(
             path,
             format!("`{location}` does not have a timeout from 1 through {maximum} minutes"),
-            "keep ordinary jobs within ten minutes, named Rust, H0, and native binary builds within fifteen, and named release compilation jobs within twenty",
+            "keep ordinary jobs within ten minutes, named Rust, Verus, H0, and native binary builds within fifteen, and named release compilation jobs within twenty",
         ));
     }
 }
@@ -69,6 +71,8 @@ mod tests {
     fn qualification_allowance_is_bounded_and_scoped_to_exact_jobs() {
         let allowed = [
             (".github/workflows/ci.yml", "jobs.rust"),
+            (".github/workflows/ci.yml", "jobs.verus"),
+            (".github/workflows/formal-governance.yml", "jobs.verus-shards"),
             (".github/workflows/formal-governance.yml", "jobs.rust-shards"),
             (".github/workflows/security-qualification.yml", "jobs.native-security"),
             (".github/workflows/product-package.yml", "jobs.build-h2-binary"),

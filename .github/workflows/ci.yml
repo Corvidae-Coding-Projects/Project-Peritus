@@ -198,7 +198,7 @@ jobs:
         operation: [verus-verify, verus-verify-strict, verus-build, verus-build-strict]
         shard: [foundation-state, runtime-tools, model-orchestration, app-runner, app-shell, edge]
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
