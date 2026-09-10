@@ -1,5 +1,5 @@
 {
-  "next_display_id": 69,
+  "next_display_id": 70,
   "next_comment_id": 1534,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -56,6 +56,7 @@
     "b46fadc4-8cd4-48dc-8f36-bd78e9ee2e8c": 13,
     "b6f5371d-b205-4d62-a3e9-74c962cf12f0": 63,
     "be287235-44b0-49cd-b238-d64fe12e32f1": 37,
+    "cc972bf7-aa67-423d-babd-1ab1068a0f90": 69,
     "d232751e-0c18-4e60-a858-6c3cb8ad26f1": 25,
     "d4ee9653-ff6f-4bff-ba69-3a4199648e16": 66,
     "d94caf6d-2292-44ca-9393-3c7970c87f4f": 6,
@@ -12844,6 +12845,17 @@
         }
       }
     },
+    "cc972bf7-aa67-423d-babd-1ab1068a0f90": {
+      "uuid": "cc972bf7-aa67-423d-babd-1ab1068a0f90",
+      "display_id": 69,
+      "title": "Design executable harness modules and public SDK",
+      "description": "Documentation-only design for installable executable mini-harnesses with deterministic controllers, versioned runtime API, SDK, lifecycle, recovery and migration of the existing coding harness. No new domain harnesses or implementation. PR 63 CI monitoring stopped at user request.",
+      "status": "open",
+      "priority": "medium",
+      "created_by": "krvx",
+      "created_at": "2026-09-10T17:10:58.540136732Z",
+      "updated_at": "2026-09-10T17:10:58.540136732Z"
+    },
     "d232751e-0c18-4e60-a858-6c3cb8ad26f1": {
       "uuid": "d232751e-0c18-4e60-a858-6c3cb8ad26f1",
       "display_id": 25,
@@ -14973,8 +14985,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-10T15:46:26.568478775Z",
+    "timestamp": "2026-09-10T17:10:58.540136732Z",
     "agent_id": "krvx",
-    "agent_seq": 191
+    "agent_seq": 192
   }
 }
