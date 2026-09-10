@@ -1,6 +1,6 @@
 {
   "next_display_id": 69,
-  "next_comment_id": 1528,
+  "next_comment_id": 1529,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -2941,7 +2941,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-10T11:22:27.739162003Z",
-      "updated_at": "2026-09-10T13:55:07.384766236Z",
+      "updated_at": "2026-09-10T14:11:40.854323992Z",
       "comments": {
         "200ee734-a8ff-45d4-bd5a-4ea08bcb360b": {
           "display_id": 1526,
@@ -3005,6 +3005,15 @@
           "kind": "result",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAl6cMszJiu8DyOtrawvj6DdzhAXakQyPlCpSxMQJW3erYDAB0/y9Fb13YzQ3OMPW/F2rqpDfFe9EBdX4TAFbWDg=="
+        },
+        "d3dad6f1-7899-437d-92f0-f060e11af08e": {
+          "display_id": 1528,
+          "author": "krvx",
+          "content": "Commit 79deeb0a corrects my ba710 timeout validator: native Windows workflow discovery joins a backslash filename onto .github/workflows, so string matching rejected the three 15-minute jobs. Match using Path equality and construct the regression path through join. Windows GNU test executable run under Wine passes fixed code, fails original string matching on .github/workflows\\\\ci.yml at 15 minutes, then passes restored fix. 356 native xtask tests, policy all, Linux/Windows strict Clippy pass. All H0 native platforms passed ba710 (Linux 9m46); replacement head now needs complete hosted qualification.",
+          "created_at": "2026-09-10T14:11:40.850168092Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7dw408RP6nDnQiqBR+uBrqzmD1O40mw0azPYy83/kvf1nO83ddfpAxJSKtaomjjFeSS9TJI/x+tbusgEG5u8Ag=="
         },
         "d8be9120-d1ca-4777-9fbe-7287fdd1ddde": {
           "display_id": 1520,
@@ -14919,8 +14928,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-10T13:55:07.384766236Z",
+    "timestamp": "2026-09-10T14:11:40.854323992Z",
     "agent_id": "krvx",
-    "agent_seq": 185
+    "agent_seq": 186
   }
 }
