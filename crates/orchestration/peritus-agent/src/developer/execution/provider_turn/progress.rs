@@ -67,11 +67,15 @@ mod tests {
 
     impl DeveloperInteraction for Observer {
         fn input(&self) -> Result<DeveloperInput, DeveloperLoopError> {
-            Ok(DeveloperInput { revision: 1, conversation: String::new() })
+            Ok(DeveloperInput { revision: 1, conversation: String::new(), images: Vec::new() })
         }
 
-        fn applied(&self, _: u64) -> Result<(), DeveloperLoopError> {
-            Ok(())
+        fn prepare_request(
+            &self,
+            _: u64,
+            _: &peritus_model_protocol::ModelRequest,
+        ) -> Result<crate::DeveloperRequestAdmission, DeveloperLoopError> {
+            Ok(crate::DeveloperRequestAdmission::Accepted)
         }
 
         fn observe(&self, activity: DeveloperActivity<'_>) -> Result<(), DeveloperLoopError> {

@@ -14,5 +14,8 @@ pub use lifecycle::{
     KERNEL_COMMAND_VARIANTS, KERNEL_ERROR_VARIANTS, KERNEL_EVENT_VARIANTS, KERNEL_SUBJECT_VARIANTS,
     LIFECYCLE_PHASE_VARIANTS, LIFECYCLE_VARIANTS, VariantSet, VariantTag,
 };
-pub use registry::{FAMILIES, MessageFamily, MessageRole};
+pub use registry::{
+    ARTIFACT_SCOPE_CLAIM_FAMILY, ARTIFACT_UPLOAD_ACCEPTED_FAMILY, FAMILIES, MessageFamily,
+    MessageRole,
+};
 pub use render::{GeneratedArtifact, generated_artifacts};

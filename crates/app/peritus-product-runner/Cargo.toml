@@ -12,6 +12,7 @@ keywords = ["agents", "developer-tools", "orchestration"]
 categories = ["development-tools"]
 
 [dependencies]
+image.workspace = true
 peritus-agent = { version = "=0.0.1", path = "../../orchestration/peritus-agent" }
 peritus-artifact-store = { version = "=0.0.1", path = "../../state/peritus-artifact-store" }
 peritus-budget = { version = "=0.0.1", path = "../../foundation/peritus-budget" }
@@ -24,6 +25,7 @@ peritus-leases = { version = "=0.0.1", path = "../../state/peritus-leases" }
 peritus-model-protocol = { version = "=0.0.1", path = "../../model/peritus-model-protocol" }
 peritus-orchestrator = { version = "=0.0.1", path = "../../orchestration/peritus-orchestrator" }
 peritus-obligations = { version = "=0.0.1", path = "../../orchestration/peritus-obligations" }
+peritus-patch = { version = "=0.0.1", path = "../../runtime/peritus-patch" }
 peritus-policy = { version = "=0.0.1", path = "../../foundation/peritus-policy" }
 peritus-process = { version = "=0.0.1", path = "../../runtime/peritus-process" }
 peritus-protocol = { version = "=0.0.1", path = "../../foundation/peritus-protocol" }
@@ -38,6 +40,7 @@ peritus-tool-protocol = { version = "=0.0.1", path = "../../tools/peritus-tool-p
 peritus-tool-router = { version = "=0.0.1", path = "../../tools/peritus-tool-router" }
 peritus-tools-shell = { version = "=0.0.1", path = "../../tools/peritus-tools-shell" }
 peritus-types = { version = "=0.0.1", path = "../../foundation/peritus-types" }
+peritus-workspace = { version = "=0.0.1", path = "../../runtime/peritus-workspace" }
 rusqlite.workspace = true
 serde.workspace = true
 serde_json.workspace = true

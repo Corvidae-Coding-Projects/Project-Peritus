@@ -1,0 +1,13 @@
+schema = 1
+surface = "app-protocol"
+surface_version = "v1"
+case = "realistic-workbench-image-png-preview"
+kind = "realistic"
+
+[[files]]
+path = "expectation.toml"
+sha256 = "d7497bded63faea3a1b2009ef6f12f94073036b962d873728ec080a12ad0d019"
+
+[[files]]
+path = "payload.hex"
+sha256 = "6e33a32ee5358424d935c0a9df196bbe15db22bc40d0d366883b93393f28e138"

@@ -1,58 +1,49 @@
 //! Small discoverable command vocabulary; unknown commands never reach the model.
 
+use super::catalog::{self, Command};
 use crate::model::{AppModel, Effect, NoticeLevel, View};
 use peritus_app_protocol::{ProductInteractionMode as Mode, ProductRunControlAction as Control};
 
-pub const COMMANDS: &[(&str, &str)] = &[
-    ("/chat", "Talk or request scoped work"),
-    ("/plan", "Read-only planning"),
-    ("/review", "Fresh independent read-only review"),
-    ("/build", "Checked writer / reviewer / fixer delivery"),
-    ("/model", "Discover and select provider models"),
-    ("/effort", "Select reasoning effort for chat/writer, reviewer, or fixer"),
-    ("/new", "New conversation; preserve existing work"),
-    ("/status", "Current conversation and input status"),
-    ("/diff", "Inspect retained workspace changes"),
-    ("/runs", "Browse runs and handoffs"),
-    ("/trace", "Inspect event trace"),
-    ("/terminal", "Attach to a daemon process"),
-    ("/approvals", "Inspect pending approvals"),
-    ("/details", "Show or hide harness diagnostics"),
-    ("/stop", "Stop active work, preserve effects"),
-    ("/accept", "Accept the exact candidate"),
-    ("/commit", "Commit the exact candidate"),
-    ("/export", "Export the exact candidate"),
-    ("/discard", "Discard the exact candidate"),
-    ("/run", "Run the retained candidate"),
-    ("/reconnect", "Reconnect to the daemon"),
-    ("/help", "Show slash commands"),
-    ("/quit", "Detach client; do not stop daemon work"),
-];
 impl AppModel {
     pub(super) fn slash_command(&mut self, text: &str) -> Vec<Effect> {
-        let (command, rest) = text
-            .split_once(char::is_whitespace)
-            .map_or((text, ""), |(command, rest)| (command, rest.trim()));
-        if !COMMANDS.iter().any(|(name, _)| *name == command) {
-            self.notice(
-                NoticeLevel::Warning,
-                "Unknown slash command. Type / to see available commands.",
-            );
-            return Vec::new();
+        self.chat.workbench.files.open = false;
+        let (command, rest) = match catalog::parse(text) {
+            Ok(parsed) => parsed,
+            Err(message) => {
+                self.notice(NoticeLevel::Warning, message);
+                return Vec::new();
+            }
+        };
+        if !matches!(
+            command,
+            Command::Goal | Command::Pause | Command::Resume | Command::Usage | Command::Budget
+        ) {
+            self.chat.workbench.goal_mode = false;
         }
-        if command == "/model" {
-            return self.model_command(rest);
+        if let Some(effects) = self.workbench_slash_command(command, rest) {
+            return effects;
         }
-        if command == "/effort" {
-            return self.effort_command(rest);
+        match command {
+            Command::Model => return self.model_command(rest),
+            Command::Effort => return self.effort_command(rest),
+            Command::Doctor => return self.doctor_command(),
+            _ => {}
         }
         if self.direct_folder_chat().is_some()
-            && matches!(command, "/build" | "/accept" | "/commit" | "/export" | "/discard" | "/run")
+            && matches!(
+                command,
+                Command::Build
+                    | Command::Accept
+                    | Command::Commit
+                    | Command::Export
+                    | Command::Discard
+                    | Command::Run
+            )
         {
             self.notice(NoticeLevel::Info, "This folder uses in-place edits, not Git candidate handoffs. Ask for changes or commands in /chat; /build and candidate actions require a managed Git workspace.");
             return Vec::new();
         }
-        if command == "/new" && self.chat_submission_pending() {
+        if command == Command::New && self.chat_submission_pending() {
             self.notice(
                 NoticeLevel::Info,
                 "Wait for the pending input receipt before opening a new conversation.",
@@ -60,70 +51,50 @@ impl AppModel {
             return Vec::new();
         }
         let mode = match command {
-            "/chat" => Some(Mode::Chat),
-            "/plan" => Some(Mode::Plan),
-            "/review" => Some(Mode::Review),
-            "/build" => Some(Mode::Build),
+            Command::Chat => Some(Mode::Chat),
+            Command::Plan => Some(Mode::Plan),
+            Command::Review => Some(Mode::Review),
+            Command::Build => Some(Mode::Build),
             _ => None,
         };
         if let Some(mode) = mode {
-            if self.chat_work_active() && self.chat.mode != mode {
-                self.notice(
-                    NoticeLevel::Warning,
-                    "Stop active work before changing mode. Your draft is retained.",
-                );
-                return Vec::new();
-            }
-            self.chat.mode = mode;
-            if rest.is_empty() {
-                self.clear_chat_command();
-                self.notice(NoticeLevel::Info, format!("{} selected", mode.label()));
-                return Vec::new();
-            }
-            return self.send_chat_message(rest.to_owned());
-        }
-        if !rest.is_empty() {
-            self.notice(NoticeLevel::Warning, "This command takes no arguments; draft retained.");
-            return Vec::new();
+            return self.chat_mode_command(mode, rest);
         }
         self.clear_chat_command();
         match command {
-            "/new" => {
+            Command::New => {
                 self.chat.run_id = None;
                 self.chat.snapshot = None;
                 self.chat.scroll = 0;
                 self.chat.mode = Mode::Chat;
             }
-            "/status" => self.notice(NoticeLevel::Info, self.chat.status()),
-            "/diff" => {
+            Command::Status => self.notice(NoticeLevel::Info, self.chat.status()),
+            Command::Diff => {
                 if self.select_chat_run() {
-                    if let Some(product) = &mut self.product {
-                        product.inspection_scroll = 0;
-                    }
-                    self.view = View::Diff;
+                    return self.open_diff_panel();
                 }
             }
-            "/runs" => self.view = View::Runs,
-            "/trace" => self.view = View::Trace,
-            "/terminal" => self.view = View::Terminal,
-            "/approvals" => self.view = View::Approvals,
-            "/details" => self.chat.expanded = !self.chat.expanded,
-            "/stop" => return self.chat_control(Control::Cancel),
-            "/accept" => return self.chat_control(Control::Accept),
-            "/commit" => return self.chat_control(Control::Commit),
-            "/export" => return self.chat_control(Control::Export),
-            "/discard" => return self.chat_control(Control::Discard),
-            "/run" => {
+            Command::Runs => self.view = View::Runs,
+            Command::Trace => self.view = View::Trace,
+            Command::Terminal => self.view = View::Terminal,
+            Command::Approvals => self.view = View::Approvals,
+            Command::Details => self.chat.expanded = !self.chat.expanded,
+            Command::Stop => return self.chat_control(Control::Cancel),
+            Command::Accept => return self.chat_control(Control::Accept),
+            Command::Commit => return self.chat_control(Control::Commit),
+            Command::Export => return self.chat_control(Control::Export),
+            Command::Discard => return self.chat_control(Control::Discard),
+            Command::Run => {
                 if self.select_chat_run() {
                     return self.run_selected_product_candidate();
                 }
             }
-            "/reconnect" => return vec![Effect::Reconnect],
-            "/help" => {
+            Command::Reconnect => return vec![Effect::Reconnect],
+            Command::Help => {
                 "/".clone_into(&mut self.chat.buffer);
                 self.chat.cursor = 1;
             }
-            "/quit" => {
+            Command::Quit => {
                 self.quitting = true;
                 return vec![Effect::Quit];
             }
@@ -131,7 +102,51 @@ impl AppModel {
         }
         Vec::new()
     }
-    pub(super) fn clear_chat_command(&mut self) {
+
+    fn workbench_slash_command(&mut self, command: Command, rest: &str) -> Option<Vec<Effect>> {
+        match command {
+            Command::Sessions => Some(self.sessions_command(rest)),
+            Command::Fork => Some(self.fork_command(rest)),
+            Command::Queue => Some(self.queue_command(rest)),
+            Command::Context => Some(self.context_command(rest)),
+            Command::Compact => Some(self.compact_command(rest)),
+            Command::Brief => Some(self.brief_command(rest)),
+            Command::Goal => Some(self.goal_command(rest)),
+            Command::Pause => Some(self.pause_goal_command(rest)),
+            Command::Resume => Some(self.resume_goal_command(rest)),
+            Command::Usage => Some(self.usage_command()),
+            Command::Budget => Some(self.budget_command(rest)),
+            Command::Preview => Some(self.preview_command(rest)),
+            Command::Checkpoint => Some(self.checkpoint_command(rest)),
+            Command::Rewind => Some(self.rewind_command(rest)),
+            Command::Attach => Some(self.image_command(rest)),
+            Command::Files => Some(self.file_command(rest)),
+            Command::Permissions => Some(self.permissions_command(rest)),
+            Command::Init => Some(self.init_command(rest)),
+            Command::Memory => Some(self.memory_command(rest)),
+            _ => None,
+        }
+    }
+
+    fn chat_mode_command(&mut self, mode: Mode, text: &str) -> Vec<Effect> {
+        if self.chat_work_active() && self.chat.mode != mode {
+            self.notice(
+                NoticeLevel::Warning,
+                "Stop active work before changing mode. Your draft is retained.",
+            );
+            return Vec::new();
+        }
+        self.chat.mode = mode;
+        if text.is_empty() {
+            self.clear_chat_command();
+            self.notice(NoticeLevel::Info, format!("{} selected", mode.label()));
+            Vec::new()
+        } else {
+            self.send_chat_message(text.to_owned())
+        }
+    }
+    pub(in crate::model) fn clear_chat_command(&mut self) {
+        self.chat.pasted_command = false;
         self.chat.buffer.clear();
         self.chat.cursor = 0;
         self.chat.command_selection = 0;

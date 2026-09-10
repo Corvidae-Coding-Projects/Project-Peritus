@@ -1,9 +1,22 @@
 //! Conversation-first terminal layout with a persistent multiline composer and scrollable text.
 
+mod brief;
+mod checkpoints;
+mod compaction;
 mod composer;
+mod context;
+mod doctor;
 mod effort;
+mod files;
+mod goal;
+mod images;
+mod init;
+mod memory;
+mod permissions;
+mod queue;
 #[cfg(test)]
 mod tests;
+mod workbench;
 use super::{ACCENT, BAD, GOOD, MUTED, WARN};
 use crate::model::{AppModel, ConnectionStatus};
 use peritus_app_protocol::ProductActivityKind;
@@ -50,7 +63,11 @@ pub(super) fn draw(frame: &mut Frame<'_>, model: &AppModel) {
             regions[2],
         );
     }
-    if model.chat.effort_picker() {
+    if model.chat.doctor.is_some() {
+        doctor::draw(frame, regions[1], model);
+    } else if model.chat.workbench.open {
+        workbench::draw(frame, regions[1], model);
+    } else if model.chat.effort_picker() {
         effort::draw(frame, regions[1], model);
     } else if model.chat.model_picker() {
         draw_models(frame, regions[1], model);
@@ -121,7 +138,11 @@ fn draw_composer(
         ),
     );
     frame.render_widget(composer, area);
-    if !model.chat.model_picker() && !model.chat.effort_picker() {
+    if !model.chat.model_picker()
+        && !model.chat.effort_picker()
+        && model.chat.doctor.is_none()
+        && !model.chat.workbench.open
+    {
         frame.set_cursor_position((
             area.x
                 + 1

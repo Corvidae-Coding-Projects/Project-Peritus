@@ -79,6 +79,76 @@ impl CommandIds {
         })
     }
 
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "the folder authority retains every authenticated nominal identity explicitly"
+    )]
+    pub(super) fn for_folder_patch(
+        source_run: RunId,
+        ordinal: u64,
+        acceptance: &AcceptanceContract,
+        actor: ActorId,
+        session: SessionId,
+        action: ActionId,
+        workspace: WorkspaceId,
+        resource: ResourceId,
+        environment: EnvironmentId,
+        generation: peritus_types::Generation,
+        workspace_revision: RevisionNumber,
+    ) -> Result<Self, String> {
+        let revision = RevisionTuple::new(
+            acceptance.id(),
+            nominal(HarnessId::new, source_run, ordinal, "folder-patch-harness")?,
+            workspace,
+            generation,
+            workspace_revision,
+            nominal(PolicyId::new, source_run, ordinal, "folder-patch-policy")?,
+            nominal(ProviderProfileId::new, source_run, ordinal, "folder-patch-provider")?,
+        );
+        Ok(Self {
+            workspace,
+            resource,
+            environment,
+            actor,
+            session,
+            action,
+            process: nominal(ProcessId::new, source_run, ordinal, "folder-patch-process")?,
+            capability: CapabilityName::new("workspace.folder.patch".to_owned())
+                .map_err(|error| format!("construct folder-patch capability: {error:?}"))?,
+            revision,
+            project: nominal(ProjectId::new, source_run, ordinal, "folder-patch-project")?,
+            run: nominal(RunId::new, source_run, ordinal, "folder-patch-run")?,
+            attempt: nominal(AttemptId::new, source_run, ordinal, "folder-patch-attempt")?,
+            turn: nominal(TurnId::new, source_run, ordinal, "folder-patch-turn")?,
+            kernel_root_budget: nominal(
+                BudgetId::new,
+                source_run,
+                ordinal,
+                "folder-patch-kernel-root-budget",
+            )?,
+            kernel_child_budget: nominal(
+                BudgetId::new,
+                source_run,
+                ordinal,
+                "folder-patch-kernel-child-budget",
+            )?,
+            effect_budget: nominal(
+                BudgetId::new,
+                source_run,
+                ordinal,
+                "folder-patch-effect-budget",
+            )?,
+            reservation: nominal(
+                BudgetReservationId::new,
+                source_run,
+                ordinal,
+                "folder-patch-reservation",
+            )?,
+            source_run,
+            ordinal,
+        })
+    }
+
     pub(super) const fn execution_identity(&self) -> ExecutionIdentity {
         ExecutionIdentity::new(
             self.project,

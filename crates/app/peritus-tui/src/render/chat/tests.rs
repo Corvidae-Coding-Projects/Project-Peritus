@@ -93,7 +93,8 @@ fn command_picker_keeps_first_and_last_selection_visible() {
     let mut model = model();
     model.chat.buffer = "/".to_owned();
     model.chat.cursor = 1;
-    for (selection, command) in [(0, "/chat"), (crate::model::chat::COMMANDS.len() - 1, "/quit")] {
+    for (selection, command) in [(0, "/chat"), (model.chat.matching_commands().len() - 1, "/quit")]
+    {
         model.chat.command_selection = selection;
         let (text, _) = screen(&model, 80, 24);
         assert!(text.contains(&format!("▸ {command}")), "selected command hidden: {text}");

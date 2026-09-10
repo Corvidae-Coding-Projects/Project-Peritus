@@ -14,6 +14,7 @@ categories = ["development-tools"]
 [dependencies]
 peritus-agent = { version = "=0.0.1", path = "../../orchestration/peritus-agent" }
 fs4.workspace = true
+image.workspace = true
 peritus-app-protocol = { version = "=0.0.1", path = "../peritus-app-protocol" }
 peritus-approval = { version = "=0.0.1", path = "../../state/peritus-approval" }
 peritus-artifact-store = { version = "=0.0.1", path = "../../state/peritus-artifact-store" }

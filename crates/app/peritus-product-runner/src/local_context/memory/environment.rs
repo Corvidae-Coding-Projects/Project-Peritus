@@ -48,9 +48,12 @@ pub(in crate::local_context) fn capture(
     };
     let mut files = Vec::new();
     for path in paths {
-        let Ok(full) =
-            crate::developer_tools::checked_protected_file(root, path, contract, &scope.protected)
-        else {
+        let Ok(full) = crate::developer_tools::checked_protected_file_for_developer(
+            root,
+            path,
+            contract,
+            &scope.protected,
+        ) else {
             continue;
         };
         match File::open(full) {

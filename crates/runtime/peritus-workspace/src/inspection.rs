@@ -1,6 +1,6 @@
 //! Structured no-follow inspection of an immutable workspace snapshot.
 
-use std::{fs, io::Read, path::PathBuf};
+use std::{fs, path::PathBuf};
 
 use peritus_patch::WorkspacePath;
 
@@ -135,32 +135,9 @@ impl ReadOnlyWorkspace {
         path: &WorkspacePath,
         maximum_bytes: u64,
     ) -> Result<Vec<u8>, WorkspaceError> {
-        if maximum_bytes == 0 || maximum_bytes > MAX_INSPECTION_FILE_BYTES {
-            return Err(invalid("workspace read bound is zero or exceeds the C1 maximum"));
-        }
-        let target = checked_target(self, path)?;
-        let before = fs::symlink_metadata(&target).map_err(|_| inspect_io())?;
-        if !before.is_file() || before.file_type().is_symlink() || before.len() > maximum_bytes {
-            return Err(invalid("workspace read target is not a bounded no-follow regular file"));
-        }
-        let mut bytes = Vec::with_capacity(usize::try_from(before.len()).unwrap_or(0));
-        fs::File::open(&target)
-            .map_err(|_| inspect_io())?
-            .take(maximum_bytes.saturating_add(1))
-            .read_to_end(&mut bytes)
-            .map_err(|_| inspect_io())?;
-        let after = fs::symlink_metadata(&target).map_err(|_| inspect_io())?;
-        if bytes.len() as u64 != before.len()
-            || before.len() != after.len()
-            || after.file_type().is_symlink()
-        {
-            return Err(inspect_error(
-                ErrorCode::Indeterminate,
-                RecoveryClass::Reobserve,
-                "workspace file changed during immutable inspection",
-            ));
-        }
-        Ok(bytes)
+        self.file_inspection()
+            .read_file(path, crate::FileReadSelection::all(), maximum_bytes)
+            .map(crate::InspectedFile::into_bytes)
     }
 }
 

@@ -114,6 +114,14 @@ fn render_shape(output: &mut String, shape: JsonShape) {
             output.push_str(&quoted(&format!("#/$defs/{name}")));
             output.push_str(" }");
         }
+        JsonShape::OneOfArrayRef(names) => {
+            output.push_str("\"type\": \"array\", \"items\": { \"oneOf\": [");
+            separated(
+                output,
+                names.iter().map(|name| format!("{{ \"$ref\": \"#/$defs/{name}\" }}")),
+            );
+            output.push_str("] }");
+        }
         JsonShape::OneOfRef(names) => {
             output.push_str("\"oneOf\": [");
             separated(
@@ -124,6 +132,9 @@ fn render_shape(output: &mut String, shape: JsonShape) {
         }
         JsonShape::StringArray => {
             output.push_str("\"type\": \"array\", \"items\": { \"type\": \"string\" }");
+        }
+        JsonShape::IdentifierArray => {
+            output.push_str("\"type\": \"array\", \"items\": { \"type\": \"string\", \"pattern\": \"^[0-9a-f]{32}$\" }");
         }
     }
 }

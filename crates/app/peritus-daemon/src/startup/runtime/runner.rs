@@ -106,6 +106,7 @@ impl DaemonRuntime {
         let production = recover_production(&journal, &config, &workspaces)?;
         let product_runs = ProductRunService::open(
             config.paths().state_root(),
+            config.store_identity()?,
             &components,
             &workspaces,
             config.product().automatic_provider_failover(),

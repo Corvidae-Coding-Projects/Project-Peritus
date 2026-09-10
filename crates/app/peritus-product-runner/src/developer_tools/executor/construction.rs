@@ -31,6 +31,8 @@ impl WorkspaceDeveloperTools {
             progress_feedback_pending: false,
             inspection_progress: super::inspection_progress::InspectionProgress::default(),
             checkpoint_observer: None,
+            prepared_mutations: Vec::new(),
+            protection_view: None,
         }
     }
 
@@ -60,6 +62,8 @@ impl WorkspaceDeveloperTools {
             progress_feedback_pending: false,
             inspection_progress: super::inspection_progress::InspectionProgress::default(),
             checkpoint_observer: None,
+            prepared_mutations: Vec::new(),
+            protection_view: None,
         }
     }
 }

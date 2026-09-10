@@ -55,7 +55,10 @@ fn read_mode(r: &mut CanonicalReader<'_>) -> Result<ProductInteractionMode, Code
         .ok_or_else(|| CodecError::at(CodecErrorKind::UnknownTag, offset))
 }
 
-fn write_models(w: &mut CanonicalWriter, models: &ProductRoleModels) -> Result<(), CodecError> {
+pub(super) fn write_models(
+    w: &mut CanonicalWriter,
+    models: &ProductRoleModels,
+) -> Result<(), CodecError> {
     for choice in [models.writer(), models.reviewer(), models.fixer()] {
         w.write_str(choice.id())?;
         w.write_option_tag(choice.manual())?;
@@ -66,7 +69,7 @@ fn write_models(w: &mut CanonicalWriter, models: &ProductRoleModels) -> Result<(
     Ok(())
 }
 
-fn read_choice(
+pub(super) fn read_choice(
     r: &mut CanonicalReader<'_>,
     efforts: bool,
 ) -> Result<ProductModelChoice, CodecError> {
@@ -88,7 +91,7 @@ fn read_choice(
     Ok(choice.with_effort(effort))
 }
 
-fn read_models(
+pub(super) fn read_models(
     r: &mut CanonicalReader<'_>,
     efforts: bool,
 ) -> Result<ProductRoleModels, CodecError> {

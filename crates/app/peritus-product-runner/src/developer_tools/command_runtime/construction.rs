@@ -107,6 +107,7 @@ impl CommandRuntime {
                 state: Mutex::new(RuntimeState {
                     router: ToolRouter::new(registry, limits),
                     next_ordinal: 0,
+                    next_folder_patch_ordinal: 0,
                     active: BTreeMap::new(),
                     terminal: BTreeMap::new(),
                 }),

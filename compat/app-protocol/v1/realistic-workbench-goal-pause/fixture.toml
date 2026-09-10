@@ -1,0 +1,13 @@
+schema = 1
+surface = "app-protocol"
+surface_version = "v1"
+case = "realistic-workbench-goal-pause"
+kind = "realistic"
+
+[[files]]
+path = "expectation.toml"
+sha256 = "9bfec43ae16414cb30f096371819e7785ea0460cc576310813b3ac2e7208039c"
+
+[[files]]
+path = "payload.hex"
+sha256 = "bfe543ed3120e971b2e1c481aa56d8e53a52eb3f8e9ce8e017dfa206a8ab12a9"

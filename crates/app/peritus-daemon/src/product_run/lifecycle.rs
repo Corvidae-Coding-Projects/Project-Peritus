@@ -153,10 +153,7 @@ impl ProductRunService {
             }
             let record = records.get_mut(&run_id).expect("checked product run exists");
             let pending_chat = record.snapshot.phase() == ProductRunPhase::WaitingForUser
-                && record.interaction.as_ref().is_some_and(|options| {
-                    use peritus_product_runner::ConversationView as _;
-                    record.conversation.revision() > options.incorporated
-                });
+                && self.pending_record_input(record)?;
             if !record.snapshot.phase().retryable() && !pending_chat {
                 return Err(ProductRunServiceError::InvalidState);
             }

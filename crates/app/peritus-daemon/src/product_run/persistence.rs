@@ -9,107 +9,38 @@ use std::{
 
 use peritus_app_protocol::{
     ProductConversationMessage, ProductConversationRole, ProductProviderSelection, ProductRunPhase,
-    ProductRunRequest, ProductRunSnapshot,
+    ProductRunRequest, ProductRunSnapshot, encode_workbench_result_value,
 };
 use peritus_product_runner::{ConversationView, ProductRunResume};
 use peritus_provider_core::CancellationToken;
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
-use serde::Deserialize;
-use serde::Serialize;
 
 use super::progress::RunProgress;
-use super::{ProductRunServiceError, RunRecord, SharedConversation, filesystem, invalid};
+use super::{
+    PreviewAggregate, PreviewOperationRecord, ProductRunServiceError, RunRecord,
+    SharedConversation, filesystem, invalid,
+};
 use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
 
 mod deliverable;
 mod interaction;
+mod preview;
 mod progress;
+use preview::restore_preview;
 mod settlement;
+mod workbench;
+pub(super) use workbench::load_workbench_records;
 
 use settlement::{PersistedCheckpoint, restore_settlement};
 
-#[derive(Serialize, Deserialize)]
-struct PersistedRecord {
-    #[serde(default)]
-    interaction: Option<interaction::PersistedInteraction>,
-    run_id: String,
-    workspace_id: String,
-    writer: String,
-    reviewer: String,
-    fixer: String,
-    phase: u16,
-    cycle: u32,
-    task: String,
-    status: String,
-    diff: String,
-    gates: String,
-    review: String,
-    summary: String,
-    #[serde(default)]
-    finding_state: String,
-    #[serde(default)]
-    deliverable: Option<PersistedDeliverable>,
-    #[serde(default)]
-    messages: Vec<PersistedMessage>,
-    #[serde(default)]
-    progress: PersistedProgress,
-    #[serde(default)]
-    checkpoint: Option<PersistedCheckpoint>,
-    #[serde(default)]
-    settlement_cause: Option<u16>,
-    #[serde(default)]
-    resume_state: Option<Vec<u8>>,
-    #[serde(default)]
-    remaining_work: Vec<String>,
-    #[serde(default)]
-    interruption_cause: String,
-    #[serde(default)]
-    candidate_actionable: Option<bool>,
-}
+mod types;
+use types::{
+    PersistedDeliverable, PersistedMessage, PersistedPreviewOperation, PersistedPreviewOutput,
+    PersistedProgress, PersistedRecord,
+};
 
-#[derive(Default, Serialize, Deserialize)]
-struct PersistedProgress {
-    started_unix_millis: u64,
-    last_effect_unix_millis: u64,
-    model_requests: u32,
-    tool_calls: u32,
-    retries: u32,
-    #[serde(default)]
-    provider_failovers: u32,
-    compactions: u32,
-    input_tokens: u64,
-    cached_input_tokens: u64,
-    output_tokens: u64,
-    total_tokens: u64,
-    provider_cost_microunits: u64,
-    usage_observations: u32,
-    #[serde(default)]
-    workspace_bytes: u64,
-    #[serde(default)]
-    workspace_growth_bytes: u64,
-    #[serde(default)]
-    peak_rss_bytes: u64,
-}
-
-#[derive(Serialize, Deserialize)]
-struct PersistedMessage {
-    role: u16,
-    content: String,
-}
-
-#[derive(Serialize, Deserialize)]
-struct PersistedDeliverable {
-    workspace_path: String,
-    changed_paths: Vec<String>,
-    successful_commands: Vec<String>,
-    run_instructions: String,
-    #[serde(default)]
-    qualification: Option<u16>,
-    accepted: bool,
-    commit_revision: String,
-    export_path: String,
-    discarded: bool,
-}
+const MAX_PREVIEW_OPERATIONS: usize = 16_384;
+const MAX_PREVIEW_OUTPUT_BYTES: usize = 4 * 1_024 * 1_024;
 
 pub(super) fn persist_record(
     directory: &Path,
@@ -128,6 +59,20 @@ pub(super) fn persist_record(
 
 fn write_record(directory: &Path, record: &RunRecord) -> Result<(), ProductRunServiceError> {
     use std::io::Write as _;
+    let workbench_directory;
+    let directory =
+        if record.interaction.as_ref().is_some_and(|options| options.workbench.is_some()) {
+            workbench_directory = directory
+                .parent()
+                .ok_or(ProductRunServiceError::Unavailable)?
+                .join("workbench-v1")
+                .join("runs");
+            fs::create_dir_all(&workbench_directory)
+                .map_err(|_| ProductRunServiceError::Unavailable)?;
+            workbench_directory.as_path()
+        } else {
+            directory
+        };
     let persisted = PersistedRecord::from_record(record)?;
     let bytes =
         serde_json::to_vec_pretty(&persisted).map_err(|_| ProductRunServiceError::Unavailable)?;
@@ -165,6 +110,11 @@ pub(super) fn load_records(directory: &Path) -> Result<BTreeMap<RunId, RunRecord
         let record = persisted
             .into_record()
             .map_err(|_| invalid("product-run state contains invalid values"))?;
+        if record.interaction.as_ref().is_some_and(|options| options.workbench.is_some()) {
+            return Err(invalid(
+                "workbench execution state cannot be loaded from the legacy generation",
+            ));
+        }
         records.insert(record.request.run_id(), record);
     }
     Ok(records)
@@ -194,7 +144,11 @@ impl PersistedRecord {
             reviewer: hex(providers.reviewer().as_bytes()),
             fixer: hex(providers.fixer().as_bytes()),
             // Old readers reject interactive records instead of retrying them as build runs.
-            phase: snapshot.phase().tag() + if record.interaction.is_some() { 100 } else { 0 },
+            phase: snapshot.phase().tag()
+                + record
+                    .interaction
+                    .as_ref()
+                    .map_or(0, |options| if options.workbench.is_some() { 200 } else { 100 }),
             cycle: snapshot.cycle(),
             task: snapshot.task().to_owned(),
             status: snapshot.status().to_owned(),
@@ -217,14 +171,51 @@ impl PersistedRecord {
             remaining_work: record.remaining_work.clone(),
             interruption_cause: record.interruption_cause.clone(),
             candidate_actionable: Some(record.candidate_actionable),
+            preview_page: record
+                .preview
+                .page
+                .as_ref()
+                .map(encode_workbench_result_value)
+                .transpose()
+                .map_err(|_| ProductRunServiceError::Unavailable)?,
+            preview_operations: record
+                .preview
+                .operations
+                .iter()
+                .map(|(operation, value)| PersistedPreviewOperation {
+                    operation: operation.into_bytes(),
+                    fingerprint: value.fingerprint.into_bytes(),
+                    accepted_revision: value.accepted_revision,
+                    result_sequence: value.result_sequence,
+                    completed_sequence: value.completed_sequence,
+                })
+                .collect(),
+            preview_outputs: record
+                .preview
+                .outputs
+                .iter()
+                .map(|(launch, stdout)| PersistedPreviewOutput {
+                    launch: launch.into_bytes(),
+                    stdout: stdout.clone(),
+                })
+                .collect(),
         })
     }
 
     fn into_record(self) -> Result<RunRecord, ProductRunServiceError> {
+        self.into_record_with_context(None)
+    }
+
+    fn into_record_with_context(
+        self,
+        governed: Option<&str>,
+    ) -> Result<RunRecord, ProductRunServiceError> {
         let interaction =
             self.interaction.map(interaction::PersistedInteraction::restore).transpose()?;
-        let phase_tag = if interaction.is_some() {
-            self.phase.checked_sub(100).ok_or(ProductRunServiceError::InvalidMessage)?
+        let phase_tag = if let Some(options) = &interaction {
+            self.phase
+                .checked_sub(if options.workbench.is_some() { 200 } else { 100 })
+                .ok_or(ProductRunServiceError::InvalidMessage)?
         } else {
             self.phase
         };
@@ -232,6 +223,26 @@ impl PersistedRecord {
             RunId::new(unhex(&self.run_id)?).map_err(|_| ProductRunServiceError::InvalidMessage)?;
         let workspace_id = WorkspaceId::new(unhex(&self.workspace_id)?)
             .map_err(|_| ProductRunServiceError::InvalidMessage)?;
+        let preview = restore_preview(
+            self.preview_page,
+            self.preview_operations,
+            self.preview_outputs,
+            run_id,
+            workspace_id,
+            interaction.as_ref(),
+        )?;
+        if let Some(operation) = interaction.as_ref().and_then(|options| options.workbench.as_ref())
+        {
+            let peritus_product_runner::control::ControlIntent::StartExecution { run, .. } =
+                operation.intent()
+            else {
+                return Err(ProductRunServiceError::InvalidMessage);
+            };
+            if *run != run_id.into_bytes() || operation.workspace_bytes() != workspace_id.as_bytes()
+            {
+                return Err(ProductRunServiceError::InvalidMessage);
+            }
+        }
         let providers = ProductProviderSelection::new(
             profile(&self.writer)?,
             profile(&self.reviewer)?,
@@ -275,14 +286,18 @@ impl PersistedRecord {
             }
         }
         let conversation = SharedConversation::new(run_id, messages)?;
-        if interaction.as_ref().is_some_and(|state| state.incorporated > conversation.revision()) {
+        if interaction.as_ref().is_some_and(|state| {
+            state.workbench.is_none() && state.incorporated > conversation.revision()
+        }) {
             return Err(ProductRunServiceError::InvalidMessage);
         }
         let checkpoint = self.checkpoint.map(PersistedCheckpoint::into_checkpoint).transpose()?;
         let settlement = restore_settlement(checkpoint, self.settlement_cause)?;
         let resume = self
             .resume_state
-            .map(|bytes| ProductRunResume::decode_durable(&bytes, &conversation.render()))
+            .map(|bytes| {
+                ProductRunResume::decode_durable(&bytes, governed.unwrap_or(&conversation.render()))
+            })
             .transpose()
             .map_err(|_| ProductRunServiceError::InvalidMessage)?;
         let invalid_lineage = checkpoint.is_some_and(|value| {
@@ -325,6 +340,7 @@ impl PersistedRecord {
             remaining_work: self.remaining_work,
             interruption_cause: self.interruption_cause,
             candidate_actionable: self.candidate_actionable.unwrap_or(true),
+            preview,
         })
     }
 }

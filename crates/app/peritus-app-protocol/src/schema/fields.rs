@@ -56,6 +56,94 @@ impl CanonicalWireType {
 /// A semantic or negotiated ceiling applying to one field.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum FieldBound {
+    /// At most 4096 UTF-8 bytes in one inert launch/profile text field.
+    WorkbenchLaunchTextBytes,
+    /// At most 64 KiB in one explicit preview input write.
+    WorkbenchPreviewInputBytes,
+    /// Maximum literal arguments in one launch profile.
+    WorkbenchLaunchArguments,
+    /// Maximum inherited environment references in one launch profile.
+    WorkbenchLaunchEnvironment,
+    /// Maximum retained launch rows in one result page.
+    WorkbenchLaunches,
+    /// Maximum retained input receipts for one launch.
+    WorkbenchInteractions,
+    /// Maximum retained selected-window captures for one launch.
+    WorkbenchCaptures,
+    /// Maximum retained capture-anchored feedback rows for one launch.
+    WorkbenchArtifactFeedback,
+    /// Maximum finite wall duration for one preview process.
+    WorkbenchLaunchWallMillis,
+    /// Maximum 4096 UTF-8 bytes for an inert workspace-relative path.
+    WorkbenchFilePathBytes,
+    /// Maximum 32 file references per page.
+    WorkbenchFilePage,
+    /// Maximum 256 retained file references.
+    WorkbenchFileHistory,
+    /// At most 4 MiB of original encoded image bytes.
+    WorkbenchImageBytes,
+    /// At most 1024 UTF-8 source label bytes.
+    WorkbenchImageLabelBytes,
+    /// At most 8192 pixels per image side.
+    WorkbenchImageSide,
+    /// At most 64 complete image frames.
+    WorkbenchImageFrames,
+    /// Maximum image references returned in one revision-fenced page.
+    WorkbenchImagePage,
+    /// At most 32 exact input rows per revision-fenced page.
+    WorkbenchInputPage,
+    /// At most 1024 input identities or historical content revisions.
+    WorkbenchInputs,
+    /// At most 32 prerequisite identities for one input.
+    WorkbenchInputDependencies,
+    /// At most 8192 bytes of exact inert input text.
+    WorkbenchInputBytes,
+    /// Maximum context metadata rows in a page.
+    WorkbenchContextPage,
+    /// Maximum context metadata rows in one complete view.
+    WorkbenchContextRows,
+    /// Maximum bytes described by one context row.
+    WorkbenchContextSourceBytes,
+    /// Maximum explicit user-confirmed brief fields.
+    WorkbenchBriefFields,
+    /// Maximum agent-proposed public replies shown in a brief.
+    WorkbenchBriefProposals,
+    /// Maximum host-observed attachment facts shown in a brief.
+    WorkbenchBriefObservations,
+    /// Maximum public-reply source handles in one compaction preview.
+    WorkbenchCompactionEntries,
+    /// Maximum UTF-8 bytes in an optional compaction focus.
+    WorkbenchCompactionFocusBytes,
+    /// Maximum typed completion criteria in one persistent goal.
+    WorkbenchGoalCriteria,
+    /// The three stable persistent-goal accounting roles.
+    WorkbenchGoalRoles,
+    /// Maximum UTF-8 bytes in one persistent-goal transition reason.
+    WorkbenchGoalReasonBytes,
+    /// Maximum exact covered paths, exclusions, or effect notices in one checkpoint exchange.
+    WorkbenchCheckpointPaths,
+    /// Maximum UTF-8 bytes in a nonempty inert checkpoint name.
+    WorkbenchCheckpointNameBytes,
+    /// Maximum UTF-8 bytes in one checkpoint exclusion or effect notice.
+    WorkbenchCheckpointTextBytes,
+    /// Maximum UTF-8 bytes in one terminal restore path or diagnostic.
+    WorkbenchRestoreTextBytes,
+    /// At most 256 UTF-8 bytes in a nonempty inert conversation title.
+    ConversationTitleBytes,
+    /// Maximum literal local conversation-search text.
+    ConversationSearchBytes,
+    /// Maximum exact source-linked conversation snippet.
+    ConversationSnippetBytes,
+    /// Maximum conversation handoff summary.
+    ConversationHandoffBytes,
+    /// Maximum conversations in one library page.
+    ConversationLibraryPage,
+    /// At most 32 unique classified findings.
+    DoctorFindings,
+    /// At most 64 UTF-8 bytes in an inert check label.
+    DoctorCheckBytes,
+    /// At most 1024 UTF-8 bytes in inert diagnostic text.
+    DoctorTextBytes,
     /// Zero is not a valid value.
     NonZero,
     /// The codec frame-byte ceiling applies.
@@ -119,6 +207,50 @@ impl FieldBound {
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
+            Self::WorkbenchLaunchTextBytes => "workbench.max-launch-text-bytes (4096)",
+            Self::WorkbenchPreviewInputBytes => "workbench.max-preview-input-bytes (65536)",
+            Self::WorkbenchLaunchArguments => "workbench.max-launch-arguments (256)",
+            Self::WorkbenchLaunchEnvironment => "workbench.max-launch-environment (64)",
+            Self::WorkbenchLaunches => "workbench.max-launches (16)",
+            Self::WorkbenchInteractions => "workbench.max-preview-interactions (256)",
+            Self::WorkbenchCaptures => "workbench.max-preview-captures (64)",
+            Self::WorkbenchArtifactFeedback => "workbench.max-artifact-feedback (256)",
+            Self::WorkbenchLaunchWallMillis => "workbench.max-launch-wall-millis (600000)",
+            Self::WorkbenchImageBytes => "workbench.max-image-bytes (4194304)",
+            Self::WorkbenchFilePathBytes => "workbench.max-file-path-bytes (4096)",
+            Self::WorkbenchFilePage => "workbench.max-file-page (32)",
+            Self::WorkbenchFileHistory => "workbench.max-file-history (256)",
+            Self::WorkbenchImageLabelBytes => "workbench.max-image-label-bytes (1024)",
+            Self::WorkbenchImageSide => "workbench.max-image-side (8192)",
+            Self::WorkbenchImageFrames => "workbench.max-image-frames (64)",
+            Self::WorkbenchImagePage => "workbench.max-image-page (32)",
+            Self::WorkbenchInputPage => "workbench.max-input-page (32)",
+            Self::WorkbenchInputs => "workbench.max-inputs (1024)",
+            Self::WorkbenchInputDependencies => "workbench.max-input-dependencies (32)",
+            Self::WorkbenchInputBytes => "workbench.max-input-bytes (8192)",
+            Self::WorkbenchContextPage => "workbench.max-context-page (32)",
+            Self::WorkbenchContextRows => "workbench.max-context-rows (8192)",
+            Self::WorkbenchContextSourceBytes => "workbench.max-context-source-bytes (67108864)",
+            Self::WorkbenchBriefFields => "workbench.max-brief-fields (4)",
+            Self::WorkbenchBriefProposals => "workbench.max-brief-proposals (8)",
+            Self::WorkbenchBriefObservations => "workbench.max-brief-observations (32)",
+            Self::WorkbenchCompactionEntries => "workbench.max-compaction-entries (1024)",
+            Self::WorkbenchCompactionFocusBytes => "workbench.max-compaction-focus-bytes (1024)",
+            Self::WorkbenchGoalCriteria => "workbench.max-goal-criteria (16)",
+            Self::WorkbenchGoalRoles => "workbench.goal-roles (3)",
+            Self::WorkbenchGoalReasonBytes => "workbench.max-goal-reason-bytes (512)",
+            Self::WorkbenchCheckpointPaths => "workbench.max-checkpoint-paths (64)",
+            Self::WorkbenchCheckpointNameBytes => "workbench.max-checkpoint-name-bytes (256)",
+            Self::WorkbenchCheckpointTextBytes => "workbench.max-checkpoint-text-bytes (512)",
+            Self::WorkbenchRestoreTextBytes => "workbench.max-restore-text-bytes (4096)",
+            Self::ConversationTitleBytes => "workbench.max-title-bytes (256)",
+            Self::ConversationSearchBytes => "workbench.max-conversation-search-bytes (256)",
+            Self::ConversationSnippetBytes => "workbench.max-conversation-snippet-bytes (512)",
+            Self::ConversationHandoffBytes => "workbench.max-conversation-handoff-bytes (1024)",
+            Self::ConversationLibraryPage => "workbench.max-conversation-library-page (64)",
+            Self::DoctorFindings => "doctor.max-findings (32)",
+            Self::DoctorCheckBytes => "doctor.max-check-bytes (64)",
+            Self::DoctorTextBytes => "doctor.max-text-bytes (1024)",
             Self::NonZero => "nonzero",
             Self::CodecFrameBytes => "codec.max-frame-bytes",
             Self::CodecCollectionItems => "codec.max-collection-items",
@@ -180,8 +312,12 @@ pub enum JsonShape {
     OneOfRef(&'static [&'static str]),
     /// Ordered array of one named nested type.
     ArrayRef(&'static str),
+    /// Ordered array whose items are one of several closed named aggregate shapes.
+    OneOfArrayRef(&'static [&'static str]),
     /// Ordered array of strings.
     StringArray,
+    /// Ordered array of exact nominal identifiers.
+    IdentifierArray,
 }
 
 /// One field in canonical wire order.
@@ -231,3 +367,6 @@ mod types;
 
 pub use flows::APP_FLOW_TYPES;
 pub use types::APP_NESTED_TYPES;
+
+#[cfg(test)]
+mod tests;
