@@ -1,6 +1,6 @@
 {
   "next_display_id": 69,
-  "next_comment_id": 1522,
+  "next_comment_id": 1523,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -2941,8 +2941,17 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-10T11:22:27.739162003Z",
-      "updated_at": "2026-09-10T11:54:15.793657412Z",
+      "updated_at": "2026-09-10T11:56:26.225950223Z",
       "comments": {
+        "4f48cbf5-f038-4080-b506-71676fc4de0f": {
+          "display_id": 1522,
+          "author": "krvx",
+          "content": "Committed 6c953d1d: fix(daemon): use bounded private Unix endpoints without blocking clients. Reviewed 41 selected files; PR worktree clean. Verified 411 affected tests (2 existing graphical ignores), 353 xtask tests, recovery CI shard, all workspace policy and generated checks, strict Verus (3 adapter predicates), product builds, Linux Clippy and Windows cross-target Clippy. Pushing fork PR branch for native CI; no merge.",
+          "created_at": "2026-09-10T11:56:26.222134548Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7u2MWm6BXdUSmdl9/xaIyBO7QaHAHZG1CUQIlbr4Ph4Ze7txag2fOoOznL+kQr2zjlX0pytsK0l0H4nMc8rVBg=="
+        },
         "7a5009f8-219f-4444-898b-e0d8f11253f5": {
           "display_id": 1521,
           "author": "krvx",
@@ -14865,8 +14874,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-10T11:54:15.793657412Z",
+    "timestamp": "2026-09-10T11:56:26.225950223Z",
     "agent_id": "krvx",
-    "agent_seq": 179
+    "agent_seq": 180
   }
 }
