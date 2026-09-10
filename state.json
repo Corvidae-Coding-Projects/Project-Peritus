@@ -1,6 +1,6 @@
 {
   "next_display_id": 68,
-  "next_comment_id": 1517,
+  "next_comment_id": 1518,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10752,7 +10752,7 @@
       "priority": "medium",
       "created_by": "krvx",
       "created_at": "2026-09-10T09:55:08.166483208Z",
-      "updated_at": "2026-09-10T10:27:30.016009185Z",
+      "updated_at": "2026-09-10T10:34:27.994737632Z",
       "comments": {
         "1987af0f-033b-416b-b692-8e1ed60ef3c7": {
           "display_id": 1515,
@@ -10771,6 +10771,15 @@
           "kind": "result",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZ0jhHLriWC1HZ0f+YGF8sX3r5Ouu5Fw5x3nmJm1L1eg7gLp9pksusacBlmNVR3uQEiag1BZlClkFZeciI/QFAw=="
+        },
+        "4d54c566-8cb5-4d2f-826f-d8a9aa11467c": {
+          "display_id": 1517,
+          "author": "krvx",
+          "content": "Native failure was reproduced under Wine with child diagnostics: CREATE_NO_WINDOW can retain a private hidden console, so GetConsoleCP == 0 is not the isolation contract. Tests now assert no shared host process and unchanged host title for wrappers and direct transport; the no-console ownership test uses DETACHED_PROCESS. Wine passes all 8 onboarding tests and 132 TUI tests (one git-dependent test excluded because Wine has no Windows git). Fixed a pre-existing Unix-only absolute-path TUI fixture. Linux changed-fixture regression, strict Windows Clippy, and formatting pass. Follow-up commit 9b73683b; awaiting native CI with the full suite and Git available.",
+          "created_at": "2026-09-10T10:34:27.991027109Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAofQqIMhephQklDlXFdIVR5jqBNrvj8FEDIH69m4nA2ZcdkKX4YrMYCStyY8B/yKXaWQul34KbLdBHLUhfPeiDg=="
         },
         "5f3e4f41-9e2c-4837-9565-a1d2e2a98366": {
           "display_id": 1514,
@@ -14806,8 +14815,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-10T10:27:30.016009185Z",
+    "timestamp": "2026-09-10T10:34:27.994737632Z",
     "agent_id": "krvx",
-    "agent_seq": 171
+    "agent_seq": 172
   }
 }
