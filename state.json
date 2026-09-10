@@ -1,6 +1,6 @@
 {
   "next_display_id": 71,
-  "next_comment_id": 1535,
+  "next_comment_id": 1536,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10777,10 +10777,21 @@
       "priority": "medium",
       "created_by": "krvx",
       "created_at": "2026-09-10T17:27:35.837494791Z",
-      "updated_at": "2026-09-10T17:27:41.144542078Z",
+      "updated_at": "2026-09-10T17:47:08.571042549Z",
       "labels": [
         "feature"
-      ]
+      ],
+      "comments": {
+        "19ade431-c2a6-4ffd-a159-09c9145dabd6": {
+          "display_id": 1535,
+          "author": "krvx",
+          "content": "Implemented Ctrl+Left/Right word movement, Shift selection/replacement, shared rendered-cell mouse hit testing, drag/Shift-click selection, and symmetric mouse capture cleanup. Regression checks preserve UTF-8 byte boundaries, paste limits and pasted-command authority, wrapped/scrolled coordinates, resize and panel ownership. Pre-PR qualification: 293 app-shell tests plus build/clippy/doc-test/docs shards passed; 142 TUI tests passed after final state cleanup; Linux and Windows strict Clippy, Windows test build and 13 input/navigation tests under Wine passed; policy, formal API and dependency checks passed. Real disconnected TUI PTY exercise covers rendering and terminal input bytes. Final staged review and final artifact rebuild in progress.",
+          "created_at": "2026-09-10T17:47:08.565952091Z",
+          "kind": "note",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALXwpgBOnTAk1WKTlUjBgJD7UaCKIqpDOBri9TcqIeIhCt69veo19GIhfArrqKXWGS5r+86bM7AAEygnEieumBw=="
+        }
+      }
     },
     "6e8845fe-4835-478b-80d0-18135c12bc4d": {
       "uuid": "6e8845fe-4835-478b-80d0-18135c12bc4d",
@@ -15019,8 +15030,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-10T17:27:46.281130870Z",
+    "timestamp": "2026-09-10T17:47:08.571042549Z",
     "agent_id": "krvx",
-    "agent_seq": 200
+    "agent_seq": 201
   }
 }
