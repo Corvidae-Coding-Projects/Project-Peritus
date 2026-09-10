@@ -1,6 +1,6 @@
 {
   "next_display_id": 69,
-  "next_comment_id": 1520,
+  "next_comment_id": 1521,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -2941,7 +2941,18 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-10T11:22:27.739162003Z",
-      "updated_at": "2026-09-10T11:22:27.739162003Z"
+      "updated_at": "2026-09-10T11:44:28.018110625Z",
+      "comments": {
+        "d8be9120-d1ca-4777-9fbe-7287fdd1ddde": {
+          "display_id": 1520,
+          "author": "krvx",
+          "content": "Architecture decision: replace extended macOS sockaddr and Linux proc-fd aliasing with ordinary Unix sockets at bounded filesystem addresses. Preserve existing usable paths; otherwise hash the complete original path into a fixed short private runtime directory. This removes the home-path length dependency without custom socket FFI or blocking clients. Validate root ownership, mode, symlinks and inode-bound cleanup; preserve state-root lock and peer authentication. Also classify missing peer credentials as connection rejection and back off listener retries. Local path/ownership tests pass; native daemon integration and CI qualification next.",
+          "created_at": "2026-09-10T11:44:28.012892098Z",
+          "kind": "decision",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA5KomXQH9nF2nr1pqECxpRTPdSE1mfQ5TZI2L9ANW8+VMRrpZcJzf0M+odR9ZNgfF+nCXHFikuagk4bvOAj+QCg=="
+        }
+      }
     },
     "27633189-3dec-4781-9940-42a3e8eb9e60": {
       "uuid": "27633189-3dec-4781-9940-42a3e8eb9e60",
@@ -14845,8 +14856,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-10T11:26:01.946256965Z",
+    "timestamp": "2026-09-10T11:44:28.018110625Z",
     "agent_id": "krvx",
-    "agent_seq": 177
+    "agent_seq": 178
   }
 }
