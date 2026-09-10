@@ -42,14 +42,16 @@ fn ack(model: &mut AppModel, sent: &AppRequestEnvelope) -> Vec<Effect> {
 #[test]
 fn external_file_read_upload_preview_and_confirmation_bind_exact_snapshot() {
     let mut model = opened();
-    model.chat.workbench.files.path = "/explicit/external.txt".to_owned();
+    let external =
+        if cfg!(windows) { r"C:\explicit\external.txt" } else { "/explicit/external.txt" };
+    model.chat.workbench.files.path = external.to_owned();
     model.chat.workbench.files.range = "lines:2:2".to_owned();
     model.chat.workbench.files.caption = "Use this exact external line".to_owned();
     let effects = key(&mut model, KeyCode::Char('p'));
     let [Effect::ReadFile { operation, path, range }] = effects.as_slice() else {
         panic!("read: {effects:?}")
     };
-    assert_eq!(path.to_string_lossy(), "/explicit/external.txt");
+    assert_eq!(path.to_string_lossy(), external);
     assert_eq!(*range, WorkbenchFileRange::Lines { first: 2, last: 2 });
     let source = b"first\nsecond\nthird\n";
     let selected = b"second\n";

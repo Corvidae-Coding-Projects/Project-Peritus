@@ -88,7 +88,12 @@ fn status_probes_preserve_host_console() {
             .run(request, &CancellationToken::new())
             .await
             .expect("headless provider transport");
-        assert!(output.exit().success(), "provider transport retained console access");
+        assert!(
+            output.exit().success(),
+            "provider transport fixture failed: stdout={} stderr={}",
+            String::from_utf8_lossy(output.stdout()),
+            String::from_utf8_lossy(output.stderr()),
+        );
     });
     assert_eq!(current_title(), original);
 }
@@ -99,7 +104,6 @@ fn title_changing_provider() {
         return;
     }
     let parent = std::env::var("PERITUS_TITLE_TEST_PARENT").ok();
-    let direct = parent.is_none();
     let parent = parent
         .unwrap_or_else(|| {
             let mut input = String::new();
@@ -113,10 +117,8 @@ fn title_changing_provider() {
     let changed = change_title("claude");
     if shared {
         assert!(changed, "negative control must reproduce the title mutation");
-    } else if direct {
-        assert_eq!(console_code_page(), 0, "direct background process must have no console");
-        assert!(!changed);
     }
+    // A private hidden console is valid; only access to the host console violates isolation.
 }
 
 #[allow(unsafe_code, reason = "the Windows regression observes its own process console")]

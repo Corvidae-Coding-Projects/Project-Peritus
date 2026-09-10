@@ -42,7 +42,7 @@ fn process_without_console_does_not_acquire_a_title() {
     if std::env::var_os(CHILD).is_none() {
         run_child(
             "title::windows::tests::process_without_console_does_not_acquire_a_title",
-            0x0800_0000, // CREATE_NO_WINDOW
+            0x0000_0008, // DETACHED_PROCESS: no console, including a hidden console.
         );
         return;
     }
