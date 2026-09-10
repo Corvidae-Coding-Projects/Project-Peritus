@@ -11,11 +11,6 @@ use crate::{
 
 impl AppModel {
     pub(in crate::model) fn handle_product_key(&mut self, key: KeyEvent) -> Option<Vec<Effect>> {
-        if self.view == View::Diff
-            && let Some(effects) = self.review_key(key)
-        {
-            return Some(effects);
-        }
         if matches!(self.view, View::Diff | View::Review)
             && let Some(product) = &mut self.product
         {
@@ -31,28 +26,6 @@ impl AppModel {
             }
             return Some(Vec::new());
         }
-        if self.view == View::Preview
-            && let Some(product) = &mut self.product
-        {
-            match key.code {
-                KeyCode::PageUp => {
-                    product.preview_scroll = product.preview_scroll.saturating_sub(12);
-                }
-                KeyCode::PageDown => {
-                    product.preview_scroll = product.preview_scroll.saturating_add(12);
-                }
-                KeyCode::Home => product.preview_scroll = 0,
-                KeyCode::Char('r') => {
-                    let query = product
-                        .preview
-                        .as_ref()
-                        .map(peritus_app_protocol::WorkbenchResultPage::query);
-                    return Some(query.map_or_else(Vec::new, |query| self.refresh_preview(query)));
-                }
-                _ => return None,
-            }
-            return Some(Vec::new());
-        }
         if self.view != View::Runs {
             return None;
         }
@@ -61,7 +34,10 @@ impl AppModel {
             KeyCode::Enter => return Some(self.open_selected_conversation()),
             KeyCode::Char('m') => self.open_product_message_composer(),
             KeyCode::Char('i') => {
-                return Some(self.open_diff_panel());
+                self.view = View::Diff;
+                if let Some(product) = &mut self.product {
+                    product.inspection_scroll = 0;
+                }
             }
             KeyCode::Char('v') => return Some(self.run_selected_product_candidate()),
             KeyCode::Char('a') => {

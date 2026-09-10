@@ -111,8 +111,7 @@ pub(super) fn commit_tool(
     let digest = intent
         .digest(CodecLimits::PRODUCTION)
         .map_err(|error| format!("digest command tool intent: {error}"))?;
-    let capability_use =
-        capability_use(ids, digest, OperationClass::Execution, RiskClass::Execution)?;
+    let capability_use = capability_use(ids, digest, OperationClass::Execution)?;
     let kernel =
         kernel::commit(&mut store, label, ids, contract, &intent, &capability_use, wall_millis)?;
     let capability = commit_capability(&mut store, label, ids, capability_use)?;
@@ -150,13 +149,7 @@ pub(super) fn commit_process(
     let digest = intent
         .digest(CodecLimits::PRODUCTION)
         .map_err(|error| format!("digest command process intent: {error}"))?;
-    let operation_class = plan.isolation().operation_class();
-    let risk = if operation_class == OperationClass::Execution {
-        RiskClass::Execution
-    } else {
-        RiskClass::ExternalSideEffect
-    };
-    let capability_use = capability_use(ids, digest, operation_class, risk)?;
+    let capability_use = capability_use(ids, digest, plan.isolation().operation_class())?;
     let kernel =
         kernel::commit(&mut store, label, ids, contract, &intent, &capability_use, wall_millis)?;
     let (capability, committed_lease) =
@@ -170,11 +163,10 @@ pub(super) const fn instant(tick: u64) -> AuthorityInstant {
     AuthorityInstant::new(Generation::first(), tick)
 }
 
-pub(super) fn capability_use(
+fn capability_use(
     ids: &CommandIds,
     action_digest: Sha256Digest,
     operation_class: OperationClass,
-    risk: RiskClass,
 ) -> Result<CapabilityUseTransition, String> {
     let validity = ValidityWindow::new(instant(10), instant(1_000_000))
         .map_err(|error| format!("construct command capability validity: {error:?}"))?;
@@ -223,10 +215,15 @@ pub(super) fn capability_use(
         Vec::new(),
     )
     .map_err(|error| format!("construct command authority ceiling: {error:?}"))?;
+    let risks = if operation_class == OperationClass::Execution {
+        vec![RiskClass::Execution]
+    } else {
+        vec![RiskClass::ExternalSideEffect]
+    };
     let operation = OperationDescriptor::new(
         ids.capability.clone(),
         operation_class,
-        RiskSet::new(vec![risk]).map_err(|error| format!("construct command risks: {error:?}"))?,
+        RiskSet::new(risks).map_err(|error| format!("construct command risks: {error:?}"))?,
     )
     .map_err(|error| format!("construct command operation: {error:?}"))?;
     let policy = PolicyDefinition::new(
@@ -348,7 +345,7 @@ fn commit_budget(
         .map_err(|error| format!("commit command budget transition: {error}"))
 }
 
-pub(super) fn allocate_epoch(store: &mut SqliteJournal) -> Result<CurrentAuthorityEpoch, String> {
+fn allocate_epoch(store: &mut SqliteJournal) -> Result<CurrentAuthorityEpoch, String> {
     store
         .allocate_authority_epoch(ExpectedAuthorityEpoch::Absent)
         .map_err(|error| format!("allocate command authority epoch: {error}"))?;

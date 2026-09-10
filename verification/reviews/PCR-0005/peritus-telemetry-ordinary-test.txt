@@ -1,0 +1,57 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-telemetry", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-telemetry --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 0.767213, "finished_at": "2026-09-10T01:53:10.936840Z", "kind": "ordinary-test", "owning_crate": "peritus-telemetry", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:53:10.208118Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-telemetry", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-telemetry", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 111, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 2 tests
+test storage::tests::checkpoint_rejects_a_prefix_without_exact_final_disposition_accounting ... ok
+test storage::tests::identical_retry_reenters_durability_finalization_after_prior_failure ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 4 tests
+test both_backpressure_policies_are_bounded_and_account_exact_drops ... ok
+test contradictory_acknowledgement_keeps_the_batch_pending ... ok
+test shutdown_is_bounded_and_only_releases_an_empty_exporter ... ok
+test exporter_failure_is_explicit_and_retains_the_exact_batch_for_retry ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test version_one_checkpoint_marker_is_explicitly_unsupported ... ok
+test recovery_rejects_a_checkpoint_from_changed_projection_history ... ok
+test corrupted_latest_generation_fails_closed_and_abandoned_temp_is_removed ... ok
+test drop_oldest_checkpoint_preserves_eviction_before_later_export_across_restart ... ok
+test reject_newest_checkpoint_preserves_trailing_gap_after_earlier_exports ... ok
+test checkpoint_restart_replays_only_the_undisposed_projection_suffix ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test exporter_adapter_state_never_enters_errors_metrics_or_source_chains ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:53:10.936840Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-telemetry", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-telemetry", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 111, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-trace v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/observe/peritus-trace)
+   Compiling peritus-telemetry v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/observe/peritus-telemetry)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.69s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_telemetry-3ca90c4ac1de7e14)
+     Running tests/buffering_export.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/buffering_export-94f513d0d5ec2300)
+     Running tests/checkpoint_recovery.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/checkpoint_recovery-00ce88d0a6086684)
+     Running tests/leakage.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/leakage-70172972f2519d38)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:53:10.936840Z"}

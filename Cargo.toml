@@ -96,8 +96,6 @@ repository = "https://github.com/Corvidae-Coding-Projects/Project-Peritus"
 [workspace.dependencies]
 base64 = "=0.22.1"
 bytes = "=1.12.1"
-cap-std = { version = "=4.0.3", default-features = false }
-cap-fs-ext = { version = "=4.0.3", default-features = false, features = ["std"] }
 crossterm = { version = "=0.29.0", default-features = false, features = ["bracketed-paste", "events"] }
 criterion = { version = "=0.8.2", default-features = false }
 ed25519-dalek = { version = "=3.0.0", default-features = false }
@@ -107,7 +105,6 @@ futures-core = "=0.3.34"
 getrandom = "=0.4.3"
 half = { version = "=2.4.1", default-features = false, features = ["std"] }
 html5ever = "=0.39.0"
-image = { version = "=0.25.10", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
 futures-util = "=0.3.34"
 keyring = { version = "=4.1.6", default-features = false }
 landlock = { version = "=0.4.7", default-features = false }

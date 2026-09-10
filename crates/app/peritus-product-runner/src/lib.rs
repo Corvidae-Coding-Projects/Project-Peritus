@@ -2,7 +2,6 @@
 //! This crate coordinates concrete provider calls, managed-worktree edits, repository gates, and
 //! an independent review/fix cycle. It owns no UI and grants no authority; the daemon supplies
 //! already-resolved provider and workspace capabilities.
-pub mod attachment;
 #[cfg(not(verus_only))]
 mod budget;
 #[cfg(not(verus_only))]
@@ -10,12 +9,15 @@ pub(crate) mod bundle;
 #[cfg(not(verus_only))]
 mod candidate;
 mod context_config;
-pub mod control;
 mod conversation_mode;
+pub use conversation_mode::ConversationMode;
+mod workspace_kind;
+pub use workspace_kind::ProductWorkspaceKind;
 #[cfg(not(verus_only))]
 mod delivery_requirement;
 #[cfg(not(verus_only))]
 mod design;
+#[cfg(not(verus_only))]
 pub(crate) mod developer_tools;
 #[cfg(not(verus_only))]
 mod engineering_workflow;
@@ -48,10 +50,35 @@ mod verified_api;
 mod workspace_delivery;
 #[cfg(not(verus_only))]
 mod workspace_filter;
-mod workspace_kind;
 #[cfg(not(verus_only))]
 mod workspace_media;
-
-mod api;
-mod api_parity;
-pub use api::*;
+#[cfg(not(verus_only))]
+pub use budget::{
+    PRODUCT_RUN_MAX_COST_MICROUNITS, PRODUCT_RUN_MAX_ELAPSED, PRODUCT_RUN_MAX_MODEL_REQUESTS,
+    PRODUCT_RUN_MAX_PEAK_RSS_BYTES, PRODUCT_RUN_MAX_TOOL_CALLS, PRODUCT_RUN_MAX_TOTAL_TOKENS,
+    PRODUCT_RUN_MAX_WORKSPACE_GROWTH_BYTES, ProductRunProgress,
+};
+pub use context_config::{
+    LocalCompactorSandbox, LocalContextConfig, LocalContextEngine, LocalProcessConfig,
+    LocalSemanticBackend,
+};
+#[cfg(not(verus_only))]
+pub use developer_tools::CommandRuntime;
+pub use error::{ProductRunnerError, ProductRunnerErrorKind};
+#[cfg(not(verus_only))]
+pub use execution::{
+    ConversationView, ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunOutput,
+    ProductRunPhase, ProductRunQuestion, ProductRunResume, ProductRunUpdate, ProductRunner,
+    RoleProviders, RunObserver,
+};
+#[cfg(not(verus_only))]
+pub use local_context::inspect_local_context;
+#[cfg(verus_only)]
+pub use verified_api::{
+    CommandRuntime, ConversationView, PRODUCT_RUN_MAX_COST_MICROUNITS, PRODUCT_RUN_MAX_ELAPSED,
+    PRODUCT_RUN_MAX_MODEL_REQUESTS, PRODUCT_RUN_MAX_PEAK_RSS_BYTES, PRODUCT_RUN_MAX_TOOL_CALLS,
+    PRODUCT_RUN_MAX_TOTAL_TOKENS, PRODUCT_RUN_MAX_WORKSPACE_GROWTH_BYTES, ProductDeliveryScope,
+    ProductRunInput, ProductRunOutcome, ProductRunOutput, ProductRunPhase, ProductRunProgress,
+    ProductRunQuestion, ProductRunResume, ProductRunUpdate, ProductRunner, RoleProviders,
+    RunObserver,
+};

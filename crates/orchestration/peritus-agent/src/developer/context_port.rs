@@ -18,9 +18,6 @@ pub fn estimate_developer_request_tokens(messages: &[Message], tools: &[ToolDefi
 
 /// Inputs to local selection. The host must preserve current policy and protocol obligations.
 pub struct DeveloperContextAssembly<'a> {
-    /// Exact replaceable user-governing projection. Preserve it as a user message, not system
-    /// authority or optional archive evidence. Unincorporated revisions must not accumulate.
-    pub governing_input: Option<&'a Message>,
     /// Current system policy plus live invocation position and executor prerequisite.
     /// Replace the initial system message with this exact message before budgeting. Never
     /// recover its lifecycle fields from an earlier checkpoint or model-authored memory.
@@ -189,12 +186,10 @@ impl ContextSession<'_> {
         tools: &[ToolDefinition],
         profile: &ProviderProfile,
         invocation_policy: &Message,
-        governing_input: Option<&Message>,
     ) -> Result<bool, DeveloperLoopError> {
         if let Some(port) = &mut self.0 {
             let prior = estimated_request_tokens(messages, tools);
             let candidate = port.assemble(DeveloperContextAssembly {
-                governing_input,
                 invocation_policy,
                 messages,
                 tools,
@@ -203,11 +198,6 @@ impl ContextSession<'_> {
             if candidate.first() != Some(invocation_policy) {
                 return Err(DeveloperLoopError::Context(
                     "local view did not preserve current host invocation policy".to_owned(),
-                ));
-            }
-            if governing_input.is_some_and(|input| !candidate.contains(input)) {
-                return Err(DeveloperLoopError::Context(
-                    "local view did not preserve current governing user input".to_owned(),
                 ));
             }
             let estimated = estimated_request_tokens(&candidate, tools);

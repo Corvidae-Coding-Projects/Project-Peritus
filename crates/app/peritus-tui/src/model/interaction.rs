@@ -12,7 +12,7 @@ impl AppModel {
                     editor.cursor += text.len();
                     Vec::new()
                 } else if self.view == View::Conversation {
-                    self.paste_chat_event(&text);
+                    self.paste_chat(&text);
                     Vec::new()
                 } else if self.terminal.as_ref().is_some_and(TerminalSession::capture_input) {
                     self.send_terminal_input(text.into_bytes())
@@ -64,13 +64,12 @@ impl AppModel {
 
         match key.code {
             KeyCode::Char('1') => self.view = View::Runs,
-            KeyCode::Char('2') => return self.open_diff_panel(),
+            KeyCode::Char('2') => self.view = View::Diff,
             KeyCode::Char('3') => self.view = View::Review,
             KeyCode::Char('4') => self.view = View::Trace,
             KeyCode::Char('5') => self.view = View::Evolution,
             KeyCode::Char('6') => self.view = View::Terminal,
             KeyCode::Char('7') => self.view = View::Approvals,
-            KeyCode::Char('8') if self.product.is_some() => self.view = View::Preview,
             KeyCode::Char('?') => self.view = View::Help,
             KeyCode::Tab => self.next_view(),
             KeyCode::BackTab => self.previous_view(),

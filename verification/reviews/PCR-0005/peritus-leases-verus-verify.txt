@@ -1,0 +1,578 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "verus", "verify", "--package", "peritus-leases", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "command": "cargo verus verify --package peritus-leases --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20", "command_exit_code": 0, "custody_error": null, "duration_seconds": 0.381988, "finished_at": "2026-09-10T01:50:21.023201Z", "kind": "verus-verify", "owning_crate": "peritus-leases", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:50:20.679408Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "verus", "verify", "--package", "peritus-leases", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "kind": "verus-verify", "owning_crate": "peritus-leases", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 38, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:50:21.023201Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "verus", "verify", "--package", "peritus-leases", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "kind": "verus-verify", "owning_crate": "peritus-leases", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 38, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:15:59
+   |
+15 |           crate::selector::SelectorValues::Exact(values) => exists |index: int|
+   |  ___________________________________________________________^
+16 | |             0 <= index < values@.len() && !boundary.spec_contains_actor(values@[index]),
+   | |_______________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:16:73
+   |
+16 |             0 <= index < values@.len() && !boundary.spec_contains_actor(values@[index]),
+   |                                                                         ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:26:59
+   |
+26 |           crate::selector::SelectorValues::Exact(values) => exists |index: int|
+   |  ___________________________________________________________^
+27 | |             0 <= index < values@.len() && !boundary.spec_contains_role(values@[index]),
+   | |______________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:27:72
+   |
+27 |             0 <= index < values@.len() && !boundary.spec_contains_role(values@[index]),
+   |                                                                        ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:37:59
+   |
+37 |           crate::selector::SelectorValues::Exact(values) => exists |index: int|
+   |  ___________________________________________________________^
+38 | |             0 <= index < values@.len() && !boundary.spec_contains_environment(values@[index]),
+   | |_____________________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:38:79
+   |
+38 |             0 <= index < values@.len() && !boundary.spec_contains_environment(values@[index]),
+   |                                                                               ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:47:25
+   |
+47 |           Some(values) => exists |index: int|
+   |  _________________________^
+48 | |             0 <= index < values.spec_values().len()
+49 | |                 && !boundary.spec_contains_permission(&values.spec_values()[index]),
+   | |___________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:49:56
+   |
+49 |                 && !boundary.spec_contains_permission(&values.spec_values()[index]),
+   |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:119:20
+    |
+119 |               assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ____________________^
+120 | |                 && !boundary.spec_contains_actor(values@[witness])) by {
+    | |__________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:120:50
+    |
+120 |                 && !boundary.spec_contains_actor(values@[witness])) by {
+    |                                                  ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:128:24
+    |
+128 |                   assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ________________________^
+129 | |                     && !boundary.spec_contains_actor(values@[witness]));
+    | |______________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:129:54
+    |
+129 |                     && !boundary.spec_contains_actor(values@[witness]));
+    |                                                      ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:114:13
+    |
+114 | /             forall |prior: int| 0 <= prior < index ==>
+115 | |                 boundary.spec_contains_actor(values@[prior]),
+    | |____________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:115:46
+    |
+115 |                 boundary.spec_contains_actor(values@[prior]),
+    |                                              ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:157:20
+    |
+157 |               assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ____________________^
+158 | |                 && !boundary.spec_contains_role(values@[witness])) by {
+    | |_________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:158:49
+    |
+158 |                 && !boundary.spec_contains_role(values@[witness])) by {
+    |                                                 ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:166:24
+    |
+166 |                   assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ________________________^
+167 | |                     && !boundary.spec_contains_role(values@[witness]));
+    | |_____________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:167:53
+    |
+167 |                     && !boundary.spec_contains_role(values@[witness]));
+    |                                                     ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:152:13
+    |
+152 | /             forall |prior: int| 0 <= prior < index ==>
+153 | |                 boundary.spec_contains_role(values@[prior]),
+    | |___________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:153:45
+    |
+153 |                 boundary.spec_contains_role(values@[prior]),
+    |                                             ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:195:20
+    |
+195 |               assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ____________________^
+196 | |                 && !boundary.spec_contains_environment(values@[witness])) by {
+    | |________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:196:56
+    |
+196 |                 && !boundary.spec_contains_environment(values@[witness])) by {
+    |                                                        ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:204:24
+    |
+204 |                   assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ________________________^
+205 | |                     && !boundary.spec_contains_environment(values@[witness]));
+    | |____________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:205:60
+    |
+205 |                     && !boundary.spec_contains_environment(values@[witness]));
+    |                                                            ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:190:13
+    |
+190 | /             forall |prior: int| 0 <= prior < index ==>
+191 | |                 boundary.spec_contains_environment(values@[prior]),
+    | |__________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:191:52
+    |
+191 |                 boundary.spec_contains_environment(values@[prior]),
+    |                                                    ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:234:20
+    |
+234 |               assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ____________________^
+235 | |                 && !boundary.spec_contains_permission(&values@[witness])) by {
+    | |________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:235:56
+    |
+235 |                 && !boundary.spec_contains_permission(&values@[witness])) by {
+    |                                                        ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:244:24
+    |
+244 |                   assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ________________________^
+245 | |                     && !boundary.spec_contains_permission(&values@[witness]));
+    | |____________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:245:60
+    |
+245 |                     && !boundary.spec_contains_permission(&values@[witness]));
+    |                                                            ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:229:13
+    |
+229 | /             forall |prior: int| 0 <= prior < index ==>
+230 | |                 boundary.spec_contains_permission(&values@[prior]),
+    | |__________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:230:52
+    |
+230 |                 boundary.spec_contains_permission(&values@[prior]),
+    |                                                    ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-policy/src/amendment/preview.rs:39:24
+   |
+39 |                       && exists |revision: RevisionTuple,
+   |  ________________________^
+40 | |                         ceiling: crate::AuthorityCeiling,
+41 | |                         layers: Seq<RestrictionLayer>| {
+42 | |                         &&& crate::amendment_model::revision_is_exact_successor(
+...  |
+64 | |                         ) == Some((error.spec_kind(), error.spec_dimension()))
+65 | |                     }
+   | |_____________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-policy/src/amendment/preview.rs:47:29
+   |
+47 |                           &&& ceiling.spec_is_revision_rebind_of(
+   |  _____________________________^
+48 | |                             &base.spec_ceiling_value(),
+49 | |                             revision,
+50 | |                         )
+   | |_________________________^
+...
+60 |                           &&& crate::definition::construction::policy_definition_validation_error(
+   |  _____________________________^
+61 | |                             proposal.spec_successor_policy_id_value(),
+62 | |                             &ceiling,
+63 | |                             layers,
+64 | |                         ) == Some((error.spec_kind(), error.spec_dimension()))
+   | |_________________________^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/amendment/preview.rs:101:9
+    |
+101 | /         exists |witness_revision: RevisionTuple,
+102 | |             witness_ceiling: crate::AuthorityCeiling,
+103 | |             witness_layers: Seq<RestrictionLayer>| {
+104 | |             &&& crate::amendment_model::revision_is_exact_successor(
+...   |
+126 | |             ) == Some((error.spec_kind(), error.spec_dimension()))
+127 | |         },
+    | |_________^
+
+note:   trigger 1 of 2:
+   --> crates/foundation/peritus-policy/src/amendment/preview.rs:109:17
+    |
+109 |               &&& witness_ceiling.spec_is_revision_rebind_of(
+    |  _________________^
+110 | |                 &base.spec_ceiling_value(),
+111 | |                 witness_revision,
+112 | |             )
+    | |_____________^
+...
+122 |               &&& crate::definition::construction::policy_definition_validation_error(
+    |  _________________^
+123 | |                 proposal.spec_successor_policy_id_value(),
+124 | |                 &witness_ceiling,
+125 | |                 witness_layers,
+126 | |             ) == Some((error.spec_kind(), error.spec_dimension()))
+    | |_____________^
+
+note:   trigger 2 of 2:
+   --> crates/foundation/peritus-policy/src/amendment/preview.rs:109:17
+    |
+109 |               &&& witness_ceiling.spec_is_revision_rebind_of(
+    |  _________________^
+110 | |                 &base.spec_ceiling_value(),
+111 | |                 witness_revision,
+112 | |             )
+    | |_____________^
+...
+122 |               &&& crate::definition::construction::policy_definition_validation_error(
+    |  _________________^
+123 | |                 proposal.spec_successor_policy_id_value(),
+124 | |                 &witness_ceiling,
+125 | |                 witness_layers,
+126 | |             ) == Some((error.spec_kind(), error.spec_dimension()))
+    | |_____________^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/amendment/preview.rs:129:12
+    |
+129 |       assert(exists |witness_revision: RevisionTuple,
+    |  ____________^
+130 | |         witness_ceiling: crate::AuthorityCeiling,
+131 | |         witness_layers: Seq<RestrictionLayer>| {
+132 | |         &&& witness_revision == revision
+...   |
+157 | |         ) == Some((error.spec_kind(), error.spec_dimension()))
+158 | |     });
+    | |_____^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/amendment/preview.rs:140:13
+    |
+140 |           &&& witness_ceiling.spec_is_revision_rebind_of(
+    |  _____________^
+141 | |             &base.spec_ceiling_value(),
+142 | |             witness_revision,
+143 | |         )
+    | |_________^
+...
+153 |           &&& crate::definition::construction::policy_definition_validation_error(
+    |  _____________^
+154 | |             proposal.spec_successor_policy_id_value(),
+155 | |             &witness_ceiling,
+156 | |             witness_layers,
+157 | |         ) == Some((error.spec_kind(), error.spec_dimension()))
+    | |_________^
+
+note:   trigger 1 of 2:
+   --> crates/foundation/peritus-policy/src/amendment/preview.rs:140:13
+    |
+140 |           &&& witness_ceiling.spec_is_revision_rebind_of(
+    |  _____________^
+141 | |             &base.spec_ceiling_value(),
+142 | |             witness_revision,
+143 | |         )
+    | |_________^
+...
+153 |           &&& crate::definition::construction::policy_definition_validation_error(
+    |  _____________^
+154 | |             proposal.spec_successor_policy_id_value(),
+155 | |             &witness_ceiling,
+156 | |             witness_layers,
+157 | |         ) == Some((error.spec_kind(), error.spec_dimension()))
+    | |_________^
+
+note:   trigger 2 of 2:
+   --> crates/foundation/peritus-policy/src/amendment/preview.rs:140:13
+    |
+140 |           &&& witness_ceiling.spec_is_revision_rebind_of(
+    |  _____________^
+141 | |             &base.spec_ceiling_value(),
+142 | |             witness_revision,
+143 | |         )
+    | |_________^
+...
+153 |           &&& crate::definition::construction::policy_definition_validation_error(
+    |  _____________^
+154 | |             proposal.spec_successor_policy_id_value(),
+155 | |             &witness_ceiling,
+156 | |             witness_layers,
+157 | |         ) == Some((error.spec_kind(), error.spec_dimension()))
+    | |_________^
+
+note: Verus printed one or more automatically chosen quantifier triggers
+      because it had low confidence in the chosen triggers.
+      To suppress these messages, do one of the following:
+        (1) manually annotate a single desired trigger using #[trigger]
+            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
+        (2) manually annotate multiple desired triggers using #![trigger ...]
+            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
+        (3) accept the automatically chosen trigger using #![auto]
+            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
+        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
+      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
+      the theorem prover instantiates a quantifier whenever some expression matches the
+      pattern specified by one of the quantifier's triggers.)
+   --> crates/foundation/peritus-policy/src/amendment/preview.rs:129:12
+    |
+129 |       assert(exists |witness_revision: RevisionTuple,
+    |  ____________^
+130 | |         witness_ceiling: crate::AuthorityCeiling,
+131 | |         witness_layers: Seq<RestrictionLayer>| {
+132 | |         &&& witness_revision == revision
+...   |
+157 | |         ) == Some((error.spec_kind(), error.spec_dimension()))
+158 | |     });
+    | |_____^
+
+note: automatically chose triggers for this expression:
+   --> crates/state/peritus-leases/src/port/equality/binding/use_projection.rs:251:13
+    |
+251 | /             forall |prior: int| 0 <= prior < index ==>
+252 | |                 permission_fields_match(
+253 | |                     &left.scope_permissions@[prior],
+254 | |                     &right.scope_permissions@[prior],
+255 | |                 ),
+    | |_________________^
+
+note:   trigger 1 of 2:
+   --> crates/state/peritus-leases/src/port/equality/binding/use_projection.rs:253:22
+    |
+253 |                     &left.scope_permissions@[prior],
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+   --> crates/state/peritus-leases/src/port/equality/binding/use_projection.rs:254:22
+    |
+254 |                     &right.scope_permissions@[prior],
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/state/peritus-leases/src/port/equality/binding/use_projection.rs:268:9
+    |
+268 |         assert forall |permission_index: int|
+    |         ^^^^^^
+
+note:   trigger 1 of 2:
+   --> crates/state/peritus-leases/src/port/equality/binding/use_projection.rs:271:22
+    |
+271 |                     &left.scope_permissions@[permission_index],
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+   --> crates/state/peritus-leases/src/port/equality/binding/use_projection.rs:272:22
+    |
+272 |                     &right.scope_permissions@[permission_index],
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/state/peritus-leases/src/binding/use_projection.rs:151:16
+    |
+151 |               && forall |index: int| 0 <= index < permissions.len() ==>
+    |  ________________^
+152 | |                 self.scope_permissions@[index].matches_permission(&permissions[index])
+    | |______________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/state/peritus-leases/src/binding/use_projection.rs:152:68
+    |
+152 |                 self.scope_permissions@[index].matches_permission(&permissions[index])
+    |                                                                    ^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/state/peritus-leases/src/binding/duplication.rs:37:16
+   |
+37 |               && forall |index: int| 0 <= index < source.scope_permissions@.len() ==>
+   |  ________________^
+38 | |                 self.scope_permissions@[index]
+39 | |                     .exactly_duplicates(&source.scope_permissions@[index])
+40 | |             && self.revision == source.revision
+...  |
+51 | |             && self.successor_issuance_digest == source.successor_issuance_digest
+52 | |             && self.successor_issuance_command_id == source.successor_issuance_command_id
+   | |_________________________________________________________________________________________^
+
+note:   trigger 1 of 2:
+  --> crates/state/peritus-leases/src/binding/duplication.rs:38:17
+   |
+38 |                 self.scope_permissions@[index]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+  --> crates/state/peritus-leases/src/binding/duplication.rs:39:42
+   |
+39 |                     .exactly_duplicates(&source.scope_permissions@[index])
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/state/peritus-leases/src/binding/use_projection.rs:57:17
+   |
+57 | /                 forall |prior: int| 0 <= prior < index ==>
+58 | |                     scope_permissions@[prior].matches_permission(&source_permissions@[prior]),
+   | |_____________________________________________________________________________________________^
+
+note:   trigger 1 of 2:
+  --> crates/state/peritus-leases/src/binding/use_projection.rs:58:21
+   |
+58 |                     scope_permissions@[prior].matches_permission(&source_permissions@[prior]),
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+  --> crates/state/peritus-leases/src/binding/use_projection.rs:58:67
+   |
+58 |                     scope_permissions@[prior].matches_permission(&source_permissions@[prior]),
+   |                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/state/peritus-leases/src/binding/use_projection.rs:68:13
+   |
+68 |             assert forall |permission_index: int|
+   |             ^^^^^^
+
+note:   trigger 1 of 2:
+  --> crates/state/peritus-leases/src/binding/use_projection.rs:70:21
+   |
+70 |                     scope_permissions@[permission_index]
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+  --> crates/state/peritus-leases/src/binding/use_projection.rs:71:46
+   |
+71 |                         .matches_permission(&source_permissions@[permission_index]) by {
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/state/peritus-leases/src/binding/duplication.rs:64:17
+   |
+64 | /                 forall |prior: int| 0 <= prior < index ==>
+65 | |                     scope_permissions@[prior]
+66 | |                         .exactly_duplicates(&self.scope_permissions@[prior]),
+   | |____________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/state/peritus-leases/src/binding/duplication.rs:65:21
+   |
+65 |                     scope_permissions@[prior]
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/state/peritus-leases/src/binding/duplication.rs:98:13
+   |
+98 |             assert forall |permission_index: int|
+   |             ^^^^^^
+
+note:   trigger 1 of 2:
+   --> crates/state/peritus-leases/src/binding/duplication.rs:100:21
+    |
+100 |                     duplicate.scope_permissions@[permission_index]
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+   --> crates/state/peritus-leases/src/binding/duplication.rs:101:46
+    |
+101 |                         .exactly_duplicates(&self.scope_permissions@[permission_index]) by {
+    |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: Verus printed one or more automatically chosen quantifier triggers
+      because it had low confidence in the chosen triggers.
+      To suppress these messages, do one of the following:
+        (1) manually annotate a single desired trigger using #[trigger]
+            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
+        (2) manually annotate multiple desired triggers using #![trigger ...]
+            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
+        (3) accept the automatically chosen trigger using #![auto]
+            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
+        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
+      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
+      the theorem prover instantiates a quantifier whenever some expression matches the
+      pattern specified by one of the quantifier's triggers.)
+   --> crates/state/peritus-leases/src/binding/use_projection.rs:151:16
+    |
+151 |               && forall |index: int| 0 <= index < permissions.len() ==>
+    |  ________________^
+152 | |                 self.scope_permissions@[index].matches_permission(&permissions[index])
+    | |______________________________________________________________________________________^
+
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.12s
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:50:21.023201Z"}

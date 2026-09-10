@@ -1,0 +1,139 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-approval", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-approval --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 5.446636, "finished_at": "2026-09-10T01:47:56.563187Z", "kind": "ordinary-test", "owning_crate": "peritus-approval", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:47:51.156505Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-approval", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-approval", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 5, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 2 tests
+test render::builder::tests::raw_invalid_utf8_and_controls_are_rejected ... ok
+test digest::tests::every_request_preimage_field_changes_the_digest_in_isolation ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test generated_traces_match_independent_model_after_every_step ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.67s
+
+
+running 5 tests
+test authentic_fixture_binds_human_principal_and_signed_role ... ok
+test request_binding_and_time_boundaries_fail_closed ... ok
+test asserted_role_and_independence_are_conjoined_not_inferred ... ok
+test weak_public_keys_noncanonical_scalars_and_mutations_are_rejected ... ok
+test registry_revision_generation_status_actor_and_tier_fail_exactly ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s
+
+
+running 5 tests
+test signed_request_identity_mismatch_is_rejected_before_state_transition ... ok
+test delayed_decision_from_the_same_reissued_key_fails_on_generation ... ok
+test credential_validity_and_clock_epoch_are_half_open_and_fail_closed ... ok
+test missing_and_wrong_scope_credentials_fail_exactly ... ok
+test every_independence_category_rejects_its_exact_conflict ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+
+running 7 tests
+test closed_risk_and_independence_cardinalities_block_one_over_values ... ok
+test amendment_identity_rejects_reused_successor_identity ... ok
+test credential_constructor_rejects_key_and_principal_mismatch ... ok
+test participant_sets_reject_duplicates_and_noncanonical_order ... ok
+test credential_role_limit_and_canonicality_are_exact ... ok
+test permission_and_participant_limits_reject_exactly_one_over ... ok
+test registry_limit_accepts_maximum_and_rejects_one_over_before_lookup ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+
+running 4 tests
+test request_round_trip_preserves_value_and_exact_bytes ... ok
+test credential_registry_round_trip_preserves_canonical_bytes_and_digest ... ok
+test malformed_trailing_and_over_limit_frames_fail_closed ... ok
+test all_decision_choices_round_trip_and_remain_authenticatable ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+
+
+running 2 tests
+test authenticated_observation_retains_the_exact_snapshot_digest ... ok
+test canonical_registry_digest_is_deterministic_and_field_sensitive ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+
+running 4 tests
+test crypto_wrappers_reject_every_adjacent_malformed_length ... ok
+test nist_sha256_known_answers_and_reference_differential ... ok
+test rfc8032_vector_is_accepted_by_both_verifiers ... ok
+test ordinary_mutations_fail_both_ed25519_implementations ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+
+running 3 tests
+test request_collections_and_redacted_risk_details_are_digest_bound ... ok
+test all_four_amendment_identity_fields_change_the_decision_digest ... ok
+test every_signed_decision_field_changes_the_digest_and_rejects_the_old_signature ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+
+running 5 tests
+test amendment_authorization_binds_the_exact_previewed_candidate ... ok
+test use_binding_failures_preserve_the_authorization ... ok
+test approve_once_binds_one_exact_use_and_rejects_reuse ... ok
+test deny_cancel_and_pending_expiry_are_closed_terminal_states ... ok
+test exact_replay_survives_expiry_but_conflict_does_not ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+
+running 9 tests
+test mandatory_authority_and_time_facts_are_complete ... ok
+test render_is_printable_ascii_bounded_and_deterministic ... ok
+test unsafe_capability_controls_and_non_ascii_are_rejected_before_render ... ok
+test seeded_secret_precursor_renders_only_its_digest ... ok
+test provenance_participant_boundaries_are_exact_and_bounded ... ok
+test mandatory_fields_survive_worst_case_collection_truncation ... ok
+test permission_truncation_is_whole_item_and_counted ... ok
+test permission_boundaries_have_exact_whole_item_counts ... ok
+test every_resolution_choice_renders_its_exact_identity ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+
+
+running 1 test
+test request_has_no_caller_risk_slot_and_binds_the_exact_policy_union ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:47:56.563187Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-approval", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-approval", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 5, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-approval v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-approval)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.72s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_approval-9f6a5f1c26900a97)
+     Running tests/approval_model_traces.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/approval_model_traces-3132bac77a88df11)
+     Running tests/authentication_adversarial.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/authentication_adversarial-2516b28272ef042b)
+     Running tests/authentication_boundaries.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/authentication_boundaries-342ce73521d8d81f)
+     Running tests/bounded_inputs.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/bounded_inputs-2319594b856f9aee)
+     Running tests/codec.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/codec-8e5be853ac86e456)
+     Running tests/credential_registry_digest.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/credential_registry_digest-4d12d0be506b8618)
+     Running tests/crypto_vectors.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/crypto_vectors-d2f347f7582310b8)
+     Running tests/digest_binding.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/digest_binding-9e8ac38299aafcd4)
+     Running tests/lifecycle.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/lifecycle-cd492c547752e00d)
+     Running tests/rendering.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/rendering-fac5aa0f9b0e473e)
+     Running tests/risk_binding.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/risk_binding-ab96c54d6b5b9177)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:47:56.563187Z"}

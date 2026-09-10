@@ -5,17 +5,13 @@ mod compactor;
 mod construction;
 mod contract;
 mod control;
-mod folder_patch;
 mod identity;
 mod journal;
 mod kernel;
 mod lease;
 mod plan;
-mod preview;
 mod result;
 mod sandbox;
-
-pub use folder_patch::{FolderPatchAuthority, FolderPatchAuthorityPlan};
 
 use std::{
     collections::BTreeMap,
@@ -62,7 +58,6 @@ struct RuntimeInner {
 struct RuntimeState {
     router: ToolRouter,
     next_ordinal: u64,
-    next_folder_patch_ordinal: u64,
     active: BTreeMap<String, ActiveCommand>,
     terminal: BTreeMap<String, TerminalCommand>,
 }
@@ -76,11 +71,6 @@ struct ActiveCommand {
 struct TerminalCommand {
     result: ToolResult,
     progress: Vec<ToolProgress>,
-}
-
-struct StartedCommand {
-    handle: String,
-    process_id: peritus_types::ProcessId,
 }
 
 /// Fully checked input for one command start.
@@ -131,14 +121,14 @@ impl CommandRuntime {
     }
 
     pub(super) fn start(&self, request: StartCommand<'_>) -> Result<Value, DeveloperLoopError> {
-        let started = self.start_owned(request)?;
-        Ok(result::active(&started.handle, &[]))
+        let handle = self.start_owned(request)?;
+        Ok(result::active(&handle, &[]))
     }
 
     pub(super) fn run(&self, request: StartCommand<'_>) -> Result<Value, DeveloperLoopError> {
-        let started = self.start_owned(request)?;
+        let handle = self.start_owned(request)?;
         loop {
-            let observation = self.poll(&started.handle)?;
+            let observation = self.poll(&handle)?;
             if observation.get("state").and_then(Value::as_str) != Some("running") {
                 return Ok(observation);
             }
@@ -150,7 +140,7 @@ impl CommandRuntime {
         self.observe(handle, Observation::Poll)
     }
 
-    fn start_owned(&self, request: StartCommand<'_>) -> Result<StartedCommand, DeveloperLoopError> {
+    fn start_owned(&self, request: StartCommand<'_>) -> Result<String, DeveloperLoopError> {
         let cwd = canonical_command_cwd(&self.inner.workspace_root, request.cwd)?;
         let timeout_millis =
             u64::try_from(request.timeout.as_millis()).unwrap_or(u64::MAX).clamp(1, 600_000);
@@ -235,7 +225,7 @@ impl CommandRuntime {
             }
         }
         drop(state);
-        Ok(StartedCommand { handle, process_id: ids.process })
+        Ok(handle)
     }
 
     fn observe(&self, handle: &str, operation: Observation) -> Result<Value, DeveloperLoopError> {

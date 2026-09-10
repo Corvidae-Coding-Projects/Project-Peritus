@@ -1,17 +1,14 @@
 //! Persistent conversational composer, explicit slash commands, and provider catalog selection.
 
-mod catalog;
 mod commands;
-mod doctor;
-mod keys;
 mod models;
 mod picker;
 #[cfg(test)]
 mod tests;
-mod workbench;
 mod working;
 
 use super::{AppModel, Effect, NoticeLevel, PendingRequest};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use peritus_app_protocol::{
     AppRequestPayload, ProductInteractionMode, ProductInteractionRequest,
     ProductInteractionSnapshot, ProductModelCatalog, ProductRoleModels, ProductRunControlAction,
@@ -19,6 +16,7 @@ use peritus_app_protocol::{
 };
 use peritus_types::RunId;
 
+pub use commands::COMMANDS;
 pub use working::WorkingIndicator;
 
 #[derive(Debug)]
@@ -38,10 +36,7 @@ pub struct ChatUi {
     pub(crate) effort_selection: usize,
     pub(crate) model_selection: usize,
     pub(crate) model_role: models::ModelRole,
-    pub(crate) doctor: Option<doctor::DoctorPanel>,
-    pub(crate) workbench: workbench::WorkbenchUi,
     interrupt_requested: bool,
-    pasted_command: bool,
 }
 impl Default for ChatUi {
     fn default() -> Self {
@@ -61,10 +56,7 @@ impl Default for ChatUi {
             effort_selection: 0,
             model_selection: 0,
             model_role: models::ModelRole::Writer,
-            doctor: None,
-            workbench: workbench::WorkbenchUi::default(),
             interrupt_requested: false,
-            pasted_command: false,
         }
     }
 }
@@ -85,8 +77,11 @@ impl ChatUi {
     pub(crate) fn active(&self) -> bool {
         self.snapshot.as_ref().is_some_and(|snapshot| !snapshot.snapshot().phase().terminal())
     }
-    pub(crate) fn matching_commands(&self) -> Vec<(String, &'static str)> {
-        catalog::completions(&self.buffer)
+    pub(crate) fn matching_commands(&self) -> Vec<(&'static str, &'static str)> {
+        if !self.buffer.starts_with('/') || self.buffer.contains(char::is_whitespace) {
+            return Vec::new();
+        }
+        COMMANDS.iter().copied().filter(|(name, _)| name.starts_with(&self.buffer)).collect()
     }
 }
 impl AppModel {
@@ -108,21 +103,94 @@ impl AppModel {
         .into_iter()
         .collect()
     }
+    pub(super) fn paste_chat(&mut self, text: &str) {
+        self.chat.interrupt_requested = false;
+        let text: String =
+            text.chars().filter(|ch| !ch.is_control() || *ch == '\n' || *ch == '\t').collect();
+        if self.chat.buffer.len().saturating_add(text.len())
+            > peritus_app_protocol::MAX_PRODUCT_TASK_BYTES
+        {
+            self.notice(NoticeLevel::Warning, "Message is too large; paste a smaller selection");
+            return;
+        }
+        self.chat.buffer.insert_str(self.chat.cursor, &text);
+        self.chat.cursor += text.len();
+    }
+    pub(super) fn handle_chat_key(&mut self, key: KeyEvent) -> Vec<Effect> {
+        if !(key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c')) {
+            self.chat.interrupt_requested = false;
+        }
+        if key.modifiers.contains(KeyModifiers::CONTROL) {
+            match key.code {
+                KeyCode::Char('q') => {
+                    self.quitting = true;
+                    return vec![Effect::Quit];
+                }
+                KeyCode::Char('c') => {
+                    if self.chat_work_active() && !self.chat.interrupt_requested {
+                        self.chat.interrupt_requested = true;
+                        let effects = self.chat_control(ProductRunControlAction::Cancel);
+                        self.notice(NoticeLevel::Info, if effects.is_empty() {
+                            "Stop could not be sent. Press Ctrl+C again to close; daemon work may continue."
+                        } else {
+                            "Stop requested. Press Ctrl+C again to close without waiting."
+                        });
+                        return effects;
+                    }
+                    self.quitting = true;
+                    return vec![Effect::Quit];
+                }
+                _ => {}
+            }
+        }
+        if self.chat.effort_picker() {
+            return self.effort_picker_key(key);
+        }
+        if self.chat.model_picker() {
+            return self.model_picker_key(key);
+        }
+        let commands = self.chat.matching_commands();
+        match key.code {
+            KeyCode::Enter if key.modifiers.contains(KeyModifiers::SHIFT) => self.paste_chat("\n"),
+            KeyCode::Enter => return self.submit_chat(),
+            KeyCode::Tab if !commands.is_empty() => {
+                self.chat.buffer =
+                    format!("{} ", commands[self.chat.command_selection.min(commands.len() - 1)].0);
+                self.chat.cursor = self.chat.buffer.len();
+                self.chat.command_selection = 0;
+            }
+            KeyCode::Up if !commands.is_empty() => {
+                self.chat.command_selection = self.chat.command_selection.saturating_sub(1);
+            }
+            KeyCode::Down if !commands.is_empty() => {
+                self.chat.command_selection =
+                    (self.chat.command_selection + 1).min(commands.len() - 1);
+            }
+            KeyCode::PageUp => self.chat.scroll = self.chat.scroll.saturating_add(12),
+            KeyCode::PageDown => self.chat.scroll = self.chat.scroll.saturating_sub(12),
+            KeyCode::End if self.chat.buffer.is_empty() => self.chat.scroll = 0,
+            KeyCode::Esc => {
+                self.chat.expanded = false;
+                self.chat.command_selection = 0;
+            }
+            _ => {
+                if self.chat.buffer.len() < peritus_app_protocol::MAX_PRODUCT_TASK_BYTES
+                    || !matches!(key.code, KeyCode::Char(_))
+                {
+                    let _ =
+                        crate::input::edit_text(&mut self.chat.buffer, &mut self.chat.cursor, key);
+                }
+            }
+        }
+        Vec::new()
+    }
     fn submit_chat(&mut self) -> Vec<Effect> {
         let text = self.chat.buffer.trim().to_owned();
         if text.is_empty() {
             return Vec::new();
         }
         if text.starts_with('/') {
-            if self.chat.pasted_command {
-                self.notice(NoticeLevel::Warning,
-                    "Pasted commands do not execute. Type the command or select it with Tab; draft retained.");
-                return Vec::new();
-            }
             return self.slash_command(&text);
-        }
-        if let Some(path) = text.strip_prefix('@') {
-            return self.file_command(path);
         }
         self.send_chat_message(text)
     }

@@ -65,50 +65,6 @@ impl OperationAcknowledgement {
 /// Closed schema-v1 application response payload.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum AppResponsePayload {
-    /// Durable checkpoint publication with exact visible coverage and exclusions.
-    WorkbenchCheckpoint(crate::WorkbenchCheckpointReceipt),
-    /// Non-mutating exact restore plan awaiting confirmation.
-    WorkbenchRewindPreview(crate::WorkbenchRewindPreview),
-    /// Durable terminal restore receipt.
-    WorkbenchRestore(crate::WorkbenchRestoreReceipt),
-    /// Bounded revision-fenced project guidance and optional content-free tombstones.
-    WorkbenchMemory(crate::WorkbenchMemory),
-    /// Exact read-only initialization observations, patch diff, and unverified command inventory.
-    InitProposal(crate::InitProposal),
-    /// Effective host-intersected permission inspection with provenance.
-    WorkbenchPermissions(crate::WorkbenchPermissions),
-    /// Exact local deterministic prompt-view proposal awaiting explicit confirmation.
-    WorkbenchCompactionPreview(crate::WorkbenchCompactionPreview),
-    /// Bounded local literal-search results with exact public source snippets.
-    ConversationLibrary(crate::ConversationLibraryPage),
-    /// Current persistent goal, evidence, safe-boundary state, and cumulative accounting.
-    WorkbenchGoal(crate::WorkbenchGoalSnapshot),
-    /// Result viewer with independent launch, capture, behavior and human-review evidence.
-    WorkbenchResult(crate::WorkbenchResultPage),
-    /// Structured candidate diff, anchored feedback, and mapped qualification evidence.
-    WorkbenchReview(crate::WorkbenchReviewPage),
-    /// Revision-fenced retained image metadata and selection; no image bytes or inference.
-    WorkbenchImages(crate::WorkbenchImagePage),
-    /// Exact provider-bound image preview, without import acceptance or provider delivery.
-    WorkbenchImagePreview(crate::WorkbenchImagePreview),
-    /// Exact source/provider confirmation preview, without implicit inclusion.
-    WorkbenchFilePreview(crate::WorkbenchFilePreview),
-    /// Provider-bound immutable imported-text preview; source paths grant no authority.
-    WorkbenchFileImportPreview(crate::WorkbenchFileImportPreview),
-    /// Revision-fenced retained file versions and selection.
-    WorkbenchFiles(crate::WorkbenchFilePage),
-    /// Exact user-confirmed fields and immutable input provenance.
-    WorkbenchBrief(crate::WorkbenchBrief),
-    /// Exact content-free source manifest or eligible-input metadata page.
-    WorkbenchContext(crate::WorkbenchContextPage),
-    /// Exact bounded page of pending or historical immutable inputs.
-    WorkbenchQueue(crate::WorkbenchQueuePage),
-    /// Current revisioned durable conversation metadata.
-    Workbench(crate::WorkbenchSnapshot),
-    /// Durable original acceptance receipt, distinct from socket acknowledgement.
-    WorkbenchReceipt(crate::WorkbenchReceipt),
-    /// Scoped read-only diagnostic findings.
-    Doctor(crate::DoctorReport),
     /// Conversation status and public activity.
     Interaction(crate::ProductInteractionSnapshot),
     /// Provider-discovered catalog, including explicit unavailable/cache metadata.

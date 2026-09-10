@@ -37,6 +37,17 @@ pub(super) fn atomic_write(path: &Path, content: &[u8]) -> Result<(), DeveloperL
     fs::rename(temporary, path).map_err(|error| tool(error.to_string()))
 }
 
+pub(super) fn atomic_write_if_changed(
+    path: &Path,
+    content: &[u8],
+) -> Result<bool, DeveloperLoopError> {
+    if path.is_file() && fs::read(path).map_err(|error| tool(error.to_string()))? == content {
+        return Ok(false);
+    }
+    atomic_write(path, content)?;
+    Ok(true)
+}
+
 pub(super) fn limit(value: &str) -> String {
     if value.len() <= MAX_OUTPUT_BYTES {
         value.to_owned()

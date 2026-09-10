@@ -5,17 +5,13 @@ use crate::{
     runtime::{ProductLaunchContext, ProductProviderOption},
 };
 use crossterm::event::Event;
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use peritus_app_protocol::{
     AppMessage, AppProtocolLimits, ProtocolContext, ProtocolId, ProtocolVersion,
 };
 use peritus_types::{ProviderProfileId, SessionId, WorkspaceId};
 
-mod commands;
-mod doctor;
 mod effort;
 mod model_selection;
-mod workbench;
 
 fn model() -> AppModel {
     let launch = ProductLaunchContext::new(

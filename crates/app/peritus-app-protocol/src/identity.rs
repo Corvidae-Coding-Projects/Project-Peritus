@@ -4,9 +4,6 @@ use core::fmt;
 use peritus_types::IdentifierError;
 use vstd::prelude::*;
 
-mod invocation;
-pub use invocation::WorkbenchInvocationId;
-
 verus! {
 
 /// Returns whether an application-protocol identifier is not the reserved all-zero value.
@@ -67,16 +64,12 @@ impl OpaqueAppIdentifier {
 } // verus!
 
 mod flow;
-mod inputs;
 mod request;
 mod runtime;
-mod workbench;
 
 pub use flow::{PromptId, SubscriptionId, TransferId};
-pub use inputs::WorkbenchInputId;
 pub use request::{CorrelationId, ProtocolId, RequestId};
 pub use runtime::{DeliveryAttemptId, HeartbeatId, TerminalAttachmentId};
-pub use workbench::{ControlOperationId, ConversationId};
 
 /// Maximum bytes accepted in one idempotency key.
 pub const MAX_IDEMPOTENCY_KEY_BYTES: usize = 128;

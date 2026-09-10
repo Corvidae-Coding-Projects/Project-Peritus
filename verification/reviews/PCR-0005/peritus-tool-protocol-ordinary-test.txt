@@ -1,0 +1,45 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-tool-protocol", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-tool-protocol --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 1.667794, "finished_at": "2026-09-10T01:53:14.239288Z", "kind": "ordinary-test", "owning_crate": "peritus-tool-protocol", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:53:12.611037Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-tool-protocol", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-tool-protocol", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 113, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 1 test
+test verified::tests::bounds_reject_each_missing_fact ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 11 tests
+test canonical_json_rejects_duplicate_keys_at_every_depth ... ok
+test canonical_json_and_schema_fixtures_are_byte_stable ... ok
+test every_public_envelope_has_stable_versioned_bytes ... ok
+test progress_and_terminal_output_enforce_narrowed_call_bounds ... ok
+test descriptor_and_prepared_generation_is_deterministic ... ok
+test protocol_error_rejects_an_over_limit_path ... ok
+test json_limit_construction_can_only_narrow_production_ceilings ... ok
+test complete_schema_validation_rejects_wrong_and_extra_values ... ok
+test schema_compatibility_allows_only_additive_optional_properties ... ok
+test common_envelope_decoder_enforces_transport_bounds_and_header ... ok
+test recursive_schema_error_paths_are_utf8_safely_bounded ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:53:14.239288Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-tool-protocol", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-tool-protocol", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 113, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling serde_core v1.0.229
+   Compiling serde_json v1.0.149
+   Compiling peritus-tool-protocol v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/tools/peritus-tool-protocol)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.59s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_tool_protocol-1e50e53a8cc50307)
+     Running tests/protocol_envelopes.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/protocol_envelopes-3c46d6c6219b444d)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:53:14.239288Z"}

@@ -14,11 +14,6 @@ impl ProductRunService {
             let record = records.get(&update.run_id()).ok_or(ProductRunServiceError::NotFound)?;
             let options =
                 record.interaction.as_ref().ok_or(ProductRunServiceError::InvalidState)?;
-            if options.workbench.is_some() {
-                return Err(ProductRunServiceError::Control(
-                    peritus_product_runner::control::ControlError::UnsupportedSchema,
-                ));
-            }
             (record.request.providers(), options.mode)
         };
         let selection = InteractionOptions::new(mode, update.models().clone());
@@ -32,11 +27,6 @@ impl ProductRunService {
                 records.get_mut(&update.run_id()).ok_or(ProductRunServiceError::NotFound)?;
             let prior =
                 record.interaction.as_ref().ok_or(ProductRunServiceError::InvalidState)?.clone();
-            if prior.workbench.is_some() {
-                return Err(ProductRunServiceError::Control(
-                    peritus_product_runner::control::ControlError::UnsupportedSchema,
-                ));
-            }
             if prior.persistence_failed.load(std::sync::atomic::Ordering::Acquire) {
                 return Err(ProductRunServiceError::Unavailable);
             }

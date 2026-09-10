@@ -9,18 +9,18 @@ use crate::{action::Action, model::AppModel};
 /// a fresh interface; no draft or selected model is transferred between workspaces.
 #[derive(Debug, Default)]
 pub struct TuiState {
-    saved: Option<(TuiConfig, Box<AppModel>)>,
+    saved: Option<(TuiConfig, AppModel)>,
 }
 
 impl TuiState {
-    pub(super) fn take_model(&mut self, config: &TuiConfig, seed: [u8; 32]) -> Box<AppModel> {
+    pub(super) fn take_model(&mut self, config: &TuiConfig, seed: [u8; 32]) -> AppModel {
         self.saved.take().filter(|(previous, _)| previous == config).map_or_else(
-            || Box::new(AppModel::with_product(seed, config.product().cloned())),
+            || AppModel::with_product(seed, config.product().cloned()),
             |(_, model)| model,
         )
     }
 
-    pub(super) fn retain(&mut self, config: TuiConfig, mut model: Box<AppModel>) {
+    pub(super) fn retain(&mut self, config: TuiConfig, mut model: AppModel) {
         // Recover unacknowledged text without retaining transport-bound requests or authority.
         let _ = model.update(Action::Disconnected("restoring daemon readiness".to_owned()));
         model.terminal = None;

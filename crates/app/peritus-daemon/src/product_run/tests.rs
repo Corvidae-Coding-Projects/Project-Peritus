@@ -17,13 +17,11 @@ use peritus_types::{RunId, WorkspaceId};
 use super::{Inner, ProductRunService};
 
 mod catalog;
-mod doctor;
 mod folder;
 mod healing;
 mod interaction;
 mod model_selection;
 mod support;
-mod workbench;
 
 use support::{
     CORRECT, ScriptedProvider, clean_review, complete_writer, repository, scripted, stalled,
@@ -280,11 +278,8 @@ fn service(
         registry.insert(profile_id, provider);
     }
     let processes = ProcessStore::open(state.join("processes"), workspace).expect("process store");
-    let network = !registry.is_empty();
     ProductRunService {
         inner: Arc::new(Inner {
-            controls: std::sync::Mutex::new(None),
-            control_store: peritus_journal::StoreId::new([0x7f; 16]).expect("control store"),
             directory,
             records: std::sync::RwLock::new(BTreeMap::new()),
             providers: registry,
@@ -295,13 +290,6 @@ fn service(
             processes,
             tasks: tokio::sync::Mutex::new(Vec::new()),
             model_catalogs: tokio::sync::Mutex::new(BTreeMap::new()),
-            image_decodes: Arc::new(tokio::sync::Semaphore::new(2)),
-            preview_processes: std::sync::Mutex::new(BTreeMap::new()),
-            preview_capture: super::PreviewCaptureHost::discover(),
-            host_permissions: super::permissions::HostPermissionCatalog::managed(
-                [workspace_id],
-                network,
-            ),
         }),
     }
 }

@@ -20,7 +20,6 @@ const MAX_IMAGE_BYTES: u64 = 4 * 1024 * 1024;
 const MAX_TOTAL_BYTES: u64 = 12 * 1024 * 1024;
 const MAX_DEPTH: usize = 16;
 
-#[derive(Default)]
 pub struct WorkspaceImages {
     attachments: Vec<MediaInput>,
     manifest: String,

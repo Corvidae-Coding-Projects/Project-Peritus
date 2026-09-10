@@ -16,20 +16,14 @@ pub const fn instant(tick: u64) -> AuthorityInstant {
     AuthorityInstant::new(Generation::first(), tick)
 }
 
-pub fn capability_use(
-    ids: &Ids,
-    action_digest: Sha256Digest,
-    role: ActorRole,
-    capability_name: &CapabilityName,
-) -> CapabilityUseTransition {
+pub fn capability_use(ids: &Ids, action_digest: Sha256Digest) -> CapabilityUseTransition {
     let revision = ids.revision;
     let validity = ValidityWindow::new(instant(10), instant(100)).expect("validity");
     let use_limit = UseLimit::limited(3).expect("use limit");
-    let permissions =
-        PermissionSet::new(vec![permission(ids, capability_name)]).expect("permissions");
+    let permissions = PermissionSet::new(vec![permission(ids)]).expect("permissions");
     let scope = CapabilityScope::new(
         ids.actor,
-        role,
+        ActorRole::Writer,
         ids.environment,
         permissions,
         revision,
@@ -38,9 +32,9 @@ pub fn capability_use(
     );
     let boundary = AuthorityBoundary::new(
         vec![ids.actor],
-        vec![role],
+        vec![ActorRole::Writer],
         vec![ids.environment],
-        PermissionSet::new(vec![permission(ids, capability_name)]).expect("boundary permissions"),
+        PermissionSet::new(vec![permission(ids)]).expect("boundary permissions"),
         revision,
         validity,
         use_limit,
@@ -60,7 +54,7 @@ pub fn capability_use(
     )
     .expect("ceiling");
     let operation = OperationDescriptor::new(
-        capability_name.clone(),
+        ids.capability.clone(),
         OperationClass::WorkspaceMutation,
         RiskSet::new(vec![RiskClass::ScopedWrite]).expect("risk set"),
     )
@@ -90,9 +84,9 @@ pub fn capability_use(
             CapabilityUseRequest::new(
                 ids.action,
                 action_digest,
-                permission(ids, capability_name),
+                permission(ids),
                 ids.actor,
-                role,
+                ActorRole::Writer,
                 ids.environment,
                 revision,
                 instant(20),
@@ -120,6 +114,6 @@ pub fn budgets(ids: &Ids) -> (BudgetSnapshot, BudgetSnapshot) {
     )
 }
 
-fn permission(ids: &Ids, capability_name: &CapabilityName) -> Permission {
-    Permission::new(ids.resource, capability_name.clone())
+fn permission(ids: &Ids) -> Permission {
+    Permission::new(ids.resource, CapabilityName::new(ids.capability.as_str().to_owned()).unwrap())
 }

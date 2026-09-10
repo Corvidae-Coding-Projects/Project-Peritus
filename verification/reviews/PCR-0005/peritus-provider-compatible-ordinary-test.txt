@@ -1,0 +1,44 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-provider-compatible", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-provider-compatible --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 2.544957, "finished_at": "2026-09-10T01:51:27.785268Z", "kind": "ordinary-test", "owning_crate": "peritus-provider-compatible", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:51:25.279614Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-provider-compatible", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-provider-compatible", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 73, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 19 tests
+test tests::config::dialect_and_capability_contracts_are_exact_and_fail_closed ... ok
+test tests::config::config_requires_an_exact_operation_path_and_safe_header_auth ... ok
+test tests::client::unsupported_request_rejects_before_credentials_and_transport ... ok
+test tests::request::both_dialects_have_distinct_stable_golden_requests ... ok
+test tests::request::streaming_is_rejected_before_wire_projection_when_not_negotiated ... ok
+test tests::retry::ambiguous_submission_never_blindly_retries ... ok
+test tests::fixtures::fixture_inventory_and_digests_are_complete_and_exact ... ok
+test tests::stream::chat_refusal_has_its_own_item_and_http_success_errors_are_terminal_failures ... ok
+test tests::stream::responses_unknown_ancillary_is_preserved_bounded ... ok
+test tests::stream::corrupt_incomplete_and_unknown_critical_streams_fail_closed ... ok
+test tests::stream::both_compatible_dialects_heal_only_complete_tool_objects ... ok
+test tests::stream::compatible_structured_healing_does_not_change_ordinary_text ... ok
+test tests::stream::both_dialects_keep_tool_argument_fragments_as_ordered_text ... ok
+test tests::stream::responses_and_chat_fragmented_success_normalize_terminal_usage_and_text ... ok
+test tests::client::explicitly_mapped_request_identity_is_preserved_on_http_failure ... ok
+test tests::client::production_client_uses_the_separately_validated_chat_dialect ... ok
+test tests::client::production_client_sends_exact_endpoint_and_bearer_header ... ok
+test tests::retry::explicitly_mapped_429_and_5xx_rejections_retry_through_real_http ... ok
+test tests::conformance::runner::production_adapter_passes_all_provider_cases_with_fresh_subjects ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.23s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:51:27.785268Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-provider-compatible", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-provider-compatible", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 73, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-provider-compatible v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/model/peritus-provider-compatible)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.23s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_provider_compatible-3b2030a4da19d136)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:51:27.785268Z"}

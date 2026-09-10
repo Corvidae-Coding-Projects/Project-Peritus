@@ -1,0 +1,54 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-tools-shell", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-tools-shell --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 0.857583, "finished_at": "2026-09-10T01:53:24.773573Z", "kind": "ordinary-test", "owning_crate": "peritus-tools-shell", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:53:23.956122Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-tools-shell", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-tools-shell", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 123, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 9 tests
+test error::tests::diagnostic_cap_preserves_utf8_boundaries ... ok
+test input::tests::direct_command_line_becomes_literal_argv ... ok
+test input::tests::direct_command_line_rejects_shell_syntax_and_markup ... ok
+test input::tests::structured_argv_keeps_arguments_literal ... ok
+test input::tests::structured_argv_rejects_shell_command_mode ... ok
+test render::tests::escapes_controls_and_labels_tail_truncation ... ok
+test execution::terminal::tests::exec_and_script_accept_counted_truncation_but_not_incomplete_output ... ok
+test catalog::tests::descriptors_are_stable_and_distinct ... ok
+test input::tests::script_is_one_literal_argument ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test shell_exec_runs_literal_argv_accepts_stdin_and_publishes_output_artifacts ... ok
+test quality_run_emits_candidate_evidence_and_invalid_json_never_passes ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:53:24.773573Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-tools-shell", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-tools-shell", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 123, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-tools-shell v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/tools/peritus-tools-shell)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.68s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_tools_shell-a87242e9227a66dc)
+     Running unittests tests/fixtures/native_helper.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_c4_native_helper_fixture-7fbf15d243658e99)
+     Running unittests tests/fixtures/process_fixture.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_c4_process_fixture-ce43a95d40f30680)
+     Running tests/execution_integration.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/execution_integration-46b4345eb072bc14)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:53:24.773573Z"}

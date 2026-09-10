@@ -11,8 +11,6 @@ use crate::{
     update, workspace_setup,
 };
 
-mod diagnostics;
-
 /// Prepares local state, starts or reuses the daemon, and runs the interactive application.
 ///
 /// # Errors
@@ -42,8 +40,6 @@ pub async fn launch_interactive_at(
     let binaries = SiblingBinaries::discover()?;
     let supervisor = DaemonSupervisor::new(Duration::from_secs(30));
     let product = product_context(&prepared)?;
-    let report = diagnostics::launcher_report(&prepared, &binaries, product.workspace_id())?;
-    let product = product.with_launcher_report(report).map_err(LauncherError::Tui)?;
     let mut tui_state = peritus_tui::TuiState::default();
     loop {
         supervisor.ensure_ready(&prepared, &binaries).await?;

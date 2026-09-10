@@ -1,0 +1,33 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-tcb", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-tcb --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 0.312154, "finished_at": "2026-09-10T01:53:09.374233Z", "kind": "ordinary-test", "owning_crate": "peritus-tcb", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:53:09.100024Z", "verification_class": "T"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-tcb", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-tcb", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 109, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "T"}
+=== COMMAND OUTPUT ===
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test manifest_paths_are_unique_repository_relative_toml_files ... ok
+test manifest_paths_resolve_to_regular_repository_files ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:53:09.374233Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-tcb", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-tcb", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 109, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "T"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-tcb v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-tcb)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.24s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_tcb-ea6605ad8454ab00)
+     Running tests/manifest_paths.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/manifest_paths-d433a76acbf46be1)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:53:09.374233Z"}

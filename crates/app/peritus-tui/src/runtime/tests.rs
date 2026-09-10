@@ -29,7 +29,6 @@ async fn product_reconnect_returns_control_to_the_daemon_supervisor() {
         &mut client,
         &events,
         &mut generation,
-        &mut LocalReads::default(),
     )
     .await
     .expect("reconnect routing");

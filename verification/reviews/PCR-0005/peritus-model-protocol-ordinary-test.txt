@@ -1,0 +1,99 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-model-protocol", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-model-protocol --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 1.059962, "finished_at": "2026-09-10T01:50:30.911442Z", "kind": "ordinary-test", "owning_crate": "peritus-model-protocol", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:50:29.889898Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-model-protocol", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-model-protocol", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 45, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 9 tests
+test retry::tests::ambiguous_requires_documented_guarantee ... ok
+test capability::negotiation::tests::optional_features_and_limits_are_intersected ... ok
+test capability::negotiation::tests::unknown_does_not_satisfy_required_capability ... ok
+test verified::tests::provider_observations_preserve_authoritative_state ... ok
+test retry::tests::partial_stream_requires_exact_resume ... ok
+test schema::tests::canonicalizes_object_order_and_rejects_duplicates ... ok
+test usage::tests::missing_stays_unknown_and_cumulative_regression_fails ... ok
+test schema::tests::schema_rejects_remote_reference ... ok
+test verified::tests::every_transition_fact_is_required ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 10 tests
+test caller_request_id_is_restored_but_excluded_from_canonical_bytes ... ok
+test corrupt_closed_tags_unknown_tags_and_trailing_fields_are_rejected ... ok
+test runtime_dialects_have_stable_closed_tags_and_advisory_profiles ... ok
+test host_bounded_encoding_preserves_exact_bytes_and_rejects_instead_of_truncating ... ok
+test profile_independent_message_archives_retain_mixed_content_and_reject_corruption ... ok
+test every_truncated_prefix_and_oversized_collection_count_is_rejected ... ok
+test accepted_fixtures_decode_and_reencode_byte_identically ... ok
+test corpus_inventory_and_binary_digests_are_complete_and_stable ... ok
+test invalid_nested_values_and_complete_request_validation_fail_closed ... ok
+test version_and_every_profile_binding_field_are_checked_before_reconstruction ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 4 tests
+test capability_iteration_is_complete_stable_and_three_valued ... ok
+test every_independent_capability_has_supported_unknown_and_unsupported_behavior ... ok
+test every_model_limit_is_intersected_independently ... ok
+test lifecycle_claims_require_matching_capabilities ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test decoder_rejects_schema_drift_truncation_and_trailing_bytes ... ok
+test normalized_events_round_trip_canonically_with_nested_observations ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test sensitive_debug_representations_do_not_expose_values ... ok
+test reducer_accepts_fragmented_utf8_and_ignores_only_exact_duplicates ... ok
+test media::negotiated_inline_media_limit_rejects_oversized_image_audio_and_document_payloads ... ok
+test reducer_never_turns_conflict_or_eof_into_success ... ok
+test tool_arguments_are_not_completed_until_closed_and_valid_json ... ok
+test canonical_request_binds_semantics_and_excludes_observability_identity ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 4 tests
+test gaps_limits_open_items_and_missing_terminals_fail_closed ... ok
+test refusal_and_cancellation_are_explicit_non_success_terminals ... ok
+test malformed_completed_fragments_irreversibly_fail_the_response ... ok
+test reasoning_structured_output_and_parallel_tools_reduce_in_index_order ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test retry_bounds_cancellation_retry_after_and_elapsed_horizon_fail_closed ... ok
+test every_retry_cause_and_provider_guarantee_has_one_exact_decision ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:50:30.911442Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-model-protocol", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-model-protocol", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 45, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling serde v1.0.229
+   Compiling peritus-model-protocol v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/model/peritus-model-protocol)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.98s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_model_protocol-fcdc2f01e011f623)
+     Running tests/canonical_compatibility.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/canonical_compatibility-007928cc998e3dce)
+     Running tests/capability_matrix.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/capability_matrix-98ae8e1cd6b07e13)
+     Running tests/event_codec.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/event_codec-3ca043be10a2cc1d)
+     Running tests/protocol_contract.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/protocol_contract-55e6d427af012a9a)
+     Running tests/reducer_matrix.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/reducer_matrix-7406e0e78e38eae4)
+     Running tests/retry_matrix.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/retry_matrix-c845e3030b11cbc0)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:50:30.911442Z"}

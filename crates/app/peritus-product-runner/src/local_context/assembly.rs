@@ -34,16 +34,6 @@ impl LocalMemory {
         tools: &[ToolDefinition],
         invocation_policy: Option<&Message>,
     ) -> Result<Vec<Message>, DeveloperLoopError> {
-        self.prepare_view_with_governing(profile, tools, invocation_policy, None)
-    }
-
-    pub(in crate::local_context) fn prepare_view_with_governing(
-        &mut self,
-        profile: &ProviderProfile,
-        tools: &[ToolDefinition],
-        invocation_policy: Option<&Message>,
-        governing_input: Option<&Message>,
-    ) -> Result<Vec<Message>, DeveloperLoopError> {
         self.refresh()?;
         self.profile = Some(profile.clone());
         self.tools = tools.to_vec();
@@ -55,12 +45,6 @@ impl LocalMemory {
                 return Err(error("invalid current host policy origin"));
             }
             *first = policy.clone();
-        }
-        if let Some(input) = governing_input {
-            if input.role() != Role::User {
-                return Err(error("governing input has non-user origin"));
-            }
-            messages.insert(1, input.clone());
         }
         if !self.derived_memory_allowed() {
             messages.push(text_message(Role::Developer, "This role excludes derived memory: do not call context_update or request working-entry pages. context_read may retrieve this role's exact source observations; no writer memory is available.".to_owned())?);

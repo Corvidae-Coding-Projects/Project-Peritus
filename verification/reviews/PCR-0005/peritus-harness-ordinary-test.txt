@@ -1,0 +1,122 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-harness", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-harness --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 1.938715, "finished_at": "2026-09-10T01:50:14.299101Z", "kind": "ordinary-test", "owning_crate": "peritus-harness", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:50:12.398148Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-harness", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-harness", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 31, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 1 test
+test runtime::binding::tests::exact_binding_retains_the_shared_tuple_and_rejects_drift ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 5 tests
+test intervals_feature_sets_and_authority_sets_are_strict ... ok
+test manifest_limits_can_only_tighten_compiled_ceilings ... ok
+test declaration_enforces_compiled_protection_and_authority ... ok
+test nominal_values_reject_noncanonical_or_protected_inputs ... ok
+test complete_catalog_has_stable_unique_tags_and_every_protection_class ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test declaration_order_is_identity_but_topological_ties_use_component_id ... ok
+test unknown_features_remain_inert_and_unsatisfied ... ok
+test duplicate_missing_and_cycle_are_rejected ... ok
+test graph_resolves_deterministically_and_round_trips_canonical_bytes ... ok
+test transitive_authority_and_incompatible_protected_dependencies_reject ... ok
+test dependency_kind_version_and_digest_are_independently_checked ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test all_small_ranked_dags_match_the_reference_checker_and_round_trip ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 6 tests
+test exact_component_bytes_are_checked_before_revision_construction ... ok
+test every_structural_change_to_a_protected_asset_rejects ... ok
+test history_retains_branches_and_allows_only_strict_ancestor_rollback ... ok
+test history_snapshot_is_deterministic_and_fully_rechecked ... ok
+test genesis_and_successor_are_deterministic_content_addressed_values ... ok
+test protected_asset_addition_removal_and_reordering_reject ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test fixtures_support::fixed_fixture_constructs_a_content_bound_genesis ... ok
+test atomic_genesis_commit_is_idempotent_and_restart_replay_matches_checkpoint ... ok
+test checked_restart_recreates_plan_and_atomically_settles_exact_claim ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+
+running 1 test
+test fixed_fixture_constructs_a_content_bound_genesis ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test strict_manifest_retains_exact_bytes_and_checked_declaration ... ok
+test unknown_manifest_field_and_noncanonical_digest_fail_closed ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test real_c1_snapshot_loads_checks_finalizes_and_constructs_genesis ... ok
+test real_c1_inventory_rejects_missing_undeclared_and_drifted_content ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+
+
+running 4 tests
+test absent_files_and_malformed_plan_bytes_cannot_be_activated ... ok
+test rollback_reason_is_explicit_bounded_and_control_free ... ok
+test fixtures_support::fixed_fixture_constructs_a_content_bound_genesis ... ok
+test deterministic_plan_round_trips_exact_artifact_and_snapshot_bindings ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+
+running 5 tests
+test fixtures_support::fixed_fixture_constructs_a_content_bound_genesis ... ok
+test complete_frame_trailing_bytes_are_rejected ... ok
+test replay_projection_matches_live_state_and_rejects_duplicate_genesis ... ok
+test families_79_80_81_round_trip_only_through_checked_activation ... ok
+test canonical_corpus_is_exact_and_rejects_corruption ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:50:14.299101Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-harness", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-harness", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 31, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling tempfile v3.27.0
+   Compiling peritus-harness v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-harness)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.51s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_harness-05afb749edf431d6)
+     Running tests/domain_catalog.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/domain_catalog-c45ba2e80b18cc0a)
+     Running tests/domain_graph.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/domain_graph-89539941a2e6d4e8)
+     Running tests/domain_properties.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/domain_properties-a5773a0bedf62b80)
+     Running tests/domain_revision.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/domain_revision-ccccf67529d9eec1)
+     Running tests/durability_restart.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/durability_restart-4d51d1a86087dc03)
+     Running tests/fixtures_support.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/fixtures_support-f51235d5e12b589a)
+     Running tests/manifest_document.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/manifest_document-bfe763ac1074ebea)
+     Running tests/manifest_loading.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/manifest_loading-3c66e4390e16b5cb)
+     Running tests/materialization_safety.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/materialization_safety-9dc7b427eba717bd)
+     Running tests/replay_wire.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/replay_wire-35b236fc65a19484)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:50:14.299101Z"}

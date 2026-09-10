@@ -37,8 +37,7 @@ pub fn draw(frame: &mut Frame<'_>, model: &AppModel) {
         View::Runs if model.product.is_some() => product::dashboard(frame, regions[1], model),
         View::Diff if model.product.is_some() => product::diff(frame, regions[1], model),
         View::Review if model.product.is_some() => product::review(frame, regions[1], model),
-        View::Preview if model.product.is_some() => product::preview(frame, regions[1], model),
-        View::Runs | View::Diff | View::Review | View::Trace | View::Evolution | View::Preview => {
+        View::Runs | View::Diff | View::Review | View::Trace | View::Evolution => {
             render_event_view(frame, regions[1], model);
         }
         View::Terminal => render_terminal(frame, regions[1], model),
@@ -296,9 +295,7 @@ fn prompt_detail(item: &PromptItem) -> Text<'static> {
 fn render_help(frame: &mut Frame<'_>, area: Rect) {
     let lines = vec![
         Line::styled("Navigation", Style::default().fg(ACCENT).add_modifier(Modifier::BOLD)),
-        Line::from(
-            "  1–8        open Runs, Diff, Review, Trace, Evolution, Terminal, Approvals, Preview",
-        ),
+        Line::from("  1–7        open Runs, Diff, Review, Trace, Evolution, Terminal, Approvals"),
         Line::from("  Tab/Shift-Tab  next/previous view"),
         Line::from("  j/k or ↑/↓    select an event or prompt"),
         Line::from("  ?              this help"),

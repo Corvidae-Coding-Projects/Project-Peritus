@@ -4,7 +4,6 @@ mod artifact;
 mod command;
 mod control;
 mod daemon;
-mod doctor;
 mod error;
 mod event;
 mod hello;
@@ -16,22 +15,6 @@ mod request;
 mod response;
 mod subscription;
 mod terminal;
-mod workbench;
-mod workbench_brief;
-pub(crate) mod workbench_checkpoints;
-mod workbench_compaction;
-mod workbench_context;
-mod workbench_files;
-mod workbench_goal;
-mod workbench_image_page;
-mod workbench_images;
-mod workbench_init;
-mod workbench_inputs;
-mod workbench_launch;
-mod workbench_library;
-mod workbench_memory;
-mod workbench_permissions;
-mod workbench_review;
 
 use crate::{
     APP_SCHEMA_V1, AppEventEnvelope, AppProtocolError, AppProtocolLimits, AppRequestEnvelope,
@@ -145,35 +128,6 @@ pub fn decode_prompt_binding_value(
         return Err(AppProtocolError::new(crate::AppErrorCode::MalformedFrame, None));
     }
     Ok(binding)
-}
-
-/// Encodes one result-page value without an application envelope for daemon-owned persistence.
-///
-/// # Errors
-/// Returns a protocol error when the bounded value cannot be represented canonically.
-pub fn encode_workbench_result_value(
-    value: &crate::WorkbenchResultPage,
-) -> Result<Vec<u8>, AppProtocolError> {
-    let mut writer = CanonicalWriter::new(peritus_codec::CodecLimits::PRODUCTION);
-    workbench_launch::write_page(&mut writer, value).map_err(AppProtocolError::from_codec)?;
-    let bytes = writer.into_bytes();
-    if decode_workbench_result_value(&bytes)? != *value {
-        return Err(AppProtocolError::new(crate::AppErrorCode::MalformedFrame, None));
-    }
-    Ok(bytes)
-}
-
-/// Decodes one completely consumed result-page persistence value.
-///
-/// # Errors
-/// Rejects malformed, noncanonical, trailing, or over-limit values.
-pub fn decode_workbench_result_value(
-    bytes: &[u8],
-) -> Result<crate::WorkbenchResultPage, AppProtocolError> {
-    let mut reader = CanonicalReader::new(bytes, peritus_codec::CodecLimits::PRODUCTION);
-    let value = workbench_launch::read_page(&mut reader).map_err(AppProtocolError::from_codec)?;
-    reader.finish().map_err(AppProtocolError::from_codec)?;
-    Ok(value)
 }
 
 /// Decodes and completely consumes one canonical A3 PRTS frame under negotiated limits.

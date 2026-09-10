@@ -75,14 +75,6 @@ fn validate_capabilities(
     options: &RequestOptions,
 ) -> Result<(), ProtocolError> {
     for block in messages.iter().flat_map(Message::content) {
-        let bytes = u64::try_from(block.inline_media_bytes())
-            .map_err(|_| invalid("messages", "inline media byte count exceeds u64"))?;
-        if bytes > negotiated.limits().max_inline_media_bytes() {
-            return Err(invalid(
-                "messages",
-                "inline media payload exceeds the negotiated model limit",
-            ));
-        }
         let required = match block {
             ContentBlock::Image(_) => Some(Capability::ImageInput),
             ContentBlock::Audio(_) => Some(Capability::AudioInput),

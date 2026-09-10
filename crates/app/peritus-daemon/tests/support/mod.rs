@@ -24,11 +24,6 @@ pub fn temporary_root() -> TempDir {
 
 /// Builds one strict, isolated daemon configuration beneath `root`.
 pub fn configuration(root: &Path) -> DaemonConfig {
-    DaemonConfig::parse(&configuration_text(root)).expect("valid strict daemon configuration")
-}
-
-/// Builds strict configuration text for tests that add explicit declarations.
-pub fn configuration_text(root: &Path) -> String {
     let canonical_root = fs::canonicalize(root).expect("canonical temporary daemon root");
     let root = canonical_root.as_path();
     let state = root.join("state");
@@ -46,7 +41,7 @@ pub fn configuration_text(root: &Path) -> String {
         snapshot.canonical_bytes().expect("canonical public approval registry"),
     )
     .expect("write public approval registry fixture");
-    format!(
+    let text = format!(
         r#"version = 1
 store_id = "11111111111111111111111111111111"
 
@@ -77,7 +72,8 @@ mode = "disabled"
         toml_path(&transactions),
         toml_path(&backups),
         toml_path(&approval_registry),
-    )
+    );
+    DaemonConfig::parse(&text).expect("valid strict daemon configuration")
 }
 
 fn toml_path(path: &Path) -> String {

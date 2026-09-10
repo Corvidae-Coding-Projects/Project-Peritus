@@ -2,16 +2,10 @@
 
 use peritus_model_protocol::CompletedToolCall;
 
-use super::{DeveloperLoopError, DeveloperToolEffect, DeveloperToolObservation};
+use super::{DeveloperLoopError, DeveloperToolObservation};
 
 /// Executes already parsed provider tool calls against one explicitly supplied workspace.
 pub trait DeveloperToolExecutor: Send {
-    /// Conservatively classifies a call before any executor-owned effect preparation.
-    #[must_use]
-    fn effect(&self, _call: &CompletedToolCall) -> DeveloperToolEffect {
-        DeveloperToolEffect::MutationCapable
-    }
-
     /// Whether an executed tool handed control back to its owning application.
     ///
     /// The loop records the observation, skips remaining calls in the batch, and returns its

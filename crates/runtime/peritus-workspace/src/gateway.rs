@@ -2,13 +2,10 @@
 
 use peritus_codec::{CodecLimits, decode_message};
 use peritus_kernel::{ActionPhase, KernelEventKind};
-use peritus_leases::{LeaseHolder, LeasePhase, LeaseTransitionKind};
+use peritus_leases::{LeasePhase, LeaseTransitionKind};
 use peritus_policy::OperationClass;
 use peritus_protocol::{KernelEventDto, KernelSubjectDto};
-use peritus_types::{
-    ActionId, EnvironmentId, EventId, Generation, ResourceId, RevisionNumber, RevisionTuple,
-    Sha256Digest, WorkspaceId,
-};
+use peritus_types::{ActionId, RevisionTuple, Sha256Digest};
 
 use crate::{
     WorkspaceAuthorizationRequest, WorkspaceCondition, WorkspaceError, WorkspaceState,
@@ -78,20 +75,27 @@ impl WorkspaceGateway {
                 "action receipts were already consumed by this workspace revision",
             ));
         }
-        let permit = validate_authority(
-            AuthorizationTarget::from_workspace(self.workspace.state()),
-            request,
-            expected_payload,
-        )?;
-        if let Err(error) =
-            self.workspace.commit_action_consumption(action_id, permit.action_digest())
-        {
+        let facts = validate_request(self.workspace.state(), request, expected_payload)?;
+        if !authority_complete(facts) {
+            return Err(mismatch("committed authority facts are incomplete"));
+        }
+        let action_digest = request
+            .intent()
+            .digest(CodecLimits::PRODUCTION)
+            .map_err(|_| mismatch("action intent cannot be encoded canonically"))?;
+        if let Err(error) = self.workspace.commit_action_consumption(action_id, action_digest) {
             if error.code() == ErrorCode::Indeterminate {
                 self.workspace.state_mut().set_condition(WorkspaceCondition::Indeterminate);
             }
             return Err(error);
         }
-        Ok(permit)
+        Ok(MutationPermit {
+            action_id,
+            action_digest,
+            generation: self.workspace.state().generation(),
+            revision: self.workspace.state().revision(),
+            dispatch_event: request.kernel().batch().records()[0].event_id(),
+        })
     }
 
     pub(crate) const fn workspace_mut(&mut self) -> &mut WritableWorkspace {
@@ -99,70 +103,13 @@ impl WorkspaceGateway {
     }
 }
 
-/// Minimal exact target facts consumed by the shared committed-authority validator.
-#[derive(Clone, Copy)]
-pub struct AuthorizationTarget {
-    workspace_id: WorkspaceId,
-    resource_id: ResourceId,
-    environment_id: EnvironmentId,
-    generation: Generation,
-    revision: RevisionNumber,
-    lease_holder: LeaseHolder,
-}
-
-impl AuthorizationTarget {
-    pub const fn new(
-        workspace_id: WorkspaceId,
-        resource_id: ResourceId,
-        environment_id: EnvironmentId,
-        generation: Generation,
-        revision: RevisionNumber,
-        lease_holder: LeaseHolder,
-    ) -> Self {
-        Self { workspace_id, resource_id, environment_id, generation, revision, lease_holder }
-    }
-
-    const fn from_workspace(state: &WorkspaceState) -> Self {
-        Self::new(
-            state.binding().workspace_id(),
-            state.binding().resource_id(),
-            state.binding().environment_id(),
-            state.generation(),
-            state.revision(),
-            state.lease_holder(),
-        )
-    }
-}
-
-pub fn validate_authority(
-    target: AuthorizationTarget,
-    request: &WorkspaceAuthorizationRequest<'_>,
-    expected_payload: &[u8],
-) -> Result<MutationPermit, WorkspaceError> {
-    let facts = validate_request(target, request, expected_payload)?;
-    if !authority_complete(facts) {
-        return Err(mismatch("committed authority facts are incomplete"));
-    }
-    let action_digest = request
-        .intent()
-        .digest(CodecLimits::PRODUCTION)
-        .map_err(|_| mismatch("action intent cannot be encoded canonically"))?;
-    Ok(MutationPermit {
-        action_id: request.intent().action_id,
-        action_digest,
-        generation: target.generation,
-        revision: target.revision,
-        dispatch_event: request.kernel().batch().records()[0].event_id(),
-    })
-}
-
 /// Crate-private, move-only, operation-scoped authorization proof.
 pub struct MutationPermit {
     action_id: ActionId,
     action_digest: Sha256Digest,
-    generation: Generation,
-    revision: RevisionNumber,
-    dispatch_event: EventId,
+    generation: peritus_types::Generation,
+    revision: peritus_types::RevisionNumber,
+    dispatch_event: peritus_types::EventId,
 }
 
 impl MutationPermit {
@@ -172,13 +119,13 @@ impl MutationPermit {
     pub(crate) const fn action_digest(&self) -> Sha256Digest {
         self.action_digest
     }
-    pub(crate) const fn generation(&self) -> Generation {
+    pub(crate) const fn generation(&self) -> peritus_types::Generation {
         self.generation
     }
-    pub(crate) const fn revision(&self) -> RevisionNumber {
+    pub(crate) const fn revision(&self) -> peritus_types::RevisionNumber {
         self.revision
     }
-    pub(crate) const fn dispatch_event(&self) -> EventId {
+    pub(crate) const fn dispatch_event(&self) -> peritus_types::EventId {
         self.dispatch_event
     }
 }
@@ -188,7 +135,7 @@ impl MutationPermit {
     reason = "the target gate intentionally keeps the complete receipt cross-match contiguous"
 )]
 fn validate_request(
-    target: AuthorizationTarget,
+    state: &WorkspaceState,
     request: &WorkspaceAuthorizationRequest<'_>,
     expected_payload: &[u8],
 ) -> Result<AuthorityFacts, WorkspaceError> {
@@ -220,16 +167,17 @@ fn validate_request(
         .ok_or_else(|| mismatch("committed lease transition is not a capability use"))?;
     let claim = lease_use.claim();
     let lease_scope = claim.scope();
+    let binding = state.binding();
     let resources = ResourceFacts {
-        workspace: target.workspace_id,
-        target: target.resource_id,
+        workspace: binding.workspace_id(),
+        target: binding.resource_id(),
         intent: intent.resource_id,
         witness: witness.resource_id(),
         capability: capability.permission().resource_id(),
         lease_workspace: lease_scope.workspace_id(),
         lease_resource: lease_scope.resource_id(),
         lease_environment: lease_scope.environment_id(),
-        environment: target.environment_id,
+        environment: binding.environment_id(),
     };
     if !resource_identity_exact(resources) {
         return Err(WorkspaceError::new(
@@ -240,7 +188,7 @@ fn validate_request(
         ));
     }
     let dispatch_committed = exact_dispatch(request, intent.action_id, request.revision())?;
-    let revision_matches = revision_exact(target, request.revision());
+    let revision_matches = revision_exact(state, request.revision());
     let action_matches = action.id() == intent.action_id
         && action.digest() == digest
         && action.phase() == ActionPhase::Dispatched
@@ -248,7 +196,7 @@ fn validate_request(
         && capability.action_digest() == digest
         && lease_use.action_id() == intent.action_id
         && lease_use.action_digest() == digest
-        && caller_matches(target, request, intent);
+        && caller_matches(state, request, intent);
     let actor_matches = action.actor_id() == intent.actor_id
         && action.role() == intent.role
         && action.environment_id() == intent.environment_id
@@ -260,7 +208,7 @@ fn validate_request(
         && lease_use.environment_id() == intent.environment_id
         && claim.holder().actor_id() == intent.actor_id
         && claim.holder().session_id() == request.session_id()
-        && claim.holder() == target.lease_holder;
+        && claim.holder() == state.lease_holder();
     let capability_matches = witness.transition_digest() == capability.transition_digest()
         && witness.capability_name() == &intent.capability_name
         && capability.permission().capability_name() == &intent.capability_name
@@ -278,7 +226,7 @@ fn validate_request(
         && next.generation() == claim.generation()
         && next.phase() == LeasePhase::Active
         && next.active().is_some_and(|active| active.claim() == claim)
-        && claim.generation() == target.generation;
+        && claim.generation() == state.generation();
     let time_current = request.current_epoch().get() == request.observed_at().epoch().get()
         && request.observed_at() >= lease_use.observed_at()
         && request.observed_at() < claim.expires_at()
@@ -293,33 +241,33 @@ fn validate_request(
         lease_matches,
         dispatch_committed,
         time_current,
-        generation: target.generation,
+        generation: state.generation(),
         expected_generation: request.expected_generation(),
-        revision: target.revision,
+        revision: state.revision(),
         expected_revision: request.expected_revision(),
     })
 }
 
 fn caller_matches(
-    target: AuthorizationTarget,
+    state: &WorkspaceState,
     request: &WorkspaceAuthorizationRequest<'_>,
     intent: &peritus_protocol::ActionIntentDto,
 ) -> bool {
     request.caller_binding().is_none_or(|caller| {
         caller.actor_id() == intent.actor_id
             && caller.role() == intent.role
-            && caller.workspace_id() == target.workspace_id
+            && caller.workspace_id() == state.binding().workspace_id()
             && caller.environment_id() == intent.environment_id
-            && caller.environment_id() == target.environment_id
+            && caller.environment_id() == state.binding().environment_id()
             && caller.resource_id() == intent.resource_id
-            && caller.resource_id() == target.resource_id
+            && caller.resource_id() == state.binding().resource_id()
     })
 }
 
-fn revision_exact(target: AuthorizationTarget, revision: RevisionTuple) -> bool {
-    revision.workspace_id() == target.workspace_id
-        && revision.workspace_generation() == target.generation
-        && revision.workspace_revision() == target.revision
+fn revision_exact(state: &WorkspaceState, revision: RevisionTuple) -> bool {
+    revision.workspace_id() == state.binding().workspace_id()
+        && revision.workspace_generation() == state.generation()
+        && revision.workspace_revision() == state.revision()
 }
 
 fn exact_dispatch(

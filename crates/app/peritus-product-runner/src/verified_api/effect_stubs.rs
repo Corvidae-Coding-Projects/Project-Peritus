@@ -7,20 +7,6 @@ use peritus_types::Sha256Digest;
 use super::{ProductRunResume, ProductRunner};
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
-/// Verification-only builds cannot inspect workspace path metadata.
-pub fn checked_protected_file(
-    _root: &Path,
-    _relative: &str,
-    _contract: &str,
-    _protected: &[std::path::PathBuf],
-) -> Result<std::path::PathBuf, ProductRunnerError> {
-    Err(ProductRunnerError::new(
-        ProductRunnerErrorKind::InvalidPrecondition,
-        "check protected workspace file",
-        "workspace inspection is unavailable in a verus_only build",
-    ))
-}
-
 impl ProductRunResume {
     /// Verification-only builds do not serialize effectful continuation state.
     pub fn encode_durable(&self) -> Result<Vec<u8>, ProductRunnerError> {

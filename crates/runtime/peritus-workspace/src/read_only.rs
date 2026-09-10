@@ -5,8 +5,8 @@ use std::path::Path;
 use peritus_git::{GitRepository, RegisteredWorktree, StatusObservation, WorktreeAccess};
 
 use crate::{
-    ErrorCode, FolderIdentity, FolderInspection, ReadOnlyOpenRequest, ReadOnlyTargetBinding,
-    RecoveryClass, SnapshotIdentity, WorkspaceError, WorkspaceOperation,
+    ErrorCode, ReadOnlyOpenRequest, ReadOnlyTargetBinding, RecoveryClass, SnapshotIdentity,
+    WorkspaceError, WorkspaceOperation,
 };
 
 /// A separate detached worktree fixed to one immutable snapshot.
@@ -15,7 +15,6 @@ pub struct ReadOnlyWorkspace {
     worktree: RegisteredWorktree,
     snapshot: SnapshotIdentity,
     target: Option<ReadOnlyTargetBinding>,
-    inspection: FolderInspection,
 }
 
 impl ReadOnlyWorkspace {
@@ -54,10 +53,7 @@ impl ReadOnlyWorkspace {
                 binding.resource_id(),
             )
         });
-        let identity = FolderIdentity::observe(worktree.root())
-            .map_err(|_| open_error("read-only root identity could not be observed"))?;
-        let inspection = FolderInspection::open(&identity)?;
-        Ok(Self { repository, worktree, snapshot, target, inspection })
+        Ok(Self { repository, worktree, snapshot, target })
     }
 
     /// Returns the immutable snapshot identity.
@@ -90,10 +86,6 @@ impl ReadOnlyWorkspace {
 
     pub(crate) const fn worktree(&self) -> &RegisteredWorktree {
         &self.worktree
-    }
-
-    pub(crate) const fn file_inspection(&self) -> &FolderInspection {
-        &self.inspection
     }
 }
 

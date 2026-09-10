@@ -7,10 +7,7 @@ mod secret_text;
 pub(super) mod update;
 
 use super::{LocalContextHandle, error, memory::LocalMemory};
-use crate::control::PermissionCapability;
-use peritus_agent::{
-    DeveloperLoopError, DeveloperToolEffect, DeveloperToolExecutor, DeveloperToolObservation,
-};
+use peritus_agent::{DeveloperLoopError, DeveloperToolExecutor, DeveloperToolObservation};
 use peritus_model_protocol::{CanonicalJson, CompletedToolCall, JsonBounds, ProtocolLimits};
 use serde_json::Value;
 
@@ -32,14 +29,6 @@ impl<'a> MemoryTools<'a> {
 }
 
 impl DeveloperToolExecutor for MemoryTools<'_> {
-    fn effect(&self, call: &CompletedToolCall) -> DeveloperToolEffect {
-        match call.name().as_str() {
-            "context_read" => DeveloperToolEffect::ReadOnly,
-            "context_update" => DeveloperToolEffect::MutationCapable,
-            _ => self.base.effect(call),
-        }
-    }
-
     fn yields_to_host(&self) -> bool {
         self.base.yields_to_host()
     }
@@ -51,35 +40,6 @@ impl DeveloperToolExecutor for MemoryTools<'_> {
         let name = call.name().as_str();
         if !matches!(name, "context_read" | "context_update") {
             return self.base.execute(call);
-        }
-        let permissions = self.memory.effective_permissions();
-        let required: &[PermissionCapability] = if name == "context_read" {
-            &[PermissionCapability::Read]
-        } else {
-            &[PermissionCapability::Read, PermissionCapability::Write]
-        };
-        if let Some(capability) =
-            required.iter().copied().find(|capability| !permissions.allows(*capability))
-        {
-            let capability = match capability {
-                PermissionCapability::Read => "read",
-                PermissionCapability::Write => "write",
-                PermissionCapability::Process => "process",
-                PermissionCapability::Network => "network",
-            };
-            let value = Value::from_iter([(
-                "error",
-                Value::from(format!(
-                    "{name} is disabled by the current {capability} permission; inspect /permissions"
-                )),
-            )]);
-            return Ok(DeveloperToolObservation {
-                output: CanonicalJson::parse(
-                    &value.to_string(),
-                    JsonBounds::value(ProtocolLimits::PRODUCTION),
-                )?,
-                is_error: true,
-            });
         }
         // No lock crosses base execution, and memory never updates its grounding/receipt state.
         let mut memory = self.memory.lock()?;

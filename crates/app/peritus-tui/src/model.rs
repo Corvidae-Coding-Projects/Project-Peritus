@@ -35,7 +35,6 @@ use crate::{
     terminal::TerminalSession,
 };
 use product::ProductUi;
-pub use product::ReviewFocus;
 
 const EVENT_CAPACITY: usize = 4_096;
 const NOTICE_TICKS: u16 = 24;
@@ -51,12 +50,11 @@ pub enum View {
     Evolution,
     Terminal,
     Approvals,
-    Preview,
     Help,
 }
 
 impl View {
-    pub(crate) const ALL: [Self; 9] = [
+    pub(crate) const ALL: [Self; 8] = [
         Self::Runs,
         Self::Diff,
         Self::Review,
@@ -64,7 +62,6 @@ impl View {
         Self::Evolution,
         Self::Terminal,
         Self::Approvals,
-        Self::Preview,
         Self::Help,
     ];
 
@@ -78,7 +75,6 @@ impl View {
             Self::Evolution => "Evolution",
             Self::Terminal => "Terminal",
             Self::Approvals => "Approvals",
-            Self::Preview => "Preview",
             Self::Help => "Help",
         }
     }
@@ -140,9 +136,7 @@ impl EventRecord {
             View::Review => matches!(self.family, 51 | 54),
             View::Trace => matches!(self.family, 60 | 83),
             View::Evolution => matches!(self.family, 80 | 86 | 89 | 92),
-            View::Conversation | View::Terminal | View::Approvals | View::Preview | View::Help => {
-                false
-            }
+            View::Conversation | View::Terminal | View::Approvals | View::Help => false,
         }
     }
 }
@@ -165,48 +159,11 @@ pub struct PromptItem {
 
 #[derive(Clone, Debug)]
 enum PendingRequest {
-    WorkbenchCheckpointInspect(peritus_app_protocol::WorkbenchRewindRequest),
-    WorkbenchRewind(peritus_app_protocol::WorkbenchRewindRequest),
-    WorkbenchMemory(peritus_app_protocol::WorkbenchMemoryQuery),
-    WorkbenchInit(peritus_app_protocol::InitDiscoveryRequest),
-    WorkbenchPermissions(peritus_app_protocol::WorkbenchQuery),
-    WorkbenchCompaction(peritus_app_protocol::WorkbenchCompactionRequest),
-    WorkbenchFileImportPreview(peritus_app_protocol::WorkbenchFileImportRequest),
-    WorkbenchFileUpload {
-        transfer: peritus_app_protocol::TransferId,
-        step: crate::image_import::UploadStep,
-    },
-    WorkbenchImagePreview(peritus_app_protocol::WorkbenchImageRequest),
-    WorkbenchImages(peritus_app_protocol::WorkbenchImageQuery),
-    WorkbenchFilePreview(peritus_app_protocol::WorkbenchFileRequest),
-    WorkbenchFiles(peritus_app_protocol::WorkbenchFileQuery),
-    WorkbenchReview(peritus_app_protocol::WorkbenchReviewQuery),
-    WorkbenchImageUpload {
-        transfer: peritus_app_protocol::TransferId,
-        step: crate::image_import::UploadStep,
-    },
-    WorkbenchQuery(peritus_app_protocol::WorkbenchQuery),
-    ConversationLibrary(peritus_app_protocol::ConversationLibraryQuery),
-    WorkbenchQueue(peritus_app_protocol::WorkbenchQueueQuery),
-    WorkbenchContext(peritus_app_protocol::WorkbenchContextQuery),
-    WorkbenchBrief(peritus_app_protocol::WorkbenchQuery),
-    WorkbenchGoal(peritus_app_protocol::WorkbenchQuery),
-    WorkbenchResult(peritus_app_protocol::WorkbenchResultQuery),
-    WorkbenchControl(peritus_app_protocol::WorkbenchCommand),
-    WorkbenchReceipt(peritus_app_protocol::WorkbenchCommand),
-    Doctor(peritus_app_protocol::DoctorQuery),
-    ChatSubmit {
-        run_id: RunId,
-        text: String,
-    },
+    ChatSubmit { run_id: RunId, text: String },
     ChatQuery,
-    ChatOpen {
-        run_id: RunId,
-    },
+    ChatOpen { run_id: RunId },
     ModelQuery,
-    ModelUpdate {
-        run_id: RunId,
-    },
+    ModelUpdate { run_id: RunId },
     Status,
     Subscribe,
     Prompt(PromptId),
@@ -231,7 +188,6 @@ pub enum EditorKind {
     PromptAnswer(PromptId),
     ProductTask,
     ProductMessage(RunId),
-    ReviewFeedback(peritus_app_protocol::WorkbenchReviewFeedback),
 }
 
 /// Modal, single-line input state.
@@ -297,7 +253,6 @@ pub struct AppModel {
     pub(crate) view: View,
     pub(crate) connection: ConnectionStatus,
     pub(crate) daemon_status: Option<peritus_app_protocol::DaemonStatus>,
-    pub(crate) features: Vec<peritus_app_protocol::ProtocolFeatureName>,
     pub(crate) events: VecDeque<EventRecord>,
     seen_events: HashSet<EventId>,
     pub(crate) selected_event: Option<usize>,
@@ -329,7 +284,6 @@ impl AppModel {
             chat: chat::ChatUi::default(),
             connection: ConnectionStatus::Connecting,
             daemon_status: None,
-            features: Vec::new(),
             events: VecDeque::new(),
             seen_events: HashSet::new(),
             selected_event: None,
@@ -353,26 +307,7 @@ impl AppModel {
     pub(crate) fn update(&mut self, action: Action) -> Vec<Effect> {
         let observed_at = if let Action::Tick(now) = &action { Some(*now) } else { None };
         let effects = match action {
-            Action::FileRead { operation, result } => self.file_read_complete(operation, result),
-            Action::FileReadFailed => {
-                self.file_read_failed();
-                Vec::new()
-            }
-            Action::ImageRead { operation, result } => self.image_read_complete(operation, result),
-            Action::ImageReadFailed => {
-                self.image_read_failed();
-                Vec::new()
-            }
-            Action::NegotiatedFeatures { context, features } => {
-                if self.context == Some(context) {
-                    self.features = features;
-                    self.recover_workbench_receipt()
-                } else {
-                    Vec::new()
-                }
-            }
             Action::Connected { context, limits, server, downgraded } => {
-                self.features.clear();
                 self.context = Some(context);
                 self.limits = limits;
                 self.connection = ConnectionStatus::Online { server, downgraded };
@@ -382,10 +317,7 @@ impl AppModel {
             Action::ConnectionFailed(error) | Action::Disconnected(error) => {
                 self.connection = ConnectionStatus::Disconnected(error.clone());
                 self.context = None;
-                self.features.clear();
                 self.recover_chat_drafts();
-                self.interrupt_file_import();
-                self.interrupt_image_import();
                 self.pending.clear();
                 self.notice(NoticeLevel::Error, format!("daemon disconnected: {error}"));
                 Vec::new()

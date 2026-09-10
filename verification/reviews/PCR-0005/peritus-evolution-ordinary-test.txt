@@ -1,0 +1,95 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-evolution", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-evolution --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 2.897422, "finished_at": "2026-09-10T01:49:59.097909Z", "kind": "ordinary-test", "owning_crate": "peritus-evolution", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:49:56.267589Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-evolution", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-evolution", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 25, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 5 tests
+test change::manifest::tests::citation_limit_applies_to_the_whole_manifest ... ok
+test selection::tests::executable_change_requires_review_even_without_a_policy_kind ... ok
+test selection::tests::failed_and_unavailable_rejection_sections_have_distinct_digests ... ok
+test selection::tests::selection_rejects_assessment_from_another_policy ... ok
+test qualification::promotion::setup::tests::qualification_campaign_genesis_round_trips_canonical_wire ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test duplicate_objectives_are_rejected_and_unavailable_denies ... ok
+test frozen_objective_order_is_policy_order_not_enum_order ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test command_constructor_rejects_a_head_without_sequence ... ok
+test only_truthful_campaign_outcomes_are_terminal ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test stale_campaign_cas_does_not_replace_the_committed_head ... ok
+test ordinary_campaign_and_pointer_commits_replay_exact_checkpoints ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 1 test
+test a2_evolution_catalog_executes_against_production_public_apis ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test independent_authority_and_history_limits_fail_closed ... ok
+test malformed_genesis_and_stale_shape_commands_fail_before_authority ... ok
+test authorization_digest_binds_every_authority_observation ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test empty_artifacts_and_malformed_publication_payloads_fail_closed ... ok
+test finalized_artifact_and_publication_recover_after_restart ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 1 test
+test six_f0_frames_round_trip_and_reject_malformed_bytes ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test promotion_safety_is_a_conjunction_not_a_score ... ok
+test rollback_replay_and_terminal_refinements_fail_closed ... ok
+test evaluator_isolation_requires_every_checked_boundary_fact ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:49:59.097909Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-evolution", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-evolution", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 25, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-eval v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/analysis/peritus-eval)
+   Compiling peritus-evolution v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/analysis/peritus-evolution)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.70s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_evolution-1d5b892bcf6bc698)
+     Running tests/attribution_selection.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/attribution_selection-a86ab48e6890d717)
+     Running tests/domain_campaign.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/domain_campaign-78015d36a9093639)
+     Running tests/durability_restart.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/durability_restart-1e1894a9f0ee3225)
+     Running tests/production_conformance.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/production_conformance-d1a15f4773d0a5f0)
+     Running tests/promotion_authority.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/promotion_authority-e8ab009b68978d19)
+     Running tests/publication_integration.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/publication_integration-e6e4ee919e3532f9)
+     Running tests/replay_wire.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/replay_wire-c5df654499e40a00)
+     Running tests/verified_refinement.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/verified_refinement-123ccb90b958e058)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:49:59.097909Z"}

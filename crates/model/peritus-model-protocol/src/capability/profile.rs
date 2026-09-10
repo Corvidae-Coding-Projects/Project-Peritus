@@ -85,7 +85,7 @@ impl ModelLimits {
     pub const fn max_parallel_tool_calls(self) -> u32 {
         self.max_parallel_tool_calls
     }
-    /// Maximum bytes in one inline media payload; aggregate request bounds apply separately.
+    /// Maximum inline media bytes.
     #[must_use]
     pub const fn max_inline_media_bytes(self) -> u64 {
         self.max_inline_media_bytes

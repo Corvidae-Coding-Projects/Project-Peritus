@@ -5,9 +5,6 @@
 
 use vstd::prelude::*;
 
-mod content_binding;
-pub use content_binding::bind_context_content;
-
 verus! {
 
 mod authority;
@@ -35,6 +32,8 @@ pub use compaction::{
     replace_validated_compaction, validate_compaction,
 };
 pub use content::{ContentKind, ContextContent, ContextLimits};
+#[cfg(not(verus_only))]
+pub use content::bind_context_content;
 pub use error::{ContextError, ContextErrorKind};
 pub use graph::ContextGraph;
 pub use identity::{CompactionPolicyId, ContextNodeId, ContextPlanId};

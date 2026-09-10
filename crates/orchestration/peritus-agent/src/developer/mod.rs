@@ -24,8 +24,7 @@ pub use context_port::{
 pub use entry::DeveloperLoop;
 pub use error::DeveloperLoopError;
 pub use interaction::{
-    DeveloperActivity, DeveloperControlFlow, DeveloperInteraction, DeveloperModelRole,
-    DeveloperRequestAdmission, DeveloperToolEffect,
+    DeveloperActivity, DeveloperInput, DeveloperInteraction, DeveloperModelRole,
 };
 pub use tool_executor::DeveloperToolExecutor;
 pub use types::{

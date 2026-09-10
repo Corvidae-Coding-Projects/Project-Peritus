@@ -40,7 +40,7 @@ pub async fn complete(
         crate::failover::bypass_open_circuit(input, "reviewer", cycle, accounting, &mut providers)?;
         invocation = invocation.saturating_add(1);
         let prompt = turn::reviewer_user(&turn::ReviewerPrompt {
-            transcript: &input.conversation.stable_request_context(),
+            transcript: evidence.conversation,
             diff: evidence.diff,
             gates: evidence.gates,
             developer_evidence: evidence.developer_commands,

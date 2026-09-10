@@ -124,8 +124,7 @@ pub fn commit_authority(
     intent: &ActionIntentDto,
 ) -> AuthorityReceipts {
     let action_digest = intent.digest(CodecLimits::PRODUCTION).expect("action digest");
-    let capability_use =
-        policy::capability_use(ids, action_digest, intent.role, &intent.capability_name);
+    let capability_use = policy::capability_use(ids, action_digest);
     let kernel = commit_dispatch(journal, ids, intent, &capability_use);
     let (capability, lease) = commit_lease_use(journal, ids, capability_use);
     journal

@@ -1,0 +1,13 @@
+candidate_commit=a6994ce09a67b6631318d88659cd4df5ed5e81f7
+candidate_tree=0d3c5a78fe8d8e97620378f4f365b63e90ed673b
+source_refs=crates/app/peritus-daemon/src/product_run/workbench/launch/evidence.rs:171-292;crates/app/peritus-daemon/src/product_run/tests/workbench/preview.rs;crates/app/peritus-daemon/src/product_run/tests/workbench/tetris.rs;crates/app/peritus-tui/src/model/product/preview.rs:126-164;crates/app/peritus-tui/src/model/product/preview/profile.rs;crates/app/peritus-tui/src/model/chat/tests/workbench/preview.rs:210-286
+exact_candidate_daemon_gate=/tmp/peritus-formal-a6994ce0/gates/017-peritus-daemon-ordinary-test.txt
+exact_candidate_daemon_gate_sha256=e75554d9471da08b68dbba81e83c3968b3d4063d0383cea5d987682228d61f45
+native_linux_log=/tmp/peritus-shipping-native-tests.log
+native_linux_log_sha256=87cb2d566b32f8722176f88c0430681afc57626dc989c9004b5d35001bd184ae
+tui_profile_log=/tmp/peritus-tui-preview-review.log
+tui_profile_log_sha256=89d8e35a758cb3e422d63f4acb17f68634666c8c1807aefbedf08975df73e0f6
+ordering_log=/tmp/peritus-graphical-order-tests.log
+ordering_log_sha256=20c0e837b8ea609b4e46f56dc3bccd83335c132aa3cb8ea58c602f097b4d809c
+native_results=daemon_preview_evidence_satisfies_only_the_graphical_goal_criterion:passed;v1_image_build_and_controlled_tetris_playtest_preserve_exact_evidence:passed
+result=fixed

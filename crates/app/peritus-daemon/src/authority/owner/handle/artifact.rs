@@ -11,45 +11,6 @@ use super::{AuthorityHandle, AuthorityMessage};
 use crate::{DaemonError, artifact::ArtifactPoll};
 
 impl AuthorityHandle {
-    /// Begins a scoped upload after the workbench owner has authenticated the selected root.
-    pub(crate) async fn begin_scoped_artifact_upload(
-        &self,
-        actor_id: ActorId,
-        session_id: SessionId,
-        metadata: ArtifactMetadata,
-        maximum_chunk_bytes: usize,
-        scope: crate::artifact::ArtifactScope,
-    ) -> Result<(), DaemonError> {
-        let (respond, receive) = oneshot::channel();
-        self.send(
-            AuthorityMessage::BeginScopedArtifactUpload {
-                actor_id,
-                session_id,
-                metadata,
-                maximum_chunk_bytes,
-                scope,
-                respond,
-            },
-            receive,
-        )
-        .await
-    }
-
-    /// Reads bounded imported bytes only under their original durable actor/conversation/workspace scope.
-    pub(crate) async fn read_scoped_artifact(
-        &self,
-        scope: crate::artifact::ArtifactScope,
-        artifact_id: peritus_types::ArtifactId,
-        maximum_bytes: u64,
-    ) -> Result<(peritus_journal::ApplicationArtifact, Vec<u8>), DaemonError> {
-        let (respond, receive) = oneshot::channel();
-        self.send(
-            AuthorityMessage::ReadScopedArtifact { scope, artifact_id, maximum_bytes, respond },
-            receive,
-        )
-        .await
-    }
-
     /// Opens one exact actor/session-bound artifact download.
     ///
     /// # Errors

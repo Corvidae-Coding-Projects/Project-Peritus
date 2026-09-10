@@ -1,0 +1,170 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-agent", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-agent --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 5.535536, "finished_at": "2026-09-10T01:47:06.620125Z", "kind": "ordinary-test", "owning_crate": "peritus-agent", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:47:01.147499Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-agent", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-agent", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 4 tests
+test developer::usage::tests::independent_response_usage_adds_without_double_counting_reasoning ... ok
+test developer::execution::provider_turn::progress::tests::ready_results_and_streaming_text_do_not_get_wait_notices ... ok
+test developer::execution::provider_turn::progress::tests::notice_arrives_while_the_same_provider_future_is_still_pending ... ok
+test developer::execution::provider_turn::progress::tests::failed_observation_cancels_the_owned_pending_request ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test checked_limits_reject_zero_and_hard_ceiling_overflow ... ok
+test transition_exhaustion_is_explicit_failure_not_completion ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test every_active_phase_pauses_resumes_and_cancels_explicitly ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 34 tests
+test context_tests::developer_loop_returns_context_when_compaction_cannot_fit_the_request ... ok
+test accounting_tests::dropping_an_inflight_response_retains_accepted_accounting_without_a_terminal ... ok
+test context_tests::developer_loop_negotiates_automatic_prompt_caching ... ok
+test developer_loop_executes_a_tool_and_returns_its_observation_to_the_next_model_turn ... ok
+test developer_loop_returns_executor_progress_feedback_to_the_same_session ... ok
+test developer_loop_uses_the_negotiated_parallel_tool_width ... ok
+test grounding_tests::developer_loop_continues_an_early_terminal_in_the_same_grounding_session ... ok
+test local_context_tests::lifecycle::stale_local_invocation_policy_stops_before_publication_or_provider_dispatch ... ok
+test interaction_tests::exact_prepared_request_is_checked_before_send_and_stale_context_is_rebuilt ... ok
+test interaction_tests::host_handoff_stops_the_batch_and_returns_without_another_model_request ... ok
+test interaction_tests::cancellation_between_calls_prevents_the_remaining_effects ... ok
+test local_context_tests::lifecycle::no_progress_failure_preserves_the_complete_batch_before_stopping ... ok
+test local_context_tests::open_assembly_and_checkpoint_failures_stop_before_any_provider_request ... ok
+test local_context_tests::metadata::host_metadata_overwrites_forgery_after_archival_and_counts_in_request_budget ... ok
+test local_context_tests::observation_ingestion_failure_preserves_trace_and_stops_the_tool_batch ... ok
+test local_context_tests::oversized_local_view_never_selects_legacy_compaction_or_publishes ... ok
+test local_context_tests::proposal_persistence_failure_prevents_tool_execution ... ok
+test retry_tests::developer_loop_preserves_a_nonretryable_provider_terminal ... ok
+test local_context_tests::old_exchanges_above_the_legacy_trigger_remain_under_local_policy ... ok
+test interaction_tests::images::unsupported_live_image_input_rejects_before_incorporation_and_provider_send ... ok
+test interaction_tests::tool_identity::developer_loop_passes_its_stable_request_prefix_to_both_tool_boundaries ... ok
+test interaction_tests::images::exact_current_images_follow_governing_input_and_withdrawal_discards_the_stale_image ... ok
+test interaction_tests::steering_skips_remaining_calls_and_reaches_the_next_model_request ... ok
+test local_context_tests::local_context_keeps_host_completion_and_progress_corrections ... ok
+test local_context_tests::lifecycle::failed_invocation_retains_observations_and_a_new_provider_requires_fresh_grounding ... ok
+test context_tests::developer_loop_bounds_an_oversized_tool_result_before_model_history ... ok
+test local_context_tests::exact_diagnostic_is_ingested_before_model_visible_output_limiting ... ok
+test context_tests::developer_loop_compacts_an_impossible_recent_complete_exchange ... ok
+test context_tests::developer_loop_falls_back_when_semantic_compaction_is_unusable ... ok
+test context_tests::developer_loop_accounts_image_tiles_instead_of_compressed_transfer_bytes ... ok
+test retry_tests::developer_loop_cancels_during_a_planned_retry_wait ... ok
+test context_tests::developer_loop_compacts_old_complete_tool_exchanges_with_digest_evidence ... ok
+test interaction_tests::input_received_during_retry_is_incorporated_before_the_next_provider_request ... ok
+test retry_tests::developer_loop_retries_a_recoverable_malformed_provider_turn ... ok
+
+test result: ok. 34 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.98s
+
+
+running 5 tests
+test partial_model_terminal_cannot_become_success_and_rejection_is_non_mutating ... ok
+test completion_requires_explicit_proposal_then_commit_and_replays_exactly ... ok
+test pause_resume_and_cancel_are_explicit ... ok
+test provider_retry_closes_in_flight_work_and_replays_exact_resume ... ok
+test protocol_records_recover_pure_retry_events_and_replay_exactly ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test missing_final_usage_stays_active_until_conservative_ambiguity_consumes_the_ceiling ... ok
+test tool_effect_time_uses_the_same_verified_b1_lifecycle ... ok
+test model_attempt_charges_attempt_tokens_cost_and_time_then_admits_one_retry ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test selected_memory_stays_untrusted_evidence_and_renders_as_a_separate_message ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 5 tests
+test out_of_order_provider_stream_becomes_explicit_protocol_failure ... ok
+test exact_provider_duplicate_is_recorded_without_reapplying_semantics ... ok
+test crash_restores_exact_provider_prefix_before_resuming_at_the_next_cursor ... ok
+test crash_after_tool_dispatch_is_classified_indeterminate_without_redispatch ... ok
+test fake_provider_completion_is_durable_and_restarts_from_exact_state ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+
+running 2 tests
+test local_cancel_propagates_to_the_owned_provider_stream ... ok
+test each_envelope_waits_for_durable_ack_before_reduction_or_next_pull ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test authorized_fake_inspection_runs_once_and_results_return_to_context ... ok
+test complete_inspect_edit_run_test_loop_reaches_only_a_completion_proposal ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+
+running 3 tests
+test unordered_and_parallel_mutation_batches_are_rejected_without_state_change ... ok
+test indeterminate_result_is_renderable_but_cannot_claim_gate_ready_completion ... ok
+test parallel_terminal_arrival_retains_proposal_order ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:47:06.620125Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-agent", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-agent", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-types v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-types)
+   Compiling peritus-policy v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-policy)
+   Compiling peritus-spec v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-spec)
+   Compiling peritus-codec v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-codec)
+   Compiling peritus-budget v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-budget)
+   Compiling peritus-artifact-store v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-artifact-store)
+   Compiling peritus-run-settlement v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-run-settlement)
+   Compiling peritus-model-protocol v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/model/peritus-model-protocol)
+   Compiling peritus-quality-policy v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-quality-policy)
+   Compiling peritus-approval v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-approval)
+   Compiling peritus-leases v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-leases)
+   Compiling peritus-role v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-role)
+   Compiling peritus-tool-protocol v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/tools/peritus-tool-protocol)
+   Compiling peritus-provider-core v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/model/peritus-provider-core)
+   Compiling peritus-run-knowledge v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-run-knowledge)
+   Compiling peritus-memory v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-memory)
+   Compiling peritus-kernel v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-kernel)
+   Compiling peritus-context v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-context)
+   Compiling peritus-protocol v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-protocol)
+   Compiling peritus-journal v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-journal)
+   Compiling peritus-projection v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-projection)
+   Compiling peritus-tool-router v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/tools/peritus-tool-router)
+   Compiling peritus-evidence v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-evidence)
+   Compiling peritus-agent v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-agent)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 4.35s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_agent-cd27bf0fe98c34e9)
+     Running tests/budgets.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/budgets-bf29e6c62ed1164b)
+     Running tests/control_matrix.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/control_matrix-c96877865f3599df)
+     Running tests/developer_loop.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/developer_loop-07c325d6bd3e1710)
+     Running tests/replay_completion.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/replay_completion-13d525661642df56)
+     Running tests/runtime_budget.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/runtime_budget-506423fc5fa78770)
+     Running tests/runtime_context.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/runtime_context-43e12f257308827a)
+     Running tests/runtime_driver.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/runtime_driver-59f8c0f949422801)
+     Running tests/runtime_model.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/runtime_model-e7dba34a15f9645e)
+     Running tests/runtime_tools.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/runtime_tools-7a712a23a6ef02fa)
+     Running tests/tool_ordering.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/tool_ordering-c2bf879bf496c54a)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:47:06.620125Z"}

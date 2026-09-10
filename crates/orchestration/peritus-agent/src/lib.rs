@@ -9,7 +9,6 @@ mod command;
 mod completion;
 #[cfg(not(verus_only))]
 mod developer;
-mod developer_interaction;
 mod error;
 mod event;
 mod identity;
@@ -33,13 +32,11 @@ pub use completion::{CompletionProposal, CompletionRequest, EvidenceReference, T
 #[cfg(not(verus_only))]
 pub use developer::{
     DeveloperAccountingEvent, DeveloperActivity, DeveloperContextAssembly, DeveloperContextEvent,
-    DeveloperContextPort, DeveloperControlFlow, DeveloperInteraction, DeveloperLoop,
-    DeveloperLoopError, DeveloperLoopLimits, DeveloperLoopOutcome, DeveloperLoopRequest,
-    DeveloperModelRole, DeveloperRetryReason, DeveloperRetryRecord, DeveloperToolEffect,
-    DeveloperToolExecutor, DeveloperToolObservation, DeveloperTrace, DeveloperTraceEvent,
-    DeveloperUsage, estimate_developer_request_tokens,
+    DeveloperContextPort, DeveloperInput, DeveloperInteraction, DeveloperLoop, DeveloperLoopError,
+    DeveloperLoopLimits, DeveloperLoopOutcome, DeveloperLoopRequest, DeveloperModelRole,
+    DeveloperRetryReason, DeveloperRetryRecord, DeveloperToolExecutor, DeveloperToolObservation,
+    DeveloperTrace, DeveloperTraceEvent, DeveloperUsage, estimate_developer_request_tokens,
 };
-pub use developer_interaction::{DeveloperInput, DeveloperRequestAdmission};
 pub use error::{AgentErrorCode, AgentOperation, AgentRecovery, AgentRejection};
 pub use event::{AgentEvent, AgentEventKind};
 pub use identity::{AgentBinding, ModelCallId, ProfileRevision, SafeText, ToolOrdinal};

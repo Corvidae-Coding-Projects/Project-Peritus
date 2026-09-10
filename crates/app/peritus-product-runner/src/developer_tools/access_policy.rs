@@ -12,7 +12,6 @@ use super::executor::WorkspaceDeveloperTools;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub(super) struct WorkspaceAccessPolicy {
     protected_paths: BTreeSet<PathBuf>,
-    hard_constraint_paths: BTreeSet<PathBuf>,
     opaque_paths: BTreeSet<PathBuf>,
     hidden_identifiers: BTreeSet<String>,
 }
@@ -21,10 +20,8 @@ impl WorkspaceDeveloperTools {
     #[must_use]
     pub(crate) fn with_task_contract(mut self, transcript: &str) -> Self {
         let protected = std::mem::take(&mut self.access_policy.protected_paths);
-        let hard_constraints = std::mem::take(&mut self.access_policy.hard_constraint_paths);
         self.access_policy = WorkspaceAccessPolicy::from_transcript(&self.root, transcript);
         self.access_policy.protected_paths = protected;
-        self.access_policy.hard_constraint_paths = hard_constraints;
         self
     }
 
@@ -32,50 +29,18 @@ impl WorkspaceDeveloperTools {
         self.access_policy.protect(&self.root, paths);
         self
     }
-
-    pub(crate) fn with_protection_view(
-        mut self,
-        view: std::sync::Arc<dyn crate::ConversationView>,
-    ) -> Self {
-        self.access_policy.set_hard_constraints(&self.root, &view.protected_paths());
-        self.protection_view = Some(view);
-        self
-    }
-
-    pub(super) fn refresh_hard_constraints(&mut self) {
-        if let Some(view) = &self.protection_view {
-            self.access_policy.set_hard_constraints(&self.root, &view.protected_paths());
-        }
-    }
 }
 
 impl WorkspaceAccessPolicy {
     pub(super) fn protect(&mut self, root: &Path, paths: &[PathBuf]) {
         for path in paths {
-            if let Some(relative) = configured_relative(root, path) {
-                self.protected_paths.insert(relative);
+            if let Ok(relative) = path.strip_prefix(root) {
+                self.protected_paths.insert(relative.to_owned());
+            } else if root.starts_with(path) {
+                self.protected_paths.insert(PathBuf::new());
             }
         }
     }
-
-    fn set_hard_constraints(&mut self, root: &Path, paths: &[PathBuf]) {
-        self.hard_constraint_paths.clear();
-        self.hard_constraint_paths
-            .extend(paths.iter().filter_map(|path| configured_relative(root, path)));
-    }
-}
-
-fn configured_relative(root: &Path, path: &Path) -> Option<PathBuf> {
-    if path.is_absolute() {
-        if let Ok(relative) = path.strip_prefix(root) {
-            return Some(relative.to_owned());
-        }
-        return root.starts_with(path).then(PathBuf::new);
-    }
-    (!path.components().any(|component| {
-        matches!(component, Component::ParentDir | Component::RootDir | Component::Prefix(_))
-    }))
-    .then(|| path.to_owned())
 }
 
 impl WorkspaceAccessPolicy {
@@ -121,20 +86,13 @@ impl WorkspaceAccessPolicy {
 
     pub(super) fn authorize(&self, tool: &str, arguments: &Value) -> Result<(), String> {
         match tool {
-            "workspace_list" | "workspace_search" | "workspace_read" => {
+            "workspace_list" | "workspace_search" | "workspace_read" | "workspace_write"
+            | "workspace_patch" | "workspace_remove" => {
                 if let Some(path) = arguments.get("path").and_then(Value::as_str) {
                     self.authorize_path(path)?;
                 }
             }
-            "workspace_write" | "workspace_patch" | "workspace_remove" => {
-                if let Some(path) = arguments.get("path").and_then(Value::as_str) {
-                    self.authorize_path(path)?;
-                    self.authorize_mutation_path(path)?;
-                }
-            }
-            "run_command" | "command_start" | "command_stdin" => {
-                self.authorize_command(arguments)?;
-            }
+            "run_command" | "command_start" => self.authorize_command(arguments)?,
             _ => {}
         }
         Ok(())
@@ -161,24 +119,7 @@ impl WorkspaceAccessPolicy {
         Ok(())
     }
 
-    fn authorize_mutation_path(&self, raw: &str) -> Result<(), String> {
-        let relative = normalized_relative(raw);
-        if self.hard_constraint_paths.iter().any(|path| relative.starts_with(path)) {
-            return Err(format!(
-                "{} is protected by an explicit leave-alone review constraint; dismiss or rebind that exact constraint before requesting a write",
-                relative.display(),
-            ));
-        }
-        Ok(())
-    }
-
     fn authorize_command(&self, arguments: &Value) -> Result<(), String> {
-        if !self.hard_constraint_paths.is_empty() {
-            return Err(
-                "process admission refused: the configured command backend cannot confine writes away from protected paths; explicitly revise the constraint or use enforceable file tools"
-                    .to_owned(),
-            );
-        }
         let values = arguments.get("program").and_then(Value::as_str).into_iter().chain(
             arguments
                 .get("args")
@@ -304,44 +245,6 @@ mod tests {
         assert!(
             policy
                 .authorize("run_command", &value(r#"{"args":["test"],"program":"cargo"}"#),)
-                .is_ok()
-        );
-    }
-
-    #[test]
-    fn hard_constraint_allows_read_but_blocks_file_and_unconfined_process_writes() {
-        let mut policy = WorkspaceAccessPolicy::default();
-        policy.set_hard_constraints(Path::new("/work"), &[PathBuf::from("src/locked.rs")]);
-
-        assert!(
-            policy.authorize("workspace_read", &value(r#"{"path":"src/locked.rs"}"#)).is_ok(),
-            "explanation must retain read-only source access"
-        );
-        assert!(
-            policy
-                .authorize("workspace_patch", &value(r#"{"path":"src/locked.rs"}"#))
-                .expect_err("hard path write")
-                .contains("leave-alone")
-        );
-        for tool in ["run_command", "command_start", "command_stdin"] {
-            assert!(
-                policy
-                    .authorize(tool, &value(r#"{"args":[],"program":"true"}"#))
-                    .expect_err("unconfined process")
-                    .contains("cannot confine writes"),
-                "{tool} must not bypass a hard path"
-            );
-        }
-        assert!(policy.authorize("workspace_patch", &value(r#"{"path":"src/other.rs"}"#)).is_ok());
-    }
-
-    #[test]
-    fn existing_private_read_exclusions_do_not_change_process_authority() {
-        let mut policy = WorkspaceAccessPolicy::default();
-        policy.protect(Path::new("/work"), &[PathBuf::from("/work/.peritus")]);
-        assert!(
-            policy
-                .authorize("run_command", &value(r#"{"args":["test"],"program":"cargo"}"#))
                 .is_ok()
         );
     }

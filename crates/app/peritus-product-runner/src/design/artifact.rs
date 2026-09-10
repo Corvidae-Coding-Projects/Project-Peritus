@@ -24,7 +24,7 @@ pub(super) fn create(input: &ProductRunInput) -> Result<DesignDocument, ProductR
     loop {
         check_cancelled(input)?;
         let revision = input.conversation.revision();
-        let transcript = input.conversation.stable_request_context();
+        let transcript = input.conversation.render();
         let inventory = inventory(&input.workspace_root)?;
         if input.conversation.revision() != revision {
             continue;

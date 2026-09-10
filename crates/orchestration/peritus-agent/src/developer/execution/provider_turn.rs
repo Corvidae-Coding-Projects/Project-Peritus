@@ -1,8 +1,7 @@
 //! Bounded provider retries and durable public-text delivery.
 use super::super::{
-    DeveloperAccountingEvent, DeveloperActivity, DeveloperControlFlow, DeveloperInteraction,
-    DeveloperLoopError, DeveloperLoopRequest, DeveloperModelRole, DeveloperRequestAdmission,
-    DeveloperTrace, DeveloperTraceEvent, DeveloperUsage,
+    DeveloperAccountingEvent, DeveloperActivity, DeveloperInteraction, DeveloperLoopError,
+    DeveloperLoopRequest, DeveloperTrace, DeveloperTraceEvent, DeveloperUsage,
     model_request::{ModelTurnKind, build_model_request},
     retry::DeveloperRetryPlanner,
 };
@@ -27,7 +26,7 @@ pub(super) async fn complete_turn(
     retries: &mut u16,
     usage: &mut DeveloperUsage,
     trace: &mut dyn DeveloperTrace,
-    interaction: Option<(&dyn DeveloperInteraction, DeveloperModelRole, u64)>,
+    interaction: Option<(&dyn DeveloperInteraction, u64)>,
 ) -> Result<Option<ModelSession>, DeveloperLoopError> {
     let maximum = request.limits.max_attempts_per_turn();
     let retry_prefix = match kind {
@@ -41,7 +40,7 @@ pub(super) async fn complete_turn(
         if request.cancellation.is_cancelled() {
             return Err(DeveloperLoopError::Cancelled);
         }
-        if let Some((port, _, revision)) = interaction
+        if let Some((port, revision)) = interaction
             && port.input()?.revision != revision
         {
             // Context preparation or retry backoff may have admitted newer input. Return to the
@@ -60,22 +59,15 @@ pub(super) async fn complete_turn(
             required_tool,
             provider.reasoning_effort(),
         )?;
-        if let Some((port, role, revision)) = interaction {
-            match port.prepare_role_request(role, revision, &model_request)? {
-                DeveloperRequestAdmission::Accepted => {}
-                DeveloperRequestAdmission::Stale => return Ok(None),
-                DeveloperRequestAdmission::Stopped => {
-                    return Err(DeveloperLoopError::Cancelled);
-                }
-            }
+        if let Some((port, revision)) = interaction {
+            port.applied(revision)?;
             port.observe(DeveloperActivity::ModelStarted {
                 model: profile.model().as_str(),
                 reasoning: model_request.options().reasoning(),
             })?;
         }
-        let admitted_request_id = model_request.request_id().expose_for_wire().to_owned();
         trace.account(DeveloperAccountingEvent::ModelRequest { retry: attempt > 1 })?;
-        let driven = drive(
+        match drive(
             provider,
             model_request,
             request,
@@ -83,19 +75,8 @@ pub(super) async fn complete_turn(
             trace,
             interaction.map(|value| value.0),
         )
-        .await;
-        if let Some((port, role, _)) = interaction {
-            let request_usage = driven.as_ref().map_or_else(
-                |_| peritus_model_protocol::UsageCounters::default(),
-                ModelSession::usage_high_water,
-            );
-            if port.complete_role_request(role, &admitted_request_id, request_usage)?
-                == DeveloperControlFlow::Stop
-            {
-                return Err(DeveloperLoopError::Cancelled);
-            }
-        }
-        match driven {
+        .await
+        {
             Ok(session) if successful(session.terminal()) && usable(&session) => {
                 usage.observe(session.usage_high_water())?;
                 return Ok(Some(session));

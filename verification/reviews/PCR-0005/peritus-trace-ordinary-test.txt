@@ -1,0 +1,53 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-trace", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-trace --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 0.388032, "finished_at": "2026-09-10T01:53:26.515129Z", "kind": "ordinary-test", "owning_crate": "peritus-trace", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:53:26.170021Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-trace", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-trace", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 125, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 5 tests
+test binding_hierarchy_requires_ancestors_and_refines_them ... ok
+test observation_rejects_noncanonical_and_self_causal_collections ... ok
+test projection_accepts_exact_replay_and_rejects_changed_duplicates ... ok
+test rejected_first_observations_are_failure_atomic_and_do_not_bind_session ... ok
+test projection_enforces_predecessor_time_parent_and_terminal_rules ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test canonical_codec_round_trips_and_rejects_truncation_without_content ... ok
+test sensitive_debug_error_and_complete_source_chain_are_content_free ... ok
+test redaction_omits_bytes_or_binds_exact_encrypted_metadata ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test changed_command_reuse_is_explicit_and_does_not_append ... ok
+test c0_record_replay_and_restart_rebuild_are_exact ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:53:26.515129Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-trace", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-trace", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 125, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-trace v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/observe/peritus-trace)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.30s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_trace-f42f4d4b92330a18)
+     Running tests/domain_projection.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/domain_projection-381d1e5d6dd3c519)
+     Running tests/redaction_codec.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/redaction_codec-7632297892e1a548)
+     Running tests/storage_recovery.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/storage_recovery-9912e1742f3e253e)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:53:26.515129Z"}

@@ -1,21 +1,123 @@
 //! Active product-run task ownership and terminal projection.
 mod runtime;
 
-use peritus_app_protocol::{
-    ProductConversationRole, ProductDeliverable, ProductRunPhase, ProductRunSnapshot,
+use std::{
+    path::PathBuf,
+    sync::{Arc, atomic::AtomicBool},
 };
-use peritus_product_runner::ProductRunOutcome;
-use peritus_product_runner::control::GoalSettlement;
+
+use peritus_app_protocol::{
+    ProductConversationRole, ProductDeliverable, ProductRunPhase, ProductRunRequest,
+    ProductRunSnapshot,
+};
+use peritus_product_runner::{
+    ConversationView, PRODUCT_RUN_MAX_ELAPSED, ProductDeliveryScope, ProductRunInput,
+    ProductRunOutcome, ProductRunResume, ProductRunner, RoleProviders, RunObserver,
+};
+use peritus_provider_core::CancellationToken;
 use peritus_run_settlement::RunDisposition;
 use peritus_types::RunId;
 
 use super::persistence::persist_record;
 use super::snapshot::replace_snapshot;
-use super::{ProductRunService, ProductRunServiceError};
-mod goal;
-mod launch;
+use super::{ProductRunService, SharedConversation};
 
 impl ProductRunService {
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "daemon execution inputs stay explicit at the task ownership boundary"
+    )]
+    pub(super) fn spawn(
+        &self,
+        request: ProductRunRequest,
+        workspace_root: PathBuf,
+        providers: RoleProviders,
+        cancelled: Arc<AtomicBool>,
+        provider_cancellation: CancellationToken,
+        conversation: Arc<SharedConversation>,
+        finding_state: String,
+        resume: Option<ProductRunResume>,
+    ) -> peritus_provider_core::BoxFuture<'_, ()> {
+        Box::pin(async move {
+            let service = self.clone();
+            let run_id = request.run_id();
+            let trace_path = self.inner.directory.join(format!("{}.trace", run_hex(run_id)));
+            let observer: RunObserver = Arc::new(move |update| service.observe(run_id, update));
+            let service = self.clone();
+            let task = tokio::spawn(async move {
+                let folder = service.inner.folders.get(&request.workspace_id());
+                let command_runtime = match runtime::open(&service, &request, &workspace_root) {
+                    Ok(runtime) => runtime,
+                    Err(error) => {
+                        service.finish(run_id, Err(error));
+                        return;
+                    }
+                };
+                let interaction_mode = service.inner.records.read().ok().and_then(|records| {
+                    records.get(&run_id).and_then(|record| {
+                        record.interaction.as_ref().map(|interaction| interaction.mode)
+                    })
+                });
+                let conversation: Arc<dyn ConversationView> = if interaction_mode.is_some() {
+                    service.live_conversation(run_id, conversation)
+                } else {
+                    conversation
+                };
+                let input = ProductRunInput {
+                    workspace_kind: peritus_product_runner::ProductWorkspaceKind::Managed,
+                    run_id,
+                    workspace_id: request.workspace_id(),
+                    workspace_root,
+                    trace_path,
+                    command_runtime,
+                    finding_state,
+                    task: request.task().to_owned(),
+                    max_elapsed: PRODUCT_RUN_MAX_ELAPSED,
+                    delivery_scope: ProductDeliveryScope::WorkspaceChanges,
+                    conversation,
+                    providers,
+                    cancelled,
+                    provider_cancellation,
+                    resume,
+                };
+                let mode = match interaction_mode {
+                    Some(peritus_app_protocol::ProductInteractionMode::Chat) => {
+                        Some(peritus_product_runner::ConversationMode::Chat)
+                    }
+                    Some(peritus_app_protocol::ProductInteractionMode::Plan) => {
+                        Some(peritus_product_runner::ConversationMode::Plan)
+                    }
+                    Some(peritus_app_protocol::ProductInteractionMode::Review) => {
+                        Some(peritus_product_runner::ConversationMode::Review)
+                    }
+                    Some(peritus_app_protocol::ProductInteractionMode::Build) | None => None,
+                };
+                let result = match mode {
+                    Some(mode) if folder.is_some() => {
+                        let folder = folder.expect("folder selected");
+                        ProductRunner::converse_folder(
+                            input,
+                            mode,
+                            folder.writable(),
+                            folder.protected_paths(),
+                            observer,
+                        )
+                        .await
+                    }
+                    Some(mode) => ProductRunner::converse(input, mode, observer).await,
+                    None => ProductRunner::run(input, observer).await,
+                };
+                service.finish(run_id, result);
+                if service.pending_interactive_input(run_id) {
+                    let _ = service.retry(run_id).await;
+                }
+            });
+            let mut tasks = self.inner.tasks.lock().await;
+            tasks.retain(|existing| !existing.is_finished());
+            tasks.push(task);
+        })
+    }
+
     fn observe(&self, run_id: RunId, update: peritus_product_runner::ProductRunUpdate) {
         let Ok(mut records) = self.inner.records.write() else { return };
         let Some(record) = records.get_mut(&run_id) else { return };
@@ -118,33 +220,8 @@ impl ProductRunService {
                 !self.inner.folders.contains_key(&record.request.workspace_id())
                     && outcome.candidate().is_some()
                     && outcome.settlement().checkpoint().is_some();
-            if matches!(
-                outcome.settlement().disposition(),
-                RunDisposition::Accepted | RunDisposition::WaitingForUser
-            ) && let Some(start) =
-                record.interaction.as_ref().and_then(|options| options.workbench.as_ref())
-            {
-                // The runner has returned, so its in-place writes have reached a completed owned
-                // boundary. A failed seal remains visibly unsealed and can never be overwritten.
-                let _ = self.seal_latest_checkpoint(start, run_id);
-            }
         }
-        if self.settle_workbench_goal(record, &result).is_err() {
-            if let Some(options) = &record.interaction {
-                options.persistence_failed.store(true, std::sync::atomic::Ordering::Release);
-            }
-            if let Ok(snapshot) = replace_snapshot(
-                &record.snapshot,
-                ProductRunPhase::RecoveryRequired,
-                "Goal settlement persistence failed",
-                "The runner stopped, but its terminal goal evidence could not be durably reconciled.",
-            ) {
-                record.snapshot = snapshot;
-            }
-            let _ = persist_record(&self.inner.directory, record);
-            return;
-        }
-        let public_reply = match result {
+        match result {
             Ok(outcome) if outcome.settlement().disposition() == RunDisposition::Accepted => {
                 let Some(output) = outcome.candidate() else {
                     fail_handoff(record);
@@ -186,7 +263,8 @@ impl ProductRunService {
                     let _ = persist_record(&self.inner.directory, record);
                     return;
                 }
-                completion_message
+                let _ =
+                    record.conversation.append(ProductConversationRole::Agent, completion_message);
             }
             Ok(outcome) if outcome.settlement().disposition() == RunDisposition::WaitingForUser => {
                 let Some(question) = outcome.question() else {
@@ -194,6 +272,9 @@ impl ProductRunService {
                     let _ = persist_record(&self.inner.directory, record);
                     return;
                 };
+                let _ = record
+                    .conversation
+                    .append(ProductConversationRole::Agent, question.message().to_owned());
                 let chatting = record.interaction.as_ref().is_some_and(|interaction| {
                     interaction.mode != peritus_app_protocol::ProductInteractionMode::Build
                 });
@@ -216,7 +297,6 @@ impl ProductRunService {
                 ) {
                     record.snapshot = self.with_candidate(record, &outcome, snapshot);
                 }
-                question.message().to_owned()
             }
             Ok(outcome) => self.finish_nonaccepted(record, &outcome),
             Err(error) => {
@@ -234,30 +314,28 @@ impl ProductRunService {
                 ) {
                     record.snapshot = snapshot;
                 }
-                format!(
-                    "I couldn't finish this run: {}: {}. Send a message to correct, clarify, or continue it.",
-                    error.operation(),
-                    error.detail()
-                )
+                let _ = record.conversation.append(
+                    ProductConversationRole::Agent,
+                    format!(
+                        "I couldn't finish this run: {}: {}. Send a message to correct, clarify, or continue it.",
+                        error.operation(),
+                        error.detail()
+                    ),
+                );
             }
-        };
-        self.deliver_public_reply(record, public_reply);
+        }
         super::interaction::terminal_activity(record);
         let _ = persist_record(&self.inner.directory, record);
     }
 
-    fn finish_nonaccepted(
-        &self,
-        record: &mut super::RunRecord,
-        outcome: &ProductRunOutcome,
-    ) -> String {
+    fn finish_nonaccepted(&self, record: &mut super::RunRecord, outcome: &ProductRunOutcome) {
         let phase = match outcome.settlement().disposition() {
             RunDisposition::Cancelled => ProductRunPhase::Cancelled,
             RunDisposition::RecoveryRequired => ProductRunPhase::RecoveryRequired,
             RunDisposition::CandidateAvailable | RunDisposition::FailedNoCandidate => {
                 ProductRunPhase::Failed
             }
-            RunDisposition::Accepted | RunDisposition::WaitingForUser => return String::new(),
+            RunDisposition::Accepted | RunDisposition::WaitingForUser => return,
         };
         let has_candidate = outcome.candidate().is_some();
         let in_place = self.inner.folders.contains_key(&record.request.workspace_id());
@@ -302,22 +380,9 @@ impl ProductRunService {
         } else {
             format!(" Remaining work: {}.", outcome.remaining_work().join("; "))
         };
-        format!("{status}: {detail}.{remaining}")
-    }
-
-    fn deliver_public_reply(&self, record: &mut super::RunRecord, text: String) {
-        if let Some(start) =
-            record.interaction.as_ref().and_then(|options| options.workbench.as_ref())
-            && self.with_controls(false, |store| store.publish_reply(start, &text)).is_err()
-        {
-            fail_handoff(record);
-            if let Some(options) = &record.interaction {
-                options.persistence_failed.store(true, std::sync::atomic::Ordering::Release);
-            }
-            return;
-        }
-        // Workbench history is authoritative in C0; legacy JSON keeps its bounded projection.
-        let _ = record.conversation.append(ProductConversationRole::Agent, text);
+        let _ = record
+            .conversation
+            .append(ProductConversationRole::Agent, format!("{status}: {detail}.{remaining}"));
     }
 
     fn with_candidate(
@@ -380,4 +445,12 @@ fn fail_handoff(record: &mut super::RunRecord) {
         record.snapshot = snapshot;
     }
     let _ = record.conversation.append(ProductConversationRole::Agent, detail.to_owned());
+}
+
+fn run_hex(run_id: RunId) -> String {
+    run_id.as_bytes().iter().fold(String::new(), |mut value, byte| {
+        use core::fmt::Write as _;
+        let _ = write!(value, "{byte:02x}");
+        value
+    })
 }

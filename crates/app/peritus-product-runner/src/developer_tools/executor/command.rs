@@ -29,10 +29,6 @@ struct ParsedCommand {
 }
 
 impl WorkspaceDeveloperTools {
-    pub(super) fn command_has_effect(&self, arguments: &Value) -> Result<bool, DeveloperLoopError> {
-        self.parse_command(arguments).map(|command| !command.timeout.is_zero())
-    }
-
     pub(super) fn run_command(
         &mut self,
         arguments: &Value,

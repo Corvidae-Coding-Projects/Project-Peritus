@@ -2,10 +2,6 @@
 
 mod interaction;
 mod observation;
-mod preview;
-mod review;
-
-pub use review::ReviewFocus;
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -31,9 +27,6 @@ pub struct ProductUi {
     pub settlements: BTreeMap<RunId, RunSettlement>,
     pub confirmation: Option<CandidateConfirmation>,
     pub inspection_scroll: u16,
-    pub preview: Option<peritus_app_protocol::WorkbenchResultPage>,
-    pub preview_scroll: u16,
-    pub(crate) review: review::DiffReviewUi,
     writer: usize,
     reviewer: usize,
     fixer: usize,
@@ -50,9 +43,6 @@ impl ProductUi {
             settlements: BTreeMap::new(),
             confirmation: None,
             inspection_scroll: 0,
-            preview: None,
-            preview_scroll: 0,
-            review: review::DiffReviewUi::default(),
             writer: default,
             reviewer: default,
             fixer: default,
@@ -333,7 +323,6 @@ impl AppModel {
         product.selected = product.selected.saturating_sub(1);
         product.conversation = None;
         product.confirmation = None;
-        product.review.clear();
         true
     }
 
@@ -342,7 +331,6 @@ impl AppModel {
         product.selected = (product.selected + 1).min(product.runs.len().saturating_sub(1));
         product.conversation = None;
         product.confirmation = None;
-        product.review.clear();
         true
     }
 }

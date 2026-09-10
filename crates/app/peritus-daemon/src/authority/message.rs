@@ -119,20 +119,6 @@ pub(super) enum AuthorityMessage {
         maximum_chunk_bytes: usize,
         respond: Response<()>,
     },
-    BeginScopedArtifactUpload {
-        actor_id: ActorId,
-        session_id: SessionId,
-        metadata: ArtifactMetadata,
-        maximum_chunk_bytes: usize,
-        scope: crate::artifact::ArtifactScope,
-        respond: Response<()>,
-    },
-    ReadScopedArtifact {
-        scope: crate::artifact::ArtifactScope,
-        artifact_id: ArtifactId,
-        maximum_bytes: u64,
-        respond: Response<(ApplicationArtifact, Vec<u8>)>,
-    },
     UploadArtifactChunk {
         actor_id: ActorId,
         session_id: SessionId,

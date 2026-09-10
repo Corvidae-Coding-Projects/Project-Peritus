@@ -3,11 +3,9 @@
 Target-owned authorization, mutation orchestration, immutable snapshots, rollback, and restart
 reconciliation for isolated Peritus workspaces.
 
-The crate is the sole public C1 mutation boundary. `WorkspaceGateway` owns isolated Git-worktree
-mutation. `FolderMutationGateway` separately owns exact-preimage patches against one registered
-ordinary folder without fabricating Git state. Both cross-match exact committed B0 and B1 receipts
-before consuming a private operation permit. Read-only snapshots use a separate type and never
-share a writer's live worktree.
+The crate is the sole public C1 mutation boundary. It cross-matches exact committed B0 and B1
+receipts before consuming a private operation permit. Read-only snapshots use a separate type and
+never share a writer's live worktree.
 
 Permit consumption is durable per workspace generation and revision. Before the first target
 effect, the writable workspace exclusively creates and synchronizes a bounded action marker under

@@ -1,0 +1,56 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-quality-policy", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-quality-policy --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 0.344493, "finished_at": "2026-09-10T01:51:37.572787Z", "kind": "ordinary-test", "owning_crate": "peritus-quality-policy", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:51:37.267672Z", "verification_class": "V"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-quality-policy", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-quality-policy", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 81, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "V"}
+=== COMMAND OUTPUT ===
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 25 tests
+test cases::authority::explicit_valid_waiver_resolves_a_requested_blocker ... ok
+test cases::authority::denied_waiver_for_non_blocking_finding_is_rejected_once ... ok
+test cases::authority::forbidden_or_unapproved_waiver_never_resolves_a_blocker ... ok
+test cases::authority::wrong_authority_waiver_for_non_blocking_finding_is_rejected_once ... ok
+test cases::completion_limits::gate_attempt_at_limit_passes_and_next_attempt_is_rejected ... ok
+test cases::completion_limits::maximum_u16_limits_do_not_overflow ... ok
+test cases::completion_limits::observation_ordinals_are_one_based ... ok
+test cases::completion_limits::review_cycle_at_limit_passes_and_next_cycle_is_rejected ... ok
+test cases::authority::forbidden_waiver_for_non_blocking_finding_is_rejected_once ... ok
+test cases::authority::required_human_approval_must_be_current_approved_and_from_declared_authority ... ok
+test cases::construction::duplicate_and_descending_gate_observations_are_rejected ... ok
+test cases::construction::fixture_contract_remains_checked ... ok
+test cases::construction::resolution_for_another_revision_is_rejected ... ok
+test cases::construction::duplicate_finding_across_reviews_is_rejected ... ok
+test cases::construction::review_cycle_ordinals_are_unique_and_canonical ... ok
+test cases::freshness::stale_observations_do_not_satisfy_missing_current_requirements ... ok
+test cases::freshness::one_field_revision_drift_is_stale_for_every_tuple_dimension ... ok
+test cases::gates_and_evidence::missing_required_artifact_never_accepts ... ok
+test cases::gates_and_evidence::failed_and_missing_gates_never_accept ... ok
+test cases::gates_and_evidence::unknown_gate_and_evidence_are_explicit_rejections ... ok
+test cases::happy_path::complete_exact_revision_evidence_is_acceptable ... ok
+test cases::reviews::every_configured_reviewer_independence_dimension_is_enforced ... ok
+test cases::reviews::missing_category_and_quorum_are_reported_together ... ok
+test cases::reviews::open_blocker_rejects_but_current_resolution_satisfies_blocker_policy ... ok
+test cases::reviews::reviewer_actor_reuse_follows_the_contract_flag ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:51:37.572787Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-quality-policy", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-quality-policy", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 81, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "V"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-quality-policy v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-quality-policy)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.27s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_quality_policy-5e48262d1075e6ab)
+     Running tests/acceptance.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/acceptance-243c1e76336fe7dc)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:51:37.572787Z"}

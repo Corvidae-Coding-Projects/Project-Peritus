@@ -12,20 +12,6 @@ use std::path::PathBuf;
 )]
 #[derive(Debug)]
 pub enum Action {
-    FileRead {
-        operation: peritus_app_protocol::ControlOperationId,
-        result: Result<crate::file_import::FileBytes, &'static str>,
-    },
-    FileReadFailed,
-    ImageRead {
-        operation: peritus_app_protocol::ControlOperationId,
-        result: Result<crate::image_import::ImageBytes, &'static str>,
-    },
-    ImageReadFailed,
-    NegotiatedFeatures {
-        context: ProtocolContext,
-        features: Vec<peritus_app_protocol::ProtocolFeatureName>,
-    },
     Connected {
         context: ProtocolContext,
         limits: AppProtocolLimits,
@@ -46,21 +32,8 @@ pub enum Action {
 )]
 #[derive(Clone, Debug)]
 pub enum Effect {
-    ReadFile {
-        operation: peritus_app_protocol::ControlOperationId,
-        path: PathBuf,
-        range: peritus_app_protocol::WorkbenchFileRange,
-    },
-    ReadImage {
-        operation: peritus_app_protocol::ControlOperationId,
-        path: PathBuf,
-    },
     Send(AppMessage),
-    RunCandidate {
-        workspace: PathBuf,
-        instruction: String,
-        candidate_digest: Sha256Digest,
-    },
+    RunCandidate { workspace: PathBuf, instruction: String, candidate_digest: Sha256Digest },
     Reconnect,
     Quit,
 }

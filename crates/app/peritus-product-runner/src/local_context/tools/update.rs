@@ -137,7 +137,7 @@ fn prepare(
             if path.len() > 4096 {
                 return Err(error("file path exceeds bound"));
             }
-            crate::developer_tools::checked_protected_file_for_developer(
+            crate::developer_tools::checked_protected_file(
                 &memory.workspace,
                 path,
                 &memory.task_contract,

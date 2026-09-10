@@ -22,11 +22,6 @@ impl ProductRunService {
         continuation: &ProductRunContinuation,
         options: Option<interaction::InteractionOptions>,
     ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
-        if self.governed_run(continuation.run_id())? {
-            return Err(ProductRunServiceError::Control(
-                peritus_product_runner::control::ControlError::UnsupportedSchema,
-            ));
-        }
         let mut restart = None;
         let snapshot = {
             let mut records =

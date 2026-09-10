@@ -1,0 +1,97 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-process", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-process --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 2.959795, "finished_at": "2026-09-10T01:50:55.051284Z", "kind": "ordinary-test", "owning_crate": "peritus-process", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:50:52.129156Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-process", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-process", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 61, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 13 tests
+test native::observation::tests::native_lifecycle_validation_rejects_duplicate_and_out_of_order_phases ... ok
+test platform::resource::macos::tests::libproc_counts_preserve_optional_failures_and_buffer_bounds ... ok
+test platform::resource::macos::tests::libproc_query_clears_stale_errno_before_observing_empty_group ... ok
+test platform::resource::macos::tests::libproc_zero_with_error_is_unavailable_not_a_sampled_zero ... ok
+test consumption::tests::claim_without_manifest_is_an_explicit_indeterminate_recovery_entry ... ok
+test terminal::canonical_tests::corrupt_stream_accounting_is_rejected_during_decode ... ok
+test terminal::canonical_tests::complete_terminal_encoding_round_trips ... ok
+test output::window::tests::preserves_stream_bytes_without_exceeding_the_combined_tail_limit ... ok
+test consumption::tests::quarantined_process_records_remain_visible_after_reopen ... ok
+test terminal::canonical_tests::terminal_digest_binds_every_durable_fact_group ... ok
+test consumption::tests::claim_manifest_digest_mismatch_blocks_probe_and_terminal_classification ... ok
+test consumption::tests::zero_retained_publication_completion_is_durable_and_idempotent ... ok
+test consumption::tests::complete_terminal_and_artifact_publication_survive_reopen ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test incomplete_birth_identity_is_never_live_or_terminable ... ok
+test linux_probe_reports_a_missing_pid_as_exactly_absent ... ok
+test linux_probe_matches_birth_token_and_terminates_only_the_exact_isolated_group ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test production_process_passes_complete_a2_suite_with_fresh_case_subjects ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.64s
+
+
+running 22 tests
+test regressions::inherited_environment_authority_cannot_bind_a_literal_value ... ok
+test non_dispatched_action_is_rejected_before_durable_consumption ... ok
+test native_backend::rejection::invalid_prepared_session_is_released_and_cannot_be_replayed ... ok
+test native_backend::rejection::prepared_session_is_released_before_spawn_failure_is_published ... ok
+test native_backend::rejection::preparation_failure_is_durable_and_cannot_be_replayed ... ok
+test native_backend::rejection::invalid_prepared_session_cleanup_failure_remains_durably_incomplete ... ok
+test regressions::process_count_overrun_is_observed_cancelled_and_classified ... ok
+test control_lifecycle::cancellation_publishes_one_terminal_owned_tree_result ... ok
+test regressions::post_spawn_control_failure_reaps_and_persists_terminal_failure ... ok
+test regressions::zero_output_artifact_publication_is_complete_and_idempotent ... ok
+test native_backend::lifecycle::native_supervisor_resource_poll_uses_the_owned_resource_limit_path ... ok
+test native_backend::rejection::descriptor_drift_never_calls_prepare_or_consumes_authority ... ok
+test native_backend::lifecycle::exact_restricted_authority_runs_through_the_helper_and_releases_the_session ... ok
+test control_lifecycle::interrupt_signal_is_ordered_and_does_not_become_cancellation ... ok
+test regressions::artifact_failure_preserves_terminal_and_retry_resumes_per_stream ... ok
+test regressions::disk_sampling_does_not_follow_workspace_symlink_cycles ... ok
+test exact_committed_authority_launches_separate_bounded_pipe_streams ... ok
+test native_backend::lifecycle::restricted_helper_receives_the_exact_protected_anonymous_handle ... ok
+test native_backend::lifecycle::restricted_pty_keeps_binary_helper_protocol_off_the_terminal_stream ... ok
+test regressions::root_exit_cleans_descendant_before_waiting_for_pipe_eof ... ok
+test regressions::resize_authority_rejects_pipe_and_denied_pty_without_stopping_owner ... ok
+test holder_quiescence_requires_exact_terminal_correlated_manifests ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:50:55.051284Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-process", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-process", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 61, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-artifact-store v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-artifact-store)
+   Compiling peritus-test-support v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/app/testing/peritus-test-support)
+   Compiling peritus-journal v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-journal)
+   Compiling peritus-process v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-process)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.10s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_process-3a301fcb78a16bd4)
+     Running unittests src/bin/peritus-native-helper-fixture.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_native_helper_fixture-d5fc20348c16a24b)
+     Running unittests src/bin/peritus-process-fixture.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_process_fixture-b9d61700305564d4)
+     Running tests/native_process_probe.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/native_process_probe-d424ca6582556a4d)
+     Running tests/process_conformance.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/process_conformance-8ce075088d3f0d0f)
+     Running tests/process_integration.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/process_integration-5e74cc2998b21e6f)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:50:55.051284Z"}

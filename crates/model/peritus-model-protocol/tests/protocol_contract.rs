@@ -369,6 +369,3 @@ fn sensitive_debug_representations_do_not_expose_values() {
         assert!(!rendered.contains(canary));
     }
 }
-
-#[path = "protocol_contract/media.rs"]
-mod media;
