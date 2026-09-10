@@ -1,10 +1,13 @@
 mod fields;
+mod hosted;
+mod tools;
+use tools::ToolState;
 
 use std::collections::BTreeMap;
 
 use peritus_model_protocol::{
     EventId, FinishReason, ItemId, ItemKind, ModelEvent, ModelName, ProtocolLimits, ProviderName,
-    ResponseId, StreamFragment, ToolCallId, ToolName,
+    ResponseId, StreamFragment,
 };
 use peritus_provider_core::{ProviderCoreError, SseFrame};
 use serde_json::{Map, Value};
@@ -14,6 +17,11 @@ use crate::error;
 use fields::{append, integer, string, validate_top_level};
 
 pub(super) struct ChatDecoder {
+    pub(super) service: Option<peritus_provider_core::hosted::HostedService>,
+    provider: ProviderName,
+    actual_model: Option<ModelName>,
+    reasoning: Map<String, Value>,
+    pub(super) tool_choice: peritus_model_protocol::ToolChoice,
     expected_model: ModelName,
     structured: bool,
     allow_tools: bool,
@@ -25,20 +33,12 @@ pub(super) struct ChatDecoder {
     refusal: Option<ItemId>,
     refusal_bytes: Vec<u8>,
     tools: BTreeMap<u32, ToolState>,
-    finish: Option<FinishReason>,
-}
-
-struct ToolState {
-    item_id: ItemId,
-    call_id: ToolCallId,
-    name: ToolName,
-    bytes: peritus_provider_core::healing::ToolArgumentBuffer,
-    completed: bool,
+    finish: Option<hosted::CompletedChoice>,
 }
 
 impl ChatDecoder {
     pub fn new(
-        _provider: ProviderName,
+        provider: ProviderName,
         expected_model: ModelName,
         structured: bool,
         allow_tools: bool,
@@ -46,6 +46,11 @@ impl ChatDecoder {
         limits: ProtocolLimits,
     ) -> Self {
         Self {
+            service: None,
+            provider,
+            actual_model: None,
+            reasoning: Map::new(),
+            tool_choice: peritus_model_protocol::ToolChoice::Auto,
             expected_model,
             structured,
             allow_tools,
@@ -77,7 +82,12 @@ impl ChatDecoder {
         let object = value
             .as_object()
             .ok_or_else(|| error::malformed("Chat-compatible chunk was not a JSON object"))?;
-        validate_top_level(object)?;
+        validate_top_level(object, self.service)?;
+        if self.service == Some(peritus_provider_core::hosted::HostedService::OpenRouter)
+            && let Some(failure) = object.get("error").filter(|value| !value.is_null())
+        {
+            return self.provider_failure(failure, frame);
+        }
         if string(&value, "object")? != "chat.completion.chunk" {
             return Err(error::malformed("Chat-compatible object discriminator was unknown"));
         }
@@ -85,7 +95,8 @@ impl ChatDecoder {
             .map_err(|_| error::malformed("Chat-compatible response identity was invalid"))?;
         let model = ModelName::new(string(&value, "model")?.to_owned())
             .map_err(|_| error::malformed("Chat-compatible model identity was invalid"))?;
-        if model != self.expected_model
+        if self.service.is_none() && model != self.expected_model
+            || self.actual_model.as_ref().is_some_and(|known| known != &model)
             || self.response_id.as_ref().is_some_and(|known| known != &id)
         {
             return Err(error::malformed("Chat-compatible chunk identity or model changed"));
@@ -99,6 +110,7 @@ impl ChatDecoder {
             .map_err(|_| error::malformed("Chat-compatible SSE event identity was invalid"))?;
         let mut events = Vec::new();
         if self.response_id.is_none() {
+            self.actual_model = Some(model.clone());
             self.response_id = Some(id.clone());
             events.push(ModelEvent::ResponseStarted { response_id: Some(id), model: Some(model) });
         }
@@ -110,7 +122,15 @@ impl ChatDecoder {
             return Err(error::malformed("Chat-compatible multiple choices are not mapped"));
         }
         if let Some(choice) = choices.first() {
-            self.choice(choice, &mut events)?;
+            let accounting = self.service
+                == Some(peritus_provider_core::hosted::HostedService::OpenRouter)
+                && self.finish.is_some()
+                && value.get("usage").is_some_and(|value| !value.is_null());
+            if accounting {
+                self.accounting(choice)?;
+            } else {
+                self.choice(choice, &mut events)?;
+            }
         }
         if let Some(usage) = value.get("usage").filter(|value| !value.is_null()) {
             if !self.allow_usage {
@@ -125,6 +145,27 @@ impl ChatDecoder {
                 .get("provider_metadata")
                 .ok_or_else(|| error::malformed("Chat-compatible provider metadata disappeared"))?;
             events.push(super::ancillary::event(metadata, self.limits)?);
+        }
+        if self.service == Some(peritus_provider_core::hosted::HostedService::Groq)
+            && let Some(metadata) = value.get("x_groq")
+        {
+            if let Some(usage) = metadata.get("usage").filter(|value| !value.is_null())
+                && self.allow_usage
+            {
+                events.push(ModelEvent::Usage(fields::usage(usage)?));
+            }
+            events.push(super::ancillary::event(
+                &serde_json::json!({"x_groq":metadata}),
+                self.limits,
+            )?);
+        }
+        if self.service == Some(peritus_provider_core::hosted::HostedService::OpenRouter)
+            && let Some(provider) = value.get("provider")
+        {
+            events.push(super::ancillary::event(
+                &serde_json::json!({"provider":provider}),
+                self.limits,
+            )?);
         }
         if events.is_empty() {
             events.push(ModelEvent::Heartbeat);
@@ -147,14 +188,7 @@ impl ChatDecoder {
         choice: &Value,
         events: &mut Vec<ModelEvent>,
     ) -> Result<(), ProviderCoreError> {
-        let object = choice
-            .as_object()
-            .ok_or_else(|| error::malformed("Chat-compatible choice was not an object"))?;
-        for name in object.keys() {
-            if !matches!(name.as_str(), "index" | "delta" | "finish_reason" | "logprobs") {
-                return Err(error::malformed("Chat-compatible choice field was unmapped"));
-            }
-        }
+        fields::validate_choice(choice, self.service)?;
         if integer(choice, "index")? != 0 || self.finish.is_some() {
             return Err(error::malformed("Chat-compatible choice index or lifecycle was invalid"));
         }
@@ -177,7 +211,11 @@ impl ChatDecoder {
         events: &mut Vec<ModelEvent>,
     ) -> Result<(), ProviderCoreError> {
         for name in delta.keys() {
-            if !matches!(name.as_str(), "role" | "content" | "refusal" | "tool_calls") {
+            if !matches!(name.as_str(), "role" | "content" | "refusal" | "tool_calls")
+                && !self
+                    .service
+                    .is_some_and(|service| crate::hosted_reasoning::accepts(service, name))
+            {
                 return Err(error::malformed("Chat-compatible delta field was unmapped"));
             }
         }
@@ -186,9 +224,21 @@ impl ChatDecoder {
         {
             return Err(error::malformed("Chat-compatible delta role was not assistant"));
         }
-        if let Some(content) = delta.get("content").filter(|value| !value.is_null()) {
-            let content = content.as_str().filter(|value| !value.is_empty()).ok_or_else(|| {
-                error::malformed("Chat-compatible content delta was not a nonempty string")
+        for (name, value) in delta {
+            if self.service.is_some_and(|service| crate::hosted_reasoning::accepts(service, name)) {
+                crate::hosted_reasoning::append(
+                    &mut self.reasoning,
+                    name,
+                    value,
+                    self.limits.max_output_bytes(),
+                )?;
+            }
+        }
+        if let Some(content) =
+            delta.get("content").filter(|value| !value.is_null() && value.as_str() != Some(""))
+        {
+            let content = content.as_str().ok_or_else(|| {
+                error::malformed("Chat-compatible content delta was not a string")
             })?;
             let item = self.ensure_text(events)?;
             append(&mut self.text_bytes, content.as_bytes(), self.limits.max_output_bytes())?;
@@ -279,81 +329,6 @@ impl ChatDecoder {
         Ok(item)
     }
 
-    fn tool(
-        &mut self,
-        value: &Value,
-        events: &mut Vec<ModelEvent>,
-    ) -> Result<(), ProviderCoreError> {
-        let tool_index = u32::try_from(integer(value, "index")?)
-            .map_err(|_| error::malformed("Chat-compatible tool index exceeded u32"))?;
-        let function = value
-            .get("function")
-            .and_then(Value::as_object)
-            .ok_or_else(|| error::malformed("Chat-compatible tool delta omitted function"))?;
-        if !self.tools.contains_key(&tool_index) {
-            let id = ToolCallId::new(string(value, "id")?.to_owned())
-                .map_err(|_| error::malformed("Chat-compatible tool-call identity was invalid"))?;
-            if value.get("type").and_then(Value::as_str) != Some("function") {
-                return Err(error::malformed("Chat-compatible tool type was unmapped"));
-            }
-            let name = ToolName::new(string(&Value::Object(function.clone()), "name")?.to_owned())
-                .map_err(|_| error::malformed("Chat-compatible tool name was invalid"))?;
-            let response = self.response_id.as_ref().ok_or_else(|| {
-                error::malformed("Chat-compatible response identity was unavailable")
-            })?;
-            let item_id = ItemId::new(format!("{}-tool-{tool_index}", response.expose_for_wire()))
-                .map_err(|_| error::malformed("Chat-compatible tool item identity was invalid"))?;
-            events.push(ModelEvent::ItemStarted {
-                item_id: item_id.clone(),
-                index: tool_index.checked_add(65_536).ok_or_else(|| {
-                    error::limit("Chat-compatible normalized tool index overflowed")
-                })?,
-                kind: ItemKind::ToolCall,
-            });
-            events.push(ModelEvent::ToolCallStarted {
-                item_id: item_id.clone(),
-                call_id: id.clone(),
-                name: name.clone(),
-            });
-            self.tools.insert(
-                tool_index,
-                ToolState {
-                    item_id,
-                    call_id: id,
-                    name,
-                    bytes: peritus_provider_core::healing::ToolArgumentBuffer::default(),
-                    completed: false,
-                },
-            );
-        }
-        let state = self
-            .tools
-            .get_mut(&tool_index)
-            .ok_or_else(|| error::malformed("Chat-compatible tool state disappeared"))?;
-        if value
-            .get("id")
-            .and_then(Value::as_str)
-            .is_some_and(|id| id != state.call_id.expose_for_wire())
-            || function
-                .get("name")
-                .and_then(Value::as_str)
-                .is_some_and(|name| name != state.name.as_str())
-            || state.completed
-        {
-            return Err(error::malformed("Chat-compatible tool delta identity changed"));
-        }
-        if let Some(arguments) = function.get("arguments") {
-            let arguments = arguments.as_str().ok_or_else(|| {
-                error::malformed("Chat-compatible tool arguments were not a string")
-            })?;
-            if arguments.is_empty() {
-                return Ok(());
-            }
-            state.bytes.append(arguments.as_bytes(), self.limits)?;
-        }
-        Ok(())
-    }
-
     fn finish(
         &mut self,
         value: &str,
@@ -366,6 +341,7 @@ impl ChatDecoder {
             "content_filter" => FinishReason::Safety,
             _ => return Err(error::malformed("Chat-compatible finish reason was unmapped")),
         };
+        self.validate_tool_choice()?;
         if let Some(item) = &self.text {
             if self.structured {
                 events.extend(peritus_provider_core::healing::structured_output(
@@ -387,7 +363,9 @@ impl ChatDecoder {
             events.extend(state.bytes.complete(&state.call_id, self.limits)?);
             events.push(ModelEvent::ItemCompleted(state.item_id.clone()));
         }
-        self.finish = Some(reason.clone());
+        self.finish_reasoning(events)?;
+        self.finish =
+            Some(hosted::CompletedChoice { wire_reason: value.to_owned(), accounting_seen: false });
         events.push(ModelEvent::Finish(reason));
         Ok(())
     }

@@ -54,6 +54,7 @@ impl fmt::Debug for RoutingId {
 #[derive(Clone)]
 pub struct OpenAiConfig {
     endpoint: Endpoint,
+    opencode_gateway: bool,
     credential: CredentialReference,
     organization: Option<RoutingId>,
     project: Option<RoutingId>,
@@ -73,6 +74,40 @@ impl OpenAiConfig {
     /// Returns a redaction-safe configuration error if the fixed endpoint cannot be represented.
     pub fn new(credential: CredentialReference) -> Result<Self, ProviderCoreError> {
         Self::from_endpoint(Endpoint::new(OPENAI_ENDPOINT.to_owned())?, credential)
+    }
+
+    /// Binds the exact documented `OpenCode` Responses operation.
+    ///
+    /// # Errors
+    /// Rejects URLs outside `OpenCode`'s approved Zen and Go Responses endpoints.
+    pub fn opencode_gateway(
+        endpoint: Endpoint,
+        credential: CredentialReference,
+    ) -> Result<Self, ProviderCoreError> {
+        if !matches!(
+            endpoint.as_str(),
+            "https://opencode.ai/zen/v1/responses" | "https://opencode.ai/zen/go/v1/responses"
+        ) {
+            return Err(ProviderCoreError::configuration(
+                "openai_config",
+                "unrecognized OpenCode Responses endpoint",
+            ));
+        }
+        let mut config = Self::from_endpoint(endpoint, credential)?;
+        config.opencode_gateway = true;
+        Ok(config)
+    }
+
+    pub(crate) const fn is_gateway(&self) -> bool {
+        self.opencode_gateway
+    }
+
+    pub(crate) fn responses_endpoint(&self) -> Result<Endpoint, ProviderCoreError> {
+        if self.opencode_gateway {
+            Ok(self.endpoint.clone())
+        } else {
+            self.endpoint.with_path("/v1/responses")
+        }
     }
 
     /// Selects an explicit `OpenAI` organization routing identity.
@@ -109,6 +144,7 @@ impl OpenAiConfig {
     ) -> Result<Self, ProviderCoreError> {
         Ok(Self {
             endpoint,
+            opencode_gateway: false,
             credential,
             organization: None,
             project: None,
@@ -174,6 +210,7 @@ impl fmt::Debug for OpenAiConfig {
         formatter
             .debug_struct("OpenAiConfig")
             .field("endpoint", &self.endpoint)
+            .field("opencode_gateway", &self.opencode_gateway)
             .field("credential", &self.credential)
             .field("organization", &self.organization)
             .field("project", &self.project)

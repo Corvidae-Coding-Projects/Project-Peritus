@@ -11,10 +11,17 @@ use super::value::{object, optional_string, string};
 use crate::error;
 
 pub(super) fn encode(request: &ModelRequest) -> Result<Vec<u8>, ProviderCoreError> {
+    encode_hosted(request, None)
+}
+
+pub(super) fn encode_hosted(
+    request: &ModelRequest,
+    service: Option<peritus_provider_core::hosted::HostedService>,
+) -> Result<Vec<u8>, ProviderCoreError> {
     let generation = request.options().generation();
     let mut wire = Map::new();
     wire.insert("model".to_owned(), string(request.model().as_str()));
-    wire.insert("messages".to_owned(), Value::Array(messages(request)?));
+    wire.insert("messages".to_owned(), Value::Array(messages(request, service)?));
     wire.insert("stream".to_owned(), Value::Bool(true));
     wire.insert("stream_options".to_owned(), object([("include_usage", Value::Bool(true))]));
     wire.insert("max_completion_tokens".to_owned(), Value::from(generation.max_output_tokens()));
@@ -38,19 +45,30 @@ pub(super) fn encode(request: &ModelRequest) -> Result<Vec<u8>, ProviderCoreErro
             ),
         );
     }
+    if let Some(service) = service {
+        super::hosted::request_fields(service, &mut wire, request.tool_choice())?;
+    }
     serde_json::to_vec(&Value::Object(wire))
         .map_err(|_| error::invalid("Chat-compatible request serialization failed"))
 }
 
-fn messages(request: &ModelRequest) -> Result<Vec<Value>, ProviderCoreError> {
+fn messages(
+    request: &ModelRequest,
+    service: Option<peritus_provider_core::hosted::HostedService>,
+) -> Result<Vec<Value>, ProviderCoreError> {
     let mut values = Vec::new();
     for message in request.messages() {
-        project_message(message, &mut values)?;
+        project_message(message, &mut values, service)?;
     }
     Ok(values)
 }
 
-fn project_message(message: &Message, values: &mut Vec<Value>) -> Result<(), ProviderCoreError> {
+fn project_message(
+    message: &Message,
+    values: &mut Vec<Value>,
+    service: Option<peritus_provider_core::hosted::HostedService>,
+) -> Result<(), ProviderCoreError> {
+    let mut reasoning = Map::new();
     let mut parts = Vec::new();
     let mut tool_calls = Vec::new();
     for block in message.content() {
@@ -82,6 +100,9 @@ fn project_message(message: &Message, values: &mut Vec<Value>) -> Result<(), Pro
                     ("tool_call_id", string(result.call_id().expose_for_wire())),
                 ]));
             }
+            ContentBlock::Reasoning(replay) if service.is_some() => {
+                reasoning.extend(super::hosted::replay(replay, service)?);
+            }
             ContentBlock::Audio(_)
             | ContentBlock::Document(_)
             | ContentBlock::Reasoning(_)
@@ -90,8 +111,8 @@ fn project_message(message: &Message, values: &mut Vec<Value>) -> Result<(), Pro
             }
         }
     }
-    if !parts.is_empty() || !tool_calls.is_empty() {
-        let mut value = Map::new();
+    if !parts.is_empty() || !tool_calls.is_empty() || !reasoning.is_empty() {
+        let mut value = reasoning;
         value.insert("role".to_owned(), string(role_name(message.role())));
         if !parts.is_empty() {
             value.insert("content".to_owned(), Value::Array(parts));

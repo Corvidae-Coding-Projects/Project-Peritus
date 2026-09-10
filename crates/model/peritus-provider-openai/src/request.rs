@@ -133,9 +133,7 @@ pub fn http_request(
     credential: Credential,
 ) -> Result<HttpRequest, ProviderCoreError> {
     let (method, endpoint, body) = match plan {
-        RequestPlan::Create => {
-            (HttpMethod::Post, config.endpoint().with_path("/v1/responses")?, encode(request)?)
-        }
+        RequestPlan::Create => (HttpMethod::Post, config.responses_endpoint()?, encode(request)?),
         RequestPlan::Resume { response_id, sequence } => (
             HttpMethod::Get,
             resume_endpoint(config.endpoint(), response_id, *sequence)?,

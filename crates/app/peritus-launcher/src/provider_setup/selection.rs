@@ -2,7 +2,8 @@
 
 use peritus_product_state::ProviderKind;
 
-use super::{ANTHROPIC_API, CLAUDE, CODEX, COMPATIBLE, GOOGLE_API, OPENAI_API};
+#[cfg(test)]
+use super::{CLAUDE, CODEX};
 use crate::{LauncherError, terminal::Terminal};
 
 pub fn choose_provider_set(
@@ -81,20 +82,18 @@ fn parse_selection(answer: &str) -> Result<Vec<ProviderKind>, LauncherError> {
     }
     let mut selected = Vec::new();
     for item in normalized.split(',') {
-        let kind = match item {
-            "1" => CODEX,
-            "2" => CLAUDE,
-            "3" => OPENAI_API,
-            "4" => ANTHROPIC_API,
-            "5" => GOOGLE_API,
-            "6" => COMPATIBLE,
-            _ => {
-                return Err(LauncherError::Interaction(
+        let kind = item
+            .parse::<usize>()
+            .ok()
+            .and_then(|index| index.checked_sub(1))
+            .and_then(|index| ProviderKind::ALL.get(index))
+            .copied()
+            .ok_or_else(|| {
+                LauncherError::Interaction(
                     "choose displayed provider numbers separated by commas, or 0 for offline mode"
                         .to_owned(),
-                ));
-            }
-        };
+                )
+            })?;
         selected.push(kind);
     }
     selected.sort_unstable();

@@ -6,7 +6,10 @@ use serde_json::{Map, Value};
 
 use crate::error;
 
-pub(super) fn validate_top_level(value: &Map<String, Value>) -> Result<(), ProviderCoreError> {
+pub(super) fn validate_top_level(
+    value: &Map<String, Value>,
+    service: Option<peritus_provider_core::hosted::HostedService>,
+) -> Result<(), ProviderCoreError> {
     for name in value.keys() {
         if !matches!(
             name.as_str(),
@@ -18,6 +21,13 @@ pub(super) fn validate_top_level(value: &Map<String, Value>) -> Result<(), Provi
                 | "system_fingerprint"
                 | "service_tier"
                 | "provider_metadata"
+        ) && !matches!(
+            (service, name.as_str()),
+            (Some(peritus_provider_core::hosted::HostedService::Groq), "x_groq")
+                | (
+                    Some(peritus_provider_core::hosted::HostedService::OpenRouter),
+                    "provider" | "error"
+                )
         ) {
             return Err(error::malformed("Chat-compatible top-level field was unmapped"));
         }
@@ -74,5 +84,24 @@ pub(super) fn append(
         return Err(error::limit("Chat-compatible fragmented output exceeded aggregate bounds"));
     }
     target.extend_from_slice(value);
+    Ok(())
+}
+
+/// Validate both semantic choices and content-free final accounting choices.
+pub(super) fn validate_choice(
+    choice: &Value,
+    service: Option<peritus_provider_core::hosted::HostedService>,
+) -> Result<(), ProviderCoreError> {
+    let object = choice
+        .as_object()
+        .ok_or_else(|| error::malformed("Chat-compatible choice was not an object"))?;
+    for name in object.keys() {
+        let allowed = matches!(name.as_str(), "index" | "delta" | "finish_reason" | "logprobs")
+            || (name == "native_finish_reason"
+                && service == Some(peritus_provider_core::hosted::HostedService::OpenRouter));
+        if !allowed {
+            return Err(error::malformed("Chat-compatible choice field was unmapped"));
+        }
+    }
     Ok(())
 }

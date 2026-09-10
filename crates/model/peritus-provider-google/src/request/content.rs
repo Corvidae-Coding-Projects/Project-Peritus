@@ -24,7 +24,10 @@ pub(super) fn interaction_content(block: &ContentBlock) -> Result<Value, Provide
     }
 }
 
-pub(super) fn generate_part(block: &ContentBlock) -> Result<Value, ProviderCoreError> {
+pub(super) fn generate_part(
+    block: &ContentBlock,
+    request: &peritus_model_protocol::ModelRequest,
+) -> Result<Value, ProviderCoreError> {
     match block {
         ContentBlock::Text(text) | ContentBlock::Refusal(text) => {
             Ok(object([("text", string(text.expose_for_wire()))]))
@@ -42,7 +45,19 @@ pub(super) fn generate_part(block: &ContentBlock) -> Result<Value, ProviderCoreE
         ContentBlock::ToolResult(result) => {
             let mut function = Map::new();
             function.insert("id".to_owned(), string(result.call_id().expose_for_wire()));
-            function.insert("name".to_owned(), string("peritus_function"));
+            let name = request
+                .messages()
+                .iter()
+                .flat_map(peritus_model_protocol::Message::content)
+                .rev()
+                .find_map(|block| match block {
+                    ContentBlock::ToolCall(call) if call.id() == result.call_id() => {
+                        Some(call.name().as_str())
+                    }
+                    _ => None,
+                })
+                .ok_or_else(|| invalid("Google function result has no matching call name"))?;
+            function.insert("name".to_owned(), string(name));
             function.insert("response".to_owned(), parse(result.output().canonical_bytes())?);
             if result.is_error() {
                 function.insert("isError".to_owned(), Value::Bool(true));
@@ -104,8 +119,11 @@ pub(super) fn interaction_replay(replay: &ReasoningReplay) -> Result<Value, Prov
 }
 
 fn checked_schema(tool: &ToolDefinition) -> Result<Value, ProviderCoreError> {
-    if tool.parameters().dialect() != SchemaDialect::GeminiSubset {
-        return Err(invalid("Google function schemas require the Gemini JSON Schema subset"));
+    if !matches!(
+        tool.parameters().dialect(),
+        SchemaDialect::GeminiSubset | SchemaDialect::Draft202012
+    ) {
+        return Err(invalid("Google function schemas require a supported object JSON Schema"));
     }
     let value = parse(tool.parameters().canonical_bytes())?;
     if tool.strict()

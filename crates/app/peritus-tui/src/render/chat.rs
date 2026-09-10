@@ -215,7 +215,9 @@ fn draw_transcript(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
             lines
                 .push(Line::styled(label, Style::default().fg(color).add_modifier(Modifier::BOLD)));
             append_lines(&mut lines, activity.text());
-            if model.chat.expanded && !activity.detail().is_empty() {
+            if (model.chat.expanded || activity.kind() == ProductActivityKind::Error)
+                && !activity.detail().is_empty()
+            {
                 append_lines(&mut lines, activity.detail());
             }
             lines.push(Line::from(""));

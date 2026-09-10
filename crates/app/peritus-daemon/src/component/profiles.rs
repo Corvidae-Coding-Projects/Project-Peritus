@@ -76,6 +76,15 @@ impl OfficialExecutableSelection {
 /// credential reference: the unmodified official executable owns login state and acts only as the
 /// constrained transport selected here.
 pub enum ProviderDeclaration {
+    /// Named hosted API with per-model discovery and protocol routing.
+    Hosted {
+        /// Reviewed service identity and credential destination.
+        service: peritus_provider_core::hosted::HostedService,
+        /// Opaque credential reference resolved only at the HTTP boundary.
+        credential: peritus_provider_core::CredentialReference,
+        /// Immutable selected model and protocol contract.
+        profile: ProviderProfile,
+    },
     /// First-party `OpenAI` Responses HTTP adapter.
     OpenAi {
         /// Checked endpoint, routing, limits, and opaque credential reference.
@@ -159,7 +168,7 @@ impl ProviderDeclaration {
     #[must_use]
     pub const fn profile(&self) -> &ProviderProfile {
         match self {
-            Self::OpenAi { profile, .. } => profile,
+            Self::OpenAi { profile, .. } | Self::Hosted { profile, .. } => profile,
             Self::Anthropic(config) => config.profile(),
             Self::Google(config) => config.profile(),
             Self::Compatible { profile, .. } => profile.provider_profile(),

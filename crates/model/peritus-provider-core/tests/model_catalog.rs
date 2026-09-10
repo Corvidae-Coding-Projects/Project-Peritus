@@ -13,6 +13,7 @@ use std::{collections::VecDeque, sync::Mutex};
 struct CatalogTransport {
     pages: Mutex<VecDeque<(u16, &'static str)>>,
     urls: Mutex<Vec<String>>,
+    header_counts: Mutex<Vec<usize>>,
 }
 fn limits() -> HttpLimits {
     HttpLimits::new([16, 4096, 1024, 65536, 65536]).expect("limits")
@@ -27,6 +28,7 @@ impl HttpTransport for CatalogTransport {
             assert_eq!(request.method(), HttpMethod::Get);
             assert!(request.body().is_empty(), "discovery must never send inference");
             self.urls.lock().expect("urls").push(request.endpoint().as_str().to_owned());
+            self.header_counts.lock().expect("headers").push(request.headers().iter().count());
             let (status, page) =
                 self.pages.lock().expect("pages").pop_front().expect("metadata page");
             HttpResponse::new(
@@ -39,7 +41,99 @@ impl HttpTransport for CatalogTransport {
     }
 }
 fn transport(pages: Vec<(u16, &'static str)>) -> CatalogTransport {
-    CatalogTransport { pages: Mutex::new(pages.into()), urls: Mutex::new(Vec::new()) }
+    CatalogTransport {
+        pages: Mutex::new(pages.into()),
+        urls: Mutex::new(Vec::new()),
+        header_counts: Mutex::new(Vec::new()),
+    }
+}
+
+#[test]
+fn hosted_discovery_never_sends_credentials_to_opencode_metadata_or_adds_unlisted_models() {
+    runtime::block_on(async {
+        let transport = transport(vec![
+            (200, r#"{"data":[{"id":"future-model"},{"id":"no-metadata"}]}"#),
+            (
+                200,
+                r#"{"opencode":{"npm":"@ai-sdk/openai-compatible","models":{"future-model":{"provider":{"npm":"@ai-sdk/anthropic","api":"https://untrusted.invalid"},"tool_call":true},"not-in-catalog":{"tool_call":true}}}}"#,
+            ),
+        ]);
+        let headers = || {
+            HttpHeaders::new(
+                vec![peritus_provider_core::Header::new(
+                    peritus_provider_core::HeaderName::new("authorization".to_owned())?,
+                    b"Bearer fixture-secret".to_vec(),
+                )?],
+                limits(),
+            )
+        };
+        let models = peritus_provider_core::hosted::discover_hosted_models(
+            peritus_provider_core::hosted::HostedService::OpenCodeZen,
+            &transport,
+            &headers,
+            limits(),
+            &CancellationToken::new(),
+        )
+        .await
+        .expect("models");
+        assert_eq!(models.len(), 2);
+        assert_eq!(models[0].dialect, Some(peritus_model_protocol::WireDialect::AnthropicMessages));
+        assert_eq!(models[1].dialect, None);
+        assert_eq!(*transport.header_counts.lock().expect("headers"), vec![1, 0]);
+        assert_eq!(transport.urls.lock().expect("URLs")[1], "https://models.opencode.ai/api.json");
+    });
+}
+
+#[test]
+fn hosted_catalog_failure_returns_no_bundled_model_and_metadata_failure_keeps_unknowns() {
+    runtime::block_on(async {
+        for (pages, succeeds) in [
+            (vec![(401, "private-error-body")], false),
+            (vec![(200, r#"{"data":[{"id":"new-model"}]}"#), (503, "private-error-body")], true),
+        ] {
+            let transport = transport(pages);
+            let result = peritus_provider_core::hosted::discover_hosted_models(
+                peritus_provider_core::hosted::HostedService::OpenCodeZen,
+                &transport,
+                &|| Ok(HttpHeaders::empty()),
+                limits(),
+                &CancellationToken::new(),
+            )
+            .await;
+            if succeeds {
+                assert_eq!(result.expect("catalog")[0].dialect, None);
+            } else {
+                assert!(
+                    !result.expect_err("no fallback").to_string().contains("private-error-body")
+                );
+            }
+        }
+    });
+}
+
+#[test]
+fn fireworks_uses_documented_metadata_and_pagination_and_together_uses_an_array() {
+    runtime::block_on(async {
+        let transport = transport(vec![
+            (
+                200,
+                r#"{"models":[{"name":"accounts/fireworks/models/new","conversationConfig":{},"supportsServerless":true,"supportsTools":true,"contextLength":12345}],"nextPageToken":"next"}"#,
+            ),
+            (200, r#"{"models":[]}"#),
+        ]);
+        let models = discover(&transport, CatalogDialect::Fireworks).await.expect("models");
+        assert_eq!(models[0].id.as_str(), "accounts/fireworks/models/new");
+        assert_eq!(models[0].tools, Some(true));
+        assert_eq!(models[0].input_tokens, Some(12345));
+        assert!(transport.urls.lock().expect("URLs")[1].ends_with("pageToken=next"));
+        let models = discover(
+            &self::transport(vec![(200, r#"[{"id":"vendor/new-model"}]"#)]),
+            CatalogDialect::Together,
+        )
+        .await
+        .expect("Together");
+        assert_eq!(models[0].id.as_str(), "vendor/new-model");
+    });
 }
 async fn discover(
     transport: &CatalogTransport,

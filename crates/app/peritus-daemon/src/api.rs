@@ -7,7 +7,7 @@ pub use crate::component::{
     OfficialExecutableSelection, ProviderAdapterKind, ProviderDeclaration, ProviderProfileKey,
     ProviderRegistry, ProviderRegistryError, ProviderRegistryErrorKind, ProviderRegistryLimits,
     ToolComponentError, ToolComponentErrorKind, ToolComponents, ToolDispatcherRoute,
-    ToolRegistration,
+    ToolRegistration, test_provider_connection,
 };
 pub use crate::config::{
     ApprovalRegistryDeclaration, ContextPolicy, DaemonConfig, DaemonLimits, DaemonPaths,

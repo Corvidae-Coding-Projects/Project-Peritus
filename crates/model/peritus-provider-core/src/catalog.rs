@@ -24,6 +24,8 @@ pub struct DiscoveredModel {
     pub id: ModelName,
     /// Human-facing provider label.
     pub label: String,
+    /// Advertised wire protocol, when supplied by a reviewed metadata source.
+    pub dialect: Option<peritus_model_protocol::WireDialect>,
     /// Advertised tool-calling support, when the catalog actually supplies it.
     pub tools: Option<bool>,
     /// Advertised input-token ceiling.
@@ -43,7 +45,7 @@ impl DiscoveredModel {
         if label.is_empty() || label.len() > 512 || label.chars().any(char::is_control) {
             return Err(unavailable("catalog model label is invalid"));
         }
-        Ok(Self { id, label, tools: None, input_tokens: None, output_tokens: None })
+        Ok(Self { id, label, dialect: None, tools: None, input_tokens: None, output_tokens: None })
     }
 }
 

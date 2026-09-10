@@ -60,14 +60,16 @@ pub(super) fn messages(request: &ModelRequest) -> Result<Vec<Value>, ProviderCor
 }
 
 pub(super) fn reasoning_includes(request: &ModelRequest) -> Vec<&'static str> {
-    request
-        .messages()
-        .iter()
-        .flat_map(Message::content)
-        .any(|block| matches!(block, ContentBlock::Reasoning(_)))
-        .then_some("reasoning.encrypted_content")
-        .into_iter()
-        .collect()
+    (request.negotiated().includes(peritus_model_protocol::Capability::ReasoningReplay)
+        || request.negotiated().includes(peritus_model_protocol::Capability::ReasoningControls)
+        || request
+            .messages()
+            .iter()
+            .flat_map(Message::content)
+            .any(|block| matches!(block, ContentBlock::Reasoning(_))))
+    .then_some("reasoning.encrypted_content")
+    .into_iter()
+    .collect()
 }
 
 fn project_message(message: &Message, items: &mut Vec<Value>) -> Result<(), ProviderCoreError> {

@@ -279,6 +279,7 @@ mod tests {
                     provider: "fixture".to_owned(),
                     category,
                     diagnostic_code: "fixture.stop".to_owned(),
+                    http_status: None,
                 }
             ));
         }
@@ -315,6 +316,7 @@ mod tests {
             provider: "fixture".to_owned(),
             category: FailureCategory::IncompleteStream,
             diagnostic_code: "fixture.interrupted".to_owned(),
+            http_status: None,
         };
         assert_eq!(recovery.retry(&interrupted), Some("incomplete_stream"));
         assert_eq!(recovery.retry(&interrupted), Some("incomplete_stream"));
@@ -326,6 +328,7 @@ mod tests {
                 provider: "fixture".to_owned(),
                 category: FailureCategory::Safety,
                 diagnostic_code: "fixture.safety".to_owned(),
+                http_status: None,
             }),
             None
         );
@@ -334,6 +337,7 @@ mod tests {
                 provider: "fixture".to_owned(),
                 category: FailureCategory::Timeout,
                 diagnostic_code: "fixture.timeout".to_owned(),
+                http_status: None,
             }),
             Some("timeout")
         );
@@ -343,6 +347,7 @@ mod tests {
                 provider: "fixture".to_owned(),
                 category: FailureCategory::AmbiguousAcceptance,
                 diagnostic_code: "fixture.ambiguous".to_owned(),
+                http_status: None,
             }),
             None
         );

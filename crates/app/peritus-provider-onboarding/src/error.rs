@@ -8,6 +8,9 @@ pub enum OnboardingError {
         "model discovery unavailable; check authentication or explicitly enter a manual model ID"
     )]
     ModelCatalog,
+    /// Safe model-discovery failure retaining the actual operation diagnostic.
+    #[error("model discovery failed: {0}")]
+    ModelDiscovery(peritus_provider_core::ProviderCoreError),
     /// The selected provider is not an official account-backed route.
     #[error("selected provider does not support official account login")]
     UnsupportedProvider,

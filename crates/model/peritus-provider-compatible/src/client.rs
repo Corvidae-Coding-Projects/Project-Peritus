@@ -39,6 +39,16 @@ impl CompatibleClient {
         profile: CompatibleProfile,
         credentials: Arc<dyn CredentialSource>,
     ) -> Result<Self, ProviderCoreError> {
+        if profile
+            .provider_profile()
+            .capabilities()
+            .supports(peritus_model_protocol::Capability::ReasoningReplay)
+            && config.hosted_service().is_none()
+        {
+            return Err(crate::error::configuration(
+                "reasoning replay requires a named hosted contract",
+            ));
+        }
         let transport = ReqwestTransport::new(config.http_limits())?;
         Ok(Self::compose(config, profile, credentials, Arc::new(transport)))
     }
@@ -92,6 +102,9 @@ impl ModelProvider for CompatibleClient {
             peritus_model_protocol::WireDialect::CompatibleResponses => {
                 CompatibleProfile::responses(profile)?
             }
+            _ if self.config.hosted_service().is_some() => {
+                CompatibleProfile::hosted_chat_completions(profile)?
+            }
             _ => CompatibleProfile::chat_completions(profile)?,
         };
         Ok(Arc::new(Self::compose(
@@ -125,7 +138,7 @@ impl ModelProvider for CompatibleClient {
     ) -> BoxFuture<'_, Result<OwnedModelStream, ProviderCoreError>> {
         Box::pin(async move {
             validate_request_profile(self.profile.provider_profile(), &request)?;
-            request::validate(&self.profile, &request)?;
+            request::validate_for_service(&self.profile, &request, self.config.hosted_service())?;
             let started = Instant::now();
             let mut attempt = 1_u32;
             let mut cumulative_bytes = 0_u64;
@@ -243,7 +256,9 @@ impl ModelProvider for CompatibleClient {
                     request.negotiated().includes(peritus_model_protocol::Capability::UsageDetail),
                     self.config.protocol_limits(),
                     response_metadata,
-                )?;
+                )?
+                .with_hosted_service(self.config.hosted_service())
+                .with_tool_choice(request.tool_choice().clone());
                 return Ok(OwnedModelStream::new(stream, cancellation));
             }
         })

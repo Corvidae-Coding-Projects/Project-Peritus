@@ -8,6 +8,7 @@ use peritus_provider_onboarding::{
 
 use crate::{LauncherError, PreparedProduct, ProductBootstrap};
 
+mod connection;
 mod direct;
 mod install;
 mod models;
@@ -17,11 +18,8 @@ use crate::terminal::Terminal;
 use selection::{choose_default, choose_failover, choose_provider_set};
 
 const CODEX: ProviderKind = ProviderKind::CodexAccount;
+#[cfg(test)]
 const CLAUDE: ProviderKind = ProviderKind::ClaudeAccount;
-const OPENAI_API: ProviderKind = ProviderKind::OpenAiApi;
-const ANTHROPIC_API: ProviderKind = ProviderKind::AnthropicApi;
-const GOOGLE_API: ProviderKind = ProviderKind::GoogleGeminiApi;
-const COMPATIBLE: ProviderKind = ProviderKind::CompatibleEndpoint;
 
 /// Completes first-run provider setup or repairs only unhealthy retained providers.
 pub fn ensure_configured(prepared: PreparedProduct) -> Result<PreparedProduct, LauncherError> {
@@ -170,11 +168,14 @@ fn show_catalog(
             item.status().label()
         ))?;
     }
-    for (index, kind) in [OPENAI_API, ANTHROPIC_API, GOOGLE_API, COMPATIBLE].into_iter().enumerate()
-    {
+    for (index, kind) in ProviderKind::ALL.into_iter().enumerate().skip(2) {
         let configured = current.and_then(|selection| selection.direct_profile(kind)).is_some();
-        let status = if configured { "selected, Configured" } else { "Add key" };
-        terminal.line(&format!("  {}. {:<38} {status}", index + 3, kind.label()))?;
+        let status = if configured {
+            "selected, configured; connection not tested this session"
+        } else {
+            "Add key"
+        };
+        terminal.line(&format!("  {}. {:<38} {status}", index + 1, kind.label()))?;
     }
     terminal.line("  0. Offline browse mode")?;
     terminal.line("")
@@ -191,21 +192,7 @@ fn activate_requested(
     for kind in requested {
         if kind.is_direct() {
             let profile = match existing.and_then(|selection| selection.direct_profile(kind)) {
-                Some(profile) => {
-                    let answer = terminal.prompt(&format!(
-                        "{} is already configured. Enter to keep it, or type r to replace its key: ",
-                        kind.label()
-                    ))?;
-                    if answer.eq_ignore_ascii_case("r") {
-                        direct::setup(terminal, kind)?
-                    } else if answer.is_empty() {
-                        profile.clone()
-                    } else {
-                        return Err(LauncherError::Interaction(
-                            "enter r to replace the key, or press Enter to keep it".to_owned(),
-                        ));
-                    }
-                }
+                Some(profile) => connection::existing(terminal, profile)?,
                 None => direct::setup(terminal, kind)?,
             };
             enabled.push(kind);

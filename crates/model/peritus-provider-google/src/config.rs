@@ -54,6 +54,30 @@ impl GoogleConfig {
         Ok(Self { endpoint, credential, profile, http_limits, framing_limits, retry_policy })
     }
 
+    /// Creates the explicitly reviewed `OpenCode` Google gateway route.
+    ///
+    /// # Errors
+    /// Rejects any endpoint outside `OpenCode`'s exact documented prefixes and validates the native
+    /// protocol profile. Ordinary Google configuration still requires a clean origin.
+    pub fn opencode_gateway(
+        endpoint: Endpoint,
+        credential: CredentialReference,
+        profile: ProviderProfile,
+        http_limits: HttpLimits,
+        framing_limits: FramingLimits,
+        retry_policy: RetryPolicy,
+    ) -> Result<Self, ProviderCoreError> {
+        validate_google_profile(&profile)?;
+        if !matches!(endpoint.as_str(), "https://opencode.ai/zen/" | "https://opencode.ai/zen/go/")
+        {
+            return Err(ProviderCoreError::configuration(
+                "google_config",
+                "unrecognized OpenCode Google gateway prefix",
+            ));
+        }
+        Ok(Self { endpoint, credential, profile, http_limits, framing_limits, retry_policy })
+    }
+
     /// Returns the exact immutable provider profile.
     #[must_use]
     pub const fn profile(&self) -> &ProviderProfile {

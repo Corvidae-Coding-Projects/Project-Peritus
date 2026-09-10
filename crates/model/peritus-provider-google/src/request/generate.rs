@@ -60,8 +60,11 @@ fn contents(request: &ModelRequest) -> Result<(Option<Value>, Vec<Value>), Provi
                 }
             }
             role => {
-                let parts =
-                    message.content().iter().map(generate_part).collect::<Result<Vec<_>, _>>()?;
+                let parts = message
+                    .content()
+                    .iter()
+                    .map(|block| generate_part(block, request))
+                    .collect::<Result<Vec<_>, _>>()?;
                 contents.push(object([
                     ("role", string(role_name(role))),
                     ("parts", Value::Array(parts)),
