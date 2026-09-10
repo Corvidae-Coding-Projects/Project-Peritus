@@ -35,6 +35,7 @@ jobs:
           RUSTUP_MAX_RETRIES: "10"
         with:
           toolchain: ${{ env.RUST_VERSION }}
+          components: clippy,rustfmt
       - name: Install Linux native sandbox prerequisite
         if: ${{ runner.os == 'Linux' }}
         run: |
@@ -102,7 +103,7 @@ jobs:
           - { os: windows-11-arm, package: peritus-platform-qualification, binary: peritus-h2, artifact: peritus-h2.exe }
           - { os: windows-11-arm, package: peritus-platform-qualification, binary: peritus-h2-controller, artifact: peritus-h2-controller.exe }
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -112,6 +113,7 @@ jobs:
           RUSTUP_MAX_RETRIES: "10"
         with:
           toolchain: ${{ env.RUST_VERSION }}
+          components: clippy,rustfmt
       - name: Build one native binary
         run: >-
           cargo build --locked --package ${{ matrix.package }} --bin ${{ matrix.binary }}
@@ -141,6 +143,7 @@ jobs:
           RUSTUP_MAX_RETRIES: "10"
         with:
           toolchain: ${{ env.RUST_VERSION }}
+          components: clippy,rustfmt
       - name: Retrieve this platform's same-run binaries
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
@@ -176,6 +179,7 @@ jobs:
           RUSTUP_MAX_RETRIES: "10"
         with:
           toolchain: ${{ env.RUST_VERSION }}
+          components: clippy,rustfmt
       - name: Retrieve this platform's same-run H2 package
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:

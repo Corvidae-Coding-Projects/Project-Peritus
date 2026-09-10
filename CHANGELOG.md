@@ -2,6 +2,9 @@
 
 ## 0.0.1
 
+- Start reliably with long Unix state paths by selecting a short, owner-protected runtime socket
+  location. Preserve asynchronous clients and keep serving after early client disconnects, with
+  bounded backoff for retryable listener errors.
 - Prepare the first versioned release with native Linux, macOS, and Windows
   archives for x86-64 and ARM64.
 - Add genuine Debian and RPM source, binary, and debug packages built offline

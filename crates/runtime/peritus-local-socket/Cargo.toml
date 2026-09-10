@@ -1,0 +1,30 @@
+[package]
+name = "peritus-local-socket"
+description = "Bounded, owner-protected filesystem locations for local Peritus sockets"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+readme = "README.md"
+keywords = ["unix-socket", "ipc", "macos", "linux"]
+categories = ["os::unix-apis"]
+
+[package.metadata.peritus]
+owner = "G0"
+layer = "runtime"
+verification-class = "H"
+
+[package.metadata.verus]
+verify = true
+
+[dependencies]
+sha2.workspace = true
+vstd.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

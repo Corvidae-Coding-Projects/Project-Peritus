@@ -135,6 +135,16 @@ G0 exposes A3 only over a local operating-system endpoint. Unix platforms use a 
 Unix-domain socket. Windows uses a local named pipe with an owner-restricted security descriptor.
 There is no TCP listener or remote bind option.
 
+The socket stays beneath the protected state root when that address fits the standard Unix
+socket limit (103 path bytes on macOS, 107 on Linux). Otherwise `peritus-local-socket` derives
+`/tmp/peritus-<32-hex>/daemon.sock` from the complete original address. G0 creates or validates
+that private directory as an owned, real mode-0700 directory before binding a mode-0600 socket.
+Unsafe existing directories fail closed. Durable state and the instance lock remain at the
+configured state root. G0, the launcher, and native qualification agree on the selected address;
+all clients use ordinary socket APIs with asynchronous connect in the interactive clients.
+An early-closing or unauthenticated peer is rejected individually. Retryable listener failures
+back off without delaying shutdown or existing connection tasks.
+
 The endpoint authenticates the operating-system peer before negotiation and resolves it through
 the durable one-to-one local-principal binding. A successful hello establishes or resumes a
 durable session. Every later frame must echo the exact negotiated protocol ID, version, session,

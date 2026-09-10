@@ -2309,6 +2309,7 @@ dependencies = [
  "peritus-journal",
  "peritus-kernel",
  "peritus-leases",
+ "peritus-local-socket",
  "peritus-migrations",
  "peritus-model-protocol",
  "peritus-orchestrator",
@@ -2563,6 +2564,7 @@ dependencies = [
  "peritus-approval",
  "peritus-daemon",
  "peritus-git",
+ "peritus-local-socket",
  "peritus-product-state",
  "peritus-provider-onboarding",
  "peritus-tui",
@@ -2585,6 +2587,15 @@ dependencies = [
  "peritus-policy",
  "peritus-test-support",
  "peritus-types",
+ "vstd",
+]
+
+[[package]]
+name = "peritus-local-socket"
+version = "0.0.1"
+dependencies = [
+ "sha2 0.11.0",
+ "tempfile",
  "vstd",
 ]
 
@@ -2725,6 +2736,7 @@ version = "0.0.1"
 dependencies = [
  "nix 0.31.3",
  "peritus-approval",
+ "peritus-local-socket",
  "peritus-sandbox-linux",
  "peritus-sandbox-macos",
  "peritus-sandbox-windows",

@@ -131,8 +131,11 @@ sha256("peritus/daemon-endpoint/v1\0" || store_id)[0..16]
 endpoint-name = "peritus-" || lowercase-hex(digest-prefix)
 ```
 
-On Linux and macOS the address is `<state_root>/<endpoint-name>.sock`, owned by the state-root user
-at mode `0600`. On Windows it is `\\.\pipe\<endpoint-name>`, created with an owner-restricted
+On Linux and macOS the address is `<state_root>/<endpoint-name>.sock` when it fits the standard
+socket limit. Longer addresses map to `/tmp/peritus-<32-hex>/daemon.sock`, with a digest of the
+complete original address and an owned mode-0700 parent directory. The socket is owned by the
+state-root user at mode `0600`; clients use ordinary socket APIs. On Windows the address is
+`\\.\pipe\<endpoint-name>`, created with an owner-restricted
 security descriptor. `state_root/daemon.instance` publishes the live endpoint name, PID, and
 process birth token while the instance lock is held. The record disappears on orderly teardown;
 it is discovery evidence, not authority. No platform permits a TCP or remote listener.

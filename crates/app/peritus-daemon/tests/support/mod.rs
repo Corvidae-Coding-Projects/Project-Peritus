@@ -5,19 +5,9 @@ use std::{fs, path::Path};
 use peritus_approval::CredentialRegistrySnapshot;
 use peritus_daemon::DaemonConfig;
 use peritus_types::RevisionNumber;
-#[cfg(unix)]
-use tempfile::Builder;
 use tempfile::TempDir;
 
-/// Creates one short, isolated root suitable for strict local-endpoint tests.
-#[cfg(unix)]
-pub fn temporary_root() -> TempDir {
-    let base = fs::canonicalize("/tmp").expect("canonical short temporary base");
-    Builder::new().prefix("pd-").tempdir_in(base).expect("short temporary daemon root")
-}
-
-/// Creates one isolated root on platforms without Unix-socket pathname limits.
-#[cfg(not(unix))]
+/// Creates one isolated root; endpoint addressing no longer constrains the state's path length.
 pub fn temporary_root() -> TempDir {
     TempDir::new().expect("temporary daemon root")
 }

@@ -29,6 +29,7 @@ peritus-git = { version = "=0.0.1", path = "../../runtime/peritus-git" }
 peritus-journal = { version = "=0.0.1", path = "../../state/peritus-journal" }
 peritus-kernel = { version = "=0.0.1", path = "../../foundation/peritus-kernel" }
 peritus-leases = { version = "=0.0.1", path = "../../state/peritus-leases" }
+peritus-local-socket = { version = "=0.0.1", path = "../../runtime/peritus-local-socket" }
 peritus-migrations = { version = "=0.0.1", path = "../../state/peritus-migrations" }
 peritus-model-protocol = { version = "=0.0.1", path = "../../model/peritus-model-protocol" }
 peritus-policy = { version = "=0.0.1", path = "../../foundation/peritus-policy" }

@@ -17,6 +17,9 @@ mod fixtures;
 
 use fixtures::*;
 
+// These scenarios run real compiler gates; cold native Windows setup can exceed one minute.
+const SCENARIO_TIMEOUT: Duration = Duration::from_mins(3);
+
 #[test]
 fn early_failure_after_durable_restore_retains_exact_candidate_paths() {
     run_async(async {
@@ -32,13 +35,19 @@ fn early_failure_after_durable_restore_retains_exact_candidate_paths() {
                 0x74,
                 roles(writer.clone(), unavailable.clone(), writer),
                 Arc::new(AtomicBool::new(false)),
-                Duration::from_mins(1),
+                SCENARIO_TIMEOUT,
                 None,
             ),
             Arc::new(|_| {}),
         )
         .await
         .expect("candidate retained");
+        assert_eq!(
+            first.settlement().cause(),
+            SettlementCause::Provider,
+            "expected the scripted reviewer failure after candidate creation: {:?}",
+            first.detail(),
+        );
         let bytes = first.resume().expect("resume").encode_durable().expect("encode");
         let mut durable: serde_json::Value = serde_json::from_slice(&bytes).expect("wire");
         durable["finding_state"] =
@@ -56,7 +65,7 @@ fn early_failure_after_durable_restore_retains_exact_candidate_paths() {
                 0x74,
                 roles(unavailable.clone(), unavailable.clone(), unavailable),
                 Arc::new(AtomicBool::new(false)),
-                Duration::from_mins(1),
+                SCENARIO_TIMEOUT,
                 Some(resume),
             ),
             Arc::new(|_| {}),
@@ -86,7 +95,7 @@ fn provider_failure_after_mutation_returns_the_exact_candidate() {
                 0x13,
                 roles(writer.clone(), writer.clone(), writer),
                 Arc::new(AtomicBool::new(false)),
-                Duration::from_mins(1),
+                SCENARIO_TIMEOUT,
                 None,
             ),
             Arc::new(|_| {}),
@@ -117,7 +126,7 @@ fn reviewer_failure_resumes_review_without_design_writer_or_gates() {
                 0x24,
                 roles(writer.clone(), unavailable_reviewer, writer.clone()),
                 Arc::new(AtomicBool::new(false)),
-                Duration::from_mins(1),
+                SCENARIO_TIMEOUT,
                 None,
             ),
             Arc::new(|_| {}),
@@ -141,7 +150,7 @@ fn reviewer_failure_resumes_review_without_design_writer_or_gates() {
                 0x25,
                 roles(writer.clone(), writer.clone(), writer.clone()),
                 Arc::new(AtomicBool::new(false)),
-                Duration::from_mins(1),
+                SCENARIO_TIMEOUT,
                 Some(resume.clone()),
             ),
             Arc::new(|_| {}),
@@ -161,7 +170,7 @@ fn reviewer_failure_resumes_review_without_design_writer_or_gates() {
                 0x24,
                 roles(writer.clone(), reviewer, writer),
                 Arc::new(AtomicBool::new(false)),
-                Duration::from_mins(1),
+                SCENARIO_TIMEOUT,
                 Some(resume),
             ),
             Arc::new(move |update| observed.lock().expect("phases").push(update.phase)),
@@ -202,7 +211,7 @@ fn cancellation_during_review_preserves_a_pending_review_candidate() {
                 0x34,
                 roles(writer.clone(), reviewer, writer),
                 cancelled,
-                Duration::from_mins(1),
+                SCENARIO_TIMEOUT,
                 None,
             ),
             observer,
@@ -268,7 +277,7 @@ fn failing_gates_remain_a_candidate_when_the_fixer_provider_fails() {
                 0x55,
                 roles(writer, reviewer, fixer),
                 Arc::new(AtomicBool::new(false)),
-                Duration::from_mins(1),
+                SCENARIO_TIMEOUT,
                 None,
             ),
             Arc::new(|_| {}),
@@ -302,7 +311,7 @@ fn failure_during_fix_resumes_the_fixer_then_rechecks_and_accepts() {
                 0x65,
                 roles(writer.clone(), reviewer.clone(), interrupted_fixer),
                 Arc::new(AtomicBool::new(false)),
-                Duration::from_mins(1),
+                SCENARIO_TIMEOUT,
                 None,
             ),
             Arc::new(|_| {}),
@@ -324,7 +333,7 @@ fn failure_during_fix_resumes_the_fixer_then_rechecks_and_accepts() {
                 0x65,
                 roles(writer, reviewer, recovered_fixer),
                 Arc::new(AtomicBool::new(false)),
-                Duration::from_mins(1),
+                SCENARIO_TIMEOUT,
                 Some(resume),
             ),
             Arc::new(move |update| observed.lock().expect("phases").push(update.phase)),

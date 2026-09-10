@@ -17,6 +17,8 @@ use crate::{
 };
 
 mod configuration;
+#[cfg(all(test, unix))]
+mod endpoint_tests;
 #[cfg(test)]
 mod model_tests;
 
@@ -190,9 +192,9 @@ fn finish(
         state.advance(BootstrapPhase::ConfigurationReady)?;
         store.commit(&state)?;
         let configured = ensure_configuration(&layout, &state)?;
-        return Ok(prepared(layout, state, configured.0, configured.1));
+        return prepared(layout, state, configured.0, configured.1);
     }
-    Ok(prepared(layout, state, configuration, configuration_path))
+    prepared(layout, state, configuration, configuration_path)
 }
 
 fn prepared(
@@ -200,9 +202,9 @@ fn prepared(
     state: ProductState,
     configuration: DaemonConfig,
     configuration_path: PathBuf,
-) -> PreparedProduct {
-    let endpoint = endpoint(&configuration);
-    PreparedProduct { layout, state, configuration, configuration_path, endpoint }
+) -> Result<PreparedProduct, LauncherError> {
+    let endpoint = endpoint(&configuration)?;
+    Ok(PreparedProduct { layout, state, configuration, configuration_path, endpoint })
 }
 
 struct BootstrapLock {

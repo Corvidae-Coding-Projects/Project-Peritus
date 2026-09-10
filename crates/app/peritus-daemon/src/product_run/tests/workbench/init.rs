@@ -24,10 +24,11 @@ fn init_service(
     let identity = peritus_workspace::FolderIdentity::observe(folder).unwrap();
     let identity_hex = hex(identity.digest().as_bytes());
     let workspace_hex = hex(workspace.as_bytes());
-    let declaration = toml::from_str(&format!(
+    let declaration: crate::config::FolderDeclaration = toml::from_str(&format!(
         "workspace_id = {workspace_hex:?}\nroot = {:?}\nidentity = {identity_hex:?}\nwritable = true\nprotected_paths = []\n",
-        folder.to_str().unwrap(),
+        identity.root().to_str().unwrap(),
     )).unwrap();
+    declaration.verify().expect("canonical registered folder identity");
     Arc::get_mut(&mut service.inner).unwrap().folders.insert(workspace, declaration);
     service
 }
