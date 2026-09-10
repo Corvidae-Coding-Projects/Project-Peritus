@@ -1,6 +1,6 @@
 {
   "next_display_id": 69,
-  "next_comment_id": 1533,
+  "next_comment_id": 1534,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -2941,7 +2941,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-10T11:22:27.739162003Z",
-      "updated_at": "2026-09-10T15:42:56.974106965Z",
+      "updated_at": "2026-09-10T15:46:26.568478775Z",
       "comments": {
         "200ee734-a8ff-45d4-bd5a-4ea08bcb360b": {
           "display_id": 1526,
@@ -2978,6 +2978,15 @@
           "kind": "result",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA/QJ9ZltdzJDE75PyWbQnQi9VWMDFZfHQldWRg8DkfUDOQsQ1X0e5oNyUoSqE3aAUVGg2QpLC273gCpmEDj4zDg=="
+        },
+        "3c2b4c79-b092-4682-a83a-c8c6eb63475b": {
+          "display_id": 1533,
+          "author": "krvx",
+          "content": "Pushed 760990d7: both Verus matrices now have a reviewed 15-minute budget, with exact workflow/job scoped ceiling and negative regressions. All 356 unit and 7 integration tests, cargo xtask all (83 packages), formatting/actionlint, Linux and Windows-target strict Clippy pass. Approved all six replacement workflows. Canceled obsolete 4c2ad Gate A, Foundation and Native Product runs immediately after user steering to free capacity.",
+          "created_at": "2026-09-10T15:46:26.563771418Z",
+          "kind": "note",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8FbfZ/J34DZJ7UniDLqYkdmKSFexpZ20+1VORI+qKXdm5KpWJn0kN1r6/lgBEiWf00tImmroBGFhkIBfyFYkBg=="
         },
         "4f48cbf5-f038-4080-b506-71676fc4de0f": {
           "display_id": 1522,
@@ -14964,8 +14973,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-10T15:42:56.974106965Z",
+    "timestamp": "2026-09-10T15:46:26.568478775Z",
     "agent_id": "krvx",
-    "agent_seq": 190
+    "agent_seq": 191
   }
 }
