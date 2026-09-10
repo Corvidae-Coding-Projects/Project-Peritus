@@ -1,5 +1,6 @@
 //! Reviewed package shards for bounded hosted Rust and Verus jobs.
 
+mod daemon;
 mod runner;
 
 use crate::error::XtaskError;
@@ -33,6 +34,7 @@ pub(crate) enum Operation {
     Build,
     Test,
     TestDaemon,
+    TestDaemonPartition(daemon::Partition),
     DocTest,
     Clippy,
     Docs,
@@ -53,6 +55,18 @@ impl Operation {
             "build" => Some(Self::Build),
             "test" => Some(Self::Test),
             "test-daemon" => Some(Self::TestDaemon),
+            "test-daemon-product" => Some(Self::TestDaemonPartition(daemon::Partition::Product)),
+            "test-daemon-folder" => Some(Self::TestDaemonPartition(daemon::Partition::Folder)),
+            "test-daemon-models" => Some(Self::TestDaemonPartition(daemon::Partition::Models)),
+            "test-daemon-rewinds" => Some(Self::TestDaemonPartition(daemon::Partition::Rewinds)),
+            "test-daemon-library" => Some(Self::TestDaemonPartition(daemon::Partition::Library)),
+            "test-daemon-review" => Some(Self::TestDaemonPartition(daemon::Partition::Review)),
+            "test-daemon-workbench" => {
+                Some(Self::TestDaemonPartition(daemon::Partition::Workbench))
+            }
+            "test-daemon-checkpoints" => {
+                Some(Self::TestDaemonPartition(daemon::Partition::Checkpoints))
+            }
             "doc-test" => Some(Self::DocTest),
             "clippy" => Some(Self::Clippy),
             "docs" => Some(Self::Docs),
@@ -148,7 +162,9 @@ fn selected_packages<'a>(
         })
         .filter(|package| match operation {
             Operation::Test => package.name != DAEMON_PACKAGE,
-            Operation::TestDaemon => package.name == DAEMON_PACKAGE,
+            Operation::TestDaemon | Operation::TestDaemonPartition(_) => {
+                package.name == DAEMON_PACKAGE
+            }
             _ => true,
         })
         .filter(|package| !operation.is_platform_terminal() || package.name == PLATFORM_PACKAGE)
@@ -199,6 +215,9 @@ fn cargo_command(root: &Path, operation: Operation, packages: &[&str]) -> Comman
         Operation::Test | Operation::TestDaemon => {
             command.args(["test", "--locked", "--all-targets", "--all-features"]);
         }
+        Operation::TestDaemonPartition(_) => {
+            command.args(["test", "--locked", "--lib", "--all-features"]);
+        }
         Operation::TestRunnerRecovery | Operation::TestRunnerProduct => {
             command.args(["test", "--locked", "--all-features"]);
             for test in operation.runner_tests().into_iter().flatten() {
@@ -245,10 +264,13 @@ fn cargo_command(root: &Path, operation: Operation, packages: &[&str]) -> Comman
         command.args(["--rlimit", "20"]);
     } else if let Some(test) = operation.platform_terminal_test() {
         command.args(["--test", "general_capability", test, "--", "--exact", "--test-threads=1"]);
-    } else if matches!(operation, Operation::Test | Operation::TestDaemon)
-        || operation.runner_tests().is_some()
+    } else if matches!(
+        operation,
+        Operation::Test | Operation::TestDaemon | Operation::TestDaemonPartition(_)
+    ) || operation.runner_tests().is_some()
     {
         command.args(["--", "--test-threads=1"]);
+        command.args(daemon::test_filters(operation, cfg!(windows)));
         if packages == [PLATFORM_PACKAGE] {
             for test in
                 [PLATFORM_TERMINAL_INTERACTIVE, PLATFORM_TERMINAL_SIGNAL, PLATFORM_TERMINAL_CANCEL]

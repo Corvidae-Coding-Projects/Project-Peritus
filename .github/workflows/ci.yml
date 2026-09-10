@@ -106,6 +106,14 @@ jobs:
           - { os: ubuntu-24.04, operation: test-daemon, shard: app-shell }
           - { os: macos-15, operation: test-daemon, shard: app-shell }
           - { os: windows-2025, operation: test-daemon, shard: app-shell }
+          - { os: windows-2025, operation: test-daemon-product, shard: app-shell }
+          - { os: windows-2025, operation: test-daemon-folder, shard: app-shell }
+          - { os: windows-2025, operation: test-daemon-workbench, shard: app-shell }
+          - { os: windows-2025, operation: test-daemon-checkpoints, shard: app-shell }
+          - { os: windows-2025, operation: test-daemon-models, shard: app-shell }
+          - { os: windows-2025, operation: test-daemon-library, shard: app-shell }
+          - { os: windows-2025, operation: test-daemon-review, shard: app-shell }
+          - { os: windows-2025, operation: test-daemon-rewinds, shard: app-shell }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
