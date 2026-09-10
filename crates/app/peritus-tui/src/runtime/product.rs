@@ -39,6 +39,7 @@ pub struct ProductLaunchContext {
     providers: Vec<ProductProviderOption>,
     default_provider: Option<usize>,
     direct_folder_writable: Option<bool>,
+    launcher_report: Option<peritus_app_protocol::DoctorReport>,
 }
 
 impl ProductLaunchContext {
@@ -66,6 +67,7 @@ impl ProductLaunchContext {
             providers,
             default_provider,
             direct_folder_writable: None,
+            launcher_report: None,
         })
     }
 
@@ -74,6 +76,27 @@ impl ProductLaunchContext {
     pub const fn with_direct_folder(mut self, writable: bool) -> Self {
         self.direct_folder_writable = Some(writable);
         self
+    }
+    /// Attaches bounded observations already made by the launcher, not fresh diagnostic probes.
+    ///
+    /// # Errors
+    /// Rejects another workspace or a provider-bound report at this local-only boundary.
+    pub fn with_launcher_report(
+        mut self,
+        report: peritus_app_protocol::DoctorReport,
+    ) -> Result<Self, TuiError> {
+        if report.query().workspace() != self.workspace_id || report.query().provider().is_some() {
+            return Err(TuiError::InvalidValue(
+                "launcher diagnostics have another scope".to_owned(),
+            ));
+        }
+        self.launcher_report = Some(report);
+        Ok(self)
+    }
+    /// Borrows launcher-time observations; they must never be presented as live probes.
+    #[must_use]
+    pub const fn launcher_report(&self) -> Option<&peritus_app_protocol::DoctorReport> {
+        self.launcher_report.as_ref()
     }
 
     /// Direct-folder authority, or none for the existing managed Git workspace flow.

@@ -30,6 +30,9 @@ pub struct ConnectionContext {
 }
 
 impl ConnectionContext {
+    pub(super) fn supports(&self, feature: WellKnownProtocolFeature) -> bool {
+        self.negotiated.features().as_slice().iter().any(|name| name.as_str() == feature.as_str())
+    }
     /// Returns the authenticated durable human actor.
     #[must_use]
     pub const fn actor_id(&self) -> ActorId {
@@ -154,6 +157,25 @@ fn server_capabilities() -> Result<ServerCapabilities, DaemonError> {
         WellKnownProtocolFeature::UserInput,
         WellKnownProtocolFeature::TerminalStreaming,
         WellKnownProtocolFeature::ReadOnlyDiagnostics,
+        WellKnownProtocolFeature::ProductDiagnostics,
+        WellKnownProtocolFeature::WorkbenchControl,
+        WellKnownProtocolFeature::WorkbenchInputs,
+        WellKnownProtocolFeature::WorkbenchExecution,
+        WellKnownProtocolFeature::WorkbenchContext,
+        WellKnownProtocolFeature::WorkbenchCompaction,
+        WellKnownProtocolFeature::WorkbenchBrief,
+        WellKnownProtocolFeature::WorkbenchImages,
+        WellKnownProtocolFeature::WorkbenchFiles,
+        WellKnownProtocolFeature::WorkbenchGoals,
+        WellKnownProtocolFeature::WorkbenchBudgets,
+        WellKnownProtocolFeature::WorkbenchReview,
+        WellKnownProtocolFeature::WorkbenchPreview,
+        WellKnownProtocolFeature::WorkbenchCheckpoints,
+        WellKnownProtocolFeature::ConversationLibrary,
+        WellKnownProtocolFeature::ConversationForks,
+        WellKnownProtocolFeature::WorkbenchPermissions,
+        WellKnownProtocolFeature::WorkbenchInit,
+        WellKnownProtocolFeature::WorkbenchMemory,
         WellKnownProtocolFeature::GracefulShutdown,
     ]
     .into_iter()

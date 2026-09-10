@@ -174,16 +174,11 @@ fn cancellation_during_folder_review_retains_effects_without_qualification_or_co
         let root = tempfile::tempdir().expect("folder");
         fs::write(root.path().join("note.txt"), "original").expect("source");
         artifact_contract(root.path());
-        let writer = stalled(0x6c, "cancelled-folder-review");
-        {
-            let mut scripts = writer.responses.lock().expect("scripts");
-            let stalled_review = scripts.pop_front().expect("stalled response");
-            scripts.extend(pipeline_prefix().into_iter().chain([
-                write("requested text"),
-                complete(),
-                stalled_review,
-            ]));
-        }
+        let writer = support::stalled_after(
+            0x6c,
+            "cancelled-folder-review",
+            pipeline_prefix().into_iter().chain([write("requested text"), complete()]).collect(),
+        );
         let (service, request) = folder_service(root.path(), &writer, true);
         let id = request.run_id();
         service

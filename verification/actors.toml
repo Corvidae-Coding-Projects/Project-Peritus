@@ -10,7 +10,7 @@ kind = "crosslink-agent"
 principal = "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI"
 display_name = "Project Peritus A1 implementation agent"
 roles = ["owner"]
-provenance = { record_path = "verification/actor-provenance.json", record_sha256 = "166b4b70e53b1cb41580889d9cd9277e1cd131b436a995d76cbfb5a16312a76e" }
+provenance = { record_path = "verification/actor-provenance.json", record_sha256 = "fe8559d6c7018bb444007a772f154946086f066c4983a92e60b87374f21157a6" }
 
 [[entries]]
 id = "ACTOR-0002"
@@ -18,4 +18,20 @@ kind = "codex-subagent"
 principal = "Corvidae-Coding-Projects/Project-Peritus/session/2/task/root/a1_final_gate_review"
 display_name = "Banach independent final Gate A reviewer"
 roles = ["reviewer"]
-provenance = { record_path = "verification/actor-provenance.json", record_sha256 = "166b4b70e53b1cb41580889d9cd9277e1cd131b436a995d76cbfb5a16312a76e" }
+provenance = { record_path = "verification/actor-provenance.json", record_sha256 = "fe8559d6c7018bb444007a772f154946086f066c4983a92e60b87374f21157a6" }
+
+[[entries]]
+id = "ACTOR-0003"
+kind = "crosslink-agent"
+principal = "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc"
+display_name = "Workbench implementation and formal repair owner"
+roles = ["owner"]
+provenance = { record_path = "verification/actor-provenance.json", record_sha256 = "fe8559d6c7018bb444007a772f154946086f066c4983a92e60b87374f21157a6" }
+
+[[entries]]
+id = "ACTOR-0004"
+kind = "codex-subagent"
+principal = "Corvidae-Coding-Projects/Project-Peritus/session/23/task/root/workbench_formal_review"
+display_name = "Independent workbench and formal authorization reviewer"
+roles = ["reviewer"]
+provenance = { record_path = "verification/actor-provenance.json", record_sha256 = "fe8559d6c7018bb444007a772f154946086f066c4983a92e60b87374f21157a6" }

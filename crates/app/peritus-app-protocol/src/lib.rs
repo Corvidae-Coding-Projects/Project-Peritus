@@ -16,6 +16,7 @@
 mod artifact;
 mod command;
 mod daemon;
+mod doctor;
 mod envelope;
 mod error;
 mod family;
@@ -29,10 +30,12 @@ mod terminal;
 pub mod verified;
 mod version;
 pub mod wire;
+mod workbench;
 
 pub use artifact::*;
 pub use command::*;
 pub use daemon::*;
+pub use doctor::*;
 pub use envelope::*;
 pub use error::*;
 pub use family::*;
@@ -44,3 +47,4 @@ pub use subscription::*;
 pub use terminal::*;
 pub use version::*;
 pub use wire::*;
+pub use workbench::*;

@@ -7,6 +7,8 @@ mod action;
 mod client;
 mod entry;
 mod error;
+pub(crate) mod file_import;
+pub(crate) mod image_import;
 mod input;
 mod model;
 mod render;

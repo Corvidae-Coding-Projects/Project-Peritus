@@ -2,14 +2,16 @@
 
 use std::{fs, path::PathBuf};
 
-use peritus_agent::{DeveloperLoopError, DeveloperToolExecutor, DeveloperToolObservation};
+use peritus_agent::{
+    DeveloperLoopError, DeveloperToolEffect, DeveloperToolExecutor, DeveloperToolObservation,
+};
 use peritus_model_protocol::CompletedToolCall;
 use serde_json::Value;
 
 use super::{
     access_policy::WorkspaceAccessPolicy,
     command_budget::CommandBudget,
-    effect::{atomic_write, atomic_write_if_changed},
+    effect::atomic_write,
     evidence::CommandEvidence,
     grounding::GroundingEvidence,
     inspection,
@@ -20,6 +22,7 @@ use super::{
     resources::CommandResources,
     wire::{object, observation, required_string, string},
 };
+use crate::control::{HostPermissions, PermissionCapability};
 const MAX_FILE_BYTES: usize = 2 * 1024 * 1024;
 const TOOLS_WITHOUT_DELIVERY_PROGRESS: u16 = 12;
 const MAX_PROGRESS_NUDGES: u8 = 2;
@@ -33,6 +36,7 @@ mod in_place;
 mod inspection_progress;
 
 use active::ActiveCommandLedger;
+use checkpoint_observer::PreparedMutation;
 pub use checkpoint_observer::ToolCheckpointBoundary;
 use checkpoint_observer::ToolCheckpointObserver;
 
@@ -61,6 +65,8 @@ pub struct WorkspaceDeveloperTools {
     progress_feedback_pending: bool,
     inspection_progress: inspection_progress::InspectionProgress,
     checkpoint_observer: Option<ToolCheckpointObserver>,
+    prepared_mutations: Vec<PreparedMutation>,
+    pub(super) protection_view: Option<std::sync::Arc<dyn crate::ConversationView>>,
 }
 
 impl WorkspaceDeveloperTools {
@@ -92,6 +98,51 @@ impl WorkspaceDeveloperTools {
     pub(crate) fn successful_commands(&self) -> Vec<super::SuccessfulCommand> {
         self.command_evidence.successful()
     }
+
+    fn permission_denial(&self, tool_name: &str) -> Option<String> {
+        let permissions = self.protection_view.as_ref()?.effective_permissions();
+        first_missing_permission(tool_name, permissions).map(|capability| {
+            format!(
+                "{tool_name} is disabled by the current {} permission; inspect /permissions",
+                permission_name(capability)
+            )
+        })
+    }
+}
+
+fn first_missing_permission(
+    tool_name: &str,
+    permissions: HostPermissions,
+) -> Option<PermissionCapability> {
+    required_permissions(tool_name)?
+        .iter()
+        .copied()
+        .find(|capability| !permissions.allows(*capability))
+}
+
+fn required_permissions(tool_name: &str) -> Option<&'static [PermissionCapability]> {
+    use PermissionCapability::{Network, Process, Read, Write};
+    match tool_name {
+        "workspace_list" | "workspace_search" | "workspace_read" => Some(&[Read]),
+        "workspace_scope" | "workspace_write" | "workspace_patch" | "workspace_remove" => {
+            Some(&[Read, Write])
+        }
+        "run_command" | "command_start" | "command_stdin" | "command_resize" | "command_signal" => {
+            Some(&[Read, Write, Process, Network])
+        }
+        // Observation and cleanup of an already-owned process remain available after revocation.
+        "command_poll" | "command_recover" | "command_cancel" => Some(&[]),
+        _ => None,
+    }
+}
+
+const fn permission_name(capability: PermissionCapability) -> &'static str {
+    match capability {
+        PermissionCapability::Read => "read",
+        PermissionCapability::Write => "write",
+        PermissionCapability::Process => "process",
+        PermissionCapability::Network => "network",
+    }
 }
 
 #[cfg(test)]
@@ -108,6 +159,15 @@ fn test_command_runtime(root: &std::path::Path) -> crate::CommandRuntime {
 }
 
 impl DeveloperToolExecutor for WorkspaceDeveloperTools {
+    fn effect(&self, call: &CompletedToolCall) -> DeveloperToolEffect {
+        if matches!(call.name().as_str(), "workspace_list" | "workspace_search" | "workspace_read")
+        {
+            DeveloperToolEffect::ReadOnly
+        } else {
+            DeveloperToolEffect::MutationCapable
+        }
+    }
+
     fn required_tool_name(&self) -> Option<&str> {
         self.grounding.required_tool_name()
     }
@@ -118,6 +178,12 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
     ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
         let arguments: Value = serde_json::from_slice(call.arguments().canonical_bytes())
             .map_err(|error| tool(error.to_string()))?;
+        // Live permissions are checked before access-policy refresh, in-place enrollment,
+        // receipts, checkpoints, or any filesystem/process effect.
+        if let Some(detail) = self.permission_denial(call.name().as_str()) {
+            return observation(&object(vec![("error", Value::String(detail))]), true);
+        }
+        self.refresh_hard_constraints();
         if let Err(detail) = self.access_policy.authorize(call.name().as_str(), &arguments) {
             return observation(&object(vec![("error", Value::String(detail))]), true);
         }
@@ -140,9 +206,6 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
         if let Err(error) = super::arguments::validate(call.name().as_str(), &arguments) {
             return observation(&object(vec![("error", Value::String(error.to_string()))]), true);
         }
-        if let Err(error) = self.prepare_in_place(call.name().as_str(), &arguments) {
-            return observation(&object(vec![("error", Value::String(error.to_string()))]), true);
-        }
         let effect = matches!(
             call.name().as_str(),
             "workspace_write"
@@ -155,29 +218,24 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
                 | "command_signal"
                 | "command_cancel"
         ) && self.mode == WorkspaceToolMode::ReadWrite;
-        if effect && let Some(observation) = self.begin_effect(call, &arguments)? {
+        if effect && let Some(observation) = self.replay_effect(call, &arguments)? {
             return Ok(observation);
         }
-        let result = match call.name().as_str() {
-            "workspace_list" => {
-                inspection::list(&self.root, &arguments, self.resources, &self.access_policy)
+        if let Err(error) = self.prepare_in_place(call.name().as_str(), &arguments) {
+            return observation(&object(vec![("error", Value::String(error.to_string()))]), true);
+        }
+        if effect {
+            if let Err(error) = self.prepare_effect_checkpoint(call.name().as_str(), &arguments) {
+                return observation(
+                    &object(vec![("error", Value::String(error.to_string()))]),
+                    true,
+                );
             }
-            "workspace_search" => inspection::search(&self.root, &arguments, &self.access_policy),
-            "workspace_read" => inspection::read(&self.root, &arguments),
-            "workspace_scope" => self.declare_in_place(&arguments),
-            "workspace_write" => self.write(&arguments),
-            "workspace_patch" => self.patch(&arguments),
-            "workspace_remove" => self.remove(&arguments),
-            "run_command" => self.run_command(&arguments, call.id().expose_for_wire()),
-            "command_start" => self.start_command(&arguments, call.id().expose_for_wire()),
-            "command_poll" => self.poll_command(&arguments),
-            "command_stdin" => self.write_command_stdin(&arguments),
-            "command_resize" => self.resize_command(&arguments),
-            "command_signal" => self.signal_command(&arguments),
-            "command_cancel" => self.cancel_command(&arguments),
-            "command_recover" => self.recover_command(&arguments),
-            _ => return Err(tool("model requested an undeclared developer tool")),
-        };
+            if let Some(observation) = self.begin_effect(call, &arguments)? {
+                return Ok(observation);
+            }
+        }
+        let result = self.dispatch_tool(call, &arguments);
         let (mut value, is_error, accepted) = match result {
             Ok(value) => {
                 let is_error = value.get("success").and_then(Value::as_bool) == Some(false);
@@ -234,163 +292,7 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
     }
 }
 
-impl WorkspaceDeveloperTools {
-    fn begin_effect(
-        &mut self,
-        call: &CompletedToolCall,
-        arguments: &Value,
-    ) -> Result<Option<DeveloperToolObservation>, DeveloperLoopError> {
-        let decision = self
-            .receipts
-            .as_mut()
-            .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
-            .begin(call)?;
-        match decision {
-            ReceiptDecision::Execute => Ok(None),
-            ReceiptDecision::Replay { value, is_error } => {
-                if value.get("error").is_none() {
-                    self.record_success(call.name().as_str(), arguments, &value);
-                }
-                observation(&value, is_error).map(Some)
-            }
-            ReceiptDecision::Refuse { detail, ambiguous } => observation(
-                &object(vec![
-                    ("error", Value::String(detail)),
-                    ("ambiguous", Value::Bool(ambiguous)),
-                ]),
-                true,
-            )
-            .map(Some),
-        }
-    }
-    fn observe_delivery_progress(
-        &mut self,
-        name: &str,
-        arguments: &Value,
-        result: &Value,
-        accepted: bool,
-    ) {
-        if self.mode == WorkspaceToolMode::ReadOnly {
-            return;
-        }
-        let workspace_mutation = accepted
-            && matches!(name, "workspace_write" | "workspace_patch" | "workspace_remove")
-            && result.get("changed").and_then(Value::as_bool) != Some(false);
-        let external_effect = matches!(
-            name,
-            "run_command"
-                | "command_poll"
-                | "command_stdin"
-                | "command_resize"
-                | "command_signal"
-                | "command_cancel"
-                | "command_recover"
-        ) && result.get("success").and_then(Value::as_bool) == Some(true)
-            && (string(arguments, "purpose") == Some("external_effect")
-                || result.get("purpose").and_then(Value::as_str) == Some("external_effect"));
-        if workspace_mutation || external_effect {
-            self.tools_without_delivery_progress = 0;
-            self.progress_feedback_pending = false;
-            self.progress_nudges = 0;
-            return;
-        }
-        self.tools_without_delivery_progress =
-            self.tools_without_delivery_progress.saturating_add(1);
-        if self.tools_without_delivery_progress >= TOOLS_WITHOUT_DELIVERY_PROGRESS
-            && self.progress_nudges < MAX_PROGRESS_NUDGES
-        {
-            self.tools_without_delivery_progress = 0;
-            self.progress_nudges = self.progress_nudges.saturating_add(1);
-            self.progress_feedback_pending = true;
-        }
-    }
-
-    fn record_success(&mut self, name: &str, arguments: &Value, result: &Value) {
-        match name {
-            "workspace_list" => self.grounding.record_list(
-                string(arguments, "path").unwrap_or(""),
-                result.get("entries").and_then(Value::as_array).map_or(0, Vec::len),
-            ),
-            "workspace_search" => self.grounding.record_search(),
-            "workspace_read" => {
-                if let Some(path) = string(arguments, "path") {
-                    self.grounding.record_read(path);
-                    self.ownership.observe_file(self.root.join(path));
-                }
-            }
-            "workspace_write" | "workspace_patch" | "workspace_remove" => {
-                if let Some(path) = string(arguments, "path") {
-                    self.grounding.record_mutation(path);
-                }
-            }
-            "run_command" => self.command_evidence.record(arguments, result),
-            _ => {}
-        }
-        if name == "workspace_list" {
-            for path in result
-                .get("entries")
-                .and_then(Value::as_array)
-                .into_iter()
-                .flatten()
-                .filter_map(|entry| entry.get("path").and_then(Value::as_str))
-            {
-                self.grounding.record_listed_path(path);
-            }
-        }
-    }
-
-    fn write(&mut self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
-        let relative = required_string(arguments, "path")?;
-        let content = required_string(arguments, "content")?;
-        if content.len() > MAX_FILE_BYTES {
-            return Err(tool("write exceeds the per-file byte bound"));
-        }
-        let path = checked(&self.root, relative, true)?;
-        let existed_before = path.exists();
-        self.grounding.ensure_mutation_allowed(relative, existed_before).map_err(tool)?;
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent).map_err(|error| tool(error.to_string()))?;
-        }
-        let changed = atomic_write_if_changed(&path, content.as_bytes())?;
-        self.ownership.record_direct_creation(&path, existed_before);
-        Ok(object(vec![
-            ("path", Value::String(relative.to_owned())),
-            ("bytes", Value::from(content.len())),
-            ("changed", Value::Bool(changed)),
-        ]))
-    }
-
-    fn patch(&self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
-        let relative = required_string(arguments, "path")?;
-        let old = required_string(arguments, "old")?;
-        let new = required_string(arguments, "new")?;
-        let replace_all = arguments.get("replace_all").and_then(Value::as_bool).unwrap_or(false);
-        if old.is_empty() {
-            return Err(tool("patch old text is empty"));
-        }
-        let path = checked(&self.root, relative, false)?;
-        self.grounding.ensure_mutation_allowed(relative, true).map_err(tool)?;
-        let content = fs::read_to_string(&path).map_err(|error| tool(error.to_string()))?;
-        let occurrences = content.matches(old).count();
-        if occurrences == 0 || (!replace_all && occurrences != 1) {
-            return Err(tool(format!("patch expected one match but found {occurrences}")));
-        }
-        let replaced =
-            if replace_all { content.replace(old, new) } else { content.replacen(old, new, 1) };
-        if replaced.len() > MAX_FILE_BYTES {
-            return Err(tool("patched file exceeds the per-file byte bound"));
-        }
-        atomic_write(&path, replaced.as_bytes())?;
-        Ok(object(vec![
-            ("path", Value::String(relative.to_owned())),
-            ("replacements", Value::from(if replace_all { occurrences } else { 1 })),
-        ]))
-    }
-
-    fn remove(&self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
-        removal::remove(&self.root, &self.grounding, &self.ownership, arguments)
-    }
-}
+mod effects;
 
 #[cfg(test)]
 mod receipt_tests;

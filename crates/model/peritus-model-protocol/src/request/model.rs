@@ -148,6 +148,17 @@ impl ModelRequest {
         crate::canonical::request_bytes(self)
     }
 
+    /// Encodes the same canonical bytes while enforcing a narrower host storage ceiling.
+    ///
+    /// The writer rejects before appending a field that would exceed the ceiling. This does
+    /// not encode the whole request and truncate it, and does not change its fingerprint.
+    ///
+    /// # Errors
+    /// Rejects a zero or above-protocol ceiling, or a request that cannot fit completely.
+    pub fn canonical_bytes_bounded(&self, maximum_bytes: usize) -> Result<Vec<u8>, ProtocolError> {
+        crate::canonical::request_bytes_bounded(self, maximum_bytes)
+    }
+
     /// Computes the exact canonical request fingerprint.
     ///
     /// # Errors

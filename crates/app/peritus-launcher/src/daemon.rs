@@ -89,6 +89,12 @@ impl SiblingBinaries {
     pub fn application(&self) -> &Path {
         &self.application
     }
+    /// Returns the packaged version verified when this checked binary pair was constructed.
+    /// This is a historical observation, not a fresh executable probe.
+    #[must_use]
+    pub const fn verified_version(&self) -> &'static str {
+        env!("CARGO_PKG_VERSION")
+    }
 }
 
 /// Outcome of establishing live daemon readiness.

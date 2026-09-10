@@ -31,23 +31,27 @@ impl SemanticCompaction {
         profile: &ProviderProfile,
         reserved_output_tokens: u64,
         limits: ProtocolLimits,
+        protected_prefix: usize,
     ) -> Result<Option<Self>, DeveloperLoopError> {
         let (usable_input, trigger) = context_thresholds(profile, reserved_output_tokens)?;
         let estimated = estimated_request_tokens(messages, tools);
         if estimated <= trigger {
             return Ok(None);
         }
-        let candidate = match compaction_candidate(messages, RETAIN_RECENT_MESSAGES)? {
-            Some(candidate) => candidate,
-            None if estimated > usable_input => {
-                let Some(candidate) = compaction_candidate(messages, 0)? else {
-                    return Ok(None);
-                };
-                candidate
-            }
-            None => return Ok(None),
-        };
-        let mut request_messages = messages.iter().take(2).cloned().collect::<Vec<_>>();
+        let candidate =
+            match compaction_candidate(messages, RETAIN_RECENT_MESSAGES, protected_prefix)? {
+                Some(candidate) => candidate,
+                None if estimated > usable_input => {
+                    let Some(candidate) = compaction_candidate(messages, 0, protected_prefix)?
+                    else {
+                        return Ok(None);
+                    };
+                    candidate
+                }
+                None => return Ok(None),
+            };
+        let mut request_messages =
+            messages.iter().take(protected_prefix).cloned().collect::<Vec<_>>();
         request_messages.extend_from_slice(candidate.source());
         request_messages.push(Message::new(
             Role::User,

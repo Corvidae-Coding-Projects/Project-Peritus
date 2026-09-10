@@ -5,8 +5,24 @@ use core::mem::size_of;
 use crate::{APP_SCHEMA_V1, AppErrorCode};
 use peritus_codec::{CodecError, CodecLimits, encode_frame};
 
+mod brief;
+mod checkpoints;
+mod compaction;
+mod context;
+mod doctor;
+mod files;
+mod goal;
+mod images;
+mod init;
+mod inputs;
 mod interaction;
+mod launch;
+mod library;
+mod memory;
+mod permissions;
+mod review;
 mod values;
+mod workbench;
 
 use values::generated_valid_cases;
 
@@ -85,6 +101,22 @@ pub fn generated_fixture_cases() -> Result<Vec<GeneratedFixtureCase>, CodecError
     let limits = CodecLimits::PRODUCTION;
     let mut cases = generated_valid_cases(limits)?;
     cases.extend(interaction::cases(limits)?);
+    cases.extend(doctor::cases(limits)?);
+    cases.extend(workbench::cases(limits)?);
+    cases.extend(permissions::cases(limits)?);
+    cases.extend(init::cases(limits)?);
+    cases.extend(memory::cases(limits)?);
+    cases.extend(inputs::cases(limits)?);
+    cases.extend(context::cases(limits)?);
+    cases.extend(checkpoints::cases(limits)?);
+    cases.extend(brief::cases(limits)?);
+    cases.extend(compaction::cases(limits)?);
+    cases.extend(images::cases(limits)?);
+    cases.extend(files::cases(limits)?);
+    cases.extend(goal::cases(limits)?);
+    cases.extend(review::cases(limits)?);
+    cases.extend(launch::cases(limits)?);
+    cases.extend(library::cases(limits)?);
     let mut unknown_request = cases
         .iter()
         .find(|case| case.case == "minimal-daemon-status-request")

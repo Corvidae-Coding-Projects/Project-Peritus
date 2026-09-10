@@ -1,0 +1,13 @@
+schema = 1
+surface = "app-protocol"
+surface_version = "v1"
+case = "minimal-workbench-receipt-query"
+kind = "minimal"
+
+[[files]]
+path = "expectation.toml"
+sha256 = "9bfec43ae16414cb30f096371819e7785ea0460cc576310813b3ac2e7208039c"
+
+[[files]]
+path = "payload.hex"
+sha256 = "ce58ef536130118878606a5c73d662b301632b3bb856999281fed4275edf1e2e"

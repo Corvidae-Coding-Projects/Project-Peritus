@@ -1,8 +1,9 @@
 //! Target-owned authorization and lifecycle boundary for isolated Peritus workspaces.
 //!
-//! [`WorkspaceGateway`] is the only public mutation surface. It validates exact committed B0/B1
-//! observations before constructing a private, one-use permit and immediately consuming it. A
-//! [`ReadOnlyWorkspace`] is a distinct type fixed to an immutable snapshot.
+//! [`WorkspaceGateway`] owns isolated Git-worktree mutation, while [`FolderMutationGateway`] owns
+//! exact-preimage patches against one registered ordinary folder. Both validate exact committed
+//! B0/B1 observations before constructing a private, one-use permit and immediately consuming it.
+//! A [`ReadOnlyWorkspace`] is a distinct type fixed to an immutable snapshot.
 
 mod authorization;
 mod caller;
@@ -11,6 +12,7 @@ mod consumption;
 mod error;
 mod filesystem;
 mod folder;
+mod folder_mutation;
 mod gateway;
 mod git_inspection;
 mod identity;
@@ -23,7 +25,14 @@ mod read_only;
 mod reconcile;
 mod refinement;
 mod registration;
+mod scoped_inspection;
 pub use folder::FolderIdentity;
+pub use folder_mutation::{
+    FolderMutationActionMarker, FolderMutationCondition, FolderMutationGateway,
+    FolderMutationOpenRequest, FolderMutationOutcome, FolderMutationRecoveryOutcome,
+    FolderMutationRecoveryRequest, FolderMutationRecoveryState, folder_patch_action_intent,
+    recover_folder_mutation,
+};
 mod rollback;
 mod state;
 mod transaction_namespace;
@@ -57,6 +66,9 @@ pub use registration::{MAX_WORKSPACE_REGISTRATION_BYTES, WorkspaceRegistration};
 pub use rollback::{
     RollbackOutcome, RollbackRequest, rollback_authorization_payload,
     rollback_authorization_payload_for_caller,
+};
+pub use scoped_inspection::{
+    FileReadSelection, FolderInspection, InspectedFile, MAX_INSPECTION_SOURCE_BYTES,
 };
 pub use state::{WorkspaceCondition, WorkspaceState};
 pub use writable::WritableWorkspace;

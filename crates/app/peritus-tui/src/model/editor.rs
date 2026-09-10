@@ -13,7 +13,12 @@ impl AppModel {
         }
         if key.code == KeyCode::Enter && key.modifiers.contains(KeyModifiers::SHIFT) {
             if let Some(editor) = &mut self.editor
-                && matches!(editor.kind, EditorKind::ProductTask | EditorKind::ProductMessage(_))
+                && matches!(
+                    editor.kind,
+                    EditorKind::ProductTask
+                        | EditorKind::ProductMessage(_)
+                        | EditorKind::ReviewFeedback(_)
+                )
             {
                 editor.buffer.insert(editor.cursor, '\n');
                 editor.cursor += 1;
@@ -42,6 +47,9 @@ impl AppModel {
             EditorKind::ProductTask => self.submit_product_task(editor.buffer),
             EditorKind::ProductMessage(run_id) => {
                 self.submit_product_message(run_id, editor.buffer)
+            }
+            EditorKind::ReviewFeedback(feedback) => {
+                self.submit_review_feedback(feedback, editor.buffer)
             }
         }
     }

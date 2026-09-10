@@ -196,6 +196,9 @@ fn restart_restores_each_resumable_phase_and_preserves_completed_writer_state() 
             remaining_work: vec!["finish current phase".to_owned()],
             interruption_cause: "daemon restart".to_owned(),
             candidate_actionable: Some(true),
+            preview_page: None,
+            preview_operations: Vec::new(),
+            preview_outputs: Vec::new(),
         }
         .into_record()
         .expect("restored record");

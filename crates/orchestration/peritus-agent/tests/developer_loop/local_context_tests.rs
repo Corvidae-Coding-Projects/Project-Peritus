@@ -78,6 +78,9 @@ impl DeveloperContextPort for RecordingContext {
         if !self.ignore_invocation_policy {
             view[0] = request.invocation_policy.clone();
         }
+        if let Some(input) = request.governing_input {
+            view.insert(1, input.clone());
+        }
         Ok(view)
     }
 

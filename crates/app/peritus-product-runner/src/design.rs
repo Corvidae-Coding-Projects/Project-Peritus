@@ -87,8 +87,9 @@ pub async fn create(
             }
             Err(error) => return Err(error),
         };
+        let stable_context = input.conversation.stable_request_context();
         let (prompt, attachments) =
-            media.into_parts(user_prompt(&transcript, correction.as_deref()));
+            media.into_parts(user_prompt(&stable_context, correction.as_deref()));
         let mut tools = input.configure_tools(
             WorkspaceDeveloperTools::read_only(input.workspace_root.clone())
                 .with_task_contract(&transcript),

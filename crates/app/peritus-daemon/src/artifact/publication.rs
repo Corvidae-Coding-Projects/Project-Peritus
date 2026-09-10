@@ -10,7 +10,7 @@ use peritus_types::{CommandId, EventId, EventSequence, Sha256Digest};
 
 use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
 
-pub const ARTIFACT_UPLOAD_ACCEPTED_FAMILY: u16 = 65_000;
+use peritus_protocol::schema::ARTIFACT_UPLOAD_ACCEPTED_FAMILY;
 
 pub fn record(
     journal: &mut SqliteJournal,

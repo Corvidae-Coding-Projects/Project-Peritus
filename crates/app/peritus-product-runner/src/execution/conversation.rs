@@ -32,7 +32,9 @@ impl ProductRunner {
     ) -> Result<ProductRunOutcome, ProductRunnerError> {
         let mut accounting = input.accounting()?;
         crate::trace::prepare(&input.trace_path)?;
-        let allow_pipeline = writable && mode == ConversationMode::Chat;
+        let allow_pipeline = writable
+            && mode == ConversationMode::Chat
+            && input.conversation.permits_pipeline_handoff();
         let memory = if allow_pipeline { input.working_memory("writer")? } else { None };
         loop {
             accounting.check()?;
@@ -79,6 +81,11 @@ impl ProductRunner {
                             continue;
                         }
                         super::check_cancelled(&input)?;
+                        if !tools::pipeline_permissions_allow(input.conversation.as_ref()) {
+                            return Err(invalid(
+                                "pipeline permissions changed before launch; inspect /permissions",
+                            ));
+                        }
                         // The writer reopens the same durable lineage. Release the conversation's
                         // exclusive owner before entering the shared execution pipeline.
                         drop(memory);
@@ -195,7 +202,7 @@ fn request(
     profile: &peritus_model_protocol::ProviderProfile,
     model_requests: u32,
 ) -> Result<DeveloperLoopRequest, ProductRunnerError> {
-    let transcript = input.conversation.render();
+    let transcript = input.conversation.stable_request_context();
     let (prompt, attachments) = input.media(&transcript, profile)?.into_parts(transcript);
     let mut definitions = crate::developer_tools::read_only_definitions()?;
     if allow_pipeline {
