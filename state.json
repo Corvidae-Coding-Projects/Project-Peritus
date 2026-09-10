@@ -1,5 +1,5 @@
 {
-  "next_display_id": 71,
+  "next_display_id": 72,
   "next_comment_id": 1538,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -48,6 +48,7 @@
     "8bbbda45-2e84-44e1-87fb-033729ad7029": 45,
     "8d3b149c-50c3-4887-9973-8bea59b5f6a2": 15,
     "92b485c0-34af-4248-b792-21bc54e81c70": 35,
+    "93d4292a-5b9b-484b-99f1-e5c5aaaa8817": 71,
     "941c4cb4-2cc2-46e7-b156-262ce7712d9f": 4,
     "951695ae-cc15-4045-8069-eb7bba119e5c": 5,
     "98cfa726-8e8c-417c-8fa5-3bd3eec94363": 27,
@@ -11515,6 +11516,17 @@
         }
       }
     },
+    "93d4292a-5b9b-484b-99f1-e5c5aaaa8817": {
+      "uuid": "93d4292a-5b9b-484b-99f1-e5c5aaaa8817",
+      "display_id": 71,
+      "title": "Qualify named model providers and surface actionable connection failures",
+      "description": "Add OpenCode and popular documented API providers, account-free end-to-end contract tests, explicit bounded user-side connection checks, and redacted actionable errors. Preserve existing credentials/configuration and qualify Linux/Windows paths before delivery.",
+      "status": "open",
+      "priority": "high",
+      "created_by": "krvx",
+      "created_at": "2026-09-10T18:04:24.271923519Z",
+      "updated_at": "2026-09-10T18:04:24.271923519Z"
+    },
     "941c4cb4-2cc2-46e7-b156-262ce7712d9f": {
       "uuid": "941c4cb4-2cc2-46e7-b156-262ce7712d9f",
       "display_id": 4,
@@ -15045,8 +15057,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-10T17:49:07.251836175Z",
+    "timestamp": "2026-09-10T18:04:24.271923519Z",
     "agent_id": "krvx",
-    "agent_seq": 205
+    "agent_seq": 206
   }
 }
