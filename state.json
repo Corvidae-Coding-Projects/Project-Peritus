@@ -1,6 +1,6 @@
 {
   "next_display_id": 72,
-  "next_comment_id": 1538,
+  "next_comment_id": 1539,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11529,7 +11529,18 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-10T18:04:24.271923519Z",
-      "updated_at": "2026-09-10T18:04:24.271923519Z"
+      "updated_at": "2026-09-10T18:43:24.346029128Z",
+      "comments": {
+        "6ee3b5c2-f50f-4f4a-adae-7e47ebc9d278": {
+          "display_id": 1538,
+          "author": "krvx",
+          "content": "[action] Removed static model routing; implemented live hosted discovery with OpenCode SDK metadata, typed protocol routing, explicit 3-stage connection test, actionable failure details, and reasoning replay preservation. Named Chat contract fixtures pass for 7 services; broader qualification in progress on existing PR65 branch.",
+          "created_at": "2026-09-10T18:43:24.340473061Z",
+          "kind": "note",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJYYLAdyDED/m2jSzSlMZABhyvZmiaOzMSYRz2XyGAau21dhc88ec370cioK/1JISl0EjkqMMAF0Ns2bF84K4DA=="
+        }
+      }
     },
     "941c4cb4-2cc2-46e7-b156-262ce7712d9f": {
       "uuid": "941c4cb4-2cc2-46e7-b156-262ce7712d9f",
@@ -15061,8 +15072,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-10T18:04:29.815927873Z",
+    "timestamp": "2026-09-10T18:43:24.346029128Z",
     "agent_id": "krvx",
-    "agent_seq": 207
+    "agent_seq": 208
   }
 }
