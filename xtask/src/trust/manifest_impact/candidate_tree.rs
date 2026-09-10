@@ -44,13 +44,14 @@ impl CandidateTree {
             let serial = NEXT.fetch_add(1, Ordering::Relaxed);
             let directory = std::env::temp_dir()
                 .join(format!("peritus-reviewed-tree-{}-{serial}", std::process::id()));
-            let mut builder = fs::DirBuilder::new();
             #[cfg(unix)]
-            {
+            let created = {
                 use std::os::unix::fs::DirBuilderExt as _;
-                builder.mode(0o700);
-            }
-            match builder.create(&directory) {
+                fs::DirBuilder::new().mode(0o700).create(&directory)
+            };
+            #[cfg(not(unix))]
+            let created = fs::create_dir(&directory);
+            match created {
                 Ok(()) => return Ok(Self { directory }),
                 Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
                 Err(error) => {
