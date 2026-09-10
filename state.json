@@ -1,6 +1,6 @@
 {
   "next_display_id": 69,
-  "next_comment_id": 1530,
+  "next_comment_id": 1531,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -2941,7 +2941,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-10T11:22:27.739162003Z",
-      "updated_at": "2026-09-10T14:26:46.500480644Z",
+      "updated_at": "2026-09-10T14:45:55.728124670Z",
       "comments": {
         "200ee734-a8ff-45d4-bd5a-4ea08bcb360b": {
           "display_id": 1526,
@@ -2978,6 +2978,15 @@
           "kind": "result",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7u2MWm6BXdUSmdl9/xaIyBO7QaHAHZG1CUQIlbr4Ph4Ze7txag2fOoOznL+kQr2zjlX0pytsK0l0H4nMc8rVBg=="
+        },
+        "5b8f84d9-0fd9-4b14-a70d-5bf56a9e0caa": {
+          "display_id": 1530,
+          "author": "krvx",
+          "content": "Commit 35f4abcb fixes Intel macOS H2 CLI cancellation 102911467769: setup completed in 50 seconds, cold cargo build spent 9m25 and reached peritus-cli before the separate package job hit ten minutes. Native H2 binary matrix now gets fifteen minutes, scoped by exact path/job timeout policy; lifecycle/scenario budgets unchanged. Publication policy test updated to enforce build15 and others10. All356xtasktests,policyall,Linux/WindowsstrictClippy,actionlint,fmt,diff checks pass. Previous2cfd Apple Silicon CLI build and native Windows Foundation edge tests passed, proving setup and path fixes. Await latest-head hosted qualification.",
+          "created_at": "2026-09-10T14:45:55.723819819Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7GafDyF+2PLxLzxwGDEYIvv6E2LiOGXPEiSzldhXYJpSQeYKa7WfDyOfR9ePo4/lZ3dtPkxmmXy2ywe2J2XXBQ=="
         },
         "7a5009f8-219f-4444-898b-e0d8f11253f5": {
           "display_id": 1521,
@@ -14937,8 +14946,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-10T14:26:46.500480644Z",
+    "timestamp": "2026-09-10T14:45:55.728124670Z",
     "agent_id": "krvx",
-    "agent_seq": 187
+    "agent_seq": 188
   }
 }
