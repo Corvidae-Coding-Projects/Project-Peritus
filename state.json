@@ -1,6 +1,6 @@
 {
   "next_display_id": 71,
-  "next_comment_id": 1536,
+  "next_comment_id": 1537,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -10777,7 +10777,7 @@
       "priority": "medium",
       "created_by": "krvx",
       "created_at": "2026-09-10T17:27:35.837494791Z",
-      "updated_at": "2026-09-10T17:47:08.571042549Z",
+      "updated_at": "2026-09-10T17:47:50.731486684Z",
       "labels": [
         "feature"
       ],
@@ -10790,6 +10790,15 @@
           "kind": "note",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALXwpgBOnTAk1WKTlUjBgJD7UaCKIqpDOBri9TcqIeIhCt69veo19GIhfArrqKXWGS5r+86bM7AAEygnEieumBw=="
+        },
+        "3d1b1787-d45f-4e76-a66f-f99a3f84b73a": {
+          "display_id": 1536,
+          "author": "krvx",
+          "content": "Commit 732342c8: feat(tui): add message editor navigation (#58). Final staged review passed. App-shell CI test shard passed 293 tests; build, clippy, doc-test and docs passed. Final TUI regression run: 142 passed. Strict Linux/Windows clippy, Windows build and 13 navigation/input tests under Wine passed. Real locked-dependency TUI PTY run passed 13 input/render/resize/cleanup checks. Repository policy, ordinary API, format, dependency checks all passed. Module design and local integrations preserved untracked. Pushing feature branch and opening PR against develop.",
+          "created_at": "2026-09-10T17:47:50.727926558Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAXpoiQYd3+mkDZh6VwBPU6ocXK98nk31xjXJ+1gV4K/n6xba/20PJLguvyaCzzAY7qXp1RFXPuOvHwiLdJU+kCw=="
         }
       }
     },
@@ -15030,8 +15039,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-10T17:47:08.571042549Z",
+    "timestamp": "2026-09-10T17:47:50.731486684Z",
     "agent_id": "krvx",
-    "agent_seq": 201
+    "agent_seq": 202
   }
 }
