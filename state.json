@@ -1,6 +1,6 @@
 {
   "next_display_id": 69,
-  "next_comment_id": 1521,
+  "next_comment_id": 1522,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -2941,8 +2941,17 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-10T11:22:27.739162003Z",
-      "updated_at": "2026-09-10T11:44:28.018110625Z",
+      "updated_at": "2026-09-10T11:54:15.793657412Z",
       "comments": {
+        "7a5009f8-219f-4444-898b-e0d8f11253f5": {
+          "display_id": 1521,
+          "author": "krvx",
+          "content": "PR #63 review: replaced extended socket-address FFI and blocking client connects with a bounded private runtime address shared by daemon, launcher and H2; ordinary Tokio clients retained. Individual peer-auth failures are rejected, retryable listener errors back off. Reproduced and fixed missing recovery CI target assignment plus Linux-only imports leaking into Windows daemon tests. Full affected suites, policy, 353 xtask tests and strict local-socket Verus passed; final native builds/cross-lint in progress.",
+          "created_at": "2026-09-10T11:54:15.787048734Z",
+          "kind": "note",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABACCZ8CAJ/dfa77/Iet6jQ2vh5NYUSF0b2fzYAle2dp8ddNhaYzK3xr13tGQl+44Cgv3BdHMOoFYhJN2xf48d9Ag=="
+        },
         "d8be9120-d1ca-4777-9fbe-7287fdd1ddde": {
           "display_id": 1520,
           "author": "krvx",
@@ -14856,8 +14865,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-10T11:44:28.018110625Z",
+    "timestamp": "2026-09-10T11:54:15.793657412Z",
     "agent_id": "krvx",
-    "agent_seq": 178
+    "agent_seq": 179
   }
 }
