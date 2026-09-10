@@ -22,6 +22,7 @@ mod folder;
 mod healing;
 mod interaction;
 mod model_selection;
+mod recovery;
 mod support;
 mod workbench;
 

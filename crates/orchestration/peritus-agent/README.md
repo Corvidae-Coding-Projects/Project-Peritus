@@ -37,7 +37,9 @@ caching receive `CachePolicy::Automatic`; unsupported profiles remain explicitly
 Recoverable empty, malformed, interrupted, and transport turns use the shared checked exponential
 retry planner. Each wait has stable bounded jitter, honors a bounded provider `Retry-After`, remains
 promptly cancellable, and records its reason, attempt, elapsed time, and selected delay before
-sleeping.
+sleeping. Each provider attempt owns a separate cancellation token: stream cleanup cannot cancel
+the caller or prevent its next retry. Caller cancellation and dropping the loop still stop the
+pending attempt, including a provider connection that has not returned a stream yet.
 
 Every provider step carries one replacement system-policy projection with its current host
 invocation step and live executor prerequisite. Transport retries and local context reconstruction

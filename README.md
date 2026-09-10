@@ -210,6 +210,8 @@ peritus update --enable-checks
   selected models, and unsent chat text stay in the interface while daemon readiness is restored.
 - If a provider login fails, run `peritus providers`.
 - If a workspace needs repair, run `peritus workspaces`.
+- Interrupted provider responses retry automatically within the task's limits. After a daemon
+  restart, interrupted tasks continue from preserved work. Tasks you explicitly cancel stay stopped.
 - If a task stops, read its remaining work. Send a message to continue it, or select it in `/runs` and press `r` to retry.
 
 Do not delete the state directory to repair a task. It contains task history and managed repository copies.

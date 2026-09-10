@@ -15,6 +15,9 @@ use peritus_run_settlement::{CandidateStage, RunDisposition, SettlementCause};
 #[path = "checkpoint_resume/fixtures.rs"]
 mod fixtures;
 
+#[path = "checkpoint_resume/effect_identity.rs"]
+mod effect_identity;
+
 use fixtures::*;
 
 // These scenarios run real compiler gates; cold native Windows setup can exceed one minute.

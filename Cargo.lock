@@ -2819,6 +2819,7 @@ dependencies = [
 name = "peritus-product-runner"
 version = "0.0.1"
 dependencies = [
+ "getrandom 0.4.3",
  "image",
  "peritus-agent",
  "peritus-artifact-store",

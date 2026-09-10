@@ -9,7 +9,7 @@ use super::super::{
 use super::{successful, terminal_error, usable};
 use crate::{ModelAdvance, ModelSession};
 use peritus_model_protocol::{Message, ModelEvent, ModelRequest, ProtocolLimits};
-use peritus_provider_core::ModelProvider;
+use peritus_provider_core::{CancellationToken, ModelProvider, cancel_first};
 
 mod progress;
 
@@ -75,15 +75,18 @@ pub(super) async fn complete_turn(
         }
         let admitted_request_id = model_request.request_id().expose_for_wire().to_owned();
         trace.account(DeveloperAccountingEvent::ModelRequest { retry: attempt > 1 })?;
-        let driven = drive(
-            provider,
-            model_request,
-            request,
-            protocol_limits,
-            trace,
-            interaction.map(|value| value.0),
+        let driven = cancel_first(
+            &request.cancellation,
+            drive(
+                provider,
+                model_request,
+                protocol_limits,
+                trace,
+                interaction.map(|value| value.0),
+            ),
         )
-        .await;
+        .await
+        .unwrap_or(Err(DeveloperLoopError::Cancelled));
         if let Some((port, role, _)) = interaction {
             let request_usage = driven.as_ref().map_or_else(
                 |_| peritus_model_protocol::UsageCounters::default(),
@@ -125,22 +128,19 @@ pub(super) async fn complete_turn(
 async fn drive(
     provider: &dyn ModelProvider,
     model_request: ModelRequest,
-    request: &DeveloperLoopRequest,
     protocol_limits: ProtocolLimits,
     trace: &mut dyn DeveloperTrace,
     interaction: Option<&dyn DeveloperInteraction>,
 ) -> Result<ModelSession, DeveloperLoopError> {
-    let mut progress = progress::ProviderProgress::new(interaction, &request.cancellation);
+    // OwnedModelStream cancels its token when a stream fails or is dropped. That cleanup must
+    // stop only this attempt, leaving the caller's token active for bounded automatic retries.
+    let attempt = AttemptCancellation(CancellationToken::new());
+    let mut progress = progress::ProviderProgress::new(interaction, &attempt.0);
     let mut session = progress
         .wait(async {
-            ModelSession::start(
-                provider,
-                model_request,
-                protocol_limits,
-                request.cancellation.clone(),
-            )
-            .await
-            .map_err(DeveloperLoopError::from)
+            ModelSession::start(provider, model_request, protocol_limits, attempt.0.clone())
+                .await
+                .map_err(DeveloperLoopError::from)
         })
         .await?;
     let result = async {
@@ -192,4 +192,14 @@ async fn drive(
     trace.account(DeveloperAccountingEvent::Usage(session.usage_high_water()))?;
     result?;
     Ok(session)
+}
+
+struct AttemptCancellation(CancellationToken);
+
+impl Drop for AttemptCancellation {
+    fn drop(&mut self) {
+        // This also covers cancellation while provider.start is still pending, before an owned
+        // stream exists, and dropping the entire developer loop at its deadline.
+        let _ = self.0.cancel();
+    }
 }
