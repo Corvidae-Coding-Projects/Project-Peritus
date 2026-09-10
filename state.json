@@ -1,5 +1,5 @@
 {
-  "next_display_id": 72,
+  "next_display_id": 73,
   "next_comment_id": 1548,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -65,6 +65,7 @@
     "da04a6e6-0a78-4db8-a9f8-255fbada5b2d": 41,
     "dfab9d3d-33b2-4c87-aa21-5e886054ba62": 7,
     "e24f4c6e-7a1c-4075-8361-151abdd789f0": 56,
+    "e6cc067a-83c2-4e9c-a1f9-17ff1faa9e11": 72,
     "ec4c6d0c-2cbb-40b9-8be2-4ac69e7fc750": 32,
     "ef6ed3ab-52cd-436a-aa6e-d5d098c89f6c": 8,
     "f27888a7-5366-4703-a68a-9f17b1adad81": 20,
@@ -14369,6 +14370,16 @@
         }
       }
     },
+    "e6cc067a-83c2-4e9c-a1f9-17ff1faa9e11": {
+      "uuid": "e6cc067a-83c2-4e9c-a1f9-17ff1faa9e11",
+      "display_id": 72,
+      "title": "Rebase and harden durable command identity PR66",
+      "status": "open",
+      "priority": "high",
+      "created_by": "krvx",
+      "created_at": "2026-09-10T23:27:26.663955506Z",
+      "updated_at": "2026-09-10T23:27:26.663955506Z"
+    },
     "ec4c6d0c-2cbb-40b9-8be2-4ac69e7fc750": {
       "uuid": "ec4c6d0c-2cbb-40b9-8be2-4ac69e7fc750",
       "display_id": 32,
@@ -15149,8 +15160,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-10T20:27:40.777159368Z",
+    "timestamp": "2026-09-10T23:27:26.663955506Z",
     "agent_id": "krvx",
-    "agent_seq": 218
+    "agent_seq": 219
   }
 }
