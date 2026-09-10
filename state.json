@@ -1,6 +1,6 @@
 {
   "next_display_id": 72,
-  "next_comment_id": 1546,
+  "next_comment_id": 1547,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11529,7 +11529,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-10T18:04:24.271923519Z",
-      "updated_at": "2026-09-10T20:24:13.327657611Z",
+      "updated_at": "2026-09-10T20:26:44.622309498Z",
       "comments": {
         "21bb2d9e-932a-4d5f-a67f-c24bc7516dd2": {
           "display_id": 1541,
@@ -11539,6 +11539,15 @@
           "kind": "progress",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAf+2acMBxMsDdR/2l3ui3GJDwK301cZDb1Z4ZyEL0hm6BgZU+dmuiQ/6qq8Upyh1vv4wB0AIaTNFd8WvoiVanAg=="
+        },
+        "3c6b7ba1-95f3-4764-a069-57b37867ca2c": {
+          "display_id": 1546,
+          "author": "krvx",
+          "content": "Committed fb9af8ea fix(recovery): resume interrupted runs without cancelling retries. Fresh writer/fixer invocation IDs prevent old receipt collisions after durable continuation, including disabled local memory. Attempt-owned cancellation allows bounded automatic provider retry and preserves explicit user stops. 339 agent/product-runner and 80 daemon product-run tests pass; strict affected Clippy, xtask all, formatting, cargo deny and affected-root Verus pass. Windows GNU agent/product test builds and all six retry/cancellation regressions under Wine pass. User traces were inspected read-only and were not included. Updating existing PR65.",
+          "created_at": "2026-09-10T20:26:44.618265809Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA/eRb/Zx0XS6PkdOBb/EIxlXaP4+2u/bgzmeuwOwOEd2XLZPwBJonKwT3zktPPHbVz1buDNg2vN9ixiZywZ2wDA=="
         },
         "42845211-f462-41b5-8ae3-99f3d9c627c5": {
           "display_id": 1543,
@@ -15135,8 +15144,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-10T20:24:13.327657611Z",
+    "timestamp": "2026-09-10T20:26:44.622309498Z",
     "agent_id": "krvx",
-    "agent_seq": 215
+    "agent_seq": 216
   }
 }
