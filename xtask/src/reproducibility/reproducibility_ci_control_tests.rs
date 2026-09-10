@@ -28,10 +28,10 @@ fn rust_and_supply_chain_jobs_cannot_be_skipped_or_gutted() {
 }
 
 #[test]
-fn rust_shards_retain_the_ten_minute_ceiling() {
+fn rust_shards_retain_the_fifteen_minute_ceiling() {
     let altered = canonical_ci().replacen(
-        "    runs-on: ${{ matrix.os }}\n    timeout-minutes: 10",
-        "    runs-on: ${{ matrix.os }}\n    timeout-minutes: 11",
+        "    runs-on: ${{ matrix.os }}\n    timeout-minutes: 15",
+        "    runs-on: ${{ matrix.os }}\n    timeout-minutes: 16",
         1,
     );
 

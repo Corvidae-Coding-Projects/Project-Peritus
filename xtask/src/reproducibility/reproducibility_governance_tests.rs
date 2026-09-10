@@ -149,7 +149,7 @@ fn required_workflow_retains_the_measured_verus_timeout() {
 #[test]
 fn required_workflow_retains_the_measured_rust_matrix_timeout() {
     let altered = canonical_governance().replacen(
-        "    runs-on: ${{ matrix.os }}\n    timeout-minutes: 10",
+        "    runs-on: ${{ matrix.os }}\n    timeout-minutes: 15",
         "    runs-on: ${{ matrix.os }}\n    timeout-minutes: 9",
         1,
     );

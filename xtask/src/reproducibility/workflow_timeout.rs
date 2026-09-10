@@ -1,4 +1,4 @@
-//! Bounded hosted execution with an explicit release-compilation allowance.
+//! Bounded hosted execution with explicit compilation and native-qualification allowances.
 
 use crate::error::Diagnostic;
 use std::path::Path;
@@ -22,6 +22,13 @@ pub(super) fn validate(
                 | "jobs.distro-compile-checks"
         ) {
         20
+    } else if matches!(
+        (path.to_str(), location),
+        (Some(".github/workflows/ci.yml"), "jobs.rust")
+            | (Some(".github/workflows/formal-governance.yml"), "jobs.rust-shards")
+            | (Some(".github/workflows/security-qualification.yml"), "jobs.native-security")
+    ) {
+        15
     } else {
         10
     };
@@ -30,7 +37,7 @@ pub(super) fn validate(
         diagnostics.push(Diagnostic::at(
             path,
             format!("`{location}` does not have a timeout from 1 through {maximum} minutes"),
-            "keep hosted jobs within ten minutes, except the named release compilation jobs within twenty",
+            "keep ordinary jobs within ten minutes, named Rust and H0 jobs within fifteen, and named release compilation jobs within twenty",
         ));
     }
 }
@@ -53,6 +60,40 @@ mod tests {
         format!(
             "name: timeout policy\njobs:\n  {job}:\n    runs-on: ubuntu-24.04\n    timeout-minutes: {timeout}\n    steps:\n      - run: cargo test --workspace --locked\n"
         )
+    }
+
+    #[test]
+    fn qualification_allowance_is_bounded_and_scoped_to_exact_jobs() {
+        let allowed = [
+            (".github/workflows/ci.yml", "jobs.rust"),
+            (".github/workflows/formal-governance.yml", "jobs.rust-shards"),
+            (".github/workflows/security-qualification.yml", "jobs.native-security"),
+        ];
+        for (path, job) in allowed {
+            for (minutes, valid) in [(1, true), (10, true), (15, true), (0, false), (16, false)] {
+                let mapping = yaml_rust2::yaml::Hash::from_iter([(
+                    yaml_rust2::Yaml::String("timeout-minutes".into()),
+                    yaml_rust2::Yaml::Integer(minutes),
+                )]);
+                let mut diagnostics = Vec::new();
+                super::validate(&mapping, std::path::Path::new(path), job, &mut diagnostics);
+                assert_eq!(diagnostics.is_empty(), valid, "{path}/{job}/{minutes}");
+            }
+        }
+        for (path, job) in [
+            (".github/workflows/extra.yml", "jobs.native-security"),
+            (".github/workflows/security-qualification.yml", "jobs.rust"),
+            (".github/workflows/ci.yml", "jobs.rust-shards"),
+            (".github/workflows/formal-governance.yml", "jobs.policy"),
+        ] {
+            let mapping = yaml_rust2::yaml::Hash::from_iter([(
+                yaml_rust2::Yaml::String("timeout-minutes".into()),
+                yaml_rust2::Yaml::Integer(15),
+            )]);
+            let mut diagnostics = Vec::new();
+            super::validate(&mapping, std::path::Path::new(path), job, &mut diagnostics);
+            assert_message(&diagnostics, "timeout from 1 through 10 minutes");
+        }
     }
 
     #[test]

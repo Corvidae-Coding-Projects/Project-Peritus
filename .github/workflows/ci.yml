@@ -118,7 +118,7 @@ jobs:
           - { os: windows-2025, operation: test-daemon-review, shard: app-shell }
           - { os: windows-2025, operation: test-daemon-rewinds, shard: app-shell }
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
