@@ -10773,11 +10773,12 @@
       "display_id": 70,
       "title": "Implement TUI message editor navigation (GitHub #58)",
       "description": "Branch from develop. Add word navigation, mouse cursor placement and selection for composer; live-test and run local CI-equivalent checks before PR to develop. Preserve deferred module design.",
-      "status": "open",
+      "status": "closed",
       "priority": "medium",
       "created_by": "krvx",
       "created_at": "2026-09-10T17:27:35.837494791Z",
-      "updated_at": "2026-09-10T17:48:55.219836984Z",
+      "updated_at": "2026-09-10T17:49:01.269804933Z",
+      "closed_at": "2026-09-10T17:49:01.268949029Z",
       "labels": [
         "feature"
       ],
@@ -15048,8 +15049,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-10T17:48:55.219836984Z",
+    "timestamp": "2026-09-10T17:49:01.269804933Z",
     "agent_id": "krvx",
-    "agent_seq": 203
+    "agent_seq": 204
   }
 }
