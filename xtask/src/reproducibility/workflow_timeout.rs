@@ -26,6 +26,7 @@ pub(super) fn validate(
         (".github/workflows/ci.yml", "jobs.rust"),
         (".github/workflows/formal-governance.yml", "jobs.rust-shards"),
         (".github/workflows/security-qualification.yml", "jobs.native-security"),
+        (".github/workflows/product-package.yml", "jobs.build-h2-binary"),
     ]
     .iter()
     .any(|(workflow, job)| path == Path::new(workflow) && location == *job)
@@ -39,7 +40,7 @@ pub(super) fn validate(
         diagnostics.push(Diagnostic::at(
             path,
             format!("`{location}` does not have a timeout from 1 through {maximum} minutes"),
-            "keep ordinary jobs within ten minutes, named Rust and H0 jobs within fifteen, and named release compilation jobs within twenty",
+            "keep ordinary jobs within ten minutes, named Rust, H0, and native binary builds within fifteen, and named release compilation jobs within twenty",
         ));
     }
 }
@@ -70,6 +71,7 @@ mod tests {
             (".github/workflows/ci.yml", "jobs.rust"),
             (".github/workflows/formal-governance.yml", "jobs.rust-shards"),
             (".github/workflows/security-qualification.yml", "jobs.native-security"),
+            (".github/workflows/product-package.yml", "jobs.build-h2-binary"),
         ];
         for (path, job) in allowed {
             let path = std::path::Path::new(".github/workflows")
