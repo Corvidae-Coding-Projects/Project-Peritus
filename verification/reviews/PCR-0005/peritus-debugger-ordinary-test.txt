@@ -1,0 +1,134 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-debugger", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-debugger --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 10.73469, "finished_at": "2026-09-10T01:49:36.838713Z", "kind": "ordinary-test", "owning_crate": "peritus-debugger", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:49:26.160128Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-debugger", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-debugger", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 19, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 5 tests
+test model::runner::tests::malformed_stream_and_provider_failure_are_retryable_protocol_errors ... ok
+test model::runner::tests::strict_structured_proposal_is_the_only_success_shape ... ok
+test model::runner::tests::cancellation_and_event_budget_stop_before_admission ... ok
+test model::runner::tests::output_shape_and_schema_fail_closed ... ok
+test runtime::publication::tests::staged_report_and_pre_admitted_evidence_reconcile_to_one_publication ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 12 tests
+test artifact_ranges_are_nonempty_half_open ... ok
+test refinement_replay_equivalence ... ok
+test refinement_non_authority ... ok
+test refinement_report_validity ... ok
+test confidence_retains_counters_and_never_implies_acceptance ... ok
+test refinement_bounded_analysis ... ok
+test limits_only_tighten_and_fit_c0_b3_boundaries ... ok
+test refinement_citation_containment ... ok
+test nominal_identity_rejects_zero_and_derives_deterministically ... ok
+test refinement_selection_containment ... ok
+test taxonomy_is_complete_unique_and_strict ... ok
+test unsupported_claim_retains_only_digest_and_reason ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 4 tests
+test absent_job_has_no_phantom_checkpoint_or_history ... ok
+test reused_command_identity_with_different_content_is_rejected ... ok
+test commit_is_idempotent_and_replay_matches_the_atomic_checkpoint ... ok
+test model_outbox_start_and_failure_settlement_share_one_claim_fence ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 3 tests
+test cancellation_is_terminal_and_wins_before_effect_execution ... ok
+test report_recovery_distinguishes_staging_commit_admission_and_settlement ... ok
+test retry_is_a_separate_bounded_transition_and_recovery_action ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test v1_fixture_digest_manifest_matches_exact_bytes ... ok
+test v1_proposal_fixtures_are_bounded_canonical_json ... ok
+test strict_schema_is_stable_parseable_and_closed ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test production_debugger_passes_all_thirteen_a2_cases ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 4 tests
+test wire_rejects_corruption_instead_of_partially_activating_it ... ok
+test families_82_83_and_84_round_trip_through_semantic_checks ... ok
+test event_replay_reconstructs_the_exact_successor_chain ... ok
+test frozen_family_corpus_matches_exact_canonical_bytes ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:49:36.838713Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-debugger", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-debugger", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 19, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling tokio v1.53.1
+   Compiling nix v0.31.3
+   Compiling thiserror-impl v1.0.69
+   Compiling serde v1.0.229
+   Compiling peritus-git v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-git)
+   Compiling peritus-tool-protocol v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/tools/peritus-tool-protocol)
+   Compiling peritus-patch v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-patch)
+   Compiling peritus-artifact-store v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-artifact-store)
+   Compiling peritus-sandbox v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-sandbox)
+   Compiling peritus-obligations v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-obligations)
+   Compiling peritus-model-protocol v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/model/peritus-model-protocol)
+   Compiling peritus-test-support v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/app/testing/peritus-test-support)
+   Compiling peritus-journal v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-journal)
+   Compiling thiserror v1.0.69
+   Compiling filedescriptor v0.8.3
+   Compiling portable-pty v0.9.0
+   Compiling peritus-projection v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-projection)
+   Compiling peritus-tool-router v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/tools/peritus-tool-router)
+   Compiling peritus-workspace v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-workspace)
+   Compiling process-wrap v9.1.0
+   Compiling peritus-evidence v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-evidence)
+   Compiling peritus-trace v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/observe/peritus-trace)
+   Compiling peritus-process v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-process)
+   Compiling peritus-harness v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-harness)
+   Compiling peritus-scheduler v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-scheduler)
+   Compiling peritus-review v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-review)
+   Compiling peritus-collaboration v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-collaboration)
+   Compiling peritus-tools-quality v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/tools/peritus-tools-quality)
+   Compiling peritus-gates v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-gates)
+   Compiling tokio-util v0.7.19
+   Compiling tower v0.5.3
+   Compiling tokio-rustls v0.26.4
+   Compiling tower-http v0.6.11
+   Compiling h2 v0.4.19
+   Compiling hyper v1.11.0
+   Compiling hyper-util v0.1.20
+   Compiling hyper-rustls v0.27.9
+   Compiling reqwest v0.13.4
+   Compiling peritus-provider-core v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/model/peritus-provider-core)
+   Compiling peritus-agent v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-agent)
+   Compiling peritus-orchestrator v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-orchestrator)
+   Compiling peritus-debugger v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/analysis/peritus-debugger)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 10.59s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_debugger-25d0908ba94ca186)
+     Running tests/domain_primitives.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/domain_primitives-bef5f3a42ed49251)
+     Running tests/durability_journal.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/durability_journal-d33f112103e7a0ae)
+     Running tests/durability_reducer.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/durability_reducer-a3ca7da31a50dc53)
+     Running tests/model_validation.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/model_validation-178332de437f7136)
+     Running tests/production_conformance.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/production_conformance-56aaaf43deaa0384)
+     Running tests/replay_wire.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/replay_wire-ace0f8ccedf26e7f)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:49:36.838713Z"}

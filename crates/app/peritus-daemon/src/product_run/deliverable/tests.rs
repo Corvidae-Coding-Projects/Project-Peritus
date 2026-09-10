@@ -247,6 +247,7 @@ fn candidate_record(repository: &TempDir) -> crate::product_run::RunRecord {
         remaining_work: vec!["run exact checks".to_owned()],
         interruption_cause: "reviewer unavailable".to_owned(),
         candidate_actionable: true,
+        preview: crate::product_run::PreviewAggregate::default(),
     }
 }
 

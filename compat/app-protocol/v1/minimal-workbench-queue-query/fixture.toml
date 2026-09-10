@@ -1,0 +1,13 @@
+schema = 1
+surface = "app-protocol"
+surface_version = "v1"
+case = "minimal-workbench-queue-query"
+kind = "minimal"
+
+[[files]]
+path = "expectation.toml"
+sha256 = "9bfec43ae16414cb30f096371819e7785ea0460cc576310813b3ac2e7208039c"
+
+[[files]]
+path = "payload.hex"
+sha256 = "b3cd547e315f093e5bbbf82eea8cdf60e8dc6f6e7dec3972ed3d689c13971fa0"

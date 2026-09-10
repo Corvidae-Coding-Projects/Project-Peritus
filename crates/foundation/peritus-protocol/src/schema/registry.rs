@@ -1,5 +1,10 @@
 //! Stable message-family registry.
 
+/// G0-owned immutable actor/conversation/workspace artifact claim event.
+pub const ARTIFACT_SCOPE_CLAIM_FAMILY: u16 = 3500;
+/// G0-owned artifact upload acceptance event; preserves the existing publication allocation.
+pub const ARTIFACT_UPLOAD_ACCEPTED_FAMILY: u16 = 65_000;
+
 /// One immutable canonical frame family.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct MessageFamily {
@@ -38,9 +43,22 @@ impl MessageFamily {
         match self.tag {
             1 | 10 | 40 | 50 | 53 | 70 | 73 | 76 | 79 | 82 | 85 | 88 | 91 => MessageRole::Command,
             2 => MessageRole::CommandEnvelope,
-            3 | 41 | 51 | 54 | 60 | 71 | 74 | 77 | 80 | 83 | 86 | 89 | 92 | 94 => {
-                MessageRole::Event
-            }
+            3
+            | 41
+            | 51
+            | 54
+            | 60
+            | 71
+            | 74
+            | 77
+            | 80
+            | 83
+            | 86
+            | 89
+            | 92
+            | 94
+            | ARTIFACT_SCOPE_CLAIM_FAMILY
+            | ARTIFACT_UPLOAD_ACCEPTED_FAMILY => MessageRole::Event,
             12 | 13 | 42 | 52 | 55 | 72 | 75 | 78 | 81 | 84 | 87 | 90 | 93 => MessageRole::State,
             _ => MessageRole::Record,
         }
@@ -143,6 +161,18 @@ pub const FAMILIES: &[MessageFamily] = &[
     MessageFamily {
         tag: 94,
         name: "credential-registry-event",
+        schema_version: 1,
+        inert_only: true,
+    },
+    MessageFamily {
+        tag: ARTIFACT_SCOPE_CLAIM_FAMILY,
+        name: "application-artifact-scope-claim",
+        schema_version: 1,
+        inert_only: true,
+    },
+    MessageFamily {
+        tag: ARTIFACT_UPLOAD_ACCEPTED_FAMILY,
+        name: "application-artifact-upload-accepted",
         schema_version: 1,
         inert_only: true,
     },

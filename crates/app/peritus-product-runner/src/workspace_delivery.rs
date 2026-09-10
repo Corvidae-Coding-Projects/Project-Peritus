@@ -66,6 +66,7 @@ impl ProductRunInput {
     ) -> WorkspaceDeveloperTools {
         tools
             .with_protected_paths(self.workspace_kind.protected_paths())
+            .with_protection_view(std::sync::Arc::clone(&self.conversation))
             .with_in_place_scope(self.in_place_scope())
     }
 
@@ -82,6 +83,9 @@ impl ProductRunInput {
         transcript: &str,
         profile: &ProviderProfile,
     ) -> Result<WorkspaceImages, ProductRunnerError> {
+        if self.conversation.uses_explicit_media() {
+            return Ok(WorkspaceImages::default());
+        }
         if self.workspace_kind.is_in_place() {
             crate::workspace_media::discover_explicit(
                 &self.workspace_root,

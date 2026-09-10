@@ -5,6 +5,9 @@ use crate::source::reference_lexer::{Token, TokenKind};
 
 use super::super::violation::{Violation, ViolationKind};
 
+#[path = "attributes/serde.rs"]
+mod serde;
+
 const SIMPLE: &[&str] = &[
     "allow",
     "auto",
@@ -38,13 +41,20 @@ pub(super) fn inspect(
     line: usize,
     deserialize_imported: bool,
     serialize_imported: bool,
+    tokio_namespace: bool,
     violations: &mut Vec<Violation>,
 ) {
     let name = attribute_name(tokens);
     let allowed = name.as_deref().is_some_and(|name| SIMPLE.contains(&name))
         || name.as_deref().is_some_and(trust_accounted)
         || audited_repr(tokens)
-        || deserialize_imported && audited_serde(tokens)
+        || deserialize_imported && serde::audited(tokens, serialize_imported)
+        || name.as_deref() == Some("default") && tokens.len() == 1
+        || name.as_deref() == Some("ignore")
+            && tokens.len() == 3
+            && punctuation_is(&tokens[1], '=')
+            && matches!(&tokens[2].kind, TokenKind::StringLiteral(Some(reason)) if !reason.trim().is_empty())
+        || tokio_namespace && name.as_deref() == Some("tokio::test") && tokens.len() == 4
         || name.as_deref() == Some("derive")
             && derive_list(tokens, deserialize_imported, serialize_imported);
     if !allowed {
@@ -61,15 +71,38 @@ pub(super) fn audited_serialize_declaration(tokens: &[Token]) -> bool {
 }
 
 fn audited_serde_declaration(tokens: &[Token], derive: &str) -> bool {
-    tokens.len() == 4
-        && identifier_is(&tokens[0], "serde")
-        && punctuation_is(&tokens[1], ':')
-        && punctuation_is(&tokens[2], ':')
-        && identifier_is(&tokens[3], derive)
+    if tokens.len() < 4
+        || !identifier_is(&tokens[0], "serde")
+        || !punctuation_is(&tokens[1], ':')
+        || !punctuation_is(&tokens[2], ':')
+    {
+        return false;
+    }
+    if tokens.len() == 4 {
+        return identifier_is(&tokens[3], derive);
+    }
+    let imports = &tokens[3..];
+    if !punctuation_is(&imports[0], '{')
+        || matching_group(imports, 0, '{', '}') != Some(imports.len())
+    {
+        return false;
+    }
+    let names = &imports[1..imports.len() - 1];
+    !names.is_empty()
+        && names.iter().enumerate().all(|(index, token)| {
+            if index % 2 == 0 {
+                matches!(identifier(token), Some("Deserialize" | "Serialize"))
+            } else {
+                punctuation_is(token, ',')
+            }
+        })
+        && names.iter().any(|token| identifier_is(token, derive))
 }
 
 pub(super) fn is_expansion_name(name: &str) -> bool {
-    SIMPLE.contains(&name) || DERIVES.contains(&name) || matches!(name, "derive" | "repr" | "serde")
+    SIMPLE.contains(&name)
+        || DERIVES.contains(&name)
+        || matches!(name, "derive" | "repr" | "serde" | "default" | "ignore")
 }
 
 pub(super) fn unsupported(line: usize, name: &str) -> Violation {
@@ -111,27 +144,6 @@ fn audited_repr(tokens: &[Token]) -> bool {
         && punctuation_is(&tokens[1], '(')
         && identifier_is(&tokens[2], "u8")
         && punctuation_is(&tokens[3], ')')
-}
-
-fn audited_serde(tokens: &[Token]) -> bool {
-    let default = tokens.len() == 4
-        && identifier_is(&tokens[0], "serde")
-        && punctuation_is(&tokens[1], '(')
-        && identifier_is(&tokens[2], "default")
-        && punctuation_is(&tokens[3], ')');
-    let deny_unknown_fields = tokens.len() == 4
-        && identifier_is(&tokens[0], "serde")
-        && punctuation_is(&tokens[1], '(')
-        && identifier_is(&tokens[2], "deny_unknown_fields")
-        && punctuation_is(&tokens[3], ')');
-    let reviewed_case = tokens.len() == 6
-        && identifier_is(&tokens[0], "serde")
-        && punctuation_is(&tokens[1], '(')
-        && identifier_is(&tokens[2], "rename_all")
-        && punctuation_is(&tokens[3], '=')
-        && matches!(&tokens[4].kind, TokenKind::StringLiteral(Some(value)) if matches!(value.as_str(), "snake_case" | "kebab-case"))
-        && punctuation_is(&tokens[5], ')');
-    default || deny_unknown_fields || reviewed_case
 }
 
 fn attribute_name(tokens: &[Token]) -> Option<String> {

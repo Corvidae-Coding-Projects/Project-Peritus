@@ -20,6 +20,44 @@ impl ProtocolFeatureName {
     pub const TERMINAL_STREAMING: &'static str = "app.terminal-streaming";
     /// Version-one read-only diagnostics feature name.
     pub const READ_ONLY_DIAGNOSTICS: &'static str = "app.read-only-diagnostics";
+    /// Scoped local product diagnostics with bounded classified findings.
+    pub const PRODUCT_DIAGNOSTICS: &'static str = "app.product-diagnostics";
+    /// Revisioned durable product controls and original operation receipts.
+    pub const WORKBENCH_CONTROL: &'static str = "app.workbench-control";
+    /// Immutable input queue and exact request-incorporation controls.
+    pub const WORKBENCH_INPUTS: &'static str = "app.workbench-inputs";
+    /// Explicit execution over a durable queue, separate from non-running queue management.
+    pub const WORKBENCH_EXECUTION: &'static str = "app.workbench-execution";
+    /// Read-only eligible-input and sealed request-manifest inspection.
+    pub const WORKBENCH_CONTEXT: &'static str = "app.workbench-context";
+    /// Deterministic local prompt-view preview and explicit atomic publication.
+    pub const WORKBENCH_COMPACTION: &'static str = "app.workbench-compaction";
+    /// Explicit user-confirmed brief edits and exact source inspection.
+    pub const WORKBENCH_BRIEF: &'static str = "app.workbench-brief";
+    /// Scoped image upload, local preview and exact confirmed inclusion controls.
+    pub const WORKBENCH_IMAGES: &'static str = "app.workbench-images";
+    /// Authorized explicit file preview and immutable source selection.
+    pub const WORKBENCH_FILES: &'static str = "app.workbench-files";
+    /// Persistent goal lifecycle and safe-boundary pause/resume controls.
+    pub const WORKBENCH_GOALS: &'static str = "app.workbench-goals";
+    /// Cumulative goal usage and typed budget controls.
+    pub const WORKBENCH_BUDGETS: &'static str = "app.workbench-budgets";
+    /// Structured candidate review with content-bound conversational feedback.
+    pub const WORKBENCH_REVIEW: &'static str = "app.workbench-review";
+    /// Daemon-owned launch, selected-window capture and artifact feedback.
+    pub const WORKBENCH_PREVIEW: &'static str = "app.workbench-preview";
+    /// Covered-path checkpoints, preview-bound rewind and durable restore receipts.
+    pub const WORKBENCH_CHECKPOINTS: &'static str = "app.workbench-checkpoints";
+    /// Local literal search and durable conversation navigation.
+    pub const CONVERSATION_LIBRARY: &'static str = "app.conversation-library";
+    /// Non-running forks with explicit workspace and budget bindings.
+    pub const CONVERSATION_FORKS: &'static str = "app.conversation-forks";
+    /// Inspectable enforced workspace permission restrictions.
+    pub const WORKBENCH_PERMISSIONS: &'static str = "app.workbench-permissions";
+    /// Approval-first project discovery and exact reviewed instruction patch.
+    pub const WORKBENCH_INIT: &'static str = "app.workbench-init";
+    /// Explicit project-local guidance lifecycle and future-request retrieval.
+    pub const WORKBENCH_MEMORY: &'static str = "app.workbench-memory";
     /// Version-one graceful shutdown feature name.
     pub const GRACEFUL_SHUTDOWN: &'static str = "app.graceful-shutdown";
 
@@ -71,6 +109,44 @@ pub enum WellKnownProtocolFeature {
     TerminalStreaming,
     /// Read-only diagnostics.
     ReadOnlyDiagnostics,
+    /// Scoped local product diagnostics.
+    ProductDiagnostics,
+    /// Revisioned durable workbench controls and receipt resolution.
+    WorkbenchControl,
+    /// Immutable input queue and exact request-incorporation controls.
+    WorkbenchInputs,
+    /// Explicit execution over a durable queue.
+    WorkbenchExecution,
+    /// Read-only eligible-input and sealed request-manifest inspection.
+    WorkbenchContext,
+    /// Deterministic local prompt-view preview and explicit publication.
+    WorkbenchCompaction,
+    /// Explicit user-confirmed brief edits and exact source inspection.
+    WorkbenchBrief,
+    /// Scoped image upload, local preview and exact confirmed inclusion controls.
+    WorkbenchImages,
+    /// Authorized explicit file preview and immutable source selection.
+    WorkbenchFiles,
+    /// Persistent goal lifecycle and safe-boundary pause/resume controls.
+    WorkbenchGoals,
+    /// Cumulative goal accounting and typed user limits.
+    WorkbenchBudgets,
+    /// Structured candidate review and exact anchored feedback.
+    WorkbenchReview,
+    /// Daemon-owned launch, selected-window capture and artifact feedback.
+    WorkbenchPreview,
+    /// Covered-path checkpoints and safe preview-bound rewind.
+    WorkbenchCheckpoints,
+    /// Local searchable conversation library.
+    ConversationLibrary,
+    /// Checked conversation fork creation.
+    ConversationForks,
+    /// Inspectable enforced workspace permission restrictions.
+    WorkbenchPermissions,
+    /// Approval-first project discovery and exact reviewed instruction patch.
+    WorkbenchInit,
+    /// Explicit project-local guidance lifecycle and future-request retrieval.
+    WorkbenchMemory,
     /// Graceful daemon shutdown controls.
     GracefulShutdown,
 }
@@ -86,6 +162,25 @@ impl WellKnownProtocolFeature {
             Self::UserInput => ProtocolFeatureName::USER_INPUT,
             Self::TerminalStreaming => ProtocolFeatureName::TERMINAL_STREAMING,
             Self::ReadOnlyDiagnostics => ProtocolFeatureName::READ_ONLY_DIAGNOSTICS,
+            Self::ProductDiagnostics => ProtocolFeatureName::PRODUCT_DIAGNOSTICS,
+            Self::WorkbenchControl => ProtocolFeatureName::WORKBENCH_CONTROL,
+            Self::WorkbenchInputs => ProtocolFeatureName::WORKBENCH_INPUTS,
+            Self::WorkbenchExecution => ProtocolFeatureName::WORKBENCH_EXECUTION,
+            Self::WorkbenchContext => ProtocolFeatureName::WORKBENCH_CONTEXT,
+            Self::WorkbenchCompaction => ProtocolFeatureName::WORKBENCH_COMPACTION,
+            Self::WorkbenchBrief => ProtocolFeatureName::WORKBENCH_BRIEF,
+            Self::WorkbenchImages => ProtocolFeatureName::WORKBENCH_IMAGES,
+            Self::WorkbenchFiles => ProtocolFeatureName::WORKBENCH_FILES,
+            Self::WorkbenchGoals => ProtocolFeatureName::WORKBENCH_GOALS,
+            Self::WorkbenchBudgets => ProtocolFeatureName::WORKBENCH_BUDGETS,
+            Self::WorkbenchReview => ProtocolFeatureName::WORKBENCH_REVIEW,
+            Self::WorkbenchPreview => ProtocolFeatureName::WORKBENCH_PREVIEW,
+            Self::WorkbenchCheckpoints => ProtocolFeatureName::WORKBENCH_CHECKPOINTS,
+            Self::ConversationLibrary => ProtocolFeatureName::CONVERSATION_LIBRARY,
+            Self::ConversationForks => ProtocolFeatureName::CONVERSATION_FORKS,
+            Self::WorkbenchPermissions => ProtocolFeatureName::WORKBENCH_PERMISSIONS,
+            Self::WorkbenchInit => ProtocolFeatureName::WORKBENCH_INIT,
+            Self::WorkbenchMemory => ProtocolFeatureName::WORKBENCH_MEMORY,
             Self::GracefulShutdown => ProtocolFeatureName::GRACEFUL_SHUTDOWN,
         }
     }

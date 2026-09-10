@@ -19,17 +19,19 @@ use crossterm::{
 use ratatui::{Terminal, backend::CrosstermBackend};
 use tokio::sync::mpsc;
 
-use crate::{TuiError, model::AppModel, render};
+use crate::{TerminalTitle, TuiError, model::AppModel, render};
 
 const INPUT_POLL: Duration = Duration::from_millis(100);
 
 pub(super) struct TerminalOwner {
     terminal: Terminal<CrosstermBackend<Stdout>>,
     active: bool,
+    title: TerminalTitle,
 }
 
 impl TerminalOwner {
     pub(super) fn enter() -> Result<Self, TuiError> {
+        let title = TerminalTitle::acquire()?;
         enable_raw_mode()?;
         let mut stdout = io::stdout();
         if let Err(error) = execute!(stdout, EnterAlternateScreen, EnableBracketedPaste, Hide) {
@@ -39,7 +41,7 @@ impl TerminalOwner {
         match Terminal::new(CrosstermBackend::new(stdout)) {
             Ok(mut terminal) => {
                 terminal.clear()?;
-                Ok(Self { terminal, active: true })
+                Ok(Self { terminal, active: true, title })
             }
             Err(error) => {
                 let mut stdout = io::stdout();
@@ -64,6 +66,7 @@ impl TerminalOwner {
     }
 
     pub(super) fn resume(&mut self) -> Result<(), TuiError> {
+        self.title.activate()?;
         enable_raw_mode()?;
         if let Err(error) =
             execute!(self.terminal.backend_mut(), EnterAlternateScreen, EnableBracketedPaste, Hide)

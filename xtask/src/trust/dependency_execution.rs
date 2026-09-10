@@ -3,13 +3,17 @@ use crate::model::CargoMetadata;
 use std::collections::BTreeSet;
 use std::path::Path;
 
-const REVIEWED_BUILD_SCRIPT_PACKAGES: [&str; 58] = [
+const REVIEWED_BUILD_SCRIPT_PACKAGES: [&str; 65] = [
     "registry+https://github.com/rust-lang/crates.io-index#alloca@0.4.0",
     "registry+https://github.com/rust-lang/crates.io-index#anyhow@1.0.104",
     "registry+https://github.com/rust-lang/crates.io-index#async-io@2.6.0",
     "registry+https://github.com/rust-lang/crates.io-index#aws-lc-rs@1.18.0",
     "registry+https://github.com/rust-lang/crates.io-index#aws-lc-sys@0.44.0",
+    "registry+https://github.com/rust-lang/crates.io-index#cap-fs-ext@4.0.3",
+    "registry+https://github.com/rust-lang/crates.io-index#cap-primitives@4.0.3",
+    "registry+https://github.com/rust-lang/crates.io-index#cap-std@4.0.3",
     "registry+https://github.com/rust-lang/crates.io-index#crossbeam-utils@0.8.22",
+    "registry+https://github.com/rust-lang/crates.io-index#crc32fast@1.5.1",
     "registry+https://github.com/rust-lang/crates.io-index#crunchy@0.2.4",
     "registry+https://github.com/rust-lang/crates.io-index#curve25519-dalek@5.0.0",
     "registry+https://github.com/rust-lang/crates.io-index#generic-array@0.14.7",
@@ -18,6 +22,9 @@ const REVIEWED_BUILD_SCRIPT_PACKAGES: [&str; 58] = [
     "registry+https://github.com/rust-lang/crates.io-index#icu_normalizer_data@2.3.0",
     "registry+https://github.com/rust-lang/crates.io-index#icu_properties_data@2.3.0",
     "registry+https://github.com/rust-lang/crates.io-index#instability@0.3.13",
+    "registry+https://github.com/rust-lang/crates.io-index#io-extras@0.19.0",
+    "registry+https://github.com/rust-lang/crates.io-index#io-lifetimes@2.0.4",
+    "registry+https://github.com/rust-lang/crates.io-index#io-lifetimes@3.0.1",
     "registry+https://github.com/rust-lang/crates.io-index#jni@0.22.4",
     "registry+https://github.com/rust-lang/crates.io-index#jni-macros@0.22.4",
     "registry+https://github.com/rust-lang/crates.io-index#libc@0.2.189",
@@ -135,226 +142,5 @@ pub(super) fn validate(root: &Path, cargo: &CargoMetadata, diagnostics: &mut Vec
 }
 
 #[cfg(test)]
-mod tests {
-    use super::validate;
-    use crate::model::{CargoMetadata, CargoPackage, CargoPackageMetadata, CargoTarget};
-    use std::path::{Path, PathBuf};
-
-    fn package(id: &str, name: &str, kind: &str) -> CargoPackage {
-        CargoPackage {
-            id: id.to_owned(),
-            name: name.to_owned(),
-            version: "1.0.0".to_owned(),
-            edition: "2024".to_owned(),
-            rust_version: Some("1.97.1".to_owned()),
-            license: Some("MIT".to_owned()),
-            manifest_path: PathBuf::from(format!("/registry/{name}/Cargo.toml")),
-            readme: None,
-            dependencies: Vec::new(),
-            targets: vec![CargoTarget {
-                name: name.to_owned(),
-                kind: vec![kind.to_owned()],
-                crate_types: vec![kind.to_owned()],
-                src_path: PathBuf::from(format!("/registry/{name}/entry.rs")),
-            }],
-            metadata: CargoPackageMetadata::default(),
-        }
-    }
-
-    #[test]
-    fn rejects_unreviewed_dependency_build_scripts_and_proc_macros() {
-        let cargo = CargoMetadata {
-            packages: vec![
-                package(
-                    "registry+https://github.com/rust-lang/crates.io-index#anyhow@1.0.104",
-                    "anyhow",
-                    "custom-build",
-                ),
-                package(
-                    "registry+https://github.com/rust-lang/crates.io-index#surprise-build@1.0.0",
-                    "surprise-build",
-                    "custom-build",
-                ),
-                package(
-                    "registry+https://github.com/rust-lang/crates.io-index#surprise-macro@1.0.0",
-                    "surprise-macro",
-                    "proc-macro",
-                ),
-            ],
-            workspace_members: Vec::new(),
-        };
-        let mut diagnostics = Vec::new();
-
-        validate(Path::new("/workspace"), &cargo, &mut diagnostics);
-
-        assert_eq!(diagnostics.len(), 2);
-        assert!(diagnostics.iter().any(|item| item.message().contains("build script")));
-        assert!(diagnostics.iter().any(|item| item.message().contains("procedural macro")));
-    }
-
-    #[test]
-    fn accepts_only_exact_reviewed_executable_dependency_identities() {
-        let cargo = CargoMetadata {
-            packages: vec![
-                package(
-                    "registry+https://github.com/rust-lang/crates.io-index#curve25519-dalek@5.0.0",
-                    "curve25519-dalek",
-                    "custom-build",
-                ),
-                package(
-                    "registry+https://github.com/rust-lang/crates.io-index#curve25519-dalek-derive@0.1.1",
-                    "curve25519-dalek-derive",
-                    "proc-macro",
-                ),
-                package(
-                    "registry+https://github.com/rust-lang/crates.io-index#serde@1.0.229",
-                    "serde",
-                    "custom-build",
-                ),
-                package(
-                    "registry+https://github.com/rust-lang/crates.io-index#getrandom@0.4.3",
-                    "getrandom",
-                    "custom-build",
-                ),
-                package(
-                    "registry+https://github.com/rust-lang/crates.io-index#libsqlite3-sys@0.38.2",
-                    "libsqlite3-sys",
-                    "custom-build",
-                ),
-                package(
-                    "registry+https://github.com/rust-lang/crates.io-index#nix@0.28.0",
-                    "nix",
-                    "custom-build",
-                ),
-                package(
-                    "registry+https://github.com/rust-lang/crates.io-index#nix@0.31.3",
-                    "nix",
-                    "custom-build",
-                ),
-                package(
-                    "registry+https://github.com/rust-lang/crates.io-index#rustix@1.1.4",
-                    "rustix",
-                    "custom-build",
-                ),
-                package(
-                    "registry+https://github.com/rust-lang/crates.io-index#serde_derive@1.0.229",
-                    "serde_derive",
-                    "proc-macro",
-                ),
-                package(
-                    "registry+https://github.com/rust-lang/crates.io-index#thiserror@1.0.69",
-                    "thiserror",
-                    "custom-build",
-                ),
-                package(
-                    "registry+https://github.com/rust-lang/crates.io-index#thiserror-impl@1.0.69",
-                    "thiserror-impl",
-                    "proc-macro",
-                ),
-                package(
-                    "registry+https://github.com/rust-lang/crates.io-index#web_atoms@0.2.6",
-                    "web_atoms",
-                    "custom-build",
-                ),
-                package(
-                    "registry+https://github.com/rust-lang/crates.io-index#winapi@0.3.9",
-                    "winapi",
-                    "custom-build",
-                ),
-                package(
-                    "registry+https://github.com/rust-lang/crates.io-index#winapi-i686-pc-windows-gnu@0.4.0",
-                    "winapi-i686-pc-windows-gnu",
-                    "custom-build",
-                ),
-                package(
-                    "registry+https://github.com/rust-lang/crates.io-index#winapi-x86_64-pc-windows-gnu@0.4.0",
-                    "winapi-x86_64-pc-windows-gnu",
-                    "custom-build",
-                ),
-                package(
-                    "registry+https://github.com/rust-lang/crates.io-index#windows-implement@0.60.2",
-                    "windows-implement",
-                    "proc-macro",
-                ),
-                package(
-                    "registry+https://github.com/rust-lang/crates.io-index#windows-interface@0.59.3",
-                    "windows-interface",
-                    "proc-macro",
-                ),
-                package(
-                    "registry+https://github.com/rust-lang/crates.io-index#winreg@0.10.1",
-                    "winreg",
-                    "custom-build",
-                ),
-            ],
-            workspace_members: Vec::new(),
-        };
-        let mut diagnostics = Vec::new();
-
-        validate(Path::new("/workspace"), &cargo, &mut diagnostics);
-
-        assert!(diagnostics.is_empty(), "unexpected diagnostics: {diagnostics:?}");
-    }
-
-    #[test]
-    fn rejects_version_and_source_near_misses_for_cryptographic_execution_dependencies() {
-        let cargo = CargoMetadata {
-            packages: vec![
-                package(
-                    "registry+https://github.com/rust-lang/crates.io-index#curve25519-dalek@5.0.1",
-                    "curve25519-dalek",
-                    "custom-build",
-                ),
-                package(
-                    "registry+https://github.com/rust-lang/crates.io-index#curve25519-dalek-derive@0.1.2",
-                    "curve25519-dalek-derive",
-                    "proc-macro",
-                ),
-                package(
-                    "registry+https://registry.example.invalid/index#curve25519-dalek@5.0.0",
-                    "curve25519-dalek",
-                    "custom-build",
-                ),
-                package(
-                    "git+https://example.invalid/curve25519-dalek?rev=0123456789012345678901234567890123456789#curve25519-dalek@5.0.0",
-                    "curve25519-dalek",
-                    "custom-build",
-                ),
-                package(
-                    "path+file:///tmp/curve25519-dalek#curve25519-dalek@5.0.0",
-                    "curve25519-dalek",
-                    "custom-build",
-                ),
-                package(
-                    "registry+https://registry.example.invalid/index#curve25519-dalek-derive@0.1.1",
-                    "curve25519-dalek-derive",
-                    "proc-macro",
-                ),
-                package(
-                    "git+https://example.invalid/curve25519-dalek?rev=0123456789012345678901234567890123456789#curve25519-dalek-derive@0.1.1",
-                    "curve25519-dalek-derive",
-                    "proc-macro",
-                ),
-                package(
-                    "path+file:///tmp/curve25519-dalek-derive#curve25519-dalek-derive@0.1.1",
-                    "curve25519-dalek-derive",
-                    "proc-macro",
-                ),
-            ],
-            workspace_members: Vec::new(),
-        };
-        let mut diagnostics = Vec::new();
-
-        validate(Path::new("/workspace"), &cargo, &mut diagnostics);
-
-        assert_eq!(diagnostics.len(), 8);
-        assert_eq!(
-            diagnostics.iter().filter(|item| item.message().contains("build script")).count(),
-            4
-        );
-        assert_eq!(
-            diagnostics.iter().filter(|item| item.message().contains("procedural macro")).count(),
-            4
-        );
-    }
-}
+#[path = "dependency_execution_tests.rs"]
+mod tests;

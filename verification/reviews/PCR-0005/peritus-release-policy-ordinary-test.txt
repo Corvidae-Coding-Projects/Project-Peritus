@@ -1,0 +1,93 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-release-policy", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-release-policy --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 0.539426, "finished_at": "2026-09-10T01:51:38.570194Z", "kind": "ordinary-test", "owning_crate": "peritus-release-policy", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:51:38.068894Z", "verification_class": "V"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-release-policy", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-release-policy", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 83, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "V"}
+=== COMMAND OUTPUT ===
+
+running 3 tests
+test catalog::tests::criterion_twenty_four_requires_every_release_artifact_class ... ok
+test catalog::tests::stable_catalog_ids_are_contiguous ... ok
+test error::tests::every_error_kind_has_a_stable_h4_code ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test complete_exact_evidence_is_ready_without_publication_authority ... ok
+test decision_is_bound_to_the_exact_candidate_and_time ... ok
+test every_required_artifact_fails_closed_when_removed ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test every_criterion_has_at_least_one_required_artifact ... ok
+test production_catalog_is_exactly_twenty_five_stable_items ... ok
+test evidence_catalog_has_stable_unique_ids_and_sources ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 4 tests
+test platform_slots_are_nominal_not_positional_guesswork ... ok
+test invalid_time_and_source_revision_bindings_are_rejected ... ok
+test zero_nominal_identities_are_rejected ... ok
+test evidence_collection_bound_is_enforced ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test stale_evidence_is_diagnosed_and_cannot_contribute ... ok
+test mismatched_candidate_evidence_is_diagnosed_and_excluded ... ok
+test wrong_source_unreviewed_unsigned_and_conflict_are_distinct ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test evidence_permutations_preserve_verdict_digest_and_diagnostics ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 4 tests
+test conflicting_current_qualification_reports_block_release ... ok
+test explicit_not_ready_qualification_blocks_release ... ok
+test stale_and_unreviewed_qualifications_never_count_as_ready ... ok
+test every_h_slice_is_required ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 5 tests
+test ignored_and_quarantined_findings_are_never_release_ready ... ok
+test independent_waiver_can_resolve_a_nonblocking_finding ... ok
+test unresolved_release_blocker_cannot_be_waived ... ok
+test self_review_changes_required_and_shared_context_each_block ... ok
+test independent_review_quorum_is_mandatory ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:51:38.570194Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-release-policy", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-release-policy", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 83, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "V"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-release-policy v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-release-policy)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.46s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_release_policy-5815d92bafe7bd05)
+     Running tests/acceptance.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/acceptance-528be4ea6c37bfa2)
+     Running tests/catalog.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/catalog-ad50e97b78e2fb35)
+     Running tests/construction.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/construction-cd9eb3baaaaadf5f)
+     Running tests/fail_closed.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/fail_closed-2baa393919fa24fe)
+     Running tests/permutation.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/permutation-8c0da162c457df56)
+     Running tests/qualifications.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/qualifications-0993ce41ac8dded5)
+     Running tests/reviews_and_findings.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/reviews_and_findings-177c78bcb67853d6)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:51:38.570194Z"}

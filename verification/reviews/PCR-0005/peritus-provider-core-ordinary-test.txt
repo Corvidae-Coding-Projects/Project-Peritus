@@ -1,0 +1,129 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-provider-core", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-provider-core --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 1.333618, "finished_at": "2026-09-10T01:51:30.217815Z", "kind": "ordinary-test", "owning_crate": "peritus-provider-core", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:51:28.923804Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-provider-core", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-provider-core", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 75, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 6 tests
+test endpoint::tests::literal_loopback_does_not_trust_dns_names_or_remote_addresses ... ok
+test healing::tests::nested_arrays_keep_literal_values_and_valid_fragment_bytes ... ok
+test healing::tests::valid_json_and_opaque_string_contents_are_never_rewritten ... ok
+test healing::tests::rejects_truncation_ambiguity_duplicate_keys_types_and_invented_values ... ok
+test healing::tests::tool_events_are_audited_before_valid_arguments_and_invalid_utf8_rejects ... ok
+test healing::tests::repairs_complete_formatting_and_keeps_original_provenance ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test claude_metadata_uses_control_initialization_without_a_user_prompt ... ok
+test codex_metadata_initializes_and_lists_without_starting_a_thread_or_turn ... ok
+test unavailable_runtime_and_presend_cancellation_do_not_invent_models ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 4 tests
+test ndjson_handles_crlf_empty_lines_utf8_fragments_and_final_record ... ok
+test sse_handles_fragmented_utf8_multiline_data_comments_and_done ... ok
+test framing_limits_unterminated_lines_and_disallows_use_after_finish ... ok
+test sse_dispatches_final_unterminated_event_and_rejects_invalid_utf8 ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 4 tests
+test anthropic_pagination_keeps_origin_and_preserves_exact_ids ... ok
+test google_pagination_preserves_explicit_generation_metadata ... ok
+test repeated_pagination_and_conflicting_duplicates_are_rejected ... ok
+test unavailable_or_malformed_catalogs_never_return_a_fallback_or_leak_bodies ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 5 tests
+test process_transport_helper ... ok
+test request_validation_rejects_duplicates_and_invalid_limits ... ok
+test public_fake_seam_observes_owned_values_without_tokio_types ... ok
+test tokio_transport_applies_argv_stdin_cwd_and_environment_removals ... ok
+test output_limit_and_cancellation_terminate_and_observe_the_child ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+
+running 6 tests
+test adapter_boundary_rejects_profile_revision_drift ... ok
+test model_selection_is_immutable_deterministic_and_does_not_transfer_probe_evidence ... ok
+test early_eof_fails_closed_and_drop_cancels_live_work ... ok
+test provider_default_response_cancellation_performs_no_effect ... ok
+test owned_stream_requires_and_remembers_a_normalized_terminal ... ok
+test provider_default_continuation_restore_is_explicitly_unsupported ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 4 tests
+test image_role_selects_only_an_authorized_capable_available_fallback ... ok
+test unavailable_or_small_context_routes_fail_before_invocation ... ok
+test terminals_keep_distinct_causes_and_safe_next_actions ... ok
+test real_minimal_canary_requires_usable_text_before_completion ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 5 tests
+test default_transport_honors_pre_send_cancellation ... ok
+test default_transport_classifies_connection_refusal_before_submission ... ok
+test default_transport_rejects_oversized_content_length_before_body_reads ... ok
+test default_transport_does_not_follow_redirects_and_streams_owned_bytes ... ok
+test default_transport_interrupts_a_pending_body_read ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 7 tests
+test retry_table_covers_every_submission_failure_and_protection_combination ... ok
+test retry_table_distinguishes_safe_transient_and_terminal_failures ... ok
+test retry_table_never_blindly_replays_ambiguous_or_partial_work ... ok
+test retry_bounds_exhaustion_retry_after_and_jitter_are_checked ... ok
+test checked_backoff_is_cancellation_aware ... ok
+test response_wrapper_enforces_chunk_and_cumulative_body_bounds ... ok
+test cancellation_is_idempotent_and_wakes_registered_waiters ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test adapter_error_factories_preserve_static_categories ... ok
+test headers_and_bodies_are_checked_and_debug_redacted ... ok
+test endpoint_accepts_safe_http_and_https_urls ... ok
+test status_and_http_limit_boundaries_are_checked ... ok
+test endpoint_rejects_credentials_fragments_traversal_and_secret_queries ... ok
+test credential_source_and_diagnostics_do_not_format_sensitive_values ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:51:30.217815Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-provider-core", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-provider-core", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 75, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-provider-core v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/model/peritus-provider-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.20s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_provider_core-d6bea1b8ab8bc1be)
+     Running tests/account_catalog.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/account_catalog-5527b863f338a17d)
+     Running tests/framing.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/framing-cc5c3242437a6fe9)
+     Running tests/model_catalog.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/model_catalog-44b12058b254cc34)
+     Running tests/process_transport.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/process_transport-3a882c34d6ce142a)
+     Running tests/provider_interface.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/provider_interface-1a69d35e27b23dd8)
+     Running tests/qualification_recovery.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/qualification_recovery-ef3ce37c095877f0)
+     Running tests/reqwest_transport.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/reqwest_transport-911cbd25062e772d)
+     Running tests/transport_retry.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/transport_retry-197e36c19b64d8d7)
+     Running tests/validation.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/validation-dfcf9c5547387e80)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:51:30.217815Z"}

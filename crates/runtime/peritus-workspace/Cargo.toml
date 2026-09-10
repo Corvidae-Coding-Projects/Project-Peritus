@@ -12,6 +12,8 @@ keywords = ["workspace", "git", "authorization", "formal-verification"]
 categories = ["filesystem", "development-tools"]
 
 [dependencies]
+cap-std.workspace = true
+cap-fs-ext.workspace = true
 peritus-artifact-store = { version = "=0.0.1", path = "../../state/peritus-artifact-store" }
 peritus-codec = { version = "=0.0.1", path = "../../foundation/peritus-codec" }
 peritus-git = { version = "=0.0.1", path = "../peritus-git" }
@@ -30,6 +32,9 @@ peritus-budget = { version = "=0.0.1", path = "../../foundation/peritus-budget" 
 peritus-conformance = { version = "=0.0.1", path = "../../app/testing/peritus-conformance" }
 peritus-test-support = { version = "=0.0.1", path = "../../app/testing/peritus-test-support" }
 tempfile.workspace = true
+
+[target.'cfg(unix)'.dev-dependencies]
+nix = { workspace = true, features = ["fs"] }
 
 [package.metadata.peritus]
 owner = "C1"

@@ -1,0 +1,42 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-tools-git", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-tools-git --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 0.854078, "finished_at": "2026-09-10T01:53:21.806584Z", "kind": "ordinary-test", "owning_crate": "peritus-tools-git", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:53:20.990811Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-tools-git", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-tools-git", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 119, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 1 test
+test verified::tests::diff_dimensions_are_independent ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test router_dispatches_candidate_snapshot_and_history_preserving_rollback ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+
+running 3 tests
+test descriptor_catalog_is_complete_canonical_and_deterministic ... ok
+test merge_is_typed_unsupported_and_never_mutates_refs ... ok
+test structured_status_diff_history_and_snapshot_use_real_git_observations ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:53:21.806584Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-tools-git", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-tools-git", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 119, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-tools-git v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/tools/peritus-tools-git)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.57s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_tools_git-10d4dd291c374106)
+     Running tests/git_dispatch.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/git_dispatch-94ce71b4f9dd8825)
+     Running tests/git_tools.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/git_tools-2fb9865a0b93b219)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:53:21.806584Z"}

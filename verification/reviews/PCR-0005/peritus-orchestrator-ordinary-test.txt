@@ -1,0 +1,72 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-orchestrator", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-orchestrator --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 1.65509, "finished_at": "2026-09-10T01:50:40.691324Z", "kind": "ordinary-test", "owning_crate": "peritus-orchestrator", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:50:39.075885Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-orchestrator", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-orchestrator", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 51, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 22 tests
+test product::tests::external_effects_require_explicit_complete_evidence ... ok
+test state::counters::tests::genesis_does_not_precount_writer_activation ... ok
+test state::validation::tests::historical_gate_snapshot_must_equal_candidate_quality_snapshot ... ok
+test integration_tests::crash_matrix::publish_ack_and_child_result_boundaries_have_distinct_restart_actions ... ok
+test wire::fixture_tests::observation_binding::checkpoint_rejects_stale_gate_snapshot_and_review_binding ... ok
+test wire::fixture_tests::canonical_corpus_is_exact_and_rejects_corruption ... ok
+test wire::fixture_tests::accepted::accepted_checkpoint_requires_planned_begin_and_evaluate_observations ... ok
+test product::tests::complete_is_impossible_without_exact_changed_target_evidence ... ok
+test integration_tests::lifecycle::one_field_contract_candidate_artifact_and_child_binding_drift_is_rejected ... ok
+test integration_tests::cancellation::ambiguous_child_settlement_truthfully_requires_human_judgment ... ok
+test integration_tests::cancellation::cancellation_settles_owned_children_and_late_success_cannot_win ... ok
+test integration_tests::lifecycle::explicit_rejection_failure_and_exhaustion_preserve_distinct_truth ... ok
+test integration_tests::durability::claimed_directive_acknowledgement_commits_with_outbox_settlement ... ok
+test integration_tests::cancellation::pause_acknowledges_every_live_child_and_resumes_only_exact_heads ... ok
+test integration_tests::durability::conflicting_command_identity_and_missing_checkpoint_fail_closed ... ok
+test integration_tests::durability::claimed_acknowledgement_retry_resolves_the_exact_committed_batch ... ok
+test integration_tests::durability::stale_claim_fence_rolls_back_the_whole_e0_append ... ok
+test integration_tests::crash_matrix::crash_after_commit_before_publish_recovers_the_same_deliverable_directive ... ok
+test integration_tests::lifecycle::writer_gates_review_b2_and_durable_b0_are_the_only_success_path ... ok
+test integration_tests::lifecycle::blocking_finding_fixer_revision_and_fresh_quality_cycle_reach_acceptance ... ok
+test qualification::tests::every_h1_phase_is_reducer_reachable_and_replay_exact ... ok
+test integration_tests::durability::every_lifecycle_commit_restarts_to_the_exact_checkpoint ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+
+
+running 2 tests
+test zero_quality_snapshot_is_rejected ... ok
+test quality_snapshot_is_material_and_committed_by_candidate_digest ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test every_limit_rejects_zero_or_compiled_ceiling_excess ... ok
+test checked_identities_reject_zero_and_preserve_canonical_bytes ... ok
+test limits_retain_each_independent_dimension ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test cycle_validation_is_typed_to_the_current_candidate_revision ... ok
+test cycle_requires_nonzero_gate_and_review_bindings ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:50:40.691324Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-orchestrator", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-orchestrator", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 51, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-orchestrator v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-orchestrator)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.37s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_orchestrator-340dcb6cc5dd3f7b)
+     Running tests/domain_candidate.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/domain_candidate-801193b439ad34ba)
+     Running tests/domain_identity_limits.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/domain_identity_limits-e563572060d1f745)
+     Running tests/domain_quality_cycle.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/domain_quality_cycle-e99b79997d190f6a)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:50:40.691324Z"}

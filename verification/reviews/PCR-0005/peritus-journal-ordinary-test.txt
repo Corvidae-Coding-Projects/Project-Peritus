@@ -1,0 +1,113 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-journal", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-journal --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 3.809128, "finished_at": "2026-09-10T01:50:18.617848Z", "kind": "ordinary-test", "owning_crate": "peritus-journal", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:50:14.847959Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-journal", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-journal", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 33, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 39 tests
+test sqlite::history::tests::shared_history_node_bounds_reject_malformed_encodings ... ok
+test sqlite::history::tests::shared_history_rejects_hash_consistent_noncanonical_tree_shapes ... ok
+test sqlite::tests::application_tests::application_catalogs_retain_exact_metadata ... ok
+test sqlite::query::aggregate::tests::aggregate_checkpoint_snapshot_preserves_absence_and_input_rejection ... ok
+test sqlite::tests::aggregate_replay_tests::aggregate_replay_rejects_orphaned_events ... ok
+test sqlite::history::tests::shared_history_never_accepts_or_overwrites_a_corrupt_reused_node ... ok
+test sqlite::tests::failed_second_insert_rolls_back_first_event_and_head ... ok
+test sqlite::history::tests::shared_history_failed_append_rolls_back_nodes_event_history_and_current_state ... ok
+test sqlite::tests::application_tests::application_prompt_target_settles_exactly_once_after_durable_registration ... ok
+test sqlite::tests::application_tests::application_workspace_digest_is_checked_on_input_and_recovery ... ok
+test sqlite::tests::application_tests::global_tail_is_bounded_and_reports_retention_bounds ... ok
+test sqlite::tests::application_tests::application_ledger_survives_idempotency_and_terminal_settlement ... ok
+test sqlite::tests::lost_acknowledgement_resolves_and_exact_retry_does_not_append ... ok
+test sqlite::tests::hardened_connection_and_atomic_full_batch_are_observable ... ok
+test sqlite::query::aggregate::tests::aggregate_replay_snapshot_does_not_mix_concurrent_committed_heads_and_rows ... ok
+test sqlite::history::tests::shared_history_repeated_node_is_reread_and_failed_statements_release_before_retry ... ok
+test sqlite::tests::missing_artifact_fails_before_authoritative_rows_exist ... ok
+test sqlite::tests::aggregate_replay_tests::aggregate_replay_rechecks_old_frame_bytes_and_sequence_gaps ... ok
+test sqlite::tests::observation_tests::failed_and_lost_acknowledgement_appends_invalidate_observations ... ok
+test sqlite::tests::observation_tests::mutable_owner_ledgers_do_not_invalidate_unchanged_aggregate_history ... ok
+test sqlite::query::aggregate::tests::aggregate_checkpoint_snapshot_rejects_corruption_in_either_component ... ok
+test sqlite::tests::outbox_tests::aggregate_append_atomically_acknowledges_exact_claimed_directive ... ok
+test sqlite::tests::aggregate_replay_tests::aggregate_replay_rejects_self_consistent_hash_with_broken_predecessor ... ok
+test sqlite::tests::observation_tests::external_write_between_planning_check_and_append_is_rejected_without_new_rows ... ok
+test sqlite::tests::stale_head_rejects_every_row_in_the_later_plan ... ok
+test sqlite::tests::aggregate_replay_tests::aggregate_replay_checks_complete_head_not_only_hash ... ok
+test sqlite::query::aggregate::tests::aggregate_checkpoint_snapshot_keeps_history_and_state_at_the_same_commit ... ok
+test sqlite::tests::outbox_tests::stale_fence_cannot_acknowledge_a_reclaimed_outbox_row ... ok
+test sqlite::tests::recovery_tests::authority_epoch_cas_is_monotonic_across_restart_and_overflow_is_typed ... ok
+test sqlite::tests::recovery_tests::restart_preserves_exact_frames_and_command_resolution ... ok
+test sqlite::tests::observation_tests::guarded_receipt_extends_only_its_own_instance_and_append_generation ... ok
+test sqlite::tests::recovery_tests::corruption_in_payload_or_head_is_detected ... ok
+test sqlite::tests::recovery_tests::integrity_rejects_state_history_gaps_and_current_row_rewinds ... ok
+test sqlite::tests::storage_tests::rejected_open_does_not_leave_partial_schema_installation ... ok
+test sqlite::tests::aggregate_replay_tests::aggregate_replay_retains_exact_interleaved_records_across_restart ... ok
+test sqlite::history::tests::shared_history_rejects_missing_corrupt_and_wrong_root_nodes ... ok
+test sqlite::tests::storage_tests::page_ceiling_returns_exact_storage_exhaustion_without_partial_append ... ok
+test sqlite::history::tests::shared_history_sqlite_retention_is_bounded_below_full_growing_values ... ok
+test sqlite::history::tests::shared_history_preserves_empty_leaf_branch_and_maximum_values_after_restart ... ok
+
+test result: ok. 39 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.57s
+
+
+running 4 tests
+test approval_use_augments_a_multi_aggregate_append_atomically ... ok
+test approval_use_rejects_stale_registry_and_state_without_partial_activation ... ok
+test signed_approval_rejects_same_revision_wrong_digest_and_commits_exact_snapshot ... ok
+test exact_approval_use_retry_returns_the_original_atomic_batch ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+
+running 2 tests
+test registry_rejects_non_increasing_currentness ... ok
+test authority_clock_rejects_stale_allocation_and_survives_restart ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 3 tests
+test capability_use_is_exposed_only_with_its_exact_durable_successor ... ok
+test lease_mint_and_acquisition_follow_the_verified_version_cas ... ok
+test held_budget_cancellation_requires_and_consumes_a_current_durable_non_activation_observation ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 1 test
+test production_journal_passes_a2_commit_restart_and_cas_conformance ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 1 test
+test genesis_and_transition_recover_exactly_after_journal_restart ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 2 tests
+test older_command_replay_returns_its_original_batch_without_rolling_back_current_state ... ok
+test read_only_snapshot_does_not_initialize_and_is_consistent_during_later_commits ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:50:18.617848Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-journal", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-journal", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 33, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-journal v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-journal)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.06s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_journal-2308937e75386153)
+     Running tests/approval_registry.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/approval_registry-65f1aebd088665ee)
+     Running tests/authority_adapters.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/authority_adapters-0d74584c71ec65ce)
+     Running tests/b1_adapters.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/b1_adapters-f67566e4cd823b57)
+     Running tests/conformance.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/conformance-5bc48c8c70bc6973)
+     Running tests/kernel_replay.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/kernel_replay-b5ee7e9741360baa)
+     Running tests/state_history.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/state_history-a1afc2a3b1518552)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:50:18.617848Z"}

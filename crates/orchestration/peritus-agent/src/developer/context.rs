@@ -44,17 +44,20 @@ pub(super) fn prepare_messages(
     profile: &ProviderProfile,
     reserved_output_tokens: u64,
     limits: ProtocolLimits,
+    protected_prefix: usize,
 ) -> Result<Vec<DeveloperContextCompaction>, DeveloperLoopError> {
     let (usable_input, trigger) = context_thresholds(profile, reserved_output_tokens)?;
     let mut records = Vec::new();
     while estimated_request_tokens(messages, tools) > trigger {
-        let Some(record) = compact_once(messages, limits, RETAIN_RECENT_MESSAGES)? else {
+        let Some(record) =
+            compact_once(messages, limits, RETAIN_RECENT_MESSAGES, protected_prefix)?
+        else {
             break;
         };
         records.push(record);
     }
     while estimated_request_tokens(messages, tools) > usable_input {
-        let Some(record) = compact_once(messages, limits, 0)? else {
+        let Some(record) = compact_once(messages, limits, 0, protected_prefix)? else {
             break;
         };
         records.push(record);
@@ -72,8 +75,10 @@ fn compact_once(
     messages: &mut Vec<Message>,
     limits: ProtocolLimits,
     retain_recent_messages: usize,
+    protected_prefix: usize,
 ) -> Result<Option<DeveloperContextCompaction>, DeveloperLoopError> {
-    let Some(candidate) = compaction_candidate(messages, retain_recent_messages)? else {
+    let Some(candidate) = compaction_candidate(messages, retain_recent_messages, protected_prefix)?
+    else {
         return Ok(None);
     };
     let replacement = render_compaction(&candidate.source, candidate.source_digest);
@@ -124,8 +129,9 @@ pub(super) fn context_thresholds(
 pub(super) fn compaction_candidate(
     messages: &[Message],
     retain_recent_messages: usize,
+    protected_prefix: usize,
 ) -> Result<Option<CompactionCandidate>, DeveloperLoopError> {
-    let start = 2;
+    let start = protected_prefix;
     let cutoff = messages.len().saturating_sub(retain_recent_messages);
     if cutoff <= start {
         return Ok(None);

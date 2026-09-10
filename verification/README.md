@@ -353,6 +353,41 @@ must resolve locally, must be an ancestor of and differ from `HEAD`; CI fetches 
 selects the pull-request base, push-before SHA, or required dispatch input. Local checks use `HEAD`
 when the variable is unset. This inventory makes no `INV-001` through `INV-027` discharge claim.
 
+### Authorization-only phase
+
+Before applying a reviewed transition, the checker recognizes an authorization-only state from
+its content, not from an opt-out flag: the current inventory equals the verdict's authorization
+base inventory exactly, protected history is an immutable prefix, and exactly one review is
+appended. The base history must already be fully applied; a second pending authorization is
+rejected. Application files, package manifests, toolchain configuration, architecture policy,
+and all formal semantics inputs must remain byte-identical to that base. Only checker source and
+tests, checker documentation, design Markdown, and proof-impact/review artifacts may change.
+Every executable checker and checker-test file must equal the exact reviewed candidate blob;
+authorization-only additions, omissions, or different checker implementations are rejected.
+
+The proposed tree is materialized from regular Git blobs without checkout hooks, filters,
+symlinks, or submodules. Normal Cargo target discovery and the normal exhaustive formal-input
+inventory are recomputed there. Overlaying the exact PCR transitions on the unchanged protected
+inventory must cover that complete candidate, with matching raw bytes, package classes, and
+review links. This permits repairing inherited inventory debt only through a full exact-candidate
+review; it does not accept the debt as a permanent exception. Ordinary trust, exclusion, and
+obligation checks still run on the authorization checkout. All normal detached-verdict,
+independence, evidence, ancestry, and content-address checks apply.
+
+The authorization checker resolves review identities from the exact candidate actor and
+provenance blobs bound by the PCR. Every new authorization enrolls a fresh independent reviewer;
+the accountable owner may retain its established identity or enroll its actual new principal. Existing
+principals and provenance remain unchanged; only their reference to the complete provenance-file
+digest is refreshed. No historical reviewer identity is reused for a different agent.
+
+After authorization lands, the implementation stage uses the unchanged exhaustive source and
+protected-base transition checks. Its exact review must already exist on the protected base.
+The reviewed candidate commit must remain reachable in the published Git history so a fresh clone
+can resolve the verdict without private objects or an unrecorded remote reference. An authorization
+tip may therefore descend from the frozen candidate while restoring the protected application
+tree; the subsequent implementation tip applies the reviewed candidate bytes. An intermediate
+candidate commit is review material, not an independently authorized deployment tip.
+
 ## Integration requirements
 
 The semantic manifest check must:

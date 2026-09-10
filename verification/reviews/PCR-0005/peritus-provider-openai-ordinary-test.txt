@@ -1,0 +1,68 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-provider-openai", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-provider-openai --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 2.401413, "finished_at": "2026-09-10T01:51:35.722663Z", "kind": "ordinary-test", "owning_crate": "peritus-provider-openai", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:51:33.361413Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-provider-openai", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-provider-openai", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 79, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 29 tests
+test tests::client::nonnegotiated_streaming_rejects_before_credentials_and_transport ... ok
+test tests::request::realistic_request_projects_every_supported_request_family ... ok
+test tests::runtime::output::inert_updates_are_accepted_but_native_updates_still_fail_closed ... ok
+test tests::runtime::output::preliminary_prose_is_accepted_only_with_an_exact_unambiguous_final_binding ... ok
+test tests::runtime::inline_image_is_staged_outside_the_prompt_with_a_digest_descriptor ... ok
+test tests::client::persisted_exact_background_cursor_restores_only_for_its_bound_profile ... ok
+test tests::catalog::arbitrary_discovered_model_is_used_by_the_actual_rebound_adapter_request ... ok
+test tests::runtime::decoder_accepts_current_lifecycle_and_exact_duplicates ... ok
+test tests::runtime::output::required_tool_and_exact_argument_object_reject_unsafe_repairs ... ok
+test runtime::provider::invocation::tests::selected_effort_reaches_the_owned_codex_process_unchanged ... ok
+test tests::fixtures::manifest_and_digests_cover_the_complete_immutable_corpus ... ok
+test tests::request::nonnegotiated_streaming_fails_before_encoding ... ok
+test tests::runtime::decoder_rejects_corruption_incompletion_and_native_execution ... ok
+test tests::stream::fragmented_success_reduces_to_exact_usage_and_terminal ... ok
+test tests::runtime::profile_and_projection_are_exact_and_minimum_safe ... ok
+test tests::stream::corrupt_incomplete_unknown_critical_and_stream_error_fail_closed ... ok
+test tests::runtime::unsupported_capability_is_rejected_without_a_process ... ok
+test tests::stream::ancillary_unknown_is_bounded_and_tool_fragments_remain_ordered ... ok
+test tests::request::minimal_request_matches_the_official_contract_golden ... ok
+test tests::runtime::decoder_classifies_common_runtime_failures_without_retaining_provider_text ... ok
+test tests::stream::native_healing_preserves_terminal_binding_and_replays_audited_tool_calls ... ok
+test tests::stream::structured_output_healing_does_not_rewrite_ordinary_prose ... ok
+test tests::runtime::output::native_healing_repairs_envelope_and_arguments_without_relaxing_tool_admission ... ok
+test tests::request::exact_reasoning_efforts_reach_the_api_body_and_survive_canonical_replay ... ok
+test tests::retry::connect_rate_limit_and_server_rejections_retry_but_ambiguous_and_quota_do_not ... ok
+test tests::cancellation::unknown_background_identity_is_rejected_before_credentials ... ok
+test tests::cancellation::known_background_response_can_be_cancelled_through_the_official_endpoint ... ok
+test tests::client::production_subject_uses_bearer_auth_and_normalizes_fake_server_stream ... ok
+test tests::conformance::runner::production_adapter_passes_all_provider_cases_with_fresh_subjects ... ok
+
+test result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.49s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test codex_runtime_conformance::hardening::final_artifact_and_full_stream_are_checked_before_emitting_any_host_call ... ok
+test codex_runtime_conformance::runner::codex_runtime_passes_all_cases_through_real_owned_processes ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:51:35.722663Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-provider-openai", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-provider-openai", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 79, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-provider-openai v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/model/peritus-provider-openai)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.49s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_provider_openai-269b1e5ebf6748ee)
+     Running unittests src/bin/codex_runtime_fake.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_openai_codex_fake-6587e3128db726d1)
+     Running tests/codex_runtime_conformance.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/codex_runtime_conformance-795143d3f9d65d21)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:51:35.722663Z"}

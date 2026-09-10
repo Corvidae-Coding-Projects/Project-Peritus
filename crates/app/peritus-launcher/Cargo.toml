@@ -20,6 +20,7 @@ fs4.workspace = true
 futures-util.workspace = true
 getrandom.workspace = true
 peritus-approval = { version = "=0.0.1", path = "../../state/peritus-approval" }
+peritus-app-protocol = { version = "=0.0.1", path = "../peritus-app-protocol" }
 peritus-daemon = { version = "=0.0.1", path = "../peritus-daemon" }
 peritus-git = { version = "=0.0.1", path = "../../runtime/peritus-git" }
 peritus-local-socket = { version = "=0.0.1", path = "../../runtime/peritus-local-socket" }

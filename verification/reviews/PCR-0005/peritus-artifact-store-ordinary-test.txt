@@ -1,0 +1,63 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-artifact-store", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-artifact-store --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 1.001842, "finished_at": "2026-09-10T01:47:59.615258Z", "kind": "ordinary-test", "owning_crate": "peritus-artifact-store", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:47:58.651815Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-artifact-store", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-artifact-store", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 7, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 5 tests
+test quota_plans_use_checked_arithmetic_and_enforce_exact_limit ... ok
+test pure_gc_plan_is_canonical_and_restores_marked_quarantine ... ok
+test writer_admission_uses_durable_catalog_quota ... ok
+test rewriting_identical_quarantined_content_restores_it_atomically ... ok
+test durable_references_drive_quarantine_then_later_sweep ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 6 tests
+test fresh_catalog_includes_integrity_state_with_a_healthy_default ... ok
+test restart_removes_abandoned_partial_temporary_file ... ok
+test publication_before_catalog_insert_is_quarantined_then_swept_on_later_restart ... ok
+test read_only_inspection_verifies_bounds_and_bytes_without_recovery ... ok
+test durable_quarantine_state_completes_move_after_restart ... ok
+test restart_contains_referenced_corrupt_object_without_losing_its_audit_root ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 8 tests
+test invalid_config_and_writer_bounds_are_rejected ... ok
+test dropping_partial_writer_removes_exclusive_temporary_file ... ok
+test exact_size_and_digest_are_checked_independently ... ok
+test owned_handles_stream_across_calls_without_borrowing_the_store ... ok
+test exact_limit_succeeds_and_one_over_is_rejected_without_partial_chunk ... ok
+test encryption_binding_metadata_round_trips_durably ... ok
+test duplicate_content_is_idempotent_but_corrupted_destination_is_terminal ... ok
+test chunked_streaming_finalizes_exact_bytes_and_durable_metadata ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:47:59.615258Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-artifact-store", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-artifact-store", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 7, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling rusqlite v0.40.2
+   Compiling peritus-artifact-store v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-artifact-store)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.91s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_artifact_store-a1e6dd6363c4f5be)
+     Running tests/quota_gc.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/quota_gc-53482c5d58523a78)
+     Running tests/restart.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/restart-413e28bd360298ef)
+     Running tests/streaming.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/streaming-0b2f82e26d2f9519)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:47:59.615258Z"}

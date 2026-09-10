@@ -1,5 +1,5 @@
 //! Command runtime construction for exact managed and direct-folder capabilities.
-use super::{ProductRunService, run_hex};
+use super::{ProductRunService, launch::run_hex};
 use peritus_app_protocol::ProductRunRequest;
 use peritus_product_runner::{CommandRuntime, ProductRunnerError};
 use std::path::Path;

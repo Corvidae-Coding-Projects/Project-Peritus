@@ -1,0 +1,106 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-budget", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-budget --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 0.790713, "finished_at": "2026-09-10T01:48:01.686442Z", "kind": "ordinary-test", "owning_crate": "peritus-budget", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:48:00.934225Z", "verification_class": "V"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-budget", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-budget", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 9, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "V"}
+=== COMMAND OUTPUT ===
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 5 tests
+test exact_settlement_consumes_the_remaining_ceiling_and_replays_once ... ok
+test close_rejects_live_work_and_seal_blocks_only_new_work ... ok
+test request_arithmetic_overflow_is_typed_and_never_partially_charges ... ok
+test zero_limits_are_valid_and_immediately_exhausted ... ok
+test reducer_overflow_is_typed_and_state_preserving_in_every_dimension ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 4 tests
+test every_stable_error_code_has_an_exact_recovery_contract ... ok
+test exact_arithmetic_boundaries_cover_every_dimension ... ok
+test fixed_dimensions_are_total_and_stably_ordered ... ok
+test limiting_dimension_set_reports_every_mixed_excess ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test cancellation_replay_is_exact_and_changed_evidence_is_not_a_second_release ... ok
+test active_or_indeterminate_history_cannot_be_recast_as_held_cancellation ... ok
+test forged_unknown_and_mismatched_claims_cannot_release_capacity ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test persisted_seed_traces_refine_independent_high_water_model ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 5 tests
+test above_ceiling_consumes_remaining_ceiling_faults_lineage_and_preserves_raw_report ... ok
+test exact_limit_is_accepted_and_one_over_reports_all_limiting_dimensions ... ok
+test held_cancel_releases_but_active_ambiguity_consumes_every_remaining_unit ... ok
+test cumulative_observations_charge_only_delta_reject_decrease_and_release_final_remainder ... ok
+test child_consumption_reaches_each_ancestor_once_and_close_only_releases_unused_delegation ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test persisted_full_lifecycle_traces_refine_independent_hierarchical_model ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+
+running 3 tests
+test every_bounded_final_report_partitions_ceiling_without_refund ... ok
+test one_over_ceiling_is_conservative_and_exact_replay_is_stable ... ok
+test bounded_reordered_trace_matches_independent_high_water_model ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test replay_receipts_are_exact_and_nonconsuming ... ok
+test branch_ordered_rejections_preserve_the_exact_full_ledger ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 3 tests
+test retry_waits_for_terminal_resolution_and_duplicate_observations_bind_evidence ... ok
+test reservation_tombstones_reject_semantic_id_reuse_and_binding_tampering ... ok
+test retry_requires_fresh_identity_and_charges_attempt_and_retry_before_execution ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:48:01.686442Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-budget", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-budget", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 9, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "V"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-budget v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-budget)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.62s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_budget-963b44079e0877b5)
+     Running tests/adversarial.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/adversarial-b67d6ff9ee546f43)
+     Running tests/amounts.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/amounts-e84ec18979b2f4a5)
+     Running tests/commit_boundary.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/commit_boundary-9c283d1d343c753c)
+     Running tests/generated.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/generated-34cfb5937c8cd117)
+     Running tests/ledger.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/ledger-c5f588233dcce6cb)
+     Running tests/lifecycle_reference.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/lifecycle_reference-71ddfd407359c0ef)
+     Running tests/model.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/model-d2c2f616a498ad1b)
+     Running tests/rejection_reference.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/rejection_reference-716e127ba0b44799)
+     Running tests/retry.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/retry-e8592afacec88903)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:48:01.686442Z"}

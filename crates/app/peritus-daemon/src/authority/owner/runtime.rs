@@ -197,6 +197,32 @@ pub(super) async fn run(
                 });
                 reply(respond, result);
             }
+            AuthorityMessage::BeginScopedArtifactUpload {
+                actor_id,
+                session_id,
+                metadata,
+                maximum_chunk_bytes,
+                scope,
+                respond,
+            } => {
+                let result = require_mutation(&lifecycle).and_then(|()| {
+                    artifacts.begin_scoped_upload(
+                        &mut journal,
+                        actor_id,
+                        session_id,
+                        metadata,
+                        maximum_chunk_bytes,
+                        scope,
+                    )
+                });
+                reply(respond, result);
+            }
+            AuthorityMessage::ReadScopedArtifact { scope, artifact_id, maximum_bytes, respond } => {
+                let result = require_diagnostic(&lifecycle).and_then(|()| {
+                    artifacts.read_scoped(&journal, scope, artifact_id, maximum_bytes)
+                });
+                reply(respond, result);
+            }
             AuthorityMessage::UploadArtifactChunk { actor_id, session_id, chunk, respond } => {
                 let result = require_mutation(&lifecycle)
                     .and_then(|()| artifacts.upload_chunk(actor_id, session_id, &chunk));

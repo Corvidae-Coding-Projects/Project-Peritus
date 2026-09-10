@@ -27,6 +27,9 @@ pub(super) fn validate(
     diagnostics: &mut Vec<Diagnostic>,
 ) -> Result<(), XtaskError> {
     validate_envelope(document, diagnostics);
+    if enforce_review_base && authorization::validate(context, document, diagnostics)? {
+        return Ok(());
+    }
     let expected = expected_sources(context, compilation_sources);
     let changes = validate_changes(context, actors, document, diagnostics);
     verdict::validate_directory(context.root, document, diagnostics);
@@ -373,6 +376,16 @@ pub(super) fn sha256_hex(bytes: &[u8]) -> String {
     })
 }
 
+#[path = "manifest_impact/authorization.rs"]
+mod authorization;
+#[path = "manifest_impact/candidate_actors.rs"]
+mod candidate_actors;
+#[path = "manifest_impact/candidate_inventory.rs"]
+mod candidate_inventory;
+#[path = "manifest_impact/candidate_tree.rs"]
+mod candidate_tree;
+#[path = "manifest_impact/checker_binding.rs"]
+mod checker_binding;
 #[path = "manifest_impact/evidence.rs"]
 mod evidence;
 #[path = "manifest_impact/inventory.rs"]

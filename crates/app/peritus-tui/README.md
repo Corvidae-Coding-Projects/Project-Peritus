@@ -9,6 +9,10 @@ bounded transcript sanitization, and orderly connection shutdown. It depends on 
 protocol and foundation contracts plus Crossterm and Ratatui for presentation. All authorization,
 durable state, and acceptance decisions remain in G0 and the verified lower layers.
 
+On Windows, a scoped title owner displays `Peritus`, reclaims the title after foreground commands,
+and restores the caller's exact console title on exit. The launcher acquires the same owner before
+provider setup and around login handoffs. Detached processes and other platforms are unaffected.
+
 The Runs dashboard presents accepted, candidate-available, waiting, cancelled, stopped, and
 recovery-required states directly. Its handoff panel exposes exact paths, checks, review evidence,
 remaining work, and run instructions. Users can inspect, continue, run, export, accept, commit, or

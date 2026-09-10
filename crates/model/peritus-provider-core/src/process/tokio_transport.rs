@@ -43,6 +43,8 @@ async fn run(
 
 fn spawn(request: &ProcessRequest) -> Result<Child, ProviderCoreError> {
     let mut command = Command::new(request.executable().as_path());
+    #[cfg(windows)]
+    command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW: provider transport uses pipes only.
     command
         .args(request.arguments())
         .stdin(Stdio::piped())

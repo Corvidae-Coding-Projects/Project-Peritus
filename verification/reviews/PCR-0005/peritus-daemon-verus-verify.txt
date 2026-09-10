@@ -1,0 +1,1397 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "verus", "verify", "--package", "peritus-daemon", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "command": "cargo verus verify --package peritus-daemon --all-features --locked --check-toolchain --fwd-verus-args-to roots -- --no-cheating --rlimit 20", "command_exit_code": 0, "custody_error": null, "duration_seconds": 33.194684, "finished_at": "2026-09-10T01:49:26.067802Z", "kind": "verus-verify", "owning_crate": "peritus-daemon", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:48:52.925583Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "verus", "verify", "--package", "peritus-daemon", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "kind": "verus-verify", "owning_crate": "peritus-daemon", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 18, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+verification results:: 210 verified, 0 errors
+verification results:: 0 verified, 0 errors
+verification results:: 4 verified, 0 errors
+verification results:: 3 verified, 0 errors
+verification results:: 69 verified, 0 errors
+verification results:: 176 verified, 0 errors
+verification results:: 5 verified, 0 errors
+verification results:: 4 verified, 0 errors
+verification results:: 8 verified, 0 errors
+verification results:: 13 verified, 0 errors
+verification results:: 3 verified, 0 errors
+verification results:: 183 verified, 0 errors
+verification results:: 2 verified, 0 errors
+verification results:: 195 verified, 0 errors
+verification results:: 0 verified, 0 errors
+verification results:: 502 verified, 0 errors
+verification results:: 0 verified, 0 errors
+verification results:: 0 verified, 0 errors
+verification results:: 0 verified, 0 errors
+verification results:: 0 verified, 0 errors
+verification results:: 4 verified, 0 errors
+verification results:: 76 verified, 0 errors
+verification results:: 327 verified, 0 errors
+verification results:: 144 verified, 0 errors
+verification results:: 418 verified, 0 errors
+verification results:: 362 verified, 0 errors
+verification results:: 407 verified, 0 errors
+verification results:: 447 verified, 0 errors
+verification results:: 274 verified, 0 errors
+verification results:: 0 verified, 0 errors
+verification results:: 14 verified, 0 errors
+verification results:: 79 verified, 0 errors
+verification results:: 5 verified, 0 errors
+verification results:: 7 verified, 0 errors
+verification results:: 10 verified, 0 errors
+verification results:: 14 verified, 0 errors
+verification results:: 8 verified, 0 errors
+verification results:: 7 verified, 0 errors
+verification results:: 1 verified, 0 errors
+verification results:: 2 verified, 0 errors
+verification results:: 8 verified, 0 errors
+verification results:: 0 verified, 0 errors
+verification results:: 0 verified, 0 errors
+verification results:: 7 verified, 0 errors
+verification results:: 5 verified, 0 errors
+verification results:: 10 verified, 0 errors
+verification results:: 6 verified, 0 errors
+verification results:: 17 verified, 0 errors
+verification results:: 6 verified, 0 errors
+verification results:: 8 verified, 0 errors
+verification results:: 59 verified, 0 errors
+verification results:: 10 verified, 0 errors
+verification results:: 51 verified, 0 errors
+verification results:: 0 verified, 0 errors
+verification results:: 17 verified, 0 errors
+verification results:: 5 verified, 0 errors
+verification results:: 0 verified, 0 errors
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:49:26.067802Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "verus", "verify", "--package", "peritus-daemon", "--all-features", "--locked", "--check-toolchain", "--fwd-verus-args-to", "roots", "--", "--no-cheating", "--rlimit", "20"], "kind": "verus-verify", "owning_crate": "peritus-daemon", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 18, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+    Checking peritus-types v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-types)
+    Checking peritus-codec v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-codec)
+    Checking peritus-policy v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-policy)
+    Checking peritus-spec v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-spec)
+    Checking peritus-budget v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-budget)
+    Checking peritus-artifact-store v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-artifact-store)
+    Checking peritus-run-settlement v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-run-settlement)
+    Checking peritus-migrations v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-migrations)
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-run-settlement/src/evidence.rs:45:10
+   |
+45 | #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-run-settlement/src/evidence.rs:68:10
+   |
+68 | #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+    Checking peritus-model-protocol v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/model/peritus-model-protocol)
+    Checking peritus-git v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-git)
+    Checking peritus-sandbox v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-sandbox)
+    Checking peritus-patch v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-patch)
+warning: `peritus-run-settlement` (lib) generated 2 warnings
+    Checking peritus-quality-policy v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-quality-policy)
+    Checking peritus-obligations v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-obligations)
+    Checking peritus-secrets v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-secrets)
+    Checking peritus-network v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-network)
+    Checking peritus-provider-core v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/model/peritus-provider-core)
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-obligations/src/browser.rs:39:10
+   |
+39 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-obligations/src/evidence.rs:17:10
+   |
+17 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-obligations/src/evidence.rs:128:10
+    |
+128 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-obligations/src/evidence.rs:151:10
+    |
+151 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-obligations/src/evidence.rs:191:10
+    |
+191 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-obligations/src/lifecycle.rs:59:10
+   |
+59 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-obligations/src/path.rs:34:10
+   |
+34 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-obligations/src/performance.rs:92:10
+   |
+92 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-obligations/src/provenance.rs:10:10
+   |
+10 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-obligations/src/provenance.rs:91:10
+   |
+91 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-obligations/src/requirement.rs:33:10
+   |
+33 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-obligations/src/requirement.rs:104:10
+    |
+104 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-obligations/src/schema.rs:22:10
+   |
+22 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-obligations/src/schema.rs:60:10
+   |
+60 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-obligations/src/schema.rs:119:10
+    |
+119 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: `peritus-obligations` (lib) generated 15 warnings
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:15:59
+   |
+15 |           crate::selector::SelectorValues::Exact(values) => exists |index: int|
+   |  ___________________________________________________________^
+16 | |             0 <= index < values@.len() && !boundary.spec_contains_actor(values@[index]),
+   | |_______________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:16:73
+   |
+16 |             0 <= index < values@.len() && !boundary.spec_contains_actor(values@[index]),
+   |                                                                         ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:26:59
+   |
+26 |           crate::selector::SelectorValues::Exact(values) => exists |index: int|
+   |  ___________________________________________________________^
+27 | |             0 <= index < values@.len() && !boundary.spec_contains_role(values@[index]),
+   | |______________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:27:72
+   |
+27 |             0 <= index < values@.len() && !boundary.spec_contains_role(values@[index]),
+   |                                                                        ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:37:59
+   |
+37 |           crate::selector::SelectorValues::Exact(values) => exists |index: int|
+   |  ___________________________________________________________^
+38 | |             0 <= index < values@.len() && !boundary.spec_contains_environment(values@[index]),
+   | |_____________________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:38:79
+   |
+38 |             0 <= index < values@.len() && !boundary.spec_contains_environment(values@[index]),
+   |                                                                               ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:47:25
+   |
+47 |           Some(values) => exists |index: int|
+   |  _________________________^
+48 | |             0 <= index < values.spec_values().len()
+49 | |                 && !boundary.spec_contains_permission(&values.spec_values()[index]),
+   | |___________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:49:56
+   |
+49 |                 && !boundary.spec_contains_permission(&values.spec_values()[index]),
+   |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-policy/src/amendment/preview.rs:39:24
+   |
+39 |                       && exists |revision: RevisionTuple,
+   |  ________________________^
+40 | |                         ceiling: crate::AuthorityCeiling,
+41 | |                         layers: Seq<RestrictionLayer>| {
+42 | |                         &&& crate::amendment_model::revision_is_exact_successor(
+...  |
+64 | |                         ) == Some((error.spec_kind(), error.spec_dimension()))
+65 | |                     }
+   | |_____________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-policy/src/amendment/preview.rs:47:29
+   |
+47 |                           &&& ceiling.spec_is_revision_rebind_of(
+   |  _____________________________^
+48 | |                             &base.spec_ceiling_value(),
+49 | |                             revision,
+50 | |                         )
+   | |_________________________^
+...
+60 |                           &&& crate::definition::construction::policy_definition_validation_error(
+   |  _____________________________^
+61 | |                             proposal.spec_successor_policy_id_value(),
+62 | |                             &ceiling,
+63 | |                             layers,
+64 | |                         ) == Some((error.spec_kind(), error.spec_dimension()))
+   | |_________________________^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/amendment/preview.rs:101:9
+    |
+101 | /         exists |witness_revision: RevisionTuple,
+102 | |             witness_ceiling: crate::AuthorityCeiling,
+103 | |             witness_layers: Seq<RestrictionLayer>| {
+104 | |             &&& crate::amendment_model::revision_is_exact_successor(
+...   |
+126 | |             ) == Some((error.spec_kind(), error.spec_dimension()))
+127 | |         },
+    | |_________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/amendment/preview.rs:109:17
+    |
+109 |               &&& witness_ceiling.spec_is_revision_rebind_of(
+    |  _________________^
+110 | |                 &base.spec_ceiling_value(),
+111 | |                 witness_revision,
+112 | |             )
+    | |_____________^
+...
+122 |               &&& crate::definition::construction::policy_definition_validation_error(
+    |  _________________^
+123 | |                 proposal.spec_successor_policy_id_value(),
+124 | |                 &witness_ceiling,
+125 | |                 witness_layers,
+126 | |             ) == Some((error.spec_kind(), error.spec_dimension()))
+    | |_____________^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/amendment/preview.rs:129:12
+    |
+129 |       assert(exists |witness_revision: RevisionTuple,
+    |  ____________^
+130 | |         witness_ceiling: crate::AuthorityCeiling,
+131 | |         witness_layers: Seq<RestrictionLayer>| {
+132 | |         &&& witness_revision == revision
+...   |
+157 | |         ) == Some((error.spec_kind(), error.spec_dimension()))
+158 | |     });
+    | |_____^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/amendment/preview.rs:140:13
+    |
+140 |           &&& witness_ceiling.spec_is_revision_rebind_of(
+    |  _____________^
+141 | |             &base.spec_ceiling_value(),
+142 | |             witness_revision,
+143 | |         )
+    | |_________^
+...
+153 |           &&& crate::definition::construction::policy_definition_validation_error(
+    |  _____________^
+154 | |             proposal.spec_successor_policy_id_value(),
+155 | |             &witness_ceiling,
+156 | |             witness_layers,
+157 | |         ) == Some((error.spec_kind(), error.spec_dimension()))
+    | |_________^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:119:20
+    |
+119 |               assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ____________________^
+120 | |                 && !boundary.spec_contains_actor(values@[witness])) by {
+    | |__________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:120:50
+    |
+120 |                 && !boundary.spec_contains_actor(values@[witness])) by {
+    |                                                  ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:128:24
+    |
+128 |                   assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ________________________^
+129 | |                     && !boundary.spec_contains_actor(values@[witness]));
+    | |______________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:129:54
+    |
+129 |                     && !boundary.spec_contains_actor(values@[witness]));
+    |                                                      ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:114:13
+    |
+114 | /             forall |prior: int| 0 <= prior < index ==>
+115 | |                 boundary.spec_contains_actor(values@[prior]),
+    | |____________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:115:46
+    |
+115 |                 boundary.spec_contains_actor(values@[prior]),
+    |                                              ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:157:20
+    |
+157 |               assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ____________________^
+158 | |                 && !boundary.spec_contains_role(values@[witness])) by {
+    | |_________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:158:49
+    |
+158 |                 && !boundary.spec_contains_role(values@[witness])) by {
+    |                                                 ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:166:24
+    |
+166 |                   assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ________________________^
+167 | |                     && !boundary.spec_contains_role(values@[witness]));
+    | |_____________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:167:53
+    |
+167 |                     && !boundary.spec_contains_role(values@[witness]));
+    |                                                     ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:152:13
+    |
+152 | /             forall |prior: int| 0 <= prior < index ==>
+153 | |                 boundary.spec_contains_role(values@[prior]),
+    | |___________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:153:45
+    |
+153 |                 boundary.spec_contains_role(values@[prior]),
+    |                                             ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:195:20
+    |
+195 |               assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ____________________^
+196 | |                 && !boundary.spec_contains_environment(values@[witness])) by {
+    | |________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:196:56
+    |
+196 |                 && !boundary.spec_contains_environment(values@[witness])) by {
+    |                                                        ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:204:24
+    |
+204 |                   assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ________________________^
+205 | |                     && !boundary.spec_contains_environment(values@[witness]));
+    | |____________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:205:60
+    |
+205 |                     && !boundary.spec_contains_environment(values@[witness]));
+    |                                                            ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:190:13
+    |
+190 | /             forall |prior: int| 0 <= prior < index ==>
+191 | |                 boundary.spec_contains_environment(values@[prior]),
+    | |__________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:191:52
+    |
+191 |                 boundary.spec_contains_environment(values@[prior]),
+    |                                                    ^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:234:20
+    |
+234 |               assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ____________________^
+235 | |                 && !boundary.spec_contains_permission(&values@[witness])) by {
+    | |________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:235:56
+    |
+235 |                 && !boundary.spec_contains_permission(&values@[witness])) by {
+    |                                                        ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:244:24
+    |
+244 |                   assert(exists |witness: int| 0 <= witness < values@.len()
+    |  ________________________^
+245 | |                     && !boundary.spec_contains_permission(&values@[witness]));
+    | |____________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:245:60
+    |
+245 |                     && !boundary.spec_contains_permission(&values@[witness]));
+    |                                                            ^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:229:13
+    |
+229 | /             forall |prior: int| 0 <= prior < index ==>
+230 | |                 boundary.spec_contains_permission(&values@[prior]),
+    | |__________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:230:52
+    |
+230 |                 boundary.spec_contains_permission(&values@[prior]),
+    |                                                    ^^^^^^^^^^^^^^
+
+note: Verus printed one or more automatically chosen quantifier triggers
+      because it had low confidence in the chosen triggers.
+      To suppress these messages, do one of the following:
+        (1) manually annotate a single desired trigger using #[trigger]
+            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
+        (2) manually annotate multiple desired triggers using #![trigger ...]
+            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
+        (3) accept the automatically chosen trigger using #![auto]
+            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
+        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
+      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
+      the theorem prover instantiates a quantifier whenever some expression matches the
+      pattern specified by one of the quantifier's triggers.)
+   --> crates/foundation/peritus-policy/src/scope_selector/containment.rs:229:13
+    |
+229 | /             forall |prior: int| 0 <= prior < index ==>
+230 | |                 boundary.spec_contains_permission(&values@[prior]),
+    | |__________________________________________________________________^
+
+    Checking peritus-provider-google v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/model/peritus-provider-google)
+    Checking peritus-provider-anthropic v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/model/peritus-provider-anthropic)
+    Checking peritus-provider-compatible v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/model/peritus-provider-compatible)
+    Checking peritus-provider-openai v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/model/peritus-provider-openai)
+    Checking peritus-approval v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-approval)
+    Checking peritus-leases v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-leases)
+    Checking peritus-tool-protocol v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/tools/peritus-tool-protocol)
+    Checking peritus-role v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-role)
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-role/src/capability_view.rs:10:10
+   |
+10 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-role/src/context_class.rs:63:10
+   |
+63 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-role/src/context_policy.rs:31:10
+   |
+31 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-role/src/context_policy.rs:78:10
+   |
+78 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: `peritus-role` (lib) generated 4 warnings
+    Checking peritus-run-knowledge v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-run-knowledge)
+    Checking peritus-memory v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-memory)
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-run-knowledge/src/binding.rs:11:10
+   |
+11 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-run-knowledge/src/change.rs:29:10
+   |
+29 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-run-knowledge/src/change.rs:79:10
+   |
+79 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-run-knowledge/src/delta.rs:76:10
+   |
+76 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-run-knowledge/src/plan.rs:92:10
+   |
+92 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-run-knowledge/src/section.rs:13:10
+   |
+13 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-run-knowledge/src/snapshot.rs:14:10
+   |
+14 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-memory/src/claim.rs:52:10
+   |
+52 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-memory/src/claim.rs:171:10
+    |
+171 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-memory/src/claim.rs:236:10
+    |
+236 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-memory/src/evidence.rs:15:10
+   |
+15 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-memory/src/evidence.rs:37:10
+   |
+37 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-memory/src/index/types.rs:13:10
+   |
+13 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-memory/src/index/types.rs:36:10
+   |
+36 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-memory/src/index/types.rs:59:10
+   |
+59 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-memory/src/index/types.rs:82:10
+   |
+82 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-memory/src/record.rs:17:10
+   |
+17 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-memory/src/record.rs:104:10
+    |
+104 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-memory/src/retrieval/output.rs:134:10
+    |
+134 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-memory/src/retrieval/output.rs:226:10
+    |
+226 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-memory/src/retrieval/types.rs:18:10
+   |
+18 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-memory/src/retrieval/types.rs:193:10
+    |
+193 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-memory/src/retrieval/types.rs:233:10
+    |
+233 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+note: automatically chose triggers for this expression:
+   --> crates/state/peritus-leases/src/binding/use_projection.rs:151:16
+    |
+151 |               && forall |index: int| 0 <= index < permissions.len() ==>
+    |  ________________^
+152 | |                 self.scope_permissions@[index].matches_permission(&permissions[index])
+    | |______________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/state/peritus-leases/src/binding/use_projection.rs:152:68
+    |
+152 |                 self.scope_permissions@[index].matches_permission(&permissions[index])
+    |                                                                    ^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/state/peritus-leases/src/port/equality/binding/use_projection.rs:251:13
+    |
+251 | /             forall |prior: int| 0 <= prior < index ==>
+252 | |                 permission_fields_match(
+253 | |                     &left.scope_permissions@[prior],
+254 | |                     &right.scope_permissions@[prior],
+255 | |                 ),
+    | |_________________^
+
+note:   trigger 1 of 2:
+   --> crates/state/peritus-leases/src/port/equality/binding/use_projection.rs:253:22
+    |
+253 |                     &left.scope_permissions@[prior],
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+   --> crates/state/peritus-leases/src/port/equality/binding/use_projection.rs:254:22
+    |
+254 |                     &right.scope_permissions@[prior],
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/state/peritus-leases/src/port/equality/binding/use_projection.rs:268:9
+    |
+268 |         assert forall |permission_index: int|
+    |         ^^^^^^
+
+note:   trigger 1 of 2:
+   --> crates/state/peritus-leases/src/port/equality/binding/use_projection.rs:271:22
+    |
+271 |                     &left.scope_permissions@[permission_index],
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+   --> crates/state/peritus-leases/src/port/equality/binding/use_projection.rs:272:22
+    |
+272 |                     &right.scope_permissions@[permission_index],
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/state/peritus-leases/src/binding/duplication.rs:37:16
+   |
+37 |               && forall |index: int| 0 <= index < source.scope_permissions@.len() ==>
+   |  ________________^
+38 | |                 self.scope_permissions@[index]
+39 | |                     .exactly_duplicates(&source.scope_permissions@[index])
+40 | |             && self.revision == source.revision
+...  |
+51 | |             && self.successor_issuance_digest == source.successor_issuance_digest
+52 | |             && self.successor_issuance_command_id == source.successor_issuance_command_id
+   | |_________________________________________________________________________________________^
+
+note:   trigger 1 of 2:
+  --> crates/state/peritus-leases/src/binding/duplication.rs:38:17
+   |
+38 |                 self.scope_permissions@[index]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+  --> crates/state/peritus-leases/src/binding/duplication.rs:39:42
+   |
+39 |                     .exactly_duplicates(&source.scope_permissions@[index])
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/state/peritus-leases/src/binding/duplication.rs:64:17
+   |
+64 | /                 forall |prior: int| 0 <= prior < index ==>
+65 | |                     scope_permissions@[prior]
+66 | |                         .exactly_duplicates(&self.scope_permissions@[prior]),
+   | |____________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/state/peritus-leases/src/binding/duplication.rs:65:21
+   |
+65 |                     scope_permissions@[prior]
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/state/peritus-leases/src/binding/duplication.rs:98:13
+   |
+98 |             assert forall |permission_index: int|
+   |             ^^^^^^
+
+note:   trigger 1 of 2:
+   --> crates/state/peritus-leases/src/binding/duplication.rs:100:21
+    |
+100 |                     duplicate.scope_permissions@[permission_index]
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+   --> crates/state/peritus-leases/src/binding/duplication.rs:101:46
+    |
+101 |                         .exactly_duplicates(&self.scope_permissions@[permission_index]) by {
+    |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/state/peritus-leases/src/binding/use_projection.rs:57:17
+   |
+57 | /                 forall |prior: int| 0 <= prior < index ==>
+58 | |                     scope_permissions@[prior].matches_permission(&source_permissions@[prior]),
+   | |_____________________________________________________________________________________________^
+
+note:   trigger 1 of 2:
+  --> crates/state/peritus-leases/src/binding/use_projection.rs:58:21
+   |
+58 |                     scope_permissions@[prior].matches_permission(&source_permissions@[prior]),
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+  --> crates/state/peritus-leases/src/binding/use_projection.rs:58:67
+   |
+58 |                     scope_permissions@[prior].matches_permission(&source_permissions@[prior]),
+   |                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/state/peritus-leases/src/binding/use_projection.rs:68:13
+   |
+68 |             assert forall |permission_index: int|
+   |             ^^^^^^
+
+note:   trigger 1 of 2:
+  --> crates/state/peritus-leases/src/binding/use_projection.rs:70:21
+   |
+70 |                     scope_permissions@[permission_index]
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note:   trigger 2 of 2:
+  --> crates/state/peritus-leases/src/binding/use_projection.rs:71:46
+   |
+71 |                         .matches_permission(&source_permissions@[permission_index]) by {
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: Verus printed one or more automatically chosen quantifier triggers
+      because it had low confidence in the chosen triggers.
+      To suppress these messages, do one of the following:
+        (1) manually annotate a single desired trigger using #[trigger]
+            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
+        (2) manually annotate multiple desired triggers using #![trigger ...]
+            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
+        (3) accept the automatically chosen trigger using #![auto]
+            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
+        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
+      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
+      the theorem prover instantiates a quantifier whenever some expression matches the
+      pattern specified by one of the quantifier's triggers.)
+   --> crates/state/peritus-leases/src/binding/use_projection.rs:151:16
+    |
+151 |               && forall |index: int| 0 <= index < permissions.len() ==>
+    |  ________________^
+152 | |                 self.scope_permissions@[index].matches_permission(&permissions[index])
+    | |______________________________________________________________________________________^
+
+warning: `peritus-run-knowledge` (lib) generated 7 warnings
+    Checking peritus-context v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-context)
+warning: `peritus-memory` (lib) generated 16 warnings
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/compaction/replacement.rs:12:10
+   |
+12 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/compaction.rs:87:10
+   |
+87 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-context/src/compaction.rs:190:10
+    |
+190 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-context/src/compaction.rs:199:10
+    |
+199 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-context/src/content.rs:134:10
+    |
+134 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+ --> crates/orchestration/peritus-context/src/graph.rs:9:10
+  |
+9 | #[derive(Clone, Debug, Eq, PartialEq)]
+  |          ^^^^^
+  |
+  = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/node.rs:36:10
+   |
+36 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/node.rs:96:10
+   |
+96 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-context/src/node.rs:224:10
+    |
+224 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/plan.rs:91:10
+   |
+91 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/render.rs:27:10
+   |
+27 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/render.rs:71:10
+   |
+71 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/reuse.rs:37:10
+   |
+37 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/selection.rs:16:10
+   |
+16 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/working/delta.rs:10:10
+   |
+10 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/working/entry.rs:43:10
+   |
+43 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+   --> crates/orchestration/peritus-context/src/working/entry.rs:104:10
+    |
+104 | #[derive(Clone, Debug, Eq, PartialEq)]
+    |          ^^^^^
+    |
+    = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/working/event.rs:12:10
+   |
+12 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/working/protocol.rs:42:10
+   |
+42 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/working/protocol.rs:82:10
+   |
+82 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/working/state.rs:10:10
+   |
+10 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/working/validity.rs:29:10
+   |
+29 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/orchestration/peritus-context/src/working/validity.rs:62:10
+   |
+62 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: `peritus-context` (lib) generated 23 warnings
+    Checking peritus-kernel v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-kernel)
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/foundation/peritus-kernel/src/aggregate.rs:21:10
+   |
+21 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/foundation/peritus-kernel/src/authorization.rs:13:10
+   |
+13 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: autoderive Clone impl does not take the form Verus expects; continuing, but without adding a specification for the derived Clone impl
+  --> crates/foundation/peritus-kernel/src/command.rs:55:10
+   |
+55 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+warning: Verus does not (yet) support autoderive Clone impl when the clone is not a copy; continuing, but without adding a specification for the derived Clone impl
+  --> crates/foundation/peritus-kernel/src/state/action.rs:36:10
+   |
+36 | #[derive(Clone, Debug, Eq, PartialEq)]
+   |          ^^^^^
+   |
+   = help: to suppress this warning, use `#[verifier::allow(autoderive_clone_without_spec)]` on the surrounding function, datatype, or module or `#![verifier::allow(autoderive_clone_without_spec)]` in the module or crate
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/model.rs:101:5
+    |
+101 | /     exists |before_index: int, after_index: int| {
+102 | |         &&& 0 <= before_index < before.runs@.len()
+103 | |         &&& 0 <= after_index < after.runs@.len()
+104 | |         &&& crate::identity::run_ids_equal(before.runs@[before_index].id, id)
+...   |
+109 | |         &&& after.runs@[after_index].acceptance == AcceptancePhase::Accepted
+110 | |     }
+    | |_____^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/model.rs:104:44
+    |
+104 |         &&& crate::identity::run_ids_equal(before.runs@[before_index].id, id)
+    |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+105 |         &&& crate::identity::run_ids_equal(after.runs@[after_index].id, id)
+    |                                            ^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/model.rs:119:5
+    |
+119 | /     exists |before_index: int, after_index: int| {
+120 | |         &&& 0 <= before_index < before.runs@.len()
+121 | |         &&& 0 <= after_index < after.runs@.len()
+122 | |         &&& crate::identity::run_ids_equal(before.runs@[before_index].id, id)
+...   |
+127 | |         &&& after.runs@[after_index].acceptance == AcceptancePhase::NeedsChanges
+128 | |     }
+    | |_____^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/model.rs:122:44
+    |
+122 |         &&& crate::identity::run_ids_equal(before.runs@[before_index].id, id)
+    |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+123 |         &&& crate::identity::run_ids_equal(after.runs@[after_index].id, id)
+    |                                            ^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/model.rs:174:13
+    |
+174 |           ==> exists |before_index: int| {
+    |  _____________^
+175 | |             &&& 0 <= before_index < before.runs@.len()
+176 | |             &&& crate::identity::run_ids_equal(
+177 | |                 before.runs@[before_index].id,
+...   |
+180 | |             &&& before.runs@[before_index].phase == RunPhase::Accepted
+181 | |         }
+    | |_________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/model.rs:177:17
+    |
+177 |                 before.runs@[before_index].id,
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:96:21
+   |
+96 |               None => forall |index: int| 0 <= index < self.runs@.len()
+   |  _____________________^
+97 | |                 ==> !crate::identity::run_ids_equal(self.runs@[index].id, id),
+   | |_____________________________________________________________________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:97:53
+   |
+97 |                 ==> !crate::identity::run_ids_equal(self.runs@[index].id, id),
+   |                                                     ^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+  --> crates/foundation/peritus-kernel/src/reducer/refinement.rs:87:24
+   |
+87 |                   assert(exists |left: int, right: int| {
+   |  ________________________^
+88 | |                     &&& 0 <= left < before.runs@.len()
+89 | |                     &&& 0 <= right < after.runs@.len()
+90 | |                     &&& crate::identity::run_ids_equal(before.runs@[left].id, id)
+...  |
+95 | |                     &&& after.runs@[right].acceptance == AcceptancePhase::Accepted
+96 | |                 });
+   | |_________________^
+
+note:   trigger 1 of 1:
+  --> crates/foundation/peritus-kernel/src/reducer/refinement.rs:90:56
+   |
+90 |                     &&& crate::identity::run_ids_equal(before.runs@[left].id, id)
+   |                                                        ^^^^^^^^^^^^^^^^^^
+91 |                     &&& crate::identity::run_ids_equal(after.runs@[right].id, id)
+   |                                                        ^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/reducer/refinement.rs:127:24
+    |
+127 |                   assert(exists |left: int, right: int| {
+    |  ________________________^
+128 | |                     &&& 0 <= left < before.runs@.len()
+129 | |                     &&& 0 <= right < after.runs@.len()
+130 | |                     &&& crate::identity::run_ids_equal(before.runs@[left].id, id)
+...   |
+135 | |                     &&& after.runs@[right].acceptance == AcceptancePhase::NeedsChanges
+136 | |                 });
+    | |_________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/reducer/refinement.rs:130:56
+    |
+130 |                     &&& crate::identity::run_ids_equal(before.runs@[left].id, id)
+    |                                                        ^^^^^^^^^^^^^^^^^^
+131 |                     &&& crate::identity::run_ids_equal(after.runs@[right].id, id)
+    |                                                        ^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/reducer/refinement.rs:199:24
+    |
+199 |                   assert(exists |prior: int| {
+    |  ________________________^
+200 | |                     &&& 0 <= prior < before.runs@.len()
+201 | |                     &&& crate::identity::run_ids_equal(
+202 | |                         before.runs@[prior].id,
+...   |
+205 | |                     &&& before.runs@[prior].phase == RunPhase::Accepted
+206 | |                 });
+    | |_________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/reducer/refinement.rs:202:25
+    |
+202 |                         before.runs@[prior].id,
+    |                         ^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/reducer/refinement.rs:167:21
+    |
+167 |                   ==> exists |before_index: int| {
+    |  _____________________^
+168 | |                     &&& 0 <= before_index < before.runs@.len()
+169 | |                     &&& crate::identity::run_ids_equal(
+170 | |                         before.runs@[before_index].id,
+...   |
+173 | |                     &&& before.runs@[before_index].phase == RunPhase::Accepted
+174 | |                 },
+    | |_________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/reducer/refinement.rs:170:25
+    |
+170 |                         before.runs@[before_index].id,
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: automatically chose triggers for this expression:
+   --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:104:17
+    |
+104 | /                 forall |prior: int| 0 <= prior < index
+105 | |                     ==> !crate::identity::run_ids_equal(self.runs@[prior].id, id),
+    | |_________________________________________________________________________________^
+
+note:   trigger 1 of 1:
+   --> crates/foundation/peritus-kernel/src/aggregate/lookup.rs:105:57
+    |
+105 |                     ==> !crate::identity::run_ids_equal(self.runs@[prior].id, id),
+    |                                                         ^^^^^^^^^^^^^^^^^
+
+note: Verus printed one or more automatically chosen quantifier triggers
+      because it had low confidence in the chosen triggers.
+      To suppress these messages, do one of the following:
+        (1) manually annotate a single desired trigger using #[trigger]
+            (example: forall|i: int, j: int| f(i) && #[trigger] g(i) && #[trigger] h(j)),
+        (2) manually annotate multiple desired triggers using #![trigger ...]
+            (example: forall|i: int| #![trigger f(i)] #![trigger g(i)] f(i) && g(i)),
+        (3) accept the automatically chosen trigger using #![auto]
+            (example: forall|i: int, j: int| #![auto] f(i) && g(i) && h(j))
+        (4) use the --triggers-mode silent command-line option to suppress all printing of triggers.
+      (Note: triggers are used by the underlying SMT theorem prover to instantiate quantifiers;
+      the theorem prover instantiates a quantifier whenever some expression matches the
+      pattern specified by one of the quantifier's triggers.)
+   --> crates/foundation/peritus-kernel/src/model.rs:174:13
+    |
+174 |           ==> exists |before_index: int| {
+    |  _____________^
+175 | |             &&& 0 <= before_index < before.runs@.len()
+176 | |             &&& crate::identity::run_ids_equal(
+177 | |                 before.runs@[before_index].id,
+...   |
+180 | |             &&& before.runs@[before_index].phase == RunPhase::Accepted
+181 | |         }
+    | |_________^
+
+warning: `peritus-kernel` (lib) generated 4 warnings
+    Checking peritus-protocol v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-protocol)
+    Checking peritus-journal v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-journal)
+    Checking peritus-app-protocol v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/app/peritus-app-protocol)
+    Checking peritus-projection v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-projection)
+    Checking peritus-workspace v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-workspace)
+    Checking peritus-tool-router v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/tools/peritus-tool-router)
+    Checking peritus-process v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-process)
+    Checking peritus-evidence v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/state/peritus-evidence)
+    Checking peritus-trace v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/observe/peritus-trace)
+    Checking peritus-harness v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-harness)
+    Checking peritus-tools-git v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/tools/peritus-tools-git)
+    Checking peritus-tools-fs v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/tools/peritus-tools-fs)
+    Checking peritus-tools-quality v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/tools/peritus-tools-quality)
+    Checking peritus-tools-shell v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/tools/peritus-tools-shell)
+    Checking peritus-sandbox-linux v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-sandbox-linux)
+    Checking peritus-telemetry v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/observe/peritus-telemetry)
+    Checking peritus-scheduler v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-scheduler)
+    Checking peritus-agent v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-agent)
+    Checking peritus-review v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-review)
+    Checking peritus-gates v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-gates)
+    Checking peritus-collaboration v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-collaboration)
+    Checking peritus-eval v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/analysis/peritus-eval)
+    Checking peritus-orchestrator v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-orchestrator)
+    Checking peritus-debugger v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/analysis/peritus-debugger)
+    Checking peritus-product-runner v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/app/peritus-product-runner)
+    Checking peritus-evolution v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/analysis/peritus-evolution)
+    Checking peritus-daemon v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/app/peritus-daemon)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 32.51s
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:49:26.067802Z"}

@@ -3,6 +3,8 @@
 mod authority_support;
 #[path = "authorized_gateway/caller_binding.rs"]
 mod caller_binding;
+#[path = "authorized_gateway/folder.rs"]
+mod folder;
 #[path = "authority_support/namespace_safety.rs"]
 mod namespace_safety;
 #[path = "authorized_gateway/snapshot_publication.rs"]
@@ -31,6 +33,9 @@ use authority_support::{
     open_journal, receipts, reopen_fixture, try_reopen_fixture, workspace_fixture,
 };
 use tool_binding::tool_binding;
+#[path = "authorized_gateway/reconciliation.rs"]
+mod reconciliation;
+use reconciliation::assert_target_owned_wrong_holder_is_fenced_and_finalized;
 
 #[test]
 fn exact_committed_receipts_are_required_before_real_patch_effect() {
@@ -258,34 +263,6 @@ fn clean_open_rejects_a_worktree_that_differs_from_the_current_snapshot_tree() {
     let error =
         try_reopen_fixture(&persistence, &ids).err().expect("clean reopen must reject drift");
     assert_eq!(error.operation(), peritus_workspace::WorkspaceOperation::Open);
-}
-
-fn assert_target_owned_wrong_holder_is_fenced_and_finalized(
-    temp: &TempDir,
-    gateway: &mut WorkspaceGateway,
-    ids: &Ids,
-) {
-    let wrong_holder = LeaseHolder::new(
-        ActorId::new([96; 16]).expect("wrong prior actor"),
-        SessionId::new([97; 16]).expect("wrong prior session"),
-    );
-    let expected = ReconciliationCorrelation::new(
-        LeaseScope::new(ids.workspace, ids.resource, ids.environment),
-        Generation::first(),
-        wrong_holder,
-    );
-    let artifacts = artifact_store(temp, "reconciliation-artifacts", 1_048_576);
-    let outcome = gateway
-        .reconcile_restart(
-            expected,
-            &artifacts,
-            EventId::new([98; 16]).expect("reconciliation event"),
-        )
-        .expect("finalized reconciliation");
-    assert_eq!(outcome.observation().disposition(), RestartDisposition::Fenced);
-    assert_eq!(outcome.observation().evidence().correlation().prior_holder(), ids.holder(),);
-    assert_eq!(outcome.manifest().action_id(), None);
-    artifacts.verify(outcome.artifact_digest()).expect("verified reconciliation artifact");
 }
 
 fn assert_intent_drifts_have_no_effect(

@@ -279,7 +279,10 @@ fn login(terminal: &mut Terminal<'_>, kind: ProviderKind) -> Result<bool, Launch
         AccountLogin::Browser
     };
     terminal.line("Handing the terminal to the official provider login…")?;
-    let observation = provider.login(mode)?;
+    let observation = {
+        let _title = crate::terminal::product_title()?;
+        provider.login(mode)?
+    };
     terminal.line(&format!("{} is ready.", observation.kind().label()))?;
     Ok(true)
 }

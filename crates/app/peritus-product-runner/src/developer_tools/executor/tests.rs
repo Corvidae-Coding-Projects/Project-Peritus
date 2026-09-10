@@ -9,6 +9,7 @@ use std::{
 
 mod access;
 mod admission;
+mod checkpoint;
 mod command;
 
 static NEXT_CALL_ID: AtomicU64 = AtomicU64::new(1);

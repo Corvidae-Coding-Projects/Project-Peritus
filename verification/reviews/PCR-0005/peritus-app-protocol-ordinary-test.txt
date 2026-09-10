@@ -1,0 +1,213 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-app-protocol", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-app-protocol --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 3.903567, "finished_at": "2026-09-10T01:47:31.698492Z", "kind": "ordinary-test", "owning_crate": "peritus-app-protocol", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:47:27.838788Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-app-protocol", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-app-protocol", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 3, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 61 tests
+test command::result::tests::committed_range_is_positive_and_counts_inclusively ... ok
+test error::code::tests::assigned_error_tags_round_trip ... ok
+test identity::tests::nominal_id_rejects_zero_and_preserves_exact_bytes ... ok
+test doctor::tests::rejects_controls_oversized_text_duplicates_and_empty_reports ... ok
+test limits::tests::invalid_codec_relationship_is_rejected ... ok
+test limits::tests::negotiation_is_pointwise_minimum ... ok
+test doctor::tests::report_and_optional_provider_roundtrip_through_public_wire ... ok
+test version::feature::tests::feature_sets_are_sorted_and_duplicate_free ... ok
+test identity::tests::idempotency_key_is_nonempty_and_bounded ... ok
+test version::range::tests::range_rejects_zero_major_and_reversal ... ok
+test version::range::tests::intersection_selects_greatest_common_minor ... ok
+test wire::product::settlement::tests::unknown_evidence_status_rejects_before_reading_a_record ... ok
+test wire::tests::all_product_handoff_controls_round_trip ... ok
+test wire::tests::encoder_rejects_value_built_above_negotiated_flow_limit ... ok
+test schema::fields::tests::review_intents_are_closed_union_members_with_resolved_json_refs ... ok
+test wire::tests::product_retry_is_limited_to_unsuccessful_terminal_runs ... ok
+test wire::tests::negotiated_frame_limit_is_applied_before_payload_allocation ... ok
+test schema::codegen::tests::manifest_inventory_is_sorted_and_content_addressed ... ok
+test version::negotiation::tests::negotiation_selects_greatest_common_version_and_marks_downgrade ... ok
+test wire::tests::product_run_followups_and_conversations_round_trip ... ok
+test wire::workbench_brief::tests::brief_wire_checks_field_count_before_allocating_or_reading_sources ... ok
+test wire::tests::all_six_families_round_trip_and_typed_hello_decodes ... ok
+test wire::workbench_brief::tests::unknown_brief_field_rejects_without_consuming_source_data ... ok
+test wire::tests::dispatcher_separates_family_schema_tag_and_frame_failures ... ok
+test wire::tests::product_run_requests_and_snapshots_round_trip ... ok
+test wire::workbench_context::tests::context_query_unknown_view_rejects_without_interpreting_additional_fields ... ok
+test wire::workbench_checkpoints::tests::checkpoint_inspection_request_uses_tag_121_and_round_trips ... ok
+test wire::workbench_context::tests::rejects_an_excessive_row_count_before_attempting_to_read_any_row ... ok
+test wire::workbench_image_page::tests::image_page_rejects_oversized_row_count_before_reading_any_rows ... ok
+test wire::workbench_checkpoints::tests::preview_round_trips_and_rejects_a_tampered_fingerprint ... ok
+test wire::workbench_image_page::tests::image_query_rejects_unfenced_continuation_and_excessive_offsets_on_the_wire ... ok
+test wire::workbench_checkpoints::tests::rewind_modes_child_and_allocation_are_in_the_exact_preview_fingerprint ... ok
+test wire::workbench_init::tests::decoder_rejects_excessive_source_count_before_reading_sources ... ok
+test wire::workbench_launch::tests::complete_result_page_round_trips_as_a_persistence_value ... ok
+test wire::workbench_memory::tests::excessive_row_count_rejects_before_allocating_rows ... ok
+test wire::workbench_memory::tests::all_five_guidance_intent_bodies_roundtrip_canonically ... ok
+test wire::workbench_memory::tests::active_and_content_free_forgotten_rows_roundtrip ... ok
+test wire::workbench_init::tests::proposal_fingerprint_changes_with_reviewed_identity ... ok
+test workbench::brief::tests::brief_rejects_uncommitted_duplicate_noncanonical_and_superseded_bindings ... ok
+test workbench::brief::tests::brief_separates_agent_proposals_and_observed_facts_from_confirmed_fields ... ok
+test workbench::context::tests::context_pages_reject_false_seals_wrong_views_gaps_and_duplicate_sources ... ok
+test wire::workbench_init::tests::proposal_roundtrip_retains_exact_original_patch_and_structured_argv ... ok
+test workbench::images::tests::image_metadata_and_labels_reject_controls_and_host_limit_violations ... ok
+test workbench::init::tests::proposal_rejects_noncanonical_commands_and_inconsistent_diffs ... ok
+test workbench::init::tests::a_preexisting_managed_section_is_replaced_without_changing_surrounding_bytes ... ok
+test workbench::launch::tests::evidence_classes_remain_independent ... ok
+test workbench::memory::tests::accepted_reply_digest_and_stale_dependency_fences_fail_closed ... ok
+test workbench::library::fork::tests::read_only_allocation_is_optional_but_isolated_allocation_is_required ... ok
+test workbench::memory::tests::an_older_record_can_advance_from_the_current_project_dependency_revision ... ok
+test workbench::review::tests::parser_rejects_traversal_and_malformed_line_only_ranges ... ok
+test workbench::memory::tests::explicit_guidance_enters_exact_future_context_then_forget_excludes_it ... ok
+test workbench::init::tests::exact_managed_section_preserves_all_existing_instruction_bytes ... ok
+test workbench::review::tests::parser_binds_file_and_hunks_to_content_not_line_numbers ... ok
+test workbench::launch::tests::denied_capture_cannot_carry_fabricated_artifact_facts ... ok
+test workbench::review::tests::tag_80_page_and_tag_50_comment_round_trip_canonically ... ok
+test workbench::images::tests::page::image_eligibility_rejects_deselected_held_withdrawn_and_superseded_sources ... ok
+test workbench::brief::tests::brief_fixtures_roundtrip_every_field_and_require_the_independent_feature ... ok
+test workbench::images::tests::page::image_page_requires_exact_cardinality_unique_operations_and_committed_revision ... ok
+test workbench::files::tests::file_compatibility_frames_roundtrip_and_require_independent_feature ... ok
+test workbench::context::tests::context_fixtures_roundtrip_every_source_role_view_and_disposition_without_content ... ok
+test workbench::images::tests::image_fixtures_roundtrip_every_format_and_independently_gate_upload_preview_and_confirmation ... ok
+
+test result: ok. 61 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test chunks_conserve_order_size_digest_and_terminal_state ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test binding_preserves_exact_b3_frames_and_rejects_revision_drift ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test readiness_heartbeat_diagnostics_and_shutdown_report_truthful_states ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test window_distinguishes_new_replay_conflict_capacity_and_removal ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 5 tests
+test impossible_input_lifecycle_and_duplicate_activity_sequences_are_rejected ... ok
+test unknown_effort_and_noncanonical_explicit_default_payload_are_rejected ... ok
+test public_activity_and_catalog_provenance_roundtrip ... ok
+test every_mode_and_new_query_roundtrips ... ok
+test effort_bearing_requests_and_snapshots_roundtrip_every_level_without_changing_legacy_tags ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test negotiation_matrix_is_deterministic_and_explicit ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 5 tests
+test snapshot_rejects_candidate_identity_or_stage_disagreement ... ok
+test legacy_deliverable_bytes_decode_as_qualified ... ok
+test candidate_available_round_trips_without_becoming_accepted ... ok
+test settlement_collection_rejects_the_first_out_of_bounds_item ... ok
+test bounded_settlement_collection_round_trips ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test production_protocol_passes_all_sixteen_a2_cases ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test answers_require_complete_binding_and_live_revision ... ok
+test approval_prompts_require_challenges_and_accept_only_signed_or_cancelled_answers ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test checked_in_schema_and_fixture_assets_match_rust_metadata ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+
+running 1 test
+test resume_redelivery_ack_gap_and_backpressure_are_explicit ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test terminal_attach_stream_resize_detach_cancel_and_exit_ordering_is_exact ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 4 tests
+test negotiation_predicates_cover_success_and_failure_boundaries ... ok
+test transfer_predicates_conserve_exact_size ... ok
+test terminal_and_bound_predicates_reject_post_terminal_or_excess_input ... ok
+test delivery_and_ack_predicates_enforce_contiguous_monotonic_progress ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test all_six_families_round_trip_and_reject_malformed_frames ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:47:31.698492Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-app-protocol", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-app-protocol", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 3, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling peritus-conformance v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/app/testing/peritus-conformance)
+   Compiling peritus-types v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-types)
+   Compiling peritus-spec v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-spec)
+   Compiling peritus-budget v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-budget)
+   Compiling peritus-policy v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-policy)
+   Compiling peritus-codec v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-codec)
+   Compiling peritus-run-settlement v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/orchestration/peritus-run-settlement)
+   Compiling peritus-test-support v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/app/testing/peritus-test-support)
+   Compiling peritus-quality-policy v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-quality-policy)
+   Compiling peritus-kernel v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-kernel)
+   Compiling peritus-protocol v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/foundation/peritus-protocol)
+   Compiling peritus-app-protocol v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/app/peritus-app-protocol)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.75s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_app_protocol-01b217b77bc10077)
+     Running unittests src/bin/peritus-app-protocol-codegen.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_app_protocol_codegen-edb752f9408dc944)
+     Running tests/artifact_traces.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/artifact_traces-55068c9e02f7a5df)
+     Running tests/command_binding.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/command_binding-51eb629dd6e1b1f7)
+     Running tests/daemon_controls.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/daemon_controls-9eeb8973f9d07f1f)
+     Running tests/idempotency.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/idempotency-26cafe2767a4de81)
+     Running tests/interaction.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/interaction-5ebad8542d54653e)
+     Running tests/negotiation.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/negotiation-9058cc60fed30d18)
+     Running tests/product_settlement.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/product_settlement-989cea7f1b18237a)
+     Running tests/production_conformance.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/production_conformance-1d165fb5b32ee3a6)
+     Running tests/prompt_freshness.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/prompt_freshness-a74a0530e10a3fad)
+     Running tests/schema_assets.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/schema_assets-a5f0467bf2297b75)
+     Running tests/subscription_traces.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/subscription_traces-1c314a2adcc8319f)
+     Running tests/terminal_traces.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/terminal_traces-cb99863e034bb1b3)
+     Running tests/verified_refinement.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/verified_refinement-fecee49f49b01194)
+     Running tests/wire_matrix.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/wire_matrix-55be1e647f4d76fb)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:47:31.698492Z"}

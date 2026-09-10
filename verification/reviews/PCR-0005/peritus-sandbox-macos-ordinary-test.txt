@@ -1,0 +1,65 @@
+=== PERITUS GATE RECORD ===
+{"argv": ["cargo", "test", "--package", "peritus-sandbox-macos", "--all-targets", "--all-features", "--locked"], "command": "cargo test --package peritus-sandbox-macos --all-targets --all-features --locked", "command_exit_code": 0, "custody_error": null, "duration_seconds": 3.10632, "finished_at": "2026-09-10T01:52:48.342408Z", "kind": "ordinary-test", "owning_crate": "peritus-sandbox-macos", "result": "passed", "schema": "peritus.formal-package-gate-output", "schema_version": 1, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "started_at": "2026-09-10T01:52:45.271490Z", "verification_class": "H"}
+=== STDOUT LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-sandbox-macos", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-sandbox-macos", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 97, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stdout", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+
+running 13 tests
+test resource_monitor::pids::tests::libproc_zero_with_error_cannot_be_a_complete_resource_sample ... ok
+test resource_monitor::tests::resource_ceiling_comparison_is_exact_and_dimension_complete ... ok
+test exec_status::tests::close_on_exec_eof_confirms_target_replacement ... ok
+test secret::tests::protected_secret_metadata_round_trips_without_payload_bytes ... ok
+test secret::tests::canonical_secret_handles_reject_duplicate_destinations ... ok
+test resource_monitor::pids::tests::libproc_success_and_capacity_bound_are_distinct_from_query_errors ... ok
+test exec_status::tests::authenticated_exec_failure_is_not_a_target_exit ... ok
+test runner::materialized::tests::failed_activation_rolls_back_every_materialized_file ... ok
+test session::cleanup::tests::release_cleanup_removes_materialized_file_for_any_preterminal_phase ... ok
+test session::tests::prepared_abandonment_cleans_without_normal_release_observation ... ok
+test session::tests::lifecycle_is_ordered_bounded_and_release_is_idempotent ... ok
+test session::tests::target_reserved_range_exit_remains_exact_after_activation ... ok
+test conformance_tests::macos_adapter_passes_complete_fresh_subject_a2_sandbox_suite ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 5 tests
+test recovery_classification_never_claims_mismatched_ownership ... ok
+test non_macos_system_probe_is_strictly_unsupported ... ok
+test profile_is_deterministic_escapes_paths_and_protects_metadata ... ok
+test compiler_rejects_unrepresentable_metadata_split_and_requires_proxy_for_egress ... ok
+test manifest_round_trip_is_canonical_and_tamper_evident ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:52:48.342408Z"}
+
+=== STDERR LOG ===
+=== PERITUS CUSTODY HEADER ===
+{"argv": ["cargo", "test", "--package", "peritus-sandbox-macos", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "owning_crate": "peritus-sandbox-macos", "schema": "peritus.formal-package-evidence-stream", "schema_version": 1, "sequence": 97, "source_commit": "a6994ce09a67b6631318d88659cd4df5ed5e81f7", "source_tree": "0d3c5a78fe8d8e97620378f4f365b63e90ed673b", "stream": "stderr", "verification_class": "H"}
+=== COMMAND OUTPUT ===
+   Compiling nix v0.31.3
+   Compiling process-wrap v9.1.0
+   Compiling peritus-network v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-network)
+   Compiling peritus-process v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-process)
+   Compiling peritus-sandbox-macos v0.0.1 (/tmp/peritus-frozen-review-1jnBvT/crates/runtime/peritus-sandbox-macos)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 3.01s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_sandbox_macos-0b585d14473d11d6)
+     Running unittests src/bin/peritus-macos-sandbox-helper.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/peritus_macos_sandbox_helper-2fc96b92677ff088)
+     Running tests/contracts.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/contracts-88d447605a8787ae)
+     Running tests/native_probe.rs (/home/doll/Project-Peritus/.worktrees/develop/target/debug/deps/native_probe-72d707b68fda2eef)
+
+=== PERITUS CUSTODY FOOTER ===
+{"command_exit_code": 0, "execution_error": null, "finished_at": "2026-09-10T01:52:48.342408Z"}
