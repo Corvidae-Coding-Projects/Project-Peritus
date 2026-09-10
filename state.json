@@ -1,6 +1,6 @@
 {
   "next_display_id": 69,
-  "next_comment_id": 1527,
+  "next_comment_id": 1528,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -2941,7 +2941,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-10T11:22:27.739162003Z",
-      "updated_at": "2026-09-10T13:18:43.352992288Z",
+      "updated_at": "2026-09-10T13:55:07.384766236Z",
       "comments": {
         "200ee734-a8ff-45d4-bd5a-4ea08bcb360b": {
           "display_id": 1526,
@@ -2960,6 +2960,15 @@
           "kind": "result",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA5TtO5ckf+mzsFqhL0zgI8MBWQvKT4N4BReTMbaiazBgxa3oiY1QDk3uS4hcJ1GN8WozrzhBvFu5rVp8ee3+jBQ=="
+        },
+        "3150f6e9-3e8e-4880-9c40-fcccd2312d94": {
+          "display_id": 1527,
+          "author": "krvx",
+          "content": "Commit ba710b15 implements user authorization to add time: H0 and both Rust matrices now have a 15-minute budget, scoped by exact workflow/job policy. On c9c37571 all 24 Windows daemon jobs passed. H0 Linux passed all 40 probes but hit the 10-minute completion boundary, and retry also overran; Windows runner-recovery likewise compiled and passed several test groups before timeout. No product or harness behavior changed in this commit. 356 xtask tests, cargo xtask all, Linux/Windows strict Clippy, actionlint, formatting, and diff checks pass. Replacement-head hosted qualification pending.",
+          "created_at": "2026-09-10T13:55:07.379949161Z",
+          "kind": "result",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA/QJ9ZltdzJDE75PyWbQnQi9VWMDFZfHQldWRg8DkfUDOQsQ1X0e5oNyUoSqE3aAUVGg2QpLC273gCpmEDj4zDg=="
         },
         "4f48cbf5-f038-4080-b506-71676fc4de0f": {
           "display_id": 1522,
@@ -14910,8 +14919,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-10T13:18:43.352992288Z",
+    "timestamp": "2026-09-10T13:55:07.384766236Z",
     "agent_id": "krvx",
-    "agent_seq": 184
+    "agent_seq": 185
   }
 }
