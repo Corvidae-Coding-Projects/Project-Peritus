@@ -1,13 +1,16 @@
 use super::{
-    CHECKPOINTS, FOLDER, LIBRARY, MODELS, PRODUCT, Partition, REVIEW, REWINDS, WORKBENCH,
-    test_filters,
+    CANCELLATION, CHECKPOINTS, CONTINUATION, FOLDER, INTERACTION, LIBRARY, MODELS, PRODUCT,
+    Partition, REVIEW, REWINDS, WORKBENCH, test_filters,
 };
 use crate::ci_shard::{Operation, cargo_command, selected_packages};
 use crate::metadata;
 use std::path::Path;
 
-const PARTITIONS: [(Partition, &str); 8] = [
+const PARTITIONS: [(Partition, &str); 11] = [
     (Partition::Product, "test-daemon-product"),
+    (Partition::Cancellation, "test-daemon-cancellation"),
+    (Partition::Continuation, "test-daemon-continuation"),
+    (Partition::Interaction, "test-daemon-interaction"),
     (Partition::Folder, "test-daemon-folder"),
     (Partition::Workbench, "test-daemon-workbench"),
     (Partition::Checkpoints, "test-daemon-checkpoints"),
@@ -27,6 +30,9 @@ fn windows_namespaces_form_an_exhaustive_nonoverlapping_partition() {
         "second_runtime_cannot_acquire_a_live_state_root".to_owned(),
         format!("{PRODUCT}test"),
         format!("{PRODUCT}future_module::test"),
+        format!("{CANCELLATION}test"),
+        format!("{CONTINUATION}test"),
+        format!("{INTERACTION}future_module::test"),
         format!("{FOLDER}test"),
         format!("{FOLDER}future_module::test"),
         format!("{WORKBENCH}test"),

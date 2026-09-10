@@ -107,6 +107,9 @@ jobs:
           - { os: macos-15, operation: test-daemon, shard: app-shell }
           - { os: windows-2025, operation: test-daemon, shard: app-shell }
           - { os: windows-2025, operation: test-daemon-product, shard: app-shell }
+          - { os: windows-2025, operation: test-daemon-cancellation, shard: app-shell }
+          - { os: windows-2025, operation: test-daemon-continuation, shard: app-shell }
+          - { os: windows-2025, operation: test-daemon-interaction, shard: app-shell }
           - { os: windows-2025, operation: test-daemon-folder, shard: app-shell }
           - { os: windows-2025, operation: test-daemon-workbench, shard: app-shell }
           - { os: windows-2025, operation: test-daemon-checkpoints, shard: app-shell }

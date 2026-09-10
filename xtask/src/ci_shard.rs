@@ -56,6 +56,15 @@ impl Operation {
             "test" => Some(Self::Test),
             "test-daemon" => Some(Self::TestDaemon),
             "test-daemon-product" => Some(Self::TestDaemonPartition(daemon::Partition::Product)),
+            "test-daemon-cancellation" => {
+                Some(Self::TestDaemonPartition(daemon::Partition::Cancellation))
+            }
+            "test-daemon-continuation" => {
+                Some(Self::TestDaemonPartition(daemon::Partition::Continuation))
+            }
+            "test-daemon-interaction" => {
+                Some(Self::TestDaemonPartition(daemon::Partition::Interaction))
+            }
             "test-daemon-folder" => Some(Self::TestDaemonPartition(daemon::Partition::Folder)),
             "test-daemon-models" => Some(Self::TestDaemonPartition(daemon::Partition::Models)),
             "test-daemon-rewinds" => Some(Self::TestDaemonPartition(daemon::Partition::Rewinds)),
