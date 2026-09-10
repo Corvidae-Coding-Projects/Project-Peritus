@@ -1,6 +1,6 @@
 {
   "next_display_id": 69,
-  "next_comment_id": 1532,
+  "next_comment_id": 1533,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -2941,7 +2941,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-10T11:22:27.739162003Z",
-      "updated_at": "2026-09-10T15:16:40.462088317Z",
+      "updated_at": "2026-09-10T15:42:56.974106965Z",
       "comments": {
         "200ee734-a8ff-45d4-bd5a-4ea08bcb360b": {
           "display_id": 1526,
@@ -2960,6 +2960,15 @@
           "kind": "result",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA5TtO5ckf+mzsFqhL0zgI8MBWQvKT4N4BReTMbaiazBgxa3oiY1QDk3uS4hcJ1GN8WozrzhBvFu5rVp8ee3+jBQ=="
+        },
+        "29055f38-a6fa-452b-827c-d6399452760c": {
+          "display_id": 1532,
+          "author": "krvx",
+          "content": "Latest PR head 4c2ad1f2 Gate A strict app-shell Verus build job 102930621383 exceeded its exact 10-minute execution limit (GitHub annotation confirmed). Logged verification results are all zero errors; timeout occurred while rust_verify remained active. Aggregate Verus is the second red check. Raising both reviewed Verus matrices to 15 minutes with exact-job policy allowances and boundary regressions; no proof flags or gates removed. Foundation Windows recovery now passes the earlier fixture-budget correction.",
+          "created_at": "2026-09-10T15:42:56.968671890Z",
+          "kind": "note",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA17g7nLPVasFvlLb5qgLEGrfDpd6mvVW4bxp5PEA8RzZ5rRBWyujCzOCoskBg+zrqvwziqrSMT/rBBmxh50vODw=="
         },
         "3150f6e9-3e8e-4880-9c40-fcccd2312d94": {
           "display_id": 1527,
@@ -14955,8 +14964,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-10T15:16:40.462088317Z",
+    "timestamp": "2026-09-10T15:42:56.974106965Z",
     "agent_id": "krvx",
-    "agent_seq": 189
+    "agent_seq": 190
   }
 }
