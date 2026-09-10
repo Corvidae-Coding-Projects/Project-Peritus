@@ -93,6 +93,8 @@ impl AppModel {
             Command::Help => {
                 "/".clone_into(&mut self.chat.buffer);
                 self.chat.cursor = 1;
+                self.chat.selection_anchor = None;
+                self.chat.mouse_anchor = None;
             }
             Command::Quit => {
                 self.quitting = true;
@@ -149,6 +151,8 @@ impl AppModel {
         self.chat.pasted_command = false;
         self.chat.buffer.clear();
         self.chat.cursor = 0;
+        self.chat.selection_anchor = None;
+        self.chat.mouse_anchor = None;
         self.chat.command_selection = 0;
     }
 

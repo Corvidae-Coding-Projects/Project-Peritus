@@ -127,7 +127,7 @@ pub async fn run_with_state(
     let mut tick = tokio::time::interval(UI_TICK);
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     let result = loop {
-        terminal.draw(&model)?;
+        terminal.draw(&mut model)?;
         let action = tokio::select! {
             input = input_rx.recv() => match input {
                 Some(event) => Action::TerminalEvent(event),

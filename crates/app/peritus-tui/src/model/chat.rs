@@ -5,6 +5,7 @@ mod commands;
 mod doctor;
 mod keys;
 mod models;
+mod navigation;
 mod picker;
 #[cfg(test)]
 mod tests;
@@ -25,6 +26,9 @@ pub use working::WorkingIndicator;
 pub struct ChatUi {
     pub(crate) buffer: String,
     pub(crate) cursor: usize,
+    pub(crate) selection_anchor: Option<usize>,
+    pub(crate) viewport: Option<ratatui::layout::Rect>,
+    mouse_anchor: Option<usize>,
     pub(crate) run_id: Option<RunId>,
     pub(crate) snapshot: Option<ProductInteractionSnapshot>,
     pub(crate) mode: ProductInteractionMode,
@@ -48,6 +52,9 @@ impl Default for ChatUi {
         Self {
             buffer: String::new(),
             cursor: 0,
+            selection_anchor: None,
+            viewport: None,
+            mouse_anchor: None,
             run_id: None,
             snapshot: None,
             mode: ProductInteractionMode::Chat,
@@ -174,6 +181,8 @@ impl AppModel {
             self.chat.run_id = Some(run_id);
             self.chat.buffer.clear();
             self.chat.cursor = 0;
+            self.chat.selection_anchor = None;
+            self.chat.mouse_anchor = None;
             self.chat.scroll = 0;
             self.notice(NoticeLevel::Info, "Sending input; durable receipt not yet confirmed");
         }
@@ -227,6 +236,8 @@ impl AppModel {
             format!("{text}\n{}", self.chat.buffer)
         };
         self.chat.cursor = self.chat.buffer.len();
+        self.chat.selection_anchor = None;
+        self.chat.mouse_anchor = None;
     }
     pub(super) fn recover_chat_drafts(&mut self) {
         let messages = self

@@ -121,6 +121,11 @@ Type `/` to discover commands; Tab completes them.
 | `/runs` | Open the run and candidate dashboard. |
 
 Use Shift+Enter for a new line and PageUp/PageDown to scroll.
+In the message composer, Ctrl+Left/Right moves by word. Hold Shift with Left/Right,
+Ctrl+Left/Right, or Home/End to select text; typing, pasting, Backspace, and Delete
+replace or remove the selection. Escape clears it. Click to position the cursor,
+or drag or Shift-click to select. Mouse input requires terminal mouse reporting;
+use your terminal’s selection override (usually Shift-drag) to copy screen text.
 Diff and check reports also support PageUp/PageDown; Home returns to the start.
 Ctrl+C closes the interface when idle. During active work it requests a stop; press it again to
 close without waiting. Ctrl+Q closes the interface without cancelling
