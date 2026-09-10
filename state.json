@@ -1,6 +1,6 @@
 {
   "next_display_id": 72,
-  "next_comment_id": 1545,
+  "next_comment_id": 1546,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
     "0dd9db9c-2d56-4022-bb25-2d97a132a6a1": 44,
@@ -11529,7 +11529,7 @@
       "priority": "high",
       "created_by": "krvx",
       "created_at": "2026-09-10T18:04:24.271923519Z",
-      "updated_at": "2026-09-10T20:19:02.472349767Z",
+      "updated_at": "2026-09-10T20:24:13.327657611Z",
       "comments": {
         "21bb2d9e-932a-4d5f-a67f-c24bc7516dd2": {
           "display_id": 1541,
@@ -11557,6 +11557,15 @@
           "kind": "note",
           "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJYYLAdyDED/m2jSzSlMZABhyvZmiaOzMSYRz2XyGAau21dhc88ec370cioK/1JISl0EjkqMMAF0Ns2bF84K4DA=="
+        },
+        "727bf8d5-95dd-45de-9bab-30f05a2a39ad": {
+          "display_id": 1545,
+          "author": "krvx",
+          "content": "Recovery follow-up for PR65: three supplied Codex traces were structurally valid (216 completed responses, eight cancellation terminals). One contained an effect-receipt identity conflict; cancellation origin is not present in these traces. Reproduced two current-code defects synthetically: a restored writer reused its prior effect scope at the same role/cycle/revision, and premature stream EOF cancelled the parent token so the retry planner returned Cancelled. Fixed with fresh journal-retained host invocation identities and attempt-owned cancellation guarded by caller cancellation. Reusing only the local-memory counter would leave the explicit disabled-memory mode broken, so identity creation belongs at the effectful host invocation boundary. Exact old receipt replay/ambiguous-effect guards remain unchanged. 339 agent/product-runner and 80 daemon product tests pass, including automatic daemon restart continuation and explicit user-stop preservation; strict affected Clippy, repository policy and dependency checks pass. Completing final formal/format checks before commit.",
+          "created_at": "2026-09-10T20:24:13.322906001Z",
+          "kind": "note",
+          "signed_by": "SHA256:IeCr62P7gzB0M5HnHg0Ncs6fEmNgIObFyetKV6DXuCc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgBk91XiXNT4Sjm6xR3uqi6fRm/MJ5K/OfiFhbKUCA3VMAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAAFP9p254HhMyTGhpBcy1A9gN6K/9dSxwt/1U8R8JrRMILoH9Jw4atVZLk+Y6w2UHtOuzr58NaBUuTeQfI7dWCA=="
         },
         "94740da3-5957-4ec6-96aa-999b48798373": {
           "display_id": 1539,
@@ -15126,8 +15135,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-10T20:19:02.472349767Z",
+    "timestamp": "2026-09-10T20:24:13.327657611Z",
     "agent_id": "krvx",
-    "agent_seq": 214
+    "agent_seq": 215
   }
 }
