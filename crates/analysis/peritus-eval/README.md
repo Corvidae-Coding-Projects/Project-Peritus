@@ -12,6 +12,13 @@ accept a run, waive a finding, or grant authority.
 
 The complete frozen contract is in [the E3 design](../../../.design/e3-evaluation.md).
 
+Provider snapshots retain the v1 capability inventory and bytes when every later capability is
+unsupported. Profiles with supported or unknown later capabilities use the
+`peritus.evaluation.provider-snapshot.v2` digest domain: after the original capability rows, a
+u32 count precedes the additional name/state rows sorted by name. Omitted later capabilities
+mean unsupported. Adding an unused capability therefore preserves existing campaign identities,
+while reasoning-replay support and unknown support produce distinct fingerprints.
+
 ## Focused checks
 
 From the repository root:

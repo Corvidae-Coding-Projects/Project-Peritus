@@ -4,8 +4,9 @@ mod support;
 
 use peritus_eval::{
     CandidateTaskInput, DatasetId, DatasetManifest, DatasetPartition, DatasetTask,
-    EvaluationErrorKind, EvaluationLimits, SealedEvaluatorInput, TaskId,
+    EvaluationErrorKind, EvaluationLimits, FrozenProviderSnapshot, SealedEvaluatorInput, TaskId,
 };
+use peritus_model_protocol::{Capability, CapabilityMatrix, ProviderProfile};
 
 use support::{artifact, bytes, dataset, digest, frozen_profile};
 
@@ -66,4 +67,37 @@ fn frozen_profile_and_plan_inputs_are_stable() {
         left.arm(peritus_eval::EvaluationArm::Candidate).digest()
     );
     assert_eq!(left.rollouts_per_task(), 2);
+}
+
+#[test]
+fn extended_provider_snapshot_binds_supported_and_unknown_reasoning_replay() {
+    let profile = support::provider_profile();
+    let legacy = FrozenProviderSnapshot::capture(&profile).expect("legacy snapshot");
+    let with_capabilities = |supported: &[Capability], unknown: &[Capability]| {
+        let mut supported = supported.to_vec();
+        supported.extend([Capability::SamplingControls, Capability::UsageDetail]);
+        let extended = ProviderProfile::new(
+            profile.profile_id(),
+            profile.revision(),
+            profile.provider().clone(),
+            profile.model().clone(),
+            profile.dialect(),
+            CapabilityMatrix::new(&supported, unknown).expect("capabilities"),
+            profile.provenance(),
+            profile.limits(),
+            profile.output_limit_enforcement(),
+            profile.state_mode(),
+            profile.resume_kind(),
+            profile.cancellation_kind(),
+        )
+        .expect("extended profile");
+        FrozenProviderSnapshot::capture(&extended).expect("extended snapshot")
+    };
+    let supported = with_capabilities(&[Capability::ReasoningReplay], &[]);
+    let unknown = with_capabilities(&[], &[Capability::ReasoningReplay]);
+    assert_eq!(with_capabilities(&[], &[]), legacy);
+    assert_eq!(with_capabilities(&[Capability::ReasoningReplay], &[]), supported);
+    assert_ne!(supported.digest(), legacy.digest());
+    assert_ne!(unknown.digest(), legacy.digest());
+    assert_ne!(supported.digest(), unknown.digest());
 }

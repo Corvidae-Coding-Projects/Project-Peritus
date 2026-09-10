@@ -13,7 +13,30 @@ use crate::{
 };
 
 const PROVIDER_DOMAIN: &[u8] = b"peritus.evaluation.provider-snapshot.v1\0";
+const EXTENDED_PROVIDER_DOMAIN: &[u8] = b"peritus.evaluation.provider-snapshot.v2\0";
 const MODEL_DOMAIN: &[u8] = b"peritus.evaluation.model-controls.v1\0";
+
+// This is a wire-schema inventory, not the current capability inventory. Growing
+// CapabilityMatrix::iter must not change fingerprints of existing campaigns.
+const V1_CAPABILITIES: [Capability; 17] = [
+    Capability::Streaming,
+    Capability::ToolCalls,
+    Capability::ParallelToolCalls,
+    Capability::StrictStructuredOutput,
+    Capability::PromptCaching,
+    Capability::ImageInput,
+    Capability::AudioInput,
+    Capability::DocumentInput,
+    Capability::ReasoningControls,
+    Capability::ReasoningSummaries,
+    Capability::ResumableResponse,
+    Capability::ConfirmedCancellation,
+    Capability::UsageDetail,
+    Capability::RateLimitDetail,
+    Capability::StoredState,
+    Capability::ProviderExtensions,
+    Capability::SamplingControls,
+];
 
 /// Exact canonical snapshot of every public immutable C5 profile field.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -26,12 +49,16 @@ pub struct FrozenProviderSnapshot {
 
 impl FrozenProviderSnapshot {
     /// Captures the complete public C5 profile without trusting a caller digest.
+    /// Unsupported capabilities added after v1 retain the v1 fingerprint. New
+    /// supported or unknown capabilities use the extensible v2 fingerprint.
     ///
     /// # Errors
     /// Returns a codec-bound error if public profile strings exceed production limits.
     pub fn capture(profile: &ProviderProfile) -> Result<Self, EvaluationError> {
+        let extensions = capability_extensions(profile);
         let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
-        writer.write_bytes(PROVIDER_DOMAIN).map_err(codec)?;
+        let domain = if extensions.is_empty() { PROVIDER_DOMAIN } else { EXTENDED_PROVIDER_DOMAIN };
+        writer.write_bytes(domain).map_err(codec)?;
         writer.write_fixed(profile.profile_id().as_bytes()).map_err(codec)?;
         writer.write_u64(profile.revision()).map_err(codec)?;
         writer.write_str(profile.provider().as_str()).map_err(codec)?;
@@ -39,10 +66,13 @@ impl FrozenProviderSnapshot {
         writer.write_u16(profile.protocol().major()).map_err(codec)?;
         writer.write_u16(profile.protocol().minor()).map_err(codec)?;
         writer.write_u8(dialect_tag(profile.dialect())).map_err(codec)?;
-        for (capability, state) in profile.capabilities().iter() {
+        for capability in V1_CAPABILITIES {
             writer.write_str(capability.name()).map_err(codec)?;
-            writer.write_u8(capability_state_tag(state)).map_err(codec)?;
+            writer
+                .write_u8(capability_state_tag(profile.capabilities().state(capability)))
+                .map_err(codec)?;
         }
+        write_capability_extensions(&mut writer, &extensions)?;
         writer.write_u8(provenance_tag(profile.provenance())).map_err(codec)?;
         let limits = profile.limits();
         writer.write_u64(limits.max_input_tokens()).map_err(codec)?;
@@ -81,6 +111,39 @@ impl FrozenProviderSnapshot {
     pub const fn supports_sampling_controls(self) -> bool {
         self.sampling_controls
     }
+}
+
+fn capability_extensions(profile: &ProviderProfile) -> Vec<(Capability, CapabilityState)> {
+    let mut extensions = profile
+        .capabilities()
+        .iter()
+        .filter(|(capability, state)| {
+            !V1_CAPABILITIES.contains(capability) && *state != CapabilityState::Unsupported
+        })
+        .collect::<Vec<_>>();
+    extensions.sort_unstable_by_key(|(capability, _)| capability.name());
+    extensions
+}
+
+fn write_capability_extensions(
+    writer: &mut CanonicalWriter,
+    extensions: &[(Capability, CapabilityState)],
+) -> Result<(), EvaluationError> {
+    if !extensions.is_empty() {
+        let count = u32::try_from(extensions.len()).map_err(|_| {
+            crate::invalid(
+                EvaluationErrorKind::LimitExceeded,
+                EvaluationOperation::FreezeProfile,
+                "provider capability inventory exceeds canonical limits",
+            )
+        })?;
+        writer.write_u32(count).map_err(codec)?;
+        for (capability, state) in extensions {
+            writer.write_str(capability.name()).map_err(codec)?;
+            writer.write_u8(capability_state_tag(*state)).map_err(codec)?;
+        }
+    }
+    Ok(())
 }
 
 /// Frozen E3-owned model controls used to derive per-rollout C5 requests.
