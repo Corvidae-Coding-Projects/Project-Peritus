@@ -1,5 +1,5 @@
 {
-  "next_display_id": 67,
+  "next_display_id": 68,
   "next_comment_id": 1512,
   "display_id_map": {
     "046a66c7-ba7d-4c93-8639-e0f4c737c855": 52,
@@ -41,6 +41,7 @@
     "65f4d2ae-ffe6-471c-8d5f-3de1632a9724": 61,
     "6e8845fe-4835-478b-80d0-18135c12bc4d": 43,
     "79bb0f68-384c-454b-9302-eb88b692c28f": 18,
+    "7a160b4f-2dc9-41d3-80f1-ff16672c18ad": 67,
     "7f54e62c-3c08-44f0-99bc-570d189eadb1": 64,
     "8bbbda45-2e84-44e1-87fb-033729ad7029": 45,
     "8d3b149c-50c3-4887-9973-8bea59b5f6a2": 15,
@@ -10738,6 +10739,17 @@
         }
       }
     },
+    "7a160b4f-2dc9-41d3-80f1-ff16672c18ad": {
+      "uuid": "7a160b4f-2dc9-41d3-80f1-ff16672c18ad",
+      "display_id": 67,
+      "title": "Preserve Peritus terminal title during provider discovery and login (GitHub #57)",
+      "description": "Isolate noninteractive Windows provider probes; own and restore the interactive title; validate native console behavior and publish fix to develop.",
+      "status": "open",
+      "priority": "medium",
+      "created_by": "krvx",
+      "created_at": "2026-09-10T09:55:08.166483208Z",
+      "updated_at": "2026-09-10T09:55:08.166483208Z"
+    },
     "7f54e62c-3c08-44f0-99bc-570d189eadb1": {
       "uuid": "7f54e62c-3c08-44f0-99bc-570d189eadb1",
       "display_id": 64,
@@ -14743,8 +14755,8 @@
   },
   "next_milestone_id": 1,
   "watermark": {
-    "timestamp": "2026-09-10T02:02:54.546071096Z",
+    "timestamp": "2026-09-10T09:55:08.166483208Z",
     "agent_id": "krvx",
-    "agent_seq": 164
+    "agent_seq": 165
   }
 }
